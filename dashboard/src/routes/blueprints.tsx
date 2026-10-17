@@ -125,13 +125,26 @@ function BlueprintsListPage() {
               </CardHeader>
               <CardContent className="p-0">
                 <Table>
+                  {/* Short labels never wrap: in the scrolling mobile table,
+                      wrapping stacked them vertically in a 180–220px header
+                      (w4/m220). */}
                   <TableHeader>
                     <TableRow>
-                      <TableHead>{t("blueprints.colName")}</TableHead>
-                      <TableHead>{t("blueprints.colRepo")}</TableHead>
-                      <TableHead>{t("blueprints.colBranch")}</TableHead>
-                      <TableHead>{t("blueprints.colStatus")}</TableHead>
-                      <TableHead>{t("blueprints.colUpdated")}</TableHead>
+                      <TableHead className="whitespace-nowrap">
+                        {t("blueprints.colName")}
+                      </TableHead>
+                      <TableHead className="whitespace-nowrap">
+                        {t("blueprints.colRepo")}
+                      </TableHead>
+                      <TableHead className="whitespace-nowrap">
+                        {t("blueprints.colBranch")}
+                      </TableHead>
+                      <TableHead className="whitespace-nowrap">
+                        {t("blueprints.colStatus")}
+                      </TableHead>
+                      <TableHead className="whitespace-nowrap">
+                        {t("blueprints.colUpdated")}
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

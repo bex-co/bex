@@ -689,3 +689,40 @@ describe("EnvGroupDetailPage", () => {
     expect(router.state.location.pathname).toBe("/env-groups/missing");
   });
 });
+
+// w4/m220 (a821): the count labels wrapped to one character per line on a
+// phone (a 200px header), and the loading preview used a generic header and
+// five equal cells. Labels now never wrap, and the preview shares the ready
+// table's header and columns. Pixel parity is a browser measurement (compiled
+// CSS: 36px headers; pending = ready header 145/81px, search y, 202×32 action).
+describe("EnvGroupsPage list layout (w4/m220)", () => {
+  it("keeps every column label on one line", async () => {
+    listState.groups = [group({ name: "production-shared" })];
+    renderList();
+    await screen.findByText("production-shared");
+    for (const header of screen.getAllByRole("columnheader")) {
+      expect(header).toHaveClass("whitespace-nowrap");
+    }
+  });
+
+  it("previews the same header copy, action and table columns", async () => {
+    listState.groups = [group({ name: "production-shared" })];
+    const ready = renderList();
+    await screen.findByText("production-shared");
+    const readyLabels = screen
+      .getAllByRole("columnheader")
+      .map((th) => th.textContent?.trim());
+    ready.unmount();
+
+    const { EnvGroupsListPageSkeleton } =
+      await import("@/common/components/route-skeletons");
+    const { container } = render(<EnvGroupsListPageSkeleton />);
+    expect(container).toHaveTextContent("Environment Groups");
+    expect(container).toHaveTextContent("New Environment Group");
+    const labels = [...container.querySelectorAll("th")].map((th) =>
+      th.textContent?.trim(),
+    );
+    expect(labels).toEqual(readyLabels);
+    expect(container.querySelectorAll("tbody tr")).toHaveLength(3);
+  });
+});

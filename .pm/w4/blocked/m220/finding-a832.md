@@ -6,7 +6,7 @@ Why: the list's generic pending card previews different header and control geome
 
 ## Reproduction and measured target
 
-Use an owned disabled webhook with one event subscription. At 390×844 or 1440×844, start on /blueprints/new, use global Search → Webhooks, hold the real successful WebhookEndpoints HTTP response, measure the actual webhooks-list pending frame, then fulfill that response unchanged and measure the ready list. The [durable artifact](../evidence/m220-a832-webhooks-loading.json) contains the exact V2 scripts, selected complete native request/response entries, three valid replays, source census, controls and cleanup.
+Use an owned disabled webhook with one event subscription. At 390×844 or 1440×844, start on /blueprints/new, use global Search → Webhooks, hold the real successful WebhookEndpoints HTTP response, measure the actual webhooks-list pending frame, then fulfill that response unchanged and measure the ready list. The [durable artifact](../../evidence/m220-a832-webhooks-loading.json) contains the exact V2 scripts, selected complete native request/response entries, three valid replays, source census, controls and cleanup.
 
 The handler delays the whole matching HTTP batch. Only the WebhookEndpoints request and corresponding complete response entry are retained; this is not an isolated-query delay. The V2 selector scopes measurements to the pending frame, avoiding the hidden previous-route card. The earlier unscoped zero-card sample is excluded.
 

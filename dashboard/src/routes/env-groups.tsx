@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { EnvGroupsTableHeader } from "@/features/env-groups/components/env-groups-table-header";
 import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
@@ -25,8 +26,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
-  TableHeader,
   TableRow,
 } from "@/common/components/ui/table";
 import { NewEnvGroupDialog } from "@/features/env-groups/components/new-env-group-dialog";
@@ -210,21 +209,7 @@ export function EnvGroupsPage() {
               ) : (
                 <div className="rounded-md border">
                   <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>{t("envGroups.colName")}</TableHead>
-                        <TableHead>{t("envGroups.colEnvironment")}</TableHead>
-                        <TableHead className="text-right">
-                          {t("envGroups.colEnvVars")}
-                        </TableHead>
-                        <TableHead className="text-right">
-                          {t("envGroups.colSecretFiles")}
-                        </TableHead>
-                        <TableHead className="text-right">
-                          {t("envGroups.colUpdated")}
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
+                    <EnvGroupsTableHeader />
                     <TableBody>
                       {visibleGroups.map((group) => (
                         <TableRow key={group.id}>

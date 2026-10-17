@@ -1,6 +1,6 @@
 # a821 — Two Environment Groups list layout defects
 
-**Severity:** minor for each finding. **Observed:** 2026-10-17 01:38–01:42 UTC. **Research main:** `5448f8d9c3f30db207bc896b83985f4fdefbac42`. Filing only. [Complete durable evidence](../evidence/m220-a821-env-groups-layout.json).
+**Severity:** minor for each finding. **Observed:** 2026-10-17 01:38–01:42 UTC. **Research main:** `5448f8d9c3f30db207bc896b83985f4fdefbac42`. Filing only. [Complete durable evidence](../../evidence/m220-a821-env-groups-layout.json).
 
 ## 1. Mobile count-column labels stack vertically and inflate the header
 

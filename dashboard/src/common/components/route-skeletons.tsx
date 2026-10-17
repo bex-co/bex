@@ -1,12 +1,21 @@
 import { InvitationFrame } from "@/features/invites/invitation-frame";
+import { EnvGroupsTableHeader } from "@/features/env-groups/components/env-groups-table-header";
+import { WebhooksTableHeader } from "@/features/webhooks/components/webhooks-table-header";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableRow,
+} from "@/common/components/ui/table";
 import { useRouterState, useSearch } from "@tanstack/react-router";
-import { Pencil } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
+  CardAction,
 } from "@/common/components/ui/card";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
@@ -670,11 +679,36 @@ export function EnvGroupsListPageSkeleton() {
       route="env-groups-list"
       className="flex min-h-0 flex-1 flex-col"
     >
-      <PageHeaderSkeleton description />
+      <EnvGroupsPageHeaderSkeleton />
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <EnvGroupsContentSkeleton />
       </div>
     </PendingFrame>
+  );
+}
+
+/** The list header's own translated title, description and New button, so
+ *  wrapping and the action's footprint match the ready header (w4/m220). */
+function EnvGroupsPageHeaderSkeleton() {
+  const { t } = useTranslations();
+  return (
+    <Region
+      name="page-header"
+      className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-6"
+    >
+      <div>
+        <div className="relative text-xl font-semibold">
+          <ReservedText>{t("envGroups.pageTitle")}</ReservedText>
+        </div>
+        <div className="relative text-sm">
+          <ReservedText>{t("envGroups.pageDescription")}</ReservedText>
+        </div>
+      </div>
+      <ReservedButton variant="default" size="sm">
+        <Plus />
+        {t("envGroups.newButton")}
+      </ReservedButton>
+    </Region>
   );
 }
 
@@ -685,7 +719,34 @@ export function EnvGroupsContentSkeleton() {
         <Skeleton className="h-9 w-full max-w-md" />
       </Region>
       <Region name="env-groups-table">
-        <TableRowsSkeleton rows={3} columns={5} />
+        {/* The ready table's own columns and scroll container (w4/m220). */}
+        <div className="rounded-md border">
+          <Table>
+            <EnvGroupsTableHeader />
+            <TableBody>
+              {Array.from({ length: 3 }, (_, row) => (
+                <TableRow key={row}>
+                  <TableCell className="min-w-48">
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="mt-0.5 h-4 w-48" />
+                  </TableCell>
+                  <TableCell className="min-w-40">
+                    <Skeleton className="h-5 w-24" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="ml-auto h-5 w-4" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="ml-auto h-5 w-4" />
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    <Skeleton className="ml-auto h-5 w-28" />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </Region>
     </div>
   );
@@ -714,9 +775,70 @@ export function WebhooksListPageSkeleton() {
       className="flex-1 overflow-auto p-4 sm:p-6"
     >
       <Region name="webhooks-card" className="mx-auto w-full max-w-2xl">
-        <TableCardSkeleton rows={3} columns={5} controls description />
+        <WebhooksCardPreview />
       </Region>
     </PendingFrame>
+  );
+}
+
+/**
+ * The ready WebhooksPanel's own card, inert: real title, translated
+ * description and Create action in the CardAction slot, the search field and
+ * its help in CardContent, then the five-column table — so the swap moves no
+ * header, search or table (w4/m220 a832).
+ */
+function WebhooksCardPreview() {
+  const { t } = useTranslations();
+  return (
+    <Card inert aria-busy="true">
+      <CardHeader>
+        <CardTitle className="relative w-fit">
+          <ReservedText>{t("webhooks.title")}</ReservedText>
+        </CardTitle>
+        <CardDescription className="relative">
+          <ReservedText>{t("webhooks.description")}</ReservedText>
+        </CardDescription>
+        <CardAction>
+          <ReservedButton variant="outline" size="sm">
+            <Plus /> {t("webhooks.create")}
+          </ReservedButton>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="max-w-md space-y-1.5">
+            <Skeleton className="h-9 w-full" />
+            <ReservedHelp className="text-xs">
+              {t("webhooks.searchEndpointsHelp")}
+            </ReservedHelp>
+          </div>
+          <Table>
+            <WebhooksTableHeader />
+            <TableBody>
+              {Array.from({ length: 3 }, (_, row) => (
+                <TableRow key={row}>
+                  <TableCell>
+                    <Skeleton className="h-5 w-40" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-16" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-20" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-9 rounded-full" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="ml-auto size-8" />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -2099,12 +2221,20 @@ function ReservedLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** A ready muted help paragraph, wrapping as its translated copy does. */
-function ReservedHelp({ children }: { children: React.ReactNode }) {
+/** A ready muted help paragraph, wrapping as its translated copy does. A div,
+ *  not a <p>: ReservedText's bar is a div, which the HTML parser moves out of
+ *  a paragraph in server-rendered HTML, stretching it across the page. */
+function ReservedHelp({
+  children,
+  className = "text-sm",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <p className="relative text-sm text-muted-foreground">
+    <div className={cn("relative text-muted-foreground", className)}>
       <ReservedText>{children}</ReservedText>
-    </p>
+    </div>
   );
 }
 

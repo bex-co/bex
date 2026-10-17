@@ -363,7 +363,12 @@ function stripReserve(classes: string) {
 function part(element: Element): (string | null)[] | null {
   if (element.matches('[data-slot="label"], .leading-none.font-medium'))
     return ["label", element.textContent];
-  if (element.matches("p.text-muted-foreground"))
+  // A reserved help line is a positioned <div>: a <p> would eject its bar.
+  if (
+    element.matches(
+      "p.text-muted-foreground, div.relative.text-muted-foreground",
+    )
+  )
     return ["help", element.textContent];
   if (element.matches('input, [data-slot="skeleton"].h-9')) return ["input"];
   if (element.matches('[data-slot="switch"], [data-slot="skeleton"].w-9'))
