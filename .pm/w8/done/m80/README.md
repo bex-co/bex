@@ -1,6 +1,6 @@
 # w8 · m80 — Resolve omitted Git branches in Blueprint services
 
-**Worker:** worker8 **Goal:** independently sourced Blueprint services build their repository's actual default when branch is omitted. **Status:** blocked — t001–t005 done 2026-10-16; t006 needs the deployed API plus a hosted fresh-fixture replay
+**Worker:** worker8 **Goal:** independently sourced Blueprint services build their repository's actual default when branch is omitted. **Status:** done — 2026-10-16; source tasks and both first omitted-branch Git deployments plus delayed/no-op/shared/cleanup gates pass
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | [t003](done/t003.md) | Render parity | 20m | t002 — **DONE 2026-10-16** |
 | [t004](done/t004.md) | Simplify | 10m | t003 — **DONE 2026-10-16** |
 | [t005](done/t005.md) | Test coverage | 35m | t003 — **DONE 2026-10-16** |
-| [t006](t006.md) | Closeout | 20m | t004, t005 |
+| [t006](done/t006.md) | Closeout | 20m | t004, t005 — **DONE 2026-10-16** |
 
 Six tasks,165m total.
 
@@ -28,4 +28,8 @@ Six tasks,165m total.
 - **Goal linkage:** ADR008 reliable hosting, ADR018 Render-compatible source selection and ADR049 authored Blueprint intent.
 - **Expected outcome:** an independently declared Git repo builds its real default without requiring a redundant branch field; canonical state, first commit and build input agree.
 - **Why now:** both native-born hosted fixtures fail their first Git clone on main; changing only branch to master makes both healthy. Four actual source-path omission cases also fail while four explicit controls pass. Existing direct-create and explicit-source fixes bypass this distinct defaulting path.
-- **Render parity included:** the source decision is user-facing and shared by REST, GraphQL, MCP and dashboard consumers. [m76](../done/m76/README.md) and [m78](../done/m78/README.md) remain completed within their accepted scopes.
+- **Render parity included:** the source decision is user-facing and shared by REST, GraphQL, MCP and dashboard consumers. [m76](../m76/README.md) and [m78](../m78/README.md) remain completed within their accepted scopes.
+
+## Hosted closeout — sweep388
+
+[Both first omitted-branch Git deployments](../../evidence/blueprint-default-branch-sweep388/README.md) select the freshly verified independent master/current commit and reach Live/HTTP200 with exact package and literals. API-only identical reapply preserves delayed source/child sets/observed boots; stored YAML omits branch and six shared reads pass. Exact metadata/service/child/URL cleanup preserves baselines and zero termination. Setup/defaulted image configuration children and untested variants remain explicit. t006 and the milestone move to done; source checks remain inherited.

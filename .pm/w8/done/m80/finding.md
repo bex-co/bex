@@ -1,5 +1,7 @@
 # Blueprint services use main when their own repo defaults to master
 
+**Current outcome:** sourcea3047cd75978 resolves the default; [fresh first-deployment/delayed/no-op acceptance](../../evidence/blueprint-default-branch-sweep388/README.md) passes in sweep388 and closes m80. The following preserves the original sweep344 diagnosis/proposal.
+
 **Severity: major. Attribution: backend Blueprint source planning/defaulting.** Two healthy native-created Free image services fail their first Git deployment after accepted Blueprint syncs omit the independent service repo's branch. Both clients validate the exact manifest. The server chooses main; the actual repo default is master. Adding only branch: master makes both deployments Live with exact artifacts. [Full retained evidence](evidence/cli-sweep344/README.md).
 
 ## Expected and observed
@@ -28,6 +30,6 @@ Compiler/source callers include Blueprint create (blueprint.go:1109–1110), pro
 
 ## Dedupe and completion gate
 
-Targeted open/blocked/done searches and source history found no matching pending implementation. [m76](../done/m76/README.md) repairs direct creation, accepted in338; [m78](../done/m78/README.md) repairs explicit source context, accepted in343, and explicitly leaves this omission unverified. [m70](../done/m70/README.md) source coupling and [m66](../done/m66/README.md) canonical intent correctly consume the wrong default. Keep their accepted scopes; this is a separate producer gap. Preserve disconnected Blueprint refusal (m37) and reviewed-file pins (m41).
+Targeted open/blocked/done searches and source history found no matching pending implementation. [m76](../m76/README.md) repairs direct creation, accepted in338; [m78](../m78/README.md) repairs explicit source context, accepted in343, and explicitly leaves this omission unverified. [m70](../m70/README.md) source coupling and [m66](../m66/README.md) canonical intent correctly consume the wrong default. Keep their accepted scopes; this is a separate producer gap. Preserve disconnected Blueprint refusal (m37) and reviewed-file pins (m41).
 
 The six scheduled tasks total165m. Do not close on the recovery controls: fresh first omitted-branch Git deployments must build the actual default without branch edits, pass artifact/readback/convergence/no-op checks, then clean up owned metadata/parents/children and leave baseline/quotas intact. The live new-service/fetched/nested/browser variants and other hosting kinds remain unverified until exercised or explicitly covered by meaningful source tests.
