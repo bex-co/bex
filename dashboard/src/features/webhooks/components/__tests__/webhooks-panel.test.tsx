@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
+import { hydrateRoot } from "react-dom/client";
 import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
@@ -56,7 +58,7 @@ function endpoint(
   };
 }
 
-function renderPanel() {
+function panelRouter() {
   const root = createRootRoute();
   const index = createRoute({
     getParentRoute: () => root,
@@ -78,7 +80,11 @@ function renderPanel() {
     history: createMemoryHistory({ initialEntries: ["/"] }),
     context: { client: {} as never, session: null },
   });
-  return render(<RouterProvider router={router} />);
+  return router;
+}
+
+function renderPanel() {
+  return render(<RouterProvider router={panelRouter()} />);
 }
 
 beforeEach(() => {
@@ -189,4 +195,32 @@ it("previews the ready card's copy, action, search help and columns (w4/m220)", 
   expect([...container.querySelectorAll("th")].map(text)).toEqual(readyLabels);
   // Every reserved bar sits in a positioned box, never a <p> it would escape.
   expect(container.querySelector("p [data-slot='skeleton']")).toBeNull();
+});
+
+// w4/m219 (a837): a query typed into the server HTML before handlers attach
+// is wiped by hydration.
+it("keeps the search uneditable until hydration, then filters (w4/m219)", async () => {
+  const router = panelRouter();
+  await router.load();
+  const app = <RouterProvider router={router} />;
+  const container = document.createElement("div");
+  container.innerHTML = renderToString(app);
+  document.body.appendChild(container);
+  const search = () =>
+    container.querySelector<HTMLInputElement>("#webhook-search")!;
+  let root: ReturnType<typeof hydrateRoot> | undefined;
+  try {
+    expect(search().disabled).toBe(true);
+    await act(async () => {
+      root = hydrateRoot(container, app);
+    });
+    expect(search().disabled).toBe(false);
+    await userEvent.type(search(), "pager");
+    expect(search().value).toBe("pager");
+    expect(container).toHaveTextContent("pager");
+    expect(container).not.toHaveTextContent("payments");
+  } finally {
+    act(() => root?.unmount());
+    container.remove();
+  }
 });
