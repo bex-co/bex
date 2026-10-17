@@ -1,0 +1,64 @@
+[
+  {
+    "url": "https://raw.githubusercontent.com/cloudnative-pg/postgis-containers/main/image-catalogs/postgis-system-bookworm.yaml",
+    "sha256": "bff242dcdcb2e760c9e6585dc3898399c846b79676f855f54bcd595956ba60ad",
+    "kind": "ClusterImageCatalog",
+    "images": [
+      {
+        "major": 13,
+        "image": "ghcr.io/cloudnative-pg/postgis:13.22-3.6.0-202511101009-system-bookworm@sha256:9e851af742cb38dd2988d8d31d2b4ab0a117efeba637b4bb27aeef6a1e50ab5b"
+      },
+      {
+        "major": 14,
+        "image": "ghcr.io/cloudnative-pg/postgis:14.24-3.6.4-202610121021-system-bookworm@sha256:1a627c615dddfe9ebbee60bee2bd6436c8e3decdf64ca51a7fe0c1ffb0b75550"
+      },
+      {
+        "major": 15,
+        "image": "ghcr.io/cloudnative-pg/postgis:15.19-3.6.4-202610121021-system-bookworm@sha256:003145844fdd9a2798f309b74eabfe71e413d9839813039c83fba14a04913c06"
+      },
+      {
+        "major": 16,
+        "image": "ghcr.io/cloudnative-pg/postgis:16.15-3.6.4-202610121021-system-bookworm@sha256:abda14bc5f2ce3ac134f1f7209b84536aa3d1911216fb2179ca64ea664928072"
+      },
+      {
+        "major": 17,
+        "image": "ghcr.io/cloudnative-pg/postgis:17.11-3.6.4-202610121021-system-bookworm@sha256:cb98190c2efb990c551cc8b8e1480507b468c86bc7bcd1e1df6b3533122e60be"
+      },
+      {
+        "major": 18,
+        "image": "ghcr.io/cloudnative-pg/postgis:18.6-3.6.4-202610121021-system-bookworm@sha256:b1093df7c66681457581516fd7bd5caeff74aafef5cbf70178a5bd0a04c329a8"
+      }
+    ]
+  },
+  {
+    "url": "https://raw.githubusercontent.com/cloudnative-pg/postgis-containers/main/image-catalogs/postgis-system-trixie.yaml",
+    "sha256": "2408ee5cbc4182d572448e2711e9f2e283588a85b18beca42d76bd76cd7e6373",
+    "kind": "ClusterImageCatalog",
+    "images": [
+      {
+        "major": 13,
+        "image": "ghcr.io/cloudnative-pg/postgis:13.22-3.6.0-202511101009-system-trixie@sha256:a81308e173f72ac595add468e83e6976c48fd0ab81f08f9be8af87faba2fbb68"
+      },
+      {
+        "major": 14,
+        "image": "ghcr.io/cloudnative-pg/postgis:14.24-3.6.4-202610121021-system-trixie@sha256:58a7aecacc8d85191e8609f77537b931aecae2cd95d0dd4e0895c24ac52c4169"
+      },
+      {
+        "major": 15,
+        "image": "ghcr.io/cloudnative-pg/postgis:15.19-3.6.4-202610121021-system-trixie@sha256:1c8f74acb12e55ff20cb110121a1027880278a945bbdba53cc0c8dc7a9ca2fc6"
+      },
+      {
+        "major": 16,
+        "image": "ghcr.io/cloudnative-pg/postgis:16.15-3.6.4-202610121021-system-trixie@sha256:a39ebeefd3b6b638e9904b4f753abc0fcbdc5e9ee592b22bde9ed1a74dafdd3e"
+      },
+      {
+        "major": 17,
+        "image": "ghcr.io/cloudnative-pg/postgis:17.11-3.6.4-202610121021-system-trixie@sha256:470456a823b2116f18ad0393cb0bf22a51f5d80dc497e03f43c77a62d36e651a"
+      },
+      {
+        "major": 18,
+        "image": "ghcr.io/cloudnative-pg/postgis:18.6-3.6.4-202610121021-system-trixie@sha256:a2b2fc7941fe97a27728ecb285df0b35f0341b63bef98a8e4328723a0417f828"
+      }
+    ]
+  }
+]

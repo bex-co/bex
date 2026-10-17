@@ -1,0 +1,7 @@
+import json,gzip,base64,hashlib
+def commands(P,reference,marker,control=False):
+ program=(P/'candidate-swig-app.py').read_text();files={'qa-swig-app.py':program,'qa_swig.i':(P/'candidate-swig-interface.i').read_text(),'qa-swig-reference.json':json.dumps(reference,separators=(',',':'),ensure_ascii=False),'qa-swig-marker.json':json.dumps(marker)};assert hashlib.sha256(program.encode()).hexdigest()==reference['program_sha256'];blob=base64.b64encode(gzip.compress(json.dumps(files,ensure_ascii=False,separators=(',',':')).encode(),mtime=0)).decode();assert json.loads(gzip.decompress(base64.b64decode(blob)))==files
+ build="set -e\npython - <<'QA_SWIG_SOURCES'\nimport base64,gzip,json,pathlib\nfor n,s in json.loads(gzip.decompress(base64.b64decode('"+blob+"'))).items():pathlib.Path(n).write_text(s)\nQA_SWIG_SOURCES\npython qa-swig-app.py before\n"
+ if control:build+='apt-get update -qq && apt-get install -y --no-install-recommends swig\n'
+ build+='swig -python qa_swig.i\ngcc -shared -fPIC $(python3-config --includes) qa_swig_wrap.c -o _qa_swig$(python3-config --extension-suffix)\npython qa-swig-app.py build';assert len(build.encode())<=4096
+ return {'build':build,'start':'python qa-swig-app.py serve','program_sha256':reference['program_sha256']}

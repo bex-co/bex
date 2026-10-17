@@ -1,0 +1,38 @@
+{
+  "sweep": 402,
+  "finding": "w8/m91",
+  "severity": "major",
+  "source_head": "af4f7fefb6d99596e5415bfcaf34c5802faf38d0",
+  "serving_revision": "unknown",
+  "native_explicit_Free_Node_POST201_create_exit0": 2,
+  "original_first_children_build_failed_missing_pg_restore": 2,
+  "exact_source_backup_and_three_missing_clients_before_failure": 2,
+  "native_build_only_one_line_updates_exit0": 2,
+  "replacement_children_Live_exact_same_source_backup": 2,
+  "control_HTTPS200_with_actual_runtime_archive_to_exact_SQL": 6,
+  "unique_HTTP_requests_correlated_in_native_app_logs": 6,
+  "shared_REST_GraphQL_MCP_source_command_readbacks": 12,
+  "API_only_explicit_env_readbacks": 4,
+  "actual_generated_recipe_observations": 2,
+  "real_local_selected_base_controls": 2,
+  "local_real_PG15_backup_generation": true,
+  "QA_only_backup": {
+    "bytes": 1721,
+    "sha256": "5beaea91d80ee9a3f7f637bd096446102952aa20a916f614fcb73575d1ece4a4"
+  },
+  "exact_backup_rows": 3,
+  "canonical_rows_sha256": "5090a6d28f0eddaa146a603028c04deaa63c6c796a16fe07ae7c81a10ae85624",
+  "observed_control_PostgreSQL": "15.19",
+  "native_deletes0_accepted_and_excluded": 3,
+  "owned_parents_children_URLs_absent": [
+    3,
+    5,
+    3
+  ],
+  "original_six_services_one_Blueprint_managed_data_quota_termination_intact": true,
+  "own_local_servers_containers_contexts_Go_export_packages_relays_copied_configs_removed": true,
+  "estimate_minutes": 205,
+  "tasks": 6,
+  "product_implementation": false,
+  "uncommitted": true
+}

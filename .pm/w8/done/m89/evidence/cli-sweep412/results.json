@@ -1,0 +1,32 @@
+{
+  "sweep": 412,
+  "source_head": "8f80d74efaffc23342cccad2f275051a1501396f",
+  "milestone": "w8/m89",
+  "native_clients": [
+    "published Bex0.3.2",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "original_unchanged_native_creates201_exit0": 2,
+  "original_first_children_Live": 2,
+  "unchanged_parent_commit": "b685400c1f9316f350965a5993d350bc746b0bf4",
+  "parent_pinned_basic_commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+  "required_basic_LICENSE_bytes": 1072,
+  "required_basic_LICENSE_SHA256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09",
+  "authored_fetch_prefix_or_replacement_deploy_used": false,
+  "native_build_source_and_required_child_proofs": 2,
+  "real_exact_source_and_file_HTTP_responses": 6,
+  "shared_REST_GraphQL_MCP_config_reads": 6,
+  "API_only_explicit_env_reads": 2,
+  "exact_own_parents_first_children_URLs_absent": true,
+  "baseline_preserved_current_quota_accounted_termination0": true,
+  "unrelated_service_IDs_preserved": [
+    "srv-db9ijnhu2fhc73e10clg"
+  ],
+  "prior_implementation_clone_tests_operator_checks_lint": "complete in t006, not rerun by documentation-only QA",
+  "actual_serving_revision_and_OCI": "unknown",
+  "recursive_nested_private_provider_paid_browser_claim": false,
+  "product_code_changed_by_this_replay": false,
+  "uncommitted": true,
+  "milestone_closed": true,
+  "evidence": ".pm/w8/done/m89/evidence/cli-sweep412"
+}

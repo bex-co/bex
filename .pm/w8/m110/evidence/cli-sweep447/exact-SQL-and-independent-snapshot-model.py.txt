@@ -1,0 +1,31 @@
+import re,json
+
+def snapshots():
+ rows={1:['north',1250],2:['north',725],3:['café:李',1999],4:['café:李',-499],5:['west',0]};out=[]
+ for phase in ['initial','insert','update','delete']:
+  if phase=='insert':rows[6]=['north',300]
+  if phase=='update':rows[2]=['south',-125]
+  if phase=='delete':del rows[4]
+  groups={}
+  for region,cents in rows.values():count,total=groups.get(region,(0,0));groups[region]=(count+1,total+cents)
+  out.append({'phase':phase,'rows':sorted([[r,*v] for r,v in groups.items()])})
+ return out
+
+def queries(schema):
+ assert re.fullmatch('[a-z][a-z0-9_]+',schema)
+ begin="BEGIN; SET LOCAL statement_timeout='20s'; CREATE SCHEMA "+schema+"; SET LOCAL search_path="+schema+",public; CREATE TABLE orders(id integer PRIMARY KEY,region text NOT NULL,cents integer NOT NULL); INSERT INTO orders VALUES(1,'north',1250),(2,'north',725),(3,'café:李',1999),(4,'café:李',-499),(5,'west',0); "
+ view="SELECT region,count(*) AS cnt,sum(cents) AS total FROM "+schema+".orders GROUP BY region";out={'catalog':"SELECT jsonb_build_object('version',current_setting('server_version_num'),'encoding',current_setting('server_encoding'),'available',COALESCE((SELECT jsonb_agg(jsonb_build_object('name',name,'default',default_version,'installed',installed_version) ORDER BY name) FROM pg_available_extensions WHERE name IN ('pg_ivm','vector','pg_stat_statements','plpgsql','hstore')),'[]'::jsonb),'own_schema_exists',EXISTS(SELECT FROM pg_namespace WHERE nspname='"+schema+"'))::text;",'enable':'CREATE EXTENSION IF NOT EXISTS pg_ivm;'}
+ for case in ['postgres','ivm']:
+  sql=begin
+  if case=='ivm':sql+="SELECT pgivm.create_immv('"+schema+".totals', '"+view+"'); "
+  selected=schema+'.totals' if case=='ivm' else '('+view+') q'
+  for phase,change in [('initial',''),('insert',"INSERT INTO orders VALUES(6,'north',300); "),('update',"UPDATE orders SET region='south',cents=-125 WHERE id=2; "),('delete',"DELETE FROM orders WHERE id=4; ")]:
+   sql+=change+"SELECT jsonb_build_object('phase','"+phase+"','rows',jsonb_agg(jsonb_build_array(region,cnt,total) ORDER BY region COLLATE \"C\"))::text FROM "+selected+"; "
+  out[case]=sql+'ROLLBACK;'
+ return out
+
+def decode(raw,case):
+ values=[];decoder=json.JSONDecoder()
+ while raw.strip():raw=raw.lstrip();v,n=decoder.raw_decode(raw);values.append(v);raw=raw[n:]
+ if case=='ivm':assert values.pop(0)==3
+ expected=snapshots();return {'snapshots':values,'independent_expected':expected},values==expected

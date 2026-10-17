@@ -1,0 +1,17 @@
+from pathlib import Path
+import subprocess,json,os,time,tempfile,shutil,sys,importlib.util
+P=Path(__file__).resolve().parent;sys.path.insert(0,str(P));spec=importlib.util.spec_from_file_location('data439',P/'sweep439-data.py');mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod);D=Path(tempfile.mkdtemp(prefix='qa439-',dir='/tmp'));D.chmod(0o700);sock=D/'redis.sock';log=(D/'server.log').open('wb');server=None;receipt=P/'sweep439-local-controls.json';out={'qualification':'isolated Unix-only local Redis reference, not hosted Valkey/production acceptance','context':str(D),'cases':[]};env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_','REDIS'))};env['REDISCLI_HISTFILE']=str(D/'history')
+def save():receipt.write_text(json.dumps(out,indent=2,ensure_ascii=False))
+save()
+try:
+ server=subprocess.Popen(['redis-server','--port','0','--unixsocket',str(sock),'--unixsocketperm','700','--save','','--appendonly','no','--dir',str(D),'--pidfile',str(D/'pid')],env=env,stdout=log,stderr=log);out['server_pid']=server.pid;save()
+ for i in range(100):
+  if sock.exists():break
+  assert server.poll() is None;time.sleep(.03)
+ assert sock.exists();out['server_version']=subprocess.check_output(['redis-server','--version'],text=True).strip()
+ for case,keys,script in mod.cases('local','reference'):
+  marker='QA439_LOCAL_'+case;args=['redis-cli','-s',str(sock),'--raw','EVAL',mod.protected(script),str(len(keys)),*keys,marker];r=subprocess.run(args,env=env,capture_output=True,text=True,timeout=15);raw=r.stdout.strip();value=json.loads(raw.removeprefix('QA439_RESULT '));passed=r.returncode==0 and mod.validate(value,case,marker);out['cases'].append({'case':case,'command':args,'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr,'decoded':value,'pass':passed});save();assert passed;print(json.dumps({'local_case':case,'pass':True}),flush=True)
+ out['pass']=True
+finally:
+ if server:server.terminate();server.wait(timeout=5)
+ log.close();shutil.rmtree(D);out['own_context_server_removed']=not D.exists() and server is not None and server.poll() is not None;save()

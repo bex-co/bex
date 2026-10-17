@@ -1,0 +1,2708 @@
+{
+  "sweep": 449,
+  "client": "bex",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "type": "web_service",
+  "name": "qa-20261017-ce0b57-logtail",
+  "nonce": "ce0b57",
+  "marker": "QA449_ce0b57_bex",
+  "time": "2026-10-17T16:28:33.744288+00:00",
+  "source_head": "78f5d15a5c20924d98519e1495812a635fe124a8",
+  "primary_reference": {
+    "at": "2026-10-17T13:12:02.325620+00:00",
+    "repo": "https://github.com/git-fixtures/basic",
+    "branch": "master",
+    "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+    "files": {
+      "LICENSE": {
+        "bytes": 1072,
+        "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+      },
+      "CHANGELOG": {
+        "bytes": 18,
+        "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+      }
+    }
+  },
+  "commands": {
+    "initial": {
+      "build": "set -e\nnode -e 'const fs=require('\"'\"'node:fs'\"'\"'),z=require('\"'\"'node:zlib'\"'\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\"'\"'H4sIAAAAAAAC/41Va3LiRhC+CqtKlaRaIUYSAgSRqxwva5Ny7MT2JpUsjms0aoG80gjPDKwdrCvkBjlAzpG75BxpPfA62D+2+MHQz6+7v2622h3t94MuXa1sdiu1scYKLlUnkaGAu3UqwNB5EcM4kbppLZVa7ckrEWqYeFipYk/XCHVzMudN1JyKTyDC7y/Pz+wVFRKMRNoCaPw+zeDygTNDb+A0hvatLLhumpaA5Cuc0AoEcAZPfnJJwyg8aHDYDJ0UnFC5NHTUuP5AN+31KkahEZl2nC5AKkNfwv0zyLJYCwahYYYH59EtMGUnosinXIkUpNGKPsGDNDC9nSAkado5XRk8PNg2IaJwHzA3JwLUWvCP3NpGDwrkOLIz4Au1tBpkY/xCUOV1aVZYkjVnKi14ZyWKIjHMNnKdLmwgGuYkTYy6SxLB8UWaPBgNnjdhuCf/gtVUS1F87kyFKAS2pQ7VyVOZU8WW+g7nthmIVY8VMTCQ0t6AkIjJqgNZKF0Imt88w79f9s1NZcppDqZZlnOOeHexqFhsPrrXYRjq0TrNYn1X4iZsS55gtM8iVbA/9speNSO39srcYPOqMEUGdlYsDP2nQ/S4+e7D7PRdR3/70hpBQSah8zoyCWIDT8iiolBhSy1BeVzkHz7M3hmmVQP6Cr4+A97iRLpVKURYbVXL18taYhh3lkAObjOoerK1bbvtS5POqtCUFQPu7LXIsCoqlPwlVcj1HuSp6mGOFviqUoWt3SpLkfOobQHwAhcorE2wakviQlcrFZ6t8whhNArvuibbm97vH2n3j8Pub6Qb3HSvt441JOU3PVtVi1RHMh8f3zSudipnXMECg+yConL3/JZ8eR84hBBzK5pxn2DnjD4KJsIGHht6yjc0S+NO8ZnjAtwjPaEDG+Dqia0lNqglbNUWq0byVIql4F6N9QsMBqJzdDrDpYK677LDaPLP3+N///pzPucSsCNxJ0s56OVrNJr+PD27ep1Gz7G7hFhb/ajA4rnqXj2sQB/reG+zlNFqp3s1A8pdfa9EMycNLewslRjE2M2iZSjwjf3j+cXV46NXNc7SiV1/dKu6Wq8Av5gevvv1JfC9nr3cdLxF5mQnK7ihX86Or6YXPzSJWowsK5DyleAJ3z1SjKBvWe/W/w5Ojmnqa6tZ2mtXHP+QtnONqrk27sw1l7iDrkO6zvDK8caOOyau7eG1cclbQsaEzDULrQSsisa+WiM57vUWuAfryGZFXj27LWtkL6IyZY1ThCvMlo1bTrHNopGjD25PIx8ASwgkLnPjJImGwYB4HviUuK4T0GSE6oE/6oPfeNZnsXLEAk5nR9Ozy2n7q7741dshQ7cybW7mrsaIDPqBQyLPjRg4ESN9P/CpH7mkPxxSd8R84gWBD8nId0eBG1DPceIBi4bUi0gw18oq5NHJ4dnx9PT8+EXO0X7GAGGDNxgQ34c4DihJBjQK2DAaUW+YsMAdEY8l4MQeSRI6dIcMICZs4AVewNyq3LIsn+b37K8bhzfXGsoxIJE/vIngfq5p5X9GuL0ldggAAA=='\"'\"','\"'\"'base64'\"'\"')))))fs.writeFileSync(n,s)'\nnode qa449-app.cjs build",
+      "start": "node qa449-app.cjs serve"
+    }
+  },
+  "pre_ids": [
+    "srv-dap3v694dm7c7390q930",
+    "srv-dap3umrbdpcs73f5eeug",
+    "srv-dap3r714dm7c7390q91g",
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-db09vbgehcmc739j12i0",
+    "srv-db09u90ehcmc739j12cg"
+  ],
+  "pre_inventory": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.463,
+    "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}}]",
+    "stderr": "",
+    "native_exit": 0
+  },
+  "capacity": {
+    "at": "2026-10-17T16:28:32.218944+00:00",
+    "API_only": true,
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "body": null,
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "status": "200",
+    "curl_exit": 0,
+    "elapsed": 1.046,
+    "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+    "stderr": ""
+  },
+  "dependency_ids": [],
+  "recorded_child_ids": [
+    "dep-db9q4csflioc739mcohg",
+    "dep-db9q714flioc739mcoig"
+  ],
+  "create_command": [
+    "bex",
+    "services",
+    "create",
+    "--name",
+    "qa-20261017-ce0b57-logtail",
+    "--type",
+    "web_service",
+    "--plan",
+    "free",
+    "--region",
+    "frankfurt",
+    "--runtime",
+    "node",
+    "--repo",
+    "https://github.com/git-fixtures/basic",
+    "--branch",
+    "master",
+    "--build-command",
+    "set -e\nnode -e 'const fs=require('\"'\"'node:fs'\"'\"'),z=require('\"'\"'node:zlib'\"'\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\"'\"'H4sIAAAAAAAC/41Va3LiRhC+CqtKlaRaIUYSAgSRqxwva5Ny7MT2JpUsjms0aoG80gjPDKwdrCvkBjlAzpG75BxpPfA62D+2+MHQz6+7v2622h3t94MuXa1sdiu1scYKLlUnkaGAu3UqwNB5EcM4kbppLZVa7ckrEWqYeFipYk/XCHVzMudN1JyKTyDC7y/Pz+wVFRKMRNoCaPw+zeDygTNDb+A0hvatLLhumpaA5Cuc0AoEcAZPfnJJwyg8aHDYDJ0UnFC5NHTUuP5AN+31KkahEZl2nC5AKkNfwv0zyLJYCwahYYYH59EtMGUnosinXIkUpNGKPsGDNDC9nSAkado5XRk8PNg2IaJwHzA3JwLUWvCP3NpGDwrkOLIz4Au1tBpkY/xCUOV1aVZYkjVnKi14ZyWKIjHMNnKdLmwgGuYkTYy6SxLB8UWaPBgNnjdhuCf/gtVUS1F87kyFKAS2pQ7VyVOZU8WW+g7nthmIVY8VMTCQ0t6AkIjJqgNZKF0Imt88w79f9s1NZcppDqZZlnOOeHexqFhsPrrXYRjq0TrNYn1X4iZsS55gtM8iVbA/9speNSO39srcYPOqMEUGdlYsDP2nQ/S4+e7D7PRdR3/70hpBQSah8zoyCWIDT8iiolBhSy1BeVzkHz7M3hmmVQP6Cr4+A97iRLpVKURYbVXL18taYhh3lkAObjOoerK1bbvtS5POqtCUFQPu7LXIsCoqlPwlVcj1HuSp6mGOFviqUoWt3SpLkfOobQHwAhcorE2wakviQlcrFZ6t8whhNArvuibbm97vH2n3j8Pub6Qb3HSvt441JOU3PVtVi1RHMh8f3zSudipnXMECg+yConL3/JZ8eR84hBBzK5pxn2DnjD4KJsIGHht6yjc0S+NO8ZnjAtwjPaEDG+Dqia0lNqglbNUWq0byVIql4F6N9QsMBqJzdDrDpYK677LDaPLP3+N///pzPucSsCNxJ0s56OVrNJr+PD27ep1Gz7G7hFhb/ajA4rnqXj2sQB/reG+zlNFqp3s1A8pdfa9EMycNLewslRjE2M2iZSjwjf3j+cXV46NXNc7SiV1/dKu6Wq8Av5gevvv1JfC9nr3cdLxF5mQnK7ihX86Or6YXPzSJWowsK5DyleAJ3z1SjKBvWe/W/w5Ojmnqa6tZ2mtXHP+QtnONqrk27sw1l7iDrkO6zvDK8caOOyau7eG1cclbQsaEzDULrQSsisa+WiM57vUWuAfryGZFXj27LWtkL6IyZY1ThCvMlo1bTrHNopGjD25PIx8ASwgkLnPjJImGwYB4HviUuK4T0GSE6oE/6oPfeNZnsXLEAk5nR9Ozy2n7q7741dshQ7cybW7mrsaIDPqBQyLPjRg4ESN9P/CpH7mkPxxSd8R84gWBD8nId0eBG1DPceIBi4bUi0gw18oq5NHJ4dnx9PT8+EXO0X7GAGGDNxgQ34c4DihJBjQK2DAaUW+YsMAdEY8l4MQeSRI6dIcMICZs4AVewNyq3LIsn+b37K8bhzfXGsoxIJE/vIngfq5p5X9GuL0ldggAAA=='\"'\"','\"'\"'base64'\"'\"')))))fs.writeFileSync(n,s)'\nnode qa449-app.cjs build",
+    "--start-command",
+    "node qa449-app.cjs serve",
+    "--env-var",
+    "NODE_VERSION=24",
+    "--auto-deploy=false",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "state": "deleted: native0/detail404/listabsent/runtime404/children404/baseline6/termination0",
+  "durable_create_capture": "<owned-temp>/sweep449-create-qa-20261017-ce0b57-logtail.json",
+  "create_result": {
+    "binary": "published Bex 0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261017-ce0b57-logtail",
+      "--type",
+      "web_service",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--runtime",
+      "node",
+      "--repo",
+      "https://github.com/git-fixtures/basic",
+      "--branch",
+      "master",
+      "--build-command",
+      "set -e\nnode -e 'const fs=require('\"'\"'node:fs'\"'\"'),z=require('\"'\"'node:zlib'\"'\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\"'\"'H4sIAAAAAAAC/41Va3LiRhC+CqtKlaRaIUYSAgSRqxwva5Ny7MT2JpUsjms0aoG80gjPDKwdrCvkBjlAzpG75BxpPfA62D+2+MHQz6+7v2622h3t94MuXa1sdiu1scYKLlUnkaGAu3UqwNB5EcM4kbppLZVa7ckrEWqYeFipYk/XCHVzMudN1JyKTyDC7y/Pz+wVFRKMRNoCaPw+zeDygTNDb+A0hvatLLhumpaA5Cuc0AoEcAZPfnJJwyg8aHDYDJ0UnFC5NHTUuP5AN+31KkahEZl2nC5AKkNfwv0zyLJYCwahYYYH59EtMGUnosinXIkUpNGKPsGDNDC9nSAkado5XRk8PNg2IaJwHzA3JwLUWvCP3NpGDwrkOLIz4Au1tBpkY/xCUOV1aVZYkjVnKi14ZyWKIjHMNnKdLmwgGuYkTYy6SxLB8UWaPBgNnjdhuCf/gtVUS1F87kyFKAS2pQ7VyVOZU8WW+g7nthmIVY8VMTCQ0t6AkIjJqgNZKF0Imt88w79f9s1NZcppDqZZlnOOeHexqFhsPrrXYRjq0TrNYn1X4iZsS55gtM8iVbA/9speNSO39srcYPOqMEUGdlYsDP2nQ/S4+e7D7PRdR3/70hpBQSah8zoyCWIDT8iiolBhSy1BeVzkHz7M3hmmVQP6Cr4+A97iRLpVKURYbVXL18taYhh3lkAObjOoerK1bbvtS5POqtCUFQPu7LXIsCoqlPwlVcj1HuSp6mGOFviqUoWt3SpLkfOobQHwAhcorE2wakviQlcrFZ6t8whhNArvuibbm97vH2n3j8Pub6Qb3HSvt441JOU3PVtVi1RHMh8f3zSudipnXMECg+yConL3/JZ8eR84hBBzK5pxn2DnjD4KJsIGHht6yjc0S+NO8ZnjAtwjPaEDG+Dqia0lNqglbNUWq0byVIql4F6N9QsMBqJzdDrDpYK677LDaPLP3+N///pzPucSsCNxJ0s56OVrNJr+PD27ep1Gz7G7hFhb/ajA4rnqXj2sQB/reG+zlNFqp3s1A8pdfa9EMycNLewslRjE2M2iZSjwjf3j+cXV46NXNc7SiV1/dKu6Wq8Av5gevvv1JfC9nr3cdLxF5mQnK7ihX86Or6YXPzSJWowsK5DyleAJ3z1SjKBvWe/W/w5Ojmnqa6tZ2mtXHP+QtnONqrk27sw1l7iDrkO6zvDK8caOOyau7eG1cclbQsaEzDULrQSsisa+WiM57vUWuAfryGZFXj27LWtkL6IyZY1ThCvMlo1bTrHNopGjD25PIx8ASwgkLnPjJImGwYB4HviUuK4T0GSE6oE/6oPfeNZnsXLEAk5nR9Ozy2n7q7741dshQ7cybW7mrsaIDPqBQyLPjRg4ESN9P/CpH7mkPxxSd8R84gWBD8nId0eBG1DPceIBi4bUi0gw18oq5NHJ4dnx9PT8+EXO0X7GAGGDNxgQ34c4DihJBjQK2DAaUW+YsMAdEY8l4MQeSRI6dIcMICZs4AVewNyq3LIsn+b37K8bhzfXGsoxIJE/vIngfq5p5X9GuL0ldggAAA=='\"'\"','\"'\"'base64'\"'\"')))))fs.writeFileSync(n,s)'\nnode qa449-app.cjs build",
+      "--start-command",
+      "node qa449-app.cjs serve",
+      "--env-var",
+      "NODE_VERSION=24",
+      "--auto-deploy=false",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.773,
+    "stdout": "{\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"master\", \"createdAt\": \"2026-10-17T16:28:35Z\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9q4csflioc739mcoh0\", \"id\": \"srv-db9q4csflioc739mcoh0\", \"name\": \"qa-20261017-ce0b57-logtail\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/git-fixtures/basic\", \"rootDir\": \"\", \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\nnode -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"'),z=require('\\\"'\\\"'node:zlib'\\\"'\\\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\\\"'\\\"'H4sIAAAAAAAC/41Va3LiRhC+CqtKlaRaIUYSAgSRqxwva5Ny7MT2JpUsjms0aoG80gjPDKwdrCvkBjlAzpG75BxpPfA62D+2+MHQz6+7v2622h3t94MuXa1sdiu1scYKLlUnkaGAu3UqwNB5EcM4kbppLZVa7ckrEWqYeFipYk/XCHVzMudN1JyKTyDC7y/Pz+wVFRKMRNoCaPw+zeDygTNDb+A0hvatLLhumpaA5Cuc0AoEcAZPfnJJwyg8aHDYDJ0UnFC5NHTUuP5AN+31KkahEZl2nC5AKkNfwv0zyLJYCwahYYYH59EtMGUnosinXIkUpNGKPsGDNDC9nSAkado5XRk8PNg2IaJwHzA3JwLUWvCP3NpGDwrkOLIz4Au1tBpkY/xCUOV1aVZYkjVnKi14ZyWKIjHMNnKdLmwgGuYkTYy6SxLB8UWaPBgNnjdhuCf/gtVUS1F87kyFKAS2pQ7VyVOZU8WW+g7nthmIVY8VMTCQ0t6AkIjJqgNZKF0Imt88w79f9s1NZcppDqZZlnOOeHexqFhsPrrXYRjq0TrNYn1X4iZsS55gtM8iVbA/9speNSO39srcYPOqMEUGdlYsDP2nQ/S4+e7D7PRdR3/70hpBQSah8zoyCWIDT8iiolBhSy1BeVzkHz7M3hmmVQP6Cr4+A97iRLpVKURYbVXL18taYhh3lkAObjOoerK1bbvtS5POqtCUFQPu7LXIsCoqlPwlVcj1HuSp6mGOFviqUoWt3SpLkfOobQHwAhcorE2wakviQlcrFZ6t8whhNArvuibbm97vH2n3j8Pub6Qb3HSvt441JOU3PVtVi1RHMh8f3zSudipnXMECg+yConL3/JZ8eR84hBBzK5pxn2DnjD4KJsIGHht6yjc0S+NO8ZnjAtwjPaEDG+Dqia0lNqglbNUWq0byVIql4F6N9QsMBqJzdDrDpYK677LDaPLP3+N///pzPucSsCNxJ0s56OVrNJr+PD27ep1Gz7G7hFhb/ajA4rnqXj2sQB/reG+zlNFqp3s1A8pdfa9EMycNLewslRjE2M2iZSjwjf3j+cXV46NXNc7SiV1/dKu6Wq8Av5gevvv1JfC9nr3cdLxF5mQnK7ihX86Or6YXPzSJWowsK5DyleAJ3z1SjKBvWe/W/w5Ojmnqa6tZ2mtXHP+QtnONqrk27sw1l7iDrkO6zvDK8caOOyau7eG1cclbQsaEzDULrQSsisa+WiM57vUWuAfryGZFXj27LWtkL6IyZY1ThCvMlo1bTrHNopGjD25PIx8ASwgkLnPjJImGwYB4HviUuK4T0GSE6oE/6oPfeNZnsXLEAk5nR9Ozy2n7q7741dshQ7cybW7mrsaIDPqBQyLPjRg4ESN9P/CpH7mkPxxSd8R84gWBD8nId0eBG1DPceIBi4bUi0gw18oq5NHJ4dnx9PT8+EXO0X7GAGGDNxgQ34c4DihJBjQK2DAaUW+YsMAdEY8l4MQeSRI6dIcMICZs4AVewNyq3LIsn+b37K8bhzfXGsoxIJE/vIngfq5p5X9GuL0ldggAAA=='\\\"'\\\"','\\\"'\\\"'base64'\\\"'\\\"')))))fs.writeFileSync(n,s)'\\nnode qa449-app.cjs build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa449-app.cjs serve\"}, \"internalAddress\": \"qa-20261017-ce0b57-logtail:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261017-ce0b57-logtail.onbex.co\"}, \"slug\": \"qa-20261017-ce0b57-logtail\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"web_service\", \"updatedAt\": \"2026-10-17T16:28:35.69427712Z\"}",
+    "stderr": "",
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "master",
+            "envVars": [
+              {
+                "key": "NODE_VERSION",
+                "value": "24"
+              }
+            ],
+            "name": "qa-20261017-ce0b57-logtail",
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "repo": "https://github.com/git-fixtures/basic",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "set -e\nnode -e 'const fs=require('\"'\"'node:fs'\"'\"'),z=require('\"'\"'node:zlib'\"'\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\"'\"'H4sIAAAAAAAC/41Va3LiRhC+CqtKlaRaIUYSAgSRqxwva5Ny7MT2JpUsjms0aoG80gjPDKwdrCvkBjlAzpG75BxpPfA62D+2+MHQz6+7v2622h3t94MuXa1sdiu1scYKLlUnkaGAu3UqwNB5EcM4kbppLZVa7ckrEWqYeFipYk/XCHVzMudN1JyKTyDC7y/Pz+wVFRKMRNoCaPw+zeDygTNDb+A0hvatLLhumpaA5Cuc0AoEcAZPfnJJwyg8aHDYDJ0UnFC5NHTUuP5AN+31KkahEZl2nC5AKkNfwv0zyLJYCwahYYYH59EtMGUnosinXIkUpNGKPsGDNDC9nSAkado5XRk8PNg2IaJwHzA3JwLUWvCP3NpGDwrkOLIz4Au1tBpkY/xCUOV1aVZYkjVnKi14ZyWKIjHMNnKdLmwgGuYkTYy6SxLB8UWaPBgNnjdhuCf/gtVUS1F87kyFKAS2pQ7VyVOZU8WW+g7nthmIVY8VMTCQ0t6AkIjJqgNZKF0Imt88w79f9s1NZcppDqZZlnOOeHexqFhsPrrXYRjq0TrNYn1X4iZsS55gtM8iVbA/9speNSO39srcYPOqMEUGdlYsDP2nQ/S4+e7D7PRdR3/70hpBQSah8zoyCWIDT8iiolBhSy1BeVzkHz7M3hmmVQP6Cr4+A97iRLpVKURYbVXL18taYhh3lkAObjOoerK1bbvtS5POqtCUFQPu7LXIsCoqlPwlVcj1HuSp6mGOFviqUoWt3SpLkfOobQHwAhcorE2wakviQlcrFZ6t8whhNArvuibbm97vH2n3j8Pub6Qb3HSvt441JOU3PVtVi1RHMh8f3zSudipnXMECg+yConL3/JZ8eR84hBBzK5pxn2DnjD4KJsIGHht6yjc0S+NO8ZnjAtwjPaEDG+Dqia0lNqglbNUWq0byVIql4F6N9QsMBqJzdDrDpYK677LDaPLP3+N///pzPucSsCNxJ0s56OVrNJr+PD27ep1Gz7G7hFhb/ajA4rnqXj2sQB/reG+zlNFqp3s1A8pdfa9EMycNLewslRjE2M2iZSjwjf3j+cXV46NXNc7SiV1/dKu6Wq8Av5gevvv1JfC9nr3cdLxF5mQnK7ihX86Or6YXPzSJWowsK5DyleAJ3z1SjKBvWe/W/w5Ojmnqa6tZ2mtXHP+QtnONqrk27sw1l7iDrkO6zvDK8caOOyau7eG1cclbQsaEzDULrQSsisa+WiM57vUWuAfryGZFXj27LWtkL6IyZY1ThCvMlo1bTrHNopGjD25PIx8ASwgkLnPjJImGwYB4HviUuK4T0GSE6oE/6oPfeNZnsXLEAk5nR9Ozy2n7q7741dshQ7cybW7mrsaIDPqBQyLPjRg4ESN9P/CpH7mkPxxSd8R84gWBD8nId0eBG1DPceIBi4bUi0gw18oq5NHJ4dnx9PT8+EXO0X7GAGGDNxgQ34c4DihJBjQK2DAaUW+YsMAdEY8l4MQeSRI6dIcMICZs4AVewNyq3LIsn+b37K8bhzfXGsoxIJE/vIngfq5p5X9GuL0ldggAAA=='\"'\"','\"'\"'base64'\"'\"')))))fs.writeFileSync(n,s)'\nnode qa449-app.cjs build",
+                "startCommand": "node qa449-app.cjs serve"
+              },
+              "plan": "free",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          },
+          "raw_body": "{\"autoDeploy\": \"no\", \"branch\": \"master\", \"envVars\": [{\"key\": \"NODE_VERSION\", \"value\": \"24\"}], \"name\": \"qa-20261017-ce0b57-logtail\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/git-fixtures/basic\", \"serviceDetails\": {\"envSpecificDetails\": {\"buildCommand\": \"set -e\\nnode -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"'),z=require('\\\"'\\\"'node:zlib'\\\"'\\\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\\\"'\\\"'H4sIAAAAAAAC/41Va3LiRhC+CqtKlaRaIUYSAgSRqxwva5Ny7MT2JpUsjms0aoG80gjPDKwdrCvkBjlAzpG75BxpPfA62D+2+MHQz6+7v2622h3t94MuXa1sdiu1scYKLlUnkaGAu3UqwNB5EcM4kbppLZVa7ckrEWqYeFipYk/XCHVzMudN1JyKTyDC7y/Pz+wVFRKMRNoCaPw+zeDygTNDb+A0hvatLLhumpaA5Cuc0AoEcAZPfnJJwyg8aHDYDJ0UnFC5NHTUuP5AN+31KkahEZl2nC5AKkNfwv0zyLJYCwahYYYH59EtMGUnosinXIkUpNGKPsGDNDC9nSAkado5XRk8PNg2IaJwHzA3JwLUWvCP3NpGDwrkOLIz4Au1tBpkY/xCUOV1aVZYkjVnKi14ZyWKIjHMNnKdLmwgGuYkTYy6SxLB8UWaPBgNnjdhuCf/gtVUS1F87kyFKAS2pQ7VyVOZU8WW+g7nthmIVY8VMTCQ0t6AkIjJqgNZKF0Imt88w79f9s1NZcppDqZZlnOOeHexqFhsPrrXYRjq0TrNYn1X4iZsS55gtM8iVbA/9speNSO39srcYPOqMEUGdlYsDP2nQ/S4+e7D7PRdR3/70hpBQSah8zoyCWIDT8iiolBhSy1BeVzkHz7M3hmmVQP6Cr4+A97iRLpVKURYbVXL18taYhh3lkAObjOoerK1bbvtS5POqtCUFQPu7LXIsCoqlPwlVcj1HuSp6mGOFviqUoWt3SpLkfOobQHwAhcorE2wakviQlcrFZ6t8whhNArvuibbm97vH2n3j8Pub6Qb3HSvt441JOU3PVtVi1RHMh8f3zSudipnXMECg+yConL3/JZ8eR84hBBzK5pxn2DnjD4KJsIGHht6yjc0S+NO8ZnjAtwjPaEDG+Dqia0lNqglbNUWq0byVIql4F6N9QsMBqJzdDrDpYK677LDaPLP3+N///pzPucSsCNxJ0s56OVrNJr+PD27ep1Gz7G7hFhb/ajA4rnqXj2sQB/reG+zlNFqp3s1A8pdfa9EMycNLewslRjE2M2iZSjwjf3j+cXV46NXNc7SiV1/dKu6Wq8Av5gevvv1JfC9nr3cdLxF5mQnK7ihX86Or6YXPzSJWowsK5DyleAJ3z1SjKBvWe/W/w5Ojmnqa6tZ2mtXHP+QtnONqrk27sw1l7iDrkO6zvDK8caOOyau7eG1cclbQsaEzDULrQSsisa+WiM57vUWuAfryGZFXj27LWtkL6IyZY1ThCvMlo1bTrHNopGjD25PIx8ASwgkLnPjJImGwYB4HviUuK4T0GSE6oE/6oPfeNZnsXLEAk5nR9Ozy2n7q7741dshQ7cybW7mrsaIDPqBQyLPjRg4ESN9P/CpH7mkPxxSd8R84gWBD8nId0eBG1DPceIBi4bUi0gw18oq5NHJ4dnx9PT8+EXO0X7GAGGDNxgQ34c4DihJBjQK2DAaUW+YsMAdEY8l4MQeSRI6dIcMICZs4AVewNyq3LIsn+b37K8bhzfXGsoxIJE/vIngfq5p5X9GuL0ldggAAA=='\\\"'\\\"','\\\"'\\\"'base64'\\\"'\\\"')))))fs.writeFileSync(n,s)'\\nnode qa449-app.cjs build\", \"startCommand\": \"node qa449-app.cjs serve\"}, \"plan\": \"free\", \"region\": \"frankfurt\", \"runtime\": \"node\"}, \"type\": \"web_service\"}",
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "Content-Type": "application/json",
+            "X-Bex-Cli-Version": "0.3.2"
+          },
+          "authorization": "[REDACTED]"
+        },
+        "status": 201,
+        "response": "{\"service\": {\"id\": \"srv-db9q4csflioc739mcoh0\", \"name\": \"qa-20261017-ce0b57-logtail\", \"immutableName\": \"qa-20261017-ce0b57-logtail\", \"slug\": \"qa-20261017-ce0b57-logtail\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9q4csflioc739mcoh0\", \"createdAt\": \"2026-10-17T16:28:35Z\", \"updatedAt\": \"2026-10-17T16:28:35.69427712Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\nnode -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"'),z=require('\\\"'\\\"'node:zlib'\\\"'\\\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\\\"'\\\"'H4sIAAAAAAAC/41Va3LiRhC+CqtKlaRaIUYSAgSRqxwva5Ny7MT2JpUsjms0aoG80gjPDKwdrCvkBjlAzpG75BxpPfA62D+2+MHQz6+7v2622h3t94MuXa1sdiu1scYKLlUnkaGAu3UqwNB5EcM4kbppLZVa7ckrEWqYeFipYk/XCHVzMudN1JyKTyDC7y/Pz+wVFRKMRNoCaPw+zeDygTNDb+A0hvatLLhumpaA5Cuc0AoEcAZPfnJJwyg8aHDYDJ0UnFC5NHTUuP5AN+31KkahEZl2nC5AKkNfwv0zyLJYCwahYYYH59EtMGUnosinXIkUpNGKPsGDNDC9nSAkado5XRk8PNg2IaJwHzA3JwLUWvCP3NpGDwrkOLIz4Au1tBpkY/xCUOV1aVZYkjVnKi14ZyWKIjHMNnKdLmwgGuYkTYy6SxLB8UWaPBgNnjdhuCf/gtVUS1F87kyFKAS2pQ7VyVOZU8WW+g7nthmIVY8VMTCQ0t6AkIjJqgNZKF0Imt88w79f9s1NZcppDqZZlnOOeHexqFhsPrrXYRjq0TrNYn1X4iZsS55gtM8iVbA/9speNSO39srcYPOqMEUGdlYsDP2nQ/S4+e7D7PRdR3/70hpBQSah8zoyCWIDT8iiolBhSy1BeVzkHz7M3hmmVQP6Cr4+A97iRLpVKURYbVXL18taYhh3lkAObjOoerK1bbvtS5POqtCUFQPu7LXIsCoqlPwlVcj1HuSp6mGOFviqUoWt3SpLkfOobQHwAhcorE2wakviQlcrFZ6t8whhNArvuibbm97vH2n3j8Pub6Qb3HSvt441JOU3PVtVi1RHMh8f3zSudipnXMECg+yConL3/JZ8eR84hBBzK5pxn2DnjD4KJsIGHht6yjc0S+NO8ZnjAtwjPaEDG+Dqia0lNqglbNUWq0byVIql4F6N9QsMBqJzdDrDpYK677LDaPLP3+N///pzPucSsCNxJ0s56OVrNJr+PD27ep1Gz7G7hFhb/ajA4rnqXj2sQB/reG+zlNFqp3s1A8pdfa9EMycNLewslRjE2M2iZSjwjf3j+cXV46NXNc7SiV1/dKu6Wq8Av5gevvv1JfC9nr3cdLxF5mQnK7ihX86Or6YXPzSJWowsK5DyleAJ3z1SjKBvWe/W/w5Ojmnqa6tZ2mtXHP+QtnONqrk27sw1l7iDrkO6zvDK8caOOyau7eG1cclbQsaEzDULrQSsisa+WiM57vUWuAfryGZFXj27LWtkL6IyZY1ThCvMlo1bTrHNopGjD25PIx8ASwgkLnPjJImGwYB4HviUuK4T0GSE6oE/6oPfeNZnsXLEAk5nR9Ozy2n7q7741dshQ7cybW7mrsaIDPqBQyLPjRg4ESN9P/CpH7mkPxxSd8R84gWBD8nId0eBG1DPceIBi4bUi0gw18oq5NHJ4dnx9PT8+EXO0X7GAGGDNxgQ34c4DihJBjQK2DAaUW+YsMAdEY8l4MQeSRI6dIcMICZs4AVewNyq3LIsn+b37K8bhzfXGsoxIJE/vIngfq5p5X9GuL0ldggAAA=='\\\"'\\\"','\\\"'\\\"'base64'\\\"'\\\"')))))fs.writeFileSync(n,s)'\\nnode qa449-app.cjs build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa449-app.cjs serve\"}, \"internalAddress\": \"qa-20261017-ce0b57-logtail:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261017-ce0b57-logtail.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"repo\": \"https://github.com/git-fixtures/basic\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}, \"deployId\": \"dep-db9q4csflioc739mcohg\"}",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4c0ad5d8c5ff3e8-SJC"
+        }
+      }
+    ],
+    "qualification": "actual native POST forwarded unchanged to production; owned local relay and copied config cleaned",
+    "native_exit": 0
+  },
+  "id": "srv-db9q4csflioc739mcoh0",
+  "create_view": {
+    "autoDeploy": "no",
+    "autoDeployTrigger": "off",
+    "branch": "master",
+    "createdAt": "2026-10-17T16:28:35Z",
+    "dashboardUrl": "https://dashboard.bex.co/web/srv-db9q4csflioc739mcoh0",
+    "id": "srv-db9q4csflioc739mcoh0",
+    "name": "qa-20261017-ce0b57-logtail",
+    "notifyOnFail": "default",
+    "ownerId": "tea-daif693dqjvc73e7as3g",
+    "repo": "https://github.com/git-fixtures/basic",
+    "rootDir": "",
+    "serviceDetails": {
+      "env": "node",
+      "envSpecificDetails": {
+        "buildCommand": "set -e\nnode -e 'const fs=require('\"'\"'node:fs'\"'\"'),z=require('\"'\"'node:zlib'\"'\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\"'\"'H4sIAAAAAAAC/41Va3LiRhC+CqtKlaRaIUYSAgSRqxwva5Ny7MT2JpUsjms0aoG80gjPDKwdrCvkBjlAzpG75BxpPfA62D+2+MHQz6+7v2622h3t94MuXa1sdiu1scYKLlUnkaGAu3UqwNB5EcM4kbppLZVa7ckrEWqYeFipYk/XCHVzMudN1JyKTyDC7y/Pz+wVFRKMRNoCaPw+zeDygTNDb+A0hvatLLhumpaA5Cuc0AoEcAZPfnJJwyg8aHDYDJ0UnFC5NHTUuP5AN+31KkahEZl2nC5AKkNfwv0zyLJYCwahYYYH59EtMGUnosinXIkUpNGKPsGDNDC9nSAkado5XRk8PNg2IaJwHzA3JwLUWvCP3NpGDwrkOLIz4Au1tBpkY/xCUOV1aVZYkjVnKi14ZyWKIjHMNnKdLmwgGuYkTYy6SxLB8UWaPBgNnjdhuCf/gtVUS1F87kyFKAS2pQ7VyVOZU8WW+g7nthmIVY8VMTCQ0t6AkIjJqgNZKF0Imt88w79f9s1NZcppDqZZlnOOeHexqFhsPrrXYRjq0TrNYn1X4iZsS55gtM8iVbA/9speNSO39srcYPOqMEUGdlYsDP2nQ/S4+e7D7PRdR3/70hpBQSah8zoyCWIDT8iiolBhSy1BeVzkHz7M3hmmVQP6Cr4+A97iRLpVKURYbVXL18taYhh3lkAObjOoerK1bbvtS5POqtCUFQPu7LXIsCoqlPwlVcj1HuSp6mGOFviqUoWt3SpLkfOobQHwAhcorE2wakviQlcrFZ6t8whhNArvuibbm97vH2n3j8Pub6Qb3HSvt441JOU3PVtVi1RHMh8f3zSudipnXMECg+yConL3/JZ8eR84hBBzK5pxn2DnjD4KJsIGHht6yjc0S+NO8ZnjAtwjPaEDG+Dqia0lNqglbNUWq0byVIql4F6N9QsMBqJzdDrDpYK677LDaPLP3+N///pzPucSsCNxJ0s56OVrNJr+PD27ep1Gz7G7hFhb/ajA4rnqXj2sQB/reG+zlNFqp3s1A8pdfa9EMycNLewslRjE2M2iZSjwjf3j+cXV46NXNc7SiV1/dKu6Wq8Av5gevvv1JfC9nr3cdLxF5mQnK7ihX86Or6YXPzSJWowsK5DyleAJ3z1SjKBvWe/W/w5Ojmnqa6tZ2mtXHP+QtnONqrk27sw1l7iDrkO6zvDK8caOOyau7eG1cclbQsaEzDULrQSsisa+WiM57vUWuAfryGZFXj27LWtkL6IyZY1ThCvMlo1bTrHNopGjD25PIx8ASwgkLnPjJImGwYB4HviUuK4T0GSE6oE/6oPfeNZnsXLEAk5nR9Ozy2n7q7741dshQ7cybW7mrsaIDPqBQyLPjRg4ESN9P/CpH7mkPxxSd8R84gWBD8nId0eBG1DPceIBi4bUi0gw18oq5NHJ4dnx9PT8+EXO0X7GAGGDNxgQ34c4DihJBjQK2DAaUW+YsMAdEY8l4MQeSRI6dIcMICZs4AVewNyq3LIsn+b37K8bhzfXGsoxIJE/vIngfq5p5X9GuL0ldggAAA=='\"'\"','\"'\"'base64'\"'\"')))))fs.writeFileSync(n,s)'\nnode qa449-app.cjs build",
+        "preDeployCommand": "",
+        "startCommand": "node qa449-app.cjs serve"
+      },
+      "internalAddress": "qa-20261017-ce0b57-logtail:3000",
+      "maintenanceMode": {
+        "enabled": false,
+        "uri": ""
+      },
+      "maxShutdownDelaySeconds": 30,
+      "numInstances": 1,
+      "plan": "free",
+      "port": 3000,
+      "region": "fsn1",
+      "renderSubdomainPolicy": "enabled",
+      "runtime": "node",
+      "url": "https://qa-20261017-ce0b57-logtail.onbex.co"
+    },
+    "slug": "qa-20261017-ce0b57-logtail",
+    "suspended": "not_suspended",
+    "suspenders": [],
+    "type": "web_service",
+    "updatedAt": "2026-10-17T16:28:35.69427712Z"
+  },
+  "history_receipts": [
+    {
+      "at": "2026-10-17T16:28:37.209133+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db9q4csflioc739mcoh0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.37,
+        "stdout": "[{\"commit\": {\"id\": \"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\", \"message\": \"vendor stuff\"}, \"createdAt\": \"2026-10-17T16:28:35.642389Z\", \"id\": \"dep-db9q4csflioc739mcohg\", \"status\": \"created\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T16:28:35.642389Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    },
+    {
+      "at": "2026-10-17T16:30:16.118648+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db9q4csflioc739mcoh0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.052,
+        "stdout": "[{\"commit\": {\"id\": \"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\", \"message\": \"vendor stuff\"}, \"createdAt\": \"2026-10-17T16:28:35.642389Z\", \"id\": \"dep-db9q4csflioc739mcohg\", \"startedAt\": \"2026-10-17T16:29:48.004453Z\", \"status\": \"build_in_progress\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T16:29:48.004454Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    },
+    {
+      "at": "2026-10-17T16:30:30.567404+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db9q4csflioc739mcoh0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.993,
+        "stdout": "[{\"commit\": {\"id\": \"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\", \"message\": \"vendor stuff\"}, \"createdAt\": \"2026-10-17T16:28:35.642389Z\", \"id\": \"dep-db9q4csflioc739mcohg\", \"startedAt\": \"2026-10-17T16:29:48.004453Z\", \"status\": \"build_in_progress\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T16:29:48.004454Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    },
+    {
+      "at": "2026-10-17T16:30:44.504346+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db9q4csflioc739mcoh0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.413,
+        "stdout": "[{\"commit\": {\"id\": \"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\", \"message\": \"vendor stuff\"}, \"createdAt\": \"2026-10-17T16:28:35.642389Z\", \"id\": \"dep-db9q4csflioc739mcohg\", \"startedAt\": \"2026-10-17T16:29:48.004453Z\", \"status\": \"build_in_progress\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T16:29:48.004454Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    },
+    {
+      "at": "2026-10-17T16:30:58.238737+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db9q4csflioc739mcoh0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.406,
+        "stdout": "[{\"commit\": {\"id\": \"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\", \"message\": \"vendor stuff\"}, \"createdAt\": \"2026-10-17T16:28:35.642389Z\", \"id\": \"dep-db9q4csflioc739mcohg\", \"startedAt\": \"2026-10-17T16:29:48.004453Z\", \"status\": \"build_in_progress\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T16:29:48.004454Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    },
+    {
+      "at": "2026-10-17T16:31:12.851319+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db9q4csflioc739mcoh0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.683,
+        "stdout": "[{\"commit\": {\"id\": \"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\", \"message\": \"vendor stuff\"}, \"createdAt\": \"2026-10-17T16:28:35.642389Z\", \"finishedAt\": \"2026-10-17T16:31:02.138403Z\", \"id\": \"dep-db9q4csflioc739mcohg\", \"startedAt\": \"2026-10-17T16:29:48.004453Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T16:31:02.138403Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    },
+    {
+      "at": "2026-10-17T16:31:15.238964+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db9q4csflioc739mcoh0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.527,
+        "stdout": "[{\"commit\": {\"id\": \"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\", \"message\": \"vendor stuff\"}, \"createdAt\": \"2026-10-17T16:28:35.642389Z\", \"finishedAt\": \"2026-10-17T16:31:02.138403Z\", \"id\": \"dep-db9q4csflioc739mcohg\", \"startedAt\": \"2026-10-17T16:29:48.004453Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T16:31:02.138403Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    },
+    {
+      "at": "2026-10-17T16:33:58.549163+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db9q4csflioc739mcoh0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.254,
+        "stdout": "[{\"commit\": {\"id\": \"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\", \"message\": \"vendor stuff\"}, \"createdAt\": \"2026-10-17T16:28:35.642389Z\", \"finishedAt\": \"2026-10-17T16:31:02.138403Z\", \"id\": \"dep-db9q4csflioc739mcohg\", \"startedAt\": \"2026-10-17T16:29:48.004453Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T16:31:02.138403Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    },
+    {
+      "at": "2026-10-17T16:34:13.522736+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db9q4csflioc739mcoh0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.319,
+        "stdout": "[{\"commit\": {\"id\": \"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\", \"message\": \"vendor stuff\"}, \"createdAt\": \"2026-10-17T16:34:12.637225Z\", \"id\": \"dep-db9q714flioc739mcoig\", \"image\": {\"ref\": \"zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261017-ce0b57-logtail:gen-1@sha256:2f6cac180e8115002f1b2bbd6b86823a845d20f3403febc2df9ad34110ecfe98\"}, \"status\": \"created\", \"trigger\": \"api\", \"updatedAt\": \"2026-10-17T16:34:12.637225Z\"}, {\"commit\": {\"id\": \"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\", \"message\": \"vendor stuff\"}, \"createdAt\": \"2026-10-17T16:28:35.642389Z\", \"finishedAt\": \"2026-10-17T16:31:02.138403Z\", \"id\": \"dep-db9q4csflioc739mcohg\", \"startedAt\": \"2026-10-17T16:29:48.004453Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T16:31:02.138403Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    },
+    {
+      "at": "2026-10-17T16:34:23.735309+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db9q4csflioc739mcoh0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.714,
+        "stdout": "[{\"commit\": {\"id\": \"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\", \"message\": \"vendor stuff\"}, \"createdAt\": \"2026-10-17T16:34:12.637225Z\", \"id\": \"dep-db9q714flioc739mcoig\", \"image\": {\"ref\": \"zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261017-ce0b57-logtail:gen-1@sha256:2f6cac180e8115002f1b2bbd6b86823a845d20f3403febc2df9ad34110ecfe98\"}, \"startedAt\": \"2026-10-17T16:34:18.102072Z\", \"status\": \"update_in_progress\", \"trigger\": \"api\", \"updatedAt\": \"2026-10-17T16:34:18.102073Z\"}, {\"commit\": {\"id\": \"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\", \"message\": \"vendor stuff\"}, \"createdAt\": \"2026-10-17T16:28:35.642389Z\", \"finishedAt\": \"2026-10-17T16:31:02.138403Z\", \"id\": \"dep-db9q4csflioc739mcohg\", \"startedAt\": \"2026-10-17T16:29:48.004453Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T16:31:02.138403Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    },
+    {
+      "at": "2026-10-17T16:34:33.173268+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db9q4csflioc739mcoh0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.784,
+        "stdout": "[{\"commit\": {\"id\": \"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\", \"message\": \"vendor stuff\"}, \"createdAt\": \"2026-10-17T16:34:12.637225Z\", \"finishedAt\": \"2026-10-17T16:34:32.432045Z\", \"id\": \"dep-db9q714flioc739mcoig\", \"image\": {\"ref\": \"zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261017-ce0b57-logtail:gen-1@sha256:2f6cac180e8115002f1b2bbd6b86823a845d20f3403febc2df9ad34110ecfe98\"}, \"startedAt\": \"2026-10-17T16:34:18.102072Z\", \"status\": \"live\", \"trigger\": \"api\", \"updatedAt\": \"2026-10-17T16:34:32.432047Z\"}, {\"commit\": {\"id\": \"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\", \"message\": \"vendor stuff\"}, \"createdAt\": \"2026-10-17T16:28:35.642389Z\", \"finishedAt\": \"2026-10-17T16:31:02.138403Z\", \"id\": \"dep-db9q4csflioc739mcohg\", \"startedAt\": \"2026-10-17T16:29:48.004453Z\", \"status\": \"deactivated\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T16:34:32.437299Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    },
+    {
+      "at": "2026-10-17T16:36:11.036508+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db9q4csflioc739mcoh0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.571,
+        "stdout": "[{\"commit\": {\"id\": \"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\", \"message\": \"vendor stuff\"}, \"createdAt\": \"2026-10-17T16:34:12.637225Z\", \"finishedAt\": \"2026-10-17T16:34:32.432045Z\", \"id\": \"dep-db9q714flioc739mcoig\", \"image\": {\"ref\": \"zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261017-ce0b57-logtail:gen-1@sha256:2f6cac180e8115002f1b2bbd6b86823a845d20f3403febc2df9ad34110ecfe98\"}, \"startedAt\": \"2026-10-17T16:34:18.102072Z\", \"status\": \"live\", \"trigger\": \"api\", \"updatedAt\": \"2026-10-17T16:34:32.432047Z\"}, {\"commit\": {\"id\": \"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\", \"message\": \"vendor stuff\"}, \"createdAt\": \"2026-10-17T16:28:35.642389Z\", \"finishedAt\": \"2026-10-17T16:31:02.138403Z\", \"id\": \"dep-db9q4csflioc739mcohg\", \"startedAt\": \"2026-10-17T16:29:48.004453Z\", \"status\": \"deactivated\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T16:34:32.437299Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    },
+    {
+      "at": "2026-10-17T16:39:03.395354+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db9q4csflioc739mcoh0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.55,
+        "stdout": "[{\"commit\": {\"id\": \"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\", \"message\": \"vendor stuff\"}, \"createdAt\": \"2026-10-17T16:34:12.637225Z\", \"finishedAt\": \"2026-10-17T16:34:32.432045Z\", \"id\": \"dep-db9q714flioc739mcoig\", \"image\": {\"ref\": \"zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261017-ce0b57-logtail:gen-1@sha256:2f6cac180e8115002f1b2bbd6b86823a845d20f3403febc2df9ad34110ecfe98\"}, \"startedAt\": \"2026-10-17T16:34:18.102072Z\", \"status\": \"live\", \"trigger\": \"api\", \"updatedAt\": \"2026-10-17T16:34:32.432047Z\"}, {\"commit\": {\"id\": \"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\", \"message\": \"vendor stuff\"}, \"createdAt\": \"2026-10-17T16:28:35.642389Z\", \"finishedAt\": \"2026-10-17T16:31:02.138403Z\", \"id\": \"dep-db9q4csflioc739mcohg\", \"startedAt\": \"2026-10-17T16:29:48.004453Z\", \"status\": \"deactivated\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T16:34:32.437299Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    }
+  ],
+  "deploy_children": [
+    {
+      "commit": {
+        "id": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+        "message": "vendor stuff"
+      },
+      "createdAt": "2026-10-17T16:34:12.637225Z",
+      "finishedAt": "2026-10-17T16:34:32.432045Z",
+      "id": "dep-db9q714flioc739mcoig",
+      "image": {
+        "ref": "zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261017-ce0b57-logtail:gen-1@sha256:2f6cac180e8115002f1b2bbd6b86823a845d20f3403febc2df9ad34110ecfe98"
+      },
+      "startedAt": "2026-10-17T16:34:18.102072Z",
+      "status": "live",
+      "trigger": "api",
+      "updatedAt": "2026-10-17T16:34:32.432047Z"
+    },
+    {
+      "commit": {
+        "id": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+        "message": "vendor stuff"
+      },
+      "createdAt": "2026-10-17T16:28:35.642389Z",
+      "finishedAt": "2026-10-17T16:31:02.138403Z",
+      "id": "dep-db9q4csflioc739mcohg",
+      "startedAt": "2026-10-17T16:29:48.004453Z",
+      "status": "deactivated",
+      "trigger": "other",
+      "updatedAt": "2026-10-17T16:34:32.437299Z"
+    }
+  ],
+  "first_deploy_id": "dep-db9q4csflioc739mcohg",
+  "observations": [
+    {
+      "at": "2026-10-17T16:30:16.815337+00:00",
+      "history": [
+        {
+          "commit": {
+            "id": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+            "message": "vendor stuff"
+          },
+          "createdAt": "2026-10-17T16:28:35.642389Z",
+          "id": "dep-db9q4csflioc739mcohg",
+          "startedAt": "2026-10-17T16:29:48.004453Z",
+          "status": "build_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-17T16:29:48.004454Z"
+        }
+      ],
+      "detail": {
+        "at": "2026-10-17T16:30:16.815078+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db9q4csflioc739mcoh0",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.435,
+        "response": "{\"id\": \"srv-db9q4csflioc739mcoh0\", \"name\": \"qa-20261017-ce0b57-logtail\", \"immutableName\": \"qa-20261017-ce0b57-logtail\", \"slug\": \"qa-20261017-ce0b57-logtail\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9q4csflioc739mcoh0\", \"createdAt\": \"2026-10-17T16:28:35Z\", \"updatedAt\": \"2026-10-17T16:29:36Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\nnode -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"'),z=require('\\\"'\\\"'node:zlib'\\\"'\\\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\\\"'\\\"'H4sIAAAAAAAC/41Va3LiRhC+CqtKlaRaIUYSAgSRqxwva5Ny7MT2JpUsjms0aoG80gjPDKwdrCvkBjlAzpG75BxpPfA62D+2+MHQz6+7v2622h3t94MuXa1sdiu1scYKLlUnkaGAu3UqwNB5EcM4kbppLZVa7ckrEWqYeFipYk/XCHVzMudN1JyKTyDC7y/Pz+wVFRKMRNoCaPw+zeDygTNDb+A0hvatLLhumpaA5Cuc0AoEcAZPfnJJwyg8aHDYDJ0UnFC5NHTUuP5AN+31KkahEZl2nC5AKkNfwv0zyLJYCwahYYYH59EtMGUnosinXIkUpNGKPsGDNDC9nSAkado5XRk8PNg2IaJwHzA3JwLUWvCP3NpGDwrkOLIz4Au1tBpkY/xCUOV1aVZYkjVnKi14ZyWKIjHMNnKdLmwgGuYkTYy6SxLB8UWaPBgNnjdhuCf/gtVUS1F87kyFKAS2pQ7VyVOZU8WW+g7nthmIVY8VMTCQ0t6AkIjJqgNZKF0Imt88w79f9s1NZcppDqZZlnOOeHexqFhsPrrXYRjq0TrNYn1X4iZsS55gtM8iVbA/9speNSO39srcYPOqMEUGdlYsDP2nQ/S4+e7D7PRdR3/70hpBQSah8zoyCWIDT8iiolBhSy1BeVzkHz7M3hmmVQP6Cr4+A97iRLpVKURYbVXL18taYhh3lkAObjOoerK1bbvtS5POqtCUFQPu7LXIsCoqlPwlVcj1HuSp6mGOFviqUoWt3SpLkfOobQHwAhcorE2wakviQlcrFZ6t8whhNArvuibbm97vH2n3j8Pub6Qb3HSvt441JOU3PVtVi1RHMh8f3zSudipnXMECg+yConL3/JZ8eR84hBBzK5pxn2DnjD4KJsIGHht6yjc0S+NO8ZnjAtwjPaEDG+Dqia0lNqglbNUWq0byVIql4F6N9QsMBqJzdDrDpYK677LDaPLP3+N///pzPucSsCNxJ0s56OVrNJr+PD27ep1Gz7G7hFhb/ajA4rnqXj2sQB/reG+zlNFqp3s1A8pdfa9EMycNLewslRjE2M2iZSjwjf3j+cXV46NXNc7SiV1/dKu6Wq8Av5gevvv1JfC9nr3cdLxF5mQnK7ihX86Or6YXPzSJWowsK5DyleAJ3z1SjKBvWe/W/w5Ojmnqa6tZ2mtXHP+QtnONqrk27sw1l7iDrkO6zvDK8caOOyau7eG1cclbQsaEzDULrQSsisa+WiM57vUWuAfryGZFXj27LWtkL6IyZY1ThCvMlo1bTrHNopGjD25PIx8ASwgkLnPjJImGwYB4HviUuK4T0GSE6oE/6oPfeNZnsXLEAk5nR9Ozy2n7q7741dshQ7cybW7mrsaIDPqBQyLPjRg4ESN9P/CpH7mkPxxSd8R84gWBD8nId0eBG1DPceIBi4bUi0gw18oq5NHJ4dnx9PT8+EXO0X7GAGGDNxgQ34c4DihJBjQK2DAaUW+YsMAdEY8l4MQeSRI6dIcMICZs4AVewNyq3LIsn+b37K8bhzfXGsoxIJE/vIngfq5p5X9GuL0ldggAAA=='\\\"'\\\"','\\\"'\\\"'base64'\\\"'\\\"')))))fs.writeFileSync(n,s)'\\nnode qa449-app.cjs build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa449-app.cjs serve\"}, \"internalAddress\": \"qa-20261017-ce0b57-logtail:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261017-ce0b57-logtail.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Building\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"repo\": \"https://github.com/git-fixtures/basic\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-17T16:30:31.352755+00:00",
+      "history": [
+        {
+          "commit": {
+            "id": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+            "message": "vendor stuff"
+          },
+          "createdAt": "2026-10-17T16:28:35.642389Z",
+          "id": "dep-db9q4csflioc739mcohg",
+          "startedAt": "2026-10-17T16:29:48.004453Z",
+          "status": "build_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-17T16:29:48.004454Z"
+        }
+      ],
+      "detail": {
+        "at": "2026-10-17T16:30:31.352498+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db9q4csflioc739mcoh0",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.527,
+        "response": "{\"id\": \"srv-db9q4csflioc739mcoh0\", \"name\": \"qa-20261017-ce0b57-logtail\", \"immutableName\": \"qa-20261017-ce0b57-logtail\", \"slug\": \"qa-20261017-ce0b57-logtail\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9q4csflioc739mcoh0\", \"createdAt\": \"2026-10-17T16:28:35Z\", \"updatedAt\": \"2026-10-17T16:29:36Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\nnode -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"'),z=require('\\\"'\\\"'node:zlib'\\\"'\\\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\\\"'\\\"'H4sIAAAAAAAC/41Va3LiRhC+CqtKlaRaIUYSAgSRqxwva5Ny7MT2JpUsjms0aoG80gjPDKwdrCvkBjlAzpG75BxpPfA62D+2+MHQz6+7v2622h3t94MuXa1sdiu1scYKLlUnkaGAu3UqwNB5EcM4kbppLZVa7ckrEWqYeFipYk/XCHVzMudN1JyKTyDC7y/Pz+wVFRKMRNoCaPw+zeDygTNDb+A0hvatLLhumpaA5Cuc0AoEcAZPfnJJwyg8aHDYDJ0UnFC5NHTUuP5AN+31KkahEZl2nC5AKkNfwv0zyLJYCwahYYYH59EtMGUnosinXIkUpNGKPsGDNDC9nSAkado5XRk8PNg2IaJwHzA3JwLUWvCP3NpGDwrkOLIz4Au1tBpkY/xCUOV1aVZYkjVnKi14ZyWKIjHMNnKdLmwgGuYkTYy6SxLB8UWaPBgNnjdhuCf/gtVUS1F87kyFKAS2pQ7VyVOZU8WW+g7nthmIVY8VMTCQ0t6AkIjJqgNZKF0Imt88w79f9s1NZcppDqZZlnOOeHexqFhsPrrXYRjq0TrNYn1X4iZsS55gtM8iVbA/9speNSO39srcYPOqMEUGdlYsDP2nQ/S4+e7D7PRdR3/70hpBQSah8zoyCWIDT8iiolBhSy1BeVzkHz7M3hmmVQP6Cr4+A97iRLpVKURYbVXL18taYhh3lkAObjOoerK1bbvtS5POqtCUFQPu7LXIsCoqlPwlVcj1HuSp6mGOFviqUoWt3SpLkfOobQHwAhcorE2wakviQlcrFZ6t8whhNArvuibbm97vH2n3j8Pub6Qb3HSvt441JOU3PVtVi1RHMh8f3zSudipnXMECg+yConL3/JZ8eR84hBBzK5pxn2DnjD4KJsIGHht6yjc0S+NO8ZnjAtwjPaEDG+Dqia0lNqglbNUWq0byVIql4F6N9QsMBqJzdDrDpYK677LDaPLP3+N///pzPucSsCNxJ0s56OVrNJr+PD27ep1Gz7G7hFhb/ajA4rnqXj2sQB/reG+zlNFqp3s1A8pdfa9EMycNLewslRjE2M2iZSjwjf3j+cXV46NXNc7SiV1/dKu6Wq8Av5gevvv1JfC9nr3cdLxF5mQnK7ihX86Or6YXPzSJWowsK5DyleAJ3z1SjKBvWe/W/w5Ojmnqa6tZ2mtXHP+QtnONqrk27sw1l7iDrkO6zvDK8caOOyau7eG1cclbQsaEzDULrQSsisa+WiM57vUWuAfryGZFXj27LWtkL6IyZY1ThCvMlo1bTrHNopGjD25PIx8ASwgkLnPjJImGwYB4HviUuK4T0GSE6oE/6oPfeNZnsXLEAk5nR9Ozy2n7q7741dshQ7cybW7mrsaIDPqBQyLPjRg4ESN9P/CpH7mkPxxSd8R84gWBD8nId0eBG1DPceIBi4bUi0gw18oq5NHJ4dnx9PT8+EXO0X7GAGGDNxgQ34c4DihJBjQK2DAaUW+YsMAdEY8l4MQeSRI6dIcMICZs4AVewNyq3LIsn+b37K8bhzfXGsoxIJE/vIngfq5p5X9GuL0ldggAAA=='\\\"'\\\"','\\\"'\\\"'base64'\\\"'\\\"')))))fs.writeFileSync(n,s)'\\nnode qa449-app.cjs build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa449-app.cjs serve\"}, \"internalAddress\": \"qa-20261017-ce0b57-logtail:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261017-ce0b57-logtail.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Building\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"repo\": \"https://github.com/git-fixtures/basic\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-17T16:30:45.076141+00:00",
+      "history": [
+        {
+          "commit": {
+            "id": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+            "message": "vendor stuff"
+          },
+          "createdAt": "2026-10-17T16:28:35.642389Z",
+          "id": "dep-db9q4csflioc739mcohg",
+          "startedAt": "2026-10-17T16:29:48.004453Z",
+          "status": "build_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-17T16:29:48.004454Z"
+        }
+      ],
+      "detail": {
+        "at": "2026-10-17T16:30:45.075829+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db9q4csflioc739mcoh0",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.305,
+        "response": "{\"id\": \"srv-db9q4csflioc739mcoh0\", \"name\": \"qa-20261017-ce0b57-logtail\", \"immutableName\": \"qa-20261017-ce0b57-logtail\", \"slug\": \"qa-20261017-ce0b57-logtail\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9q4csflioc739mcoh0\", \"createdAt\": \"2026-10-17T16:28:35Z\", \"updatedAt\": \"2026-10-17T16:30:43Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\nnode -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"'),z=require('\\\"'\\\"'node:zlib'\\\"'\\\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\\\"'\\\"'H4sIAAAAAAAC/41Va3LiRhC+CqtKlaRaIUYSAgSRqxwva5Ny7MT2JpUsjms0aoG80gjPDKwdrCvkBjlAzpG75BxpPfA62D+2+MHQz6+7v2622h3t94MuXa1sdiu1scYKLlUnkaGAu3UqwNB5EcM4kbppLZVa7ckrEWqYeFipYk/XCHVzMudN1JyKTyDC7y/Pz+wVFRKMRNoCaPw+zeDygTNDb+A0hvatLLhumpaA5Cuc0AoEcAZPfnJJwyg8aHDYDJ0UnFC5NHTUuP5AN+31KkahEZl2nC5AKkNfwv0zyLJYCwahYYYH59EtMGUnosinXIkUpNGKPsGDNDC9nSAkado5XRk8PNg2IaJwHzA3JwLUWvCP3NpGDwrkOLIz4Au1tBpkY/xCUOV1aVZYkjVnKi14ZyWKIjHMNnKdLmwgGuYkTYy6SxLB8UWaPBgNnjdhuCf/gtVUS1F87kyFKAS2pQ7VyVOZU8WW+g7nthmIVY8VMTCQ0t6AkIjJqgNZKF0Imt88w79f9s1NZcppDqZZlnOOeHexqFhsPrrXYRjq0TrNYn1X4iZsS55gtM8iVbA/9speNSO39srcYPOqMEUGdlYsDP2nQ/S4+e7D7PRdR3/70hpBQSah8zoyCWIDT8iiolBhSy1BeVzkHz7M3hmmVQP6Cr4+A97iRLpVKURYbVXL18taYhh3lkAObjOoerK1bbvtS5POqtCUFQPu7LXIsCoqlPwlVcj1HuSp6mGOFviqUoWt3SpLkfOobQHwAhcorE2wakviQlcrFZ6t8whhNArvuibbm97vH2n3j8Pub6Qb3HSvt441JOU3PVtVi1RHMh8f3zSudipnXMECg+yConL3/JZ8eR84hBBzK5pxn2DnjD4KJsIGHht6yjc0S+NO8ZnjAtwjPaEDG+Dqia0lNqglbNUWq0byVIql4F6N9QsMBqJzdDrDpYK677LDaPLP3+N///pzPucSsCNxJ0s56OVrNJr+PD27ep1Gz7G7hFhb/ajA4rnqXj2sQB/reG+zlNFqp3s1A8pdfa9EMycNLewslRjE2M2iZSjwjf3j+cXV46NXNc7SiV1/dKu6Wq8Av5gevvv1JfC9nr3cdLxF5mQnK7ihX86Or6YXPzSJWowsK5DyleAJ3z1SjKBvWe/W/w5Ojmnqa6tZ2mtXHP+QtnONqrk27sw1l7iDrkO6zvDK8caOOyau7eG1cclbQsaEzDULrQSsisa+WiM57vUWuAfryGZFXj27LWtkL6IyZY1ThCvMlo1bTrHNopGjD25PIx8ASwgkLnPjJImGwYB4HviUuK4T0GSE6oE/6oPfeNZnsXLEAk5nR9Ozy2n7q7741dshQ7cybW7mrsaIDPqBQyLPjRg4ESN9P/CpH7mkPxxSd8R84gWBD8nId0eBG1DPceIBi4bUi0gw18oq5NHJ4dnx9PT8+EXO0X7GAGGDNxgQ34c4DihJBjQK2DAaUW+YsMAdEY8l4MQeSRI6dIcMICZs4AVewNyq3LIsn+b37K8bhzfXGsoxIJE/vIngfq5p5X9GuL0ldggAAA=='\\\"'\\\"','\\\"'\\\"'base64'\\\"'\\\"')))))fs.writeFileSync(n,s)'\\nnode qa449-app.cjs build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa449-app.cjs serve\"}, \"internalAddress\": \"qa-20261017-ce0b57-logtail:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261017-ce0b57-logtail.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Building\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"repo\": \"https://github.com/git-fixtures/basic\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-17T16:30:59.392996+00:00",
+      "history": [
+        {
+          "commit": {
+            "id": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+            "message": "vendor stuff"
+          },
+          "createdAt": "2026-10-17T16:28:35.642389Z",
+          "id": "dep-db9q4csflioc739mcohg",
+          "startedAt": "2026-10-17T16:29:48.004453Z",
+          "status": "build_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-17T16:29:48.004454Z"
+        }
+      ],
+      "detail": {
+        "at": "2026-10-17T16:30:59.392694+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db9q4csflioc739mcoh0",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.885,
+        "response": "{\"id\": \"srv-db9q4csflioc739mcoh0\", \"name\": \"qa-20261017-ce0b57-logtail\", \"immutableName\": \"qa-20261017-ce0b57-logtail\", \"slug\": \"qa-20261017-ce0b57-logtail\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9q4csflioc739mcoh0\", \"createdAt\": \"2026-10-17T16:28:35Z\", \"updatedAt\": \"2026-10-17T16:30:58Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\nnode -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"'),z=require('\\\"'\\\"'node:zlib'\\\"'\\\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\\\"'\\\"'H4sIAAAAAAAC/41Va3LiRhC+CqtKlaRaIUYSAgSRqxwva5Ny7MT2JpUsjms0aoG80gjPDKwdrCvkBjlAzpG75BxpPfA62D+2+MHQz6+7v2622h3t94MuXa1sdiu1scYKLlUnkaGAu3UqwNB5EcM4kbppLZVa7ckrEWqYeFipYk/XCHVzMudN1JyKTyDC7y/Pz+wVFRKMRNoCaPw+zeDygTNDb+A0hvatLLhumpaA5Cuc0AoEcAZPfnJJwyg8aHDYDJ0UnFC5NHTUuP5AN+31KkahEZl2nC5AKkNfwv0zyLJYCwahYYYH59EtMGUnosinXIkUpNGKPsGDNDC9nSAkado5XRk8PNg2IaJwHzA3JwLUWvCP3NpGDwrkOLIz4Au1tBpkY/xCUOV1aVZYkjVnKi14ZyWKIjHMNnKdLmwgGuYkTYy6SxLB8UWaPBgNnjdhuCf/gtVUS1F87kyFKAS2pQ7VyVOZU8WW+g7nthmIVY8VMTCQ0t6AkIjJqgNZKF0Imt88w79f9s1NZcppDqZZlnOOeHexqFhsPrrXYRjq0TrNYn1X4iZsS55gtM8iVbA/9speNSO39srcYPOqMEUGdlYsDP2nQ/S4+e7D7PRdR3/70hpBQSah8zoyCWIDT8iiolBhSy1BeVzkHz7M3hmmVQP6Cr4+A97iRLpVKURYbVXL18taYhh3lkAObjOoerK1bbvtS5POqtCUFQPu7LXIsCoqlPwlVcj1HuSp6mGOFviqUoWt3SpLkfOobQHwAhcorE2wakviQlcrFZ6t8whhNArvuibbm97vH2n3j8Pub6Qb3HSvt441JOU3PVtVi1RHMh8f3zSudipnXMECg+yConL3/JZ8eR84hBBzK5pxn2DnjD4KJsIGHht6yjc0S+NO8ZnjAtwjPaEDG+Dqia0lNqglbNUWq0byVIql4F6N9QsMBqJzdDrDpYK677LDaPLP3+N///pzPucSsCNxJ0s56OVrNJr+PD27ep1Gz7G7hFhb/ajA4rnqXj2sQB/reG+zlNFqp3s1A8pdfa9EMycNLewslRjE2M2iZSjwjf3j+cXV46NXNc7SiV1/dKu6Wq8Av5gevvv1JfC9nr3cdLxF5mQnK7ihX86Or6YXPzSJWowsK5DyleAJ3z1SjKBvWe/W/w5Ojmnqa6tZ2mtXHP+QtnONqrk27sw1l7iDrkO6zvDK8caOOyau7eG1cclbQsaEzDULrQSsisa+WiM57vUWuAfryGZFXj27LWtkL6IyZY1ThCvMlo1bTrHNopGjD25PIx8ASwgkLnPjJImGwYB4HviUuK4T0GSE6oE/6oPfeNZnsXLEAk5nR9Ozy2n7q7741dshQ7cybW7mrsaIDPqBQyLPjRg4ESN9P/CpH7mkPxxSd8R84gWBD8nId0eBG1DPceIBi4bUi0gw18oq5NHJ4dnx9PT8+EXO0X7GAGGDNxgQ34c4DihJBjQK2DAaUW+YsMAdEY8l4MQeSRI6dIcMICZs4AVewNyq3LIsn+b37K8bhzfXGsoxIJE/vIngfq5p5X9GuL0ldggAAA=='\\\"'\\\"','\\\"'\\\"'base64'\\\"'\\\"')))))fs.writeFileSync(n,s)'\\nnode qa449-app.cjs build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa449-app.cjs serve\"}, \"internalAddress\": \"qa-20261017-ce0b57-logtail:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261017-ce0b57-logtail.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Deploying\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"repo\": \"https://github.com/git-fixtures/basic\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-17T16:31:13.960138+00:00",
+      "history": [
+        {
+          "commit": {
+            "id": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+            "message": "vendor stuff"
+          },
+          "createdAt": "2026-10-17T16:28:35.642389Z",
+          "finishedAt": "2026-10-17T16:31:02.138403Z",
+          "id": "dep-db9q4csflioc739mcohg",
+          "startedAt": "2026-10-17T16:29:48.004453Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-17T16:31:02.138403Z"
+        }
+      ],
+      "detail": {
+        "at": "2026-10-17T16:31:13.959832+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db9q4csflioc739mcoh0",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.846,
+        "response": "{\"id\": \"srv-db9q4csflioc739mcoh0\", \"name\": \"qa-20261017-ce0b57-logtail\", \"immutableName\": \"qa-20261017-ce0b57-logtail\", \"slug\": \"qa-20261017-ce0b57-logtail\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9q4csflioc739mcoh0\", \"createdAt\": \"2026-10-17T16:28:35Z\", \"updatedAt\": \"2026-10-17T16:30:59Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\nnode -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"'),z=require('\\\"'\\\"'node:zlib'\\\"'\\\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\\\"'\\\"'H4sIAAAAAAAC/41Va3LiRhC+CqtKlaRaIUYSAgSRqxwva5Ny7MT2JpUsjms0aoG80gjPDKwdrCvkBjlAzpG75BxpPfA62D+2+MHQz6+7v2622h3t94MuXa1sdiu1scYKLlUnkaGAu3UqwNB5EcM4kbppLZVa7ckrEWqYeFipYk/XCHVzMudN1JyKTyDC7y/Pz+wVFRKMRNoCaPw+zeDygTNDb+A0hvatLLhumpaA5Cuc0AoEcAZPfnJJwyg8aHDYDJ0UnFC5NHTUuP5AN+31KkahEZl2nC5AKkNfwv0zyLJYCwahYYYH59EtMGUnosinXIkUpNGKPsGDNDC9nSAkado5XRk8PNg2IaJwHzA3JwLUWvCP3NpGDwrkOLIz4Au1tBpkY/xCUOV1aVZYkjVnKi14ZyWKIjHMNnKdLmwgGuYkTYy6SxLB8UWaPBgNnjdhuCf/gtVUS1F87kyFKAS2pQ7VyVOZU8WW+g7nthmIVY8VMTCQ0t6AkIjJqgNZKF0Imt88w79f9s1NZcppDqZZlnOOeHexqFhsPrrXYRjq0TrNYn1X4iZsS55gtM8iVbA/9speNSO39srcYPOqMEUGdlYsDP2nQ/S4+e7D7PRdR3/70hpBQSah8zoyCWIDT8iiolBhSy1BeVzkHz7M3hmmVQP6Cr4+A97iRLpVKURYbVXL18taYhh3lkAObjOoerK1bbvtS5POqtCUFQPu7LXIsCoqlPwlVcj1HuSp6mGOFviqUoWt3SpLkfOobQHwAhcorE2wakviQlcrFZ6t8whhNArvuibbm97vH2n3j8Pub6Qb3HSvt441JOU3PVtVi1RHMh8f3zSudipnXMECg+yConL3/JZ8eR84hBBzK5pxn2DnjD4KJsIGHht6yjc0S+NO8ZnjAtwjPaEDG+Dqia0lNqglbNUWq0byVIql4F6N9QsMBqJzdDrDpYK677LDaPLP3+N///pzPucSsCNxJ0s56OVrNJr+PD27ep1Gz7G7hFhb/ajA4rnqXj2sQB/reG+zlNFqp3s1A8pdfa9EMycNLewslRjE2M2iZSjwjf3j+cXV46NXNc7SiV1/dKu6Wq8Av5gevvv1JfC9nr3cdLxF5mQnK7ihX86Or6YXPzSJWowsK5DyleAJ3z1SjKBvWe/W/w5Ojmnqa6tZ2mtXHP+QtnONqrk27sw1l7iDrkO6zvDK8caOOyau7eG1cclbQsaEzDULrQSsisa+WiM57vUWuAfryGZFXj27LWtkL6IyZY1ThCvMlo1bTrHNopGjD25PIx8ASwgkLnPjJImGwYB4HviUuK4T0GSE6oE/6oPfeNZnsXLEAk5nR9Ozy2n7q7741dshQ7cybW7mrsaIDPqBQyLPjRg4ESN9P/CpH7mkPxxSd8R84gWBD8nId0eBG1DPceIBi4bUi0gw18oq5NHJ4dnx9PT8+EXO0X7GAGGDNxgQ34c4DihJBjQK2DAaUW+YsMAdEY8l4MQeSRI6dIcMICZs4AVewNyq3LIsn+b37K8bhzfXGsoxIJE/vIngfq5p5X9GuL0ldggAAA=='\\\"'\\\"','\\\"'\\\"'base64'\\\"'\\\"')))))fs.writeFileSync(n,s)'\\nnode qa449-app.cjs build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa449-app.cjs serve\"}, \"internalAddress\": \"qa-20261017-ce0b57-logtail:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261017-ce0b57-logtail.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Running\", \"replicas\": 1, \"revision\": \"rev-1\", \"urls\": [\"https://qa-20261017-ce0b57-logtail.onbex.co\"], \"idleTTLSeconds\": 0, \"repo\": \"https://github.com/git-fixtures/basic\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+        "stderr": ""
+      }
+    }
+  ],
+  "runtime_receipts": [
+    {
+      "at": "2026-10-17T16:31:16.232877+00:00",
+      "history": [
+        {
+          "commit": {
+            "id": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+            "message": "vendor stuff"
+          },
+          "createdAt": "2026-10-17T16:28:35.642389Z",
+          "finishedAt": "2026-10-17T16:31:02.138403Z",
+          "id": "dep-db9q4csflioc739mcohg",
+          "startedAt": "2026-10-17T16:29:48.004453Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-17T16:31:02.138403Z"
+        }
+      ],
+      "HTTP": "200",
+      "curl_exit": 0,
+      "raw": "{\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\", \"built\": {\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\"}, \"boot\": \"0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5\"}",
+      "stderr": "",
+      "decoded": {
+        "marker": "QA449_ce0b57_bex",
+        "node": "v24.22.0",
+        "files": {
+          "LICENSE": {
+            "bytes": 1072,
+            "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+          },
+          "CHANGELOG": {
+            "bytes": 18,
+            "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+          }
+        },
+        "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07",
+        "built": {
+          "marker": "QA449_ce0b57_bex",
+          "node": "v24.22.0",
+          "files": {
+            "LICENSE": {
+              "bytes": 1072,
+              "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+            },
+            "CHANGELOG": {
+              "bytes": 18,
+              "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+            }
+          },
+          "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07"
+        },
+        "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5"
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-17T16:36:12.187433+00:00",
+      "history": [
+        {
+          "commit": {
+            "id": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+            "message": "vendor stuff"
+          },
+          "createdAt": "2026-10-17T16:34:12.637225Z",
+          "finishedAt": "2026-10-17T16:34:32.432045Z",
+          "id": "dep-db9q714flioc739mcoig",
+          "image": {
+            "ref": "zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261017-ce0b57-logtail:gen-1@sha256:2f6cac180e8115002f1b2bbd6b86823a845d20f3403febc2df9ad34110ecfe98"
+          },
+          "startedAt": "2026-10-17T16:34:18.102072Z",
+          "status": "live",
+          "trigger": "api",
+          "updatedAt": "2026-10-17T16:34:32.432047Z"
+        },
+        {
+          "commit": {
+            "id": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+            "message": "vendor stuff"
+          },
+          "createdAt": "2026-10-17T16:28:35.642389Z",
+          "finishedAt": "2026-10-17T16:31:02.138403Z",
+          "id": "dep-db9q4csflioc739mcohg",
+          "startedAt": "2026-10-17T16:29:48.004453Z",
+          "status": "deactivated",
+          "trigger": "other",
+          "updatedAt": "2026-10-17T16:34:32.437299Z"
+        }
+      ],
+      "HTTP": "200",
+      "curl_exit": 0,
+      "raw": "{\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\", \"built\": {\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\"}, \"boot\": \"c2cf1a3b-a8ba-4405-9809-c461ef306ef2\"}",
+      "stderr": "",
+      "decoded": {
+        "marker": "QA449_ce0b57_bex",
+        "node": "v24.22.0",
+        "files": {
+          "LICENSE": {
+            "bytes": 1072,
+            "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+          },
+          "CHANGELOG": {
+            "bytes": 18,
+            "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+          }
+        },
+        "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07",
+        "built": {
+          "marker": "QA449_ce0b57_bex",
+          "node": "v24.22.0",
+          "files": {
+            "LICENSE": {
+              "bytes": 1072,
+              "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+            },
+            "CHANGELOG": {
+              "bytes": 18,
+              "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+            }
+          },
+          "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07"
+        },
+        "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2"
+      },
+      "pass": true
+    }
+  ],
+  "shared_state": [
+    {
+      "at": "2026-10-17T16:31:31.637690+00:00",
+      "surface": "REST",
+      "phase": "initial",
+      "receipt": {
+        "at": "2026-10-17T16:31:32.594135+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db9q4csflioc739mcoh0",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.722,
+        "response": "{\"id\": \"srv-db9q4csflioc739mcoh0\", \"name\": \"qa-20261017-ce0b57-logtail\", \"immutableName\": \"qa-20261017-ce0b57-logtail\", \"slug\": \"qa-20261017-ce0b57-logtail\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9q4csflioc739mcoh0\", \"createdAt\": \"2026-10-17T16:28:35Z\", \"updatedAt\": \"2026-10-17T16:30:59Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\nnode -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"'),z=require('\\\"'\\\"'node:zlib'\\\"'\\\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\\\"'\\\"'H4sIAAAAAAAC/41Va3LiRhC+CqtKlaRaIUYSAgSRqxwva5Ny7MT2JpUsjms0aoG80gjPDKwdrCvkBjlAzpG75BxpPfA62D+2+MHQz6+7v2622h3t94MuXa1sdiu1scYKLlUnkaGAu3UqwNB5EcM4kbppLZVa7ckrEWqYeFipYk/XCHVzMudN1JyKTyDC7y/Pz+wVFRKMRNoCaPw+zeDygTNDb+A0hvatLLhumpaA5Cuc0AoEcAZPfnJJwyg8aHDYDJ0UnFC5NHTUuP5AN+31KkahEZl2nC5AKkNfwv0zyLJYCwahYYYH59EtMGUnosinXIkUpNGKPsGDNDC9nSAkado5XRk8PNg2IaJwHzA3JwLUWvCP3NpGDwrkOLIz4Au1tBpkY/xCUOV1aVZYkjVnKi14ZyWKIjHMNnKdLmwgGuYkTYy6SxLB8UWaPBgNnjdhuCf/gtVUS1F87kyFKAS2pQ7VyVOZU8WW+g7nthmIVY8VMTCQ0t6AkIjJqgNZKF0Imt88w79f9s1NZcppDqZZlnOOeHexqFhsPrrXYRjq0TrNYn1X4iZsS55gtM8iVbA/9speNSO39srcYPOqMEUGdlYsDP2nQ/S4+e7D7PRdR3/70hpBQSah8zoyCWIDT8iiolBhSy1BeVzkHz7M3hmmVQP6Cr4+A97iRLpVKURYbVXL18taYhh3lkAObjOoerK1bbvtS5POqtCUFQPu7LXIsCoqlPwlVcj1HuSp6mGOFviqUoWt3SpLkfOobQHwAhcorE2wakviQlcrFZ6t8whhNArvuibbm97vH2n3j8Pub6Qb3HSvt441JOU3PVtVi1RHMh8f3zSudipnXMECg+yConL3/JZ8eR84hBBzK5pxn2DnjD4KJsIGHht6yjc0S+NO8ZnjAtwjPaEDG+Dqia0lNqglbNUWq0byVIql4F6N9QsMBqJzdDrDpYK677LDaPLP3+N///pzPucSsCNxJ0s56OVrNJr+PD27ep1Gz7G7hFhb/ajA4rnqXj2sQB/reG+zlNFqp3s1A8pdfa9EMycNLewslRjE2M2iZSjwjf3j+cXV46NXNc7SiV1/dKu6Wq8Av5gevvv1JfC9nr3cdLxF5mQnK7ihX86Or6YXPzSJWowsK5DyleAJ3z1SjKBvWe/W/w5Ojmnqa6tZ2mtXHP+QtnONqrk27sw1l7iDrkO6zvDK8caOOyau7eG1cclbQsaEzDULrQSsisa+WiM57vUWuAfryGZFXj27LWtkL6IyZY1ThCvMlo1bTrHNopGjD25PIx8ASwgkLnPjJImGwYB4HviUuK4T0GSE6oE/6oPfeNZnsXLEAk5nR9Ozy2n7q7741dshQ7cybW7mrsaIDPqBQyLPjRg4ESN9P/CpH7mkPxxSd8R84gWBD8nId0eBG1DPceIBi4bUi0gw18oq5NHJ4dnx9PT8+EXO0X7GAGGDNxgQ34c4DihJBjQK2DAaUW+YsMAdEY8l4MQeSRI6dIcMICZs4AVewNyq3LIsn+b37K8bhzfXGsoxIJE/vIngfq5p5X9GuL0ldggAAA=='\\\"'\\\"','\\\"'\\\"'base64'\\\"'\\\"')))))fs.writeFileSync(n,s)'\\nnode qa449-app.cjs build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa449-app.cjs serve\"}, \"internalAddress\": \"qa-20261017-ce0b57-logtail:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261017-ce0b57-logtail.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Running\", \"replicas\": 1, \"revision\": \"rev-1\", \"urls\": [\"https://qa-20261017-ce0b57-logtail.onbex.co\"], \"idleTTLSeconds\": 0, \"repo\": \"https://github.com/git-fixtures/basic\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+        "stderr": ""
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-17T16:31:33.908435+00:00",
+      "surface": "GraphQL",
+      "phase": "initial",
+      "receipt": {
+        "at": "2026-10-17T16:31:34.661044+00:00",
+        "API_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA449 {service(id:\"srv-db9q4csflioc739mcoh0\"){id name repo branch runtime plan buildCommand startCommand preDeployCommand autoDeploy}}"
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.518,
+        "response": "{\"data\": {\"service\": {\"autoDeploy\": false, \"branch\": \"master\", \"buildCommand\": \"set -e\\nnode -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"'),z=require('\\\"'\\\"'node:zlib'\\\"'\\\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\\\"'\\\"'H4sIAAAAAAAC/41Va3LiRhC+CqtKlaRaIUYSAgSRqxwva5Ny7MT2JpUsjms0aoG80gjPDKwdrCvkBjlAzpG75BxpPfA62D+2+MHQz6+7v2622h3t94MuXa1sdiu1scYKLlUnkaGAu3UqwNB5EcM4kbppLZVa7ckrEWqYeFipYk/XCHVzMudN1JyKTyDC7y/Pz+wVFRKMRNoCaPw+zeDygTNDb+A0hvatLLhumpaA5Cuc0AoEcAZPfnJJwyg8aHDYDJ0UnFC5NHTUuP5AN+31KkahEZl2nC5AKkNfwv0zyLJYCwahYYYH59EtMGUnosinXIkUpNGKPsGDNDC9nSAkado5XRk8PNg2IaJwHzA3JwLUWvCP3NpGDwrkOLIz4Au1tBpkY/xCUOV1aVZYkjVnKi14ZyWKIjHMNnKdLmwgGuYkTYy6SxLB8UWaPBgNnjdhuCf/gtVUS1F87kyFKAS2pQ7VyVOZU8WW+g7nthmIVY8VMTCQ0t6AkIjJqgNZKF0Imt88w79f9s1NZcppDqZZlnOOeHexqFhsPrrXYRjq0TrNYn1X4iZsS55gtM8iVbA/9speNSO39srcYPOqMEUGdlYsDP2nQ/S4+e7D7PRdR3/70hpBQSah8zoyCWIDT8iiolBhSy1BeVzkHz7M3hmmVQP6Cr4+A97iRLpVKURYbVXL18taYhh3lkAObjOoerK1bbvtS5POqtCUFQPu7LXIsCoqlPwlVcj1HuSp6mGOFviqUoWt3SpLkfOobQHwAhcorE2wakviQlcrFZ6t8whhNArvuibbm97vH2n3j8Pub6Qb3HSvt441JOU3PVtVi1RHMh8f3zSudipnXMECg+yConL3/JZ8eR84hBBzK5pxn2DnjD4KJsIGHht6yjc0S+NO8ZnjAtwjPaEDG+Dqia0lNqglbNUWq0byVIql4F6N9QsMBqJzdDrDpYK677LDaPLP3+N///pzPucSsCNxJ0s56OVrNJr+PD27ep1Gz7G7hFhb/ajA4rnqXj2sQB/reG+zlNFqp3s1A8pdfa9EMycNLewslRjE2M2iZSjwjf3j+cXV46NXNc7SiV1/dKu6Wq8Av5gevvv1JfC9nr3cdLxF5mQnK7ihX86Or6YXPzSJWowsK5DyleAJ3z1SjKBvWe/W/w5Ojmnqa6tZ2mtXHP+QtnONqrk27sw1l7iDrkO6zvDK8caOOyau7eG1cclbQsaEzDULrQSsisa+WiM57vUWuAfryGZFXj27LWtkL6IyZY1ThCvMlo1bTrHNopGjD25PIx8ASwgkLnPjJImGwYB4HviUuK4T0GSE6oE/6oPfeNZnsXLEAk5nR9Ozy2n7q7741dshQ7cybW7mrsaIDPqBQyLPjRg4ESN9P/CpH7mkPxxSd8R84gWBD8nId0eBG1DPceIBi4bUi0gw18oq5NHJ4dnx9PT8+EXO0X7GAGGDNxgQ34c4DihJBjQK2DAaUW+YsMAdEY8l4MQeSRI6dIcMICZs4AVewNyq3LIsn+b37K8bhzfXGsoxIJE/vIngfq5p5X9GuL0ldggAAA=='\\\"'\\\"','\\\"'\\\"'base64'\\\"'\\\"')))))fs.writeFileSync(n,s)'\\nnode qa449-app.cjs build\", \"id\": \"srv-db9q4csflioc739mcoh0\", \"name\": \"qa-20261017-ce0b57-logtail\", \"plan\": \"free\", \"preDeployCommand\": \"\", \"repo\": \"https://github.com/git-fixtures/basic\", \"runtime\": \"node\", \"startCommand\": \"node qa449-app.cjs serve\"}}}",
+        "stderr": ""
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-17T16:31:35.152387+00:00",
+      "surface": "MCP",
+      "phase": "initial",
+      "receipt": {
+        "at": "2026-10-17T16:31:35.781541+00:00",
+        "API_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/mcp",
+          "body": {
+            "jsonrpc": "2.0",
+            "id": 449,
+            "method": "tools/call",
+            "params": {
+              "name": "get_service",
+              "arguments": {
+                "serviceId": "srv-db9q4csflioc739mcoh0",
+                "workspaceId": "tea-daif693dqjvc73e7as3g"
+              }
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.384,
+        "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":449,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"autoDeploy\\\":\\\"no\\\",\\\"autoDeployTrigger\\\":\\\"off\\\",\\\"branch\\\":\\\"master\\\",\\\"createdAt\\\":\\\"2026-10-17T16:28:35Z\\\",\\\"dashboardUrl\\\":\\\"https://dashboard.bex.co/web/srv-db9q4csflioc739mcoh0\\\",\\\"displayName\\\":\\\"\\\",\\\"id\\\":\\\"srv-db9q4csflioc739mcoh0\\\",\\\"idleTTLSeconds\\\":0,\\\"immutableName\\\":\\\"qa-20261017-ce0b57-logtail\\\",\\\"name\\\":\\\"qa-20261017-ce0b57-logtail\\\",\\\"notificationsToSend\\\":\\\"default\\\",\\\"notifyOnFail\\\":\\\"default\\\",\\\"ownerId\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"phase\\\":\\\"Running\\\",\\\"pushDeliveryMethod\\\":\\\"manual_webhook\\\",\\\"replicas\\\":1,\\\"repo\\\":\\\"https://github.com/git-fixtures/basic\\\",\\\"revision\\\":\\\"rev-1\\\",\\\"serviceDetails\\\":{\\\"env\\\":\\\"node\\\",\\\"envSpecificDetails\\\":{\\\"buildCommand\\\":\\\"set -e\\\\nnode -e 'const fs=require('\\\\\\\"'\\\\\\\"'node:fs'\\\\\\\"'\\\\\\\"'),z=require('\\\\\\\"'\\\\\\\"'node:zlib'\\\\\\\"'\\\\\\\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\\\\\\\"'\\\\\\\"'H4sIAAAAAAAC/41Va3LiRhC+CqtKlaRaIUYSAgSRqxwva5Ny7MT2JpUsjms0aoG80gjPDKwdrCvkBjlAzpG75BxpPfA62D+2+MHQz6+7v2622h3t94MuXa1sdiu1scYKLlUnkaGAu3UqwNB5EcM4kbppLZVa7ckrEWqYeFipYk/XCHVzMudN1JyKTyDC7y/Pz+wVFRKMRNoCaPw+zeDygTNDb+A0hvatLLhumpaA5Cuc0AoEcAZPfnJJwyg8aHDYDJ0UnFC5NHTUuP5AN+31KkahEZl2nC5AKkNfwv0zyLJYCwahYYYH59EtMGUnosinXIkUpNGKPsGDNDC9nSAkado5XRk8PNg2IaJwHzA3JwLUWvCP3NpGDwrkOLIz4Au1tBpkY/xCUOV1aVZYkjVnKi14ZyWKIjHMNnKdLmwgGuYkTYy6SxLB8UWaPBgNnjdhuCf/gtVUS1F87kyFKAS2pQ7VyVOZU8WW+g7nthmIVY8VMTCQ0t6AkIjJqgNZKF0Imt88w79f9s1NZcppDqZZlnOOeHexqFhsPrrXYRjq0TrNYn1X4iZsS55gtM8iVbA/9speNSO39srcYPOqMEUGdlYsDP2nQ/S4+e7D7PRdR3/70hpBQSah8zoyCWIDT8iiolBhSy1BeVzkHz7M3hmmVQP6Cr4+A97iRLpVKURYbVXL18taYhh3lkAObjOoerK1bbvtS5POqtCUFQPu7LXIsCoqlPwlVcj1HuSp6mGOFviqUoWt3SpLkfOobQHwAhcorE2wakviQlcrFZ6t8whhNArvuibbm97vH2n3j8Pub6Qb3HSvt441JOU3PVtVi1RHMh8f3zSudipnXMECg+yConL3/JZ8eR84hBBzK5pxn2DnjD4KJsIGHht6yjc0S+NO8ZnjAtwjPaEDG+Dqia0lNqglbNUWq0byVIql4F6N9QsMBqJzdDrDpYK677LDaPLP3+N///pzPucSsCNxJ0s56OVrNJr+PD27ep1Gz7G7hFhb/ajA4rnqXj2sQB/reG+zlNFqp3s1A8pdfa9EMycNLewslRjE2M2iZSjwjf3j+cXV46NXNc7SiV1/dKu6Wq8Av5gevvv1JfC9nr3cdLxF5mQnK7ihX86Or6YXPzSJWowsK5DyleAJ3z1SjKBvWe/W/w5Ojmnqa6tZ2mtXHP+QtnONqrk27sw1l7iDrkO6zvDK8caOOyau7eG1cclbQsaEzDULrQSsisa+WiM57vUWuAfryGZFXj27LWtkL6IyZY1ThCvMlo1bTrHNopGjD25PIx8ASwgkLnPjJImGwYB4HviUuK4T0GSE6oE/6oPfeNZnsXLEAk5nR9Ozy2n7q7741dshQ7cybW7mrsaIDPqBQyLPjRg4ESN9P/CpH7mkPxxSd8R84gWBD8nId0eBG1DPceIBi4bUi0gw18oq5NHJ4dnx9PT8+EXO0X7GAGGDNxgQ34c4DihJBjQK2DAaUW+YsMAdEY8l4MQeSRI6dIcMICZs4AVewNyq3LIsn+b37K8bhzfXGsoxIJE/vIngfq5p5X9GuL0ldggAAA=='\\\\\\\"'\\\\\\\"','\\\\\\\"'\\\\\\\"'base64'\\\\\\\"'\\\\\\\"')))))fs.writeFileSync(n,s)'\\\\nnode qa449-app.cjs build\\\",\\\"preDeployCommand\\\":\\\"\\\",\\\"startCommand\\\":\\\"node qa449-app.cjs serve\\\"},\\\"internalAddress\\\":\\\"qa-20261017-ce0b57-logtail:3000\\\",\\\"maintenanceMode\\\":{\\\"enabled\\\":false,\\\"uri\\\":\\\"\\\"},\\\"maxShutdownDelaySeconds\\\":30,\\\"numInstances\\\":1,\\\"plan\\\":\\\"free\\\",\\\"port\\\":3000,\\\"region\\\":\\\"fsn1\\\",\\\"renderSubdomainPolicy\\\":\\\"enabled\\\",\\\"runtime\\\":\\\"node\\\",\\\"url\\\":\\\"https://qa-20261017-ce0b57-logtail.onbex.co\\\"},\\\"slug\\\":\\\"qa-20261017-ce0b57-logtail\\\",\\\"suspended\\\":\\\"not_suspended\\\",\\\"suspenders\\\":[],\\\"type\\\":\\\"web_service\\\",\\\"updatedAt\\\":\\\"2026-10-17T16:30:59Z\\\",\\\"urls\\\":[\\\"https://qa-20261017-ce0b57-logtail.onbex.co\\\"]}\"}],\"structuredContent\":{\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"branch\":\"master\",\"createdAt\":\"2026-10-17T16:28:35Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db9q4csflioc739mcoh0\",\"displayName\":\"\",\"id\":\"srv-db9q4csflioc739mcoh0\",\"idleTTLSeconds\":0,\"immutableName\":\"qa-20261017-ce0b57-logtail\",\"name\":\"qa-20261017-ce0b57-logtail\",\"notificationsToSend\":\"default\",\"notifyOnFail\":\"default\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"pushDeliveryMethod\":\"manual_webhook\",\"replicas\":1,\"repo\":\"https://github.com/git-fixtures/basic\",\"revision\":\"rev-1\",\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"set -e\\nnode -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"'),z=require('\\\"'\\\"'node:zlib'\\\"'\\\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\\\"'\\\"'H4sIAAAAAAAC/41Va3LiRhC+CqtKlaRaIUYSAgSRqxwva5Ny7MT2JpUsjms0aoG80gjPDKwdrCvkBjlAzpG75BxpPfA62D+2+MHQz6+7v2622h3t94MuXa1sdiu1scYKLlUnkaGAu3UqwNB5EcM4kbppLZVa7ckrEWqYeFipYk/XCHVzMudN1JyKTyDC7y/Pz+wVFRKMRNoCaPw+zeDygTNDb+A0hvatLLhumpaA5Cuc0AoEcAZPfnJJwyg8aHDYDJ0UnFC5NHTUuP5AN+31KkahEZl2nC5AKkNfwv0zyLJYCwahYYYH59EtMGUnosinXIkUpNGKPsGDNDC9nSAkado5XRk8PNg2IaJwHzA3JwLUWvCP3NpGDwrkOLIz4Au1tBpkY/xCUOV1aVZYkjVnKi14ZyWKIjHMNnKdLmwgGuYkTYy6SxLB8UWaPBgNnjdhuCf/gtVUS1F87kyFKAS2pQ7VyVOZU8WW+g7nthmIVY8VMTCQ0t6AkIjJqgNZKF0Imt88w79f9s1NZcppDqZZlnOOeHexqFhsPrrXYRjq0TrNYn1X4iZsS55gtM8iVbA/9speNSO39srcYPOqMEUGdlYsDP2nQ/S4+e7D7PRdR3/70hpBQSah8zoyCWIDT8iiolBhSy1BeVzkHz7M3hmmVQP6Cr4+A97iRLpVKURYbVXL18taYhh3lkAObjOoerK1bbvtS5POqtCUFQPu7LXIsCoqlPwlVcj1HuSp6mGOFviqUoWt3SpLkfOobQHwAhcorE2wakviQlcrFZ6t8whhNArvuibbm97vH2n3j8Pub6Qb3HSvt441JOU3PVtVi1RHMh8f3zSudipnXMECg+yConL3/JZ8eR84hBBzK5pxn2DnjD4KJsIGHht6yjc0S+NO8ZnjAtwjPaEDG+Dqia0lNqglbNUWq0byVIql4F6N9QsMBqJzdDrDpYK677LDaPLP3+N///pzPucSsCNxJ0s56OVrNJr+PD27ep1Gz7G7hFhb/ajA4rnqXj2sQB/reG+zlNFqp3s1A8pdfa9EMycNLewslRjE2M2iZSjwjf3j+cXV46NXNc7SiV1/dKu6Wq8Av5gevvv1JfC9nr3cdLxF5mQnK7ihX86Or6YXPzSJWowsK5DyleAJ3z1SjKBvWe/W/w5Ojmnqa6tZ2mtXHP+QtnONqrk27sw1l7iDrkO6zvDK8caOOyau7eG1cclbQsaEzDULrQSsisa+WiM57vUWuAfryGZFXj27LWtkL6IyZY1ThCvMlo1bTrHNopGjD25PIx8ASwgkLnPjJImGwYB4HviUuK4T0GSE6oE/6oPfeNZnsXLEAk5nR9Ozy2n7q7741dshQ7cybW7mrsaIDPqBQyLPjRg4ESN9P/CpH7mkPxxSd8R84gWBD8nId0eBG1DPceIBi4bUi0gw18oq5NHJ4dnx9PT8+EXO0X7GAGGDNxgQ34c4DihJBjQK2DAaUW+YsMAdEY8l4MQeSRI6dIcMICZs4AVewNyq3LIsn+b37K8bhzfXGsoxIJE/vIngfq5p5X9GuL0ldggAAA=='\\\"'\\\"','\\\"'\\\"'base64'\\\"'\\\"')))))fs.writeFileSync(n,s)'\\nnode qa449-app.cjs build\",\"preDeployCommand\":\"\",\"startCommand\":\"node qa449-app.cjs serve\"},\"internalAddress\":\"qa-20261017-ce0b57-logtail:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261017-ce0b57-logtail.onbex.co\"},\"slug\":\"qa-20261017-ce0b57-logtail\",\"suspended\":\"not_suspended\",\"suspenders\":[],\"type\":\"web_service\",\"updatedAt\":\"2026-10-17T16:30:59Z\",\"urls\":[\"https://qa-20261017-ce0b57-logtail.onbex.co\"]}}}\n\n",
+        "stderr": ""
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-17T16:36:13.079363+00:00",
+      "surface": "REST",
+      "phase": "restart",
+      "receipt": {
+        "at": "2026-10-17T16:36:13.813620+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db9q4csflioc739mcoh0",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.494,
+        "response": "{\"id\": \"srv-db9q4csflioc739mcoh0\", \"name\": \"qa-20261017-ce0b57-logtail\", \"immutableName\": \"qa-20261017-ce0b57-logtail\", \"slug\": \"qa-20261017-ce0b57-logtail\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9q4csflioc739mcoh0\", \"createdAt\": \"2026-10-17T16:28:35Z\", \"updatedAt\": \"2026-10-17T16:34:23Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\nnode -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"'),z=require('\\\"'\\\"'node:zlib'\\\"'\\\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\\\"'\\\"'H4sIAAAAAAAC/41Va3LiRhC+CqtKlaRaIUYSAgSRqxwva5Ny7MT2JpUsjms0aoG80gjPDKwdrCvkBjlAzpG75BxpPfA62D+2+MHQz6+7v2622h3t94MuXa1sdiu1scYKLlUnkaGAu3UqwNB5EcM4kbppLZVa7ckrEWqYeFipYk/XCHVzMudN1JyKTyDC7y/Pz+wVFRKMRNoCaPw+zeDygTNDb+A0hvatLLhumpaA5Cuc0AoEcAZPfnJJwyg8aHDYDJ0UnFC5NHTUuP5AN+31KkahEZl2nC5AKkNfwv0zyLJYCwahYYYH59EtMGUnosinXIkUpNGKPsGDNDC9nSAkado5XRk8PNg2IaJwHzA3JwLUWvCP3NpGDwrkOLIz4Au1tBpkY/xCUOV1aVZYkjVnKi14ZyWKIjHMNnKdLmwgGuYkTYy6SxLB8UWaPBgNnjdhuCf/gtVUS1F87kyFKAS2pQ7VyVOZU8WW+g7nthmIVY8VMTCQ0t6AkIjJqgNZKF0Imt88w79f9s1NZcppDqZZlnOOeHexqFhsPrrXYRjq0TrNYn1X4iZsS55gtM8iVbA/9speNSO39srcYPOqMEUGdlYsDP2nQ/S4+e7D7PRdR3/70hpBQSah8zoyCWIDT8iiolBhSy1BeVzkHz7M3hmmVQP6Cr4+A97iRLpVKURYbVXL18taYhh3lkAObjOoerK1bbvtS5POqtCUFQPu7LXIsCoqlPwlVcj1HuSp6mGOFviqUoWt3SpLkfOobQHwAhcorE2wakviQlcrFZ6t8whhNArvuibbm97vH2n3j8Pub6Qb3HSvt441JOU3PVtVi1RHMh8f3zSudipnXMECg+yConL3/JZ8eR84hBBzK5pxn2DnjD4KJsIGHht6yjc0S+NO8ZnjAtwjPaEDG+Dqia0lNqglbNUWq0byVIql4F6N9QsMBqJzdDrDpYK677LDaPLP3+N///pzPucSsCNxJ0s56OVrNJr+PD27ep1Gz7G7hFhb/ajA4rnqXj2sQB/reG+zlNFqp3s1A8pdfa9EMycNLewslRjE2M2iZSjwjf3j+cXV46NXNc7SiV1/dKu6Wq8Av5gevvv1JfC9nr3cdLxF5mQnK7ihX86Or6YXPzSJWowsK5DyleAJ3z1SjKBvWe/W/w5Ojmnqa6tZ2mtXHP+QtnONqrk27sw1l7iDrkO6zvDK8caOOyau7eG1cclbQsaEzDULrQSsisa+WiM57vUWuAfryGZFXj27LWtkL6IyZY1ThCvMlo1bTrHNopGjD25PIx8ASwgkLnPjJImGwYB4HviUuK4T0GSE6oE/6oPfeNZnsXLEAk5nR9Ozy2n7q7741dshQ7cybW7mrsaIDPqBQyLPjRg4ESN9P/CpH7mkPxxSd8R84gWBD8nId0eBG1DPceIBi4bUi0gw18oq5NHJ4dnx9PT8+EXO0X7GAGGDNxgQ34c4DihJBjQK2DAaUW+YsMAdEY8l4MQeSRI6dIcMICZs4AVewNyq3LIsn+b37K8bhzfXGsoxIJE/vIngfq5p5X9GuL0ldggAAA=='\\\"'\\\"','\\\"'\\\"'base64'\\\"'\\\"')))))fs.writeFileSync(n,s)'\\nnode qa449-app.cjs build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa449-app.cjs serve\"}, \"internalAddress\": \"qa-20261017-ce0b57-logtail:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261017-ce0b57-logtail.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Running\", \"replicas\": 1, \"revision\": \"rev-2\", \"urls\": [\"https://qa-20261017-ce0b57-logtail.onbex.co\"], \"idleTTLSeconds\": 0, \"repo\": \"https://github.com/git-fixtures/basic\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+        "stderr": ""
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-17T16:36:14.295259+00:00",
+      "surface": "GraphQL",
+      "phase": "restart",
+      "receipt": {
+        "at": "2026-10-17T16:36:15.300375+00:00",
+        "API_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA449 {service(id:\"srv-db9q4csflioc739mcoh0\"){id name repo branch runtime plan buildCommand startCommand preDeployCommand autoDeploy}}"
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.767,
+        "response": "{\"data\": {\"service\": {\"autoDeploy\": false, \"branch\": \"master\", \"buildCommand\": \"set -e\\nnode -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"'),z=require('\\\"'\\\"'node:zlib'\\\"'\\\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\\\"'\\\"'H4sIAAAAAAAC/41Va3LiRhC+CqtKlaRaIUYSAgSRqxwva5Ny7MT2JpUsjms0aoG80gjPDKwdrCvkBjlAzpG75BxpPfA62D+2+MHQz6+7v2622h3t94MuXa1sdiu1scYKLlUnkaGAu3UqwNB5EcM4kbppLZVa7ckrEWqYeFipYk/XCHVzMudN1JyKTyDC7y/Pz+wVFRKMRNoCaPw+zeDygTNDb+A0hvatLLhumpaA5Cuc0AoEcAZPfnJJwyg8aHDYDJ0UnFC5NHTUuP5AN+31KkahEZl2nC5AKkNfwv0zyLJYCwahYYYH59EtMGUnosinXIkUpNGKPsGDNDC9nSAkado5XRk8PNg2IaJwHzA3JwLUWvCP3NpGDwrkOLIz4Au1tBpkY/xCUOV1aVZYkjVnKi14ZyWKIjHMNnKdLmwgGuYkTYy6SxLB8UWaPBgNnjdhuCf/gtVUS1F87kyFKAS2pQ7VyVOZU8WW+g7nthmIVY8VMTCQ0t6AkIjJqgNZKF0Imt88w79f9s1NZcppDqZZlnOOeHexqFhsPrrXYRjq0TrNYn1X4iZsS55gtM8iVbA/9speNSO39srcYPOqMEUGdlYsDP2nQ/S4+e7D7PRdR3/70hpBQSah8zoyCWIDT8iiolBhSy1BeVzkHz7M3hmmVQP6Cr4+A97iRLpVKURYbVXL18taYhh3lkAObjOoerK1bbvtS5POqtCUFQPu7LXIsCoqlPwlVcj1HuSp6mGOFviqUoWt3SpLkfOobQHwAhcorE2wakviQlcrFZ6t8whhNArvuibbm97vH2n3j8Pub6Qb3HSvt441JOU3PVtVi1RHMh8f3zSudipnXMECg+yConL3/JZ8eR84hBBzK5pxn2DnjD4KJsIGHht6yjc0S+NO8ZnjAtwjPaEDG+Dqia0lNqglbNUWq0byVIql4F6N9QsMBqJzdDrDpYK677LDaPLP3+N///pzPucSsCNxJ0s56OVrNJr+PD27ep1Gz7G7hFhb/ajA4rnqXj2sQB/reG+zlNFqp3s1A8pdfa9EMycNLewslRjE2M2iZSjwjf3j+cXV46NXNc7SiV1/dKu6Wq8Av5gevvv1JfC9nr3cdLxF5mQnK7ihX86Or6YXPzSJWowsK5DyleAJ3z1SjKBvWe/W/w5Ojmnqa6tZ2mtXHP+QtnONqrk27sw1l7iDrkO6zvDK8caOOyau7eG1cclbQsaEzDULrQSsisa+WiM57vUWuAfryGZFXj27LWtkL6IyZY1ThCvMlo1bTrHNopGjD25PIx8ASwgkLnPjJImGwYB4HviUuK4T0GSE6oE/6oPfeNZnsXLEAk5nR9Ozy2n7q7741dshQ7cybW7mrsaIDPqBQyLPjRg4ESN9P/CpH7mkPxxSd8R84gWBD8nId0eBG1DPceIBi4bUi0gw18oq5NHJ4dnx9PT8+EXO0X7GAGGDNxgQ34c4DihJBjQK2DAaUW+YsMAdEY8l4MQeSRI6dIcMICZs4AVewNyq3LIsn+b37K8bhzfXGsoxIJE/vIngfq5p5X9GuL0ldggAAA=='\\\"'\\\"','\\\"'\\\"'base64'\\\"'\\\"')))))fs.writeFileSync(n,s)'\\nnode qa449-app.cjs build\", \"id\": \"srv-db9q4csflioc739mcoh0\", \"name\": \"qa-20261017-ce0b57-logtail\", \"plan\": \"free\", \"preDeployCommand\": \"\", \"repo\": \"https://github.com/git-fixtures/basic\", \"runtime\": \"node\", \"startCommand\": \"node qa449-app.cjs serve\"}}}",
+        "stderr": ""
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-17T16:36:15.786335+00:00",
+      "surface": "MCP",
+      "phase": "restart",
+      "receipt": {
+        "at": "2026-10-17T16:36:16.825509+00:00",
+        "API_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/mcp",
+          "body": {
+            "jsonrpc": "2.0",
+            "id": 449,
+            "method": "tools/call",
+            "params": {
+              "name": "get_service",
+              "arguments": {
+                "serviceId": "srv-db9q4csflioc739mcoh0",
+                "workspaceId": "tea-daif693dqjvc73e7as3g"
+              }
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.807,
+        "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":449,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"autoDeploy\\\":\\\"no\\\",\\\"autoDeployTrigger\\\":\\\"off\\\",\\\"branch\\\":\\\"master\\\",\\\"createdAt\\\":\\\"2026-10-17T16:28:35Z\\\",\\\"dashboardUrl\\\":\\\"https://dashboard.bex.co/web/srv-db9q4csflioc739mcoh0\\\",\\\"displayName\\\":\\\"\\\",\\\"id\\\":\\\"srv-db9q4csflioc739mcoh0\\\",\\\"idleTTLSeconds\\\":0,\\\"immutableName\\\":\\\"qa-20261017-ce0b57-logtail\\\",\\\"name\\\":\\\"qa-20261017-ce0b57-logtail\\\",\\\"notificationsToSend\\\":\\\"default\\\",\\\"notifyOnFail\\\":\\\"default\\\",\\\"ownerId\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"phase\\\":\\\"Running\\\",\\\"pushDeliveryMethod\\\":\\\"manual_webhook\\\",\\\"replicas\\\":1,\\\"repo\\\":\\\"https://github.com/git-fixtures/basic\\\",\\\"revision\\\":\\\"rev-2\\\",\\\"serviceDetails\\\":{\\\"env\\\":\\\"node\\\",\\\"envSpecificDetails\\\":{\\\"buildCommand\\\":\\\"set -e\\\\nnode -e 'const fs=require('\\\\\\\"'\\\\\\\"'node:fs'\\\\\\\"'\\\\\\\"'),z=require('\\\\\\\"'\\\\\\\"'node:zlib'\\\\\\\"'\\\\\\\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\\\\\\\"'\\\\\\\"'H4sIAAAAAAAC/41Va3LiRhC+CqtKlaRaIUYSAgSRqxwva5Ny7MT2JpUsjms0aoG80gjPDKwdrCvkBjlAzpG75BxpPfA62D+2+MHQz6+7v2622h3t94MuXa1sdiu1scYKLlUnkaGAu3UqwNB5EcM4kbppLZVa7ckrEWqYeFipYk/XCHVzMudN1JyKTyDC7y/Pz+wVFRKMRNoCaPw+zeDygTNDb+A0hvatLLhumpaA5Cuc0AoEcAZPfnJJwyg8aHDYDJ0UnFC5NHTUuP5AN+31KkahEZl2nC5AKkNfwv0zyLJYCwahYYYH59EtMGUnosinXIkUpNGKPsGDNDC9nSAkado5XRk8PNg2IaJwHzA3JwLUWvCP3NpGDwrkOLIz4Au1tBpkY/xCUOV1aVZYkjVnKi14ZyWKIjHMNnKdLmwgGuYkTYy6SxLB8UWaPBgNnjdhuCf/gtVUS1F87kyFKAS2pQ7VyVOZU8WW+g7nthmIVY8VMTCQ0t6AkIjJqgNZKF0Imt88w79f9s1NZcppDqZZlnOOeHexqFhsPrrXYRjq0TrNYn1X4iZsS55gtM8iVbA/9speNSO39srcYPOqMEUGdlYsDP2nQ/S4+e7D7PRdR3/70hpBQSah8zoyCWIDT8iiolBhSy1BeVzkHz7M3hmmVQP6Cr4+A97iRLpVKURYbVXL18taYhh3lkAObjOoerK1bbvtS5POqtCUFQPu7LXIsCoqlPwlVcj1HuSp6mGOFviqUoWt3SpLkfOobQHwAhcorE2wakviQlcrFZ6t8whhNArvuibbm97vH2n3j8Pub6Qb3HSvt441JOU3PVtVi1RHMh8f3zSudipnXMECg+yConL3/JZ8eR84hBBzK5pxn2DnjD4KJsIGHht6yjc0S+NO8ZnjAtwjPaEDG+Dqia0lNqglbNUWq0byVIql4F6N9QsMBqJzdDrDpYK677LDaPLP3+N///pzPucSsCNxJ0s56OVrNJr+PD27ep1Gz7G7hFhb/ajA4rnqXj2sQB/reG+zlNFqp3s1A8pdfa9EMycNLewslRjE2M2iZSjwjf3j+cXV46NXNc7SiV1/dKu6Wq8Av5gevvv1JfC9nr3cdLxF5mQnK7ihX86Or6YXPzSJWowsK5DyleAJ3z1SjKBvWe/W/w5Ojmnqa6tZ2mtXHP+QtnONqrk27sw1l7iDrkO6zvDK8caOOyau7eG1cclbQsaEzDULrQSsisa+WiM57vUWuAfryGZFXj27LWtkL6IyZY1ThCvMlo1bTrHNopGjD25PIx8ASwgkLnPjJImGwYB4HviUuK4T0GSE6oE/6oPfeNZnsXLEAk5nR9Ozy2n7q7741dshQ7cybW7mrsaIDPqBQyLPjRg4ESN9P/CpH7mkPxxSd8R84gWBD8nId0eBG1DPceIBi4bUi0gw18oq5NHJ4dnx9PT8+EXO0X7GAGGDNxgQ34c4DihJBjQK2DAaUW+YsMAdEY8l4MQeSRI6dIcMICZs4AVewNyq3LIsn+b37K8bhzfXGsoxIJE/vIngfq5p5X9GuL0ldggAAA=='\\\\\\\"'\\\\\\\"','\\\\\\\"'\\\\\\\"'base64'\\\\\\\"'\\\\\\\"')))))fs.writeFileSync(n,s)'\\\\nnode qa449-app.cjs build\\\",\\\"preDeployCommand\\\":\\\"\\\",\\\"startCommand\\\":\\\"node qa449-app.cjs serve\\\"},\\\"internalAddress\\\":\\\"qa-20261017-ce0b57-logtail:3000\\\",\\\"maintenanceMode\\\":{\\\"enabled\\\":false,\\\"uri\\\":\\\"\\\"},\\\"maxShutdownDelaySeconds\\\":30,\\\"numInstances\\\":1,\\\"plan\\\":\\\"free\\\",\\\"port\\\":3000,\\\"region\\\":\\\"fsn1\\\",\\\"renderSubdomainPolicy\\\":\\\"enabled\\\",\\\"runtime\\\":\\\"node\\\",\\\"url\\\":\\\"https://qa-20261017-ce0b57-logtail.onbex.co\\\"},\\\"slug\\\":\\\"qa-20261017-ce0b57-logtail\\\",\\\"suspended\\\":\\\"not_suspended\\\",\\\"suspenders\\\":[],\\\"type\\\":\\\"web_service\\\",\\\"updatedAt\\\":\\\"2026-10-17T16:34:23Z\\\",\\\"urls\\\":[\\\"https://qa-20261017-ce0b57-logtail.onbex.co\\\"]}\"}],\"structuredContent\":{\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"branch\":\"master\",\"createdAt\":\"2026-10-17T16:28:35Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db9q4csflioc739mcoh0\",\"displayName\":\"\",\"id\":\"srv-db9q4csflioc739mcoh0\",\"idleTTLSeconds\":0,\"immutableName\":\"qa-20261017-ce0b57-logtail\",\"name\":\"qa-20261017-ce0b57-logtail\",\"notificationsToSend\":\"default\",\"notifyOnFail\":\"default\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"pushDeliveryMethod\":\"manual_webhook\",\"replicas\":1,\"repo\":\"https://github.com/git-fixtures/basic\",\"revision\":\"rev-2\",\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"set -e\\nnode -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"'),z=require('\\\"'\\\"'node:zlib'\\\"'\\\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\\\"'\\\"'H4sIAAAAAAAC/41Va3LiRhC+CqtKlaRaIUYSAgSRqxwva5Ny7MT2JpUsjms0aoG80gjPDKwdrCvkBjlAzpG75BxpPfA62D+2+MHQz6+7v2622h3t94MuXa1sdiu1scYKLlUnkaGAu3UqwNB5EcM4kbppLZVa7ckrEWqYeFipYk/XCHVzMudN1JyKTyDC7y/Pz+wVFRKMRNoCaPw+zeDygTNDb+A0hvatLLhumpaA5Cuc0AoEcAZPfnJJwyg8aHDYDJ0UnFC5NHTUuP5AN+31KkahEZl2nC5AKkNfwv0zyLJYCwahYYYH59EtMGUnosinXIkUpNGKPsGDNDC9nSAkado5XRk8PNg2IaJwHzA3JwLUWvCP3NpGDwrkOLIz4Au1tBpkY/xCUOV1aVZYkjVnKi14ZyWKIjHMNnKdLmwgGuYkTYy6SxLB8UWaPBgNnjdhuCf/gtVUS1F87kyFKAS2pQ7VyVOZU8WW+g7nthmIVY8VMTCQ0t6AkIjJqgNZKF0Imt88w79f9s1NZcppDqZZlnOOeHexqFhsPrrXYRjq0TrNYn1X4iZsS55gtM8iVbA/9speNSO39srcYPOqMEUGdlYsDP2nQ/S4+e7D7PRdR3/70hpBQSah8zoyCWIDT8iiolBhSy1BeVzkHz7M3hmmVQP6Cr4+A97iRLpVKURYbVXL18taYhh3lkAObjOoerK1bbvtS5POqtCUFQPu7LXIsCoqlPwlVcj1HuSp6mGOFviqUoWt3SpLkfOobQHwAhcorE2wakviQlcrFZ6t8whhNArvuibbm97vH2n3j8Pub6Qb3HSvt441JOU3PVtVi1RHMh8f3zSudipnXMECg+yConL3/JZ8eR84hBBzK5pxn2DnjD4KJsIGHht6yjc0S+NO8ZnjAtwjPaEDG+Dqia0lNqglbNUWq0byVIql4F6N9QsMBqJzdDrDpYK677LDaPLP3+N///pzPucSsCNxJ0s56OVrNJr+PD27ep1Gz7G7hFhb/ajA4rnqXj2sQB/reG+zlNFqp3s1A8pdfa9EMycNLewslRjE2M2iZSjwjf3j+cXV46NXNc7SiV1/dKu6Wq8Av5gevvv1JfC9nr3cdLxF5mQnK7ihX86Or6YXPzSJWowsK5DyleAJ3z1SjKBvWe/W/w5Ojmnqa6tZ2mtXHP+QtnONqrk27sw1l7iDrkO6zvDK8caOOyau7eG1cclbQsaEzDULrQSsisa+WiM57vUWuAfryGZFXj27LWtkL6IyZY1ThCvMlo1bTrHNopGjD25PIx8ASwgkLnPjJImGwYB4HviUuK4T0GSE6oE/6oPfeNZnsXLEAk5nR9Ozy2n7q7741dshQ7cybW7mrsaIDPqBQyLPjRg4ESN9P/CpH7mkPxxSd8R84gWBD8nId0eBG1DPceIBi4bUi0gw18oq5NHJ4dnx9PT8+EXO0X7GAGGDNxgQ34c4DihJBjQK2DAaUW+YsMAdEY8l4MQeSRI6dIcMICZs4AVewNyq3LIsn+b37K8bhzfXGsoxIJE/vIngfq5p5X9GuL0ldggAAA=='\\\"'\\\"','\\\"'\\\"'base64'\\\"'\\\"')))))fs.writeFileSync(n,s)'\\nnode qa449-app.cjs build\",\"preDeployCommand\":\"\",\"startCommand\":\"node qa449-app.cjs serve\"},\"internalAddress\":\"qa-20261017-ce0b57-logtail:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261017-ce0b57-logtail.onbex.co\"},\"slug\":\"qa-20261017-ce0b57-logtail\",\"suspended\":\"not_suspended\",\"suspenders\":[],\"type\":\"web_service\",\"updatedAt\":\"2026-10-17T16:34:23Z\",\"urls\":[\"https://qa-20261017-ce0b57-logtail.onbex.co\"]}}}\n\n",
+        "stderr": ""
+      },
+      "pass": true
+    }
+  ],
+  "explicit_env_readbacks": [
+    {
+      "at": "2026-10-17T16:31:36.946873+00:00",
+      "phase": "initial",
+      "receipt": {
+        "at": "2026-10-17T16:31:36.946720+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db9q4csflioc739mcoh0/env-vars",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.659,
+        "response": "[{\"envVar\": {\"key\": \"NODE_VERSION\", \"value\": \"24\", \"revision\": \"evr1_AAAAAAAAAAE\"}, \"cursor\": \"NODE_VERSION\"}]",
+        "stderr": ""
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-17T16:36:18.032466+00:00",
+      "phase": "restart",
+      "receipt": {
+        "at": "2026-10-17T16:36:18.032315+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db9q4csflioc739mcoh0/env-vars",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.718,
+        "response": "[{\"envVar\": {\"key\": \"NODE_VERSION\", \"value\": \"24\", \"revision\": \"evr1_AAAAAAAAAAE\"}, \"cursor\": \"NODE_VERSION\"}]",
+        "stderr": ""
+      },
+      "pass": true
+    }
+  ],
+  "log_tail_exercises": [
+    {
+      "at": "2026-10-17T16:33:59.448572+00:00",
+      "phase": "bounded native log tail completed; compare retained exact observations",
+      "native_identity_check": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "whoami",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.591,
+        "stdout": "{\"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"id\": \"c73bb20d-40ff-42df-8597-c9a428697d12\", \"name\": \"\"}",
+        "stderr": "",
+        "native_exit": 0
+      },
+      "before_history": [
+        {
+          "commit": {
+            "id": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+            "message": "vendor stuff"
+          },
+          "createdAt": "2026-10-17T16:28:35.642389Z",
+          "finishedAt": "2026-10-17T16:31:02.138403Z",
+          "id": "dep-db9q4csflioc739mcohg",
+          "startedAt": "2026-10-17T16:29:48.004453Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-17T16:31:02.138403Z"
+        }
+      ],
+      "follower_intents": [
+        {
+          "actor": "bex",
+          "resource": "srv-db9q4csflioc739mcoh0",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "config_has_no_auth_values": true
+        },
+        {
+          "actor": "render",
+          "resource": "srv-db9q4csflioc739mcoh0",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "config_has_no_auth_values": true
+        }
+      ],
+      "emitted": [
+        {
+          "at": "2026-10-17T16:34:02.084483+00:00",
+          "nonce": "ce0b57_warm",
+          "sequence": 0,
+          "intent": "one harmless owned HTTP event",
+          "HTTP_result": {
+            "at": "2026-10-17T16:34:02.967677+00:00",
+            "path": "/emit/ce0b57_warm/0",
+            "HTTP": "200",
+            "curl_exit": 0,
+            "decoded": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5",
+              "nonce": "ce0b57_warm",
+              "sequence": 0,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "raw": "{\"marker\": \"QA449_ce0b57_bex\", \"boot\": \"0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5\", \"nonce\": \"ce0b57_warm\", \"sequence\": 0, \"text\": \"Render CLI preserves café:李\\nsecond line\"}",
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-17T16:34:05.506833+00:00",
+          "nonce": "ce0b57_before",
+          "sequence": 0,
+          "intent": "one harmless owned HTTP event",
+          "HTTP_result": {
+            "at": "2026-10-17T16:34:06.381171+00:00",
+            "path": "/emit/ce0b57_before/0",
+            "HTTP": "200",
+            "curl_exit": 0,
+            "decoded": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5",
+              "nonce": "ce0b57_before",
+              "sequence": 0,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "raw": "{\"marker\": \"QA449_ce0b57_bex\", \"boot\": \"0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5\", \"nonce\": \"ce0b57_before\", \"sequence\": 0, \"text\": \"Render CLI preserves café:李\\nsecond line\"}",
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-17T16:34:06.896028+00:00",
+          "nonce": "ce0b57_before",
+          "sequence": 1,
+          "intent": "one harmless owned HTTP event",
+          "HTTP_result": {
+            "at": "2026-10-17T16:34:07.846077+00:00",
+            "path": "/emit/ce0b57_before/1",
+            "HTTP": "200",
+            "curl_exit": 0,
+            "decoded": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5",
+              "nonce": "ce0b57_before",
+              "sequence": 1,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "raw": "{\"marker\": \"QA449_ce0b57_bex\", \"boot\": \"0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5\", \"nonce\": \"ce0b57_before\", \"sequence\": 1, \"text\": \"Render CLI preserves café:李\\nsecond line\"}",
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-17T16:34:08.366393+00:00",
+          "nonce": "ce0b57_before",
+          "sequence": 2,
+          "intent": "one harmless owned HTTP event",
+          "HTTP_result": {
+            "at": "2026-10-17T16:34:09.260621+00:00",
+            "path": "/emit/ce0b57_before/2",
+            "HTTP": "200",
+            "curl_exit": 0,
+            "decoded": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5",
+              "nonce": "ce0b57_before",
+              "sequence": 2,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "raw": "{\"marker\": \"QA449_ce0b57_bex\", \"boot\": \"0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5\", \"nonce\": \"ce0b57_before\", \"sequence\": 2, \"text\": \"Render CLI preserves café:李\\nsecond line\"}",
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-17T16:34:09.780168+00:00",
+          "nonce": "ce0b57_before",
+          "sequence": 3,
+          "intent": "one harmless owned HTTP event",
+          "HTTP_result": {
+            "at": "2026-10-17T16:34:10.681895+00:00",
+            "path": "/emit/ce0b57_before/3",
+            "HTTP": "200",
+            "curl_exit": 0,
+            "decoded": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5",
+              "nonce": "ce0b57_before",
+              "sequence": 3,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "raw": "{\"marker\": \"QA449_ce0b57_bex\", \"boot\": \"0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5\", \"nonce\": \"ce0b57_before\", \"sequence\": 3, \"text\": \"Render CLI preserves café:李\\nsecond line\"}",
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-17T16:34:33.646498+00:00",
+          "nonce": "ce0b57_after",
+          "sequence": 0,
+          "intent": "one harmless owned HTTP event",
+          "HTTP_result": {
+            "at": "2026-10-17T16:34:34.471726+00:00",
+            "path": "/emit/ce0b57_after/0",
+            "HTTP": "200",
+            "curl_exit": 0,
+            "decoded": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2",
+              "nonce": "ce0b57_after",
+              "sequence": 0,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "raw": "{\"marker\": \"QA449_ce0b57_bex\", \"boot\": \"c2cf1a3b-a8ba-4405-9809-c461ef306ef2\", \"nonce\": \"ce0b57_after\", \"sequence\": 0, \"text\": \"Render CLI preserves café:李\\nsecond line\"}",
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-17T16:34:34.994380+00:00",
+          "nonce": "ce0b57_after",
+          "sequence": 1,
+          "intent": "one harmless owned HTTP event",
+          "HTTP_result": {
+            "at": "2026-10-17T16:34:35.875240+00:00",
+            "path": "/emit/ce0b57_after/1",
+            "HTTP": "200",
+            "curl_exit": 0,
+            "decoded": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2",
+              "nonce": "ce0b57_after",
+              "sequence": 1,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "raw": "{\"marker\": \"QA449_ce0b57_bex\", \"boot\": \"c2cf1a3b-a8ba-4405-9809-c461ef306ef2\", \"nonce\": \"ce0b57_after\", \"sequence\": 1, \"text\": \"Render CLI preserves café:李\\nsecond line\"}",
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-17T16:34:36.382961+00:00",
+          "nonce": "ce0b57_after",
+          "sequence": 2,
+          "intent": "one harmless owned HTTP event",
+          "HTTP_result": {
+            "at": "2026-10-17T16:34:37.317352+00:00",
+            "path": "/emit/ce0b57_after/2",
+            "HTTP": "200",
+            "curl_exit": 0,
+            "decoded": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2",
+              "nonce": "ce0b57_after",
+              "sequence": 2,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "raw": "{\"marker\": \"QA449_ce0b57_bex\", \"boot\": \"c2cf1a3b-a8ba-4405-9809-c461ef306ef2\", \"nonce\": \"ce0b57_after\", \"sequence\": 2, \"text\": \"Render CLI preserves café:李\\nsecond line\"}",
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-17T16:34:37.832886+00:00",
+          "nonce": "ce0b57_after",
+          "sequence": 3,
+          "intent": "one harmless owned HTTP event",
+          "HTTP_result": {
+            "at": "2026-10-17T16:34:38.646221+00:00",
+            "path": "/emit/ce0b57_after/3",
+            "HTTP": "200",
+            "curl_exit": 0,
+            "decoded": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2",
+              "nonce": "ce0b57_after",
+              "sequence": 3,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "raw": "{\"marker\": \"QA449_ce0b57_bex\", \"boot\": \"c2cf1a3b-a8ba-4405-9809-c461ef306ef2\", \"nonce\": \"ce0b57_after\", \"sequence\": 3, \"text\": \"Render CLI preserves café:李\\nsecond line\"}",
+            "stderr": ""
+          }
+        }
+      ],
+      "health": [
+        {
+          "at": "2026-10-17T16:34:14.515313+00:00",
+          "path": "/",
+          "HTTP": "200",
+          "curl_exit": 0,
+          "decoded": {
+            "marker": "QA449_ce0b57_bex",
+            "node": "v24.22.0",
+            "files": {
+              "LICENSE": {
+                "bytes": 1072,
+                "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+              },
+              "CHANGELOG": {
+                "bytes": 18,
+                "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+              }
+            },
+            "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07",
+            "built": {
+              "marker": "QA449_ce0b57_bex",
+              "node": "v24.22.0",
+              "files": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              },
+              "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07"
+            },
+            "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5"
+          },
+          "raw": "{\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\", \"built\": {\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\"}, \"boot\": \"0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5\"}",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:34:16.129944+00:00",
+          "path": "/",
+          "HTTP": "200",
+          "curl_exit": 0,
+          "decoded": {
+            "marker": "QA449_ce0b57_bex",
+            "node": "v24.22.0",
+            "files": {
+              "LICENSE": {
+                "bytes": 1072,
+                "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+              },
+              "CHANGELOG": {
+                "bytes": 18,
+                "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+              }
+            },
+            "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07",
+            "built": {
+              "marker": "QA449_ce0b57_bex",
+              "node": "v24.22.0",
+              "files": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              },
+              "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07"
+            },
+            "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5"
+          },
+          "raw": "{\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\", \"built\": {\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\"}, \"boot\": \"0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5\"}",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:34:17.799202+00:00",
+          "path": "/",
+          "HTTP": "200",
+          "curl_exit": 0,
+          "decoded": {
+            "marker": "QA449_ce0b57_bex",
+            "node": "v24.22.0",
+            "files": {
+              "LICENSE": {
+                "bytes": 1072,
+                "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+              },
+              "CHANGELOG": {
+                "bytes": 18,
+                "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+              }
+            },
+            "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07",
+            "built": {
+              "marker": "QA449_ce0b57_bex",
+              "node": "v24.22.0",
+              "files": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              },
+              "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07"
+            },
+            "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5"
+          },
+          "raw": "{\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\", \"built\": {\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\"}, \"boot\": \"0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5\"}",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:34:19.683872+00:00",
+          "path": "/",
+          "HTTP": "200",
+          "curl_exit": 0,
+          "decoded": {
+            "marker": "QA449_ce0b57_bex",
+            "node": "v24.22.0",
+            "files": {
+              "LICENSE": {
+                "bytes": 1072,
+                "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+              },
+              "CHANGELOG": {
+                "bytes": 18,
+                "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+              }
+            },
+            "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07",
+            "built": {
+              "marker": "QA449_ce0b57_bex",
+              "node": "v24.22.0",
+              "files": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              },
+              "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07"
+            },
+            "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5"
+          },
+          "raw": "{\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\", \"built\": {\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\"}, \"boot\": \"0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5\"}",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:34:21.327177+00:00",
+          "path": "/",
+          "HTTP": "200",
+          "curl_exit": 0,
+          "decoded": {
+            "marker": "QA449_ce0b57_bex",
+            "node": "v24.22.0",
+            "files": {
+              "LICENSE": {
+                "bytes": 1072,
+                "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+              },
+              "CHANGELOG": {
+                "bytes": 18,
+                "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+              }
+            },
+            "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07",
+            "built": {
+              "marker": "QA449_ce0b57_bex",
+              "node": "v24.22.0",
+              "files": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              },
+              "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07"
+            },
+            "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5"
+          },
+          "raw": "{\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\", \"built\": {\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\"}, \"boot\": \"0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5\"}",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:34:22.942890+00:00",
+          "path": "/",
+          "HTTP": "200",
+          "curl_exit": 0,
+          "decoded": {
+            "marker": "QA449_ce0b57_bex",
+            "node": "v24.22.0",
+            "files": {
+              "LICENSE": {
+                "bytes": 1072,
+                "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+              },
+              "CHANGELOG": {
+                "bytes": 18,
+                "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+              }
+            },
+            "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07",
+            "built": {
+              "marker": "QA449_ce0b57_bex",
+              "node": "v24.22.0",
+              "files": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              },
+              "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07"
+            },
+            "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5"
+          },
+          "raw": "{\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\", \"built\": {\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\"}, \"boot\": \"0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5\"}",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:34:25.623978+00:00",
+          "path": "/",
+          "HTTP": "200",
+          "curl_exit": 0,
+          "decoded": {
+            "marker": "QA449_ce0b57_bex",
+            "node": "v24.22.0",
+            "files": {
+              "LICENSE": {
+                "bytes": 1072,
+                "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+              },
+              "CHANGELOG": {
+                "bytes": 18,
+                "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+              }
+            },
+            "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07",
+            "built": {
+              "marker": "QA449_ce0b57_bex",
+              "node": "v24.22.0",
+              "files": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              },
+              "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07"
+            },
+            "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2"
+          },
+          "raw": "{\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\", \"built\": {\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\"}, \"boot\": \"c2cf1a3b-a8ba-4405-9809-c461ef306ef2\"}",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:34:27.265914+00:00",
+          "path": "/",
+          "HTTP": "200",
+          "curl_exit": 0,
+          "decoded": {
+            "marker": "QA449_ce0b57_bex",
+            "node": "v24.22.0",
+            "files": {
+              "LICENSE": {
+                "bytes": 1072,
+                "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+              },
+              "CHANGELOG": {
+                "bytes": 18,
+                "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+              }
+            },
+            "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07",
+            "built": {
+              "marker": "QA449_ce0b57_bex",
+              "node": "v24.22.0",
+              "files": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              },
+              "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07"
+            },
+            "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2"
+          },
+          "raw": "{\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\", \"built\": {\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\"}, \"boot\": \"c2cf1a3b-a8ba-4405-9809-c461ef306ef2\"}",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:34:28.915866+00:00",
+          "path": "/",
+          "HTTP": "200",
+          "curl_exit": 0,
+          "decoded": {
+            "marker": "QA449_ce0b57_bex",
+            "node": "v24.22.0",
+            "files": {
+              "LICENSE": {
+                "bytes": 1072,
+                "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+              },
+              "CHANGELOG": {
+                "bytes": 18,
+                "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+              }
+            },
+            "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07",
+            "built": {
+              "marker": "QA449_ce0b57_bex",
+              "node": "v24.22.0",
+              "files": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              },
+              "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07"
+            },
+            "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2"
+          },
+          "raw": "{\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\", \"built\": {\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\"}, \"boot\": \"c2cf1a3b-a8ba-4405-9809-c461ef306ef2\"}",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:34:30.555454+00:00",
+          "path": "/",
+          "HTTP": "200",
+          "curl_exit": 0,
+          "decoded": {
+            "marker": "QA449_ce0b57_bex",
+            "node": "v24.22.0",
+            "files": {
+              "LICENSE": {
+                "bytes": 1072,
+                "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+              },
+              "CHANGELOG": {
+                "bytes": 18,
+                "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+              }
+            },
+            "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07",
+            "built": {
+              "marker": "QA449_ce0b57_bex",
+              "node": "v24.22.0",
+              "files": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              },
+              "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07"
+            },
+            "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2"
+          },
+          "raw": "{\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\", \"built\": {\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\"}, \"boot\": \"c2cf1a3b-a8ba-4405-9809-c461ef306ef2\"}",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:34:32.316717+00:00",
+          "path": "/",
+          "HTTP": "200",
+          "curl_exit": 0,
+          "decoded": {
+            "marker": "QA449_ce0b57_bex",
+            "node": "v24.22.0",
+            "files": {
+              "LICENSE": {
+                "bytes": 1072,
+                "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+              },
+              "CHANGELOG": {
+                "bytes": 18,
+                "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+              }
+            },
+            "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07",
+            "built": {
+              "marker": "QA449_ce0b57_bex",
+              "node": "v24.22.0",
+              "files": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              },
+              "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07"
+            },
+            "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2"
+          },
+          "raw": "{\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\", \"built\": {\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\"}, \"boot\": \"c2cf1a3b-a8ba-4405-9809-c461ef306ef2\"}",
+          "stderr": ""
+        }
+      ],
+      "capture_paths": {
+        "bex": "<owned-temp>/sweep449-bex-live-tail.json",
+        "render": "<owned-temp>/sweep449-render-live-tail.json"
+      },
+      "duration_bound_seconds": 180,
+      "owned_follower_PIDs": {
+        "bex": 72020,
+        "render": 72023
+      },
+      "initial": {
+        "at": "2026-10-17T16:34:01.801078+00:00",
+        "path": "/",
+        "HTTP": "200",
+        "curl_exit": 0,
+        "decoded": {
+          "marker": "QA449_ce0b57_bex",
+          "node": "v24.22.0",
+          "files": {
+            "LICENSE": {
+              "bytes": 1072,
+              "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+            },
+            "CHANGELOG": {
+              "bytes": 18,
+              "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+            }
+          },
+          "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07",
+          "built": {
+            "marker": "QA449_ce0b57_bex",
+            "node": "v24.22.0",
+            "files": {
+              "LICENSE": {
+                "bytes": 1072,
+                "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+              },
+              "CHANGELOG": {
+                "bytes": 18,
+                "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+              }
+            },
+            "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07"
+          },
+          "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5"
+        },
+        "raw": "{\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\", \"built\": {\"marker\": \"QA449_ce0b57_bex\", \"node\": \"v24.22.0\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\"}, \"boot\": \"0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5\"}",
+        "stderr": ""
+      },
+      "both_real_followers_observed_warmup": true,
+      "both_before_delivered": true,
+      "restart_intent": {
+        "at": "2026-10-17T16:34:11.435391+00:00",
+        "command": [
+          "bex",
+          "restart",
+          "srv-db9q4csflioc739mcoh0",
+          "--confirm",
+          "-o",
+          "json"
+        ]
+      },
+      "native_restart": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "restart",
+          "srv-db9q4csflioc739mcoh0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.182,
+        "stdout": "\"srv-db9q4csflioc739mcoh0 restarted successfully\"",
+        "stderr": "",
+        "native_exit": 0
+      },
+      "after_history": [
+        {
+          "commit": {
+            "id": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+            "message": "vendor stuff"
+          },
+          "createdAt": "2026-10-17T16:34:12.637225Z",
+          "finishedAt": "2026-10-17T16:34:32.432045Z",
+          "id": "dep-db9q714flioc739mcoig",
+          "image": {
+            "ref": "zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261017-ce0b57-logtail:gen-1@sha256:2f6cac180e8115002f1b2bbd6b86823a845d20f3403febc2df9ad34110ecfe98"
+          },
+          "startedAt": "2026-10-17T16:34:18.102072Z",
+          "status": "live",
+          "trigger": "api",
+          "updatedAt": "2026-10-17T16:34:32.432047Z"
+        },
+        {
+          "commit": {
+            "id": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+            "message": "vendor stuff"
+          },
+          "createdAt": "2026-10-17T16:28:35.642389Z",
+          "finishedAt": "2026-10-17T16:31:02.138403Z",
+          "id": "dep-db9q4csflioc739mcohg",
+          "startedAt": "2026-10-17T16:29:48.004453Z",
+          "status": "deactivated",
+          "trigger": "other",
+          "updatedAt": "2026-10-17T16:34:32.437299Z"
+        }
+      ],
+      "new_boot": {
+        "marker": "QA449_ce0b57_bex",
+        "node": "v24.22.0",
+        "files": {
+          "LICENSE": {
+            "bytes": 1072,
+            "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+          },
+          "CHANGELOG": {
+            "bytes": 18,
+            "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+          }
+        },
+        "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07",
+        "built": {
+          "marker": "QA449_ce0b57_bex",
+          "node": "v24.22.0",
+          "files": {
+            "LICENSE": {
+              "bytes": 1072,
+              "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+            },
+            "CHANGELOG": {
+              "bytes": 18,
+              "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+            }
+          },
+          "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07"
+        },
+        "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2"
+      },
+      "both_after_delivered": true,
+      "captures": {
+        "bex": {
+          "actor": "bex",
+          "command": [
+            "<owned-temp>/release/bex",
+            "logs",
+            "--resources",
+            "srv-db9q4csflioc739mcoh0",
+            "--tail",
+            "--type",
+            "app",
+            "--text",
+            "QA449_ce0b57_bex",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "auth": "same own human OAuth access token; value omitted",
+          "stdout": "{\"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:30:55.361117599Z-78b5a3ea\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:02.888471446Z-6c185906\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:06.31211379Z-346bda68\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:07.77758744Z-9693b17b\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:09.187115036Z-a8ab968e\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:10.611419274Z-8ae85c21\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:18.60391084Z-e969d165\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:34.416833083Z-93402de8\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:35.808256095Z-5a7c28fb\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:37.248504004Z-a2ca8c0e\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:38.578052827Z-4ed0d3a1\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}",
+          "stderr": "",
+          "chunks": [
+            {
+              "stream": "stdout",
+              "bytes": 600,
+              "at": 1.0300682079978287
+            },
+            {
+              "stream": "stdout",
+              "bytes": 677,
+              "at": 3.048416500001622
+            },
+            {
+              "stream": "stdout",
+              "bytes": 677,
+              "at": 6.462095124996267
+            },
+            {
+              "stream": "stdout",
+              "bytes": 677,
+              "at": 7.926674791997357
+            },
+            {
+              "stream": "stdout",
+              "bytes": 679,
+              "at": 9.341279499996745
+            },
+            {
+              "stream": "stdout",
+              "bytes": 679,
+              "at": 10.762358457999653
+            },
+            {
+              "stream": "stdout",
+              "bytes": 598,
+              "at": 18.822459124996385
+            },
+            {
+              "stream": "stdout",
+              "bytes": 678,
+              "at": 34.7776826249974
+            },
+            {
+              "stream": "stdout",
+              "bytes": 678,
+              "at": 35.9559340420019
+            },
+            {
+              "stream": "stdout",
+              "bytes": 678,
+              "at": 37.397914875000424
+            },
+            {
+              "stream": "stdout",
+              "bytes": 678,
+              "at": 38.72708283300017
+            }
+          ],
+          "phase": "bounded own follower finished",
+          "config_directory": "<owned-temp>/sweep449-tail-bex-config",
+          "PID": 72020,
+          "stop_intent_at": 41.524545792002755,
+          "exited_before_own_interrupt": false,
+          "native_exit": -2,
+          "reader_threads_stopped": true,
+          "own_config_directory_removed": true
+        },
+        "render": {
+          "actor": "render",
+          "command": [
+            "<owned-temp>/render-pin",
+            "logs",
+            "--resources",
+            "srv-db9q4csflioc739mcoh0",
+            "--tail",
+            "--type",
+            "app",
+            "--text",
+            "QA449_ce0b57_bex",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "auth": "same own human OAuth access token; value omitted",
+          "stdout": "{\"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:30:55.361117599Z-78b5a3ea\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:02.888471446Z-6c185906\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:06.31211379Z-346bda68\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:07.77758744Z-9693b17b\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:09.187115036Z-a8ab968e\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:10.611419274Z-8ae85c21\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:18.60391084Z-e969d165\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:34.416833083Z-93402de8\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:35.808256095Z-5a7c28fb\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:37.248504004Z-a2ca8c0e\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:38.578052827Z-4ed0d3a1\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}",
+          "stderr": "",
+          "chunks": [
+            {
+              "stream": "stdout",
+              "bytes": 600,
+              "at": 0.8350627920008264
+            },
+            {
+              "stream": "stdout",
+              "bytes": 677,
+              "at": 2.2302432080032304
+            },
+            {
+              "stream": "stdout",
+              "bytes": 677,
+              "at": 5.643453583004884
+            },
+            {
+              "stream": "stdout",
+              "bytes": 677,
+              "at": 7.108570417003648
+            },
+            {
+              "stream": "stdout",
+              "bytes": 679,
+              "at": 8.523183125005744
+            },
+            {
+              "stream": "stdout",
+              "bytes": 679,
+              "at": 9.944226625004376
+            },
+            {
+              "stream": "stdout",
+              "bytes": 598,
+              "at": 18.8358319580002
+            },
+            {
+              "stream": "stdout",
+              "bytes": 678,
+              "at": 33.95915029200114
+            },
+            {
+              "stream": "stdout",
+              "bytes": 678,
+              "at": 35.137736000004224
+            },
+            {
+              "stream": "stdout",
+              "bytes": 678,
+              "at": 36.57906820800417
+            },
+            {
+              "stream": "stdout",
+              "bytes": 678,
+              "at": 37.908367374999216
+            }
+          ],
+          "phase": "bounded own follower finished",
+          "config_directory": "<owned-temp>/sweep449-tail-render-config",
+          "PID": 72023,
+          "stop_intent_at": 40.70853870800056,
+          "exited_before_own_interrupt": false,
+          "native_exit": -2,
+          "reader_threads_stopped": true,
+          "own_config_directory_removed": true
+        }
+      },
+      "events": {
+        "bex": [
+          {
+            "payload": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5",
+              "nonce": "ce0b57_warm",
+              "sequence": 0,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "native_log": {
+              "id": "srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:02.888471446Z-6c185906",
+              "projection": "baseline or unrelated identity only; configuration omitted"
+            }
+          },
+          {
+            "payload": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5",
+              "nonce": "ce0b57_before",
+              "sequence": 0,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "native_log": {
+              "id": "srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:06.31211379Z-346bda68",
+              "projection": "baseline or unrelated identity only; configuration omitted"
+            }
+          },
+          {
+            "payload": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5",
+              "nonce": "ce0b57_before",
+              "sequence": 1,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "native_log": {
+              "id": "srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:07.77758744Z-9693b17b",
+              "projection": "baseline or unrelated identity only; configuration omitted"
+            }
+          },
+          {
+            "payload": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5",
+              "nonce": "ce0b57_before",
+              "sequence": 2,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "native_log": {
+              "id": "srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:09.187115036Z-a8ab968e",
+              "projection": "baseline or unrelated identity only; configuration omitted"
+            }
+          },
+          {
+            "payload": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5",
+              "nonce": "ce0b57_before",
+              "sequence": 3,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "native_log": {
+              "id": "srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:10.611419274Z-8ae85c21",
+              "projection": "baseline or unrelated identity only; configuration omitted"
+            }
+          },
+          {
+            "payload": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2",
+              "nonce": "ce0b57_after",
+              "sequence": 0,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "native_log": {
+              "id": "srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:34.416833083Z-93402de8",
+              "projection": "baseline or unrelated identity only; configuration omitted"
+            }
+          },
+          {
+            "payload": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2",
+              "nonce": "ce0b57_after",
+              "sequence": 1,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "native_log": {
+              "id": "srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:35.808256095Z-5a7c28fb",
+              "projection": "baseline or unrelated identity only; configuration omitted"
+            }
+          },
+          {
+            "payload": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2",
+              "nonce": "ce0b57_after",
+              "sequence": 2,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "native_log": {
+              "id": "srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:37.248504004Z-a2ca8c0e",
+              "projection": "baseline or unrelated identity only; configuration omitted"
+            }
+          },
+          {
+            "payload": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2",
+              "nonce": "ce0b57_after",
+              "sequence": 3,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "native_log": {
+              "id": "srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:38.578052827Z-4ed0d3a1",
+              "projection": "baseline or unrelated identity only; configuration omitted"
+            }
+          }
+        ],
+        "render": [
+          {
+            "payload": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5",
+              "nonce": "ce0b57_warm",
+              "sequence": 0,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "native_log": {
+              "id": "srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:02.888471446Z-6c185906",
+              "projection": "baseline or unrelated identity only; configuration omitted"
+            }
+          },
+          {
+            "payload": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5",
+              "nonce": "ce0b57_before",
+              "sequence": 0,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "native_log": {
+              "id": "srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:06.31211379Z-346bda68",
+              "projection": "baseline or unrelated identity only; configuration omitted"
+            }
+          },
+          {
+            "payload": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5",
+              "nonce": "ce0b57_before",
+              "sequence": 1,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "native_log": {
+              "id": "srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:07.77758744Z-9693b17b",
+              "projection": "baseline or unrelated identity only; configuration omitted"
+            }
+          },
+          {
+            "payload": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5",
+              "nonce": "ce0b57_before",
+              "sequence": 2,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "native_log": {
+              "id": "srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:09.187115036Z-a8ab968e",
+              "projection": "baseline or unrelated identity only; configuration omitted"
+            }
+          },
+          {
+            "payload": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5",
+              "nonce": "ce0b57_before",
+              "sequence": 3,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "native_log": {
+              "id": "srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:10.611419274Z-8ae85c21",
+              "projection": "baseline or unrelated identity only; configuration omitted"
+            }
+          },
+          {
+            "payload": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2",
+              "nonce": "ce0b57_after",
+              "sequence": 0,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "native_log": {
+              "id": "srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:34.416833083Z-93402de8",
+              "projection": "baseline or unrelated identity only; configuration omitted"
+            }
+          },
+          {
+            "payload": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2",
+              "nonce": "ce0b57_after",
+              "sequence": 1,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "native_log": {
+              "id": "srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:35.808256095Z-5a7c28fb",
+              "projection": "baseline or unrelated identity only; configuration omitted"
+            }
+          },
+          {
+            "payload": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2",
+              "nonce": "ce0b57_after",
+              "sequence": 2,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "native_log": {
+              "id": "srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:37.248504004Z-a2ca8c0e",
+              "projection": "baseline or unrelated identity only; configuration omitted"
+            }
+          },
+          {
+            "payload": {
+              "marker": "QA449_ce0b57_bex",
+              "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2",
+              "nonce": "ce0b57_after",
+              "sequence": 3,
+              "text": "Render CLI preserves café:李\nsecond line"
+            },
+            "native_log": {
+              "id": "srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:38.578052827Z-4ed0d3a1",
+              "projection": "baseline or unrelated identity only; configuration omitted"
+            }
+          }
+        ]
+      },
+      "finished_elapsed": 41.753636957997514,
+      "own_followers_configs_stopped_removed": true,
+      "case_results": {
+        "bex": {
+          "measured_events": 8,
+          "exact_once_keys": true,
+          "exact_HTTP_origin_payloads": true,
+          "native_alive_until_own_interrupt": true,
+          "native_exit_after_interrupt": -2
+        },
+        "render": {
+          "measured_events": 8,
+          "exact_once_keys": true,
+          "exact_HTTP_origin_payloads": true,
+          "native_alive_until_own_interrupt": true,
+          "native_exit_after_interrupt": -2
+        }
+      },
+      "pass": true
+    }
+  ],
+  "historical_tail_correlations": [
+    {
+      "at": "2026-10-17T16:36:30.997328+00:00",
+      "queries": [
+        {
+          "actor": "bex",
+          "native": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "logs",
+              "--resources",
+              "srv-db9q4csflioc739mcoh0",
+              "--type",
+              "app",
+              "--text",
+              "QA449_ce0b57_bex",
+              "--start",
+              "2026-10-17T16:28:35Z",
+              "--limit",
+              "100",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.462,
+            "stdout": "{\"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:30:55.361117599Z-78b5a3ea\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:02.888471446Z-6c185906\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:06.31211379Z-346bda68\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:07.77758744Z-9693b17b\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:09.187115036Z-a8ab968e\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:10.611419274Z-8ae85c21\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:18.60391084Z-e969d165\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:34.416833083Z-93402de8\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:35.808256095Z-5a7c28fb\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:37.248504004Z-a2ca8c0e\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:38.578052827Z-4ed0d3a1\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}",
+            "stderr": "",
+            "native_exit": 0
+          }
+        },
+        {
+          "actor": "render",
+          "native": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "logs",
+              "--resources",
+              "srv-db9q4csflioc739mcoh0",
+              "--type",
+              "app",
+              "--text",
+              "QA449_ce0b57_bex",
+              "--start",
+              "2026-10-17T16:28:35Z",
+              "--limit",
+              "100",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "native_exit": 0,
+            "harness_timeout": false,
+            "elapsed": 0.57,
+            "stdout": "{\"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:30:55.361117599Z-78b5a3ea\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:02.888471446Z-6c185906\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:06.31211379Z-346bda68\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:07.77758744Z-9693b17b\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:09.187115036Z-a8ab968e\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:10.611419274Z-8ae85c21\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:18.60391084Z-e969d165\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:34.416833083Z-93402de8\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:35.808256095Z-5a7c28fb\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:37.248504004Z-a2ca8c0e\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}\n{\"id\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:38.578052827Z-4ed0d3a1\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}",
+            "stderr": ""
+          }
+        }
+      ],
+      "cases": {
+        "bex": {
+          "measured": [
+            {
+              "payload": {
+                "marker": "QA449_ce0b57_bex",
+                "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5",
+                "nonce": "ce0b57_before",
+                "sequence": 0,
+                "text": "Render CLI preserves café:李\nsecond line"
+              },
+              "native_log": {
+                "id": "srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:06.31211379Z-346bda68",
+                "projection": "baseline or unrelated identity only; configuration omitted"
+              }
+            },
+            {
+              "payload": {
+                "marker": "QA449_ce0b57_bex",
+                "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5",
+                "nonce": "ce0b57_before",
+                "sequence": 1,
+                "text": "Render CLI preserves café:李\nsecond line"
+              },
+              "native_log": {
+                "id": "srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:07.77758744Z-9693b17b",
+                "projection": "baseline or unrelated identity only; configuration omitted"
+              }
+            },
+            {
+              "payload": {
+                "marker": "QA449_ce0b57_bex",
+                "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5",
+                "nonce": "ce0b57_before",
+                "sequence": 2,
+                "text": "Render CLI preserves café:李\nsecond line"
+              },
+              "native_log": {
+                "id": "srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:09.187115036Z-a8ab968e",
+                "projection": "baseline or unrelated identity only; configuration omitted"
+              }
+            },
+            {
+              "payload": {
+                "marker": "QA449_ce0b57_bex",
+                "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5",
+                "nonce": "ce0b57_before",
+                "sequence": 3,
+                "text": "Render CLI preserves café:李\nsecond line"
+              },
+              "native_log": {
+                "id": "srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:10.611419274Z-8ae85c21",
+                "projection": "baseline or unrelated identity only; configuration omitted"
+              }
+            },
+            {
+              "payload": {
+                "marker": "QA449_ce0b57_bex",
+                "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2",
+                "nonce": "ce0b57_after",
+                "sequence": 0,
+                "text": "Render CLI preserves café:李\nsecond line"
+              },
+              "native_log": {
+                "id": "srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:34.416833083Z-93402de8",
+                "projection": "baseline or unrelated identity only; configuration omitted"
+              }
+            },
+            {
+              "payload": {
+                "marker": "QA449_ce0b57_bex",
+                "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2",
+                "nonce": "ce0b57_after",
+                "sequence": 1,
+                "text": "Render CLI preserves café:李\nsecond line"
+              },
+              "native_log": {
+                "id": "srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:35.808256095Z-5a7c28fb",
+                "projection": "baseline or unrelated identity only; configuration omitted"
+              }
+            },
+            {
+              "payload": {
+                "marker": "QA449_ce0b57_bex",
+                "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2",
+                "nonce": "ce0b57_after",
+                "sequence": 2,
+                "text": "Render CLI preserves café:李\nsecond line"
+              },
+              "native_log": {
+                "id": "srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:37.248504004Z-a2ca8c0e",
+                "projection": "baseline or unrelated identity only; configuration omitted"
+              }
+            },
+            {
+              "payload": {
+                "marker": "QA449_ce0b57_bex",
+                "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2",
+                "nonce": "ce0b57_after",
+                "sequence": 3,
+                "text": "Render CLI preserves café:李\nsecond line"
+              },
+              "native_log": {
+                "id": "srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:38.578052827Z-4ed0d3a1",
+                "projection": "baseline or unrelated identity only; configuration omitted"
+              }
+            }
+          ],
+          "pass": true
+        },
+        "render": {
+          "measured": [
+            {
+              "payload": {
+                "marker": "QA449_ce0b57_bex",
+                "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5",
+                "nonce": "ce0b57_before",
+                "sequence": 0,
+                "text": "Render CLI preserves café:李\nsecond line"
+              },
+              "native_log": {
+                "id": "srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:06.31211379Z-346bda68",
+                "projection": "baseline or unrelated identity only; configuration omitted"
+              }
+            },
+            {
+              "payload": {
+                "marker": "QA449_ce0b57_bex",
+                "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5",
+                "nonce": "ce0b57_before",
+                "sequence": 1,
+                "text": "Render CLI preserves café:李\nsecond line"
+              },
+              "native_log": {
+                "id": "srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:07.77758744Z-9693b17b",
+                "projection": "baseline or unrelated identity only; configuration omitted"
+              }
+            },
+            {
+              "payload": {
+                "marker": "QA449_ce0b57_bex",
+                "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5",
+                "nonce": "ce0b57_before",
+                "sequence": 2,
+                "text": "Render CLI preserves café:李\nsecond line"
+              },
+              "native_log": {
+                "id": "srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:09.187115036Z-a8ab968e",
+                "projection": "baseline or unrelated identity only; configuration omitted"
+              }
+            },
+            {
+              "payload": {
+                "marker": "QA449_ce0b57_bex",
+                "boot": "0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5",
+                "nonce": "ce0b57_before",
+                "sequence": 3,
+                "text": "Render CLI preserves café:李\nsecond line"
+              },
+              "native_log": {
+                "id": "srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:10.611419274Z-8ae85c21",
+                "projection": "baseline or unrelated identity only; configuration omitted"
+              }
+            },
+            {
+              "payload": {
+                "marker": "QA449_ce0b57_bex",
+                "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2",
+                "nonce": "ce0b57_after",
+                "sequence": 0,
+                "text": "Render CLI preserves café:李\nsecond line"
+              },
+              "native_log": {
+                "id": "srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:34.416833083Z-93402de8",
+                "projection": "baseline or unrelated identity only; configuration omitted"
+              }
+            },
+            {
+              "payload": {
+                "marker": "QA449_ce0b57_bex",
+                "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2",
+                "nonce": "ce0b57_after",
+                "sequence": 1,
+                "text": "Render CLI preserves café:李\nsecond line"
+              },
+              "native_log": {
+                "id": "srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:35.808256095Z-5a7c28fb",
+                "projection": "baseline or unrelated identity only; configuration omitted"
+              }
+            },
+            {
+              "payload": {
+                "marker": "QA449_ce0b57_bex",
+                "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2",
+                "nonce": "ce0b57_after",
+                "sequence": 2,
+                "text": "Render CLI preserves café:李\nsecond line"
+              },
+              "native_log": {
+                "id": "srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:37.248504004Z-a2ca8c0e",
+                "projection": "baseline or unrelated identity only; configuration omitted"
+              }
+            },
+            {
+              "payload": {
+                "marker": "QA449_ce0b57_bex",
+                "boot": "c2cf1a3b-a8ba-4405-9809-c461ef306ef2",
+                "nonce": "ce0b57_after",
+                "sequence": 3,
+                "text": "Render CLI preserves café:李\nsecond line"
+              },
+              "native_log": {
+                "id": "srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:38.578052827Z-4ed0d3a1",
+                "projection": "baseline or unrelated identity only; configuration omitted"
+              }
+            }
+          ],
+          "pass": true
+        }
+      },
+      "pass": true
+    }
+  ],
+  "delete_intent": {
+    "at": "2026-10-17T16:39:03.651359+00:00",
+    "children": [
+      {
+        "commit": {
+          "id": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+          "message": "vendor stuff"
+        },
+        "createdAt": "2026-10-17T16:34:12.637225Z",
+        "finishedAt": "2026-10-17T16:34:32.432045Z",
+        "id": "dep-db9q714flioc739mcoig",
+        "image": {
+          "ref": "zot.bex-registry.svc:5000/tea-daif693dqjvc73e7as3g/tea-daif693dqjvc73e7as3g-qa-20261017-ce0b57-logtail:gen-1@sha256:2f6cac180e8115002f1b2bbd6b86823a845d20f3403febc2df9ad34110ecfe98"
+        },
+        "startedAt": "2026-10-17T16:34:18.102072Z",
+        "status": "live",
+        "trigger": "api",
+        "updatedAt": "2026-10-17T16:34:32.432047Z"
+      },
+      {
+        "commit": {
+          "id": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+          "message": "vendor stuff"
+        },
+        "createdAt": "2026-10-17T16:28:35.642389Z",
+        "finishedAt": "2026-10-17T16:31:02.138403Z",
+        "id": "dep-db9q4csflioc739mcohg",
+        "startedAt": "2026-10-17T16:29:48.004453Z",
+        "status": "deactivated",
+        "trigger": "other",
+        "updatedAt": "2026-10-17T16:34:32.437299Z"
+      }
+    ]
+  },
+  "delete_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "delete",
+      "srv-db9q4csflioc739mcoh0",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 2.117,
+    "stdout": "{\"data\": {\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"master\", \"createdAt\": \"2026-10-17T16:28:35Z\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9q4csflioc739mcoh0\", \"id\": \"srv-db9q4csflioc739mcoh0\", \"name\": \"qa-20261017-ce0b57-logtail\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/git-fixtures/basic\", \"rootDir\": \"\", \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\nnode -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"'),z=require('\\\"'\\\"'node:zlib'\\\"'\\\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\\\"'\\\"'H4sIAAAAAAAC/41Va3LiRhC+CqtKlaRaIUYSAgSRqxwva5Ny7MT2JpUsjms0aoG80gjPDKwdrCvkBjlAzpG75BxpPfA62D+2+MHQz6+7v2622h3t94MuXa1sdiu1scYKLlUnkaGAu3UqwNB5EcM4kbppLZVa7ckrEWqYeFipYk/XCHVzMudN1JyKTyDC7y/Pz+wVFRKMRNoCaPw+zeDygTNDb+A0hvatLLhumpaA5Cuc0AoEcAZPfnJJwyg8aHDYDJ0UnFC5NHTUuP5AN+31KkahEZl2nC5AKkNfwv0zyLJYCwahYYYH59EtMGUnosinXIkUpNGKPsGDNDC9nSAkado5XRk8PNg2IaJwHzA3JwLUWvCP3NpGDwrkOLIz4Au1tBpkY/xCUOV1aVZYkjVnKi14ZyWKIjHMNnKdLmwgGuYkTYy6SxLB8UWaPBgNnjdhuCf/gtVUS1F87kyFKAS2pQ7VyVOZU8WW+g7nthmIVY8VMTCQ0t6AkIjJqgNZKF0Imt88w79f9s1NZcppDqZZlnOOeHexqFhsPrrXYRjq0TrNYn1X4iZsS55gtM8iVbA/9speNSO39srcYPOqMEUGdlYsDP2nQ/S4+e7D7PRdR3/70hpBQSah8zoyCWIDT8iiolBhSy1BeVzkHz7M3hmmVQP6Cr4+A97iRLpVKURYbVXL18taYhh3lkAObjOoerK1bbvtS5POqtCUFQPu7LXIsCoqlPwlVcj1HuSp6mGOFviqUoWt3SpLkfOobQHwAhcorE2wakviQlcrFZ6t8whhNArvuibbm97vH2n3j8Pub6Qb3HSvt441JOU3PVtVi1RHMh8f3zSudipnXMECg+yConL3/JZ8eR84hBBzK5pxn2DnjD4KJsIGHht6yjc0S+NO8ZnjAtwjPaEDG+Dqia0lNqglbNUWq0byVIql4F6N9QsMBqJzdDrDpYK677LDaPLP3+N///pzPucSsCNxJ0s56OVrNJr+PD27ep1Gz7G7hFhb/ajA4rnqXj2sQB/reG+zlNFqp3s1A8pdfa9EMycNLewslRjE2M2iZSjwjf3j+cXV46NXNc7SiV1/dKu6Wq8Av5gevvv1JfC9nr3cdLxF5mQnK7ihX86Or6YXPzSJWowsK5DyleAJ3z1SjKBvWe/W/w5Ojmnqa6tZ2mtXHP+QtnONqrk27sw1l7iDrkO6zvDK8caOOyau7eG1cclbQsaEzDULrQSsisa+WiM57vUWuAfryGZFXj27LWtkL6IyZY1ThCvMlo1bTrHNopGjD25PIx8ASwgkLnPjJImGwYB4HviUuK4T0GSE6oE/6oPfeNZnsXLEAk5nR9Ozy2n7q7741dshQ7cybW7mrsaIDPqBQyLPjRg4ESN9P/CpH7mkPxxSd8R84gWBD8nId0eBG1DPceIBi4bUi0gw18oq5NHJ4dnx9PT8+EXO0X7GAGGDNxgQ34c4DihJBjQK2DAaUW+YsMAdEY8l4MQeSRI6dIcMICZs4AVewNyq3LIsn+b37K8bhzfXGsoxIJE/vIngfq5p5X9GuL0ldggAAA=='\\\"'\\\"','\\\"'\\\"'base64'\\\"'\\\"')))))fs.writeFileSync(n,s)'\\nnode qa449-app.cjs build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa449-app.cjs serve\"}, \"internalAddress\": \"qa-20261017-ce0b57-logtail:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261017-ce0b57-logtail.onbex.co\"}, \"slug\": \"qa-20261017-ce0b57-logtail\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"web_service\", \"updatedAt\": \"2026-10-17T16:34:23Z\", \"environmentId\": null, \"projectId\": null}, \"meta\": {\"deleted\": true}}",
+    "stderr": "",
+    "native_exit": 0
+  },
+  "cleanup_receipts": [
+    {
+      "at": "2026-10-17T16:39:10.762222+00:00",
+      "detail": {
+        "at": "2026-10-17T16:39:07.332192+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db9q4csflioc739mcoh0",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "404",
+        "curl_exit": 0,
+        "elapsed": 0.546,
+        "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+        "stderr": ""
+      },
+      "inventory": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.954,
+        "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}}]",
+        "stderr": "",
+        "native_exit": 0
+      },
+      "runtime_HTTP": "404",
+      "runtime_exit": 0,
+      "quota": {
+        "at": "2026-10-17T16:39:09.802800+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.724,
+        "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+        "stderr": ""
+      },
+      "children": [
+        {
+          "at": "2026-10-17T16:39:10.416262+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9q4csflioc739mcoh0/deploys/dep-db9q4csflioc739mcohg",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "404",
+          "curl_exit": 0,
+          "elapsed": 0.587,
+          "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:39:10.762003+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9q4csflioc739mcoh0/deploys/dep-db9q714flioc739mcoig",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "404",
+          "curl_exit": 0,
+          "elapsed": 0.324,
+          "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+          "stderr": ""
+        }
+      ],
+      "pass": true
+    }
+  ]
+}

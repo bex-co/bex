@@ -1,0 +1,1 @@
+{"exit": 0, "stdout": "{\"client\": \"bex\", \"native_event_logs_exit\": 0, \"events\": 6, \"kinds\": [\"closed\", \"hold-begin\", \"hold-end\", \"ready\", \"sigterm\"]}\n", "stderr": ""}

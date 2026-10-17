@@ -1,0 +1,10 @@
+{
+  "parent_head": "b685400c1f9316f350965a5993d350bc746b0bf4",
+  "gitlink": {
+    "mode": "160000",
+    "path": "basic",
+    "sha": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5"
+  },
+  "parent_and_child_bytes_hashes_match_original": true,
+  "actual_child_commit_pinned_by_parent": true
+}

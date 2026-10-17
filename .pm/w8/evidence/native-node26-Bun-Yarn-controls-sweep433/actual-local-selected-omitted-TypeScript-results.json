@@ -1,0 +1,688 @@
+{
+  "kind": "authored Bun/Node/Yarn fixture prerequisite on cached Node24 + exact pinned Bun1.3 donor; not full generated image or Node26",
+  "steps": [
+    {
+      "label": "create-own-donor-handle",
+      "command": [
+        "docker",
+        "create",
+        "--pull",
+        "never",
+        "--network",
+        "none",
+        "--name",
+        "qa433-donor-f5768b",
+        "oven/bun:1.3@sha256:e10577f0db68676a7024391c6e5cb4b879ebd17188ab750cf10024a6d700e5c4",
+        "/bin/true"
+      ],
+      "exit": 0,
+      "stdout": "55e4e0a706f0e1396e4f6d61b5aa5064e497ece845d1194912cb807c7dcecb64\n",
+      "stderr": ""
+    },
+    {
+      "label": "copy-only-selected-Bun-binary",
+      "command": [
+        "docker",
+        "cp",
+        "qa433-donor-f5768b:/usr/local/bin/bun",
+        "<owned-temp>/sweep433-local-context/bun"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "remove-own-donor-handle",
+      "command": [
+        "docker",
+        "rm",
+        "-v",
+        "qa433-donor-f5768b"
+      ],
+      "exit": 0,
+      "stdout": "qa433-donor-f5768b\n",
+      "stderr": ""
+    },
+    {
+      "label": "start-own-selected",
+      "command": [
+        "docker",
+        "run",
+        "-d",
+        "--pull",
+        "never",
+        "--network",
+        "none",
+        "--name",
+        "qa433-selected-53d2b9",
+        "--mount",
+        "type=bind,src=<owned-temp>/sweep433-local-context/selected,dst=/app",
+        "--workdir",
+        "/app",
+        "-e",
+        "PATH=/app/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "-e",
+        "BUN_VERSION=1.3",
+        "--entrypoint",
+        "/bin/bash",
+        "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+        "-c",
+        "node qa433-app.cjs build && exec node qa433-app.cjs serve"
+      ],
+      "exit": 0,
+      "stdout": "4dab6c10cdd253ff9db61113f0aac78028ee839a80515287d1963b16eb19fea2\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-loopback-ready-selected-0",
+      "command": [
+        "docker",
+        "exec",
+        "qa433-selected-53d2b9",
+        "node",
+        "-e",
+        "fetch('http://127.0.0.1:3000/?qa=ready').then(r=>{if(!r.ok)process.exit(2);return r.text()}).then(console.log).catch(()=>process.exit(3))"
+      ],
+      "exit": 3,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "own-loopback-ready-selected-1",
+      "command": [
+        "docker",
+        "exec",
+        "qa433-selected-53d2b9",
+        "node",
+        "-e",
+        "fetch('http://127.0.0.1:3000/?qa=ready').then(r=>{if(!r.ok)process.exit(2);return r.text()}).then(console.log).catch(()=>process.exit(3))"
+      ],
+      "exit": 0,
+      "stdout": "{\"marker\":\"QA433_LOCAL_selected\",\"boot\":\"272aa5be-e8e2-4e82-8fb5-62e3f4668ea1\",\"nonce\":\"ready\",\"built\":{\"marker\":\"QA433_LOCAL_selected\",\"phase\":\"build\",\"files\":{\"qa433-app.cjs\":\"e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7\",\"qa433-transform.ts\":\"c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df\"},\"tools\":{\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"yarnpkg\":\"1.22.22\",\"npm\":\"11.19.1\"},\"bun_env_present\":true,\"bun_env\":\"1.3\",\"bun\":{\"present\":true,\"result\":{\"label\":\"QA433_LOCAL_selected|Crème brûlée & 李|build\",\"sum\":10,\"weighted\":23,\"sorted\":[2,3,5],\"factor\":2,\"bun\":\"1.3.14\",\"sha256\":\"008917e696c7e2abae9d0c2a054c9b3888a3187ff466885fb72b891810a49b83\"}}},\"runtime\":{\"marker\":\"QA433_LOCAL_selected\",\"phase\":\"runtime\",\"files\":{\"qa433-app.cjs\":\"e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7\",\"qa433-transform.ts\":\"c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df\"},\"tools\":{\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"yarnpkg\":\"1.22.22\",\"npm\":\"11.19.1\"},\"bun_env_present\":true,\"bun_env\":\"1.3\",\"bun\":{\"present\":true,\"result\":{\"label\":\"QA433_LOCAL_selected|Crème brûlée & 李|ready\",\"sum\":10,\"weighted\":23,\"sorted\":[2,3,5],\"factor\":2,\"bun\":\"1.3.14\",\"sha256\":\"5c839d68a4feb0b425756e34a469079c5d2342ab8d582b9f740b050dc5b0321c\"}}}}\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-HTTP-selected-one",
+      "command": [
+        "docker",
+        "exec",
+        "qa433-selected-53d2b9",
+        "node",
+        "-e",
+        "fetch('http://127.0.0.1:3000/?qa=one').then(async r=>{if(!r.ok)process.exit(2);console.log(await r.text())})"
+      ],
+      "exit": 0,
+      "stdout": "{\"marker\":\"QA433_LOCAL_selected\",\"boot\":\"272aa5be-e8e2-4e82-8fb5-62e3f4668ea1\",\"nonce\":\"one\",\"built\":{\"marker\":\"QA433_LOCAL_selected\",\"phase\":\"build\",\"files\":{\"qa433-app.cjs\":\"e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7\",\"qa433-transform.ts\":\"c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df\"},\"tools\":{\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"yarnpkg\":\"1.22.22\",\"npm\":\"11.19.1\"},\"bun_env_present\":true,\"bun_env\":\"1.3\",\"bun\":{\"present\":true,\"result\":{\"label\":\"QA433_LOCAL_selected|Crème brûlée & 李|build\",\"sum\":10,\"weighted\":23,\"sorted\":[2,3,5],\"factor\":2,\"bun\":\"1.3.14\",\"sha256\":\"008917e696c7e2abae9d0c2a054c9b3888a3187ff466885fb72b891810a49b83\"}}},\"runtime\":{\"marker\":\"QA433_LOCAL_selected\",\"phase\":\"runtime\",\"files\":{\"qa433-app.cjs\":\"e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7\",\"qa433-transform.ts\":\"c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df\"},\"tools\":{\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"yarnpkg\":\"1.22.22\",\"npm\":\"11.19.1\"},\"bun_env_present\":true,\"bun_env\":\"1.3\",\"bun\":{\"present\":true,\"result\":{\"label\":\"QA433_LOCAL_selected|Crème brûlée & 李|one\",\"sum\":10,\"weighted\":23,\"sorted\":[2,3,5],\"factor\":2,\"bun\":\"1.3.14\",\"sha256\":\"bbba89f26bef68ef6a91c6660bebdfbc14ff7a5bbd900b0ff3fa0e015cc0252b\"}}}}\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-HTTP-selected-two",
+      "command": [
+        "docker",
+        "exec",
+        "qa433-selected-53d2b9",
+        "node",
+        "-e",
+        "fetch('http://127.0.0.1:3000/?qa=two').then(async r=>{if(!r.ok)process.exit(2);console.log(await r.text())})"
+      ],
+      "exit": 0,
+      "stdout": "{\"marker\":\"QA433_LOCAL_selected\",\"boot\":\"272aa5be-e8e2-4e82-8fb5-62e3f4668ea1\",\"nonce\":\"two\",\"built\":{\"marker\":\"QA433_LOCAL_selected\",\"phase\":\"build\",\"files\":{\"qa433-app.cjs\":\"e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7\",\"qa433-transform.ts\":\"c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df\"},\"tools\":{\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"yarnpkg\":\"1.22.22\",\"npm\":\"11.19.1\"},\"bun_env_present\":true,\"bun_env\":\"1.3\",\"bun\":{\"present\":true,\"result\":{\"label\":\"QA433_LOCAL_selected|Crème brûlée & 李|build\",\"sum\":10,\"weighted\":23,\"sorted\":[2,3,5],\"factor\":2,\"bun\":\"1.3.14\",\"sha256\":\"008917e696c7e2abae9d0c2a054c9b3888a3187ff466885fb72b891810a49b83\"}}},\"runtime\":{\"marker\":\"QA433_LOCAL_selected\",\"phase\":\"runtime\",\"files\":{\"qa433-app.cjs\":\"e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7\",\"qa433-transform.ts\":\"c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df\"},\"tools\":{\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"yarnpkg\":\"1.22.22\",\"npm\":\"11.19.1\"},\"bun_env_present\":true,\"bun_env\":\"1.3\",\"bun\":{\"present\":true,\"result\":{\"label\":\"QA433_LOCAL_selected|Crème brûlée & 李|two\",\"sum\":10,\"weighted\":23,\"sorted\":[2,3,5],\"factor\":2,\"bun\":\"1.3.14\",\"sha256\":\"ccdb9f0ac1943b0cc96e71dea8652fc1093cd7f5e86d54326910eaab162a8bc8\"}}}}\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-HTTP-selected-three",
+      "command": [
+        "docker",
+        "exec",
+        "qa433-selected-53d2b9",
+        "node",
+        "-e",
+        "fetch('http://127.0.0.1:3000/?qa=three').then(async r=>{if(!r.ok)process.exit(2);console.log(await r.text())})"
+      ],
+      "exit": 0,
+      "stdout": "{\"marker\":\"QA433_LOCAL_selected\",\"boot\":\"272aa5be-e8e2-4e82-8fb5-62e3f4668ea1\",\"nonce\":\"three\",\"built\":{\"marker\":\"QA433_LOCAL_selected\",\"phase\":\"build\",\"files\":{\"qa433-app.cjs\":\"e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7\",\"qa433-transform.ts\":\"c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df\"},\"tools\":{\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"yarnpkg\":\"1.22.22\",\"npm\":\"11.19.1\"},\"bun_env_present\":true,\"bun_env\":\"1.3\",\"bun\":{\"present\":true,\"result\":{\"label\":\"QA433_LOCAL_selected|Crème brûlée & 李|build\",\"sum\":10,\"weighted\":23,\"sorted\":[2,3,5],\"factor\":2,\"bun\":\"1.3.14\",\"sha256\":\"008917e696c7e2abae9d0c2a054c9b3888a3187ff466885fb72b891810a49b83\"}}},\"runtime\":{\"marker\":\"QA433_LOCAL_selected\",\"phase\":\"runtime\",\"files\":{\"qa433-app.cjs\":\"e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7\",\"qa433-transform.ts\":\"c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df\"},\"tools\":{\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"yarnpkg\":\"1.22.22\",\"npm\":\"11.19.1\"},\"bun_env_present\":true,\"bun_env\":\"1.3\",\"bun\":{\"present\":true,\"result\":{\"label\":\"QA433_LOCAL_selected|Crème brûlée & 李|three\",\"sum\":10,\"weighted\":23,\"sorted\":[2,3,5],\"factor\":2,\"bun\":\"1.3.14\",\"sha256\":\"c4a62fe72f5717113bec02954666b0e948e9c37854ef45cdeea57971d43962bf\"}}}}\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-runtime-logs-selected",
+      "command": [
+        "docker",
+        "logs",
+        "qa433-selected-53d2b9"
+      ],
+      "exit": 0,
+      "stdout": "QA433_BUILD {\"marker\":\"QA433_LOCAL_selected\",\"phase\":\"build\",\"files\":{\"qa433-app.cjs\":\"e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7\",\"qa433-transform.ts\":\"c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df\"},\"tools\":{\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"yarnpkg\":\"1.22.22\",\"npm\":\"11.19.1\"},\"bun_env_present\":true,\"bun_env\":\"1.3\",\"bun\":{\"present\":true,\"result\":{\"label\":\"QA433_LOCAL_selected|Crème brûlée & 李|build\",\"sum\":10,\"weighted\":23,\"sorted\":[2,3,5],\"factor\":2,\"bun\":\"1.3.14\",\"sha256\":\"008917e696c7e2abae9d0c2a054c9b3888a3187ff466885fb72b891810a49b83\"}}}\nQA433_RUNTIME {\"boot\":\"272aa5be-e8e2-4e82-8fb5-62e3f4668ea1\",\"marker\":\"QA433_LOCAL_selected\",\"phase\":\"runtime\",\"files\":{\"qa433-app.cjs\":\"e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7\",\"qa433-transform.ts\":\"c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df\"},\"tools\":{\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"yarnpkg\":\"1.22.22\",\"npm\":\"11.19.1\"},\"bun_env_present\":true,\"bun_env\":\"1.3\",\"bun\":{\"present\":true,\"result\":{\"label\":\"QA433_LOCAL_selected|Crème brûlée & 李|startup\",\"sum\":10,\"weighted\":23,\"sorted\":[2,3,5],\"factor\":2,\"bun\":\"1.3.14\",\"sha256\":\"3c9876fbaebf2eb8f2d6408fdd767350673eccd899740aea648e2576064632ac\"}}}\nQA433_HTTP {\"marker\":\"QA433_LOCAL_selected\",\"boot\":\"272aa5be-e8e2-4e82-8fb5-62e3f4668ea1\",\"nonce\":\"ready\",\"bun_present\":true}\nQA433_HTTP {\"marker\":\"QA433_LOCAL_selected\",\"boot\":\"272aa5be-e8e2-4e82-8fb5-62e3f4668ea1\",\"nonce\":\"one\",\"bun_present\":true}\nQA433_HTTP {\"marker\":\"QA433_LOCAL_selected\",\"boot\":\"272aa5be-e8e2-4e82-8fb5-62e3f4668ea1\",\"nonce\":\"two\",\"bun_present\":true}\nQA433_HTTP {\"marker\":\"QA433_LOCAL_selected\",\"boot\":\"272aa5be-e8e2-4e82-8fb5-62e3f4668ea1\",\"nonce\":\"three\",\"bun_present\":true}\n",
+      "stderr": ""
+    },
+    {
+      "label": "remove-own-selected",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa433-selected-53d2b9"
+      ],
+      "exit": 0,
+      "stdout": "qa433-selected-53d2b9\n",
+      "stderr": ""
+    },
+    {
+      "label": "start-own-omitted",
+      "command": [
+        "docker",
+        "run",
+        "-d",
+        "--pull",
+        "never",
+        "--network",
+        "none",
+        "--name",
+        "qa433-omitted-110a48",
+        "--mount",
+        "type=bind,src=<owned-temp>/sweep433-local-context/omitted,dst=/app",
+        "--workdir",
+        "/app",
+        "--entrypoint",
+        "/bin/bash",
+        "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+        "-c",
+        "node qa433-app.cjs build && exec node qa433-app.cjs serve"
+      ],
+      "exit": 0,
+      "stdout": "95c4a443346336be28de84567b371baf46587ddde565899b8eb90b9f2f5aa3e0\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-loopback-ready-omitted-0",
+      "command": [
+        "docker",
+        "exec",
+        "qa433-omitted-110a48",
+        "node",
+        "-e",
+        "fetch('http://127.0.0.1:3000/?qa=ready').then(r=>{if(!r.ok)process.exit(2);return r.text()}).then(console.log).catch(()=>process.exit(3))"
+      ],
+      "exit": 3,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "own-loopback-ready-omitted-1",
+      "command": [
+        "docker",
+        "exec",
+        "qa433-omitted-110a48",
+        "node",
+        "-e",
+        "fetch('http://127.0.0.1:3000/?qa=ready').then(r=>{if(!r.ok)process.exit(2);return r.text()}).then(console.log).catch(()=>process.exit(3))"
+      ],
+      "exit": 0,
+      "stdout": "{\"marker\":\"QA433_LOCAL_omitted\",\"boot\":\"cf77cc5a-3934-46a0-bfbd-5fe8dfd82639\",\"nonce\":\"ready\",\"built\":{\"marker\":\"QA433_LOCAL_omitted\",\"phase\":\"build\",\"files\":{\"qa433-app.cjs\":\"e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7\",\"qa433-transform.ts\":\"c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df\"},\"tools\":{\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"yarnpkg\":\"1.22.22\",\"npm\":\"11.19.1\"},\"bun_env_present\":false,\"bun_env\":null,\"bun\":{\"present\":false,\"error\":\"ENOENT\"}},\"runtime\":{\"marker\":\"QA433_LOCAL_omitted\",\"phase\":\"runtime\",\"files\":{\"qa433-app.cjs\":\"e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7\",\"qa433-transform.ts\":\"c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df\"},\"tools\":{\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"yarnpkg\":\"1.22.22\",\"npm\":\"11.19.1\"},\"bun_env_present\":false,\"bun_env\":null,\"bun\":{\"present\":false,\"error\":\"ENOENT\"}}}\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-HTTP-omitted-one",
+      "command": [
+        "docker",
+        "exec",
+        "qa433-omitted-110a48",
+        "node",
+        "-e",
+        "fetch('http://127.0.0.1:3000/?qa=one').then(async r=>{if(!r.ok)process.exit(2);console.log(await r.text())})"
+      ],
+      "exit": 0,
+      "stdout": "{\"marker\":\"QA433_LOCAL_omitted\",\"boot\":\"cf77cc5a-3934-46a0-bfbd-5fe8dfd82639\",\"nonce\":\"one\",\"built\":{\"marker\":\"QA433_LOCAL_omitted\",\"phase\":\"build\",\"files\":{\"qa433-app.cjs\":\"e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7\",\"qa433-transform.ts\":\"c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df\"},\"tools\":{\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"yarnpkg\":\"1.22.22\",\"npm\":\"11.19.1\"},\"bun_env_present\":false,\"bun_env\":null,\"bun\":{\"present\":false,\"error\":\"ENOENT\"}},\"runtime\":{\"marker\":\"QA433_LOCAL_omitted\",\"phase\":\"runtime\",\"files\":{\"qa433-app.cjs\":\"e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7\",\"qa433-transform.ts\":\"c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df\"},\"tools\":{\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"yarnpkg\":\"1.22.22\",\"npm\":\"11.19.1\"},\"bun_env_present\":false,\"bun_env\":null,\"bun\":{\"present\":false,\"error\":\"ENOENT\"}}}\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-HTTP-omitted-two",
+      "command": [
+        "docker",
+        "exec",
+        "qa433-omitted-110a48",
+        "node",
+        "-e",
+        "fetch('http://127.0.0.1:3000/?qa=two').then(async r=>{if(!r.ok)process.exit(2);console.log(await r.text())})"
+      ],
+      "exit": 0,
+      "stdout": "{\"marker\":\"QA433_LOCAL_omitted\",\"boot\":\"cf77cc5a-3934-46a0-bfbd-5fe8dfd82639\",\"nonce\":\"two\",\"built\":{\"marker\":\"QA433_LOCAL_omitted\",\"phase\":\"build\",\"files\":{\"qa433-app.cjs\":\"e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7\",\"qa433-transform.ts\":\"c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df\"},\"tools\":{\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"yarnpkg\":\"1.22.22\",\"npm\":\"11.19.1\"},\"bun_env_present\":false,\"bun_env\":null,\"bun\":{\"present\":false,\"error\":\"ENOENT\"}},\"runtime\":{\"marker\":\"QA433_LOCAL_omitted\",\"phase\":\"runtime\",\"files\":{\"qa433-app.cjs\":\"e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7\",\"qa433-transform.ts\":\"c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df\"},\"tools\":{\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"yarnpkg\":\"1.22.22\",\"npm\":\"11.19.1\"},\"bun_env_present\":false,\"bun_env\":null,\"bun\":{\"present\":false,\"error\":\"ENOENT\"}}}\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-HTTP-omitted-three",
+      "command": [
+        "docker",
+        "exec",
+        "qa433-omitted-110a48",
+        "node",
+        "-e",
+        "fetch('http://127.0.0.1:3000/?qa=three').then(async r=>{if(!r.ok)process.exit(2);console.log(await r.text())})"
+      ],
+      "exit": 0,
+      "stdout": "{\"marker\":\"QA433_LOCAL_omitted\",\"boot\":\"cf77cc5a-3934-46a0-bfbd-5fe8dfd82639\",\"nonce\":\"three\",\"built\":{\"marker\":\"QA433_LOCAL_omitted\",\"phase\":\"build\",\"files\":{\"qa433-app.cjs\":\"e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7\",\"qa433-transform.ts\":\"c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df\"},\"tools\":{\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"yarnpkg\":\"1.22.22\",\"npm\":\"11.19.1\"},\"bun_env_present\":false,\"bun_env\":null,\"bun\":{\"present\":false,\"error\":\"ENOENT\"}},\"runtime\":{\"marker\":\"QA433_LOCAL_omitted\",\"phase\":\"runtime\",\"files\":{\"qa433-app.cjs\":\"e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7\",\"qa433-transform.ts\":\"c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df\"},\"tools\":{\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"yarnpkg\":\"1.22.22\",\"npm\":\"11.19.1\"},\"bun_env_present\":false,\"bun_env\":null,\"bun\":{\"present\":false,\"error\":\"ENOENT\"}}}\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-runtime-logs-omitted",
+      "command": [
+        "docker",
+        "logs",
+        "qa433-omitted-110a48"
+      ],
+      "exit": 0,
+      "stdout": "QA433_BUILD {\"marker\":\"QA433_LOCAL_omitted\",\"phase\":\"build\",\"files\":{\"qa433-app.cjs\":\"e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7\",\"qa433-transform.ts\":\"c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df\"},\"tools\":{\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"yarnpkg\":\"1.22.22\",\"npm\":\"11.19.1\"},\"bun_env_present\":false,\"bun_env\":null,\"bun\":{\"present\":false,\"error\":\"ENOENT\"}}\nQA433_RUNTIME {\"boot\":\"cf77cc5a-3934-46a0-bfbd-5fe8dfd82639\",\"marker\":\"QA433_LOCAL_omitted\",\"phase\":\"runtime\",\"files\":{\"qa433-app.cjs\":\"e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7\",\"qa433-transform.ts\":\"c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df\"},\"tools\":{\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"yarnpkg\":\"1.22.22\",\"npm\":\"11.19.1\"},\"bun_env_present\":false,\"bun_env\":null,\"bun\":{\"present\":false,\"error\":\"ENOENT\"}}\nQA433_HTTP {\"marker\":\"QA433_LOCAL_omitted\",\"boot\":\"cf77cc5a-3934-46a0-bfbd-5fe8dfd82639\",\"nonce\":\"ready\",\"bun_present\":false}\nQA433_HTTP {\"marker\":\"QA433_LOCAL_omitted\",\"boot\":\"cf77cc5a-3934-46a0-bfbd-5fe8dfd82639\",\"nonce\":\"one\",\"bun_present\":false}\nQA433_HTTP {\"marker\":\"QA433_LOCAL_omitted\",\"boot\":\"cf77cc5a-3934-46a0-bfbd-5fe8dfd82639\",\"nonce\":\"two\",\"bun_present\":false}\nQA433_HTTP {\"marker\":\"QA433_LOCAL_omitted\",\"boot\":\"cf77cc5a-3934-46a0-bfbd-5fe8dfd82639\",\"nonce\":\"three\",\"bun_present\":false}\n",
+      "stderr": ""
+    },
+    {
+      "label": "remove-own-omitted",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa433-omitted-110a48"
+      ],
+      "exit": 0,
+      "stdout": "qa433-omitted-110a48\n",
+      "stderr": ""
+    },
+    {
+      "label": "absence-qa433-donor-f5768b",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa433-donor-f5768b"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa433-donor-f5768b\n"
+    },
+    {
+      "label": "absence-qa433-selected-53d2b9",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa433-selected-53d2b9"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa433-selected-53d2b9\n"
+    },
+    {
+      "label": "absence-qa433-omitted-110a48",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa433-omitted-110a48"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa433-omitted-110a48\n"
+    }
+  ],
+  "cases": [
+    {
+      "phase": "selected",
+      "container_name": "qa433-selected-53d2b9",
+      "HTTP": [
+        {
+          "marker": "QA433_LOCAL_selected",
+          "boot": "272aa5be-e8e2-4e82-8fb5-62e3f4668ea1",
+          "nonce": "one",
+          "built": {
+            "marker": "QA433_LOCAL_selected",
+            "phase": "build",
+            "files": {
+              "qa433-app.cjs": "e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7",
+              "qa433-transform.ts": "c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df"
+            },
+            "tools": {
+              "node": "v24.22.0",
+              "yarn": "1.22.22",
+              "yarnpkg": "1.22.22",
+              "npm": "11.19.1"
+            },
+            "bun_env_present": true,
+            "bun_env": "1.3",
+            "bun": {
+              "present": true,
+              "result": {
+                "label": "QA433_LOCAL_selected|Crème brûlée & 李|build",
+                "sum": 10,
+                "weighted": 23,
+                "sorted": [
+                  2,
+                  3,
+                  5
+                ],
+                "factor": 2,
+                "bun": "1.3.14",
+                "sha256": "008917e696c7e2abae9d0c2a054c9b3888a3187ff466885fb72b891810a49b83"
+              }
+            }
+          },
+          "runtime": {
+            "marker": "QA433_LOCAL_selected",
+            "phase": "runtime",
+            "files": {
+              "qa433-app.cjs": "e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7",
+              "qa433-transform.ts": "c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df"
+            },
+            "tools": {
+              "node": "v24.22.0",
+              "yarn": "1.22.22",
+              "yarnpkg": "1.22.22",
+              "npm": "11.19.1"
+            },
+            "bun_env_present": true,
+            "bun_env": "1.3",
+            "bun": {
+              "present": true,
+              "result": {
+                "label": "QA433_LOCAL_selected|Crème brûlée & 李|one",
+                "sum": 10,
+                "weighted": 23,
+                "sorted": [
+                  2,
+                  3,
+                  5
+                ],
+                "factor": 2,
+                "bun": "1.3.14",
+                "sha256": "bbba89f26bef68ef6a91c6660bebdfbc14ff7a5bbd900b0ff3fa0e015cc0252b"
+              }
+            }
+          }
+        },
+        {
+          "marker": "QA433_LOCAL_selected",
+          "boot": "272aa5be-e8e2-4e82-8fb5-62e3f4668ea1",
+          "nonce": "two",
+          "built": {
+            "marker": "QA433_LOCAL_selected",
+            "phase": "build",
+            "files": {
+              "qa433-app.cjs": "e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7",
+              "qa433-transform.ts": "c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df"
+            },
+            "tools": {
+              "node": "v24.22.0",
+              "yarn": "1.22.22",
+              "yarnpkg": "1.22.22",
+              "npm": "11.19.1"
+            },
+            "bun_env_present": true,
+            "bun_env": "1.3",
+            "bun": {
+              "present": true,
+              "result": {
+                "label": "QA433_LOCAL_selected|Crème brûlée & 李|build",
+                "sum": 10,
+                "weighted": 23,
+                "sorted": [
+                  2,
+                  3,
+                  5
+                ],
+                "factor": 2,
+                "bun": "1.3.14",
+                "sha256": "008917e696c7e2abae9d0c2a054c9b3888a3187ff466885fb72b891810a49b83"
+              }
+            }
+          },
+          "runtime": {
+            "marker": "QA433_LOCAL_selected",
+            "phase": "runtime",
+            "files": {
+              "qa433-app.cjs": "e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7",
+              "qa433-transform.ts": "c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df"
+            },
+            "tools": {
+              "node": "v24.22.0",
+              "yarn": "1.22.22",
+              "yarnpkg": "1.22.22",
+              "npm": "11.19.1"
+            },
+            "bun_env_present": true,
+            "bun_env": "1.3",
+            "bun": {
+              "present": true,
+              "result": {
+                "label": "QA433_LOCAL_selected|Crème brûlée & 李|two",
+                "sum": 10,
+                "weighted": 23,
+                "sorted": [
+                  2,
+                  3,
+                  5
+                ],
+                "factor": 2,
+                "bun": "1.3.14",
+                "sha256": "ccdb9f0ac1943b0cc96e71dea8652fc1093cd7f5e86d54326910eaab162a8bc8"
+              }
+            }
+          }
+        },
+        {
+          "marker": "QA433_LOCAL_selected",
+          "boot": "272aa5be-e8e2-4e82-8fb5-62e3f4668ea1",
+          "nonce": "three",
+          "built": {
+            "marker": "QA433_LOCAL_selected",
+            "phase": "build",
+            "files": {
+              "qa433-app.cjs": "e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7",
+              "qa433-transform.ts": "c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df"
+            },
+            "tools": {
+              "node": "v24.22.0",
+              "yarn": "1.22.22",
+              "yarnpkg": "1.22.22",
+              "npm": "11.19.1"
+            },
+            "bun_env_present": true,
+            "bun_env": "1.3",
+            "bun": {
+              "present": true,
+              "result": {
+                "label": "QA433_LOCAL_selected|Crème brûlée & 李|build",
+                "sum": 10,
+                "weighted": 23,
+                "sorted": [
+                  2,
+                  3,
+                  5
+                ],
+                "factor": 2,
+                "bun": "1.3.14",
+                "sha256": "008917e696c7e2abae9d0c2a054c9b3888a3187ff466885fb72b891810a49b83"
+              }
+            }
+          },
+          "runtime": {
+            "marker": "QA433_LOCAL_selected",
+            "phase": "runtime",
+            "files": {
+              "qa433-app.cjs": "e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7",
+              "qa433-transform.ts": "c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df"
+            },
+            "tools": {
+              "node": "v24.22.0",
+              "yarn": "1.22.22",
+              "yarnpkg": "1.22.22",
+              "npm": "11.19.1"
+            },
+            "bun_env_present": true,
+            "bun_env": "1.3",
+            "bun": {
+              "present": true,
+              "result": {
+                "label": "QA433_LOCAL_selected|Crème brûlée & 李|three",
+                "sum": 10,
+                "weighted": 23,
+                "sorted": [
+                  2,
+                  3,
+                  5
+                ],
+                "factor": 2,
+                "bun": "1.3.14",
+                "sha256": "c4a62fe72f5717113bec02954666b0e948e9c37854ef45cdeea57971d43962bf"
+              }
+            }
+          }
+        }
+      ],
+      "pass": true
+    },
+    {
+      "phase": "omitted",
+      "container_name": "qa433-omitted-110a48",
+      "HTTP": [
+        {
+          "marker": "QA433_LOCAL_omitted",
+          "boot": "cf77cc5a-3934-46a0-bfbd-5fe8dfd82639",
+          "nonce": "one",
+          "built": {
+            "marker": "QA433_LOCAL_omitted",
+            "phase": "build",
+            "files": {
+              "qa433-app.cjs": "e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7",
+              "qa433-transform.ts": "c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df"
+            },
+            "tools": {
+              "node": "v24.22.0",
+              "yarn": "1.22.22",
+              "yarnpkg": "1.22.22",
+              "npm": "11.19.1"
+            },
+            "bun_env_present": false,
+            "bun_env": null,
+            "bun": {
+              "present": false,
+              "error": "ENOENT"
+            }
+          },
+          "runtime": {
+            "marker": "QA433_LOCAL_omitted",
+            "phase": "runtime",
+            "files": {
+              "qa433-app.cjs": "e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7",
+              "qa433-transform.ts": "c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df"
+            },
+            "tools": {
+              "node": "v24.22.0",
+              "yarn": "1.22.22",
+              "yarnpkg": "1.22.22",
+              "npm": "11.19.1"
+            },
+            "bun_env_present": false,
+            "bun_env": null,
+            "bun": {
+              "present": false,
+              "error": "ENOENT"
+            }
+          }
+        },
+        {
+          "marker": "QA433_LOCAL_omitted",
+          "boot": "cf77cc5a-3934-46a0-bfbd-5fe8dfd82639",
+          "nonce": "two",
+          "built": {
+            "marker": "QA433_LOCAL_omitted",
+            "phase": "build",
+            "files": {
+              "qa433-app.cjs": "e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7",
+              "qa433-transform.ts": "c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df"
+            },
+            "tools": {
+              "node": "v24.22.0",
+              "yarn": "1.22.22",
+              "yarnpkg": "1.22.22",
+              "npm": "11.19.1"
+            },
+            "bun_env_present": false,
+            "bun_env": null,
+            "bun": {
+              "present": false,
+              "error": "ENOENT"
+            }
+          },
+          "runtime": {
+            "marker": "QA433_LOCAL_omitted",
+            "phase": "runtime",
+            "files": {
+              "qa433-app.cjs": "e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7",
+              "qa433-transform.ts": "c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df"
+            },
+            "tools": {
+              "node": "v24.22.0",
+              "yarn": "1.22.22",
+              "yarnpkg": "1.22.22",
+              "npm": "11.19.1"
+            },
+            "bun_env_present": false,
+            "bun_env": null,
+            "bun": {
+              "present": false,
+              "error": "ENOENT"
+            }
+          }
+        },
+        {
+          "marker": "QA433_LOCAL_omitted",
+          "boot": "cf77cc5a-3934-46a0-bfbd-5fe8dfd82639",
+          "nonce": "three",
+          "built": {
+            "marker": "QA433_LOCAL_omitted",
+            "phase": "build",
+            "files": {
+              "qa433-app.cjs": "e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7",
+              "qa433-transform.ts": "c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df"
+            },
+            "tools": {
+              "node": "v24.22.0",
+              "yarn": "1.22.22",
+              "yarnpkg": "1.22.22",
+              "npm": "11.19.1"
+            },
+            "bun_env_present": false,
+            "bun_env": null,
+            "bun": {
+              "present": false,
+              "error": "ENOENT"
+            }
+          },
+          "runtime": {
+            "marker": "QA433_LOCAL_omitted",
+            "phase": "runtime",
+            "files": {
+              "qa433-app.cjs": "e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7",
+              "qa433-transform.ts": "c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df"
+            },
+            "tools": {
+              "node": "v24.22.0",
+              "yarn": "1.22.22",
+              "yarnpkg": "1.22.22",
+              "npm": "11.19.1"
+            },
+            "bun_env_present": false,
+            "bun_env": null,
+            "bun": {
+              "present": false,
+              "error": "ENOENT"
+            }
+          }
+        }
+      ],
+      "pass": true
+    }
+  ],
+  "pass": true,
+  "own_containers_absent": true,
+  "own_context_removed": true
+}

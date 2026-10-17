@@ -1,0 +1,28 @@
+from pathlib import Path
+import json,secrets,subprocess,tempfile,shutil
+P=Path(__file__).resolve().parent;ref=json.loads((P/'candidate-webpack-reference.json').read_text());nonce=secrets.token_hex(3);root=Path(tempfile.mkdtemp(prefix='candidate-webpack-full-',dir=P));image='node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0';out={'nonce':nonce,'context':str(root),'image':image,'cases':[],'qualification':'selected cached Node24 base, exact own two-module app, real webpack and own-container-loopback HTTP; not full generated image or hosted finding'}
+def save():(P/'candidate-webpack-local-prerequisite.json').write_text(json.dumps(out,indent=2))
+save()
+checker="const fs=require('node:fs'),http=require('node:http'),assert=require('node:assert/strict');const ref=JSON.parse(fs.readFileSync('qa-webpack-reference.json'));function get(path){return new Promise((resolve,reject)=>http.get({host:'127.0.0.1',port:3000,path},r=>{const a=[];r.on('data',b=>a.push(b));r.on('end',()=>resolve({status:r.statusCode,body:Buffer.concat(a)}))}).on('error',reject))}(async()=>{let ready=false;for(let i=0;i<60;i++){try{if((await get('/')).status===200){ready=true;break}}catch{}await new Promise(r=>setTimeout(r,100))}assert(ready);const rows=[];for(const path of ['/bundled?qa=1','/?qa=2','/bundled?qa=3']){const r=await get(path);assert.equal(r.status,200);const v=JSON.parse(r.body);for(const p of ['build','runtime']){assert.equal(v[p].marker,'QA_WEBPACK_LOCAL');assert.deepEqual(v[p].input,ref.rows);assert.deepEqual(v[p].result,ref.expected);assert.deepEqual(v[p].files,ref.files);assert.deepEqual(v[p].sources,ref.sources);assert.equal(v[p].compiler.version,ref.control_compiler);assert.equal(v[p].compiler.errors,0);assert.equal(v[p].webpack_probe.status,0);assert(v[p].bundle.bytes>0)}assert.deepEqual(v.build.bundle,v.runtime.bundle);assert.equal(v.runtime.request_path,path);rows.push({path,status:r.status,bundle:v.runtime.bundle,compiler:v.runtime.compiler,result:v.runtime.result})}console.log('QA_WEBPACK_LOCAL_HTTP '+JSON.stringify(rows))})().catch(e=>{console.error(e.stack);process.exitCode=1})"
+try:
+ for stage in ['original','compiler-control']:
+  D=root/stage;D.mkdir();name='qa-webpack-'+nonce+'-'+stage;assert subprocess.run(['docker','inspect',name],capture_output=True).returncode!=0
+  for n in ref['files']:shutil.copyfile(P/('sweep421-source-'+n),D/n)
+  for n,b in [('qa-webpack-entry.mjs',(P/'candidate-webpack-entry.mjs').read_text()),('qa-webpack-domain.mjs',(P/'candidate-webpack-domain.mjs').read_text()),('qa-webpack-before.cjs',(P/'candidate-webpack-before.cjs').read_text()),('qa-webpack-reference.json',json.dumps(ref,ensure_ascii=False)),('qa-webpack-marker.json',json.dumps('QA_WEBPACK_LOCAL')),('check.cjs',checker)]:(D/n).write_text(b)
+  command='set -e\nnode qa-webpack-before.cjs\n'
+  if stage=='compiler-control':command+='npm install --global --no-audit --no-fund webpack@'+ref['control_compiler']+' webpack-cli@'+ref['control_cli']+'\n'
+  command+='webpack ./qa-webpack-entry.mjs --mode production --target node --output-path ./dist --output-filename bundle.cjs --json > qa-webpack-stats.json\nnode dist/bundle.cjs build'
+  if stage=='compiler-control':command+="\nnode dist/bundle.cjs serve > own-server.log 2>&1 &\nqa_webpack_pid=$!\ntrap 'kill \"$qa_webpack_pid\" 2>/dev/null || true' EXIT\nnode check.cjs\ncat own-server.log"
+  e={'stage':stage,'container':name,'absent_before':True,'command':command};out['cases'].append(e);save()
+  try:r=subprocess.run(['docker','run','--pull=never','--rm','--name',name,'--label','bex.qa.run='+nonce,'-v',str(D)+':/work','-w','/work','-e','PORT=3000',image,'bash','-c',command],capture_output=True,text=True,timeout=210);e.update(exit=r.returncode,stdout=r.stdout,stderr=r.stderr);save()
+  finally:
+   z=subprocess.run(['docker','inspect',name],capture_output=True,text=True)
+   if z.returncode==0:
+    v=json.loads(z.stdout)[0];assert v['Config']['Labels']['bex.qa.run']==nonce and any(m['Source']==str(D) for m in v['Mounts']);subprocess.run(['docker','rm','-f',name],capture_output=True,check=True)
+  if stage=='original':e['pass']=r.returncode==127 and 'webpack: command not found' in r.stderr and not (D/'qa-webpack-build.json').exists()
+  else:e['pass']=r.returncode==0 and 'QA_WEBPACK_LOCAL_HTTP ' in r.stdout and (D/'qa-webpack-build.json').exists();e['build']=json.loads((D/'qa-webpack-build.json').read_text()) if (D/'qa-webpack-build.json').exists() else None
+  save();print(json.dumps({'stage':stage,'exit':r.returncode,'expected_result':e['pass']}),flush=True);assert e['pass']
+ out['pass']=True;save()
+finally:
+ assert root.parent==P and root.name.startswith('candidate-webpack-full-');shutil.rmtree(root);out['own_containers_context_removed']=not root.exists() and all(subprocess.run(['docker','inspect',e['container']],capture_output=True).returncode!=0 for e in out['cases']);save()
+print(json.dumps({'pass':out.get('pass'),'cleanup':out['own_containers_context_removed']}))

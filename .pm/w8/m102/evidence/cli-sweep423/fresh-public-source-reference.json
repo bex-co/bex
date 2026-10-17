@@ -1,0 +1,17 @@
+[
+  {
+    "url": "https://api.github.com/repos/git-fixtures/basic/commits/master",
+    "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+    "at": "2026-10-17T10:21:24.422501+00:00"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/git-fixtures/basic/6ecf0ef2c2dffb796033e5a02219af86ec6584e5/LICENSE",
+    "bytes": 1072,
+    "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/git-fixtures/basic/6ecf0ef2c2dffb796033e5a02219af86ec6584e5/CHANGELOG",
+    "bytes": 18,
+    "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+  }
+]

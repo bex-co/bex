@@ -1,0 +1,1984 @@
+{
+  "sweep": 439,
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "type": "keyvalue",
+  "name": "qa-20261017-f10eab-data",
+  "nonce": "f10eab",
+  "time": "2026-10-17T14:14:15.049309+00:00",
+  "source_head": "3ddccbc82eefe964b0b0a5a0f8fe8f8439d84775",
+  "dependency_ids": [],
+  "recorded_child_ids": [],
+  "pre_ids": [],
+  "capacity": {
+    "at": "2026-10-17T14:14:13.246763+00:00",
+    "API_only": true,
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "body": null,
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "status": "200",
+    "curl_exit": 0,
+    "elapsed": 0.389,
+    "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+    "stderr": ""
+  },
+  "pre_inventory": {
+    "at": "2026-10-17T14:14:14.315695+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "keyvalues",
+      "list",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 1.067,
+    "stdout": "{\"data\": []}",
+    "stderr": ""
+  },
+  "pre_services": {
+    "at": "2026-10-17T14:14:15.049048+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.733,
+    "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}]",
+    "stderr": ""
+  },
+  "create_command": [
+    "bex",
+    "keyvalues",
+    "create",
+    "--name",
+    "qa-20261017-f10eab-data",
+    "--plan",
+    "free",
+    "--region",
+    "frankfurt",
+    "--memory-policy",
+    "queue",
+    "--persistence-mode",
+    "off",
+    "--ip-allow-list",
+    "cidr=0.0.0.0/0,description=owned-qa",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "state": "deleted: native0/detail404/listabsent/baseline6/KVquota0 terminating0",
+  "create_result": {
+    "at": "2026-10-17T14:14:16.207041+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "keyvalues",
+      "create",
+      "--name",
+      "qa-20261017-f10eab-data",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--memory-policy",
+      "queue",
+      "--persistence-mode",
+      "off",
+      "--ip-allow-list",
+      "cidr=0.0.0.0/0,description=owned-qa",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.79,
+    "stdout": "{\"data\": {\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"region\": \"fsn1\", \"status\": \"creating\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:14:16.0669255Z\", \"version\": \"8\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"ownerType\": \"team\", \"projectId\": null, \"environmentId\": null, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}}",
+    "stderr": ""
+  },
+  "id": "red-db9o5e4s300s73dskg1g",
+  "create_response": {
+    "id": "red-db9o5e4s300s73dskg1g",
+    "name": "qa-20261017-f10eab-data",
+    "plan": "free",
+    "region": "fsn1",
+    "status": "creating",
+    "createdAt": "2026-10-17T14:14:16Z",
+    "updatedAt": "2026-10-17T14:14:16.0669255Z",
+    "version": "8",
+    "ownerId": "tea-daif693dqjvc73e7as3g",
+    "ownerType": "team",
+    "projectId": null,
+    "environmentId": null,
+    "ipAllowList": [
+      {
+        "cidrBlock": "0.0.0.0/0",
+        "description": "owned-qa"
+      }
+    ],
+    "maxmemoryPolicy": "noeviction",
+    "persistenceMode": "off"
+  },
+  "preexisting_history_metadata_before": {
+    "size": 5,
+    "mtime_ns": 1792185892482816095,
+    "ctime_ns": 1792185892482929180,
+    "inode": 442423912,
+    "mode": 33152
+  },
+  "details": [
+    {
+      "at": "2026-10-17T14:14:18.712146+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.308,
+      "response": "{\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:14:16.0669255Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db9o5e4s300s73dskg1g\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db9o5e4s300s73dskg1g.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T14:14:30.608230+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.427,
+      "response": "{\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:14:22Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db9o5e4s300s73dskg1g\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db9o5e4s300s73dskg1g.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T14:14:42.840044+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.758,
+      "response": "{\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:14:42Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db9o5e4s300s73dskg1g\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db9o5e4s300s73dskg1g.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T14:14:54.694277+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.465,
+      "response": "{\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:14:42Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db9o5e4s300s73dskg1g\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db9o5e4s300s73dskg1g.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T14:14:56.435711+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.443,
+      "response": "{\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:14:42Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db9o5e4s300s73dskg1g\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db9o5e4s300s73dskg1g.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T14:15:50.949732+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.403,
+      "response": "{\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:15:02Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db9o5e4s300s73dskg1g\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db9o5e4s300s73dskg1g.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T14:15:52.961455+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.412,
+      "response": "{\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:15:02Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db9o5e4s300s73dskg1g\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db9o5e4s300s73dskg1g.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T14:16:58.820267+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.89,
+      "response": "{\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:15:02Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db9o5e4s300s73dskg1g\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db9o5e4s300s73dskg1g.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T14:17:00.872745+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.467,
+      "response": "{\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:15:02Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db9o5e4s300s73dskg1g\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db9o5e4s300s73dskg1g.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T14:17:03.158411+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.567,
+      "response": "{\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:15:02Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db9o5e4s300s73dskg1g\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db9o5e4s300s73dskg1g.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T14:17:08.543915+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.483,
+      "response": "{\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:15:02Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db9o5e4s300s73dskg1g\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db9o5e4s300s73dskg1g.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T14:17:14.105845+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.293,
+      "response": "{\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:15:02Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db9o5e4s300s73dskg1g\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db9o5e4s300s73dskg1g.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T14:19:06.842118+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.382,
+      "response": "{\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:15:02Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db9o5e4s300s73dskg1g\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db9o5e4s300s73dskg1g.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    }
+  ],
+  "readiness": [
+    {
+      "at": "2026-10-17T14:14:19.110483+00:00",
+      "native": {
+        "at": "2026-10-17T14:14:18.380554+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "get",
+          "red-db9o5e4s300s73dskg1g",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.833,
+        "stdout": "{\"data\": {\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"region\": \"fsn1\", \"status\": \"creating\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:14:16.0669255Z\", \"version\": \"8\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"ownerType\": \"team\", \"projectId\": null, \"environmentId\": null, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-17T14:14:18.712146+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.308,
+        "response": "{\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:14:16.0669255Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db9o5e4s300s73dskg1g\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db9o5e4s300s73dskg1g.kv.bex.co\", \"public\": true}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-17T14:14:30.984639+00:00",
+      "native": {
+        "at": "2026-10-17T14:14:30.155169+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "get",
+          "red-db9o5e4s300s73dskg1g",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.613,
+        "stdout": "{\"data\": {\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"region\": \"fsn1\", \"status\": \"creating\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:14:22Z\", \"version\": \"8\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"ownerType\": \"team\", \"projectId\": null, \"environmentId\": null, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-17T14:14:30.608230+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.427,
+        "response": "{\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:14:22Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db9o5e4s300s73dskg1g\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db9o5e4s300s73dskg1g.kv.bex.co\", \"public\": true}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-17T14:14:43.219731+00:00",
+      "native": {
+        "at": "2026-10-17T14:14:42.055607+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "get",
+          "red-db9o5e4s300s73dskg1g",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.715,
+        "stdout": "{\"data\": {\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"region\": \"fsn1\", \"status\": \"creating\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:14:22Z\", \"version\": \"8\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"ownerType\": \"team\", \"projectId\": null, \"environmentId\": null, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-17T14:14:42.840044+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.758,
+        "response": "{\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:14:42Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db9o5e4s300s73dskg1g\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db9o5e4s300s73dskg1g.kv.bex.co\", \"public\": true}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-17T14:14:55.078036+00:00",
+      "native": {
+        "at": "2026-10-17T14:14:54.202207+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "get",
+          "red-db9o5e4s300s73dskg1g",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.623,
+        "stdout": "{\"data\": {\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"region\": \"fsn1\", \"status\": \"creating\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:14:42Z\", \"version\": \"8\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"ownerType\": \"team\", \"projectId\": null, \"environmentId\": null, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-17T14:14:54.694277+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.465,
+        "response": "{\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:14:42Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db9o5e4s300s73dskg1g\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db9o5e4s300s73dskg1g.kv.bex.co\", \"public\": true}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-17T14:15:51.323822+00:00",
+      "native": {
+        "at": "2026-10-17T14:15:50.519810+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "get",
+          "red-db9o5e4s300s73dskg1g",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.411,
+        "stdout": "{\"data\": {\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"region\": \"fsn1\", \"status\": \"available\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:15:02Z\", \"version\": \"8\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"ownerType\": \"team\", \"projectId\": null, \"environmentId\": null, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-17T14:15:50.949732+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.403,
+        "response": "{\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:15:02Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db9o5e4s300s73dskg1g\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db9o5e4s300s73dskg1g.kv.bex.co\", \"public\": true}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-17T14:16:59.179036+00:00",
+      "native": {
+        "at": "2026-10-17T14:16:57.905356+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "get",
+          "red-db9o5e4s300s73dskg1g",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.524,
+        "stdout": "{\"data\": {\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"region\": \"fsn1\", \"status\": \"available\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:15:02Z\", \"version\": \"8\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"ownerType\": \"team\", \"projectId\": null, \"environmentId\": null, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-17T14:16:58.820267+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.89,
+        "response": "{\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:15:02Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db9o5e4s300s73dskg1g\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db9o5e4s300s73dskg1g.kv.bex.co\", \"public\": true}",
+        "stderr": ""
+      }
+    }
+  ],
+  "connection_setup": {
+    "at": "2026-10-17T14:17:01.289158+00:00",
+    "native_create_already_public": true,
+    "same_owned_detail": {
+      "at": "2026-10-17T14:17:00.872745+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.467,
+      "response": "{\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:15:02Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db9o5e4s300s73dskg1g\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db9o5e4s300s73dskg1g.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    "API_patch_needed": false
+  },
+  "native_ping": [
+    {
+      "at": "2026-10-17T14:17:03.539120+00:00",
+      "client": "bex",
+      "native": {
+        "command": [
+          "bex",
+          "kv-cli",
+          "red-db9o5e4s300s73dskg1g",
+          "-o",
+          "interactive",
+          "--",
+          "--raw",
+          "PING"
+        ],
+        "native_exit": 0,
+        "elapsed": 2.075,
+        "output": "\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \n\n\n⣻  Loading...                   \r\n\n\n\n⢿  Loading...                   \r\n\n\n\n⡿  Loading...                   \r\n\n\n\n⣟  Loading...                   \r\n\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\n\n\n⣻  Loading...                                      \r\n\n\n\n⢿  Loading...                                      \r\n\n\n\n                                                   \r\n\rWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\r\nPONG\r\n\r \r                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+        "streams_merged_PTY": true,
+        "exact_owned_group_closed": true
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-17T14:17:08.921961+00:00",
+      "client": "render",
+      "native": {
+        "command": [
+          "render",
+          "kv-cli",
+          "red-db9o5e4s300s73dskg1g",
+          "-o",
+          "interactive",
+          "--",
+          "--raw",
+          "PING"
+        ],
+        "native_exit": 0,
+        "elapsed": 2.485,
+        "output": "\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \n\n\n⣻  Loading...                   \r\n\n\n\n⢿  Loading...                   \r\n\n\n\n⡿  Loading...                   \r\n\n\n\n⣟  Loading...                   \r\n\n\n\n⣯  Loading...                   \r\n\n\n\n⣷  Loading...                   \r\n\n\n\n⣾  Loading...                   \r\n\n\n\n⣽  Loading...                   \r\n\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\n\n\n⣻  Loading...                                      \r\n\n\n\n⢿  Loading...                                      \r\n\n\n\n                                                   \r\n\rWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\r\nPONG\r\n\r \r                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+        "streams_merged_PTY": true,
+        "exact_owned_group_closed": true
+      },
+      "pass": true
+    }
+  ],
+  "terminal_process_ledger": [
+    {
+      "at": "2026-10-17T14:17:03.882576+00:00",
+      "command": [
+        "bex",
+        "kv-cli",
+        "red-db9o5e4s300s73dskg1g",
+        "-o",
+        "interactive",
+        "--",
+        "--raw",
+        "PING"
+      ],
+      "intent": "bounded native command with isolated config/history; caller records exact owned data scope",
+      "PID": 44950,
+      "PGID": 44950,
+      "state": "owned process group closed",
+      "native": {
+        "command": [
+          "bex",
+          "kv-cli",
+          "red-db9o5e4s300s73dskg1g",
+          "-o",
+          "interactive",
+          "--",
+          "--raw",
+          "PING"
+        ],
+        "native_exit": 0,
+        "elapsed": 2.075,
+        "output": "\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \n\n\n⣻  Loading...                   \r\n\n\n\n⢿  Loading...                   \r\n\n\n\n⡿  Loading...                   \r\n\n\n\n⣟  Loading...                   \r\n\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\n\n\n⣻  Loading...                                      \r\n\n\n\n⢿  Loading...                                      \r\n\n\n\n                                                   \r\n\rWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\r\nPONG\r\n\r \r                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+        "streams_merged_PTY": true,
+        "exact_owned_group_closed": true
+      },
+      "owned_config_history_removed": true
+    },
+    {
+      "at": "2026-10-17T14:17:09.281899+00:00",
+      "command": [
+        "render",
+        "kv-cli",
+        "red-db9o5e4s300s73dskg1g",
+        "-o",
+        "interactive",
+        "--",
+        "--raw",
+        "PING"
+      ],
+      "intent": "bounded native command with isolated config/history; caller records exact owned data scope",
+      "PID": 44962,
+      "PGID": 44962,
+      "state": "owned process group closed",
+      "native": {
+        "command": [
+          "render",
+          "kv-cli",
+          "red-db9o5e4s300s73dskg1g",
+          "-o",
+          "interactive",
+          "--",
+          "--raw",
+          "PING"
+        ],
+        "native_exit": 0,
+        "elapsed": 2.485,
+        "output": "\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \n\n\n⣻  Loading...                   \r\n\n\n\n⢿  Loading...                   \r\n\n\n\n⡿  Loading...                   \r\n\n\n\n⣟  Loading...                   \r\n\n\n\n⣯  Loading...                   \r\n\n\n\n⣷  Loading...                   \r\n\n\n\n⣾  Loading...                   \r\n\n\n\n⣽  Loading...                   \r\n\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\n\n\n⣻  Loading...                                      \r\n\n\n\n⢿  Loading...                                      \r\n\n\n\n                                                   \r\n\rWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\r\nPONG\r\n\r \r                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+        "streams_merged_PTY": true,
+        "exact_owned_group_closed": true
+      },
+      "owned_config_history_removed": true
+    },
+    {
+      "at": "2026-10-17T14:17:18.845644+00:00",
+      "command": [
+        "bex",
+        "kv-cli",
+        "red-db9o5e4s300s73dskg1g",
+        "-o",
+        "interactive",
+        "--",
+        "--raw",
+        "EVAL",
+        "if redis.call('EXISTS',unpack(KEYS))~=0 then return redis.error_reply('Own fixture keys already exist; reconcile before retry') end;local n=redis.call('GEOADD',KEYS[1],179.999,0,'east',-179.999,0,'west',170,0,'far',179.999,1,'north',179.998,0,'café:雪');local near=redis.call('GEOSEARCH',KEYS[1],'FROMLONLAT',179.999,0,'BYRADIUS',500,'m','ASC','WITHDIST','WITHCOORD');local absent=redis.call('GEOSEARCH',KEYS[1],'FROMLONLAT',0,0,'BYRADIUS',500,'m');return 'QA439_RESULT '..cjson.encode({case='geo',marker=ARGV[1],seeded=n,near=near,distance=redis.call('GEODIST',KEYS[1],'east','west','m'),absent_count=#absent,dbkey_count=redis.call('ZCARD',KEYS[1])})",
+        "1",
+        "qa439:f10eab:bex:geo",
+        "QA439_f10eab_bex_geo"
+      ],
+      "intent": "bounded native command with isolated config/history; caller records exact owned data scope",
+      "PID": 44984,
+      "PGID": 44984,
+      "state": "owned process group closed",
+      "native": {
+        "command": [
+          "bex",
+          "kv-cli",
+          "red-db9o5e4s300s73dskg1g",
+          "-o",
+          "interactive",
+          "--",
+          "--raw",
+          "EVAL",
+          "if redis.call('EXISTS',unpack(KEYS))~=0 then return redis.error_reply('Own fixture keys already exist; reconcile before retry') end;local n=redis.call('GEOADD',KEYS[1],179.999,0,'east',-179.999,0,'west',170,0,'far',179.999,1,'north',179.998,0,'café:雪');local near=redis.call('GEOSEARCH',KEYS[1],'FROMLONLAT',179.999,0,'BYRADIUS',500,'m','ASC','WITHDIST','WITHCOORD');local absent=redis.call('GEOSEARCH',KEYS[1],'FROMLONLAT',0,0,'BYRADIUS',500,'m');return 'QA439_RESULT '..cjson.encode({case='geo',marker=ARGV[1],seeded=n,near=near,distance=redis.call('GEODIST',KEYS[1],'east','west','m'),absent_count=#absent,dbkey_count=redis.call('ZCARD',KEYS[1])})",
+          "1",
+          "qa439:f10eab:bex:geo",
+          "QA439_f10eab_bex_geo"
+        ],
+        "native_exit": 0,
+        "elapsed": 2.073,
+        "output": "\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \n\n\n⣻  Loading...                   \r\n\n\n\n⢿  Loading...                   \r\n\n\n\n⡿  Loading...                   \r\n\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\n\n\n⣻  Loading...                                      \r\n\n\n\n⢿  Loading...                                      \r\n\n\n\n⡿  Loading...                                      \r\n\n\n\n                                                   \r\n\rWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\r\nQA439_RESULT {\"dbkey_count\":5,\"absent_count\":0,\"marker\":\"QA439_f10eab_bex_geo\",\"case\":\"geo\",\"seeded\":5,\"near\":[[\"east\",\"0.1501\",[\"179.99899953603744507\",\"0.00000126736058093\"]],[\"café:雪\",\"111.0313\",[\"179.99800175428390503\",\"0.00000126736058093\"]],[\"west\",\"222.5042\",[\"-179.99899953603744507\",\"0.00000126736058093\"]]],\"distance\":\"222.5558\"}\r\n\r \r                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+        "streams_merged_PTY": true,
+        "exact_owned_group_closed": true
+      },
+      "owned_config_history_removed": true
+    },
+    {
+      "at": "2026-10-17T14:17:23.635852+00:00",
+      "command": [
+        "bex",
+        "kv-cli",
+        "red-db9o5e4s300s73dskg1g",
+        "-o",
+        "interactive",
+        "--",
+        "--raw",
+        "EVAL",
+        "if redis.call('EXISTS',unpack(KEYS))~=0 then return redis.error_reply('Own fixture keys already exist; reconcile before retry') end;local initial=redis.call('BITFIELD',KEYS[1],'SET','u4',0,14,'SET','i4',4,-2,'GET','u4',0,'GET','i4',4);local sat=redis.call('BITFIELD',KEYS[1],'OVERFLOW','SAT','INCRBY','u4',0,5);local wrap=redis.call('BITFIELD',KEYS[1],'OVERFLOW','WRAP','INCRBY','i4',4,-9);local fail=redis.call('BITFIELD',KEYS[1],'OVERFLOW','FAIL','INCRBY','u4',0,1);redis.call('BITFIELD',KEYS[2],'SET','u12',4,2748,'INCRBY','u12',4,1,'SET','i8',16,-128,'OVERFLOW','WRAP','INCRBY','i8',16,-1);local cross=redis.call('GET',KEYS[2]);return 'QA439_RESULT '..cjson.encode({case='bits',marker=ARGV[1],initial=initial,saturated=sat[1],wrapped=wrap[1],overflow_failed=fail[1]==false,unchanged=redis.call('BITFIELD',KEYS[1],'GET','u4',0)[1],byte=string.byte(redis.call('GET',KEYS[1])),bitcount=redis.call('BITCOUNT',KEYS[1]),cross_bytes={string.byte(cross,1,#cross)},cross_fields=redis.call('BITFIELD',KEYS[2],'GET','u12',4,'GET','i8',16)})",
+        "2",
+        "qa439:f10eab:bex:bits",
+        "qa439:f10eab:bex:cross",
+        "QA439_f10eab_bex_bits"
+      ],
+      "intent": "bounded native command with isolated config/history; caller records exact owned data scope",
+      "PID": 44992,
+      "PGID": 44992,
+      "state": "owned process group closed",
+      "native": {
+        "command": [
+          "bex",
+          "kv-cli",
+          "red-db9o5e4s300s73dskg1g",
+          "-o",
+          "interactive",
+          "--",
+          "--raw",
+          "EVAL",
+          "if redis.call('EXISTS',unpack(KEYS))~=0 then return redis.error_reply('Own fixture keys already exist; reconcile before retry') end;local initial=redis.call('BITFIELD',KEYS[1],'SET','u4',0,14,'SET','i4',4,-2,'GET','u4',0,'GET','i4',4);local sat=redis.call('BITFIELD',KEYS[1],'OVERFLOW','SAT','INCRBY','u4',0,5);local wrap=redis.call('BITFIELD',KEYS[1],'OVERFLOW','WRAP','INCRBY','i4',4,-9);local fail=redis.call('BITFIELD',KEYS[1],'OVERFLOW','FAIL','INCRBY','u4',0,1);redis.call('BITFIELD',KEYS[2],'SET','u12',4,2748,'INCRBY','u12',4,1,'SET','i8',16,-128,'OVERFLOW','WRAP','INCRBY','i8',16,-1);local cross=redis.call('GET',KEYS[2]);return 'QA439_RESULT '..cjson.encode({case='bits',marker=ARGV[1],initial=initial,saturated=sat[1],wrapped=wrap[1],overflow_failed=fail[1]==false,unchanged=redis.call('BITFIELD',KEYS[1],'GET','u4',0)[1],byte=string.byte(redis.call('GET',KEYS[1])),bitcount=redis.call('BITCOUNT',KEYS[1]),cross_bytes={string.byte(cross,1,#cross)},cross_fields=redis.call('BITFIELD',KEYS[2],'GET','u12',4,'GET','i8',16)})",
+          "2",
+          "qa439:f10eab:bex:bits",
+          "qa439:f10eab:bex:cross",
+          "QA439_f10eab_bex_bits"
+        ],
+        "native_exit": 0,
+        "elapsed": 1.798,
+        "output": "\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \n\n\n⣻  Loading...                   \r\n\n\n\n⢿  Loading...                   \r\n\n\n\n⡿  Loading...                   \r\n\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\n\n\n⣻  Loading...                                      \r\n\n\n\n⢿  Loading...                                      \r\n\n\n\n                                                   \r\n\rWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\r\nQA439_RESULT {\"overflow_failed\":true,\"byte\":245,\"unchanged\":15,\"marker\":\"QA439_f10eab_bex_bits\",\"case\":\"bits\",\"initial\":[0,0,14,-2],\"cross_fields\":[2749,127],\"cross_bytes\":[10,189,127],\"wrapped\":5,\"bitcount\":6,\"saturated\":15}\r\n\r \r                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+        "streams_merged_PTY": true,
+        "exact_owned_group_closed": true
+      },
+      "owned_config_history_removed": true
+    },
+    {
+      "at": "2026-10-17T14:17:28.191179+00:00",
+      "command": [
+        "bex",
+        "kv-cli",
+        "red-db9o5e4s300s73dskg1g",
+        "-o",
+        "interactive",
+        "--",
+        "--raw",
+        "EVAL",
+        "if redis.call('EXISTS',unpack(KEYS))~=0 then return redis.error_reply('Own fixture keys already exist; reconcile before retry') end;local added=redis.call('PFADD',KEYS[1],'A','B','C','café','雪','李','two words','D');local again=redis.call('PFADD',KEYS[1],'A','B','café');redis.call('PFADD',KEYS[2],'C','D','E','F');redis.call('PFMERGE',KEYS[3],KEYS[1],KEYS[2]);return 'QA439_RESULT '..cjson.encode({case='hll',marker=ARGV[1],added=added,duplicate_change=again,a=redis.call('PFCOUNT',KEYS[1]),b=redis.call('PFCOUNT',KEYS[2]),combined=redis.call('PFCOUNT',KEYS[1],KEYS[2]),merged=redis.call('PFCOUNT',KEYS[3])})",
+        "3",
+        "qa439:f10eab:bex:hll-a",
+        "qa439:f10eab:bex:hll-b",
+        "qa439:f10eab:bex:hll-union",
+        "QA439_f10eab_bex_hll"
+      ],
+      "intent": "bounded native command with isolated config/history; caller records exact owned data scope",
+      "PID": 45000,
+      "PGID": 45000,
+      "state": "owned process group closed",
+      "native": {
+        "command": [
+          "bex",
+          "kv-cli",
+          "red-db9o5e4s300s73dskg1g",
+          "-o",
+          "interactive",
+          "--",
+          "--raw",
+          "EVAL",
+          "if redis.call('EXISTS',unpack(KEYS))~=0 then return redis.error_reply('Own fixture keys already exist; reconcile before retry') end;local added=redis.call('PFADD',KEYS[1],'A','B','C','café','雪','李','two words','D');local again=redis.call('PFADD',KEYS[1],'A','B','café');redis.call('PFADD',KEYS[2],'C','D','E','F');redis.call('PFMERGE',KEYS[3],KEYS[1],KEYS[2]);return 'QA439_RESULT '..cjson.encode({case='hll',marker=ARGV[1],added=added,duplicate_change=again,a=redis.call('PFCOUNT',KEYS[1]),b=redis.call('PFCOUNT',KEYS[2]),combined=redis.call('PFCOUNT',KEYS[1],KEYS[2]),merged=redis.call('PFCOUNT',KEYS[3])})",
+          "3",
+          "qa439:f10eab:bex:hll-a",
+          "qa439:f10eab:bex:hll-b",
+          "qa439:f10eab:bex:hll-union",
+          "QA439_f10eab_bex_hll"
+        ],
+        "native_exit": 0,
+        "elapsed": 1.745,
+        "output": "\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \n\n\n⣻  Loading...                   \r\n\n\n\n⢿  Loading...                   \r\n\n\n\n⡿  Loading...                   \r\n\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\n\n\n⣻  Loading...                                      \r\n\n\n\n⢿  Loading...                                      \r\n\n\n\n⡿  Loading...                                      \r\n\n\n\n                                                   \r\n\rWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\r\nQA439_RESULT {\"a\":8,\"combined\":10,\"merged\":10,\"marker\":\"QA439_f10eab_bex_hll\",\"case\":\"hll\",\"added\":1,\"duplicate_change\":0,\"b\":4}\r\n\r \r                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+        "streams_merged_PTY": true,
+        "exact_owned_group_closed": true
+      },
+      "owned_config_history_removed": true
+    },
+    {
+      "at": "2026-10-17T14:17:33.731482+00:00",
+      "command": [
+        "render",
+        "kv-cli",
+        "qa-20261017-f10eab-data",
+        "-o",
+        "interactive",
+        "--",
+        "--raw",
+        "EVAL",
+        "if redis.call('EXISTS',unpack(KEYS))~=0 then return redis.error_reply('Own fixture keys already exist; reconcile before retry') end;local n=redis.call('GEOADD',KEYS[1],179.999,0,'east',-179.999,0,'west',170,0,'far',179.999,1,'north',179.998,0,'café:雪');local near=redis.call('GEOSEARCH',KEYS[1],'FROMLONLAT',179.999,0,'BYRADIUS',500,'m','ASC','WITHDIST','WITHCOORD');local absent=redis.call('GEOSEARCH',KEYS[1],'FROMLONLAT',0,0,'BYRADIUS',500,'m');return 'QA439_RESULT '..cjson.encode({case='geo',marker=ARGV[1],seeded=n,near=near,distance=redis.call('GEODIST',KEYS[1],'east','west','m'),absent_count=#absent,dbkey_count=redis.call('ZCARD',KEYS[1])})",
+        "1",
+        "qa439:f10eab:render:geo",
+        "QA439_f10eab_render_geo"
+      ],
+      "intent": "bounded native command with isolated config/history; caller records exact owned data scope",
+      "PID": 45016,
+      "PGID": 45016,
+      "state": "owned process group closed",
+      "native": {
+        "command": [
+          "render",
+          "kv-cli",
+          "qa-20261017-f10eab-data",
+          "-o",
+          "interactive",
+          "--",
+          "--raw",
+          "EVAL",
+          "if redis.call('EXISTS',unpack(KEYS))~=0 then return redis.error_reply('Own fixture keys already exist; reconcile before retry') end;local n=redis.call('GEOADD',KEYS[1],179.999,0,'east',-179.999,0,'west',170,0,'far',179.999,1,'north',179.998,0,'café:雪');local near=redis.call('GEOSEARCH',KEYS[1],'FROMLONLAT',179.999,0,'BYRADIUS',500,'m','ASC','WITHDIST','WITHCOORD');local absent=redis.call('GEOSEARCH',KEYS[1],'FROMLONLAT',0,0,'BYRADIUS',500,'m');return 'QA439_RESULT '..cjson.encode({case='geo',marker=ARGV[1],seeded=n,near=near,distance=redis.call('GEODIST',KEYS[1],'east','west','m'),absent_count=#absent,dbkey_count=redis.call('ZCARD',KEYS[1])})",
+          "1",
+          "qa439:f10eab:render:geo",
+          "QA439_f10eab_render_geo"
+        ],
+        "native_exit": 0,
+        "elapsed": 2.292,
+        "output": "\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \n\n\n⣻  Loading...                   \r\n\n\n\n⢿  Loading...                   \r\n\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\n\n\n⣻  Loading...                                      \r\n\n\n\n⢿  Loading...                                      \r\n\n\n\n⡿  Loading...                                      \r\n\n\n\n⣟  Loading...                                      \r\n\n\n\n⣯  Loading...                                      \r\n\n\n\n⣷  Loading...                                      \r\n\n\n\n⣾  Loading...                                      \r\n\n\n\n⣽  Loading...                                      \r\n\n\n\n⣻  Loading...                                      \r\n\n\n\n                                                   \r\n\rWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\r\nQA439_RESULT {\"dbkey_count\":5,\"absent_count\":0,\"marker\":\"QA439_f10eab_render_geo\",\"case\":\"geo\",\"seeded\":5,\"near\":[[\"east\",\"0.1501\",[\"179.99899953603744507\",\"0.00000126736058093\"]],[\"café:雪\",\"111.0313\",[\"179.99800175428390503\",\"0.00000126736058093\"]],[\"west\",\"222.5042\",[\"-179.99899953603744507\",\"0.00000126736058093\"]]],\"distance\":\"222.5558\"}\r\n\r \r                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+        "streams_merged_PTY": true,
+        "exact_owned_group_closed": true
+      },
+      "owned_config_history_removed": true
+    },
+    {
+      "at": "2026-10-17T14:17:39.848916+00:00",
+      "command": [
+        "render",
+        "kv-cli",
+        "qa-20261017-f10eab-data",
+        "-o",
+        "interactive",
+        "--",
+        "--raw",
+        "EVAL",
+        "if redis.call('EXISTS',unpack(KEYS))~=0 then return redis.error_reply('Own fixture keys already exist; reconcile before retry') end;local initial=redis.call('BITFIELD',KEYS[1],'SET','u4',0,14,'SET','i4',4,-2,'GET','u4',0,'GET','i4',4);local sat=redis.call('BITFIELD',KEYS[1],'OVERFLOW','SAT','INCRBY','u4',0,5);local wrap=redis.call('BITFIELD',KEYS[1],'OVERFLOW','WRAP','INCRBY','i4',4,-9);local fail=redis.call('BITFIELD',KEYS[1],'OVERFLOW','FAIL','INCRBY','u4',0,1);redis.call('BITFIELD',KEYS[2],'SET','u12',4,2748,'INCRBY','u12',4,1,'SET','i8',16,-128,'OVERFLOW','WRAP','INCRBY','i8',16,-1);local cross=redis.call('GET',KEYS[2]);return 'QA439_RESULT '..cjson.encode({case='bits',marker=ARGV[1],initial=initial,saturated=sat[1],wrapped=wrap[1],overflow_failed=fail[1]==false,unchanged=redis.call('BITFIELD',KEYS[1],'GET','u4',0)[1],byte=string.byte(redis.call('GET',KEYS[1])),bitcount=redis.call('BITCOUNT',KEYS[1]),cross_bytes={string.byte(cross,1,#cross)},cross_fields=redis.call('BITFIELD',KEYS[2],'GET','u12',4,'GET','i8',16)})",
+        "2",
+        "qa439:f10eab:render:bits",
+        "qa439:f10eab:render:cross",
+        "QA439_f10eab_render_bits"
+      ],
+      "intent": "bounded native command with isolated config/history; caller records exact owned data scope",
+      "PID": 45029,
+      "PGID": 45029,
+      "state": "owned process group closed",
+      "native": {
+        "command": [
+          "render",
+          "kv-cli",
+          "qa-20261017-f10eab-data",
+          "-o",
+          "interactive",
+          "--",
+          "--raw",
+          "EVAL",
+          "if redis.call('EXISTS',unpack(KEYS))~=0 then return redis.error_reply('Own fixture keys already exist; reconcile before retry') end;local initial=redis.call('BITFIELD',KEYS[1],'SET','u4',0,14,'SET','i4',4,-2,'GET','u4',0,'GET','i4',4);local sat=redis.call('BITFIELD',KEYS[1],'OVERFLOW','SAT','INCRBY','u4',0,5);local wrap=redis.call('BITFIELD',KEYS[1],'OVERFLOW','WRAP','INCRBY','i4',4,-9);local fail=redis.call('BITFIELD',KEYS[1],'OVERFLOW','FAIL','INCRBY','u4',0,1);redis.call('BITFIELD',KEYS[2],'SET','u12',4,2748,'INCRBY','u12',4,1,'SET','i8',16,-128,'OVERFLOW','WRAP','INCRBY','i8',16,-1);local cross=redis.call('GET',KEYS[2]);return 'QA439_RESULT '..cjson.encode({case='bits',marker=ARGV[1],initial=initial,saturated=sat[1],wrapped=wrap[1],overflow_failed=fail[1]==false,unchanged=redis.call('BITFIELD',KEYS[1],'GET','u4',0)[1],byte=string.byte(redis.call('GET',KEYS[1])),bitcount=redis.call('BITCOUNT',KEYS[1]),cross_bytes={string.byte(cross,1,#cross)},cross_fields=redis.call('BITFIELD',KEYS[2],'GET','u12',4,'GET','i8',16)})",
+          "2",
+          "qa439:f10eab:render:bits",
+          "qa439:f10eab:render:cross",
+          "QA439_f10eab_render_bits"
+        ],
+        "native_exit": 0,
+        "elapsed": 2.452,
+        "output": "\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \n\n\n⣻  Loading...                   \r\n\n\n\n⢿  Loading...                   \r\n\n\n\n⡿  Loading...                   \r\n\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\n\n\n⣻  Loading...                                      \r\n\n\n\n⢿  Loading...                                      \r\n\n\n\n⡿  Loading...                                      \r\n\n\n\n⣟  Loading...                                      \r\n\n\n\n                                                   \r\n\rWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\r\nQA439_RESULT {\"overflow_failed\":true,\"byte\":245,\"unchanged\":15,\"marker\":\"QA439_f10eab_render_bits\",\"case\":\"bits\",\"initial\":[0,0,14,-2],\"cross_fields\":[2749,127],\"cross_bytes\":[10,189,127],\"wrapped\":5,\"bitcount\":6,\"saturated\":15}\r\n\r \r                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+        "streams_merged_PTY": true,
+        "exact_owned_group_closed": true
+      },
+      "owned_config_history_removed": true
+    },
+    {
+      "at": "2026-10-17T14:17:46.166794+00:00",
+      "command": [
+        "render",
+        "kv-cli",
+        "qa-20261017-f10eab-data",
+        "-o",
+        "interactive",
+        "--",
+        "--raw",
+        "EVAL",
+        "if redis.call('EXISTS',unpack(KEYS))~=0 then return redis.error_reply('Own fixture keys already exist; reconcile before retry') end;local added=redis.call('PFADD',KEYS[1],'A','B','C','café','雪','李','two words','D');local again=redis.call('PFADD',KEYS[1],'A','B','café');redis.call('PFADD',KEYS[2],'C','D','E','F');redis.call('PFMERGE',KEYS[3],KEYS[1],KEYS[2]);return 'QA439_RESULT '..cjson.encode({case='hll',marker=ARGV[1],added=added,duplicate_change=again,a=redis.call('PFCOUNT',KEYS[1]),b=redis.call('PFCOUNT',KEYS[2]),combined=redis.call('PFCOUNT',KEYS[1],KEYS[2]),merged=redis.call('PFCOUNT',KEYS[3])})",
+        "3",
+        "qa439:f10eab:render:hll-a",
+        "qa439:f10eab:render:hll-b",
+        "qa439:f10eab:render:hll-union",
+        "QA439_f10eab_render_hll"
+      ],
+      "intent": "bounded native command with isolated config/history; caller records exact owned data scope",
+      "PID": 45047,
+      "PGID": 45047,
+      "state": "owned process group closed",
+      "native": {
+        "command": [
+          "render",
+          "kv-cli",
+          "qa-20261017-f10eab-data",
+          "-o",
+          "interactive",
+          "--",
+          "--raw",
+          "EVAL",
+          "if redis.call('EXISTS',unpack(KEYS))~=0 then return redis.error_reply('Own fixture keys already exist; reconcile before retry') end;local added=redis.call('PFADD',KEYS[1],'A','B','C','café','雪','李','two words','D');local again=redis.call('PFADD',KEYS[1],'A','B','café');redis.call('PFADD',KEYS[2],'C','D','E','F');redis.call('PFMERGE',KEYS[3],KEYS[1],KEYS[2]);return 'QA439_RESULT '..cjson.encode({case='hll',marker=ARGV[1],added=added,duplicate_change=again,a=redis.call('PFCOUNT',KEYS[1]),b=redis.call('PFCOUNT',KEYS[2]),combined=redis.call('PFCOUNT',KEYS[1],KEYS[2]),merged=redis.call('PFCOUNT',KEYS[3])})",
+          "3",
+          "qa439:f10eab:render:hll-a",
+          "qa439:f10eab:render:hll-b",
+          "qa439:f10eab:render:hll-union",
+          "QA439_f10eab_render_hll"
+        ],
+        "native_exit": 0,
+        "elapsed": 2.151,
+        "output": "\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \n\n\n⣻  Loading...                   \r\n\n\n\n⢿  Loading...                   \r\n\n\n\n⡿  Loading...                   \r\n\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\n\n\n⣻  Loading...                                      \r\n\n\n\n⢿  Loading...                                      \r\n\n\n\n⡿  Loading...                                      \r\n\n\n\n⣟  Loading...                                      \r\n\n\n\n⣯  Loading...                                      \r\n\n\n\n                                                   \r\n\rWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\r\nQA439_RESULT {\"a\":8,\"combined\":10,\"merged\":10,\"marker\":\"QA439_f10eab_render_hll\",\"case\":\"hll\",\"added\":1,\"duplicate_change\":0,\"b\":4}\r\n\r \r                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+        "streams_merged_PTY": true,
+        "exact_owned_group_closed": true
+      },
+      "owned_config_history_removed": true
+    },
+    {
+      "at": "2026-10-17T14:17:51.365565+00:00",
+      "command": [
+        "bex",
+        "kv-cli",
+        "red-db9o5e4s300s73dskg1g",
+        "-o",
+        "interactive",
+        "--",
+        "--raw",
+        "EVAL",
+        "local before=redis.call('EXISTS',unpack(KEYS));local deleted=redis.call('DEL',unpack(KEYS));return 'QA439_ERASE '..cjson.encode({before=before,deleted=deleted,remaining=redis.call('EXISTS',unpack(KEYS)),dbsize=redis.call('DBSIZE')})",
+        "12",
+        "qa439:f10eab:bex:geo",
+        "qa439:f10eab:bex:bits",
+        "qa439:f10eab:bex:cross",
+        "qa439:f10eab:bex:hll-a",
+        "qa439:f10eab:bex:hll-b",
+        "qa439:f10eab:bex:hll-union",
+        "qa439:f10eab:render:geo",
+        "qa439:f10eab:render:bits",
+        "qa439:f10eab:render:cross",
+        "qa439:f10eab:render:hll-a",
+        "qa439:f10eab:render:hll-b",
+        "qa439:f10eab:render:hll-union"
+      ],
+      "intent": "bounded native command with isolated config/history; caller records exact owned data scope",
+      "PID": 45088,
+      "PGID": 45088,
+      "state": "owned process group closed",
+      "native": {
+        "command": [
+          "bex",
+          "kv-cli",
+          "red-db9o5e4s300s73dskg1g",
+          "-o",
+          "interactive",
+          "--",
+          "--raw",
+          "EVAL",
+          "local before=redis.call('EXISTS',unpack(KEYS));local deleted=redis.call('DEL',unpack(KEYS));return 'QA439_ERASE '..cjson.encode({before=before,deleted=deleted,remaining=redis.call('EXISTS',unpack(KEYS)),dbsize=redis.call('DBSIZE')})",
+          "12",
+          "qa439:f10eab:bex:geo",
+          "qa439:f10eab:bex:bits",
+          "qa439:f10eab:bex:cross",
+          "qa439:f10eab:bex:hll-a",
+          "qa439:f10eab:bex:hll-b",
+          "qa439:f10eab:bex:hll-union",
+          "qa439:f10eab:render:geo",
+          "qa439:f10eab:render:bits",
+          "qa439:f10eab:render:cross",
+          "qa439:f10eab:render:hll-a",
+          "qa439:f10eab:render:hll-b",
+          "qa439:f10eab:render:hll-union"
+        ],
+        "native_exit": 0,
+        "elapsed": 1.798,
+        "output": "\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \n\n\n⣻  Loading...                   \r\n\n\n\n⢿  Loading...                   \r\n\n\n\n⡿  Loading...                   \r\n\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\n\n\n⣻  Loading...                                      \r\n\n\n\n⢿  Loading...                                      \r\n\n\n\n                                                   \r\n\rWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\r\nQA439_ERASE {\"deleted\":12,\"remaining\":0,\"dbsize\":0,\"before\":12}\r\n\r \r                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+        "streams_merged_PTY": true,
+        "exact_owned_group_closed": true
+      },
+      "owned_config_history_removed": true
+    }
+  ],
+  "cached_endpoint_acquisition": {
+    "at": "2026-10-17T14:17:14.820870+00:00",
+    "API_only": true,
+    "method": "GET",
+    "path": "/v1/key-value/red-db9o5e4s300s73dskg1g/connection-info",
+    "status": "200",
+    "credentials": "connection URI/cliCommand fields omitted before ledger; private owner-only temporary file",
+    "owned_endpoint_matched": true
+  },
+  "cached_endpoint_probes": [
+    {
+      "at": "2026-10-17T14:17:16.103572+00:00",
+      "API_only": true,
+      "qualification": "ordinary cached TLS data-client diagnostic; not native CLI coverage",
+      "after_delete": false,
+      "address_family": "explicit AF_INET for the own IPv4 allowlist; TLS SNI/verification still uses original host",
+      "PONG": true,
+      "reply_kind": "+",
+      "elapsed": 1.124
+    },
+    {
+      "at": "2026-10-17T14:21:04.692342+00:00",
+      "API_only": true,
+      "qualification": "ordinary cached TLS data-client diagnostic; not native CLI coverage",
+      "after_delete": true,
+      "address_family": "explicit AF_INET for the own IPv4 allowlist; TLS SNI/verification still uses original host",
+      "PONG": false,
+      "connection_error_type": "SSLEOFError",
+      "elapsed": 0.415
+    }
+  ],
+  "data_cases": [
+    {
+      "at": "2026-10-17T14:17:18.508443+00:00",
+      "client": "bex",
+      "case": "geo",
+      "selector": "red-db9o5e4s300s73dskg1g",
+      "keys": [
+        "qa439:f10eab:bex:geo"
+      ],
+      "marker": "QA439_f10eab_bex_geo",
+      "intent": "ordinary data consumer; exact empty owned keys guarded before mutations; do not replay after a timeout",
+      "native": {
+        "command": [
+          "bex",
+          "kv-cli",
+          "red-db9o5e4s300s73dskg1g",
+          "-o",
+          "interactive",
+          "--",
+          "--raw",
+          "EVAL",
+          "if redis.call('EXISTS',unpack(KEYS))~=0 then return redis.error_reply('Own fixture keys already exist; reconcile before retry') end;local n=redis.call('GEOADD',KEYS[1],179.999,0,'east',-179.999,0,'west',170,0,'far',179.999,1,'north',179.998,0,'café:雪');local near=redis.call('GEOSEARCH',KEYS[1],'FROMLONLAT',179.999,0,'BYRADIUS',500,'m','ASC','WITHDIST','WITHCOORD');local absent=redis.call('GEOSEARCH',KEYS[1],'FROMLONLAT',0,0,'BYRADIUS',500,'m');return 'QA439_RESULT '..cjson.encode({case='geo',marker=ARGV[1],seeded=n,near=near,distance=redis.call('GEODIST',KEYS[1],'east','west','m'),absent_count=#absent,dbkey_count=redis.call('ZCARD',KEYS[1])})",
+          "1",
+          "qa439:f10eab:bex:geo",
+          "QA439_f10eab_bex_geo"
+        ],
+        "native_exit": 0,
+        "elapsed": 2.073,
+        "output": "\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \n\n\n⣻  Loading...                   \r\n\n\n\n⢿  Loading...                   \r\n\n\n\n⡿  Loading...                   \r\n\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\n\n\n⣻  Loading...                                      \r\n\n\n\n⢿  Loading...                                      \r\n\n\n\n⡿  Loading...                                      \r\n\n\n\n                                                   \r\n\rWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\r\nQA439_RESULT {\"dbkey_count\":5,\"absent_count\":0,\"marker\":\"QA439_f10eab_bex_geo\",\"case\":\"geo\",\"seeded\":5,\"near\":[[\"east\",\"0.1501\",[\"179.99899953603744507\",\"0.00000126736058093\"]],[\"café:雪\",\"111.0313\",[\"179.99800175428390503\",\"0.00000126736058093\"]],[\"west\",\"222.5042\",[\"-179.99899953603744507\",\"0.00000126736058093\"]]],\"distance\":\"222.5558\"}\r\n\r \r                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+        "streams_merged_PTY": true,
+        "exact_owned_group_closed": true
+      },
+      "decoded": {
+        "dbkey_count": 5,
+        "absent_count": 0,
+        "marker": "QA439_f10eab_bex_geo",
+        "case": "geo",
+        "seeded": 5,
+        "near": [
+          [
+            "east",
+            "0.1501",
+            [
+              "179.99899953603744507",
+              "0.00000126736058093"
+            ]
+          ],
+          [
+            "café:雪",
+            "111.0313",
+            [
+              "179.99800175428390503",
+              "0.00000126736058093"
+            ]
+          ],
+          [
+            "west",
+            "222.5042",
+            [
+              "-179.99899953603744507",
+              "0.00000126736058093"
+            ]
+          ]
+        ],
+        "distance": "222.5558"
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-17T14:17:23.293491+00:00",
+      "client": "bex",
+      "case": "bits",
+      "selector": "red-db9o5e4s300s73dskg1g",
+      "keys": [
+        "qa439:f10eab:bex:bits",
+        "qa439:f10eab:bex:cross"
+      ],
+      "marker": "QA439_f10eab_bex_bits",
+      "intent": "ordinary data consumer; exact empty owned keys guarded before mutations; do not replay after a timeout",
+      "native": {
+        "command": [
+          "bex",
+          "kv-cli",
+          "red-db9o5e4s300s73dskg1g",
+          "-o",
+          "interactive",
+          "--",
+          "--raw",
+          "EVAL",
+          "if redis.call('EXISTS',unpack(KEYS))~=0 then return redis.error_reply('Own fixture keys already exist; reconcile before retry') end;local initial=redis.call('BITFIELD',KEYS[1],'SET','u4',0,14,'SET','i4',4,-2,'GET','u4',0,'GET','i4',4);local sat=redis.call('BITFIELD',KEYS[1],'OVERFLOW','SAT','INCRBY','u4',0,5);local wrap=redis.call('BITFIELD',KEYS[1],'OVERFLOW','WRAP','INCRBY','i4',4,-9);local fail=redis.call('BITFIELD',KEYS[1],'OVERFLOW','FAIL','INCRBY','u4',0,1);redis.call('BITFIELD',KEYS[2],'SET','u12',4,2748,'INCRBY','u12',4,1,'SET','i8',16,-128,'OVERFLOW','WRAP','INCRBY','i8',16,-1);local cross=redis.call('GET',KEYS[2]);return 'QA439_RESULT '..cjson.encode({case='bits',marker=ARGV[1],initial=initial,saturated=sat[1],wrapped=wrap[1],overflow_failed=fail[1]==false,unchanged=redis.call('BITFIELD',KEYS[1],'GET','u4',0)[1],byte=string.byte(redis.call('GET',KEYS[1])),bitcount=redis.call('BITCOUNT',KEYS[1]),cross_bytes={string.byte(cross,1,#cross)},cross_fields=redis.call('BITFIELD',KEYS[2],'GET','u12',4,'GET','i8',16)})",
+          "2",
+          "qa439:f10eab:bex:bits",
+          "qa439:f10eab:bex:cross",
+          "QA439_f10eab_bex_bits"
+        ],
+        "native_exit": 0,
+        "elapsed": 1.798,
+        "output": "\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \n\n\n⣻  Loading...                   \r\n\n\n\n⢿  Loading...                   \r\n\n\n\n⡿  Loading...                   \r\n\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\n\n\n⣻  Loading...                                      \r\n\n\n\n⢿  Loading...                                      \r\n\n\n\n                                                   \r\n\rWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\r\nQA439_RESULT {\"overflow_failed\":true,\"byte\":245,\"unchanged\":15,\"marker\":\"QA439_f10eab_bex_bits\",\"case\":\"bits\",\"initial\":[0,0,14,-2],\"cross_fields\":[2749,127],\"cross_bytes\":[10,189,127],\"wrapped\":5,\"bitcount\":6,\"saturated\":15}\r\n\r \r                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+        "streams_merged_PTY": true,
+        "exact_owned_group_closed": true
+      },
+      "decoded": {
+        "overflow_failed": true,
+        "byte": 245,
+        "unchanged": 15,
+        "marker": "QA439_f10eab_bex_bits",
+        "case": "bits",
+        "initial": [
+          0,
+          0,
+          14,
+          -2
+        ],
+        "cross_fields": [
+          2749,
+          127
+        ],
+        "cross_bytes": [
+          10,
+          189,
+          127
+        ],
+        "wrapped": 5,
+        "bitcount": 6,
+        "saturated": 15
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-17T14:17:27.828815+00:00",
+      "client": "bex",
+      "case": "hll",
+      "selector": "red-db9o5e4s300s73dskg1g",
+      "keys": [
+        "qa439:f10eab:bex:hll-a",
+        "qa439:f10eab:bex:hll-b",
+        "qa439:f10eab:bex:hll-union"
+      ],
+      "marker": "QA439_f10eab_bex_hll",
+      "intent": "ordinary data consumer; exact empty owned keys guarded before mutations; do not replay after a timeout",
+      "native": {
+        "command": [
+          "bex",
+          "kv-cli",
+          "red-db9o5e4s300s73dskg1g",
+          "-o",
+          "interactive",
+          "--",
+          "--raw",
+          "EVAL",
+          "if redis.call('EXISTS',unpack(KEYS))~=0 then return redis.error_reply('Own fixture keys already exist; reconcile before retry') end;local added=redis.call('PFADD',KEYS[1],'A','B','C','café','雪','李','two words','D');local again=redis.call('PFADD',KEYS[1],'A','B','café');redis.call('PFADD',KEYS[2],'C','D','E','F');redis.call('PFMERGE',KEYS[3],KEYS[1],KEYS[2]);return 'QA439_RESULT '..cjson.encode({case='hll',marker=ARGV[1],added=added,duplicate_change=again,a=redis.call('PFCOUNT',KEYS[1]),b=redis.call('PFCOUNT',KEYS[2]),combined=redis.call('PFCOUNT',KEYS[1],KEYS[2]),merged=redis.call('PFCOUNT',KEYS[3])})",
+          "3",
+          "qa439:f10eab:bex:hll-a",
+          "qa439:f10eab:bex:hll-b",
+          "qa439:f10eab:bex:hll-union",
+          "QA439_f10eab_bex_hll"
+        ],
+        "native_exit": 0,
+        "elapsed": 1.745,
+        "output": "\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \n\n\n⣻  Loading...                   \r\n\n\n\n⢿  Loading...                   \r\n\n\n\n⡿  Loading...                   \r\n\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\n\n\n⣻  Loading...                                      \r\n\n\n\n⢿  Loading...                                      \r\n\n\n\n⡿  Loading...                                      \r\n\n\n\n                                                   \r\n\rWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\r\nQA439_RESULT {\"a\":8,\"combined\":10,\"merged\":10,\"marker\":\"QA439_f10eab_bex_hll\",\"case\":\"hll\",\"added\":1,\"duplicate_change\":0,\"b\":4}\r\n\r \r                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+        "streams_merged_PTY": true,
+        "exact_owned_group_closed": true
+      },
+      "decoded": {
+        "a": 8,
+        "combined": 10,
+        "merged": 10,
+        "marker": "QA439_f10eab_bex_hll",
+        "case": "hll",
+        "added": 1,
+        "duplicate_change": 0,
+        "b": 4
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-17T14:17:33.357598+00:00",
+      "client": "render",
+      "case": "geo",
+      "selector": "qa-20261017-f10eab-data",
+      "keys": [
+        "qa439:f10eab:render:geo"
+      ],
+      "marker": "QA439_f10eab_render_geo",
+      "intent": "ordinary data consumer; exact empty owned keys guarded before mutations; do not replay after a timeout",
+      "native": {
+        "command": [
+          "render",
+          "kv-cli",
+          "qa-20261017-f10eab-data",
+          "-o",
+          "interactive",
+          "--",
+          "--raw",
+          "EVAL",
+          "if redis.call('EXISTS',unpack(KEYS))~=0 then return redis.error_reply('Own fixture keys already exist; reconcile before retry') end;local n=redis.call('GEOADD',KEYS[1],179.999,0,'east',-179.999,0,'west',170,0,'far',179.999,1,'north',179.998,0,'café:雪');local near=redis.call('GEOSEARCH',KEYS[1],'FROMLONLAT',179.999,0,'BYRADIUS',500,'m','ASC','WITHDIST','WITHCOORD');local absent=redis.call('GEOSEARCH',KEYS[1],'FROMLONLAT',0,0,'BYRADIUS',500,'m');return 'QA439_RESULT '..cjson.encode({case='geo',marker=ARGV[1],seeded=n,near=near,distance=redis.call('GEODIST',KEYS[1],'east','west','m'),absent_count=#absent,dbkey_count=redis.call('ZCARD',KEYS[1])})",
+          "1",
+          "qa439:f10eab:render:geo",
+          "QA439_f10eab_render_geo"
+        ],
+        "native_exit": 0,
+        "elapsed": 2.292,
+        "output": "\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \n\n\n⣻  Loading...                   \r\n\n\n\n⢿  Loading...                   \r\n\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\n\n\n⣻  Loading...                                      \r\n\n\n\n⢿  Loading...                                      \r\n\n\n\n⡿  Loading...                                      \r\n\n\n\n⣟  Loading...                                      \r\n\n\n\n⣯  Loading...                                      \r\n\n\n\n⣷  Loading...                                      \r\n\n\n\n⣾  Loading...                                      \r\n\n\n\n⣽  Loading...                                      \r\n\n\n\n⣻  Loading...                                      \r\n\n\n\n                                                   \r\n\rWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\r\nQA439_RESULT {\"dbkey_count\":5,\"absent_count\":0,\"marker\":\"QA439_f10eab_render_geo\",\"case\":\"geo\",\"seeded\":5,\"near\":[[\"east\",\"0.1501\",[\"179.99899953603744507\",\"0.00000126736058093\"]],[\"café:雪\",\"111.0313\",[\"179.99800175428390503\",\"0.00000126736058093\"]],[\"west\",\"222.5042\",[\"-179.99899953603744507\",\"0.00000126736058093\"]]],\"distance\":\"222.5558\"}\r\n\r \r                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+        "streams_merged_PTY": true,
+        "exact_owned_group_closed": true
+      },
+      "decoded": {
+        "dbkey_count": 5,
+        "absent_count": 0,
+        "marker": "QA439_f10eab_render_geo",
+        "case": "geo",
+        "seeded": 5,
+        "near": [
+          [
+            "east",
+            "0.1501",
+            [
+              "179.99899953603744507",
+              "0.00000126736058093"
+            ]
+          ],
+          [
+            "café:雪",
+            "111.0313",
+            [
+              "179.99800175428390503",
+              "0.00000126736058093"
+            ]
+          ],
+          [
+            "west",
+            "222.5042",
+            [
+              "-179.99899953603744507",
+              "0.00000126736058093"
+            ]
+          ]
+        ],
+        "distance": "222.5558"
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-17T14:17:39.454291+00:00",
+      "client": "render",
+      "case": "bits",
+      "selector": "qa-20261017-f10eab-data",
+      "keys": [
+        "qa439:f10eab:render:bits",
+        "qa439:f10eab:render:cross"
+      ],
+      "marker": "QA439_f10eab_render_bits",
+      "intent": "ordinary data consumer; exact empty owned keys guarded before mutations; do not replay after a timeout",
+      "native": {
+        "command": [
+          "render",
+          "kv-cli",
+          "qa-20261017-f10eab-data",
+          "-o",
+          "interactive",
+          "--",
+          "--raw",
+          "EVAL",
+          "if redis.call('EXISTS',unpack(KEYS))~=0 then return redis.error_reply('Own fixture keys already exist; reconcile before retry') end;local initial=redis.call('BITFIELD',KEYS[1],'SET','u4',0,14,'SET','i4',4,-2,'GET','u4',0,'GET','i4',4);local sat=redis.call('BITFIELD',KEYS[1],'OVERFLOW','SAT','INCRBY','u4',0,5);local wrap=redis.call('BITFIELD',KEYS[1],'OVERFLOW','WRAP','INCRBY','i4',4,-9);local fail=redis.call('BITFIELD',KEYS[1],'OVERFLOW','FAIL','INCRBY','u4',0,1);redis.call('BITFIELD',KEYS[2],'SET','u12',4,2748,'INCRBY','u12',4,1,'SET','i8',16,-128,'OVERFLOW','WRAP','INCRBY','i8',16,-1);local cross=redis.call('GET',KEYS[2]);return 'QA439_RESULT '..cjson.encode({case='bits',marker=ARGV[1],initial=initial,saturated=sat[1],wrapped=wrap[1],overflow_failed=fail[1]==false,unchanged=redis.call('BITFIELD',KEYS[1],'GET','u4',0)[1],byte=string.byte(redis.call('GET',KEYS[1])),bitcount=redis.call('BITCOUNT',KEYS[1]),cross_bytes={string.byte(cross,1,#cross)},cross_fields=redis.call('BITFIELD',KEYS[2],'GET','u12',4,'GET','i8',16)})",
+          "2",
+          "qa439:f10eab:render:bits",
+          "qa439:f10eab:render:cross",
+          "QA439_f10eab_render_bits"
+        ],
+        "native_exit": 0,
+        "elapsed": 2.452,
+        "output": "\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \n\n\n⣻  Loading...                   \r\n\n\n\n⢿  Loading...                   \r\n\n\n\n⡿  Loading...                   \r\n\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\n\n\n⣻  Loading...                                      \r\n\n\n\n⢿  Loading...                                      \r\n\n\n\n⡿  Loading...                                      \r\n\n\n\n⣟  Loading...                                      \r\n\n\n\n                                                   \r\n\rWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\r\nQA439_RESULT {\"overflow_failed\":true,\"byte\":245,\"unchanged\":15,\"marker\":\"QA439_f10eab_render_bits\",\"case\":\"bits\",\"initial\":[0,0,14,-2],\"cross_fields\":[2749,127],\"cross_bytes\":[10,189,127],\"wrapped\":5,\"bitcount\":6,\"saturated\":15}\r\n\r \r                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+        "streams_merged_PTY": true,
+        "exact_owned_group_closed": true
+      },
+      "decoded": {
+        "overflow_failed": true,
+        "byte": 245,
+        "unchanged": 15,
+        "marker": "QA439_f10eab_render_bits",
+        "case": "bits",
+        "initial": [
+          0,
+          0,
+          14,
+          -2
+        ],
+        "cross_fields": [
+          2749,
+          127
+        ],
+        "cross_bytes": [
+          10,
+          189,
+          127
+        ],
+        "wrapped": 5,
+        "bitcount": 6,
+        "saturated": 15
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-17T14:17:45.781308+00:00",
+      "client": "render",
+      "case": "hll",
+      "selector": "qa-20261017-f10eab-data",
+      "keys": [
+        "qa439:f10eab:render:hll-a",
+        "qa439:f10eab:render:hll-b",
+        "qa439:f10eab:render:hll-union"
+      ],
+      "marker": "QA439_f10eab_render_hll",
+      "intent": "ordinary data consumer; exact empty owned keys guarded before mutations; do not replay after a timeout",
+      "native": {
+        "command": [
+          "render",
+          "kv-cli",
+          "qa-20261017-f10eab-data",
+          "-o",
+          "interactive",
+          "--",
+          "--raw",
+          "EVAL",
+          "if redis.call('EXISTS',unpack(KEYS))~=0 then return redis.error_reply('Own fixture keys already exist; reconcile before retry') end;local added=redis.call('PFADD',KEYS[1],'A','B','C','café','雪','李','two words','D');local again=redis.call('PFADD',KEYS[1],'A','B','café');redis.call('PFADD',KEYS[2],'C','D','E','F');redis.call('PFMERGE',KEYS[3],KEYS[1],KEYS[2]);return 'QA439_RESULT '..cjson.encode({case='hll',marker=ARGV[1],added=added,duplicate_change=again,a=redis.call('PFCOUNT',KEYS[1]),b=redis.call('PFCOUNT',KEYS[2]),combined=redis.call('PFCOUNT',KEYS[1],KEYS[2]),merged=redis.call('PFCOUNT',KEYS[3])})",
+          "3",
+          "qa439:f10eab:render:hll-a",
+          "qa439:f10eab:render:hll-b",
+          "qa439:f10eab:render:hll-union",
+          "QA439_f10eab_render_hll"
+        ],
+        "native_exit": 0,
+        "elapsed": 2.151,
+        "output": "\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \n\n\n⣻  Loading...                   \r\n\n\n\n⢿  Loading...                   \r\n\n\n\n⡿  Loading...                   \r\n\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\n\n\n⣻  Loading...                                      \r\n\n\n\n⢿  Loading...                                      \r\n\n\n\n⡿  Loading...                                      \r\n\n\n\n⣟  Loading...                                      \r\n\n\n\n⣯  Loading...                                      \r\n\n\n\n                                                   \r\n\rWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\r\nQA439_RESULT {\"a\":8,\"combined\":10,\"merged\":10,\"marker\":\"QA439_f10eab_render_hll\",\"case\":\"hll\",\"added\":1,\"duplicate_change\":0,\"b\":4}\r\n\r \r                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+        "streams_merged_PTY": true,
+        "exact_owned_group_closed": true
+      },
+      "decoded": {
+        "a": 8,
+        "combined": 10,
+        "merged": 10,
+        "marker": "QA439_f10eab_render_hll",
+        "case": "hll",
+        "added": 1,
+        "duplicate_change": 0,
+        "b": 4
+      },
+      "pass": true
+    }
+  ],
+  "erase_intent": {
+    "at": "2026-10-17T14:17:51.025678+00:00",
+    "exact_keys": [
+      "qa439:f10eab:bex:geo",
+      "qa439:f10eab:bex:bits",
+      "qa439:f10eab:bex:cross",
+      "qa439:f10eab:bex:hll-a",
+      "qa439:f10eab:bex:hll-b",
+      "qa439:f10eab:bex:hll-union",
+      "qa439:f10eab:render:geo",
+      "qa439:f10eab:render:bits",
+      "qa439:f10eab:render:cross",
+      "qa439:f10eab:render:hll-a",
+      "qa439:f10eab:render:hll-b",
+      "qa439:f10eab:render:hll-union"
+    ]
+  },
+  "erase_result": {
+    "command": [
+      "bex",
+      "kv-cli",
+      "red-db9o5e4s300s73dskg1g",
+      "-o",
+      "interactive",
+      "--",
+      "--raw",
+      "EVAL",
+      "local before=redis.call('EXISTS',unpack(KEYS));local deleted=redis.call('DEL',unpack(KEYS));return 'QA439_ERASE '..cjson.encode({before=before,deleted=deleted,remaining=redis.call('EXISTS',unpack(KEYS)),dbsize=redis.call('DBSIZE')})",
+      "12",
+      "qa439:f10eab:bex:geo",
+      "qa439:f10eab:bex:bits",
+      "qa439:f10eab:bex:cross",
+      "qa439:f10eab:bex:hll-a",
+      "qa439:f10eab:bex:hll-b",
+      "qa439:f10eab:bex:hll-union",
+      "qa439:f10eab:render:geo",
+      "qa439:f10eab:render:bits",
+      "qa439:f10eab:render:cross",
+      "qa439:f10eab:render:hll-a",
+      "qa439:f10eab:render:hll-b",
+      "qa439:f10eab:render:hll-union"
+    ],
+    "native_exit": 0,
+    "elapsed": 1.798,
+    "output": "\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \n\n\n⣻  Loading...                   \r\n\n\n\n⢿  Loading...                   \r\n\n\n\n⡿  Loading...                   \r\n\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\n\n\n⣻  Loading...                                      \r\n\n\n\n⢿  Loading...                                      \r\n\n\n\n                                                   \r\n\rWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\r\nQA439_ERASE {\"deleted\":12,\"remaining\":0,\"dbsize\":0,\"before\":12}\r\n\r \r                                                                                             \r\n  The Render CLI collects usage data on commands and performance to help us keep improving.  \r\n  Telemetry is currently disabled, so no data is being sent to Render.                       \r\n                                                                                             \r\n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \r\n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \r\n                                                                                             \r\n\r\n",
+    "streams_merged_PTY": true,
+    "exact_owned_group_closed": true
+  },
+  "erase_observed": {
+    "deleted": 12,
+    "remaining": 0,
+    "dbsize": 0,
+    "before": 12
+  },
+  "erase_pass": true,
+  "delete_intent": {
+    "at": "2026-10-17T14:19:07.222473+00:00",
+    "detail": {
+      "at": "2026-10-17T14:19:06.842118+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.382,
+      "response": "{\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:15:02Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db9o5e4s300s73dskg1g\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db9o5e4s300s73dskg1g.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    "standalone_owned_KeyValue_no_dependents": true
+  },
+  "delete_result": {
+    "at": "2026-10-17T14:19:08.598528+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "keyvalues",
+      "delete",
+      "red-db9o5e4s300s73dskg1g",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 1.032,
+    "stdout": "{\"data\": {\"id\": \"red-db9o5e4s300s73dskg1g\", \"name\": \"qa-20261017-f10eab-data\", \"plan\": \"free\", \"region\": \"fsn1\", \"status\": \"available\", \"createdAt\": \"2026-10-17T14:14:16Z\", \"updatedAt\": \"2026-10-17T14:15:02Z\", \"version\": \"8\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"ownerType\": \"team\", \"projectId\": null, \"environmentId\": null, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"meta\": {\"deleted\": true}}",
+    "stderr": ""
+  },
+  "cleanup_receipts": [
+    {
+      "at": "2026-10-17T14:19:12.661075+00:00",
+      "detail": {
+        "at": "2026-10-17T14:19:10.119122+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "404",
+        "curl_exit": 0,
+        "elapsed": 0.555,
+        "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+        "stderr": ""
+      },
+      "inventory": {
+        "at": "2026-10-17T14:19:10.840812+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "list",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.721,
+        "stdout": "{\"data\": []}",
+        "stderr": ""
+      },
+      "services": {
+        "at": "2026-10-17T14:19:11.646968+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.806,
+        "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}]",
+        "stderr": ""
+      },
+      "quota": {
+        "at": "2026-10-17T14:19:12.660722+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.988,
+        "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 1, \"terminating\": 1, \"limit\": 1}}",
+        "stderr": ""
+      },
+      "pass": false
+    },
+    {
+      "at": "2026-10-17T14:19:27.745023+00:00",
+      "detail": {
+        "at": "2026-10-17T14:19:25.894353+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "404",
+        "curl_exit": 0,
+        "elapsed": 0.293,
+        "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+        "stderr": ""
+      },
+      "inventory": {
+        "at": "2026-10-17T14:19:26.479402+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "list",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.584,
+        "stdout": "{\"data\": []}",
+        "stderr": ""
+      },
+      "services": {
+        "at": "2026-10-17T14:19:27.302226+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.822,
+        "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}]",
+        "stderr": ""
+      },
+      "quota": {
+        "at": "2026-10-17T14:19:27.744719+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.417,
+        "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+        "stderr": ""
+      },
+      "pass": false
+    },
+    {
+      "at": "2026-10-17T14:19:42.954202+00:00",
+      "detail": {
+        "at": "2026-10-17T14:19:41.044091+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "404",
+        "curl_exit": 0,
+        "elapsed": 0.327,
+        "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+        "stderr": ""
+      },
+      "inventory": {
+        "at": "2026-10-17T14:19:41.927403+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "list",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.882,
+        "stdout": "{\"data\": []}",
+        "stderr": ""
+      },
+      "services": {
+        "at": "2026-10-17T14:19:42.604840+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.677,
+        "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}]",
+        "stderr": ""
+      },
+      "quota": {
+        "at": "2026-10-17T14:19:42.953860+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.325,
+        "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+        "stderr": ""
+      },
+      "pass": false
+    },
+    {
+      "at": "2026-10-17T14:19:58.226337+00:00",
+      "detail": {
+        "at": "2026-10-17T14:19:56.193743+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "404",
+        "curl_exit": 0,
+        "elapsed": 0.283,
+        "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+        "stderr": ""
+      },
+      "inventory": {
+        "at": "2026-10-17T14:19:57.071185+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "list",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.876,
+        "stdout": "{\"data\": []}",
+        "stderr": ""
+      },
+      "services": {
+        "at": "2026-10-17T14:19:57.945180+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.874,
+        "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}]",
+        "stderr": ""
+      },
+      "quota": {
+        "at": "2026-10-17T14:19:58.225879+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.263,
+        "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+        "stderr": ""
+      },
+      "pass": false
+    },
+    {
+      "at": "2026-10-17T14:20:13.366082+00:00",
+      "detail": {
+        "at": "2026-10-17T14:20:11.467080+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "404",
+        "curl_exit": 0,
+        "elapsed": 0.284,
+        "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+        "stderr": ""
+      },
+      "inventory": {
+        "at": "2026-10-17T14:20:12.025283+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "list",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.557,
+        "stdout": "{\"data\": []}",
+        "stderr": ""
+      },
+      "services": {
+        "at": "2026-10-17T14:20:12.839400+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.814,
+        "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}]",
+        "stderr": ""
+      },
+      "quota": {
+        "at": "2026-10-17T14:20:13.365703+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.503,
+        "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+        "stderr": ""
+      },
+      "pass": false
+    },
+    {
+      "at": "2026-10-17T14:20:39.173618+00:00",
+      "detail": {
+        "at": "2026-10-17T14:20:37.491275+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db9o5e4s300s73dskg1g",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "404",
+        "curl_exit": 0,
+        "elapsed": 0.376,
+        "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+        "stderr": ""
+      },
+      "inventory": {
+        "at": "2026-10-17T14:20:38.020088+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "list",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.527,
+        "stdout": "{\"data\": []}",
+        "stderr": ""
+      },
+      "services": {
+        "at": "2026-10-17T14:20:38.883045+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.863,
+        "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}}]",
+        "stderr": ""
+      },
+      "quota": {
+        "at": "2026-10-17T14:20:39.173122+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.27,
+        "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+        "stderr": ""
+      },
+      "pass": true
+    }
+  ],
+  "cached_endpoint_credentials_removed": {
+    "at": "2026-10-17T14:21:05.998475+00:00",
+    "removed": true
+  },
+  "preexisting_history_metadata_after": {
+    "size": 5,
+    "mtime_ns": 1792185892482816095,
+    "ctime_ns": 1792185892482929180,
+    "inode": 442423912,
+    "mode": 33152
+  },
+  "preexisting_history_metadata_unchanged": true,
+  "own_terminal_directories_absent": true
+}

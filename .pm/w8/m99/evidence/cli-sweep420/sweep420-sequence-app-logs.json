@@ -1,0 +1,1 @@
+{"exit": 0, "stdout": "{\"client\": \"bex\", \"actual_emitted_JS_request_events\": 3, \"pass\": true}\n{\"client\": \"render\", \"actual_emitted_JS_request_events\": 3, \"pass\": true}\n", "stderr": ""}

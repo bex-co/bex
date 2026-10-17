@@ -1,0 +1,9 @@
+{
+  "local_image_pull": {
+    "bound_seconds": 180,
+    "timeout": true,
+    "container_created": false,
+    "not_product_evidence": true
+  },
+  "error_detail_matcher": "Initial harness required an additional No such file or directory detail; PostgreSQL18 instead supplies the exact extension-not-available error and install-on-system HINT. Correctly classified the existing result without SQL replay."
+}

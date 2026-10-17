@@ -1,0 +1,22 @@
+{
+  "name": "pyvips",
+  "version": "3.2.0",
+  "requires_python": ">=3.7",
+  "requires_dist": [
+    "cffi>=1.0.0",
+    "pyvips-binary; extra == \"binary\"",
+    "tox; extra == \"tox\"",
+    "pytest; extra == \"test\"",
+    "pyperf; extra == \"test\"",
+    "build; extra == \"sdist\"",
+    "sphinx; extra == \"doc\"",
+    "sphinx_rtd_theme; extra == \"doc\""
+  ],
+  "files": [
+    {
+      "filename": "pyvips-3.2.0.tar.gz",
+      "sha256": "5fa47cdce4e7f450747c118c12fde913e0710850c6015d8ec4f5af490003a347",
+      "URL": "https://files.pythonhosted.org/packages/df/f3/90993aab504fa2e1f28fcc09aa16b6ea4f00e75a037d9136e737855833e2/pyvips-3.2.0.tar.gz"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+from pathlib import Path
+import subprocess,json,time,sys
+P=Path(__file__).resolve().parent;actor=sys.argv[1]
+for attempt in range(8):
+ r=subprocess.run(['python3',str(P/'sweep402-native-pgtools.py'),'observe',actor],capture_output=True,text=True,timeout=90);(P/('sweep402-observe-'+actor+'-'+str(time.time_ns())+'.json')).write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));r.check_returncode();v=json.loads(r.stdout);print(json.dumps({'attempt':attempt+1,**v}),flush=True)
+ if v['status'] in ('live','build_failed','update_failed','pre_deploy_failed','canceled'):
+  for mode in ['logs','http']:
+   r=subprocess.run(['python3',str(P/'sweep402-native-pgtools.py'),mode,actor],capture_output=True,text=True,timeout=100);(P/('sweep402-'+mode+'-'+actor+'-'+str(time.time_ns())+'.json')).write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));print(r.stdout,flush=True);r.check_returncode()
+  break
+ if attempt<7:time.sleep(12)
+else:print('Own unchanged deployment still pending after bounded observation; no mutation retry',flush=True)

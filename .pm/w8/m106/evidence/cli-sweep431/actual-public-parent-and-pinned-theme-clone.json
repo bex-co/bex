@@ -1,0 +1,56 @@
+{
+  "at": "2026-10-17T12:12:20.893424+00:00",
+  "repo": "https://github.com/render-examples/hugo-quick-start",
+  "intended_commit": "48eaf95c3fd4a8c438df1c14dd9e2ff983a77b7c",
+  "steps": [
+    {
+      "command": [
+        "git",
+        "-c",
+        "credential.helper=",
+        "clone",
+        "--depth",
+        "1",
+        "--branch",
+        "main",
+        "https://github.com/render-examples/hugo-quick-start",
+        ".playwright-mcp/cli-qa-w8-run-my049opr/next-hugo-local-source"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": "Cloning into '.playwright-mcp/cli-qa-w8-run-my049opr/next-hugo-local-source'...\n"
+    },
+    {
+      "command": [
+        "git",
+        "-c",
+        "credential.helper=",
+        "-C",
+        ".playwright-mcp/cli-qa-w8-run-my049opr/next-hugo-local-source",
+        "submodule",
+        "update",
+        "--init",
+        "--depth",
+        "1"
+      ],
+      "exit": 0,
+      "stdout": "Submodule path 'themes/ananke': checked out 'a1a99cf12681ad95b006e648a28139e6b9b75f09'\n",
+      "stderr": "Submodule 'themes/ananke' (https://github.com/budparr/gohugo-theme-ananke.git) registered for path 'themes/ananke'\nCloning into '<owned-temp>/next-hugo-local-source/themes/ananke'...\nFrom https://github.com/budparr/gohugo-theme-ananke\n * branch            a1a99cf12681ad95b006e648a28139e6b9b75f09 -> FETCH_HEAD\n"
+    }
+  ],
+  "actual_parent_commit": "48eaf95c3fd4a8c438df1c14dd9e2ff983a77b7c",
+  "actual_theme_commit": "a1a99cf12681ad95b006e648a28139e6b9b75f09",
+  "pass": true,
+  "theme_reference": {
+    "theme.toml": {
+      "bytes": 652,
+      "sha256": "b88a6a6152e080e8092c36e52dfda0cb4bb63faaa78dd8999cc33a3c78d3e0f9",
+      "text": "# theme.toml template for a Hugo theme\n# See https://github.com/gohugoio/hugoThemes#themetoml for an example\n\nname = \"Ananke Gohugo Theme\"\nlicense = \"MIT\"\nlicenselink = \"https://github.com/theNewDynamic/gohugo-theme-ananke/blob/master/LICENSE.md\"\ndescription = \"A Base theme for building full featured Hugo sites\"\nhomepage = \"https://github.com/theNewDynamic/gohugo-theme-ananke\"\ntags = [\"website\", \"starter\", \"responsive\", \"Disqus\", \"blog\", \"Tachyons\", \"Multilingual\", \"Stackbit\"]\nfeatures = [\"posts\", \"shortcodes\", \"related content\", \"comments\"]\nmin_version = \"0.84.0\"\n\n[author]\n  name = \"theNewDynamic\"\n  homepage = \"https://www.thenewdynamic.com/\"\n"
+    },
+    "layouts/index.html": {
+      "bytes": 2461,
+      "sha256": "3a23493988682d44541cbdff9b8474de4f097e9f035ab708e49d8567b9f5ad5b",
+      "text": null
+    }
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "nonce": "30a988",
+  "context": "<owned-temp>/candidate-ts-v2b0rqj4",
+  "image": "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+  "cases": [
+    {
+      "stage": "original",
+      "container": "qa-ts-30a988-original",
+      "absent_before": true,
+      "command": "set -e\nnode qa-ts-before.cjs\ntsc --strict --noEmitOnError --module NodeNext --target ES2022 --outDir dist qa-ts-app.cts\nnode dist/qa-ts-app.cjs build",
+      "exit": 127,
+      "stdout": "QA_TS_BEFORE {\"marker\":\"QA_TS_LOCAL\",\"node\":\"v24.22.0\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"source_ts_sha256\":\"1c86c902d725dd09ba9b776ee3a5e238f3f623588df6852afae0317ac065b00f\",\"compiler\":{\"status\":null,\"error\":\"ENOENT\",\"version\":null}}\n",
+      "stderr": "bash: line 3: tsc: command not found\n",
+      "pass": true
+    },
+    {
+      "stage": "compiler-control",
+      "container": "qa-ts-30a988-compiler-control",
+      "absent_before": true,
+      "command": "set -e\nnode qa-ts-before.cjs\nnpm install --global --no-audit --no-fund typescript@7.0.2\ntsc --strict --noEmitOnError --module NodeNext --target ES2022 --outDir dist qa-ts-app.cts\nnode dist/qa-ts-app.cjs build\nnode dist/qa-ts-app.cjs runtime > own-server.log 2>&1 &\nqa_ts_pid=$!\ntrap 'kill \"$qa_ts_pid\" 2>/dev/null || true' EXIT\nnode check.cjs\ncat own-server.log",
+      "exit": 0,
+      "stdout": "QA_TS_BEFORE {\"marker\":\"QA_TS_LOCAL\",\"node\":\"v24.22.0\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"source_ts_sha256\":\"1c86c902d725dd09ba9b776ee3a5e238f3f623588df6852afae0317ac065b00f\",\"compiler\":{\"status\":null,\"error\":\"ENOENT\",\"version\":null}}\n\nadded 2 packages in 2s\nQA_TS_AFTER {\"marker\":\"QA_TS_LOCAL\",\"node\":\"v24.22.0\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"source_ts_sha256\":\"1c86c902d725dd09ba9b776ee3a5e238f3f623588df6852afae0317ac065b00f\",\"compiled_js_sha256\":\"af1acfde1f1d6e4c12bea3d17f01516494d0f06053ee372377670b7bf3621242\",\"compiler\":{\"status\":0,\"error\":null,\"version\":\"Version 7.0.2\"},\"input\":[{\"label\":\"Cr\u00e8me br\u00fbl\u00e9e\",\"quantity\":2},{\"label\":\"\u674e\",\"quantity\":3},{\"label\":\"space label\",\"quantity\":5}],\"result\":{\"labels\":[\"Cr\u00e8me br\u00fbl\u00e9e\",\"\u674e\",\"space label\"],\"total\":10,\"tones\":[\"warm\",\"cool\",\"warm\"]}}\nQA_TS_LOCAL_HTTP [{\"path\":\"/typed?qa=1\",\"status\":200,\"source_ts_sha256\":\"1c86c902d725dd09ba9b776ee3a5e238f3f623588df6852afae0317ac065b00f\",\"compiled_js_sha256\":\"af1acfde1f1d6e4c12bea3d17f01516494d0f06053ee372377670b7bf3621242\",\"result\":{\"labels\":[\"Cr\u00e8me br\u00fbl\u00e9e\",\"\u674e\",\"space label\"],\"total\":10,\"tones\":[\"warm\",\"cool\",\"warm\"]}},{\"path\":\"/?qa=2\",\"status\":200,\"source_ts_sha256\":\"1c86c902d725dd09ba9b776ee3a5e238f3f623588df6852afae0317ac065b00f\",\"compiled_js_sha256\":\"af1acfde1f1d6e4c12bea3d17f01516494d0f06053ee372377670b7bf3621242\",\"result\":{\"labels\":[\"Cr\u00e8me br\u00fbl\u00e9e\",\"\u674e\",\"space label\"],\"total\":10,\"tones\":[\"warm\",\"cool\",\"warm\"]}},{\"path\":\"/typed?qa=3\",\"status\":200,\"source_ts_sha256\":\"1c86c902d725dd09ba9b776ee3a5e238f3f623588df6852afae0317ac065b00f\",\"compiled_js_sha256\":\"af1acfde1f1d6e4c12bea3d17f01516494d0f06053ee372377670b7bf3621242\",\"result\":{\"labels\":[\"Cr\u00e8me br\u00fbl\u00e9e\",\"\u674e\",\"space label\"],\"total\":10,\"tones\":[\"warm\",\"cool\",\"warm\"]}}]\nQA_TS_HTTP {\"marker\":\"QA_TS_LOCAL\",\"path\":\"/\",\"result\":{\"labels\":[\"Cr\u00e8me br\u00fbl\u00e9e\",\"\u674e\",\"space label\"],\"total\":10,\"tones\":[\"warm\",\"cool\",\"warm\"]},\"compiled_js_sha256\":\"af1acfde1f1d6e4c12bea3d17f01516494d0f06053ee372377670b7bf3621242\"}\nQA_TS_HTTP {\"marker\":\"QA_TS_LOCAL\",\"path\":\"/typed?qa=1\",\"result\":{\"labels\":[\"Cr\u00e8me br\u00fbl\u00e9e\",\"\u674e\",\"space label\"],\"total\":10,\"tones\":[\"warm\",\"cool\",\"warm\"]},\"compiled_js_sha256\":\"af1acfde1f1d6e4c12bea3d17f01516494d0f06053ee372377670b7bf3621242\"}\nQA_TS_HTTP {\"marker\":\"QA_TS_LOCAL\",\"path\":\"/?qa=2\",\"result\":{\"labels\":[\"Cr\u00e8me br\u00fbl\u00e9e\",\"\u674e\",\"space label\"],\"total\":10,\"tones\":[\"warm\",\"cool\",\"warm\"]},\"compiled_js_sha256\":\"af1acfde1f1d6e4c12bea3d17f01516494d0f06053ee372377670b7bf3621242\"}\nQA_TS_HTTP {\"marker\":\"QA_TS_LOCAL\",\"path\":\"/typed?qa=3\",\"result\":{\"labels\":[\"Cr\u00e8me br\u00fbl\u00e9e\",\"\u674e\",\"space label\"],\"total\":10,\"tones\":[\"warm\",\"cool\",\"warm\"]},\"compiled_js_sha256\":\"af1acfde1f1d6e4c12bea3d17f01516494d0f06053ee372377670b7bf3621242\"}\n",
+      "stderr": "npm notice\nnpm notice New major version of npm available! 11.19.1 -> 12.2.0\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0\nnpm notice To update run: npm install -g npm@12.2.0\nnpm notice\n",
+      "pass": true,
+      "build": {
+        "marker": "QA_TS_LOCAL",
+        "node": "v24.22.0",
+        "files": {
+          "LICENSE": {
+            "bytes": 1072,
+            "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+          },
+          "CHANGELOG": {
+            "bytes": 18,
+            "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+          }
+        },
+        "source_ts_sha256": "1c86c902d725dd09ba9b776ee3a5e238f3f623588df6852afae0317ac065b00f",
+        "compiled_js_sha256": "af1acfde1f1d6e4c12bea3d17f01516494d0f06053ee372377670b7bf3621242",
+        "compiler": {
+          "status": 0,
+          "error": null,
+          "version": "Version 7.0.2"
+        },
+        "input": [
+          {
+            "label": "Cr\u00e8me br\u00fbl\u00e9e",
+            "quantity": 2
+          },
+          {
+            "label": "\u674e",
+            "quantity": 3
+          },
+          {
+            "label": "space label",
+            "quantity": 5
+          }
+        ],
+        "result": {
+          "labels": [
+            "Cr\u00e8me br\u00fbl\u00e9e",
+            "\u674e",
+            "space label"
+          ],
+          "total": 10,
+          "tones": [
+            "warm",
+            "cool",
+            "warm"
+          ]
+        }
+      }
+    }
+  ],
+  "qualification": "selected cached Node24 base, exact own typed app, real tsc and own-container-loopback HTTP; not full generated image or hosted finding",
+  "pass": true,
+  "own_containers_context_removed": true
+}

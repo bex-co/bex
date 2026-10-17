@@ -1,0 +1,7 @@
+def exercise(x,P,reference,valid_after,record):
+ import subprocess,json,hashlib,base64
+ requests=[];url=x['create_view']['serviceDetails']['url'];extension=None;wheel=None
+ for i,path in enumerate(['/native','/','/native/combined']):
+  path+='?qa424='+x['nonce']+'-'+str(i+1);r=subprocess.run(['curl','--disable','-sS','--max-time','15','-H','Accept-Encoding: identity','-w','\n%{http_code} %{content_type}',url+path],capture_output=True,timeout=20);body,_,meta=r.stdout.rpartition(b'\n');status,_,ctype=meta.decode(errors='replace').partition(' ');e={'path':path,'HTTP':status,'content_type':ctype,'curl_exit':r.returncode,'bytes':len(body),'sha256':hashlib.sha256(body).hexdigest(),'body_base64':base64.b64encode(body).decode(),'stderr':r.stderr.decode(errors='replace')};record(i,e);assert r.returncode==0 and status=='200'
+  v=json.loads(body);e['decoded']=v;e['raw']=body.decode();ext=v['build']['extension'];whl=v['build']['wheel'];extension=ext if extension is None else extension;wheel=whl if wheel is None else wheel;e['pass']=ctype.startswith('application/json') and v.get('node','').startswith('v24.') and valid_after(v['build'],x) and valid_after(v['runtime'],x) and v['runtime']['request_path']==path and v['runtime']['extension']==ext==extension and v['runtime']['wheel']==whl==wheel;record(i,e);requests.append(e)
+ return requests

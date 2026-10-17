@@ -1,0 +1,767 @@
+{
+  "sweep": 442,
+  "existing_filing": "w8/m108",
+  "new_issues": 0,
+  "source_head": "e27576d8a05acdc0447dfe094da042de9fedd406",
+  "actual_serving_edge_SHA_config": "unknown",
+  "both_native_creates_POST201_exit0": 2,
+  "first_children_Live": 2,
+  "payload_bytes": 1048576,
+  "payload_sha256": "bd8a5183fdafb052402b7f52480145004a781b927f0d376e4fbd922da44f6926",
+  "cases": [
+    {
+      "client": "bex",
+      "case": "fast",
+      "outcome": "success",
+      "HTTP": 200,
+      "ALPN": "h2",
+      "elapsed": 2.709093875,
+      "bytes_submitted": 1048576,
+      "app_edge_correlation": {
+        "case": "fast",
+        "nonce": "906072_bex_fast",
+        "events": [
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_fast",
+            "phase": "begin",
+            "bytes": 0,
+            "elapsed_ms": 0,
+            "declared": "1048576",
+            "method": "PUT"
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_fast",
+            "phase": "progress",
+            "bytes": 72798,
+            "elapsed_ms": 291
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_fast",
+            "phase": "progress",
+            "bytes": 150446,
+            "elapsed_ms": 470
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_fast",
+            "phase": "progress",
+            "bytes": 238968,
+            "elapsed_ms": 748
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_fast",
+            "phase": "progress",
+            "bytes": 335872,
+            "elapsed_ms": 753
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_fast",
+            "phase": "progress",
+            "bytes": 409600,
+            "elapsed_ms": 1082
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_fast",
+            "phase": "progress",
+            "bytes": 475136,
+            "elapsed_ms": 1084
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_fast",
+            "phase": "progress",
+            "bytes": 540672,
+            "elapsed_ms": 1085
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_fast",
+            "phase": "progress",
+            "bytes": 606208,
+            "elapsed_ms": 1086
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_fast",
+            "phase": "progress",
+            "bytes": 704512,
+            "elapsed_ms": 1140
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_fast",
+            "phase": "progress",
+            "bytes": 770048,
+            "elapsed_ms": 1148
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_fast",
+            "phase": "progress",
+            "bytes": 837753,
+            "elapsed_ms": 1306
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_fast",
+            "phase": "progress",
+            "bytes": 910807,
+            "elapsed_ms": 1313
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_fast",
+            "phase": "progress",
+            "bytes": 978944,
+            "elapsed_ms": 1367
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_fast",
+            "phase": "progress",
+            "bytes": 1048576,
+            "elapsed_ms": 1535
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_fast",
+            "phase": "complete",
+            "bytes": 1048576,
+            "elapsed_ms": 1540,
+            "sha256": "bd8a5183fdafb052402b7f52480145004a781b927f0d376e4fbd922da44f6926"
+          }
+        ],
+        "request_logs": [
+          {
+            "ClientAddr": "162.224.81.143:60375",
+            "ClientHost": "162.224.81.143",
+            "ClientPort": "60375",
+            "ClientUsername": "-",
+            "DownstreamContentSize": 423,
+            "DownstreamStatus": 200,
+            "Duration": 1546929801,
+            "KubernetesIngressName": "tea-daif693dqjvc73e7as3g-qa-20261017-906072-upload",
+            "KubernetesIngressNamespace": "tea-daif693dqjvc73e7as3g",
+            "KubernetesServiceName": "tea-daif693dqjvc73e7as3g-qa-20261017-906072-upload",
+            "KubernetesServicePort": "3000",
+            "OriginContentSize": 423,
+            "OriginDuration": 1546559372,
+            "OriginStatus": 200,
+            "Overhead": 370429,
+            "RequestAddr": "qa-20261017-906072-upload.onbex.co:443",
+            "RequestContentSize": 1048576,
+            "RequestHost": "qa-20261017-906072-upload.onbex.co",
+            "RequestMethod": "PUT",
+            "RequestPath": "/upload/906072_bex_fast",
+            "RequestPort": "443",
+            "RequestProtocol": "HTTP/2.0",
+            "RequestScheme": "https",
+            "RetryAttempts": 0,
+            "ServiceName": "tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261017-906072-upload-3000@kubernetes",
+            "StartLocal": "2026-10-17T15:12:22.187687909Z",
+            "StartUTC": "2026-10-17T15:12:22.187687909Z",
+            "TLSCipher": "TLS_AES_128_GCM_SHA256",
+            "TLSVersion": "1.3",
+            "entryPointName": "websecure",
+            "level": "info",
+            "msg": "",
+            "time": "2026-10-17T15:12:23Z"
+          }
+        ],
+        "outcome": "success",
+        "client_status": 200,
+        "server_boot_preserved": true,
+        "pass": true
+      }
+    },
+    {
+      "client": "bex",
+      "case": "paced",
+      "outcome": "early_HTTP_failure",
+      "HTTP": 502,
+      "ALPN": "h2",
+      "elapsed": 60.605780125,
+      "bytes_submitted": 819200,
+      "app_edge_correlation": {
+        "case": "paced",
+        "nonce": "906072_bex_paced",
+        "events": [
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_paced",
+            "phase": "begin",
+            "bytes": 0,
+            "elapsed_ms": 0,
+            "declared": "1048576",
+            "method": "PUT"
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_paced",
+            "phase": "progress",
+            "bytes": 65536,
+            "elapsed_ms": 4132
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_paced",
+            "phase": "progress",
+            "bytes": 131072,
+            "elapsed_ms": 8992
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_paced",
+            "phase": "progress",
+            "bytes": 196608,
+            "elapsed_ms": 13864
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_paced",
+            "phase": "progress",
+            "bytes": 262144,
+            "elapsed_ms": 18720
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_paced",
+            "phase": "progress",
+            "bytes": 327680,
+            "elapsed_ms": 23547
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_paced",
+            "phase": "progress",
+            "bytes": 393216,
+            "elapsed_ms": 28385
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_paced",
+            "phase": "progress",
+            "bytes": 458752,
+            "elapsed_ms": 33234
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_paced",
+            "phase": "progress",
+            "bytes": 524288,
+            "elapsed_ms": 38089
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_paced",
+            "phase": "progress",
+            "bytes": 589824,
+            "elapsed_ms": 42950
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_paced",
+            "phase": "progress",
+            "bytes": 655360,
+            "elapsed_ms": 47857
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_paced",
+            "phase": "progress",
+            "bytes": 720896,
+            "elapsed_ms": 52624
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_paced",
+            "phase": "progress",
+            "bytes": 786432,
+            "elapsed_ms": 57556
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_paced",
+            "phase": "aborted",
+            "bytes": 819200,
+            "elapsed_ms": 60003,
+            "partial_sha256": "1e759378ea22d5e194eabeadb368600e118ae4a67610e39100aa6244dfc8af98"
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_paced",
+            "phase": "request-error",
+            "bytes": 819200,
+            "elapsed_ms": 60003,
+            "code": "ECONNRESET"
+          },
+          {
+            "marker": "QA442_906072_bex",
+            "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+            "nonce": "906072_bex_paced",
+            "phase": "closed-before-end",
+            "bytes": 819200,
+            "elapsed_ms": 60003
+          }
+        ],
+        "request_logs": [
+          {
+            "ClientAddr": "162.224.81.143:60381",
+            "ClientHost": "162.224.81.143",
+            "ClientPort": "60381",
+            "ClientUsername": "-",
+            "DownstreamContentSize": 11,
+            "DownstreamStatus": 502,
+            "Duration": 60002211019,
+            "KubernetesIngressName": "tea-daif693dqjvc73e7as3g-qa-20261017-906072-upload",
+            "KubernetesIngressNamespace": "tea-daif693dqjvc73e7as3g",
+            "KubernetesServiceName": "tea-daif693dqjvc73e7as3g-qa-20261017-906072-upload",
+            "KubernetesServicePort": "3000",
+            "OriginContentSize": 11,
+            "OriginDuration": 60001394984,
+            "OriginStatus": 502,
+            "Overhead": 816035,
+            "RequestAddr": "qa-20261017-906072-upload.onbex.co:443",
+            "RequestContentSize": 819200,
+            "RequestHost": "qa-20261017-906072-upload.onbex.co",
+            "RequestMethod": "PUT",
+            "RequestPath": "/upload/906072_bex_paced",
+            "RequestPort": "443",
+            "RequestProtocol": "HTTP/2.0",
+            "RequestScheme": "https",
+            "RetryAttempts": 0,
+            "ServiceName": "tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261017-906072-upload-3000@kubernetes",
+            "StartLocal": "2026-10-17T15:12:25.750802316Z",
+            "StartUTC": "2026-10-17T15:12:25.750802316Z",
+            "TLSCipher": "TLS_AES_128_GCM_SHA256",
+            "TLSVersion": "1.3",
+            "entryPointName": "websecure",
+            "level": "info",
+            "msg": "",
+            "time": "2026-10-17T15:13:25Z"
+          }
+        ],
+        "outcome": "early_HTTP_failure",
+        "client_status": 502,
+        "server_boot_preserved": true,
+        "partial_prefix_SHA_verified": true,
+        "pass": true
+      }
+    },
+    {
+      "client": "render",
+      "case": "fast",
+      "outcome": "success",
+      "HTTP": 200,
+      "ALPN": "h2",
+      "elapsed": 8.075980208,
+      "bytes_submitted": 1048576,
+      "app_edge_correlation": {
+        "case": "fast",
+        "nonce": "361ead_render_fast",
+        "events": [
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_fast",
+            "phase": "begin",
+            "bytes": 0,
+            "elapsed_ms": 0,
+            "declared": "1048576",
+            "method": "PUT"
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_fast",
+            "phase": "progress",
+            "bytes": 65536,
+            "elapsed_ms": 919
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_fast",
+            "phase": "progress",
+            "bytes": 136421,
+            "elapsed_ms": 1731
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_fast",
+            "phase": "progress",
+            "bytes": 217088,
+            "elapsed_ms": 2483
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_fast",
+            "phase": "progress",
+            "bytes": 282624,
+            "elapsed_ms": 3209
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_fast",
+            "phase": "progress",
+            "bytes": 360448,
+            "elapsed_ms": 3573
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_fast",
+            "phase": "progress",
+            "bytes": 438272,
+            "elapsed_ms": 4179
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_fast",
+            "phase": "progress",
+            "bytes": 503808,
+            "elapsed_ms": 4384
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_fast",
+            "phase": "progress",
+            "bytes": 597826,
+            "elapsed_ms": 4880
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_fast",
+            "phase": "progress",
+            "bytes": 679936,
+            "elapsed_ms": 5115
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_fast",
+            "phase": "progress",
+            "bytes": 753664,
+            "elapsed_ms": 5734
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_fast",
+            "phase": "progress",
+            "bytes": 847872,
+            "elapsed_ms": 5928
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_fast",
+            "phase": "progress",
+            "bytes": 921600,
+            "elapsed_ms": 6162
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_fast",
+            "phase": "progress",
+            "bytes": 1009163,
+            "elapsed_ms": 6397
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_fast",
+            "phase": "complete",
+            "bytes": 1048576,
+            "elapsed_ms": 6616,
+            "sha256": "bd8a5183fdafb052402b7f52480145004a781b927f0d376e4fbd922da44f6926"
+          }
+        ],
+        "request_logs": [
+          {
+            "ClientAddr": "162.224.81.143:60440",
+            "ClientHost": "162.224.81.143",
+            "ClientPort": "60440",
+            "ClientUsername": "-",
+            "DownstreamContentSize": 429,
+            "DownstreamStatus": 200,
+            "Duration": 6621726014,
+            "KubernetesIngressName": "tea-daif693dqjvc73e7as3g-qa-20261017-361ead-upload",
+            "KubernetesIngressNamespace": "tea-daif693dqjvc73e7as3g",
+            "KubernetesServiceName": "tea-daif693dqjvc73e7as3g-qa-20261017-361ead-upload",
+            "KubernetesServicePort": "3000",
+            "OriginContentSize": 429,
+            "OriginDuration": 6620877142,
+            "OriginStatus": 200,
+            "Overhead": 848872,
+            "RequestAddr": "qa-20261017-361ead-upload.onbex.co:443",
+            "RequestContentSize": 1048576,
+            "RequestHost": "qa-20261017-361ead-upload.onbex.co",
+            "RequestMethod": "PUT",
+            "RequestPath": "/upload/361ead_render_fast",
+            "RequestPort": "443",
+            "RequestProtocol": "HTTP/2.0",
+            "RequestScheme": "https",
+            "RetryAttempts": 0,
+            "ServiceName": "tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261017-361ead-upload-3000@kubernetes",
+            "StartLocal": "2026-10-17T15:13:32.679792349Z",
+            "StartUTC": "2026-10-17T15:13:32.679792349Z",
+            "TLSCipher": "TLS_AES_128_GCM_SHA256",
+            "TLSVersion": "1.3",
+            "entryPointName": "websecure",
+            "level": "info",
+            "msg": "",
+            "time": "2026-10-17T15:13:39Z"
+          }
+        ],
+        "outcome": "success",
+        "client_status": 200,
+        "server_boot_preserved": true,
+        "pass": true
+      }
+    },
+    {
+      "client": "render",
+      "case": "paced",
+      "outcome": "early_HTTP_failure",
+      "HTTP": 502,
+      "ALPN": "h2",
+      "elapsed": 60.569569083,
+      "bytes_submitted": 819200,
+      "app_edge_correlation": {
+        "case": "paced",
+        "nonce": "361ead_render_paced",
+        "events": [
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_paced",
+            "phase": "begin",
+            "bytes": 0,
+            "elapsed_ms": 0,
+            "declared": "1048576",
+            "method": "PUT"
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_paced",
+            "phase": "progress",
+            "bytes": 65536,
+            "elapsed_ms": 4198
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_paced",
+            "phase": "progress",
+            "bytes": 131072,
+            "elapsed_ms": 9027
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_paced",
+            "phase": "progress",
+            "bytes": 196608,
+            "elapsed_ms": 13906
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_paced",
+            "phase": "progress",
+            "bytes": 262144,
+            "elapsed_ms": 18715
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_paced",
+            "phase": "progress",
+            "bytes": 327680,
+            "elapsed_ms": 23636
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_paced",
+            "phase": "progress",
+            "bytes": 393216,
+            "elapsed_ms": 28397
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_paced",
+            "phase": "progress",
+            "bytes": 458752,
+            "elapsed_ms": 33259
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_paced",
+            "phase": "progress",
+            "bytes": 524288,
+            "elapsed_ms": 38099
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_paced",
+            "phase": "progress",
+            "bytes": 589824,
+            "elapsed_ms": 42998
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_paced",
+            "phase": "progress",
+            "bytes": 656613,
+            "elapsed_ms": 48187
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_paced",
+            "phase": "progress",
+            "bytes": 724992,
+            "elapsed_ms": 53043
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_paced",
+            "phase": "progress",
+            "bytes": 790528,
+            "elapsed_ms": 57818
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_paced",
+            "phase": "aborted",
+            "bytes": 819200,
+            "elapsed_ms": 60001,
+            "partial_sha256": "1e759378ea22d5e194eabeadb368600e118ae4a67610e39100aa6244dfc8af98"
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_paced",
+            "phase": "request-error",
+            "bytes": 819200,
+            "elapsed_ms": 60001,
+            "code": "ECONNRESET"
+          },
+          {
+            "marker": "QA442_361ead_render",
+            "boot": "ba55dbc0-a66b-4ab7-ab3b-8d61665f3dda",
+            "nonce": "361ead_render_paced",
+            "phase": "closed-before-end",
+            "bytes": 819200,
+            "elapsed_ms": 60002
+          }
+        ],
+        "request_logs": [
+          {
+            "ClientAddr": "162.224.81.143:60452",
+            "ClientHost": "162.224.81.143",
+            "ClientPort": "60452",
+            "ClientUsername": "-",
+            "DownstreamContentSize": 11,
+            "DownstreamStatus": 502,
+            "Duration": 60000768100,
+            "KubernetesIngressName": "tea-daif693dqjvc73e7as3g-qa-20261017-361ead-upload",
+            "KubernetesIngressNamespace": "tea-daif693dqjvc73e7as3g",
+            "KubernetesServiceName": "tea-daif693dqjvc73e7as3g-qa-20261017-361ead-upload",
+            "KubernetesServicePort": "3000",
+            "OriginContentSize": 11,
+            "OriginDuration": 59999178072,
+            "OriginStatus": 502,
+            "Overhead": 1590028,
+            "RequestAddr": "qa-20261017-361ead-upload.onbex.co:443",
+            "RequestContentSize": 819200,
+            "RequestHost": "qa-20261017-361ead-upload.onbex.co",
+            "RequestMethod": "PUT",
+            "RequestPath": "/upload/361ead_render_paced",
+            "RequestPort": "443",
+            "RequestProtocol": "HTTP/2.0",
+            "RequestScheme": "https",
+            "RetryAttempts": 0,
+            "ServiceName": "tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261017-361ead-upload-3000@kubernetes",
+            "StartLocal": "2026-10-17T15:13:40.9780645Z",
+            "StartUTC": "2026-10-17T15:13:40.9780645Z",
+            "TLSCipher": "TLS_AES_128_GCM_SHA256",
+            "TLSVersion": "1.3",
+            "entryPointName": "websecure",
+            "level": "info",
+            "msg": "",
+            "time": "2026-10-17T15:14:40Z"
+          }
+        ],
+        "outcome": "early_HTTP_failure",
+        "client_status": 502,
+        "server_boot_preserved": true,
+        "partial_prefix_SHA_verified": true,
+        "pass": true
+      }
+    }
+  ],
+  "local_direct_TLS_HTTP2_fast_and_77s_paced_full200": true,
+  "local_pinned_proxy_default_HTTP502": 60.023751,
+  "local_only_readTimeout100s_HTTP200": 77.300590583,
+  "shared_REST_GraphQL_MCP_reads": 6,
+  "explicit_NODE_VERSION24_API_only_reads": 2,
+  "two_parents_two_children_URLs_absent": true,
+  "baseline_current_inventory_quota_termination0": true,
+  "all_own_local_containers_contexts_certificates_payloads_removed": true,
+  "product_implementation": false,
+  "uncommitted": true
+}

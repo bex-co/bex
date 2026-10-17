@@ -1,0 +1,83 @@
+{
+  "source_head": "af4f7fefb6d99596e5415bfcaf34c5802faf38d0",
+  "pinned_consumer": {
+    "release": "Render2.27.0",
+    "commit": "a764810a768202704e7206eb7b87a47211fcd98e",
+    "path": "pkg/service/create.go:14-96,132-169,272-309; pkg/service/secretfiles.go:11-41",
+    "behavior": "original Node/Free source and command request; text base64 QA-only file, no request rewriting"
+  },
+  "producer_chain": [
+    {
+      "path": "lego/backend/internal/apps/rest.go",
+      "lines": "566-581",
+      "behavior": "preserves runtime/build/start and secret file input"
+    },
+    {
+      "path": "lego/backend/internal/apps/build_strategy.go",
+      "lines": "44-75",
+      "behavior": "explicit native runtime selects native strategy"
+    },
+    {
+      "path": "lego/operator/internal/controller/app_controller.go",
+      "lines": "1039-1048,1483-1501",
+      "behavior": "shared options include exact commands, secret files and resolver image; six native runtime cases"
+    },
+    {
+      "path": "lego/operator/internal/build/build.go",
+      "lines": "1137-1147",
+      "behavior": "one native preparer call before resolver/BuildKit"
+    },
+    {
+      "path": "lego/operator/internal/build/native.go",
+      "lines": "244-283,345-365",
+      "behavior": "one shared generated recipe, existing language/media steps but no PostgreSQL clients; source and authored build then same serving image"
+    },
+    {
+      "path": "lego/operator/internal/build/nativeresolve.go",
+      "lines": "53-123",
+      "behavior": "selected primary base plus Poetry/uv/JS/Bun as applicable; no PostgreSQL client supplier"
+    },
+    {
+      "path": "lego/operator/internal/build/nativeffmpeg.go",
+      "lines": "21-39",
+      "behavior": "reviewed common helper placement pattern, fully static binaries; copying dynamic PG clients requires a separate reviewed library closure"
+    }
+  ],
+  "proposed_fix": {
+    "target": "new shared PostgreSQL client supplier step in lego/operator/internal/build/native.go and e.g. nativepostgres.go, before source/authored build; update toolchain-freshness.json and ADR060 tool inventory",
+    "behavior": "supply reviewed psql, pg_dump, pg_restore with runnable library closure on native build/pre-deploy/runtime PATH; static build receives build-time tools; retain exact tenant commands and normal caller env/PATH",
+    "delivery": "review a multiarch PostgreSQL client helper/package artifact against bookworm and newer trixie bases; pin image/artifact and dependencies, inventory cache/version inputs; keep any private library directory scoped to client wrappers so other toolchains do not inherit replacement libpq/SSL",
+    "version_boundary": "QA control installs Debian PostgreSQL15.19 and decodes a PG15 archive. It is not acceptance for PostgreSQL18 dumps/servers. Choose a reviewed client version covering supported server/archive requirements (including managed default18), test it; do not call the QA apt-get prefix the product fix",
+    "preserve": [
+      "primary runtime versions and refusals",
+      "Poetry/uv/Node/npm/Yarn/pnpm/Bun/FFmpeg/native-init",
+      "source root and env/files/cache",
+      "literal narrow/empty/custom PATH semantics",
+      "Dockerfile/image/buildpack/buildless static exclusions",
+      "no fleet rebuild/restart or external CLI fork"
+    ]
+  },
+  "scope": "one nativeDockerfile -> one nativeBuildPreparer -> one BuildJob wiring path; six primary native runtimes/16 reviewed base lines, compute kinds and static native builds; other bases/versions not executed in this sweep",
+  "dedupe": "searched all PM states and docs for PostgreSQL client/pg_restore/pg_dump/native psql. Existing database export jobs and CLI-local psql stdin/cancel/panel findings are distinct. ADR060 m82 expressly limits FFmpeg delivery; its prior completion is untouched, no blanket tool parity claimed. git log -S postgresql-client in native assembly empty. Serving revision unknown; no source repair observed at diagnosis head.",
+  "unverified": [
+    "hosted database connection/migration",
+    "PG18 archive format/server compatibility",
+    "pre-deploy and non-Node/static/other primary lines",
+    "full generated image execution",
+    "browser authoring",
+    "actual serving revision/OCI",
+    "product supplier implementation and fixed acceptance",
+    "full platform suites",
+    "physical teardown"
+  ],
+  "control_install_observation": {
+    "new_packages": [
+      "postgresql-client",
+      "postgresql-client-15",
+      "postgresql-client-common"
+    ],
+    "additional_disk_bytes_approx": 9555968,
+    "observed_version": "15.19 (Debian15.19-0+deb12u1)",
+    "qualification": "selected Node24 local apt control output; product supplier/version not implemented or certified"
+  }
+}

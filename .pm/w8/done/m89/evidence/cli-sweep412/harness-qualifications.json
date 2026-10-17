@@ -1,0 +1,8 @@
+{
+  "bounded_Bex_observation": {
+    "same_original_first_child_building_after_8_reads": true,
+    "Render_original_first_child_source_and_three_HTTPs_pass": true,
+    "finite_parent_stopped_before_shared_reads_or_cleanup_until_both_acceptances": true,
+    "resume": "same Bex first child; no create/update/deploy replay"
+  }
+}

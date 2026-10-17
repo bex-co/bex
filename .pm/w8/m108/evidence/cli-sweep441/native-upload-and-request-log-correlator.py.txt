@@ -1,0 +1,32 @@
+from pathlib import Path
+import sys,json,re,hashlib
+P=Path(__file__).resolve().parent;f=P/'sweep441-common.py';sys.argv=[str(f),'correlate-logs','bex'];exec(compile(f.read_text(),str(f),'exec'));xs=[x for x in c['resources'] if x.get('sweep')==441];assert len(xs)==2
+
+def objects(raw):
+ decoder=json.JSONDecoder();rows=[]
+ while raw.strip():raw=raw.lstrip();v,n=decoder.raw_decode(raw);raw=raw[n:];rows.extend(v if isinstance(v,list) else [v])
+ return rows
+for x in xs:
+ own(x);assert x['upload_rounds'][0]['complete'];round=x['upload_rounds'][0];boot=x['runtime_receipts'][0]['decoded']['boot'];e={'at':now(),'queries':[],'events':[],'requests':[]};x.setdefault('upload_log_correlations',[]).append(e);save()
+ for kind in ['app','request']:
+  r=cli(['logs','--resources',x['id'],'--type',kind,'--text',x['nonce'],'--start',round['history'][0]['createdAt'][:19]+'Z','--limit','100','--confirm','-o','json'],client=x['client']);e['queries'].append({'kind':kind,'native':r});save();assert r['native_exit']==0
+  for row in objects(r['stdout']):
+   message=row.get('message','')
+   if kind=='app':
+    for m in re.finditer(r'QA441_EVENT (\{[^\n]+\})',message):
+     v=json.loads(m[1])
+     if v.get('marker')==x['marker'] and v.get('boot')==boot:e['events'].append({'payload':v,'row':row})
+   else:
+    try:v=json.loads(message)
+    except ValueError:continue
+    if any(v.get('RequestPath')=='/upload/'+case['nonce'] for case in round['cases']):e['requests'].append({'payload':v,'row':row})
+ e['cases']=[]
+ for case in round['cases']:
+  events=[z['payload'] for z in e['events'] if z['payload']['nonce']==case['nonce']];requests=[z['payload'] for z in e['requests'] if z['payload']['RequestPath']=='/upload/'+case['nonce']];expected=round['payload'];begins=[z for z in events if z['phase']=='begin'];complete=[z for z in events if z['phase']=='complete'];aborts=[z for z in events if z['phase']=='aborted'];client=case['result'];status=client.get('response',{}).get('status');z={'case':case['case'],'nonce':case['nonce'],'events':events,'request_logs':requests,'outcome':case['outcome'],'client_status':status,'server_boot_preserved':x['runtime_receipts'][-1]['decoded']['boot']==boot};good=len(begins)==1 and begins[0]['declared']==str(expected['bytes']) and z['server_boot_preserved']
+  if case['outcome']=='success':good=good and len(complete)==1 and complete[0]['bytes']==expected['bytes'] and complete[0]['sha256']==expected['sha256'] and any(v.get('DownstreamStatus')==200 for v in requests)
+  else:
+   good=good and not complete and len(aborts)==1 and 0<aborts[0]['bytes']<expected['bytes'] and 55000<=aborts[0]['elapsed_ms']<=70000 and any(v.get('DownstreamStatus')==status for v in requests)
+   if aborts:
+    data=bytes((i*17+31)&255 for i in range(aborts[0]['bytes']));z['partial_prefix_SHA_verified']=hashlib.sha256(data).hexdigest()==aborts[0]['partial_sha256'];good=good and z['partial_prefix_SHA_verified']
+  z['pass']=bool(good);e['cases'].append(z);save();print(json.dumps({'client':x['client'],'case':case['case'],'outcome':case['outcome'],'HTTP':status,'app_events':len(events),'request_rows':len(requests),'pass':z['pass']}),flush=True)
+ e['pass']=all(z['pass'] for z in e['cases']);save();assert e['pass']

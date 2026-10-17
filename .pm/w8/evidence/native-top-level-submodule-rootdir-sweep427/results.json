@@ -1,0 +1,54 @@
+{
+  "sweep": 427,
+  "source_head": "46084c87396de84b1c0ee1b94ce8abbb2691bb41",
+  "kind": "positive supported top-level Gitlink rootDir coverage; no new issue",
+  "original_native_creates_POST201_exit0": 2,
+  "original_first_children_Live": 2,
+  "rootDir_readback_exact": "basic",
+  "parent_commit": "b685400c1f9316f350965a5993d350bc746b0bf4",
+  "selected_pinned_module_commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+  "all_expected_files_exact_at_build_and_runtime": {
+    "LICENSE": {
+      "bytes": 1072,
+      "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+    },
+    "CHANGELOG": {
+      "bytes": 18,
+      "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+    }
+  },
+  "parent_only_entries_absent": [
+    ".gitmodules",
+    "README.md",
+    "itself"
+  ],
+  "program_sha256": "1a8d7efeed28e4e96fe3b46960aaa9c4468e90c7c9b5ef991f39bd458b7b8a87",
+  "actual_Node_versions": [
+    "v24.22.0"
+  ],
+  "actual_exact_source_HTTP200": 6,
+  "native_source_request_events": 6,
+  "one_boot_per_service": true,
+  "authored_fetch_or_directory_change_workaround": false,
+  "shared_REST_GraphQL_MCP_exact_root_source_command_reads": 6,
+  "explicit_env_API_only_reads": 2,
+  "local_nonrecursive_top_level_update_real_commits_verified": {
+    ".": "b685400c1f9316f350965a5993d350bc746b0bf4",
+    "basic": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+    "itself": "47770b26e71b0f69c0ecd494b1066f8d1da4fc03"
+  },
+  "local_wrong_parent_rejected_correct_top_level_HTTP_pass": true,
+  "local_full_generated_native_image_executed": false,
+  "exact_owned_two_parents_two_children_former_URLs_absent": true,
+  "baseline_current_inventory_quota_match_termination0": true,
+  "unrelated_service_IDs_preserved": [],
+  "unrelated_datastore_IDs_preserved": {
+    "postgres": [],
+    "keyValues": []
+  },
+  "local_clone_containers_relays_copied_configs_removed": true,
+  "actual_serving_SHA_OCI": "unknown",
+  "product_implementation": false,
+  "new_issue": false,
+  "uncommitted": true
+}

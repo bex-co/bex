@@ -1,0 +1,12 @@
+import json,shlex
+from pathlib import Path
+RUBY_INSTALL="apt-get update -qq && apt-get install -y --no-install-recommends ruby-full bundler\n"
+BUNDLE_INSTALL="BUNDLE_FROZEN=true bundle install --jobs 2 --retry 1\n"
+def commands(P,reference,marker,phase='initial'):
+ app=(P/'sweep430-site-proof.cjs').read_text();prefix=''
+ if phase in ['ruby','complete']:prefix+=RUBY_INSTALL
+ if phase=='complete':prefix+=BUNDLE_INSTALL
+ setup='set -e\n'+prefix
+ for name,body in [('qa430-reference.json',json.dumps(reference)),('qa430-marker.json',json.dumps(marker)),('qa430-proof.cjs',app)]:setup+='cat > '+name+" <<'QA430_SOURCE'\n"+body+"\nQA430_SOURCE\n"
+ build=setup+'bundle exec jekyll build\nnode qa430-proof.cjs';assert len(build.encode())<4096
+ return {'build':build,'phase':phase,'authored_exact_quickstart_command':'bundle exec jekyll build','diagnostic_installs':([] if phase=='initial' else [RUBY_INSTALL]+([BUNDLE_INSTALL] if phase=='complete' else []))}

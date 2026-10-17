@@ -1,0 +1,9 @@
+import json,hashlib
+def commands(P,reference,marker,control=False):
+ build='set -e\nmkdir -p locale/fr/LC_MESSAGES\n';program=(P/'sweep416-app.py').read_text()
+ for name,value in [('qa-gettext-app.py',program),('qa_gettext_settings.py',(P/'sweep416-settings.py').read_text()),('locale/fr/LC_MESSAGES/django.po',(P/'sweep416.po').read_text()),('qa-gettext-reference.json',json.dumps(reference,separators=(',',':'),ensure_ascii=False)),('qa-gettext-marker.json',json.dumps(marker))]:
+  tag='QA_GETTEXT_'+name.replace('/','_').replace('.','_').replace('-','_').upper();build+="cat > "+name+" <<'"+tag+"'\n"+value+('' if value.endswith('\n') else '\n')+tag+'\n'
+ build+='pip install --disable-pip-version-check Django=='+reference['django']+'\npython qa-gettext-app.py before\n'
+ if control:build+='apt-get update -qq && apt-get install -y --no-install-recommends gettext\n'
+ build+='DJANGO_SETTINGS_MODULE=qa_gettext_settings python -m django compilemessages -l fr --verbosity 1\npython qa-gettext-app.py build'
+ return {'build':build,'start':'python -u qa-gettext-app.py serve','program_sha256':hashlib.sha256(program.encode()).hexdigest()}

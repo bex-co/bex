@@ -1,0 +1,29 @@
+from pathlib import Path
+import json,subprocess,urllib.request,secrets,time,shutil,hashlib
+P=Path(__file__).resolve().parent;ctx=P/'sweep440-local-context';assert not ctx.exists();ctx.mkdir();ref=json.loads((P/'sweep434-primary-reference.json').read_text());(P/'sweep440-primary-reference.json').write_text(json.dumps(ref,indent=2));name='qa440-sse-'+secrets.token_hex(4);out={'container':name,'kind':'pinned Node24 HTTP1 local SSE prerequisite; no local HTTP2 or full generated image claim','steps':[],'streams':[]};file=P/'sweep440-local-prerequisite.json';image='node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0';out['image']=image
+
+def save():file.write_text(json.dumps(out,indent=2,ensure_ascii=False))
+def run(label,args,check=True):
+ r=subprocess.run(args,capture_output=True,text=True,timeout=40);out['steps'].append({'label':label,'command':args,'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr});save()
+ if check:r.check_returncode()
+ return r
+save()
+try:
+ branch=run('fresh-public-branch',['git','ls-remote',ref['repo'],'refs/heads/'+ref['branch']]);assert branch.stdout.split()[0]==ref['commit']
+ for n,expected in ref['files'].items():
+  b=urllib.request.urlopen('https://raw.githubusercontent.com/git-fixtures/basic/'+ref['commit']+'/'+n,timeout=25).read();assert {'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}==expected;(ctx/n).write_bytes(b)
+ ns={};f=P/'sweep440-command-factory.py';exec(compile(f.read_text(),str(f),'exec'),ns);cmd=ns['commands'](P,ref,'QA440_LOCAL');run('start-own-SSE',['docker','run','--pull','never','-d','--network','bridge','-p','127.0.0.1::3000','--name',name,'--mount','type=bind,src='+str(ctx)+',dst=/app','--workdir','/app','--entrypoint','/bin/bash',image,'-c',cmd['build']+'\nexec '+cmd['start']]);port=run('own-loopback-port',['docker','port',name,'3000/tcp']).stdout.strip();assert port.startswith('127.0.0.1:');url='http://'+port
+ for i in range(25):
+  try:
+   with urllib.request.urlopen(url,timeout=2) as r:v=json.loads(r.read());assert v['marker']=='QA440_LOCAL';break
+  except Exception:time.sleep(.2)
+ else:raise RuntimeError('Own SSE server not ready')
+ ns={};f=P/'sweep440-stream-reader.py';exec(compile(f.read_text(),str(f),'exec'),ns)
+ for last in [0,3]:
+  entry={'last':last};out['streams'].append(entry);save()
+  def record(v):entry['capture']=v;save()
+  r=ns['consume'](url,'http1.1','local440',last,'QA440_LOCAL',ref,P/('sweep440-local-headers-'+str(last)),record);entry['result']=r;save();assert r['pass'];print(json.dumps({'local_LastEventID':last,'events':[e['id'] for e in r['events']],'arrival_span':r['event_arrival_span'],'pass':True}),flush=True)
+ out['pass']=True;run('own-SSE-log',['docker','logs',name])
+finally:
+ run('remove-exact-own-server',['docker','rm','-f','-v',name],False);out['own_container_absent']=run('own-container-absence',['docker','container','inspect',name],False).returncode!=0;shutil.rmtree(ctx);out['own_context_removed']=not ctx.exists();save()
+print(json.dumps({'pass':out.get('pass',False),'own_container_absent':out['own_container_absent'],'own_context_removed':out['own_context_removed']}))

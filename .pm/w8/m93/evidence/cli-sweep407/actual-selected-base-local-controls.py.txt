@@ -1,0 +1,25 @@
+from pathlib import Path
+import json,subprocess,tempfile,shutil,hashlib,secrets,fcntl
+P=Path(__file__).resolve().parent;R=P.parent.parent;CP=R/'.playwright-mcp/cli-qa-w8-checkpoint.json';lock=(P/'checkpoint-writer.lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB);c=json.loads(CP.read_text());ref=json.loads((P/'sweep407-primary-reference.json').read_text());ns={};exec((P/'sweep407-command-factory.py').read_text(),ns);root=Path(tempfile.mkdtemp(prefix='sweep407-local-',dir=P));nonce=secrets.token_hex(3);rows=json.loads((P/'sweep407-resolved-recipes.json').read_text());image=next(s.split()[1] for s in rows[0]['generated_recipe'].splitlines() if s.startswith('FROM '));out={'image':image,'nonce':nonce,'qualification':'actual resolved pinned Node base plus exact authored command; not full generated-image execution, only own Markdown input, no hosted or full generated-image acceptance','context':str(root),'cases':[]}
+def save():
+ (P/'sweep407-local-prerequisite.json').write_text(json.dumps(out,indent=2));c['sweep407_local_controls']={'context':str(root),'nonce':nonce,'container_names':[v['container'] for v in out['cases']],'removed':out.get('own_containers_context_removed',False)};t=CP.with_name('.'+CP.name+'.qa407-local.tmp');t.write_text(json.dumps(c,indent=2));t.chmod(0o600);t.replace(CP)
+save()
+try:
+ for label,manual in [('default',False),('manual',True)]:
+  D=root/label;D.mkdir();name='qa407-'+nonce+'-'+label;assert subprocess.run(['docker','inspect',name],capture_output=True).returncode!=0
+  for f in ref['files']:shutil.copyfile(P/('sweep407-source-'+f),D/f)
+  command=ns['commands'](P,ref,'QA407_LOCAL',manual);args=['docker','run','--pull=never','--rm','--name',name,'--label','bex.qa.run='+nonce,'-v',str(D)+':/work','-w','/work','-e','NODE_VERSION=24',image,'bash','-c',command['build']];e={'label':label,'container':name,'absent_before':True,'manual_install':manual,'command':command};out['cases'].append(e);save()
+  try:r=subprocess.run(args,text=True,capture_output=True,timeout=180);e.update(exit=r.returncode,stdout=r.stdout,stderr=r.stderr);save()
+  finally:
+   inspect=subprocess.run(['docker','inspect',name],capture_output=True,text=True)
+   if inspect.returncode==0:
+    v=json.loads(inspect.stdout)[0];assert v['Config']['Labels']['bex.qa.run']==nonce and any(m['Source']==str(D) for m in v['Mounts']);subprocess.run(['docker','rm','-f',name],capture_output=True,check=True)
+  before=json.loads((D/'qa407-before.json').read_text());e['before']=before;assert before['files']==ref['files'] and before['document']=={k:ref['document'][k] for k in ['bytes','sha256']} and all(v['error']=='ENOENT' for v in before['tools'].values())
+  if manual:
+   v=json.loads((D/'qa407-build.json').read_text());e['after']=v;e['pass']=r.returncode==0 and all(t in v['html']['text'] for t in ref['document']['required_html']) and v['html']['sha256']==hashlib.sha256(v['html']['text'].encode()).hexdigest() and all(t['status']==0 for t in v['tools'].values());e['converted_HTML']=(D/'qa407.html').read_text()
+  else:e['pass']=r.returncode==127 and 'pandoc: command not found' in r.stderr and not (D/'qa407-build.json').exists()
+  save();assert e['pass'];print(json.dumps({'case':label,'exit':r.returncode,'expected_outcome_verified':True}),flush=True)
+ out['pass']=True;save()
+finally:
+ assert root.parent==P and root.name.startswith('sweep407-local-');shutil.rmtree(root);out['own_containers_context_removed']=not root.exists() and all(subprocess.run(['docker','inspect',e['container']],capture_output=True).returncode!=0 for e in out['cases']);save()
+print(json.dumps({'pass':out.get('pass'),'own_containers_context_removed':out['own_containers_context_removed']}))

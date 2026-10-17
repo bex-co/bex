@@ -1,0 +1,22 @@
+import re
+
+def queries(schema):
+ assert re.fullmatch('[a-z][a-z0-9_]+',schema)
+ start="BEGIN; SET LOCAL statement_timeout='20s'; CREATE SCHEMA "+schema+"; SET LOCAL search_path="+schema+",public; "
+ catalog="SELECT jsonb_build_object('version',current_setting('server_version_num'),'encoding',current_setting('server_encoding'),'extensions',COALESCE((SELECT jsonb_agg(jsonb_build_object('name',name,'default_version',default_version,'installed_version',installed_version) ORDER BY name) FROM pg_available_extensions WHERE name IN ('pg_trgm','vector','hstore','pg_stat_statements','plpgsql')),'[]'::jsonb),'own_schema_exists',EXISTS(SELECT FROM pg_namespace WHERE nspname='"+schema+"'))::text;"
+ core=start+"CREATE TABLE docs(id integer PRIMARY KEY,title text NOT NULL,body text NOT NULL,fts tsvector GENERATED ALWAYS AS(to_tsvector('english',title || ' ' || body)) STORED); INSERT INTO docs(id,title,body) VALUES(1,'Running foxes','The quick brown fox runs through fields'),(2,'Database backups','PostgreSQL database backup and restore'),(3,'Crème brûlée','李 keeps a Unicode café notebook'),(4,'Slow fox','A slow fox walks'); CREATE INDEX docs_search ON docs USING GIN(fts); CREATE INDEX docs_simple ON docs USING GIN(to_tsvector('simple',body)); SET LOCAL enable_seqscan=off; SELECT jsonb_build_object('english_stems',(SELECT jsonb_agg(id ORDER BY id) FROM docs WHERE fts @@ plainto_tsquery('english','run fox')),'phrase',(SELECT jsonb_agg(id ORDER BY id) FROM docs WHERE fts @@ phraseto_tsquery('english','quick brown fox')),'web_or',(SELECT jsonb_agg(id ORDER BY id) FROM docs WHERE fts @@ websearch_to_tsquery('english','database OR slow')),'negative',(SELECT count(*) FROM docs WHERE fts @@ plainto_tsquery('english','nonexistentquokka')),'unicode',(SELECT jsonb_agg(id ORDER BY id) FROM docs WHERE to_tsvector('simple',body) @@ plainto_tsquery('simple','李 café')),'indices',(SELECT jsonb_agg(indexname ORDER BY indexname) FROM pg_indexes WHERE schemaname='"+schema+"'))::text; EXPLAIN(FORMAT JSON,COSTS OFF) SELECT id FROM docs WHERE fts @@ plainto_tsquery('english','run fox'); ROLLBACK;"
+ trgm=start+"CREATE EXTENSION IF NOT EXISTS pg_trgm SCHEMA "+schema+"; CREATE TABLE words(id integer PRIMARY KEY,label text NOT NULL); INSERT INTO words VALUES(1,'postgres'),(2,'postgras'),(3,'Crème brûlée'),(4,'database backup'),(5,'李'); CREATE INDEX words_trigram ON words USING GIN(label gin_trgm_ops); SET LOCAL enable_seqscan=off; SET LOCAL pg_trgm.similarity_threshold=0.5; SELECT jsonb_build_object('similarity',similarity('postgres','postgras'),'identical_unicode',similarity('Crème brûlée','Crème brûlée'),'matching',(SELECT jsonb_agg(id ORDER BY id) FROM words WHERE label % 'postgres'),'unicode_pattern',(SELECT jsonb_agg(id ORDER BY id) FROM words WHERE label ILIKE '%BRûlée%'),'negative',(SELECT count(*) FROM words WHERE label % 'nonexistentquokka'),'distance',('postgres' <-> 'postgras'),'index_names',(SELECT jsonb_agg(indexname ORDER BY indexname) FROM pg_indexes WHERE schemaname='"+schema+"'))::text; EXPLAIN(FORMAT JSON,COSTS OFF) SELECT id FROM words WHERE label % 'postgres'; ROLLBACK;"
+ return {'catalog':catalog,'core':core,'trigram':trgm}
+
+def decode(stdout,case):
+ import json,math
+ decoder=json.JSONDecoder();values=[];raw=stdout.strip()
+ while raw:
+  v,n=decoder.raw_decode(raw);values.append(v);raw=raw[n:].strip()
+ if case=='catalog':return {'catalog':values[0]},True
+ assert len(values)==2;v,plan=values;plantext=json.dumps(plan);assert 'Bitmap Index Scan' in plantext
+ if case=='core':
+  expected={'english_stems':[1],'phrase':[1],'web_or':[2,4],'negative':0,'unicode':[3],'indices':['docs_pkey','docs_search','docs_simple']};passed=v==expected and 'docs_search' in plantext
+ else:
+  a=set(('  postgres '+'')[i:i+3] for i in range(len('  postgres ')-2));b=set(('  postgras '+'')[i:i+3] for i in range(len('  postgras ')-2));expected=len(a&b)/len(a|b);passed=abs(v['similarity']-expected)<1e-6 and abs(v['distance']-(1-expected))<1e-6 and v['identical_unicode']==1 and v['matching']==[1,2] and v['unicode_pattern']==[3] and v['negative']==0 and v['index_names']==['words_pkey','words_trigram'] and 'words_trigram' in plantext
+ return {'value':v,'index_plan':plan},bool(passed)

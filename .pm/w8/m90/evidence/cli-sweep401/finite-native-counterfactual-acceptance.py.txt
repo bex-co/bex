@@ -1,0 +1,5 @@
+from pathlib import Path
+import subprocess,json,time
+P=Path(__file__).resolve().parent
+for actor in ('bex','render'):
+ r=subprocess.run(['python3',str(P/'sweep401-wait.py'),actor],capture_output=True,text=True,timeout=210);(P/('sweep401-control-acceptance-'+actor+'-'+str(time.time_ns())+'.json')).write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));print(r.stdout,flush=True);r.check_returncode()

@@ -1,0 +1,18 @@
+{
+  "original": {
+    "build_bytes": 3945,
+    "within_API_limit": true
+  },
+  "setuptools": {
+    "build_bytes": 4029,
+    "within_API_limit": true
+  },
+  "packaging": {
+    "build_bytes": 4041,
+    "within_API_limit": true
+  },
+  "full": {
+    "build_bytes": 4053,
+    "within_API_limit": true
+  }
+}

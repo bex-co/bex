@@ -1,0 +1,37 @@
+{
+  "repo": "https://github.com/git-fixtures/basic",
+  "branch": "master",
+  "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+  "files": {
+    "LICENSE": {
+      "bytes": 1072,
+      "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+    },
+    "CHANGELOG": {
+      "bytes": 18,
+      "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+    }
+  },
+  "sql": {
+    "text": "BEGIN;\nCREATE TABLE qa409(id INTEGER PRIMARY KEY,label TEXT NOT NULL,n INTEGER NOT NULL);\nINSERT INTO qa409 VALUES(1,'alpha',7),(2,'café 雪',42),(3,'quote '' and comma,',-9);\nCOMMIT;\n",
+    "bytes": 185,
+    "sha256": "77f8c0f5865d42b725b05c5e981c4b24e530bfbbb5764670599c4d0ec29260d4"
+  },
+  "rows": [
+    {
+      "id": 1,
+      "label": "alpha",
+      "n": 7
+    },
+    {
+      "id": 2,
+      "label": "café 雪",
+      "n": 42
+    },
+    {
+      "id": 3,
+      "label": "quote ' and comma,",
+      "n": -9
+    }
+  ]
+}

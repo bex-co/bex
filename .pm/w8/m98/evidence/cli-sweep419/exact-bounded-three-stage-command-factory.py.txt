@@ -1,0 +1,7 @@
+import json,gzip,base64,hashlib
+def commands(P,reference,marker,stage='initial'):
+ assert stage in ['initial','jq-only','both-tools'];program=(P/'sweep419-app.cjs').read_text();files={'qa-assets-app.cjs':program,'qa-assets-reference.json':json.dumps(reference,separators=(',',':'),ensure_ascii=False),'qa-assets-marker.json':json.dumps(marker)};blob=base64.b64encode(gzip.compress(json.dumps(files,ensure_ascii=False,separators=(',',':')).encode(),mtime=0)).decode();assert json.loads(gzip.decompress(base64.b64decode(blob)))==files
+ build="set -e\nnode - <<'QA_ASSET_SOURCES'\nconst fs=require('node:fs'),zlib=require('node:zlib');const files=JSON.parse(zlib.gunzipSync(Buffer.from('"+blob+"','base64')));for(const[n,s]of Object.entries(files))fs.writeFileSync(n,s);\nQA_ASSET_SOURCES\nnode qa-assets-app.cjs before\n"
+ if stage!='initial':build+='apt-get update -qq && apt-get install -y --no-install-recommends '+('jq' if stage=='jq-only' else 'jq rsync')+'\n'
+ build+="jq -e -c '{release:.release,paths:[.assets[]|select(.publish==true)|.path]}' qa-assets-input.json > qa-assets-filtered.json\nnode qa-assets-app.cjs after-jq\nrsync -a --delete --exclude='*.tmp' qa-assets-src/ dist/\nnode qa-assets-app.cjs build";assert len(build.encode())<=4096
+ return {'build':build,'start':'node qa-assets-app.cjs serve','program_sha256':hashlib.sha256(program.encode()).hexdigest()}

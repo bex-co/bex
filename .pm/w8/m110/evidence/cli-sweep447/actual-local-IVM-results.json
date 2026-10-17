@@ -1,0 +1,1064 @@
+{
+  "image": "postgres@sha256:67f41722b7a8cbdb868a44a4995c846eddfdc2973bccb291ce937dce88ad5675",
+  "container": "qa447-ivm-0e99d41d",
+  "source": {
+    "at": "2026-10-17T15:58:54.726071+00:00",
+    "repo": "https://github.com/sraoss/pg_ivm.git",
+    "release_tag": "refs/tags/v1.17",
+    "commit": "678c37861080aa221b859cefaca98725646dbf7c",
+    "files": {
+      "pg_ivm.control": {
+        "url": "https://raw.githubusercontent.com/sraoss/pg_ivm/678c37861080aa221b859cefaca98725646dbf7c/pg_ivm.control",
+        "bytes": 197,
+        "sha256": "533600716350762c4871aa8ce6e75f71bf707cea871a22f4f1799b84149b7178",
+        "relevant_lines": [
+          {
+            "line": 3,
+            "text": "default_version = '1.17'"
+          }
+        ]
+      },
+      "README.md": {
+        "url": "https://raw.githubusercontent.com/sraoss/pg_ivm/678c37861080aa221b859cefaca98725646dbf7c/README.md",
+        "bytes": 26871,
+        "sha256": "2d16cf963e1469b143b99cefa0cae3cee12a9cc73ea4b18eedb3f433aa81ba2f",
+        "relevant_lines": [
+          {
+            "line": 5,
+            "text": "The extension supports PostgreSQL 13-19."
+          },
+          {
+            "line": 13,
+            "text": "We call a materialized view supporting IVM an **Incrementally Maintainable Materialized View (IMMV)**. To create IMMV, you have to call `create_immv` function with a relation name and a view definition query. For example:"
+          },
+          {
+            "line": 16,
+            "text": "SELECT pgivm.create_immv('myview', 'SELECT * FROM mytab');"
+          },
+          {
+            "line": 28,
+            "text": "postgres=# SELECT pgivm.create_immv('m', 'SELECT * FROM t0');"
+          },
+          {
+            "line": 32,
+            "text": " create_immv "
+          },
+          {
+            "line": 69,
+            "text": "> **Important:** Don't forget to set the `PG_CONFIG` variable (`make PG_CONFIG=...`) or the `PATH` to the `pg_config` command in case you want to use `pg_ivm` on a non-default or custom build of PostgreSQL. Read more [here](https://wiki.postgresql.org/wiki/Building_and_Installing_PostgreSQL_Extension_Modules)."
+          },
+          {
+            "line": 79,
+            "text": "To ensure `pg_ivm` maintains IMMVs correctly, add it to either shared_preload_libraries or session_preload_libraries in postgresql.conf:"
+          },
+          {
+            "line": 83,
+            "text": "shared_preload_libraries = 'pg_ivm'"
+          },
+          {
+            "line": 85,
+            "text": "session_preload_libraries = 'pg_ivm'"
+          },
+          {
+            "line": 100,
+            "text": "#### `create_immv`"
+          },
+          {
+            "line": 102,
+            "text": "Use `create_immv` function to create IMMV."
+          },
+          {
+            "line": 104,
+            "text": "pgivm.create_immv(immv text, view_definition text) RETURNS bigint"
+          },
+          {
+            "line": 106,
+            "text": "`create_immv` defines a new IMMV of a query. A table of the name `immv_name` is created and a query specified by `view_definition` is executed and used to populate the IMMV. The query is stored in `pg_ivm_immv`, so that it can be refreshed later upon incremental view maintenance. `create_immv` returns the number of rows in the created IMMV."
+          },
+          {
+            "line": 110,
+            "text": "`create_immv` acquires an `AccessExclusiveLock` on the view. However, even if we are able to acquire the lock, a concurrent transaction may have already incrementally updated and committed the view before we can acquire it. In the `REPEATABLE READ` or `SERIALIZABLE` isolation levels, this could lead to an inconsistent state of the view. Unfortunately, this situation cannot be detected during the creation of the view. As a result, `create_immv` raises a warning in these isolation levels, suggesting that the command be used in `READ COMMITTED` or that `refresh_immv` be executed afterward to make the view's contents remain consistent."
+          },
+          {
+            "line": 112,
+            "text": "Note that if you use PostgreSQL 17 or later, while `create_immv` is running, the `search_path` is temporarily changed to `pg_catalog, pg_temp`."
+          },
+          {
+            "line": 121,
+            "text": "Unlike `create_immv()`, this function assumes that the IMMV table already exists. It recreates the metadata, triggers, and indexes required by `pg_ivm` without recreating the IMMV table itself."
+          },
+          {
+            "line": 127,
+            "text": "To execute this function, you must be the owner of the IMMV.  When `replace` is true, superuser privileges are required instead."
+          },
+          {
+            "line": 154,
+            "text": "#### `get_create_immv_commands`"
+          },
+          {
+            "line": 157,
+            "text": "pgivm.get_create_immv_commands() RETURNS SETOF text"
+          },
+          {
+            "line": 160,
+            "text": "Returns SQL commands that invoke `pgivm.create_immv()` to recreate all IMMVs."
+          }
+        ]
+      },
+      "Makefile": {
+        "url": "https://raw.githubusercontent.com/sraoss/pg_ivm/678c37861080aa221b859cefaca98725646dbf7c/Makefile",
+        "bytes": 1316,
+        "sha256": "6c7d0c546930b8357622f1f85eae701fbcb1dcbf387dd7c0eb1c52bdb4302158",
+        "relevant_lines": [
+          {
+            "line": 3,
+            "text": "PG_CONFIG ?= pg_config"
+          },
+          {
+            "line": 27,
+            "text": "REGRESS = pg_ivm create_immv refresh_immv outer_join"
+          },
+          {
+            "line": 29,
+            "text": "PGVER = $(shell $(PG_CONFIG) --version | sed \"s/^[^ ]* \\([0-9]*\\).*$$/\\1/\" 2>/dev/null)"
+          },
+          {
+            "line": 41,
+            "text": "PGXS := $(shell $(PG_CONFIG) --pgxs)"
+          }
+        ]
+      }
+    }
+  },
+  "scope": "own local PG17 reference with actual pinned pg_ivm compilation and immediate maintenance, not Bex/CNPG supplier acceptance",
+  "steps": [
+    {
+      "label": "start-exact-own-build-server",
+      "command": [
+        "docker",
+        "run",
+        "--pull",
+        "never",
+        "-d",
+        "--network",
+        "bridge",
+        "--name",
+        "qa447-ivm-0e99d41d",
+        "-e",
+        "POSTGRES_HOST_AUTH_METHOD=trust",
+        "--mount",
+        "type=bind,src=<owned-temp>/candidate447-local-context/pg_ivm-678c37861080aa221b859cefaca98725646dbf7c,dst=/fixture",
+        "--entrypoint",
+        "/bin/bash",
+        "postgres@sha256:67f41722b7a8cbdb868a44a4995c846eddfdc2973bccb291ce937dce88ad5675",
+        "-c",
+        "set -e\napt-get update -qq\napt-get install -y --no-install-recommends build-essential postgresql-server-dev-17\nmake -C /fixture PG_CONFIG=/usr/lib/postgresql/17/bin/pg_config -j2\nmake -C /fixture PG_CONFIG=/usr/lib/postgresql/17/bin/pg_config install\n/usr/lib/postgresql/17/bin/pg_config --version\ndpkg-query -W postgresql-server-dev-17 gcc libc6\nexec docker-entrypoint.sh postgres -c shared_preload_libraries=pg_ivm"
+      ],
+      "exit": 0,
+      "stdout": "c058081af8bd8dbb510d01a9d4d72b5d5781818ebaf95650ba8e6712038260db\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-0",
+      "command": [
+        "docker",
+        "exec",
+        "qa447-ivm-0e99d41d",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 2,
+      "stdout": "/var/run/postgresql:5432 - no response\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-state-0",
+      "command": [
+        "docker",
+        "inspect",
+        "qa447-ivm-0e99d41d",
+        "--format",
+        "{{json .State}}"
+      ],
+      "exit": 0,
+      "stdout": "{\"Status\":\"running\",\"Running\":true,\"Paused\":false,\"Restarting\":false,\"OOMKilled\":false,\"Dead\":false,\"Pid\":86087,\"ExitCode\":0,\"Error\":\"\",\"StartedAt\":\"2026-10-17T16:01:50.821155679Z\",\"FinishedAt\":\"0001-01-01T00:00:00Z\"}\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-1",
+      "command": [
+        "docker",
+        "exec",
+        "qa447-ivm-0e99d41d",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 2,
+      "stdout": "/var/run/postgresql:5432 - no response\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-state-1",
+      "command": [
+        "docker",
+        "inspect",
+        "qa447-ivm-0e99d41d",
+        "--format",
+        "{{json .State}}"
+      ],
+      "exit": 0,
+      "stdout": "{\"Status\":\"running\",\"Running\":true,\"Paused\":false,\"Restarting\":false,\"OOMKilled\":false,\"Dead\":false,\"Pid\":86087,\"ExitCode\":0,\"Error\":\"\",\"StartedAt\":\"2026-10-17T16:01:50.821155679Z\",\"FinishedAt\":\"0001-01-01T00:00:00Z\"}\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-2",
+      "command": [
+        "docker",
+        "exec",
+        "qa447-ivm-0e99d41d",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 2,
+      "stdout": "/var/run/postgresql:5432 - no response\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-state-2",
+      "command": [
+        "docker",
+        "inspect",
+        "qa447-ivm-0e99d41d",
+        "--format",
+        "{{json .State}}"
+      ],
+      "exit": 0,
+      "stdout": "{\"Status\":\"running\",\"Running\":true,\"Paused\":false,\"Restarting\":false,\"OOMKilled\":false,\"Dead\":false,\"Pid\":86087,\"ExitCode\":0,\"Error\":\"\",\"StartedAt\":\"2026-10-17T16:01:50.821155679Z\",\"FinishedAt\":\"0001-01-01T00:00:00Z\"}\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-3",
+      "command": [
+        "docker",
+        "exec",
+        "qa447-ivm-0e99d41d",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 2,
+      "stdout": "/var/run/postgresql:5432 - no response\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-state-3",
+      "command": [
+        "docker",
+        "inspect",
+        "qa447-ivm-0e99d41d",
+        "--format",
+        "{{json .State}}"
+      ],
+      "exit": 0,
+      "stdout": "{\"Status\":\"running\",\"Running\":true,\"Paused\":false,\"Restarting\":false,\"OOMKilled\":false,\"Dead\":false,\"Pid\":86087,\"ExitCode\":0,\"Error\":\"\",\"StartedAt\":\"2026-10-17T16:01:50.821155679Z\",\"FinishedAt\":\"0001-01-01T00:00:00Z\"}\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-4",
+      "command": [
+        "docker",
+        "exec",
+        "qa447-ivm-0e99d41d",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 2,
+      "stdout": "/var/run/postgresql:5432 - no response\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-state-4",
+      "command": [
+        "docker",
+        "inspect",
+        "qa447-ivm-0e99d41d",
+        "--format",
+        "{{json .State}}"
+      ],
+      "exit": 0,
+      "stdout": "{\"Status\":\"running\",\"Running\":true,\"Paused\":false,\"Restarting\":false,\"OOMKilled\":false,\"Dead\":false,\"Pid\":86087,\"ExitCode\":0,\"Error\":\"\",\"StartedAt\":\"2026-10-17T16:01:50.821155679Z\",\"FinishedAt\":\"0001-01-01T00:00:00Z\"}\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-5",
+      "command": [
+        "docker",
+        "exec",
+        "qa447-ivm-0e99d41d",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 2,
+      "stdout": "/var/run/postgresql:5432 - no response\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-state-5",
+      "command": [
+        "docker",
+        "inspect",
+        "qa447-ivm-0e99d41d",
+        "--format",
+        "{{json .State}}"
+      ],
+      "exit": 0,
+      "stdout": "{\"Status\":\"running\",\"Running\":true,\"Paused\":false,\"Restarting\":false,\"OOMKilled\":false,\"Dead\":false,\"Pid\":86087,\"ExitCode\":0,\"Error\":\"\",\"StartedAt\":\"2026-10-17T16:01:50.821155679Z\",\"FinishedAt\":\"0001-01-01T00:00:00Z\"}\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-6",
+      "command": [
+        "docker",
+        "exec",
+        "qa447-ivm-0e99d41d",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 2,
+      "stdout": "/var/run/postgresql:5432 - no response\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-state-6",
+      "command": [
+        "docker",
+        "inspect",
+        "qa447-ivm-0e99d41d",
+        "--format",
+        "{{json .State}}"
+      ],
+      "exit": 0,
+      "stdout": "{\"Status\":\"running\",\"Running\":true,\"Paused\":false,\"Restarting\":false,\"OOMKilled\":false,\"Dead\":false,\"Pid\":86087,\"ExitCode\":0,\"Error\":\"\",\"StartedAt\":\"2026-10-17T16:01:50.821155679Z\",\"FinishedAt\":\"0001-01-01T00:00:00Z\"}\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-7",
+      "command": [
+        "docker",
+        "exec",
+        "qa447-ivm-0e99d41d",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 2,
+      "stdout": "/var/run/postgresql:5432 - no response\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-state-7",
+      "command": [
+        "docker",
+        "inspect",
+        "qa447-ivm-0e99d41d",
+        "--format",
+        "{{json .State}}"
+      ],
+      "exit": 0,
+      "stdout": "{\"Status\":\"running\",\"Running\":true,\"Paused\":false,\"Restarting\":false,\"OOMKilled\":false,\"Dead\":false,\"Pid\":86087,\"ExitCode\":0,\"Error\":\"\",\"StartedAt\":\"2026-10-17T16:01:50.821155679Z\",\"FinishedAt\":\"0001-01-01T00:00:00Z\"}\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-8",
+      "command": [
+        "docker",
+        "exec",
+        "qa447-ivm-0e99d41d",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 2,
+      "stdout": "/var/run/postgresql:5432 - no response\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-state-8",
+      "command": [
+        "docker",
+        "inspect",
+        "qa447-ivm-0e99d41d",
+        "--format",
+        "{{json .State}}"
+      ],
+      "exit": 0,
+      "stdout": "{\"Status\":\"running\",\"Running\":true,\"Paused\":false,\"Restarting\":false,\"OOMKilled\":false,\"Dead\":false,\"Pid\":86087,\"ExitCode\":0,\"Error\":\"\",\"StartedAt\":\"2026-10-17T16:01:50.821155679Z\",\"FinishedAt\":\"0001-01-01T00:00:00Z\"}\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-9",
+      "command": [
+        "docker",
+        "exec",
+        "qa447-ivm-0e99d41d",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 0,
+      "stdout": "/var/run/postgresql:5432 - accepting connections\n",
+      "stderr": ""
+    },
+    {
+      "label": "detach-own-network-before-SQL",
+      "command": [
+        "docker",
+        "network",
+        "disconnect",
+        "bridge",
+        "qa447-ivm-0e99d41d"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "actual-own-build-and-start-log",
+      "command": [
+        "docker",
+        "logs",
+        "qa447-ivm-0e99d41d"
+      ],
+      "exit": 0,
+      "stdout": "Reading package lists...\nBuilding dependency tree...\nReading state information...\nThe following additional packages will be installed:\n  binutils binutils-aarch64-linux-gnu binutils-common bzip2 clang-19 cpp\n  cpp-14 cpp-14-aarch64-linux-gnu cpp-aarch64-linux-gnu dpkg-dev g++ g++-14\n  g++-14-aarch64-linux-gnu g++-aarch64-linux-gnu gcc gcc-14\n  gcc-14-aarch64-linux-gnu gcc-aarch64-linux-gnu libasan8 libatomic1\n  libbinutils libbrotli1 libc-bin libc-dev-bin libc-l10n libc6 libc6-dev\n  libcc1-0 libclang-common-19-dev libclang-cpp19 libclang1-19 libcrypt-dev\n  libctf-nobfd0 libctf0 libcurl4t64 libdpkg-perl libexpat1 libffi-dev libgc1\n  libgcc-14-dev libgomp1 libgprofng0 libhwasan0 libisl23 libitm1 libjansson4\n  liblsan0 libmpc3 libmpfr6 libncurses-dev libncurses6 libnghttp2-14\n  libnghttp3-9 libobjc-14-dev libobjc4 libpfm4 libpq-dev libpsl5t64\n  libpython3-stdlib libpython3.13-minimal libpython3.13-stdlib librtmp1\n  libsframe1 libssh2-1t64 libssl-dev libssl3t64 libstdc++-14-dev libtsan2\n  libubsan1 libxml2-dev libyaml-0-2 libz3-dev linux-libc-dev llvm-19\n  llvm-19-dev llvm-19-linker-tools llvm-19-runtime llvm-19-tools locales make\n  media-types openssl openssl-provider-legacy patch python3 python3-minimal\n  python3-pygments python3-yaml python3.13 python3.13-minimal rpcsvc-proto\nSuggested packages:\n  binutils-doc gprofng-gui binutils-gold bzip2-doc clang-19-doc wasi-libc\n  cpp-doc gcc-14-locales cpp-14-doc debian-keyring debian-tag2upload-keyring\n  gcc-14-doc gcc-multilib manpages-dev autoconf automake libtool flex bison\n  gdb gcc-doc gdb-aarch64-linux-gnu libc-devtools glibc-doc git bzr\n  ncurses-doc postgresql-doc-18 libssl-doc libstdc++-14-doc pkg-config\n  llvm-19-doc make-doc ed diffutils-doc python3-doc python3-tk python3-venv\n  python-pygments-doc ttf-bitstream-vera python3.13-venv python3.13-doc\n  binfmt-support\nRecommended packages:\n  clang-tools-19 fakeroot libalgorithm-merge-perl manpages manpages-dev\n  libclang-rt-19-dev ca-certificates libfile-fcntllock-perl\n  liblocale-gettext-perl libgpm2 publicsuffix binfmt-support | systemd\nThe following NEW packages will be installed:\n  binutils binutils-aarch64-linux-gnu binutils-common build-essential bzip2\n  clang-19 cpp cpp-14 cpp-14-aarch64-linux-gnu cpp-aarch64-linux-gnu dpkg-dev\n  g++ g++-14 g++-14-aarch64-linux-gnu g++-aarch64-linux-gnu gcc gcc-14\n  gcc-14-aarch64-linux-gnu gcc-aarch64-linux-gnu libasan8 libatomic1\n  libbinutils libbrotli1 libc-dev-bin libc6-dev libcc1-0\n  libclang-common-19-dev libclang-cpp19 libclang1-19 libcrypt-dev\n  libctf-nobfd0 libctf0 libcurl4t64 libdpkg-perl libexpat1 libffi-dev libgc1\n  libgcc-14-dev libgomp1 libgprofng0 libhwasan0 libisl23 libitm1 libjansson4\n  liblsan0 libmpc3 libmpfr6 libncurses-dev libncurses6 libnghttp2-14\n  libnghttp3-9 libobjc-14-dev libobjc4 libpfm4 libpq-dev libpsl5t64\n  libpython3-stdlib libpython3.13-minimal libpython3.13-stdlib librtmp1\n  libsframe1 libssh2-1t64 libssl-dev libstdc++-14-dev libtsan2 libubsan1\n  libxml2-dev libyaml-0-2 libz3-dev linux-libc-dev llvm-19 llvm-19-dev\n  llvm-19-linker-tools llvm-19-runtime llvm-19-tools make media-types patch\n  postgresql-server-dev-17 python3 python3-minimal python3-pygments\n  python3-yaml python3.13 python3.13-minimal rpcsvc-proto\nThe following packages will be upgraded:\n  libc-bin libc-l10n libc6 libssl3t64 locales openssl openssl-provider-legacy\n7 upgraded, 86 newly installed, 0 to remove and 21 not upgraded.\nNeed to get 169 MB of archives.\nAfter this operation, 886 MB of additional disk space will be used.\nGet:1 http://deb.debian.org/debian trixie/main arm64 libc6 arm64 2.41-12+deb13u4 [2,484 kB]\nGet:2 http://apt.postgresql.org/pub/repos/apt trixie-pgdg/main arm64 libpq-dev arm64 18.6-1.pgdg13+2 [171 kB]\nGet:3 http://deb.debian.org/debian trixie/main arm64 libc-bin arm64 2.41-12+deb13u4 [552 kB]\nGet:4 http://deb.debian.org/debian-security trixie-security/main arm64 libexpat1 arm64 2.9.0-1~deb13u1 [114 kB]\nGet:5 http://deb.debian.org/debian-security trixie-security/main arm64 openssl-provider-legacy arm64 3.5.7-1~deb13u3 [314 kB]\nGet:6 http://deb.debian.org/debian-security trixie-security/main arm64 libssl3t64 arm64 3.5.7-1~deb13u3 [2,770 kB]\nGet:7 http://apt.postgresql.org/pub/repos/apt trixie-pgdg/main arm64 postgresql-server-dev-17 arm64 17.11-1.pgdg13+2 [1,335 kB]\nGet:8 http://deb.debian.org/debian trixie/main arm64 libpython3.13-minimal arm64 3.13.5-2+deb13u5 [856 kB]\nGet:9 http://deb.debian.org/debian trixie/main arm64 python3.13-minimal arm64 3.13.5-2+deb13u5 [2,008 kB]\nGet:10 http://deb.debian.org/debian trixie/main arm64 python3-minimal arm64 3.13.5-1 [27.2 kB]\nGet:11 http://deb.debian.org/debian trixie/main arm64 media-types all 13.0.0 [29.3 kB]\nGet:12 http://deb.debian.org/debian trixie/main arm64 libpython3.13-stdlib arm64 3.13.5-2+deb13u5 [1,895 kB]\nGet:13 http://deb.debian.org/debian trixie/main arm64 python3.13 arm64 3.13.5-2+deb13u5 [757 kB]\nGet:14 http://deb.debian.org/debian trixie/main arm64 libpython3-stdlib arm64 3.13.5-1 [10.2 kB]\nGet:15 http://deb.debian.org/debian trixie/main arm64 python3 arm64 3.13.5-1 [28.2 kB]\nGet:16 http://deb.debian.org/debian trixie/main arm64 bzip2 arm64 1.0.8-6 [39.5 kB]\nGet:17 http://deb.debian.org/debian trixie/main arm64 libc-l10n all 2.41-12+deb13u4 [740 kB]\nGet:18 http://deb.debian.org/debian trixie/main arm64 locales all 2.41-12+deb13u4 [3,931 kB]\nGet:19 http://deb.debian.org/debian trixie/main arm64 libsframe1 arm64 2.44-3 [77.8 kB]\nGet:20 http://deb.debian.org/debian trixie/main arm64 binutils-common arm64 2.44-3 [2,509 kB]\nGet:21 http://deb.debian.org/debian trixie/main arm64 libbinutils arm64 2.44-3 [660 kB]\nGet:22 http://deb.debian.org/debian trixie/main arm64 libgprofng0 arm64 2.44-3 [668 kB]\nGet:23 http://deb.debian.org/debian trixie/main arm64 libctf-nobfd0 arm64 2.44-3 [152 kB]\nGet:24 http://deb.debian.org/debian trixie/main arm64 libctf0 arm64 2.44-3 [84.2 kB]\nGet:25 http://deb.debian.org/debian trixie/main arm64 libjansson4 arm64 2.14-2+b3 [39.2 kB]\nGet:26 http://deb.debian.org/debian trixie/main arm64 binutils-aarch64-linux-gnu arm64 2.44-3 [820 kB]\nGet:27 http://deb.debian.org/debian trixie/main arm64 binutils arm64 2.44-3 [262 kB]\nGet:28 http://deb.debian.org/debian trixie/main arm64 libc-dev-bin arm64 2.41-12+deb13u4 [59.1 kB]\nGet:29 http://deb.debian.org/debian-security trixie-security/main arm64 linux-libc-dev all 6.12.113-1 [3,021 kB]\nGet:30 http://deb.debian.org/debian trixie/main arm64 libcrypt-dev arm64 1:4.4.38-1 [123 kB]\nGet:31 http://deb.debian.org/debian trixie/main arm64 rpcsvc-proto arm64 1.4.3-1+b1 [60.5 kB]\nGet:32 http://deb.debian.org/debian trixie/main arm64 libc6-dev arm64 2.41-12+deb13u4 [1,624 kB]\nGet:33 http://deb.debian.org/debian trixie/main arm64 libisl23 arm64 0.27-1 [601 kB]\nGet:34 http://deb.debian.org/debian trixie/main arm64 libmpfr6 arm64 4.2.2-1 [685 kB]\nGet:35 http://deb.debian.org/debian trixie/main arm64 libmpc3 arm64 1.3.1-1+b3 [50.5 kB]\nGet:36 http://deb.debian.org/debian trixie/main arm64 cpp-14-aarch64-linux-gnu arm64 14.2.0-19 [9,169 kB]\nGet:37 http://deb.debian.org/debian trixie/main arm64 cpp-14 arm64 14.2.0-19 [1,276 B]\nGet:38 http://deb.debian.org/debian trixie/main arm64 cpp-aarch64-linux-gnu arm64 4:14.2.0-1 [4,832 B]\nGet:39 http://deb.debian.org/debian trixie/main arm64 cpp arm64 4:14.2.0-1 [1,568 B]\nGet:40 http://deb.debian.org/debian trixie/main arm64 libcc1-0 arm64 14.2.0-19 [42.2 kB]\nGet:41 http://deb.debian.org/debian trixie/main arm64 libgomp1 arm64 14.2.0-19 [124 kB]\nGet:42 http://deb.debian.org/debian trixie/main arm64 libitm1 arm64 14.2.0-19 [24.2 kB]\nGet:43 http://deb.debian.org/debian trixie/main arm64 libatomic1 arm64 14.2.0-19 [10.1 kB]\nGet:44 http://deb.debian.org/debian trixie/main arm64 libasan8 arm64 14.2.0-19 [2,578 kB]\nGet:45 http://deb.debian.org/debian trixie/main arm64 liblsan0 arm64 14.2.0-19 [1,161 kB]\nGet:46 http://deb.debian.org/debian trixie/main arm64 libtsan2 arm64 14.2.0-19 [2,383 kB]\nGet:47 http://deb.debian.org/debian trixie/main arm64 libubsan1 arm64 14.2.0-19 [1,039 kB]\nGet:48 http://deb.debian.org/debian trixie/main arm64 libhwasan0 arm64 14.2.0-19 [1,442 kB]\nGet:49 http://deb.debian.org/debian trixie/main arm64 libgcc-14-dev arm64 14.2.0-19 [2,359 kB]\nGet:50 http://deb.debian.org/debian trixie/main arm64 gcc-14-aarch64-linux-gnu arm64 14.2.0-19 [17.7 MB]\nGet:51 http://deb.debian.org/debian trixie/main arm64 gcc-14 arm64 14.2.0-19 [529 kB]\nGet:52 http://deb.debian.org/debian trixie/main arm64 gcc-aarch64-linux-gnu arm64 4:14.2.0-1 [1,440 B]\nGet:53 http://deb.debian.org/debian trixie/main arm64 gcc arm64 4:14.2.0-1 [5,136 B]\nGet:54 http://deb.debian.org/debian trixie/main arm64 libstdc++-14-dev arm64 14.2.0-19 [2,295 kB]\nGet:55 http://deb.debian.org/debian trixie/main arm64 g++-14-aarch64-linux-gnu arm64 14.2.0-19 [10.1 MB]\nGet:56 http://deb.debian.org/debian trixie/main arm64 g++-14 arm64 14.2.0-19 [22.5 kB]\nGet:57 http://deb.debian.org/debian trixie/main arm64 g++-aarch64-linux-gnu arm64 4:14.2.0-1 [1,200 B]\nGet:58 http://deb.debian.org/debian trixie/main arm64 g++ arm64 4:14.2.0-1 [1,332 B]\nGet:59 http://deb.debian.org/debian trixie/main arm64 make arm64 4.4.1-2 [452 kB]\nGet:60 http://deb.debian.org/debian trixie/main arm64 libdpkg-perl all 1.22.22 [651 kB]\nGet:61 http://deb.debian.org/debian trixie/main arm64 patch arm64 2.8-2 [128 kB]\nGet:62 http://deb.debian.org/debian trixie/main arm64 dpkg-dev all 1.22.22 [1,337 kB]\nGet:63 http://deb.debian.org/debian trixie/main arm64 build-essential arm64 12.12 [4,624 B]\nGet:64 http://deb.debian.org/debian trixie/main arm64 libclang-cpp19 arm64 1:19.1.7-3+b1 [12.0 MB]\nGet:65 http://deb.debian.org/debian trixie/main arm64 libgc1 arm64 1:8.2.8-1 [241 kB]\nGet:66 http://deb.debian.org/debian trixie/main arm64 libobjc4 arm64 14.2.0-19 [39.4 kB]\nGet:67 http://deb.debian.org/debian trixie/main arm64 libobjc-14-dev arm64 14.2.0-19 [166 kB]\nGet:68 http://deb.debian.org/debian trixie/main arm64 libclang-common-19-dev arm64 1:19.1.7-3+b1 [740 kB]\nGet:69 http://deb.debian.org/debian trixie/main arm64 llvm-19-linker-tools arm64 1:19.1.7-3+b1 [1,100 kB]\nGet:70 http://deb.debian.org/debian trixie/main arm64 libclang1-19 arm64 1:19.1.7-3+b1 [6,866 kB]\nGet:71 http://deb.debian.org/debian trixie/main arm64 clang-19 arm64 1:19.1.7-3+b1 [113 kB]\nGet:72 http://deb.debian.org/debian trixie/main arm64 libbrotli1 arm64 1.1.0-2+b7 [308 kB]\nGet:73 http://deb.debian.org/debian trixie/main arm64 libnghttp2-14 arm64 1.64.0-1.1+deb13u1 [71.6 kB]\nGet:74 http://deb.debian.org/debian trixie/main arm64 libnghttp3-9 arm64 1.8.0-1 [63.2 kB]\nGet:75 http://deb.debian.org/debian trixie/main arm64 libpsl5t64 arm64 0.21.2-1.1+b1 [57.1 kB]\nGet:76 http://deb.debian.org/debian trixie/main arm64 librtmp1 arm64 2.4+20151223.gitfa8646d.1-2+b5 [56.8 kB]\nGet:77 http://deb.debian.org/debian trixie/main arm64 libssh2-1t64 arm64 1.11.1-1+deb13u2 [236 kB]\nGet:78 http://deb.debian.org/debian-security trixie-security/main arm64 libcurl4t64 arm64 8.14.1-2+deb13u7 [361 kB]\nGet:79 http://deb.debian.org/debian trixie/main arm64 libffi-dev arm64 3.4.8-2 [57.2 kB]\nGet:80 http://deb.debian.org/debian trixie/main arm64 libncurses6 arm64 6.5+20250216-2 [96.1 kB]\nGet:81 http://deb.debian.org/debian trixie/main arm64 libncurses-dev arm64 6.5+20250216-2 [340 kB]\nGet:82 http://deb.debian.org/debian trixie/main arm64 libpfm4 arm64 4.13.0+git99-gc5587f9-1 [73.1 kB]\nGet:83 http://deb.debian.org/debian-security trixie-security/main arm64 libssl-dev arm64 3.5.7-1~deb13u3 [3,399 kB]\nGet:84 http://deb.debian.org/debian trixie/main arm64 libxml2-dev arm64 2.12.7+dfsg+really2.9.14-2.1+deb13u3 [753 kB]\nGet:85 http://deb.debian.org/debian trixie/main arm64 libyaml-0-2 arm64 0.2.5-2 [49.2 kB]\nGet:86 http://deb.debian.org/debian trixie/main arm64 libz3-dev arm64 4.13.3-1 [107 kB]\nGet:87 http://deb.debian.org/debian trixie/main arm64 llvm-19-runtime arm64 1:19.1.7-3+b1 [504 kB]\nGet:88 http://deb.debian.org/debian trixie/main arm64 llvm-19 arm64 1:19.1.7-3+b1 [14.7 MB]\nGet:89 http://deb.debian.org/debian trixie/main arm64 python3-pygments all 2.18.0+dfsg-2 [836 kB]\nGet:90 http://deb.debian.org/debian trixie/main arm64 python3-yaml arm64 6.0.2-1+b2 [122 kB]\nGet:91 http://deb.debian.org/debian trixie/main arm64 llvm-19-tools arm64 1:19.1.7-3+b1 [487 kB]\nGet:92 http://deb.debian.org/debian trixie/main arm64 llvm-19-dev arm64 1:19.1.7-3+b1 [40.1 MB]\nGet:93 http://deb.debian.org/debian-security trixie-security/main arm64 openssl arm64 3.5.7-1~deb13u3 [1,473 kB]\nPreconfiguring packages ...\nFetched 169 MB in 11s (15.6 MB/s)\n(Reading database ... \n(Reading database ... 5%\n(Reading database ... 10%\n(Reading database ... 15%\n(Reading database ... 20%\n(Reading database ... 25%\n(Reading database ... 30%\n(Reading database ... 35%\n(Reading database ... 40%\n(Reading database ... 45%\n(Reading database ... 50%\n(Reading database ... 55%\n(Reading database ... 60%\n(Reading database ... 65%\n(Reading database ... 70%\n(Reading database ... 75%\n(Reading database ... 80%\n(Reading database ... 85%\n(Reading database ... 90%\n(Reading database ... 95%\n(Reading database ... 100%\n(Reading database ... 11460 files and directories currently installed.)\nPreparing to unpack .../libc6_2.41-12+deb13u4_arm64.deb ...\ndebconf: unable to initialize frontend: Dialog\ndebconf: (TERM is not set, so the dialog frontend is not usable.)\ndebconf: falling back to frontend: Readline\ndebconf: unable to initialize frontend: Readline\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Teletype\ndebconf: unable to initialize frontend: Teletype\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Noninteractive\nUnpacking libc6:arm64 (2.41-12+deb13u4) over (2.41-12+deb13u3) ...\nSetting up libc6:arm64 (2.41-12+deb13u4) ...\ndebconf: unable to initialize frontend: Dialog\ndebconf: (TERM is not set, so the dialog frontend is not usable.)\ndebconf: falling back to frontend: Readline\ndebconf: unable to initialize frontend: Readline\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Teletype\ndebconf: unable to initialize frontend: Teletype\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Noninteractive\n(Reading database ... \n(Reading database ... 5%\n(Reading database ... 10%\n(Reading database ... 15%\n(Reading database ... 20%\n(Reading database ... 25%\n(Reading database ... 30%\n(Reading database ... 35%\n(Reading database ... 40%\n(Reading database ... 45%\n(Reading database ... 50%\n(Reading database ... 55%\n(Reading database ... 60%\n(Reading database ... 65%\n(Reading database ... 70%\n(Reading database ... 75%\n(Reading database ... 80%\n(Reading database ... 85%\n(Reading database ... 90%\n(Reading database ... 95%\n(Reading database ... 100%\n(Reading database ... 11460 files and directories currently installed.)\nPreparing to unpack .../libc-bin_2.41-12+deb13u4_arm64.deb ...\nUnpacking libc-bin (2.41-12+deb13u4) over (2.41-12+deb13u3) ...\nSetting up libc-bin (2.41-12+deb13u4) ...\nSelecting previously unselected package libexpat1:arm64.\n(Reading database ... \n(Reading database ... 5%\n(Reading database ... 10%\n(Reading database ... 15%\n(Reading database ... 20%\n(Reading database ... 25%\n(Reading database ... 30%\n(Reading database ... 35%\n(Reading database ... 40%\n(Reading database ... 45%\n(Reading database ... 50%\n(Reading database ... 55%\n(Reading database ... 60%\n(Reading database ... 65%\n(Reading database ... 70%\n(Reading database ... 75%\n(Reading database ... 80%\n(Reading database ... 85%\n(Reading database ... 90%\n(Reading database ... 95%\n(Reading database ... 100%\n(Reading database ... 11460 files and directories currently installed.)\nPreparing to unpack .../libexpat1_2.9.0-1~deb13u1_arm64.deb ...\nUnpacking libexpat1:arm64 (2.9.0-1~deb13u1) ...\nPreparing to unpack .../openssl-provider-legacy_3.5.7-1~deb13u3_arm64.deb ...\nUnpacking openssl-provider-legacy (3.5.7-1~deb13u3) over (3.5.6-1~deb13u2) ...\nSetting up openssl-provider-legacy (3.5.7-1~deb13u3) ...\n(Reading database ... \n(Reading database ... 5%\n(Reading database ... 10%\n(Reading database ... 15%\n(Reading database ... 20%\n(Reading database ... 25%\n(Reading database ... 30%\n(Reading database ... 35%\n(Reading database ... 40%\n(Reading database ... 45%\n(Reading database ... 50%\n(Reading database ... 55%\n(Reading database ... 60%\n(Reading database ... 65%\n(Reading database ... 70%\n(Reading database ... 75%\n(Reading database ... 80%\n(Reading database ... 85%\n(Reading database ... 90%\n(Reading database ... 95%\n(Reading database ... 100%\n(Reading database ... 11469 files and directories currently installed.)\nPreparing to unpack .../libssl3t64_3.5.7-1~deb13u3_arm64.deb ...\nUnpacking libssl3t64:arm64 (3.5.7-1~deb13u3) over (3.5.6-1~deb13u2) ...\nSetting up libssl3t64:arm64 (3.5.7-1~deb13u3) ...\nSelecting previously unselected package libpython3.13-minimal:arm64.\n(Reading database ... \n(Reading database ... 5%\n(Reading database ... 10%\n(Reading database ... 15%\n(Reading database ... 20%\n(Reading database ... 25%\n(Reading database ... 30%\n(Reading database ... 35%\n(Reading database ... 40%\n(Reading database ... 45%\n(Reading database ... 50%\n(Reading database ... 55%\n(Reading database ... 60%\n(Reading database ... 65%\n(Reading database ... 70%\n(Reading database ... 75%\n(Reading database ... 80%\n(Reading database ... 85%\n(Reading database ... 90%\n(Reading database ... 95%\n(Reading database ... 100%\n(Reading database ... 11469 files and directories currently installed.)\nPreparing to unpack .../libpython3.13-minimal_3.13.5-2+deb13u5_arm64.deb ...\nUnpacking libpython3.13-minimal:arm64 (3.13.5-2+deb13u5) ...\nSelecting previously unselected package python3.13-minimal.\nPreparing to unpack .../python3.13-minimal_3.13.5-2+deb13u5_arm64.deb ...\nUnpacking python3.13-minimal (3.13.5-2+deb13u5) ...\nSetting up libpython3.13-minimal:arm64 (3.13.5-2+deb13u5) ...\nSetting up libexpat1:arm64 (2.9.0-1~deb13u1) ...\nSetting up python3.13-minimal (3.13.5-2+deb13u5) ...\nSelecting previously unselected package python3-minimal.\n(Reading database ... \n(Reading database ... 5%\n(Reading database ... 10%\n(Reading database ... 15%\n(Reading database ... 20%\n(Reading database ... 25%\n(Reading database ... 30%\n(Reading database ... 35%\n(Reading database ... 40%\n(Reading database ... 45%\n(Reading database ... 50%\n(Reading database ... 55%\n(Reading database ... 60%\n(Reading database ... 65%\n(Reading database ... 70%\n(Reading database ... 75%\n(Reading database ... 80%\n(Reading database ... 85%\n(Reading database ... 90%\n(Reading database ... 95%\n(Reading database ... 100%\n(Reading database ... 11794 files and directories currently installed.)\nPreparing to unpack .../python3-minimal_3.13.5-1_arm64.deb ...\nUnpacking python3-minimal (3.13.5-1) ...\nSelecting previously unselected package media-types.\nPreparing to unpack .../media-types_13.0.0_all.deb ...\nUnpacking media-types (13.0.0) ...\nSelecting previously unselected package libpython3.13-stdlib:arm64.\nPreparing to unpack .../libpython3.13-stdlib_3.13.5-2+deb13u5_arm64.deb ...\nUnpacking libpython3.13-stdlib:arm64 (3.13.5-2+deb13u5) ...\nSelecting previously unselected package python3.13.\nPreparing to unpack .../python3.13_3.13.5-2+deb13u5_arm64.deb ...\nUnpacking python3.13 (3.13.5-2+deb13u5) ...\nSelecting previously unselected package libpython3-stdlib:arm64.\nPreparing to unpack .../libpython3-stdlib_3.13.5-1_arm64.deb ...\nUnpacking libpython3-stdlib:arm64 (3.13.5-1) ...\nSetting up python3-minimal (3.13.5-1) ...\nSelecting previously unselected package python3.\n(Reading database ... \n(Reading database ... 5%\n(Reading database ... 10%\n(Reading database ... 15%\n(Reading database ... 20%\n(Reading database ... 25%\n(Reading database ... 30%\n(Reading database ... 35%\n(Reading database ... 40%\n(Reading database ... 45%\n(Reading database ... 50%\n(Reading database ... 55%\n(Reading database ... 60%\n(Reading database ... 65%\n(Reading database ... 70%\n(Reading database ... 75%\n(Reading database ... 80%\n(Reading database ... 85%\n(Reading database ... 90%\n(Reading database ... 95%\n(Reading database ... 100%\n(Reading database ... 12248 files and directories currently installed.)\nPreparing to unpack .../00-python3_3.13.5-1_arm64.deb ...\nUnpacking python3 (3.13.5-1) ...\nSelecting previously unselected package bzip2.\nPreparing to unpack .../01-bzip2_1.0.8-6_arm64.deb ...\nUnpacking bzip2 (1.0.8-6) ...\nPreparing to unpack .../02-libc-l10n_2.41-12+deb13u4_all.deb ...\nUnpacking libc-l10n (2.41-12+deb13u4) over (2.41-12+deb13u3) ...\nPreparing to unpack .../03-locales_2.41-12+deb13u4_all.deb ...\nUnpacking locales (2.41-12+deb13u4) over (2.41-12+deb13u3) ...\nSelecting previously unselected package libsframe1:arm64.\nPreparing to unpack .../04-libsframe1_2.44-3_arm64.deb ...\nUnpacking libsframe1:arm64 (2.44-3) ...\nSelecting previously unselected package binutils-common:arm64.\nPreparing to unpack .../05-binutils-common_2.44-3_arm64.deb ...\nUnpacking binutils-common:arm64 (2.44-3) ...\nSelecting previously unselected package libbinutils:arm64.\nPreparing to unpack .../06-libbinutils_2.44-3_arm64.deb ...\nUnpacking libbinutils:arm64 (2.44-3) ...\nSelecting previously unselected package libgprofng0:arm64.\nPreparing to unpack .../07-libgprofng0_2.44-3_arm64.deb ...\nUnpacking libgprofng0:arm64 (2.44-3) ...\nSelecting previously unselected package libctf-nobfd0:arm64.\nPreparing to unpack .../08-libctf-nobfd0_2.44-3_arm64.deb ...\nUnpacking libctf-nobfd0:arm64 (2.44-3) ...\nSelecting previously unselected package libctf0:arm64.\nPreparing to unpack .../09-libctf0_2.44-3_arm64.deb ...\nUnpacking libctf0:arm64 (2.44-3) ...\nSelecting previously unselected package libjansson4:arm64.\nPreparing to unpack .../10-libjansson4_2.14-2+b3_arm64.deb ...\nUnpacking libjansson4:arm64 (2.14-2+b3) ...\nSelecting previously unselected package binutils-aarch64-linux-gnu.\nPreparing to unpack .../11-binutils-aarch64-linux-gnu_2.44-3_arm64.deb ...\nUnpacking binutils-aarch64-linux-gnu (2.44-3) ...\nSelecting previously unselected package binutils.\nPreparing to unpack .../12-binutils_2.44-3_arm64.deb ...\nUnpacking binutils (2.44-3) ...\nSelecting previously unselected package libc-dev-bin.\nPreparing to unpack .../13-libc-dev-bin_2.41-12+deb13u4_arm64.deb ...\nUnpacking libc-dev-bin (2.41-12+deb13u4) ...\nSelecting previously unselected package linux-libc-dev.\nPreparing to unpack .../14-linux-libc-dev_6.12.113-1_all.deb ...\nUnpacking linux-libc-dev (6.12.113-1) ...\nSelecting previously unselected package libcrypt-dev:arm64.\nPreparing to unpack .../15-libcrypt-dev_1%3a4.4.38-1_arm64.deb ...\nUnpacking libcrypt-dev:arm64 (1:4.4.38-1) ...\nSelecting previously unselected package rpcsvc-proto.\nPreparing to unpack .../16-rpcsvc-proto_1.4.3-1+b1_arm64.deb ...\nUnpacking rpcsvc-proto (1.4.3-1+b1) ...\nSelecting previously unselected package libc6-dev:arm64.\nPreparing to unpack .../17-libc6-dev_2.41-12+deb13u4_arm64.deb ...\nUnpacking libc6-dev:arm64 (2.41-12+deb13u4) ...\nSelecting previously unselected package libisl23:arm64.\nPreparing to unpack .../18-libisl23_0.27-1_arm64.deb ...\nUnpacking libisl23:arm64 (0.27-1) ...\nSelecting previously unselected package libmpfr6:arm64.\nPreparing to unpack .../19-libmpfr6_4.2.2-1_arm64.deb ...\nUnpacking libmpfr6:arm64 (4.2.2-1) ...\nSelecting previously unselected package libmpc3:arm64.\nPreparing to unpack .../20-libmpc3_1.3.1-1+b3_arm64.deb ...\nUnpacking libmpc3:arm64 (1.3.1-1+b3) ...\nSelecting previously unselected package cpp-14-aarch64-linux-gnu.\nPreparing to unpack .../21-cpp-14-aarch64-linux-gnu_14.2.0-19_arm64.deb ...\nUnpacking cpp-14-aarch64-linux-gnu (14.2.0-19) ...\nSelecting previously unselected package cpp-14.\nPreparing to unpack .../22-cpp-14_14.2.0-19_arm64.deb ...\nUnpacking cpp-14 (14.2.0-19) ...\nSelecting previously unselected package cpp-aarch64-linux-gnu.\nPreparing to unpack .../23-cpp-aarch64-linux-gnu_4%3a14.2.0-1_arm64.deb ...\nUnpacking cpp-aarch64-linux-gnu (4:14.2.0-1) ...\nSelecting previously unselected package cpp.\nPreparing to unpack .../24-cpp_4%3a14.2.0-1_arm64.deb ...\nUnpacking cpp (4:14.2.0-1) ...\nSelecting previously unselected package libcc1-0:arm64.\nPreparing to unpack .../25-libcc1-0_14.2.0-19_arm64.deb ...\nUnpacking libcc1-0:arm64 (14.2.0-19) ...\nSelecting previously unselected package libgomp1:arm64.\nPreparing to unpack .../26-libgomp1_14.2.0-19_arm64.deb ...\nUnpacking libgomp1:arm64 (14.2.0-19) ...\nSelecting previously unselected package libitm1:arm64.\nPreparing to unpack .../27-libitm1_14.2.0-19_arm64.deb ...\nUnpacking libitm1:arm64 (14.2.0-19) ...\nSelecting previously unselected package libatomic1:arm64.\nPreparing to unpack .../28-libatomic1_14.2.0-19_arm64.deb ...\nUnpacking libatomic1:arm64 (14.2.0-19) ...\nSelecting previously unselected package libasan8:arm64.\nPreparing to unpack .../29-libasan8_14.2.0-19_arm64.deb ...\nUnpacking libasan8:arm64 (14.2.0-19) ...\nSelecting previously unselected package liblsan0:arm64.\nPreparing to unpack .../30-liblsan0_14.2.0-19_arm64.deb ...\nUnpacking liblsan0:arm64 (14.2.0-19) ...\nSelecting previously unselected package libtsan2:arm64.\nPreparing to unpack .../31-libtsan2_14.2.0-19_arm64.deb ...\nUnpacking libtsan2:arm64 (14.2.0-19) ...\nSelecting previously unselected package libubsan1:arm64.\nPreparing to unpack .../32-libubsan1_14.2.0-19_arm64.deb ...\nUnpacking libubsan1:arm64 (14.2.0-19) ...\nSelecting previously unselected package libhwasan0:arm64.\nPreparing to unpack .../33-libhwasan0_14.2.0-19_arm64.deb ...\nUnpacking libhwasan0:arm64 (14.2.0-19) ...\nSelecting previously unselected package libgcc-14-dev:arm64.\nPreparing to unpack .../34-libgcc-14-dev_14.2.0-19_arm64.deb ...\nUnpacking libgcc-14-dev:arm64 (14.2.0-19) ...\nSelecting previously unselected package gcc-14-aarch64-linux-gnu.\nPreparing to unpack .../35-gcc-14-aarch64-linux-gnu_14.2.0-19_arm64.deb ...\nUnpacking gcc-14-aarch64-linux-gnu (14.2.0-19) ...\nSelecting previously unselected package gcc-14.\nPreparing to unpack .../36-gcc-14_14.2.0-19_arm64.deb ...\nUnpacking gcc-14 (14.2.0-19) ...\nSelecting previously unselected package gcc-aarch64-linux-gnu.\nPreparing to unpack .../37-gcc-aarch64-linux-gnu_4%3a14.2.0-1_arm64.deb ...\nUnpacking gcc-aarch64-linux-gnu (4:14.2.0-1) ...\nSelecting previously unselected package gcc.\nPreparing to unpack .../38-gcc_4%3a14.2.0-1_arm64.deb ...\nUnpacking gcc (4:14.2.0-1) ...\nSelecting previously unselected package libstdc++-14-dev:arm64.\nPreparing to unpack .../39-libstdc++-14-dev_14.2.0-19_arm64.deb ...\nUnpacking libstdc++-14-dev:arm64 (14.2.0-19) ...\nSelecting previously unselected package g++-14-aarch64-linux-gnu.\nPreparing to unpack .../40-g++-14-aarch64-linux-gnu_14.2.0-19_arm64.deb ...\nUnpacking g++-14-aarch64-linux-gnu (14.2.0-19) ...\nSelecting previously unselected package g++-14.\nPreparing to unpack .../41-g++-14_14.2.0-19_arm64.deb ...\nUnpacking g++-14 (14.2.0-19) ...\nSelecting previously unselected package g++-aarch64-linux-gnu.\nPreparing to unpack .../42-g++-aarch64-linux-gnu_4%3a14.2.0-1_arm64.deb ...\nUnpacking g++-aarch64-linux-gnu (4:14.2.0-1) ...\nSelecting previously unselected package g++.\nPreparing to unpack .../43-g++_4%3a14.2.0-1_arm64.deb ...\nUnpacking g++ (4:14.2.0-1) ...\nSelecting previously unselected package make.\nPreparing to unpack .../44-make_4.4.1-2_arm64.deb ...\nUnpacking make (4.4.1-2) ...\nSelecting previously unselected package libdpkg-perl.\nPreparing to unpack .../45-libdpkg-perl_1.22.22_all.deb ...\nUnpacking libdpkg-perl (1.22.22) ...\nSelecting previously unselected package patch.\nPreparing to unpack .../46-patch_2.8-2_arm64.deb ...\nUnpacking patch (2.8-2) ...\nSelecting previously unselected package dpkg-dev.\nPreparing to unpack .../47-dpkg-dev_1.22.22_all.deb ...\nUnpacking dpkg-dev (1.22.22) ...\nSelecting previously unselected package build-essential.\nPreparing to unpack .../48-build-essential_12.12_arm64.deb ...\nUnpacking build-essential (12.12) ...\nSelecting previously unselected package libclang-cpp19.\nPreparing to unpack .../49-libclang-cpp19_1%3a19.1.7-3+b1_arm64.deb ...\nUnpacking libclang-cpp19 (1:19.1.7-3+b1) ...\nSelecting previously unselected package libgc1:arm64.\nPreparing to unpack .../50-libgc1_1%3a8.2.8-1_arm64.deb ...\nUnpacking libgc1:arm64 (1:8.2.8-1) ...\nSelecting previously unselected package libobjc4:arm64.\nPreparing to unpack .../51-libobjc4_14.2.0-19_arm64.deb ...\nUnpacking libobjc4:arm64 (14.2.0-19) ...\nSelecting previously unselected package libobjc-14-dev:arm64.\nPreparing to unpack .../52-libobjc-14-dev_14.2.0-19_arm64.deb ...\nUnpacking libobjc-14-dev:arm64 (14.2.0-19) ...\nSelecting previously unselected package libclang-common-19-dev:arm64.\nPreparing to unpack .../53-libclang-common-19-dev_1%3a19.1.7-3+b1_arm64.deb ...\nUnpacking libclang-common-19-dev:arm64 (1:19.1.7-3+b1) ...\nSelecting previously unselected package llvm-19-linker-tools.\nPreparing to unpack .../54-llvm-19-linker-tools_1%3a19.1.7-3+b1_arm64.deb ...\nUnpacking llvm-19-linker-tools (1:19.1.7-3+b1) ...\nSelecting previously unselected package libclang1-19.\nPreparing to unpack .../55-libclang1-19_1%3a19.1.7-3+b1_arm64.deb ...\nUnpacking libclang1-19 (1:19.1.7-3+b1) ...\nSelecting previously unselected package clang-19.\nPreparing to unpack .../56-clang-19_1%3a19.1.7-3+b1_arm64.deb ...\nUnpacking clang-19 (1:19.1.7-3+b1) ...\nSelecting previously unselected package libbrotli1:arm64.\nPreparing to unpack .../57-libbrotli1_1.1.0-2+b7_arm64.deb ...\nUnpacking libbrotli1:arm64 (1.1.0-2+b7) ...\nSelecting previously unselected package libnghttp2-14:arm64.\nPreparing to unpack .../58-libnghttp2-14_1.64.0-1.1+deb13u1_arm64.deb ...\nUnpacking libnghttp2-14:arm64 (1.64.0-1.1+deb13u1) ...\nSelecting previously unselected package libnghttp3-9:arm64.\nPreparing to unpack .../59-libnghttp3-9_1.8.0-1_arm64.deb ...\nUnpacking libnghttp3-9:arm64 (1.8.0-1) ...\nSelecting previously unselected package libpsl5t64:arm64.\nPreparing to unpack .../60-libpsl5t64_0.21.2-1.1+b1_arm64.deb ...\nUnpacking libpsl5t64:arm64 (0.21.2-1.1+b1) ...\nSelecting previously unselected package librtmp1:arm64.\nPreparing to unpack .../61-librtmp1_2.4+20151223.gitfa8646d.1-2+b5_arm64.deb ...\nUnpacking librtmp1:arm64 (2.4+20151223.gitfa8646d.1-2+b5) ...\nSelecting previously unselected package libssh2-1t64:arm64.\nPreparing to unpack .../62-libssh2-1t64_1.11.1-1+deb13u2_arm64.deb ...\nUnpacking libssh2-1t64:arm64 (1.11.1-1+deb13u2) ...\nSelecting previously unselected package libcurl4t64:arm64.\nPreparing to unpack .../63-libcurl4t64_8.14.1-2+deb13u7_arm64.deb ...\nUnpacking libcurl4t64:arm64 (8.14.1-2+deb13u7) ...\nSelecting previously unselected package libffi-dev:arm64.\nPreparing to unpack .../64-libffi-dev_3.4.8-2_arm64.deb ...\nUnpacking libffi-dev:arm64 (3.4.8-2) ...\nSelecting previously unselected package libncurses6:arm64.\nPreparing to unpack .../65-libncurses6_6.5+20250216-2_arm64.deb ...\nUnpacking libncurses6:arm64 (6.5+20250216-2) ...\nSelecting previously unselected package libncurses-dev:arm64.\nPreparing to unpack .../66-libncurses-dev_6.5+20250216-2_arm64.deb ...\nUnpacking libncurses-dev:arm64 (6.5+20250216-2) ...\nSelecting previously unselected package libpfm4:arm64.\nPreparing to unpack .../67-libpfm4_4.13.0+git99-gc5587f9-1_arm64.deb ...\nUnpacking libpfm4:arm64 (4.13.0+git99-gc5587f9-1) ...\nSelecting previously unselected package libssl-dev:arm64.\nPreparing to unpack .../68-libssl-dev_3.5.7-1~deb13u3_arm64.deb ...\nUnpacking libssl-dev:arm64 (3.5.7-1~deb13u3) ...\nSelecting previously unselected package libpq-dev.\nPreparing to unpack .../69-libpq-dev_18.6-1.pgdg13+2_arm64.deb ...\nUnpacking libpq-dev (18.6-1.pgdg13+2) ...\nSelecting previously unselected package libxml2-dev:arm64.\nPreparing to unpack .../70-libxml2-dev_2.12.7+dfsg+really2.9.14-2.1+deb13u3_arm64.deb ...\nUnpacking libxml2-dev:arm64 (2.12.7+dfsg+really2.9.14-2.1+deb13u3) ...\nSelecting previously unselected package libyaml-0-2:arm64.\nPreparing to unpack .../71-libyaml-0-2_0.2.5-2_arm64.deb ...\nUnpacking libyaml-0-2:arm64 (0.2.5-2) ...\nSelecting previously unselected package libz3-dev:arm64.\nPreparing to unpack .../72-libz3-dev_4.13.3-1_arm64.deb ...\nUnpacking libz3-dev:arm64 (4.13.3-1) ...\nSelecting previously unselected package llvm-19-runtime.\nPreparing to unpack .../73-llvm-19-runtime_1%3a19.1.7-3+b1_arm64.deb ...\nUnpacking llvm-19-runtime (1:19.1.7-3+b1) ...\nSelecting previously unselected package llvm-19.\nPreparing to unpack .../74-llvm-19_1%3a19.1.7-3+b1_arm64.deb ...\nUnpacking llvm-19 (1:19.1.7-3+b1) ...\nSelecting previously unselected package python3-pygments.\nPreparing to unpack .../75-python3-pygments_2.18.0+dfsg-2_all.deb ...\nUnpacking python3-pygments (2.18.0+dfsg-2) ...\nSelecting previously unselected package python3-yaml.\nPreparing to unpack .../76-python3-yaml_6.0.2-1+b2_arm64.deb ...\nUnpacking python3-yaml (6.0.2-1+b2) ...\nSelecting previously unselected package llvm-19-tools.\nPreparing to unpack .../77-llvm-19-tools_1%3a19.1.7-3+b1_arm64.deb ...\nUnpacking llvm-19-tools (1:19.1.7-3+b1) ...\nSelecting previously unselected package llvm-19-dev.\nPreparing to unpack .../78-llvm-19-dev_1%3a19.1.7-3+b1_arm64.deb ...\nUnpacking llvm-19-dev (1:19.1.7-3+b1) ...\nPreparing to unpack .../79-openssl_3.5.7-1~deb13u3_arm64.deb ...\nUnpacking openssl (3.5.7-1~deb13u3) over (3.5.6-1~deb13u2) ...\nSelecting previously unselected package postgresql-server-dev-17.\nPreparing to unpack .../80-postgresql-server-dev-17_17.11-1.pgdg13+2_arm64.deb ...\nUnpacking postgresql-server-dev-17 (17.11-1.pgdg13+2) ...\nSetting up media-types (13.0.0) ...\nSetting up libz3-dev:arm64 (4.13.3-1) ...\nSetting up libc-l10n (2.41-12+deb13u4) ...\nSetting up libclang1-19 (1:19.1.7-3+b1) ...\nSetting up libclang-common-19-dev:arm64 (1:19.1.7-3+b1) ...\nSetting up libyaml-0-2:arm64 (0.2.5-2) ...\nSetting up libbrotli1:arm64 (1.1.0-2+b7) ...\nSetting up binutils-common:arm64 (2.44-3) ...\nSetting up libpsl5t64:arm64 (0.21.2-1.1+b1) ...\nSetting up libnghttp2-14:arm64 (1.64.0-1.1+deb13u1) ...\nSetting up linux-libc-dev (6.12.113-1) ...\nSetting up libctf-nobfd0:arm64 (2.44-3) ...\nSetting up libgomp1:arm64 (14.2.0-19) ...\nSetting up bzip2 (1.0.8-6) ...\nSetting up libffi-dev:arm64 (3.4.8-2) ...\nSetting up locales (2.41-12+deb13u4) ...\ndebconf: unable to initialize frontend: Dialog\ndebconf: (TERM is not set, so the dialog frontend is not usable.)\ndebconf: falling back to frontend: Readline\ndebconf: unable to initialize frontend: Readline\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Teletype\ndebconf: unable to initialize frontend: Teletype\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Noninteractive\nGenerating locales (this might take a while)...\n  en_US.UTF-8... done\nGeneration complete.\nSetting up libsframe1:arm64 (2.44-3) ...\nSetting up libjansson4:arm64 (2.14-2+b3) ...\nSetting up libxml2-dev:arm64 (2.12.7+dfsg+really2.9.14-2.1+deb13u3) ...\nSetting up libpfm4:arm64 (4.13.0+git99-gc5587f9-1) ...\nSetting up rpcsvc-proto (1.4.3-1+b1) ...\nSetting up make (4.4.1-2) ...\nSetting up libmpfr6:arm64 (4.2.2-1) ...\nSetting up librtmp1:arm64 (2.4+20151223.gitfa8646d.1-2+b5) ...\nSetting up libncurses6:arm64 (6.5+20250216-2) ...\nSetting up libssl-dev:arm64 (3.5.7-1~deb13u3) ...\nSetting up libmpc3:arm64 (1.3.1-1+b3) ...\nSetting up libatomic1:arm64 (14.2.0-19) ...\nSetting up patch (2.8-2) ...\nSetting up libgc1:arm64 (1:8.2.8-1) ...\nSetting up libdpkg-perl (1.22.22) ...\nSetting up libnghttp3-9:arm64 (1.8.0-1) ...\nSetting up libubsan1:arm64 (14.2.0-19) ...\nSetting up libhwasan0:arm64 (14.2.0-19) ...\nSetting up libcrypt-dev:arm64 (1:4.4.38-1) ...\nSetting up libasan8:arm64 (14.2.0-19) ...\nSetting up llvm-19-linker-tools (1:19.1.7-3+b1) ...\nSetting up libssh2-1t64:arm64 (1.11.1-1+deb13u2) ...\nSetting up libtsan2:arm64 (14.2.0-19) ...\nSetting up libbinutils:arm64 (2.44-3) ...\nSetting up libisl23:arm64 (0.27-1) ...\nSetting up llvm-19-runtime (1:19.1.7-3+b1) ...\nSetting up libc-dev-bin (2.41-12+deb13u4) ...\nSetting up openssl (3.5.7-1~deb13u3) ...\nSetting up libpython3.13-stdlib:arm64 (3.13.5-2+deb13u5) ...\nSetting up libcc1-0:arm64 (14.2.0-19) ...\nSetting up liblsan0:arm64 (14.2.0-19) ...\nSetting up libitm1:arm64 (14.2.0-19) ...\nSetting up libpython3-stdlib:arm64 (3.13.5-1) ...\nSetting up libclang-cpp19 (1:19.1.7-3+b1) ...\nSetting up libctf0:arm64 (2.44-3) ...\nSetting up libcurl4t64:arm64 (8.14.1-2+deb13u7) ...\nSetting up python3.13 (3.13.5-2+deb13u5) ...\nSetting up binutils-aarch64-linux-gnu (2.44-3) ...\nSetting up libpq-dev (18.6-1.pgdg13+2) ...\nSetting up libobjc4:arm64 (14.2.0-19) ...\nSetting up python3 (3.13.5-1) ...\nrunning python rtupdate hooks for python3.13...\nrunning python post-rtupdate hooks for python3.13...\nSetting up python3-pygments (2.18.0+dfsg-2) ...\nSetting up libgprofng0:arm64 (2.44-3) ...\nSetting up cpp-14-aarch64-linux-gnu (14.2.0-19) ...\nSetting up libc6-dev:arm64 (2.41-12+deb13u4) ...\nSetting up llvm-19 (1:19.1.7-3+b1) ...\nSetting up libgcc-14-dev:arm64 (14.2.0-19) ...\nSetting up libstdc++-14-dev:arm64 (14.2.0-19) ...\nSetting up libncurses-dev:arm64 (6.5+20250216-2) ...\nSetting up python3-yaml (6.0.2-1+b2) ...\nSetting up binutils (2.44-3) ...\nSetting up libobjc-14-dev:arm64 (14.2.0-19) ...\nSetting up clang-19 (1:19.1.7-3+b1) ...\nSetting up dpkg-dev (1.22.22) ...\nSetting up cpp-aarch64-linux-gnu (4:14.2.0-1) ...\nSetting up cpp-14 (14.2.0-19) ...\nSetting up cpp (4:14.2.0-1) ...\nSetting up gcc-14-aarch64-linux-gnu (14.2.0-19) ...\nSetting up llvm-19-tools (1:19.1.7-3+b1) ...\nSetting up gcc-aarch64-linux-gnu (4:14.2.0-1) ...\nSetting up g++-14-aarch64-linux-gnu (14.2.0-19) ...\nSetting up gcc-14 (14.2.0-19) ...\nSetting up llvm-19-dev (1:19.1.7-3+b1) ...\nSetting up g++-aarch64-linux-gnu (4:14.2.0-1) ...\nSetting up g++-14 (14.2.0-19) ...\nSetting up gcc (4:14.2.0-1) ...\nSetting up postgresql-server-dev-17 (17.11-1.pgdg13+2) ...\nSetting up g++ (4:14.2.0-1) ...\nupdate-alternatives: using /usr/bin/g++ to provide /usr/bin/c++ (c++) in auto mode\nSetting up build-essential (12.12) ...\nProcessing triggers for postgresql-common (293.pgdg13+1) ...\ndebconf: unable to initialize frontend: Dialog\ndebconf: (TERM is not set, so the dialog frontend is not usable.)\ndebconf: falling back to frontend: Readline\ndebconf: unable to initialize frontend: Readline\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Teletype\ndebconf: unable to initialize frontend: Teletype\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Noninteractive\nBuilding PostgreSQL dictionaries from installed myspell/hunspell packages...\nRemoving obsolete dictionary files:\nProcessing triggers for libc-bin (2.41-12+deb13u4) ...\nmake: Entering directory '/fixture'\ngcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -mbranch-protection=standard -fPIC -fvisibility=hidden -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2   -c -o createas.o createas.c\ngcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -mbranch-protection=standard -fPIC -fvisibility=hidden -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2   -c -o matview.o matview.c\ngcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -mbranch-protection=standard -fPIC -fvisibility=hidden -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2   -c -o pg_ivm.o pg_ivm.c\ngcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -mbranch-protection=standard -fPIC -fvisibility=hidden -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2   -c -o ruleutils.o ruleutils.c\ngcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -mbranch-protection=standard -fPIC -fvisibility=hidden -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2   -c -o subselect.o subselect.c\n/usr/bin/clang-19 -Wno-ignored-attributes -fno-strict-aliasing -fwrapv -fexcess-precision=standard -mno-outline-atomics -Wno-unused-command-line-argument -Wno-compound-token-split-by-macro -Wno-format-truncation -O2  -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2  -flto=thin -emit-llvm -c -o createas.bc createas.c\n/usr/bin/clang-19 -Wno-ignored-attributes -fno-strict-aliasing -fwrapv -fexcess-precision=standard -mno-outline-atomics -Wno-unused-command-line-argument -Wno-compound-token-split-by-macro -Wno-format-truncation -O2  -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2  -flto=thin -emit-llvm -c -o matview.bc matview.c\n/usr/bin/clang-19 -Wno-ignored-attributes -fno-strict-aliasing -fwrapv -fexcess-precision=standard -mno-outline-atomics -Wno-unused-command-line-argument -Wno-compound-token-split-by-macro -Wno-format-truncation -O2  -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2  -flto=thin -emit-llvm -c -o pg_ivm.bc pg_ivm.c\n/usr/bin/clang-19 -Wno-ignored-attributes -fno-strict-aliasing -fwrapv -fexcess-precision=standard -mno-outline-atomics -Wno-unused-command-line-argument -Wno-compound-token-split-by-macro -Wno-format-truncation -O2  -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2  -flto=thin -emit-llvm -c -o ruleutils.bc ruleutils.c\n/usr/bin/clang-19 -Wno-ignored-attributes -fno-strict-aliasing -fwrapv -fexcess-precision=standard -mno-outline-atomics -Wno-unused-command-line-argument -Wno-compound-token-split-by-macro -Wno-format-truncation -O2  -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2  -flto=thin -emit-llvm -c -o subselect.bc subselect.c\ngcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -mbranch-protection=standard -fPIC -fvisibility=hidden -shared -o pg_ivm.so  createas.o matview.o pg_ivm.o ruleutils.o subselect.o -L/usr/lib/aarch64-linux-gnu  -Wl,-z,relro -Wl,-z,now  -Wl,--as-needed -fvisibility=hidden \nmake: Leaving directory '/fixture'\nmake: Entering directory '/fixture'\n/bin/mkdir -p '/usr/lib/postgresql/17/lib'\n/bin/mkdir -p '/usr/share/postgresql/17/extension'\n/bin/mkdir -p '/usr/share/postgresql/17/extension'\n/bin/mkdir -p '/usr/lib/postgresql/17/bin'\n/usr/bin/install -c -m 755  pg_ivm.so '/usr/lib/postgresql/17/lib/pg_ivm.so'\n/usr/bin/install -c -m 644 .//pg_ivm.control '/usr/share/postgresql/17/extension/'\n/usr/bin/install -c -m 644 .//pg_ivm--1.0.sql .//pg_ivm--1.0--1.1.sql .//pg_ivm--1.1--1.2.sql .//pg_ivm--1.2--1.3.sql .//pg_ivm--1.3--1.4.sql .//pg_ivm--1.4--1.5.sql .//pg_ivm--1.5--1.6.sql .//pg_ivm--1.6--1.7.sql .//pg_ivm--1.7--1.8.sql .//pg_ivm--1.8--1.9.sql .//pg_ivm--1.9--1.10.sql .//pg_ivm--1.10.sql .//pg_ivm--1.10--1.11.sql .//pg_ivm--1.11--1.12.sql .//pg_ivm--1.12--1.13.sql .//pg_ivm--1.13--1.14.sql .//pg_ivm--1.14--1.15.sql .//pg_ivm--1.15--1.16.sql .//pg_ivm--1.16--1.17.sql  '/usr/share/postgresql/17/extension/'\n/usr/bin/install -c -m 755 .//scripts/pg_ivm_dump_metadata '/usr/lib/postgresql/17/bin/'\n/bin/mkdir -p '/usr/lib/postgresql/17/lib/bitcode/pg_ivm'\n/bin/mkdir -p '/usr/lib/postgresql/17/lib/bitcode'/pg_ivm/\n/usr/bin/install -c -m 644 createas.bc '/usr/lib/postgresql/17/lib/bitcode'/pg_ivm/./\n/usr/bin/install -c -m 644 matview.bc '/usr/lib/postgresql/17/lib/bitcode'/pg_ivm/./\n/usr/bin/install -c -m 644 pg_ivm.bc '/usr/lib/postgresql/17/lib/bitcode'/pg_ivm/./\n/usr/bin/install -c -m 644 ruleutils.bc '/usr/lib/postgresql/17/lib/bitcode'/pg_ivm/./\n/usr/bin/install -c -m 644 subselect.bc '/usr/lib/postgresql/17/lib/bitcode'/pg_ivm/./\ncd '/usr/lib/postgresql/17/lib/bitcode' && /usr/lib/llvm-19/bin/llvm-lto -thinlto -thinlto-action=thinlink -o pg_ivm.index.bc pg_ivm/createas.bc pg_ivm/matview.bc pg_ivm/pg_ivm.bc pg_ivm/ruleutils.bc pg_ivm/subselect.bc\nmake: Leaving directory '/fixture'\nPostgreSQL 17.11 (Debian 17.11-1.pgdg13+2)\ngcc\t4:14.2.0-1\nlibc6:arm64\t2.41-12+deb13u4\npostgresql-server-dev-17\t17.11-1.pgdg13+2\nThe files belonging to this database system will be owned by user \"postgres\".\nThis user must also own the server process.\n\nThe database cluster will be initialized with locale \"en_US.utf8\".\nThe default database encoding has accordingly been set to \"UTF8\".\nThe default text search configuration will be set to \"english\".\n\nData page checksums are disabled.\n\nfixing permissions on existing directory /var/lib/postgresql/data ... ok\ncreating subdirectories ... ok\nselecting dynamic shared memory implementation ... posix\nselecting default \"max_connections\" ... 100\nselecting default \"shared_buffers\" ... 128MB\nselecting default time zone ... Etc/UTC\ncreating configuration files ... ok\nrunning bootstrap script ... ok\nperforming post-bootstrap initialization ... ok\nsyncing data to disk ... ok\n\n\nSuccess. You can now start the database server using:\n\n    pg_ctl -D /var/lib/postgresql/data -l logfile start\n\nwaiting for server to start....2026-10-17 16:02:17.047 UTC [2062] LOG:  starting PostgreSQL 17.11 (Debian 17.11-1.pgdg13+2) on aarch64-unknown-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit\n2026-10-17 16:02:17.047 UTC [2062] LOG:  listening on Unix socket \"/var/run/postgresql/.s.PGSQL.5432\"\n2026-10-17 16:02:17.049 UTC [2065] LOG:  database system was shut down at 2026-10-17 16:02:16 UTC\n2026-10-17 16:02:17.051 UTC [2062] LOG:  database system is ready to accept connections\n done\nserver started\n\n/usr/local/bin/docker-entrypoint.sh: ignoring /docker-entrypoint-initdb.d/*\n\n2026-10-17 16:02:17.158 UTC [2062] LOG:  received fast shutdown request\nwaiting for server to shut down....2026-10-17 16:02:17.159 UTC [2062] LOG:  aborting any active transactions\n2026-10-17 16:02:17.160 UTC [2062] LOG:  background worker \"logical replication launcher\" (PID 2068) exited with exit code 1\n2026-10-17 16:02:17.160 UTC [2063] LOG:  shutting down\n2026-10-17 16:02:17.161 UTC [2063] LOG:  checkpoint starting: shutdown immediate\n2026-10-17 16:02:17.163 UTC [2063] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.001 s, sync=0.001 s, total=0.003 s; sync files=2, longest=0.001 s, average=0.001 s; distance=0 kB, estimate=0 kB; lsn=0/14EF770, redo lsn=0/14EF770\n2026-10-17 16:02:17.166 UTC [2062] LOG:  database system is shut down\n done\nserver stopped\n\nPostgreSQL init process complete; ready for start up.\n\n",
+      "stderr": "debconf: unable to initialize frontend: Dialog\ndebconf: (TERM is not set, so the dialog frontend is not usable.)\ndebconf: falling back to frontend: Readline\ndebconf: unable to initialize frontend: Readline\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Teletype\ndebconf: unable to initialize frontend: Teletype\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Noninteractive\n********************************************************************************\nWARNING: POSTGRES_HOST_AUTH_METHOD has been set to \"trust\". This will allow\n         anyone with access to the Postgres port to access your database without\n         a password, even if POSTGRES_PASSWORD is set. See PostgreSQL\n         documentation about \"trust\":\n         https://www.postgresql.org/docs/current/auth-trust.html\n         In Docker's default configuration, this is effectively any other\n         container on the same system.\n\n         It is not recommended to use POSTGRES_HOST_AUTH_METHOD=trust. Replace\n         it with \"-e POSTGRES_PASSWORD=password\" instead to set a password in\n         \"docker run\".\n********************************************************************************\ninitdb: warning: enabling \"trust\" authentication for local connections\ninitdb: hint: You can change this by editing pg_hba.conf or using the option -A, or --auth-local and --auth-host, the next time you run initdb.\n2026-10-17 16:02:17.274 UTC [1] LOG:  starting PostgreSQL 17.11 (Debian 17.11-1.pgdg13+2) on aarch64-unknown-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit\n2026-10-17 16:02:17.274 UTC [1] LOG:  listening on IPv4 address \"0.0.0.0\", port 5432\n2026-10-17 16:02:17.274 UTC [1] LOG:  listening on IPv6 address \"::\", port 5432\n2026-10-17 16:02:17.275 UTC [1] LOG:  listening on Unix socket \"/var/run/postgresql/.s.PGSQL.5432\"\n2026-10-17 16:02:17.277 UTC [2076] LOG:  database system was shut down at 2026-10-17 16:02:17 UTC\n2026-10-17 16:02:17.279 UTC [1] LOG:  database system is ready to accept connections\n"
+    },
+    {
+      "label": "local-only-owner-db",
+      "command": [
+        "docker",
+        "exec",
+        "qa447-ivm-0e99d41d",
+        "psql",
+        "-X",
+        "-q",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "postgres",
+        "-c",
+        "CREATE ROLE qa447_owner LOGIN;",
+        "-c",
+        "CREATE DATABASE qa447_owner OWNER qa447_owner;"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "local-only-extension-init",
+      "command": [
+        "docker",
+        "exec",
+        "qa447-ivm-0e99d41d",
+        "psql",
+        "-X",
+        "-q",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "postgres",
+        "-d",
+        "qa447_owner",
+        "-c",
+        "CREATE EXTENSION pg_ivm;"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "catalog",
+      "command": [
+        "docker",
+        "exec",
+        "qa447-ivm-0e99d41d",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa447_owner",
+        "-d",
+        "qa447_owner",
+        "-c",
+        "SELECT jsonb_build_object('version',current_setting('server_version_num'),'encoding',current_setting('server_encoding'),'available',COALESCE((SELECT jsonb_agg(jsonb_build_object('name',name,'default',default_version,'installed',installed_version) ORDER BY name) FROM pg_available_extensions WHERE name IN ('pg_ivm','vector','pg_stat_statements','plpgsql','hstore')),'[]'::jsonb),'own_schema_exists',EXISTS(SELECT FROM pg_namespace WHERE nspname='qa447_local'))::text;"
+      ],
+      "exit": 0,
+      "stdout": "{\"version\": \"170011\", \"encoding\": \"UTF8\", \"available\": [{\"name\": \"hstore\", \"default\": \"1.8\", \"installed\": null}, {\"name\": \"pg_ivm\", \"default\": \"1.17\", \"installed\": \"1.17\"}, {\"name\": \"pg_stat_statements\", \"default\": \"1.11\", \"installed\": null}, {\"name\": \"plpgsql\", \"default\": \"1.0\", \"installed\": \"1.0\"}], \"own_schema_exists\": false}\n",
+      "stderr": ""
+    },
+    {
+      "label": "enable",
+      "command": [
+        "docker",
+        "exec",
+        "qa447-ivm-0e99d41d",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa447_owner",
+        "-d",
+        "qa447_owner",
+        "-c",
+        "CREATE EXTENSION IF NOT EXISTS pg_ivm;"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": "NOTICE:  extension \"pg_ivm\" already exists, skipping\n"
+    },
+    {
+      "label": "postgres",
+      "command": [
+        "docker",
+        "exec",
+        "qa447-ivm-0e99d41d",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa447_owner",
+        "-d",
+        "qa447_owner",
+        "-c",
+        "BEGIN; SET LOCAL statement_timeout='20s'; CREATE SCHEMA qa447_local; SET LOCAL search_path=qa447_local,public; CREATE TABLE orders(id integer PRIMARY KEY,region text NOT NULL,cents integer NOT NULL); INSERT INTO orders VALUES(1,'north',1250),(2,'north',725),(3,'café:李',1999),(4,'café:李',-499),(5,'west',0); SELECT jsonb_build_object('phase','initial','rows',jsonb_agg(jsonb_build_array(region,cnt,total) ORDER BY region COLLATE \"C\"))::text FROM (SELECT region,count(*) AS cnt,sum(cents) AS total FROM qa447_local.orders GROUP BY region) q; INSERT INTO orders VALUES(6,'north',300); SELECT jsonb_build_object('phase','insert','rows',jsonb_agg(jsonb_build_array(region,cnt,total) ORDER BY region COLLATE \"C\"))::text FROM (SELECT region,count(*) AS cnt,sum(cents) AS total FROM qa447_local.orders GROUP BY region) q; UPDATE orders SET region='south',cents=-125 WHERE id=2; SELECT jsonb_build_object('phase','update','rows',jsonb_agg(jsonb_build_array(region,cnt,total) ORDER BY region COLLATE \"C\"))::text FROM (SELECT region,count(*) AS cnt,sum(cents) AS total FROM qa447_local.orders GROUP BY region) q; DELETE FROM orders WHERE id=4; SELECT jsonb_build_object('phase','delete','rows',jsonb_agg(jsonb_build_array(region,cnt,total) ORDER BY region COLLATE \"C\"))::text FROM (SELECT region,count(*) AS cnt,sum(cents) AS total FROM qa447_local.orders GROUP BY region) q; ROLLBACK;"
+      ],
+      "exit": 0,
+      "stdout": "{\"rows\": [[\"café:李\", 2, 1500], [\"north\", 2, 1975], [\"west\", 1, 0]], \"phase\": \"initial\"}\n{\"rows\": [[\"café:李\", 2, 1500], [\"north\", 3, 2275], [\"west\", 1, 0]], \"phase\": \"insert\"}\n{\"rows\": [[\"café:李\", 2, 1500], [\"north\", 2, 1550], [\"south\", 1, -125], [\"west\", 1, 0]], \"phase\": \"update\"}\n{\"rows\": [[\"café:李\", 1, 1999], [\"north\", 2, 1550], [\"south\", 1, -125], [\"west\", 1, 0]], \"phase\": \"delete\"}\n",
+      "stderr": ""
+    },
+    {
+      "label": "ivm",
+      "command": [
+        "docker",
+        "exec",
+        "qa447-ivm-0e99d41d",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa447_owner",
+        "-d",
+        "qa447_owner",
+        "-c",
+        "BEGIN; SET LOCAL statement_timeout='20s'; CREATE SCHEMA qa447_local; SET LOCAL search_path=qa447_local,public; CREATE TABLE orders(id integer PRIMARY KEY,region text NOT NULL,cents integer NOT NULL); INSERT INTO orders VALUES(1,'north',1250),(2,'north',725),(3,'café:李',1999),(4,'café:李',-499),(5,'west',0); SELECT pgivm.create_immv('qa447_local.totals', 'SELECT region,count(*) AS cnt,sum(cents) AS total FROM qa447_local.orders GROUP BY region'); SELECT jsonb_build_object('phase','initial','rows',jsonb_agg(jsonb_build_array(region,cnt,total) ORDER BY region COLLATE \"C\"))::text FROM qa447_local.totals; INSERT INTO orders VALUES(6,'north',300); SELECT jsonb_build_object('phase','insert','rows',jsonb_agg(jsonb_build_array(region,cnt,total) ORDER BY region COLLATE \"C\"))::text FROM qa447_local.totals; UPDATE orders SET region='south',cents=-125 WHERE id=2; SELECT jsonb_build_object('phase','update','rows',jsonb_agg(jsonb_build_array(region,cnt,total) ORDER BY region COLLATE \"C\"))::text FROM qa447_local.totals; DELETE FROM orders WHERE id=4; SELECT jsonb_build_object('phase','delete','rows',jsonb_agg(jsonb_build_array(region,cnt,total) ORDER BY region COLLATE \"C\"))::text FROM qa447_local.totals; ROLLBACK;"
+      ],
+      "exit": 0,
+      "stdout": "3\n{\"rows\": [[\"café:李\", 2, 1500], [\"north\", 2, 1975], [\"west\", 1, 0]], \"phase\": \"initial\"}\n{\"rows\": [[\"café:李\", 2, 1500], [\"north\", 3, 2275], [\"west\", 1, 0]], \"phase\": \"insert\"}\n{\"rows\": [[\"café:李\", 2, 1500], [\"north\", 2, 1550], [\"south\", 1, -125], [\"west\", 1, 0]], \"phase\": \"update\"}\n{\"rows\": [[\"café:李\", 1, 1999], [\"north\", 2, 1550], [\"south\", 1, -125], [\"west\", 1, 0]], \"phase\": \"delete\"}\n",
+      "stderr": "NOTICE:  created index \"totals_index\" on immv \"totals\"\n"
+    },
+    {
+      "label": "final-rollback-proof",
+      "command": [
+        "docker",
+        "exec",
+        "qa447-ivm-0e99d41d",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa447_owner",
+        "-d",
+        "qa447_owner",
+        "-c",
+        "SELECT count(*) FROM pg_namespace WHERE nspname='qa447_local'; SELECT count(*) FROM pgivm.pg_ivm_immv;"
+      ],
+      "exit": 0,
+      "stdout": "0\n0\n",
+      "stderr": ""
+    },
+    {
+      "label": "remove-exact-own-server",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa447-ivm-0e99d41d"
+      ],
+      "exit": 0,
+      "stdout": "qa447-ivm-0e99d41d\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-container-absence",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa447-ivm-0e99d41d"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa447-ivm-0e99d41d\n"
+    }
+  ],
+  "cases": [
+    {
+      "case": "catalog",
+      "value": {
+        "version": "170011",
+        "encoding": "UTF8",
+        "available": [
+          {
+            "name": "hstore",
+            "default": "1.8",
+            "installed": null
+          },
+          {
+            "name": "pg_ivm",
+            "default": "1.17",
+            "installed": "1.17"
+          },
+          {
+            "name": "pg_stat_statements",
+            "default": "1.11",
+            "installed": null
+          },
+          {
+            "name": "plpgsql",
+            "default": "1.0",
+            "installed": "1.0"
+          }
+        ],
+        "own_schema_exists": false
+      },
+      "pass": true
+    },
+    {
+      "case": "enable",
+      "pass": true
+    },
+    {
+      "case": "postgres",
+      "decoded": {
+        "snapshots": [
+          {
+            "rows": [
+              [
+                "café:李",
+                2,
+                1500
+              ],
+              [
+                "north",
+                2,
+                1975
+              ],
+              [
+                "west",
+                1,
+                0
+              ]
+            ],
+            "phase": "initial"
+          },
+          {
+            "rows": [
+              [
+                "café:李",
+                2,
+                1500
+              ],
+              [
+                "north",
+                3,
+                2275
+              ],
+              [
+                "west",
+                1,
+                0
+              ]
+            ],
+            "phase": "insert"
+          },
+          {
+            "rows": [
+              [
+                "café:李",
+                2,
+                1500
+              ],
+              [
+                "north",
+                2,
+                1550
+              ],
+              [
+                "south",
+                1,
+                -125
+              ],
+              [
+                "west",
+                1,
+                0
+              ]
+            ],
+            "phase": "update"
+          },
+          {
+            "rows": [
+              [
+                "café:李",
+                1,
+                1999
+              ],
+              [
+                "north",
+                2,
+                1550
+              ],
+              [
+                "south",
+                1,
+                -125
+              ],
+              [
+                "west",
+                1,
+                0
+              ]
+            ],
+            "phase": "delete"
+          }
+        ],
+        "independent_expected": [
+          {
+            "phase": "initial",
+            "rows": [
+              [
+                "café:李",
+                2,
+                1500
+              ],
+              [
+                "north",
+                2,
+                1975
+              ],
+              [
+                "west",
+                1,
+                0
+              ]
+            ]
+          },
+          {
+            "phase": "insert",
+            "rows": [
+              [
+                "café:李",
+                2,
+                1500
+              ],
+              [
+                "north",
+                3,
+                2275
+              ],
+              [
+                "west",
+                1,
+                0
+              ]
+            ]
+          },
+          {
+            "phase": "update",
+            "rows": [
+              [
+                "café:李",
+                2,
+                1500
+              ],
+              [
+                "north",
+                2,
+                1550
+              ],
+              [
+                "south",
+                1,
+                -125
+              ],
+              [
+                "west",
+                1,
+                0
+              ]
+            ]
+          },
+          {
+            "phase": "delete",
+            "rows": [
+              [
+                "café:李",
+                1,
+                1999
+              ],
+              [
+                "north",
+                2,
+                1550
+              ],
+              [
+                "south",
+                1,
+                -125
+              ],
+              [
+                "west",
+                1,
+                0
+              ]
+            ]
+          }
+        ]
+      },
+      "pass": true
+    },
+    {
+      "case": "ivm",
+      "decoded": {
+        "snapshots": [
+          {
+            "rows": [
+              [
+                "café:李",
+                2,
+                1500
+              ],
+              [
+                "north",
+                2,
+                1975
+              ],
+              [
+                "west",
+                1,
+                0
+              ]
+            ],
+            "phase": "initial"
+          },
+          {
+            "rows": [
+              [
+                "café:李",
+                2,
+                1500
+              ],
+              [
+                "north",
+                3,
+                2275
+              ],
+              [
+                "west",
+                1,
+                0
+              ]
+            ],
+            "phase": "insert"
+          },
+          {
+            "rows": [
+              [
+                "café:李",
+                2,
+                1500
+              ],
+              [
+                "north",
+                2,
+                1550
+              ],
+              [
+                "south",
+                1,
+                -125
+              ],
+              [
+                "west",
+                1,
+                0
+              ]
+            ],
+            "phase": "update"
+          },
+          {
+            "rows": [
+              [
+                "café:李",
+                1,
+                1999
+              ],
+              [
+                "north",
+                2,
+                1550
+              ],
+              [
+                "south",
+                1,
+                -125
+              ],
+              [
+                "west",
+                1,
+                0
+              ]
+            ],
+            "phase": "delete"
+          }
+        ],
+        "independent_expected": [
+          {
+            "phase": "initial",
+            "rows": [
+              [
+                "café:李",
+                2,
+                1500
+              ],
+              [
+                "north",
+                2,
+                1975
+              ],
+              [
+                "west",
+                1,
+                0
+              ]
+            ]
+          },
+          {
+            "phase": "insert",
+            "rows": [
+              [
+                "café:李",
+                2,
+                1500
+              ],
+              [
+                "north",
+                3,
+                2275
+              ],
+              [
+                "west",
+                1,
+                0
+              ]
+            ]
+          },
+          {
+            "phase": "update",
+            "rows": [
+              [
+                "café:李",
+                2,
+                1500
+              ],
+              [
+                "north",
+                2,
+                1550
+              ],
+              [
+                "south",
+                1,
+                -125
+              ],
+              [
+                "west",
+                1,
+                0
+              ]
+            ]
+          },
+          {
+            "phase": "delete",
+            "rows": [
+              [
+                "café:李",
+                1,
+                1999
+              ],
+              [
+                "north",
+                2,
+                1550
+              ],
+              [
+                "south",
+                1,
+                -125
+              ],
+              [
+                "west",
+                1,
+                0
+              ]
+            ]
+          }
+        ]
+      },
+      "pass": true
+    }
+  ],
+  "source_archive": {
+    "url": "https://codeload.github.com/sraoss/pg_ivm/tar.gz/678c37861080aa221b859cefaca98725646dbf7c",
+    "bytes": 225867,
+    "sha256": "6d45a1467ad4a44a387953bfd691633f3d325779734f21ce3da8c2ff5982efc2"
+  },
+  "create_intent": {
+    "container": "qa447-ivm-0e99d41d",
+    "image": "postgres@sha256:67f41722b7a8cbdb868a44a4995c846eddfdc2973bccb291ce937dce88ad5675",
+    "source_mount": "<owned-temp>/candidate447-local-context/pg_ivm-678c37861080aa221b859cefaca98725646dbf7c",
+    "network": "bridge for package setup; no published ports; detach before SQL"
+  },
+  "pass": true,
+  "own_container_absent": true,
+  "own_context_removed": true,
+  "base_image_architecture": "arm64"
+}

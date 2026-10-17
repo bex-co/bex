@@ -1,0 +1,71 @@
+{
+  "source_head": "24e10c7f83342e33e8484f4e6f8a0170cf90e2e9",
+  "actual_SQL_server_version_num": "180006",
+  "serving_operator_revision_OCI": "unknown",
+  "primary_contracts": [
+    {
+      "url": "https://render.com/docs/postgresql-extensions",
+      "claim": "PostGIS is among the extensions available to PostgreSQL13+ databases and enabled through CREATE EXTENSION; no PG18/Free exclusion listed."
+    },
+    {
+      "url": "https://postgis.net/docs/ST_Distance.html",
+      "claim": "ST_Distance on geography returns spheroidal distance in meters by default; expected QA query targets round111319.491m, not yet observed."
+    },
+    {
+      "url": "https://github.com/cloudnative-pg/postgis-containers",
+      "claim": "CNPG publishes PostGIS operand images and pinned catalogs, including all accepted13..18 majors; downloaded catalog identities are retained separately."
+    },
+    {
+      "url": "https://cloudnative-pg.io/docs/devel/postgis/",
+      "claim": "PostGIS needs available binary/libraries and activation in the application database; PG18 image-volume delivery is an alternative with prerequisites, not assumed usable in the deployed cluster."
+    }
+  ],
+  "pinned_consumer": {
+    "commit": "a764810a768202704e7206eb7b87a47211fcd98e",
+    "path": "cmd/psql.go -> pkg/tui/views/psql.go:45-95",
+    "behavior": "original SQL passed to actual psql child using the own application connection; both unchanged clients fail CREATE EXTENSION before spatial SELECT"
+  },
+  "production_chain": [
+    {
+      "path": "lego/backend/internal/postgres/rest.go:249,490",
+      "behavior": "ordinary create projection and connection-info contract; no extension option or request repair needed"
+    },
+    {
+      "path": "lego/backend/internal/postgres/service.go:666-716,803-852",
+      "behavior": "shared managed Database create and own application connection"
+    },
+    {
+      "path": "lego/types/v1alpha1/database_types.go:131-134",
+      "behavior": "accepted major versions13..18"
+    },
+    {
+      "path": "lego/operator/internal/controller/database_controller.go:486-492,520-527,835",
+      "behavior": "ordinary PostgreSQL image selector, pg_stat_statements bootstrap and application Database reconciliation"
+    },
+    {
+      "path": "lego/operator/internal/controller/database_exports.go:45-74,320",
+      "behavior": "six digest-pinned PostgreSQL images are shared with logical-export clients; changing the table also changes export Jobs"
+    },
+    {
+      "path": "lego/operator/internal/controller/database_extensions.go:62-70,78-105,111-128",
+      "behavior": "managed application Database currently requests vector only; retain existing data; extension condition is separate from serving and currently says vector installed"
+    }
+  ],
+  "fix": {
+    "mechanism": "Supply a reviewed compatible PostGIS-enabled CNPG operand image for accepted majors (official pinned supplier catalog is a candidate), then extend the existing application Database extension desired state to postgis. Preserve installed versions/schema/data/owner and databaseReclaimPolicy retain; do not grant app superuser, use a CLI workaround or build a general extension product.",
+    "image_boundary": "Review exact server patch/base/library and architecture compatibility; update pinned inventory and keep logical-export client selection explicit because the current map is shared. PG18 image-volume extensions require verified Kubernetes/CNPG support and do not solve older majors alone.",
+    "activation": "Reuse CNPG Database extension reconciliation rather than fresh-only postInit SQL, so existing parents can converge too. Keep optional ExtensionsReady behavior separate from DB serving and make its message describe the actually managed set. Preserve vector0.8.6/pg_stat_statements and other extensions.",
+    "acceptance": "Actual PostGIS data/type/GiST/spatial queries under ordinary app connections in supported source/restore/upgrade paths; default/custom names and fresh/existing parents; exact cleanup. No fixed image or product implementation is certified here."
+  },
+  "dedupe": "No PostGIS match in PM/docs/source or targeted history. m84 manages already-packaged vector and preserves its uncompleted existing-parent gate; this missing PostGIS availability plus activation is separate. m91 packages client programs in App native images, not server extensions.",
+  "limits": [
+    "one physical owned PG18 Free fixture created via Bex; both native psql clients tested on it",
+    "catalog/runtime absence proved; actual host filesystem and running OCI not inspected",
+    "no hosted PostGIS working control; hstore and built-in point math are independent controls, not PostGIS replacements",
+    "local exact-image pull timed out180s before any container started; local script was not executed",
+    "official supplier catalogs downloaded, no candidate image executed or adopted",
+    "other majors, existing-parent remediation, restore/upgrade/HA/replicas, browser/API-write variants and full suites unverified",
+    "native mutation wire not intercepted; CA/connection API preparation is diagnostic only",
+    "physical teardown unverified"
+  ]
+}

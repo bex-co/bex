@@ -1,0 +1,145 @@
+{
+  "container": "qa449-app-b25e83e1",
+  "image": "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+  "scope": "owned local actual Node24 app/log generator prerequisite, not Bex generated image or live logs",
+  "steps": [
+    {
+      "label": "fresh-carrier-branch",
+      "command": [
+        "git",
+        "ls-remote",
+        "https://github.com/git-fixtures/basic",
+        "refs/heads/master"
+      ],
+      "exit": 0,
+      "stdout": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5\trefs/heads/master\n",
+      "stderr": ""
+    },
+    {
+      "label": "start-own-app",
+      "command": [
+        "docker",
+        "run",
+        "--pull",
+        "never",
+        "-d",
+        "--network",
+        "bridge",
+        "-p",
+        "127.0.0.1::3000",
+        "--name",
+        "qa449-app-b25e83e1",
+        "--mount",
+        "type=bind,src=<owned-temp>/sweep449-local-app-context,dst=/app",
+        "--workdir",
+        "/app",
+        "--entrypoint",
+        "/bin/bash",
+        "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+        "-c",
+        "set -e\nnode -e 'const fs=require('\"'\"'node:fs'\"'\"'),z=require('\"'\"'node:zlib'\"'\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\"'\"'H4sIAAAAAAAC/41Va27bRhC+ikIUIIlQ1JLUi1JpwHXUxIVrp7bToo1cY7kcSnTIpby7UuzKvEJv0AP0HL1Lz9Ehl3Jc2T8C/dBqnt/MfDPaGre03w+7dLVy2Y00JgYruVSdVEYCbteZAMvkZQKTVJq2s1RqtSevRahh4n6lyj2dFpr2dM511IKKTyCiHy7OTt0VFRKsVLoCaPJ9lsPFPWeWqeFoQ/dGlty0bUdA+hVOaAUCOINHP7mkURwdaBwuQycF76hcWiZq/MHQtN31KkGhFdtuki1AKstcwt0TyLJcCwaRZUcHZ/ENMOWmoixmXIkMpNWKPsG9tDC9myIkabsFXVk8OtjqEHG0D5jbUwFqLfhH7mzjewVyErs58IVaOhrZBL8QVHVV2TWWdM2ZykreWYmyTC27jdykizREy55mqdV0SSI4vsjSe0vjeRVFe/IvWG21FOXnzkyIUmBbmlCdIpMFVWxp7nBu9UCcZqyIgYGU7gaERExOE8hB6ULQ4voJ/v2yr69rU04LsO2qmnPEu4tFxWLz0b+KosiM11memLsSN1Fb8hSjfRaZgv2x1/ZKj9zZK3ODzavDlDm4ebmwzJ8O0eP6uw/HJ2865uvn1ggKcgmdl5FJEBt4RBaXpYpaagnKk7L48OH4jWU7DaCv4OsT4C1OpFudQkT1VrV8vWgklnXrCOTgNoe6J1vXddu+6HROjaaqGXDrrkWOVVGh5C+ZQq73oMhUD3O0wFe1KmrtVnmGnEdtC4CXuEBRY4JVOxIXul6p6HRdxAhDK4Krhmyver9/pN0/Dru/kW543b3aes6IVN/0XFUvUhPJfnh4pV3dTB5zBQsMsguKyt3zW/LlfeARQuyt0ON+h52z+iiYChd4YpkZ39A8SzrlZ44LcIf0hA5sgKtHtlbYoJawdVucBsljKY6COzUxzzEYiM7RyTEuFTR9lx1G03/+nvz715/zOZeAHUk6ecbBrF6i0ezn2enlyzR6it0nxNmaRyUWz1X38n4F5sTEe5tnjNY73WsYUO3qeyGaPdW0cPNMYhBrN4uWocA37vuz88uHh6BunGMSt/mYTn21XgB+Pjt88+tz4Hs9e77peIvs6U5Wcsu8OH57OTv/USdqMbK8RMrXgkd8d0gxgr5Vs1v/OzgFpmmureEYL11x/EPazg2q5sakMzd84g+7Hul6o0svmHj+hPhugNfGJ68JmRAyNxy0ErAqtX29RnLS6y1wD9axy8qifnZb1sheTGXGtFOMK8yW2q2g2Gah5eiD26PlQ2ApgdRnfpKm8SgckiCAASW+74U0HaN6OBj3YaA9m7NYO2IBJ8dHs9OLWfurufj12yMjvzbVN3NXY0yG/dAjceDHDLyYkf4gHNBB7JP+aET9MRuQIAwHkI4H/jj0Qxp4XjJk8YgGMQnnRlWHPHp3ePp2dnL29lnO8X7GEGFDMBySwQCSJKQkHdI4ZKN4TINRykJ/TAKWgpcEJE3pyB8xgISwYRAGIfPrcquqepzfk79uHN7c0JQ7OTs6PLk+fP9+bhjVf4Q+1bp1CAAA'\"'\"','\"'\"'base64'\"'\"')))))fs.writeFileSync(n,s)'\nnode qa449-app.cjs build\nexec node qa449-app.cjs serve"
+      ],
+      "exit": 0,
+      "stdout": "da32fb94a964d3d4566ee35c4c969033088914bb189de9080d4134602c46762a\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-port",
+      "command": [
+        "docker",
+        "port",
+        "qa449-app-b25e83e1",
+        "3000/tcp"
+      ],
+      "exit": 0,
+      "stdout": "127.0.0.1:65363\n",
+      "stderr": ""
+    },
+    {
+      "label": "actual-own-app-logs",
+      "command": [
+        "docker",
+        "logs",
+        "qa449-app-b25e83e1"
+      ],
+      "exit": 0,
+      "stdout": "QA449_BUILD {\"marker\":\"QA449_LOCAL_APP\",\"node\":\"v24.22.0\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"program_sha256\":\"b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07\"}\nQA449_READY {\"marker\":\"QA449_LOCAL_APP\",\"boot\":\"6433b03a-d2c3-40c9-aba5-eae5dde7320d\",\"node\":\"v24.22.0\"}\nQA449_EVENT {\"marker\":\"QA449_LOCAL_APP\",\"boot\":\"6433b03a-d2c3-40c9-aba5-eae5dde7320d\",\"nonce\":\"local\",\"sequence\":0,\"text\":\"Render CLI preserves café:李\\nsecond line\"}\nQA449_EVENT {\"marker\":\"QA449_LOCAL_APP\",\"boot\":\"6433b03a-d2c3-40c9-aba5-eae5dde7320d\",\"nonce\":\"local\",\"sequence\":1,\"text\":\"Render CLI preserves café:李\\nsecond line\"}\n",
+      "stderr": ""
+    },
+    {
+      "label": "remove-exact-own-app",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa449-app-b25e83e1"
+      ],
+      "exit": 0,
+      "stdout": "qa449-app-b25e83e1\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-container-absence",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa449-app-b25e83e1"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa449-app-b25e83e1\n"
+    }
+  ],
+  "health": {
+    "marker": "QA449_LOCAL_APP",
+    "node": "v24.22.0",
+    "files": {
+      "LICENSE": {
+        "bytes": 1072,
+        "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+      },
+      "CHANGELOG": {
+        "bytes": 18,
+        "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+      }
+    },
+    "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07",
+    "built": {
+      "marker": "QA449_LOCAL_APP",
+      "node": "v24.22.0",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "program_sha256": "b0a092550144603b069980c41f7ca3d0b1b918e7ecf688a1c9655f1db2da6b07"
+    },
+    "boot": "6433b03a-d2c3-40c9-aba5-eae5dde7320d"
+  },
+  "events": [
+    {
+      "marker": "QA449_LOCAL_APP",
+      "boot": "6433b03a-d2c3-40c9-aba5-eae5dde7320d",
+      "nonce": "local",
+      "sequence": 0,
+      "text": "Render CLI preserves café:李\nsecond line"
+    },
+    {
+      "marker": "QA449_LOCAL_APP",
+      "boot": "6433b03a-d2c3-40c9-aba5-eae5dde7320d",
+      "nonce": "local",
+      "sequence": 1,
+      "text": "Render CLI preserves café:李\nsecond line"
+    }
+  ],
+  "pass": true,
+  "own_container_absent": true,
+  "own_context_removed": true
+}

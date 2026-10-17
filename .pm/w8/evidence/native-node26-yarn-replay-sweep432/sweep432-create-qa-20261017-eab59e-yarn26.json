@@ -1,0 +1,48 @@
+{
+  "phase": "actual native response captured",
+  "captures": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/v1/services",
+        "body": {
+          "autoDeploy": "no",
+          "branch": "main",
+          "envVars": [
+            {
+              "key": "NODE_VERSION",
+              "value": "26"
+            }
+          ],
+          "name": "qa-20261017-eab59e-yarn26",
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "repo": "https://github.com/bex-co/bex",
+          "rootDir": "examples/hello-node",
+          "serviceDetails": {
+            "envSpecificDetails": {
+              "buildCommand": "printf %s 'Y29uc3QgaHR0cD1yZXF1aXJlKCdub2RlOmh0dHAnKSxmcz1yZXF1aXJlKCdub2RlOmZzJyksY3A9cmVxdWlyZSgnbm9kZTpjaGlsZF9wcm9jZXNzJyk7Y29uc3QgZGF0YT17bWFya2VyOidRQV9BNjcxX1lBUk5fUlVOVElNRScsYnVpbHQ6ZnMucmVhZEZpbGVTeW5jKCdxYV95YXJuX21hcmtlci50eHQnLCd1dGY4Jyksbm9kZTpwcm9jZXNzLnZlcnNpb24seWFybjpjcC5leGVjRmlsZVN5bmMoJ3lhcm4nLFsnLS12ZXJzaW9uJ10se2VuY29kaW5nOid1dGY4J30pLnRyaW0oKX07aHR0cC5jcmVhdGVTZXJ2ZXIoKHEscik9PntyLndyaXRlSGVhZCgyMDAseydDb250ZW50LVR5cGUnOidhcHBsaWNhdGlvbi9qc29uJ30pO3IuZW5kKEpTT04uc3RyaW5naWZ5KGRhdGEpKX0pLmxpc3RlbihOdW1iZXIocHJvY2Vzcy5lbnYuUE9SVHx8MzAwMCksJzAuMC4wLjAnKTs=' | base64 -d > qa_yarn.cjs && yarn --version && printf QA_A671_YARN_BUILT > qa_yarn_marker.txt",
+              "startCommand": "node qa_yarn.cjs"
+            },
+            "healthCheckPath": "/",
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "node"
+          },
+          "type": "web_service"
+        },
+        "raw_body": "{\"autoDeploy\":\"no\",\"branch\":\"main\",\"envVars\":[{\"key\":\"NODE_VERSION\",\"value\":\"26\"}],\"name\":\"qa-20261017-eab59e-yarn26\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"repo\":\"https://github.com/bex-co/bex\",\"rootDir\":\"examples/hello-node\",\"serviceDetails\":{\"envSpecificDetails\":{\"buildCommand\":\"printf %s 'Y29uc3QgaHR0cD1yZXF1aXJlKCdub2RlOmh0dHAnKSxmcz1yZXF1aXJlKCdub2RlOmZzJyksY3A9cmVxdWlyZSgnbm9kZTpjaGlsZF9wcm9jZXNzJyk7Y29uc3QgZGF0YT17bWFya2VyOidRQV9BNjcxX1lBUk5fUlVOVElNRScsYnVpbHQ6ZnMucmVhZEZpbGVTeW5jKCdxYV95YXJuX21hcmtlci50eHQnLCd1dGY4Jyksbm9kZTpwcm9jZXNzLnZlcnNpb24seWFybjpjcC5leGVjRmlsZVN5bmMoJ3lhcm4nLFsnLS12ZXJzaW9uJ10se2VuY29kaW5nOid1dGY4J30pLnRyaW0oKX07aHR0cC5jcmVhdGVTZXJ2ZXIoKHEscik9PntyLndyaXRlSGVhZCgyMDAseydDb250ZW50LVR5cGUnOidhcHBsaWNhdGlvbi9qc29uJ30pO3IuZW5kKEpTT04uc3RyaW5naWZ5KGRhdGEpKX0pLmxpc3RlbihOdW1iZXIocHJvY2Vzcy5lbnYuUE9SVHx8MzAwMCksJzAuMC4wLjAnKTs=' | base64 -d \\u003e qa_yarn.cjs \\u0026\\u0026 yarn --version \\u0026\\u0026 printf QA_A671_YARN_BUILT \\u003e qa_yarn_marker.txt\",\"startCommand\":\"node qa_yarn.cjs\"},\"healthCheckPath\":\"/\",\"plan\":\"free\",\"region\":\"frankfurt\",\"runtime\":\"node\"},\"type\":\"web_service\"}",
+        "headers": {
+          "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "Content-Type": "application/json"
+        },
+        "authorization": "[REDACTED]"
+      },
+      "status": 201,
+      "response": "{\"service\":{\"id\":\"srv-db9mlscflioc739mcltg\",\"name\":\"qa-20261017-eab59e-yarn26\",\"immutableName\":\"qa-20261017-eab59e-yarn26\",\"slug\":\"qa-20261017-eab59e-yarn26\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db9mlscflioc739mcltg\",\"createdAt\":\"2026-10-17T12:32:50Z\",\"updatedAt\":\"2026-10-17T12:32:50Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"QA_PRIVATE_VALUE_REDACTED\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf %s 'Y29uc3QgaHR0cD1yZXF1aXJlKCdub2RlOmh0dHAnKSxmcz1yZXF1aXJlKCdub2RlOmZzJyksY3A9cmVxdWlyZSgnbm9kZTpjaGlsZF9wcm9jZXNzJyk7Y29uc3QgZGF0YT17bWFya2VyOidRQV9BNjcxX1lBUk5fUlVOVElNRScsYnVpbHQ6ZnMucmVhZEZpbGVTeW5jKCdxYV95YXJuX21hcmtlci50eHQnLCd1dGY4Jyksbm9kZTpwcm9jZXNzLnZlcnNpb24seWFybjpjcC5leGVjRmlsZVN5bmMoJ3lhcm4nLFsnLS12ZXJzaW9uJ10se2VuY29kaW5nOid1dGY4J30pLnRyaW0oKX07aHR0cC5jcmVhdGVTZXJ2ZXIoKHEscik9PntyLndyaXRlSGVhZCgyMDAseydDb250ZW50LVR5cGUnOidhcHBsaWNhdGlvbi9qc29uJ30pO3IuZW5kKEpTT04uc3RyaW5naWZ5KGRhdGEpKX0pLmxpc3RlbihOdW1iZXIocHJvY2Vzcy5lbnYuUE9SVHx8MzAwMCksJzAuMC4wLjAnKTs=' | base64 -d \\u003e qa_yarn.cjs \\u0026\\u0026 yarn --version \\u0026\\u0026 printf QA_A671_YARN_BUILT \\u003e qa_yarn_marker.txt\",\"preDeployCommand\":\"\",\"startCommand\":\"node qa_yarn.cjs\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261017-eab59e-yarn26:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261017-eab59e-yarn26.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"replicas\":1,\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-node\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"},\"deployId\":\"dep-db9mlscflioc739mclu0\"}\n",
+      "response_headers": {
+        "Content-Type": "application/json",
+        "CF-RAY": "a4bf5402bf232574-SJC"
+      }
+    }
+  ]
+}

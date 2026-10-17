@@ -1,0 +1,7 @@
+from pathlib import Path
+import subprocess,json
+P=Path(__file__).resolve().parent;CP=P.parent/'cli-qa-w8-checkpoint.json'
+steps=[('restart-bex',['sweep446-restart.py','exercise','bex'],180),('restart-render',['sweep446-restart.py','exercise','render'],180),('shared-after-restart',['sweep446-shared-state.py'],180),('logs-bex',['sweep446-native-rust.py','logs','bex'],90),('logs-render',['sweep446-native-rust.py','logs','render'],90),('correlate',['sweep446-correlate-logs.py'],60),('cleanup',['sweep446-cleanup.py'],600)]
+for label,args,bound in steps:
+ xs=[v for v in json.loads(CP.read_text())['resources'] if v.get('sweep')==446];assert len(xs)==2 and all(x.get('runtime_receipts') and x['runtime_receipts'][-1]['pass'] and len(x.get('shared_state',[])) in (3,6) and x['explicit_env_readbacks'][-1]['pass'] for x in xs)
+ r=subprocess.run(['python3',str(P/args[0]),*args[1:]],capture_output=True,text=True,timeout=bound);(P/('sweep446-'+label+'-receipt.json')).write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));print(r.stdout,flush=True);r.check_returncode()

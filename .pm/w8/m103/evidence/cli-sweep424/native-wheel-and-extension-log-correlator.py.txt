@@ -1,0 +1,14 @@
+from pathlib import Path
+import json,sys,re,hashlib,zipfile
+P=Path(__file__).resolve().parent;f=P/'sweep424-common.py';sys.argv=[str(f),'app-logs','bex'];exec(compile(f.read_text(),str(f),'exec'));xs=[x for x in c['resources'] if x.get('sweep')==424];assert len(xs)==2
+with zipfile.ZipFile(P/'candidate-python-tools-wheel.whl') as z:wheel_sha=hashlib.sha256(z.read('qa_local_data/__init__.py')).hexdigest()
+for x in xs:
+ own(x);accepted=[v for v in x.get('runtime_receipts',[]) if v['phase']=='full' and v['pass']];assert len(accepted)==1;paths={v['path'] for v in accepted[0]['requests']};ext={v['decoded']['runtime']['extension']['sha256'] for v in accepted[0]['requests']};assert len(ext)==1;r=cli(['logs','--resources',x['id'],'--type','app','--text','QA_PYTOOLS_HTTP','--start',datetime.datetime.fromisoformat(x['durable_HTTP_attempts'][-1]['at']).strftime('%Y-%m-%dT%H:%M:%SZ'),'--limit','100','--confirm','-o','json'],client=x['client']);e={'at':now(),'native':r,'expected_paths':sorted(paths),'matched':[]};x.setdefault('application_log_correlations',[]).append(e);save();assert r['native_exit']==0;raw=r['stdout'];decoder=json.JSONDecoder()
+ while raw.strip():
+  raw=raw.lstrip();v,n=decoder.raw_decode(raw);raw=raw[n:]
+  for z in v if isinstance(v,list) else [v]:
+   for m in re.finditer(r'QA_PYTOOLS_HTTP (\{[^\n]+\})',z.get('message','')):
+    try:d=json.loads(m[1])
+    except ValueError:continue
+    if d.get('marker')==x['marker'] and d.get('path') in paths and d.get('result')==x['primary_reference']['expected'] and d.get('unicode')==x['primary_reference']['unicode'] and d.get('extension_sha256') in ext and d.get('wheel_sha256')==wheel_sha:e['matched'].append(d)
+ e['pass']={v['path'] for v in e['matched']}==paths;save();print(json.dumps({'client':x['client'],'real_wheel_and_C_extension_request_events':len(e['matched']),'pass':e['pass']}),flush=True);assert e['pass']

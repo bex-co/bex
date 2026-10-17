@@ -1,0 +1,59 @@
+{
+  "nonce": "965afa",
+  "context": "<owned-temp>/candidate-gs-qdi0qapj",
+  "image": "python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4",
+  "scope": "local selected-base real own-PDF render, not full generated image or hosted finding",
+  "input": {
+    "bytes": 471,
+    "sha256": "02768c7fec79fea6ae1edcf29baa3a039568fe93113c757067cc51d260ec5fec",
+    "base64": "JVBERi0xLjQKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCAyIDFdIC9SZXNvdXJjZXMgPDwgPj4gL0NvbnRlbnRzIDQgMCBSID4+CmVuZG9iago0IDAgb2JqCjw8IC9MZW5ndGggNDQgPj4Kc3RyZWFtCjEgMCAwIHJnIDAgMCAxIDEgcmUgZgowIDAgMSByZyAxIDAgMSAxIHJlIGYKZW5kc3RyZWFtCmVuZG9iagp4cmVmCjAgNQowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMDkgMDAwMDAgbiAKMDAwMDAwMDA1OCAwMDAwMCBuIAowMDAwMDAwMTE1IDAwMDAwIG4gCjAwMDAwMDAyMTUgMDAwMDAgbiAKdHJhaWxlcgo8PCAvU2l6ZSA1IC9Sb290IDEgMCBSID4+CnN0YXJ0eHJlZgozMDgKJSVFT0YK",
+    "pages": 1,
+    "MediaBox": [
+      0,
+      0,
+      2,
+      1
+    ],
+    "authored_own_data": true,
+    "content": "two solid red/blue vector rectangles, no text or external resources",
+    "expected_PNG_dimensions": [
+      2,
+      1
+    ],
+    "expected_RGB_hex": "ff00000000ff"
+  },
+  "cases": [
+    {
+      "label": "original",
+      "container": "qa-gs-965afa-original",
+      "absent_before": true,
+      "command": "set -e\ngs -q -dBATCH -dNOPAUSE -sDEVICE=png16m -r72 -dFirstPage=1 -dLastPage=1 -sOutputFile=qa-gs.png qa-gs.pdf\ngs --version",
+      "exit": 127,
+      "stdout": "",
+      "stderr": "bash: line 2: gs: command not found\n",
+      "pass": true
+    },
+    {
+      "label": "tool-control",
+      "container": "qa-gs-965afa-tool-control",
+      "absent_before": true,
+      "command": "set -e\napt-get update -qq && apt-get install -y --no-install-recommends ghostscript\ngs -q -dBATCH -dNOPAUSE -sDEVICE=png16m -r72 -dFirstPage=1 -dLastPage=1 -sOutputFile=qa-gs.png qa-gs.pdf\ngs --version",
+      "exit": 0,
+      "stdout": "Reading package lists...\nBuilding dependency tree...\nReading state information...\nThe following additional packages will be installed:\n  fonts-urw-base35 libavahi-client3 libavahi-common-data libavahi-common3\n  libcups2 libdbus-1-3 libfontenc1 libgs-common libgs10 libgs10-common\n  libidn12 libijs-0.35 libjbig2dec0 libpaper1 poppler-data xfonts-encodings\n  xfonts-utils\nSuggested packages:\n  fonts-freefont-otf | fonts-freefont-ttf fonts-texgyre cups-common\n  poppler-utils fonts-japanese-mincho | fonts-ipafont-mincho\n  fonts-japanese-gothic | fonts-ipafont-gothic fonts-arphic-ukai\n  fonts-arphic-uming fonts-nanum\nRecommended packages:\n  dbus fonts-droid-fallback libpaper-utils\nThe following NEW packages will be installed:\n  fonts-urw-base35 ghostscript libavahi-client3 libavahi-common-data\n  libavahi-common3 libcups2 libdbus-1-3 libfontenc1 libgs-common libgs10\n  libgs10-common libidn12 libijs-0.35 libjbig2dec0 libpaper1 poppler-data\n  xfonts-encodings xfonts-utils\n0 upgraded, 18 newly installed, 0 to remove and 8 not upgraded.\nNeed to get 16.9 MB of archives.\nAfter this operation, 59.0 MB of additional disk space will be used.\nGet:1 http://deb.debian.org/debian bookworm/main arm64 poppler-data all 0.4.12-1 [1601 kB]\nGet:2 http://deb.debian.org/debian bookworm/main arm64 libfontenc1 arm64 1:1.1.4-1 [23.6 kB]\nGet:3 http://deb.debian.org/debian bookworm/main arm64 xfonts-encodings all 1:1.0.4-2.2 [577 kB]\nGet:4 http://deb.debian.org/debian bookworm/main arm64 xfonts-utils arm64 1:7.7+6 [85.6 kB]\nGet:5 http://deb.debian.org/debian bookworm/main arm64 fonts-urw-base35 all 20200910-7 [10.8 MB]\nGet:6 http://deb.debian.org/debian bookworm/main arm64 libgs-common all 10.0.0~dfsg-11+deb12u8 [149 kB]\nGet:7 http://deb.debian.org/debian bookworm/main arm64 libgs10-common all 10.0.0~dfsg-11+deb12u8 [587 kB]\nGet:8 http://deb.debian.org/debian bookworm/main arm64 libavahi-common-data arm64 0.8-10+deb12u1 [107 kB]\nGet:9 http://deb.debian.org/debian bookworm/main arm64 libavahi-common3 arm64 0.8-10+deb12u1 [41.2 kB]\nGet:10 http://deb.debian.org/debian bookworm/main arm64 libdbus-1-3 arm64 1.14.10-1~deb12u1 [193 kB]\nGet:11 http://deb.debian.org/debian bookworm/main arm64 libavahi-client3 arm64 0.8-10+deb12u1 [44.3 kB]\nGet:12 http://deb.debian.org/debian bookworm/main arm64 libcups2 arm64 2.4.2-3+deb12u9 [230 kB]\nGet:13 http://deb.debian.org/debian bookworm/main arm64 libidn12 arm64 1.41-1 [82.8 kB]\nGet:14 http://deb.debian.org/debian bookworm/main arm64 libijs-0.35 arm64 0.35-15 [15.8 kB]\nGet:15 http://deb.debian.org/debian-security bookworm-security/main arm64 libjbig2dec0 arm64 0.19-3+deb12u1 [59.9 kB]\nGet:16 http://deb.debian.org/debian bookworm/main arm64 libpaper1 arm64 1.1.29 [12.6 kB]\nGet:17 http://deb.debian.org/debian bookworm/main arm64 libgs10 arm64 10.0.0~dfsg-11+deb12u8 [2253 kB]\nGet:18 http://deb.debian.org/debian bookworm/main arm64 ghostscript arm64 10.0.0~dfsg-11+deb12u8 [57.9 kB]\nFetched 16.9 MB in 1s (27.9 MB/s)\nSelecting previously unselected package poppler-data.\n(Reading database ... \n(Reading database ... 5%\n(Reading database ... 10%\n(Reading database ... 15%\n(Reading database ... 20%\n(Reading database ... 25%\n(Reading database ... 30%\n(Reading database ... 35%\n(Reading database ... 40%\n(Reading database ... 45%\n(Reading database ... 50%\n(Reading database ... 55%\n(Reading database ... 60%\n(Reading database ... 65%\n(Reading database ... 70%\n(Reading database ... 75%\n(Reading database ... 80%\n(Reading database ... 85%\n(Reading database ... 90%\n(Reading database ... 95%\n(Reading database ... 100%\n(Reading database ... 24001 files and directories currently installed.)\nPreparing to unpack .../00-poppler-data_0.4.12-1_all.deb ...\nUnpacking poppler-data (0.4.12-1) ...\nSelecting previously unselected package libfontenc1:arm64.\nPreparing to unpack .../01-libfontenc1_1%3a1.1.4-1_arm64.deb ...\nUnpacking libfontenc1:arm64 (1:1.1.4-1) ...\nSelecting previously unselected package xfonts-encodings.\nPreparing to unpack .../02-xfonts-encodings_1%3a1.0.4-2.2_all.deb ...\nUnpacking xfonts-encodings (1:1.0.4-2.2) ...\nSelecting previously unselected package xfonts-utils.\nPreparing to unpack .../03-xfonts-utils_1%3a7.7+6_arm64.deb ...\nUnpacking xfonts-utils (1:7.7+6) ...\nSelecting previously unselected package fonts-urw-base35.\nPreparing to unpack .../04-fonts-urw-base35_20200910-7_all.deb ...\nUnpacking fonts-urw-base35 (20200910-7) ...\nSelecting previously unselected package libgs-common.\nPreparing to unpack .../05-libgs-common_10.0.0~dfsg-11+deb12u8_all.deb ...\nUnpacking libgs-common (10.0.0~dfsg-11+deb12u8) ...\nSelecting previously unselected package libgs10-common.\nPreparing to unpack .../06-libgs10-common_10.0.0~dfsg-11+deb12u8_all.deb ...\nUnpacking libgs10-common (10.0.0~dfsg-11+deb12u8) ...\nSelecting previously unselected package libavahi-common-data:arm64.\nPreparing to unpack .../07-libavahi-common-data_0.8-10+deb12u1_arm64.deb ...\nUnpacking libavahi-common-data:arm64 (0.8-10+deb12u1) ...\nSelecting previously unselected package libavahi-common3:arm64.\nPreparing to unpack .../08-libavahi-common3_0.8-10+deb12u1_arm64.deb ...\nUnpacking libavahi-common3:arm64 (0.8-10+deb12u1) ...\nSelecting previously unselected package libdbus-1-3:arm64.\nPreparing to unpack .../09-libdbus-1-3_1.14.10-1~deb12u1_arm64.deb ...\nUnpacking libdbus-1-3:arm64 (1.14.10-1~deb12u1) ...\nSelecting previously unselected package libavahi-client3:arm64.\nPreparing to unpack .../10-libavahi-client3_0.8-10+deb12u1_arm64.deb ...\nUnpacking libavahi-client3:arm64 (0.8-10+deb12u1) ...\nSelecting previously unselected package libcups2:arm64.\nPreparing to unpack .../11-libcups2_2.4.2-3+deb12u9_arm64.deb ...\nUnpacking libcups2:arm64 (2.4.2-3+deb12u9) ...\nSelecting previously unselected package libidn12:arm64.\nPreparing to unpack .../12-libidn12_1.41-1_arm64.deb ...\nUnpacking libidn12:arm64 (1.41-1) ...\nSelecting previously unselected package libijs-0.35:arm64.\nPreparing to unpack .../13-libijs-0.35_0.35-15_arm64.deb ...\nUnpacking libijs-0.35:arm64 (0.35-15) ...\nSelecting previously unselected package libjbig2dec0:arm64.\nPreparing to unpack .../14-libjbig2dec0_0.19-3+deb12u1_arm64.deb ...\nUnpacking libjbig2dec0:arm64 (0.19-3+deb12u1) ...\nSelecting previously unselected package libpaper1:arm64.\nPreparing to unpack .../15-libpaper1_1.1.29_arm64.deb ...\nUnpacking libpaper1:arm64 (1.1.29) ...\nSelecting previously unselected package libgs10:arm64.\nPreparing to unpack .../16-libgs10_10.0.0~dfsg-11+deb12u8_arm64.deb ...\nUnpacking libgs10:arm64 (10.0.0~dfsg-11+deb12u8) ...\nSelecting previously unselected package ghostscript.\nPreparing to unpack .../17-ghostscript_10.0.0~dfsg-11+deb12u8_arm64.deb ...\nUnpacking ghostscript (10.0.0~dfsg-11+deb12u8) ...\nSetting up libpaper1:arm64 (1.1.29) ...\ndebconf: unable to initialize frontend: Dialog\ndebconf: (TERM is not set, so the dialog frontend is not usable.)\ndebconf: falling back to frontend: Readline\ndebconf: unable to initialize frontend: Readline\ndebconf: (This frontend requires a controlling tty.)\ndebconf: falling back to frontend: Teletype\n\nCreating config file /etc/papersize with new version\nSetting up libijs-0.35:arm64 (0.35-15) ...\nSetting up libgs-common (10.0.0~dfsg-11+deb12u8) ...\nSetting up poppler-data (0.4.12-1) ...\nSetting up libfontenc1:arm64 (1:1.1.4-1) ...\nSetting up libjbig2dec0:arm64 (0.19-3+deb12u1) ...\nSetting up libavahi-common-data:arm64 (0.8-10+deb12u1) ...\nSetting up libdbus-1-3:arm64 (1.14.10-1~deb12u1) ...\nSetting up xfonts-encodings (1:1.0.4-2.2) ...\nSetting up libidn12:arm64 (1.41-1) ...\nSetting up libavahi-common3:arm64 (0.8-10+deb12u1) ...\nSetting up xfonts-utils (1:7.7+6) ...\nSetting up libavahi-client3:arm64 (0.8-10+deb12u1) ...\nSetting up fonts-urw-base35 (20200910-7) ...\nSetting up libcups2:arm64 (2.4.2-3+deb12u9) ...\nSetting up libgs10-common (10.0.0~dfsg-11+deb12u8) ...\nSetting up libgs10:arm64 (10.0.0~dfsg-11+deb12u8) ...\nSetting up ghostscript (10.0.0~dfsg-11+deb12u8) ...\nProcessing triggers for libc-bin (2.36-9+deb12u14) ...\nProcessing triggers for fontconfig (2.14.1-4) ...\n10.00.0\n",
+      "stderr": "debconf: delaying package configuration, since apt-utils is not installed\n",
+      "independent_PNG_decode": {
+        "width": 2,
+        "height": 1,
+        "filter": 0,
+        "pixels_hex": "ff00000000ff",
+        "pixels_sha256": "ca5cc6d6fb20a0af14a7964e9ca8656880d62f7d55df12171ac14d3a858590aa",
+        "PNG_sha256": "9ef91e2f0925afb7d340610da1a9b2647e67cabf747435c753361fd61325e040"
+      },
+      "PNG_bytes": 2503,
+      "PNG_sha256": "9ef91e2f0925afb7d340610da1a9b2647e67cabf747435c753361fd61325e040",
+      "pass": true
+    }
+  ],
+  "pass": true,
+  "own_containers_context_removed": true
+}

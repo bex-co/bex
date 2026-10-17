@@ -1,0 +1,18 @@
+{
+  "invalid_pg_restore_inserts_option": {
+    "excluded": true,
+    "own_local_server_removed": true,
+    "correction": "--inserts belongs to pg_dump; final pg_restore accepts recorded flags"
+  },
+  "binary_text_transport": {
+    "excluded_parent": "srv-db9gds9qj49s73b3i980",
+    "excluded_child": "dep-db9gds9qj49s73b3i98g",
+    "all_removed": true
+  },
+  "initial_export_pair": "NativeFilesSecret was absent in initial recipe-only export; corrected pair then re-exported before valid production fixtures; full generated-image execution unclaimed",
+  "bounded_control_wait": {
+    "client": "bex",
+    "last_status": "update_in_progress",
+    "result": "First eight-read window ended pending; later same replacement child Live/log/HTTP checks passed. No update/create/deploy replay."
+  }
+}

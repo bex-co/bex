@@ -1,0 +1,7 @@
+import json,gzip,base64,hashlib
+def commands(P,reference,marker,control=False):
+ program=(P/'candidate-pigz-app.py').read_text();assert hashlib.sha256(program.encode()).hexdigest()==reference['program_sha256'];files={'qa-pigz-app.py':program,'qa-pigz-reference.json':json.dumps(reference,separators=(',',':'),ensure_ascii=False),'qa-pigz-marker.json':json.dumps(marker)};blob=base64.b64encode(gzip.compress(json.dumps(files,ensure_ascii=False,separators=(',',':')).encode(),mtime=0)).decode();assert json.loads(gzip.decompress(base64.b64decode(blob)))==files
+ build="set -e\npython - <<'QA_PIGZ_SOURCES'\nimport base64,gzip,json,pathlib\nfor n,s in json.loads(gzip.decompress(base64.b64decode('"+blob+"'))).items():pathlib.Path(n).write_text(s)\nQA_PIGZ_SOURCES\npython qa-pigz-app.py before\n"
+ if control:build+='apt-get update -qq && apt-get install -y --no-install-recommends pigz\n'
+ build+='pigz -n -p 2 -c qa-pigz-input.txt > qa-pigz-output.gz\npython qa-pigz-app.py build';assert len(build.encode())<=4096
+ return {'build':build,'start':'python qa-pigz-app.py serve','program_sha256':reference['program_sha256']}

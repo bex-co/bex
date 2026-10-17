@@ -1,0 +1,17 @@
+{
+  "command": [
+    "go",
+    "test",
+    "-overlay",
+    "<owned-temp>/sweep452-go-overlay.json",
+    "./internal/build",
+    "-run",
+    "^TestQA452ExportGeneratedPythonArtifacts$",
+    "-count=1",
+    "-json"
+  ],
+  "exit": 0,
+  "source_HEAD": "2a409e808edb19cf05756d2f071f80f061e80336",
+  "exported_cases": 6,
+  "product_source_files_changed": false
+}

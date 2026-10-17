@@ -1,0 +1,54 @@
+from pathlib import Path
+import sys,json,re,hashlib,yaml
+P=Path(__file__).resolve().parent;f=P/'sweep449-common.py';sys.argv=[str(f),'live-tail','bex'];exec(compile(f.read_text(),str(f),'exec'));ns={};f=P/'sweep449-tail-capture.py';exec(compile(f.read_text(),str(f),'exec'),ns);x=next(v for v in c['resources'] if v.get('sweep')==449 and v.get('client')=='bex');own(x);assert not x.get('log_tail_exercises') and x['runtime_receipts'][-1]['pass'] and len(x['shared_state'])==3;assert json.loads((P/'sweep449-local-incremental-tail-prerequisite.json').read_text())['pass'];sid=x['id'];url=x['create_view']['serviceDetails']['url'];h=history(x);assert len(h)==1 and h[0]['status']=='live';token_check=cli(['whoami','--confirm','-o','json']);assert token_check['native_exit']==0;private=yaml.safe_load((P/'config/cli.yaml').read_text())['api'];token=private.get('token') or private.get('key') or private.get('access_token');assert token;del private;e={'at':now(),'phase':'starting bounded real native followers','native_identity_check':token_check,'before_history':h,'follower_intents':[],'emitted':[],'health':[],'capture_paths':{},'duration_bound_seconds':180};x.setdefault('log_tail_exercises',[]).append(e);save();tails={};started=time.monotonic()
+def request(path):
+ r=subprocess.run(['curl','--disable','-sS','--max-time','7','-w','\n%{http_code}',url+path],capture_output=True,text=True,timeout=11);raw,_,status=r.stdout.rpartition('\n')
+ try:v=json.loads(raw)
+ except ValueError:v=None
+ return {'at':now(),'path':path,'HTTP':status,'curl_exit':r.returncode,'decoded':v,'raw':raw,'stderr':r.stderr}
+def events(actor):
+ out=[]
+ for row in tails[actor].logs():
+  for m in re.finditer(r'QA449_EVENT (\{[^\n]+\})',row.get('message','')):
+   v=json.loads(m[1])
+   if v.get('marker')==x['marker']:out.append({'payload':v,'native_log':row})
+ return out
+def emit(nonce,sequence):
+ z={'at':now(),'nonce':nonce,'sequence':sequence,'intent':'one harmless owned HTTP event'};e['emitted'].append(z);save();r=request('/emit/'+nonce+'/'+str(sequence));z['HTTP_result']=r;save();v=r['decoded'];assert r['curl_exit']==0 and r['HTTP']=='200' and isinstance(v,dict) and v['marker']==x['marker'] and v['nonce']==nonce and v['sequence']==sequence and v['text']=='Render CLI preserves café:李\nsecond line';return v
+def wait_keys(nonce,count,bound=18):
+ end=time.monotonic()+bound
+ while time.monotonic()<end:
+  if all({v['payload']['sequence'] for v in events(a) if v['payload']['nonce']==nonce}>=set(range(count)) for a in tails):return True
+  if any(t.proc.poll() is not None for t in tails.values()):return False
+  time.sleep(.3)
+ return False
+try:
+ for actor in ['bex','render']:
+  e['follower_intents'].append({'actor':actor,'resource':sid,'workspace':ws,'config_has_no_auth_values':True});save();tail=ns['NativeTail'](P,actor,token,ws,sid,x['marker'],secrets_to_mask=(os.environ.get('QA_EMAIL'),os.environ.get('QA_PASSWORD')));tails[actor]=tail;e['capture_paths'][actor]=str(tail.capture);e.setdefault('owned_follower_PIDs',{})[actor]=tail.proc.pid;save()
+ initial=request('/');e['initial']=initial;save();assert initial['HTTP']=='200' and initial['decoded']['marker']==x['marker'];old_boot=initial['decoded']['boot'];warm=x['nonce']+'_warm';connected=False
+ for i in range(8):
+  if any(t.proc.poll() is not None for t in tails.values()):break
+  emit(warm,i);time.sleep(2)
+  if all(any(z['payload']['nonce']==warm for z in events(a)) for a in tails):connected=True;break
+ e['both_real_followers_observed_warmup']=connected;save()
+ if connected:
+  before=x['nonce']+'_before';after=x['nonce']+'_after'
+  for i in range(4):emit(before,i);time.sleep(.25)
+  e['both_before_delivered']=wait_keys(before,4);save()
+  if e['both_before_delivered']:
+   e['restart_intent']={'at':now(),'command':['bex','restart',sid,'--confirm','-o','json']};save();r=cli(['restart',sid,'--confirm','-o','json']);e['native_restart']=r;save();assert r['native_exit']==0,'Reconcile this one restart before any retry';new=None;observed=history(x);last_history=time.monotonic()
+   while time.monotonic()-started<130:
+    z=request('/');e['health'].append(z);v=z['decoded']
+    if time.monotonic()-last_history>=8:observed=history(x);last_history=time.monotonic()
+    if z['HTTP']=='200' and isinstance(v,dict) and v.get('marker')==x['marker'] and v.get('boot')!=old_boot and len(observed)==2 and observed[0]['status']=='live':new=v;break
+    time.sleep(1)
+   e['after_history']=observed;e['new_boot']=new;save();assert new is not None,'Same restart convergence is pending; do not replay'
+   for i in range(4):emit(after,i);time.sleep(.25)
+   e['both_after_delivered']=wait_keys(after,4);time.sleep(2);save()
+finally:
+ e['captures']={}
+ for actor,tail in tails.items():e['captures'][actor]=tail.stop()
+ e['events']={actor:events(actor) for actor in tails};e['finished_elapsed']=time.monotonic()-started;e['own_followers_configs_stopped_removed']=all(v['reader_threads_stopped'] and v['own_config_directory_removed'] for v in e['captures'].values());e['case_results']={}
+ for actor,rows in e['events'].items():
+  measured=[z for z in rows if z['payload']['nonce'] in [x['nonce']+'_before',x['nonce']+'_after']];keys=[(z['payload']['nonce'],z['payload']['sequence']) for z in measured];wanted={(x['nonce']+'_'+phase,i) for phase in ['before','after'] for i in range(4)};bodies={z['HTTP_result']['decoded']['nonce']+'#'+str(z['sequence']):z['HTTP_result']['decoded'] for z in e['emitted']};value_exact=all(v['payload']==bodies.get(v['payload']['nonce']+'#'+str(v['payload']['sequence'])) for v in measured);e['case_results'][actor]={'measured_events':len(measured),'exact_once_keys':len(keys)==8 and set(keys)==wanted,'exact_HTTP_origin_payloads':value_exact,'native_alive_until_own_interrupt':not e['captures'][actor]['exited_before_own_interrupt'],'native_exit_after_interrupt':e['captures'][actor]['native_exit']}
+ e['pass']=bool(e.get('both_real_followers_observed_warmup') and e.get('both_before_delivered') and e.get('both_after_delivered') and e.get('native_restart',{}).get('native_exit')==0 and e['own_followers_configs_stopped_removed'] and all(v['exact_once_keys'] and v['exact_HTTP_origin_payloads'] and v['native_alive_until_own_interrupt'] for v in e['case_results'].values()));e['phase']='bounded native log tail completed; compare retained exact observations';save();print(json.dumps({'both_real_followers_warmup':e.get('both_real_followers_observed_warmup'),'native_restart_exit':e.get('native_restart',{}).get('native_exit'),'cases':e['case_results'],'pass':e['pass'],'own_followers_and_configs_removed':e['own_followers_configs_stopped_removed']}),flush=True)

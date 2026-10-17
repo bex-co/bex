@@ -1,0 +1,5 @@
+from pathlib import Path
+import subprocess,json,time
+P=Path(__file__).resolve().parent;CP=P.parent/'cli-qa-w8-checkpoint.json';xs=[v for v in json.loads(CP.read_text())['resources'] if v.get('sweep')==402 and not v.get('excluded_setup')];assert len(xs)==2 and all(any(z.get('control_proof_pass') for z in x['log_receipts']) and len(x['runtime_receipts'])==2 and x['runtime_receipts'][-1]['pass'] for x in xs)
+for name,bound in [('shared-state',150),('app-logs',150),('cleanup',600)]:
+ r=subprocess.run(['python3',str(P/('sweep402-'+name+'.py'))],capture_output=True,text=True,timeout=bound);(P/('sweep402-finalize-'+name+'.json')).write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));print(r.stdout,flush=True);r.check_returncode()

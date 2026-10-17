@@ -1,0 +1,14 @@
+from pathlib import Path
+import sys,json
+P=Path(__file__).resolve().parent;f=P/'sweep451-common.py';sys.argv=[str(f),'local-artifact-final-inventory','bex'];exec(compile(f.read_text().replace('451','452'),str(f),'exec'));assert not any(v.get('sweep')==452 and v.get('id') for v in c['resources']);out={};r,views=inventory();ids={v['id'] for v in views if v['id'].startswith('srv-')};assert baseline<=ids;data={k:{v['id'] for v in views if v['id'].startswith(prefix)} for k,prefix in [('postgres','dpg-'),('keyValues','red-')]};out['services']={'pass':True,'baseline_present':True,'current_IDs':sorted(ids),'unrelated_nonbaseline_IDs':sorted(ids-baseline)};out['datastores']={'pass':True,'current_IDs':{k:sorted(v) for k,v in data.items()}}
+for kind,path in [('groups','/v1/env-groups?ownerId='+ws),('projects','/v1/projects?ownerId='+ws),('blueprints','/v1/blueprints?ownerId='+ws),('quota','/v1/owners/'+ws+'/limits')]:
+ r=api('GET',path);assert r['status']=='200';v=decode(r)
+ if kind=='quota':passed=v['services']['used']==len(ids) and v['services']['terminating']==0 and all(v[k]['used']==len(data[k]) and v[k]['terminating']==0 for k in data);observed=v
+ else:
+  key={'groups':'envGroup','projects':'project','blueprints':'blueprint'}[kind];rows=[z.get(key,z) for z in v];seen={z['id'] for z in rows};observed=sorted(seen)
+  if kind=='groups':passed=not seen&{z['id'] for z in c['sweep451_groups']}
+  elif kind=='blueprints':passed='blp-db136288mmqc73d4hpug' in seen
+  else:passed=True
+  r['response']=json.dumps([{'id':z,'projection':'unrelated metadata identity only; configuration omitted'} for z in observed])
+ out[kind]={'pass':bool(passed),'receipt':r,'current_IDs_or_quota':observed};assert passed;print(json.dumps({'kind':kind,'pass':True}),flush=True)
+c['sweep452_final_inventory']=out;save()

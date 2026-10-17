@@ -1,0 +1,20 @@
+from pathlib import Path
+import subprocess,json,secrets,shutil,tempfile,hashlib,os
+os.umask(0o077);P=Path(__file__).resolve().parent;nonce=secrets.token_hex(3);image='python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4';ctx=Path(tempfile.mkdtemp(prefix='candidate-swig-',dir=P));out={'nonce':nonce,'image':image,'context':str(ctx),'cases':[],'qualification':'selected cached Python3.13 base, real own SWIG/C extension, not full generated native image or hosted finding'}
+interface='%module qa_swig\n%inline %{\nint weighted_sum(int a,int b) { return a*2+b*3; }\nconst char *dessert(void) { return "Crème brûlée & 李"; }\n%}\n';(P/'candidate-swig-interface.i').write_text(interface)
+def save():(P/'candidate-swig-prerequisite.json').write_text(json.dumps(out,indent=2,ensure_ascii=False))
+try:
+ for control in [False,True]:
+  case='control' if control else 'original';name='qa-swig-'+nonce+'-'+case;d=ctx/case;d.mkdir();(d/'qa_swig.i').write_text(interface);assert subprocess.run(['docker','container','inspect',name],capture_output=True).returncode!=0
+  command='set -e\npython -c '+"'import json,shutil,sys; print(json.dumps({\"python\":sys.version.split()[0],\"swig\":shutil.which(\"swig\"),\"gcc\":shutil.which(\"gcc\"),\"python_config\":shutil.which(\"python3-config\")}))'"+'\n'
+  if control:command+='apt-get update -qq && apt-get install -y --no-install-recommends swig\n'
+  command+='swig -python qa_swig.i\ngcc -shared -fPIC $(python3-config --includes) qa_swig_wrap.c -o _qa_swig$(python3-config --extension-suffix)\npython - <<\'QA_SWIG_CHECK\'\nimport qa_swig,json\nassert qa_swig.weighted_sum(2,3)==13\nassert qa_swig.weighted_sum(-4,7)==13\nassert qa_swig.dessert()=="Crème brûlée & 李"\nprint("QA_SWIG_REAL_EXTENSION",json.dumps({"weighted":qa_swig.weighted_sum(2,3),"unicode":qa_swig.dessert()},ensure_ascii=False))\nQA_SWIG_CHECK'
+  e={'case':case,'container':name,'command':command,'interface_sha256':hashlib.sha256(interface.encode()).hexdigest(),'absent_before':True};out['cases'].append(e);save()
+  try:
+   r=subprocess.run(['docker','run','--name',name,'--label','bex.qa.swig='+nonce,'--mount','type=bind,source='+str(d)+',target=/qa','--workdir','/qa',image,'bash','-lc',command],capture_output=True,text=True,timeout=180);e.update(exit=r.returncode,stdout=r.stdout,stderr=r.stderr);e['pass']=(r.returncode==0 and 'QA_SWIG_REAL_EXTENSION' in r.stdout) if control else r.returncode==127 and 'swig: command not found' in r.stderr;save();print(json.dumps({'case':case,'exit':r.returncode,'pass':e['pass']}),flush=True);assert e['pass']
+  finally:
+   r=subprocess.run(['docker','container','inspect',name],capture_output=True,text=True)
+   if r.returncode==0:
+    v=json.loads(r.stdout)[0];assert v['Config']['Labels'].get('bex.qa.swig')==nonce and any(m.get('Source')==str(d) and m.get('Destination')=='/qa' for m in v['Mounts']);subprocess.run(['docker','rm','-f',name],check=True,capture_output=True)
+ out['pass']=all(v['pass'] for v in out['cases']);save()
+finally:shutil.rmtree(ctx);out['own_containers_context_removed']=not ctx.exists() and all(subprocess.run(['docker','container','inspect',v['container']],capture_output=True).returncode!=0 for v in out['cases']);save()

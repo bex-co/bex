@@ -1,0 +1,1388 @@
+{
+  "source_export": {
+    "command": [
+      "go",
+      "test",
+      "-overlay",
+      "<owned-temp>/sweep452-go-overlay.json",
+      "./internal/build",
+      "-run",
+      "^TestQA452ExportGeneratedPythonArtifacts$",
+      "-count=1",
+      "-json"
+    ],
+    "exit": 0,
+    "source_HEAD": "2a409e808edb19cf05756d2f071f80f061e80336",
+    "exported_cases": 6,
+    "product_source_files_changed": false
+  },
+  "scope": "actual unchanged generated Dockerfile execution; manually supplied harmless encoded build bundle and runtime overrides; actual preparation Pod not executed",
+  "cases": [
+    {
+      "case": {
+        "Name": "web-default",
+        "Static": false,
+        "Build": "set -e\ncat > qa362-observer.py <<'QA362_OBSERVER_SOURCE'\nimport hashlib,json,os,platform,sys\nfrom pathlib import Path\nfrom importlib.metadata import version\nfrom gunicorn.app.wsgiapp import WSGIApplication\nreference=json.loads(Path('qa362-reference.json').read_text()); marker=json.loads(Path('qa362-marker.json').read_text())\nfiles={n:{'bytes':len((b:=Path(n).read_bytes())),'sha256':hashlib.sha256(b).hexdigest()} for n in reference['files']}\nassert files==reference['files']\nphase=sys.argv[1];sys.argv=['gunicorn','app:app'];a=WSGIApplication()\nv={'marker':marker,'phase':phase,'python':platform.python_version(),'gunicorn':version('Gunicorn'),'flask':version('Flask'),'files':files,'gunicorn_cmd_args_present':'GUNICORN_CMD_ARGS' in os.environ,'gunicorn_cmd_args':os.environ.get('GUNICORN_CMD_ARGS'),'accesslog':a.cfg.accesslog,'preload_app':a.cfg.preload_app,'bind':a.cfg.bind}\nPath('qa362-'+phase+'.json').write_text(json.dumps(v)); print('QA362_OBSERVER '+json.dumps(v,separators=(',',':')),flush=True)\n\nQA362_OBSERVER_SOURCE\ncat > qa362-reference.json <<'QA362_REFERENCE'\n{\"repo\": \"https://github.com/render-examples/flask-hello-world\", \"branch\": \"main\", \"commit\": \"facfc73c44b35d00bb1f72e8986f0ea47cab0755\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}}\nQA362_REFERENCE\ncat > qa362-marker.json <<'QA362_MARKER'\n\"QA452_web-default\"\nQA362_MARKER\npip install --disable-pip-version-check -r requirements.txt\npython qa362-observer.py build",
+        "Start": "python qa362-observer.py runtime && exec gunicorn app:app",
+        "Marker": "QA452_web-default",
+        "Override": null
+      },
+      "image": "qa452-python:web-default-baf3f8d0",
+      "container": "qa452-web-default-baf3f8d0",
+      "build_intent_recorded": true,
+      "pass": true,
+      "image_config": {
+        "id": "sha256:6c38737cd8c560c5f2a43c3f986b3356615c81140259e50ca1001e14d34cc121",
+        "architecture": "arm64",
+        "os": "linux",
+        "cmd": [
+          "/bin/bash",
+          "-c",
+          "python qa362-observer.py runtime && exec gunicorn app:app"
+        ],
+        "entrypoint": null,
+        "workdir": "/opt/render/project/src",
+        "GUNICORN_CMD_ARGS_image_default": "--preload --access-logfile -",
+        "PORT_image_default": "10000"
+      },
+      "build": {
+        "marker": "QA452_web-default",
+        "phase": "build",
+        "python": "3.12.15",
+        "gunicorn": "26.2.0",
+        "flask": "3.1.3",
+        "files": {
+          "app.py": {
+            "bytes": 109,
+            "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+          },
+          "requirements.txt": {
+            "bytes": 15,
+            "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+          }
+        },
+        "gunicorn_cmd_args_present": true,
+        "gunicorn_cmd_args": "--preload --access-logfile -",
+        "accesslog": "-",
+        "preload_app": true,
+        "bind": [
+          "127.0.0.1:8000"
+        ]
+      },
+      "build_pass": true,
+      "runtime": {
+        "marker": "QA452_web-default",
+        "phase": "runtime",
+        "python": "3.12.15",
+        "gunicorn": "26.2.0",
+        "flask": "3.1.3",
+        "files": {
+          "app.py": {
+            "bytes": 109,
+            "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+          },
+          "requirements.txt": {
+            "bytes": 15,
+            "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+          }
+        },
+        "gunicorn_cmd_args_present": true,
+        "gunicorn_cmd_args": "--preload --access-logfile -",
+        "accesslog": "-",
+        "preload_app": true,
+        "bind": [
+          "0.0.0.0:3000"
+        ]
+      },
+      "requests": [
+        {
+          "path": "/?qa452=web-default-1",
+          "status": 200,
+          "body": "Hello, World!"
+        },
+        {
+          "path": "/?qa452=web-default-2",
+          "status": 200,
+          "body": "Hello, World!"
+        },
+        {
+          "path": "/?qa452=web-default-3",
+          "status": 200,
+          "body": "Hello, World!"
+        }
+      ],
+      "runtime_pass": true,
+      "access_paths": [
+        "/?qa452=web-default-1",
+        "/?qa452=web-default-2",
+        "/?qa452=web-default-3"
+      ],
+      "expected_access_paths": [
+        "/?qa452=web-default-1",
+        "/?qa452=web-default-2",
+        "/?qa452=web-default-3"
+      ],
+      "actual_server_exit": 0
+    },
+    {
+      "case": {
+        "Name": "web-custom",
+        "Static": false,
+        "Build": "set -e\ncat > qa362-observer.py <<'QA362_OBSERVER_SOURCE'\nimport hashlib,json,os,platform,sys\nfrom pathlib import Path\nfrom importlib.metadata import version\nfrom gunicorn.app.wsgiapp import WSGIApplication\nreference=json.loads(Path('qa362-reference.json').read_text()); marker=json.loads(Path('qa362-marker.json').read_text())\nfiles={n:{'bytes':len((b:=Path(n).read_bytes())),'sha256':hashlib.sha256(b).hexdigest()} for n in reference['files']}\nassert files==reference['files']\nphase=sys.argv[1];sys.argv=['gunicorn','app:app'];a=WSGIApplication()\nv={'marker':marker,'phase':phase,'python':platform.python_version(),'gunicorn':version('Gunicorn'),'flask':version('Flask'),'files':files,'gunicorn_cmd_args_present':'GUNICORN_CMD_ARGS' in os.environ,'gunicorn_cmd_args':os.environ.get('GUNICORN_CMD_ARGS'),'accesslog':a.cfg.accesslog,'preload_app':a.cfg.preload_app,'bind':a.cfg.bind}\nPath('qa362-'+phase+'.json').write_text(json.dumps(v)); print('QA362_OBSERVER '+json.dumps(v,separators=(',',':')),flush=True)\n\nQA362_OBSERVER_SOURCE\ncat > qa362-reference.json <<'QA362_REFERENCE'\n{\"repo\": \"https://github.com/render-examples/flask-hello-world\", \"branch\": \"main\", \"commit\": \"facfc73c44b35d00bb1f72e8986f0ea47cab0755\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}}\nQA362_REFERENCE\ncat > qa362-marker.json <<'QA362_MARKER'\n\"QA452_web-custom\"\nQA362_MARKER\npip install --disable-pip-version-check -r requirements.txt\npython qa362-observer.py build",
+        "Start": "python qa362-observer.py runtime && exec gunicorn app:app",
+        "Marker": "QA452_web-custom",
+        "Override": "--access-logfile /dev/null --preload"
+      },
+      "image": "qa452-python:web-custom-baf3f8d0",
+      "container": "qa452-web-custom-baf3f8d0",
+      "build_intent_recorded": true,
+      "pass": true,
+      "image_config": {
+        "id": "sha256:ea3dca3c014d4232f621bd35fc540362bdf795cf952d371b7f8d1949070b6f96",
+        "architecture": "arm64",
+        "os": "linux",
+        "cmd": [
+          "/bin/bash",
+          "-c",
+          "python qa362-observer.py runtime && exec gunicorn app:app"
+        ],
+        "entrypoint": null,
+        "workdir": "/opt/render/project/src",
+        "GUNICORN_CMD_ARGS_image_default": "--preload --access-logfile -",
+        "PORT_image_default": "10000"
+      },
+      "build": {
+        "marker": "QA452_web-custom",
+        "phase": "build",
+        "python": "3.12.15",
+        "gunicorn": "26.2.0",
+        "flask": "3.1.3",
+        "files": {
+          "app.py": {
+            "bytes": 109,
+            "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+          },
+          "requirements.txt": {
+            "bytes": 15,
+            "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+          }
+        },
+        "gunicorn_cmd_args_present": true,
+        "gunicorn_cmd_args": "--access-logfile /dev/null --preload",
+        "accesslog": "/dev/null",
+        "preload_app": true,
+        "bind": [
+          "127.0.0.1:8000"
+        ]
+      },
+      "build_pass": true,
+      "runtime": {
+        "marker": "QA452_web-custom",
+        "phase": "runtime",
+        "python": "3.12.15",
+        "gunicorn": "26.2.0",
+        "flask": "3.1.3",
+        "files": {
+          "app.py": {
+            "bytes": 109,
+            "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+          },
+          "requirements.txt": {
+            "bytes": 15,
+            "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+          }
+        },
+        "gunicorn_cmd_args_present": true,
+        "gunicorn_cmd_args": "--access-logfile /dev/null --preload",
+        "accesslog": "/dev/null",
+        "preload_app": true,
+        "bind": [
+          "0.0.0.0:3000"
+        ]
+      },
+      "requests": [
+        {
+          "path": "/?qa452=web-custom-1",
+          "status": 200,
+          "body": "Hello, World!"
+        },
+        {
+          "path": "/?qa452=web-custom-2",
+          "status": 200,
+          "body": "Hello, World!"
+        },
+        {
+          "path": "/?qa452=web-custom-3",
+          "status": 200,
+          "body": "Hello, World!"
+        }
+      ],
+      "runtime_pass": true,
+      "access_paths": [],
+      "expected_access_paths": [],
+      "actual_server_exit": 0
+    },
+    {
+      "case": {
+        "Name": "web-empty",
+        "Static": false,
+        "Build": "set -e\ncat > qa362-observer.py <<'QA362_OBSERVER_SOURCE'\nimport hashlib,json,os,platform,sys\nfrom pathlib import Path\nfrom importlib.metadata import version\nfrom gunicorn.app.wsgiapp import WSGIApplication\nreference=json.loads(Path('qa362-reference.json').read_text()); marker=json.loads(Path('qa362-marker.json').read_text())\nfiles={n:{'bytes':len((b:=Path(n).read_bytes())),'sha256':hashlib.sha256(b).hexdigest()} for n in reference['files']}\nassert files==reference['files']\nphase=sys.argv[1];sys.argv=['gunicorn','app:app'];a=WSGIApplication()\nv={'marker':marker,'phase':phase,'python':platform.python_version(),'gunicorn':version('Gunicorn'),'flask':version('Flask'),'files':files,'gunicorn_cmd_args_present':'GUNICORN_CMD_ARGS' in os.environ,'gunicorn_cmd_args':os.environ.get('GUNICORN_CMD_ARGS'),'accesslog':a.cfg.accesslog,'preload_app':a.cfg.preload_app,'bind':a.cfg.bind}\nPath('qa362-'+phase+'.json').write_text(json.dumps(v)); print('QA362_OBSERVER '+json.dumps(v,separators=(',',':')),flush=True)\n\nQA362_OBSERVER_SOURCE\ncat > qa362-reference.json <<'QA362_REFERENCE'\n{\"repo\": \"https://github.com/render-examples/flask-hello-world\", \"branch\": \"main\", \"commit\": \"facfc73c44b35d00bb1f72e8986f0ea47cab0755\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}}\nQA362_REFERENCE\ncat > qa362-marker.json <<'QA362_MARKER'\n\"QA452_web-empty\"\nQA362_MARKER\npip install --disable-pip-version-check -r requirements.txt\npython qa362-observer.py build",
+        "Start": "python qa362-observer.py runtime && exec gunicorn app:app",
+        "Marker": "QA452_web-empty",
+        "Override": ""
+      },
+      "image": "qa452-python:web-empty-baf3f8d0",
+      "container": "qa452-web-empty-baf3f8d0",
+      "build_intent_recorded": true,
+      "pass": true,
+      "image_config": {
+        "id": "sha256:3be5df04ef3bbbc46cbcaa39f0ca989eb036c5db04794b972ba519deedef60b6",
+        "architecture": "arm64",
+        "os": "linux",
+        "cmd": [
+          "/bin/bash",
+          "-c",
+          "python qa362-observer.py runtime && exec gunicorn app:app"
+        ],
+        "entrypoint": null,
+        "workdir": "/opt/render/project/src",
+        "GUNICORN_CMD_ARGS_image_default": "--preload --access-logfile -",
+        "PORT_image_default": "10000"
+      },
+      "build": {
+        "marker": "QA452_web-empty",
+        "phase": "build",
+        "python": "3.12.15",
+        "gunicorn": "26.2.0",
+        "flask": "3.1.3",
+        "files": {
+          "app.py": {
+            "bytes": 109,
+            "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+          },
+          "requirements.txt": {
+            "bytes": 15,
+            "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+          }
+        },
+        "gunicorn_cmd_args_present": true,
+        "gunicorn_cmd_args": "",
+        "accesslog": null,
+        "preload_app": false,
+        "bind": [
+          "127.0.0.1:8000"
+        ]
+      },
+      "build_pass": true,
+      "runtime": {
+        "marker": "QA452_web-empty",
+        "phase": "runtime",
+        "python": "3.12.15",
+        "gunicorn": "26.2.0",
+        "flask": "3.1.3",
+        "files": {
+          "app.py": {
+            "bytes": 109,
+            "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+          },
+          "requirements.txt": {
+            "bytes": 15,
+            "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+          }
+        },
+        "gunicorn_cmd_args_present": true,
+        "gunicorn_cmd_args": "",
+        "accesslog": null,
+        "preload_app": false,
+        "bind": [
+          "0.0.0.0:3000"
+        ]
+      },
+      "requests": [
+        {
+          "path": "/?qa452=web-empty-1",
+          "status": 200,
+          "body": "Hello, World!"
+        },
+        {
+          "path": "/?qa452=web-empty-2",
+          "status": 200,
+          "body": "Hello, World!"
+        },
+        {
+          "path": "/?qa452=web-empty-3",
+          "status": 200,
+          "body": "Hello, World!"
+        }
+      ],
+      "runtime_pass": true,
+      "access_paths": [],
+      "expected_access_paths": [],
+      "actual_server_exit": 0
+    },
+    {
+      "case": {
+        "Name": "static-default",
+        "Static": true,
+        "Build": "set -e\ncat > qa362-observer.py <<'QA362_OBSERVER_SOURCE'\nimport hashlib,json,os,platform,sys\nfrom pathlib import Path\nfrom importlib.metadata import version\nfrom gunicorn.app.wsgiapp import WSGIApplication\nreference=json.loads(Path('qa362-reference.json').read_text()); marker=json.loads(Path('qa362-marker.json').read_text())\nfiles={n:{'bytes':len((b:=Path(n).read_bytes())),'sha256':hashlib.sha256(b).hexdigest()} for n in reference['files']}\nassert files==reference['files']\nphase=sys.argv[1];sys.argv=['gunicorn','app:app'];a=WSGIApplication()\nv={'marker':marker,'phase':phase,'python':platform.python_version(),'gunicorn':version('Gunicorn'),'flask':version('Flask'),'files':files,'gunicorn_cmd_args_present':'GUNICORN_CMD_ARGS' in os.environ,'gunicorn_cmd_args':os.environ.get('GUNICORN_CMD_ARGS'),'accesslog':a.cfg.accesslog,'preload_app':a.cfg.preload_app,'bind':a.cfg.bind}\nPath('qa362-'+phase+'.json').write_text(json.dumps(v)); print('QA362_OBSERVER '+json.dumps(v,separators=(',',':')),flush=True)\n\nQA362_OBSERVER_SOURCE\ncat > qa362-reference.json <<'QA362_REFERENCE'\n{\"repo\": \"https://github.com/render-examples/flask-hello-world\", \"branch\": \"main\", \"commit\": \"facfc73c44b35d00bb1f72e8986f0ea47cab0755\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}}\nQA362_REFERENCE\ncat > qa362-marker.json <<'QA362_MARKER'\n\"QA452_static-default\"\nQA362_MARKER\npip install --disable-pip-version-check -r requirements.txt\npython qa362-observer.py build && mkdir -p public && cp qa362-build.json public/proof.json && printf 'qa452-static\\n' > public/index.html",
+        "Start": "python qa362-observer.py runtime && exec gunicorn app:app",
+        "Marker": "QA452_static-default",
+        "Override": null
+      },
+      "image": "qa452-python:static-default-baf3f8d0",
+      "container": "qa452-static-default-baf3f8d0",
+      "build_intent_recorded": true,
+      "pass": true,
+      "image_config": {
+        "id": "sha256:8cc95127caa935286defbe495a6c1da5790005baf9f2cc3b048f8d6d6d7e5ebf",
+        "architecture": "arm64",
+        "os": "linux",
+        "cmd": [
+          "python3"
+        ],
+        "entrypoint": null,
+        "workdir": "/opt/render/project/src",
+        "GUNICORN_CMD_ARGS_image_default": "--preload --access-logfile -",
+        "PORT_image_default": null
+      },
+      "build": {
+        "marker": "QA452_static-default",
+        "phase": "build",
+        "python": "3.12.15",
+        "gunicorn": "26.2.0",
+        "flask": "3.1.3",
+        "files": {
+          "app.py": {
+            "bytes": 109,
+            "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+          },
+          "requirements.txt": {
+            "bytes": 15,
+            "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+          }
+        },
+        "gunicorn_cmd_args_present": true,
+        "gunicorn_cmd_args": "--preload --access-logfile -",
+        "accesslog": "-",
+        "preload_app": true,
+        "bind": [
+          "127.0.0.1:8000"
+        ]
+      },
+      "build_pass": true,
+      "static_artifact": {
+        "build_proof_matches": true,
+        "index_bytes": 13,
+        "index_sha256": "452511c4dbe7ad24809be22bb0cad1d08c2919437e64a8bbca5280c27d35493b",
+        "no_runtime_server_launched": true,
+        "inherited_base_CMD": [
+          "python3"
+        ]
+      }
+    },
+    {
+      "case": {
+        "Name": "static-custom",
+        "Static": true,
+        "Build": "set -e\ncat > qa362-observer.py <<'QA362_OBSERVER_SOURCE'\nimport hashlib,json,os,platform,sys\nfrom pathlib import Path\nfrom importlib.metadata import version\nfrom gunicorn.app.wsgiapp import WSGIApplication\nreference=json.loads(Path('qa362-reference.json').read_text()); marker=json.loads(Path('qa362-marker.json').read_text())\nfiles={n:{'bytes':len((b:=Path(n).read_bytes())),'sha256':hashlib.sha256(b).hexdigest()} for n in reference['files']}\nassert files==reference['files']\nphase=sys.argv[1];sys.argv=['gunicorn','app:app'];a=WSGIApplication()\nv={'marker':marker,'phase':phase,'python':platform.python_version(),'gunicorn':version('Gunicorn'),'flask':version('Flask'),'files':files,'gunicorn_cmd_args_present':'GUNICORN_CMD_ARGS' in os.environ,'gunicorn_cmd_args':os.environ.get('GUNICORN_CMD_ARGS'),'accesslog':a.cfg.accesslog,'preload_app':a.cfg.preload_app,'bind':a.cfg.bind}\nPath('qa362-'+phase+'.json').write_text(json.dumps(v)); print('QA362_OBSERVER '+json.dumps(v,separators=(',',':')),flush=True)\n\nQA362_OBSERVER_SOURCE\ncat > qa362-reference.json <<'QA362_REFERENCE'\n{\"repo\": \"https://github.com/render-examples/flask-hello-world\", \"branch\": \"main\", \"commit\": \"facfc73c44b35d00bb1f72e8986f0ea47cab0755\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}}\nQA362_REFERENCE\ncat > qa362-marker.json <<'QA362_MARKER'\n\"QA452_static-custom\"\nQA362_MARKER\npip install --disable-pip-version-check -r requirements.txt\npython qa362-observer.py build && mkdir -p public && cp qa362-build.json public/proof.json && printf 'qa452-static\\n' > public/index.html",
+        "Start": "python qa362-observer.py runtime && exec gunicorn app:app",
+        "Marker": "QA452_static-custom",
+        "Override": "--access-logfile /dev/null --preload"
+      },
+      "image": "qa452-python:static-custom-baf3f8d0",
+      "container": "qa452-static-custom-baf3f8d0",
+      "build_intent_recorded": true,
+      "pass": true,
+      "image_config": {
+        "id": "sha256:562aaa81580ee1f62a1abcb82d9f0c50e15cbbe9c5fbe7b8c513ef34982c62fa",
+        "architecture": "arm64",
+        "os": "linux",
+        "cmd": [
+          "python3"
+        ],
+        "entrypoint": null,
+        "workdir": "/opt/render/project/src",
+        "GUNICORN_CMD_ARGS_image_default": "--preload --access-logfile -",
+        "PORT_image_default": null
+      },
+      "build": {
+        "marker": "QA452_static-custom",
+        "phase": "build",
+        "python": "3.12.15",
+        "gunicorn": "26.2.0",
+        "flask": "3.1.3",
+        "files": {
+          "app.py": {
+            "bytes": 109,
+            "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+          },
+          "requirements.txt": {
+            "bytes": 15,
+            "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+          }
+        },
+        "gunicorn_cmd_args_present": true,
+        "gunicorn_cmd_args": "--access-logfile /dev/null --preload",
+        "accesslog": "/dev/null",
+        "preload_app": true,
+        "bind": [
+          "127.0.0.1:8000"
+        ]
+      },
+      "build_pass": true,
+      "static_artifact": {
+        "build_proof_matches": true,
+        "index_bytes": 13,
+        "index_sha256": "452511c4dbe7ad24809be22bb0cad1d08c2919437e64a8bbca5280c27d35493b",
+        "no_runtime_server_launched": true,
+        "inherited_base_CMD": [
+          "python3"
+        ]
+      }
+    },
+    {
+      "case": {
+        "Name": "static-empty",
+        "Static": true,
+        "Build": "set -e\ncat > qa362-observer.py <<'QA362_OBSERVER_SOURCE'\nimport hashlib,json,os,platform,sys\nfrom pathlib import Path\nfrom importlib.metadata import version\nfrom gunicorn.app.wsgiapp import WSGIApplication\nreference=json.loads(Path('qa362-reference.json').read_text()); marker=json.loads(Path('qa362-marker.json').read_text())\nfiles={n:{'bytes':len((b:=Path(n).read_bytes())),'sha256':hashlib.sha256(b).hexdigest()} for n in reference['files']}\nassert files==reference['files']\nphase=sys.argv[1];sys.argv=['gunicorn','app:app'];a=WSGIApplication()\nv={'marker':marker,'phase':phase,'python':platform.python_version(),'gunicorn':version('Gunicorn'),'flask':version('Flask'),'files':files,'gunicorn_cmd_args_present':'GUNICORN_CMD_ARGS' in os.environ,'gunicorn_cmd_args':os.environ.get('GUNICORN_CMD_ARGS'),'accesslog':a.cfg.accesslog,'preload_app':a.cfg.preload_app,'bind':a.cfg.bind}\nPath('qa362-'+phase+'.json').write_text(json.dumps(v)); print('QA362_OBSERVER '+json.dumps(v,separators=(',',':')),flush=True)\n\nQA362_OBSERVER_SOURCE\ncat > qa362-reference.json <<'QA362_REFERENCE'\n{\"repo\": \"https://github.com/render-examples/flask-hello-world\", \"branch\": \"main\", \"commit\": \"facfc73c44b35d00bb1f72e8986f0ea47cab0755\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}}\nQA362_REFERENCE\ncat > qa362-marker.json <<'QA362_MARKER'\n\"QA452_static-empty\"\nQA362_MARKER\npip install --disable-pip-version-check -r requirements.txt\npython qa362-observer.py build && mkdir -p public && cp qa362-build.json public/proof.json && printf 'qa452-static\\n' > public/index.html",
+        "Start": "python qa362-observer.py runtime && exec gunicorn app:app",
+        "Marker": "QA452_static-empty",
+        "Override": ""
+      },
+      "image": "qa452-python:static-empty-baf3f8d0",
+      "container": "qa452-static-empty-baf3f8d0",
+      "build_intent_recorded": true,
+      "pass": true,
+      "image_config": {
+        "id": "sha256:ad71a82b6da2725c18715629bb70db5c2926c39f16870cce5d8f34638de0cebf",
+        "architecture": "arm64",
+        "os": "linux",
+        "cmd": [
+          "python3"
+        ],
+        "entrypoint": null,
+        "workdir": "/opt/render/project/src",
+        "GUNICORN_CMD_ARGS_image_default": "--preload --access-logfile -",
+        "PORT_image_default": null
+      },
+      "build": {
+        "marker": "QA452_static-empty",
+        "phase": "build",
+        "python": "3.12.15",
+        "gunicorn": "26.2.0",
+        "flask": "3.1.3",
+        "files": {
+          "app.py": {
+            "bytes": 109,
+            "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+          },
+          "requirements.txt": {
+            "bytes": 15,
+            "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+          }
+        },
+        "gunicorn_cmd_args_present": true,
+        "gunicorn_cmd_args": "",
+        "accesslog": null,
+        "preload_app": false,
+        "bind": [
+          "127.0.0.1:8000"
+        ]
+      },
+      "build_pass": true,
+      "static_artifact": {
+        "build_proof_matches": true,
+        "index_bytes": 13,
+        "index_sha256": "452511c4dbe7ad24809be22bb0cad1d08c2919437e64a8bbca5280c27d35493b",
+        "no_runtime_server_launched": true,
+        "inherited_base_CMD": [
+          "python3"
+        ]
+      }
+    }
+  ],
+  "steps": [
+    {
+      "label": "web-default-build",
+      "command": [
+        "docker",
+        "build",
+        "--progress=plain",
+        "--tag",
+        "qa452-python:web-default-baf3f8d0",
+        "--secret",
+        "id=render-env,src=<owned-temp>/sweep452-generated-context/web-default/render-env",
+        "-f",
+        "<owned-temp>/sweep452-generated-context/web-default/Dockerfile",
+        "<owned-temp>/sweep452-generated-context/web-default/source"
+      ],
+      "exit": 0,
+      "elapsed": 23.906,
+      "stdout": "",
+      "stderr": "#0 building with \"desktop-linux\" instance using docker driver\n\n#1 [internal] load build definition from Dockerfile\n#1 transferring dockerfile: 4.23kB done\n#1 DONE 0.0s\n\n#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7\n#2 DONE 1.9s\n\n#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e\n#3 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e 0.0s done\n#3 CACHED\n\n#4 [internal] load metadata for docker.io/library/node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0\n#4 DONE 2.3s\n\n#5 [internal] load metadata for docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b\n#5 DONE 2.3s\n\n#6 [internal] load metadata for docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822\n#6 DONE 2.3s\n\n#7 [internal] load .dockerignore\n#7 transferring context: 2B done\n#7 DONE 0.0s\n\n#8 [stage-0  7/15] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz\n#8 DONE 0.0s\n\n#9 FROM docker.io/library/node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0\n#9 resolve docker.io/library/node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0 0.0s done\n#9 DONE 0.0s\n\n#10 [stage-0  1/15] FROM docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b\n#10 resolve docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b 0.0s done\n#10 DONE 0.0s\n\n#11 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822\n#11 resolve docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 0.0s done\n#11 DONE 0.0s\n\n#12 [internal] load build context\n#12 transferring context: 202B done\n#12 DONE 0.0s\n\n#13 [stage-0  6/15] RUN ln -sf /opt/yarn-v1.22.22/bin/yarn /usr/local/bin/yarn && ln -sf /opt/yarn-v1.22.22/bin/yarnpkg /usr/local/bin/yarnpkg\n#13 CACHED\n\n#14 [stage-0  4/15] RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx\n#14 CACHED\n\n#15 [stage-0 11/15] RUN ln -sf /ffmpeg /usr/local/bin/ffmpeg && ln -sf /ffprobe /usr/local/bin/ffprobe\n#15 CACHED\n\n#16 [stage-0  7/15] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz\n#16 CACHED\n\n#17 [stage-0 10/15] COPY --link --from=mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 /ffmpeg /ffprobe /\n#17 CACHED\n\n#18 [stage-0  2/15] COPY --link --from=node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0 /usr/local/bin/node /usr/local/bin/node\n#18 CACHED\n\n#19 [stage-0  5/15] COPY --link --from=node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0 /opt/yarn-v1.22.22 /opt/yarn-v1.22.22\n#19 CACHED\n\n#20 [stage-0  9/15] RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry\n#20 CACHED\n\n#21 [stage-0  8/15] RUN mkdir -p /usr/local/lib/node_modules/pnpm && tar -xzf /opt/bex/pnpm.tgz -C /usr/local/lib/node_modules/pnpm --strip-components=1 --no-same-owner && rm /opt/bex/pnpm.tgz && ln -sf ../lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm && ln -sf ../lib/node_modules/pnpm/bin/pnpx.cjs /usr/local/bin/pnpx\n#21 CACHED\n\n#22 [stage-0  3/15] COPY --link --from=node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0 /usr/local/lib/node_modules /usr/local/lib/node_modules\n#22 CACHED\n\n#23 [stage-0 12/15] WORKDIR /opt/render/project/src\n#23 CACHED\n\n#24 [internal] preparing inline document\n#24 DONE 0.0s\n\n#25 [stage-0 13/15] COPY . .\n#25 DONE 0.0s\n\n#26 [stage-0 14/15] COPY <<BEX_LOAD_ENV /opt/bex/load-env\n#26 DONE 0.0s\n\n#27 [stage-0 15/15] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\"/bin/bash\",\"-c\",\". /opt/bex/load-env\\nset -e\\ncat > qa362-observer.py <<'QA362_OBSERVER_SOURCE'\\nimport hashlib,json,os,platform,sys\\nfrom pathlib import Path\\nfrom importlib.metadata import version\\nfrom gunicorn.app.wsgiapp import WSGIApplication\\nreference=json.loads(Path('qa362-reference.json').read_text()); marker=json.loads(Path('qa362-marker.json').read_text())\\nfiles={n:{'bytes':len((b:=Path(n).read_bytes())),'sha256':hashlib.sha256(b).hexdigest()} for n in reference['files']}\\nassert files==reference['files']\\nphase=sys.argv[1];sys.argv=['gunicorn','app:app'];a=WSGIApplication()\\nv={'marker':marker,'phase':phase,'python':platform.python_version(),'gunicorn':version('Gunicorn'),'flask':version('Flask'),'files':files,'gunicorn_cmd_args_present':'GUNICORN_CMD_ARGS' in os.environ,'gunicorn_cmd_args':os.environ.get('GUNICORN_CMD_ARGS'),'accesslog':a.cfg.accesslog,'preload_app':a.cfg.preload_app,'bind':a.cfg.bind}\\nPath('qa362-'+phase+'.json').write_text(json.dumps(v)); print('QA362_OBSERVER '+json.dumps(v,separators=(',',':')),flush=True)\\n\\nQA362_OBSERVER_SOURCE\\ncat > qa362-reference.json <<'QA362_REFERENCE'\\n{\"repo\": \"https://github.com/render-examples/flask-hello-world\", \"branch\": \"main\", \"commit\": \"facfc73c44b35d00bb1f72e8986f0ea47cab0755\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}}\\nQA362_REFERENCE\\ncat > qa362-marker.json <<'QA362_MARKER'\\n\"QA452_web-default\"\\nQA362_MARKER\\npip install --disable-pip-version-check -r requirements.txt\\npython qa362-observer.py build\"]\n#27 1.367 Collecting Flask (from -r requirements.txt (line 1))\n#27 2.810   Downloading flask-3.1.3-py3-none-any.whl.metadata (3.2 kB)\n#27 3.721 Collecting Gunicorn (from -r requirements.txt (line 2))\n#27 4.037   Downloading gunicorn-26.2.0-py3-none-any.whl.metadata (5.5 kB)\n#27 4.248 Collecting blinker>=1.9.0 (from Flask->-r requirements.txt (line 1))\n#27 4.408   Downloading blinker-1.9.0-py3-none-any.whl.metadata (1.6 kB)\n#27 5.797 Collecting click>=8.1.3 (from Flask->-r requirements.txt (line 1))\n#27 6.933   Downloading click-8.5.0-py3-none-any.whl.metadata (2.6 kB)\n#27 9.091 Collecting itsdangerous>=2.2.0 (from Flask->-r requirements.txt (line 1))\n#27 9.681   Downloading itsdangerous-2.2.0-py3-none-any.whl.metadata (1.9 kB)\n#27 11.12 Collecting jinja2>=3.1.2 (from Flask->-r requirements.txt (line 1))\n#27 11.29   Downloading jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)\n#27 12.75 Collecting markupsafe>=2.1.1 (from Flask->-r requirements.txt (line 1))\n#27 12.76   Downloading markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (2.7 kB)\n#27 13.46 Collecting werkzeug>=3.1.0 (from Flask->-r requirements.txt (line 1))\n#27 13.50   Downloading werkzeug-3.1.9-py3-none-any.whl.metadata (4.1 kB)\n#27 13.61 Downloading flask-3.1.3-py3-none-any.whl (103 kB)\n#27 14.06 Downloading gunicorn-26.2.0-py3-none-any.whl (228 kB)\n#27 14.41 Downloading blinker-1.9.0-py3-none-any.whl (8.5 kB)\n#27 14.44 Downloading click-8.5.0-py3-none-any.whl (125 kB)\n#27 14.54 Downloading itsdangerous-2.2.0-py3-none-any.whl (16 kB)\n#27 14.56 Downloading jinja2-3.1.6-py3-none-any.whl (134 kB)\n#27 14.66 Downloading markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (24 kB)\n#27 14.69 Downloading werkzeug-3.1.9-py3-none-any.whl (228 kB)\n#27 14.79 Installing collected packages: markupsafe, itsdangerous, Gunicorn, click, blinker, werkzeug, jinja2, Flask\n#27 15.11 Successfully installed Flask-3.1.3 Gunicorn-26.2.0 blinker-1.9.0 click-8.5.0 itsdangerous-2.2.0 jinja2-3.1.6 markupsafe-3.0.4 werkzeug-3.1.9\n#27 15.11 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.\n#27 15.19 QA362_OBSERVER {\"marker\":\"QA452_web-default\",\"phase\":\"build\",\"python\":\"3.12.15\",\"gunicorn\":\"26.2.0\",\"flask\":\"3.1.3\",\"files\":{\"app.py\":{\"bytes\":109,\"sha256\":\"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"},\"requirements.txt\":{\"bytes\":15,\"sha256\":\"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}},\"gunicorn_cmd_args_present\":true,\"gunicorn_cmd_args\":\"--preload --access-logfile -\",\"accesslog\":\"-\",\"preload_app\":true,\"bind\":[\"127.0.0.1:8000\"]}\n#27 DONE 16.0s\n\n#28 exporting to image\n#28 exporting layers\n#28 exporting layers 0.3s done\n#28 exporting manifest sha256:63c96079776a427ce29983354d0beddbff0aab864e30573631f438784bea2769 done\n#28 exporting config sha256:103e3b6ab1678eb85c308a0032b6b620668231682edd7877dc8b47a0cabe68a9 done\n#28 exporting attestation manifest sha256:de60fb572df807bd7c4c2fbecb3d16294e26856d06ee5c6799a813fefa0d04ac done\n#28 exporting manifest list sha256:6c38737cd8c560c5f2a43c3f986b3356615c81140259e50ca1001e14d34cc121 done\n#28 naming to docker.io/library/qa452-python:web-default-baf3f8d0 done\n#28 unpacking to docker.io/library/qa452-python:web-default-baf3f8d0\n#28 unpacking to docker.io/library/qa452-python:web-default-baf3f8d0 2.5s done\n#28 DONE 2.9s\n\nView build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/tgkwb5t6ksa4c45dafw02cquw\n"
+    },
+    {
+      "label": "web-default-start-exact-generated-CMD",
+      "command": [
+        "docker",
+        "run",
+        "-d",
+        "--network",
+        "none",
+        "--name",
+        "qa452-web-default-baf3f8d0",
+        "-e",
+        "PORT=3000",
+        "qa452-python:web-default-baf3f8d0"
+      ],
+      "exit": 0,
+      "elapsed": 0.797,
+      "stdout": "896ea95155ba67cefae1b835086b8a1d0a2d07284704f74a3aae1db3790c5257\n",
+      "stderr": ""
+    },
+    {
+      "label": "web-default-extract-build-proof",
+      "command": [
+        "docker",
+        "cp",
+        "qa452-web-default-baf3f8d0:/opt/render/project/src/qa362-build.json",
+        "<owned-temp>/sweep452-generated-context/web-default/actual-build.json"
+      ],
+      "exit": 0,
+      "elapsed": 0.024,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "web-default-real-loopback-HTTP-and-runtime-proof",
+      "command": [
+        "docker",
+        "exec",
+        "qa452-web-default-baf3f8d0",
+        "python",
+        "-c",
+        "import urllib.request,time,json\nfrom pathlib import Path\nfor attempt in range(40):\n try:\n  with urllib.request.urlopen('http://127.0.0.1:3000/?qa452warm=1',timeout=2) as r:assert r.status==200 and r.read()==b'Hello, World!'\n  break\n except OSError:\n  if attempt==39:raise\n  time.sleep(.25)\nrows=[]\nfor i in range(3):\n path='/?qa452='+'web-default'+'-'+str(i+1)\n with urllib.request.urlopen('http://127.0.0.1:3000'+path,timeout=3) as r:rows.append({'path':path,'status':r.status,'body':r.read().decode()})\nprint(json.dumps({'runtime':json.loads(Path('qa362-runtime.json').read_text()),'requests':rows}))\n"
+      ],
+      "exit": 0,
+      "elapsed": 0.36,
+      "stdout": "{\"runtime\": {\"marker\": \"QA452_web-default\", \"phase\": \"runtime\", \"python\": \"3.12.15\", \"gunicorn\": \"26.2.0\", \"flask\": \"3.1.3\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}, \"gunicorn_cmd_args_present\": true, \"gunicorn_cmd_args\": \"--preload --access-logfile -\", \"accesslog\": \"-\", \"preload_app\": true, \"bind\": [\"0.0.0.0:3000\"]}, \"requests\": [{\"path\": \"/?qa452=web-default-1\", \"status\": 200, \"body\": \"Hello, World!\"}, {\"path\": \"/?qa452=web-default-2\", \"status\": 200, \"body\": \"Hello, World!\"}, {\"path\": \"/?qa452=web-default-3\", \"status\": 200, \"body\": \"Hello, World!\"}]}\n",
+      "stderr": ""
+    },
+    {
+      "label": "web-default-actual-Gunicorn-output",
+      "command": [
+        "docker",
+        "logs",
+        "qa452-web-default-baf3f8d0"
+      ],
+      "exit": 0,
+      "elapsed": 0.025,
+      "stdout": "QA362_OBSERVER {\"marker\":\"QA452_web-default\",\"phase\":\"runtime\",\"python\":\"3.12.15\",\"gunicorn\":\"26.2.0\",\"flask\":\"3.1.3\",\"files\":{\"app.py\":{\"bytes\":109,\"sha256\":\"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"},\"requirements.txt\":{\"bytes\":15,\"sha256\":\"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}},\"gunicorn_cmd_args_present\":true,\"gunicorn_cmd_args\":\"--preload --access-logfile -\",\"accesslog\":\"-\",\"preload_app\":true,\"bind\":[\"0.0.0.0:3000\"]}\n127.0.0.1 - - [17/Oct/2026:17:15:49 +0000] \"GET /?qa452warm=1 HTTP/1.1\" 200 13 \"-\" \"Python-urllib/3.12\"\n127.0.0.1 - - [17/Oct/2026:17:15:49 +0000] \"GET /?qa452=web-default-1 HTTP/1.1\" 200 13 \"-\" \"Python-urllib/3.12\"\n127.0.0.1 - - [17/Oct/2026:17:15:49 +0000] \"GET /?qa452=web-default-2 HTTP/1.1\" 200 13 \"-\" \"Python-urllib/3.12\"\n127.0.0.1 - - [17/Oct/2026:17:15:49 +0000] \"GET /?qa452=web-default-3 HTTP/1.1\" 200 13 \"-\" \"Python-urllib/3.12\"\n",
+      "stderr": "[2026-10-17 17:15:49 +0000] [1] [INFO] Starting gunicorn 26.2.0\n[2026-10-17 17:15:49 +0000] [1] [INFO] Listening at: http://0.0.0.0:3000 (1)\n[2026-10-17 17:15:49 +0000] [1] [INFO] Using worker: sync\n[2026-10-17 17:15:49 +0000] [14] [INFO] Booting worker with pid: 14\n[2026-10-17 17:15:49 +0000] [1] [INFO] Control socket listening at /root/.gunicorn/gunicorn.ctl\n"
+    },
+    {
+      "label": "web-default-stop-own-Gunicorn",
+      "command": [
+        "docker",
+        "stop",
+        "--time",
+        "8",
+        "qa452-web-default-baf3f8d0"
+      ],
+      "exit": 0,
+      "elapsed": 0.285,
+      "stdout": "Flag --time has been deprecated, use --timeout instead\nqa452-web-default-baf3f8d0\n",
+      "stderr": ""
+    },
+    {
+      "label": "web-default-exact-own-exit",
+      "command": [
+        "docker",
+        "inspect",
+        "qa452-web-default-baf3f8d0",
+        "--format",
+        "{{.State.ExitCode}}"
+      ],
+      "exit": 0,
+      "elapsed": 0.025,
+      "stdout": "0\n",
+      "stderr": ""
+    },
+    {
+      "label": "web-custom-build",
+      "command": [
+        "docker",
+        "build",
+        "--progress=plain",
+        "--tag",
+        "qa452-python:web-custom-baf3f8d0",
+        "--secret",
+        "id=render-env,src=<owned-temp>/sweep452-generated-context/web-custom/render-env",
+        "-f",
+        "<owned-temp>/sweep452-generated-context/web-custom/Dockerfile",
+        "<owned-temp>/sweep452-generated-context/web-custom/source"
+      ],
+      "exit": 0,
+      "elapsed": 13.656,
+      "stdout": "",
+      "stderr": "#0 building with \"desktop-linux\" instance using docker driver\n\n#1 [internal] load build definition from Dockerfile\n#1 transferring dockerfile: 4.23kB done\n#1 DONE 0.0s\n\n#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7\n#2 DONE 0.2s\n\n#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e\n#3 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e done\n#3 CACHED\n\n#4 [internal] load metadata for docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b\n#4 DONE 0.0s\n\n#5 [internal] load metadata for docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822\n#5 DONE 0.0s\n\n#6 [internal] load metadata for docker.io/library/node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0\n#6 DONE 0.0s\n\n#7 [internal] load .dockerignore\n#7 transferring context: 2B done\n#7 DONE 0.0s\n\n#8 [internal] load build context\n#8 DONE 0.0s\n\n#9 [internal] preparing inline document\n#9 DONE 0.0s\n\n#10 [stage-0  7/15] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz\n#10 DONE 0.0s\n\n#11 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822\n#11 resolve docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 0.0s done\n#11 DONE 0.0s\n\n#12 FROM docker.io/library/node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0\n#12 resolve docker.io/library/node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0 0.0s done\n#12 DONE 0.0s\n\n#13 [stage-0  1/15] FROM docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b\n#13 resolve docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b 0.0s done\n#13 DONE 0.0s\n\n#8 [internal] load build context\n#8 transferring context: 202B done\n#8 DONE 0.0s\n\n#9 [internal] preparing inline document\n#9 DONE 0.0s\n\n#14 [stage-0  6/15] RUN ln -sf /opt/yarn-v1.22.22/bin/yarn /usr/local/bin/yarn && ln -sf /opt/yarn-v1.22.22/bin/yarnpkg /usr/local/bin/yarnpkg\n#14 CACHED\n\n#15 [stage-0 12/15] WORKDIR /opt/render/project/src\n#15 CACHED\n\n#16 [stage-0  4/15] RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx\n#16 CACHED\n\n#17 [stage-0  3/15] COPY --link --from=node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0 /usr/local/lib/node_modules /usr/local/lib/node_modules\n#17 CACHED\n\n#18 [stage-0  8/15] RUN mkdir -p /usr/local/lib/node_modules/pnpm && tar -xzf /opt/bex/pnpm.tgz -C /usr/local/lib/node_modules/pnpm --strip-components=1 --no-same-owner && rm /opt/bex/pnpm.tgz && ln -sf ../lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm && ln -sf ../lib/node_modules/pnpm/bin/pnpx.cjs /usr/local/bin/pnpx\n#18 CACHED\n\n#19 [stage-0  2/15] COPY --link --from=node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0 /usr/local/bin/node /usr/local/bin/node\n#19 CACHED\n\n#20 [stage-0  7/15] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz\n#20 CACHED\n\n#21 [stage-0 10/15] COPY --link --from=mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 /ffmpeg /ffprobe /\n#21 CACHED\n\n#22 [stage-0  5/15] COPY --link --from=node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0 /opt/yarn-v1.22.22 /opt/yarn-v1.22.22\n#22 CACHED\n\n#23 [stage-0  9/15] RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry\n#23 CACHED\n\n#24 [stage-0 11/15] RUN ln -sf /ffmpeg /usr/local/bin/ffmpeg && ln -sf /ffprobe /usr/local/bin/ffprobe\n#24 CACHED\n\n#25 [stage-0 13/15] COPY . .\n#25 CACHED\n\n#26 [stage-0 14/15] COPY <<BEX_LOAD_ENV /opt/bex/load-env\n#26 DONE 0.0s\n\n#27 [stage-0 15/15] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\"/bin/bash\",\"-c\",\". /opt/bex/load-env\\nset -e\\ncat > qa362-observer.py <<'QA362_OBSERVER_SOURCE'\\nimport hashlib,json,os,platform,sys\\nfrom pathlib import Path\\nfrom importlib.metadata import version\\nfrom gunicorn.app.wsgiapp import WSGIApplication\\nreference=json.loads(Path('qa362-reference.json').read_text()); marker=json.loads(Path('qa362-marker.json').read_text())\\nfiles={n:{'bytes':len((b:=Path(n).read_bytes())),'sha256':hashlib.sha256(b).hexdigest()} for n in reference['files']}\\nassert files==reference['files']\\nphase=sys.argv[1];sys.argv=['gunicorn','app:app'];a=WSGIApplication()\\nv={'marker':marker,'phase':phase,'python':platform.python_version(),'gunicorn':version('Gunicorn'),'flask':version('Flask'),'files':files,'gunicorn_cmd_args_present':'GUNICORN_CMD_ARGS' in os.environ,'gunicorn_cmd_args':os.environ.get('GUNICORN_CMD_ARGS'),'accesslog':a.cfg.accesslog,'preload_app':a.cfg.preload_app,'bind':a.cfg.bind}\\nPath('qa362-'+phase+'.json').write_text(json.dumps(v)); print('QA362_OBSERVER '+json.dumps(v,separators=(',',':')),flush=True)\\n\\nQA362_OBSERVER_SOURCE\\ncat > qa362-reference.json <<'QA362_REFERENCE'\\n{\"repo\": \"https://github.com/render-examples/flask-hello-world\", \"branch\": \"main\", \"commit\": \"facfc73c44b35d00bb1f72e8986f0ea47cab0755\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}}\\nQA362_REFERENCE\\ncat > qa362-marker.json <<'QA362_MARKER'\\n\"QA452_web-custom\"\\nQA362_MARKER\\npip install --disable-pip-version-check -r requirements.txt\\npython qa362-observer.py build\"]\n#27 0.806 Collecting Flask (from -r requirements.txt (line 1))\n#27 1.750   Downloading flask-3.1.3-py3-none-any.whl.metadata (3.2 kB)\n#27 1.870 Collecting Gunicorn (from -r requirements.txt (line 2))\n#27 1.894   Downloading gunicorn-26.2.0-py3-none-any.whl.metadata (5.5 kB)\n#27 1.956 Collecting blinker>=1.9.0 (from Flask->-r requirements.txt (line 1))\n#27 1.980   Downloading blinker-1.9.0-py3-none-any.whl.metadata (1.6 kB)\n#27 2.031 Collecting click>=8.1.3 (from Flask->-r requirements.txt (line 1))\n#27 2.197   Downloading click-8.5.0-py3-none-any.whl.metadata (2.6 kB)\n#27 2.560 Collecting itsdangerous>=2.2.0 (from Flask->-r requirements.txt (line 1))\n#27 2.819   Downloading itsdangerous-2.2.0-py3-none-any.whl.metadata (1.9 kB)\n#27 2.924 Collecting jinja2>=3.1.2 (from Flask->-r requirements.txt (line 1))\n#27 3.096   Downloading jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)\n#27 3.357 Collecting markupsafe>=2.1.1 (from Flask->-r requirements.txt (line 1))\n#27 3.496   Downloading markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (2.7 kB)\n#27 3.967 Collecting werkzeug>=3.1.0 (from Flask->-r requirements.txt (line 1))\n#27 4.245   Downloading werkzeug-3.1.9-py3-none-any.whl.metadata (4.1 kB)\n#27 4.490 Downloading flask-3.1.3-py3-none-any.whl (103 kB)\n#27 5.257 Downloading gunicorn-26.2.0-py3-none-any.whl (228 kB)\n#27 6.195 Downloading blinker-1.9.0-py3-none-any.whl (8.5 kB)\n#27 6.213 Downloading click-8.5.0-py3-none-any.whl (125 kB)\n#27 7.272 Downloading itsdangerous-2.2.0-py3-none-any.whl (16 kB)\n#27 8.111 Downloading jinja2-3.1.6-py3-none-any.whl (134 kB)\n#27 9.255 Downloading markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (24 kB)\n#27 10.19 Downloading werkzeug-3.1.9-py3-none-any.whl (228 kB)\n#27 11.95 Installing collected packages: markupsafe, itsdangerous, Gunicorn, click, blinker, werkzeug, jinja2, Flask\n#27 12.27 Successfully installed Flask-3.1.3 Gunicorn-26.2.0 blinker-1.9.0 click-8.5.0 itsdangerous-2.2.0 jinja2-3.1.6 markupsafe-3.0.4 werkzeug-3.1.9\n#27 12.27 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.\n#27 12.35 QA362_OBSERVER {\"marker\":\"QA452_web-custom\",\"phase\":\"build\",\"python\":\"3.12.15\",\"gunicorn\":\"26.2.0\",\"flask\":\"3.1.3\",\"files\":{\"app.py\":{\"bytes\":109,\"sha256\":\"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"},\"requirements.txt\":{\"bytes\":15,\"sha256\":\"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}},\"gunicorn_cmd_args_present\":true,\"gunicorn_cmd_args\":\"--access-logfile /dev/null --preload\",\"accesslog\":\"/dev/null\",\"preload_app\":true,\"bind\":[\"127.0.0.1:8000\"]}\n#27 DONE 12.4s\n\n#28 exporting to image\n#28 exporting layers\n#28 exporting layers 0.3s done\n#28 exporting manifest sha256:385bd78cc89e4d6e57bfbd263a651a27cd2a694bfb2dfc2187674f2683b98e22 done\n#28 exporting config sha256:01e16b8f51c6f52f8d9e08ce391665fcc781f4d30ace76fb4b71061f6b01a981 done\n#28 exporting attestation manifest sha256:e41480ea67918a2ada3edf532ec160ef6f48e03360fb7d516916df468475bdb4 done\n#28 exporting manifest list sha256:ea3dca3c014d4232f621bd35fc540362bdf795cf952d371b7f8d1949070b6f96 done\n#28 naming to docker.io/library/qa452-python:web-custom-baf3f8d0 done\n#28 unpacking to docker.io/library/qa452-python:web-custom-baf3f8d0\n#28 unpacking to docker.io/library/qa452-python:web-custom-baf3f8d0 0.2s done\n#28 DONE 0.5s\n\nView build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/je4hc178ix9yeb8e36bfxqju5\n"
+    },
+    {
+      "label": "web-custom-start-exact-generated-CMD",
+      "command": [
+        "docker",
+        "run",
+        "-d",
+        "--network",
+        "none",
+        "--name",
+        "qa452-web-custom-baf3f8d0",
+        "-e",
+        "PORT=3000",
+        "-e",
+        "GUNICORN_CMD_ARGS=--access-logfile /dev/null --preload",
+        "qa452-python:web-custom-baf3f8d0"
+      ],
+      "exit": 0,
+      "elapsed": 0.167,
+      "stdout": "5d7d8fe5131e3ae8b7d81c31314e7b92454e3dfcd53d31447246736fd68e32dc\n",
+      "stderr": ""
+    },
+    {
+      "label": "web-custom-extract-build-proof",
+      "command": [
+        "docker",
+        "cp",
+        "qa452-web-custom-baf3f8d0:/opt/render/project/src/qa362-build.json",
+        "<owned-temp>/sweep452-generated-context/web-custom/actual-build.json"
+      ],
+      "exit": 0,
+      "elapsed": 0.03,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "web-custom-real-loopback-HTTP-and-runtime-proof",
+      "command": [
+        "docker",
+        "exec",
+        "qa452-web-custom-baf3f8d0",
+        "python",
+        "-c",
+        "import urllib.request,time,json\nfrom pathlib import Path\nfor attempt in range(40):\n try:\n  with urllib.request.urlopen('http://127.0.0.1:3000/?qa452warm=1',timeout=2) as r:assert r.status==200 and r.read()==b'Hello, World!'\n  break\n except OSError:\n  if attempt==39:raise\n  time.sleep(.25)\nrows=[]\nfor i in range(3):\n path='/?qa452='+'web-custom'+'-'+str(i+1)\n with urllib.request.urlopen('http://127.0.0.1:3000'+path,timeout=3) as r:rows.append({'path':path,'status':r.status,'body':r.read().decode()})\nprint(json.dumps({'runtime':json.loads(Path('qa362-runtime.json').read_text()),'requests':rows}))\n"
+      ],
+      "exit": 0,
+      "elapsed": 0.364,
+      "stdout": "{\"runtime\": {\"marker\": \"QA452_web-custom\", \"phase\": \"runtime\", \"python\": \"3.12.15\", \"gunicorn\": \"26.2.0\", \"flask\": \"3.1.3\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}, \"gunicorn_cmd_args_present\": true, \"gunicorn_cmd_args\": \"--access-logfile /dev/null --preload\", \"accesslog\": \"/dev/null\", \"preload_app\": true, \"bind\": [\"0.0.0.0:3000\"]}, \"requests\": [{\"path\": \"/?qa452=web-custom-1\", \"status\": 200, \"body\": \"Hello, World!\"}, {\"path\": \"/?qa452=web-custom-2\", \"status\": 200, \"body\": \"Hello, World!\"}, {\"path\": \"/?qa452=web-custom-3\", \"status\": 200, \"body\": \"Hello, World!\"}]}\n",
+      "stderr": ""
+    },
+    {
+      "label": "web-custom-actual-Gunicorn-output",
+      "command": [
+        "docker",
+        "logs",
+        "qa452-web-custom-baf3f8d0"
+      ],
+      "exit": 0,
+      "elapsed": 0.027,
+      "stdout": "QA362_OBSERVER {\"marker\":\"QA452_web-custom\",\"phase\":\"runtime\",\"python\":\"3.12.15\",\"gunicorn\":\"26.2.0\",\"flask\":\"3.1.3\",\"files\":{\"app.py\":{\"bytes\":109,\"sha256\":\"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"},\"requirements.txt\":{\"bytes\":15,\"sha256\":\"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}},\"gunicorn_cmd_args_present\":true,\"gunicorn_cmd_args\":\"--access-logfile /dev/null --preload\",\"accesslog\":\"/dev/null\",\"preload_app\":true,\"bind\":[\"0.0.0.0:3000\"]}\n",
+      "stderr": "[2026-10-17 17:16:03 +0000] [1] [INFO] Starting gunicorn 26.2.0\n[2026-10-17 17:16:03 +0000] [1] [INFO] Listening at: http://0.0.0.0:3000 (1)\n[2026-10-17 17:16:03 +0000] [1] [INFO] Using worker: sync\n[2026-10-17 17:16:03 +0000] [14] [INFO] Booting worker with pid: 14\n[2026-10-17 17:16:04 +0000] [1] [INFO] Control socket listening at /root/.gunicorn/gunicorn.ctl\n"
+    },
+    {
+      "label": "web-custom-stop-own-Gunicorn",
+      "command": [
+        "docker",
+        "stop",
+        "--time",
+        "8",
+        "qa452-web-custom-baf3f8d0"
+      ],
+      "exit": 0,
+      "elapsed": 0.298,
+      "stdout": "Flag --time has been deprecated, use --timeout instead\nqa452-web-custom-baf3f8d0\n",
+      "stderr": ""
+    },
+    {
+      "label": "web-custom-exact-own-exit",
+      "command": [
+        "docker",
+        "inspect",
+        "qa452-web-custom-baf3f8d0",
+        "--format",
+        "{{.State.ExitCode}}"
+      ],
+      "exit": 0,
+      "elapsed": 0.025,
+      "stdout": "0\n",
+      "stderr": ""
+    },
+    {
+      "label": "web-empty-build",
+      "command": [
+        "docker",
+        "build",
+        "--progress=plain",
+        "--tag",
+        "qa452-python:web-empty-baf3f8d0",
+        "--secret",
+        "id=render-env,src=<owned-temp>/sweep452-generated-context/web-empty/render-env",
+        "-f",
+        "<owned-temp>/sweep452-generated-context/web-empty/Dockerfile",
+        "<owned-temp>/sweep452-generated-context/web-empty/source"
+      ],
+      "exit": 0,
+      "elapsed": 5.688,
+      "stdout": "",
+      "stderr": "#0 building with \"desktop-linux\" instance using docker driver\n\n#1 [internal] load build definition from Dockerfile\n#1 DONE 0.0s\n\n#1 [internal] load build definition from Dockerfile\n#1 transferring dockerfile: 4.23kB done\n#1 DONE 0.0s\n\n#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7\n#2 DONE 0.6s\n\n#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e\n#3 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e done\n#3 CACHED\n\n#4 [internal] load metadata for docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822\n#4 DONE 0.0s\n\n#5 [internal] load metadata for docker.io/library/node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0\n#5 DONE 0.0s\n\n#6 [internal] load metadata for docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b\n#6 DONE 0.0s\n\n#7 [internal] load .dockerignore\n#7 transferring context: 2B done\n#7 DONE 0.0s\n\n#8 [internal] preparing inline document\n#8 DONE 0.0s\n\n#9 [internal] load build context\n#9 DONE 0.0s\n\n#10 [stage-0  7/15] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz\n#10 DONE 0.0s\n\n#11 [stage-0  1/15] FROM docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b\n#11 resolve docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b 0.0s done\n#11 DONE 0.0s\n\n#12 FROM docker.io/library/node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0\n#12 resolve docker.io/library/node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0\n#12 resolve docker.io/library/node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0 0.0s done\n#12 DONE 0.0s\n\n#13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822\n#13 resolve docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 0.0s done\n#13 DONE 0.0s\n\n#9 [internal] load build context\n#9 transferring context: 202B done\n#9 DONE 0.0s\n\n#8 [internal] preparing inline document\n#8 DONE 0.0s\n\n#14 [stage-0  7/15] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz\n#14 CACHED\n\n#15 [stage-0 11/15] RUN ln -sf /ffmpeg /usr/local/bin/ffmpeg && ln -sf /ffprobe /usr/local/bin/ffprobe\n#15 CACHED\n\n#16 [stage-0  3/15] COPY --link --from=node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0 /usr/local/lib/node_modules /usr/local/lib/node_modules\n#16 CACHED\n\n#17 [stage-0  8/15] RUN mkdir -p /usr/local/lib/node_modules/pnpm && tar -xzf /opt/bex/pnpm.tgz -C /usr/local/lib/node_modules/pnpm --strip-components=1 --no-same-owner && rm /opt/bex/pnpm.tgz && ln -sf ../lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm && ln -sf ../lib/node_modules/pnpm/bin/pnpx.cjs /usr/local/bin/pnpx\n#17 CACHED\n\n#18 [stage-0  2/15] COPY --link --from=node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0 /usr/local/bin/node /usr/local/bin/node\n#18 CACHED\n\n#19 [stage-0  4/15] RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx\n#19 CACHED\n\n#20 [stage-0 10/15] COPY --link --from=mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 /ffmpeg /ffprobe /\n#20 CACHED\n\n#21 [stage-0  6/15] RUN ln -sf /opt/yarn-v1.22.22/bin/yarn /usr/local/bin/yarn && ln -sf /opt/yarn-v1.22.22/bin/yarnpkg /usr/local/bin/yarnpkg\n#21 CACHED\n\n#22 [stage-0  9/15] RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry\n#22 CACHED\n\n#23 [stage-0 12/15] WORKDIR /opt/render/project/src\n#23 CACHED\n\n#24 [stage-0  5/15] COPY --link --from=node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0 /opt/yarn-v1.22.22 /opt/yarn-v1.22.22\n#24 CACHED\n\n#25 [stage-0 13/15] COPY . .\n#25 CACHED\n\n#26 [stage-0 14/15] COPY <<BEX_LOAD_ENV /opt/bex/load-env\n#26 DONE 0.0s\n\n#27 [stage-0 15/15] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\"/bin/bash\",\"-c\",\". /opt/bex/load-env\\nset -e\\ncat > qa362-observer.py <<'QA362_OBSERVER_SOURCE'\\nimport hashlib,json,os,platform,sys\\nfrom pathlib import Path\\nfrom importlib.metadata import version\\nfrom gunicorn.app.wsgiapp import WSGIApplication\\nreference=json.loads(Path('qa362-reference.json').read_text()); marker=json.loads(Path('qa362-marker.json').read_text())\\nfiles={n:{'bytes':len((b:=Path(n).read_bytes())),'sha256':hashlib.sha256(b).hexdigest()} for n in reference['files']}\\nassert files==reference['files']\\nphase=sys.argv[1];sys.argv=['gunicorn','app:app'];a=WSGIApplication()\\nv={'marker':marker,'phase':phase,'python':platform.python_version(),'gunicorn':version('Gunicorn'),'flask':version('Flask'),'files':files,'gunicorn_cmd_args_present':'GUNICORN_CMD_ARGS' in os.environ,'gunicorn_cmd_args':os.environ.get('GUNICORN_CMD_ARGS'),'accesslog':a.cfg.accesslog,'preload_app':a.cfg.preload_app,'bind':a.cfg.bind}\\nPath('qa362-'+phase+'.json').write_text(json.dumps(v)); print('QA362_OBSERVER '+json.dumps(v,separators=(',',':')),flush=True)\\n\\nQA362_OBSERVER_SOURCE\\ncat > qa362-reference.json <<'QA362_REFERENCE'\\n{\"repo\": \"https://github.com/render-examples/flask-hello-world\", \"branch\": \"main\", \"commit\": \"facfc73c44b35d00bb1f72e8986f0ea47cab0755\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}}\\nQA362_REFERENCE\\ncat > qa362-marker.json <<'QA362_MARKER'\\n\"QA452_web-empty\"\\nQA362_MARKER\\npip install --disable-pip-version-check -r requirements.txt\\npython qa362-observer.py build\"]\n#27 0.968 Collecting Flask (from -r requirements.txt (line 1))\n#27 1.280   Downloading flask-3.1.3-py3-none-any.whl.metadata (3.2 kB)\n#27 1.374 Collecting Gunicorn (from -r requirements.txt (line 2))\n#27 1.504   Downloading gunicorn-26.2.0-py3-none-any.whl.metadata (5.5 kB)\n#27 1.804 Collecting blinker>=1.9.0 (from Flask->-r requirements.txt (line 1))\n#27 1.815   Downloading blinker-1.9.0-py3-none-any.whl.metadata (1.6 kB)\n#27 1.855 Collecting click>=8.1.3 (from Flask->-r requirements.txt (line 1))\n#27 1.956   Downloading click-8.5.0-py3-none-any.whl.metadata (2.6 kB)\n#27 1.993 Collecting itsdangerous>=2.2.0 (from Flask->-r requirements.txt (line 1))\n#27 2.029   Downloading itsdangerous-2.2.0-py3-none-any.whl.metadata (1.9 kB)\n#27 2.111 Collecting jinja2>=3.1.2 (from Flask->-r requirements.txt (line 1))\n#27 2.157   Downloading jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)\n#27 2.264 Collecting markupsafe>=2.1.1 (from Flask->-r requirements.txt (line 1))\n#27 2.294   Downloading markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (2.7 kB)\n#27 2.331 Collecting werkzeug>=3.1.0 (from Flask->-r requirements.txt (line 1))\n#27 2.340   Downloading werkzeug-3.1.9-py3-none-any.whl.metadata (4.1 kB)\n#27 2.492 Downloading flask-3.1.3-py3-none-any.whl (103 kB)\n#27 2.724 Downloading gunicorn-26.2.0-py3-none-any.whl (228 kB)\n#27 2.867 Downloading blinker-1.9.0-py3-none-any.whl (8.5 kB)\n#27 2.888 Downloading click-8.5.0-py3-none-any.whl (125 kB)\n#27 2.925 Downloading itsdangerous-2.2.0-py3-none-any.whl (16 kB)\n#27 2.952 Downloading jinja2-3.1.6-py3-none-any.whl (134 kB)\n#27 3.000 Downloading markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (24 kB)\n#27 3.077 Downloading werkzeug-3.1.9-py3-none-any.whl (228 kB)\n#27 3.371 Installing collected packages: markupsafe, itsdangerous, Gunicorn, click, blinker, werkzeug, jinja2, Flask\n#27 3.655 Successfully installed Flask-3.1.3 Gunicorn-26.2.0 blinker-1.9.0 click-8.5.0 itsdangerous-2.2.0 jinja2-3.1.6 markupsafe-3.0.4 werkzeug-3.1.9\n#27 3.655 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.\n#27 3.734 QA362_OBSERVER {\"marker\":\"QA452_web-empty\",\"phase\":\"build\",\"python\":\"3.12.15\",\"gunicorn\":\"26.2.0\",\"flask\":\"3.1.3\",\"files\":{\"app.py\":{\"bytes\":109,\"sha256\":\"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"},\"requirements.txt\":{\"bytes\":15,\"sha256\":\"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}},\"gunicorn_cmd_args_present\":true,\"gunicorn_cmd_args\":\"\",\"accesslog\":null,\"preload_app\":false,\"bind\":[\"127.0.0.1:8000\"]}\n#27 DONE 4.0s\n\n#28 exporting to image\n#28 exporting layers\n#28 exporting layers 0.3s done\n#28 exporting manifest sha256:49fdcd88b16be6972cd5b24c8db0dcd2674be78b07d2c0776af0e02b31e42c4c done\n#28 exporting config sha256:45dd14b27b26814c236c9c582aeb01daa838fa76d10b0efa2a999a9b0b0d1c94 done\n#28 exporting attestation manifest sha256:bc07bd98cbc4cbaccc5bfd825cebe7e68ac9280e6336244a1b6cac7ed7cb67ef done\n#28 exporting manifest list sha256:3be5df04ef3bbbc46cbcaa39f0ca989eb036c5db04794b972ba519deedef60b6 done\n#28 naming to docker.io/library/qa452-python:web-empty-baf3f8d0 done\n#28 unpacking to docker.io/library/qa452-python:web-empty-baf3f8d0\n#28 unpacking to docker.io/library/qa452-python:web-empty-baf3f8d0 0.2s done\n#28 DONE 0.6s\n\nView build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/ij8fvnw47ljkcnajm3vttzeho\n"
+    },
+    {
+      "label": "web-empty-start-exact-generated-CMD",
+      "command": [
+        "docker",
+        "run",
+        "-d",
+        "--network",
+        "none",
+        "--name",
+        "qa452-web-empty-baf3f8d0",
+        "-e",
+        "PORT=3000",
+        "-e",
+        "GUNICORN_CMD_ARGS=",
+        "qa452-python:web-empty-baf3f8d0"
+      ],
+      "exit": 0,
+      "elapsed": 0.6,
+      "stdout": "5a46ead863831a31cddf9198bae1c6f863c66cb486d0a9ea9138caba068aac04\n",
+      "stderr": ""
+    },
+    {
+      "label": "web-empty-extract-build-proof",
+      "command": [
+        "docker",
+        "cp",
+        "qa452-web-empty-baf3f8d0:/opt/render/project/src/qa362-build.json",
+        "<owned-temp>/sweep452-generated-context/web-empty/actual-build.json"
+      ],
+      "exit": 0,
+      "elapsed": 0.029,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "web-empty-real-loopback-HTTP-and-runtime-proof",
+      "command": [
+        "docker",
+        "exec",
+        "qa452-web-empty-baf3f8d0",
+        "python",
+        "-c",
+        "import urllib.request,time,json\nfrom pathlib import Path\nfor attempt in range(40):\n try:\n  with urllib.request.urlopen('http://127.0.0.1:3000/?qa452warm=1',timeout=2) as r:assert r.status==200 and r.read()==b'Hello, World!'\n  break\n except OSError:\n  if attempt==39:raise\n  time.sleep(.25)\nrows=[]\nfor i in range(3):\n path='/?qa452='+'web-empty'+'-'+str(i+1)\n with urllib.request.urlopen('http://127.0.0.1:3000'+path,timeout=3) as r:rows.append({'path':path,'status':r.status,'body':r.read().decode()})\nprint(json.dumps({'runtime':json.loads(Path('qa362-runtime.json').read_text()),'requests':rows}))\n"
+      ],
+      "exit": 0,
+      "elapsed": 0.162,
+      "stdout": "{\"runtime\": {\"marker\": \"QA452_web-empty\", \"phase\": \"runtime\", \"python\": \"3.12.15\", \"gunicorn\": \"26.2.0\", \"flask\": \"3.1.3\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}, \"gunicorn_cmd_args_present\": true, \"gunicorn_cmd_args\": \"\", \"accesslog\": null, \"preload_app\": false, \"bind\": [\"0.0.0.0:3000\"]}, \"requests\": [{\"path\": \"/?qa452=web-empty-1\", \"status\": 200, \"body\": \"Hello, World!\"}, {\"path\": \"/?qa452=web-empty-2\", \"status\": 200, \"body\": \"Hello, World!\"}, {\"path\": \"/?qa452=web-empty-3\", \"status\": 200, \"body\": \"Hello, World!\"}]}\n",
+      "stderr": ""
+    },
+    {
+      "label": "web-empty-actual-Gunicorn-output",
+      "command": [
+        "docker",
+        "logs",
+        "qa452-web-empty-baf3f8d0"
+      ],
+      "exit": 0,
+      "elapsed": 0.027,
+      "stdout": "QA362_OBSERVER {\"marker\":\"QA452_web-empty\",\"phase\":\"runtime\",\"python\":\"3.12.15\",\"gunicorn\":\"26.2.0\",\"flask\":\"3.1.3\",\"files\":{\"app.py\":{\"bytes\":109,\"sha256\":\"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"},\"requirements.txt\":{\"bytes\":15,\"sha256\":\"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}},\"gunicorn_cmd_args_present\":true,\"gunicorn_cmd_args\":\"\",\"accesslog\":null,\"preload_app\":false,\"bind\":[\"0.0.0.0:3000\"]}\n",
+      "stderr": "[2026-10-17 17:16:10 +0000] [1] [INFO] Starting gunicorn 26.2.0\n[2026-10-17 17:16:10 +0000] [1] [INFO] Listening at: http://0.0.0.0:3000 (1)\n[2026-10-17 17:16:10 +0000] [1] [INFO] Using worker: sync\n[2026-10-17 17:16:10 +0000] [12] [INFO] Booting worker with pid: 12\n[2026-10-17 17:16:11 +0000] [1] [INFO] Control socket listening at /root/.gunicorn/gunicorn.ctl\n"
+    },
+    {
+      "label": "web-empty-stop-own-Gunicorn",
+      "command": [
+        "docker",
+        "stop",
+        "--time",
+        "8",
+        "qa452-web-empty-baf3f8d0"
+      ],
+      "exit": 0,
+      "elapsed": 0.277,
+      "stdout": "Flag --time has been deprecated, use --timeout instead\nqa452-web-empty-baf3f8d0\n",
+      "stderr": ""
+    },
+    {
+      "label": "web-empty-exact-own-exit",
+      "command": [
+        "docker",
+        "inspect",
+        "qa452-web-empty-baf3f8d0",
+        "--format",
+        "{{.State.ExitCode}}"
+      ],
+      "exit": 0,
+      "elapsed": 0.026,
+      "stdout": "0\n",
+      "stderr": ""
+    },
+    {
+      "label": "static-default-build",
+      "command": [
+        "docker",
+        "build",
+        "--progress=plain",
+        "--tag",
+        "qa452-python:static-default-baf3f8d0",
+        "--secret",
+        "id=render-env,src=<owned-temp>/sweep452-generated-context/static-default/render-env",
+        "-f",
+        "<owned-temp>/sweep452-generated-context/static-default/Dockerfile",
+        "<owned-temp>/sweep452-generated-context/static-default/source"
+      ],
+      "exit": 0,
+      "elapsed": 5.693,
+      "stdout": "",
+      "stderr": "#0 building with \"desktop-linux\" instance using docker driver\n\n#1 [internal] load build definition from Dockerfile\n#1 transferring dockerfile: 4.24kB done\n#1 DONE 0.0s\n\n#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7\n#2 DONE 0.2s\n\n#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e\n#3 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e 0.0s done\n#3 CACHED\n\n#4 [internal] load metadata for docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822\n#4 DONE 0.0s\n\n#5 [internal] load metadata for docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b\n#5 DONE 0.0s\n\n#6 [internal] load metadata for docker.io/library/node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0\n#6 DONE 0.0s\n\n#7 [internal] load .dockerignore\n#7 transferring context: 2B done\n#7 DONE 0.0s\n\n#8 [internal] load build context\n#8 DONE 0.0s\n\n#9 [internal] preparing inline document\n#9 DONE 0.0s\n\n#10 [stage-0  7/15] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz\n#10 DONE 0.0s\n\n#11 [stage-0  1/15] FROM docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b\n#11 resolve docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b 0.0s done\n#11 DONE 0.0s\n\n#12 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822\n#12 resolve docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822\n#12 resolve docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 0.0s done\n#12 DONE 0.0s\n\n#13 FROM docker.io/library/node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0\n#13 resolve docker.io/library/node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0 0.0s done\n#13 DONE 0.0s\n\n#8 [internal] load build context\n#8 transferring context: 202B done\n#8 DONE 0.0s\n\n#9 [internal] preparing inline document\n#9 DONE 0.0s\n\n#14 [stage-0  5/15] COPY --link --from=node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0 /opt/yarn-v1.22.22 /opt/yarn-v1.22.22\n#14 CACHED\n\n#15 [stage-0  8/15] RUN mkdir -p /usr/local/lib/node_modules/pnpm && tar -xzf /opt/bex/pnpm.tgz -C /usr/local/lib/node_modules/pnpm --strip-components=1 --no-same-owner && rm /opt/bex/pnpm.tgz && ln -sf ../lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm && ln -sf ../lib/node_modules/pnpm/bin/pnpx.cjs /usr/local/bin/pnpx\n#15 CACHED\n\n#16 [stage-0  9/15] RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry\n#16 CACHED\n\n#17 [stage-0  6/15] RUN ln -sf /opt/yarn-v1.22.22/bin/yarn /usr/local/bin/yarn && ln -sf /opt/yarn-v1.22.22/bin/yarnpkg /usr/local/bin/yarnpkg\n#17 CACHED\n\n#18 [stage-0 10/15] COPY --link --from=mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 /ffmpeg /ffprobe /\n#18 CACHED\n\n#19 [stage-0  4/15] RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx\n#19 CACHED\n\n#20 [stage-0  7/15] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz\n#20 CACHED\n\n#21 [stage-0 11/15] RUN ln -sf /ffmpeg /usr/local/bin/ffmpeg && ln -sf /ffprobe /usr/local/bin/ffprobe\n#21 CACHED\n\n#22 [stage-0  2/15] COPY --link --from=node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0 /usr/local/bin/node /usr/local/bin/node\n#22 CACHED\n\n#23 [stage-0  3/15] COPY --link --from=node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0 /usr/local/lib/node_modules /usr/local/lib/node_modules\n#23 CACHED\n\n#24 [stage-0 12/15] WORKDIR /opt/render/project/src\n#24 CACHED\n\n#25 [stage-0 13/15] COPY . .\n#25 CACHED\n\n#26 [stage-0 14/15] COPY <<BEX_LOAD_ENV /opt/bex/load-env\n#26 DONE 0.0s\n\n#27 [stage-0 15/15] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\"/bin/bash\",\"-c\",\". /opt/bex/load-env\\nset -e\\ncat > qa362-observer.py <<'QA362_OBSERVER_SOURCE'\\nimport hashlib,json,os,platform,sys\\nfrom pathlib import Path\\nfrom importlib.metadata import version\\nfrom gunicorn.app.wsgiapp import WSGIApplication\\nreference=json.loads(Path('qa362-reference.json').read_text()); marker=json.loads(Path('qa362-marker.json').read_text())\\nfiles={n:{'bytes':len((b:=Path(n).read_bytes())),'sha256':hashlib.sha256(b).hexdigest()} for n in reference['files']}\\nassert files==reference['files']\\nphase=sys.argv[1];sys.argv=['gunicorn','app:app'];a=WSGIApplication()\\nv={'marker':marker,'phase':phase,'python':platform.python_version(),'gunicorn':version('Gunicorn'),'flask':version('Flask'),'files':files,'gunicorn_cmd_args_present':'GUNICORN_CMD_ARGS' in os.environ,'gunicorn_cmd_args':os.environ.get('GUNICORN_CMD_ARGS'),'accesslog':a.cfg.accesslog,'preload_app':a.cfg.preload_app,'bind':a.cfg.bind}\\nPath('qa362-'+phase+'.json').write_text(json.dumps(v)); print('QA362_OBSERVER '+json.dumps(v,separators=(',',':')),flush=True)\\n\\nQA362_OBSERVER_SOURCE\\ncat > qa362-reference.json <<'QA362_REFERENCE'\\n{\"repo\": \"https://github.com/render-examples/flask-hello-world\", \"branch\": \"main\", \"commit\": \"facfc73c44b35d00bb1f72e8986f0ea47cab0755\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}}\\nQA362_REFERENCE\\ncat > qa362-marker.json <<'QA362_MARKER'\\n\"QA452_static-default\"\\nQA362_MARKER\\npip install --disable-pip-version-check -r requirements.txt\\npython qa362-observer.py build && mkdir -p public && cp qa362-build.json public/proof.json && printf 'qa452-static\\n' > public/index.html\"]\n#27 0.718 Collecting Flask (from -r requirements.txt (line 1))\n#27 0.982   Downloading flask-3.1.3-py3-none-any.whl.metadata (3.2 kB)\n#27 1.115 Collecting Gunicorn (from -r requirements.txt (line 2))\n#27 1.135   Downloading gunicorn-26.2.0-py3-none-any.whl.metadata (5.5 kB)\n#27 1.214 Collecting blinker>=1.9.0 (from Flask->-r requirements.txt (line 1))\n#27 1.313   Downloading blinker-1.9.0-py3-none-any.whl.metadata (1.6 kB)\n#27 1.631 Collecting click>=8.1.3 (from Flask->-r requirements.txt (line 1))\n#27 1.658   Downloading click-8.5.0-py3-none-any.whl.metadata (2.6 kB)\n#27 1.682 Collecting itsdangerous>=2.2.0 (from Flask->-r requirements.txt (line 1))\n#27 1.717   Downloading itsdangerous-2.2.0-py3-none-any.whl.metadata (1.9 kB)\n#27 1.759 Collecting jinja2>=3.1.2 (from Flask->-r requirements.txt (line 1))\n#27 1.772   Downloading jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)\n#27 1.925 Collecting markupsafe>=2.1.1 (from Flask->-r requirements.txt (line 1))\n#27 1.954   Downloading markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (2.7 kB)\n#27 2.729 Collecting werkzeug>=3.1.0 (from Flask->-r requirements.txt (line 1))\n#27 2.774   Downloading werkzeug-3.1.9-py3-none-any.whl.metadata (4.1 kB)\n#27 2.859 Downloading flask-3.1.3-py3-none-any.whl (103 kB)\n#27 3.018 Downloading gunicorn-26.2.0-py3-none-any.whl (228 kB)\n#27 3.396 Downloading blinker-1.9.0-py3-none-any.whl (8.5 kB)\n#27 3.510 Downloading click-8.5.0-py3-none-any.whl (125 kB)\n#27 3.682 Downloading itsdangerous-2.2.0-py3-none-any.whl (16 kB)\n#27 3.775 Downloading jinja2-3.1.6-py3-none-any.whl (134 kB)\n#27 3.826 Downloading markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (24 kB)\n#27 3.948 Downloading werkzeug-3.1.9-py3-none-any.whl (228 kB)\n#27 4.038 Installing collected packages: markupsafe, itsdangerous, Gunicorn, click, blinker, werkzeug, jinja2, Flask\n#27 4.319 Successfully installed Flask-3.1.3 Gunicorn-26.2.0 blinker-1.9.0 click-8.5.0 itsdangerous-2.2.0 jinja2-3.1.6 markupsafe-3.0.4 werkzeug-3.1.9\n#27 4.320 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.\n#27 4.393 QA362_OBSERVER {\"marker\":\"QA452_static-default\",\"phase\":\"build\",\"python\":\"3.12.15\",\"gunicorn\":\"26.2.0\",\"flask\":\"3.1.3\",\"files\":{\"app.py\":{\"bytes\":109,\"sha256\":\"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"},\"requirements.txt\":{\"bytes\":15,\"sha256\":\"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}},\"gunicorn_cmd_args_present\":true,\"gunicorn_cmd_args\":\"--preload --access-logfile -\",\"accesslog\":\"-\",\"preload_app\":true,\"bind\":[\"127.0.0.1:8000\"]}\n#27 DONE 4.5s\n\n#28 exporting to image\n#28 exporting layers\n#28 exporting layers 0.3s done\n#28 exporting manifest sha256:a9d8af354a439d20d5f66ad33591b13b3ddda3c1809ecf9d669f5009b06aac1e done\n#28 exporting config sha256:db2126ecbe2863a114ad343137e50ce0b3e2173bc3622342d04de7a3dd0d40db done\n#28 exporting attestation manifest sha256:df169c2d89540db60fd40cf22c0a7af427950aa14f6eedb655bf5c71c4b481e1 done\n#28 exporting manifest list sha256:8cc95127caa935286defbe495a6c1da5790005baf9f2cc3b048f8d6d6d7e5ebf done\n#28 naming to docker.io/library/qa452-python:static-default-baf3f8d0 done\n#28 unpacking to docker.io/library/qa452-python:static-default-baf3f8d0\n#28 unpacking to docker.io/library/qa452-python:static-default-baf3f8d0 0.2s done\n#28 DONE 0.5s\n\nView build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/im2q4ces6yzerzi3m1507ammi\n"
+    },
+    {
+      "label": "static-default-create-for-artifact-extraction",
+      "command": [
+        "docker",
+        "create",
+        "--network",
+        "none",
+        "--name",
+        "qa452-static-default-baf3f8d0",
+        "qa452-python:static-default-baf3f8d0",
+        "/bin/true"
+      ],
+      "exit": 0,
+      "elapsed": 0.113,
+      "stdout": "61e165896b35e527055898c6aed637d796126fa5d2a1669d8da1d60e151bf1e9\n",
+      "stderr": ""
+    },
+    {
+      "label": "static-default-extract-build-proof",
+      "command": [
+        "docker",
+        "cp",
+        "qa452-static-default-baf3f8d0:/opt/render/project/src/qa362-build.json",
+        "<owned-temp>/sweep452-generated-context/static-default/actual-build.json"
+      ],
+      "exit": 0,
+      "elapsed": 0.028,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "static-default-extract-static-artifact",
+      "command": [
+        "docker",
+        "cp",
+        "qa452-static-default-baf3f8d0:/opt/render/project/src/public",
+        "<owned-temp>/sweep452-generated-context/static-default/public-result"
+      ],
+      "exit": 0,
+      "elapsed": 0.024,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "static-custom-build",
+      "command": [
+        "docker",
+        "build",
+        "--progress=plain",
+        "--tag",
+        "qa452-python:static-custom-baf3f8d0",
+        "--secret",
+        "id=render-env,src=<owned-temp>/sweep452-generated-context/static-custom/render-env",
+        "-f",
+        "<owned-temp>/sweep452-generated-context/static-custom/Dockerfile",
+        "<owned-temp>/sweep452-generated-context/static-custom/source"
+      ],
+      "exit": 0,
+      "elapsed": 4.942,
+      "stdout": "",
+      "stderr": "#0 building with \"desktop-linux\" instance using docker driver\n\n#1 [internal] load build definition from Dockerfile\n#1 transferring dockerfile: 4.23kB done\n#1 DONE 0.0s\n\n#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7\n#2 DONE 0.2s\n\n#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e\n#3 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e 0.0s done\n#3 CACHED\n\n#4 [internal] load metadata for docker.io/library/node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0\n#4 DONE 0.0s\n\n#5 [internal] load metadata for docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b\n#5 DONE 0.0s\n\n#6 [internal] load metadata for docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822\n#6 DONE 0.0s\n\n#7 [internal] load .dockerignore\n#7 transferring context: 2B done\n#7 DONE 0.0s\n\n#8 [stage-0  7/15] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz\n#8 DONE 0.0s\n\n#9 [stage-0  1/15] FROM docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b\n#9 resolve docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b 0.0s done\n#9 DONE 0.0s\n\n#10 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822\n#10 resolve docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 0.0s done\n#10 DONE 0.0s\n\n#11 FROM docker.io/library/node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0\n#11 resolve docker.io/library/node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0 0.0s done\n#11 DONE 0.0s\n\n#12 [internal] load build context\n#12 transferring context: 202B done\n#12 DONE 0.0s\n\n#13 [internal] preparing inline document\n#13 DONE 0.0s\n\n#14 [stage-0 11/15] RUN ln -sf /ffmpeg /usr/local/bin/ffmpeg && ln -sf /ffprobe /usr/local/bin/ffprobe\n#14 CACHED\n\n#15 [stage-0  3/15] COPY --link --from=node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0 /usr/local/lib/node_modules /usr/local/lib/node_modules\n#15 CACHED\n\n#16 [stage-0 12/15] WORKDIR /opt/render/project/src\n#16 CACHED\n\n#17 [stage-0  5/15] COPY --link --from=node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0 /opt/yarn-v1.22.22 /opt/yarn-v1.22.22\n#17 CACHED\n\n#18 [stage-0 10/15] COPY --link --from=mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 /ffmpeg /ffprobe /\n#18 CACHED\n\n#19 [stage-0  4/15] RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx\n#19 CACHED\n\n#20 [stage-0  9/15] RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry\n#20 CACHED\n\n#21 [stage-0  7/15] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz\n#21 CACHED\n\n#22 [stage-0  2/15] COPY --link --from=node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0 /usr/local/bin/node /usr/local/bin/node\n#22 CACHED\n\n#23 [stage-0  8/15] RUN mkdir -p /usr/local/lib/node_modules/pnpm && tar -xzf /opt/bex/pnpm.tgz -C /usr/local/lib/node_modules/pnpm --strip-components=1 --no-same-owner && rm /opt/bex/pnpm.tgz && ln -sf ../lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm && ln -sf ../lib/node_modules/pnpm/bin/pnpx.cjs /usr/local/bin/pnpx\n#23 CACHED\n\n#24 [stage-0  6/15] RUN ln -sf /opt/yarn-v1.22.22/bin/yarn /usr/local/bin/yarn && ln -sf /opt/yarn-v1.22.22/bin/yarnpkg /usr/local/bin/yarnpkg\n#24 CACHED\n\n#25 [stage-0 13/15] COPY . .\n#25 CACHED\n\n#26 [stage-0 14/15] COPY <<BEX_LOAD_ENV /opt/bex/load-env\n#26 DONE 0.0s\n\n#27 [stage-0 15/15] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\"/bin/bash\",\"-c\",\". /opt/bex/load-env\\nset -e\\ncat > qa362-observer.py <<'QA362_OBSERVER_SOURCE'\\nimport hashlib,json,os,platform,sys\\nfrom pathlib import Path\\nfrom importlib.metadata import version\\nfrom gunicorn.app.wsgiapp import WSGIApplication\\nreference=json.loads(Path('qa362-reference.json').read_text()); marker=json.loads(Path('qa362-marker.json').read_text())\\nfiles={n:{'bytes':len((b:=Path(n).read_bytes())),'sha256':hashlib.sha256(b).hexdigest()} for n in reference['files']}\\nassert files==reference['files']\\nphase=sys.argv[1];sys.argv=['gunicorn','app:app'];a=WSGIApplication()\\nv={'marker':marker,'phase':phase,'python':platform.python_version(),'gunicorn':version('Gunicorn'),'flask':version('Flask'),'files':files,'gunicorn_cmd_args_present':'GUNICORN_CMD_ARGS' in os.environ,'gunicorn_cmd_args':os.environ.get('GUNICORN_CMD_ARGS'),'accesslog':a.cfg.accesslog,'preload_app':a.cfg.preload_app,'bind':a.cfg.bind}\\nPath('qa362-'+phase+'.json').write_text(json.dumps(v)); print('QA362_OBSERVER '+json.dumps(v,separators=(',',':')),flush=True)\\n\\nQA362_OBSERVER_SOURCE\\ncat > qa362-reference.json <<'QA362_REFERENCE'\\n{\"repo\": \"https://github.com/render-examples/flask-hello-world\", \"branch\": \"main\", \"commit\": \"facfc73c44b35d00bb1f72e8986f0ea47cab0755\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}}\\nQA362_REFERENCE\\ncat > qa362-marker.json <<'QA362_MARKER'\\n\"QA452_static-custom\"\\nQA362_MARKER\\npip install --disable-pip-version-check -r requirements.txt\\npython qa362-observer.py build && mkdir -p public && cp qa362-build.json public/proof.json && printf 'qa452-static\\n' > public/index.html\"]\n#27 0.931 Collecting Flask (from -r requirements.txt (line 1))\n#27 1.084   Downloading flask-3.1.3-py3-none-any.whl.metadata (3.2 kB)\n#27 1.143 Collecting Gunicorn (from -r requirements.txt (line 2))\n#27 1.161   Downloading gunicorn-26.2.0-py3-none-any.whl.metadata (5.5 kB)\n#27 1.199 Collecting blinker>=1.9.0 (from Flask->-r requirements.txt (line 1))\n#27 1.216   Downloading blinker-1.9.0-py3-none-any.whl.metadata (1.6 kB)\n#27 1.345 Collecting click>=8.1.3 (from Flask->-r requirements.txt (line 1))\n#27 1.356   Downloading click-8.5.0-py3-none-any.whl.metadata (2.6 kB)\n#27 1.433 Collecting itsdangerous>=2.2.0 (from Flask->-r requirements.txt (line 1))\n#27 1.470   Downloading itsdangerous-2.2.0-py3-none-any.whl.metadata (1.9 kB)\n#27 1.545 Collecting jinja2>=3.1.2 (from Flask->-r requirements.txt (line 1))\n#27 1.936   Downloading jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)\n#27 2.254 Collecting markupsafe>=2.1.1 (from Flask->-r requirements.txt (line 1))\n#27 2.287   Downloading markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (2.7 kB)\n#27 2.352 Collecting werkzeug>=3.1.0 (from Flask->-r requirements.txt (line 1))\n#27 2.368   Downloading werkzeug-3.1.9-py3-none-any.whl.metadata (4.1 kB)\n#27 2.395 Downloading flask-3.1.3-py3-none-any.whl (103 kB)\n#27 2.453 Downloading gunicorn-26.2.0-py3-none-any.whl (228 kB)\n#27 2.590 Downloading blinker-1.9.0-py3-none-any.whl (8.5 kB)\n#27 2.831 Downloading click-8.5.0-py3-none-any.whl (125 kB)\n#27 2.934 Downloading itsdangerous-2.2.0-py3-none-any.whl (16 kB)\n#27 2.972 Downloading jinja2-3.1.6-py3-none-any.whl (134 kB)\n#27 3.185 Downloading markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (24 kB)\n#27 3.232 Downloading werkzeug-3.1.9-py3-none-any.whl (228 kB)\n#27 3.280 Installing collected packages: markupsafe, itsdangerous, Gunicorn, click, blinker, werkzeug, jinja2, Flask\n#27 3.557 Successfully installed Flask-3.1.3 Gunicorn-26.2.0 blinker-1.9.0 click-8.5.0 itsdangerous-2.2.0 jinja2-3.1.6 markupsafe-3.0.4 werkzeug-3.1.9\n#27 3.557 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.\n#27 3.638 QA362_OBSERVER {\"marker\":\"QA452_static-custom\",\"phase\":\"build\",\"python\":\"3.12.15\",\"gunicorn\":\"26.2.0\",\"flask\":\"3.1.3\",\"files\":{\"app.py\":{\"bytes\":109,\"sha256\":\"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"},\"requirements.txt\":{\"bytes\":15,\"sha256\":\"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}},\"gunicorn_cmd_args_present\":true,\"gunicorn_cmd_args\":\"--access-logfile /dev/null --preload\",\"accesslog\":\"/dev/null\",\"preload_app\":true,\"bind\":[\"127.0.0.1:8000\"]}\n#27 DONE 3.7s\n\n#28 exporting to image\n#28 exporting layers\n#28 exporting layers 0.4s done\n#28 exporting manifest sha256:7f9b5fd402213432b5c1cdf29ba35931d4fd54b4612169dc019a19f6635ae02a done\n#28 exporting config sha256:a08d7dd62ddbf9cadfdb34dc564cf5d5e309154945eb00f19d377b2aeb0df3e4 done\n#28 exporting attestation manifest sha256:3243221d5f1886f5c67e9b2b8a52a88ac4bc92c065c570db775fc1009226c36a done\n#28 exporting manifest list sha256:562aaa81580ee1f62a1abcb82d9f0c50e15cbbe9c5fbe7b8c513ef34982c62fa done\n#28 naming to docker.io/library/qa452-python:static-custom-baf3f8d0 done\n#28 unpacking to docker.io/library/qa452-python:static-custom-baf3f8d0 0.1s done\n#28 DONE 0.6s\n\nView build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/z488z6ak4gviiiabzlwsuyquc\n"
+    },
+    {
+      "label": "static-custom-create-for-artifact-extraction",
+      "command": [
+        "docker",
+        "create",
+        "--network",
+        "none",
+        "--name",
+        "qa452-static-custom-baf3f8d0",
+        "qa452-python:static-custom-baf3f8d0",
+        "/bin/true"
+      ],
+      "exit": 0,
+      "elapsed": 0.164,
+      "stdout": "79772ba66bfe9f147f0f0f3028d641d7191ab8bc3fd7e3f992bc53652cc131d3\n",
+      "stderr": ""
+    },
+    {
+      "label": "static-custom-extract-build-proof",
+      "command": [
+        "docker",
+        "cp",
+        "qa452-static-custom-baf3f8d0:/opt/render/project/src/qa362-build.json",
+        "<owned-temp>/sweep452-generated-context/static-custom/actual-build.json"
+      ],
+      "exit": 0,
+      "elapsed": 0.03,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "static-custom-extract-static-artifact",
+      "command": [
+        "docker",
+        "cp",
+        "qa452-static-custom-baf3f8d0:/opt/render/project/src/public",
+        "<owned-temp>/sweep452-generated-context/static-custom/public-result"
+      ],
+      "exit": 0,
+      "elapsed": 0.023,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "static-empty-build",
+      "command": [
+        "docker",
+        "build",
+        "--progress=plain",
+        "--tag",
+        "qa452-python:static-empty-baf3f8d0",
+        "--secret",
+        "id=render-env,src=<owned-temp>/sweep452-generated-context/static-empty/render-env",
+        "-f",
+        "<owned-temp>/sweep452-generated-context/static-empty/Dockerfile",
+        "<owned-temp>/sweep452-generated-context/static-empty/source"
+      ],
+      "exit": 0,
+      "elapsed": 8.748,
+      "stdout": "",
+      "stderr": "#0 building with \"desktop-linux\" instance using docker driver\n\n#1 [internal] load build definition from Dockerfile\n#1 transferring dockerfile: 4.23kB done\n#1 DONE 0.0s\n\n#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7\n#2 DONE 1.6s\n\n#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e\n#3 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e done\n#3 CACHED\n\n#4 [internal] load metadata for docker.io/library/node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0\n#4 DONE 0.0s\n\n#5 [internal] load metadata for docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b\n#5 DONE 0.0s\n\n#6 [internal] load metadata for docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822\n#6 DONE 0.0s\n\n#7 [internal] load .dockerignore\n#7 transferring context: 2B done\n#7 DONE 0.0s\n\n#8 [stage-0  7/15] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz\n#8 DONE 0.0s\n\n#9 FROM docker.io/library/node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0\n#9 resolve docker.io/library/node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0 0.0s done\n#9 DONE 0.0s\n\n#10 [stage-0  1/15] FROM docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b\n#10 resolve docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b 0.0s done\n#10 DONE 0.0s\n\n#11 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822\n#11 resolve docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 0.0s done\n#11 DONE 0.0s\n\n#12 [internal] preparing inline document\n#12 DONE 0.0s\n\n#13 [internal] load build context\n#13 transferring context: 202B 0.0s done\n#13 DONE 0.0s\n\n#14 [stage-0  6/15] RUN ln -sf /opt/yarn-v1.22.22/bin/yarn /usr/local/bin/yarn && ln -sf /opt/yarn-v1.22.22/bin/yarnpkg /usr/local/bin/yarnpkg\n#14 CACHED\n\n#15 [stage-0  5/15] COPY --link --from=node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0 /opt/yarn-v1.22.22 /opt/yarn-v1.22.22\n#15 CACHED\n\n#16 [stage-0  9/15] RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry\n#16 CACHED\n\n#17 [stage-0 12/15] WORKDIR /opt/render/project/src\n#17 CACHED\n\n#18 [stage-0 11/15] RUN ln -sf /ffmpeg /usr/local/bin/ffmpeg && ln -sf /ffprobe /usr/local/bin/ffprobe\n#18 CACHED\n\n#19 [stage-0  8/15] RUN mkdir -p /usr/local/lib/node_modules/pnpm && tar -xzf /opt/bex/pnpm.tgz -C /usr/local/lib/node_modules/pnpm --strip-components=1 --no-same-owner && rm /opt/bex/pnpm.tgz && ln -sf ../lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm && ln -sf ../lib/node_modules/pnpm/bin/pnpx.cjs /usr/local/bin/pnpx\n#19 CACHED\n\n#20 [stage-0 10/15] COPY --link --from=mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 /ffmpeg /ffprobe /\n#20 CACHED\n\n#21 [stage-0  4/15] RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx\n#21 CACHED\n\n#22 [stage-0  3/15] COPY --link --from=node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0 /usr/local/lib/node_modules /usr/local/lib/node_modules\n#22 CACHED\n\n#23 [stage-0  7/15] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz\n#23 CACHED\n\n#24 [stage-0  2/15] COPY --link --from=node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0 /usr/local/bin/node /usr/local/bin/node\n#24 CACHED\n\n#25 [stage-0 13/15] COPY . .\n#25 CACHED\n\n#26 [stage-0 14/15] COPY <<BEX_LOAD_ENV /opt/bex/load-env\n#26 DONE 0.0s\n\n#27 [stage-0 15/15] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\"/bin/bash\",\"-c\",\". /opt/bex/load-env\\nset -e\\ncat > qa362-observer.py <<'QA362_OBSERVER_SOURCE'\\nimport hashlib,json,os,platform,sys\\nfrom pathlib import Path\\nfrom importlib.metadata import version\\nfrom gunicorn.app.wsgiapp import WSGIApplication\\nreference=json.loads(Path('qa362-reference.json').read_text()); marker=json.loads(Path('qa362-marker.json').read_text())\\nfiles={n:{'bytes':len((b:=Path(n).read_bytes())),'sha256':hashlib.sha256(b).hexdigest()} for n in reference['files']}\\nassert files==reference['files']\\nphase=sys.argv[1];sys.argv=['gunicorn','app:app'];a=WSGIApplication()\\nv={'marker':marker,'phase':phase,'python':platform.python_version(),'gunicorn':version('Gunicorn'),'flask':version('Flask'),'files':files,'gunicorn_cmd_args_present':'GUNICORN_CMD_ARGS' in os.environ,'gunicorn_cmd_args':os.environ.get('GUNICORN_CMD_ARGS'),'accesslog':a.cfg.accesslog,'preload_app':a.cfg.preload_app,'bind':a.cfg.bind}\\nPath('qa362-'+phase+'.json').write_text(json.dumps(v)); print('QA362_OBSERVER '+json.dumps(v,separators=(',',':')),flush=True)\\n\\nQA362_OBSERVER_SOURCE\\ncat > qa362-reference.json <<'QA362_REFERENCE'\\n{\"repo\": \"https://github.com/render-examples/flask-hello-world\", \"branch\": \"main\", \"commit\": \"facfc73c44b35d00bb1f72e8986f0ea47cab0755\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}}\\nQA362_REFERENCE\\ncat > qa362-marker.json <<'QA362_MARKER'\\n\"QA452_static-empty\"\\nQA362_MARKER\\npip install --disable-pip-version-check -r requirements.txt\\npython qa362-observer.py build && mkdir -p public && cp qa362-build.json public/proof.json && printf 'qa452-static\\n' > public/index.html\"]\n#27 1.120 Collecting Flask (from -r requirements.txt (line 1))\n#27 1.580   Downloading flask-3.1.3-py3-none-any.whl.metadata (3.2 kB)\n#27 1.659 Collecting Gunicorn (from -r requirements.txt (line 2))\n#27 1.718   Downloading gunicorn-26.2.0-py3-none-any.whl.metadata (5.5 kB)\n#27 1.992 Collecting blinker>=1.9.0 (from Flask->-r requirements.txt (line 1))\n#27 2.082   Downloading blinker-1.9.0-py3-none-any.whl.metadata (1.6 kB)\n#27 2.329 Collecting click>=8.1.3 (from Flask->-r requirements.txt (line 1))\n#27 2.491   Downloading click-8.5.0-py3-none-any.whl.metadata (2.6 kB)\n#27 4.042 Collecting itsdangerous>=2.2.0 (from Flask->-r requirements.txt (line 1))\n#27 4.052   Downloading itsdangerous-2.2.0-py3-none-any.whl.metadata (1.9 kB)\n#27 4.118 Collecting jinja2>=3.1.2 (from Flask->-r requirements.txt (line 1))\n#27 4.135   Downloading jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)\n#27 4.315 Collecting markupsafe>=2.1.1 (from Flask->-r requirements.txt (line 1))\n#27 4.409   Downloading markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (2.7 kB)\n#27 4.580 Collecting werkzeug>=3.1.0 (from Flask->-r requirements.txt (line 1))\n#27 5.076   Downloading werkzeug-3.1.9-py3-none-any.whl.metadata (4.1 kB)\n#27 5.100 Downloading flask-3.1.3-py3-none-any.whl (103 kB)\n#27 5.223 Downloading gunicorn-26.2.0-py3-none-any.whl (228 kB)\n#27 5.266 Downloading blinker-1.9.0-py3-none-any.whl (8.5 kB)\n#27 5.298 Downloading click-8.5.0-py3-none-any.whl (125 kB)\n#27 5.316 Downloading itsdangerous-2.2.0-py3-none-any.whl (16 kB)\n#27 5.333 Downloading jinja2-3.1.6-py3-none-any.whl (134 kB)\n#27 5.371 Downloading markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (24 kB)\n#27 5.389 Downloading werkzeug-3.1.9-py3-none-any.whl (228 kB)\n#27 5.403 Installing collected packages: markupsafe, itsdangerous, Gunicorn, click, blinker, werkzeug, jinja2, Flask\n#27 5.674 Successfully installed Flask-3.1.3 Gunicorn-26.2.0 blinker-1.9.0 click-8.5.0 itsdangerous-2.2.0 jinja2-3.1.6 markupsafe-3.0.4 werkzeug-3.1.9\n#27 5.674 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.\n#27 5.747 QA362_OBSERVER {\"marker\":\"QA452_static-empty\",\"phase\":\"build\",\"python\":\"3.12.15\",\"gunicorn\":\"26.2.0\",\"flask\":\"3.1.3\",\"files\":{\"app.py\":{\"bytes\":109,\"sha256\":\"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"},\"requirements.txt\":{\"bytes\":15,\"sha256\":\"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}},\"gunicorn_cmd_args_present\":true,\"gunicorn_cmd_args\":\"\",\"accesslog\":null,\"preload_app\":false,\"bind\":[\"127.0.0.1:8000\"]}\n#27 DONE 5.8s\n\n#28 exporting to image\n#28 exporting layers\n#28 exporting layers 0.3s done\n#28 exporting manifest sha256:983906ea326351460e8439e6783ee1a0a852ad0e8cb0225bab38d865fde8c4dd done\n#28 exporting config sha256:3d0834aefbd5d1a67f71ace0174e5552e859f4a4beac25d560934ad26285fb4c done\n#28 exporting attestation manifest sha256:86ef3ef4f1ebdf9b3b25a72875cf73a730aaab5e251b52e068c32a21f49f5520 done\n#28 exporting manifest list sha256:ad71a82b6da2725c18715629bb70db5c2926c39f16870cce5d8f34638de0cebf done\n#28 naming to docker.io/library/qa452-python:static-empty-baf3f8d0 done\n#28 unpacking to docker.io/library/qa452-python:static-empty-baf3f8d0 0.1s done\n#28 DONE 0.5s\n\nView build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/soyklvex502pw4zpmuhktv2vz\n"
+    },
+    {
+      "label": "static-empty-create-for-artifact-extraction",
+      "command": [
+        "docker",
+        "create",
+        "--network",
+        "none",
+        "--name",
+        "qa452-static-empty-baf3f8d0",
+        "qa452-python:static-empty-baf3f8d0",
+        "/bin/true"
+      ],
+      "exit": 0,
+      "elapsed": 0.139,
+      "stdout": "a1cfeec6393987873a97ba253e86b018ae66efb82976e43c64d58d1f207b8c99\n",
+      "stderr": ""
+    },
+    {
+      "label": "static-empty-extract-build-proof",
+      "command": [
+        "docker",
+        "cp",
+        "qa452-static-empty-baf3f8d0:/opt/render/project/src/qa362-build.json",
+        "<owned-temp>/sweep452-generated-context/static-empty/actual-build.json"
+      ],
+      "exit": 0,
+      "elapsed": 0.027,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "static-empty-extract-static-artifact",
+      "command": [
+        "docker",
+        "cp",
+        "qa452-static-empty-baf3f8d0:/opt/render/project/src/public",
+        "<owned-temp>/sweep452-generated-context/static-empty/public-result"
+      ],
+      "exit": 0,
+      "elapsed": 0.027,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "remove-own-container",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa452-static-empty-baf3f8d0"
+      ],
+      "exit": 0,
+      "elapsed": 0.058,
+      "stdout": "qa452-static-empty-baf3f8d0\n",
+      "stderr": ""
+    },
+    {
+      "label": "verify-own-container-absence",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa452-static-empty-baf3f8d0"
+      ],
+      "exit": 1,
+      "elapsed": 0.021,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa452-static-empty-baf3f8d0\n"
+    },
+    {
+      "label": "remove-own-container",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa452-static-custom-baf3f8d0"
+      ],
+      "exit": 0,
+      "elapsed": 0.054,
+      "stdout": "qa452-static-custom-baf3f8d0\n",
+      "stderr": ""
+    },
+    {
+      "label": "verify-own-container-absence",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa452-static-custom-baf3f8d0"
+      ],
+      "exit": 1,
+      "elapsed": 0.02,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa452-static-custom-baf3f8d0\n"
+    },
+    {
+      "label": "remove-own-container",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa452-static-default-baf3f8d0"
+      ],
+      "exit": 0,
+      "elapsed": 0.064,
+      "stdout": "qa452-static-default-baf3f8d0\n",
+      "stderr": ""
+    },
+    {
+      "label": "verify-own-container-absence",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa452-static-default-baf3f8d0"
+      ],
+      "exit": 1,
+      "elapsed": 0.019,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa452-static-default-baf3f8d0\n"
+    },
+    {
+      "label": "remove-own-container",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa452-web-empty-baf3f8d0"
+      ],
+      "exit": 0,
+      "elapsed": 0.059,
+      "stdout": "qa452-web-empty-baf3f8d0\n",
+      "stderr": ""
+    },
+    {
+      "label": "verify-own-container-absence",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa452-web-empty-baf3f8d0"
+      ],
+      "exit": 1,
+      "elapsed": 0.021,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa452-web-empty-baf3f8d0\n"
+    },
+    {
+      "label": "remove-own-container",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa452-web-custom-baf3f8d0"
+      ],
+      "exit": 0,
+      "elapsed": 0.058,
+      "stdout": "qa452-web-custom-baf3f8d0\n",
+      "stderr": ""
+    },
+    {
+      "label": "verify-own-container-absence",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa452-web-custom-baf3f8d0"
+      ],
+      "exit": 1,
+      "elapsed": 0.02,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa452-web-custom-baf3f8d0\n"
+    },
+    {
+      "label": "remove-own-container",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa452-web-default-baf3f8d0"
+      ],
+      "exit": 0,
+      "elapsed": 0.06,
+      "stdout": "qa452-web-default-baf3f8d0\n",
+      "stderr": ""
+    },
+    {
+      "label": "verify-own-container-absence",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa452-web-default-baf3f8d0"
+      ],
+      "exit": 1,
+      "elapsed": 0.02,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa452-web-default-baf3f8d0\n"
+    },
+    {
+      "label": "remove-own-tagged-image",
+      "command": [
+        "docker",
+        "image",
+        "rm",
+        "qa452-python:static-empty-baf3f8d0"
+      ],
+      "exit": 0,
+      "elapsed": 0.231,
+      "stdout": "Untagged: qa452-python:static-empty-baf3f8d0\nDeleted: sha256:ad71a82b6da2725c18715629bb70db5c2926c39f16870cce5d8f34638de0cebf\n",
+      "stderr": ""
+    },
+    {
+      "label": "verify-own-tag-absence",
+      "command": [
+        "docker",
+        "image",
+        "inspect",
+        "qa452-python:static-empty-baf3f8d0"
+      ],
+      "exit": 1,
+      "elapsed": 0.024,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such image: qa452-python:static-empty-baf3f8d0\n"
+    },
+    {
+      "label": "remove-own-tagged-image",
+      "command": [
+        "docker",
+        "image",
+        "rm",
+        "qa452-python:static-custom-baf3f8d0"
+      ],
+      "exit": 0,
+      "elapsed": 0.078,
+      "stdout": "Untagged: qa452-python:static-custom-baf3f8d0\nDeleted: sha256:562aaa81580ee1f62a1abcb82d9f0c50e15cbbe9c5fbe7b8c513ef34982c62fa\n",
+      "stderr": ""
+    },
+    {
+      "label": "verify-own-tag-absence",
+      "command": [
+        "docker",
+        "image",
+        "inspect",
+        "qa452-python:static-custom-baf3f8d0"
+      ],
+      "exit": 1,
+      "elapsed": 0.02,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such image: qa452-python:static-custom-baf3f8d0\n"
+    },
+    {
+      "label": "remove-own-tagged-image",
+      "command": [
+        "docker",
+        "image",
+        "rm",
+        "qa452-python:static-default-baf3f8d0"
+      ],
+      "exit": 0,
+      "elapsed": 0.07,
+      "stdout": "Untagged: qa452-python:static-default-baf3f8d0\nDeleted: sha256:8cc95127caa935286defbe495a6c1da5790005baf9f2cc3b048f8d6d6d7e5ebf\n",
+      "stderr": ""
+    },
+    {
+      "label": "verify-own-tag-absence",
+      "command": [
+        "docker",
+        "image",
+        "inspect",
+        "qa452-python:static-default-baf3f8d0"
+      ],
+      "exit": 1,
+      "elapsed": 0.022,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such image: qa452-python:static-default-baf3f8d0\n"
+    },
+    {
+      "label": "remove-own-tagged-image",
+      "command": [
+        "docker",
+        "image",
+        "rm",
+        "qa452-python:web-empty-baf3f8d0"
+      ],
+      "exit": 0,
+      "elapsed": 0.069,
+      "stdout": "Untagged: qa452-python:web-empty-baf3f8d0\nDeleted: sha256:3be5df04ef3bbbc46cbcaa39f0ca989eb036c5db04794b972ba519deedef60b6\n",
+      "stderr": ""
+    },
+    {
+      "label": "verify-own-tag-absence",
+      "command": [
+        "docker",
+        "image",
+        "inspect",
+        "qa452-python:web-empty-baf3f8d0"
+      ],
+      "exit": 1,
+      "elapsed": 0.022,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such image: qa452-python:web-empty-baf3f8d0\n"
+    },
+    {
+      "label": "remove-own-tagged-image",
+      "command": [
+        "docker",
+        "image",
+        "rm",
+        "qa452-python:web-custom-baf3f8d0"
+      ],
+      "exit": 0,
+      "elapsed": 0.09,
+      "stdout": "Untagged: qa452-python:web-custom-baf3f8d0\nDeleted: sha256:ea3dca3c014d4232f621bd35fc540362bdf795cf952d371b7f8d1949070b6f96\n",
+      "stderr": ""
+    },
+    {
+      "label": "verify-own-tag-absence",
+      "command": [
+        "docker",
+        "image",
+        "inspect",
+        "qa452-python:web-custom-baf3f8d0"
+      ],
+      "exit": 1,
+      "elapsed": 0.021,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such image: qa452-python:web-custom-baf3f8d0\n"
+    },
+    {
+      "label": "remove-own-tagged-image",
+      "command": [
+        "docker",
+        "image",
+        "rm",
+        "qa452-python:web-default-baf3f8d0"
+      ],
+      "exit": 0,
+      "elapsed": 0.199,
+      "stdout": "Untagged: qa452-python:web-default-baf3f8d0\nDeleted: sha256:6c38737cd8c560c5f2a43c3f986b3356615c81140259e50ca1001e14d34cc121\n",
+      "stderr": ""
+    },
+    {
+      "label": "verify-own-tag-absence",
+      "command": [
+        "docker",
+        "image",
+        "inspect",
+        "qa452-python:web-default-baf3f8d0"
+      ],
+      "exit": 1,
+      "elapsed": 0.019,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such image: qa452-python:web-default-baf3f8d0\n"
+    }
+  ],
+  "pass": true,
+  "container_cleanup": [
+    {
+      "name": "qa452-static-empty-baf3f8d0",
+      "absent": true
+    },
+    {
+      "name": "qa452-static-custom-baf3f8d0",
+      "absent": true
+    },
+    {
+      "name": "qa452-static-default-baf3f8d0",
+      "absent": true
+    },
+    {
+      "name": "qa452-web-empty-baf3f8d0",
+      "absent": true
+    },
+    {
+      "name": "qa452-web-custom-baf3f8d0",
+      "absent": true
+    },
+    {
+      "name": "qa452-web-default-baf3f8d0",
+      "absent": true
+    }
+  ],
+  "image_cleanup": [
+    {
+      "tag": "qa452-python:static-empty-baf3f8d0",
+      "absent": true
+    },
+    {
+      "tag": "qa452-python:static-custom-baf3f8d0",
+      "absent": true
+    },
+    {
+      "tag": "qa452-python:static-default-baf3f8d0",
+      "absent": true
+    },
+    {
+      "tag": "qa452-python:web-empty-baf3f8d0",
+      "absent": true
+    },
+    {
+      "tag": "qa452-python:web-custom-baf3f8d0",
+      "absent": true
+    },
+    {
+      "tag": "qa452-python:web-default-baf3f8d0",
+      "absent": true
+    }
+  ],
+  "own_context_removed": true,
+  "all_own_containers_and_image_tags_absent": true,
+  "base_and_shared_build_cache_preserved": true
+}

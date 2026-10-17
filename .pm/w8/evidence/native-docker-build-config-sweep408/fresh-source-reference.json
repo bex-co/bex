@@ -1,0 +1,17 @@
+{
+  "repo": "https://github.com/bex-co/bex",
+  "branch": "main",
+  "commit": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+  "root_directory": "examples/docker-build-env",
+  "files": {
+    "examples/docker-build-env/Dockerfile": {
+      "bytes": 743,
+      "sha256": "406b2887d5cccd05e553d744be1546961903e6ad5a1e3ba36744c095e4a130c5"
+    },
+    "examples/docker-build-env/README.md": {
+      "bytes": 770,
+      "sha256": "d47a671dbc6d75b9c1e76c6efed81b08dfe33206d1d9e3d4a04ca4ab54d18153"
+    }
+  },
+  "qualification": "actual deployed child commit is recorded and its Dockerfile is checked against this fresh reference; unrelated concurrent main commits need not match"
+}

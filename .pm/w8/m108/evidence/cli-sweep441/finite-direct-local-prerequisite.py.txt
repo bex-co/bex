@@ -1,0 +1,25 @@
+from pathlib import Path
+import subprocess,json,urllib.request,secrets,time,shutil,hashlib
+P=Path(__file__).resolve().parent;ctx=P/'sweep441-local-context';assert not ctx.exists();ctx.mkdir();ref=json.loads((P/'sweep440-primary-reference.json').read_text());(P/'sweep441-primary-reference.json').write_text(json.dumps(ref,indent=2));name='qa441-upload-'+secrets.token_hex(4);node='<local-user>/.nvm/versions/node/v22.17.1/bin/node';image='node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0';out={'container':name,'image':image,'kind':'direct pinned Node24 HTTP1 upload fixture, not ingress or generated-image acceptance','steps':[],'cases':[]};receipt=P/'sweep441-local-prerequisite.json'
+def save():receipt.write_text(json.dumps(out,indent=2,ensure_ascii=False))
+def run(label,args,bound=40,check=True):
+ r=subprocess.run(args,capture_output=True,text=True,timeout=bound);out['steps'].append({'label':label,'command':args,'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr});save()
+ if check:r.check_returncode()
+ return r
+save()
+try:
+ branch=run('fresh-public-branch',['git','ls-remote',ref['repo'],'refs/heads/'+ref['branch']]);assert branch.stdout.split()[0]==ref['commit']
+ for n,expected in ref['files'].items():
+  b=urllib.request.urlopen('https://raw.githubusercontent.com/git-fixtures/basic/'+ref['commit']+'/'+n,timeout=25).read();assert {'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}==expected;(ctx/n).write_bytes(b)
+ data=bytes((i*17+31)&255 for i in range(1024*1024));payload=ctx/'payload.bin';payload.write_bytes(data);expected={'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()};out['payload']=expected;ns={};f=P/'sweep441-command-factory.py';exec(compile(f.read_text(),str(f),'exec'),ns);cmd=ns['commands'](P,ref,'QA441_LOCAL');run('start-own-upload-server',['docker','run','--pull','never','-d','--network','bridge','-p','127.0.0.1::3000','--name',name,'--mount','type=bind,src='+str(ctx)+',dst=/app','--workdir','/app','--entrypoint','/bin/bash',image,'-c',cmd['build']+'\nexec '+cmd['start']]);port=run('own-port',['docker','port',name,'3000/tcp']).stdout.strip();assert port.startswith('127.0.0.1:');url='http://'+port
+ for i in range(30):
+  try:
+   with urllib.request.urlopen(url,timeout=2) as r:health=json.loads(r.read());assert health['marker']=='QA441_LOCAL' and health['requestTimeout']==180000;break
+  except Exception:time.sleep(.2)
+ else:raise RuntimeError('Own upload server not ready')
+ for label,interval in [('fast',0),('paced',300)]:
+  capture=P/('sweep441-local-'+label+'-client.json');assert not capture.exists();nonce='local-'+label;r=run('one-MiB-'+label,[node,str(P/'sweep441-paced-client.cjs'),url+'/upload/'+nonce,str(payload),str(interval),str(capture)],bound=130);v=json.loads(capture.read_text());body=v.get('response',{}).get('decoded');passed=v['complete'] and not v.get('client_deadline_reached') and v['bytes_submitted']==expected['bytes'] and v['response']['status']==200 and body and body['marker']=='QA441_LOCAL' and body['boot']==health['boot'] and body['nonce']==nonce and body['files']==ref['files'] and {k:body[k] for k in ['bytes','sha256']}==expected and (label=='fast' or 70<=v['finished_at']<=110);e={'case':label,'client':v,'pass':bool(passed)};out['cases'].append(e);save();assert passed;print(json.dumps({'local_case':label,'HTTP':200,'bytes':body['bytes'],'elapsed':v['finished_at'],'pass':True}),flush=True)
+ out['pass']=True;run('actual-own-upload-log',['docker','logs',name])
+finally:
+ run('remove-exact-own-server',['docker','rm','-f','-v',name],check=False);out['own_container_absent']=run('own-container-absence',['docker','container','inspect',name],check=False).returncode!=0;shutil.rmtree(ctx);out['own_context_payload_removed']=not ctx.exists();save()
+print(json.dumps({'pass':out.get('pass',False),'own_container_absent':out['own_container_absent'],'own_context_payload_removed':out['own_context_payload_removed']}))

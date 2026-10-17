@@ -1,0 +1,126 @@
+{
+  "at": "2026-10-17T11:06:57.565653+00:00",
+  "repo": "git-fixtures/submodule",
+  "nodes": [
+    {
+      "requested_ref": "master",
+      "commit": "b685400c1f9316f350965a5993d350bc746b0bf4",
+      "tree_sha": "3bf5d30ad4f23cf517676fee232e3bcb8537c1d0",
+      "gitlinks": [
+        {
+          "path": "basic",
+          "mode": "160000",
+          "type": "commit",
+          "sha": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5"
+        },
+        {
+          "path": "itself",
+          "mode": "160000",
+          "type": "commit",
+          "sha": "47770b26e71b0f69c0ecd494b1066f8d1da4fc03"
+        }
+      ],
+      "entries": [
+        {
+          "path": ".gitmodules",
+          "mode": "100644",
+          "type": "blob"
+        },
+        {
+          "path": "README.md",
+          "mode": "100644",
+          "type": "blob"
+        },
+        {
+          "path": "basic",
+          "mode": "160000",
+          "type": "commit"
+        },
+        {
+          "path": "itself",
+          "mode": "160000",
+          "type": "commit"
+        }
+      ],
+      "gitmodules": {
+        "url": "https://raw.githubusercontent.com/git-fixtures/submodule/b685400c1f9316f350965a5993d350bc746b0bf4/.gitmodules",
+        "bytes": 172,
+        "sha256": "7fc5618d3820ef4716f0e799b5d99b441db82e075b1cba24a308b15ff512e880",
+        "text": "[submodule \"basic\"]\n\tpath = basic\n\turl = https://github.com/git-fixtures/basic.git\n[submodule \"itself\"]\n\tpath = itself\n\turl = https://github.com/git-fixtures/submodule.git\n"
+      }
+    },
+    {
+      "requested_ref": "47770b26e71b0f69c0ecd494b1066f8d1da4fc03",
+      "commit": "47770b26e71b0f69c0ecd494b1066f8d1da4fc03",
+      "tree_sha": "8ac3015df16d47179e903d0379b52267359c1499",
+      "gitlinks": [
+        {
+          "path": "basic",
+          "mode": "160000",
+          "type": "commit",
+          "sha": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5"
+        },
+        {
+          "path": "itself",
+          "mode": "160000",
+          "type": "commit",
+          "sha": "c7431b5bc9d45fb64a87d4a895ce3d1073c898d2"
+        }
+      ],
+      "entries": [
+        {
+          "path": ".gitmodules",
+          "mode": "100644",
+          "type": "blob"
+        },
+        {
+          "path": "basic",
+          "mode": "160000",
+          "type": "commit"
+        },
+        {
+          "path": "itself",
+          "mode": "160000",
+          "type": "commit"
+        }
+      ],
+      "gitmodules": {
+        "url": "https://raw.githubusercontent.com/git-fixtures/submodule/47770b26e71b0f69c0ecd494b1066f8d1da4fc03/.gitmodules",
+        "bytes": 172,
+        "sha256": "7fc5618d3820ef4716f0e799b5d99b441db82e075b1cba24a308b15ff512e880",
+        "text": "[submodule \"basic\"]\n\tpath = basic\n\turl = https://github.com/git-fixtures/basic.git\n[submodule \"itself\"]\n\tpath = itself\n\turl = https://github.com/git-fixtures/submodule.git\n"
+      }
+    },
+    {
+      "requested_ref": "c7431b5bc9d45fb64a87d4a895ce3d1073c898d2",
+      "commit": "c7431b5bc9d45fb64a87d4a895ce3d1073c898d2",
+      "tree_sha": "efe525d0f1372593df812e3f6faa4e05bb91f498",
+      "gitlinks": [
+        {
+          "path": "basic",
+          "mode": "160000",
+          "type": "commit",
+          "sha": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5"
+        }
+      ],
+      "entries": [
+        {
+          "path": ".gitmodules",
+          "mode": "100644",
+          "type": "blob"
+        },
+        {
+          "path": "basic",
+          "mode": "160000",
+          "type": "commit"
+        }
+      ],
+      "gitmodules": {
+        "url": "https://raw.githubusercontent.com/git-fixtures/submodule/c7431b5bc9d45fb64a87d4a895ce3d1073c898d2/.gitmodules",
+        "bytes": 83,
+        "sha256": "25a1f02975734c82b9df9d9756611e4d666fd087dd24d25797f02a724b4b7954",
+        "text": "[submodule \"basic\"]\n\tpath = basic\n\turl = https://github.com/git-fixtures/basic.git\n"
+      }
+    }
+  ]
+}

@@ -1,0 +1,198 @@
+{
+  "image": "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+  "nonce": "e22520",
+  "qualification": "actual resolved pinned Node base plus exact authored command; not full generated-image execution, no hosted database connection",
+  "context": "<owned-temp>/sweep402-local-sikd3aod",
+  "cases": [
+    {
+      "label": "default",
+      "container": "qa402-e22520-default",
+      "absent_before": true,
+      "manual_install": false,
+      "command": {
+        "build": "set -e\nnode -e \"const f=require('fs');f.writeFileSync('qa402.dump',Buffer.from(f.readFileSync('/etc/secrets/qa402.dump.b64','utf8'),'base64'))\"\ncat > qa402-probe.cjs <<'QA402_QA402_PROBE_CJS'\nconst fs=require('node:fs'),cp=require('node:child_process'),crypto=require('node:crypto'),http=require('node:http'),ref=require('./qa402-reference.json'),marker=require('./qa402-marker.json'),phase=process.argv[2],sha=b=>crypto.createHash('sha256').update(b).digest('hex');\nconst files=Object.fromEntries(Object.keys(ref.files).map(p=>{const b=fs.readFileSync(p);return[p,{bytes:b.length,sha256:sha(b)}]}));if(JSON.stringify(files)!==JSON.stringify(ref.files))throw Error('source differs');const b=fs.readFileSync('qa402.dump');if(b.length!==ref.backup.bytes||sha(b)!==ref.backup.sha256)throw Error('backup differs');\nconst tools=Object.fromEntries(['psql','pg_dump','pg_restore'].map(p=>{const r=cp.spawnSync(p,['--version'],{encoding:'utf8'});return[p,{status:r.status,error:r.error?.code??null,stdout:r.stdout??'',stderr:r.stderr??''}]}));const before={marker,node:process.version,files,backup:ref.backup,tools};\nif(phase==='before'){fs.writeFileSync('qa402-before.json',JSON.stringify(before));console.log('QA402_BEFORE '+JSON.stringify(before));process.exit(0)}\nfunction restore(){const r=cp.spawnSync('pg_restore',['--data-only','--no-owner','--no-privileges','--file=-','qa402.dump'],{encoding:'utf8'});if(r.error||r.status!==0)throw Error('pg_restore failed: '+(r.error?.code??r.stderr));const rows=r.stdout.split('\\n').filter(s=>s.startsWith('INSERT INTO public.qa402_backup VALUES'));if(JSON.stringify(rows)!==JSON.stringify(ref.rows)||sha(rows.join('\\n')+'\\n')!==ref.rows_sha256)throw Error('restored rows differ');return{marker,node:process.version,files,backup:ref.backup,tools,rows,rows_sha256:ref.rows_sha256,restored_from_archive:true,before:JSON.parse(fs.readFileSync('qa402-before.json'))}}\nif(phase==='build'){const v=restore();fs.writeFileSync('qa402-build.json',JSON.stringify(v));console.log('QA402_AFTER '+JSON.stringify(v))}else{http.createServer((req,res)=>{if(req.url.split('?')[0]!=='/'&&req.url.split('?')[0]!=='/restore'){res.writeHead(404);return res.end()}try{const runtime={...restore(),request_url:req.url};res.setHeader('Content-Type','application/json');res.end(JSON.stringify({build:require('./qa402-build.json'),runtime}));console.log('QA402_RUNTIME '+JSON.stringify(runtime))}catch(e){res.writeHead(500);res.end(String(e))}}).listen(Number(process.env.PORT),'0.0.0.0')}\nQA402_QA402_PROBE_CJS\ncat > qa402-reference.json <<'QA402_QA402_REFERENCE_JSON'\n{\"repo\":\"https://github.com/git-fixtures/basic\",\"branch\":\"master\",\"commit\":\"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"backup\":{\"bytes\":1721,\"sha256\":\"5beaea91d80ee9a3f7f637bd096446102952aa20a916f614fcb73575d1ece4a4\"},\"rows\":[\"INSERT INTO public.qa402_backup VALUES (1, 'QA402 alpha');\",\"INSERT INTO public.qa402_backup VALUES (2, 'QA402 caf\\u00e9 \\u96ea');\",\"INSERT INTO public.qa402_backup VALUES (3, 'QA402 quote '' and comma,');\"],\"rows_sha256\":\"5090a6d28f0eddaa146a603028c04deaa63c6c796a16fe07ae7c81a10ae85624\"}\nQA402_QA402_REFERENCE_JSON\ncat > qa402-marker.json <<'QA402_QA402_MARKER_JSON'\n\"QA402_LOCAL\"\nQA402_QA402_MARKER_JSON\nnode qa402-probe.cjs before\npg_restore --data-only --no-owner --no-privileges --file=qa402.sql qa402.dump\nnode qa402-probe.cjs build",
+        "start": "node qa402-probe.cjs serve"
+      },
+      "exit": 127,
+      "stdout": "QA402_BEFORE {\"marker\":\"QA402_LOCAL\",\"node\":\"v24.22.0\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"backup\":{\"bytes\":1721,\"sha256\":\"5beaea91d80ee9a3f7f637bd096446102952aa20a916f614fcb73575d1ece4a4\"},\"tools\":{\"psql\":{\"status\":null,\"error\":\"ENOENT\",\"stdout\":\"\",\"stderr\":\"\"},\"pg_dump\":{\"status\":null,\"error\":\"ENOENT\",\"stdout\":\"\",\"stderr\":\"\"},\"pg_restore\":{\"status\":null,\"error\":\"ENOENT\",\"stdout\":\"\",\"stderr\":\"\"}}}\n",
+      "stderr": "bash: line 18: pg_restore: command not found\n",
+      "before": {
+        "marker": "QA402_LOCAL",
+        "node": "v24.22.0",
+        "files": {
+          "LICENSE": {
+            "bytes": 1072,
+            "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+          },
+          "CHANGELOG": {
+            "bytes": 18,
+            "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+          }
+        },
+        "backup": {
+          "bytes": 1721,
+          "sha256": "5beaea91d80ee9a3f7f637bd096446102952aa20a916f614fcb73575d1ece4a4"
+        },
+        "tools": {
+          "psql": {
+            "status": null,
+            "error": "ENOENT",
+            "stdout": "",
+            "stderr": ""
+          },
+          "pg_dump": {
+            "status": null,
+            "error": "ENOENT",
+            "stdout": "",
+            "stderr": ""
+          },
+          "pg_restore": {
+            "status": null,
+            "error": "ENOENT",
+            "stdout": "",
+            "stderr": ""
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "label": "manual",
+      "container": "qa402-e22520-manual",
+      "absent_before": true,
+      "manual_install": true,
+      "command": {
+        "build": "set -e\nnode -e \"const f=require('fs');f.writeFileSync('qa402.dump',Buffer.from(f.readFileSync('/etc/secrets/qa402.dump.b64','utf8'),'base64'))\"\ncat > qa402-probe.cjs <<'QA402_QA402_PROBE_CJS'\nconst fs=require('node:fs'),cp=require('node:child_process'),crypto=require('node:crypto'),http=require('node:http'),ref=require('./qa402-reference.json'),marker=require('./qa402-marker.json'),phase=process.argv[2],sha=b=>crypto.createHash('sha256').update(b).digest('hex');\nconst files=Object.fromEntries(Object.keys(ref.files).map(p=>{const b=fs.readFileSync(p);return[p,{bytes:b.length,sha256:sha(b)}]}));if(JSON.stringify(files)!==JSON.stringify(ref.files))throw Error('source differs');const b=fs.readFileSync('qa402.dump');if(b.length!==ref.backup.bytes||sha(b)!==ref.backup.sha256)throw Error('backup differs');\nconst tools=Object.fromEntries(['psql','pg_dump','pg_restore'].map(p=>{const r=cp.spawnSync(p,['--version'],{encoding:'utf8'});return[p,{status:r.status,error:r.error?.code??null,stdout:r.stdout??'',stderr:r.stderr??''}]}));const before={marker,node:process.version,files,backup:ref.backup,tools};\nif(phase==='before'){fs.writeFileSync('qa402-before.json',JSON.stringify(before));console.log('QA402_BEFORE '+JSON.stringify(before));process.exit(0)}\nfunction restore(){const r=cp.spawnSync('pg_restore',['--data-only','--no-owner','--no-privileges','--file=-','qa402.dump'],{encoding:'utf8'});if(r.error||r.status!==0)throw Error('pg_restore failed: '+(r.error?.code??r.stderr));const rows=r.stdout.split('\\n').filter(s=>s.startsWith('INSERT INTO public.qa402_backup VALUES'));if(JSON.stringify(rows)!==JSON.stringify(ref.rows)||sha(rows.join('\\n')+'\\n')!==ref.rows_sha256)throw Error('restored rows differ');return{marker,node:process.version,files,backup:ref.backup,tools,rows,rows_sha256:ref.rows_sha256,restored_from_archive:true,before:JSON.parse(fs.readFileSync('qa402-before.json'))}}\nif(phase==='build'){const v=restore();fs.writeFileSync('qa402-build.json',JSON.stringify(v));console.log('QA402_AFTER '+JSON.stringify(v))}else{http.createServer((req,res)=>{if(req.url.split('?')[0]!=='/'&&req.url.split('?')[0]!=='/restore'){res.writeHead(404);return res.end()}try{const runtime={...restore(),request_url:req.url};res.setHeader('Content-Type','application/json');res.end(JSON.stringify({build:require('./qa402-build.json'),runtime}));console.log('QA402_RUNTIME '+JSON.stringify(runtime))}catch(e){res.writeHead(500);res.end(String(e))}}).listen(Number(process.env.PORT),'0.0.0.0')}\nQA402_QA402_PROBE_CJS\ncat > qa402-reference.json <<'QA402_QA402_REFERENCE_JSON'\n{\"repo\":\"https://github.com/git-fixtures/basic\",\"branch\":\"master\",\"commit\":\"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"backup\":{\"bytes\":1721,\"sha256\":\"5beaea91d80ee9a3f7f637bd096446102952aa20a916f614fcb73575d1ece4a4\"},\"rows\":[\"INSERT INTO public.qa402_backup VALUES (1, 'QA402 alpha');\",\"INSERT INTO public.qa402_backup VALUES (2, 'QA402 caf\\u00e9 \\u96ea');\",\"INSERT INTO public.qa402_backup VALUES (3, 'QA402 quote '' and comma,');\"],\"rows_sha256\":\"5090a6d28f0eddaa146a603028c04deaa63c6c796a16fe07ae7c81a10ae85624\"}\nQA402_QA402_REFERENCE_JSON\ncat > qa402-marker.json <<'QA402_QA402_MARKER_JSON'\n\"QA402_LOCAL\"\nQA402_QA402_MARKER_JSON\nnode qa402-probe.cjs before\napt-get update -qq && apt-get install -y --no-install-recommends postgresql-client\npg_restore --data-only --no-owner --no-privileges --file=qa402.sql qa402.dump\nnode qa402-probe.cjs build",
+        "start": "node qa402-probe.cjs serve"
+      },
+      "exit": 0,
+      "stdout": "QA402_BEFORE {\"marker\":\"QA402_LOCAL\",\"node\":\"v24.22.0\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"backup\":{\"bytes\":1721,\"sha256\":\"5beaea91d80ee9a3f7f637bd096446102952aa20a916f614fcb73575d1ece4a4\"},\"tools\":{\"psql\":{\"status\":null,\"error\":\"ENOENT\",\"stdout\":\"\",\"stderr\":\"\"},\"pg_dump\":{\"status\":null,\"error\":\"ENOENT\",\"stdout\":\"\",\"stderr\":\"\"},\"pg_restore\":{\"status\":null,\"error\":\"ENOENT\",\"stdout\":\"\",\"stderr\":\"\"}}}\nReading package lists...\nBuilding dependency tree...\nReading state information...\nThe following additional packages will be installed:\n  postgresql-client-15 postgresql-client-common\nSuggested packages:\n  postgresql-15 postgresql-doc-15\nThe following NEW packages will be installed:\n  postgresql-client postgresql-client-15 postgresql-client-common\n0 upgraded, 3 newly installed, 0 to remove and 8 not upgraded.\nNeed to get 1752 kB of archives.\nAfter this operation, 9332 kB of additional disk space will be used.\nGet:1 http://deb.debian.org/debian bookworm/main arm64 postgresql-client-common all 248+deb12u1 [35.2 kB]\nGet:2 http://deb.debian.org/debian-security bookworm-security/main arm64 postgresql-client-15 arm64 15.19-0+deb12u1 [1707 kB]\nGet:3 http://deb.debian.org/debian bookworm/main arm64 postgresql-client all 15+248+deb12u1 [10.2 kB]\nFetched 1752 kB in 0s (7310 kB/s)\nSelecting previously unselected package postgresql-client-common.\n(Reading database ... \n(Reading database ... 5%\n(Reading database ... 10%\n(Reading database ... 15%\n(Reading database ... 20%\n(Reading database ... 25%\n(Reading database ... 30%\n(Reading database ... 35%\n(Reading database ... 40%\n(Reading database ... 45%\n(Reading database ... 50%\n(Reading database ... 55%\n(Reading database ... 60%\n(Reading database ... 65%\n(Reading database ... 70%\n(Reading database ... 75%\n(Reading database ... 80%\n(Reading database ... 85%\n(Reading database ... 90%\n(Reading database ... 95%\n(Reading database ... 100%\n(Reading database ... 23286 files and directories currently installed.)\nPreparing to unpack .../postgresql-client-common_248+deb12u1_all.deb ...\nUnpacking postgresql-client-common (248+deb12u1) ...\nSelecting previously unselected package postgresql-client-15.\nPreparing to unpack .../postgresql-client-15_15.19-0+deb12u1_arm64.deb ...\nUnpacking postgresql-client-15 (15.19-0+deb12u1) ...\nSelecting previously unselected package postgresql-client.\nPreparing to unpack .../postgresql-client_15+248+deb12u1_all.deb ...\nUnpacking postgresql-client (15+248+deb12u1) ...\nSetting up postgresql-client-common (248+deb12u1) ...\nSetting up postgresql-client-15 (15.19-0+deb12u1) ...\nupdate-alternatives: using /usr/share/postgresql/15/man/man1/psql.1.gz to provide /usr/share/man/man1/psql.1.gz (psql.1.gz) in auto mode\nSetting up postgresql-client (15+248+deb12u1) ...\nQA402_AFTER {\"marker\":\"QA402_LOCAL\",\"node\":\"v24.22.0\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"backup\":{\"bytes\":1721,\"sha256\":\"5beaea91d80ee9a3f7f637bd096446102952aa20a916f614fcb73575d1ece4a4\"},\"tools\":{\"psql\":{\"status\":0,\"error\":null,\"stdout\":\"psql (PostgreSQL) 15.19 (Debian 15.19-0+deb12u1)\\n\",\"stderr\":\"\"},\"pg_dump\":{\"status\":0,\"error\":null,\"stdout\":\"pg_dump (PostgreSQL) 15.19 (Debian 15.19-0+deb12u1)\\n\",\"stderr\":\"\"},\"pg_restore\":{\"status\":0,\"error\":null,\"stdout\":\"pg_restore (PostgreSQL) 15.19 (Debian 15.19-0+deb12u1)\\n\",\"stderr\":\"\"}},\"rows\":[\"INSERT INTO public.qa402_backup VALUES (1, 'QA402 alpha');\",\"INSERT INTO public.qa402_backup VALUES (2, 'QA402 caf\u00e9 \u96ea');\",\"INSERT INTO public.qa402_backup VALUES (3, 'QA402 quote '' and comma,');\"],\"rows_sha256\":\"5090a6d28f0eddaa146a603028c04deaa63c6c796a16fe07ae7c81a10ae85624\",\"restored_from_archive\":true,\"before\":{\"marker\":\"QA402_LOCAL\",\"node\":\"v24.22.0\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"backup\":{\"bytes\":1721,\"sha256\":\"5beaea91d80ee9a3f7f637bd096446102952aa20a916f614fcb73575d1ece4a4\"},\"tools\":{\"psql\":{\"status\":null,\"error\":\"ENOENT\",\"stdout\":\"\",\"stderr\":\"\"},\"pg_dump\":{\"status\":null,\"error\":\"ENOENT\",\"stdout\":\"\",\"stderr\":\"\"},\"pg_restore\":{\"status\":null,\"error\":\"ENOENT\",\"stdout\":\"\",\"stderr\":\"\"}}}}\n",
+      "stderr": "debconf: delaying package configuration, since apt-utils is not installed\n",
+      "before": {
+        "marker": "QA402_LOCAL",
+        "node": "v24.22.0",
+        "files": {
+          "LICENSE": {
+            "bytes": 1072,
+            "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+          },
+          "CHANGELOG": {
+            "bytes": 18,
+            "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+          }
+        },
+        "backup": {
+          "bytes": 1721,
+          "sha256": "5beaea91d80ee9a3f7f637bd096446102952aa20a916f614fcb73575d1ece4a4"
+        },
+        "tools": {
+          "psql": {
+            "status": null,
+            "error": "ENOENT",
+            "stdout": "",
+            "stderr": ""
+          },
+          "pg_dump": {
+            "status": null,
+            "error": "ENOENT",
+            "stdout": "",
+            "stderr": ""
+          },
+          "pg_restore": {
+            "status": null,
+            "error": "ENOENT",
+            "stdout": "",
+            "stderr": ""
+          }
+        }
+      },
+      "after": {
+        "marker": "QA402_LOCAL",
+        "node": "v24.22.0",
+        "files": {
+          "LICENSE": {
+            "bytes": 1072,
+            "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+          },
+          "CHANGELOG": {
+            "bytes": 18,
+            "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+          }
+        },
+        "backup": {
+          "bytes": 1721,
+          "sha256": "5beaea91d80ee9a3f7f637bd096446102952aa20a916f614fcb73575d1ece4a4"
+        },
+        "tools": {
+          "psql": {
+            "status": 0,
+            "error": null,
+            "stdout": "psql (PostgreSQL) 15.19 (Debian 15.19-0+deb12u1)\n",
+            "stderr": ""
+          },
+          "pg_dump": {
+            "status": 0,
+            "error": null,
+            "stdout": "pg_dump (PostgreSQL) 15.19 (Debian 15.19-0+deb12u1)\n",
+            "stderr": ""
+          },
+          "pg_restore": {
+            "status": 0,
+            "error": null,
+            "stdout": "pg_restore (PostgreSQL) 15.19 (Debian 15.19-0+deb12u1)\n",
+            "stderr": ""
+          }
+        },
+        "rows": [
+          "INSERT INTO public.qa402_backup VALUES (1, 'QA402 alpha');",
+          "INSERT INTO public.qa402_backup VALUES (2, 'QA402 caf\u00e9 \u96ea');",
+          "INSERT INTO public.qa402_backup VALUES (3, 'QA402 quote '' and comma,');"
+        ],
+        "rows_sha256": "5090a6d28f0eddaa146a603028c04deaa63c6c796a16fe07ae7c81a10ae85624",
+        "restored_from_archive": true,
+        "before": {
+          "marker": "QA402_LOCAL",
+          "node": "v24.22.0",
+          "files": {
+            "LICENSE": {
+              "bytes": 1072,
+              "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+            },
+            "CHANGELOG": {
+              "bytes": 18,
+              "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+            }
+          },
+          "backup": {
+            "bytes": 1721,
+            "sha256": "5beaea91d80ee9a3f7f637bd096446102952aa20a916f614fcb73575d1ece4a4"
+          },
+          "tools": {
+            "psql": {
+              "status": null,
+              "error": "ENOENT",
+              "stdout": "",
+              "stderr": ""
+            },
+            "pg_dump": {
+              "status": null,
+              "error": "ENOENT",
+              "stdout": "",
+              "stderr": ""
+            },
+            "pg_restore": {
+              "status": null,
+              "error": "ENOENT",
+              "stdout": "",
+              "stderr": ""
+            }
+          }
+        }
+      },
+      "pass": true,
+      "restored_SQL": "--\n-- PostgreSQL database dump\n--\n\n\\restrict EsXVzkGi5lbRWSDHMhy5CeFVoMNc10BbtbN70KFXHRFoomfxfGzQ52DkXuDwoIa\n\n-- Dumped from database version 15.19 (Debian 15.19-1.pgdg12+2)\n-- Dumped by pg_dump version 15.19 (Debian 15.19-1.pgdg12+2)\n\nSET statement_timeout = 0;\nSET lock_timeout = 0;\nSET idle_in_transaction_session_timeout = 0;\nSET client_encoding = 'UTF8';\nSET standard_conforming_strings = on;\nSELECT pg_catalog.set_config('search_path', '', false);\nSET check_function_bodies = false;\nSET xmloption = content;\nSET client_min_messages = warning;\nSET row_security = off;\n\n--\n-- Data for Name: qa402_backup; Type: TABLE DATA; Schema: public; Owner: -\n--\n\nINSERT INTO public.qa402_backup VALUES (1, 'QA402 alpha');\nINSERT INTO public.qa402_backup VALUES (2, 'QA402 caf\u00e9 \u96ea');\nINSERT INTO public.qa402_backup VALUES (3, 'QA402 quote '' and comma,');\n\n\n--\n-- PostgreSQL database dump complete\n--\n\n\\unrestrict EsXVzkGi5lbRWSDHMhy5CeFVoMNc10BbtbN70KFXHRFoomfxfGzQ52DkXuDwoIa\n\n"
+    }
+  ],
+  "pass": true,
+  "own_containers_context_removed": true
+}

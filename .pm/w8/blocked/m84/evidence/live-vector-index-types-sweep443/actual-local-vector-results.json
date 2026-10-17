@@ -1,0 +1,461 @@
+{
+  "image": "pgvector/pgvector@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f",
+  "container": "qa443-search-6c308f5a",
+  "kind": "isolated pinned PG17+vector0.8.6 ordinary index fixture; not Bex/CNPG acceptance",
+  "steps": [
+    {
+      "label": "start-own-isolated-server",
+      "command": [
+        "docker",
+        "run",
+        "--pull",
+        "never",
+        "-d",
+        "--network",
+        "none",
+        "--name",
+        "qa443-search-6c308f5a",
+        "-e",
+        "POSTGRES_HOST_AUTH_METHOD=trust",
+        "pgvector/pgvector@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f"
+      ],
+      "exit": 0,
+      "stdout": "028d9112080e483255922aeb7fab3e934c7a7a41311124b3aaef3e445b3eb732\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-0",
+      "command": [
+        "docker",
+        "exec",
+        "qa443-search-6c308f5a",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 2,
+      "stdout": "/var/run/postgresql:5432 - no response\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-1",
+      "command": [
+        "docker",
+        "exec",
+        "qa443-search-6c308f5a",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 0,
+      "stdout": "/var/run/postgresql:5432 - accepting connections\n",
+      "stderr": ""
+    },
+    {
+      "label": "local-only-normal-owner",
+      "command": [
+        "docker",
+        "exec",
+        "qa443-search-6c308f5a",
+        "psql",
+        "-X",
+        "-q",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "postgres",
+        "-c",
+        "CREATE ROLE qa443_owner LOGIN;",
+        "-c",
+        "CREATE DATABASE qa443_owner OWNER qa443_owner;"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "local-only-preenabled-vector",
+      "command": [
+        "docker",
+        "exec",
+        "qa443-search-6c308f5a",
+        "psql",
+        "-X",
+        "-q",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "postgres",
+        "-d",
+        "qa443_owner",
+        "-c",
+        "CREATE EXTENSION vector SCHEMA public;"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "catalog",
+      "command": [
+        "docker",
+        "exec",
+        "qa443-search-6c308f5a",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa443_owner",
+        "-d",
+        "qa443_owner",
+        "-c",
+        "SELECT jsonb_build_object('version',current_setting('server_version_num'),'encoding',current_setting('server_encoding'),'extensions',(SELECT jsonb_agg(jsonb_build_object('name',extname,'version',extversion) ORDER BY extname) FROM pg_extension),'own_schema_exists',EXISTS(SELECT FROM pg_namespace WHERE nspname='qa443_local'))::text;"
+      ],
+      "exit": 0,
+      "stdout": "{\"version\": \"170011\", \"encoding\": \"UTF8\", \"extensions\": [{\"name\": \"plpgsql\", \"version\": \"1.0\"}, {\"name\": \"vector\", \"version\": \"0.8.6\"}], \"own_schema_exists\": false}\n",
+      "stderr": ""
+    },
+    {
+      "label": "half",
+      "command": [
+        "docker",
+        "exec",
+        "qa443-search-6c308f5a",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa443_owner",
+        "-d",
+        "qa443_owner",
+        "-c",
+        "BEGIN; SET LOCAL statement_timeout='20s'; CREATE SCHEMA qa443_local; SET LOCAL search_path=qa443_local,public; CREATE TABLE items_half(id integer PRIMARY KEY,embedding halfvec(3) NOT NULL); INSERT INTO items_half VALUES (1,'[1,2,3]'),(2,'[2,2,3]'),(3,'[1,4,3]'),(4,'[1,2,7]'),(5,'[9,2,3]'); CREATE INDEX items_half_hnsw ON items_half USING hnsw(embedding halfvec_l2_ops); SET LOCAL enable_seqscan=off; SELECT jsonb_build_object('rows',jsonb_agg(jsonb_build_array(id,distance) ORDER BY distance))::text FROM (SELECT id,embedding <-> '[1,2,3]'::halfvec(3) AS distance FROM items_half ORDER BY embedding <-> '[1,2,3]'::halfvec(3) LIMIT 3) q; EXPLAIN(ANALYZE TRUE,FORMAT JSON,COSTS OFF,TIMING OFF,SUMMARY OFF) SELECT id,embedding <-> '[1,2,3]'::halfvec(3) AS distance FROM items_half ORDER BY embedding <-> '[1,2,3]'::halfvec(3) LIMIT 3; ROLLBACK;"
+      ],
+      "exit": 0,
+      "stdout": "{\"rows\": [[1, 0], [2, 1], [3, 2]]}\n[\n  {\n    \"Plan\": {\n      \"Node Type\": \"Limit\",\n      \"Parallel Aware\": false,\n      \"Async Capable\": false,\n      \"Actual Rows\": 3,\n      \"Actual Loops\": 1,\n      \"Plans\": [\n        {\n          \"Node Type\": \"Index Scan\",\n          \"Parent Relationship\": \"Outer\",\n          \"Parallel Aware\": false,\n          \"Async Capable\": false,\n          \"Scan Direction\": \"Forward\",\n          \"Index Name\": \"items_half_hnsw\",\n          \"Relation Name\": \"items_half\",\n          \"Alias\": \"items_half\",\n          \"Actual Rows\": 3,\n          \"Actual Loops\": 1,\n          \"Order By\": \"(embedding <-> '[1,2,3]'::halfvec(3))\"\n        }\n      ]\n    },\n    \"Triggers\": [\n    ]\n  }\n]\n",
+      "stderr": ""
+    },
+    {
+      "label": "sparse",
+      "command": [
+        "docker",
+        "exec",
+        "qa443-search-6c308f5a",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa443_owner",
+        "-d",
+        "qa443_owner",
+        "-c",
+        "BEGIN; SET LOCAL statement_timeout='20s'; CREATE SCHEMA qa443_local; SET LOCAL search_path=qa443_local,public; CREATE TABLE items_sparse(id integer PRIMARY KEY,embedding sparsevec(5) NOT NULL); INSERT INTO items_sparse VALUES (1,'{1:1,3:2,5:3}/5'),(2,'{1:2,3:2,5:3}/5'),(3,'{1:1,3:4,5:3}/5'),(4,'{1:1,3:2,5:7}/5'),(5,'{1:9,3:2,5:3}/5'); CREATE INDEX items_sparse_hnsw ON items_sparse USING hnsw(embedding sparsevec_l2_ops); SET LOCAL enable_seqscan=off; SELECT jsonb_build_object('rows',jsonb_agg(jsonb_build_array(id,distance) ORDER BY distance))::text FROM (SELECT id,embedding <-> '{1:1,3:2,5:3}/5'::sparsevec(5) AS distance FROM items_sparse ORDER BY embedding <-> '{1:1,3:2,5:3}/5'::sparsevec(5) LIMIT 3) q; EXPLAIN(ANALYZE TRUE,FORMAT JSON,COSTS OFF,TIMING OFF,SUMMARY OFF) SELECT id,embedding <-> '{1:1,3:2,5:3}/5'::sparsevec(5) AS distance FROM items_sparse ORDER BY embedding <-> '{1:1,3:2,5:3}/5'::sparsevec(5) LIMIT 3; ROLLBACK;"
+      ],
+      "exit": 0,
+      "stdout": "{\"rows\": [[1, 0], [2, 1], [3, 2]]}\n[\n  {\n    \"Plan\": {\n      \"Node Type\": \"Limit\",\n      \"Parallel Aware\": false,\n      \"Async Capable\": false,\n      \"Actual Rows\": 3,\n      \"Actual Loops\": 1,\n      \"Plans\": [\n        {\n          \"Node Type\": \"Index Scan\",\n          \"Parent Relationship\": \"Outer\",\n          \"Parallel Aware\": false,\n          \"Async Capable\": false,\n          \"Scan Direction\": \"Forward\",\n          \"Index Name\": \"items_sparse_hnsw\",\n          \"Relation Name\": \"items_sparse\",\n          \"Alias\": \"items_sparse\",\n          \"Actual Rows\": 3,\n          \"Actual Loops\": 1,\n          \"Order By\": \"(embedding <-> '{1:1,3:2,5:3}/5'::sparsevec(5))\"\n        }\n      ]\n    },\n    \"Triggers\": [\n    ]\n  }\n]\n",
+      "stderr": ""
+    },
+    {
+      "label": "binary",
+      "command": [
+        "docker",
+        "exec",
+        "qa443-search-6c308f5a",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa443_owner",
+        "-d",
+        "qa443_owner",
+        "-c",
+        "BEGIN; SET LOCAL statement_timeout='20s'; CREATE SCHEMA qa443_local; SET LOCAL search_path=qa443_local,public; CREATE TABLE items_binary(id integer PRIMARY KEY,embedding bit(8) NOT NULL); INSERT INTO items_binary VALUES (1,'10100101'),(2,'10100100'),(3,'10100110'),(4,'10100010'),(5,'10101010'); CREATE INDEX items_binary_hnsw ON items_binary USING hnsw(embedding bit_hamming_ops); SET LOCAL enable_seqscan=off; SELECT jsonb_build_object('rows',jsonb_agg(jsonb_build_array(id,distance) ORDER BY distance))::text FROM (SELECT id,embedding <~> '10100101'::bit(8) AS distance FROM items_binary ORDER BY embedding <~> '10100101'::bit(8) LIMIT 3) q; EXPLAIN(ANALYZE TRUE,FORMAT JSON,COSTS OFF,TIMING OFF,SUMMARY OFF) SELECT id,embedding <~> '10100101'::bit(8) AS distance FROM items_binary ORDER BY embedding <~> '10100101'::bit(8) LIMIT 3; ROLLBACK;"
+      ],
+      "exit": 0,
+      "stdout": "{\"rows\": [[1, 0], [2, 1], [3, 2]]}\n[\n  {\n    \"Plan\": {\n      \"Node Type\": \"Limit\",\n      \"Parallel Aware\": false,\n      \"Async Capable\": false,\n      \"Actual Rows\": 3,\n      \"Actual Loops\": 1,\n      \"Plans\": [\n        {\n          \"Node Type\": \"Index Scan\",\n          \"Parent Relationship\": \"Outer\",\n          \"Parallel Aware\": false,\n          \"Async Capable\": false,\n          \"Scan Direction\": \"Forward\",\n          \"Index Name\": \"items_binary_hnsw\",\n          \"Relation Name\": \"items_binary\",\n          \"Alias\": \"items_binary\",\n          \"Actual Rows\": 3,\n          \"Actual Loops\": 1,\n          \"Order By\": \"(embedding <~> '10100101'::bit(8))\"\n        }\n      ]\n    },\n    \"Triggers\": [\n    ]\n  }\n]\n",
+      "stderr": ""
+    },
+    {
+      "label": "rollback-proof",
+      "command": [
+        "docker",
+        "exec",
+        "qa443-search-6c308f5a",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa443_owner",
+        "-d",
+        "qa443_owner",
+        "-c",
+        "SELECT count(*) FROM pg_namespace WHERE nspname='qa443_local'; SELECT count(*) FROM pg_extension WHERE extname='vector' AND extversion='0.8.6';"
+      ],
+      "exit": 0,
+      "stdout": "0\n1\n",
+      "stderr": ""
+    },
+    {
+      "label": "remove-exact-own-server",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa443-search-6c308f5a"
+      ],
+      "exit": 0,
+      "stdout": "qa443-search-6c308f5a\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-container-absence",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa443-search-6c308f5a"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa443-search-6c308f5a\n"
+    }
+  ],
+  "cases": [
+    {
+      "case": "catalog",
+      "decoded": {
+        "catalog": {
+          "version": "170011",
+          "encoding": "UTF8",
+          "extensions": [
+            {
+              "name": "plpgsql",
+              "version": "1.0"
+            },
+            {
+              "name": "vector",
+              "version": "0.8.6"
+            }
+          ],
+          "own_schema_exists": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "case": "half",
+      "decoded": {
+        "value": {
+          "rows": [
+            [
+              1,
+              0
+            ],
+            [
+              2,
+              1
+            ],
+            [
+              3,
+              2
+            ]
+          ]
+        },
+        "independent_expected": [
+          [
+            1,
+            0.0
+          ],
+          [
+            2,
+            1.0
+          ],
+          [
+            3,
+            2.0
+          ]
+        ],
+        "actual_index_plan": [
+          {
+            "Plan": {
+              "Node Type": "Limit",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Actual Rows": 3,
+              "Actual Loops": 1,
+              "Plans": [
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Forward",
+                  "Index Name": "items_half_hnsw",
+                  "Relation Name": "items_half",
+                  "Alias": "items_half",
+                  "Actual Rows": 3,
+                  "Actual Loops": 1,
+                  "Order By": "(embedding <-> '[1,2,3]'::halfvec(3))"
+                }
+              ]
+            },
+            "Triggers": []
+          }
+        ],
+        "qualification": "five-row controlled HNSW fixture; not a general approximate-recall guarantee"
+      },
+      "pass": true
+    },
+    {
+      "case": "sparse",
+      "decoded": {
+        "value": {
+          "rows": [
+            [
+              1,
+              0
+            ],
+            [
+              2,
+              1
+            ],
+            [
+              3,
+              2
+            ]
+          ]
+        },
+        "independent_expected": [
+          [
+            1,
+            0.0
+          ],
+          [
+            2,
+            1.0
+          ],
+          [
+            3,
+            2.0
+          ]
+        ],
+        "actual_index_plan": [
+          {
+            "Plan": {
+              "Node Type": "Limit",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Actual Rows": 3,
+              "Actual Loops": 1,
+              "Plans": [
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Forward",
+                  "Index Name": "items_sparse_hnsw",
+                  "Relation Name": "items_sparse",
+                  "Alias": "items_sparse",
+                  "Actual Rows": 3,
+                  "Actual Loops": 1,
+                  "Order By": "(embedding <-> '{1:1,3:2,5:3}/5'::sparsevec(5))"
+                }
+              ]
+            },
+            "Triggers": []
+          }
+        ],
+        "qualification": "five-row controlled HNSW fixture; not a general approximate-recall guarantee"
+      },
+      "pass": true
+    },
+    {
+      "case": "binary",
+      "decoded": {
+        "value": {
+          "rows": [
+            [
+              1,
+              0
+            ],
+            [
+              2,
+              1
+            ],
+            [
+              3,
+              2
+            ]
+          ]
+        },
+        "independent_expected": [
+          [
+            1,
+            0
+          ],
+          [
+            2,
+            1
+          ],
+          [
+            3,
+            2
+          ]
+        ],
+        "actual_index_plan": [
+          {
+            "Plan": {
+              "Node Type": "Limit",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Actual Rows": 3,
+              "Actual Loops": 1,
+              "Plans": [
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Scan Direction": "Forward",
+                  "Index Name": "items_binary_hnsw",
+                  "Relation Name": "items_binary",
+                  "Alias": "items_binary",
+                  "Actual Rows": 3,
+                  "Actual Loops": 1,
+                  "Order By": "(embedding <~> '10100101'::bit(8))"
+                }
+              ]
+            },
+            "Triggers": []
+          }
+        ],
+        "qualification": "five-row controlled HNSW fixture; not a general approximate-recall guarantee"
+      },
+      "pass": true
+    }
+  ],
+  "pass": true,
+  "own_container_absent": true
+}

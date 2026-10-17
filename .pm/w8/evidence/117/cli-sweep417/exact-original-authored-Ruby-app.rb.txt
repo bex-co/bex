@@ -1,0 +1,16 @@
+require 'json';require 'digest';require 'bundler';require 'socket';require 'securerandom'
+phase=ARGV.fetch(0);ref=JSON.parse(File.read('reference.json'));marker=File.read('marker').strip
+files=ref['files'].to_h{|k,v| b=File.binread('../'+k);[k,{'bytes'=>b.bytesize,'sha256'=>Digest::SHA256.hexdigest(b)}]};raise 'source mismatch' unless files==ref['files']
+v={'marker'=>marker,'phase'=>phase,'ruby'=>RUBY_VERSION,'bundler'=>Bundler::VERSION,'deployment'=>Bundler.settings[:deployment],'frozen'=>Bundler.frozen_bundle?,'deployment_env'=>ENV['BUNDLE_DEPLOYMENT'],'files'=>files,'lock_sha256'=>Digest::SHA256.file('Gemfile.lock').hexdigest,'gemfile_sha256'=>Digest::SHA256.file('Gemfile').hexdigest,'bundle_path'=>Bundler.bundle_path.to_s}
+if phase!='before';require 'rake';v['rake']=Rake::VERSION;end
+puts 'QA394_SOURCE '+JSON.generate(v);STDOUT.flush
+File.write('build.json',JSON.generate(v)) if phase=='after'
+if phase=='runtime'
+ boot=SecureRandom.hex(8);server=TCPServer.new('0.0.0.0',Integer(ENV.fetch('PORT','3000')))
+ loop do
+  s=server.accept;begin
+   while (line=s.gets);break if line=="\r\n";end
+   b=JSON.generate({'marker'=>marker,'boot'=>boot,'build'=>JSON.parse(File.read('build.json')),'runtime'=>v});s.write("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: #{b.bytesize}\r\nConnection: close\r\n\r\n#{b}")
+  ensure;s.close;end
+ end
+end

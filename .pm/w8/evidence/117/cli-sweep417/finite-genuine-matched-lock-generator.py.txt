@@ -1,0 +1,13 @@
+from pathlib import Path
+import json,secrets,subprocess,tempfile,shutil,hashlib
+P=Path(__file__).resolve().parent;nonce=secrets.token_hex(3);D=Path(tempfile.mkdtemp(prefix='sweep417-matched-',dir=P));name='qa417-match-'+nonce;assert subprocess.run(['docker','inspect',name],capture_output=True).returncode!=0;image='ruby:3.4-bookworm@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172';(D/'Gemfile').write_text('source "https://rubygems.org"\ngem "rake", "13.3.1"\n');out={'image':image,'name':name,'nonce':nonce,'context':str(D),'absent_before':True,'purpose':'generate genuine Bundler2.6.9 matching lock for the original Gemfile; no production allocation'}
+def save():(P/'sweep417-genuine-matched-lock-generation.json').write_text(json.dumps(out,indent=2))
+save()
+try:
+ r=subprocess.run(['docker','run','--pull=never','--rm','--name',name,'--label','bex.qa.run='+nonce,'-v',str(D)+':/work','-w','/work',image,'bash','-c','set -e\nbundle --version\nbundle lock'],capture_output=True,text=True,timeout=150);out.update(exit=r.returncode,stdout=r.stdout,stderr=r.stderr);save();r.check_returncode();lock=(D/'Gemfile.lock').read_text();old=(P/'sweep417-original-Gemfile.lock').read_text();assert lock==old.replace('13.2.1','13.3.1');(P/'sweep417-matched-Gemfile.lock').write_text(lock);out.update(pass_result=True,matched_lock=lock,bytes=len(lock.encode()),sha256=hashlib.sha256(lock.encode()).hexdigest(),only_lock_changes='the two rake spec/dependency13.2.1 versions become13.3.1; genuine bundle lock output');save()
+finally:
+ z=subprocess.run(['docker','inspect',name],capture_output=True,text=True)
+ if z.returncode==0:
+  v=json.loads(z.stdout)[0];assert v['Config']['Labels']['bex.qa.run']==nonce and any(m['Source']==str(D) for m in v['Mounts']);subprocess.run(['docker','rm','-f',name],capture_output=True,check=True)
+ shutil.rmtree(D);out['own_container_context_removed']=not D.exists() and subprocess.run(['docker','inspect',name],capture_output=True).returncode!=0;save()
+print(json.dumps({'genuine_matched_lock':out.get('pass_result'),'sha256':out.get('sha256'),'cleanup':out['own_container_context_removed']}))

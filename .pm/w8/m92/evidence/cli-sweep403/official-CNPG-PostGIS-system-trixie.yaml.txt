@@ -1,0 +1,24 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: ClusterImageCatalog
+metadata:
+  name: postgis-system-trixie
+  labels:
+    images.cnpg.io/family: postgis
+    images.cnpg.io/type: system
+    images.cnpg.io/os: trixie
+    images.cnpg.io/date: '20261012'
+    images.cnpg.io/publisher: cnpg.io
+spec:
+  images:
+  - major: 13
+    image: ghcr.io/cloudnative-pg/postgis:13.22-3.6.0-202511101009-system-trixie@sha256:a81308e173f72ac595add468e83e6976c48fd0ab81f08f9be8af87faba2fbb68
+  - major: 14
+    image: ghcr.io/cloudnative-pg/postgis:14.24-3.6.4-202610121021-system-trixie@sha256:58a7aecacc8d85191e8609f77537b931aecae2cd95d0dd4e0895c24ac52c4169
+  - major: 15
+    image: ghcr.io/cloudnative-pg/postgis:15.19-3.6.4-202610121021-system-trixie@sha256:1c8f74acb12e55ff20cb110121a1027880278a945bbdba53cc0c8dc7a9ca2fc6
+  - major: 16
+    image: ghcr.io/cloudnative-pg/postgis:16.15-3.6.4-202610121021-system-trixie@sha256:a39ebeefd3b6b638e9904b4f753abc0fcbdc5e9ee592b22bde9ed1a74dafdd3e
+  - major: 17
+    image: ghcr.io/cloudnative-pg/postgis:17.11-3.6.4-202610121021-system-trixie@sha256:470456a823b2116f18ad0393cb0bf22a51f5d80dc497e03f43c77a62d36e651a
+  - major: 18
+    image: ghcr.io/cloudnative-pg/postgis:18.6-3.6.4-202610121021-system-trixie@sha256:a2b2fc7941fe97a27728ecb285df0b35f0341b63bef98a8e4328723a0417f828

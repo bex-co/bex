@@ -1,0 +1,32 @@
+import re,json,math
+PAIRS=[(1,'kitten','sitting'),(2,'book','back'),(3,'Euler','Euller'),(4,'café:李','café:李'),(5,'','')]
+def distance(a,b):
+ prev=list(range(len(b)+1))
+ for i,x in enumerate(a,1):
+  cur=[i]
+  for j,y in enumerate(b,1):cur.append(min(cur[-1]+1,prev[j]+1,prev[j-1]+(x!=y)))
+  prev=cur
+ return prev[-1]
+def expected():
+ out=[]
+ for i,a,b in PAIRS:
+  d=distance(a.encode(),b.encode());n=max(len(a.encode()),len(b.encode()));score=1-d/n if n else 1.0
+  out.append({'id':i,'raw':d if n else 1,'normalized':score,'matched':score>=0.7})
+ return out
+def queries(schema):
+ assert re.fullmatch('[a-z][a-z0-9_]+',schema)
+ catalog="SELECT jsonb_build_object('version',current_setting('server_version_num'),'encoding',current_setting('server_encoding'),'available',COALESCE((SELECT jsonb_agg(jsonb_build_object('name',name,'default',default_version,'installed',installed_version) ORDER BY name) FROM pg_available_extensions WHERE name IN ('pg_similarity','vector','pg_stat_statements','plpgsql','hstore')),'[]'::jsonb),'own_schema_exists',EXISTS(SELECT FROM pg_namespace WHERE nspname='"+schema+"'))::text;"
+ begin="BEGIN; SET LOCAL statement_timeout='20s'; CREATE SCHEMA "+schema+"; SET LOCAL search_path="+schema+",public; CREATE TABLE pairs(id integer PRIMARY KEY,a text NOT NULL,b text NOT NULL); INSERT INTO pairs VALUES "+','.join("("+str(i)+",'"+a+"','"+b+"')" for i,a,b in PAIRS)+"; "
+ ordinary=begin+"SELECT jsonb_build_object('rows',jsonb_agg(jsonb_build_array(id,a,b,octet_length(a),octet_length(b)) ORDER BY id),'count',count(*))::text FROM pairs; ROLLBACK;"
+ similarity=begin+"SET LOCAL pg_similarity.levenshtein_is_normalized=true; SET LOCAL pg_similarity.levenshtein_threshold=0.7; SELECT jsonb_agg(jsonb_build_object('id',id,'normalized',lev(a,b),'matched',a ~== b) ORDER BY id)::text FROM pairs; SET LOCAL pg_similarity.levenshtein_is_normalized=false; SELECT jsonb_agg(jsonb_build_object('id',id,'raw',lev(a,b)) ORDER BY id)::text FROM pairs; ROLLBACK;"
+ return {'catalog':catalog,'enable':'CREATE EXTENSION IF NOT EXISTS pg_similarity;','postgres':ordinary,'similarity':similarity}
+def decode(raw,case):
+ decoder=json.JSONDecoder();values=[]
+ while raw.strip():raw=raw.lstrip();v,n=decoder.raw_decode(raw);values.append(v);raw=raw[n:]
+ if case=='postgres':
+  oracle={'rows':[[i,a,b,len(a.encode()),len(b.encode())] for i,a,b in PAIRS],'count':len(PAIRS)}
+  return {'observed':values,'independent_expected':oracle},values==[oracle]
+ assert case=='similarity' and len(values)==2
+ actual=[dict(a,**b) for a,b in zip(values[0],values[1])]
+ oracle=expected();good=len(actual)==len(oracle) and all(a['id']==b['id'] and a['raw']==b['raw'] and a['matched']==b['matched'] and math.isclose(a['normalized'],b['normalized'],rel_tol=1e-12,abs_tol=1e-12) for a,b in zip(actual,oracle))
+ return {'observed':actual,'independent_expected':oracle,'scope':'ASCII edit-distance changes; identical Unicode and empty strings; UTF8 byte lengths match upstream implementation; upstream explicitly returns1 for empty/empty even in raw mode'},good

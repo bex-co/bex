@@ -1,0 +1,8 @@
+from pathlib import Path
+import subprocess,time,json
+P=Path(__file__).resolve().parent
+steps=[('pg',['ping','bex']),('pg',['ping','render']),('prepare-connection',[]),('cached-connection',['before'])]
+for client in ['bex','render']:
+ steps.extend([('sql',[label,client]) for label in ['catalog','postgis','healthy','catalog']])
+for number,(name,args) in enumerate(steps,1):
+ r=subprocess.run(['python3',str(P/('sweep403-'+name+'.py')),*args],capture_output=True,text=True,timeout=100);(P/('sweep403-queries-step-'+str(number).zfill(2)+'.json')).write_text(json.dumps({'name':name,'args':args,'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));print(r.stdout,flush=True);r.check_returncode()

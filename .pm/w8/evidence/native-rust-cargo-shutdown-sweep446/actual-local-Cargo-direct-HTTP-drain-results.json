@@ -1,0 +1,415 @@
+{
+  "image": "rust:1-bookworm@sha256:e12566d5abc17a0da741628782cdb504b68b8961f5bfcf677936bf3e8b32de29",
+  "kind": "local Rust40s HTTP upload completion under Cargo/direct and checkout-built native-init; not hosted/generated-image evidence",
+  "helper_sha256": "27977d21691fd009feb002aabe270cd2b012693ba48ca36d3e2cf8e4364df669",
+  "steps": [
+    {
+      "label": "compile-real-no-dependency-Rust",
+      "command": [
+        "docker",
+        "run",
+        "--pull",
+        "never",
+        "--network",
+        "none",
+        "--name",
+        "qa446-build-878b372c",
+        "--mount",
+        "type=bind,src=<owned-temp>/candidate446-local-context,dst=/app",
+        "--workdir",
+        "/app",
+        "--entrypoint",
+        "/bin/bash",
+        "rust:1-bookworm@sha256:e12566d5abc17a0da741628782cdb504b68b8961f5bfcf677936bf3e8b32de29",
+        "-c",
+        "set -e\nmkdir qa446\nprintf '%s' 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 | base64 -d | tar -xz -C qa446\ncargo build --offline --release --manifest-path qa446/Cargo.toml\nqa446/target/release/qa446_fixture --build-proof"
+      ],
+      "exit": 0,
+      "stdout": "QA446_BUILD {\"marker\":\"QA446_LOCAL\",\"rust\":\"rustc 1.99.1 (58cf8f9c3 2026-10-13)\",\"program_sha256\":\"db1034c6803a44e04dd39e565b93b80b8aa87d2f59ee652cf0028482818fe134\"}\n",
+      "stderr": "   Compiling qa446_fixture v0.1.0 (/app/qa446)\n    Finished `release` profile [optimized] target(s) in 0.51s\n"
+    },
+    {
+      "label": "remove-own-build",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa446-build-878b372c"
+      ],
+      "exit": 0,
+      "stdout": "qa446-build-878b372c\n",
+      "stderr": ""
+    },
+    {
+      "label": "start-own-cargo",
+      "command": [
+        "docker",
+        "run",
+        "--pull",
+        "never",
+        "-d",
+        "--network",
+        "bridge",
+        "-p",
+        "127.0.0.1::3000",
+        "--name",
+        "qa446-cargo-0914b5ed",
+        "-e",
+        "PORT=3000",
+        "--mount",
+        "type=bind,src=<owned-temp>/candidate446-local-context,dst=/app",
+        "--mount",
+        "type=bind,src=<owned-temp>/candidate446-native-init,dst=/fixture-init,readonly",
+        "--workdir",
+        "/app",
+        "--entrypoint",
+        "/bin/bash",
+        "rust:1-bookworm@sha256:e12566d5abc17a0da741628782cdb504b68b8961f5bfcf677936bf3e8b32de29",
+        "-c",
+        "exec /fixture-init /bin/bash -c 'cargo run --offline --release --manifest-path qa446/Cargo.toml'"
+      ],
+      "exit": 0,
+      "stdout": "6afc52ddd0a8fc0131cc9acb4f4c966dd7699cc39c001dd7291ed2bb85821fa4\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-port-cargo",
+      "command": [
+        "docker",
+        "port",
+        "qa446-cargo-0914b5ed",
+        "3000/tcp"
+      ],
+      "exit": 0,
+      "stdout": "127.0.0.1:62530\n",
+      "stderr": ""
+    },
+    {
+      "label": "hold-active-cargo-0",
+      "command": [
+        "docker",
+        "logs",
+        "qa446-cargo-0914b5ed"
+      ],
+      "exit": 0,
+      "stdout": "QA446_EVENT {\"marker\":\"QA446_LOCAL\",\"boot\":\"15-1792251777261430168\",\"token\":\"\",\"phase\":\"ready\",\"active\":0}\nQA446_EVENT {\"marker\":\"QA446_LOCAL\",\"boot\":\"15-1792251777261430168\",\"token\":\"0aece0ee57097974\",\"phase\":\"hold-begin\",\"active\":1}\n",
+      "stderr": "    Finished `release` profile [optimized] target(s) in 0.01s\n     Running `qa446/target/release/qa446_fixture`\n"
+    },
+    {
+      "label": "SIGTERM-exact-own-cargo",
+      "command": [
+        "docker",
+        "kill",
+        "--signal",
+        "TERM",
+        "qa446-cargo-0914b5ed"
+      ],
+      "exit": 0,
+      "stdout": "qa446-cargo-0914b5ed\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-exit-cargo",
+      "command": [
+        "docker",
+        "wait",
+        "qa446-cargo-0914b5ed"
+      ],
+      "exit": 0,
+      "stdout": "0\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-events-cargo",
+      "command": [
+        "docker",
+        "logs",
+        "qa446-cargo-0914b5ed"
+      ],
+      "exit": 0,
+      "stdout": "QA446_EVENT {\"marker\":\"QA446_LOCAL\",\"boot\":\"15-1792251777261430168\",\"token\":\"\",\"phase\":\"ready\",\"active\":0}\nQA446_EVENT {\"marker\":\"QA446_LOCAL\",\"boot\":\"15-1792251777261430168\",\"token\":\"0aece0ee57097974\",\"phase\":\"hold-begin\",\"active\":1}\nQA446_EVENT {\"marker\":\"QA446_LOCAL\",\"boot\":\"15-1792251777261430168\",\"token\":\"\",\"phase\":\"sigterm\",\"active\":1}\nQA446_EVENT {\"marker\":\"QA446_LOCAL\",\"boot\":\"15-1792251777261430168\",\"token\":\"0aece0ee57097974\",\"phase\":\"hold-end\",\"active\":1}\nQA446_EVENT {\"marker\":\"QA446_LOCAL\",\"boot\":\"15-1792251777261430168\",\"token\":\"\",\"phase\":\"closed\",\"active\":0}\n",
+      "stderr": "    Finished `release` profile [optimized] target(s) in 0.01s\n     Running `qa446/target/release/qa446_fixture`\n"
+    },
+    {
+      "label": "remove-exact-own-cargo",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa446-cargo-0914b5ed"
+      ],
+      "exit": 0,
+      "stdout": "qa446-cargo-0914b5ed\n",
+      "stderr": ""
+    },
+    {
+      "label": "start-own-direct",
+      "command": [
+        "docker",
+        "run",
+        "--pull",
+        "never",
+        "-d",
+        "--network",
+        "bridge",
+        "-p",
+        "127.0.0.1::3000",
+        "--name",
+        "qa446-direct-8aab7e8c",
+        "-e",
+        "PORT=3000",
+        "--mount",
+        "type=bind,src=<owned-temp>/candidate446-local-context,dst=/app",
+        "--mount",
+        "type=bind,src=<owned-temp>/candidate446-native-init,dst=/fixture-init,readonly",
+        "--workdir",
+        "/app",
+        "--entrypoint",
+        "/bin/bash",
+        "rust:1-bookworm@sha256:e12566d5abc17a0da741628782cdb504b68b8961f5bfcf677936bf3e8b32de29",
+        "-c",
+        "exec /fixture-init /bin/bash -c qa446/target/release/qa446_fixture"
+      ],
+      "exit": 0,
+      "stdout": "dd3fe8dd0193e600e160e847759184f22f8c4624293a3d93eded45a5ac732e1f\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-port-direct",
+      "command": [
+        "docker",
+        "port",
+        "qa446-direct-8aab7e8c",
+        "3000/tcp"
+      ],
+      "exit": 0,
+      "stdout": "127.0.0.1:62599\n",
+      "stderr": ""
+    },
+    {
+      "label": "hold-active-direct-0",
+      "command": [
+        "docker",
+        "logs",
+        "qa446-direct-8aab7e8c"
+      ],
+      "exit": 0,
+      "stdout": "QA446_EVENT {\"marker\":\"QA446_LOCAL\",\"boot\":\"12-1792251817893366423\",\"token\":\"\",\"phase\":\"ready\",\"active\":0}\nQA446_EVENT {\"marker\":\"QA446_LOCAL\",\"boot\":\"12-1792251817893366423\",\"token\":\"ada1d88d234b0e24\",\"phase\":\"hold-begin\",\"active\":1}\n",
+      "stderr": ""
+    },
+    {
+      "label": "SIGTERM-exact-own-direct",
+      "command": [
+        "docker",
+        "kill",
+        "--signal",
+        "TERM",
+        "qa446-direct-8aab7e8c"
+      ],
+      "exit": 0,
+      "stdout": "qa446-direct-8aab7e8c\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-exit-direct",
+      "command": [
+        "docker",
+        "wait",
+        "qa446-direct-8aab7e8c"
+      ],
+      "exit": 0,
+      "stdout": "0\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-events-direct",
+      "command": [
+        "docker",
+        "logs",
+        "qa446-direct-8aab7e8c"
+      ],
+      "exit": 0,
+      "stdout": "QA446_EVENT {\"marker\":\"QA446_LOCAL\",\"boot\":\"12-1792251817893366423\",\"token\":\"\",\"phase\":\"ready\",\"active\":0}\nQA446_EVENT {\"marker\":\"QA446_LOCAL\",\"boot\":\"12-1792251817893366423\",\"token\":\"ada1d88d234b0e24\",\"phase\":\"hold-begin\",\"active\":1}\nQA446_EVENT {\"marker\":\"QA446_LOCAL\",\"boot\":\"12-1792251817893366423\",\"token\":\"\",\"phase\":\"sigterm\",\"active\":1}\nQA446_EVENT {\"marker\":\"QA446_LOCAL\",\"boot\":\"12-1792251817893366423\",\"token\":\"ada1d88d234b0e24\",\"phase\":\"hold-end\",\"active\":1}\nQA446_EVENT {\"marker\":\"QA446_LOCAL\",\"boot\":\"12-1792251817893366423\",\"token\":\"\",\"phase\":\"closed\",\"active\":0}\n",
+      "stderr": ""
+    },
+    {
+      "label": "remove-exact-own-direct",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa446-direct-8aab7e8c"
+      ],
+      "exit": 0,
+      "stdout": "qa446-direct-8aab7e8c\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-container-absence",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa446-build-878b372c"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa446-build-878b372c\n"
+    },
+    {
+      "label": "own-container-absence",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa446-cargo-0914b5ed"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa446-cargo-0914b5ed\n"
+    },
+    {
+      "label": "own-container-absence",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa446-direct-8aab7e8c"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa446-direct-8aab7e8c\n"
+    }
+  ],
+  "cases": [
+    {
+      "phase": "cargo",
+      "container": "qa446-cargo-0914b5ed",
+      "start": "cargo run --offline --release --manifest-path qa446/Cargo.toml",
+      "client_exit": 0,
+      "HTTP": "200",
+      "decoded": {
+        "marker": "QA446_LOCAL",
+        "rust": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+        "program_sha256": "db1034c6803a44e04dd39e565b93b80b8aa87d2f59ee652cf0028482818fe134",
+        "boot": "15-1792251777261430168",
+        "token": "0aece0ee57097974",
+        "body_hex": "636166c3a93ae69d8e"
+      },
+      "stderr": "",
+      "elapsed": 40.02554875000351,
+      "container_exit": 0,
+      "events": [
+        {
+          "marker": "QA446_LOCAL",
+          "boot": "15-1792251777261430168",
+          "token": "",
+          "phase": "ready",
+          "active": 0
+        },
+        {
+          "marker": "QA446_LOCAL",
+          "boot": "15-1792251777261430168",
+          "token": "0aece0ee57097974",
+          "phase": "hold-begin",
+          "active": 1
+        },
+        {
+          "marker": "QA446_LOCAL",
+          "boot": "15-1792251777261430168",
+          "token": "",
+          "phase": "sigterm",
+          "active": 1
+        },
+        {
+          "marker": "QA446_LOCAL",
+          "boot": "15-1792251777261430168",
+          "token": "0aece0ee57097974",
+          "phase": "hold-end",
+          "active": 1
+        },
+        {
+          "marker": "QA446_LOCAL",
+          "boot": "15-1792251777261430168",
+          "token": "",
+          "phase": "closed",
+          "active": 0
+        }
+      ],
+      "pass": true
+    },
+    {
+      "phase": "direct",
+      "container": "qa446-direct-8aab7e8c",
+      "start": "qa446/target/release/qa446_fixture",
+      "client_exit": 0,
+      "HTTP": "200",
+      "decoded": {
+        "marker": "QA446_LOCAL",
+        "rust": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+        "program_sha256": "db1034c6803a44e04dd39e565b93b80b8aa87d2f59ee652cf0028482818fe134",
+        "boot": "12-1792251817893366423",
+        "token": "ada1d88d234b0e24",
+        "body_hex": "636166c3a93ae69d8e"
+      },
+      "stderr": "",
+      "elapsed": 40.02397770799871,
+      "container_exit": 0,
+      "events": [
+        {
+          "marker": "QA446_LOCAL",
+          "boot": "12-1792251817893366423",
+          "token": "",
+          "phase": "ready",
+          "active": 0
+        },
+        {
+          "marker": "QA446_LOCAL",
+          "boot": "12-1792251817893366423",
+          "token": "ada1d88d234b0e24",
+          "phase": "hold-begin",
+          "active": 1
+        },
+        {
+          "marker": "QA446_LOCAL",
+          "boot": "12-1792251817893366423",
+          "token": "",
+          "phase": "sigterm",
+          "active": 1
+        },
+        {
+          "marker": "QA446_LOCAL",
+          "boot": "12-1792251817893366423",
+          "token": "ada1d88d234b0e24",
+          "phase": "hold-end",
+          "active": 1
+        },
+        {
+          "marker": "QA446_LOCAL",
+          "boot": "12-1792251817893366423",
+          "token": "",
+          "phase": "closed",
+          "active": 0
+        }
+      ],
+      "pass": true
+    }
+  ],
+  "intents": [
+    {
+      "own_container": "qa446-build-878b372c"
+    },
+    {
+      "own_container": "qa446-cargo-0914b5ed"
+    },
+    {
+      "own_container": "qa446-direct-8aab7e8c"
+    }
+  ],
+  "pass": true,
+  "own_containers_absent": true,
+  "own_context_and_helper_removed": true
+}

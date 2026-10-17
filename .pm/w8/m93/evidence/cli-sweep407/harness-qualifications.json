@@ -1,0 +1,11 @@
+{
+  "original_failed_native_read": {
+    "command": "Render deploys list of exact owned ID before build-log collection",
+    "native_exit": 1,
+    "transport_error": "TLS handshake timeout",
+    "native_duration_seconds": 10.063,
+    "full_actual_native_record_retained": true,
+    "no_native_log_command_or_mutation_sent_in_failed_stage": true,
+    "resume": "same original child; read-only diagnostics after more than30seconds"
+  }
+}

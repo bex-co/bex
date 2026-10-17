@@ -1,0 +1,34 @@
+{
+  "repo": "https://github.com/git-fixtures/basic",
+  "branch": "master",
+  "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+  "files": {
+    "LICENSE": {
+      "bytes": 1072,
+      "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+    },
+    "CHANGELOG": {
+      "bytes": 18,
+      "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+    }
+  },
+  "input": {
+    "bytes": 471,
+    "sha256": "02768c7fec79fea6ae1edcf29baa3a039568fe93113c757067cc51d260ec5fec",
+    "base64": "JVBERi0xLjQKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCAyIDFdIC9SZXNvdXJjZXMgPDwgPj4gL0NvbnRlbnRzIDQgMCBSID4+CmVuZG9iago0IDAgb2JqCjw8IC9MZW5ndGggNDQgPj4Kc3RyZWFtCjEgMCAwIHJnIDAgMCAxIDEgcmUgZgowIDAgMSByZyAxIDAgMSAxIHJlIGYKZW5kc3RyZWFtCmVuZG9iagp4cmVmCjAgNQowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMDkgMDAwMDAgbiAKMDAwMDAwMDA1OCAwMDAwMCBuIAowMDAwMDAwMTE1IDAwMDAwIG4gCjAwMDAwMDAyMTUgMDAwMDAgbiAKdHJhaWxlcgo8PCAvU2l6ZSA1IC9Sb290IDEgMCBSID4+CnN0YXJ0eHJlZgozMDgKJSVFT0YK",
+    "pages": 1,
+    "MediaBox": [
+      0,
+      0,
+      2,
+      1
+    ],
+    "authored_own_data": true,
+    "content": "two solid red/blue vector rectangles, no text or external resources",
+    "expected_PNG_dimensions": [
+      2,
+      1
+    ],
+    "expected_RGB_hex": "ff00000000ff"
+  }
+}

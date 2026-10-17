@@ -1,0 +1,22 @@
+{
+  "binary": "released v0.3.2",
+  "command": [
+    "bex",
+    "logs",
+    "--resources",
+    "srv-db9pgqks300s73dskh40",
+    "--type",
+    "app",
+    "--text",
+    "QA446_EVENT",
+    "--limit",
+    "3",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "exit": 0,
+  "elapsed": 6.81,
+  "stdout": "{\n  \"id\": \"srv-db9pgqks300s73dskh40-m7uacm47i748bfl4gru8-2026-10-17T15:49:41.588183463Z-6574e49d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9pgqks300s73dskh40\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9pgqks300s73dskh40-m7uacm47i748bfl4gru8\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA446_EVENT {\\\"marker\\\":\\\"QA446_e9126f_bex\\\",\\\"boot\\\":\\\"1-1792252181587855619\\\",\\\"token\\\":\\\"\\\",\\\"phase\\\":\\\"ready\\\",\\\"active\\\":0}\",\n  \"timestamp\": \"2026-10-17T15:49:41.588183463Z\"\n}",
+  "stderr": ""
+}

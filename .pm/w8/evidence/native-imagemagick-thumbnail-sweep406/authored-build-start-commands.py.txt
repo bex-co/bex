@@ -1,0 +1,10 @@
+import json,hashlib
+def commands(P,reference,marker,control=False):
+ build='set -e\n';program=(P/'sweep406-probe.cjs').read_text()
+ for name,value in [('qa406-probe.cjs',program),('qa406-reference.json',json.dumps(reference,separators=(',',':'))),('qa406-marker.json',json.dumps(marker))]:
+  tag='QA406_'+name.replace('.','_').replace('-','_').upper();build+="cat > "+name+" <<'"+tag+"'\n"+value+('' if value.endswith('\n') else '\n')+tag+'\n'
+ build+='node qa406-probe.cjs before\n'
+ if control:build+='apt-get update -qq && apt-get install -y --no-install-recommends imagemagick\n'
+ build+='convert qa406.ppm -filter point -resize 2x1! -strip PNG24:qa406.png\nnode qa406-probe.cjs build'
+ assert len(build.encode())<=4096,len(build.encode())
+ return {'build':build,'start':'node qa406-probe.cjs serve','program_sha256':hashlib.sha256(program.encode()).hexdigest()}

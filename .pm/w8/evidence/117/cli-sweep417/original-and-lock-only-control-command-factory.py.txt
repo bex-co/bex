@@ -1,0 +1,7 @@
+import json,hashlib
+def commands(P,marker,matched=False):
+ old=json.loads((P/'sweep417-original-command-reference.json').read_text());cmd=dict(old['commands']);assert cmd['build'].count(old['old_marker'])==1;cmd['build']=cmd['build'].replace(old['old_marker'],marker)
+ if matched:
+  stale=(P/'sweep417-original-Gemfile.lock').read_text();lock=(P/'sweep417-matched-Gemfile.lock').read_text();assert cmd['build'].count(stale)==1 and lock==stale.replace('13.2.1','13.3.1');cmd['build']=cmd['build'].replace(stale,lock);cmd['matched_lock_sha256']=hashlib.sha256(lock.encode()).hexdigest()
+ assert len(cmd['build'].encode())<=4096
+ return cmd

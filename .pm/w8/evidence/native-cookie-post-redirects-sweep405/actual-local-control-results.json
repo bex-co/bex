@@ -1,0 +1,399 @@
+{
+  "context": "<owned-temp>/sweep405-local-l0r_q3_6",
+  "source": {
+    "repo": "https://github.com/git-fixtures/basic",
+    "branch": "master",
+    "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+    "files": {
+      "LICENSE": {
+        "bytes": 1072,
+        "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+      },
+      "CHANGELOG": {
+        "bytes": 18,
+        "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+      }
+    }
+  },
+  "qualification": "actual authored program and curl automatic redirects in a private loopback HTTP1 server on host Node22; not generated-image or HTTP2/TLS acceptance",
+  "cases": [
+    {
+      "protocol_requested": "h1",
+      "status_requested": 307,
+      "nonce": "e40d9c1d0d-h1-307",
+      "command": [
+        "curl",
+        "--disable",
+        "-sS",
+        "--max-time",
+        "25",
+        "--max-redirs",
+        "3",
+        "--http1.1",
+        "--location",
+        "-H",
+        "Accept-Encoding: identity",
+        "-H",
+        "Content-Type: application/json",
+        "--data-binary",
+        "@<owned-temp>/sweep405-http-e40d9c1d0d-h1-307.body",
+        "--cookie",
+        "<owned-temp>/sweep405-http-e40d9c1d0d-h1-307.jar",
+        "--cookie-jar",
+        "<owned-temp>/sweep405-http-e40d9c1d0d-h1-307.jar",
+        "--dump-header",
+        "<owned-temp>/sweep405-http-e40d9c1d0d-h1-307.headers",
+        "-w",
+        "\n%{http_code} %{http_version} %{num_redirects}",
+        "http://127.0.0.1:61380/redirect?status=307&nonce=e40d9c1d0d-h1-307"
+      ],
+      "request": {
+        "path": "/redirect?status=307&nonce=e40d9c1d0d-h1-307",
+        "method": "POST",
+        "bytes": 1546,
+        "sha256": "84f8c2f432cee2349b482c51ef82dc9766f7fb89fab0d6a5f8f2d13fe3f3d831"
+      },
+      "expected_qa_cookies": {
+        "qa_flow": "QA405_LOCAL_307_e40d9c1d0d-h1-307",
+        "qa_color": "caf%C3%A9_307",
+        "qa_expiry": "keep_e40d9c1d0d-h1-307"
+      },
+      "curl_exit": 0,
+      "HTTP": "200",
+      "http_version": "1.1",
+      "redirects": 1,
+      "headers": [
+        {
+          "status": 307,
+          "status_line": "HTTP/1.1 307 Temporary Redirect",
+          "headers": [
+            [
+              "Cache-Control",
+              "no-store"
+            ],
+            [
+              "Content-Type",
+              "application/json"
+            ],
+            [
+              "Set-Cookie",
+              "qa_flow=QA405_LOCAL_307_e40d9c1d0d-h1-307; Path=/; Max-Age=3600"
+            ],
+            [
+              "Set-Cookie",
+              "qa_color=caf%C3%A9_307; Path=/; Max-Age=3600"
+            ],
+            [
+              "Set-Cookie",
+              "qa_expiry=keep_e40d9c1d0d-h1-307; Path=/; Expires=Fri, 01 Jan 2038 00:00:00 GMT; Max-Age=3600"
+            ],
+            [
+              "Location",
+              "/target?status=307&nonce=e40d9c1d0d-h1-307"
+            ],
+            [
+              "Date",
+              "Sat, 17 Oct 2026 06:21:47 GMT"
+            ],
+            [
+              "Connection",
+              "keep-alive"
+            ],
+            [
+              "Keep-Alive",
+              "timeout=5"
+            ],
+            [
+              "Transfer-Encoding",
+              "chunked"
+            ]
+          ]
+        },
+        {
+          "status": 200,
+          "status_line": "HTTP/1.1 200 OK",
+          "headers": [
+            [
+              "Cache-Control",
+              "no-store"
+            ],
+            [
+              "Content-Type",
+              "application/json"
+            ],
+            [
+              "Date",
+              "Sat, 17 Oct 2026 06:21:47 GMT"
+            ],
+            [
+              "Connection",
+              "keep-alive"
+            ],
+            [
+              "Keep-Alive",
+              "timeout=5"
+            ],
+            [
+              "Transfer-Encoding",
+              "chunked"
+            ]
+          ]
+        }
+      ],
+      "qa_cookie_jar": {
+        "qa_expiry": "keep_e40d9c1d0d-h1-307",
+        "qa_color": "caf%C3%A9_307",
+        "qa_flow": "QA405_LOCAL_307_e40d9c1d0d-h1-307"
+      },
+      "response": {
+        "marker": "QA405_LOCAL",
+        "files": {
+          "LICENSE": {
+            "bytes": 1072,
+            "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+          },
+          "CHANGELOG": {
+            "bytes": 18,
+            "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+          }
+        },
+        "node": "v22.17.1",
+        "program_sha256": "18d54a8240e46a378e9541f88cc3cde31799c9a7ae31078aebe80b7c23e8af4e",
+        "built": {
+          "marker": "QA405_LOCAL",
+          "files": {
+            "LICENSE": {
+              "bytes": 1072,
+              "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+            },
+            "CHANGELOG": {
+              "bytes": 18,
+              "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+            }
+          },
+          "node": "v22.17.1",
+          "program_sha256": "18d54a8240e46a378e9541f88cc3cde31799c9a7ae31078aebe80b7c23e8af4e"
+        },
+        "boot": "8a73d77f-53f0-48fd-b4aa-fb7afa196201",
+        "native_init_present": false,
+        "method": "POST",
+        "request_path": "/target?status=307&nonce=e40d9c1d0d-h1-307",
+        "request_nonce": "e40d9c1d0d-h1-307",
+        "body": {
+          "bytes": 1546,
+          "sha256": "84f8c2f432cee2349b482c51ef82dc9766f7fb89fab0d6a5f8f2d13fe3f3d831"
+        },
+        "qa_cookies": {
+          "qa_expiry": "keep_e40d9c1d0d-h1-307",
+          "qa_color": "caf%C3%A9_307",
+          "qa_flow": "QA405_LOCAL_307_e40d9c1d0d-h1-307"
+        },
+        "response_status": 200
+      },
+      "stderr": "",
+      "pass_": true,
+      "own_body_jar_header_files_removed": true
+    },
+    {
+      "protocol_requested": "h1",
+      "status_requested": 308,
+      "nonce": "2dd5985596-h1-308",
+      "command": [
+        "curl",
+        "--disable",
+        "-sS",
+        "--max-time",
+        "25",
+        "--max-redirs",
+        "3",
+        "--http1.1",
+        "--location",
+        "-H",
+        "Accept-Encoding: identity",
+        "-H",
+        "Content-Type: application/json",
+        "--data-binary",
+        "@<owned-temp>/sweep405-http-2dd5985596-h1-308.body",
+        "--cookie",
+        "<owned-temp>/sweep405-http-2dd5985596-h1-308.jar",
+        "--cookie-jar",
+        "<owned-temp>/sweep405-http-2dd5985596-h1-308.jar",
+        "--dump-header",
+        "<owned-temp>/sweep405-http-2dd5985596-h1-308.headers",
+        "-w",
+        "\n%{http_code} %{http_version} %{num_redirects}",
+        "http://127.0.0.1:61380/redirect?status=308&nonce=2dd5985596-h1-308"
+      ],
+      "request": {
+        "path": "/redirect?status=308&nonce=2dd5985596-h1-308",
+        "method": "POST",
+        "bytes": 1546,
+        "sha256": "c3513919b2c51420cb9ac3594f8c3406df199f9c32398a44f067b5bbdf75d658"
+      },
+      "expected_qa_cookies": {
+        "qa_flow": "QA405_LOCAL_308_2dd5985596-h1-308",
+        "qa_color": "caf%C3%A9_308",
+        "qa_expiry": "keep_2dd5985596-h1-308"
+      },
+      "curl_exit": 0,
+      "HTTP": "200",
+      "http_version": "1.1",
+      "redirects": 1,
+      "headers": [
+        {
+          "status": 308,
+          "status_line": "HTTP/1.1 308 Permanent Redirect",
+          "headers": [
+            [
+              "Cache-Control",
+              "no-store"
+            ],
+            [
+              "Content-Type",
+              "application/json"
+            ],
+            [
+              "Set-Cookie",
+              "qa_flow=QA405_LOCAL_308_2dd5985596-h1-308; Path=/; Max-Age=3600"
+            ],
+            [
+              "Set-Cookie",
+              "qa_color=caf%C3%A9_308; Path=/; Max-Age=3600"
+            ],
+            [
+              "Set-Cookie",
+              "qa_expiry=keep_2dd5985596-h1-308; Path=/; Expires=Fri, 01 Jan 2038 00:00:00 GMT; Max-Age=3600"
+            ],
+            [
+              "Location",
+              "/target?status=308&nonce=2dd5985596-h1-308"
+            ],
+            [
+              "Date",
+              "Sat, 17 Oct 2026 06:21:48 GMT"
+            ],
+            [
+              "Connection",
+              "keep-alive"
+            ],
+            [
+              "Keep-Alive",
+              "timeout=5"
+            ],
+            [
+              "Transfer-Encoding",
+              "chunked"
+            ]
+          ]
+        },
+        {
+          "status": 200,
+          "status_line": "HTTP/1.1 200 OK",
+          "headers": [
+            [
+              "Cache-Control",
+              "no-store"
+            ],
+            [
+              "Content-Type",
+              "application/json"
+            ],
+            [
+              "Date",
+              "Sat, 17 Oct 2026 06:21:48 GMT"
+            ],
+            [
+              "Connection",
+              "keep-alive"
+            ],
+            [
+              "Keep-Alive",
+              "timeout=5"
+            ],
+            [
+              "Transfer-Encoding",
+              "chunked"
+            ]
+          ]
+        }
+      ],
+      "qa_cookie_jar": {
+        "qa_expiry": "keep_2dd5985596-h1-308",
+        "qa_color": "caf%C3%A9_308",
+        "qa_flow": "QA405_LOCAL_308_2dd5985596-h1-308"
+      },
+      "response": {
+        "marker": "QA405_LOCAL",
+        "files": {
+          "LICENSE": {
+            "bytes": 1072,
+            "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+          },
+          "CHANGELOG": {
+            "bytes": 18,
+            "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+          }
+        },
+        "node": "v22.17.1",
+        "program_sha256": "18d54a8240e46a378e9541f88cc3cde31799c9a7ae31078aebe80b7c23e8af4e",
+        "built": {
+          "marker": "QA405_LOCAL",
+          "files": {
+            "LICENSE": {
+              "bytes": 1072,
+              "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+            },
+            "CHANGELOG": {
+              "bytes": 18,
+              "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+            }
+          },
+          "node": "v22.17.1",
+          "program_sha256": "18d54a8240e46a378e9541f88cc3cde31799c9a7ae31078aebe80b7c23e8af4e"
+        },
+        "boot": "8a73d77f-53f0-48fd-b4aa-fb7afa196201",
+        "native_init_present": false,
+        "method": "POST",
+        "request_path": "/target?status=308&nonce=2dd5985596-h1-308",
+        "request_nonce": "2dd5985596-h1-308",
+        "body": {
+          "bytes": 1546,
+          "sha256": "c3513919b2c51420cb9ac3594f8c3406df199f9c32398a44f067b5bbdf75d658"
+        },
+        "qa_cookies": {
+          "qa_expiry": "keep_2dd5985596-h1-308",
+          "qa_color": "caf%C3%A9_308",
+          "qa_flow": "QA405_LOCAL_308_2dd5985596-h1-308"
+        },
+        "response_status": 200
+      },
+      "stderr": "",
+      "pass_": true,
+      "own_body_jar_header_files_removed": true
+    }
+  ],
+  "build": {
+    "exit": 0,
+    "stdout": "QA405_BUILD {\"marker\":\"QA405_LOCAL\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"node\":\"v22.17.1\",\"program_sha256\":\"18d54a8240e46a378e9541f88cc3cde31799c9a7ae31078aebe80b7c23e8af4e\"}\n",
+    "stderr": ""
+  },
+  "ready": {
+    "port": 61380,
+    "marker": "QA405_LOCAL",
+    "files": {
+      "LICENSE": {
+        "bytes": 1072,
+        "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+      },
+      "CHANGELOG": {
+        "bytes": 18,
+        "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+      }
+    },
+    "node": "v22.17.1",
+    "program_sha256": "18d54a8240e46a378e9541f88cc3cde31799c9a7ae31078aebe80b7c23e8af4e"
+  },
+  "server_logs": "QA405_READY {\"port\":61380,\"marker\":\"QA405_LOCAL\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"node\":\"v22.17.1\",\"program_sha256\":\"18d54a8240e46a378e9541f88cc3cde31799c9a7ae31078aebe80b7c23e8af4e\"}\nQA405_REQUEST {\"marker\":\"QA405_LOCAL\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"node\":\"v22.17.1\",\"program_sha256\":\"18d54a8240e46a378e9541f88cc3cde31799c9a7ae31078aebe80b7c23e8af4e\",\"built\":{\"marker\":\"QA405_LOCAL\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"node\":\"v22.17.1\",\"program_sha256\":\"18d54a8240e46a378e9541f88cc3cde31799c9a7ae31078aebe80b7c23e8af4e\"},\"boot\":\"8a73d77f-53f0-48fd-b4aa-fb7afa196201\",\"native_init_present\":false,\"method\":\"POST\",\"request_path\":\"/redirect?status=307&nonce=e40d9c1d0d-h1-307\",\"request_nonce\":\"e40d9c1d0d-h1-307\",\"body\":{\"bytes\":1546,\"sha256\":\"84f8c2f432cee2349b482c51ef82dc9766f7fb89fab0d6a5f8f2d13fe3f3d831\"},\"qa_cookies\":{},\"response_status\":307}\nQA405_REQUEST {\"marker\":\"QA405_LOCAL\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"node\":\"v22.17.1\",\"program_sha256\":\"18d54a8240e46a378e9541f88cc3cde31799c9a7ae31078aebe80b7c23e8af4e\",\"built\":{\"marker\":\"QA405_LOCAL\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"node\":\"v22.17.1\",\"program_sha256\":\"18d54a8240e46a378e9541f88cc3cde31799c9a7ae31078aebe80b7c23e8af4e\"},\"boot\":\"8a73d77f-53f0-48fd-b4aa-fb7afa196201\",\"native_init_present\":false,\"method\":\"POST\",\"request_path\":\"/target?status=307&nonce=e40d9c1d0d-h1-307\",\"request_nonce\":\"e40d9c1d0d-h1-307\",\"body\":{\"bytes\":1546,\"sha256\":\"84f8c2f432cee2349b482c51ef82dc9766f7fb89fab0d6a5f8f2d13fe3f3d831\"},\"qa_cookies\":{\"qa_expiry\":\"keep_e40d9c1d0d-h1-307\",\"qa_color\":\"caf%C3%A9_307\",\"qa_flow\":\"QA405_LOCAL_307_e40d9c1d0d-h1-307\"},\"response_status\":200}\nQA405_REQUEST {\"marker\":\"QA405_LOCAL\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"node\":\"v22.17.1\",\"program_sha256\":\"18d54a8240e46a378e9541f88cc3cde31799c9a7ae31078aebe80b7c23e8af4e\",\"built\":{\"marker\":\"QA405_LOCAL\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"node\":\"v22.17.1\",\"program_sha256\":\"18d54a8240e46a378e9541f88cc3cde31799c9a7ae31078aebe80b7c23e8af4e\"},\"boot\":\"8a73d77f-53f0-48fd-b4aa-fb7afa196201\",\"native_init_present\":false,\"method\":\"POST\",\"request_path\":\"/redirect?status=308&nonce=2dd5985596-h1-308\",\"request_nonce\":\"2dd5985596-h1-308\",\"body\":{\"bytes\":1546,\"sha256\":\"c3513919b2c51420cb9ac3594f8c3406df199f9c32398a44f067b5bbdf75d658\"},\"qa_cookies\":{},\"response_status\":308}\nQA405_REQUEST {\"marker\":\"QA405_LOCAL\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"node\":\"v22.17.1\",\"program_sha256\":\"18d54a8240e46a378e9541f88cc3cde31799c9a7ae31078aebe80b7c23e8af4e\",\"built\":{\"marker\":\"QA405_LOCAL\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"node\":\"v22.17.1\",\"program_sha256\":\"18d54a8240e46a378e9541f88cc3cde31799c9a7ae31078aebe80b7c23e8af4e\"},\"boot\":\"8a73d77f-53f0-48fd-b4aa-fb7afa196201\",\"native_init_present\":false,\"method\":\"POST\",\"request_path\":\"/target?status=308&nonce=2dd5985596-h1-308\",\"request_nonce\":\"2dd5985596-h1-308\",\"body\":{\"bytes\":1546,\"sha256\":\"c3513919b2c51420cb9ac3594f8c3406df199f9c32398a44f067b5bbdf75d658\"},\"qa_cookies\":{\"qa_expiry\":\"keep_2dd5985596-h1-308\",\"qa_color\":\"caf%C3%A9_308\",\"qa_flow\":\"QA405_LOCAL_308_2dd5985596-h1-308\"},\"response_status\":200}\n",
+  "pass": true,
+  "own_context_server_removed": true
+}

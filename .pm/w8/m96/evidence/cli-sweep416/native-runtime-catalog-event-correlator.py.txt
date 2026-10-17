@@ -1,0 +1,13 @@
+from pathlib import Path
+import sys,json,re
+P=Path(__file__).resolve().parent;f=P/'sweep416-common.py';sys.argv=[str(f),'app-logs','bex'];exec(compile(f.read_text(),str(f),'exec'));xs=[x for x in c['resources'] if x.get('sweep')==416 and not x.get('excluded_setup')];assert len(xs)==2
+for x in xs:
+ own(x);accepted=[v for v in x.get('runtime_receipts',[]) if v['phase']=='control' and v['pass']];assert len(accepted)==1;paths={v['path'] for v in accepted[0]['requests']};sha=accepted[0]['requests'][0]['decoded']['runtime']['catalog']['sha256'];r=cli(['logs','--resources',x['id'],'--type','app','--text','QA_GETTEXT_HTTP','--limit','100','--confirm','-o','json'],client=x['client']);e={'at':now(),'native':r,'expected_paths':sorted(paths),'matched':[]};x.setdefault('application_log_correlations',[]).append(e);save();assert r['native_exit']==0;raw=r['stdout'];decoder=json.JSONDecoder()
+ while raw.strip():
+  raw=raw.lstrip();v,n=decoder.raw_decode(raw);raw=raw[n:]
+  for z in v if isinstance(v,list) else [v]:
+   for m in re.finditer(r'QA_GETTEXT_HTTP (\{[^\n]+\})',z.get('message','')):
+    try:p=json.loads(m.group(1))
+    except ValueError:continue
+    if p.get('marker')==x['marker'] and p.get('path') in paths and p.get('catalog_sha256')==sha:e['matched'].append(p)
+ e['pass']={v['path'] for v in e['matched']}==paths;save();print(json.dumps({'client':x['client'],'native_logs_exit':0,'exact_catalog_compilation_translation_events':len(e['matched']),'pass':e['pass']}),flush=True);assert e['pass']

@@ -1,0 +1,10 @@
+from pathlib import Path
+import sys,json
+f=Path(__file__).with_name('sweep429-common.py');sys.argv=[str(f),'final-inventory','bex'];exec(compile(f.read_text(),str(f),'exec'));xs=[v for v in c['resources'] if v.get('sweep')==429 and not v.get('excluded_setup')];assert len(xs)==2 and all(x['state'].startswith('deleted:') for x in xs);out={};inv,views=inventory();ids={v['id'] for v in views if v['id'].startswith('srv-')};owned={v['id'] for v in xs};assert baseline<=ids and not ids&owned;extras=sorted(ids-baseline);datastore_ids={kind:sorted(v['id'] for v in views if v['id'].startswith(prefix)) for kind,prefix in [('postgres','dpg-'),('keyValues','red-')]};out['datastores']={'at':now(),'unrelated_nonbaseline_IDs':datastore_ids,'projection':'same-workspace native identity metadata only; no datastore mutation or connection','pass':True};out['services']={'at':now(),'native':inv,'IDs':sorted(ids),'unrelated_nonbaseline_IDs':extras,'own_IDs_absent':True,'baseline_present':True,'pass':True};c['sweep429_cleanup_inventory']=out;save()
+for kind,path in [('env-groups','/v1/env-groups?ownerId='+ws),('projects','/v1/projects?ownerId='+ws),('blueprints','/v1/blueprints?ownerId='+ws),('quota','/v1/owners/'+ws+'/limits')]:
+ r=api('GET',path);assert r['status']=='200';v=decode(r)
+ if kind=='blueprints':
+  views=[z.get('blueprint',z) for z in v];passed={z['id'] for z in views}=={'blp-db136288mmqc73d4hpug'};r['response']=json.dumps([{'id':z['id'],'projection':'immutable baseline identity only; configuration omitted'} for z in views])
+ elif kind=='quota':passed=v['services']['used']==len(ids) and v['services']['terminating']==0 and all(v[k]['used']==len(datastore_ids[k]) and v[k]['terminating']==0 for k in ['postgres','keyValues'])
+ else:passed=v==[]
+ out[kind]={'at':now(),'receipt':r,'pass':bool(passed)};c['sweep429_cleanup_inventory']=out;save();print(json.dumps({'kind':kind,'pass':bool(passed)}),flush=True);assert passed

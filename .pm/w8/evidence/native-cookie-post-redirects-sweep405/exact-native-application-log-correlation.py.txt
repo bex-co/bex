@@ -1,0 +1,14 @@
+from pathlib import Path
+import sys,json,re
+P=Path(__file__).resolve().parent;f=P/'sweep405-common.py';sys.argv=[str(f),'app-logs','bex'];exec(compile(f.read_text(),str(f),'exec'));xs=[v for v in c['resources'] if v.get('sweep')==405 and v.get('id') and not v.get('failed_create_reconciled')];assert len(xs)==2
+for x in xs:
+ own(x);assert x['runtime_exercise']['pass'];expected={(v['nonce'],s):v for v in x['runtime_exercise']['cases'] for s in [v['status_requested'],200]};r=cli(['logs','--resources',x['id'],'--type','app','--text','QA405_REQUEST','--limit','100','--confirm','-o','json'],client=x['client']);e={'at':now(),'native':r,'events':[]};x.setdefault('application_log_correlations',[]).append(e);save();assert r['native_exit']==0;raw=r['stdout'];decoder=json.JSONDecoder()
+ while raw.strip():
+  raw=raw.lstrip();v,n=decoder.raw_decode(raw);raw=raw[n:]
+  for z in v if isinstance(v,list) else [v]:
+   for m in re.finditer(r'QA405_REQUEST (\{[^\n]+\})',z.get('message','')):
+    try:p=json.loads(m.group(1))
+    except ValueError:continue
+    key=(p.get('request_nonce'),p.get('response_status'));case=expected.get(key)
+    if case and p.get('marker')==x['marker'] and p.get('method')=='POST' and p.get('body')=={'bytes':case['request']['bytes'],'sha256':case['request']['sha256']} and (p.get('qa_cookies')==case['expected_qa_cookies'] if key[1]==200 else p.get('qa_cookies')=={}):e['events'].append(p)
+ e['pass']={(v['request_nonce'],v['response_status']) for v in e['events']}==set(expected);save();print(json.dumps({'client':x['client'],'native_logs_exit':r['native_exit'],'exact_redirect_and_target_events':len(set((v['request_nonce'],v['response_status']) for v in e['events'])),'pass':e['pass']}),flush=True);assert e['pass']

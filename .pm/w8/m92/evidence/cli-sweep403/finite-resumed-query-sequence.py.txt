@@ -1,0 +1,6 @@
+from pathlib import Path
+import subprocess,json
+P=Path(__file__).resolve().parent
+steps=[('healthy','bex'),('catalog','bex'),('catalog','render'),('postgis','render'),('healthy','render'),('catalog','render')]
+for number,args in enumerate(steps,1):
+ r=subprocess.run(['python3',str(P/'sweep403-sql.py'),*args],capture_output=True,text=True,timeout=100);(P/('sweep403-remaining-step-'+str(number).zfill(2)+'.json')).write_text(json.dumps({'args':args,'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));print(r.stdout,flush=True);r.check_returncode()

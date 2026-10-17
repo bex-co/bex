@@ -1,0 +1,7 @@
+import json,gzip,base64,hashlib
+def commands(P,reference,marker,control=False):
+ files={dst:(P/src).read_text() for dst,src in [('qa-webpack-entry.mjs','candidate-webpack-entry.mjs'),('qa-webpack-domain.mjs','candidate-webpack-domain.mjs'),('qa-webpack-before.cjs','candidate-webpack-before.cjs')]};assert all(hashlib.sha256(files[n].encode()).hexdigest()==v for n,v in reference['sources'].items());files.update({'qa-webpack-reference.json':json.dumps(reference,separators=(',',':'),ensure_ascii=False),'qa-webpack-marker.json':json.dumps(marker)});blob=base64.b64encode(gzip.compress(json.dumps(files,ensure_ascii=False,separators=(',',':')).encode(),mtime=0)).decode();assert json.loads(gzip.decompress(base64.b64decode(blob)))==files
+ build="set -e\nnode - <<'QA_WEBPACK_SOURCES'\nconst fs=require('node:fs'),zlib=require('node:zlib');const files=JSON.parse(zlib.gunzipSync(Buffer.from('"+blob+"','base64')));for(const[n,s]of Object.entries(files))fs.writeFileSync(n,s);\nQA_WEBPACK_SOURCES\nnode qa-webpack-before.cjs\n"
+ if control:build+='npm install --global --no-audit --no-fund webpack@5.112.0 webpack-cli@7.2.3\n'
+ build+='webpack ./qa-webpack-entry.mjs --mode production --target node --output-path ./dist --output-filename bundle.cjs --json > qa-webpack-stats.json\nnode dist/bundle.cjs build';assert len(build.encode())<=4096
+ return {'build':build,'start':'node dist/bundle.cjs serve','sources':reference['sources']}

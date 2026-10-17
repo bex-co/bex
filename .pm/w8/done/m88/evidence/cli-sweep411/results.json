@@ -1,0 +1,53 @@
+{
+  "sweep": 411,
+  "source_head": "f8d2bc87ef948ec584eef1b7ab968c5e55cb27d4",
+  "milestone": "w8/m88",
+  "original_both_native_npm_restart_acceptance": true,
+  "actual_helper_precondition_observed_in410": true,
+  "native_clients": [
+    "published Bex0.3.2",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "unchanged_original_public_commit": "a419aa7350389a275ab45fde2e849ed1f02449ef",
+  "unchanged_original_written_program_SHA256": "ad36e3734b331d1e688fbe07c86b355be2740dbfda2f9e6fc7b494e5fed5f677",
+  "original_npm_start": "npm --prefix qa386 start",
+  "shutdown_seconds": 45,
+  "hold_milliseconds": 40000,
+  "native_creates201_exit0": 2,
+  "native_restarts0": 2,
+  "cases": [
+    {
+      "client": "bex",
+      "native_restart_exit": 0,
+      "old_POST_HTTP": "200",
+      "old_POST_elapsed": 41.203,
+      "short_reads": 22,
+      "all_short_reads200": true,
+      "old_boot_token_preserved": true,
+      "SIGTERM_active_then_hold_end_closed": true
+    },
+    {
+      "client": "render",
+      "native_restart_exit": 0,
+      "old_POST_HTTP": "200",
+      "old_POST_elapsed": 40.697,
+      "short_reads": 22,
+      "all_short_reads200": true,
+      "old_boot_token_preserved": true,
+      "SIGTERM_active_then_hold_end_closed": true
+    }
+  ],
+  "shared_REST_GraphQL_MCP_source_command_shutdown_reads": 6,
+  "direct_node_control_used": false,
+  "exact_own_parents4children_URLs_absent": true,
+  "baseline_preserved_current_quota_accounted_termination0": true,
+  "unrelated_service_IDs_preserved": [
+    "srv-db9i6g9u2fhc73e10bsg"
+  ],
+  "required_source_operator_tests_and_darwin_Linux_lint": "previously passed and recorded in completed t007; not rerun by documentation-only QA",
+  "product_code_changed_by_this_replay": false,
+  "actual_serving_revision_and_OCI": "unknown",
+  "uncommitted": true,
+  "milestone_closed": true,
+  "evidence": ".pm/w8/done/m88/evidence/cli-sweep411"
+}

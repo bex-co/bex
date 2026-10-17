@@ -1,0 +1,32 @@
+from pathlib import Path
+import json,secrets,subprocess,tempfile,shutil
+P=Path(__file__).resolve().parent;nonce=secrets.token_hex(3);D=Path(tempfile.mkdtemp(prefix='candidate-gs-app-',dir=P));name='qa-gs-app-'+nonce;assert subprocess.run(['docker','inspect',name],capture_output=True).returncode!=0;image='python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4';ref=json.loads((P/'candidate-ghostscript-reference.json').read_text());out={'nonce':nonce,'container':name,'context':str(D),'image':image,'absent_before':True,'qualification':'selected cached Python base and exact authored own-PDF app with manual gs supplier, own container-loopback HTTP only; not full generated native image or hosting acceptance'}
+def save():(P/'candidate-ghostscript-full-app-prerequisite.json').write_text(json.dumps(out,indent=2))
+save()
+for f in ref['files']:shutil.copyfile(P/('sweep414-source-'+f),D/f)
+for f,b in [('qa-gs-reference.json',json.dumps(ref)),('qa-gs-marker.json',json.dumps('QA_GS_LOCAL')),('qa-gs-app.py',(P/'candidate-ghostscript-app.py').read_text()),('qa-png.py',(P/'sweep406-png.py').read_text())]:(D/f).write_text(b)
+checker='''import urllib.request,time,json,base64,runpy,hashlib
+png=runpy.run_path('qa-png.py')['decode_png'];responses=[]
+for attempt in range(60):
+ try:urllib.request.urlopen('http://127.0.0.1:3000/',timeout=2).read();break
+ except OSError:time.sleep(0.1)
+else:raise AssertionError('own server not ready')
+for path in ['/render?qa=1','/?qa=2','/png?qa=3']:
+ with urllib.request.urlopen('http://127.0.0.1:3000'+path,timeout=10) as r:b=r.read();assert r.status==200
+ if path.startswith('/png'):proofs=[png(b)]
+ else:
+  v=json.loads(b);assert all(v[p]['marker']=='QA_GS_LOCAL' for p in ['build','runtime']);proofs=[]
+  for p in ['build','runtime']:
+   raw=base64.b64decode(v[p]['png']['base64']);assert hashlib.sha256(raw).hexdigest()==v[p]['png']['sha256'];proofs.append(png(raw))
+ assert all(p['pixels_hex']=='ff00000000ff' for p in proofs);responses.append({'path':path,'PNG_proofs':proofs})
+print('QA_GS_LOCAL_HTTP '+json.dumps(responses),flush=True)
+''';(D/'check.py').write_text(checker)
+script="set -e\npython qa-gs-app.py before\napt-get update -qq && apt-get install -y --no-install-recommends ghostscript\ngs -q -dBATCH -dNOPAUSE -sDEVICE=png16m -r72 -dFirstPage=1 -dLastPage=1 -sOutputFile=qa-gs-build.png qa-gs.pdf\npython qa-gs-app.py build\npython -u qa-gs-app.py serve > own-server.log 2>&1 &\nqa_gs_pid=$!\ntrap 'kill \"$qa_gs_pid\" 2>/dev/null || true' EXIT\npython check.py\ncat own-server.log"
+try:
+ r=subprocess.run(['docker','run','--pull=never','--rm','--name',name,'--label','bex.qa.run='+nonce,'-v',str(D)+':/work','-w','/work','-e','PORT=3000',image,'bash','-c',script],capture_output=True,text=True,timeout=210);out.update(exit=r.returncode,stdout=r.stdout,stderr=r.stderr,script=script);save();r.check_returncode();out['pass']=r.returncode==0 and 'QA_GS_LOCAL_HTTP ' in r.stdout;save();assert out['pass']
+finally:
+ z=subprocess.run(['docker','inspect',name],capture_output=True,text=True)
+ if z.returncode==0:
+  v=json.loads(z.stdout)[0];assert v['Config']['Labels']['bex.qa.run']==nonce and any(m['Source']==str(D) for m in v['Mounts']);subprocess.run(['docker','rm','-f',name],capture_output=True,check=True)
+ shutil.rmtree(D);out['own_container_context_removed']=not D.exists() and subprocess.run(['docker','inspect',name],capture_output=True).returncode!=0;save()
+print(json.dumps({'full_app_prerequisite':out.get('pass'),'own_loopback_requests':3,'cleanup':out['own_container_context_removed']}))

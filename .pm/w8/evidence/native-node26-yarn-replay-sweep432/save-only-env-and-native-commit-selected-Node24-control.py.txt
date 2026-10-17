@@ -1,0 +1,23 @@
+from pathlib import Path
+import sys,json
+P=Path(__file__).resolve().parent;f=P/'sweep432-common.py';exec(compile(f.read_text(),str(f),'exec'));x=next(x for x in c['resources'] if x.get('sweep')==432 and x['client']==client);own(x);sid=x['id'];original=json.loads((P/'sweep432-original-Yarn-command-reference.json').read_text())
+if mode=='save':
+ assert 'node24_save_intent' not in x and x['request_rounds'][-1]['pass'] and x['build_Yarn_reads'][-1]['pass'];h=history(x);assert len(h)==1 and h[0]['status']=='live';body={'envVars':[{'key':'NODE_VERSION','value':'24'}],'saveMode':'save_only'};x['node24_save_intent']={'at':now(),'body':body,'before_children':h,'API_only':True};save();r=api('PATCH','/v1/services/'+sid+'/environment',body);x['node24_save_result']=r;save();assert r['status']=='200' and decode(r)['rolledOut'] is False;h=history(x);assert len(h)==1 and h[0]['id']==x['first_deploy_id'] and h[0]['status']=='live';print(json.dumps({'client':client,'API_only_Node24_save':200,'rolledOut':False,'original_first_still_Live':True}))
+elif mode=='deploy':
+ assert 'node24_deploy_intent' not in x and x['node24_save_result']['status']=='200';h=history(x);assert len(h)==1;args=['deploys','create',sid,'--commit',x['actual_source_commit'],'--confirm','-o','json'];x['node24_deploy_intent']={'at':now(),'command':[client,*args],'original_commit_pin':x['actual_source_commit']};save();r=cli(args);x['node24_deploy_result']=r;save();assert r['native_exit']==0
+ for attempt in range(5):
+  h=history(x)
+  if len(h)==2:break
+  time.sleep(1)
+ assert len(h)==2 and h[0]['id']!=x['first_deploy_id'];x.update(stage='node24',node24_deploy_id=h[0]['id']);x['commands']['node24']=dict(x['commands']['initial']);save();print(json.dumps({'client':client,'native_Node24_deploy_exit':0,'exact_original_commit':x['actual_source_commit'],'child':h[0]['id']}))
+elif mode=='observe':
+ h=history(x);e={'at':now(),'phase':'node24','history':h};x.setdefault('node24_observations',[]).append(e);save();print(json.dumps({'client':client,'status':h[0]['status'],'child':h[0]['id'],'children':len(h)}))
+elif mode=='request':
+ assert not x.get('node24_HTTP');h=history(x);assert len(h)==2 and h[0]['id']==x['node24_deploy_id'] and h[0]['status']=='live' and h[0]['commit']['id']==x['actual_source_commit'];out={'at':now(),'history':h,'requests':[]};x['node24_HTTP']=out;save();url=x['create_view']['serviceDetails']['url']
+ for i in range(3):
+  path='/?qa432-node24='+x['nonce']+'-'+str(i+1);r=subprocess.run(['curl','--disable','-sS','--max-time','15','-H','Accept-Encoding: identity','-w','\n%{http_code}',url+path],capture_output=True,text=True,timeout=20);raw,_,status=r.stdout.rpartition('\n');v=None
+  try:v=json.loads(raw)
+  except ValueError:pass
+  e={'path':path,'HTTP':status,'curl_exit':r.returncode,'raw':raw,'decoded':v,'stderr':r.stderr};out['requests'].append(e);save();e['pass']=r.returncode==0 and status=='200' and isinstance(v,dict) and v.get('marker')==original['marker'] and v.get('built')==original['built'] and v.get('node','').startswith('v24.') and v.get('yarn')=='1.22.22';save();assert e['pass']
+ out['pass']=all(v['pass'] for v in out['requests']);save();print(json.dumps({'client':client,'same_commit_Node24_HTTP200':3,'pass':out['pass'],'actual_node':out['requests'][0]['decoded']['node']}))
+else:raise ValueError(mode)

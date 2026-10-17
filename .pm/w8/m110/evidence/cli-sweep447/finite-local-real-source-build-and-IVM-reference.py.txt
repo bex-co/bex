@@ -1,0 +1,35 @@
+from pathlib import Path
+import subprocess,json,secrets,time,urllib.request,hashlib,tarfile,shutil
+P=Path(__file__).resolve().parent;ctx=P/'candidate447-local-context';assert not ctx.exists();ctx.mkdir();reference=json.loads((P/'candidate447-pinned-primary-package-research.json').read_text());name='qa447-ivm-'+secrets.token_hex(4);image='postgres@sha256:67f41722b7a8cbdb868a44a4995c846eddfdc2973bccb291ce937dce88ad5675';out={'image':image,'container':name,'source':reference,'scope':'own local PG17 reference with actual pinned pg_ivm compilation and immediate maintenance, not Bex/CNPG supplier acceptance','steps':[],'cases':[]};receipt=P/'candidate447-local-prerequisite.json';started=False
+
+def save():receipt.write_text(json.dumps(out,indent=2,ensure_ascii=False))
+def run(label,args,check=True,bound=45):
+ r=subprocess.run(args,capture_output=True,text=True,timeout=bound);out['steps'].append({'label':label,'command':args,'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr});save()
+ if check:r.check_returncode()
+ return r
+save()
+try:
+ url='https://codeload.github.com/sraoss/pg_ivm/tar.gz/'+reference['commit'];data=urllib.request.urlopen(url,timeout=35).read();archive=ctx/'source.tar.gz';archive.write_bytes(data);out['source_archive']={'url':url,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()};save()
+ with tarfile.open(archive) as tar:
+  directory=tar.getmembers()[0].name.split('/')[0];assert directory.startswith('pg_ivm-');tar.extractall(ctx,filter='data')
+ source=ctx/directory;config='/usr/lib/postgresql/17/bin/pg_config';setup='set -e\napt-get update -qq\napt-get install -y --no-install-recommends build-essential postgresql-server-dev-17\nmake -C /fixture PG_CONFIG='+config+' -j2\nmake -C /fixture PG_CONFIG='+config+' install\n'+config+' --version\ndpkg-query -W postgresql-server-dev-17 gcc libc6\nexec docker-entrypoint.sh postgres -c shared_preload_libraries=pg_ivm';out['create_intent']={'container':name,'image':image,'source_mount':str(source),'network':'bridge for package setup; no published ports; detach before SQL'};save();run('start-exact-own-build-server',['docker','run','--pull','never','-d','--network','bridge','--name',name,'-e','POSTGRES_HOST_AUTH_METHOD=trust','--mount','type=bind,src='+str(source)+',dst=/fixture','--entrypoint','/bin/bash',image,'-c',setup]);started=True
+ for i in range(80):
+  r=run('ready-'+str(i),['docker','exec',name,'pg_isready','-U','postgres'],False,bound=12)
+  if r.returncode==0:break
+  state=json.loads(run('own-state-'+str(i),['docker','inspect',name,'--format','{{json .State}}']).stdout)
+  if not state['Running']:run('own-failed-build-log',['docker','logs',name]);raise RuntimeError('Own local extension build/server stopped')
+  time.sleep(3)
+ else:run('own-bounded-setup-log',['docker','logs',name]);raise RuntimeError('Own local setup readiness exhausted bound')
+ run('detach-own-network-before-SQL',['docker','network','disconnect','bridge',name]);run('actual-own-build-and-start-log',['docker','logs',name]);run('local-only-owner-db',['docker','exec',name,'psql','-X','-q','-v','ON_ERROR_STOP=1','-U','postgres','-c','CREATE ROLE qa447_owner LOGIN;','-c','CREATE DATABASE qa447_owner OWNER qa447_owner;']);run('local-only-extension-init',['docker','exec',name,'psql','-X','-q','-v','ON_ERROR_STOP=1','-U','postgres','-d','qa447_owner','-c','CREATE EXTENSION pg_ivm;'])
+ ns={};f=P/'sweep447-query-factory.py';exec(compile(f.read_text(),str(f),'exec'),ns)
+ for case,query in ns['queries']('qa447_local').items():
+  r=run(case,['docker','exec',name,'psql','-X','-q','-t','-A','-v','ON_ERROR_STOP=1','-U','qa447_owner','-d','qa447_owner','-c',query]);e={'case':case}
+  if case=='catalog':e['value']=json.loads(r.stdout);e['pass']=not e['value']['own_schema_exists']
+  elif case=='enable':e['pass']=not r.stdout.strip()
+  else:e['decoded'],e['pass']=ns['decode'](r.stdout,case)
+  out['cases'].append(e);save();assert e['pass'];print(json.dumps({'local_case':case,'pass':True}),flush=True)
+ r=run('final-rollback-proof',['docker','exec',name,'psql','-X','-q','-t','-A','-v','ON_ERROR_STOP=1','-U','qa447_owner','-d','qa447_owner','-c',"SELECT count(*) FROM pg_namespace WHERE nspname='qa447_local'; SELECT count(*) FROM pgivm.pg_ivm_immv;"]);assert r.stdout.strip()=='0\n0';out['pass']=True
+finally:
+ if started:run('remove-exact-own-server',['docker','rm','-f','-v',name],False)
+ out['own_container_absent']=run('own-container-absence',['docker','container','inspect',name],False).returncode!=0;shutil.rmtree(ctx);out['own_context_removed']=not ctx.exists();save()
+print(json.dumps({'pass':out.get('pass',False),'own_container_absent':out['own_container_absent'],'own_context_removed':out['own_context_removed']}))

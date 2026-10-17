@@ -1,0 +1,14 @@
+{
+  "gzip": {
+    "compressed_bytes": 3256,
+    "estimated_full_build_bytes": 5031
+  },
+  "lzma": {
+    "compressed_bytes": 3184,
+    "estimated_full_build_bytes": 4935
+  },
+  "bz2": {
+    "compressed_bytes": 3560,
+    "estimated_full_build_bytes": 5435
+  }
+}

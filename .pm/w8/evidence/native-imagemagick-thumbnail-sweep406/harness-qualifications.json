@@ -1,0 +1,15 @@
+{
+  "local_missing_tool_assertion": {
+    "actual_default_build_exit": 0,
+    "actual_png_and_pixels_pass": true,
+    "source_receipt_reclassified_without_execution_replay": true,
+    "manual_install_not_executed": true,
+    "actual_original_source_retained": "sweep406-local-original-driver.py.txt"
+  },
+  "bounded_first_observation": {
+    "bex_first_child_pending_after_8_reads": true,
+    "render_same_original_child_live_and_3_runtime_cases_pass": true,
+    "sequential_parent_stopped_before_shared_reads_cleanup_until_both_runtime_acceptances": true,
+    "no_mutation_replay": true
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-17T15:19:06.206474+00:00",
+  "sources": [
+    {
+      "url": "https://render.com/docs/postgresql-extensions",
+      "support": "pgvector is included among supported PostgreSQL13+ extension capabilities."
+    },
+    {
+      "url": "https://github.com/pgvector/pgvector/tree/v0.8.6",
+      "support": "This exact extension release documents halfvec, sparsevec and binary vector distance operators with HNSW operator classes; the query requires distance ordering and LIMIT, with enable_seqscan=off allowed to test an index."
+    }
+  ],
+  "existing_filing": "w8/blocked/m84",
+  "gap": "Prior hosted coverage used vector(3) and confirmed HNSW catalog method; these cases exercise three other supplied data types and verify actual index execution on own tiny data.",
+  "limits": "Fresh PG17 only; not existing-parent backfill or approximate-recall/scaling acceptance; no new issue."
+}

@@ -1,0 +1,578 @@
+{
+  "at": "2026-10-17T16:40:25.752883+00:00",
+  "upstream_commit": "a764810a768202704e7206eb7b87a47211fcd98e",
+  "files": {
+    "cmd/logs.go": {
+      "sha256": "88c43b28d31d89fa32aeb7fc2ce276fa7db68b07fcf0817053ff2b4453c7d939",
+      "source_URL": "https://github.com/render-oss/cli/blob/a764810a768202704e7206eb7b87a47211fcd98e/cmd/logs.go",
+      "lines": [
+        {
+          "line": 109,
+          "text": "func writeLog(format command.Output, out io.Writer, log *lclient.Log) error {"
+        },
+        {
+          "line": 110,
+          "text": "\tvar str []byte"
+        },
+        {
+          "line": 111,
+          "text": "\tvar err error"
+        },
+        {
+          "line": 112,
+          "text": "\tif format == command.JSON {"
+        },
+        {
+          "line": 113,
+          "text": "\t\tstr, err = json.MarshalIndent(log, \"\", \"  \")"
+        },
+        {
+          "line": 114,
+          "text": "\t} else if format == command.YAML {"
+        },
+        {
+          "line": 115,
+          "text": "\t\tstr, err = yaml.Marshal(log)"
+        },
+        {
+          "line": 116,
+          "text": "\t} else if format == command.TEXT {"
+        },
+        {
+          "line": 117,
+          "text": "\t\tstr = []byte(fmt.Sprintf(\"%s  %s\\n\", log.Timestamp.Format(time.DateTime), log.Message))"
+        },
+        {
+          "line": 118,
+          "text": "\t}"
+        },
+        {
+          "line": 119,
+          "text": ""
+        },
+        {
+          "line": 120,
+          "text": "\tif err != nil {"
+        },
+        {
+          "line": 121,
+          "text": "\t\treturn err"
+        },
+        {
+          "line": 122,
+          "text": "\t}"
+        },
+        {
+          "line": 123,
+          "text": ""
+        },
+        {
+          "line": 124,
+          "text": "\t_, err = out.Write(str)"
+        },
+        {
+          "line": 125,
+          "text": "\treturn err"
+        },
+        {
+          "line": 126,
+          "text": "}"
+        },
+        {
+          "line": 127,
+          "text": ""
+        },
+        {
+          "line": 128,
+          "text": "func nonInteractiveLogs(logLoader *views.LogLoader, format *command.Output, cmd *cobra.Command, input views.LogInput) error {"
+        },
+        {
+          "line": 129,
+          "text": "\tresult, err := logLoader.LoadLogData(cmd.Context(), input)"
+        },
+        {
+          "line": 130,
+          "text": "\tif err != nil {"
+        },
+        {
+          "line": 131,
+          "text": "\t\treturn err"
+        },
+        {
+          "line": 132,
+          "text": "\t}"
+        },
+        {
+          "line": 133,
+          "text": ""
+        },
+        {
+          "line": 134,
+          "text": "\tif result.Logs != nil {"
+        },
+        {
+          "line": 135,
+          "text": "\t\tfor _, log := range result.Logs.Logs {"
+        },
+        {
+          "line": 136,
+          "text": "\t\t\tif err := writeLog(*format, cmd.OutOrStdout(), &log); err != nil {"
+        },
+        {
+          "line": 137,
+          "text": "\t\t\t\treturn err"
+        },
+        {
+          "line": 138,
+          "text": "\t\t\t}"
+        },
+        {
+          "line": 139,
+          "text": "\t\t}"
+        },
+        {
+          "line": 140,
+          "text": "\t}"
+        },
+        {
+          "line": 141,
+          "text": ""
+        },
+        {
+          "line": 142,
+          "text": "\tif result.LogChannel != nil {"
+        },
+        {
+          "line": 143,
+          "text": "\t\tfor {"
+        },
+        {
+          "line": 144,
+          "text": "\t\t\tlog, ok := <-result.LogChannel"
+        },
+        {
+          "line": 145,
+          "text": "\t\t\tif !ok {"
+        },
+        {
+          "line": 146,
+          "text": "\t\t\t\tbreak"
+        },
+        {
+          "line": 147,
+          "text": "\t\t\t}"
+        },
+        {
+          "line": 148,
+          "text": "\t\t\tif err := writeLog(*format, cmd.OutOrStdout(), log); err != nil {"
+        },
+        {
+          "line": 149,
+          "text": "\t\t\t\treturn err"
+        },
+        {
+          "line": 150,
+          "text": "\t\t\t}"
+        },
+        {
+          "line": 151,
+          "text": "\t\t}"
+        },
+        {
+          "line": 152,
+          "text": "\t}"
+        },
+        {
+          "line": 153,
+          "text": ""
+        },
+        {
+          "line": 154,
+          "text": "\treturn nil"
+        },
+        {
+          "line": 155,
+          "text": "}"
+        }
+      ]
+    },
+    "pkg/logs/repo.go": {
+      "sha256": "fd2cfeef34fa89dab7ebd2fcd3ba7480396f79deb363f546770c63c1c9067e38",
+      "source_URL": "https://github.com/render-oss/cli/blob/a764810a768202704e7206eb7b87a47211fcd98e/pkg/logs/repo.go",
+      "lines": [
+        {
+          "line": 39,
+          "text": "func (l *LogRepo) TailLogs(ctx context.Context, params *client.ListLogsParams) (<-chan *lclient.Log, error) {"
+        },
+        {
+          "line": 40,
+          "text": "\tsubscribeParams := client.SubscribeLogsParams(*params)"
+        },
+        {
+          "line": 41,
+          "text": "\treq, err := client.NewSubscribeLogsRequest(l.apiConfig.Host, &subscribeParams)"
+        },
+        {
+          "line": 42,
+          "text": "\tif err != nil {"
+        },
+        {
+          "line": 43,
+          "text": "\t\treturn nil, err"
+        },
+        {
+          "line": 44,
+          "text": "\t}"
+        },
+        {
+          "line": 45,
+          "text": "\tdialer := websocket.Dialer{}"
+        },
+        {
+          "line": 46,
+          "text": ""
+        },
+        {
+          "line": 47,
+          "text": "\tu := req.URL"
+        },
+        {
+          "line": 48,
+          "text": ""
+        },
+        {
+          "line": 49,
+          "text": "\tif u.Scheme == \"https\" {"
+        },
+        {
+          "line": 50,
+          "text": "\t\tu.Scheme = \"wss\""
+        },
+        {
+          "line": 51,
+          "text": "\t} else {"
+        },
+        {
+          "line": 52,
+          "text": "\t\tu.Scheme = \"ws\""
+        },
+        {
+          "line": 53,
+          "text": "\t}"
+        },
+        {
+          "line": 54,
+          "text": ""
+        },
+        {
+          "line": 55,
+          "text": "\t// Establish WebSocket connection using the custom dialer"
+        },
+        {
+          "line": 56,
+          "text": "\tconn, resp, err := dialer.Dial(u.String(), client.AddHeaders(http.Header{}, l.apiConfig.Key))"
+        },
+        {
+          "line": 57,
+          "text": "\tif err != nil {"
+        },
+        {
+          "line": 58,
+          "text": "\t\t// Return the http error if it exists, fall back to the websocket error"
+        },
+        {
+          "line": 59,
+          "text": "\t\tif resp != nil && resp.StatusCode != http.StatusSwitchingProtocols {"
+        },
+        {
+          "line": 60,
+          "text": "\t\t\tbody, err := io.ReadAll(resp.Body)"
+        },
+        {
+          "line": 61,
+          "text": "\t\t\tif err != nil {"
+        },
+        {
+          "line": 62,
+          "text": "\t\t\t\treturn nil, err"
+        },
+        {
+          "line": 63,
+          "text": "\t\t\t}"
+        },
+        {
+          "line": 64,
+          "text": ""
+        },
+        {
+          "line": 65,
+          "text": "\t\t\treturn nil, fmt.Errorf(\"failed to tail logs: %s\", body)"
+        },
+        {
+          "line": 66,
+          "text": "\t\t}"
+        },
+        {
+          "line": 67,
+          "text": ""
+        },
+        {
+          "line": 68,
+          "text": "\t\treturn nil, err"
+        },
+        {
+          "line": 69,
+          "text": "\t}"
+        },
+        {
+          "line": 70,
+          "text": ""
+        },
+        {
+          "line": 71,
+          "text": "\tch := make(chan *lclient.Log)"
+        },
+        {
+          "line": 72,
+          "text": ""
+        },
+        {
+          "line": 73,
+          "text": "\t// Read messages from the WebSocket connection"
+        },
+        {
+          "line": 74,
+          "text": "\tgo func(ctx context.Context) {"
+        },
+        {
+          "line": 75,
+          "text": "\t\tdefer conn.Close()"
+        },
+        {
+          "line": 76,
+          "text": "\t\tdefer close(ch)"
+        },
+        {
+          "line": 77,
+          "text": "\t\tfor {"
+        },
+        {
+          "line": 78,
+          "text": "\t\t\tselect {"
+        },
+        {
+          "line": 79,
+          "text": "\t\t\tcase <-ctx.Done():"
+        },
+        {
+          "line": 80,
+          "text": "\t\t\t\treturn"
+        },
+        {
+          "line": 81,
+          "text": "\t\t\tdefault:"
+        },
+        {
+          "line": 82,
+          "text": "\t\t\t\t_, message, err := conn.ReadMessage()"
+        },
+        {
+          "line": 83,
+          "text": "\t\t\t\tif err != nil {"
+        },
+        {
+          "line": 84,
+          "text": "\t\t\t\t\treturn"
+        },
+        {
+          "line": 85,
+          "text": "\t\t\t\t}"
+        },
+        {
+          "line": 86,
+          "text": ""
+        },
+        {
+          "line": 87,
+          "text": "\t\t\t\tvar log lclient.Log"
+        },
+        {
+          "line": 88,
+          "text": "\t\t\t\terr = json.Unmarshal(message, &log)"
+        },
+        {
+          "line": 89,
+          "text": "\t\t\t\tif err != nil {"
+        },
+        {
+          "line": 90,
+          "text": "\t\t\t\t\treturn"
+        },
+        {
+          "line": 91,
+          "text": "\t\t\t\t}"
+        },
+        {
+          "line": 92,
+          "text": ""
+        },
+        {
+          "line": 93,
+          "text": "\t\t\t\tch <- &log"
+        },
+        {
+          "line": 94,
+          "text": "\t\t\t}"
+        },
+        {
+          "line": 95,
+          "text": "\t\t}"
+        },
+        {
+          "line": 96,
+          "text": "\t}(ctx)"
+        },
+        {
+          "line": 97,
+          "text": ""
+        },
+        {
+          "line": 98,
+          "text": "\treturn ch, nil"
+        },
+        {
+          "line": 99,
+          "text": "}"
+        }
+      ]
+    },
+    "pkg/tui/views/logloader.go": {
+      "sha256": "4430aa6c610e36d2f180caead2da5dbf54f0a2c32b9c9ca5bb9bebcf9797cc3f",
+      "source_URL": "https://github.com/render-oss/cli/blob/a764810a768202704e7206eb7b87a47211fcd98e/pkg/tui/views/logloader.go",
+      "lines": [
+        {
+          "line": 35,
+          "text": ""
+        },
+        {
+          "line": 36,
+          "text": "func (l *LogLoader) LoadLogData(ctx context.Context, in LogInput) (*tui.LogResult, error) {"
+        },
+        {
+          "line": 37,
+          "text": "\tparams, err := l.ToParam(ctx, in)"
+        },
+        {
+          "line": 38,
+          "text": "\tif err != nil {"
+        },
+        {
+          "line": 39,
+          "text": "\t\treturn nil, fmt.Errorf(\"error processing arguments: %v\", err)"
+        },
+        {
+          "line": 40,
+          "text": "\t}"
+        },
+        {
+          "line": 41,
+          "text": ""
+        },
+        {
+          "line": 42,
+          "text": "\tif in.Tail {"
+        },
+        {
+          "line": 43,
+          "text": "\t\tlogChan, err := l.logRepo.TailLogs(ctx, params)"
+        },
+        {
+          "line": 44,
+          "text": "\t\tif err != nil {"
+        },
+        {
+          "line": 45,
+          "text": "\t\t\treturn nil, fmt.Errorf(\"error tailing logs: %v\", err)"
+        },
+        {
+          "line": 46,
+          "text": "\t\t}"
+        },
+        {
+          "line": 47,
+          "text": "\t\treturn &tui.LogResult{Logs: &client.Logs200Response{}, LogChannel: logChan}, nil"
+        },
+        {
+          "line": 48,
+          "text": "\t}"
+        },
+        {
+          "line": 49,
+          "text": ""
+        },
+        {
+          "line": 50,
+          "text": "\tlogs, err := l.logRepo.ListLogs(ctx, params)"
+        },
+        {
+          "line": 51,
+          "text": "\tif err != nil {"
+        },
+        {
+          "line": 52,
+          "text": "\t\treturn nil, fmt.Errorf(\"error listing logs: %v\", err)"
+        },
+        {
+          "line": 53,
+          "text": "\t}"
+        },
+        {
+          "line": 54,
+          "text": "\treturn &tui.LogResult{Logs: logs, LogChannel: nil}, nil"
+        },
+        {
+          "line": 55,
+          "text": "}"
+        },
+        {
+          "line": 56,
+          "text": ""
+        },
+        {
+          "line": 57,
+          "text": "func (l *LogLoader) getResourceIDsFromIDOrNames(ctx context.Context, idOrNames []string) ([]string, error) {"
+        },
+        {
+          "line": 58,
+          "text": "\tresourceIds := make([]string, len(idOrNames))"
+        },
+        {
+          "line": 59,
+          "text": ""
+        },
+        {
+          "line": 60,
+          "text": "\tfor i, idOrName := range idOrNames {"
+        },
+        {
+          "line": 61,
+          "text": "\t\tif matchesResourceId(idOrName) {"
+        },
+        {
+          "line": 62,
+          "text": "\t\t\t// This will error out if we have a name that looks like a resource ID but isn't one."
+        },
+        {
+          "line": 63,
+          "text": "\t\t\t// Ideally we'd like to catch that case and allow looking up by name for such resources."
+        },
+        {
+          "line": 64,
+          "text": "\t\t\t// However, checking if the resource ID is valid would be a performance hit, and doesn't"
+        }
+      ]
+    }
+  },
+  "contract": "actual configured-host native WebSocket tails, noninteractive JSON writes and resource/type/text filters; no command or request rewrite",
+  "native_stream_wire": "production handshake/frames not intercepted; actual binary output and exact origin events retained"
+}

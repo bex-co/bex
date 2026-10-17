@@ -1,0 +1,53 @@
+{
+  "at": "2026-10-17T12:18:29.788313+00:00",
+  "source_head": "01798d4959c933508d4b6eee061295adaa9ebf6d",
+  "checks": [
+    {
+      "command": [
+        "rg",
+        "-n",
+        "-i",
+        "hugo|HUGO_VERSION",
+        ".pm",
+        "docs",
+        "lego/operator",
+        "--glob",
+        "*.md",
+        "--glob",
+        "*.go"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "log",
+        "--oneline",
+        "-S",
+        "hugo",
+        "--",
+        "lego/operator/internal/build"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "primary": {
+    "quickstart": "https://render.com/docs/deploy-hugo",
+    "linked_repo": "https://github.com/render-examples/hugo-quick-start",
+    "build_command": "hugo --gc --minify",
+    "publish_directory": "public",
+    "native_tools_reference": "https://render.com/docs/native-runtimes#tools-and-utilities",
+    "scope": "Hugo is promised by the static quickstart, not listed in the general all-native tools table. File only supported static build availability; no compute-runtime promise.",
+    "Render_host_tested": false
+  },
+  "related": {
+    "w8/m105": "Ruby/Bundler plus Gemfile static dependencies; same generated static environment but separate tool/project; coordinate shared generator changes",
+    "w8/done/m89": "root .gitmodules pinned public top-level children; new Hugo control separately verifies its theme bytes, no recursive Git requirement",
+    "w8/m90": "Yarn static automatic installation, not a Hugo supplier"
+  },
+  "diagnostic_package_version_not_adopted": "Debian Hugo0.111.3+extended; actual local arm64 genuine sample/theme build passes; other versions/architecture/generated images remain unverified"
+}

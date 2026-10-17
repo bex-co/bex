@@ -1,0 +1,11 @@
+{
+  "container": "qa-gettext-2cdfdbda",
+  "nonce": "2cdfdbda",
+  "image": "python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4",
+  "absent_before": true,
+  "scope": "local selected-base availability only, no hosted fixture or full generated image",
+  "exit": 0,
+  "stdout": "{\"python\": \"3.13.16\", \"tools\": {\"msgfmt\": null, \"msgmerge\": null, \"xgettext\": null, \"gettext\": null}}\n",
+  "stderr": "",
+  "own_container_removed": true
+}

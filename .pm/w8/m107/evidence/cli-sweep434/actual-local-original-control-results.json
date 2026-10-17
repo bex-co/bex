@@ -1,0 +1,619 @@
+{
+  "image": "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+  "kind": "authored actual zip/unzip project on pinned Node24 base; not full generated image",
+  "steps": [
+    {
+      "label": "default-missing-zip",
+      "command": [
+        "docker",
+        "run",
+        "--pull",
+        "never",
+        "--network",
+        "none",
+        "--name",
+        "qa434-zip-initial-79025c",
+        "--mount",
+        "type=bind,src=<owned-temp>/sweep434-local-context/initial,dst=/app",
+        "--workdir",
+        "/app",
+        "--entrypoint",
+        "/bin/bash",
+        "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+        "-c",
+        "set -e\nnode -e 'const fs=require('\"'\"'node:fs'\"'\"'),z=require('\"'\"'node:zlib'\"'\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\"'\"'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'\"'\"','\"'\"'base64'\"'\"')))))fs.writeFileSync(n,s)'\nnode qa434-app.cjs build"
+      ],
+      "exit": 1,
+      "stdout": "QA434_BEFORE {\"marker\":\"QA434_LOCAL\",\"node\":\"v24.22.0\",\"source\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"unzip\":\"UnZip 6.00 of 20 April 2009, by Debian. Original by Info-ZIP.\"}\n",
+      "stderr": "node:child_process:982\n    throw err;\n    ^\n\n<ref *1> Error: spawnSync zip ENOENT\n    at Object.spawnSync (node:internal/child_process:1191:20)\n    at spawnSync (node:child_process:929:24)\n    at Object.execFileSync (node:child_process:972:15)\n    at archive (/app/qa434-app.cjs:6:40)\n    at snapshot (/app/qa434-app.cjs:9:93)\n    at Object.<anonymous> (/app/qa434-app.cjs:10:201)\n    at Module._compile (node:internal/modules/cjs/loader:1929:14)\n    at Object..js (node:internal/modules/cjs/loader:2060:10)\n    at Module.load (node:internal/modules/cjs/loader:1651:32)\n    at Module._load (node:internal/modules/cjs/loader:1443:12) {\n  errno: -2,\n  code: 'ENOENT',\n  syscall: 'spawnSync zip',\n  path: 'zip',\n  spawnargs: [\n    '-X',\n    '-9',\n    '-q',\n    '/tmp/qa434-uLQGgT/out.zip',\n    'CHANGELOG',\n    'LICENSE',\n    'empty.txt',\n    'greeting.txt',\n    'request.txt',\n    'two words.bin'\n  ],\n  error: [Circular *1],\n  status: null,\n  signal: null,\n  output: null,\n  pid: 0,\n  stdout: undefined,\n  stderr: undefined\n}\n\nNode.js v24.22.0\n"
+    },
+    {
+      "label": "remove-own-case",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa434-zip-initial-79025c"
+      ],
+      "exit": 0,
+      "stdout": "qa434-zip-initial-79025c\n",
+      "stderr": ""
+    },
+    {
+      "label": "start-control",
+      "command": [
+        "docker",
+        "run",
+        "-d",
+        "--pull",
+        "never",
+        "--network",
+        "bridge",
+        "--name",
+        "qa434-zip-control-9f9f45",
+        "--mount",
+        "type=bind,src=<owned-temp>/sweep434-local-context/control,dst=/app",
+        "--workdir",
+        "/app",
+        "--entrypoint",
+        "/bin/bash",
+        "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+        "-c",
+        "set -e\napt-get update -qq && apt-get install -y --no-install-recommends zip\nnode -e 'const fs=require('\"'\"'node:fs'\"'\"'),z=require('\"'\"'node:zlib'\"'\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\"'\"'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'\"'\"','\"'\"'base64'\"'\"')))))fs.writeFileSync(n,s)'\nnode qa434-app.cjs build\nexec node qa434-app.cjs serve"
+      ],
+      "exit": 0,
+      "stdout": "ba5b45212fb088382869350bc9f12d46a4e209056f5176ec480ea1f4ddaf8ae8\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-loopback-ready-0",
+      "command": [
+        "docker",
+        "exec",
+        "qa434-zip-control-9f9f45",
+        "node",
+        "-e",
+        "fetch('http://127.0.0.1:3000/?qa=ready').then(r=>{if(!r.ok)process.exit(2)}).catch(()=>process.exit(3))"
+      ],
+      "exit": 3,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "own-loopback-ready-1",
+      "command": [
+        "docker",
+        "exec",
+        "qa434-zip-control-9f9f45",
+        "node",
+        "-e",
+        "fetch('http://127.0.0.1:3000/?qa=ready').then(r=>{if(!r.ok)process.exit(2)}).catch(()=>process.exit(3))"
+      ],
+      "exit": 3,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "own-loopback-ready-2",
+      "command": [
+        "docker",
+        "exec",
+        "qa434-zip-control-9f9f45",
+        "node",
+        "-e",
+        "fetch('http://127.0.0.1:3000/?qa=ready').then(r=>{if(!r.ok)process.exit(2)}).catch(()=>process.exit(3))"
+      ],
+      "exit": 3,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "own-loopback-ready-3",
+      "command": [
+        "docker",
+        "exec",
+        "qa434-zip-control-9f9f45",
+        "node",
+        "-e",
+        "fetch('http://127.0.0.1:3000/?qa=ready').then(r=>{if(!r.ok)process.exit(2)}).catch(()=>process.exit(3))"
+      ],
+      "exit": 3,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "own-loopback-ready-4",
+      "command": [
+        "docker",
+        "exec",
+        "qa434-zip-control-9f9f45",
+        "node",
+        "-e",
+        "fetch('http://127.0.0.1:3000/?qa=ready').then(r=>{if(!r.ok)process.exit(2)}).catch(()=>process.exit(3))"
+      ],
+      "exit": 3,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "own-loopback-ready-5",
+      "command": [
+        "docker",
+        "exec",
+        "qa434-zip-control-9f9f45",
+        "node",
+        "-e",
+        "fetch('http://127.0.0.1:3000/?qa=ready').then(r=>{if(!r.ok)process.exit(2)}).catch(()=>process.exit(3))"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "own-HTTP-one",
+      "command": [
+        "docker",
+        "exec",
+        "qa434-zip-control-9f9f45",
+        "node",
+        "-e",
+        "fetch('http://127.0.0.1:3000/?qa=one').then(async r=>{if(!r.ok)process.exit(2);process.stdout.write(Buffer.from(await r.arrayBuffer()))})"
+      ],
+      "exit": 0,
+      "stdout": "{\"marker\":\"QA434_LOCAL\",\"boot\":\"025db427-080e-4a4d-a175-c01ab91ef293\",\"nonce\":\"one\",\"built\":{\"marker\":\"QA434_LOCAL\",\"phase\":\"build\",\"node\":\"v24.22.0\",\"source\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"manifest\":{\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"},\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"empty.txt\":{\"bytes\":0,\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"greeting.txt\":{\"bytes\":154,\"sha256\":\"a661bea95a3b0cdb0d49b9227bf3ffb1b7fde26985cde59821af01c86fb93477\"},\"request.txt\":{\"bytes\":17,\"sha256\":\"48d79cd21fe55469c4a6a874b8980fdd478d28af22c009c7c5764a5f2f2f5ae6\"},\"two words.bin\":{\"bytes\":8192,\"sha256\":\"dbad062eb0fd46ce757919db4fa215ae96210fb1dda443169a204946e385128d\"}},\"archive\":{\"bytes\":1640,\"sha256\":\"4c5f6604ffa92b284bb2e8eeb8037d731fc692839046e61b797572e4cfd1747e\",\"base64\":\"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\"},\"unzip_test\":\"Archive:  /tmp/qa434-wYD94k/out.zip\\n    testing: CHANGELOG                OK\\n    testing: LICENSE                  OK\\n    testing: empty.txt                OK\\n    testing: greeting.txt             OK\\n    testing: request.txt              OK\\n    testing: two words.bin            OK\\nNo errors detected in compressed data of /tmp/qa434-wYD94k/out.zip.\",\"zip\":\"This is Zip 3.0 (July 5th 2008), by Info-ZIP.\"},\"runtime\":{\"marker\":\"QA434_LOCAL\",\"phase\":\"runtime\",\"node\":\"v24.22.0\",\"source\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"manifest\":{\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"},\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"empty.txt\":{\"bytes\":0,\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"greeting.txt\":{\"bytes\":154,\"sha256\":\"a661bea95a3b0cdb0d49b9227bf3ffb1b7fde26985cde59821af01c86fb93477\"},\"request.txt\":{\"bytes\":15,\"sha256\":\"ab105f6ce0e4894f3a398ab86b7ba33bb921a4332fed334c856b1de3f7652149\"},\"two words.bin\":{\"bytes\":8192,\"sha256\":\"dbad062eb0fd46ce757919db4fa215ae96210fb1dda443169a204946e385128d\"}},\"archive\":{\"bytes\":1638,\"sha256\":\"7f83cc0fa72a2d62fd73e69b8fdb31f2d348fbb039805d94940c563fbc388768\",\"base64\":\"UEsDBAoAAgAAAAAAISh39faDEgAAABIAAAAJAAAAQ0hBTkdFTE9HSW5pdGlhbCBjaGFuZ2Vsb2cKUEsDBBQAAgAIAAAAISg1MYtqdgIAADAEAAAHAAAATElDRU5TRV1SS4/aMBC++1eMOO1K0fYh9dKbScxiNcSRY5ZyDIkhrkKMYlPEv+9MYF+VkNCM53vNxHQWVtJA7ho7BAsPWDwylvrTdXSHLsJD8wjfv377Aea6qxkr7Xh0ITg/gAvQ2dHurnAY6yHaNoH9aC34PTRdPR5sAtFDPVzhZMeAAL+LtRvccIAaGhRgOBk7pAl+Hy/1aHG4hToE37ga+aD1zfloh1hH0tu73gZ4iOh4Vt0Rs8dJpLV1z9wA9Pb6BBcXO3+OMNoQR9cQRwJuaPpzSx5en3t3dHcFgk+pA0PSc8AE5DOBo2/dnv7tFOt03vUudAm0jqh354jNQM1piQnl+OJHCLbvGTI49D1lfXc3zZD1Ey003lcUqHPp/PFzEhfY/jwOKGknTOtxZZPiH9tE6tD43ve9v1C0xg+to0ThJ2MGn+qd/2unLLejDj6i1ZsFOsDp/ar3p9DVfQ87e18Y6uJ66w9xRpIPEQ/v6h5Ofpz0/o/5hPpLAZVamA3XAmQFpVYvMhMZzHiF9SyBjTRLtTaAE5oXZgtqAbzYwi9ZZAmI36UWVQVKM7kqcymwJ4s0X2eyeIY54gqF36/EDxdJjQISvFNJURHZSuh0iSWfy1yabcIW0hTEuVAaOJRcG5muc66hXOtSVQLlM6QtZLHQqCJWojBPqIo9EC9YQLXkeU5SjK/RvSZ/kKpyq+Xz0sBS5ZnA5lygMz7PxU0KQ6U5l6sEMr7iz2JCKWTRjMZu7mCzFNQiPY6/1EhVUIxUFUZjmWBKbd6gG1mJBLiWFS1kodUqYbRORKiJBHGFuLHQquHTRXCE6nUl3gghEzxHrorAFPF1GK/5D1BLAwQKAAAAAAAAACEoAAAAAAAAAAAAAAAACQAAAGVtcHR5LnR4dFBLAwQUAAIACAAAACEoWfMSHBwAAACaAAAADAAAAGdyZWV0aW5nLnR4dHMuOrwiN1Uhqejw7pzDK1MV1BSeze3jch4EogBQSwMECgACAAAAAAAhKFzP5wgPAAAADwAAAAsAAAByZXF1ZXN0LnR4dFFBNDM0X0xPQ0FMfG9uZVBLAwQUAAIACAAAACEorGDNA1sBAAAAIAAADQAAAHR3byB3b3Jkcy5iaW4TNPDP611z+hWnhnta65LDjxgV7ONq5+y+9VPCPKx0yuZLHwX0/XJ7Vp96yaHultqy+NBDBnm72JrZu27+EDcLLZm86eIHfj3fnO5VJ1+wq7mmNC86+OC/nG1M9aydN76LmYYUT9p44T2frk9218oTz9lUXZKbFh64/0/WJrpq5o7r30RNgosmbjj/jlfHO6tzxfFnrCrOSY0L9t/7K2MdVTlj+7WvIsZBhRPWn3vLo+2V2bH82FMWZafEhvn77v6RtoqsmL7t6hdho8CC/nVn33BreWa0Lzv6hFnJMaF+3t47v6UsI8qnbb3yWcgwIL9v7ZnXXJoe6W1LjzxmUnSIr5u75/YvSYvwsqlbLn8SHPX/qP9H/T/q/1H/j/p/1P+j/h/1/6j/R/0/6v9R/4/6f9T/o/4f9f+o/0f9P+r/Uf+P+n/U/6P+H/X/qP9H/T/q/1H/j/p/GPgfAFBLAQIeAwoAAgAAAAAAISh39faDEgAAABIAAAAJAAAAAAAAAAEAAACkgQAAAABDSEFOR0VMT0dQSwECHgMUAAIACAAAACEoNTGLanYCAAAwBAAABwAAAAAAAAABAAAApIE5AAAATElDRU5TRVBLAQIeAwoAAAAAAAAAISgAAAAAAAAAAAAAAAAJAAAAAAAAAAAAAACkgdQCAABlbXB0eS50eHRQSwECHgMUAAIACAAAACEoWfMSHBwAAACaAAAADAAAAAAAAAABAAAApIH7AgAAZ3JlZXRpbmcudHh0UEsBAh4DCgACAAAAAAAhKFzP5wgPAAAADwAAAAsAAAAAAAAAAQAAAKSBQQMAAHJlcXVlc3QudHh0UEsBAh4DFAACAAgAAAAhKKxgzQNbAQAAACAAAA0AAAAAAAAAAAAAAKSBeQMAAHR3byB3b3Jkcy5iaW5QSwUGAAAAAAYABgBRAQAA/wQAAAAA\"},\"unzip_test\":\"Archive:  /tmp/qa434-jxJRPE/out.zip\\n    testing: CHANGELOG                OK\\n    testing: LICENSE                  OK\\n    testing: empty.txt                OK\\n    testing: greeting.txt             OK\\n    testing: request.txt              OK\\n    testing: two words.bin            OK\\nNo errors detected in compressed data of /tmp/qa434-jxJRPE/out.zip.\",\"zip\":\"This is Zip 3.0 (July 5th 2008), by Info-ZIP.\"}}",
+      "stderr": ""
+    },
+    {
+      "label": "own-HTTP-two",
+      "command": [
+        "docker",
+        "exec",
+        "qa434-zip-control-9f9f45",
+        "node",
+        "-e",
+        "fetch('http://127.0.0.1:3000/download?qa=two').then(async r=>{if(!r.ok)process.exit(2);process.stdout.write(Buffer.from(await r.arrayBuffer()))})"
+      ],
+      "exit": 0,
+      "stdout": "PK\u0003\u0004\n\u0000\u0002\u0000\u0000\u0000\u0000\u0000!(w���\u0012\u0000\u0000\u0000\u0012\u0000\u0000\u0000\t\u0000\u0000\u0000CHANGELOGInitial changelog\nPK\u0003\u0004\u0014\u0000\u0002\u0000\b\u0000\u0000\u0000!(51�jv\u0002\u0000\u00000\u0004\u0000\u0000\u0007\u0000\u0000\u0000LICENSE]RK��0\u0010��W�8�J��!�қI�b5đc�r\f�!�B�bSĿ�L`_��Ќ�{��t\u0016V�@�\u001a;\u0004\u000b\u000fX<2���ut�.�C�\b߿~�\u0001溫\u0019+�xt!8?�\u000b����p\u0018�!�6��h-�=4]=\u001el\u0002�C=\\�dǀ\u0000���\u001b�p�\u001a\u001a\u0014`8\u0019;�\t~\u001f/�hq��:\u0004߸\u001a�����h�XG�ۻ�\u0006x��xV�\u0011��I��u��\u0000���\u0004\u0017\u0017;�0�\u0010G�\u0010G\u0002nh�sK\u001e^�{wtw\u0005�O�\u0003C�s�\u0004�3��oݞ��\u0014�t��.t\t���w��@�i�\t���G\b��\u001928�=e}w7͐�\u0013-4�W\u0014�s���s\u0012\u0017��<\u000e(i'L�qe��\u001f�D�������P��\u000f��D�'c\u0006���k�,��\u000e>�՛\u0005:��������}\u000f;{_\u0018��z�\u000fqF�\u000f\u0011\u000f��\u001eN~�������K\u0001�Z�\r�\u0002d\u0005�V/2\u0013\u0019�x��,��4K�6�\u0013�\u0017f\u000bj\u0001���/Yd\t�ߥ\u0016U\u0005J3�*s)�'�4_g�x�9�\n�߯�\u000f\u0017I�\u0002\u0012�SIQ\u0011�J�t�%��\\�m�\u0016�\u0014ĹP\u001a8�\\\u001b��s��\\�RU\u0002�3�-d�Ш\"V�0O��=\u0010/X@��yNR��ѽ&��r�����R���\\�3>��M\nC�9��\u00042���bB)dь�n�`�\u0014�\"=���HUP�T\u0015Fc�`Jmޠ\u001bY�\u0004��\u0015-d��*a�ND��\u0004q���Ъ��Ep��u%�\b!\u0013<G���\u0014�u\u0018��\u000fPK\u0003\u0004\n\u0000\u0000\u0000\u0000\u0000\u0000\u0000!(\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\t\u0000\u0000\u0000empty.txtPK\u0003\u0004\u0014\u0000\u0002\u0000\b\u0000\u0000\u0000!(Y�\u0012\u001c\u001c\u0000\u0000\u0000�\u0000\u0000\u0000\f\u0000\u0000\u0000greeting.txts.:�\"7U!�����+S\u0015�\u0014����r\u001e\u0004�\u0000PK\u0003\u0004\n\u0000\u0002\u0000\u0000\u0000\u0000\u0000!(��Ac\u000f\u0000\u0000\u0000\u000f\u0000\u0000\u0000\u000b\u0000\u0000\u0000request.txtQA434_LOCAL|twoPK\u0003\u0004\u0014\u0000\u0002\u0000\b\u0000\u0000\u0000!(�`�\u0003[\u0001\u0000\u0000\u0000 \u0000\u0000\r\u0000\u0000\u0000two words.bin\u00134���]s�\u0015��{Z�Ï\u0018\u0015��j���S�<�t��K\u001f\u0005��r{V�zɡ�ڲ��C\u0006y�ؚٻn�\u00107\u000b-����\u0007~=ߜ�U'_����4/:�࿜mL���7����\u0014O�x�=��Ov��\u0013��T]��\u0016\u001e��O�&�j���DM��&n8��W�;�s��g�*�I�\u000b���+c\u001dU9c���\"�A�\u0013֟{ˣ�ٱ��S\u0016e�Ć������������\u0017a����ug�pkyf�/;��Y�1�~��;��,#ʧm��Y�0 �o��\\�\u001e�mK�<fRt������/I��[.\u0012\u001c����G�?��Q�������\u001f����G�?��Q�������\u001f����G�?��Q�������\u001f����G�?��Q���\u0018�\u001f\u0000PK\u0001\u0002\u001e\u0003\n\u0000\u0002\u0000\u0000\u0000\u0000\u0000!(w���\u0012\u0000\u0000\u0000\u0012\u0000\u0000\u0000\t\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0000\u0000��\u0000\u0000\u0000\u0000CHANGELOGPK\u0001\u0002\u001e\u0003\u0014\u0000\u0002\u0000\b\u0000\u0000\u0000!(51�jv\u0002\u0000\u00000\u0004\u0000\u0000\u0007\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0000\u0000��9\u0000\u0000\u0000LICENSEPK\u0001\u0002\u001e\u0003\n\u0000\u0000\u0000\u0000\u0000\u0000\u0000!(\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\t\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000���\u0002\u0000\u0000empty.txtPK\u0001\u0002\u001e\u0003\u0014\u0000\u0002\u0000\b\u0000\u0000\u0000!(Y�\u0012\u001c\u001c\u0000\u0000\u0000�\u0000\u0000\u0000\f\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0000\u0000���\u0002\u0000\u0000greeting.txtPK\u0001\u0002\u001e\u0003\n\u0000\u0002\u0000\u0000\u0000\u0000\u0000!(��Ac\u000f\u0000\u0000\u0000\u000f\u0000\u0000\u0000\u000b\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001\u0000\u0000\u0000��A\u0003\u0000\u0000request.txtPK\u0001\u0002\u001e\u0003\u0014\u0000\u0002\u0000\b\u0000\u0000\u0000!(�`�\u0003[\u0001\u0000\u0000\u0000 \u0000\u0000\r\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000��y\u0003\u0000\u0000two words.binPK\u0005\u0006\u0000\u0000\u0000\u0000\u0006\u0000\u0006\u0000Q\u0001\u0000\u0000�\u0004\u0000\u0000\u0000\u0000",
+      "stderr": ""
+    },
+    {
+      "label": "own-HTTP-three",
+      "command": [
+        "docker",
+        "exec",
+        "qa434-zip-control-9f9f45",
+        "node",
+        "-e",
+        "fetch('http://127.0.0.1:3000/?qa=three').then(async r=>{if(!r.ok)process.exit(2);process.stdout.write(Buffer.from(await r.arrayBuffer()))})"
+      ],
+      "exit": 0,
+      "stdout": "{\"marker\":\"QA434_LOCAL\",\"boot\":\"025db427-080e-4a4d-a175-c01ab91ef293\",\"nonce\":\"three\",\"built\":{\"marker\":\"QA434_LOCAL\",\"phase\":\"build\",\"node\":\"v24.22.0\",\"source\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"manifest\":{\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"},\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"empty.txt\":{\"bytes\":0,\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"greeting.txt\":{\"bytes\":154,\"sha256\":\"a661bea95a3b0cdb0d49b9227bf3ffb1b7fde26985cde59821af01c86fb93477\"},\"request.txt\":{\"bytes\":17,\"sha256\":\"48d79cd21fe55469c4a6a874b8980fdd478d28af22c009c7c5764a5f2f2f5ae6\"},\"two words.bin\":{\"bytes\":8192,\"sha256\":\"dbad062eb0fd46ce757919db4fa215ae96210fb1dda443169a204946e385128d\"}},\"archive\":{\"bytes\":1640,\"sha256\":\"4c5f6604ffa92b284bb2e8eeb8037d731fc692839046e61b797572e4cfd1747e\",\"base64\":\"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\"},\"unzip_test\":\"Archive:  /tmp/qa434-wYD94k/out.zip\\n    testing: CHANGELOG                OK\\n    testing: LICENSE                  OK\\n    testing: empty.txt                OK\\n    testing: greeting.txt             OK\\n    testing: request.txt              OK\\n    testing: two words.bin            OK\\nNo errors detected in compressed data of /tmp/qa434-wYD94k/out.zip.\",\"zip\":\"This is Zip 3.0 (July 5th 2008), by Info-ZIP.\"},\"runtime\":{\"marker\":\"QA434_LOCAL\",\"phase\":\"runtime\",\"node\":\"v24.22.0\",\"source\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"manifest\":{\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"},\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"empty.txt\":{\"bytes\":0,\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"greeting.txt\":{\"bytes\":154,\"sha256\":\"a661bea95a3b0cdb0d49b9227bf3ffb1b7fde26985cde59821af01c86fb93477\"},\"request.txt\":{\"bytes\":17,\"sha256\":\"9fd2379474f2b42225d2360c9f029cad300dbf06ca0c236c079e67c83863d131\"},\"two words.bin\":{\"bytes\":8192,\"sha256\":\"dbad062eb0fd46ce757919db4fa215ae96210fb1dda443169a204946e385128d\"}},\"archive\":{\"bytes\":1640,\"sha256\":\"89e1000acad65f6fde2f998168a7e0af2b7da67ac49a65a57ff44a56a9f76327\",\"base64\":\"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\"},\"unzip_test\":\"Archive:  /tmp/qa434-Poqaos/out.zip\\n    testing: CHANGELOG                OK\\n    testing: LICENSE                  OK\\n    testing: empty.txt                OK\\n    testing: greeting.txt             OK\\n    testing: request.txt              OK\\n    testing: two words.bin            OK\\nNo errors detected in compressed data of /tmp/qa434-Poqaos/out.zip.\",\"zip\":\"This is Zip 3.0 (July 5th 2008), by Info-ZIP.\"}}",
+      "stderr": ""
+    },
+    {
+      "label": "actual-control-log",
+      "command": [
+        "docker",
+        "logs",
+        "qa434-zip-control-9f9f45"
+      ],
+      "exit": 0,
+      "stdout": "Reading package lists...\nBuilding dependency tree...\nReading state information...\nThe following NEW packages will be installed:\n  zip\n0 upgraded, 1 newly installed, 0 to remove and 9 not upgraded.\nNeed to get 223 kB of archives.\nAfter this operation, 817 kB of additional disk space will be used.\nGet:1 http://deb.debian.org/debian-security bookworm-security/main arm64 zip arm64 3.0-13+deb12u1 [223 kB]\nFetched 223 kB in 0s (683 kB/s)\nSelecting previously unselected package zip.\r\n(Reading database ... \r(Reading database ... 5%\r(Reading database ... 10%\r(Reading database ... 15%\r(Reading database ... 20%\r(Reading database ... 25%\r(Reading database ... 30%\r(Reading database ... 35%\r(Reading database ... 40%\r(Reading database ... 45%\r(Reading database ... 50%\r(Reading database ... 55%\r(Reading database ... 60%\r(Reading database ... 65%\r(Reading database ... 70%\r(Reading database ... 75%\r(Reading database ... 80%\r(Reading database ... 85%\r(Reading database ... 90%\r(Reading database ... 95%\r(Reading database ... 100%\r(Reading database ... 23286 files and directories currently installed.)\r\nPreparing to unpack .../zip_3.0-13+deb12u1_arm64.deb ...\r\nUnpacking zip (3.0-13+deb12u1) ...\r\nSetting up zip (3.0-13+deb12u1) ...\r\nQA434_BEFORE {\"marker\":\"QA434_LOCAL\",\"node\":\"v24.22.0\",\"source\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"unzip\":\"UnZip 6.00 of 20 April 2009, by Debian. Original by Info-ZIP.\"}\nQA434_BUILD {\"marker\":\"QA434_LOCAL\",\"phase\":\"build\",\"node\":\"v24.22.0\",\"source\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"manifest\":{\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"},\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"empty.txt\":{\"bytes\":0,\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},\"greeting.txt\":{\"bytes\":154,\"sha256\":\"a661bea95a3b0cdb0d49b9227bf3ffb1b7fde26985cde59821af01c86fb93477\"},\"request.txt\":{\"bytes\":17,\"sha256\":\"48d79cd21fe55469c4a6a874b8980fdd478d28af22c009c7c5764a5f2f2f5ae6\"},\"two words.bin\":{\"bytes\":8192,\"sha256\":\"dbad062eb0fd46ce757919db4fa215ae96210fb1dda443169a204946e385128d\"}},\"archive\":{\"bytes\":1640,\"sha256\":\"4c5f6604ffa92b284bb2e8eeb8037d731fc692839046e61b797572e4cfd1747e\",\"base64\":\"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\"},\"unzip_test\":\"Archive:  /tmp/qa434-wYD94k/out.zip\\n    testing: CHANGELOG                OK\\n    testing: LICENSE                  OK\\n    testing: empty.txt                OK\\n    testing: greeting.txt             OK\\n    testing: request.txt              OK\\n    testing: two words.bin            OK\\nNo errors detected in compressed data of /tmp/qa434-wYD94k/out.zip.\",\"zip\":\"This is Zip 3.0 (July 5th 2008), by Info-ZIP.\"}\nQA434_RUNTIME {\"marker\":\"QA434_LOCAL\",\"boot\":\"025db427-080e-4a4d-a175-c01ab91ef293\",\"node\":\"v24.22.0\",\"zip\":\"This is Zip 3.0 (July 5th 2008), by Info-ZIP.\"}\nQA434_HTTP {\"marker\":\"QA434_LOCAL\",\"boot\":\"025db427-080e-4a4d-a175-c01ab91ef293\",\"nonce\":\"ready\",\"archive_sha256\":\"0b6b851ef3d59349d90246aa433eac2ed81b99bcd252c53e63e970896f248107\"}\nQA434_HTTP {\"marker\":\"QA434_LOCAL\",\"boot\":\"025db427-080e-4a4d-a175-c01ab91ef293\",\"nonce\":\"one\",\"archive_sha256\":\"7f83cc0fa72a2d62fd73e69b8fdb31f2d348fbb039805d94940c563fbc388768\"}\nQA434_HTTP {\"marker\":\"QA434_LOCAL\",\"boot\":\"025db427-080e-4a4d-a175-c01ab91ef293\",\"nonce\":\"two\",\"archive_sha256\":\"64cdabc2dddf2a77dc7e37b4f34c3e5ed59a5a0f394f798dca14e5861921baa1\"}\nQA434_HTTP {\"marker\":\"QA434_LOCAL\",\"boot\":\"025db427-080e-4a4d-a175-c01ab91ef293\",\"nonce\":\"three\",\"archive_sha256\":\"89e1000acad65f6fde2f998168a7e0af2b7da67ac49a65a57ff44a56a9f76327\"}\n",
+      "stderr": "debconf: delaying package configuration, since apt-utils is not installed\n"
+    },
+    {
+      "label": "remove-own-case",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa434-zip-control-9f9f45"
+      ],
+      "exit": 0,
+      "stdout": "qa434-zip-control-9f9f45\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-container-absence",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa434-zip-initial-79025c"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa434-zip-initial-79025c\n"
+    },
+    {
+      "label": "own-container-absence",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa434-zip-control-9f9f45"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa434-zip-control-9f9f45\n"
+    }
+  ],
+  "cases": [
+    {
+      "phase": "initial",
+      "container": "qa434-zip-initial-79025c",
+      "HTTP": [],
+      "exit": 1,
+      "pass": true
+    },
+    {
+      "phase": "control",
+      "container": "qa434-zip-control-9f9f45",
+      "HTTP": [
+        {
+          "nonce": "one",
+          "raw_download": false,
+          "wire_bytes": 7358,
+          "archive_bytes": 1638,
+          "archive_sha256": "7f83cc0fa72a2d62fd73e69b8fdb31f2d348fbb039805d94940c563fbc388768",
+          "members": [
+            {
+              "name": "CHANGELOG",
+              "bytes": 18,
+              "compressed": 18,
+              "CRC32": 2213999991,
+              "method": 0
+            },
+            {
+              "name": "LICENSE",
+              "bytes": 1072,
+              "compressed": 630,
+              "CRC32": 1787506997,
+              "method": 8
+            },
+            {
+              "name": "empty.txt",
+              "bytes": 0,
+              "compressed": 0,
+              "CRC32": 0,
+              "method": 0
+            },
+            {
+              "name": "greeting.txt",
+              "bytes": 154,
+              "compressed": 28,
+              "CRC32": 471003993,
+              "method": 8
+            },
+            {
+              "name": "request.txt",
+              "bytes": 15,
+              "compressed": 15,
+              "CRC32": 149409628,
+              "method": 0
+            },
+            {
+              "name": "two words.bin",
+              "bytes": 8192,
+              "compressed": 347,
+              "CRC32": 63791276,
+              "method": 8
+            }
+          ],
+          "decoded": {
+            "marker": "QA434_LOCAL",
+            "boot": "025db427-080e-4a4d-a175-c01ab91ef293",
+            "nonce": "one",
+            "built": {
+              "marker": "QA434_LOCAL",
+              "phase": "build",
+              "node": "v24.22.0",
+              "source": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              },
+              "manifest": {
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                },
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "empty.txt": {
+                  "bytes": 0,
+                  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                },
+                "greeting.txt": {
+                  "bytes": 154,
+                  "sha256": "a661bea95a3b0cdb0d49b9227bf3ffb1b7fde26985cde59821af01c86fb93477"
+                },
+                "request.txt": {
+                  "bytes": 17,
+                  "sha256": "48d79cd21fe55469c4a6a874b8980fdd478d28af22c009c7c5764a5f2f2f5ae6"
+                },
+                "two words.bin": {
+                  "bytes": 8192,
+                  "sha256": "dbad062eb0fd46ce757919db4fa215ae96210fb1dda443169a204946e385128d"
+                }
+              },
+              "archive": {
+                "bytes": 1640,
+                "sha256": "4c5f6604ffa92b284bb2e8eeb8037d731fc692839046e61b797572e4cfd1747e",
+                "base64": "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"
+              },
+              "unzip_test": "Archive:  /tmp/qa434-wYD94k/out.zip\n    testing: CHANGELOG                OK\n    testing: LICENSE                  OK\n    testing: empty.txt                OK\n    testing: greeting.txt             OK\n    testing: request.txt              OK\n    testing: two words.bin            OK\nNo errors detected in compressed data of /tmp/qa434-wYD94k/out.zip.",
+              "zip": "This is Zip 3.0 (July 5th 2008), by Info-ZIP."
+            },
+            "runtime": {
+              "marker": "QA434_LOCAL",
+              "phase": "runtime",
+              "node": "v24.22.0",
+              "source": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              },
+              "manifest": {
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                },
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "empty.txt": {
+                  "bytes": 0,
+                  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                },
+                "greeting.txt": {
+                  "bytes": 154,
+                  "sha256": "a661bea95a3b0cdb0d49b9227bf3ffb1b7fde26985cde59821af01c86fb93477"
+                },
+                "request.txt": {
+                  "bytes": 15,
+                  "sha256": "ab105f6ce0e4894f3a398ab86b7ba33bb921a4332fed334c856b1de3f7652149"
+                },
+                "two words.bin": {
+                  "bytes": 8192,
+                  "sha256": "dbad062eb0fd46ce757919db4fa215ae96210fb1dda443169a204946e385128d"
+                }
+              },
+              "archive": {
+                "bytes": 1638,
+                "sha256": "7f83cc0fa72a2d62fd73e69b8fdb31f2d348fbb039805d94940c563fbc388768",
+                "base64": "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"
+              },
+              "unzip_test": "Archive:  /tmp/qa434-jxJRPE/out.zip\n    testing: CHANGELOG                OK\n    testing: LICENSE                  OK\n    testing: empty.txt                OK\n    testing: greeting.txt             OK\n    testing: request.txt              OK\n    testing: two words.bin            OK\nNo errors detected in compressed data of /tmp/qa434-jxJRPE/out.zip.",
+              "zip": "This is Zip 3.0 (July 5th 2008), by Info-ZIP."
+            }
+          }
+        },
+        {
+          "nonce": "two",
+          "raw_download": true,
+          "wire_bytes": 1638,
+          "archive_bytes": 1638,
+          "archive_sha256": "64cdabc2dddf2a77dc7e37b4f34c3e5ed59a5a0f394f798dca14e5861921baa1",
+          "members": [
+            {
+              "name": "CHANGELOG",
+              "bytes": 18,
+              "compressed": 18,
+              "CRC32": 2213999991,
+              "method": 0
+            },
+            {
+              "name": "LICENSE",
+              "bytes": 1072,
+              "compressed": 630,
+              "CRC32": 1787506997,
+              "method": 8
+            },
+            {
+              "name": "empty.txt",
+              "bytes": 0,
+              "compressed": 0,
+              "CRC32": 0,
+              "method": 0
+            },
+            {
+              "name": "greeting.txt",
+              "bytes": 154,
+              "compressed": 28,
+              "CRC32": 471003993,
+              "method": 8
+            },
+            {
+              "name": "request.txt",
+              "bytes": 15,
+              "compressed": 15,
+              "CRC32": 1665254347,
+              "method": 0
+            },
+            {
+              "name": "two words.bin",
+              "bytes": 8192,
+              "compressed": 347,
+              "CRC32": 63791276,
+              "method": 8
+            }
+          ],
+          "decoded": null
+        },
+        {
+          "nonce": "three",
+          "raw_download": false,
+          "wire_bytes": 7364,
+          "archive_bytes": 1640,
+          "archive_sha256": "89e1000acad65f6fde2f998168a7e0af2b7da67ac49a65a57ff44a56a9f76327",
+          "members": [
+            {
+              "name": "CHANGELOG",
+              "bytes": 18,
+              "compressed": 18,
+              "CRC32": 2213999991,
+              "method": 0
+            },
+            {
+              "name": "LICENSE",
+              "bytes": 1072,
+              "compressed": 630,
+              "CRC32": 1787506997,
+              "method": 8
+            },
+            {
+              "name": "empty.txt",
+              "bytes": 0,
+              "compressed": 0,
+              "CRC32": 0,
+              "method": 0
+            },
+            {
+              "name": "greeting.txt",
+              "bytes": 154,
+              "compressed": 28,
+              "CRC32": 471003993,
+              "method": 8
+            },
+            {
+              "name": "request.txt",
+              "bytes": 17,
+              "compressed": 17,
+              "CRC32": 1382846958,
+              "method": 0
+            },
+            {
+              "name": "two words.bin",
+              "bytes": 8192,
+              "compressed": 347,
+              "CRC32": 63791276,
+              "method": 8
+            }
+          ],
+          "decoded": {
+            "marker": "QA434_LOCAL",
+            "boot": "025db427-080e-4a4d-a175-c01ab91ef293",
+            "nonce": "three",
+            "built": {
+              "marker": "QA434_LOCAL",
+              "phase": "build",
+              "node": "v24.22.0",
+              "source": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              },
+              "manifest": {
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                },
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "empty.txt": {
+                  "bytes": 0,
+                  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                },
+                "greeting.txt": {
+                  "bytes": 154,
+                  "sha256": "a661bea95a3b0cdb0d49b9227bf3ffb1b7fde26985cde59821af01c86fb93477"
+                },
+                "request.txt": {
+                  "bytes": 17,
+                  "sha256": "48d79cd21fe55469c4a6a874b8980fdd478d28af22c009c7c5764a5f2f2f5ae6"
+                },
+                "two words.bin": {
+                  "bytes": 8192,
+                  "sha256": "dbad062eb0fd46ce757919db4fa215ae96210fb1dda443169a204946e385128d"
+                }
+              },
+              "archive": {
+                "bytes": 1640,
+                "sha256": "4c5f6604ffa92b284bb2e8eeb8037d731fc692839046e61b797572e4cfd1747e",
+                "base64": "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"
+              },
+              "unzip_test": "Archive:  /tmp/qa434-wYD94k/out.zip\n    testing: CHANGELOG                OK\n    testing: LICENSE                  OK\n    testing: empty.txt                OK\n    testing: greeting.txt             OK\n    testing: request.txt              OK\n    testing: two words.bin            OK\nNo errors detected in compressed data of /tmp/qa434-wYD94k/out.zip.",
+              "zip": "This is Zip 3.0 (July 5th 2008), by Info-ZIP."
+            },
+            "runtime": {
+              "marker": "QA434_LOCAL",
+              "phase": "runtime",
+              "node": "v24.22.0",
+              "source": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              },
+              "manifest": {
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                },
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "empty.txt": {
+                  "bytes": 0,
+                  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                },
+                "greeting.txt": {
+                  "bytes": 154,
+                  "sha256": "a661bea95a3b0cdb0d49b9227bf3ffb1b7fde26985cde59821af01c86fb93477"
+                },
+                "request.txt": {
+                  "bytes": 17,
+                  "sha256": "9fd2379474f2b42225d2360c9f029cad300dbf06ca0c236c079e67c83863d131"
+                },
+                "two words.bin": {
+                  "bytes": 8192,
+                  "sha256": "dbad062eb0fd46ce757919db4fa215ae96210fb1dda443169a204946e385128d"
+                }
+              },
+              "archive": {
+                "bytes": 1640,
+                "sha256": "89e1000acad65f6fde2f998168a7e0af2b7da67ac49a65a57ff44a56a9f76327",
+                "base64": "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"
+              },
+              "unzip_test": "Archive:  /tmp/qa434-Poqaos/out.zip\n    testing: CHANGELOG                OK\n    testing: LICENSE                  OK\n    testing: empty.txt                OK\n    testing: greeting.txt             OK\n    testing: request.txt              OK\n    testing: two words.bin            OK\nNo errors detected in compressed data of /tmp/qa434-Poqaos/out.zip.",
+              "zip": "This is Zip 3.0 (July 5th 2008), by Info-ZIP."
+            }
+          }
+        }
+      ],
+      "pass": true
+    }
+  ],
+  "pass": true,
+  "own_containers_absent": true,
+  "own_context_removed": true
+}

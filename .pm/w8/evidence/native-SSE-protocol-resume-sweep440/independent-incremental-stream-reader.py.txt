@@ -1,0 +1,30 @@
+import subprocess,select,os,time,codecs,json,hashlib,base64,re
+
+def consume(url,protocol,nonce,last,marker,reference,header_path,record=lambda value:None):
+ assert not header_path.exists();command=['curl','--disable','-sS','-N','--'+protocol,'--max-time','12','-H','Accept: text/event-stream','-H','Accept-Encoding: identity','-D',str(header_path)]
+ if last:command+=['-H','Last-Event-ID: '+str(last)]
+ command+=[url+'/events?run='+nonce+'&count=3'];start=time.monotonic();proc=subprocess.Popen(command,stdout=subprocess.PIPE,stderr=subprocess.PIPE);raw=bytearray();chunks=[];events=[];text='';decoder=codecs.getincrementaldecoder('utf-8')();result={'client_process_id':proc.pid,'command':command,'protocol_requested':protocol,'last_event_id':last,'nonce':nonce}
+ try:
+  os.set_blocking(proc.stdout.fileno(),False)
+  while time.monotonic()-start<15:
+   ready,_,_=select.select([proc.stdout],[],[],.1)
+   if ready:
+    b=os.read(proc.stdout.fileno(),65536)
+    if not b:
+     if proc.poll() is not None:break
+     continue
+    at=round(time.monotonic()-start,4);chunks.append({'at':at,'bytes':len(b)});raw.extend(b);result['progress']={'raw_base64':base64.b64encode(raw).decode(),'bytes':len(raw),'chunks':list(chunks)};record(result);text+=decoder.decode(b)
+    while '\r\n\r\n' in text:
+     frame,text=text.split('\r\n\r\n',1);fields={};data=[]
+     for line in frame.split('\r\n'):
+      if not line or line.startswith(':'):continue
+      key,sep,value=line.partition(':');value=value.removeprefix(' ') if sep else ''
+      if key=='data':data.append(value)
+      elif key in ['id','event','retry']:fields[key]=value
+     if data:fields.update(data=json.loads('\n'.join(data)),arrived_at=at);events.append(fields)
+   if proc.poll() is not None and not ready:break
+  proc.wait(timeout=2);stderr=proc.stderr.read().decode(errors='replace');text+=decoder.decode(b'',final=True);headers=header_path.read_text();http=re.findall(r'(?m)^HTTP/(\S+) (\d+)',headers);assert http;version,status=http[-1];values=[e['data'] for e in events];expected=list(range(last+1,last+4));span=events[-1]['arrived_at']-events[0]['arrived_at'] if len(events)>1 else 0;boot=values[0]['boot'] if values else None;passed=proc.returncode==0 and status=='200' and (version=='2' if protocol=='http2' else version=='1.1') and bool(re.search(r'(?im)^content-type:\s*text/event-stream',headers)) and len(events)==3 and [e.get('id') for e in events]==list(map(str,expected)) and all(e.get('event')=='tick' for e in events) and all(v=={'marker':marker,'boot':boot,'nonce':nonce,'seq':seq,'text':'Crème brûlée & 李','files':reference['files']} for v,seq in zip(values,expected)) and 1.0<=span<=4 and events[0].get('retry')=='500' and not text
+  result.update(native_curl_exit=proc.returncode,stderr=stderr,HTTP=status,http_version=version,headers=headers,raw_base64=base64.b64encode(raw).decode(),raw_bytes=len(raw),raw_sha256=hashlib.sha256(raw).hexdigest(),chunks=chunks,events=events,event_arrival_span=round(span,4),elapsed=round(time.monotonic()-start,4),pass_=bool(passed));result['pass']=bool(passed);record(result);return result
+ finally:
+  if proc.poll() is None:proc.terminate();proc.wait(timeout=3)
+  proc.stdout.close();proc.stderr.close();header_path.unlink(missing_ok=True)

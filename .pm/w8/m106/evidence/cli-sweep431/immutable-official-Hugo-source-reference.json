@@ -1,0 +1,36 @@
+{
+  "at": "2026-10-17T12:11:04.873124+00:00",
+  "repo": "https://github.com/render-examples/hugo-quick-start",
+  "branch": "main",
+  "commit": "48eaf95c3fd4a8c438df1c14dd9e2ff983a77b7c",
+  "gitlinks": [
+    {
+      "path": "themes/ananke",
+      "mode": "160000",
+      "type": "commit",
+      "sha": "a1a99cf12681ad95b006e648a28139e6b9b75f09"
+    }
+  ],
+  "files": {
+    "config.toml": {
+      "bytes": 110,
+      "sha256": "92d852df5dfb777c852112815136bc2f76807edfb4478c3c74faf2c01e68587a"
+    },
+    ".gitmodules": {
+      "bytes": 108,
+      "sha256": "09b01e96c3a8f9041710dc09d325ecd59d12d93dc4c0004f9d42bd9e5cf78b64"
+    },
+    "content/posts/my-first-post.md": {
+      "bytes": 84,
+      "sha256": "9daad584bd1ef94d7f8dd5cb10fd960c5d3e9f7cdfb5586bd8d8843337e307b6"
+    },
+    "themes/ananke/theme.toml": {
+      "bytes": 652,
+      "sha256": "b88a6a6152e080e8092c36e52dfda0cb4bb63faaa78dd8999cc33a3c78d3e0f9"
+    },
+    "themes/ananke/layouts/index.html": {
+      "bytes": 2461,
+      "sha256": "3a23493988682d44541cbdff9b8474de4f097e9f035ab708e49d8567b9f5ad5b"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+import json
+from pathlib import Path
+HUGO_INSTALL="apt-get update -qq && apt-get install -y --no-install-recommends hugo\n"
+def commands(P,reference,marker,phase='initial'):
+ setup='set -e\n'+(HUGO_INSTALL if phase=='control' else '')
+ for name,body in [('qa431-reference.json',json.dumps(reference)),('qa431-marker.json',json.dumps(marker)),('qa431-proof.cjs',(P/'sweep431-site-proof.cjs').read_text())]:setup+='cat > '+name+" <<'QA431_SOURCE'\n"+body+"\nQA431_SOURCE\n"
+ build=setup+'hugo --gc --minify\nnode qa431-proof.cjs';assert len(build.encode())<4096
+ return {'build':build,'phase':phase,'authored_exact_quickstart_command':'hugo --gc --minify'}

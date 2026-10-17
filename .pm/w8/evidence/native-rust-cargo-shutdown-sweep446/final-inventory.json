@@ -1,0 +1,125 @@
+{
+  "datastores": {
+    "at": "2026-10-17T15:56:53.876312+00:00",
+    "unrelated_nonbaseline_IDs": {
+      "postgres": [],
+      "keyValues": []
+    },
+    "projection": "same-workspace native identity metadata only; no datastore mutation or connection",
+    "pass": true
+  },
+  "services": {
+    "at": "2026-10-17T15:56:53.876578+00:00",
+    "native": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.844,
+      "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}}]",
+      "stderr": "",
+      "native_exit": 0
+    },
+    "IDs": [
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3v694dm7c7390q930",
+      "srv-db09u90ehcmc739j12cg",
+      "srv-db09vbgehcmc739j12i0"
+    ],
+    "unrelated_nonbaseline_IDs": [],
+    "own_IDs_absent": true,
+    "baseline_present": true,
+    "pass": true
+  },
+  "env-groups": {
+    "at": "2026-10-17T15:56:54.895680+00:00",
+    "receipt": {
+      "at": "2026-10-17T15:56:54.895351+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups?ownerId=tea-daif693dqjvc73e7as3g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.758,
+      "response": "[]",
+      "stderr": ""
+    },
+    "pass": true
+  },
+  "projects": {
+    "at": "2026-10-17T15:56:55.665414+00:00",
+    "receipt": {
+      "at": "2026-10-17T15:56:55.665084+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/projects?ownerId=tea-daif693dqjvc73e7as3g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.475,
+      "response": "[]",
+      "stderr": ""
+    },
+    "pass": true
+  },
+  "blueprints": {
+    "at": "2026-10-17T15:56:56.503532+00:00",
+    "receipt": {
+      "at": "2026-10-17T15:56:56.503169+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/blueprints?ownerId=tea-daif693dqjvc73e7as3g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.558,
+      "response": "[{\"id\": \"blp-db136288mmqc73d4hpug\", \"projection\": \"baseline or unrelated identity only; configuration omitted\"}]",
+      "stderr": ""
+    },
+    "pass": true
+  },
+  "quota": {
+    "at": "2026-10-17T15:56:57.516974+00:00",
+    "receipt": {
+      "at": "2026-10-17T15:56:57.516696+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.736,
+      "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+      "stderr": ""
+    },
+    "pass": true
+  }
+}

@@ -1,0 +1,17 @@
+from pathlib import Path
+import sys,json,re
+P=Path(__file__).resolve().parent;f=P/'sweep403-common.py';exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==403 and v.get('id'));assert x['workspace']==WS and x['create_result']['native_exit']==0 and x['create_response']['id']==x['id'] and x['create_response']['plan']=='free' and not x['state'].startswith('deleted:');_,view=detail();assert view['status']=='available'
+queries={
+'catalog':"SELECT jsonb_build_object('version',current_setting('server_version_num'),'database',current_database(),'user',current_user,'extensions',COALESCE((SELECT jsonb_agg(jsonb_build_object('name',name,'default_version',default_version,'installed_version',installed_version) ORDER BY name) FROM pg_available_extensions WHERE name IN ('postgis','postgis_raster','postgis_topology','vector','hstore','pg_stat_statements','plpgsql')),'[]'::jsonb))::text;",
+'postgis':"BEGIN; SET LOCAL statement_timeout='20s'; CREATE EXTENSION IF NOT EXISTS postgis; WITH p AS (SELECT ST_SetSRID(ST_MakePoint(0,0),4326) a,ST_SetSRID(ST_MakePoint(1,0),4326) b) SELECT jsonb_build_object('srid',ST_SRID(a),'wkt',ST_AsText(a),'distance_m',round(ST_Distance(a::geography,b::geography)::numeric,3),'extension',(SELECT extversion FROM pg_extension WHERE extname='postgis'))::text FROM p; ROLLBACK;",
+'healthy':"BEGIN; SET LOCAL statement_timeout='20s'; CREATE EXTENSION IF NOT EXISTS hstore; SELECT jsonb_build_object('hstore',('QA403=>healthy')::hstore->'QA403','point_distance',point(0,0)<->point(3,4),'one',1)::text; ROLLBACK;"}
+label=sys.argv[3] if len(sys.argv)>3 else mode;assert label in queries;event=sql(client+'-'+label,queries[label]);r=event['result'];value=None
+if r['native_exit']==0:
+ raw=json.loads(r['stdout'])['output'].strip();value=json.loads(raw)
+event['decoded']=value
+if label=='catalog':event['pass']=r['native_exit']==0 and value['database']==x['database_name'] and value['user']==x['database_user'] and int(value['version'])//10000==18
+elif label=='healthy':event['pass']=r['native_exit']==0 and value=={'hstore':'healthy','point_distance':5,'one':1}
+else:
+ event['spatial_success']=r['native_exit']==0 and value['srid']==4326 and value['wkt']=='POINT(0 0)' and abs(float(value['distance_m'])-111319.491)<0.001
+ errors=r['stderr']+'\n'+r['stdout'];event['missing_package_failure']=r['native_exit'] not in (0,None) and not r['harness_timeout'] and 'postgis' in errors and ('is not available' in errors or 'postgis.control' in errors) and ('No such file or directory' in errors or 'must first be installed on the system' in errors);event['pass']=event['spatial_success'] or event['missing_package_failure']
+save();print(json.dumps({'client':client,'query':label,'native_exit':r['native_exit'],'pass':event['pass'],'missing_package_failure':event.get('missing_package_failure'),'spatial_success':event.get('spatial_success'),'decoded':value}),flush=True);assert event['pass']

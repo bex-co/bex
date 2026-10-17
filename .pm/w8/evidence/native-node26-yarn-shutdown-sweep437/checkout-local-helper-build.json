@@ -1,0 +1,15 @@
+{
+  "source_head": "0f455bd84b0a2232ab27b702516a3be9bdbfd3cf",
+  "command": [
+    "go",
+    "build",
+    "-o",
+    "<owned-temp>/sweep437-local-native-init",
+    "./cmd/native-init"
+  ],
+  "target": "linux/arm64 CGO_ENABLED=0",
+  "exit": 0,
+  "stdout": "",
+  "stderr": "",
+  "qualification": "checkout-built local prerequisite, not claimed exact deployed helper binary"
+}

@@ -1,0 +1,10 @@
+from pathlib import Path
+import subprocess,json,time,sys
+P=Path(__file__).resolve().parent;actor=sys.argv[1]
+for attempt in range(16):
+ r=subprocess.run(['python3',str(P/'sweep432-node24-control.py'),'observe',actor],capture_output=True,text=True,timeout=90);(P/('sweep432-node24-observe-'+actor+'-'+str(time.time_ns())+'.json')).write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));r.check_returncode();v=json.loads(r.stdout);print(json.dumps({'attempt':attempt+1,**v}),flush=True)
+ if v['status']=='live':
+  r=subprocess.run(['python3',str(P/'sweep432-node24-control.py'),'request',actor],capture_output=True,text=True,timeout=140);(P/('sweep432-node24-request-'+actor+'-receipt.json')).write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));print(r.stdout,flush=True);r.check_returncode();break
+ if v['status'] in ['build_failed','update_failed','pre_deploy_failed','canceled']:raise RuntimeError('Node24 control not Live; preserve exact same IDs for diagnosis')
+ if attempt<15:time.sleep(12)
+else:raise RuntimeError('Bounded Node24 observation pending; preserve and resume same child')

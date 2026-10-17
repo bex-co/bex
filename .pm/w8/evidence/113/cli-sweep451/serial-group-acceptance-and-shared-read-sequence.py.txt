@@ -1,0 +1,11 @@
+from pathlib import Path
+import subprocess,json
+P=Path(__file__).resolve().parent;CP=P.parent/'cli-qa-w8-checkpoint.json'
+for actor in ['bex','render']:
+ c=json.loads(CP.read_text());x=next(v for v in c['resources'] if v.get('sweep')==451 and v.get('client')==actor)
+ if not x.get('group_log_acceptance') or not x['group_log_acceptance'][-1].get('pass'):
+  r=subprocess.run(['python3',str(P/'sweep451-group-wait.py'),actor],capture_output=True,text=True,timeout=470);(P/('sweep451-group-wait-'+actor+'-receipt.json')).write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));print(r.stdout,flush=True)
+  if r.returncode:print(r.stderr[-1400:],flush=True);raise SystemExit(r.returncode)
+ c=json.loads(CP.read_text());x=next(v for v in c['resources'] if v.get('sweep')==451 and v.get('client')==actor)
+ if not x.get('group_log_acceptance') or not x['group_log_acceptance'][-1].get('pass'):print('Same recorded group rebuild pending; resume read only',flush=True);raise SystemExit(0)
+r=subprocess.run(['python3',str(P/'sweep451-shared-state.py')],capture_output=True,text=True,timeout=160);(P/'sweep451-shared-group-receipt.json').write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));print(r.stdout,flush=True);print(r.stderr[-1200:] if r.returncode else '',flush=True);raise SystemExit(r.returncode)

@@ -1,0 +1,68 @@
+{
+  "sweep": 430,
+  "filing": "w8/m105",
+  "severity": "major",
+  "attribution": "shared static native Ruby/Bundler supply and automatic Gemfile dependencies",
+  "source_head": "b9d3cdf6c3c8bc58b7ea5d6868243744db79b11c",
+  "actual_serving_SHA_OCI": "unknown",
+  "original_both_native_creates_POST201_exit0": 2,
+  "original_first_builds_failed_missing_bundle": 2,
+  "Ruby_install_only_replacements_failed_missing_Jekyll_dependencies": 2,
+  "frozen_bundle_install_only_addition_replacements_Live": 2,
+  "each_control_only_adds_one_install_line": true,
+  "source_files_and_source_commit_unchanged": {
+    "at": "2026-10-17T11:51:10.850996+00:00",
+    "repo": "https://github.com/render-examples/jekyll",
+    "branch": "master",
+    "commit": "3b8ab7b410353d995588b79ae412ee40efd4bdd9",
+    "files": {
+      "Gemfile": {
+        "bytes": 1007,
+        "sha256": "46bd29e6de1dffff356e789e463cf5af452c65d159aa87940f9d3083f2e948cf"
+      },
+      "Gemfile.lock": {
+        "bytes": 2014,
+        "sha256": "6e5cabe8fa6c9fa0faf38a81d067020afa6b4bb360420296d79df30c2a99e5a8"
+      },
+      "_config.yml": {
+        "bytes": 1786,
+        "sha256": "8ca83b6c5e52a9630db83adedd0c7c31fdbd45c5a9fe9e5ab90152f6e0c0399d"
+      },
+      "index.md": {
+        "bytes": 175,
+        "sha256": "a5383927fa36f1317893fd2c3823a5c7a45e0ef1a33b1f9071b67b8751af95e0"
+      },
+      ".ruby-version": {
+        "bytes": 6,
+        "sha256": "649819783a78ba424b97fcf4d29fb809866b0b3659f901c0c0dac285ad9cca78"
+      }
+    }
+  },
+  "source_Ruby_pin": "3.3.5; existing Bex reviewed-line policy would select3.3",
+  "diagnostic_Ruby_versions": [
+    "ruby 3.1.2p20 (2022-04-12 revision 4491bb740a) [x86_64-linux-gnu]"
+  ],
+  "diagnostic_Bundler_versions": [
+    "Bundler version 2.5.3"
+  ],
+  "actual_Jekyll": "4.3.3",
+  "real_generated_Jekyll_static_HTTP200": 6,
+  "failed_phase_HTTP404": 4,
+  "shared_REST_GraphQL_MCP_readbacks": 18,
+  "exact_NODE_VERSION24_API_only_readbacks": 6,
+  "actual_source_BuildJob_resolver_exports": 3,
+  "default_omitted_static_runtime": "node; no Gemfile installer or Ruby selection",
+  "local_default_Ruby_only_complete_exits": [
+    127,
+    127,
+    0
+  ],
+  "local_base_project_not_full_generated_image": true,
+  "Ruby3_1_diagnostic_not_adopted_or_version_selection_acceptance": true,
+  "exact_owned_two_parents_six_children_URLs_absent": true,
+  "baseline_current_inventory_quota_and_termination0": true,
+  "local_containers_contexts_Go_export_relays_copied_configs_removed": true,
+  "working_unmodified_platform_Jekyll": "not yet; controls are authored workarounds",
+  "product_implementation": false,
+  "uncommitted": true
+}

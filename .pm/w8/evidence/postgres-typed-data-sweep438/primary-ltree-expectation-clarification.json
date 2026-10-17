@@ -1,0 +1,7 @@
+{
+  "primary": "https://www.postgresql.org/docs/16/ltree.html",
+  "documented_example": "lca('1.2.3','1.2.3.4.5.6') returns1.2",
+  "own_query_unchanged": true,
+  "corrected_expected_result": "Top.Science",
+  "scope": "fixture expected-value correction only; no product finding or live allocation"
+}

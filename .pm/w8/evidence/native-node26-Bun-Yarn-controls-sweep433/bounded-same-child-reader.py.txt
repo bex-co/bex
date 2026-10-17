@@ -1,0 +1,11 @@
+from pathlib import Path
+import subprocess,time,json,sys
+P=Path(__file__).resolve().parent;actor=sys.argv[1]
+for attempt in range(16):
+ r=subprocess.run(['python3',str(P/'sweep433-native-bun.py'),'observe',actor],capture_output=True,text=True,timeout=90);(P/('sweep433-observe-'+actor+'-'+str(time.time_ns())+'.json')).write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));r.check_returncode();v=json.loads(r.stdout);print(json.dumps({'attempt':attempt+1,**v}),flush=True)
+ if v['status'] in ['live','build_failed','update_failed','pre_deploy_failed','canceled']:
+  for mode in (['request','logs'] if v['status']=='live' else ['failed-inspection']):
+   r=subprocess.run(['python3',str(P/'sweep433-native-bun.py'),mode,actor],capture_output=True,text=True,timeout=150);(P/('sweep433-'+mode+'-'+actor+'-'+str(time.time_ns())+'.json')).write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));print(r.stdout,flush=True);r.check_returncode()
+  break
+ if attempt<15:time.sleep(12)
+else:print('Original first child remains pending after bounded read; resume same ID',flush=True)

@@ -1,0 +1,39 @@
+{
+  "repo": "https://github.com/git-fixtures/submodule",
+  "branch": "master",
+  "parent_commit": "b685400c1f9316f350965a5993d350bc746b0bf4",
+  "parent_files": {
+    ".gitmodules": {
+      "bytes": 172,
+      "sha256": "7fc5618d3820ef4716f0e799b5d99b441db82e075b1cba24a308b15ff512e880"
+    },
+    "README.md": {
+      "bytes": 20,
+      "sha256": "4bd9db68c17eeda3df27bedde7457d38d80f6cd2924a345a19dd8179dc6c975c"
+    }
+  },
+  "gitmodules": "[submodule \"basic\"]\n\tpath = basic\n\turl = https://github.com/git-fixtures/basic.git\n[submodule \"itself\"]\n\tpath = itself\n\turl = https://github.com/git-fixtures/submodule.git\n",
+  "gitlink": {
+    "path": "basic",
+    "mode": "160000",
+    "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+    "url": "https://github.com/git-fixtures/basic.git"
+  },
+  "child_file": {
+    "path": "basic/LICENSE",
+    "bytes": 1072,
+    "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+  },
+  "qualification": "ordinary one-level basic submodule only; parent also declares an older itself gitlink; no recursive/nested/foreign/private credential behavior is exercised",
+  "commit": "b685400c1f9316f350965a5993d350bc746b0bf4",
+  "files": {
+    ".gitmodules": {
+      "bytes": 172,
+      "sha256": "7fc5618d3820ef4716f0e799b5d99b441db82e075b1cba24a308b15ff512e880"
+    },
+    "README.md": {
+      "bytes": 20,
+      "sha256": "4bd9db68c17eeda3df27bedde7457d38d80f6cd2924a345a19dd8179dc6c975c"
+    }
+  }
+}

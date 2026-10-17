@@ -1,0 +1,18 @@
+{
+  "checked_at": "2026-10-17T05:30:19.708676+00:00",
+  "sources": [
+    {
+      "url": "https://render.com/docs/native-runtimes#tools-and-utilities",
+      "claim": "PostgreSQL clients appear in Render\u2019s list of tools available at build and runtime for all native languages; exact provider versions not measured."
+    },
+    {
+      "url": "https://www.postgresql.org/docs/15/app-pgrestore.html",
+      "claim": "pg_restore can emit SQL from a non-plain pg_dump archive to a file/stdout without connecting to a database."
+    },
+    {
+      "url": "https://packages.debian.org/bookworm/postgresql-client-15",
+      "claim": "Debian bookworm distributes PostgreSQL15 client programs and their package dependencies."
+    }
+  ],
+  "D7_boundary": "ADR060 m82 records that its FFmpeg delivery is not a blanket tools bundle; this new fixture checks one named PostgreSQL-client gap and proposes no completion or reopening of m82."
+}

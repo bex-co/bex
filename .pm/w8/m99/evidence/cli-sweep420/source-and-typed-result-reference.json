@@ -1,0 +1,44 @@
+{
+  "repo": "https://github.com/git-fixtures/basic",
+  "branch": "master",
+  "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+  "files": {
+    "LICENSE": {
+      "bytes": 1072,
+      "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+    },
+    "CHANGELOG": {
+      "bytes": 18,
+      "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+    }
+  },
+  "typescript": "7.0.2",
+  "rows": [
+    {
+      "label": "Crème brûlée",
+      "quantity": 2
+    },
+    {
+      "label": "李",
+      "quantity": 3
+    },
+    {
+      "label": "space label",
+      "quantity": 5
+    }
+  ],
+  "expected": {
+    "labels": [
+      "Crème brûlée",
+      "李",
+      "space label"
+    ],
+    "total": 10,
+    "tones": [
+      "warm",
+      "cool",
+      "warm"
+    ]
+  },
+  "source_ts_sha256": "1c86c902d725dd09ba9b776ee3a5e238f3f623588df6852afae0317ac065b00f"
+}

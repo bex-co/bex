@@ -1,0 +1,46 @@
+{
+  "sweep": 404,
+  "source_head": "2cd790a14aeaf27ac6fd3d457ea8f48c5323e8d6",
+  "native_clients": [
+    "released Bex0.3.2",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "new_findings": 0,
+  "native_explicit_Free_KeyValue_creates0": 1,
+  "native_PING_passes": 2,
+  "ordinary_QA_keys_seeded_and_verified": 1103,
+  "native_scan_cases_pass": 10,
+  "cases_per_client": [
+    "all1103",
+    "sparse7",
+    "literal_wildcard1",
+    "Unicode1",
+    "absent0"
+  ],
+  "native_ID_selector_cases": 5,
+  "native_name_selector_cases": 5,
+  "independent_sparse_cursor_trace": {
+    "matched": 1103,
+    "dbsize": 1103,
+    "iterations": 29,
+    "sparse_returned": 7,
+    "sparse_empty_pages": 23,
+    "cursor_done": true
+  },
+  "native_key_erasure": {
+    "deleted": 1103,
+    "remaining": 0,
+    "dbsize": 0,
+    "before": 1103
+  },
+  "native_terminal_processes_completed0_and_closed": 15,
+  "local_direct_cases": 5,
+  "local_PTY_cases": 5,
+  "native_delete0_API404_listempty_cached_TLS_noPONG_and_credentials_removed": true,
+  "baseline6_Blueprint1_managed_data0_quota_and_termination_restored": true,
+  "personal_history_metadata_unchanged": true,
+  "own_local_server_socket_contexts_terminal_dirs_removed": true,
+  "public_connection_from_native_create_no_extra_PATCH": true,
+  "product_implementation": false,
+  "uncommitted": true
+}

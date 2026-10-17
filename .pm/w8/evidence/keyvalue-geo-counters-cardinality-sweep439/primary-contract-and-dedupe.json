@@ -1,0 +1,25 @@
+{
+  "ordinary_functional_journey": "location/counter/cardinality data on a fresh Free KeyValue instance",
+  "primary": [
+    "https://render.com/docs/key-value",
+    "https://valkey.io/commands/geosearch/",
+    "https://valkey.io/commands/bitfield/",
+    "https://valkey.io/commands/pfcount/"
+  ],
+  "scope": "only fixed benign owned keys; no configuration, roles, foreign instances or load tests",
+  "oracles": "one-metre haversine tolerance accommodates geo quantization/earth-model differences; independent integer packing and overflow model; HLL tiny-set observations are approximate-structure reference cases, not universal exactness",
+  "dedupe": {
+    "command": [
+      "rg",
+      "-n",
+      "-i",
+      "geosearch|geospatial|bitfield|HyperLogLog|PFCOUNT",
+      ".pm",
+      "--glob",
+      "*.md"
+    ],
+    "exit": 0,
+    "stdout": ".pm/w8/m92/finding.md:3:**Severity: major. Attribution: managed database extension supply and provisioning.** Published Bex0.3.2 and unchanged pinned Render2.27.0 both exit1 for the original CREATE EXTENSION IF NOT EXISTS postgis migration on the same fresh owned Free PG18 database. PostgreSQL says the extension is not available and must first be installed on the server. The ordinary geospatial SELECT is never reached. [Complete evidence](evidence/cli-sweep403/README.md), [results](evidence/cli-sweep403/results.json).\n.pm/w8/m92/finding.md:5:Actual server_version_num180006 and own connection identity are proved. Both independent hstore install/query/rollback and built-in point-distance controls pass; all four before/after catalogs are identical, with no PostGIS entries and with vector0.8.6/pg_stat_statements1.12 intact. Thus connection, SQL and ordinary extension use work. This blocks the documented geospatial migration rather than exposing a CLI request or JSON-decoding error. [Render's PostgreSQL13+ contract](https://render.com/docs/postgresql-extensions) lists PostGIS and on-demand CREATE EXTENSION. [PostGIS's distance contract](https://postgis.net/docs/ST_Distance.html) defines the intended geography query; its success is a future acceptance gate, not a current observation.\n.pm/w8/m92/finding.md:23:No PostGIS/ST_Distance/geospatial PM/docs/source or targeted-history match was found. [m84](../blocked/m84/README.md) fixes already-packaged vector activation; its separate existing-parent gate stays open. [m91](../m91/README.md) packages PostgreSQL client programs in App images, not database-server extensions. One shared Cluster/image and application-Database path serves REST/GraphQL/MCP/Blueprint/native creation and ordinary app/SQL consumers. Audit all majors and lifecycle callers; current hosted coverage is one Bex-created physical PG18 database with both native psql clients, not both clients' database creates or other majors.\n.pm/w8/m92/README.md:3:**Worker:** worker8 **Goal:** ordinary managed PostgreSQL app connections can complete PostGIS migrations and geospatial queries. **Status:** todo\n.pm/w8/m92/README.md:26:- **Goal linkage:** [ADR008](../../../docs/ADR008-vision.md), [managed data ADR009](../../../docs/ADR009-postgresql-management.md) and [ADR018](../../../docs/ADR018-render-parity.md): supported geospatial migrations should work through ordinary managed database connections.\n.pm/w8/m92/README.md:27:- **Expected outcome:** Applications can store/query geospatial data without installing server libraries themselves or changing authority/CLI requests.\n",
+    "stderr": ""
+  }
+}

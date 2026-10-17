@@ -1,0 +1,11 @@
+from pathlib import Path
+import json,time,shutil
+P=Path(__file__).resolve().parent;f=P/'sweep449-local-tail-prerequisite.py';source=f.read_text();assert source.count('try:\n for actor,')==1;prefix=source[:source.index('try:\n for actor,')].replace('sweep449-local-tail-context','sweep449-local-incremental-tail-context').replace('sweep449-local-tail-prerequisite.json','sweep449-local-incremental-tail-prerequisite.json');exec(compile(prefix,str(f),'exec'));ns={};g=P/'sweep449-tail-capture.py';exec(compile(g.read_text(),str(g),'exec'),ns);tails=[]
+try:
+ for actor in ['bex','render']:
+  tail=ns['NativeTail'](P,actor,'qa449-local-fake-only',ws,sid,'QA449_EVENT',origin=origin,capture_tag='sweep449-local-incremental');tails.append(tail);tail.proc.wait(timeout=15);time.sleep(.1);result=tail.stop();values=tail.logs();good=result['native_exit']==0 and result['reader_threads_stopped'] and result['own_config_directory_removed'] and len(values)==3 and all(v['message']==message.replace('"sequence": 0','"sequence": '+str(i)) for i,v in enumerate(values));out['cases'].append({'actor':actor,'capture':str(tail.capture),'pass':good,'parsed':values});save();assert good;print(json.dumps({'actor':actor,'incremental_capture_logs':3,'Unicode_exact':True,'interrupt_cleanup':True,'pass':True}),flush=True)
+ out['pass']=True
+finally:
+ for tail in tails:
+  if tail.proc.poll() is None:tail.stop()
+ server.shutdown();server.server_close();thread.join(timeout=2);shutil.rmtree(ctx);out['own_server_stopped']=not thread.is_alive();out['own_context_removed']=not ctx.exists();save()

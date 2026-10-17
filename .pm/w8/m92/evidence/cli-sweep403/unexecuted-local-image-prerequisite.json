@@ -1,0 +1,9 @@
+{
+  "attempt": "docker pull actual pinned CNPG18 operand",
+  "bound_seconds": 180,
+  "timed_out": true,
+  "source_image_present_after_timeout": false,
+  "local_container_created": false,
+  "local_fixture_script_executed": false,
+  "product_failure_evidence": false
+}

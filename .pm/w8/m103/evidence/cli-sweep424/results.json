@@ -1,0 +1,61 @@
+{
+  "sweep": 424,
+  "source_head": "522dfe3cdd6787b8635b992a5d863822ce6e2e22",
+  "severity": "major for each of three independently isolated prerequisites",
+  "bugs": [
+    "missing native Python setuptools prevents metadata generation",
+    "missing native Python pip prevents local wheel installation after setuptools is supplied",
+    "missing matching Python development headers prevents real C extension compilation after packaging modules are supplied"
+  ],
+  "attribution": "operator shared native Python tool assembly",
+  "native_clients": [
+    "published Bex0.3.2/a6350da0",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "original_native_POST201_exit0": 2,
+  "original_first_builds_failed_missing_setuptools": 2,
+  "setuptools_only_replacements_prove_metadata_then_fail_missing_pip": 2,
+  "packaging_replacements_prove_own_wheel_then_fail_missing_Python_h": 2,
+  "complete_prerequisite_replacements_Live": 2,
+  "native_updates_exit0": 6,
+  "actual_Node_Python_module_and_C_extension_HTTP200": 6,
+  "independent_C_weighted_sums": [
+    13,
+    13,
+    0
+  ],
+  "exact_Unicode_result": "Crème brûlée & 李",
+  "no_PyPI_or_dependency_download_and_explicit_own_pip_target": true,
+  "authored_fixture_composite_sha256": "648688821eb4bf85607c6055ff0d8dc54ab45bd5ea00ebfc5227b16f9071af25",
+  "installed_wheel_module_and_compiled_extension_build_runtime_identity_match": true,
+  "native_request_events": 6,
+  "shared_REST_GraphQL_MCP_reads": 24,
+  "explicit_env_API_only_reads": 8,
+  "actual_Node": "v24.22.0",
+  "actual_system_Python": "3.11.2",
+  "local_selected_Node_base_stages_exit": [
+    1,
+    1,
+    1,
+    0
+  ],
+  "local_three_asserted_real_module_C_extension_HTTP_controls": 3,
+  "prior_small_four_stage_prerequisite": true,
+  "small_and_complete_wheel_member_bytes_identical": true,
+  "source_transport_compacted_before_hosted_allocation": true,
+  "full_generated_image_executed_locally": false,
+  "actual_original_and_complete_source_recipe_exports": 2,
+  "exact_owned_two_parents_eight_children_URLs_absent": true,
+  "baseline_current_inventory_quota_accounted_termination0": true,
+  "unrelated_service_IDs_preserved": [],
+  "unrelated_datastore_IDs_preserved": {
+    "postgres": [],
+    "keyValues": []
+  },
+  "local_containers_contexts_relays_copied_configs_removed": true,
+  "actual_serving_SHA_OCI": "unknown",
+  "product_implementation": false,
+  "uncommitted": true,
+  "milestone": "w8/m103",
+  "evidence": ".pm/w8/m103/evidence/cli-sweep424"
+}

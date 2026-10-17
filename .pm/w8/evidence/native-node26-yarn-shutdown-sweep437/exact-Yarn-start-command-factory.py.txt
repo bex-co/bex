@@ -1,0 +1,8 @@
+from pathlib import Path
+import json
+P=Path(__file__).resolve().parent;reference=json.loads((P/'sweep437-primary-reference.json').read_text())
+def commands(marker):
+ program=(P/'sweep437-server.js').read_text();package={'name':'qa386-fixture','version':'1.0.0','private':True,'scripts':{'start':'node server.js'}}
+ build="set -e\nmkdir qa386\ncat > qa386/server.js <<'QA386_SERVER'\n"+program+"\nQA386_SERVER\ncat > qa386/package.json <<'QA386_PACKAGE'\n"+json.dumps(package)+"\nQA386_PACKAGE\ncat > qa386/reference.json <<'QA386_REFERENCE'\n"+json.dumps(reference)+"\nQA386_REFERENCE\ncat > qa386/marker.json <<'QA386_MARKER'\n"+json.dumps(marker)+"\nQA386_MARKER\nnode qa386/server.js --build"
+ assert len(build.encode())<=4096
+ return {'build':build,'start':'yarn --cwd qa386 start','program':program,'package':package}

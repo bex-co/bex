@@ -1,0 +1,28 @@
+{
+  "Dockerfile_sha256": "daf3fc6671712526ec24cfa6b74bf75940e79196e2fb199649ae0fe5d80468e6",
+  "actual_generator_resolver": true,
+  "case": "web-empty",
+  "choices": [
+    {
+      "Label": "Python",
+      "Line": "3.12",
+      "Image": "python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b",
+      "Source": "PYTHON_VERSION=3.12"
+    },
+    {
+      "Label": "Poetry",
+      "Line": "2.1.3",
+      "Image": "",
+      "Source": ""
+    },
+    {
+      "Label": "Node",
+      "Line": "24",
+      "Image": "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+      "Source": ""
+    }
+  ],
+  "generated_preparation_container_not_executed": true,
+  "manually_supplied_harmless_encoded_bundle": true,
+  "static": false
+}

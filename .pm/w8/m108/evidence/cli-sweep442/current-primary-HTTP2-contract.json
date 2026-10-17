@@ -1,0 +1,14 @@
+{
+  "at": "2026-10-17T15:05:49.401092+00:00",
+  "sources": [
+    {
+      "url": "https://render.com/docs/web-services",
+      "support": "The public web-service capability list includes HTTP/2; the platform edge terminates TLS before forwarding HTTP to the app."
+    },
+    {
+      "url": "https://render.com/docs/render-vs-vercel-comparison",
+      "support": "Web-service responses may last as long as100minutes."
+    }
+  ],
+  "scope": "Protocol variant of existing w8/m108, not a new issue. Actual production edge configuration remains unobserved."
+}

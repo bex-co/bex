@@ -1,0 +1,6 @@
+{
+  "file": "lego/operator/internal/execution/gitsubmodule.go",
+  "from_line": 38,
+  "text": "func GitSubmoduleUpdate(run, refuse func(string) string) string {\n\treturn `if [ -f .gitmodules ]; then\n  export GIT_LITERAL_PATHSPECS=1\n  set -- \"$@\" -c protocol.allow=never -c protocol.https.allow=always \\\n    -c url.https://github.com/.insteadOf=git@github.com: -c url.https://github.com/.insteadOf=ssh://git@github.com/\n  git config --file .gitmodules --name-only --get-regexp '^submodule\\..*\\.path$' > .git/bex-modules 2>/dev/null || true\n  while IFS= read -r key; do\n    module=\"$(git config --file .gitmodules --get \"$key\" 2>/dev/null)\" || continue\n    case \"$module\" in\n      *[[:cntrl:]]*) ` + refuse(`the submodule path for $key contains a control character`) + ` ;;\n    esac\n    case \"$(git ls-tree HEAD -- \"$module\" 2>/dev/null)\" in\n      \"160000 commit \"*)\n        ` + run(`git \"$@\" submodule update --init --depth 1 -- \"$module\" </dev/null`) + `\n        rm -f -- \"$module/.git\" ;;\n    esac\n  done < .git/bex-modules\nfi\n`\n}",
+  "mechanism": "enumerates only the current root .gitmodules; each update has --init --depth1, no recursion; child gitfiles are then removed"
+}

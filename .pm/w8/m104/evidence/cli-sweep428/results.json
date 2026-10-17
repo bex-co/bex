@@ -1,0 +1,41 @@
+{
+  "sweep": 428,
+  "filing": "w8/m104",
+  "severity": "major",
+  "attribution": "database-server extension supply",
+  "source_head": "46084c87396de84b1c0ee1b94ce8abbb2691bb41",
+  "actual_serving_SHA_OCI": "unknown",
+  "physical_PostgreSQL": "180006",
+  "one_native_Bex_Free_PG18_create_exit0": true,
+  "both_native_SQL_clients_missing_pg_partman_exit1": 2,
+  "identical_catalog_reads": 4,
+  "ordinary_hstore_and_actual_builtin_range_partition_controls": 2,
+  "exact_partitioned_rows": [
+    [
+      1,
+      "Crème brûlée"
+    ],
+    [
+      12,
+      "李"
+    ],
+    [
+      19,
+      "two words"
+    ]
+  ],
+  "original_native_SQL_readiness": 2,
+  "local_reference_PG17_170011_arm64_only": true,
+  "local_reference_extension": "5.5.0",
+  "local_reference_normal_owner_CREATE_EXTENSION_and_real_generated_partition_routing": true,
+  "local_reference_manual_maintenance_without_background_worker": true,
+  "full_Bex_CNPGequivalent_candidate_image_executed": false,
+  "native_HTTP_and_SQL_wire": "not intercepted; original native argv/stdout/stderr/exit retained",
+  "working_hosted_pg_partman": "unverified; missing before any extension function",
+  "exact_owned_database_absent": true,
+  "cached_former_endpoint_SQL_exit2": true,
+  "credentials_CAs_copied_configs_local_containers_and_sources_removed": true,
+  "baseline_current_inventory_quota_and_zero_termination": true,
+  "product_implementation": false,
+  "uncommitted": true
+}

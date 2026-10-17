@@ -1,0 +1,475 @@
+{
+  "container": "qa444-analytics-0a5ab53d",
+  "image": "pgduckdb/pgduckdb@sha256:44c88eb9207971af1d7f9804a37429b1bb36f413cd8d7118c81e1288ddde85d1",
+  "kind": "own local official pg_duckdb reference, normal owner aggregation; not Bex/CNPG candidate acceptance",
+  "steps": [
+    {
+      "label": "start-exact-own-local-server",
+      "command": [
+        "docker",
+        "run",
+        "--pull",
+        "never",
+        "-d",
+        "--network",
+        "none",
+        "--name",
+        "qa444-analytics-0a5ab53d",
+        "-e",
+        "POSTGRES_HOST_AUTH_METHOD=trust",
+        "pgduckdb/pgduckdb@sha256:44c88eb9207971af1d7f9804a37429b1bb36f413cd8d7118c81e1288ddde85d1",
+        "postgres",
+        "-c",
+        "shared_preload_libraries=pg_duckdb",
+        "-c",
+        "duckdb.postgres_role=qa444_owner"
+      ],
+      "exit": 0,
+      "stdout": "cab0e24de8c6f7f16904ab3a738488cbdd1c0c7bf9c18f58de92e9837242ddd8\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-0",
+      "command": [
+        "docker",
+        "exec",
+        "qa444-analytics-0a5ab53d",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 2,
+      "stdout": "/var/run/postgresql:5432 - no response\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-1",
+      "command": [
+        "docker",
+        "exec",
+        "qa444-analytics-0a5ab53d",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 0,
+      "stdout": "/var/run/postgresql:5432 - accepting connections\n",
+      "stderr": ""
+    },
+    {
+      "label": "local-only-normal-owner-and-database",
+      "command": [
+        "docker",
+        "exec",
+        "qa444-analytics-0a5ab53d",
+        "psql",
+        "-X",
+        "-q",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "postgres",
+        "-c",
+        "ALTER ROLE qa444_owner LOGIN;",
+        "-c",
+        "CREATE DATABASE qa444_owner OWNER qa444_owner;"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "local-only-package-initialization",
+      "command": [
+        "docker",
+        "exec",
+        "qa444-analytics-0a5ab53d",
+        "psql",
+        "-X",
+        "-q",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "postgres",
+        "-d",
+        "qa444_owner",
+        "-c",
+        "CREATE EXTENSION pg_duckdb;"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "catalog",
+      "command": [
+        "docker",
+        "exec",
+        "qa444-analytics-0a5ab53d",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa444_owner",
+        "-d",
+        "qa444_owner",
+        "-c",
+        "SELECT jsonb_build_object('version',current_setting('server_version_num'),'encoding',current_setting('server_encoding'),'available',COALESCE((SELECT jsonb_agg(jsonb_build_object('name',name,'default',default_version,'installed',installed_version) ORDER BY name) FROM pg_available_extensions WHERE name IN('pg_duckdb','vector','pg_stat_statements','hstore','plpgsql')),'[]'::jsonb),'own_schema_exists',EXISTS(SELECT FROM pg_namespace WHERE nspname='qa444_local'))::text;"
+      ],
+      "exit": 0,
+      "stdout": "{\"version\": \"180001\", \"encoding\": \"UTF8\", \"available\": [{\"name\": \"hstore\", \"default\": \"1.8\", \"installed\": null}, {\"name\": \"pg_duckdb\", \"default\": \"1.1.0\", \"installed\": \"1.1.0\"}, {\"name\": \"pg_stat_statements\", \"default\": \"1.12\", \"installed\": null}, {\"name\": \"plpgsql\", \"default\": \"1.0\", \"installed\": \"1.0\"}], \"own_schema_exists\": false}\n",
+      "stderr": ""
+    },
+    {
+      "label": "enable",
+      "command": [
+        "docker",
+        "exec",
+        "qa444-analytics-0a5ab53d",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa444_owner",
+        "-d",
+        "qa444_owner",
+        "-c",
+        "CREATE EXTENSION IF NOT EXISTS pg_duckdb;"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": "NOTICE:  extension \"pg_duckdb\" already exists, skipping\n"
+    },
+    {
+      "label": "postgres",
+      "command": [
+        "docker",
+        "exec",
+        "qa444-analytics-0a5ab53d",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa444_owner",
+        "-d",
+        "qa444_owner",
+        "-c",
+        "BEGIN; SET LOCAL statement_timeout='20s'; CREATE SCHEMA qa444_local; SET LOCAL search_path=qa444_local,public; CREATE TABLE orders(region text NOT NULL,cents integer NOT NULL); INSERT INTO orders VALUES('north',1250),('north',725),('café:李',1999),('café:李',-499),('west',0); SELECT region,count(*) AS orders,sum(cents) AS cents FROM orders GROUP BY region; ROLLBACK;"
+      ],
+      "exit": 0,
+      "stdout": "west|1|0\ncafé:李|2|1500\nnorth|2|1975\n",
+      "stderr": ""
+    },
+    {
+      "label": "duckdb",
+      "command": [
+        "docker",
+        "exec",
+        "qa444-analytics-0a5ab53d",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa444_owner",
+        "-d",
+        "qa444_owner",
+        "-c",
+        "BEGIN; SET LOCAL statement_timeout='20s'; CREATE SCHEMA qa444_local; SET LOCAL search_path=qa444_local,public; CREATE TABLE orders(region text NOT NULL,cents integer NOT NULL); INSERT INTO orders VALUES('north',1250),('north',725),('café:李',1999),('café:李',-499),('west',0); SET LOCAL duckdb.force_execution=true; SELECT region,count(*) AS orders,sum(cents) AS cents FROM orders GROUP BY region; EXPLAIN(ANALYZE TRUE,FORMAT JSON,COSTS OFF,TIMING OFF,SUMMARY OFF) SELECT region,count(*) AS orders,sum(cents) AS cents FROM orders GROUP BY region; ROLLBACK;"
+      ],
+      "exit": 0,
+      "stdout": "café:李|2|1500\nwest|1|0\nnorth|2|1975\n[\n  {\n    \"Plan\": {\n      \"Node Type\": \"Custom Scan\",\n      \"Custom Plan Provider\": \"DuckDBScan\",\n      \"Parallel Aware\": false,\n      \"Async Capable\": false,\n      \"Actual Rows\": 0.00,\n      \"Actual Loops\": 1,\n      \"Disabled\": false,\n      \"DuckDB Execution Plan\": {\n          \"total_bytes_written\": 0,\n          \"total_bytes_read\": 0,\n          \"rows_returned\": 0,\n          \"latency\": 0.0,\n          \"result_set_size\": 0,\n          \"query_name\": \"\",\n          \"blocked_thread_time\": 0.0,\n          \"system_peak_buffer_memory\": 0,\n          \"system_peak_temp_dir_size\": 0,\n          \"cpu_time\": 0.0,\n          \"extra_info\": {},\n          \"cumulative_cardinality\": 0,\n          \"cumulative_rows_scanned\": 0,\n          \"children\": [\n              {\n                  \"total_bytes_written\": 0,\n                  \"total_bytes_read\": 0,\n                  \"result_set_size\": 0,\n                  \"operator_name\": \"EXPLAIN_ANALYZE\",\n                  \"cpu_time\": 0.0,\n                  \"extra_info\": {},\n                  \"cumulative_cardinality\": 0,\n                  \"operator_type\": \"EXPLAIN_ANALYZE\",\n                  \"operator_cardinality\": 0,\n                  \"cumulative_rows_scanned\": 0,\n                  \"operator_rows_scanned\": 0,\n                  \"operator_timing\": 5.420000000000001e-7,\n                  \"children\": [\n                      {\n                          \"total_bytes_written\": 0,\n                          \"total_bytes_read\": 0,\n                          \"result_set_size\": 120,\n                          \"operator_name\": \"HASH_GROUP_BY\",\n                          \"cpu_time\": 0.0,\n                          \"extra_info\": {\n                              \"Groups\": \"#0\",\n                              \"Aggregates\": [\n                                  \"count_star()\",\n                                  \"sum(#1)\"\n                              ],\n                              \"Estimated Cardinality\": \"802\"\n                          },\n                          \"cumulative_cardinality\": 0,\n                          \"operator_type\": \"HASH_GROUP_BY\",\n                          \"operator_cardinality\": 3,\n                          \"cumulative_rows_scanned\": 0,\n                          \"operator_rows_scanned\": 0,\n                          \"operator_timing\": 0.000898497,\n                          \"children\": [\n                              {\n                                  \"total_bytes_written\": 0,\n                                  \"total_bytes_read\": 0,\n                                  \"result_set_size\": 100,\n                                  \"operator_name\": \"PROJECTION\",\n                                  \"cpu_time\": 0.0,\n                                  \"extra_info\": {\n                                      \"Projections\": [\n                                          \"region\",\n                                          \"cents\"\n                                      ],\n                                      \"Estimated Cardinality\": \"1270\"\n                                  },\n                                  \"cumulative_cardinality\": 0,\n                                  \"operator_type\": \"PROJECTION\",\n                                  \"operator_cardinality\": 5,\n                                  \"cumulative_rows_scanned\": 0,\n                                  \"operator_rows_scanned\": 0,\n                                  \"operator_timing\": 0.000003542,\n                                  \"children\": [\n                                      {\n                                          \"total_bytes_written\": 0,\n                                          \"total_bytes_read\": 0,\n                                          \"result_set_size\": 100,\n                                          \"operator_name\": \"PGDUCKDB_POSTGRES_SCAN \",\n                                          \"cpu_time\": 0.0,\n                                          \"extra_info\": {\n                                              \"Table\": \"orders\",\n                                              \"Projections\": [\n                                                  \"region\",\n                                                  \"cents\"\n                                              ],\n                                              \"Estimated Cardinality\": \"1270\"\n                                          },\n                                          \"cumulative_cardinality\": 0,\n                                          \"operator_type\": \"TABLE_SCAN\",\n                                          \"operator_cardinality\": 5,\n                                          \"cumulative_rows_scanned\": 0,\n                                          \"operator_rows_scanned\": 2540,\n                                          \"operator_timing\": 0.003463833,\n                                          \"children\": []\n                                      }\n                                  ]\n                              }\n                          ]\n                      }\n                  ]\n              }\n          ]\n      },\n      \"Shared Hit Blocks\": 0,\n      \"Shared Read Blocks\": 0,\n      \"Shared Dirtied Blocks\": 0,\n      \"Shared Written Blocks\": 0,\n      \"Local Hit Blocks\": 0,\n      \"Local Read Blocks\": 0,\n      \"Local Dirtied Blocks\": 0,\n      \"Local Written Blocks\": 0,\n      \"Temp Read Blocks\": 0,\n      \"Temp Written Blocks\": 0\n    },\n    \"Planning\": {\n      \"Shared Hit Blocks\": 1,\n      \"Shared Read Blocks\": 0,\n      \"Shared Dirtied Blocks\": 0,\n      \"Shared Written Blocks\": 0,\n      \"Local Hit Blocks\": 0,\n      \"Local Read Blocks\": 0,\n      \"Local Dirtied Blocks\": 0,\n      \"Local Written Blocks\": 0,\n      \"Temp Read Blocks\": 0,\n      \"Temp Written Blocks\": 0\n    },\n    \"Triggers\": [\n    ]\n  }\n]\n",
+      "stderr": ""
+    },
+    {
+      "label": "remove-exact-own-server",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa444-analytics-0a5ab53d"
+      ],
+      "exit": 0,
+      "stdout": "qa444-analytics-0a5ab53d\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-container-absence",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa444-analytics-0a5ab53d"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa444-analytics-0a5ab53d\n"
+    }
+  ],
+  "cases": [
+    {
+      "case": "catalog",
+      "value": {
+        "version": "180001",
+        "encoding": "UTF8",
+        "available": [
+          {
+            "name": "hstore",
+            "default": "1.8",
+            "installed": null
+          },
+          {
+            "name": "pg_duckdb",
+            "default": "1.1.0",
+            "installed": "1.1.0"
+          },
+          {
+            "name": "pg_stat_statements",
+            "default": "1.12",
+            "installed": null
+          },
+          {
+            "name": "plpgsql",
+            "default": "1.0",
+            "installed": "1.0"
+          }
+        ],
+        "own_schema_exists": false
+      },
+      "pass_result": true
+    },
+    {
+      "case": "enable",
+      "pass_result": true
+    },
+    {
+      "case": "postgres",
+      "rows": [
+        [
+          "café:李",
+          2,
+          1500
+        ],
+        [
+          "north",
+          2,
+          1975
+        ],
+        [
+          "west",
+          1,
+          0
+        ]
+      ],
+      "expected": [
+        [
+          "café:李",
+          2,
+          1500
+        ],
+        [
+          "north",
+          2,
+          1975
+        ],
+        [
+          "west",
+          1,
+          0
+        ]
+      ],
+      "pass_result": true
+    },
+    {
+      "case": "duckdb",
+      "rows": [
+        [
+          "café:李",
+          2,
+          1500
+        ],
+        [
+          "north",
+          2,
+          1975
+        ],
+        [
+          "west",
+          1,
+          0
+        ]
+      ],
+      "expected": [
+        [
+          "café:李",
+          2,
+          1500
+        ],
+        [
+          "north",
+          2,
+          1975
+        ],
+        [
+          "west",
+          1,
+          0
+        ]
+      ],
+      "pass_result": false,
+      "plan": [
+        {
+          "Plan": {
+            "Node Type": "Custom Scan",
+            "Custom Plan Provider": "DuckDBScan",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Actual Rows": 0.0,
+            "Actual Loops": 1,
+            "Disabled": false,
+            "DuckDB Execution Plan": {
+              "total_bytes_written": 0,
+              "total_bytes_read": 0,
+              "rows_returned": 0,
+              "latency": 0.0,
+              "result_set_size": 0,
+              "query_name": "",
+              "blocked_thread_time": 0.0,
+              "system_peak_buffer_memory": 0,
+              "system_peak_temp_dir_size": 0,
+              "cpu_time": 0.0,
+              "extra_info": {},
+              "cumulative_cardinality": 0,
+              "cumulative_rows_scanned": 0,
+              "children": [
+                {
+                  "total_bytes_written": 0,
+                  "total_bytes_read": 0,
+                  "result_set_size": 0,
+                  "operator_name": "EXPLAIN_ANALYZE",
+                  "cpu_time": 0.0,
+                  "extra_info": {},
+                  "cumulative_cardinality": 0,
+                  "operator_type": "EXPLAIN_ANALYZE",
+                  "operator_cardinality": 0,
+                  "cumulative_rows_scanned": 0,
+                  "operator_rows_scanned": 0,
+                  "operator_timing": 5.420000000000001e-07,
+                  "children": [
+                    {
+                      "total_bytes_written": 0,
+                      "total_bytes_read": 0,
+                      "result_set_size": 120,
+                      "operator_name": "HASH_GROUP_BY",
+                      "cpu_time": 0.0,
+                      "extra_info": {
+                        "Groups": "#0",
+                        "Aggregates": [
+                          "count_star()",
+                          "sum(#1)"
+                        ],
+                        "Estimated Cardinality": "802"
+                      },
+                      "cumulative_cardinality": 0,
+                      "operator_type": "HASH_GROUP_BY",
+                      "operator_cardinality": 3,
+                      "cumulative_rows_scanned": 0,
+                      "operator_rows_scanned": 0,
+                      "operator_timing": 0.000898497,
+                      "children": [
+                        {
+                          "total_bytes_written": 0,
+                          "total_bytes_read": 0,
+                          "result_set_size": 100,
+                          "operator_name": "PROJECTION",
+                          "cpu_time": 0.0,
+                          "extra_info": {
+                            "Projections": [
+                              "region",
+                              "cents"
+                            ],
+                            "Estimated Cardinality": "1270"
+                          },
+                          "cumulative_cardinality": 0,
+                          "operator_type": "PROJECTION",
+                          "operator_cardinality": 5,
+                          "cumulative_rows_scanned": 0,
+                          "operator_rows_scanned": 0,
+                          "operator_timing": 3.542e-06,
+                          "children": [
+                            {
+                              "total_bytes_written": 0,
+                              "total_bytes_read": 0,
+                              "result_set_size": 100,
+                              "operator_name": "PGDUCKDB_POSTGRES_SCAN ",
+                              "cpu_time": 0.0,
+                              "extra_info": {
+                                "Table": "orders",
+                                "Projections": [
+                                  "region",
+                                  "cents"
+                                ],
+                                "Estimated Cardinality": "1270"
+                              },
+                              "cumulative_cardinality": 0,
+                              "operator_type": "TABLE_SCAN",
+                              "operator_cardinality": 5,
+                              "cumulative_rows_scanned": 0,
+                              "operator_rows_scanned": 2540,
+                              "operator_timing": 0.003463833,
+                              "children": []
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "Shared Hit Blocks": 0,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Planning": {
+            "Shared Hit Blocks": 1,
+            "Shared Read Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Local Hit Blocks": 0,
+            "Local Read Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0
+          },
+          "Triggers": []
+        }
+      ]
+    }
+  ],
+  "own_container_absent": true
+}

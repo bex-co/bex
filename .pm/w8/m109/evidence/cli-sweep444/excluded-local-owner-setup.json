@@ -1,0 +1,109 @@
+{
+  "container": "qa444-analytics-2e05a93a",
+  "image": "pgduckdb/pgduckdb@sha256:44c88eb9207971af1d7f9804a37429b1bb36f413cd8d7118c81e1288ddde85d1",
+  "kind": "own local official pg_duckdb reference, normal owner aggregation; not Bex/CNPG candidate acceptance",
+  "steps": [
+    {
+      "label": "start-exact-own-local-server",
+      "command": [
+        "docker",
+        "run",
+        "--pull",
+        "never",
+        "-d",
+        "--network",
+        "none",
+        "--name",
+        "qa444-analytics-2e05a93a",
+        "-e",
+        "POSTGRES_HOST_AUTH_METHOD=trust",
+        "pgduckdb/pgduckdb@sha256:44c88eb9207971af1d7f9804a37429b1bb36f413cd8d7118c81e1288ddde85d1",
+        "postgres",
+        "-c",
+        "shared_preload_libraries=pg_duckdb",
+        "-c",
+        "duckdb.postgres_role=qa444_owner"
+      ],
+      "exit": 0,
+      "stdout": "c5801ce7d75f7e9415c8dff2b4f484feb766ad8c7b1a3f32f89bd8fc87b540a8\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-0",
+      "command": [
+        "docker",
+        "exec",
+        "qa444-analytics-2e05a93a",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 2,
+      "stdout": "/var/run/postgresql:5432 - no response\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-1",
+      "command": [
+        "docker",
+        "exec",
+        "qa444-analytics-2e05a93a",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 0,
+      "stdout": "/var/run/postgresql:5432 - accepting connections\n",
+      "stderr": ""
+    },
+    {
+      "label": "local-only-normal-owner-and-database",
+      "command": [
+        "docker",
+        "exec",
+        "qa444-analytics-2e05a93a",
+        "psql",
+        "-X",
+        "-q",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "postgres",
+        "-c",
+        "CREATE ROLE qa444_owner LOGIN;",
+        "-c",
+        "CREATE DATABASE qa444_owner OWNER qa444_owner;"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "ERROR:  role \"qa444_owner\" already exists\n"
+    },
+    {
+      "label": "remove-exact-own-server",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa444-analytics-2e05a93a"
+      ],
+      "exit": 0,
+      "stdout": "qa444-analytics-2e05a93a\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-container-absence",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa444-analytics-2e05a93a"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa444-analytics-2e05a93a\n"
+    }
+  ],
+  "cases": [],
+  "own_container_absent": true
+}

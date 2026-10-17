@@ -1,0 +1,27 @@
+from pathlib import Path
+import subprocess,json,secrets,time,urllib.request,hashlib,shutil
+P=Path(__file__).resolve().parent;ctx=P/'sweep449-local-app-context';assert not ctx.exists();ctx.mkdir();ref=json.loads((P/'sweep449-primary-reference.json').read_text());ns={};f=P/'sweep449-command-factory.py';exec(compile(f.read_text(),str(f),'exec'),ns);cmd=ns['commands'](P,ref,'QA449_LOCAL_APP');name='qa449-app-'+secrets.token_hex(4);image='node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0';out={'container':name,'image':image,'scope':'owned local actual Node24 app/log generator prerequisite, not Bex generated image or live logs','steps':[]};receipt=P/'sweep449-local-app-prerequisite.json'
+def save():receipt.write_text(json.dumps(out,indent=2,ensure_ascii=False))
+def run(label,args,check=True):
+ r=subprocess.run(args,capture_output=True,text=True,timeout=40);out['steps'].append({'label':label,'command':args,'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr});save()
+ if check:r.check_returncode()
+ return r
+save()
+try:
+ r=run('fresh-carrier-branch',['git','ls-remote',ref['repo'],'refs/heads/'+ref['branch']]);assert r.stdout.split()[0]==ref['commit']
+ for n,e in ref['files'].items():
+  b=urllib.request.urlopen('https://raw.githubusercontent.com/git-fixtures/basic/'+ref['commit']+'/'+n,timeout=25).read();assert {'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}==e;(ctx/n).write_bytes(b)
+ run('start-own-app',['docker','run','--pull','never','-d','--network','bridge','-p','127.0.0.1::3000','--name',name,'--mount','type=bind,src='+str(ctx)+',dst=/app','--workdir','/app','--entrypoint','/bin/bash',image,'-c',cmd['build']+'\nexec '+cmd['start']]);port=run('own-port',['docker','port',name,'3000/tcp']).stdout.strip();assert port.startswith('127.0.0.1:');url='http://'+port
+ for i in range(30):
+  try:
+   with urllib.request.urlopen(url,timeout=2) as r:v=json.loads(r.read());break
+  except Exception:time.sleep(.2)
+ else:raise RuntimeError('Own local app not ready')
+ assert v['marker']=='QA449_LOCAL_APP' and v['node'].startswith('v24.') and v['program_sha256']==v['built']['program_sha256']==hashlib.sha256((P/'sweep449-app.cjs').read_bytes()).hexdigest() and v['files']==ref['files'];out['health']=v;out['events']=[]
+ for i in range(2):
+  with urllib.request.urlopen(url+'/emit/local/'+str(i),timeout=3) as r:e=json.loads(r.read());assert r.status==200
+  assert e=={'marker':'QA449_LOCAL_APP','boot':v['boot'],'nonce':'local','sequence':i,'text':'Render CLI preserves café:李\nsecond line'};out['events'].append(e);save()
+ logs=run('actual-own-app-logs',['docker','logs',name]);events=[json.loads(s.split('QA449_EVENT ',1)[1]) for s in logs.stdout.splitlines() if 'QA449_EVENT ' in s];assert events==out['events'];out['pass']=True
+finally:
+ run('remove-exact-own-app',['docker','rm','-f','-v',name],False);out['own_container_absent']=run('own-container-absence',['docker','container','inspect',name],False).returncode!=0;shutil.rmtree(ctx);out['own_context_removed']=not ctx.exists();save()
+print(json.dumps({'pass':out.get('pass',False),'own_container_absent':out['own_container_absent'],'own_context_removed':out['own_context_removed']}))

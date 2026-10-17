@@ -1,0 +1,49 @@
+{
+  "repo": "https://github.com/git-fixtures/basic",
+  "branch": "master",
+  "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+  "files": {
+    "LICENSE": {
+      "bytes": 1072,
+      "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+    },
+    "CHANGELOG": {
+      "bytes": 18,
+      "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+    }
+  },
+  "interface_sha256": "1384c8b26f56ff58a352327279efe41af9928292f3752716ccd8bfe6fc7c4f2a",
+  "program_sha256": "e2de4d6a7fa00588a5446116788d21256ff17be580b5082be66c3dd1259a2097",
+  "pairs": [
+    [
+      2,
+      3
+    ],
+    [
+      -4,
+      7
+    ],
+    [
+      0,
+      0
+    ]
+  ],
+  "expected": [
+    {
+      "a": 2,
+      "b": 3,
+      "value": 13
+    },
+    {
+      "a": -4,
+      "b": 7,
+      "value": 13
+    },
+    {
+      "a": 0,
+      "b": 0,
+      "value": 0
+    }
+  ],
+  "unicode": "Crème brûlée & 李"
+}

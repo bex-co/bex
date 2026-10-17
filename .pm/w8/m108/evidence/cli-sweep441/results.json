@@ -1,0 +1,44 @@
+{
+  "sweep": 441,
+  "filing": "w8/m108",
+  "severity": "major",
+  "attribution": "shared incoming HTTP-body read timeout",
+  "source_head": "43203045ecf4458ae1b2f64f1af21adc020be926",
+  "actual_serving_edge_SHA_config": "unknown",
+  "both_native_creates_POST201_exit0": 2,
+  "first_children_Live": 2,
+  "payload_bytes": 1048576,
+  "payload_sha256": "bd8a5183fdafb052402b7f52480145004a781b927f0d376e4fbd922da44f6926",
+  "fast_both_HTTP200_full_count_hash": true,
+  "fast_durations": [
+    2.571290667,
+    2.279088417
+  ],
+  "paced_both_HTTP499": [
+    499,
+    499
+  ],
+  "paced_durations": [
+    60.607716166,
+    60.573717
+  ],
+  "paced_submitted_and_received_bytes": 819200,
+  "client120s_deadline_not_reached": true,
+  "app180s_request_timeout_and_original_boots_preserved": true,
+  "native_app_and_edge_log_cases_correlated": 4,
+  "aborted_prefix_hashes_independently_verified": 2,
+  "shared_REST_GraphQL_MCP_reads": 6,
+  "explicit_NODE_VERSION24_API_only_reads": 2,
+  "local_direct_paced_HTTP200_seconds": 77.325253208,
+  "local_pinned_proxy_default_499_seconds": 60.012549542,
+  "local_only_readTimeout100s_override_200_seconds": 77.221744166,
+  "diagnostic100s_not_adopted_product_policy": true,
+  "planned_reviewed_product_read_budget": "100m per primary Render contract; validate shared consumers",
+  "live_exact_default_config_identity_unverified": true,
+  "original_size_bandwidth_ambiguity_sweep396_resolved_for_this_case": true,
+  "two_parents_two_children_URLs_absent": true,
+  "baseline_current_inventory_quota_termination0": true,
+  "all_own_local_containers_network_contexts_payloads_clients_removed": true,
+  "product_implementation": false,
+  "uncommitted": true
+}

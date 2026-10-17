@@ -1,0 +1,85 @@
+{
+  "actor": "bex",
+  "command": [
+    "<owned-temp>/release/bex",
+    "logs",
+    "--resources",
+    "srv-db9q4csflioc739mcoh0",
+    "--tail",
+    "--type",
+    "app",
+    "--text",
+    "QA449_ce0b57_bex",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "auth": "same own human OAuth access token; value omitted",
+  "stdout": "{\n  \"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:30:55.361117599Z-78b5a3ea\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9q4csflioc739mcoh0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA449_READY {\\\"marker\\\":\\\"QA449_ce0b57_bex\\\",\\\"boot\\\":\\\"0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5\\\",\\\"node\\\":\\\"v24.22.0\\\"}\",\n  \"timestamp\": \"2026-10-17T16:30:55.361117599Z\"\n}{\n  \"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:02.888471446Z-6c185906\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9q4csflioc739mcoh0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA449_EVENT {\\\"marker\\\":\\\"QA449_ce0b57_bex\\\",\\\"boot\\\":\\\"0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5\\\",\\\"nonce\\\":\\\"ce0b57_warm\\\",\\\"sequence\\\":0,\\\"text\\\":\\\"Render CLI preserves café:李\\\\nsecond line\\\"}\",\n  \"timestamp\": \"2026-10-17T16:34:02.888471446Z\"\n}{\n  \"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:06.31211379Z-346bda68\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9q4csflioc739mcoh0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA449_EVENT {\\\"marker\\\":\\\"QA449_ce0b57_bex\\\",\\\"boot\\\":\\\"0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5\\\",\\\"nonce\\\":\\\"ce0b57_before\\\",\\\"sequence\\\":0,\\\"text\\\":\\\"Render CLI preserves café:李\\\\nsecond line\\\"}\",\n  \"timestamp\": \"2026-10-17T16:34:06.31211379Z\"\n}{\n  \"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:07.77758744Z-9693b17b\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9q4csflioc739mcoh0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA449_EVENT {\\\"marker\\\":\\\"QA449_ce0b57_bex\\\",\\\"boot\\\":\\\"0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5\\\",\\\"nonce\\\":\\\"ce0b57_before\\\",\\\"sequence\\\":1,\\\"text\\\":\\\"Render CLI preserves café:李\\\\nsecond line\\\"}\",\n  \"timestamp\": \"2026-10-17T16:34:07.77758744Z\"\n}{\n  \"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:09.187115036Z-a8ab968e\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9q4csflioc739mcoh0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA449_EVENT {\\\"marker\\\":\\\"QA449_ce0b57_bex\\\",\\\"boot\\\":\\\"0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5\\\",\\\"nonce\\\":\\\"ce0b57_before\\\",\\\"sequence\\\":2,\\\"text\\\":\\\"Render CLI preserves café:李\\\\nsecond line\\\"}\",\n  \"timestamp\": \"2026-10-17T16:34:09.187115036Z\"\n}{\n  \"id\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p-2026-10-17T16:34:10.611419274Z-8ae85c21\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9q4csflioc739mcoh0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9q4csflioc739mcoh0-v2omcvf95kks02idt30p\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA449_EVENT {\\\"marker\\\":\\\"QA449_ce0b57_bex\\\",\\\"boot\\\":\\\"0d3d5f34-3fb1-42b8-afcb-d9e600a75cd5\\\",\\\"nonce\\\":\\\"ce0b57_before\\\",\\\"sequence\\\":3,\\\"text\\\":\\\"Render CLI preserves café:李\\\\nsecond line\\\"}\",\n  \"timestamp\": \"2026-10-17T16:34:10.611419274Z\"\n}{\n  \"id\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:18.60391084Z-e969d165\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9q4csflioc739mcoh0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA449_READY {\\\"marker\\\":\\\"QA449_ce0b57_bex\\\",\\\"boot\\\":\\\"c2cf1a3b-a8ba-4405-9809-c461ef306ef2\\\",\\\"node\\\":\\\"v24.22.0\\\"}\",\n  \"timestamp\": \"2026-10-17T16:34:18.60391084Z\"\n}{\n  \"id\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:34.416833083Z-93402de8\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9q4csflioc739mcoh0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA449_EVENT {\\\"marker\\\":\\\"QA449_ce0b57_bex\\\",\\\"boot\\\":\\\"c2cf1a3b-a8ba-4405-9809-c461ef306ef2\\\",\\\"nonce\\\":\\\"ce0b57_after\\\",\\\"sequence\\\":0,\\\"text\\\":\\\"Render CLI preserves café:李\\\\nsecond line\\\"}\",\n  \"timestamp\": \"2026-10-17T16:34:34.416833083Z\"\n}{\n  \"id\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:35.808256095Z-5a7c28fb\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9q4csflioc739mcoh0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA449_EVENT {\\\"marker\\\":\\\"QA449_ce0b57_bex\\\",\\\"boot\\\":\\\"c2cf1a3b-a8ba-4405-9809-c461ef306ef2\\\",\\\"nonce\\\":\\\"ce0b57_after\\\",\\\"sequence\\\":1,\\\"text\\\":\\\"Render CLI preserves café:李\\\\nsecond line\\\"}\",\n  \"timestamp\": \"2026-10-17T16:34:35.808256095Z\"\n}{\n  \"id\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:37.248504004Z-a2ca8c0e\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9q4csflioc739mcoh0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA449_EVENT {\\\"marker\\\":\\\"QA449_ce0b57_bex\\\",\\\"boot\\\":\\\"c2cf1a3b-a8ba-4405-9809-c461ef306ef2\\\",\\\"nonce\\\":\\\"ce0b57_after\\\",\\\"sequence\\\":2,\\\"text\\\":\\\"Render CLI preserves café:李\\\\nsecond line\\\"}\",\n  \"timestamp\": \"2026-10-17T16:34:37.248504004Z\"\n}{\n  \"id\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr-2026-10-17T16:34:38.578052827Z-4ed0d3a1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9q4csflioc739mcoh0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9q4csflioc739mcoh0-d6qqr73oc7cet7oop7gr\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA449_EVENT {\\\"marker\\\":\\\"QA449_ce0b57_bex\\\",\\\"boot\\\":\\\"c2cf1a3b-a8ba-4405-9809-c461ef306ef2\\\",\\\"nonce\\\":\\\"ce0b57_after\\\",\\\"sequence\\\":3,\\\"text\\\":\\\"Render CLI preserves café:李\\\\nsecond line\\\"}\",\n  \"timestamp\": \"2026-10-17T16:34:38.578052827Z\"\n}",
+  "stderr": "",
+  "chunks": [
+    {
+      "stream": "stdout",
+      "bytes": 600,
+      "at": 1.0300682079978287
+    },
+    {
+      "stream": "stdout",
+      "bytes": 677,
+      "at": 3.048416500001622
+    },
+    {
+      "stream": "stdout",
+      "bytes": 677,
+      "at": 6.462095124996267
+    },
+    {
+      "stream": "stdout",
+      "bytes": 677,
+      "at": 7.926674791997357
+    },
+    {
+      "stream": "stdout",
+      "bytes": 679,
+      "at": 9.341279499996745
+    },
+    {
+      "stream": "stdout",
+      "bytes": 679,
+      "at": 10.762358457999653
+    },
+    {
+      "stream": "stdout",
+      "bytes": 598,
+      "at": 18.822459124996385
+    },
+    {
+      "stream": "stdout",
+      "bytes": 678,
+      "at": 34.7776826249974
+    },
+    {
+      "stream": "stdout",
+      "bytes": 678,
+      "at": 35.9559340420019
+    },
+    {
+      "stream": "stdout",
+      "bytes": 678,
+      "at": 37.397914875000424
+    },
+    {
+      "stream": "stdout",
+      "bytes": 678,
+      "at": 38.72708283300017
+    }
+  ],
+  "phase": "bounded own follower finished",
+  "config_directory": "<owned-temp>/sweep449-tail-bex-config",
+  "PID": 72020,
+  "stop_intent_at": 41.524545792002755,
+  "exited_before_own_interrupt": false,
+  "native_exit": -2,
+  "reader_threads_stopped": true,
+  "own_config_directory_removed": true
+}

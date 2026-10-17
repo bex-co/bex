@@ -1,0 +1,45 @@
+{
+  "at": "2026-10-17T05:08:56.654833+00:00",
+  "source_head": "2c95fd35b8b1ac980dfddec9cb7de77fcb01a584",
+  "serving_revision": "unknown",
+  "attribution": "shared native static application-dependency assembly",
+  "pin": "Render2.27.0/a764810a768202704e7206eb7b87a47211fcd98e",
+  "primary_sources": [
+    "https://render.com/docs/static-sites#dependency-installation",
+    "https://render.com/docs/environment-variables",
+    "https://classic.yarnpkg.com/lang/en/docs/cli/install/"
+  ],
+  "producer_consumer_trace": [
+    "pinned pkg/service/create.go:236-247 emits StaticSiteDetailsPOST buildCommand/publishPath",
+    "backend/internal/apps/rest.go:500-501/518/568/588 preserves command and publish path",
+    "backend/internal/apps/build_strategy.go:44-75 and operator/internal/controller/app_controller.go:1483-1495 choose native for nonempty static build",
+    "operator/internal/controller/app_controller.go:1030-1045 passes static flag/publish path/command/env to Build Options",
+    "operator/internal/build/native.go:157-163 defaults omitted static runtime to Node;244-288 assembles actual recipe",
+    "operator/internal/build/nativestaticdeps.go:56-65 detects yarn.lock then deliberately skips the application install",
+    "operator/internal/build/native.go:262/348/368 is sole production install->recipe->preparer chain;build.go:1132 wires it before BuildKit",
+    "operator/internal/controller/app_controller.go:3705/3746 and internal/publish/publish.go copy already-built files after build; cannot repair missing input dependencies"
+  ],
+  "cause": "Yarn tool is supplied but any yarn.lock enters the other-manager skip branch; actual hosted first builds omit node_modules then fail the unchanged dependency-using command",
+  "proposed_fix": "Add bounded automatic install for unambiguous supported Yarn Classic static primary-Node projects before the authored command. Reuse installed Yarn, normal lock/config and root/effective-env pipeline; preserve npm/other-manager/root-publication/nonstatic/Dockerfile/image exclusions and explicit SKIP behavior. No CLI/request/schema/new-toggle/toolchain fork.",
+  "policy_limits": [
+    "Frozen-lockfile flag is a QA counterfactual proving matching lock unchanged, not a proposed mandatory default",
+    "Use Yarn documented noninteractive/dev-dependency controls as required while preserving caller NODE_ENV and command bytes; do not install npm over Yarn or silently choose among competing manager signals",
+    "Keep current best-effort automatic-install/fallback policy unless fresh parity evidence requires a separate change",
+    "Other Yarn majors, pnpm/Bun automatic installs and other runtime companions are not certified by this fixture"
+  ],
+  "shared_scope": "one nativeStaticInstall production caller in nativeDockerfile; one recipe caller in nativeBuildPreparer; static REST/GraphQL/MCP/Blueprint/dashboard inputs share it. Buildless/root-published sites, non-Node primaries, compute and Dockerfile/image paths are excluded.",
+  "dedupe_related": [
+    "w8/done/m86 explicitly leaves Yarn/pnpm/Bun auto-install unverified; npm DoD remains distinct",
+    "w4/blocked/320 is Node26 Yarn binary availability; this is Node24 with successful Yarn1.22.x execution",
+    "w8/done/m73 is pnpm supplier, not project installation"
+  ],
+  "source_history": "10dda1f1c fix(operator): native static builds install npm dependencies before the build (w8/m86)\n",
+  "unverified": [
+    "fixed implementation/generated image",
+    "future default first-build acceptance after publication",
+    "other managers/versions/roots/skip variants on hosting",
+    "browser/static authoring UI",
+    "full platform suites and actual physical teardown"
+  ],
+  "product_implementation": false
+}

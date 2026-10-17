@@ -1,0 +1,9 @@
+import json,hashlib
+def commands(P,reference,marker,control=False):
+ build='set -e\n';program=(P/'sweep407-probe.cjs').read_text()
+ for name,value in [('qa407-probe.cjs',program),('qa407-reference.json',json.dumps(reference,separators=(',',':'),ensure_ascii=False)),('qa407-marker.json',json.dumps(marker))]:
+  tag='QA407_'+name.replace('.','_').replace('-','_').upper();build+="cat > "+name+" <<'"+tag+"'\n"+value+('' if value.endswith('\n') else '\n')+tag+'\n'
+ build+='node qa407-probe.cjs before\n'
+ if control:build+='apt-get update -qq && apt-get install -y --no-install-recommends pandoc\n'
+ build+='pandoc --from=markdown --to=html5 --wrap=none qa407.md --output=qa407.html\nnode qa407-probe.cjs build';assert len(build.encode())<=4096,len(build.encode())
+ return {'build':build,'start':'node qa407-probe.cjs serve','program_sha256':hashlib.sha256(program.encode()).hexdigest()}

@@ -1,0 +1,7 @@
+{
+  "source_head": "7fa064b894d6f75e7f44f5bc65d10c5d0dd4d8c5",
+  "exit": 1,
+  "stdout": "",
+  "stderr": "panic: json: cannot unmarshal object into Go value of type string\n\ngoroutine 1 [running]:\nmain.main()\n\t/Volumes/nvme4tbfish/projects/bex8/lego/operator/.qa422-export-bc6dw9lt/main.go:18 +0x778\nexit status 2\n",
+  "qualification": "actual BuildJob/ResolveNativeBuild recipes; local controls execute selected base plus authored command, not full generated image"
+}

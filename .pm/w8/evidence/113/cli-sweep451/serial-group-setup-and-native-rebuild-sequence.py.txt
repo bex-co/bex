@@ -1,0 +1,10 @@
+from pathlib import Path
+import subprocess,json
+P=Path(__file__).resolve().parent;CP=P.parent/'cli-qa-w8-checkpoint.json';c=json.loads(CP.read_text());xs=[v for v in c['resources'] if v.get('sweep')==451];assert len(xs)==2 and all(x['default_log_acceptance'][-1]['pass'] for x in xs)
+steps=[('shared-initial',['sweep451-shared-state.py'])]
+for actor in ['bex','render']:
+ for mode in ['create-group','read-group']:steps.append((actor+'-'+mode,['sweep451-groups.py',mode,actor]))
+for actor in ['bex','render']:steps.append((actor+'-native-rebuild',['sweep451-groups.py','rebuild',actor]))
+for label,args in steps:
+ r=subprocess.run(['python3',str(P/args[0]),*args[1:]],capture_output=True,text=True,timeout=150);(P/('sweep451-'+label+'-receipt.json')).write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));print(r.stdout,flush=True)
+ if r.returncode:print(r.stderr[-1400:],flush=True);raise SystemExit(r.returncode)

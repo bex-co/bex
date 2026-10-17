@@ -1,0 +1,82 @@
+{
+  "at": "2026-10-17T11:38:19.289250+00:00",
+  "checks": [
+    {
+      "command": [
+        "rg",
+        "-n",
+        "-i",
+        "pg_partman|pg.partman|partition manager|partition management",
+        ".pm",
+        "docs",
+        "lego",
+        "deploy",
+        "--glob",
+        "*.md",
+        "--glob",
+        "*.go",
+        "--glob",
+        "*.yaml"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "log",
+        "--oneline",
+        "-S",
+        "pg_partman",
+        "--",
+        "lego",
+        "docs",
+        ".pm"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "log",
+        "-8",
+        "--oneline",
+        "--",
+        "lego/operator/internal/controller/database_exports.go",
+        "lego/operator/internal/controller/database_extensions.go"
+      ],
+      "exit": 0,
+      "stdout": "24f738603 fix(operator): install pgvector in every managed application database (w8/m84)\n95f8c109b fix(w4/m123): stop injecting 174 Kubernetes service-link variables into every tenant container\n4b84f7261 fix(ci): restore the deploy gates \u2014 dashboard fixtures, tenant-aware store fake, telemetry disposition, Go 1.27 lint toolchain\n686139e27 fix(security): bump x/crypto to v0.56.0, moving the platform to Go 1.26\n166ab91c7 fix(security): close ADR076 round-16 findings\nc24c06e84 refactor(operator): dedup pass \u2014 guarded credential helper, shared Job ensure, narrow db/kv carve-outs\ne91d5be89 fix(security): close control-plane trust boundaries\nb0642583c fix(operator): bound public-surface availability (timeouts, cache, caps, limits)\n",
+      "stderr": ""
+    }
+  ],
+  "related_not_duplicate": {
+    "w8/m92": "PostGIS serving operands and preactivation; shared image rollout must compose with SQL-only pg_partman. That plan does not establish pg_partman supply in its future candidate images; those images were not executed here.",
+    "w8/blocked/m84": "already-packaged vector activation/backfill; different from missing extension control/SQL",
+    "w8/m91": "App image client tools; separate from database-server extension supply"
+  },
+  "source_head": "46084c87396de84b1c0ee1b94ce8abbb2691bb41",
+  "live_serve_revision": "unknown",
+  "fix_scope": {
+    "majors": [
+      "14",
+      "15",
+      "16",
+      "17",
+      "18"
+    ],
+    "13_unchanged": true,
+    "on_demand_normal_app_CREATE_EXTENSION": true,
+    "background_worker": false,
+    "no_general_extension_API": true,
+    "existing_managed_vector_pgstat_preserved": true,
+    "source_consumers": [
+      "cnpgClusterSpec serving image at database_controller.go:486",
+      "exportJob client image at database_exports.go:320"
+    ],
+    "activation_control": "pg_partman5.5.0 control declares superuser=false and requires=plpgsql; local ordinary owner creates/uses extension; no vector-style managed activation needed for this observed gap"
+  }
+}

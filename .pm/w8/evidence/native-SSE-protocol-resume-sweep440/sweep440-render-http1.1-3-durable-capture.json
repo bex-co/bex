@@ -1,0 +1,161 @@
+{
+  "client_process_id": 47955,
+  "command": [
+    "curl",
+    "--disable",
+    "-sS",
+    "-N",
+    "--http1.1",
+    "--max-time",
+    "12",
+    "-H",
+    "Accept: text/event-stream",
+    "-H",
+    "Accept-Encoding: identity",
+    "-D",
+    "<owned-temp>/sweep440-render-http1.1-3.headers",
+    "-H",
+    "Last-Event-ID: 3",
+    "https://qa-20261017-2e7ecc-sse.onbex.co/events?run=2e7ecc-http1.1&count=3"
+  ],
+  "protocol_requested": "http1.1",
+  "last_event_id": 3,
+  "nonce": "2e7ecc-http1.1",
+  "progress": {
+    "raw_base64": "OiBoZWFydGJlYXQNCnJldHJ5OiA1MDANCmlkOiA0DQpldmVudDogdGljaw0KZGF0YTogeyJtYXJrZXIiOiJRQTQ0MF8yZTdlY2NfcmVuZGVyIiwiYm9vdCI6ImVhYTgxNTZiLWQyYzMtNDY2OS1hMDIwLTMwODdkMjEzMmUxYyIsIm5vbmNlIjoiMmU3ZWNjLWh0dHAxLjEiLCJzZXEiOjQsDQpkYXRhOiAidGV4dCI6IkNyw6htZSBicsO7bMOpZSAmIOadjiIsImZpbGVzIjp7IkxJQ0VOU0UiOnsiYnl0ZXMiOjEwNzIsInNoYTI1NiI6IjIwYjA2NDkxMGIzMmJjZTFiYzA0NTk1YTViMjA0NzdhMjhjNTAzOTk1ZWY4NTI4OTI5YTMxMWQ2Y2I3YTNiMDkifSwiQ0hBTkdFTE9HIjp7ImJ5dGVzIjoxOCwic2hhMjU2IjoiOWM2NWUzNjYwNTVlZGQ5YTBmNmFiOWM3YjhhMzdmYzkyODAzY2ZlMWQzMGZmYTcyN2NlZWQwYzYzOTM5YzJlNSJ9fX0NCg0KOiBoZWFydGJlYXQNCmlkOiA1DQpldmVudDogdGljaw0KZGF0YTogeyJtYXJrZXIiOiJRQTQ0MF8yZTdlY2NfcmVuZGVyIiwiYm9vdCI6ImVhYTgxNTZiLWQyYzMtNDY2OS1hMDIwLTMwODdkMjEzMmUxYyIsIm5vbmNlIjoiMmU3ZWNjLWh0dHAxLjEiLCJzZXEiOjUsDQpkYXRhOiAidGV4dCI6IkNyw6htZSBicsO7bMOpZSAmIOadjiIsImZpbGVzIjp7IkxJQ0VOU0UiOnsiYnl0ZXMiOjEwNzIsInNoYTI1NiI6IjIwYjA2NDkxMGIzMmJjZTFiYzA0NTk1YTViMjA0NzdhMjhjNTAzOTk1ZWY4NTI4OTI5YTMxMWQ2Y2I3YTNiMDkifSwiQ0hBTkdFTE9HIjp7ImJ5dGVzIjoxOCwic2hhMjU2IjoiOWM2NWUzNjYwNTVlZGQ5YTBmNmFiOWM3YjhhMzdmYzkyODAzY2ZlMWQzMGZmYTcyN2NlZWQwYzYzOTM5YzJlNSJ9fX0NCg0KOiBoZWFydGJlYXQNCmlkOiA2DQpldmVudDogdGljaw0KZGF0YTogeyJtYXJrZXIiOiJRQTQ0MF8yZTdlY2NfcmVuZGVyIiwiYm9vdCI6ImVhYTgxNTZiLWQyYzMtNDY2OS1hMDIwLTMwODdkMjEzMmUxYyIsIm5vbmNlIjoiMmU3ZWNjLWh0dHAxLjEiLCJzZXEiOjYsDQpkYXRhOiAidGV4dCI6IkNyw6htZSBicsO7bMOpZSAmIOadjiIsImZpbGVzIjp7IkxJQ0VOU0UiOnsiYnl0ZXMiOjEwNzIsInNoYTI1NiI6IjIwYjA2NDkxMGIzMmJjZTFiYzA0NTk1YTViMjA0NzdhMjhjNTAzOTk1ZWY4NTI4OTI5YTMxMWQ2Y2I3YTNiMDkifSwiQ0hBTkdFTE9HIjp7ImJ5dGVzIjoxOCwic2hhMjU2IjoiOWM2NWUzNjYwNTVlZGQ5YTBmNmFiOWM3YjhhMzdmYzkyODAzY2ZlMWQzMGZmYTcyN2NlZWQwYzYzOTM5YzJlNSJ9fX0NCg0K",
+    "bytes": 1227,
+    "chunks": [
+      {
+        "at": 0.7968,
+        "bytes": 197
+      },
+      {
+        "at": 0.8179,
+        "bytes": 220
+      },
+      {
+        "at": 1.5643,
+        "bytes": 185
+      },
+      {
+        "at": 1.5838,
+        "bytes": 220
+      },
+      {
+        "at": 2.3408,
+        "bytes": 185
+      },
+      {
+        "at": 2.3447,
+        "bytes": 220
+      }
+    ]
+  },
+  "native_curl_exit": 0,
+  "stderr": "",
+  "HTTP": "200",
+  "http_version": "1.1",
+  "headers": "HTTP/1.1 200 OK\nCache-Control: no-cache\nContent-Type: text/event-stream; charset=utf-8\nDate: Sat, 17 Oct 2026 14:33:45 GMT\nX-Accel-Buffering: no\nTransfer-Encoding: chunked\n\n",
+  "raw_base64": "OiBoZWFydGJlYXQNCnJldHJ5OiA1MDANCmlkOiA0DQpldmVudDogdGljaw0KZGF0YTogeyJtYXJrZXIiOiJRQTQ0MF8yZTdlY2NfcmVuZGVyIiwiYm9vdCI6ImVhYTgxNTZiLWQyYzMtNDY2OS1hMDIwLTMwODdkMjEzMmUxYyIsIm5vbmNlIjoiMmU3ZWNjLWh0dHAxLjEiLCJzZXEiOjQsDQpkYXRhOiAidGV4dCI6IkNyw6htZSBicsO7bMOpZSAmIOadjiIsImZpbGVzIjp7IkxJQ0VOU0UiOnsiYnl0ZXMiOjEwNzIsInNoYTI1NiI6IjIwYjA2NDkxMGIzMmJjZTFiYzA0NTk1YTViMjA0NzdhMjhjNTAzOTk1ZWY4NTI4OTI5YTMxMWQ2Y2I3YTNiMDkifSwiQ0hBTkdFTE9HIjp7ImJ5dGVzIjoxOCwic2hhMjU2IjoiOWM2NWUzNjYwNTVlZGQ5YTBmNmFiOWM3YjhhMzdmYzkyODAzY2ZlMWQzMGZmYTcyN2NlZWQwYzYzOTM5YzJlNSJ9fX0NCg0KOiBoZWFydGJlYXQNCmlkOiA1DQpldmVudDogdGljaw0KZGF0YTogeyJtYXJrZXIiOiJRQTQ0MF8yZTdlY2NfcmVuZGVyIiwiYm9vdCI6ImVhYTgxNTZiLWQyYzMtNDY2OS1hMDIwLTMwODdkMjEzMmUxYyIsIm5vbmNlIjoiMmU3ZWNjLWh0dHAxLjEiLCJzZXEiOjUsDQpkYXRhOiAidGV4dCI6IkNyw6htZSBicsO7bMOpZSAmIOadjiIsImZpbGVzIjp7IkxJQ0VOU0UiOnsiYnl0ZXMiOjEwNzIsInNoYTI1NiI6IjIwYjA2NDkxMGIzMmJjZTFiYzA0NTk1YTViMjA0NzdhMjhjNTAzOTk1ZWY4NTI4OTI5YTMxMWQ2Y2I3YTNiMDkifSwiQ0hBTkdFTE9HIjp7ImJ5dGVzIjoxOCwic2hhMjU2IjoiOWM2NWUzNjYwNTVlZGQ5YTBmNmFiOWM3YjhhMzdmYzkyODAzY2ZlMWQzMGZmYTcyN2NlZWQwYzYzOTM5YzJlNSJ9fX0NCg0KOiBoZWFydGJlYXQNCmlkOiA2DQpldmVudDogdGljaw0KZGF0YTogeyJtYXJrZXIiOiJRQTQ0MF8yZTdlY2NfcmVuZGVyIiwiYm9vdCI6ImVhYTgxNTZiLWQyYzMtNDY2OS1hMDIwLTMwODdkMjEzMmUxYyIsIm5vbmNlIjoiMmU3ZWNjLWh0dHAxLjEiLCJzZXEiOjYsDQpkYXRhOiAidGV4dCI6IkNyw6htZSBicsO7bMOpZSAmIOadjiIsImZpbGVzIjp7IkxJQ0VOU0UiOnsiYnl0ZXMiOjEwNzIsInNoYTI1NiI6IjIwYjA2NDkxMGIzMmJjZTFiYzA0NTk1YTViMjA0NzdhMjhjNTAzOTk1ZWY4NTI4OTI5YTMxMWQ2Y2I3YTNiMDkifSwiQ0hBTkdFTE9HIjp7ImJ5dGVzIjoxOCwic2hhMjU2IjoiOWM2NWUzNjYwNTVlZGQ5YTBmNmFiOWM3YjhhMzdmYzkyODAzY2ZlMWQzMGZmYTcyN2NlZWQwYzYzOTM5YzJlNSJ9fX0NCg0K",
+  "raw_bytes": 1227,
+  "raw_sha256": "6a5402525b741940ad6f8f9a5238b989fbe9ef906f32cd6e2a6aa0d57b590f27",
+  "chunks": [
+    {
+      "at": 0.7968,
+      "bytes": 197
+    },
+    {
+      "at": 0.8179,
+      "bytes": 220
+    },
+    {
+      "at": 1.5643,
+      "bytes": 185
+    },
+    {
+      "at": 1.5838,
+      "bytes": 220
+    },
+    {
+      "at": 2.3408,
+      "bytes": 185
+    },
+    {
+      "at": 2.3447,
+      "bytes": 220
+    }
+  ],
+  "events": [
+    {
+      "retry": "500",
+      "id": "4",
+      "event": "tick",
+      "data": {
+        "marker": "QA440_2e7ecc_render",
+        "boot": "eaa8156b-d2c3-4669-a020-3087d2132e1c",
+        "nonce": "2e7ecc-http1.1",
+        "seq": 4,
+        "text": "Cr\u00e8me br\u00fbl\u00e9e & \u674e",
+        "files": {
+          "LICENSE": {
+            "bytes": 1072,
+            "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+          },
+          "CHANGELOG": {
+            "bytes": 18,
+            "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+          }
+        }
+      },
+      "arrived_at": 0.8179
+    },
+    {
+      "id": "5",
+      "event": "tick",
+      "data": {
+        "marker": "QA440_2e7ecc_render",
+        "boot": "eaa8156b-d2c3-4669-a020-3087d2132e1c",
+        "nonce": "2e7ecc-http1.1",
+        "seq": 5,
+        "text": "Cr\u00e8me br\u00fbl\u00e9e & \u674e",
+        "files": {
+          "LICENSE": {
+            "bytes": 1072,
+            "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+          },
+          "CHANGELOG": {
+            "bytes": 18,
+            "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+          }
+        }
+      },
+      "arrived_at": 1.5838
+    },
+    {
+      "id": "6",
+      "event": "tick",
+      "data": {
+        "marker": "QA440_2e7ecc_render",
+        "boot": "eaa8156b-d2c3-4669-a020-3087d2132e1c",
+        "nonce": "2e7ecc-http1.1",
+        "seq": 6,
+        "text": "Cr\u00e8me br\u00fbl\u00e9e & \u674e",
+        "files": {
+          "LICENSE": {
+            "bytes": 1072,
+            "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+          },
+          "CHANGELOG": {
+            "bytes": 18,
+            "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+          }
+        }
+      },
+      "arrived_at": 2.3447
+    }
+  ],
+  "event_arrival_span": 1.5268,
+  "elapsed": 2.3475,
+  "pass_": true,
+  "pass": true
+}

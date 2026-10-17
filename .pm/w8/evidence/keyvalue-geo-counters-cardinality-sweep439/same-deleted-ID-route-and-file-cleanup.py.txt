@@ -1,0 +1,9 @@
+from pathlib import Path
+import subprocess,json,time
+P=Path(__file__).resolve().parent;CP=P.parent/'cli-qa-w8-checkpoint.json';x=next(v for v in json.loads(CP.read_text())['resources'] if v.get('sweep')==439);assert x['delete_result']['native_exit']==0 and x['cleanup_receipts'][-1]['pass']
+for attempt in range(4):
+ r=subprocess.run(['python3',str(P/'sweep439-cached-tls.py'),'probe'],capture_output=True,text=True,timeout=40);(P/('sweep439-final-route-'+str(attempt)+'-receipt.json')).write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));print(r.stdout,flush=True);r.check_returncode()
+ if not json.loads(r.stdout)['PONG']:break
+ if attempt<3:time.sleep(12)
+else:raise RuntimeError('Former owned route still active; retain private recovery file')
+for script,args in [('cached-tls',['remove']),('final-inventory',[])]:subprocess.run(['python3',str(P/('sweep439-'+script+'.py')),*args],check=True,timeout=150)

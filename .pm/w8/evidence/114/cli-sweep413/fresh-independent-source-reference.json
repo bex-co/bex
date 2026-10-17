@@ -1,0 +1,26 @@
+[
+  {
+    "url": "https://api.github.com/repos/rack/rack/commits/main",
+    "exit": 0,
+    "bytes": 7274,
+    "sha256": "9ef61eaa52aa436c5609e1e1ff18d52f1c5a9a09598a2f7ff590d13cdfa06989"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/rack/rack/a9833c8f3bd6b6d1e0ab35de00a1f1a16b5095f5/Gemfile",
+    "exit": 0,
+    "bytes": 400,
+    "sha256": "07d7305ca8a7a4399aae0d62dea08b43a4240a6904948d5a84bc676be1542204"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/rack/rack/a9833c8f3bd6b6d1e0ab35de00a1f1a16b5095f5/rack.gemspec",
+    "exit": 0,
+    "bytes": 1425,
+    "sha256": "40c56b87deb696baf8941f17e0eba8c922dcbb1999c5657bb8cdc1ba649a43e8"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/rack/rack/a9833c8f3bd6b6d1e0ab35de00a1f1a16b5095f5/lib/rack/version.rb",
+    "exit": 0,
+    "bytes": 391,
+    "sha256": "27be3b79c14bd1c700a11e88d40673be617d505e0463a2ea69e2150e498b244b"
+  }
+]

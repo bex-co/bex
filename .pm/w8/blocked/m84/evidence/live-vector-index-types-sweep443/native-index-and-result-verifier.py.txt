@@ -1,0 +1,9 @@
+from pathlib import Path
+import sys,json
+f=Path(__file__).with_name('sweep443-common.py');exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==443 and v.get('id'));assert x['workspace']==WS and x['create_result']['native_exit']==0 and x['create_response']['id']==x['id'] and x['create_response']['plan']=='free' and not x['state'].startswith('deleted:');_,view=detail();assert view['status']=='available';label=sys.argv[3];assert label in ['catalog','half','sparse','binary'];schema='qa443_'+x['nonce']+'_'+client;ns={};f=P/'sweep443-query-factory.py';exec(compile(f.read_text(),str(f),'exec'),ns);query=ns['queries'](schema)[label];event=sql(client+'-'+label,query,selector=x['name'] if client=='render' else x['id']);r=event['result'];event['pass']=False
+if r['native_exit']==0:
+ output=json.loads(r['stdout'])['output'].strip();value,passed=ns['decode'](output,label);event['decoded']=value
+ if label=='catalog':passed=int(value['catalog']['version'])//10000==17 and value['catalog']['encoding']=='UTF8' and value['catalog']['own_schema_exists'] is False and any(v=={'name':'vector','version':'0.8.6'} for v in value['catalog']['extensions'])
+ event['pass']=passed
+else:event['pass']=False
+save();print(json.dumps({'client':client,'query':label,'native_exit':r['native_exit'],'pass':event['pass'],'missing_package_failure':event.get('missing_package_failure',False),'decoded':event.get('decoded')}),flush=True);assert event['pass']

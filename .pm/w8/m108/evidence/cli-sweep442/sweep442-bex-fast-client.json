@@ -1,0 +1,1326 @@
+{
+  "client": "v22.17.1",
+  "protocol": "HTTP/2",
+  "url": "https://qa-20261017-906072-upload.onbex.co/upload/906072_bex_fast",
+  "bytes": 1048576,
+  "sha256": "bd8a5183fdafb052402b7f52480145004a781b927f0d376e4fbd922da44f6926",
+  "chunk_bytes": 4096,
+  "interval_ms": 0,
+  "writes": [
+    {
+      "at": 0.018607,
+      "bytes": 4096,
+      "backpressure": false
+    },
+    {
+      "at": 0.020299875,
+      "bytes": 8192,
+      "backpressure": false
+    },
+    {
+      "at": 0.020888583,
+      "bytes": 12288,
+      "backpressure": false
+    },
+    {
+      "at": 0.022354083,
+      "bytes": 16384,
+      "backpressure": false
+    },
+    {
+      "at": 0.023818375,
+      "bytes": 20480,
+      "backpressure": false
+    },
+    {
+      "at": 0.025103833,
+      "bytes": 24576,
+      "backpressure": false
+    },
+    {
+      "at": 0.026674166,
+      "bytes": 28672,
+      "backpressure": false
+    },
+    {
+      "at": 0.028135541,
+      "bytes": 32768,
+      "backpressure": false
+    },
+    {
+      "at": 0.029628958,
+      "bytes": 36864,
+      "backpressure": false
+    },
+    {
+      "at": 0.031206208,
+      "bytes": 40960,
+      "backpressure": false
+    },
+    {
+      "at": 0.032594333,
+      "bytes": 45056,
+      "backpressure": false
+    },
+    {
+      "at": 0.034017416,
+      "bytes": 49152,
+      "backpressure": false
+    },
+    {
+      "at": 0.035439833,
+      "bytes": 53248,
+      "backpressure": false
+    },
+    {
+      "at": 0.0368835,
+      "bytes": 57344,
+      "backpressure": false
+    },
+    {
+      "at": 0.038393041,
+      "bytes": 61440,
+      "backpressure": false
+    },
+    {
+      "at": 0.039814708,
+      "bytes": 65536,
+      "backpressure": true
+    },
+    {
+      "at": 1.146359333,
+      "bytes": 69632,
+      "backpressure": false
+    },
+    {
+      "at": 1.149929541,
+      "bytes": 73728,
+      "backpressure": false
+    },
+    {
+      "at": 1.153312083,
+      "bytes": 77824,
+      "backpressure": false
+    },
+    {
+      "at": 1.155030458,
+      "bytes": 81920,
+      "backpressure": false
+    },
+    {
+      "at": 1.158054083,
+      "bytes": 86016,
+      "backpressure": false
+    },
+    {
+      "at": 1.160944875,
+      "bytes": 90112,
+      "backpressure": false
+    },
+    {
+      "at": 1.163628625,
+      "bytes": 94208,
+      "backpressure": false
+    },
+    {
+      "at": 1.165365375,
+      "bytes": 98304,
+      "backpressure": false
+    },
+    {
+      "at": 1.167117833,
+      "bytes": 102400,
+      "backpressure": false
+    },
+    {
+      "at": 1.169231625,
+      "bytes": 106496,
+      "backpressure": false
+    },
+    {
+      "at": 1.171768208,
+      "bytes": 110592,
+      "backpressure": false
+    },
+    {
+      "at": 1.172894875,
+      "bytes": 114688,
+      "backpressure": false
+    },
+    {
+      "at": 1.173880583,
+      "bytes": 118784,
+      "backpressure": false
+    },
+    {
+      "at": 1.17473175,
+      "bytes": 122880,
+      "backpressure": false
+    },
+    {
+      "at": 1.17673725,
+      "bytes": 126976,
+      "backpressure": false
+    },
+    {
+      "at": 1.177861625,
+      "bytes": 131072,
+      "backpressure": false
+    },
+    {
+      "at": 1.179979125,
+      "bytes": 135168,
+      "backpressure": false
+    },
+    {
+      "at": 1.182221208,
+      "bytes": 139264,
+      "backpressure": false
+    },
+    {
+      "at": 1.184409416,
+      "bytes": 143360,
+      "backpressure": false
+    },
+    {
+      "at": 1.18659925,
+      "bytes": 147456,
+      "backpressure": false
+    },
+    {
+      "at": 1.188608625,
+      "bytes": 151552,
+      "backpressure": false
+    },
+    {
+      "at": 1.19063025,
+      "bytes": 155648,
+      "backpressure": false
+    },
+    {
+      "at": 1.192664625,
+      "bytes": 159744,
+      "backpressure": false
+    },
+    {
+      "at": 1.194714,
+      "bytes": 163840,
+      "backpressure": false
+    },
+    {
+      "at": 1.196694458,
+      "bytes": 167936,
+      "backpressure": false
+    },
+    {
+      "at": 1.198938541,
+      "bytes": 172032,
+      "backpressure": false
+    },
+    {
+      "at": 1.201051208,
+      "bytes": 176128,
+      "backpressure": false
+    },
+    {
+      "at": 1.203922875,
+      "bytes": 180224,
+      "backpressure": false
+    },
+    {
+      "at": 1.20695725,
+      "bytes": 184320,
+      "backpressure": false
+    },
+    {
+      "at": 1.209548125,
+      "bytes": 188416,
+      "backpressure": false
+    },
+    {
+      "at": 1.211877583,
+      "bytes": 192512,
+      "backpressure": false
+    },
+    {
+      "at": 1.213867833,
+      "bytes": 196608,
+      "backpressure": false
+    },
+    {
+      "at": 1.215656333,
+      "bytes": 200704,
+      "backpressure": false
+    },
+    {
+      "at": 1.217459666,
+      "bytes": 204800,
+      "backpressure": false
+    },
+    {
+      "at": 1.21950625,
+      "bytes": 208896,
+      "backpressure": false
+    },
+    {
+      "at": 1.22166525,
+      "bytes": 212992,
+      "backpressure": false
+    },
+    {
+      "at": 1.223548083,
+      "bytes": 217088,
+      "backpressure": false
+    },
+    {
+      "at": 1.225653041,
+      "bytes": 221184,
+      "backpressure": false
+    },
+    {
+      "at": 1.227740208,
+      "bytes": 225280,
+      "backpressure": false
+    },
+    {
+      "at": 1.228731625,
+      "bytes": 229376,
+      "backpressure": false
+    },
+    {
+      "at": 1.230826208,
+      "bytes": 233472,
+      "backpressure": false
+    },
+    {
+      "at": 1.232882791,
+      "bytes": 237568,
+      "backpressure": true
+    },
+    {
+      "at": 1.437883583,
+      "bytes": 241664,
+      "backpressure": false
+    },
+    {
+      "at": 1.44019275,
+      "bytes": 245760,
+      "backpressure": false
+    },
+    {
+      "at": 1.442305958,
+      "bytes": 249856,
+      "backpressure": false
+    },
+    {
+      "at": 1.444632166,
+      "bytes": 253952,
+      "backpressure": false
+    },
+    {
+      "at": 1.446859583,
+      "bytes": 258048,
+      "backpressure": false
+    },
+    {
+      "at": 1.447838916,
+      "bytes": 262144,
+      "backpressure": false
+    },
+    {
+      "at": 1.448761083,
+      "bytes": 266240,
+      "backpressure": false
+    },
+    {
+      "at": 1.450802958,
+      "bytes": 270336,
+      "backpressure": false
+    },
+    {
+      "at": 1.452816291,
+      "bytes": 274432,
+      "backpressure": false
+    },
+    {
+      "at": 1.453784416,
+      "bytes": 278528,
+      "backpressure": false
+    },
+    {
+      "at": 1.454771875,
+      "bytes": 282624,
+      "backpressure": false
+    },
+    {
+      "at": 1.456973083,
+      "bytes": 286720,
+      "backpressure": false
+    },
+    {
+      "at": 1.459036625,
+      "bytes": 290816,
+      "backpressure": false
+    },
+    {
+      "at": 1.459775458,
+      "bytes": 294912,
+      "backpressure": false
+    },
+    {
+      "at": 1.461663166,
+      "bytes": 299008,
+      "backpressure": false
+    },
+    {
+      "at": 1.463908833,
+      "bytes": 303104,
+      "backpressure": false
+    },
+    {
+      "at": 1.465966375,
+      "bytes": 307200,
+      "backpressure": false
+    },
+    {
+      "at": 1.466722375,
+      "bytes": 311296,
+      "backpressure": false
+    },
+    {
+      "at": 1.468805958,
+      "bytes": 315392,
+      "backpressure": false
+    },
+    {
+      "at": 1.470815208,
+      "bytes": 319488,
+      "backpressure": false
+    },
+    {
+      "at": 1.47281475,
+      "bytes": 323584,
+      "backpressure": false
+    },
+    {
+      "at": 1.474818375,
+      "bytes": 327680,
+      "backpressure": false
+    },
+    {
+      "at": 1.47664425,
+      "bytes": 331776,
+      "backpressure": false
+    },
+    {
+      "at": 1.478485666,
+      "bytes": 335872,
+      "backpressure": false
+    },
+    {
+      "at": 1.480512458,
+      "bytes": 339968,
+      "backpressure": false
+    },
+    {
+      "at": 1.482732458,
+      "bytes": 344064,
+      "backpressure": false
+    },
+    {
+      "at": 1.48495075,
+      "bytes": 348160,
+      "backpressure": false
+    },
+    {
+      "at": 1.487083875,
+      "bytes": 352256,
+      "backpressure": false
+    },
+    {
+      "at": 1.4892775,
+      "bytes": 356352,
+      "backpressure": false
+    },
+    {
+      "at": 1.491567625,
+      "bytes": 360448,
+      "backpressure": false
+    },
+    {
+      "at": 1.493893583,
+      "bytes": 364544,
+      "backpressure": true
+    },
+    {
+      "at": 1.617994208,
+      "bytes": 368640,
+      "backpressure": false
+    },
+    {
+      "at": 1.619888875,
+      "bytes": 372736,
+      "backpressure": false
+    },
+    {
+      "at": 1.621799375,
+      "bytes": 376832,
+      "backpressure": false
+    },
+    {
+      "at": 1.624529708,
+      "bytes": 380928,
+      "backpressure": false
+    },
+    {
+      "at": 1.627673625,
+      "bytes": 385024,
+      "backpressure": false
+    },
+    {
+      "at": 1.630503125,
+      "bytes": 389120,
+      "backpressure": false
+    },
+    {
+      "at": 1.631866291,
+      "bytes": 393216,
+      "backpressure": false
+    },
+    {
+      "at": 1.634261791,
+      "bytes": 397312,
+      "backpressure": false
+    },
+    {
+      "at": 1.636340458,
+      "bytes": 401408,
+      "backpressure": false
+    },
+    {
+      "at": 1.638498666,
+      "bytes": 405504,
+      "backpressure": false
+    },
+    {
+      "at": 1.639834833,
+      "bytes": 409600,
+      "backpressure": false
+    },
+    {
+      "at": 1.64080325,
+      "bytes": 413696,
+      "backpressure": false
+    },
+    {
+      "at": 1.642901833,
+      "bytes": 417792,
+      "backpressure": false
+    },
+    {
+      "at": 1.645221625,
+      "bytes": 421888,
+      "backpressure": false
+    },
+    {
+      "at": 1.647340625,
+      "bytes": 425984,
+      "backpressure": false
+    },
+    {
+      "at": 1.649352541,
+      "bytes": 430080,
+      "backpressure": false
+    },
+    {
+      "at": 1.651358333,
+      "bytes": 434176,
+      "backpressure": false
+    },
+    {
+      "at": 1.653670375,
+      "bytes": 438272,
+      "backpressure": false
+    },
+    {
+      "at": 1.656202541,
+      "bytes": 442368,
+      "backpressure": false
+    },
+    {
+      "at": 1.658610333,
+      "bytes": 446464,
+      "backpressure": false
+    },
+    {
+      "at": 1.660846416,
+      "bytes": 450560,
+      "backpressure": false
+    },
+    {
+      "at": 1.663766291,
+      "bytes": 454656,
+      "backpressure": false
+    },
+    {
+      "at": 1.665961208,
+      "bytes": 458752,
+      "backpressure": false
+    },
+    {
+      "at": 1.668488625,
+      "bytes": 462848,
+      "backpressure": false
+    },
+    {
+      "at": 1.6710435,
+      "bytes": 466944,
+      "backpressure": false
+    },
+    {
+      "at": 1.673493291,
+      "bytes": 471040,
+      "backpressure": false
+    },
+    {
+      "at": 1.675576916,
+      "bytes": 475136,
+      "backpressure": false
+    },
+    {
+      "at": 1.677539833,
+      "bytes": 479232,
+      "backpressure": false
+    },
+    {
+      "at": 1.679747125,
+      "bytes": 483328,
+      "backpressure": false
+    },
+    {
+      "at": 1.682555583,
+      "bytes": 487424,
+      "backpressure": false
+    },
+    {
+      "at": 1.683884791,
+      "bytes": 491520,
+      "backpressure": false
+    },
+    {
+      "at": 1.686227125,
+      "bytes": 495616,
+      "backpressure": false
+    },
+    {
+      "at": 1.688287125,
+      "bytes": 499712,
+      "backpressure": false
+    },
+    {
+      "at": 1.690543458,
+      "bytes": 503808,
+      "backpressure": false
+    },
+    {
+      "at": 1.69270525,
+      "bytes": 507904,
+      "backpressure": false
+    },
+    {
+      "at": 1.695265125,
+      "bytes": 512000,
+      "backpressure": false
+    },
+    {
+      "at": 1.697631125,
+      "bytes": 516096,
+      "backpressure": false
+    },
+    {
+      "at": 1.699671583,
+      "bytes": 520192,
+      "backpressure": false
+    },
+    {
+      "at": 1.700763041,
+      "bytes": 524288,
+      "backpressure": false
+    },
+    {
+      "at": 1.701737125,
+      "bytes": 528384,
+      "backpressure": false
+    },
+    {
+      "at": 1.70374725,
+      "bytes": 532480,
+      "backpressure": false
+    },
+    {
+      "at": 1.704725708,
+      "bytes": 536576,
+      "backpressure": false
+    },
+    {
+      "at": 1.706747958,
+      "bytes": 540672,
+      "backpressure": false
+    },
+    {
+      "at": 1.707854,
+      "bytes": 544768,
+      "backpressure": false
+    },
+    {
+      "at": 1.709982708,
+      "bytes": 548864,
+      "backpressure": false
+    },
+    {
+      "at": 1.71227825,
+      "bytes": 552960,
+      "backpressure": false
+    },
+    {
+      "at": 1.714426666,
+      "bytes": 557056,
+      "backpressure": false
+    },
+    {
+      "at": 1.716779708,
+      "bytes": 561152,
+      "backpressure": false
+    },
+    {
+      "at": 1.719978416,
+      "bytes": 565248,
+      "backpressure": false
+    },
+    {
+      "at": 1.722546833,
+      "bytes": 569344,
+      "backpressure": false
+    },
+    {
+      "at": 1.72445525,
+      "bytes": 573440,
+      "backpressure": false
+    },
+    {
+      "at": 1.72628225,
+      "bytes": 577536,
+      "backpressure": false
+    },
+    {
+      "at": 1.7282185,
+      "bytes": 581632,
+      "backpressure": false
+    },
+    {
+      "at": 1.7306165,
+      "bytes": 585728,
+      "backpressure": false
+    },
+    {
+      "at": 1.732902958,
+      "bytes": 589824,
+      "backpressure": false
+    },
+    {
+      "at": 1.735241958,
+      "bytes": 593920,
+      "backpressure": false
+    },
+    {
+      "at": 1.737438416,
+      "bytes": 598016,
+      "backpressure": false
+    },
+    {
+      "at": 1.739421375,
+      "bytes": 602112,
+      "backpressure": false
+    },
+    {
+      "at": 1.74154725,
+      "bytes": 606208,
+      "backpressure": false
+    },
+    {
+      "at": 1.743624583,
+      "bytes": 610304,
+      "backpressure": false
+    },
+    {
+      "at": 1.745633625,
+      "bytes": 614400,
+      "backpressure": false
+    },
+    {
+      "at": 1.747492708,
+      "bytes": 618496,
+      "backpressure": false
+    },
+    {
+      "at": 1.749346916,
+      "bytes": 622592,
+      "backpressure": false
+    },
+    {
+      "at": 1.751150208,
+      "bytes": 626688,
+      "backpressure": true
+    },
+    {
+      "at": 1.892790791,
+      "bytes": 630784,
+      "backpressure": false
+    },
+    {
+      "at": 1.89554625,
+      "bytes": 634880,
+      "backpressure": false
+    },
+    {
+      "at": 1.897972916,
+      "bytes": 638976,
+      "backpressure": false
+    },
+    {
+      "at": 1.900408083,
+      "bytes": 643072,
+      "backpressure": false
+    },
+    {
+      "at": 1.901770291,
+      "bytes": 647168,
+      "backpressure": false
+    },
+    {
+      "at": 1.90447225,
+      "bytes": 651264,
+      "backpressure": false
+    },
+    {
+      "at": 1.906728375,
+      "bytes": 655360,
+      "backpressure": false
+    },
+    {
+      "at": 1.908886083,
+      "bytes": 659456,
+      "backpressure": false
+    },
+    {
+      "at": 1.909738,
+      "bytes": 663552,
+      "backpressure": false
+    },
+    {
+      "at": 1.911836541,
+      "bytes": 667648,
+      "backpressure": false
+    },
+    {
+      "at": 1.914567958,
+      "bytes": 671744,
+      "backpressure": false
+    },
+    {
+      "at": 1.916947958,
+      "bytes": 675840,
+      "backpressure": false
+    },
+    {
+      "at": 1.9192665,
+      "bytes": 679936,
+      "backpressure": false
+    },
+    {
+      "at": 1.921515333,
+      "bytes": 684032,
+      "backpressure": false
+    },
+    {
+      "at": 1.923949875,
+      "bytes": 688128,
+      "backpressure": false
+    },
+    {
+      "at": 1.926382208,
+      "bytes": 692224,
+      "backpressure": false
+    },
+    {
+      "at": 1.928896666,
+      "bytes": 696320,
+      "backpressure": false
+    },
+    {
+      "at": 1.931380708,
+      "bytes": 700416,
+      "backpressure": false
+    },
+    {
+      "at": 1.933864541,
+      "bytes": 704512,
+      "backpressure": false
+    },
+    {
+      "at": 1.936432583,
+      "bytes": 708608,
+      "backpressure": false
+    },
+    {
+      "at": 1.93786925,
+      "bytes": 712704,
+      "backpressure": false
+    },
+    {
+      "at": 1.94046175,
+      "bytes": 716800,
+      "backpressure": false
+    },
+    {
+      "at": 1.943111333,
+      "bytes": 720896,
+      "backpressure": false
+    },
+    {
+      "at": 1.945866958,
+      "bytes": 724992,
+      "backpressure": false
+    },
+    {
+      "at": 1.948571541,
+      "bytes": 729088,
+      "backpressure": false
+    },
+    {
+      "at": 1.950794041,
+      "bytes": 733184,
+      "backpressure": false
+    },
+    {
+      "at": 1.953001208,
+      "bytes": 737280,
+      "backpressure": false
+    },
+    {
+      "at": 1.955256291,
+      "bytes": 741376,
+      "backpressure": false
+    },
+    {
+      "at": 1.957525666,
+      "bytes": 745472,
+      "backpressure": false
+    },
+    {
+      "at": 1.960179666,
+      "bytes": 749568,
+      "backpressure": false
+    },
+    {
+      "at": 1.96241475,
+      "bytes": 753664,
+      "backpressure": false
+    },
+    {
+      "at": 1.96475025,
+      "bytes": 757760,
+      "backpressure": false
+    },
+    {
+      "at": 1.967464833,
+      "bytes": 761856,
+      "backpressure": false
+    },
+    {
+      "at": 1.969661541,
+      "bytes": 765952,
+      "backpressure": false
+    },
+    {
+      "at": 1.971811791,
+      "bytes": 770048,
+      "backpressure": false
+    },
+    {
+      "at": 1.974196708,
+      "bytes": 774144,
+      "backpressure": false
+    },
+    {
+      "at": 1.976764291,
+      "bytes": 778240,
+      "backpressure": false
+    },
+    {
+      "at": 1.979405375,
+      "bytes": 782336,
+      "backpressure": false
+    },
+    {
+      "at": 1.981925416,
+      "bytes": 786432,
+      "backpressure": false
+    },
+    {
+      "at": 1.984508625,
+      "bytes": 790528,
+      "backpressure": false
+    },
+    {
+      "at": 1.985776666,
+      "bytes": 794624,
+      "backpressure": false
+    },
+    {
+      "at": 1.98815375,
+      "bytes": 798720,
+      "backpressure": false
+    },
+    {
+      "at": 1.990278083,
+      "bytes": 802816,
+      "backpressure": false
+    },
+    {
+      "at": 1.992326208,
+      "bytes": 806912,
+      "backpressure": false
+    },
+    {
+      "at": 1.994432041,
+      "bytes": 811008,
+      "backpressure": false
+    },
+    {
+      "at": 1.996591208,
+      "bytes": 815104,
+      "backpressure": false
+    },
+    {
+      "at": 1.998670583,
+      "bytes": 819200,
+      "backpressure": false
+    },
+    {
+      "at": 2.000911875,
+      "bytes": 823296,
+      "backpressure": false
+    },
+    {
+      "at": 2.002942833,
+      "bytes": 827392,
+      "backpressure": false
+    },
+    {
+      "at": 2.00474575,
+      "bytes": 831488,
+      "backpressure": false
+    },
+    {
+      "at": 2.006679833,
+      "bytes": 835584,
+      "backpressure": false
+    },
+    {
+      "at": 2.008790416,
+      "bytes": 839680,
+      "backpressure": false
+    },
+    {
+      "at": 2.010858125,
+      "bytes": 843776,
+      "backpressure": false
+    },
+    {
+      "at": 2.012936875,
+      "bytes": 847872,
+      "backpressure": false
+    },
+    {
+      "at": 2.013739541,
+      "bytes": 851968,
+      "backpressure": false
+    },
+    {
+      "at": 2.015629916,
+      "bytes": 856064,
+      "backpressure": false
+    },
+    {
+      "at": 2.017629416,
+      "bytes": 860160,
+      "backpressure": false
+    },
+    {
+      "at": 2.019636416,
+      "bytes": 864256,
+      "backpressure": false
+    },
+    {
+      "at": 2.020780041,
+      "bytes": 868352,
+      "backpressure": false
+    },
+    {
+      "at": 2.022732208,
+      "bytes": 872448,
+      "backpressure": false
+    },
+    {
+      "at": 2.024520791,
+      "bytes": 876544,
+      "backpressure": false
+    },
+    {
+      "at": 2.026431458,
+      "bytes": 880640,
+      "backpressure": false
+    },
+    {
+      "at": 2.028511291,
+      "bytes": 884736,
+      "backpressure": false
+    },
+    {
+      "at": 2.030612041,
+      "bytes": 888832,
+      "backpressure": false
+    },
+    {
+      "at": 2.032539041,
+      "bytes": 892928,
+      "backpressure": false
+    },
+    {
+      "at": 2.034458833,
+      "bytes": 897024,
+      "backpressure": false
+    },
+    {
+      "at": 2.035960958,
+      "bytes": 901120,
+      "backpressure": false
+    },
+    {
+      "at": 2.036748875,
+      "bytes": 905216,
+      "backpressure": false
+    },
+    {
+      "at": 2.038653833,
+      "bytes": 909312,
+      "backpressure": false
+    },
+    {
+      "at": 2.040667125,
+      "bytes": 913408,
+      "backpressure": false
+    },
+    {
+      "at": 2.042867416,
+      "bytes": 917504,
+      "backpressure": false
+    },
+    {
+      "at": 2.045172291,
+      "bytes": 921600,
+      "backpressure": false
+    },
+    {
+      "at": 2.047576875,
+      "bytes": 925696,
+      "backpressure": false
+    },
+    {
+      "at": 2.048740541,
+      "bytes": 929792,
+      "backpressure": false
+    },
+    {
+      "at": 2.0497385,
+      "bytes": 933888,
+      "backpressure": false
+    },
+    {
+      "at": 2.051997541,
+      "bytes": 937984,
+      "backpressure": false
+    },
+    {
+      "at": 2.05452275,
+      "bytes": 942080,
+      "backpressure": false
+    },
+    {
+      "at": 2.057310958,
+      "bytes": 946176,
+      "backpressure": false
+    },
+    {
+      "at": 2.058933333,
+      "bytes": 950272,
+      "backpressure": false
+    },
+    {
+      "at": 2.061711583,
+      "bytes": 954368,
+      "backpressure": false
+    },
+    {
+      "at": 2.063834875,
+      "bytes": 958464,
+      "backpressure": false
+    },
+    {
+      "at": 2.065913375,
+      "bytes": 962560,
+      "backpressure": false
+    },
+    {
+      "at": 2.06675625,
+      "bytes": 966656,
+      "backpressure": false
+    },
+    {
+      "at": 2.068860541,
+      "bytes": 970752,
+      "backpressure": false
+    },
+    {
+      "at": 2.069825708,
+      "bytes": 974848,
+      "backpressure": false
+    },
+    {
+      "at": 2.071842,
+      "bytes": 978944,
+      "backpressure": false
+    },
+    {
+      "at": 2.073894333,
+      "bytes": 983040,
+      "backpressure": false
+    },
+    {
+      "at": 2.074775625,
+      "bytes": 987136,
+      "backpressure": false
+    },
+    {
+      "at": 2.077340583,
+      "bytes": 991232,
+      "backpressure": false
+    },
+    {
+      "at": 2.079639916,
+      "bytes": 995328,
+      "backpressure": false
+    },
+    {
+      "at": 2.08169675,
+      "bytes": 999424,
+      "backpressure": false
+    },
+    {
+      "at": 2.08375775,
+      "bytes": 1003520,
+      "backpressure": false
+    },
+    {
+      "at": 2.085797541,
+      "bytes": 1007616,
+      "backpressure": false
+    },
+    {
+      "at": 2.087729875,
+      "bytes": 1011712,
+      "backpressure": false
+    },
+    {
+      "at": 2.089862208,
+      "bytes": 1015808,
+      "backpressure": false
+    },
+    {
+      "at": 2.090877791,
+      "bytes": 1019904,
+      "backpressure": false
+    },
+    {
+      "at": 2.09312,
+      "bytes": 1024000,
+      "backpressure": false
+    },
+    {
+      "at": 2.095263,
+      "bytes": 1028096,
+      "backpressure": false
+    },
+    {
+      "at": 2.097574416,
+      "bytes": 1032192,
+      "backpressure": false
+    },
+    {
+      "at": 2.099754958,
+      "bytes": 1036288,
+      "backpressure": false
+    },
+    {
+      "at": 2.102223833,
+      "bytes": 1040384,
+      "backpressure": false
+    },
+    {
+      "at": 2.103793541,
+      "bytes": 1044480,
+      "backpressure": false
+    },
+    {
+      "at": 2.106353666,
+      "bytes": 1048576,
+      "backpressure": true
+    }
+  ],
+  "errors": [],
+  "ALPN": "h2",
+  "upload_end_at": 2.349663125,
+  "response": {
+    "status": 200,
+    "headers": {
+      ":status": 200,
+      "content-type": "application/json",
+      "date": "Sat, 17 Oct 2026 15:12:23 GMT"
+    },
+    "started_at": 2.705100208,
+    "body": "{\"marker\":\"QA442_906072_bex\",\"boot\":\"4feaa187-5c56-4540-8997-0bfc4d1dec82\",\"nonce\":\"906072_bex_fast\",\"bytes\":1048576,\"sha256\":\"bd8a5183fdafb052402b7f52480145004a781b927f0d376e4fbd922da44f6926\",\"elapsed_ms\":1542,\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}}",
+    "complete": true,
+    "decoded": {
+      "marker": "QA442_906072_bex",
+      "boot": "4feaa187-5c56-4540-8997-0bfc4d1dec82",
+      "nonce": "906072_bex_fast",
+      "bytes": 1048576,
+      "sha256": "bd8a5183fdafb052402b7f52480145004a781b927f0d376e4fbd922da44f6926",
+      "elapsed_ms": 1542,
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      }
+    }
+  },
+  "finished_at": 2.709093875,
+  "bytes_submitted": 1048576,
+  "complete": true
+}

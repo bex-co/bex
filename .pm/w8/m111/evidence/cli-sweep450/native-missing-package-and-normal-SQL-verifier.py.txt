@@ -1,0 +1,13 @@
+from pathlib import Path
+import sys,json
+f=Path(__file__).with_name('sweep450-common.py');exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==450 and v.get('id'));assert x['workspace']==WS and x['create_result']['native_exit']==0 and x['create_response']['id']==x['id'] and x['create_response']['plan']=='free' and not x['state'].startswith('deleted:');_,view=detail();assert view['status']=='available';label=sys.argv[3];assert label in ['catalog','enable','postgres'];schema='qa450_'+x['nonce']+'_'+client;ns={};f=P/'sweep450-query-factory.py';exec(compile(f.read_text(),str(f),'exec'),ns);query=ns['queries'](schema)[label];event=sql(client+'-'+label,query,selector=x['name'] if client=='render' else x['id']);r=event['result'];event['pass']=False
+if r['native_exit']==0:
+ raw=json.loads(r['stdout'])['output'].strip()
+ if label=='catalog':
+  v=json.loads(raw);event['decoded']={'catalog':v};event['pass']=int(v['version'])//10000==15 and v['encoding']=='UTF8' and not v['own_schema_exists']
+ elif label=='postgres':
+  v,good=ns['decode'](raw,label);event['decoded']=v;event['pass']=good
+ else:event.update({'pass':True,'unexpected_available':True,'qualification':'Package available; stop candidate assumption and investigate actual supported query before filing'})
+else:
+ error=r['stderr']+'\n'+r['stdout'];event['missing_package_failure']=label=='enable' and r['native_exit'] not in [0,None] and not r['harness_timeout'] and 'pg_similarity' in error and ('is not available' in error or 'pg_similarity.control' in error) and ('No such file or directory' in error or 'must first be installed on the system' in error);event['pass']=event['missing_package_failure']
+save();print(json.dumps({'client':client,'query':label,'native_exit':r['native_exit'],'probe_completed':event['pass'],'missing_package_failure':event.get('missing_package_failure',False),'decoded':event.get('decoded')}),flush=True);assert event['pass']

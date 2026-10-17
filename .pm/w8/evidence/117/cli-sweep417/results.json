@@ -1,0 +1,42 @@
+{
+  "sweep": 417,
+  "source_head": "e7422581eec50211819e3f1691538eb9830d68b6",
+  "note": "w8/117",
+  "native_clients": [
+    "published Bex0.3.2/a6350da0",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "unchanged_original_creates_POST201_exit0": 2,
+  "original_first_stale_lock_builds_correctly_rejected_frozen": 2,
+  "original_failed_URLs404": 2,
+  "authored_BUNDLE_DEPLOYMENT_prefix_or_env_override": false,
+  "matched_control_only_change": "the genuine lockfile pins the Gemfile-requested rake13.3.1 instead of13.2.1 in spec and dependency entries",
+  "native_matched_lock_updates0_and_replacement_Live": 2,
+  "real_matched_lock_unchanged_build_runtime_HTTP200": 6,
+  "actual_Ruby": "3.4.11",
+  "actual_Bundler": "2.6.9",
+  "actual_locked_Rake": "13.3.1",
+  "matched_lock_SHA256": "e68a4d6cf70ba95f8a1dc48bc1ce885b207d54147543059eaf88a6c6b28141b4",
+  "build_and_runtime_deployment_frozen": true,
+  "observed_bundle_path_prefix": "/opt/render/project/.gems/",
+  "shared_REST_GraphQL_MCP_config_reads": 12,
+  "explicit_env_API_only_reads": 4,
+  "exact_two_parents_four_children_URLs_absent": true,
+  "baseline_current_inventory_quota_accounted_termination0": true,
+  "unrelated_IDs_preserved": [],
+  "unrelated_datastore_IDs_preserved": {
+    "postgres": [
+      "dpg-db9ipkm22tos73dl1sug"
+    ],
+    "keyValues": [
+      "red-db9ipku22tos73dl1svg"
+    ]
+  },
+  "prior_generated_image_override_checks": "already completed with b9e12f689; not rerun by docs-only hosted QA",
+  "desired_operator_publication": "e7422581e pins build8f80d74efaff/digest6d409efd73f26575f6914cc3f861219e29c10ba152a983823a915d7587ddc9d6",
+  "actual_serving_SHA_OCI": "unknown",
+  "product_code_changed": false,
+  "uncommitted": true,
+  "note_closed": true,
+  "evidence": ".pm/w8/evidence/117/cli-sweep417"
+}

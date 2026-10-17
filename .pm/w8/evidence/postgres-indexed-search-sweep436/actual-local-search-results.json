@@ -1,0 +1,329 @@
+{
+  "image": "postgres@sha256:67f41722b7a8cbdb868a44a4995c846eddfdc2973bccb291ce937dce88ad5675",
+  "container": "qa436-search-43d7ee91",
+  "kind": "isolated cached PG17 ordinary search fixture; not Bex/CNPG/PG18 acceptance",
+  "steps": [
+    {
+      "label": "start-own-isolated-server",
+      "command": [
+        "docker",
+        "run",
+        "--pull",
+        "never",
+        "-d",
+        "--network",
+        "none",
+        "--name",
+        "qa436-search-43d7ee91",
+        "-e",
+        "POSTGRES_HOST_AUTH_METHOD=trust",
+        "postgres@sha256:67f41722b7a8cbdb868a44a4995c846eddfdc2973bccb291ce937dce88ad5675"
+      ],
+      "exit": 0,
+      "stdout": "59b769f784c0f6a9005a821a8de3112ab7c17420e99a26b42f9a0c73ad5286d3\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-0",
+      "command": [
+        "docker",
+        "exec",
+        "qa436-search-43d7ee91",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 2,
+      "stdout": "/var/run/postgresql:5432 - no response\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-1",
+      "command": [
+        "docker",
+        "exec",
+        "qa436-search-43d7ee91",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 0,
+      "stdout": "/var/run/postgresql:5432 - accepting connections\n",
+      "stderr": ""
+    },
+    {
+      "label": "local-only-normal-owner",
+      "command": [
+        "docker",
+        "exec",
+        "qa436-search-43d7ee91",
+        "psql",
+        "-X",
+        "-q",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "postgres",
+        "-c",
+        "CREATE ROLE qa436_owner LOGIN;",
+        "-c",
+        "CREATE DATABASE qa436_owner OWNER qa436_owner;"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "catalog",
+      "command": [
+        "docker",
+        "exec",
+        "qa436-search-43d7ee91",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa436_owner",
+        "-d",
+        "qa436_owner",
+        "-c",
+        "SELECT jsonb_build_object('version',current_setting('server_version_num'),'encoding',current_setting('server_encoding'),'extensions',COALESCE((SELECT jsonb_agg(jsonb_build_object('name',name,'default_version',default_version,'installed_version',installed_version) ORDER BY name) FROM pg_available_extensions WHERE name IN ('pg_trgm','vector','hstore','pg_stat_statements','plpgsql')),'[]'::jsonb),'own_schema_exists',EXISTS(SELECT FROM pg_namespace WHERE nspname='qa436_local'))::text;"
+      ],
+      "exit": 0,
+      "stdout": "{\"version\": \"170011\", \"encoding\": \"UTF8\", \"extensions\": [{\"name\": \"hstore\", \"default_version\": \"1.8\", \"installed_version\": null}, {\"name\": \"pg_stat_statements\", \"default_version\": \"1.11\", \"installed_version\": null}, {\"name\": \"pg_trgm\", \"default_version\": \"1.6\", \"installed_version\": null}, {\"name\": \"plpgsql\", \"default_version\": \"1.0\", \"installed_version\": \"1.0\"}], \"own_schema_exists\": false}\n",
+      "stderr": ""
+    },
+    {
+      "label": "core",
+      "command": [
+        "docker",
+        "exec",
+        "qa436-search-43d7ee91",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa436_owner",
+        "-d",
+        "qa436_owner",
+        "-c",
+        "BEGIN; SET LOCAL statement_timeout='20s'; CREATE SCHEMA qa436_local; SET LOCAL search_path=qa436_local,public; CREATE TABLE docs(id integer PRIMARY KEY,title text NOT NULL,body text NOT NULL,fts tsvector GENERATED ALWAYS AS(to_tsvector('english',title || ' ' || body)) STORED); INSERT INTO docs(id,title,body) VALUES(1,'Running foxes','The quick brown fox runs through fields'),(2,'Database backups','PostgreSQL database backup and restore'),(3,'Crème brûlée','李 keeps a Unicode café notebook'),(4,'Slow fox','A slow fox walks'); CREATE INDEX docs_search ON docs USING GIN(fts); CREATE INDEX docs_simple ON docs USING GIN(to_tsvector('simple',body)); SET LOCAL enable_seqscan=off; SELECT jsonb_build_object('english_stems',(SELECT jsonb_agg(id ORDER BY id) FROM docs WHERE fts @@ plainto_tsquery('english','run fox')),'phrase',(SELECT jsonb_agg(id ORDER BY id) FROM docs WHERE fts @@ phraseto_tsquery('english','quick brown fox')),'web_or',(SELECT jsonb_agg(id ORDER BY id) FROM docs WHERE fts @@ websearch_to_tsquery('english','database OR slow')),'negative',(SELECT count(*) FROM docs WHERE fts @@ plainto_tsquery('english','nonexistentquokka')),'unicode',(SELECT jsonb_agg(id ORDER BY id) FROM docs WHERE to_tsvector('simple',body) @@ plainto_tsquery('simple','李 café')),'indices',(SELECT jsonb_agg(indexname ORDER BY indexname) FROM pg_indexes WHERE schemaname='qa436_local'))::text; EXPLAIN(FORMAT JSON,COSTS OFF) SELECT id FROM docs WHERE fts @@ plainto_tsquery('english','run fox'); ROLLBACK;"
+      ],
+      "exit": 0,
+      "stdout": "{\"phrase\": [1], \"web_or\": [2, 4], \"indices\": [\"docs_pkey\", \"docs_search\", \"docs_simple\"], \"unicode\": [3], \"negative\": 0, \"english_stems\": [1]}\n[\n  {\n    \"Plan\": {\n      \"Node Type\": \"Bitmap Heap Scan\",\n      \"Parallel Aware\": false,\n      \"Async Capable\": false,\n      \"Relation Name\": \"docs\",\n      \"Alias\": \"docs\",\n      \"Recheck Cond\": \"(fts @@ '''run'' & ''fox'''::tsquery)\",\n      \"Plans\": [\n        {\n          \"Node Type\": \"Bitmap Index Scan\",\n          \"Parent Relationship\": \"Outer\",\n          \"Parallel Aware\": false,\n          \"Async Capable\": false,\n          \"Index Name\": \"docs_search\",\n          \"Index Cond\": \"(fts @@ '''run'' & ''fox'''::tsquery)\"\n        }\n      ]\n    }\n  }\n]\n",
+      "stderr": ""
+    },
+    {
+      "label": "trigram",
+      "command": [
+        "docker",
+        "exec",
+        "qa436-search-43d7ee91",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa436_owner",
+        "-d",
+        "qa436_owner",
+        "-c",
+        "BEGIN; SET LOCAL statement_timeout='20s'; CREATE SCHEMA qa436_local; SET LOCAL search_path=qa436_local,public; CREATE EXTENSION IF NOT EXISTS pg_trgm SCHEMA qa436_local; CREATE TABLE words(id integer PRIMARY KEY,label text NOT NULL); INSERT INTO words VALUES(1,'postgres'),(2,'postgras'),(3,'Crème brûlée'),(4,'database backup'),(5,'李'); CREATE INDEX words_trigram ON words USING GIN(label gin_trgm_ops); SET LOCAL enable_seqscan=off; SET LOCAL pg_trgm.similarity_threshold=0.5; SELECT jsonb_build_object('similarity',similarity('postgres','postgras'),'identical_unicode',similarity('Crème brûlée','Crème brûlée'),'matching',(SELECT jsonb_agg(id ORDER BY id) FROM words WHERE label % 'postgres'),'unicode_pattern',(SELECT jsonb_agg(id ORDER BY id) FROM words WHERE label ILIKE '%BRûlée%'),'negative',(SELECT count(*) FROM words WHERE label % 'nonexistentquokka'),'distance',('postgres' <-> 'postgras'),'index_names',(SELECT jsonb_agg(indexname ORDER BY indexname) FROM pg_indexes WHERE schemaname='qa436_local'))::text; EXPLAIN(FORMAT JSON,COSTS OFF) SELECT id FROM words WHERE label % 'postgres'; ROLLBACK;"
+      ],
+      "exit": 0,
+      "stdout": "{\"distance\": 0.5, \"matching\": [1, 2], \"negative\": 0, \"similarity\": 0.5, \"index_names\": [\"words_pkey\", \"words_trigram\"], \"unicode_pattern\": [3], \"identical_unicode\": 1}\n[\n  {\n    \"Plan\": {\n      \"Node Type\": \"Bitmap Heap Scan\",\n      \"Parallel Aware\": false,\n      \"Async Capable\": false,\n      \"Relation Name\": \"words\",\n      \"Alias\": \"words\",\n      \"Recheck Cond\": \"(label % 'postgres'::text)\",\n      \"Plans\": [\n        {\n          \"Node Type\": \"Bitmap Index Scan\",\n          \"Parent Relationship\": \"Outer\",\n          \"Parallel Aware\": false,\n          \"Async Capable\": false,\n          \"Index Name\": \"words_trigram\",\n          \"Index Cond\": \"(label % 'postgres'::text)\"\n        }\n      ]\n    }\n  }\n]\n",
+      "stderr": ""
+    },
+    {
+      "label": "rollback-proof",
+      "command": [
+        "docker",
+        "exec",
+        "qa436-search-43d7ee91",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa436_owner",
+        "-d",
+        "qa436_owner",
+        "-c",
+        "SELECT count(*) FROM pg_namespace WHERE nspname='qa436_local'; SELECT count(*) FROM pg_extension WHERE extname='pg_trgm';"
+      ],
+      "exit": 0,
+      "stdout": "0\n0\n",
+      "stderr": ""
+    },
+    {
+      "label": "remove-exact-own-server",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa436-search-43d7ee91"
+      ],
+      "exit": 0,
+      "stdout": "qa436-search-43d7ee91\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-container-absence",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa436-search-43d7ee91"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa436-search-43d7ee91\n"
+    }
+  ],
+  "cases": [
+    {
+      "case": "catalog",
+      "decoded": {
+        "catalog": {
+          "version": "170011",
+          "encoding": "UTF8",
+          "extensions": [
+            {
+              "name": "hstore",
+              "default_version": "1.8",
+              "installed_version": null
+            },
+            {
+              "name": "pg_stat_statements",
+              "default_version": "1.11",
+              "installed_version": null
+            },
+            {
+              "name": "pg_trgm",
+              "default_version": "1.6",
+              "installed_version": null
+            },
+            {
+              "name": "plpgsql",
+              "default_version": "1.0",
+              "installed_version": "1.0"
+            }
+          ],
+          "own_schema_exists": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "case": "core",
+      "decoded": {
+        "value": {
+          "phrase": [
+            1
+          ],
+          "web_or": [
+            2,
+            4
+          ],
+          "indices": [
+            "docs_pkey",
+            "docs_search",
+            "docs_simple"
+          ],
+          "unicode": [
+            3
+          ],
+          "negative": 0,
+          "english_stems": [
+            1
+          ]
+        },
+        "index_plan": [
+          {
+            "Plan": {
+              "Node Type": "Bitmap Heap Scan",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Relation Name": "docs",
+              "Alias": "docs",
+              "Recheck Cond": "(fts @@ '''run'' & ''fox'''::tsquery)",
+              "Plans": [
+                {
+                  "Node Type": "Bitmap Index Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Index Name": "docs_search",
+                  "Index Cond": "(fts @@ '''run'' & ''fox'''::tsquery)"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "pass": true
+    },
+    {
+      "case": "trigram",
+      "decoded": {
+        "value": {
+          "distance": 0.5,
+          "matching": [
+            1,
+            2
+          ],
+          "negative": 0,
+          "similarity": 0.5,
+          "index_names": [
+            "words_pkey",
+            "words_trigram"
+          ],
+          "unicode_pattern": [
+            3
+          ],
+          "identical_unicode": 1
+        },
+        "index_plan": [
+          {
+            "Plan": {
+              "Node Type": "Bitmap Heap Scan",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Relation Name": "words",
+              "Alias": "words",
+              "Recheck Cond": "(label % 'postgres'::text)",
+              "Plans": [
+                {
+                  "Node Type": "Bitmap Index Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Index Name": "words_trigram",
+                  "Index Cond": "(label % 'postgres'::text)"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "pass": true
+    }
+  ],
+  "pass": true,
+  "own_container_absent": true
+}

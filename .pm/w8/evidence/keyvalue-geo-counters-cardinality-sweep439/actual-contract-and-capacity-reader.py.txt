@@ -1,0 +1,6 @@
+from pathlib import Path
+import sys,json
+P=Path(__file__).resolve().parent;f=P/'sweep439-common.py';sys.argv=[str(f),'preflight','bex'];exec(compile(f.read_text(),str(f),'exec'));helps=[]
+for args in [['keyvalues','create','--help'],['keyvalues','get','--help'],['keyvalues','delete','--help'],['kv-cli','--help']]:
+ r=cli(args);assert r['native_exit']==0;helps.append(r)
+r=api('GET','/v1/owners/'+WS+'/limits');assert r['status']=='200';v=json.loads(r['response']);assert v['keyValues']['used']==v['keyValues']['terminating']==0 and v['keyValues']['limit']>0;local=json.loads((P/'sweep439-local-controls.json').read_text());assert local['pass'] and local['own_context_server_removed'];(P/'sweep439-native-contract.json').write_text(json.dumps({'help':helps,'capacity':r,'local_reference_pass':True,'primary':['https://render.com/docs/key-value','https://valkey.io/commands/geosearch/','https://valkey.io/commands/bitfield/','https://valkey.io/commands/pfcount/']},indent=2));print('Current native Key Value/create/get/delete/connect contracts and free capacity verified')

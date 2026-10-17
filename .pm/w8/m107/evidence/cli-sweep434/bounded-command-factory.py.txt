@@ -1,0 +1,5 @@
+from pathlib import Path
+import json,gzip,base64,shlex
+ZIP_INSTALL='apt-get update -qq && apt-get install -y --no-install-recommends zip\n'
+def commands(P,reference,marker,control=False):
+ files={'qa434-app.cjs':(P/'sweep434-app.cjs').read_text(),'qa434-reference.json':json.dumps(reference),'qa434-marker.json':json.dumps(marker)};packed=base64.b64encode(gzip.compress(json.dumps(files,separators=(',',':'),ensure_ascii=False).encode(),mtime=0)).decode();js="const fs=require('node:fs'),z=require('node:zlib');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('"+packed+"','base64')))))fs.writeFileSync(n,s)";build='set -e\n'+(ZIP_INSTALL if control else '')+'node -e '+shlex.quote(js)+'\nnode qa434-app.cjs build';assert len(build.encode())<4096;return {'build':build,'start':'node qa434-app.cjs serve'}

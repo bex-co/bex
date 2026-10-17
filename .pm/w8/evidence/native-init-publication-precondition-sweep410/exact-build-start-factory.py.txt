@@ -1,0 +1,7 @@
+import json,hashlib
+def commands(P,reference,marker):
+ program=(P/'sweep410-probe.cjs').read_text();build='set -e\n'
+ for name,value in [('qa410-probe.cjs',program),('qa410-reference.json',json.dumps(reference,separators=(',',':'))),('qa410-marker.json',json.dumps(marker))]:
+  tag='QA410_'+name.replace('.','_').replace('-','_').upper();build+="cat > "+name+" <<'"+tag+"'\n"+value+('' if value.endswith('\n') else '\n')+tag+'\n'
+ build+='node qa410-probe.cjs build';assert len(build.encode())<=4096
+ return {'build':build,'start':'node qa410-probe.cjs serve','program_sha256':hashlib.sha256(program.encode()).hexdigest()}

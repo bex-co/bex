@@ -1,0 +1,50 @@
+from pathlib import Path
+import sys,json,shlex,re
+f=Path(__file__).with_name('sweep415-common.py');exec(compile(f.read_text(),str(f),'exec'));assert client in ('bex','render');reference=json.loads((P/'sweep415-primary-reference.json').read_text());default='*'
+def commands(marker):
+ old=json.loads((P/'sweep415-original-command-reference.json').read_text());cmd=dict(old['commands']);assert cmd['build'].count(json.dumps(old['old_marker']))==1;cmd['build']=cmd['build'].replace(json.dumps(old['old_marker']),json.dumps(marker));return cmd
+def objects(raw):
+ out=[];decoder=json.JSONDecoder()
+ while raw.strip():
+  raw=raw.lstrip();v,n=decoder.raw_decode(raw);out.extend(v if isinstance(v,list) else [v]);raw=raw[n:]
+ return out
+if mode=='create':
+ assert not any(v.get('sweep')==415 and v.get('client')==client for v in c['resources']);q=api('GET','/v1/owners/'+ws+'/limits');assert q['status']=='200';limit=decode(q)['services'];assert limit['used']+limit['terminating']<limit['limit'];inv,ss=inventory();nonce=secrets.token_hex(3);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-urlscheme';marker='QA415_'+nonce+'_'+client;cmd=commands(marker);args=['services','create','--name',name,'--type','web_service','--runtime','python','--repo',reference['repo'],'--branch',reference['branch'],'--build-command',cmd['build'],'--start-command',cmd['start'],'--env-var','PYTHON_VERSION=3.12','--plan','free','--region','frankfurt','--health-check-path','/','--auto-deploy=false','--confirm','-o','json'];x={'sweep':415,'client':client,'workspace':ws,'type':'web_service','name':name,'nonce':nonce,'marker':marker,'time':now(),'source_head':c['head'],'primary_reference':reference,'commands':{'initial':cmd},'pre_ids':[v['id'] for v in ss],'pre_inventory':inv,'capacity':q,'dependency_ids':[],'recorded_child_ids':[],'create_command':[client,*args],'state':'native explicit Free Python create intent persisted'};c['resources'].append(x);save();r=captured_create(args);r['native_exit']=None if r['exit']==124 else r['exit'];x.update(create_result=r,state='native create received; reconcile before retry');save();assert r['native_exit']==0 and (len(r['captures'])==1 and r['captures'][0]['status']==201);v=json.loads(r['stdout']);v=v.get('data',v);v=v.get('service',v);assert v['name']==name and v['ownerId']==ws and v['serviceDetails']['plan']=='free' and v['serviceDetails']['runtime']=='python' and v['id'] not in x['pre_ids'];x.update(id=v['id'],create_view=v,state='created: native0/exact owned workspace/Free proved');save();h=history(x);x['first_deploy_id']=h[0]['id'];save();print(json.dumps({'client':client,'id':v['id'],'native_exit':0,'captured_HTTP':201,'first_deploy':h[0]['id']}));raise SystemExit(0)
+x=next(v for v in c['resources'] if v.get('sweep')==415 and v.get('client')==client);own(x);sid=x['id'];phase='default' if mode=='recheck-default' else ('control' if 'control_intent' in x else 'default')
+if mode=='observe':
+ h=history(x);d=api('GET','/v1/services/'+sid);x.setdefault('observations',[]).append({'at':now(),'history':h,'detail':d});save();print(json.dumps({'client':client,'status':h[0]['status'],'children':len(h),'first':h[0]['id']==x['first_deploy_id']}))
+elif mode=='request':
+ import urllib.parse
+ h=history(x);assert h[0]['status']=='live' and h[0].get('commit',{}).get('id')==reference['commit'];assert not any(v['phase']==phase for v in x.get('request_rounds',[]))
+ url=x['create_view']['serviceDetails']['url'];assert url.startswith('https://')
+ e={'at':now(),'phase':phase,'history':h,'requests':[],'request_policy':'ordinary HTTPS GETs only, no forwarded-header override and no redirect following'};x.setdefault('request_rounds',[]).append(e);save()
+ def get(path):
+  hf=P/('sweep415-headers-'+client);assert not hf.exists()
+  try:r=subprocess.run(['curl','--disable','-sS','--max-time','15','-D',str(hf),'-H','Accept-Encoding: identity','-w','\n%{http_code} %{http_version}',url+path],capture_output=True,text=True,timeout=20);headers=hf.read_text()
+  finally:hf.unlink(missing_ok=True)
+  body,_,meta=r.stdout.rpartition('\n');status,protocol=meta.split();hs={}
+  for line in headers.splitlines():
+   if ':' in line:
+    k,_,v=line.partition(':');hs[k.lower()]=v.strip()
+  z={'at':now(),'method':'GET','url':url+path,'path':path,'HTTP':status,'http_version':protocol,'headers':headers,'body':body,'curl_exit':r.returncode,'stderr':r.stderr,'location':hs.get('location')};e['requests'].append(z);save();assert r.returncode==0;return z
+ prefix='?qa380_'+x['nonce']+'_'+phase
+ root=get('/'+prefix+'_root');assert root['HTTP']=='200' and root['body']=='Hello, World!'
+ info=get('/qa380/info'+prefix+'_info');assert info['HTTP']=='200';v=json.loads(info['body']);e['info']=v;save();assert v['marker']==x['marker'] and v['runtime']['files']==v['build']['files']==reference['files'] and v['runtime']['python'].startswith('3.12.') and v['runtime']['marker']==v['build']['marker']==x['marker']
+ redirect_result=get('/qa380/redirect'+prefix+'_redirect');done=get('/qa380/done'+prefix+'_done');assert done['HTTP']=='200' and json.loads(done['body'])['marker']==x['marker']
+ https_path='/qa380/https'+prefix+'_https';first=get(https_path);second=get(https_path)
+ http_url=url.replace('https://','http://',1)
+ e['functional_bug_proved']=bool(phase=='default' and v['scheme']=='http' and v['is_https'] is False and v['forwarded_proto']=='https' and v['done_url']==http_url+'/qa380/done' and redirect_result['HTTP']=='302' and redirect_result['location']==http_url+'/qa380/done' and all(z['HTTP']=='302' and z['location']==url+https_path for z in (first,second)))
+ e['correct_HTTPS_behavior']=bool(v['scheme']=='https' and v['is_https'] is True and v['forwarded_proto']=='https' and v['done_url']==url+'/qa380/done' and redirect_result['HTTP']=='302' and redirect_result['location']==url+'/qa380/done' and all(z['HTTP']=='200' and json.loads(z['body'])['result']=='https-correct' and json.loads(z['body'])['marker']==x['marker'] for z in (first,second)))
+ assert 'control_intent' not in x and len(h)==1 and h[0]['id']==x['first_deploy_id'];assert all(v[p]['forwarded_allow_ips_present'] and v[p]['forwarded_allow_ips_env']=='*' and v[p]['forwarded_allow_ips_config']==['*'] for p in ['build','runtime']) and e['correct_HTTPS_behavior']
+ e['pass']=e['correct_HTTPS_behavior'];save();assert e['pass'],'unexpected request result; retain all receipts and diagnose before another mutation'
+ print(json.dumps({'client':client,'phase':phase,'ordinary_HTTPS_requests':len(e['requests']),'scheme':v['scheme'],'forwarded_proto':v['forwarded_proto'],'actual_forwarded_allow_ips':v['runtime']['forwarded_allow_ips_config'],'functional_bug_proved':e['functional_bug_proved'],'correct_HTTPS_behavior':e['correct_HTTPS_behavior']}))
+elif mode=='logs':
+ e={'at':now(),'phase':phase,'queries':[]};x.setdefault('log_receipts',[]).append(e);save()
+ for logtype,text in [('build','QA380_OBSERVER'),('app','QA380_OBSERVER'),('app','qa380_'+x['nonce']+'_'+phase)]:
+  r=cli(['logs','--resources',sid,'--type',logtype,'--text',text,'--limit','100','--confirm','-o','json']);assert r['native_exit']==0;e['queries'].append({'type':logtype,'text':text,'native':r});save()
+ print(json.dumps({'client':client,'phase':phase,'native_log_queries':len(e['queries']),'all_exit0':True}))
+elif mode=='delete':
+ assert 'delete_intent' not in x;h=history(x);assert all(z['id'] in x['recorded_child_ids'] and z['status'] in ('live','deactivated','canceled','build_failed','update_failed','pre_deploy_failed') for z in h) and not any(sid in z.get('dependency_ids',[]) and not z['state'].startswith('deleted:') for z in c['resources']);x['delete_intent']={'at':now(),'children':h};save();x['delete_result']=cli(['services','delete',sid,'--confirm','-o','json']);save();assert x['delete_result']['native_exit']==0;print(json.dumps({'client':client,'native_delete_exit':0,'children':len(h)}))
+elif mode=='reconcile':
+ assert 'delete_result' in x;d=api('GET','/v1/services/'+sid);inv,ss=inventory();r=subprocess.run(['curl','--disable','-sS','--max-time','10','-o','/dev/null','-w','%{http_code}',x['create_view']['serviceDetails']['url']],text=True,capture_output=True,timeout=15);q=api('GET','/v1/owners/'+ws+'/limits');assert q['status']=='200';limits=decode(q);children=[api('GET','/v1/services/'+sid+'/deploys/'+did) for did in x['recorded_child_ids']];passed=d['status']=='404' and sid not in {z['id'] for z in ss} and baseline<={z['id'] for z in ss} and r.returncode==0 and r.stdout=='404' and limits['services']['terminating']==0 and all(z['status']=='404' for z in children);e={'at':now(),'detail':d,'inventory':inv,'runtime_HTTP':r.stdout,'runtime_exit':r.returncode,'quota':q,'children':children,'pass':passed};x.setdefault('cleanup_receipts',[]).append(e);x['state']='deleted: native0/detail404/listabsent/runtime404/children404/baseline6/quota terminating0' if passed else 'delete acknowledged: convergence pending';save();print(json.dumps({'client':client,'cleanup_pass':passed,'terminating':limits['services']['terminating']}))
+else:raise ValueError(mode)

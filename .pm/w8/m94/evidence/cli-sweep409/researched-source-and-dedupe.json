@@ -1,0 +1,25 @@
+{
+  "at": "2026-10-17T07:16:54.644999+00:00",
+  "source_head": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+  "contract": "https://render.com/docs/native-runtimes",
+  "SQLite_command_contract": "https://www.sqlite.org/cli.html",
+  "runtimes": 6,
+  "reviewed_primary_base_lines": 16,
+  "producer_count": 1,
+  "producer": "nativeDockerfile -> nativeBuildPreparer -> BuildJob native branch",
+  "source_trace": {
+    "pin": "a764810a768202704e7206eb7b87a47211fcd98e /2.27.0",
+    "upstream": "cmd/servicecreate.go:127-162 -> pkg/service/create.go:130-155,273-283 -> pkg/service/repo.go:82-87 unchanged POST /v1/services",
+    "server": "apps/rest.go:455-505,1039-1068 -> apps/service.go:2891-2930 -> controller/app_controller.go:1040-1060",
+    "image": "build/native.go:283-320,404-407 -> build/build.go:1176-1182 and936-955 -> build/nativeresolve.go:53-120"
+  },
+  "specific_boundary": "selected Python3.13 base supplies working sqlite3 library but not the sqlite3 CLI executable; no SQLite CLI supplier exists in shared native generator/resolve",
+  "targeted_history": "",
+  "dedupe": {
+    "all_PM_matches": "done/m82/t003 explicitly supplied FFmpeg only, no SQLite CLI claim; no SQLite CLI item found",
+    "m91": "PostgreSQL custom archive clients, a distinct executable/library supplier family",
+    "m93": "Pandoc document conversion, a distinct executable/data supplier family",
+    "plan": "coordinate native supplier delivery with m91/m93 without duplicating a provider or changing their separate acceptance gates"
+  },
+  "unverified": "actual serving SHA/OCI, full generated-image local execution, other native lines/architectures"
+}

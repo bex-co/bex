@@ -1,0 +1,970 @@
+[
+  {
+    "sweep": 426,
+    "client": "bex",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "type": "web_service",
+    "name": "qa-20261017-2aaf2c-subroot",
+    "nonce": "2aaf2c",
+    "marker": "QA426_2aaf2c_bex",
+    "time": "2026-10-17T11:14:41.413090+00:00",
+    "source_head": "46084c87396de84b1c0ee1b94ce8abbb2691bb41",
+    "primary_reference": {
+      "repo": "https://github.com/git-fixtures/submodule",
+      "branch": "master",
+      "commit": "b685400c1f9316f350965a5993d350bc746b0bf4",
+      "root_dir": "itself/itself",
+      "root_pinned_commit": "c7431b5bc9d45fb64a87d4a895ce3d1073c898d2",
+      "leaf_pinned_commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        ".gitmodules": {
+          "bytes": 83,
+          "sha256": "25a1f02975734c82b9df9d9756611e4d666fd087dd24d25797f02a724b4b7954"
+        },
+        "basic/LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "basic/CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "absent": [
+        "README.md",
+        "itself"
+      ],
+      "program_sha256": "250c627f8d7723a3ec652b041a2a29c4c2f42db116554ae9549edd26e796293f",
+      "qualification": "ordinary HTTPS public nested gitlinks plus legal rootDir; exact leaf data and distinct pinned nested .gitmodules, no Git metadata availability claim"
+    },
+    "commands": {
+      "initial": {
+        "build": "set -e\nnode - <<'QA_SUBROOT_SOURCE'\nconst fs=require('node:fs'),zlib=require('node:zlib');for(const[n,v]of Object.entries(JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/41Wa2/aShD9K758sS25jlm/iaiUtrTpVW/SJumnEqF9zIJbsyZrmwZR/vsdPyCE5l5VkYKZ3Zk558zDbAcPNCDRK7paufx7ORgNeKHKypDlWMNDnWmwTFUIGMnStB2uN6uqODnpjHhKyxJ0dXLaGc/KSme8wkuLqlqdXGlMpn3eJdYgx3/fXl+5K6pLsGTpaqDifZbD7UZxy+zg4i3QoDi438tCmY5ZVzIxbdtZUv0D9B9E6C6euPcYygUds/HrjpjL0b2CS1ouLBNPSBiZtluvBBotZrsim0NZWeYCHpHEVMla8SorlFEwZL4GYdnbXlOEUI6v2XfglSt1sZwoVAVKqzf9gE1pITO3vWi7S7qy1Pj1NpPWX8gCHrOyKlsOyrY1VLVW35Sj6jy/74Gz8SlbZZ8fbm7ZpoJyxNwc1LxaOB2ZEX4gj9397sCfInJVvYS0Qded7tFh3N/A3dv7rMa209lpC73SBYeydNegS1TIaXk6XTwHD+eaLmdHqE7JzGaNh6JLsO3d+e5Ia4yYyY21trddv7kCYDV5qGlurTs5nSdhz7s7e9nXNK+R2ronZruA0TbWm6LIgaLS/XUX+nDPgbZxn5sO5NcNRqzenjfV8/U3cj8ej01WZ7kw952xHj81S1sDTO3mxdwyv1zMbr++ubm+vpu9mby/vpmYTtvbzTypecfZPj/QP0fJfuqsgtN2b/P13f5CgP/KefH+bnLzogcyg7wE42V6LZkDvTb5H8zkMcjDRLOiqMb9KGqqRLH8+vXjO9SpWRv9cN426bSF7fmA9ShtHJp+m9SqypYw7gV6Uhlr1B0homrRLCS31jkWrtfvEuFZxPOcrYmRKuyLV9VmBebIxE2ZZ5w2bXfWQt3ZrRsoYZ3otG0JOX2mlsnuf8S+vLv7/JvW+wFqYI56mN3gjPYMjsfoYOynap9zZ7s5Tigo66peMtRqXzRQa/fz9c3dr1++53m2Y3pu+2c+lbha6OKnMdG60JZZqx+q+KmMJQ50u+8GzuClnYxvku10oGFVTAej6aApVjk6O5tn1aJmLi+WzeMrmT3ipEB5VtYMI9Y5TAfOdMCw0HzROi4potatFZ2WWdVaWZSEgefxoUz9YST90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\nQA_SUBROOT_SOURCE\nnode qa426-app.cjs build",
+        "start": "node qa426-app.cjs serve",
+        "program_sha256": "250c627f8d7723a3ec652b041a2a29c4c2f42db116554ae9549edd26e796293f"
+      }
+    },
+    "pre_ids": [
+      "srv-dap3v694dm7c7390q930",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-db09vbgehcmc739j12i0",
+      "srv-db09u90ehcmc739j12cg"
+    ],
+    "pre_inventory": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.834,
+      "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}]",
+      "stderr": "",
+      "native_exit": 0
+    },
+    "capacity": {
+      "at": "2026-10-17T11:14:40.509102+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.589,
+      "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+      "stderr": ""
+    },
+    "dependency_ids": [],
+    "recorded_child_ids": [
+      "dep-db9lh8ks300s73dskd7g"
+    ],
+    "create_command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261017-2aaf2c-subroot",
+      "--type",
+      "web_service",
+      "--runtime",
+      "node",
+      "--root-directory",
+      "itself/itself",
+      "--repo",
+      "https://github.com/git-fixtures/submodule",
+      "--branch",
+      "master",
+      "--build-command",
+      "set -e\nnode - <<'QA_SUBROOT_SOURCE'\nconst fs=require('node:fs'),zlib=require('node:zlib');for(const[n,v]of Object.entries(JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/41Wa2/aShD9K758sS25jlm/iaiUtrTpVW/SJumnEqF9zIJbsyZrmwZR/vsdPyCE5l5VkYKZ3Zk558zDbAcPNCDRK7paufx7ORgNeKHKypDlWMNDnWmwTFUIGMnStB2uN6uqODnpjHhKyxJ0dXLaGc/KSme8wkuLqlqdXGlMpn3eJdYgx3/fXl+5K6pLsGTpaqDifZbD7UZxy+zg4i3QoDi438tCmY5ZVzIxbdtZUv0D9B9E6C6euPcYygUds/HrjpjL0b2CS1ouLBNPSBiZtluvBBotZrsim0NZWeYCHpHEVMla8SorlFEwZL4GYdnbXlOEUI6v2XfglSt1sZwoVAVKqzf9gE1pITO3vWi7S7qy1Pj1NpPWX8gCHrOyKlsOyrY1VLVW35Sj6jy/74Gz8SlbZZ8fbm7ZpoJyxNwc1LxaOB2ZEX4gj9397sCfInJVvYS0Qded7tFh3N/A3dv7rMa209lpC73SBYeydNegS1TIaXk6XTwHD+eaLmdHqE7JzGaNh6JLsO3d+e5Ia4yYyY21trddv7kCYDV5qGlurTs5nSdhz7s7e9nXNK+R2ronZruA0TbWm6LIgaLS/XUX+nDPgbZxn5sO5NcNRqzenjfV8/U3cj8ej01WZ7kw952xHj81S1sDTO3mxdwyv1zMbr++ubm+vpu9mby/vpmYTtvbzTypecfZPj/QP0fJfuqsgtN2b/P13f5CgP/KefH+bnLzogcyg7wE42V6LZkDvTb5H8zkMcjDRLOiqMb9KGqqRLH8+vXjO9SpWRv9cN426bSF7fmA9ShtHJp+m9SqypYw7gV6Uhlr1B0homrRLCS31jkWrtfvEuFZxPOcrYmRKuyLV9VmBebIxE2ZZ5w2bXfWQt3ZrRsoYZ3otG0JOX2mlsnuf8S+vLv7/JvW+wFqYI56mN3gjPYMjsfoYOynap9zZ7s5Tigo66peMtRqXzRQa/fz9c3dr1++53m2Y3pu+2c+lbha6OKnMdG60JZZqx+q+KmMJQ50u+8GzuClnYxvku10oGFVTAej6aApVjk6O5tn1aJmLi+WzeMrmT3ipEB5VtYMI9Y5TAfOdMCw0HzROi4potatFZ2WWdVaWZSEgefxoUz9YST90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\nQA_SUBROOT_SOURCE\nnode qa426-app.cjs build",
+      "--start-command",
+      "node qa426-app.cjs serve",
+      "--env-var",
+      "NODE_VERSION=24",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--health-check-path",
+      "/",
+      "--auto-deploy=false",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "state": "deleted: native0/detail404/listabsent/runtime404/children404/baseline6/quota terminating0",
+    "durable_create_capture": "<owned-temp>/sweep426-create-qa-20261017-2aaf2c-subroot.json",
+    "create_result": {
+      "binary": "published Bex 0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "create",
+        "--name",
+        "qa-20261017-2aaf2c-subroot",
+        "--type",
+        "web_service",
+        "--runtime",
+        "node",
+        "--root-directory",
+        "itself/itself",
+        "--repo",
+        "https://github.com/git-fixtures/submodule",
+        "--branch",
+        "master",
+        "--build-command",
+        "set -e\nnode - <<'QA_SUBROOT_SOURCE'\nconst fs=require('node:fs'),zlib=require('node:zlib');for(const[n,v]of Object.entries(JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/41Wa2/aShD9K758sS25jlm/iaiUtrTpVW/SJumnEqF9zIJbsyZrmwZR/vsdPyCE5l5VkYKZ3Zk558zDbAcPNCDRK7paufx7ORgNeKHKypDlWMNDnWmwTFUIGMnStB2uN6uqODnpjHhKyxJ0dXLaGc/KSme8wkuLqlqdXGlMpn3eJdYgx3/fXl+5K6pLsGTpaqDifZbD7UZxy+zg4i3QoDi438tCmY5ZVzIxbdtZUv0D9B9E6C6euPcYygUds/HrjpjL0b2CS1ouLBNPSBiZtluvBBotZrsim0NZWeYCHpHEVMla8SorlFEwZL4GYdnbXlOEUI6v2XfglSt1sZwoVAVKqzf9gE1pITO3vWi7S7qy1Pj1NpPWX8gCHrOyKlsOyrY1VLVW35Sj6jy/74Gz8SlbZZ8fbm7ZpoJyxNwc1LxaOB2ZEX4gj9397sCfInJVvYS0Qded7tFh3N/A3dv7rMa209lpC73SBYeydNegS1TIaXk6XTwHD+eaLmdHqE7JzGaNh6JLsO3d+e5Ia4yYyY21trddv7kCYDV5qGlurTs5nSdhz7s7e9nXNK+R2ronZruA0TbWm6LIgaLS/XUX+nDPgbZxn5sO5NcNRqzenjfV8/U3cj8ej01WZ7kw952xHj81S1sDTO3mxdwyv1zMbr++ubm+vpu9mby/vpmYTtvbzTypecfZPj/QP0fJfuqsgtN2b/P13f5CgP/KefH+bnLzogcyg7wE42V6LZkDvTb5H8zkMcjDRLOiqMb9KGqqRLH8+vXjO9SpWRv9cN426bSF7fmA9ShtHJp+m9SqypYw7gV6Uhlr1B0homrRLCS31jkWrtfvEuFZxPOcrYmRKuyLV9VmBebIxE2ZZ5w2bXfWQt3ZrRsoYZ3otG0JOX2mlsnuf8S+vLv7/JvW+wFqYI56mN3gjPYMjsfoYOynap9zZ7s5Tigo66peMtRqXzRQa/fz9c3dr1++53m2Y3pu+2c+lbha6OKnMdG60JZZqx+q+KmMJQ50u+8GzuClnYxvku10oGFVTAej6aApVjk6O5tn1aJmLi+WzeMrmT3ipEB5VtYMI9Y5TAfOdMCw0HzROi4potatFZ2WWdVaWZSEgefxoUz9YST90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\nQA_SUBROOT_SOURCE\nnode qa426-app.cjs build",
+        "--start-command",
+        "node qa426-app.cjs serve",
+        "--env-var",
+        "NODE_VERSION=24",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--health-check-path",
+        "/",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.387,
+      "stdout": "{\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"master\", \"createdAt\": \"2026-10-17T11:14:43Z\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9lh8ks300s73dskd70\", \"id\": \"srv-db9lh8ks300s73dskd70\", \"name\": \"qa-20261017-2aaf2c-subroot\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/git-fixtures/submodule\", \"rootDir\": \"itself/itself\", \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\nnode - <<'QA_SUBROOT_SOURCE'\\nconst fs=require('node:fs'),zlib=require('node:zlib');for(const[n,v]of Object.entries(JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/41Wa2/aShD9K758sS25jlm/iaiUtrTpVW/SJumnEqF9zIJbsyZrmwZR/vsdPyCE5l5VkYKZ3Zk558zDbAcPNCDRK7paufx7ORgNeKHKypDlWMNDnWmwTFUIGMnStB2uN6uqODnpjHhKyxJ0dXLaGc/KSme8wkuLqlqdXGlMpn3eJdYgx3/fXl+5K6pLsGTpaqDifZbD7UZxy+zg4i3QoDi438tCmY5ZVzIxbdtZUv0D9B9E6C6euPcYygUds/HrjpjL0b2CS1ouLBNPSBiZtluvBBotZrsim0NZWeYCHpHEVMla8SorlFEwZL4GYdnbXlOEUI6v2XfglSt1sZwoVAVKqzf9gE1pITO3vWi7S7qy1Pj1NpPWX8gCHrOyKlsOyrY1VLVW35Sj6jy/74Gz8SlbZZ8fbm7ZpoJyxNwc1LxaOB2ZEX4gj9397sCfInJVvYS0Qded7tFh3N/A3dv7rMa209lpC73SBYeydNegS1TIaXk6XTwHD+eaLmdHqE7JzGaNh6JLsO3d+e5Ia4yYyY21trddv7kCYDV5qGlurTs5nSdhz7s7e9nXNK+R2ronZruA0TbWm6LIgaLS/XUX+nDPgbZxn5sO5NcNRqzenjfV8/U3cj8ej01WZ7kw952xHj81S1sDTO3mxdwyv1zMbr++ubm+vpu9mby/vpmYTtvbzTypecfZPj/QP0fJfuqsgtN2b/P13f5CgP/KefH+bnLzogcyg7wE42V6LZkDvTb5H8zkMcjDRLOiqMb9KGqqRLH8+vXjO9SpWRv9cN426bSF7fmA9ShtHJp+m9SqypYw7gV6Uhlr1B0homrRLCS31jkWrtfvEuFZxPOcrYmRKuyLV9VmBebIxE2ZZ5w2bXfWQt3ZrRsoYZ3otG0JOX2mlsnuf8S+vLv7/JvW+wFqYI56mN3gjPYMjsfoYOynap9zZ7s5Tigo66peMtRqXzRQa/fz9c3dr1++53m2Y3pu+2c+lbha6OKnMdG60JZZqx+q+KmMJQ50u+8GzuClnYxvku10oGFVTAej6aApVjk6O5tn1aJmLi+WzeMrmT3ipEB5VtYMI9Y5TAfOdMCw0HzROi4potatFZ2WWdVaWZSEgefxoUz9YST90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\\nQA_SUBROOT_SOURCE\\nnode qa426-app.cjs build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa426-app.cjs serve\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261017-2aaf2c-subroot:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261017-2aaf2c-subroot.onbex.co\"}, \"slug\": \"qa-20261017-2aaf2c-subroot\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"web_service\", \"updatedAt\": \"2026-10-17T11:14:43Z\"}",
+      "stderr": "",
+      "captures": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/v1/services",
+            "body": {
+              "autoDeploy": "no",
+              "branch": "master",
+              "envVars": [
+                {
+                  "key": "NODE_VERSION",
+                  "value": "24"
+                }
+              ],
+              "name": "qa-20261017-2aaf2c-subroot",
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "repo": "https://github.com/git-fixtures/submodule",
+              "rootDir": "itself/itself",
+              "serviceDetails": {
+                "envSpecificDetails": {
+                  "buildCommand": "set -e\nnode - <<'QA_SUBROOT_SOURCE'\nconst fs=require('node:fs'),zlib=require('node:zlib');for(const[n,v]of Object.entries(JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/41Wa2/aShD9K758sS25jlm/iaiUtrTpVW/SJumnEqF9zIJbsyZrmwZR/vsdPyCE5l5VkYKZ3Zk558zDbAcPNCDRK7paufx7ORgNeKHKypDlWMNDnWmwTFUIGMnStB2uN6uqODnpjHhKyxJ0dXLaGc/KSme8wkuLqlqdXGlMpn3eJdYgx3/fXl+5K6pLsGTpaqDifZbD7UZxy+zg4i3QoDi438tCmY5ZVzIxbdtZUv0D9B9E6C6euPcYygUds/HrjpjL0b2CS1ouLBNPSBiZtluvBBotZrsim0NZWeYCHpHEVMla8SorlFEwZL4GYdnbXlOEUI6v2XfglSt1sZwoVAVKqzf9gE1pITO3vWi7S7qy1Pj1NpPWX8gCHrOyKlsOyrY1VLVW35Sj6jy/74Gz8SlbZZ8fbm7ZpoJyxNwc1LxaOB2ZEX4gj9397sCfInJVvYS0Qded7tFh3N/A3dv7rMa209lpC73SBYeydNegS1TIaXk6XTwHD+eaLmdHqE7JzGaNh6JLsO3d+e5Ia4yYyY21trddv7kCYDV5qGlurTs5nSdhz7s7e9nXNK+R2ronZruA0TbWm6LIgaLS/XUX+nDPgbZxn5sO5NcNRqzenjfV8/U3cj8ej01WZ7kw952xHj81S1sDTO3mxdwyv1zMbr++ubm+vpu9mby/vpmYTtvbzTypecfZPj/QP0fJfuqsgtN2b/P13f5CgP/KefH+bnLzogcyg7wE42V6LZkDvTb5H8zkMcjDRLOiqMb9KGqqRLH8+vXjO9SpWRv9cN426bSF7fmA9ShtHJp+m9SqypYw7gV6Uhlr1B0homrRLCS31jkWrtfvEuFZxPOcrYmRKuyLV9VmBebIxE2ZZ5w2bXfWQt3ZrRsoYZ3otG0JOX2mlsnuf8S+vLv7/JvW+wFqYI56mN3gjPYMjsfoYOynap9zZ7s5Tigo66peMtRqXzRQa/fz9c3dr1++53m2Y3pu+2c+lbha6OKnMdG60JZZqx+q+KmMJQ50u+8GzuClnYxvku10oGFVTAej6aApVjk6O5tn1aJmLi+WzeMrmT3ipEB5VtYMI9Y5TAfOdMCw0HzROi4potatFZ2WWdVaWZSEgefxoUz9YST90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\nQA_SUBROOT_SOURCE\nnode qa426-app.cjs build",
+                  "startCommand": "node qa426-app.cjs serve"
+                },
+                "healthCheckPath": "/",
+                "plan": "free",
+                "region": "frankfurt",
+                "runtime": "node"
+              },
+              "type": "web_service"
+            },
+            "raw_body": "{\"autoDeploy\": \"no\", \"branch\": \"master\", \"envVars\": [{\"key\": \"NODE_VERSION\", \"value\": \"24\"}], \"name\": \"qa-20261017-2aaf2c-subroot\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/git-fixtures/submodule\", \"rootDir\": \"itself/itself\", \"serviceDetails\": {\"envSpecificDetails\": {\"buildCommand\": \"set -e\\nnode - <<'QA_SUBROOT_SOURCE'\\nconst fs=require('node:fs'),zlib=require('node:zlib');for(const[n,v]of Object.entries(JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/41Wa2/aShD9K758sS25jlm/iaiUtrTpVW/SJumnEqF9zIJbsyZrmwZR/vsdPyCE5l5VkYKZ3Zk558zDbAcPNCDRK7paufx7ORgNeKHKypDlWMNDnWmwTFUIGMnStB2uN6uqODnpjHhKyxJ0dXLaGc/KSme8wkuLqlqdXGlMpn3eJdYgx3/fXl+5K6pLsGTpaqDifZbD7UZxy+zg4i3QoDi438tCmY5ZVzIxbdtZUv0D9B9E6C6euPcYygUds/HrjpjL0b2CS1ouLBNPSBiZtluvBBotZrsim0NZWeYCHpHEVMla8SorlFEwZL4GYdnbXlOEUI6v2XfglSt1sZwoVAVKqzf9gE1pITO3vWi7S7qy1Pj1NpPWX8gCHrOyKlsOyrY1VLVW35Sj6jy/74Gz8SlbZZ8fbm7ZpoJyxNwc1LxaOB2ZEX4gj9397sCfInJVvYS0Qded7tFh3N/A3dv7rMa209lpC73SBYeydNegS1TIaXk6XTwHD+eaLmdHqE7JzGaNh6JLsO3d+e5Ia4yYyY21trddv7kCYDV5qGlurTs5nSdhz7s7e9nXNK+R2ronZruA0TbWm6LIgaLS/XUX+nDPgbZxn5sO5NcNRqzenjfV8/U3cj8ej01WZ7kw952xHj81S1sDTO3mxdwyv1zMbr++ubm+vpu9mby/vpmYTtvbzTypecfZPj/QP0fJfuqsgtN2b/P13f5CgP/KefH+bnLzogcyg7wE42V6LZkDvTb5H8zkMcjDRLOiqMb9KGqqRLH8+vXjO9SpWRv9cN426bSF7fmA9ShtHJp+m9SqypYw7gV6Uhlr1B0homrRLCS31jkWrtfvEuFZxPOcrYmRKuyLV9VmBebIxE2ZZ5w2bXfWQt3ZrRsoYZ3otG0JOX2mlsnuf8S+vLv7/JvW+wFqYI56mN3gjPYMjsfoYOynap9zZ7s5Tigo66peMtRqXzRQa/fz9c3dr1++53m2Y3pu+2c+lbha6OKnMdG60JZZqx+q+KmMJQ50u+8GzuClnYxvku10oGFVTAej6aApVjk6O5tn1aJmLi+WzeMrmT3ipEB5VtYMI9Y5TAfOdMCw0HzROi4potatFZ2WWdVaWZSEgefxoUz9YST90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\\nQA_SUBROOT_SOURCE\\nnode qa426-app.cjs build\", \"startCommand\": \"node qa426-app.cjs serve\"}, \"healthCheckPath\": \"/\", \"plan\": \"free\", \"region\": \"frankfurt\", \"runtime\": \"node\"}, \"type\": \"web_service\"}",
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "Content-Type": "application/json",
+              "X-Bex-Cli-Version": "0.3.2"
+            },
+            "authorization": "[REDACTED]"
+          },
+          "status": 201,
+          "response": "{\"service\": {\"id\": \"srv-db9lh8ks300s73dskd70\", \"name\": \"qa-20261017-2aaf2c-subroot\", \"immutableName\": \"qa-20261017-2aaf2c-subroot\", \"slug\": \"qa-20261017-2aaf2c-subroot\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9lh8ks300s73dskd70\", \"createdAt\": \"2026-10-17T11:14:43Z\", \"updatedAt\": \"2026-10-17T11:14:43Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\nnode - <<'QA_SUBROOT_SOURCE'\\nconst fs=require('node:fs'),zlib=require('node:zlib');for(const[n,v]of Object.entries(JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/41Wa2/aShD9K758sS25jlm/iaiUtrTpVW/SJumnEqF9zIJbsyZrmwZR/vsdPyCE5l5VkYKZ3Zk558zDbAcPNCDRK7paufx7ORgNeKHKypDlWMNDnWmwTFUIGMnStB2uN6uqODnpjHhKyxJ0dXLaGc/KSme8wkuLqlqdXGlMpn3eJdYgx3/fXl+5K6pLsGTpaqDifZbD7UZxy+zg4i3QoDi438tCmY5ZVzIxbdtZUv0D9B9E6C6euPcYygUds/HrjpjL0b2CS1ouLBNPSBiZtluvBBotZrsim0NZWeYCHpHEVMla8SorlFEwZL4GYdnbXlOEUI6v2XfglSt1sZwoVAVKqzf9gE1pITO3vWi7S7qy1Pj1NpPWX8gCHrOyKlsOyrY1VLVW35Sj6jy/74Gz8SlbZZ8fbm7ZpoJyxNwc1LxaOB2ZEX4gj9397sCfInJVvYS0Qded7tFh3N/A3dv7rMa209lpC73SBYeydNegS1TIaXk6XTwHD+eaLmdHqE7JzGaNh6JLsO3d+e5Ia4yYyY21trddv7kCYDV5qGlurTs5nSdhz7s7e9nXNK+R2ronZruA0TbWm6LIgaLS/XUX+nDPgbZxn5sO5NcNRqzenjfV8/U3cj8ej01WZ7kw952xHj81S1sDTO3mxdwyv1zMbr++ubm+vpu9mby/vpmYTtvbzTypecfZPj/QP0fJfuqsgtN2b/P13f5CgP/KefH+bnLzogcyg7wE42V6LZkDvTb5H8zkMcjDRLOiqMb9KGqqRLH8+vXjO9SpWRv9cN426bSF7fmA9ShtHJp+m9SqypYw7gV6Uhlr1B0homrRLCS31jkWrtfvEuFZxPOcrYmRKuyLV9VmBebIxE2ZZ5w2bXfWQt3ZrRsoYZ3otG0JOX2mlsnuf8S+vLv7/JvW+wFqYI56mN3gjPYMjsfoYOynap9zZ7s5Tigo66peMtRqXzRQa/fz9c3dr1++53m2Y3pu+2c+lbha6OKnMdG60JZZqx+q+KmMJQ50u+8GzuClnYxvku10oGFVTAej6aApVjk6O5tn1aJmLi+WzeMrmT3ipEB5VtYMI9Y5TAfOdMCw0HzROi4potatFZ2WWdVaWZSEgefxoUz9YST90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\\nQA_SUBROOT_SOURCE\\nnode qa426-app.cjs build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa426-app.cjs serve\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261017-2aaf2c-subroot:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261017-2aaf2c-subroot.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"itself/itself\", \"repo\": \"https://github.com/git-fixtures/submodule\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\", \"healthCheckPath\": \"/\"}, \"deployId\": \"dep-db9lh8ks300s73dskd7g\"}",
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a4bee19649f2586f-SJC"
+          }
+        }
+      ],
+      "qualification": "actual native POST forwarded unchanged to production; owned local relay and copied config cleaned",
+      "native_exit": 0
+    },
+    "id": "srv-db9lh8ks300s73dskd70",
+    "create_view": {
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "branch": "master",
+      "createdAt": "2026-10-17T11:14:43Z",
+      "dashboardUrl": "https://dashboard.bex.co/web/srv-db9lh8ks300s73dskd70",
+      "id": "srv-db9lh8ks300s73dskd70",
+      "name": "qa-20261017-2aaf2c-subroot",
+      "notifyOnFail": "default",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/git-fixtures/submodule",
+      "rootDir": "itself/itself",
+      "serviceDetails": {
+        "env": "node",
+        "envSpecificDetails": {
+          "buildCommand": "set -e\nnode - <<'QA_SUBROOT_SOURCE'\nconst fs=require('node:fs'),zlib=require('node:zlib');for(const[n,v]of Object.entries(JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/41Wa2/aShD9K758sS25jlm/iaiUtrTpVW/SJumnEqF9zIJbsyZrmwZR/vsdPyCE5l5VkYKZ3Zk558zDbAcPNCDRK7paufx7ORgNeKHKypDlWMNDnWmwTFUIGMnStB2uN6uqODnpjHhKyxJ0dXLaGc/KSme8wkuLqlqdXGlMpn3eJdYgx3/fXl+5K6pLsGTpaqDifZbD7UZxy+zg4i3QoDi438tCmY5ZVzIxbdtZUv0D9B9E6C6euPcYygUds/HrjpjL0b2CS1ouLBNPSBiZtluvBBotZrsim0NZWeYCHpHEVMla8SorlFEwZL4GYdnbXlOEUI6v2XfglSt1sZwoVAVKqzf9gE1pITO3vWi7S7qy1Pj1NpPWX8gCHrOyKlsOyrY1VLVW35Sj6jy/74Gz8SlbZZ8fbm7ZpoJyxNwc1LxaOB2ZEX4gj9397sCfInJVvYS0Qded7tFh3N/A3dv7rMa209lpC73SBYeydNegS1TIaXk6XTwHD+eaLmdHqE7JzGaNh6JLsO3d+e5Ia4yYyY21trddv7kCYDV5qGlurTs5nSdhz7s7e9nXNK+R2ronZruA0TbWm6LIgaLS/XUX+nDPgbZxn5sO5NcNRqzenjfV8/U3cj8ej01WZ7kw952xHj81S1sDTO3mxdwyv1zMbr++ubm+vpu9mby/vpmYTtvbzTypecfZPj/QP0fJfuqsgtN2b/P13f5CgP/KefH+bnLzogcyg7wE42V6LZkDvTb5H8zkMcjDRLOiqMb9KGqqRLH8+vXjO9SpWRv9cN426bSF7fmA9ShtHJp+m9SqypYw7gV6Uhlr1B0homrRLCS31jkWrtfvEuFZxPOcrYmRKuyLV9VmBebIxE2ZZ5w2bXfWQt3ZrRsoYZ3otG0JOX2mlsnuf8S+vLv7/JvW+wFqYI56mN3gjPYMjsfoYOynap9zZ7s5Tigo66peMtRqXzRQa/fz9c3dr1++53m2Y3pu+2c+lbha6OKnMdG60JZZqx+q+KmMJQ50u+8GzuClnYxvku10oGFVTAej6aApVjk6O5tn1aJmLi+WzeMrmT3ipEB5VtYMI9Y5TAfOdMCw0HzROi4potatFZ2WWdVaWZSEgefxoUz9YST90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\nQA_SUBROOT_SOURCE\nnode qa426-app.cjs build",
+          "preDeployCommand": "",
+          "startCommand": "node qa426-app.cjs serve"
+        },
+        "healthCheckPath": "/",
+        "internalAddress": "qa-20261017-2aaf2c-subroot:3000",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "free",
+        "port": 3000,
+        "region": "fsn1",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "node",
+        "url": "https://qa-20261017-2aaf2c-subroot.onbex.co"
+      },
+      "slug": "qa-20261017-2aaf2c-subroot",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "web_service",
+      "updatedAt": "2026-10-17T11:14:43Z"
+    },
+    "history_receipts": [
+      {
+        "at": "2026-10-17T11:14:44.707411+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db9lh8ks300s73dskd70",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.818,
+          "stdout": "[{\"commit\": {\"id\": \"b685400c1f9316f350965a5993d350bc746b0bf4\", \"message\": \"plain file\"}, \"createdAt\": \"2026-10-17T11:14:42.926157Z\", \"id\": \"dep-db9lh8ks300s73dskd7g\", \"status\": \"created\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T11:14:42.926157Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-17T11:14:46.673279+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db9lh8ks300s73dskd70",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.724,
+          "stdout": "[{\"commit\": {\"id\": \"b685400c1f9316f350965a5993d350bc746b0bf4\", \"message\": \"plain file\"}, \"createdAt\": \"2026-10-17T11:14:42.926157Z\", \"id\": \"dep-db9lh8ks300s73dskd7g\", \"status\": \"created\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T11:14:42.926157Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-17T11:15:00.519097+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db9lh8ks300s73dskd70",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.374,
+          "stdout": "[{\"commit\": {\"id\": \"b685400c1f9316f350965a5993d350bc746b0bf4\", \"message\": \"plain file\"}, \"createdAt\": \"2026-10-17T11:14:42.926157Z\", \"id\": \"dep-db9lh8ks300s73dskd7g\", \"status\": \"queued\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T11:14:48.045521Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-17T11:15:14.903977+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db9lh8ks300s73dskd70",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.85,
+          "stdout": "[{\"commit\": {\"id\": \"b685400c1f9316f350965a5993d350bc746b0bf4\", \"message\": \"plain file\"}, \"createdAt\": \"2026-10-17T11:14:42.926157Z\", \"id\": \"dep-db9lh8ks300s73dskd7g\", \"status\": \"queued\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T11:14:48.045521Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-17T11:15:29.149202+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db9lh8ks300s73dskd70",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.622,
+          "stdout": "[{\"commit\": {\"id\": \"b685400c1f9316f350965a5993d350bc746b0bf4\", \"message\": \"plain file\"}, \"createdAt\": \"2026-10-17T11:14:42.926157Z\", \"id\": \"dep-db9lh8ks300s73dskd7g\", \"status\": \"queued\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T11:14:48.045521Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-17T11:15:43.453825+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db9lh8ks300s73dskd70",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.536,
+          "stdout": "[{\"commit\": {\"id\": \"b685400c1f9316f350965a5993d350bc746b0bf4\", \"message\": \"plain file\"}, \"createdAt\": \"2026-10-17T11:14:42.926157Z\", \"id\": \"dep-db9lh8ks300s73dskd7g\", \"status\": \"queued\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T11:14:48.045521Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-17T11:15:57.522357+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db9lh8ks300s73dskd70",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.433,
+          "stdout": "[{\"commit\": {\"id\": \"b685400c1f9316f350965a5993d350bc746b0bf4\", \"message\": \"plain file\"}, \"createdAt\": \"2026-10-17T11:14:42.926157Z\", \"id\": \"dep-db9lh8ks300s73dskd7g\", \"startedAt\": \"2026-10-17T11:15:48.039198Z\", \"status\": \"build_in_progress\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T11:15:48.039199Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-17T11:16:11.543011+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db9lh8ks300s73dskd70",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.376,
+          "stdout": "[{\"commit\": {\"id\": \"b685400c1f9316f350965a5993d350bc746b0bf4\", \"message\": \"plain file\"}, \"createdAt\": \"2026-10-17T11:14:42.926157Z\", \"id\": \"dep-db9lh8ks300s73dskd7g\", \"startedAt\": \"2026-10-17T11:15:48.039198Z\", \"status\": \"build_in_progress\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T11:15:48.039199Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-17T11:16:25.349323+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db9lh8ks300s73dskd70",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.327,
+          "stdout": "[{\"commit\": {\"id\": \"b685400c1f9316f350965a5993d350bc746b0bf4\", \"message\": \"plain file\"}, \"createdAt\": \"2026-10-17T11:14:42.926157Z\", \"id\": \"dep-db9lh8ks300s73dskd7g\", \"startedAt\": \"2026-10-17T11:15:48.039198Z\", \"status\": \"build_in_progress\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T11:15:48.039199Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-17T11:16:39.722300+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db9lh8ks300s73dskd70",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.479,
+          "stdout": "[{\"commit\": {\"id\": \"b685400c1f9316f350965a5993d350bc746b0bf4\", \"message\": \"plain file\"}, \"createdAt\": \"2026-10-17T11:14:42.926157Z\", \"finishedAt\": \"2026-10-17T11:16:32.854647Z\", \"id\": \"dep-db9lh8ks300s73dskd7g\", \"startedAt\": \"2026-10-17T11:15:48.039198Z\", \"status\": \"build_failed\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T11:16:32.854649Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-17T11:16:41.702106+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db9lh8ks300s73dskd70",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.451,
+          "stdout": "[{\"commit\": {\"id\": \"b685400c1f9316f350965a5993d350bc746b0bf4\", \"message\": \"plain file\"}, \"createdAt\": \"2026-10-17T11:14:42.926157Z\", \"finishedAt\": \"2026-10-17T11:16:32.854647Z\", \"id\": \"dep-db9lh8ks300s73dskd7g\", \"startedAt\": \"2026-10-17T11:15:48.039198Z\", \"status\": \"build_failed\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T11:16:32.854649Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-17T11:19:43.211502+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db9lh8ks300s73dskd70",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.515,
+          "stdout": "[{\"commit\": {\"id\": \"b685400c1f9316f350965a5993d350bc746b0bf4\", \"message\": \"plain file\"}, \"createdAt\": \"2026-10-17T11:14:42.926157Z\", \"finishedAt\": \"2026-10-17T11:16:32.854647Z\", \"id\": \"dep-db9lh8ks300s73dskd7g\", \"startedAt\": \"2026-10-17T11:15:48.039198Z\", \"status\": \"build_failed\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T11:16:32.854649Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      }
+    ],
+    "deploy_children": [
+      {
+        "commit": {
+          "id": "b685400c1f9316f350965a5993d350bc746b0bf4",
+          "message": "plain file"
+        },
+        "createdAt": "2026-10-17T11:14:42.926157Z",
+        "finishedAt": "2026-10-17T11:16:32.854647Z",
+        "id": "dep-db9lh8ks300s73dskd7g",
+        "startedAt": "2026-10-17T11:15:48.039198Z",
+        "status": "build_failed",
+        "trigger": "other",
+        "updatedAt": "2026-10-17T11:16:32.854649Z"
+      }
+    ],
+    "first_deploy_id": "dep-db9lh8ks300s73dskd7g",
+    "observations": [
+      {
+        "at": "2026-10-17T11:14:47.432145+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "b685400c1f9316f350965a5993d350bc746b0bf4",
+              "message": "plain file"
+            },
+            "createdAt": "2026-10-17T11:14:42.926157Z",
+            "id": "dep-db9lh8ks300s73dskd7g",
+            "status": "created",
+            "trigger": "other",
+            "updatedAt": "2026-10-17T11:14:42.926157Z"
+          }
+        ],
+        "detail": {
+          "at": "2026-10-17T11:14:47.431842+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9lh8ks300s73dskd70",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.313,
+          "response": "{\"id\": \"srv-db9lh8ks300s73dskd70\", \"name\": \"qa-20261017-2aaf2c-subroot\", \"immutableName\": \"qa-20261017-2aaf2c-subroot\", \"slug\": \"qa-20261017-2aaf2c-subroot\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9lh8ks300s73dskd70\", \"createdAt\": \"2026-10-17T11:14:43Z\", \"updatedAt\": \"2026-10-17T11:14:43Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\nnode - <<'QA_SUBROOT_SOURCE'\\nconst fs=require('node:fs'),zlib=require('node:zlib');for(const[n,v]of Object.entries(JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/41Wa2/aShD9K758sS25jlm/iaiUtrTpVW/SJumnEqF9zIJbsyZrmwZR/vsdPyCE5l5VkYKZ3Zk558zDbAcPNCDRK7paufx7ORgNeKHKypDlWMNDnWmwTFUIGMnStB2uN6uqODnpjHhKyxJ0dXLaGc/KSme8wkuLqlqdXGlMpn3eJdYgx3/fXl+5K6pLsGTpaqDifZbD7UZxy+zg4i3QoDi438tCmY5ZVzIxbdtZUv0D9B9E6C6euPcYygUds/HrjpjL0b2CS1ouLBNPSBiZtluvBBotZrsim0NZWeYCHpHEVMla8SorlFEwZL4GYdnbXlOEUI6v2XfglSt1sZwoVAVKqzf9gE1pITO3vWi7S7qy1Pj1NpPWX8gCHrOyKlsOyrY1VLVW35Sj6jy/74Gz8SlbZZ8fbm7ZpoJyxNwc1LxaOB2ZEX4gj9397sCfInJVvYS0Qded7tFh3N/A3dv7rMa209lpC73SBYeydNegS1TIaXk6XTwHD+eaLmdHqE7JzGaNh6JLsO3d+e5Ia4yYyY21trddv7kCYDV5qGlurTs5nSdhz7s7e9nXNK+R2ronZruA0TbWm6LIgaLS/XUX+nDPgbZxn5sO5NcNRqzenjfV8/U3cj8ej01WZ7kw952xHj81S1sDTO3mxdwyv1zMbr++ubm+vpu9mby/vpmYTtvbzTypecfZPj/QP0fJfuqsgtN2b/P13f5CgP/KefH+bnLzogcyg7wE42V6LZkDvTb5H8zkMcjDRLOiqMb9KGqqRLH8+vXjO9SpWRv9cN426bSF7fmA9ShtHJp+m9SqypYw7gV6Uhlr1B0homrRLCS31jkWrtfvEuFZxPOcrYmRKuyLV9VmBebIxE2ZZ5w2bXfWQt3ZrRsoYZ3otG0JOX2mlsnuf8S+vLv7/JvW+wFqYI56mN3gjPYMjsfoYOynap9zZ7s5Tigo66peMtRqXzRQa/fz9c3dr1++53m2Y3pu+2c+lbha6OKnMdG60JZZqx+q+KmMJQ50u+8GzuClnYxvku10oGFVTAej6aApVjk6O5tn1aJmLi+WzeMrmT3ipEB5VtYMI9Y5TAfOdMCw0HzROi4potatFZ2WWdVaWZSEgefxoUz9YST90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\\nQA_SUBROOT_SOURCE\\nnode qa426-app.cjs build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa426-app.cjs serve\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261017-2aaf2c-subroot:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261017-2aaf2c-subroot.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Building\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"itself/itself\", \"repo\": \"https://github.com/git-fixtures/submodule\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\", \"healthCheckPath\": \"/\"}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T11:15:01.329865+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "b685400c1f9316f350965a5993d350bc746b0bf4",
+              "message": "plain file"
+            },
+            "createdAt": "2026-10-17T11:14:42.926157Z",
+            "id": "dep-db9lh8ks300s73dskd7g",
+            "status": "queued",
+            "trigger": "other",
+            "updatedAt": "2026-10-17T11:14:48.045521Z"
+          }
+        ],
+        "detail": {
+          "at": "2026-10-17T11:15:01.329643+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9lh8ks300s73dskd70",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.327,
+          "response": "{\"id\": \"srv-db9lh8ks300s73dskd70\", \"name\": \"qa-20261017-2aaf2c-subroot\", \"immutableName\": \"qa-20261017-2aaf2c-subroot\", \"slug\": \"qa-20261017-2aaf2c-subroot\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9lh8ks300s73dskd70\", \"createdAt\": \"2026-10-17T11:14:43Z\", \"updatedAt\": \"2026-10-17T11:14:48Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\nnode - <<'QA_SUBROOT_SOURCE'\\nconst fs=require('node:fs'),zlib=require('node:zlib');for(const[n,v]of Object.entries(JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/41Wa2/aShD9K758sS25jlm/iaiUtrTpVW/SJumnEqF9zIJbsyZrmwZR/vsdPyCE5l5VkYKZ3Zk558zDbAcPNCDRK7paufx7ORgNeKHKypDlWMNDnWmwTFUIGMnStB2uN6uqODnpjHhKyxJ0dXLaGc/KSme8wkuLqlqdXGlMpn3eJdYgx3/fXl+5K6pLsGTpaqDifZbD7UZxy+zg4i3QoDi438tCmY5ZVzIxbdtZUv0D9B9E6C6euPcYygUds/HrjpjL0b2CS1ouLBNPSBiZtluvBBotZrsim0NZWeYCHpHEVMla8SorlFEwZL4GYdnbXlOEUI6v2XfglSt1sZwoVAVKqzf9gE1pITO3vWi7S7qy1Pj1NpPWX8gCHrOyKlsOyrY1VLVW35Sj6jy/74Gz8SlbZZ8fbm7ZpoJyxNwc1LxaOB2ZEX4gj9397sCfInJVvYS0Qded7tFh3N/A3dv7rMa209lpC73SBYeydNegS1TIaXk6XTwHD+eaLmdHqE7JzGaNh6JLsO3d+e5Ia4yYyY21trddv7kCYDV5qGlurTs5nSdhz7s7e9nXNK+R2ronZruA0TbWm6LIgaLS/XUX+nDPgbZxn5sO5NcNRqzenjfV8/U3cj8ej01WZ7kw952xHj81S1sDTO3mxdwyv1zMbr++ubm+vpu9mby/vpmYTtvbzTypecfZPj/QP0fJfuqsgtN2b/P13f5CgP/KefH+bnLzogcyg7wE42V6LZkDvTb5H8zkMcjDRLOiqMb9KGqqRLH8+vXjO9SpWRv9cN426bSF7fmA9ShtHJp+m9SqypYw7gV6Uhlr1B0homrRLCS31jkWrtfvEuFZxPOcrYmRKuyLV9VmBebIxE2ZZ5w2bXfWQt3ZrRsoYZ3otG0JOX2mlsnuf8S+vLv7/JvW+wFqYI56mN3gjPYMjsfoYOynap9zZ7s5Tigo66peMtRqXzRQa/fz9c3dr1++53m2Y3pu+2c+lbha6OKnMdG60JZZqx+q+KmMJQ50u+8GzuClnYxvku10oGFVTAej6aApVjk6O5tn1aJmLi+WzeMrmT3ipEB5VtYMI9Y5TAfOdMCw0HzROi4potatFZ2WWdVaWZSEgefxoUz9YST90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\\nQA_SUBROOT_SOURCE\\nnode qa426-app.cjs build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa426-app.cjs serve\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261017-2aaf2c-subroot:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261017-2aaf2c-subroot.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Building\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"itself/itself\", \"repo\": \"https://github.com/git-fixtures/submodule\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\", \"healthCheckPath\": \"/\"}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T11:15:15.824799+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "b685400c1f9316f350965a5993d350bc746b0bf4",
+              "message": "plain file"
+            },
+            "createdAt": "2026-10-17T11:14:42.926157Z",
+            "id": "dep-db9lh8ks300s73dskd7g",
+            "status": "queued",
+            "trigger": "other",
+            "updatedAt": "2026-10-17T11:14:48.045521Z"
+          }
+        ],
+        "detail": {
+          "at": "2026-10-17T11:15:15.824519+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9lh8ks300s73dskd70",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.48,
+          "response": "{\"id\": \"srv-db9lh8ks300s73dskd70\", \"name\": \"qa-20261017-2aaf2c-subroot\", \"immutableName\": \"qa-20261017-2aaf2c-subroot\", \"slug\": \"qa-20261017-2aaf2c-subroot\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9lh8ks300s73dskd70\", \"createdAt\": \"2026-10-17T11:14:43Z\", \"updatedAt\": \"2026-10-17T11:14:48Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\nnode - <<'QA_SUBROOT_SOURCE'\\nconst fs=require('node:fs'),zlib=require('node:zlib');for(const[n,v]of Object.entries(JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/41Wa2/aShD9K758sS25jlm/iaiUtrTpVW/SJumnEqF9zIJbsyZrmwZR/vsdPyCE5l5VkYKZ3Zk558zDbAcPNCDRK7paufx7ORgNeKHKypDlWMNDnWmwTFUIGMnStB2uN6uqODnpjHhKyxJ0dXLaGc/KSme8wkuLqlqdXGlMpn3eJdYgx3/fXl+5K6pLsGTpaqDifZbD7UZxy+zg4i3QoDi438tCmY5ZVzIxbdtZUv0D9B9E6C6euPcYygUds/HrjpjL0b2CS1ouLBNPSBiZtluvBBotZrsim0NZWeYCHpHEVMla8SorlFEwZL4GYdnbXlOEUI6v2XfglSt1sZwoVAVKqzf9gE1pITO3vWi7S7qy1Pj1NpPWX8gCHrOyKlsOyrY1VLVW35Sj6jy/74Gz8SlbZZ8fbm7ZpoJyxNwc1LxaOB2ZEX4gj9397sCfInJVvYS0Qded7tFh3N/A3dv7rMa209lpC73SBYeydNegS1TIaXk6XTwHD+eaLmdHqE7JzGaNh6JLsO3d+e5Ia4yYyY21trddv7kCYDV5qGlurTs5nSdhz7s7e9nXNK+R2ronZruA0TbWm6LIgaLS/XUX+nDPgbZxn5sO5NcNRqzenjfV8/U3cj8ej01WZ7kw952xHj81S1sDTO3mxdwyv1zMbr++ubm+vpu9mby/vpmYTtvbzTypecfZPj/QP0fJfuqsgtN2b/P13f5CgP/KefH+bnLzogcyg7wE42V6LZkDvTb5H8zkMcjDRLOiqMb9KGqqRLH8+vXjO9SpWRv9cN426bSF7fmA9ShtHJp+m9SqypYw7gV6Uhlr1B0homrRLCS31jkWrtfvEuFZxPOcrYmRKuyLV9VmBebIxE2ZZ5w2bXfWQt3ZrRsoYZ3otG0JOX2mlsnuf8S+vLv7/JvW+wFqYI56mN3gjPYMjsfoYOynap9zZ7s5Tigo66peMtRqXzRQa/fz9c3dr1++53m2Y3pu+2c+lbha6OKnMdG60JZZqx+q+KmMJQ50u+8GzuClnYxvku10oGFVTAej6aApVjk6O5tn1aJmLi+WzeMrmT3ipEB5VtYMI9Y5TAfOdMCw0HzROi4potatFZ2WWdVaWZSEgefxoUz9YST90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\\nQA_SUBROOT_SOURCE\\nnode qa426-app.cjs build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa426-app.cjs serve\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261017-2aaf2c-subroot:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261017-2aaf2c-subroot.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Building\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"itself/itself\", \"repo\": \"https://github.com/git-fixtures/submodule\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\", \"healthCheckPath\": \"/\"}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T11:15:30.198700+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "b685400c1f9316f350965a5993d350bc746b0bf4",
+              "message": "plain file"
+            },
+            "createdAt": "2026-10-17T11:14:42.926157Z",
+            "id": "dep-db9lh8ks300s73dskd7g",
+            "status": "queued",
+            "trigger": "other",
+            "updatedAt": "2026-10-17T11:14:48.045521Z"
+          }
+        ],
+        "detail": {
+          "at": "2026-10-17T11:15:30.198477+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9lh8ks300s73dskd70",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.623,
+          "response": "{\"id\": \"srv-db9lh8ks300s73dskd70\", \"name\": \"qa-20261017-2aaf2c-subroot\", \"immutableName\": \"qa-20261017-2aaf2c-subroot\", \"slug\": \"qa-20261017-2aaf2c-subroot\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9lh8ks300s73dskd70\", \"createdAt\": \"2026-10-17T11:14:43Z\", \"updatedAt\": \"2026-10-17T11:14:48Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\nnode - <<'QA_SUBROOT_SOURCE'\\nconst fs=require('node:fs'),zlib=require('node:zlib');for(const[n,v]of Object.entries(JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/41Wa2/aShD9K758sS25jlm/iaiUtrTpVW/SJumnEqF9zIJbsyZrmwZR/vsdPyCE5l5VkYKZ3Zk558zDbAcPNCDRK7paufx7ORgNeKHKypDlWMNDnWmwTFUIGMnStB2uN6uqODnpjHhKyxJ0dXLaGc/KSme8wkuLqlqdXGlMpn3eJdYgx3/fXl+5K6pLsGTpaqDifZbD7UZxy+zg4i3QoDi438tCmY5ZVzIxbdtZUv0D9B9E6C6euPcYygUds/HrjpjL0b2CS1ouLBNPSBiZtluvBBotZrsim0NZWeYCHpHEVMla8SorlFEwZL4GYdnbXlOEUI6v2XfglSt1sZwoVAVKqzf9gE1pITO3vWi7S7qy1Pj1NpPWX8gCHrOyKlsOyrY1VLVW35Sj6jy/74Gz8SlbZZ8fbm7ZpoJyxNwc1LxaOB2ZEX4gj9397sCfInJVvYS0Qded7tFh3N/A3dv7rMa209lpC73SBYeydNegS1TIaXk6XTwHD+eaLmdHqE7JzGaNh6JLsO3d+e5Ia4yYyY21trddv7kCYDV5qGlurTs5nSdhz7s7e9nXNK+R2ronZruA0TbWm6LIgaLS/XUX+nDPgbZxn5sO5NcNRqzenjfV8/U3cj8ej01WZ7kw952xHj81S1sDTO3mxdwyv1zMbr++ubm+vpu9mby/vpmYTtvbzTypecfZPj/QP0fJfuqsgtN2b/P13f5CgP/KefH+bnLzogcyg7wE42V6LZkDvTb5H8zkMcjDRLOiqMb9KGqqRLH8+vXjO9SpWRv9cN426bSF7fmA9ShtHJp+m9SqypYw7gV6Uhlr1B0homrRLCS31jkWrtfvEuFZxPOcrYmRKuyLV9VmBebIxE2ZZ5w2bXfWQt3ZrRsoYZ3otG0JOX2mlsnuf8S+vLv7/JvW+wFqYI56mN3gjPYMjsfoYOynap9zZ7s5Tigo66peMtRqXzRQa/fz9c3dr1++53m2Y3pu+2c+lbha6OKnMdG60JZZqx+q+KmMJQ50u+8GzuClnYxvku10oGFVTAej6aApVjk6O5tn1aJmLi+WzeMrmT3ipEB5VtYMI9Y5TAfOdMCw0HzROi4potatFZ2WWdVaWZSEgefxoUz9YST90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\\nQA_SUBROOT_SOURCE\\nnode qa426-app.cjs build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa426-app.cjs serve\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261017-2aaf2c-subroot:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261017-2aaf2c-subroot.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Building\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"itself/itself\", \"repo\": \"https://github.com/git-fixtures/submodule\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\", \"healthCheckPath\": \"/\"}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T11:15:44.372518+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "b685400c1f9316f350965a5993d350bc746b0bf4",
+              "message": "plain file"
+            },
+            "createdAt": "2026-10-17T11:14:42.926157Z",
+            "id": "dep-db9lh8ks300s73dskd7g",
+            "status": "queued",
+            "trigger": "other",
+            "updatedAt": "2026-10-17T11:14:48.045521Z"
+          }
+        ],
+        "detail": {
+          "at": "2026-10-17T11:15:44.372371+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9lh8ks300s73dskd70",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.488,
+          "response": "{\"id\": \"srv-db9lh8ks300s73dskd70\", \"name\": \"qa-20261017-2aaf2c-subroot\", \"immutableName\": \"qa-20261017-2aaf2c-subroot\", \"slug\": \"qa-20261017-2aaf2c-subroot\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9lh8ks300s73dskd70\", \"createdAt\": \"2026-10-17T11:14:43Z\", \"updatedAt\": \"2026-10-17T11:15:44Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\nnode - <<'QA_SUBROOT_SOURCE'\\nconst fs=require('node:fs'),zlib=require('node:zlib');for(const[n,v]of Object.entries(JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/41Wa2/aShD9K758sS25jlm/iaiUtrTpVW/SJumnEqF9zIJbsyZrmwZR/vsdPyCE5l5VkYKZ3Zk558zDbAcPNCDRK7paufx7ORgNeKHKypDlWMNDnWmwTFUIGMnStB2uN6uqODnpjHhKyxJ0dXLaGc/KSme8wkuLqlqdXGlMpn3eJdYgx3/fXl+5K6pLsGTpaqDifZbD7UZxy+zg4i3QoDi438tCmY5ZVzIxbdtZUv0D9B9E6C6euPcYygUds/HrjpjL0b2CS1ouLBNPSBiZtluvBBotZrsim0NZWeYCHpHEVMla8SorlFEwZL4GYdnbXlOEUI6v2XfglSt1sZwoVAVKqzf9gE1pITO3vWi7S7qy1Pj1NpPWX8gCHrOyKlsOyrY1VLVW35Sj6jy/74Gz8SlbZZ8fbm7ZpoJyxNwc1LxaOB2ZEX4gj9397sCfInJVvYS0Qded7tFh3N/A3dv7rMa209lpC73SBYeydNegS1TIaXk6XTwHD+eaLmdHqE7JzGaNh6JLsO3d+e5Ia4yYyY21trddv7kCYDV5qGlurTs5nSdhz7s7e9nXNK+R2ronZruA0TbWm6LIgaLS/XUX+nDPgbZxn5sO5NcNRqzenjfV8/U3cj8ej01WZ7kw952xHj81S1sDTO3mxdwyv1zMbr++ubm+vpu9mby/vpmYTtvbzTypecfZPj/QP0fJfuqsgtN2b/P13f5CgP/KefH+bnLzogcyg7wE42V6LZkDvTb5H8zkMcjDRLOiqMb9KGqqRLH8+vXjO9SpWRv9cN426bSF7fmA9ShtHJp+m9SqypYw7gV6Uhlr1B0homrRLCS31jkWrtfvEuFZxPOcrYmRKuyLV9VmBebIxE2ZZ5w2bXfWQt3ZrRsoYZ3otG0JOX2mlsnuf8S+vLv7/JvW+wFqYI56mN3gjPYMjsfoYOynap9zZ7s5Tigo66peMtRqXzRQa/fz9c3dr1++53m2Y3pu+2c+lbha6OKnMdG60JZZqx+q+KmMJQ50u+8GzuClnYxvku10oGFVTAej6aApVjk6O5tn1aJmLi+WzeMrmT3ipEB5VtYMI9Y5TAfOdMCw0HzROi4potatFZ2WWdVaWZSEgefxoUz9YST90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\\nQA_SUBROOT_SOURCE\\nnode qa426-app.cjs build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa426-app.cjs serve\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261017-2aaf2c-subroot:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261017-2aaf2c-subroot.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Building\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"itself/itself\", \"repo\": \"https://github.com/git-fixtures/submodule\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\", \"healthCheckPath\": \"/\"}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T11:15:58.445957+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "b685400c1f9316f350965a5993d350bc746b0bf4",
+              "message": "plain file"
+            },
+            "createdAt": "2026-10-17T11:14:42.926157Z",
+            "id": "dep-db9lh8ks300s73dskd7g",
+            "startedAt": "2026-10-17T11:15:48.039198Z",
+            "status": "build_in_progress",
+            "trigger": "other",
+            "updatedAt": "2026-10-17T11:15:48.039199Z"
+          }
+        ],
+        "detail": {
+          "at": "2026-10-17T11:15:58.445666+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9lh8ks300s73dskd70",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.463,
+          "response": "{\"id\": \"srv-db9lh8ks300s73dskd70\", \"name\": \"qa-20261017-2aaf2c-subroot\", \"immutableName\": \"qa-20261017-2aaf2c-subroot\", \"slug\": \"qa-20261017-2aaf2c-subroot\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9lh8ks300s73dskd70\", \"createdAt\": \"2026-10-17T11:14:43Z\", \"updatedAt\": \"2026-10-17T11:15:44Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\nnode - <<'QA_SUBROOT_SOURCE'\\nconst fs=require('node:fs'),zlib=require('node:zlib');for(const[n,v]of Object.entries(JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/41Wa2/aShD9K758sS25jlm/iaiUtrTpVW/SJumnEqF9zIJbsyZrmwZR/vsdPyCE5l5VkYKZ3Zk558zDbAcPNCDRK7paufx7ORgNeKHKypDlWMNDnWmwTFUIGMnStB2uN6uqODnpjHhKyxJ0dXLaGc/KSme8wkuLqlqdXGlMpn3eJdYgx3/fXl+5K6pLsGTpaqDifZbD7UZxy+zg4i3QoDi438tCmY5ZVzIxbdtZUv0D9B9E6C6euPcYygUds/HrjpjL0b2CS1ouLBNPSBiZtluvBBotZrsim0NZWeYCHpHEVMla8SorlFEwZL4GYdnbXlOEUI6v2XfglSt1sZwoVAVKqzf9gE1pITO3vWi7S7qy1Pj1NpPWX8gCHrOyKlsOyrY1VLVW35Sj6jy/74Gz8SlbZZ8fbm7ZpoJyxNwc1LxaOB2ZEX4gj9397sCfInJVvYS0Qded7tFh3N/A3dv7rMa209lpC73SBYeydNegS1TIaXk6XTwHD+eaLmdHqE7JzGaNh6JLsO3d+e5Ia4yYyY21trddv7kCYDV5qGlurTs5nSdhz7s7e9nXNK+R2ronZruA0TbWm6LIgaLS/XUX+nDPgbZxn5sO5NcNRqzenjfV8/U3cj8ej01WZ7kw952xHj81S1sDTO3mxdwyv1zMbr++ubm+vpu9mby/vpmYTtvbzTypecfZPj/QP0fJfuqsgtN2b/P13f5CgP/KefH+bnLzogcyg7wE42V6LZkDvTb5H8zkMcjDRLOiqMb9KGqqRLH8+vXjO9SpWRv9cN426bSF7fmA9ShtHJp+m9SqypYw7gV6Uhlr1B0homrRLCS31jkWrtfvEuFZxPOcrYmRKuyLV9VmBebIxE2ZZ5w2bXfWQt3ZrRsoYZ3otG0JOX2mlsnuf8S+vLv7/JvW+wFqYI56mN3gjPYMjsfoYOynap9zZ7s5Tigo66peMtRqXzRQa/fz9c3dr1++53m2Y3pu+2c+lbha6OKnMdG60JZZqx+q+KmMJQ50u+8GzuClnYxvku10oGFVTAej6aApVjk6O5tn1aJmLi+WzeMrmT3ipEB5VtYMI9Y5TAfOdMCw0HzROi4potatFZ2WWdVaWZSEgefxoUz9YST90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\\nQA_SUBROOT_SOURCE\\nnode qa426-app.cjs build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa426-app.cjs serve\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261017-2aaf2c-subroot:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261017-2aaf2c-subroot.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Building\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"itself/itself\", \"repo\": \"https://github.com/git-fixtures/submodule\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\", \"healthCheckPath\": \"/\"}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T11:16:12.310154+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "b685400c1f9316f350965a5993d350bc746b0bf4",
+              "message": "plain file"
+            },
+            "createdAt": "2026-10-17T11:14:42.926157Z",
+            "id": "dep-db9lh8ks300s73dskd7g",
+            "startedAt": "2026-10-17T11:15:48.039198Z",
+            "status": "build_in_progress",
+            "trigger": "other",
+            "updatedAt": "2026-10-17T11:15:48.039199Z"
+          }
+        ],
+        "detail": {
+          "at": "2026-10-17T11:16:12.309880+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9lh8ks300s73dskd70",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.319,
+          "response": "{\"id\": \"srv-db9lh8ks300s73dskd70\", \"name\": \"qa-20261017-2aaf2c-subroot\", \"immutableName\": \"qa-20261017-2aaf2c-subroot\", \"slug\": \"qa-20261017-2aaf2c-subroot\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9lh8ks300s73dskd70\", \"createdAt\": \"2026-10-17T11:14:43Z\", \"updatedAt\": \"2026-10-17T11:15:44Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\nnode - <<'QA_SUBROOT_SOURCE'\\nconst fs=require('node:fs'),zlib=require('node:zlib');for(const[n,v]of Object.entries(JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/41Wa2/aShD9K758sS25jlm/iaiUtrTpVW/SJumnEqF9zIJbsyZrmwZR/vsdPyCE5l5VkYKZ3Zk558zDbAcPNCDRK7paufx7ORgNeKHKypDlWMNDnWmwTFUIGMnStB2uN6uqODnpjHhKyxJ0dXLaGc/KSme8wkuLqlqdXGlMpn3eJdYgx3/fXl+5K6pLsGTpaqDifZbD7UZxy+zg4i3QoDi438tCmY5ZVzIxbdtZUv0D9B9E6C6euPcYygUds/HrjpjL0b2CS1ouLBNPSBiZtluvBBotZrsim0NZWeYCHpHEVMla8SorlFEwZL4GYdnbXlOEUI6v2XfglSt1sZwoVAVKqzf9gE1pITO3vWi7S7qy1Pj1NpPWX8gCHrOyKlsOyrY1VLVW35Sj6jy/74Gz8SlbZZ8fbm7ZpoJyxNwc1LxaOB2ZEX4gj9397sCfInJVvYS0Qded7tFh3N/A3dv7rMa209lpC73SBYeydNegS1TIaXk6XTwHD+eaLmdHqE7JzGaNh6JLsO3d+e5Ia4yYyY21trddv7kCYDV5qGlurTs5nSdhz7s7e9nXNK+R2ronZruA0TbWm6LIgaLS/XUX+nDPgbZxn5sO5NcNRqzenjfV8/U3cj8ej01WZ7kw952xHj81S1sDTO3mxdwyv1zMbr++ubm+vpu9mby/vpmYTtvbzTypecfZPj/QP0fJfuqsgtN2b/P13f5CgP/KefH+bnLzogcyg7wE42V6LZkDvTb5H8zkMcjDRLOiqMb9KGqqRLH8+vXjO9SpWRv9cN426bSF7fmA9ShtHJp+m9SqypYw7gV6Uhlr1B0homrRLCS31jkWrtfvEuFZxPOcrYmRKuyLV9VmBebIxE2ZZ5w2bXfWQt3ZrRsoYZ3otG0JOX2mlsnuf8S+vLv7/JvW+wFqYI56mN3gjPYMjsfoYOynap9zZ7s5Tigo66peMtRqXzRQa/fz9c3dr1++53m2Y3pu+2c+lbha6OKnMdG60JZZqx+q+KmMJQ50u+8GzuClnYxvku10oGFVTAej6aApVjk6O5tn1aJmLi+WzeMrmT3ipEB5VtYMI9Y5TAfOdMCw0HzROi4potatFZ2WWdVaWZSEgefxoUz9YST90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\\nQA_SUBROOT_SOURCE\\nnode qa426-app.cjs build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa426-app.cjs serve\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261017-2aaf2c-subroot:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261017-2aaf2c-subroot.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Building\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"itself/itself\", \"repo\": \"https://github.com/git-fixtures/submodule\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\", \"healthCheckPath\": \"/\"}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T11:16:26.526308+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "b685400c1f9316f350965a5993d350bc746b0bf4",
+              "message": "plain file"
+            },
+            "createdAt": "2026-10-17T11:14:42.926157Z",
+            "id": "dep-db9lh8ks300s73dskd7g",
+            "startedAt": "2026-10-17T11:15:48.039198Z",
+            "status": "build_in_progress",
+            "trigger": "other",
+            "updatedAt": "2026-10-17T11:15:48.039199Z"
+          }
+        ],
+        "detail": {
+          "at": "2026-10-17T11:16:26.526174+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9lh8ks300s73dskd70",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.74,
+          "response": "{\"id\": \"srv-db9lh8ks300s73dskd70\", \"name\": \"qa-20261017-2aaf2c-subroot\", \"immutableName\": \"qa-20261017-2aaf2c-subroot\", \"slug\": \"qa-20261017-2aaf2c-subroot\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9lh8ks300s73dskd70\", \"createdAt\": \"2026-10-17T11:14:43Z\", \"updatedAt\": \"2026-10-17T11:16:19Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\nnode - <<'QA_SUBROOT_SOURCE'\\nconst fs=require('node:fs'),zlib=require('node:zlib');for(const[n,v]of Object.entries(JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/41Wa2/aShD9K758sS25jlm/iaiUtrTpVW/SJumnEqF9zIJbsyZrmwZR/vsdPyCE5l5VkYKZ3Zk558zDbAcPNCDRK7paufx7ORgNeKHKypDlWMNDnWmwTFUIGMnStB2uN6uqODnpjHhKyxJ0dXLaGc/KSme8wkuLqlqdXGlMpn3eJdYgx3/fXl+5K6pLsGTpaqDifZbD7UZxy+zg4i3QoDi438tCmY5ZVzIxbdtZUv0D9B9E6C6euPcYygUds/HrjpjL0b2CS1ouLBNPSBiZtluvBBotZrsim0NZWeYCHpHEVMla8SorlFEwZL4GYdnbXlOEUI6v2XfglSt1sZwoVAVKqzf9gE1pITO3vWi7S7qy1Pj1NpPWX8gCHrOyKlsOyrY1VLVW35Sj6jy/74Gz8SlbZZ8fbm7ZpoJyxNwc1LxaOB2ZEX4gj9397sCfInJVvYS0Qded7tFh3N/A3dv7rMa209lpC73SBYeydNegS1TIaXk6XTwHD+eaLmdHqE7JzGaNh6JLsO3d+e5Ia4yYyY21trddv7kCYDV5qGlurTs5nSdhz7s7e9nXNK+R2ronZruA0TbWm6LIgaLS/XUX+nDPgbZxn5sO5NcNRqzenjfV8/U3cj8ej01WZ7kw952xHj81S1sDTO3mxdwyv1zMbr++ubm+vpu9mby/vpmYTtvbzTypecfZPj/QP0fJfuqsgtN2b/P13f5CgP/KefH+bnLzogcyg7wE42V6LZkDvTb5H8zkMcjDRLOiqMb9KGqqRLH8+vXjO9SpWRv9cN426bSF7fmA9ShtHJp+m9SqypYw7gV6Uhlr1B0homrRLCS31jkWrtfvEuFZxPOcrYmRKuyLV9VmBebIxE2ZZ5w2bXfWQt3ZrRsoYZ3otG0JOX2mlsnuf8S+vLv7/JvW+wFqYI56mN3gjPYMjsfoYOynap9zZ7s5Tigo66peMtRqXzRQa/fz9c3dr1++53m2Y3pu+2c+lbha6OKnMdG60JZZqx+q+KmMJQ50u+8GzuClnYxvku10oGFVTAej6aApVjk6O5tn1aJmLi+WzeMrmT3ipEB5VtYMI9Y5TAfOdMCw0HzROi4potatFZ2WWdVaWZSEgefxoUz9YST90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\\nQA_SUBROOT_SOURCE\\nnode qa426-app.cjs build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa426-app.cjs serve\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261017-2aaf2c-subroot:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261017-2aaf2c-subroot.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Failed\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"itself/itself\", \"repo\": \"https://github.com/git-fixtures/submodule\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\", \"healthCheckPath\": \"/\"}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T11:16:40.554934+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "b685400c1f9316f350965a5993d350bc746b0bf4",
+              "message": "plain file"
+            },
+            "createdAt": "2026-10-17T11:14:42.926157Z",
+            "finishedAt": "2026-10-17T11:16:32.854647Z",
+            "id": "dep-db9lh8ks300s73dskd7g",
+            "startedAt": "2026-10-17T11:15:48.039198Z",
+            "status": "build_failed",
+            "trigger": "other",
+            "updatedAt": "2026-10-17T11:16:32.854649Z"
+          }
+        ],
+        "detail": {
+          "at": "2026-10-17T11:16:40.554638+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9lh8ks300s73dskd70",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.401,
+          "response": "{\"id\": \"srv-db9lh8ks300s73dskd70\", \"name\": \"qa-20261017-2aaf2c-subroot\", \"immutableName\": \"qa-20261017-2aaf2c-subroot\", \"slug\": \"qa-20261017-2aaf2c-subroot\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9lh8ks300s73dskd70\", \"createdAt\": \"2026-10-17T11:14:43Z\", \"updatedAt\": \"2026-10-17T11:16:19Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\nnode - <<'QA_SUBROOT_SOURCE'\\nconst fs=require('node:fs'),zlib=require('node:zlib');for(const[n,v]of Object.entries(JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/41Wa2/aShD9K758sS25jlm/iaiUtrTpVW/SJumnEqF9zIJbsyZrmwZR/vsdPyCE5l5VkYKZ3Zk558zDbAcPNCDRK7paufx7ORgNeKHKypDlWMNDnWmwTFUIGMnStB2uN6uqODnpjHhKyxJ0dXLaGc/KSme8wkuLqlqdXGlMpn3eJdYgx3/fXl+5K6pLsGTpaqDifZbD7UZxy+zg4i3QoDi438tCmY5ZVzIxbdtZUv0D9B9E6C6euPcYygUds/HrjpjL0b2CS1ouLBNPSBiZtluvBBotZrsim0NZWeYCHpHEVMla8SorlFEwZL4GYdnbXlOEUI6v2XfglSt1sZwoVAVKqzf9gE1pITO3vWi7S7qy1Pj1NpPWX8gCHrOyKlsOyrY1VLVW35Sj6jy/74Gz8SlbZZ8fbm7ZpoJyxNwc1LxaOB2ZEX4gj9397sCfInJVvYS0Qded7tFh3N/A3dv7rMa209lpC73SBYeydNegS1TIaXk6XTwHD+eaLmdHqE7JzGaNh6JLsO3d+e5Ia4yYyY21trddv7kCYDV5qGlurTs5nSdhz7s7e9nXNK+R2ronZruA0TbWm6LIgaLS/XUX+nDPgbZxn5sO5NcNRqzenjfV8/U3cj8ej01WZ7kw952xHj81S1sDTO3mxdwyv1zMbr++ubm+vpu9mby/vpmYTtvbzTypecfZPj/QP0fJfuqsgtN2b/P13f5CgP/KefH+bnLzogcyg7wE42V6LZkDvTb5H8zkMcjDRLOiqMb9KGqqRLH8+vXjO9SpWRv9cN426bSF7fmA9ShtHJp+m9SqypYw7gV6Uhlr1B0homrRLCS31jkWrtfvEuFZxPOcrYmRKuyLV9VmBebIxE2ZZ5w2bXfWQt3ZrRsoYZ3otG0JOX2mlsnuf8S+vLv7/JvW+wFqYI56mN3gjPYMjsfoYOynap9zZ7s5Tigo66peMtRqXzRQa/fz9c3dr1++53m2Y3pu+2c+lbha6OKnMdG60JZZqx+q+KmMJQ50u+8GzuClnYxvku10oGFVTAej6aApVjk6O5tn1aJmLi+WzeMrmT3ipEB5VtYMI9Y5TAfOdMCw0HzROi4potatFZ2WWdVaWZSEgefxoUz9YST90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\\nQA_SUBROOT_SOURCE\\nnode qa426-app.cjs build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa426-app.cjs serve\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261017-2aaf2c-subroot:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261017-2aaf2c-subroot.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Failed\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"itself/itself\", \"repo\": \"https://github.com/git-fixtures/submodule\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\", \"healthCheckPath\": \"/\"}",
+          "stderr": ""
+        }
+      }
+    ],
+    "unexpected_build_receipts": [
+      {
+        "at": "2026-10-17T11:16:42.140879+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "b685400c1f9316f350965a5993d350bc746b0bf4",
+              "message": "plain file"
+            },
+            "createdAt": "2026-10-17T11:14:42.926157Z",
+            "finishedAt": "2026-10-17T11:16:32.854647Z",
+            "id": "dep-db9lh8ks300s73dskd7g",
+            "startedAt": "2026-10-17T11:15:48.039198Z",
+            "status": "build_failed",
+            "trigger": "other",
+            "updatedAt": "2026-10-17T11:16:32.854649Z"
+          }
+        ],
+        "native_build": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "srv-db9lh8ks300s73dskd70",
+            "--type",
+            "build",
+            "--limit",
+            "100",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.832,
+          "stdout": "{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:11.253216987Z-67114d0b\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#16 DONE 0.1s\",\n  \"timestamp\": \"2026-10-17T11:16:11.253216987Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:11.253220814Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-17T11:16:11.253220814Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:11.253239489Z-b34c2ee5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#17 [stage-0  5/12] RUN mkdir -p /usr/local/lib/node_modules/pnpm \\u0026\\u0026 tar -xzf /opt/bex/pnpm.tgz -C /usr/local/lib/node_modules/pnpm --strip-components=1 --no-same-owner \\u0026\\u0026 rm /opt/bex/pnpm.tgz \\u0026\\u0026 ln -sf ../lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm \\u0026\\u0026 ln -sf ../lib/node_modules/pnpm/bin/pnpx.cjs /usr/local/bin/pnpx\",\n  \"timestamp\": \"2026-10-17T11:16:11.253239489Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:11.458355152Z-685e7cb5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#17 DONE 0.4s\",\n  \"timestamp\": \"2026-10-17T11:16:11.458355152Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:11.648532655Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-17T11:16:11.648532655Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:11.648574364Z-6edc92c6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#18 [stage-0  6/12] COPY --link --from=mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 /ffmpeg /ffprobe /\",\n  \"timestamp\": \"2026-10-17T11:16:11.648574364Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:11.856251007Z-2e211b91\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#18 merging 0.4s done\",\n  \"timestamp\": \"2026-10-17T11:16:11.856251007Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:11.856285151Z-e8ac5b1b\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#18 DONE 0.7s\",\n  \"timestamp\": \"2026-10-17T11:16:11.856285151Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:11.97796051Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-17T11:16:11.97796051Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:11.978043156Z-a6b039bf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#19 [stage-0  7/12] RUN ln -sf /ffmpeg /usr/local/bin/ffmpeg \\u0026\\u0026 ln -sf /ffprobe /usr/local/bin/ffprobe\",\n  \"timestamp\": \"2026-10-17T11:16:11.978043156Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:11.978048906Z-a0b35fb6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#19 DONE 0.1s\",\n  \"timestamp\": \"2026-10-17T11:16:11.978048906Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.096084727Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-17T11:16:12.096084727Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.096137756Z-fcd1fad9\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#20 [stage-0  8/12] WORKDIR /opt/render/project/src\",\n  \"timestamp\": \"2026-10-17T11:16:12.096137756Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.096142995Z-ca5e1ed7\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#20 DONE 0.0s\",\n  \"timestamp\": \"2026-10-17T11:16:12.096142995Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.096147003Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-17T11:16:12.096147003Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.096152052Z-a6808b42\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#21 [stage-0  9/12] COPY . .\",\n  \"timestamp\": \"2026-10-17T11:16:12.096152052Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.096156431Z-d56db9d8\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#21 DONE 0.0s\",\n  \"timestamp\": \"2026-10-17T11:16:12.096156431Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.096160067Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-17T11:16:12.096160067Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.096164345Z-cf6d03b4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#22 [stage-0 10/12] COPY \\u003c\\u003cBEX_LOAD_ENV /opt/bex/load-env\",\n  \"timestamp\": \"2026-10-17T11:16:12.096164345Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.09619342Z-027027a5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#22 DONE 0.0s\",\n  \"timestamp\": \"2026-10-17T11:16:12.09619342Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.248962477Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-17T11:16:12.248962477Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.249015786Z-8205b5ba\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 [stage-0 11/12] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\\\"/bin/bash\\\",\\\"-c\\\",\\\". /opt/bex/load-env\\\\nset -e\\\\nnode - \\u003c\\u003c'QA_SUBROOT_SOURCE'\\\\nconst fs=require('node:fs'),zlib=require('node:zlib');for(const[n,v]of Object.entries(JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/41Wa2/aShD9K758sS25jlm/iaiUtrTpVW/SJumnEqF9zIJbsyZrmwZR/vsdPyCE5l5VkYKZ3Zk558zDbAcPNCDRK7paufx7ORgNeKHKypDlWMNDnWmwTFUIGMnStB2uN6uqODnpjHhKyxJ0dXLaGc/KSme8wkuLqlqdXGlMpn3eJdYgx3/fXl+5K6pLsGTpaqDifZbD7UZxy+zg4i3QoDi438tCmY5ZVzIxbdtZUv0D9B9E6C6euPcYygUds/HrjpjL0b2CS1ouLBNPSBiZtluvBBotZrsim0NZWeYCHpHEVMla8SorlFEwZL4GYdnbXlOEUI6v2XfglSt1sZwoVAVKqzf9gE1pITO3vWi7S7qy1Pj1NpPWX8gCHrOyKlsOyrY1VLVW35Sj6jy/74Gz8SlbZZ8fbm7ZpoJyxNwc1LxaOB2ZEX4gj9397sCfInJVvYS0Qded7tFh3N/A3dv7rMa209lpC73SBYeydNegS1TIaXk6XTwHD+eaLmdHqE7JzGaNh6JLsO3d+e5Ia4yYyY21trddv7kCYDV5qGlurTs5nSdhz7s7e9nXNK+R2ronZruA0TbWm6LIgaLS/XUX+nDPgbZxn5sO5NcNRqzenjfV8/U3cj8ej01WZ7kw952xHj81S1sDTO3mxdwyv1zMbr++ubm+vpu9mby/vpmYTtvbzTypecfZPj/QP0fJfuqsgtN2b/P13f5CgP/KefH+bnLzogcyg7wE42V6LZkDvTb5H8zkMcjDRLOiqMb9KGqqRLH8+vXjO9SpWRv9cN426bSF7fmA9ShtHJp+m9SqypYw7gV6Uhlr1B0homrRLCS31jkWrtfvEuFZxPOcrYmRKuyLV9VmBebIxE2ZZ5w2bXfWQt3ZrRsoYZ3otG0JOX2mlsnuf8S+vLv7/JvW+wFqYI56mN3gjPYMjsfoYOynap9zZ7s5Tigo66peMtRqXzRQa/fz9c3dr1++53m2Y3pu+2c+lbha6OKnMdG60JZZqx+q+KmMJQ50u+8GzuClnYxvku10oGFVTAej6aApVjk6O5tn1aJmLi+WzeMrmT3ipEB5VtYMI9Y5TAfOdMCw0HzROi4potatFZ2WWdVaWZSEgefxoUz9YST90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\\\\nQA_SUBROOT_SOURCE\\\\nnode qa426-app.cjs build\\\"]\",\n  \"timestamp\": \"2026-10-17T11:16:12.249015786Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.294883676Z-91ed6087\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.196 QA_SUBROOT_BEFORE {\\\"marker\\\":\\\"QA426_2aaf2c_bex\\\",\\\"node\\\":\\\"v24.22.0\\\",\\\"files\\\":{\\\".gitmodules\\\":null,\\\"basic/LICENSE\\\":null,\\\"basic/CHANGELOG\\\":null},\\\"absent\\\":{\\\"README.md\\\":true,\\\"itself\\\":true},\\\"program_sha256\\\":\\\"250c627f8d7723a3ec652b041a2a29c4c2f42db116554ae9549edd26e796293f\\\"}\",\n  \"timestamp\": \"2026-10-17T11:16:12.294883676Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384048929Z-5b361387\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200 node:assert:152\",\n  \"timestamp\": \"2026-10-17T11:16:12.384048929Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384110724Z-f612fc9a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200   throw new AssertionError(obj);\",\n  \"timestamp\": \"2026-10-17T11:16:12.384110724Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384115624Z-01e0bf0b\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200   ^\",\n  \"timestamp\": \"2026-10-17T11:16:12.384115624Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384120092Z-e677069f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200 \",\n  \"timestamp\": \"2026-10-17T11:16:12.384120092Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384125192Z-dccdd834\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200 AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\",\n  \"timestamp\": \"2026-10-17T11:16:12.384125192Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.38412954Z-1118469b\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200 + actual - expected\",\n  \"timestamp\": \"2026-10-17T11:16:12.38412954Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384133667Z-e677069f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200 \",\n  \"timestamp\": \"2026-10-17T11:16:12.384133667Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384137695Z-e4e09164\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200   {\",\n  \"timestamp\": \"2026-10-17T11:16:12.384137695Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384141653Z-1cc8a8fe\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200 +   '.gitmodules': null,\",\n  \"timestamp\": \"2026-10-17T11:16:12.384141653Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.38414573Z-e8963d0e\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200 +   'basic/CHANGELOG': null,\",\n  \"timestamp\": \"2026-10-17T11:16:12.38414573Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384167361Z-e0a57b61\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200 +   'basic/LICENSE': null\",\n  \"timestamp\": \"2026-10-17T11:16:12.384167361Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384171589Z-6b441856\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200 -   '.gitmodules': {\",\n  \"timestamp\": \"2026-10-17T11:16:12.384171589Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384175657Z-c129939e\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200 -     bytes: 83,\",\n  \"timestamp\": \"2026-10-17T11:16:12.384175657Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384179945Z-e46545a6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200 -     sha256: '25a1f02975734c82b9df9d9756611e4d666fd087dd24d25797f02a724b4b7954'\",\n  \"timestamp\": \"2026-10-17T11:16:12.384179945Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384184012Z-1c18c623\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200 -   },\",\n  \"timestamp\": \"2026-10-17T11:16:12.384184012Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.38418853Z-c407c6f2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200 -   'basic/CHANGELOG': {\",\n  \"timestamp\": \"2026-10-17T11:16:12.38418853Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384192638Z-8ccee062\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200 -     bytes: 18,\",\n  \"timestamp\": \"2026-10-17T11:16:12.384192638Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384196716Z-5ada0031\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200 -     sha256: '9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5'\",\n  \"timestamp\": \"2026-10-17T11:16:12.384196716Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384200964Z-1c18c623\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200 -   },\",\n  \"timestamp\": \"2026-10-17T11:16:12.384200964Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384204891Z-cd81787f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200 -   'basic/LICENSE': {\",\n  \"timestamp\": \"2026-10-17T11:16:12.384204891Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384233104Z-c25716f1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200 -     bytes: 1072,\",\n  \"timestamp\": \"2026-10-17T11:16:12.384233104Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.38423601Z-0e65845f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200 -     sha256: '20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09'\",\n  \"timestamp\": \"2026-10-17T11:16:12.38423601Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384238704Z-93f5431d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200 -   }\",\n  \"timestamp\": \"2026-10-17T11:16:12.384238704Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384241469Z-e2e08e3e\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200   }\",\n  \"timestamp\": \"2026-10-17T11:16:12.384241469Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384244125Z-e677069f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200 \",\n  \"timestamp\": \"2026-10-17T11:16:12.384244125Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.38424728Z-77a6cc55\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200     at verify (/opt/render/project/src/qa426-app.cjs:3:27)\",\n  \"timestamp\": \"2026-10-17T11:16:12.38424728Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384250106Z-db71a4bc\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200     at Object.\\u003canonymous\\u003e (/opt/render/project/src/qa426-app.cjs:4:101)\",\n  \"timestamp\": \"2026-10-17T11:16:12.384250106Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384252711Z-e56e3ccb\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200     at Module._compile (node:internal/modules/cjs/loader:1929:14)\",\n  \"timestamp\": \"2026-10-17T11:16:12.384252711Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384255326Z-114b1234\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200     at Object..js (node:internal/modules/cjs/loader:2060:10)\",\n  \"timestamp\": \"2026-10-17T11:16:12.384255326Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384258031Z-766ed4b3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200     at Module.load (node:internal/modules/cjs/loader:1651:32)\",\n  \"timestamp\": \"2026-10-17T11:16:12.384258031Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384260596Z-ff66cb0f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200     at Module._load (node:internal/modules/cjs/loader:1443:12)\",\n  \"timestamp\": \"2026-10-17T11:16:12.384260596Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384263181Z-90fc35ba\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200     at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\",\n  \"timestamp\": \"2026-10-17T11:16:12.384263181Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384267057Z-9a895a29\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200     at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\",\n  \"timestamp\": \"2026-10-17T11:16:12.384267057Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384271005Z-f7dfa9de\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200     at node:internal/main/run_main_module:33:47 {\",\n  \"timestamp\": \"2026-10-17T11:16:12.384271005Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.38427374Z-73215967\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200   generatedMessage: true,\",\n  \"timestamp\": \"2026-10-17T11:16:12.38427374Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384276355Z-3aad0e4c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200   code: 'ERR_ASSERTION',\",\n  \"timestamp\": \"2026-10-17T11:16:12.384276355Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384280573Z-8515f60c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200   actual: {\",\n  \"timestamp\": \"2026-10-17T11:16:12.384280573Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384283578Z-da8acf05\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200     '.gitmodules': null,\",\n  \"timestamp\": \"2026-10-17T11:16:12.384283578Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384286343Z-b76bfe50\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200     'basic/LICENSE': null,\",\n  \"timestamp\": \"2026-10-17T11:16:12.384286343Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384288978Z-07d229eb\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200     'basic/CHANGELOG': null\",\n  \"timestamp\": \"2026-10-17T11:16:12.384288978Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384291613Z-397fa656\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200   },\",\n  \"timestamp\": \"2026-10-17T11:16:12.384291613Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384294298Z-7844f79a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200   expected: {\",\n  \"timestamp\": \"2026-10-17T11:16:12.384294298Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384296923Z-b8b06033\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200     '.gitmodules': {\",\n  \"timestamp\": \"2026-10-17T11:16:12.384296923Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384299548Z-5e58b72f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200       bytes: 83,\",\n  \"timestamp\": \"2026-10-17T11:16:12.384299548Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384302182Z-d7dede43\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200       sha256: '25a1f02975734c82b9df9d9756611e4d666fd087dd24d25797f02a724b4b7954'\",\n  \"timestamp\": \"2026-10-17T11:16:12.384302182Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384304807Z-21238aee\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200     },\",\n  \"timestamp\": \"2026-10-17T11:16:12.384304807Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384307412Z-cdcae422\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200     'basic/LICENSE': {\",\n  \"timestamp\": \"2026-10-17T11:16:12.384307412Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384310017Z-2a2e37e4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200       bytes: 1072,\",\n  \"timestamp\": \"2026-10-17T11:16:12.384310017Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384312642Z-6263ec0e\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200       sha256: '20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09'\",\n  \"timestamp\": \"2026-10-17T11:16:12.384312642Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384315257Z-21238aee\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200     },\",\n  \"timestamp\": \"2026-10-17T11:16:12.384315257Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384317832Z-e88f47f3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200     'basic/CHANGELOG': {\",\n  \"timestamp\": \"2026-10-17T11:16:12.384317832Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384320436Z-31bac34f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200       bytes: 18,\",\n  \"timestamp\": \"2026-10-17T11:16:12.384320436Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384323092Z-88e33788\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200       sha256: '9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5'\",\n  \"timestamp\": \"2026-10-17T11:16:12.384323092Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384325746Z-70745636\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200     }\",\n  \"timestamp\": \"2026-10-17T11:16:12.384325746Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384328342Z-397fa656\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200   },\",\n  \"timestamp\": \"2026-10-17T11:16:12.384328342Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384330967Z-4092c0c8\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200   operator: 'deepStrictEqual',\",\n  \"timestamp\": \"2026-10-17T11:16:12.384330967Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384333541Z-bc4303a2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200   diff: 'simple'\",\n  \"timestamp\": \"2026-10-17T11:16:12.384333541Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384336146Z-af5fd5c6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200 }\",\n  \"timestamp\": \"2026-10-17T11:16:12.384336146Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384338771Z-e677069f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200 \",\n  \"timestamp\": \"2026-10-17T11:16:12.384338771Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384341366Z-2be0c82c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 0.200 Node.js v24.22.0\",\n  \"timestamp\": \"2026-10-17T11:16:12.384341366Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384390338Z-838d35ff\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#23 ERROR: process \\\"/bin/bash -c . /opt/bex/load-env\\\\nset -e\\\\nnode - \\u003c\\u003c'QA_SUBROOT_SOURCE'\\\\nconst fs=require('node:fs'),zlib=require('node:zlib');for(const[n,v]of Object.entries(JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/41Wa2/aShD9K758sS25jlm/iaiUtrTpVW/SJumnEqF9zIJbsyZrmwZR/vsdPyCE5l5VkYKZ3Zk558zDbAcPNCDRK7paufx7ORgNeKHKypDlWMNDnWmwTFUIGMnStB2uN6uqODnpjHhKyxJ0dXLaGc/KSme8wkuLqlqdXGlMpn3eJdYgx3/fXl+5K6pLsGTpaqDifZbD7UZxy+zg4i3QoDi438tCmY5ZVzIxbdtZUv0D9B9E6C6euPcYygUds/HrjpjL0b2CS1ouLBNPSBiZtluvBBotZrsim0NZWeYCHpHEVMla8SorlFEwZL4GYdnbXlOEUI6v2XfglSt1sZwoVAVKqzf9gE1pITO3vWi7S7qy1Pj1NpPWX8gCHrOyKlsOyrY1VLVW35Sj6jy/74Gz8SlbZZ8fbm7ZpoJyxNwc1LxaOB2ZEX4gj9397sCfInJVvYS0Qded7tFh3N/A3dv7rMa209lpC73SBYeydNegS1TIaXk6XTwHD+eaLmdHqE7JzGaNh6JLsO3d+e5Ia4yYyY21trddv7kCYDV5qGlurTs5nSdhz7s7e9nXNK+R2ronZruA0TbWm6LIgaLS/XUX+nDPgbZxn5sO5NcNRqzenjfV8/U3cj8ej01WZ7kw952xHj81S1sDTO3mxdwyv1zMbr++ubm+vpu9mby/vpmYTtvbzTypecfZPj/QP0fJfuqsgtN2b/P13f5CgP/KefH+bnLzogcyg7wE42V6LZkDvTb5H8zkMcjDRLOiqMb9KGqqRLH8+vXjO9SpWRv9cN426bSF7fmA9ShtHJp+m9SqypYw7gV6Uhlr1B0homrRLCS31jkWrtfvEuFZxPOcrYmRKuyLV9VmBebIxE2ZZ5w2bXfWQt3ZrRsoYZ3otG0JOX2mlsnuf8S+vLv7/JvW+wFqYI56mN3gjPYMjsfoYOynap9zZ7s5Tigo66peMtRqXzRQa/fz9c3dr1++53m2Y3pu+2c+lbha6OKnMdG60JZZqx+q+KmMJQ50u+8GzuClnYxvku10oGFVTAej6aApVjk6O5tn1aJmLi+WzeMrmT3ipEB5VtYMI9Y5TAfOdMCw0HzROi4potatFZ2WWdVaWZSEgefxoUz9YST90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\\\\nQA_SUBROOT_SOURCE\\\\nnode qa426-app.cjs build\\\" did not complete successfully: exit code: 1\",\n  \"timestamp\": \"2026-10-17T11:16:12.384390338Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384403503Z-67c666bb\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"------\",\n  \"timestamp\": \"2026-10-17T11:16:12.384403503Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384440942Z-f9ba95e2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \" \\u003e [stage-0 11/12] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\\\"/bin/bash\\\",\\\"-c\\\",\\\". /opt/bex/load-env\\\\nset -e\\\\nnode - \\u003c\\u003c'QA_SUBROOT_SOURCE'\\\\nconst fs=require('node:fs'),zlib=require('node:zlib');for(const[n,v]of Object.entries(JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/41Wa2/aShD9K758sS25jlm/iaiUtrTpVW/SJumnEqF9zIJbsyZrmwZR/vsdPyCE5l5VkYKZ3Zk558zDbAcPNCDRK7paufx7ORgNeKHKypDlWMNDnWmwTFUIGMnStB2uN6uqODnpjHhKyxJ0dXLaGc/KSme8wkuLqlqdXGlMpn3eJdYgx3/fXl+5K6pLsGTpaqDifZbD7UZxy+zg4i3QoDi438tCmY5ZVzIxbdtZUv0D9B9E6C6euPcYygUds/HrjpjL0b2CS1ouLBNPSBiZtluvBBotZrsim0NZWeYCHpHEVMla8SorlFEwZL4GYdnbXlOEUI6v2XfglSt1sZwoVAVKqzf9gE1pITO3vWi7S7qy1Pj1NpPWX8gCHrOyKlsOyrY1VLVW35Sj6jy/74Gz8SlbZZ8fbm7ZpoJyxNwc1LxaOB2ZEX4gj9397sCfInJVvYS0Qded7tFh3N/A3dv7rMa209lpC73SBYeydNegS1TIaXk6XTwHD+eaLmdHqE7JzGaNh6JLsO3d+e5Ia4yYyY21trddv7kCYDV5qGlurTs5nSdhz7s7e9nXNK+R2ronZruA0TbWm6LIgaLS/XUX+nDPgbZxn5sO5NcNRqzenjfV8/U3cj8ej01WZ7kw952xHj81S1sDTO3mxdwyv1zMbr++ubm+vpu9mby/vpmYTtvbzTypecfZPj/QP0fJfuqsgtN2b/P13f5CgP/KefH+bnLzogcyg7wE42V6LZkDvTb5H8zkMcjDRLOiqMb9KGqqRLH8+vXjO9SpWRv9cN426bSF7fmA9ShtHJp+m9SqypYw7gV6Uhlr1B0homrRLCS31jkWrtfvEuFZxPOcrYmRKuyLV9VmBebIxE2ZZ5w2bXfWQt3ZrRsoYZ3otG0JOX2mlsnuf8S+vLv7/JvW+wFqYI56mN3gjPYMjsfoYOynap9zZ7s5Tigo66peMtRqXzRQa/fz9c3dr1++53m2Y3pu+2c+lbha6OKnMdG60JZZqx+q+KmMJQ50u+8GzuClnYxvku10oGFVTAej6aApVjk6O5tn1aJmLi+WzeMrmT3ipEB5VtYMI9Y5TAfOdMCw0HzROi4potatFZ2WWdVaWZSEgefxoUz9YST90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\\\\nQA_SUBROOT_SOURCE\\\\nnode qa426-app.cjs build\\\"]:\",\n  \"timestamp\": \"2026-10-17T11:16:12.384440942Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384446272Z-095020e1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"0.200     'basic/CHANGELOG': {\",\n  \"timestamp\": \"2026-10-17T11:16:12.384446272Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.38445021Z-cbf461b5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"0.200       bytes: 18,\",\n  \"timestamp\": \"2026-10-17T11:16:12.38445021Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384454127Z-e5c6aee2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"0.200       sha256: '9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5'\",\n  \"timestamp\": \"2026-10-17T11:16:12.384454127Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384459116Z-dfaf8ad4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"0.200     }\",\n  \"timestamp\": \"2026-10-17T11:16:12.384459116Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384463204Z-e3c3dae0\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"0.200   },\",\n  \"timestamp\": \"2026-10-17T11:16:12.384463204Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384466982Z-2688e922\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"0.200   operator: 'deepStrictEqual',\",\n  \"timestamp\": \"2026-10-17T11:16:12.384466982Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384477682Z-ca747a8c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"0.200   diff: 'simple'\",\n  \"timestamp\": \"2026-10-17T11:16:12.384477682Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384481258Z-63031a04\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"0.200 }\",\n  \"timestamp\": \"2026-10-17T11:16:12.384481258Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384485065Z-7439d011\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"0.200 \",\n  \"timestamp\": \"2026-10-17T11:16:12.384485065Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384488762Z-73d06a22\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"0.200 Node.js v24.22.0\",\n  \"timestamp\": \"2026-10-17T11:16:12.384488762Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.384492289Z-67c666bb\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"------\",\n  \"timestamp\": \"2026-10-17T11:16:12.384492289Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t-2026-10-17T11:16:12.386309608Z-c7cae574\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-par85u8p803a9oo0cn8t\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"error: failed to solve: process \\\"/bin/bash -c . /opt/bex/load-env\\\\nset -e\\\\nnode - \\u003c\\u003c'QA_SUBROOT_SOURCE'\\\\nconst fs=require('node:fs'),zlib=require('node:zlib');for(const[n,v]of Object.entries(JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/41Wa2/aShD9K758sS25jlm/iaiUtrTpVW/SJumnEqF9zIJbsyZrmwZR/vsdPyCE5l5VkYKZ3Zk558zDbAcPNCDRK7paufx7ORgNeKHKypDlWMNDnWmwTFUIGMnStB2uN6uqODnpjHhKyxJ0dXLaGc/KSme8wkuLqlqdXGlMpn3eJdYgx3/fXl+5K6pLsGTpaqDifZbD7UZxy+zg4i3QoDi438tCmY5ZVzIxbdtZUv0D9B9E6C6euPcYygUds/HrjpjL0b2CS1ouLBNPSBiZtluvBBotZrsim0NZWeYCHpHEVMla8SorlFEwZL4GYdnbXlOEUI6v2XfglSt1sZwoVAVKqzf9gE1pITO3vWi7S7qy1Pj1NpPWX8gCHrOyKlsOyrY1VLVW35Sj6jy/74Gz8SlbZZ8fbm7ZpoJyxNwc1LxaOB2ZEX4gj9397sCfInJVvYS0Qded7tFh3N/A3dv7rMa209lpC73SBYeydNegS1TIaXk6XTwHD+eaLmdHqE7JzGaNh6JLsO3d+e5Ia4yYyY21trddv7kCYDV5qGlurTs5nSdhz7s7e9nXNK+R2ronZruA0TbWm6LIgaLS/XUX+nDPgbZxn5sO5NcNRqzenjfV8/U3cj8ej01WZ7kw952xHj81S1sDTO3mxdwyv1zMbr++ubm+vpu9mby/vpmYTtvbzTypecfZPj/QP0fJfuqsgtN2b/P13f5CgP/KefH+bnLzogcyg7wE42V6LZkDvTb5H8zkMcjDRLOiqMb9KGqqRLH8+vXjO9SpWRv9cN426bSF7fmA9ShtHJp+m9SqypYw7gV6Uhlr1B0homrRLCS31jkWrtfvEuFZxPOcrYmRKuyLV9VmBebIxE2ZZ5w2bXfWQt3ZrRsoYZ3otG0JOX2mlsnuf8S+vLv7/JvW+wFqYI56mN3gjPYMjsfoYOynap9zZ7s5Tigo66peMtRqXzRQa/fz9c3dr1++53m2Y3pu+2c+lbha6OKnMdG60JZZqx+q+KmMJQ50u+8GzuClnYxvku10oGFVTAej6aApVjk6O5tn1aJmLi+WzeMrmT3ipEB5VtYMI9Y5TAfOdMCw0HzROi4potatFZ2WWdVaWZSEgefxoUz9YST90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\\\\nQA_SUBROOT_SOURCE\\\\nnode qa426-app.cjs build\\\" did not complete successfully: exit code: 1\",\n  \"timestamp\": \"2026-10-17T11:16:12.386309608Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-iuepn01ngrl14a9nhrsh-2026-10-17T11:16:32.854647Z-9141219b\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-iuepn01ngrl14a9nhrsh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Build failed: build failed in the docker build step:\",\n  \"timestamp\": \"2026-10-17T11:16:32.854647Z\"\n}{\n  \"id\": \"srv-db9lh8ks300s73dskd70-iuepn01ngrl14a9nhrsh-2026-10-17T11:16:32.854647Z-32fa3936\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9lh8ks300s73dskd70\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9lh8ks300s73dskd70-iuepn01ngrl14a9nhrsh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e 90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\\\\nQA_SUBROOT_SOURCE\\\\nnode qa426-app.cjs build\\\" did not complete successfully: exit code: 1\",\n  \"timestamp\": \"2026-10-17T11:16:32.854647Z\"\n}",
+          "stderr": "",
+          "native_exit": 0
+        }
+      }
+    ],
+    "delete_intent": {
+      "at": "2026-10-17T11:19:43.643942+00:00",
+      "children": [
+        {
+          "commit": {
+            "id": "b685400c1f9316f350965a5993d350bc746b0bf4",
+            "message": "plain file"
+          },
+          "createdAt": "2026-10-17T11:14:42.926157Z",
+          "finishedAt": "2026-10-17T11:16:32.854647Z",
+          "id": "dep-db9lh8ks300s73dskd7g",
+          "startedAt": "2026-10-17T11:15:48.039198Z",
+          "status": "build_failed",
+          "trigger": "other",
+          "updatedAt": "2026-10-17T11:16:32.854649Z"
+        }
+      ]
+    },
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db9lh8ks300s73dskd70",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.935,
+      "stdout": "{\"data\": {\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"master\", \"createdAt\": \"2026-10-17T11:14:43Z\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9lh8ks300s73dskd70\", \"id\": \"srv-db9lh8ks300s73dskd70\", \"name\": \"qa-20261017-2aaf2c-subroot\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/git-fixtures/submodule\", \"rootDir\": \"itself/itself\", \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\nnode - <<'QA_SUBROOT_SOURCE'\\nconst fs=require('node:fs'),zlib=require('node:zlib');for(const[n,v]of Object.entries(JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/41Wa2/aShD9K758sS25jlm/iaiUtrTpVW/SJumnEqF9zIJbsyZrmwZR/vsdPyCE5l5VkYKZ3Zk558zDbAcPNCDRK7paufx7ORgNeKHKypDlWMNDnWmwTFUIGMnStB2uN6uqODnpjHhKyxJ0dXLaGc/KSme8wkuLqlqdXGlMpn3eJdYgx3/fXl+5K6pLsGTpaqDifZbD7UZxy+zg4i3QoDi438tCmY5ZVzIxbdtZUv0D9B9E6C6euPcYygUds/HrjpjL0b2CS1ouLBNPSBiZtluvBBotZrsim0NZWeYCHpHEVMla8SorlFEwZL4GYdnbXlOEUI6v2XfglSt1sZwoVAVKqzf9gE1pITO3vWi7S7qy1Pj1NpPWX8gCHrOyKlsOyrY1VLVW35Sj6jy/74Gz8SlbZZ8fbm7ZpoJyxNwc1LxaOB2ZEX4gj9397sCfInJVvYS0Qded7tFh3N/A3dv7rMa209lpC73SBYeydNegS1TIaXk6XTwHD+eaLmdHqE7JzGaNh6JLsO3d+e5Ia4yYyY21trddv7kCYDV5qGlurTs5nSdhz7s7e9nXNK+R2ronZruA0TbWm6LIgaLS/XUX+nDPgbZxn5sO5NcNRqzenjfV8/U3cj8ej01WZ7kw952xHj81S1sDTO3mxdwyv1zMbr++ubm+vpu9mby/vpmYTtvbzTypecfZPj/QP0fJfuqsgtN2b/P13f5CgP/KefH+bnLzogcyg7wE42V6LZkDvTb5H8zkMcjDRLOiqMb9KGqqRLH8+vXjO9SpWRv9cN426bSF7fmA9ShtHJp+m9SqypYw7gV6Uhlr1B0homrRLCS31jkWrtfvEuFZxPOcrYmRKuyLV9VmBebIxE2ZZ5w2bXfWQt3ZrRsoYZ3otG0JOX2mlsnuf8S+vLv7/JvW+wFqYI56mN3gjPYMjsfoYOynap9zZ7s5Tigo66peMtRqXzRQa/fz9c3dr1++53m2Y3pu+2c+lbha6OKnMdG60JZZqx+q+KmMJQ50u+8GzuClnYxvku10oGFVTAej6aApVjk6O5tn1aJmLi+WzeMrmT3ipEB5VtYMI9Y5TAfOdMCw0HzROi4potatFZ2WWdVaWZSEgefxoUz9YST90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\\nQA_SUBROOT_SOURCE\\nnode qa426-app.cjs build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa426-app.cjs serve\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261017-2aaf2c-subroot:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261017-2aaf2c-subroot.onbex.co\"}, \"slug\": \"qa-20261017-2aaf2c-subroot\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"web_service\", \"updatedAt\": \"2026-10-17T11:16:19Z\", \"environmentId\": null, \"projectId\": null}, \"meta\": {\"deleted\": true}}",
+      "stderr": "",
+      "native_exit": 0
+    },
+    "cleanup_receipts": [
+      {
+        "at": "2026-10-17T11:19:50.022066+00:00",
+        "detail": {
+          "at": "2026-10-17T11:19:46.927723+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9lh8ks300s73dskd70",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "404",
+          "curl_exit": 0,
+          "elapsed": 0.426,
+          "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+          "stderr": ""
+        },
+        "inventory": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "services",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 1.07,
+          "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}]",
+          "stderr": "",
+          "native_exit": 0
+        },
+        "runtime_HTTP": "404",
+        "runtime_exit": 0,
+        "quota": {
+          "at": "2026-10-17T11:19:49.623467+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.397,
+          "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+          "stderr": ""
+        },
+        "children": [
+          {
+            "at": "2026-10-17T11:19:50.021848+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/services/srv-db9lh8ks300s73dskd70/deploys/dep-db9lh8ks300s73dskd7g",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "404",
+            "curl_exit": 0,
+            "elapsed": 0.37,
+            "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+            "stderr": ""
+          }
+        ],
+        "pass": true
+      }
+    ]
+  }
+]

@@ -1,0 +1,41 @@
+{
+  "sweep": 440,
+  "kind": "ordinary native SSE HTTP1/HTTP2 and manual Last-Event-ID resume",
+  "new_findings": 0,
+  "source_head": "ce1c8745ad75ce2048a05f613afef3140cc36158",
+  "both_native_creates_POST201_exit0": 2,
+  "first_children_Live": 2,
+  "exact_source_program_build_and_health": true,
+  "successful_stream_requests": 8,
+  "independently_decoded_events": 24,
+  "HTTP_versions": [
+    "1.1",
+    "2"
+  ],
+  "per_connection_event_arrival_spans_seconds": [
+    1.534,
+    1.5273,
+    1.755,
+    1.577,
+    1.5406,
+    1.5268,
+    1.5183,
+    1.5448
+  ],
+  "incremental_UTF8_CRLF_multiline_comments_retry_id_and_event_checks": true,
+  "manual_LastEventID3_resumes_exact4_5_6": true,
+  "same_boot_and_unique_connection_nonces": true,
+  "native_event_records": 24,
+  "native_initial_resume_begin_end_pairs": 8,
+  "shared_REST_GraphQL_MCP_reads": 6,
+  "explicit_NODE_VERSION24_API_only_reads": 2,
+  "exact_owned_two_parents_two_children_URLs_absent": true,
+  "baseline_current_inventory_quota_termination0": true,
+  "local_HTTP1_two_stream_prerequisite_pass": true,
+  "local_HTTP2_and_full_generated_images_unrun": true,
+  "local_container_context_relay_configs_header_files_removed": true,
+  "browser_EventSource_automation_unrun": true,
+  "actual_serving_SHA_OCI": "unknown",
+  "product_implementation": false,
+  "uncommitted": true
+}

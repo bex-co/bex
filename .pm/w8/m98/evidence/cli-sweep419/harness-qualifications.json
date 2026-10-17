@@ -1,0 +1,7 @@
+{
+  "post_create_native_history_transport": {
+    "original": "create native0/POST201 and exact service/returned child IDs persisted; following native deploy list ended1 after10.299s TLS handshake timeout",
+    "recovery": "read-only same owned service history after more than30seconds; exact returned original child observed, no create replay",
+    "attribution": "transport cause unverified; no new product issue"
+  }
+}

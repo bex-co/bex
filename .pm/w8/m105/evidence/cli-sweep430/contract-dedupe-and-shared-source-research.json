@@ -1,0 +1,81 @@
+{
+  "at": "2026-10-17T11:59:00.931658+00:00",
+  "source_head": "b9d3cdf6c3c8bc58b7ea5d6868243744db79b11c",
+  "checks": [
+    {
+      "command": [
+        "rg",
+        "-n",
+        "-i",
+        "Jekyll|static.{0,80}Ruby|automatic.{0,60}bundler|bundler.{0,60}automatic",
+        ".pm",
+        "--glob",
+        "*.md"
+      ],
+      "exit": 0,
+      "stdout": ".pm/w8/blocked/113.md:35:REST/GraphQL/MCP source/runtime/Free/build/start readbacks all match. The native image default is shared by Python web/private/worker/existing supported cron, predeploy and explicit Python static build artifacts. Only Free web3.12 is hosted; no cron or paid resource. Static artifacts have no runtime server. Dockerfile/image workloads and primary Ruby/Node/Elixir/Go/Rust retain their own contracts. Dashboard and Blueprint consumers need parity review, not a new variable field or browser claim.\n.pm/w4/blocked/320.md:37:- Add execution regressions for generated Node22/24/26 build and runtime images: both Yarn aliases and a dependency-free Yarn script, with npm/pnpm and Node-version controls. Include Node26 static artifact production, retained Ruby/Python companion controls, and stable/change supplier cache inputs. Keep existing narrow/empty PATH behavior rather than overriding a user's PATH.\n.pm/w4/blocked/320.md:45:[Render's native-runtime contract](https://render.com/docs/native-runtimes#tools-and-utilities) lists Yarn at both build and runtime. No authenticated Render account was tested. Local pinned-image executions are arm64; hosted architecture was not queried. Node22 hosted, static/private/worker/cron, Ruby, narrow/empty PATH with Yarn and modern Yarn/packageManager dispatch were not exercised in this pass. Treat them as verification work, not observed live failures. `YARN_VERSION` selection and a broader utility bundle are outside this note.\n.pm/w8/evidence/native-rust-sweep239/README.md:9:This adds partial live Rust-runtime/file acceptance to [w8/m61](../../done/m61/README.md), alongside its Node/Python/static/Go/Ruby evidence. Native POSTs were not intercepted; no exact mutation-wire capture, deployed OCI/Rust version inspection, browser/shared-surface parity, other language/predeploy behavior or full suite is claimed. The source table selects a digest-pinned rust:1-bookworm image; observed build-log FROM lines corroborate that declared build input. The running artifact and exact compiler version are not independently inspected. [Metadata](metadata.json), [finite driver](native-rust-driver.py.txt). No new defect is confirmed and m61 stays open.\n.pm/w8/evidence/native-elixir-sweep240/README.md:9:This adds partial live Elixir-runtime/file acceptance to [w8/m61](../../done/m61/README.md), alongside its Node/Python/static/Go/Ruby/Rust evidence. Native POSTs were not intercepted; no exact mutation-wire capture, deployed OCI/Elixir version inspection, browser/shared-surface parity, other language/predeploy behavior or full suite is claimed. The source table selects Elixir1.18/OTP28 by default; native build-log FROM lines corroborate the pinned Elixir1.18 build input. Running artifact/interpreter versions are not independently inspected. One Bex image-push attempt reported a transient registry connection refusal, then progressed without a manual retry; this is recorded without claiming a new registry defect or an observed cause for the restart. [Metadata](metadata.json), [finite driver](native-elixir-driver.py.txt). The registry outage cause was not inspected. The [existing registry decision](../../../w9/done/m43/README.md) accepts brief restart interruptions. No new defect is confirmed and m61 stays open.\n.pm/w8/blocked/111.md:41:- [ ] Static has no serving default/CMD; Dockerfile/image and Ruby/Python Node companions unchanged. Audit the counted producers/consumers above and REST/GraphQL/MCP/Blueprint/dashboard parity without inventing new surfaces.\n.pm/w8/blocked/111.md:51:Implemented: the generated primary-Node serving image carries `ENV NODE_ENV=production` after the build RUN (`nativeRuntimeDefaults`, lego/operator/internal/build/native.go), so the build stays unset and every configured value (literal, group/service envFrom, explicit empty) overrides it; static images, Dockerfile/image sources and primary Python/Ruby (with their Node companion) are unchanged. `nativeruntimeenv_test.go`: placement on Node 22/24/26 resolved images and resolved-companion/static exclusions; an opt-in BuildKit gate shows build unset and runtime production by default, `staging`, an empty literal and an empty env-file value exact. Fail-before on a clean HEAD worktree: the default case ran with NODE_ENV absent. All native image gates and lint pass; ADR060 D7 note \"Runtime environment defaults (w8/111)\". Remaining gate: the hosted fresh native Bex + Render-pin replay (Express env/view cache) and pre-deploy/cron observation after deploy, runnable with the QA login.\n.pm/w8/evidence/117/README.md:13:[Four real local Bundler controls](four-Bundler-lock-control-results.json), [driver](finite-four-Bundler-lock-controls.py.txt): matched deployment true succeeds/unchanged lock; stale default succeeds/rewrites; stale deployment true refuses16/unchanged; explicit false succeeds/rewrites. [Full authored-app prerequisite](real-app-prerequisite-results.json), [driver](finite-real-app-prerequisite.py.txt), proves actual install and HTTP200 on the source-pinned image. [Six actual generated recipes](six-actual-generated-recipes.json), [exporter](finite-actual-source-export.py.txt), [Go program](actual-source-export-program.go.txt), [receipt](actual-source-export-receipt.json), cover3.3/3.4/4.0, false/empty and static inputs and all lack a primary Ruby deployment ENV. These source observations and base-image controls are not complete generated-image builds, hosted3.3/4.0 acceptance or full suite/lint execution.\n.pm/w8/done/117.md:28:`lego/operator/internal/build/native.go:263/271` places nativeBuildDefaults before the authored build RUN, but301\u2013309 has only Elixir/Python defaults. Runtime defaults317\u2013322 only cover Node. The selected immutable Ruby3.4 image has no deployment default either. `native.go:368` exports the recipe; `nativeresolve.go:50\u2013118` selects the primary image/companions without adding this setting. Six actual BuildJob/resolver exports cover Ruby3.3/3.4/4.0, explicit false/empty inputs and static Ruby; all generated image ENV instructions lack the default. These are source observations, not executed generated images.\n.pm/w8/done/117.md:54:**Why the path settings too.** Review showed that deployment mode alone installs into the app's `vendor/bundle`. That would leak gems into a root-publishing static site or a Jekyll build, and break bare `puma`/`rails` commands. So Render's gem directory and binstubs come along.\n.pm/w8/done/m86/finding.md:42:Source-established sibling callers: native static builds from direct REST, GraphQL, MCP, Blueprint and dashboard, omitted-runtime default and explicit primary Node. Dockerfile/image and buildless raw publication take other branches. Scope the fix to static; primary Node compute and Ruby/Python's Node companion keep their behavior. Other supported Node lines, nested roots, true/false skip and other managers are regression/acceptance work, not hosted coverage here. [w8/111](../../blocked/111.md) concerns runtime-only NODE_ENV, a different phase: static builds must retain normal development/build dependencies.\n.pm/w8/done/m77/done/t002.md:13:Census generator, preparer, resolver, native job option projection, runtime command and static extraction callers. Verify every supported Ruby line/default, primary version precedence, authored PATH/env/files and changed/stable image-cache inputs. Disposition unrelated native runtime artifacts separately.\n.pm/w8/done/114.md:31:Cached exact Ruby3.4 image execution proves the same actual app is healthy over loopback but unreachable through its published port in default development. An explicit-binding-only development control returns200, and a production-only control without a binding override also returns200. All three local boots and containers are cleaned. Six real generator/resolver exports cover the supported Ruby3.3/3.4/4.0 lines, custom/empty env and a static Ruby artifact; all lack the default. Three maintained neighbors plus the observation give10 named passes,0fail/skip across4 top tests. These are source observations and exact-base app executions, not fixed regressions or executed generated Dockerfiles. Only Ruby3.4 is hosted.\n.pm/w8/done/114.md:35:- [x] Execute actual generated artifacts with real Rails server behavior: absent user override yields production in build/runtime, binds the configured port beyond loopback, answers readiness and serves HTTP. Exercise supported Ruby lines with compatible framework fixtures; static Ruby artifacts have build semantics only.\n.pm/w1/done/108.md:105:| `ruby` (`examples/static-site` dir, build `ruby -v && gem -v`, start a `ruby -rsocket` one-liner HTTP server) | native | **Succeeded** on the Job's second pod. The first pod failed in its `push` container after a clean pull and start of the same Skopeo image, and the Job retry pushed fine, so this was transient | `ruby:3.4-bookworm@sha256:246b2dc3\u2026` + Skopeo `2b7d76dd\u2026` | 200 `ruby ok` |\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "log",
+        "--oneline",
+        "-S",
+        "bundle install",
+        "--",
+        "lego/operator/internal/build/nativestaticdeps.go"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "log",
+        "--oneline",
+        "-S",
+        "nativeRubyCompanion",
+        "--",
+        "lego/operator/internal/build"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "log",
+        "-10",
+        "--oneline",
+        "--",
+        "lego/operator/internal/build/native.go",
+        "lego/operator/internal/build/nativeresolve.go",
+        "lego/operator/internal/build/nativestaticdeps.go"
+      ],
+      "exit": 0,
+      "stdout": "b9e12f689 fix(operator): native Ruby builds refuse stale Gemfile.locks like Render (w8/117)\n4d0b19325 fix(operator): native Python trusts the ingress's forwarded scheme by default (w8/116)\nf3859bc5e fix(operator): native Ruby builds and runs Rails in production by default (w8/114)\n8e37a79f3 feat(build): Dockerfile builds receive service env as build args and secret files as build secrets (w1/m178)\naf4f7fefb fix(operator): native Node apps drain on SIGTERM under npm start (w8/m88)\nbd59015fb fix(operator): native Python images default Render's Gunicorn flags (w8/113)\n0d841d5be fix(operator): native Elixir builds and runs with MIX_ENV=prod by default (w8/112)\ne9f283771 fix(operator): native Node services run with NODE_ENV=production by default (w8/111)\n10dda1f1c fix(operator): native static builds install npm dependencies before the build (w8/m86)\n1f6efd4b1 fix(operator): native Ruby honors lockfile and .tool-versions pins in Render's order (w8/m85)\n",
+      "stderr": ""
+    }
+  ],
+  "primary": {
+    "quickstart": "https://render.com/docs/deploy-jekyll",
+    "command": "bundle exec jekyll build",
+    "publish_directory": "_site",
+    "linked_repo": "https://github.com/render-examples/jekyll",
+    "Ruby_version_guidance_linked": true,
+    "static_auto_dependencies": "https://render.com/docs/static-sites#dependency-installation",
+    "source_ruby_file": "3.3.5; Bex documented line policy would select reviewed3.3; diagnostic aptRuby3.1 is not that acceptance",
+    "tested_Render_host": false
+  },
+  "related": {
+    "w8/done/m86": "npm auto installation only; its closed intended scope retained",
+    "w8/m90": "Yarn automatic installation only; no Ruby dependency or runtime supply task",
+    "w8/done/m85": "primary Ruby version-input precedence; not Ruby supply in omitted-runtime static Node builds",
+    "w8/done/117": "primary Ruby Bundler defaults; explicit Ruby static generated-artifact preservation; not this omitted-runtime static supply",
+    "w8/m104": "database-server pg_partman, unrelated"
+  },
+  "proposed_boundary": "shared omitted-runtime static build/runtime choice and toolchain supply plus automatic Gemfile dependencies; preserve original authored command and all JS install/skip/PATH/cache/root behavior, no CLI fork or paid app"
+}

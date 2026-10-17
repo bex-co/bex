@@ -1,0 +1,1735 @@
+{
+  "sweep": 428,
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "type": "postgres",
+  "name": "qa-20261017-3ce8f8-pg18",
+  "nonce": "3ce8f8",
+  "time": "2026-10-17T11:34:12.680998+00:00",
+  "source_head": "46084c87396de84b1c0ee1b94ce8abbb2691bb41",
+  "capacity": {
+    "at": "2026-10-17T11:34:11.357105+00:00",
+    "API_only": true,
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "status": "200",
+    "curl_exit": 0,
+    "elapsed": 0.332,
+    "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+    "stderr": ""
+  },
+  "pre_inventory": {
+    "at": "2026-10-17T11:34:12.040500+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "postgres",
+      "list",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "stdin_mode": "DEVNULL",
+    "supplied_stdin_bytes": 0,
+    "supplied_stdin_sha256": null,
+    "parent_input_file_offset_after": null,
+    "client_setup": null,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.682,
+    "stdout": "{\"data\": []}",
+    "stderr": ""
+  },
+  "pre_service_inventory": {
+    "at": "2026-10-17T11:34:12.680238+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "stdin_mode": "DEVNULL",
+    "supplied_stdin_bytes": 0,
+    "supplied_stdin_sha256": null,
+    "parent_input_file_offset_after": null,
+    "client_setup": null,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.639,
+    "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}]",
+    "stderr": ""
+  },
+  "pre_ids": [],
+  "dependency_ids": [],
+  "recorded_child_ids": [],
+  "database_name": "qa428_db_3ce8f8",
+  "database_user": "qa428_user_3ce8f8",
+  "create_command": [
+    "bex",
+    "postgres",
+    "create",
+    "--name",
+    "qa-20261017-3ce8f8-pg18",
+    "--plan",
+    "free",
+    "--version",
+    "18",
+    "--region",
+    "frankfurt",
+    "--connection-pool",
+    "none",
+    "--database-name",
+    "qa428_db_3ce8f8",
+    "--database-user",
+    "qa428_user_3ce8f8",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "state": "deleted: native0/detail404/listempty/baseline6/PGquota0 terminating0",
+  "create_result": {
+    "at": "2026-10-17T11:34:13.393546+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "postgres",
+      "create",
+      "--name",
+      "qa-20261017-3ce8f8-pg18",
+      "--plan",
+      "free",
+      "--version",
+      "18",
+      "--region",
+      "frankfurt",
+      "--connection-pool",
+      "none",
+      "--database-name",
+      "qa428_db_3ce8f8",
+      "--database-user",
+      "qa428_user_3ce8f8",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "stdin_mode": "DEVNULL",
+    "supplied_stdin_bytes": 0,
+    "supplied_stdin_sha256": null,
+    "parent_input_file_offset_after": null,
+    "client_setup": null,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.351,
+    "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db9lqdcflioc739mckug\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261017-3ce8f8-pg18\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-17T11:34:13.247964806Z\", \"version\": \"18\", \"projectId\": null}}",
+    "stderr": ""
+  },
+  "id": "dpg-db9lqdcflioc739mckug",
+  "create_response": {
+    "connectionPool": "none",
+    "createdAt": "2026-10-17T11:34:13Z",
+    "dashboardUrl": "https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug",
+    "databaseName": "qa428_db_3ce8f8",
+    "databaseUser": "qa428_user_3ce8f8",
+    "diskAutoscalingEnabled": false,
+    "diskSizeGB": 1,
+    "highAvailabilityEnabled": false,
+    "id": "dpg-db9lqdcflioc739mckug",
+    "ipAllowList": [
+      {
+        "cidrBlock": "0.0.0.0/0",
+        "description": ""
+      },
+      {
+        "cidrBlock": "::/0",
+        "description": ""
+      }
+    ],
+    "name": "qa-20261017-3ce8f8-pg18",
+    "owner": {
+      "email": "QA_PRIVATE_REDACTED",
+      "id": "tea-daif693dqjvc73e7as3g",
+      "name": "bex-canary",
+      "type": "team"
+    },
+    "plan": "free",
+    "readReplicas": [],
+    "region": "fsn1",
+    "role": "",
+    "status": "creating",
+    "suspended": "not_suspended",
+    "suspenders": null,
+    "updatedAt": "2026-10-17T11:34:13.247964806Z",
+    "version": "18",
+    "projectId": null
+  },
+  "details": [
+    {
+      "at": "2026-10-17T11:34:15.499467+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.291,
+      "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"creating\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:34:13.247964806Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T11:34:27.059054+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.316,
+      "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"creating\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:34:13.247964806Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T11:34:38.696170+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.424,
+      "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"creating\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:34:13.247964806Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T11:34:50.347064+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.433,
+      "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"creating\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:34:13.247964806Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T11:34:52.013838+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.448,
+      "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"creating\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:34:13.247964806Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T11:35:25.773649+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.464,
+      "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"creating\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:34:13.247964806Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T11:35:39.731225+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.517,
+      "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"creating\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:34:13.247964806Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T11:35:53.217148+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.42,
+      "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"creating\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:35:41Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T11:36:06.880637+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.336,
+      "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"creating\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:35:41Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T11:36:20.507968+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.387,
+      "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:36:19Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T11:36:22.278279+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.454,
+      "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:36:19Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T11:36:28.466341+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.38,
+      "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:36:19Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T11:36:34.897520+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.299,
+      "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:36:19Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T11:36:39.227029+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.305,
+      "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:36:19Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T11:36:45.612323+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.444,
+      "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:36:19Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T11:36:53.220918+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.457,
+      "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:36:19Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T11:36:59.217698+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.348,
+      "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:36:19Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T11:37:04.361128+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.381,
+      "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:36:19Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T11:37:09.369222+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.277,
+      "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:36:19Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T11:37:14.855797+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.424,
+      "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:36:19Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T11:37:20.350531+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.426,
+      "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:36:19Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T11:37:58.209739+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.318,
+      "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:36:19Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    }
+  ],
+  "native_readiness": [
+    {
+      "at": "2026-10-17T11:34:15.865780+00:00",
+      "native": {
+        "at": "2026-10-17T11:34:15.182341+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db9lqdcflioc739mckug",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "stdin_mode": "DEVNULL",
+        "supplied_stdin_bytes": 0,
+        "supplied_stdin_sha256": null,
+        "parent_input_file_offset_after": null,
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.602,
+        "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db9lqdcflioc739mckug\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261017-3ce8f8-pg18\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-17T11:34:13.247964806Z\", \"version\": \"18\", \"projectId\": null}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-17T11:34:15.499467+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.291,
+        "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"creating\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:34:13.247964806Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-17T11:34:27.408123+00:00",
+      "native": {
+        "at": "2026-10-17T11:34:26.730821+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db9lqdcflioc739mckug",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "stdin_mode": "DEVNULL",
+        "supplied_stdin_bytes": 0,
+        "supplied_stdin_sha256": null,
+        "parent_input_file_offset_after": null,
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.537,
+        "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db9lqdcflioc739mckug\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261017-3ce8f8-pg18\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-17T11:34:13.247964806Z\", \"version\": \"18\", \"projectId\": null}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-17T11:34:27.059054+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.316,
+        "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"creating\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:34:13.247964806Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-17T11:34:39.066230+00:00",
+      "native": {
+        "at": "2026-10-17T11:34:38.244125+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db9lqdcflioc739mckug",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "stdin_mode": "DEVNULL",
+        "supplied_stdin_bytes": 0,
+        "supplied_stdin_sha256": null,
+        "parent_input_file_offset_after": null,
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.482,
+        "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db9lqdcflioc739mckug\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261017-3ce8f8-pg18\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-17T11:34:13.247964806Z\", \"version\": \"18\", \"projectId\": null}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-17T11:34:38.696170+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.424,
+        "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"creating\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:34:13.247964806Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-17T11:34:50.720247+00:00",
+      "native": {
+        "at": "2026-10-17T11:34:49.887951+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db9lqdcflioc739mckug",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "stdin_mode": "DEVNULL",
+        "supplied_stdin_bytes": 0,
+        "supplied_stdin_sha256": null,
+        "parent_input_file_offset_after": null,
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.472,
+        "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db9lqdcflioc739mckug\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261017-3ce8f8-pg18\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-17T11:34:13.247964806Z\", \"version\": \"18\", \"projectId\": null}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-17T11:34:50.347064+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.433,
+        "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"creating\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:34:13.247964806Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-17T11:35:26.121951+00:00",
+      "native": {
+        "at": "2026-10-17T11:35:25.295707+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db9lqdcflioc739mckug",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "stdin_mode": "DEVNULL",
+        "supplied_stdin_bytes": 0,
+        "supplied_stdin_sha256": null,
+        "parent_input_file_offset_after": null,
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.414,
+        "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db9lqdcflioc739mckug\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261017-3ce8f8-pg18\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-17T11:34:13.247964806Z\", \"version\": \"18\", \"projectId\": null}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-17T11:35:25.773649+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.464,
+        "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"creating\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:34:13.247964806Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-17T11:35:40.079801+00:00",
+      "native": {
+        "at": "2026-10-17T11:35:39.188064+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db9lqdcflioc739mckug",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "stdin_mode": "DEVNULL",
+        "supplied_stdin_bytes": 0,
+        "supplied_stdin_sha256": null,
+        "parent_input_file_offset_after": null,
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.737,
+        "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db9lqdcflioc739mckug\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261017-3ce8f8-pg18\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-17T11:34:13.247964806Z\", \"version\": \"18\", \"projectId\": null}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-17T11:35:39.731225+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.517,
+        "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"creating\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:34:13.247964806Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-17T11:35:53.594243+00:00",
+      "native": {
+        "at": "2026-10-17T11:35:52.778734+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db9lqdcflioc739mckug",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "stdin_mode": "DEVNULL",
+        "supplied_stdin_bytes": 0,
+        "supplied_stdin_sha256": null,
+        "parent_input_file_offset_after": null,
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.353,
+        "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db9lqdcflioc739mckug\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261017-3ce8f8-pg18\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-17T11:35:41Z\", \"version\": \"18\", \"projectId\": null}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-17T11:35:53.217148+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.42,
+        "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"creating\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:35:41Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-17T11:36:07.231353+00:00",
+      "native": {
+        "at": "2026-10-17T11:36:06.528113+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db9lqdcflioc739mckug",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "stdin_mode": "DEVNULL",
+        "supplied_stdin_bytes": 0,
+        "supplied_stdin_sha256": null,
+        "parent_input_file_offset_after": null,
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.588,
+        "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db9lqdcflioc739mckug\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261017-3ce8f8-pg18\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-17T11:35:41Z\", \"version\": \"18\", \"projectId\": null}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-17T11:36:06.880637+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.336,
+        "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"creating\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:35:41Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-17T11:36:20.881635+00:00",
+      "native": {
+        "at": "2026-10-17T11:36:20.106378+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db9lqdcflioc739mckug",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "stdin_mode": "DEVNULL",
+        "supplied_stdin_bytes": 0,
+        "supplied_stdin_sha256": null,
+        "parent_input_file_offset_after": null,
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.51,
+        "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db9lqdcflioc739mckug\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261017-3ce8f8-pg18\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-17T11:36:19Z\", \"version\": \"18\", \"projectId\": null}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-17T11:36:20.507968+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.387,
+        "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:36:19Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      }
+    }
+  ],
+  "native_SQL_readiness": [
+    {
+      "at": "2026-10-17T11:36:22.653107+00:00",
+      "client": "bex",
+      "before": {
+        "at": "2026-10-17T11:36:22.278279+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.454,
+        "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:36:19Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      },
+      "intent": "read-only own SELECT1 readiness control",
+      "result": {
+        "at": "2026-10-17T11:36:26.852099+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db9lqdcflioc739mckug",
+          "--command",
+          "SELECT jsonb_build_object('one',1,'database',current_database(),'user',current_user,'version',current_setting('server_version_num')::int/10000,'encoding',current_setting('server_encoding'))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "stdin_mode": "DEVNULL",
+        "supplied_stdin_bytes": 0,
+        "supplied_stdin_sha256": null,
+        "parent_input_file_offset_after": null,
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 3.875,
+        "stdout": "{\"output\": \"{\\\"one\\\": 1, \\\"user\\\": \\\"qa428_user_3ce8f8\\\", \\\"version\\\": 18, \\\"database\\\": \\\"qa428_db_3ce8f8\\\", \\\"encoding\\\": \\\"UTF8\\\"}\"}",
+        "stderr": ""
+      },
+      "observed": {
+        "one": 1,
+        "user": "qa428_user_3ce8f8",
+        "version": 18,
+        "database": "qa428_db_3ce8f8",
+        "encoding": "UTF8"
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-17T11:36:28.828227+00:00",
+      "client": "render",
+      "before": {
+        "at": "2026-10-17T11:36:28.466341+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.38,
+        "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:36:19Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      },
+      "intent": "read-only own SELECT1 readiness control",
+      "result": {
+        "at": "2026-10-17T11:36:33.356118+00:00",
+        "binary": "unchanged Render2.27.0/a764810a7682",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db9lqdcflioc739mckug",
+          "--command",
+          "SELECT jsonb_build_object('one',1,'database',current_database(),'user',current_user,'version',current_setting('server_version_num')::int/10000,'encoding',current_setting('server_encoding'))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "stdin_mode": "DEVNULL",
+        "supplied_stdin_bytes": 0,
+        "supplied_stdin_sha256": null,
+        "parent_input_file_offset_after": null,
+        "client_setup": {
+          "API_only_CA_preparation": true,
+          "path": "/v1/postgres/dpg-db9lqdcflioc739mckug/connection-info",
+          "HTTP": "200",
+          "elapsed": 0.408,
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "certificate_sha256": "8146b3ed96bcbe45fb04b9ce8f8975edd68f04a58359cac82d90fbfb1aa1f94c",
+          "PGSSLROOTCERT": "<owned-temp>/sweep428-owned-pg-ca.pem",
+          "connection_info_payload_not_retained": true
+        },
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 3.771,
+        "stdout": "{\"output\": \"{\\\"one\\\": 1, \\\"user\\\": \\\"qa428_user_3ce8f8\\\", \\\"version\\\": 18, \\\"database\\\": \\\"qa428_db_3ce8f8\\\", \\\"encoding\\\": \\\"UTF8\\\"}\"}",
+        "stderr": ""
+      },
+      "observed": {
+        "one": 1,
+        "user": "qa428_user_3ce8f8",
+        "version": 18,
+        "database": "qa428_db_3ce8f8",
+        "encoding": "UTF8"
+      },
+      "pass": true
+    }
+  ],
+  "stdin_connection_preparation": {
+    "at": "2026-10-17T11:36:35.719124+00:00",
+    "API_only": true,
+    "path": "/v1/postgres/dpg-db9lqdcflioc739mckug/connection-info",
+    "HTTP": "200",
+    "certificate_sha256": "8146b3ed96bcbe45fb04b9ce8f8975edd68f04a58359cac82d90fbfb1aa1f94c",
+    "private_payload_retained_only_until_post_delete_check": true,
+    "Render_PGSSLROOTCERT": "<owned-temp>/sweep428-session-ca.pem"
+  },
+  "cached_connection_checks": [
+    {
+      "at": "2026-10-17T11:36:38.037523+00:00",
+      "phase": "before",
+      "API_only_external_psql": true,
+      "cached_route_and_credentials": true,
+      "credentials_supplied_only_in_child_environment": true,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 1.448,
+      "stdout": "1\n",
+      "stderr": "",
+      "pass": true
+    },
+    {
+      "at": "2026-10-17T11:38:04.616764+00:00",
+      "phase": "after",
+      "API_only_external_psql": true,
+      "cached_route_and_credentials": true,
+      "credentials_supplied_only_in_child_environment": true,
+      "native_exit": 2,
+      "harness_timeout": false,
+      "elapsed": 0.687,
+      "stdout": "",
+      "stderr": "psql: error: connection to server at \"dpg-db9lqdcflioc739mckug.db.bex.co\" (49.12.20.236), port 5432 failed: SSL error: unexpected eof while reading\n",
+      "pass": true
+    }
+  ],
+  "sql_events": [
+    {
+      "at": "2026-10-17T11:36:39.585905+00:00",
+      "label": "bex-catalog",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db9lqdcflioc739mckug",
+      "command": "SELECT jsonb_build_object('version',current_setting('server_version_num'),'database',current_database(),'user',current_user,'extensions',COALESCE((SELECT jsonb_agg(jsonb_build_object('name',name,'default_version',default_version,'installed_version',installed_version) ORDER BY name) FROM pg_available_extensions WHERE name IN ('pg_partman','vector','hstore','pg_stat_statements','plpgsql')),'[]'::jsonb),'own_schemas',COALESCE((SELECT jsonb_agg(nspname ORDER BY nspname) FROM pg_namespace WHERE nspname IN ('qa428_3ce8f8','qa428_3ce8f8_partman')),'[]'::jsonb))::text;",
+      "result": {
+        "at": "2026-10-17T11:36:43.857909+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db9lqdcflioc739mckug",
+          "--command",
+          "SELECT jsonb_build_object('version',current_setting('server_version_num'),'database',current_database(),'user',current_user,'extensions',COALESCE((SELECT jsonb_agg(jsonb_build_object('name',name,'default_version',default_version,'installed_version',installed_version) ORDER BY name) FROM pg_available_extensions WHERE name IN ('pg_partman','vector','hstore','pg_stat_statements','plpgsql')),'[]'::jsonb),'own_schemas',COALESCE((SELECT jsonb_agg(nspname ORDER BY nspname) FROM pg_namespace WHERE nspname IN ('qa428_3ce8f8','qa428_3ce8f8_partman')),'[]'::jsonb))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "stdin_mode": "DEVNULL",
+        "supplied_stdin_bytes": 0,
+        "supplied_stdin_sha256": null,
+        "parent_input_file_offset_after": null,
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 3.951,
+        "stdout": "{\"output\": \"{\\\"user\\\": \\\"qa428_user_3ce8f8\\\", \\\"version\\\": \\\"180006\\\", \\\"database\\\": \\\"qa428_db_3ce8f8\\\", \\\"extensions\\\": [{\\\"name\\\": \\\"hstore\\\", \\\"default_version\\\": \\\"1.8\\\", \\\"installed_version\\\": null}, {\\\"name\\\": \\\"pg_stat_statements\\\", \\\"default_version\\\": \\\"1.12\\\", \\\"installed_version\\\": \\\"1.12\\\"}, {\\\"name\\\": \\\"plpgsql\\\", \\\"default_version\\\": \\\"1.0\\\", \\\"installed_version\\\": \\\"1.0\\\"}, {\\\"name\\\": \\\"vector\\\", \\\"default_version\\\": \\\"0.8.6\\\", \\\"installed_version\\\": \\\"0.8.6\\\"}], \\\"own_schemas\\\": []}\"}",
+        "stderr": ""
+      },
+      "decoded": {
+        "user": "qa428_user_3ce8f8",
+        "version": "180006",
+        "database": "qa428_db_3ce8f8",
+        "extensions": [
+          {
+            "name": "hstore",
+            "default_version": "1.8",
+            "installed_version": null
+          },
+          {
+            "name": "pg_stat_statements",
+            "default_version": "1.12",
+            "installed_version": "1.12"
+          },
+          {
+            "name": "plpgsql",
+            "default_version": "1.0",
+            "installed_version": "1.0"
+          },
+          {
+            "name": "vector",
+            "default_version": "0.8.6",
+            "installed_version": "0.8.6"
+          }
+        ],
+        "own_schemas": []
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-17T11:36:45.982583+00:00",
+      "label": "bex-partman",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db9lqdcflioc739mckug",
+      "command": "BEGIN; SET LOCAL statement_timeout='20s'; CREATE SCHEMA qa428_3ce8f8_partman; CREATE EXTENSION IF NOT EXISTS pg_partman SCHEMA qa428_3ce8f8_partman; SELECT jsonb_build_object('extension',(SELECT extversion FROM pg_extension WHERE extname='pg_partman'),'schema',(SELECT nspname FROM pg_extension e JOIN pg_namespace n ON n.oid=e.extnamespace WHERE extname='pg_partman'))::text; ROLLBACK;",
+      "result": {
+        "at": "2026-10-17T11:36:51.485659+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db9lqdcflioc739mckug",
+          "--command",
+          "BEGIN; SET LOCAL statement_timeout='20s'; CREATE SCHEMA qa428_3ce8f8_partman; CREATE EXTENSION IF NOT EXISTS pg_partman SCHEMA qa428_3ce8f8_partman; SELECT jsonb_build_object('extension',(SELECT extversion FROM pg_extension WHERE extname='pg_partman'),'schema',(SELECT nspname FROM pg_extension e JOIN pg_namespace n ON n.oid=e.extnamespace WHERE extname='pg_partman'))::text; ROLLBACK;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "stdin_mode": "DEVNULL",
+        "supplied_stdin_bytes": 0,
+        "supplied_stdin_sha256": null,
+        "parent_input_file_offset_after": null,
+        "client_setup": null,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 5.162,
+        "stdout": "",
+        "stderr": "Error: exit status 1: ERROR:  extension \"pg_partman\" is not available\nHINT:  The extension must first be installed on the system where PostgreSQL is running.\n"
+      },
+      "decoded": null,
+      "extension_success": false,
+      "missing_package_failure": true,
+      "pass": true
+    },
+    {
+      "at": "2026-10-17T11:36:53.579307+00:00",
+      "label": "bex-healthy",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db9lqdcflioc739mckug",
+      "command": "BEGIN; SET LOCAL statement_timeout='20s'; CREATE EXTENSION IF NOT EXISTS hstore; CREATE SCHEMA qa428_3ce8f8; CREATE TABLE qa428_3ce8f8.events(id integer NOT NULL,label text NOT NULL) PARTITION BY RANGE(id); CREATE TABLE qa428_3ce8f8.events_low PARTITION OF qa428_3ce8f8.events FOR VALUES FROM(0) TO(10); CREATE TABLE qa428_3ce8f8.events_high PARTITION OF qa428_3ce8f8.events FOR VALUES FROM(10) TO(20); INSERT INTO qa428_3ce8f8.events VALUES(1,'Crème brûlée'),(12,'李'),(19,'two words'); SELECT jsonb_build_object('hstore',('QA428=>healthy')::hstore->'QA428','partition_count',(SELECT count(*) FROM pg_inherits WHERE inhparent='qa428_3ce8f8.events'::regclass),'rows',(SELECT jsonb_agg(jsonb_build_array(id,label) ORDER BY id) FROM qa428_3ce8f8.events),'routing',(SELECT jsonb_agg(jsonb_build_array(id,split_part(tableoid::regclass::text,'.',2)) ORDER BY id) FROM qa428_3ce8f8.events),'one',1)::text; ROLLBACK;",
+      "result": {
+        "at": "2026-10-17T11:36:57.661142+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db9lqdcflioc739mckug",
+          "--command",
+          "BEGIN; SET LOCAL statement_timeout='20s'; CREATE EXTENSION IF NOT EXISTS hstore; CREATE SCHEMA qa428_3ce8f8; CREATE TABLE qa428_3ce8f8.events(id integer NOT NULL,label text NOT NULL) PARTITION BY RANGE(id); CREATE TABLE qa428_3ce8f8.events_low PARTITION OF qa428_3ce8f8.events FOR VALUES FROM(0) TO(10); CREATE TABLE qa428_3ce8f8.events_high PARTITION OF qa428_3ce8f8.events FOR VALUES FROM(10) TO(20); INSERT INTO qa428_3ce8f8.events VALUES(1,'Crème brûlée'),(12,'李'),(19,'two words'); SELECT jsonb_build_object('hstore',('QA428=>healthy')::hstore->'QA428','partition_count',(SELECT count(*) FROM pg_inherits WHERE inhparent='qa428_3ce8f8.events'::regclass),'rows',(SELECT jsonb_agg(jsonb_build_array(id,label) ORDER BY id) FROM qa428_3ce8f8.events),'routing',(SELECT jsonb_agg(jsonb_build_array(id,split_part(tableoid::regclass::text,'.',2)) ORDER BY id) FROM qa428_3ce8f8.events),'one',1)::text; ROLLBACK;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "stdin_mode": "DEVNULL",
+        "supplied_stdin_bytes": 0,
+        "supplied_stdin_sha256": null,
+        "parent_input_file_offset_after": null,
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 3.762,
+        "stdout": "{\"output\": \"{\\\"one\\\": 1, \\\"rows\\\": [[1, \\\"Crème brûlée\\\"], [12, \\\"李\\\"], [19, \\\"two words\\\"]], \\\"hstore\\\": \\\"healthy\\\", \\\"routing\\\": [[1, \\\"events_low\\\"], [12, \\\"events_high\\\"], [19, \\\"events_high\\\"]], \\\"partition_count\\\": 2}\"}",
+        "stderr": ""
+      },
+      "decoded": {
+        "one": 1,
+        "rows": [
+          [
+            1,
+            "Crème brûlée"
+          ],
+          [
+            12,
+            "李"
+          ],
+          [
+            19,
+            "two words"
+          ]
+        ],
+        "hstore": "healthy",
+        "routing": [
+          [
+            1,
+            "events_low"
+          ],
+          [
+            12,
+            "events_high"
+          ],
+          [
+            19,
+            "events_high"
+          ]
+        ],
+        "partition_count": 2
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-17T11:36:59.575441+00:00",
+      "label": "bex-catalog",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db9lqdcflioc739mckug",
+      "command": "SELECT jsonb_build_object('version',current_setting('server_version_num'),'database',current_database(),'user',current_user,'extensions',COALESCE((SELECT jsonb_agg(jsonb_build_object('name',name,'default_version',default_version,'installed_version',installed_version) ORDER BY name) FROM pg_available_extensions WHERE name IN ('pg_partman','vector','hstore','pg_stat_statements','plpgsql')),'[]'::jsonb),'own_schemas',COALESCE((SELECT jsonb_agg(nspname ORDER BY nspname) FROM pg_namespace WHERE nspname IN ('qa428_3ce8f8','qa428_3ce8f8_partman')),'[]'::jsonb))::text;",
+      "result": {
+        "at": "2026-10-17T11:37:02.788440+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db9lqdcflioc739mckug",
+          "--command",
+          "SELECT jsonb_build_object('version',current_setting('server_version_num'),'database',current_database(),'user',current_user,'extensions',COALESCE((SELECT jsonb_agg(jsonb_build_object('name',name,'default_version',default_version,'installed_version',installed_version) ORDER BY name) FROM pg_available_extensions WHERE name IN ('pg_partman','vector','hstore','pg_stat_statements','plpgsql')),'[]'::jsonb),'own_schemas',COALESCE((SELECT jsonb_agg(nspname ORDER BY nspname) FROM pg_namespace WHERE nspname IN ('qa428_3ce8f8','qa428_3ce8f8_partman')),'[]'::jsonb))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "stdin_mode": "DEVNULL",
+        "supplied_stdin_bytes": 0,
+        "supplied_stdin_sha256": null,
+        "parent_input_file_offset_after": null,
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.889,
+        "stdout": "{\"output\": \"{\\\"user\\\": \\\"qa428_user_3ce8f8\\\", \\\"version\\\": \\\"180006\\\", \\\"database\\\": \\\"qa428_db_3ce8f8\\\", \\\"extensions\\\": [{\\\"name\\\": \\\"hstore\\\", \\\"default_version\\\": \\\"1.8\\\", \\\"installed_version\\\": null}, {\\\"name\\\": \\\"pg_stat_statements\\\", \\\"default_version\\\": \\\"1.12\\\", \\\"installed_version\\\": \\\"1.12\\\"}, {\\\"name\\\": \\\"plpgsql\\\", \\\"default_version\\\": \\\"1.0\\\", \\\"installed_version\\\": \\\"1.0\\\"}, {\\\"name\\\": \\\"vector\\\", \\\"default_version\\\": \\\"0.8.6\\\", \\\"installed_version\\\": \\\"0.8.6\\\"}], \\\"own_schemas\\\": []}\"}",
+        "stderr": ""
+      },
+      "decoded": {
+        "user": "qa428_user_3ce8f8",
+        "version": "180006",
+        "database": "qa428_db_3ce8f8",
+        "extensions": [
+          {
+            "name": "hstore",
+            "default_version": "1.8",
+            "installed_version": null
+          },
+          {
+            "name": "pg_stat_statements",
+            "default_version": "1.12",
+            "installed_version": "1.12"
+          },
+          {
+            "name": "plpgsql",
+            "default_version": "1.0",
+            "installed_version": "1.0"
+          },
+          {
+            "name": "vector",
+            "default_version": "0.8.6",
+            "installed_version": "0.8.6"
+          }
+        ],
+        "own_schemas": []
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-17T11:37:04.748620+00:00",
+      "label": "render-catalog",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db9lqdcflioc739mckug",
+      "command": "SELECT jsonb_build_object('version',current_setting('server_version_num'),'database',current_database(),'user',current_user,'extensions',COALESCE((SELECT jsonb_agg(jsonb_build_object('name',name,'default_version',default_version,'installed_version',installed_version) ORDER BY name) FROM pg_available_extensions WHERE name IN ('pg_partman','vector','hstore','pg_stat_statements','plpgsql')),'[]'::jsonb),'own_schemas',COALESCE((SELECT jsonb_agg(nspname ORDER BY nspname) FROM pg_namespace WHERE nspname IN ('qa428_3ce8f8','qa428_3ce8f8_partman')),'[]'::jsonb))::text;",
+      "result": {
+        "at": "2026-10-17T11:37:07.847766+00:00",
+        "binary": "unchanged Render2.27.0/a764810a7682",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db9lqdcflioc739mckug",
+          "--command",
+          "SELECT jsonb_build_object('version',current_setting('server_version_num'),'database',current_database(),'user',current_user,'extensions',COALESCE((SELECT jsonb_agg(jsonb_build_object('name',name,'default_version',default_version,'installed_version',installed_version) ORDER BY name) FROM pg_available_extensions WHERE name IN ('pg_partman','vector','hstore','pg_stat_statements','plpgsql')),'[]'::jsonb),'own_schemas',COALESCE((SELECT jsonb_agg(nspname ORDER BY nspname) FROM pg_namespace WHERE nspname IN ('qa428_3ce8f8','qa428_3ce8f8_partman')),'[]'::jsonb))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "stdin_mode": "DEVNULL",
+        "supplied_stdin_bytes": 0,
+        "supplied_stdin_sha256": null,
+        "parent_input_file_offset_after": null,
+        "client_setup": {
+          "API_only_CA_preparation": true,
+          "path": "/v1/postgres/dpg-db9lqdcflioc739mckug/connection-info",
+          "HTTP": "200",
+          "elapsed": 0.323,
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "certificate_sha256": "8146b3ed96bcbe45fb04b9ce8f8975edd68f04a58359cac82d90fbfb1aa1f94c",
+          "PGSSLROOTCERT": "<owned-temp>/sweep428-owned-pg-ca.pem",
+          "connection_info_payload_not_retained": true
+        },
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.417,
+        "stdout": "{\"output\": \"{\\\"user\\\": \\\"qa428_user_3ce8f8\\\", \\\"version\\\": \\\"180006\\\", \\\"database\\\": \\\"qa428_db_3ce8f8\\\", \\\"extensions\\\": [{\\\"name\\\": \\\"hstore\\\", \\\"default_version\\\": \\\"1.8\\\", \\\"installed_version\\\": null}, {\\\"name\\\": \\\"pg_stat_statements\\\", \\\"default_version\\\": \\\"1.12\\\", \\\"installed_version\\\": \\\"1.12\\\"}, {\\\"name\\\": \\\"plpgsql\\\", \\\"default_version\\\": \\\"1.0\\\", \\\"installed_version\\\": \\\"1.0\\\"}, {\\\"name\\\": \\\"vector\\\", \\\"default_version\\\": \\\"0.8.6\\\", \\\"installed_version\\\": \\\"0.8.6\\\"}], \\\"own_schemas\\\": []}\"}",
+        "stderr": ""
+      },
+      "decoded": {
+        "user": "qa428_user_3ce8f8",
+        "version": "180006",
+        "database": "qa428_db_3ce8f8",
+        "extensions": [
+          {
+            "name": "hstore",
+            "default_version": "1.8",
+            "installed_version": null
+          },
+          {
+            "name": "pg_stat_statements",
+            "default_version": "1.12",
+            "installed_version": "1.12"
+          },
+          {
+            "name": "plpgsql",
+            "default_version": "1.0",
+            "installed_version": "1.0"
+          },
+          {
+            "name": "vector",
+            "default_version": "0.8.6",
+            "installed_version": "0.8.6"
+          }
+        ],
+        "own_schemas": []
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-17T11:37:09.733707+00:00",
+      "label": "render-partman",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db9lqdcflioc739mckug",
+      "command": "BEGIN; SET LOCAL statement_timeout='20s'; CREATE SCHEMA qa428_3ce8f8_partman; CREATE EXTENSION IF NOT EXISTS pg_partman SCHEMA qa428_3ce8f8_partman; SELECT jsonb_build_object('extension',(SELECT extversion FROM pg_extension WHERE extname='pg_partman'),'schema',(SELECT nspname FROM pg_extension e JOIN pg_namespace n ON n.oid=e.extnamespace WHERE extname='pg_partman'))::text; ROLLBACK;",
+      "result": {
+        "at": "2026-10-17T11:37:13.171968+00:00",
+        "binary": "unchanged Render2.27.0/a764810a7682",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db9lqdcflioc739mckug",
+          "--command",
+          "BEGIN; SET LOCAL statement_timeout='20s'; CREATE SCHEMA qa428_3ce8f8_partman; CREATE EXTENSION IF NOT EXISTS pg_partman SCHEMA qa428_3ce8f8_partman; SELECT jsonb_build_object('extension',(SELECT extversion FROM pg_extension WHERE extname='pg_partman'),'schema',(SELECT nspname FROM pg_extension e JOIN pg_namespace n ON n.oid=e.extnamespace WHERE extname='pg_partman'))::text; ROLLBACK;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "stdin_mode": "DEVNULL",
+        "supplied_stdin_bytes": 0,
+        "supplied_stdin_sha256": null,
+        "parent_input_file_offset_after": null,
+        "client_setup": {
+          "API_only_CA_preparation": true,
+          "path": "/v1/postgres/dpg-db9lqdcflioc739mckug/connection-info",
+          "HTTP": "200",
+          "elapsed": 0.342,
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "certificate_sha256": "8146b3ed96bcbe45fb04b9ce8f8975edd68f04a58359cac82d90fbfb1aa1f94c",
+          "PGSSLROOTCERT": "<owned-temp>/sweep428-owned-pg-ca.pem",
+          "connection_info_payload_not_retained": true
+        },
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 2.752,
+        "stdout": "",
+        "stderr": "Error: exit status 1: ERROR:  extension \"pg_partman\" is not available\nHINT:  The extension must first be installed on the system where PostgreSQL is running.\n"
+      },
+      "decoded": null,
+      "extension_success": false,
+      "missing_package_failure": true,
+      "pass": true
+    },
+    {
+      "at": "2026-10-17T11:37:15.214575+00:00",
+      "label": "render-healthy",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db9lqdcflioc739mckug",
+      "command": "BEGIN; SET LOCAL statement_timeout='20s'; CREATE EXTENSION IF NOT EXISTS hstore; CREATE SCHEMA qa428_3ce8f8; CREATE TABLE qa428_3ce8f8.events(id integer NOT NULL,label text NOT NULL) PARTITION BY RANGE(id); CREATE TABLE qa428_3ce8f8.events_low PARTITION OF qa428_3ce8f8.events FOR VALUES FROM(0) TO(10); CREATE TABLE qa428_3ce8f8.events_high PARTITION OF qa428_3ce8f8.events FOR VALUES FROM(10) TO(20); INSERT INTO qa428_3ce8f8.events VALUES(1,'Crème brûlée'),(12,'李'),(19,'two words'); SELECT jsonb_build_object('hstore',('QA428=>healthy')::hstore->'QA428','partition_count',(SELECT count(*) FROM pg_inherits WHERE inhparent='qa428_3ce8f8.events'::regclass),'rows',(SELECT jsonb_agg(jsonb_build_array(id,label) ORDER BY id) FROM qa428_3ce8f8.events),'routing',(SELECT jsonb_agg(jsonb_build_array(id,split_part(tableoid::regclass::text,'.',2)) ORDER BY id) FROM qa428_3ce8f8.events),'one',1)::text; ROLLBACK;",
+      "result": {
+        "at": "2026-10-17T11:37:18.750635+00:00",
+        "binary": "unchanged Render2.27.0/a764810a7682",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db9lqdcflioc739mckug",
+          "--command",
+          "BEGIN; SET LOCAL statement_timeout='20s'; CREATE EXTENSION IF NOT EXISTS hstore; CREATE SCHEMA qa428_3ce8f8; CREATE TABLE qa428_3ce8f8.events(id integer NOT NULL,label text NOT NULL) PARTITION BY RANGE(id); CREATE TABLE qa428_3ce8f8.events_low PARTITION OF qa428_3ce8f8.events FOR VALUES FROM(0) TO(10); CREATE TABLE qa428_3ce8f8.events_high PARTITION OF qa428_3ce8f8.events FOR VALUES FROM(10) TO(20); INSERT INTO qa428_3ce8f8.events VALUES(1,'Crème brûlée'),(12,'李'),(19,'two words'); SELECT jsonb_build_object('hstore',('QA428=>healthy')::hstore->'QA428','partition_count',(SELECT count(*) FROM pg_inherits WHERE inhparent='qa428_3ce8f8.events'::regclass),'rows',(SELECT jsonb_agg(jsonb_build_array(id,label) ORDER BY id) FROM qa428_3ce8f8.events),'routing',(SELECT jsonb_agg(jsonb_build_array(id,split_part(tableoid::regclass::text,'.',2)) ORDER BY id) FROM qa428_3ce8f8.events),'one',1)::text; ROLLBACK;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "stdin_mode": "DEVNULL",
+        "supplied_stdin_bytes": 0,
+        "supplied_stdin_sha256": null,
+        "parent_input_file_offset_after": null,
+        "client_setup": {
+          "API_only_CA_preparation": true,
+          "path": "/v1/postgres/dpg-db9lqdcflioc739mckug/connection-info",
+          "HTTP": "200",
+          "elapsed": 0.304,
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "certificate_sha256": "8146b3ed96bcbe45fb04b9ce8f8975edd68f04a58359cac82d90fbfb1aa1f94c",
+          "PGSSLROOTCERT": "<owned-temp>/sweep428-owned-pg-ca.pem",
+          "connection_info_payload_not_retained": true
+        },
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.877,
+        "stdout": "{\"output\": \"{\\\"one\\\": 1, \\\"rows\\\": [[1, \\\"Crème brûlée\\\"], [12, \\\"李\\\"], [19, \\\"two words\\\"]], \\\"hstore\\\": \\\"healthy\\\", \\\"routing\\\": [[1, \\\"events_low\\\"], [12, \\\"events_high\\\"], [19, \\\"events_high\\\"]], \\\"partition_count\\\": 2}\"}",
+        "stderr": ""
+      },
+      "decoded": {
+        "one": 1,
+        "rows": [
+          [
+            1,
+            "Crème brûlée"
+          ],
+          [
+            12,
+            "李"
+          ],
+          [
+            19,
+            "two words"
+          ]
+        ],
+        "hstore": "healthy",
+        "routing": [
+          [
+            1,
+            "events_low"
+          ],
+          [
+            12,
+            "events_high"
+          ],
+          [
+            19,
+            "events_high"
+          ]
+        ],
+        "partition_count": 2
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-17T11:37:20.716296+00:00",
+      "label": "render-catalog",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db9lqdcflioc739mckug",
+      "command": "SELECT jsonb_build_object('version',current_setting('server_version_num'),'database',current_database(),'user',current_user,'extensions',COALESCE((SELECT jsonb_agg(jsonb_build_object('name',name,'default_version',default_version,'installed_version',installed_version) ORDER BY name) FROM pg_available_extensions WHERE name IN ('pg_partman','vector','hstore','pg_stat_statements','plpgsql')),'[]'::jsonb),'own_schemas',COALESCE((SELECT jsonb_agg(nspname ORDER BY nspname) FROM pg_namespace WHERE nspname IN ('qa428_3ce8f8','qa428_3ce8f8_partman')),'[]'::jsonb))::text;",
+      "result": {
+        "at": "2026-10-17T11:37:24.231052+00:00",
+        "binary": "unchanged Render2.27.0/a764810a7682",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db9lqdcflioc739mckug",
+          "--command",
+          "SELECT jsonb_build_object('version',current_setting('server_version_num'),'database',current_database(),'user',current_user,'extensions',COALESCE((SELECT jsonb_agg(jsonb_build_object('name',name,'default_version',default_version,'installed_version',installed_version) ORDER BY name) FROM pg_available_extensions WHERE name IN ('pg_partman','vector','hstore','pg_stat_statements','plpgsql')),'[]'::jsonb),'own_schemas',COALESCE((SELECT jsonb_agg(nspname ORDER BY nspname) FROM pg_namespace WHERE nspname IN ('qa428_3ce8f8','qa428_3ce8f8_partman')),'[]'::jsonb))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "stdin_mode": "DEVNULL",
+        "supplied_stdin_bytes": 0,
+        "supplied_stdin_sha256": null,
+        "parent_input_file_offset_after": null,
+        "client_setup": {
+          "API_only_CA_preparation": true,
+          "path": "/v1/postgres/dpg-db9lqdcflioc739mckug/connection-info",
+          "HTTP": "200",
+          "elapsed": 0.495,
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "certificate_sha256": "8146b3ed96bcbe45fb04b9ce8f8975edd68f04a58359cac82d90fbfb1aa1f94c",
+          "PGSSLROOTCERT": "<owned-temp>/sweep428-owned-pg-ca.pem",
+          "connection_info_payload_not_retained": true
+        },
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.666,
+        "stdout": "{\"output\": \"{\\\"user\\\": \\\"qa428_user_3ce8f8\\\", \\\"version\\\": \\\"180006\\\", \\\"database\\\": \\\"qa428_db_3ce8f8\\\", \\\"extensions\\\": [{\\\"name\\\": \\\"hstore\\\", \\\"default_version\\\": \\\"1.8\\\", \\\"installed_version\\\": null}, {\\\"name\\\": \\\"pg_stat_statements\\\", \\\"default_version\\\": \\\"1.12\\\", \\\"installed_version\\\": \\\"1.12\\\"}, {\\\"name\\\": \\\"plpgsql\\\", \\\"default_version\\\": \\\"1.0\\\", \\\"installed_version\\\": \\\"1.0\\\"}, {\\\"name\\\": \\\"vector\\\", \\\"default_version\\\": \\\"0.8.6\\\", \\\"installed_version\\\": \\\"0.8.6\\\"}], \\\"own_schemas\\\": []}\"}",
+        "stderr": ""
+      },
+      "decoded": {
+        "user": "qa428_user_3ce8f8",
+        "version": "180006",
+        "database": "qa428_db_3ce8f8",
+        "extensions": [
+          {
+            "name": "hstore",
+            "default_version": "1.8",
+            "installed_version": null
+          },
+          {
+            "name": "pg_stat_statements",
+            "default_version": "1.12",
+            "installed_version": "1.12"
+          },
+          {
+            "name": "plpgsql",
+            "default_version": "1.0",
+            "installed_version": "1.0"
+          },
+          {
+            "name": "vector",
+            "default_version": "0.8.6",
+            "installed_version": "0.8.6"
+          }
+        ],
+        "own_schemas": []
+      },
+      "pass": true
+    }
+  ],
+  "delete_intent": {
+    "at": "2026-10-17T11:37:58.602318+00:00",
+    "detail": {
+      "at": "2026-10-17T11:37:58.209739+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.318,
+      "response": "{\"id\": \"dpg-db9lqdcflioc739mckug\", \"name\": \"qa-20261017-3ce8f8-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"updatedAt\": \"2026-10-17T11:36:19Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"externalHost\": \"dpg-db9lqdcflioc739mckug.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    }
+  },
+  "delete_result": {
+    "at": "2026-10-17T11:37:59.888415+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "postgres",
+      "delete",
+      "dpg-db9lqdcflioc739mckug",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "stdin_mode": "DEVNULL",
+    "supplied_stdin_bytes": 0,
+    "supplied_stdin_sha256": null,
+    "parent_input_file_offset_after": null,
+    "client_setup": null,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.946,
+    "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-17T11:34:13Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9lqdcflioc739mckug\", \"databaseName\": \"qa428_db_3ce8f8\", \"databaseUser\": \"qa428_user_3ce8f8\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db9lqdcflioc739mckug\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261017-3ce8f8-pg18\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-17T11:36:19Z\", \"version\": \"18\", \"projectId\": null}, \"meta\": {\"deleted\": true}}",
+    "stderr": ""
+  },
+  "cleanup_receipts": [
+    {
+      "at": "2026-10-17T11:38:03.074659+00:00",
+      "detail": {
+        "at": "2026-10-17T11:38:01.409446+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db9lqdcflioc739mckug",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "404",
+        "curl_exit": 0,
+        "elapsed": 0.274,
+        "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+        "stderr": ""
+      },
+      "inventory": {
+        "at": "2026-10-17T11:38:02.147248+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "list",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "stdin_mode": "DEVNULL",
+        "supplied_stdin_bytes": 0,
+        "supplied_stdin_sha256": null,
+        "parent_input_file_offset_after": null,
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.736,
+        "stdout": "{\"data\": []}",
+        "stderr": ""
+      },
+      "services": {
+        "at": "2026-10-17T11:38:02.691521+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "stdin_mode": "DEVNULL",
+        "supplied_stdin_bytes": 0,
+        "supplied_stdin_sha256": null,
+        "parent_input_file_offset_after": null,
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.544,
+        "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}]",
+        "stderr": ""
+      },
+      "quota": {
+        "at": "2026-10-17T11:38:03.074201+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.358,
+        "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+        "stderr": ""
+      },
+      "pass": true
+    }
+  ],
+  "cached_connection_private_files_removed": {
+    "at": "2026-10-17T11:38:05.533329+00:00",
+    "credential_file_removed": true,
+    "CA_file_removed": true
+  }
+}

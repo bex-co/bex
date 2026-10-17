@@ -1,0 +1,20 @@
+import re,json
+
+def queries(schema):
+ assert re.fullmatch('[a-z][a-z0-9_]+',schema)
+ begin="BEGIN; SET LOCAL statement_timeout='20s'; CREATE SCHEMA "+schema+"; SET LOCAL search_path="+schema+",public; "
+ data="CREATE TABLE orders(region text NOT NULL,cents integer NOT NULL); INSERT INTO orders VALUES('north',1250),('north',725),('café:李',1999),('café:李',-499),('west',0); "
+ aggregate="SELECT region,count(*) AS orders,sum(cents) AS cents FROM orders GROUP BY region"
+ return {'catalog':"SELECT jsonb_build_object('version',current_setting('server_version_num'),'encoding',current_setting('server_encoding'),'available',COALESCE((SELECT jsonb_agg(jsonb_build_object('name',name,'default',default_version,'installed',installed_version) ORDER BY name) FROM pg_available_extensions WHERE name IN('pg_duckdb','vector','pg_stat_statements','hstore','plpgsql')),'[]'::jsonb),'own_schema_exists',EXISTS(SELECT FROM pg_namespace WHERE nspname='"+schema+"'))::text;",'enable':"CREATE EXTENSION IF NOT EXISTS pg_duckdb;",'postgres':begin+data+aggregate+"; ROLLBACK;",'duckdb':begin+data+"SET LOCAL duckdb.force_execution=true; "+aggregate+"; EXPLAIN(ANALYZE TRUE,FORMAT JSON,COSTS OFF,TIMING OFF,SUMMARY OFF) "+aggregate+"; ROLLBACK;"}
+
+def expected():
+ raw=[('north',1250),('north',725),('café:李',1999),('café:李',-499),('west',0)];out={}
+ for region,cents in raw:
+  count,total=out.get(region,(0,0));out[region]=(count+1,total+cents)
+ return sorted([[r,*v] for r,v in out.items()])
+
+def decode_rows(raw):
+ out=[]
+ for line in raw.strip().splitlines():
+  region,count,cents=line.split('|');out.append([region,int(count),int(cents)])
+ return sorted(out)

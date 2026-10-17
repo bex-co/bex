@@ -1,0 +1,5 @@
+type Input={label:string,values:number[]};
+enum Factor{Single=1,Double=2}
+const data:Input=JSON.parse(await Bun.stdin.text());
+const result={label:data.label,sum:data.values.reduce((a,b)=>a+b,0),weighted:data.values.reduce((a,b,i)=>a+b*(i+1),0),sorted:[...data.values].sort((a,b)=>a-b),factor:Factor.Double,bun:Bun.version,sha256:new Bun.CryptoHasher('sha256').update(data.label).digest('hex')};
+console.log(JSON.stringify(result));

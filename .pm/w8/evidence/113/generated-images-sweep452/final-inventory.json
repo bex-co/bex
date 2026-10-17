@@ -1,0 +1,124 @@
+{
+  "services": {
+    "pass": true,
+    "baseline_present": true,
+    "current_IDs": [
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3v694dm7c7390q930",
+      "srv-db09u90ehcmc739j12cg",
+      "srv-db09vbgehcmc739j12i0"
+    ],
+    "unrelated_nonbaseline_IDs": []
+  },
+  "datastores": {
+    "pass": true,
+    "current_IDs": {
+      "postgres": [],
+      "keyValues": []
+    }
+  },
+  "groups": {
+    "pass": true,
+    "receipt": {
+      "at": "2026-10-17T17:16:42.923125+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups?ownerId=tea-daif693dqjvc73e7as3g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 2.765,
+      "response": "[]",
+      "stderr": ""
+    },
+    "current_IDs_or_quota": []
+  },
+  "projects": {
+    "pass": true,
+    "receipt": {
+      "at": "2026-10-17T17:16:43.541285+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/projects?ownerId=tea-daif693dqjvc73e7as3g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.602,
+      "response": "[]",
+      "stderr": ""
+    },
+    "current_IDs_or_quota": []
+  },
+  "blueprints": {
+    "pass": true,
+    "receipt": {
+      "at": "2026-10-17T17:16:44.301925+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/blueprints?ownerId=tea-daif693dqjvc73e7as3g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.745,
+      "response": "[{\"id\": \"blp-db136288mmqc73d4hpug\", \"projection\": \"unrelated metadata identity only; configuration omitted\"}]",
+      "stderr": ""
+    },
+    "current_IDs_or_quota": [
+      "blp-db136288mmqc73d4hpug"
+    ]
+  },
+  "quota": {
+    "pass": true,
+    "receipt": {
+      "at": "2026-10-17T17:16:44.834516+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.516,
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+      "stderr": ""
+    },
+    "current_IDs_or_quota": {
+      "services": {
+        "used": 6,
+        "terminating": 0,
+        "limit": 25
+      },
+      "postgres": {
+        "used": 0,
+        "terminating": 0,
+        "limit": 1
+      },
+      "keyValues": {
+        "used": 0,
+        "terminating": 0,
+        "limit": 1
+      }
+    }
+  }
+}

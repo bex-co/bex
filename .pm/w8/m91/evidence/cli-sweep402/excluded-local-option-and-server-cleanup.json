@@ -1,0 +1,87 @@
+{
+  "image": "postgres:15-bookworm@sha256:d4a8e1f88f475ee3e0137fa89d21ebc59f6c6ab16bf369ee92907607cc3455ae",
+  "container": "qa402-backup-ba8cf1",
+  "nonce": "ba8cf1",
+  "context": "<owned-temp>/sweep402-backup-m__5_49m",
+  "qualification": "owned loopback-free, network-none local PG15 server and real pg_dump; not hosted database coverage",
+  "calls": [
+    {
+      "command": [
+        "docker",
+        "run",
+        "--detach",
+        "--name",
+        "qa402-backup-ba8cf1",
+        "--label",
+        "bex.qa.run=ba8cf1",
+        "--network",
+        "none",
+        "--tmpfs",
+        "/var/lib/postgresql/data:rw",
+        "-e",
+        "POSTGRES_HOST_AUTH_METHOD=trust",
+        "-e",
+        "POSTGRES_DB=qa402",
+        "postgres:15-bookworm@sha256:d4a8e1f88f475ee3e0137fa89d21ebc59f6c6ab16bf369ee92907607cc3455ae"
+      ],
+      "exit": 0,
+      "stdout": "b7885ce7183e98a4c4780a702625b2ead6b5359e5d80c35bb76270d20e29b82c\n",
+      "stderr": "Unable to find image 'postgres:15-bookworm@sha256:d4a8e1f88f475ee3e0137fa89d21ebc59f6c6ab16bf369ee92907607cc3455ae' locally\ndocker.io/library/postgres@sha256:d4a8e1f88f475ee3e0137fa89d21ebc59f6c6ab16bf369ee92907607cc3455ae: Pulling from library/postgres\nc75f989a229d: Pulling fs layer\nb2bb76e30e7e: Pulling fs layer\n5a18537a209d: Pulling fs layer\n459280fdc4c8: Pulling fs layer\n35b77b88dbb8: Pulling fs layer\nbc6c74ea3e12: Pulling fs layer\n3ad3821fcf78: Pulling fs layer\n1e54084fd652: Pulling fs layer\nca55ae4a20b1: Pulling fs layer\nfd29591e8aba: Pulling fs layer\nb6846053f95f: Pulling fs layer\n5991c707dd1a: Pulling fs layer\n3203a6a12886: Pulling fs layer\n6580c79fc6c1: Pulling fs layer\nb2bb76e30e7e: Download complete\n5a18537a209d: Download complete\nc75f989a229d: Download complete\n35b77b88dbb8: Download complete\n459280fdc4c8: Download complete\n1e54084fd652: Download complete\nb6846053f95f: Download complete\nca55ae4a20b1: Download complete\n3ad3821fcf78: Download complete\n5991c707dd1a: Download complete\n6580c79fc6c1: Download complete\n3203a6a12886: Download complete\nbc6c74ea3e12: Download complete\n1b5b79068ee9: Download complete\nfd29591e8aba: Download complete\n5a18537a209d: Pull complete\nc75f989a229d: Pull complete\n459280fdc4c8: Pull complete\n35b77b88dbb8: Pull complete\nbc6c74ea3e12: Pull complete\n1e54084fd652: Pull complete\nca55ae4a20b1: Pull complete\n3ad3821fcf78: Pull complete\n6acea5c4c7db: Download complete\nfd29591e8aba: Pull complete\n3203a6a12886: Pull complete\nb2bb76e30e7e: Pull complete\nb6846053f95f: Pull complete\n5991c707dd1a: Pull complete\n6580c79fc6c1: Pull complete\nDigest: sha256:d4a8e1f88f475ee3e0137fa89d21ebc59f6c6ab16bf369ee92907607cc3455ae\nStatus: Downloaded newer image for postgres@sha256:d4a8e1f88f475ee3e0137fa89d21ebc59f6c6ab16bf369ee92907607cc3455ae\n"
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "-i",
+        "qa402-backup-ba8cf1",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "qa402",
+        "-v",
+        "ON_ERROR_STOP=1"
+      ],
+      "exit": 0,
+      "stdout": "CREATE TABLE\nINSERT 0 3\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "qa402-backup-ba8cf1",
+        "pg_dump",
+        "-U",
+        "postgres",
+        "-d",
+        "qa402",
+        "--format=custom",
+        "--no-owner",
+        "--no-privileges",
+        "--table=public.qa402_backup"
+      ],
+      "exit": 0,
+      "stdout": "<binary backup retained separately>",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "-i",
+        "qa402-backup-ba8cf1",
+        "pg_restore",
+        "--data-only",
+        "--inserts",
+        "--no-owner",
+        "--no-privileges",
+        "--file=-"
+      ],
+      "exit": 1,
+      "stdout": "<binary backup retained separately>",
+      "stderr": "/usr/lib/postgresql/15/bin/pg_restore: unrecognized option '--inserts'\npg_restore: hint: Try \"pg_restore --help\" for more information.\n"
+    }
+  ],
+  "removed": true
+}

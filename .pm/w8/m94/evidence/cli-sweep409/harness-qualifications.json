@@ -1,0 +1,18 @@
+{
+  "initial_bounded_Render_observation": {
+    "same_original_child_pending_after_8_reads": true,
+    "no_mutation_replay": true,
+    "resume": "observe same original first child before logs or control updates"
+  },
+  "concurrent_inventory": {
+    "original_checker_assumption": "service used must equal immutable baseline6",
+    "observed_service_used": 8,
+    "termination": 0,
+    "nonbaseline_ids_without_own_creation_entries": [
+      "srv-db9i6bhu2fhc73e10bq0",
+      "srv-db9i6g9u2fhc73e10bsg"
+    ],
+    "action": "preserve unrelated services; verify own parents/children/URLs absent, baseline present, and current quota matches fresh native inventory",
+    "no_extra_mutation": true
+  }
+}

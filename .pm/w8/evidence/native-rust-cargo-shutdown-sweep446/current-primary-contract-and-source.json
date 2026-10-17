@@ -1,0 +1,21 @@
+{
+  "at": "2026-10-17T15:47:07.978719+00:00",
+  "fresh_carrier_branch": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5\trefs/heads/master\n",
+  "files_and_hashes": {
+    "LICENSE": {
+      "bytes": 1072,
+      "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+    },
+    "CHANGELOG": {
+      "bytes": 18,
+      "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+    }
+  },
+  "sources": [
+    {
+      "url": "https://render.com/docs/deploys",
+      "support": "Rust examples build and run with Cargo. Service restarts replace the instance; SIGTERM allows graceful in-flight completion, with a configurable shutdown budget up to300seconds."
+    }
+  ],
+  "scope": "Cargo Rust40s request under native restart with45s configured delay; local same-byte Cargo/direct controls pass. Not an independent Render-production test or source-identical Node m88 replay."
+}

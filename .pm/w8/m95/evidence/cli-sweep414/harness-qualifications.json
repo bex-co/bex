@@ -1,0 +1,5 @@
+{
+  "first_readers": "both initial first children pending after initial eight observations; resumed original children without native mutation replay",
+  "control_readers": "Bex original control child pending after first eight observations; Render control accepted, finite parent stopped before shared/control readbacks and cleanup until Bex accepted",
+  "scope": "all native original and control parents/deploy IDs retained; no create/update/deploy replay"
+}

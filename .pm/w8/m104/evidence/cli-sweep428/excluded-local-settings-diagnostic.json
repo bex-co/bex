@@ -1,0 +1,284 @@
+{
+  "kind": "isolated cached official PG17 SQL-only pg_partman reference; not Bex/CNPG image acceptance",
+  "steps": [
+    {
+      "label": "start-own-networkless-PG17",
+      "command": [
+        "docker",
+        "run",
+        "-d",
+        "--pull",
+        "never",
+        "--network",
+        "none",
+        "--name",
+        "qa428-partman-62dda533",
+        "-e",
+        "POSTGRES_HOST_AUTH_METHOD=trust",
+        "postgres@sha256:67f41722b7a8cbdb868a44a4995c846eddfdc2973bccb291ce937dce88ad5675"
+      ],
+      "exit": 0,
+      "stdout": "22ff38bcc3478a2a27eddaa574407c6220561f76f9186d3edf1a3c71c3910d05\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-unix-readiness-0",
+      "command": [
+        "docker",
+        "exec",
+        "qa428-partman-62dda533",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 2,
+      "stdout": "/var/run/postgresql:5432 - no response\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-unix-readiness-1",
+      "command": [
+        "docker",
+        "exec",
+        "qa428-partman-62dda533",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 0,
+      "stdout": "/var/run/postgresql:5432 - accepting connections\n",
+      "stderr": ""
+    },
+    {
+      "label": "create-own-ordinary-app-role",
+      "command": [
+        "docker",
+        "exec",
+        "qa428-partman-62dda533",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "postgres",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-c",
+        "CREATE ROLE qa428_app LOGIN;"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "create-own-app-database",
+      "command": [
+        "docker",
+        "exec",
+        "qa428-partman-62dda533",
+        "createdb",
+        "-U",
+        "postgres",
+        "-O",
+        "qa428_app",
+        "qa428_db"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "original-missing-package",
+      "command": [
+        "docker",
+        "exec",
+        "qa428-partman-62dda533",
+        "psql",
+        "-U",
+        "qa428_app",
+        "-d",
+        "qa428_db",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-c",
+        "CREATE SCHEMA partman; CREATE EXTENSION pg_partman SCHEMA partman;"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "ERROR:  extension \"pg_partman\" is not available\nDETAIL:  Could not open extension control file \"/usr/share/postgresql/17/extension/pg_partman.control\": No such file or directory.\nHINT:  The extension must first be installed on the system where PostgreSQL is running.\n"
+    },
+    {
+      "label": "copy-control-only-to-own-container",
+      "command": [
+        "docker",
+        "cp",
+        "<owned-temp>/sweep428-local-partman-source/pg_partman.control",
+        "qa428-partman-62dda533:/usr/share/postgresql/17/extension/pg_partman.control"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "copy-actual-assembled-extension-SQL",
+      "command": [
+        "docker",
+        "cp",
+        "<owned-temp>/sweep428-local-partman-source/pg_partman--5.5.0.sql",
+        "qa428-partman-62dda533:/usr/share/postgresql/17/extension/pg_partman--5.5.0.sql"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "install-as-own-ordinary-app",
+      "command": [
+        "docker",
+        "exec",
+        "qa428-partman-62dda533",
+        "psql",
+        "-U",
+        "qa428_app",
+        "-d",
+        "qa428_db",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-c",
+        "CREATE SCHEMA partman; CREATE EXTENSION pg_partman SCHEMA partman;"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "real-extension-partition-generation-and-routing",
+      "command": [
+        "docker",
+        "exec",
+        "qa428-partman-62dda533",
+        "psql",
+        "-U",
+        "qa428_app",
+        "-d",
+        "qa428_db",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-c",
+        "CREATE SCHEMA qa428_data; CREATE TABLE qa428_data.events(id bigint NOT NULL,label text NOT NULL) PARTITION BY RANGE(id); DO $$ BEGIN IF NOT partman.create_parent(p_parent_table:='qa428_data.events',p_control:='id',p_interval:='10',p_premake:=2,p_start_partition:='0',p_jobmon:=false) THEN RAISE EXCEPTION 'partition initialization failed'; END IF; END $$; INSERT INTO qa428_data.events VALUES(1,'Crème brûlée'),(12,'李'),(19,'two words'); SELECT jsonb_build_object('version',current_setting('server_version_num'),'extension',(SELECT extversion FROM pg_extension WHERE extname='pg_partman'),'rows',(SELECT jsonb_agg(jsonb_build_array(id,label) ORDER BY id) FROM qa428_data.events),'routing',(SELECT jsonb_agg(jsonb_build_array(id,split_part(tableoid::regclass::text,'.',2)) ORDER BY id) FROM qa428_data.events),'config_interval',(SELECT partition_interval FROM partman.part_config WHERE parent_table='qa428_data.events'))::text;"
+      ],
+      "exit": 0,
+      "stdout": "{\"rows\": [[1, \"Crème brûlée\"], [12, \"李\"], [19, \"two words\"]], \"routing\": [[1, \"events_p0\"], [12, \"events_p10\"], [19, \"events_p10\"]], \"version\": \"170011\", \"extension\": \"5.5.0\", \"config_interval\": \"10\"}\n",
+      "stderr": ""
+    },
+    {
+      "label": "manual-maintenance-no-BG-worker",
+      "command": [
+        "docker",
+        "exec",
+        "qa428-partman-62dda533",
+        "psql",
+        "-U",
+        "qa428_app",
+        "-d",
+        "qa428_db",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-c",
+        "DO $$ BEGIN PERFORM partman.run_maintenance('qa428_data.events',false,false); END $$; INSERT INTO qa428_data.events VALUES(25,'manual maintenance'); SELECT jsonb_build_object('count',(SELECT count(*) FROM qa428_data.events),'partition',(SELECT split_part(tableoid::regclass::text,'.',2) FROM qa428_data.events WHERE id=25),'worker_preload',current_setting('shared_preload_libraries'))::text;"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "ERROR:  permission denied to examine \"shared_preload_libraries\"\nDETAIL:  Only roles with privileges of the \"pg_read_all_settings\" role may examine this parameter.\n"
+    },
+    {
+      "label": "remove-exact-own-container",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa428-partman-62dda533"
+      ],
+      "exit": 0,
+      "stdout": "qa428-partman-62dda533\n",
+      "stderr": ""
+    },
+    {
+      "label": "confirm-own-container-absent",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa428-partman-62dda533"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa428-partman-62dda533\n"
+    }
+  ],
+  "image": "postgres@sha256:67f41722b7a8cbdb868a44a4995c846eddfdc2973bccb291ce937dce88ad5675",
+  "container_name": "qa428-partman-62dda533",
+  "network": "none; no ports, mounts or other resources",
+  "SQL_only_NO_BGW_equivalent_assembly": {
+    "official_Makefile_rule": "cat sql/types/*.sql sql/tables/*.sql sql/functions/*.sql sql/procedures/*.sql > sql/pg_partman--5.5.0.sql",
+    "files": 45,
+    "bytes": 337504,
+    "sha256": "cad8133d1fb19c67c448b7fdd117e063b5be2d480ef37bae1a0c9c275f669229",
+    "control_superuser_false": true,
+    "compiled_BG_worker": false
+  },
+  "actual_partition_result": {
+    "rows": [
+      [
+        1,
+        "Crème brûlée"
+      ],
+      [
+        12,
+        "李"
+      ],
+      [
+        19,
+        "two words"
+      ]
+    ],
+    "routing": [
+      [
+        1,
+        "events_p0"
+      ],
+      [
+        12,
+        "events_p10"
+      ],
+      [
+        19,
+        "events_p10"
+      ]
+    ],
+    "version": "170011",
+    "extension": "5.5.0",
+    "config_interval": "10"
+  },
+  "own_container_removed": true
+}

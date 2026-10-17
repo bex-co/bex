@@ -1,0 +1,29 @@
+import re,json
+
+def queries(schema):
+ assert re.fullmatch('[a-z][a-z0-9_]+',schema)
+ def begin(extension):return "BEGIN; SET LOCAL statement_timeout='20s'; CREATE SCHEMA "+schema+"; SET LOCAL search_path="+schema+",public; CREATE EXTENSION IF NOT EXISTS "+extension+" SCHEMA "+schema+"; "
+ catalog="SELECT jsonb_build_object('version',current_setting('server_version_num'),'encoding',current_setting('server_encoding'),'extensions',COALESCE((SELECT jsonb_agg(jsonb_build_object('name',name,'default_version',default_version,'installed_version',installed_version) ORDER BY name) FROM pg_available_extensions WHERE name IN ('citext','ltree','tablefunc','unaccent','vector','pg_stat_statements','plpgsql')),'[]'::jsonb),'own_schema_exists',EXISTS(SELECT FROM pg_namespace WHERE nspname='"+schema+"'))::text;"
+ unaccent=begin('unaccent')+"SELECT jsonb_build_object('dessert',unaccent('Crème brûlée'),'place',unaccent('Hôtel, déjà vu!'),'ligatures',unaccent('Æsir, Œuvre'),'unicode',unaccent('李'))::text; ROLLBACK;"
+ citext=begin('citext')+"CREATE TABLE stock(sku citext PRIMARY KEY,quantity integer NOT NULL); INSERT INTO stock VALUES('Widget-ALPHA',1); INSERT INTO stock VALUES('widget-alpha',2) ON CONFLICT(sku) DO UPDATE SET quantity=stock.quantity+EXCLUDED.quantity; CREATE TABLE plain(sku text PRIMARY KEY); INSERT INTO plain VALUES('Widget-ALPHA'),('widget-alpha'); SELECT jsonb_build_object('rows',(SELECT jsonb_agg(jsonb_build_array(sku::text,quantity) ORDER BY sku) FROM stock),'case_insensitive',('Widget-ALPHA'::citext='widget-alpha'::citext),'text_case_sensitive',('Widget-ALPHA'::text='widget-alpha'::text),'plain_count',(SELECT count(*) FROM plain))::text; ROLLBACK;"
+ ltree=begin('ltree')+"CREATE TABLE paths(id integer PRIMARY KEY,path ltree NOT NULL); INSERT INTO paths VALUES(1,'Top.Science.Astronomy'),(2,'Top.Science.Astronomy.Astrophysics'),(3,'Top.Hobbies.Amateurs_Astronomy'),(4,'Top.Collections.Pictures.Astronomy'),(5,'Top.Science.Chemistry'); CREATE INDEX paths_gist ON paths USING GIST(path); SET LOCAL enable_seqscan=off; SELECT jsonb_build_object('descendants',(SELECT jsonb_agg(id ORDER BY id) FROM paths WHERE path <@ 'Top.Science'::ltree),'matches',(SELECT jsonb_agg(id ORDER BY id) FROM paths WHERE path ~ '*.Astronomy.*'::lquery),'lca',lca('Top.Science.Astronomy'::ltree,'Top.Science.Astronomy.Astrophysics'::ltree)::text,'levels',nlevel('Top.Science.Astronomy.Astrophysics'::ltree),'prefix',subpath('Top.Science.Astronomy'::ltree,0,2)::text,'negative',(SELECT count(*) FROM paths WHERE path <@ 'Top.Unknown'::ltree))::text; EXPLAIN(ANALYZE TRUE,FORMAT JSON,COSTS OFF,TIMING OFF,SUMMARY OFF) SELECT id FROM paths WHERE path <@ 'Top.Science'::ltree; ROLLBACK;"
+ pivot=begin('tablefunc')+"CREATE TABLE sales(department text,quarter integer,amount numeric); INSERT INTO sales VALUES('books',1,12.50),('books',3,7.25),('games',2,19.99),('games',3,5.00); SELECT jsonb_build_object('rows',jsonb_agg(jsonb_build_array(department,q1::text,q2::text,q3::text,(coalesce(q1,0)+coalesce(q2,0)+coalesce(q3,0))::text) ORDER BY department))::text FROM crosstab('SELECT department,quarter,amount FROM "+schema+".sales ORDER BY 1,2','SELECT q FROM generate_series(1,3) q') AS ct(department text,q1 numeric,q2 numeric,q3 numeric); ROLLBACK;"
+ return {'catalog':catalog,'unaccent':unaccent,'citext':citext,'ltree':ltree,'pivot':pivot}
+
+def decode(stdout,case):
+ decoder=json.JSONDecoder();values=[];raw=stdout.strip()
+ while raw:v,n=decoder.raw_decode(raw);values.append(v);raw=raw[n:].strip()
+ v=values[0]
+ if case=='catalog':return {'catalog':v},True
+ expected={'unaccent':{'dessert':'Creme brulee','place':'Hotel, deja vu!','ligatures':'AEsir, OEuvre','unicode':'李'},'citext':{'rows':[['Widget-ALPHA',3]],'case_insensitive':True,'text_case_sensitive':False,'plain_count':2},'ltree':{'descendants':[1,2,5],'matches':[1,2,4],'lca':'Top.Science','levels':4,'prefix':'Top.Science','negative':0},'pivot':{'rows':[['books','12.50',None,'7.25','19.75'],['games',None,'19.99','5.00','24.99']]}}[case];passed=v==expected;result={'value':v}
+ if case=='ltree':
+  assert len(values)==2;plan=values[1]
+  def nodes(a):
+   if isinstance(a,dict):
+    yield a
+    for z in a.values():yield from nodes(z)
+   elif isinstance(a,list):
+    for z in a:yield from nodes(z)
+  matches=[n for n in nodes(plan) if n.get('Index Name')=='paths_gist'];passed=passed and len(matches)==1 and matches[0]['Actual Rows']==3 and matches[0]['Actual Loops']==1;result['actual_index_plan']=plan
+ else:assert len(values)==1
+ return result,passed

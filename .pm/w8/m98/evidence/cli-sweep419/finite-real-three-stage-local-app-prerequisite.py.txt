@@ -1,0 +1,29 @@
+from pathlib import Path
+import json,secrets,subprocess,tempfile,shutil,re
+P=Path(__file__).resolve().parent;nonce=secrets.token_hex(3);root=Path(tempfile.mkdtemp(prefix='candidate-assets-',dir=P));ref=json.loads((P/'candidate-node-assets-reference.json').read_text());image='node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0';out={'nonce':nonce,'context':str(root),'image':image,'cases':[],'qualification':'selected pinned Node base, real authored manifest/file-copy app and own container-loopback HTTP; no full generated image or hosted finding'}
+def save():(P/'candidate-node-assets-local-prerequisite.json').write_text(json.dumps(out,indent=2))
+save()
+checker="""const fs=require('node:fs'),http=require('node:http'),os=require('node:os'),crypto=require('node:crypto'),assert=require('node:assert/strict');const ref=JSON.parse(fs.readFileSync('qa-assets-reference.json'));const expected={release:ref.manifest.release,paths:ref.manifest.assets.filter(v=>v.publish).map(v=>v.path)},map=Object.fromEntries(expected.paths.map(n=>{const b=Buffer.from(ref.assets[n]);return[n,{bytes:b.length,sha256:crypto.createHash('sha256').update(b).digest('hex')}]}));function get(path){return new Promise((resolve,reject)=>{http.get({host:'127.0.0.1',port:3000,path},r=>{const a=[];r.on('data',b=>a.push(b));r.on('end',()=>resolve({status:r.statusCode,body:Buffer.concat(a)}))}).on('error',reject)})}(async()=>{let ready=false;for(let i=0;i<60;i++){try{const v=await get('/');if(v.status===200){ready=true;break}}catch{}await new Promise(r=>setTimeout(r,100))}assert(ready);const rows=[];for(const path of ['/manifest?qa=1','/?qa=2','/copied-index?qa=3']){const r=await get(path);assert.equal(r.status,200);if(path.startsWith('/copied-index'))assert.deepEqual(r.body,Buffer.from(ref.assets['index.html']));else{const v=JSON.parse(r.body);for(const p of ['build','runtime']){assert.equal(v[p].marker,'QA_ASSETS_LOCAL');assert.deepEqual(v[p].manifest,expected);assert.deepEqual(v[p].copied_files,map);assert.equal(v[p].tools.jq.status,0);assert.equal(v[p].tools.rsync.status,0)}}rows.push({path,status:r.status,bytes:r.body.length})}assert.equal(fs.readdirSync(os.tmpdir()).filter(n=>n.startsWith('qa-assets-')).length,0);console.log('QA_ASSET_LOCAL_HTTP '+JSON.stringify(rows))})().catch(e=>{console.error(e.stack);process.exitCode=1})"""
+try:
+ for stage in ['original','jq-only','both-tools']:
+  D=root/stage;D.mkdir();name='qa-assets-'+nonce+'-'+stage;assert subprocess.run(['docker','inspect',name],capture_output=True).returncode!=0
+  for n in ref['files']:shutil.copyfile(P/('sweep414-source-'+n),D/n)
+  for n,b in [('qa-assets-app.cjs',(P/'candidate-node-assets.cjs').read_text()),('qa-assets-reference.json',json.dumps(ref,ensure_ascii=False)),('qa-assets-marker.json',json.dumps('QA_ASSETS_LOCAL')),('check.cjs',checker)]:(D/n).write_text(b)
+  command='set -e\nnode qa-assets-app.cjs before\n'
+  if stage!='original':command+='apt-get update -qq && apt-get install -y --no-install-recommends '+('jq' if stage=='jq-only' else 'jq rsync')+'\n'
+  command+="jq -e -c '{release:.release,paths:[.assets[]|select(.publish==true)|.path]}' qa-assets-input.json > qa-assets-filtered.json\nnode qa-assets-app.cjs after-jq\nrsync -a --delete --exclude='*.tmp' qa-assets-src/ dist/\nnode qa-assets-app.cjs build"
+  if stage=='both-tools':command+="\nnode qa-assets-app.cjs serve > own-server.log 2>&1 &\nqa_asset_pid=$!\ntrap 'kill \"$qa_asset_pid\" 2>/dev/null || true' EXIT\nnode check.cjs\ncat own-server.log"
+  e={'stage':stage,'container':name,'absent_before':True,'command':command};out['cases'].append(e);save()
+  try:r=subprocess.run(['docker','run','--pull=never','--rm','--name',name,'--label','bex.qa.run='+nonce,'-e','PORT=3000','-v',str(D)+':/work','-w','/work',image,'bash','-c',command],capture_output=True,text=True,timeout=210);e.update(exit=r.returncode,stdout=r.stdout,stderr=r.stderr);save()
+  finally:
+   z=subprocess.run(['docker','inspect',name],capture_output=True,text=True)
+   if z.returncode==0:
+    v=json.loads(z.stdout)[0];assert v['Config']['Labels']['bex.qa.run']==nonce and any(m['Source']==str(D) for m in v['Mounts']);subprocess.run(['docker','rm','-f',name],capture_output=True,check=True)
+  if stage=='original':e['pass']=r.returncode==127 and 'jq: command not found' in r.stderr and 'QA_ASSET_JQ ' not in r.stdout
+  elif stage=='jq-only':e['pass']=r.returncode==127 and 'rsync: command not found' in r.stderr and 'QA_ASSET_JQ ' in r.stdout and 'QA_ASSET_AFTER ' not in r.stdout
+  else:e['pass']=r.returncode==0 and 'QA_ASSET_LOCAL_HTTP ' in r.stdout and 'QA_ASSET_AFTER ' in r.stdout
+  save();print(json.dumps({'stage':stage,'exit':r.returncode,'expected_result':e['pass']}),flush=True);assert e['pass']
+ out['pass']=True;save()
+finally:
+ assert root.parent==P and root.name.startswith('candidate-assets-');shutil.rmtree(root);out['own_containers_context_removed']=not root.exists() and all(subprocess.run(['docker','inspect',e['container']],capture_output=True).returncode!=0 for e in out['cases']);save()
+print(json.dumps({'pass':out.get('pass'),'cleanup':out['own_containers_context_removed']}))

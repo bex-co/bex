@@ -1,0 +1,7 @@
+import json,gzip,base64,hashlib
+def commands(P,reference,marker,control=False):
+ program=(P/'candidate-typescript-app.ts').read_text();files={'qa-ts-app.cts':program,'qa-ts-before.cjs':(P/'candidate-typescript-before.cjs').read_text(),'qa-ts-reference.json':json.dumps(reference,separators=(',',':'),ensure_ascii=False),'qa-ts-marker.json':json.dumps(marker)};assert hashlib.sha256(program.encode()).hexdigest()==reference['source_ts_sha256'];blob=base64.b64encode(gzip.compress(json.dumps(files,ensure_ascii=False,separators=(',',':')).encode(),mtime=0)).decode();assert json.loads(gzip.decompress(base64.b64decode(blob)))==files
+ build="set -e\nnode - <<'QA_TS_SOURCES'\nconst fs=require('node:fs'),zlib=require('node:zlib');const files=JSON.parse(zlib.gunzipSync(Buffer.from('"+blob+"','base64')));for(const[n,s]of Object.entries(files))fs.writeFileSync(n,s);\nQA_TS_SOURCES\nnode qa-ts-before.cjs\n"
+ if control:build+='npm install --global --no-audit --no-fund typescript@7.0.2\n'
+ build+='tsc --strict --noEmitOnError --module NodeNext --target ES2022 --outDir dist qa-ts-app.cts\nnode dist/qa-ts-app.cjs build';assert len(build.encode())<=4096
+ return {'build':build,'start':'node dist/qa-ts-app.cjs runtime','source_ts_sha256':reference['source_ts_sha256']}

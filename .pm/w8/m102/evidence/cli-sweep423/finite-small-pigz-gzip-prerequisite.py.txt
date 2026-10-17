@@ -1,0 +1,21 @@
+from pathlib import Path
+import subprocess,json,secrets,shutil,tempfile,hashlib,zlib,struct,os
+os.umask(0o077);P=Path(__file__).resolve().parent;nonce=secrets.token_hex(3);image='python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4';ctx=Path(tempfile.mkdtemp(prefix='candidate-pigz-',dir=P));data=('own asset | Crème brûlée | 李 | spaced label\n'*256).encode();out={'nonce':nonce,'image':image,'context':str(ctx),'input':{'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()},'cases':[],'qualification':'selected cached Python3.13 base and real build-time pigz gzip artifact, not full generated native image or hosted finding; no runtime pigz requirement'}
+def save():(P/'candidate-pigz-small-prerequisite.json').write_text(json.dumps(out,indent=2,ensure_ascii=False))
+try:
+ for control in [False,True]:
+  case='control' if control else 'original';name='qa-pigz-'+nonce+'-'+case;d=ctx/case;d.mkdir();(d/'asset.txt').write_bytes(data);assert subprocess.run(['docker','container','inspect',name],capture_output=True).returncode!=0;command='set -e\npython -c \'import shutil,json,sys;print(json.dumps({"python":sys.version.split()[0],"pigz":shutil.which("pigz")}))\'\n'
+  if control:command+='apt-get update -qq && apt-get install -y --no-install-recommends pigz\n'
+  command+='pigz -n -p 2 -c asset.txt > asset.txt.gz\npigz --version';e={'case':case,'container':name,'absent_before':True,'command':command};out['cases'].append(e);save()
+  try:
+   r=subprocess.run(['docker','run','--name',name,'--label','bex.qa.pigz='+nonce,'--mount','type=bind,source='+str(d)+',target=/qa','--workdir','/qa',image,'bash','-lc',command],capture_output=True,text=True,timeout=180);e.update(exit=r.returncode,stdout=r.stdout,stderr=r.stderr)
+   if control and r.returncode==0:
+    b=(d/'asset.txt.gz').read_bytes();actual=zlib.decompress(b,wbits=31);crc,size=struct.unpack('<II',b[-8:]);e['gzip']={'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest(),'header_hex':b[:10].hex(),'CRC32':crc,'ISIZE':size,'independent_exact_inflate':actual==data};e['pass']=actual==data and b[:3]==b'\x1f\x8b\x08' and crc==zlib.crc32(data) and size==len(data)
+   else:e['pass']=not control and r.returncode==127 and 'pigz: command not found' in r.stderr
+   save();print(json.dumps({'case':case,'exit':r.returncode,'pass':e['pass']}),flush=True);assert e['pass']
+  finally:
+   r=subprocess.run(['docker','container','inspect',name],capture_output=True,text=True)
+   if r.returncode==0:
+    v=json.loads(r.stdout)[0];assert v['Config']['Labels'].get('bex.qa.pigz')==nonce and any(m.get('Source')==str(d) and m.get('Destination')=='/qa' for m in v['Mounts']);subprocess.run(['docker','rm','-f',name],check=True,capture_output=True)
+ out['pass']=all(v['pass'] for v in out['cases']);save()
+finally:shutil.rmtree(ctx);out['own_containers_context_removed']=not ctx.exists() and all(subprocess.run(['docker','container','inspect',v['container']],capture_output=True).returncode!=0 for v in out['cases']);save()

@@ -1,0 +1,22 @@
+{
+  "url": "https://github.com/jgm/pandoc/releases/tag/3.12.1",
+  "tag": "3.12.1",
+  "published_at": "2026-10-08T01:48:41Z",
+  "assets": [
+    {
+      "name": "pandoc-3.12.1-linux-amd64.tar.gz",
+      "size": 35363545,
+      "digest": "sha256:d0c90410e90204c9ca83b8539fac5c7aed01fd537207e4585849f8abc5df20b8",
+      "browser_download_url": "https://github.com/jgm/pandoc/releases/download/3.12.1/pandoc-3.12.1-linux-amd64.tar.gz"
+    },
+    {
+      "name": "pandoc-3.12.1-linux-arm64.tar.gz",
+      "size": 37892300,
+      "digest": "sha256:445d96fd08801fe636cab1158b4f017ee320ac3b7446328b4fe2f902117b19b9",
+      "browser_download_url": "https://github.com/jgm/pandoc/releases/download/3.12.1/pandoc-3.12.1-linux-arm64.tar.gz"
+    }
+  ],
+  "qualification": "public official release metadata only; no candidate downloaded, executed, adopted or architecture-certified",
+  "installation_contract": "https://pandoc.org/installing.html#linux",
+  "known_supplier_constraint": "official static executables cannot load C Lua modules; candidate review must record the supported scope"
+}

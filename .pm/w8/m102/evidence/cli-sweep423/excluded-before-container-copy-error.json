@@ -1,0 +1,8 @@
+{
+  "nonce": "f47562",
+  "image": "python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4",
+  "context": "<owned-temp>/candidate-pigz-app-_6iaoyms",
+  "cases": [],
+  "qualification": "selected cached Python3.13 base plus own real build-time gzip artifact and own-container-loopback HTTP; not full generated native image or hosted finding",
+  "own_containers_context_removed": true
+}

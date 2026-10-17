@@ -1,0 +1,16 @@
+{
+  "failed_create_500": {
+    "full_response_retained": true,
+    "name_absence_reconciliations": 2,
+    "baseline_and_capacity_intact": true,
+    "new_issue_not_yet_established": true
+  },
+  "inline_reader_path": "first inline helper resolved __file__ to repository; it failed locally before product requests, created only an empty root lock, which was verified and removed. Actual read-only reconciliation used an owned script.",
+  "read_only_writer_overlap": {
+    "result": "global lock refused one observe before checkpoint or product calls",
+    "cause": "shared readback reader started while bounded Bex observer parent was still active",
+    "no_service_mutation": true,
+    "resolution": "both parents completed; remaining readers serialized; resume same original deployment",
+    "failed_observe_receipt": ".playwright-mcp/cli-qa-w8-run-my049opr/sweep405-observe-bex-1792218753946365000.json"
+  }
+}

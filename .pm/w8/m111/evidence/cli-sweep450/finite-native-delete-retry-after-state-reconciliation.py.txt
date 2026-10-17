@@ -1,0 +1,8 @@
+from pathlib import Path
+import sys,json
+P=Path(__file__).resolve().parent;f=P/'sweep450-common.py';sys.argv=[str(f),'cleanup-retry','bex'];exec(compile(f.read_text(),str(f),'exec'))
+x=next(v for v in c['resources'] if v.get('sweep')==450);assert x['workspace']==WS and x['create_result']['native_exit']==0 and x['create_response']['id']==x['id'] and x['create_response']['plan']=='free'
+old=x['delete_result'];assert old['native_exit']==1 and 'TLS handshake timeout' in old['stderr'] and '/postgres/'+x['id'] in old['stderr']
+before,v=detail();assert before['status']=='200' and v['id']==x['id'] and v['status']=='available' and not v['readReplicas'] and v['connectionPool']=='none'
+event={'at':now(),'old_attempt':old,'reconciled_existing_own_database':before,'intent':'one native delete retry after preflight GET TLS timeout; no create replay'};x.setdefault('cleanup_native_retry_events',[]).append(event);save()
+event['result']=cli(['postgres','delete',x['id'],'--confirm','-o','json']);x['delete_result']=event['result'];save();assert event['result']['native_exit']==0;print(json.dumps({'native_delete_retry_exit':0,'original_preflight_GET_timeout_retained':True}))

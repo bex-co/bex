@@ -1,0 +1,10 @@
+import json,lzma,base64,hashlib
+def commands(P,reference,marker,stage='original'):
+ packages={'original':'','setuptools':'python3-setuptools','packaging':'python3-setuptools python3-pip','full':'python3-setuptools python3-pip python3-dev'};assert stage in packages
+ import zipfile
+ with zipfile.ZipFile(P/'candidate-python-tools-wheel.whl') as archive:wheel_members={n:archive.read(n).decode() for n in archive.namelist()}
+ files={n:{'wheel':wheel_members} if n.endswith('.whl') else {'text':(P/src).read_text()} for n,src in [('setup.py','candidate-python-native-setup.py'),('qa_native_ext.c','candidate-python-native-extension.c'),('qapy.py','candidate-python-tools-app.py'),('qsrv.cjs','candidate-python-tools-server.cjs'),('qa_local_data-1.0-py3-none-any.whl','candidate-python-tools-wheel.whl')]};files.update({'qref.json':{'text':json.dumps(reference,separators=(',',':'),ensure_ascii=False)},'qm.json':{'text':json.dumps(marker)}});blob=base64.b64encode(lzma.compress(json.dumps(files,ensure_ascii=False,separators=(',',':')).encode(),preset=9)).decode()
+ build="set -e\npython3 - <<'QPY'\nimport base64,lzma,json,pathlib,zipfile\nfor n,v in json.loads(lzma.decompress(base64.b64decode('"+blob+"'))).items():\n if 'wheel' in v:\n  with zipfile.ZipFile(n,'w') as z:\n   for f,b in v['wheel'].items():\n    z.writestr(zipfile.ZipInfo(f,(2000,1,1,0,0,0)),b)\n else:pathlib.Path(n).write_text(v['text'])\nQPY\npython3 qapy.py before\n"
+ if packages[stage]:build+='apt-get update -qq && apt-get install -y --no-install-recommends '+packages[stage]+'\n'
+ build+='python3 setup.py egg_info\npython3 qapy.py metadata\npython3 -m pip install --no-index --no-deps --target qsite qa_local_data-1.0-py3-none-any.whl\npython3 qapy.py wheel\npython3 setup.py build_ext --inplace\npython3 qapy.py build'
+ return {'build':build,'start':'node qsrv.cjs serve','fixture_sha256':reference['fixture_sha256'],'build_bytes':len(build.encode()),'within_API_limit':len(build.encode())<=4096}

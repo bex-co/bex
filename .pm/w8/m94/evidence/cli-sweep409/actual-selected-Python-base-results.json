@@ -1,0 +1,243 @@
+{
+  "image": "python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4",
+  "nonce": "7231d4",
+  "qualification": "actual resolved pinned Python base plus exact authored command; not full generated-image execution, only own SQLite seed database; no hosted database or full generated-image execution",
+  "context": "<owned-temp>/sweep409-local-dza7p0wj",
+  "cases": [
+    {
+      "label": "default",
+      "container": "qa409-7231d4-default",
+      "absent_before": true,
+      "manual_install": false,
+      "command": {
+        "build": "set -e\ncat > qa409-probe.py <<'QA409_QA409_PROBE_PY'\nimport json,hashlib,sqlite3,subprocess,sys,os\nfrom pathlib import Path\nfrom http.server import BaseHTTPRequestHandler,HTTPServer\nref=json.loads(Path('qa409-reference.json').read_text());marker=json.loads(Path('qa409-marker.json').read_text());sha=lambda b:hashlib.sha256(b).hexdigest();query='SELECT id,label,n FROM qa409 ORDER BY id'\nfiles={p:{'bytes':len(Path(p).read_bytes()),'sha256':sha(Path(p).read_bytes())} for p in ref['files']}\nassert files==ref['files'];Path('qa409.sql').write_text(ref['sql']['text'],encoding='utf8');sql=Path('qa409.sql').read_bytes();assert sha(sql)==ref['sql']['sha256']\nbase={'marker':marker,'files':files,'sql':{'bytes':len(sql),'sha256':sha(sql)},'python':sys.version.split()[0],'program_sha256':sha(Path(__file__).read_bytes())}\ndef rows(c):return [dict(zip(['id','label','n'],r)) for r in c.execute(query)]\ndef tool():\n try:\n  r=subprocess.run(['sqlite3','-version'],capture_output=True,text=True,timeout=4);return {'status':r.returncode,'error':None,'stdout':r.stdout,'stderr':r.stderr}\n except FileNotFoundError:return {'status':None,'error':'ENOENT','stdout':'','stderr':''}\nif sys.argv[1]=='before':\n c=sqlite3.connect(':memory:');c.executescript(sql.decode());v={**base,'builtin_sqlite':sqlite3.sqlite_version,'builtin_rows':rows(c),'tools':{'sqlite3':tool()}};c.close();assert v['builtin_rows']==ref['rows'];Path('qa409-before.json').write_text(json.dumps(v));print('QA409_BEFORE '+json.dumps(v),flush=True);sys.exit(0)\ndef proof():\n r=subprocess.run(['sqlite3','-readonly','-json','qa409.db',query],capture_output=True,text=True,timeout=4);r.check_returncode();external=json.loads(r.stdout);c=sqlite3.connect('file:qa409.db?mode=ro',uri=True);internal=rows(c);c.close();assert external==internal==ref['rows'];b=Path('qa409.db').read_bytes();assert b[:16]==b'SQLite format 3\\x00';return {**base,'tools':{'sqlite3':tool()},'rows':external,'builtin_rows':internal,'builtin_sqlite':sqlite3.sqlite_version,'database':{'bytes':len(b),'sha256':sha(b),'SQLite3_header':True}}\nif sys.argv[1]=='build':\n v={**proof(),'before':json.loads(Path('qa409-before.json').read_text())};Path('qa409-build.json').write_text(json.dumps(v));print('QA409_AFTER '+json.dumps(v),flush=True);sys.exit(0)\nbuilt=json.loads(Path('qa409-build.json').read_text())\nclass Handler(BaseHTTPRequestHandler):\n def log_message(self,*args):pass\n def do_GET(self):\n  v={'build':built,'runtime':{**proof(),'request_url':self.path}};b=json.dumps(v,ensure_ascii=False).encode();self.send_response(200);self.send_header('Content-Type','application/json; charset=utf-8');self.send_header('Content-Length',str(len(b)));self.end_headers();self.wfile.write(b)\n  if 'qa409=' in self.path:print('QA409_REQUEST '+json.dumps(v),flush=True)\nHTTPServer(('0.0.0.0',int(os.environ.get('PORT','10000'))),Handler).serve_forever()\nQA409_QA409_PROBE_PY\ncat > qa409-reference.json <<'QA409_QA409_REFERENCE_JSON'\n{\"repo\":\"https://github.com/git-fixtures/basic\",\"branch\":\"master\",\"commit\":\"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"sql\":{\"text\":\"BEGIN;\\nCREATE TABLE qa409(id INTEGER PRIMARY KEY,label TEXT NOT NULL,n INTEGER NOT NULL);\\nINSERT INTO qa409 VALUES(1,'alpha',7),(2,'caf\u00e9 \u96ea',42),(3,'quote '' and comma,',-9);\\nCOMMIT;\\n\",\"bytes\":185,\"sha256\":\"77f8c0f5865d42b725b05c5e981c4b24e530bfbbb5764670599c4d0ec29260d4\"},\"rows\":[{\"id\":1,\"label\":\"alpha\",\"n\":7},{\"id\":2,\"label\":\"caf\u00e9 \u96ea\",\"n\":42},{\"id\":3,\"label\":\"quote ' and comma,\",\"n\":-9}]}\nQA409_QA409_REFERENCE_JSON\ncat > qa409-marker.json <<'QA409_QA409_MARKER_JSON'\n\"QA409_LOCAL\"\nQA409_QA409_MARKER_JSON\npython3 qa409-probe.py before\nsqlite3 -bail qa409.db < qa409.sql\npython3 qa409-probe.py build",
+        "start": "python3 -u qa409-probe.py serve",
+        "program_sha256": "eabeec00df2b0719d24ebab232c8f086dddd68aa59f34039f41b22d87affd168"
+      },
+      "exit": 127,
+      "stdout": "QA409_BEFORE {\"marker\": \"QA409_LOCAL\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"sql\": {\"bytes\": 185, \"sha256\": \"77f8c0f5865d42b725b05c5e981c4b24e530bfbbb5764670599c4d0ec29260d4\"}, \"python\": \"3.13.16\", \"program_sha256\": \"eabeec00df2b0719d24ebab232c8f086dddd68aa59f34039f41b22d87affd168\", \"builtin_sqlite\": \"3.40.1\", \"builtin_rows\": [{\"id\": 1, \"label\": \"alpha\", \"n\": 7}, {\"id\": 2, \"label\": \"caf\\u00e9 \\u96ea\", \"n\": 42}, {\"id\": 3, \"label\": \"quote ' and comma,\", \"n\": -9}], \"tools\": {\"sqlite3\": {\"status\": null, \"error\": \"ENOENT\", \"stdout\": \"\", \"stderr\": \"\"}}}\n",
+      "stderr": "bash: line 36: sqlite3: command not found\n",
+      "before": {
+        "marker": "QA409_LOCAL",
+        "files": {
+          "LICENSE": {
+            "bytes": 1072,
+            "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+          },
+          "CHANGELOG": {
+            "bytes": 18,
+            "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+          }
+        },
+        "sql": {
+          "bytes": 185,
+          "sha256": "77f8c0f5865d42b725b05c5e981c4b24e530bfbbb5764670599c4d0ec29260d4"
+        },
+        "python": "3.13.16",
+        "program_sha256": "eabeec00df2b0719d24ebab232c8f086dddd68aa59f34039f41b22d87affd168",
+        "builtin_sqlite": "3.40.1",
+        "builtin_rows": [
+          {
+            "id": 1,
+            "label": "alpha",
+            "n": 7
+          },
+          {
+            "id": 2,
+            "label": "caf\u00e9 \u96ea",
+            "n": 42
+          },
+          {
+            "id": 3,
+            "label": "quote ' and comma,",
+            "n": -9
+          }
+        ],
+        "tools": {
+          "sqlite3": {
+            "status": null,
+            "error": "ENOENT",
+            "stdout": "",
+            "stderr": ""
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "label": "manual",
+      "container": "qa409-7231d4-manual",
+      "absent_before": true,
+      "manual_install": true,
+      "command": {
+        "build": "set -e\ncat > qa409-probe.py <<'QA409_QA409_PROBE_PY'\nimport json,hashlib,sqlite3,subprocess,sys,os\nfrom pathlib import Path\nfrom http.server import BaseHTTPRequestHandler,HTTPServer\nref=json.loads(Path('qa409-reference.json').read_text());marker=json.loads(Path('qa409-marker.json').read_text());sha=lambda b:hashlib.sha256(b).hexdigest();query='SELECT id,label,n FROM qa409 ORDER BY id'\nfiles={p:{'bytes':len(Path(p).read_bytes()),'sha256':sha(Path(p).read_bytes())} for p in ref['files']}\nassert files==ref['files'];Path('qa409.sql').write_text(ref['sql']['text'],encoding='utf8');sql=Path('qa409.sql').read_bytes();assert sha(sql)==ref['sql']['sha256']\nbase={'marker':marker,'files':files,'sql':{'bytes':len(sql),'sha256':sha(sql)},'python':sys.version.split()[0],'program_sha256':sha(Path(__file__).read_bytes())}\ndef rows(c):return [dict(zip(['id','label','n'],r)) for r in c.execute(query)]\ndef tool():\n try:\n  r=subprocess.run(['sqlite3','-version'],capture_output=True,text=True,timeout=4);return {'status':r.returncode,'error':None,'stdout':r.stdout,'stderr':r.stderr}\n except FileNotFoundError:return {'status':None,'error':'ENOENT','stdout':'','stderr':''}\nif sys.argv[1]=='before':\n c=sqlite3.connect(':memory:');c.executescript(sql.decode());v={**base,'builtin_sqlite':sqlite3.sqlite_version,'builtin_rows':rows(c),'tools':{'sqlite3':tool()}};c.close();assert v['builtin_rows']==ref['rows'];Path('qa409-before.json').write_text(json.dumps(v));print('QA409_BEFORE '+json.dumps(v),flush=True);sys.exit(0)\ndef proof():\n r=subprocess.run(['sqlite3','-readonly','-json','qa409.db',query],capture_output=True,text=True,timeout=4);r.check_returncode();external=json.loads(r.stdout);c=sqlite3.connect('file:qa409.db?mode=ro',uri=True);internal=rows(c);c.close();assert external==internal==ref['rows'];b=Path('qa409.db').read_bytes();assert b[:16]==b'SQLite format 3\\x00';return {**base,'tools':{'sqlite3':tool()},'rows':external,'builtin_rows':internal,'builtin_sqlite':sqlite3.sqlite_version,'database':{'bytes':len(b),'sha256':sha(b),'SQLite3_header':True}}\nif sys.argv[1]=='build':\n v={**proof(),'before':json.loads(Path('qa409-before.json').read_text())};Path('qa409-build.json').write_text(json.dumps(v));print('QA409_AFTER '+json.dumps(v),flush=True);sys.exit(0)\nbuilt=json.loads(Path('qa409-build.json').read_text())\nclass Handler(BaseHTTPRequestHandler):\n def log_message(self,*args):pass\n def do_GET(self):\n  v={'build':built,'runtime':{**proof(),'request_url':self.path}};b=json.dumps(v,ensure_ascii=False).encode();self.send_response(200);self.send_header('Content-Type','application/json; charset=utf-8');self.send_header('Content-Length',str(len(b)));self.end_headers();self.wfile.write(b)\n  if 'qa409=' in self.path:print('QA409_REQUEST '+json.dumps(v),flush=True)\nHTTPServer(('0.0.0.0',int(os.environ.get('PORT','10000'))),Handler).serve_forever()\nQA409_QA409_PROBE_PY\ncat > qa409-reference.json <<'QA409_QA409_REFERENCE_JSON'\n{\"repo\":\"https://github.com/git-fixtures/basic\",\"branch\":\"master\",\"commit\":\"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"sql\":{\"text\":\"BEGIN;\\nCREATE TABLE qa409(id INTEGER PRIMARY KEY,label TEXT NOT NULL,n INTEGER NOT NULL);\\nINSERT INTO qa409 VALUES(1,'alpha',7),(2,'caf\u00e9 \u96ea',42),(3,'quote '' and comma,',-9);\\nCOMMIT;\\n\",\"bytes\":185,\"sha256\":\"77f8c0f5865d42b725b05c5e981c4b24e530bfbbb5764670599c4d0ec29260d4\"},\"rows\":[{\"id\":1,\"label\":\"alpha\",\"n\":7},{\"id\":2,\"label\":\"caf\u00e9 \u96ea\",\"n\":42},{\"id\":3,\"label\":\"quote ' and comma,\",\"n\":-9}]}\nQA409_QA409_REFERENCE_JSON\ncat > qa409-marker.json <<'QA409_QA409_MARKER_JSON'\n\"QA409_LOCAL\"\nQA409_QA409_MARKER_JSON\npython3 qa409-probe.py before\napt-get update -qq && apt-get install -y --no-install-recommends sqlite3\nsqlite3 -bail qa409.db < qa409.sql\npython3 qa409-probe.py build",
+        "start": "python3 -u qa409-probe.py serve",
+        "program_sha256": "eabeec00df2b0719d24ebab232c8f086dddd68aa59f34039f41b22d87affd168"
+      },
+      "exit": 0,
+      "stdout": "QA409_BEFORE {\"marker\": \"QA409_LOCAL\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"sql\": {\"bytes\": 185, \"sha256\": \"77f8c0f5865d42b725b05c5e981c4b24e530bfbbb5764670599c4d0ec29260d4\"}, \"python\": \"3.13.16\", \"program_sha256\": \"eabeec00df2b0719d24ebab232c8f086dddd68aa59f34039f41b22d87affd168\", \"builtin_sqlite\": \"3.40.1\", \"builtin_rows\": [{\"id\": 1, \"label\": \"alpha\", \"n\": 7}, {\"id\": 2, \"label\": \"caf\\u00e9 \\u96ea\", \"n\": 42}, {\"id\": 3, \"label\": \"quote ' and comma,\", \"n\": -9}], \"tools\": {\"sqlite3\": {\"status\": null, \"error\": \"ENOENT\", \"stdout\": \"\", \"stderr\": \"\"}}}\nReading package lists...\nBuilding dependency tree...\nReading state information...\nSuggested packages:\n  sqlite3-doc\nThe following NEW packages will be installed:\n  sqlite3\n0 upgraded, 1 newly installed, 0 to remove and 8 not upgraded.\nNeed to get 342 kB of archives.\nAfter this operation, 570 kB of additional disk space will be used.\nGet:1 http://deb.debian.org/debian bookworm/main arm64 sqlite3 arm64 3.40.1-2+deb12u2 [342 kB]\nFetched 342 kB in 0s (2414 kB/s)\nSelecting previously unselected package sqlite3.\n(Reading database ... \n(Reading database ... 5%\n(Reading database ... 10%\n(Reading database ... 15%\n(Reading database ... 20%\n(Reading database ... 25%\n(Reading database ... 30%\n(Reading database ... 35%\n(Reading database ... 40%\n(Reading database ... 45%\n(Reading database ... 50%\n(Reading database ... 55%\n(Reading database ... 60%\n(Reading database ... 65%\n(Reading database ... 70%\n(Reading database ... 75%\n(Reading database ... 80%\n(Reading database ... 85%\n(Reading database ... 90%\n(Reading database ... 95%\n(Reading database ... 100%\n(Reading database ... 24001 files and directories currently installed.)\nPreparing to unpack .../sqlite3_3.40.1-2+deb12u2_arm64.deb ...\nUnpacking sqlite3 (3.40.1-2+deb12u2) ...\nSetting up sqlite3 (3.40.1-2+deb12u2) ...\nQA409_AFTER {\"marker\": \"QA409_LOCAL\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"sql\": {\"bytes\": 185, \"sha256\": \"77f8c0f5865d42b725b05c5e981c4b24e530bfbbb5764670599c4d0ec29260d4\"}, \"python\": \"3.13.16\", \"program_sha256\": \"eabeec00df2b0719d24ebab232c8f086dddd68aa59f34039f41b22d87affd168\", \"tools\": {\"sqlite3\": {\"status\": 0, \"error\": null, \"stdout\": \"3.40.1 2022-12-28 14:03:47 df5c253c0b3dd24916e4ec7cf77d3db5294cc9fd45ae7b9c5e82ad8197f3alt1\\n\", \"stderr\": \"\"}}, \"rows\": [{\"id\": 1, \"label\": \"alpha\", \"n\": 7}, {\"id\": 2, \"label\": \"caf\\u00e9 \\u96ea\", \"n\": 42}, {\"id\": 3, \"label\": \"quote ' and comma,\", \"n\": -9}], \"builtin_rows\": [{\"id\": 1, \"label\": \"alpha\", \"n\": 7}, {\"id\": 2, \"label\": \"caf\\u00e9 \\u96ea\", \"n\": 42}, {\"id\": 3, \"label\": \"quote ' and comma,\", \"n\": -9}], \"builtin_sqlite\": \"3.40.1\", \"database\": {\"bytes\": 8192, \"sha256\": \"d636dc282e52852da442f37189f4c68bcc1705dfa3440d65de948cd9cedee4cc\", \"SQLite3_header\": true}, \"before\": {\"marker\": \"QA409_LOCAL\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"sql\": {\"bytes\": 185, \"sha256\": \"77f8c0f5865d42b725b05c5e981c4b24e530bfbbb5764670599c4d0ec29260d4\"}, \"python\": \"3.13.16\", \"program_sha256\": \"eabeec00df2b0719d24ebab232c8f086dddd68aa59f34039f41b22d87affd168\", \"builtin_sqlite\": \"3.40.1\", \"builtin_rows\": [{\"id\": 1, \"label\": \"alpha\", \"n\": 7}, {\"id\": 2, \"label\": \"caf\\u00e9 \\u96ea\", \"n\": 42}, {\"id\": 3, \"label\": \"quote ' and comma,\", \"n\": -9}], \"tools\": {\"sqlite3\": {\"status\": null, \"error\": \"ENOENT\", \"stdout\": \"\", \"stderr\": \"\"}}}}\n",
+      "stderr": "debconf: delaying package configuration, since apt-utils is not installed\n",
+      "before": {
+        "marker": "QA409_LOCAL",
+        "files": {
+          "LICENSE": {
+            "bytes": 1072,
+            "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+          },
+          "CHANGELOG": {
+            "bytes": 18,
+            "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+          }
+        },
+        "sql": {
+          "bytes": 185,
+          "sha256": "77f8c0f5865d42b725b05c5e981c4b24e530bfbbb5764670599c4d0ec29260d4"
+        },
+        "python": "3.13.16",
+        "program_sha256": "eabeec00df2b0719d24ebab232c8f086dddd68aa59f34039f41b22d87affd168",
+        "builtin_sqlite": "3.40.1",
+        "builtin_rows": [
+          {
+            "id": 1,
+            "label": "alpha",
+            "n": 7
+          },
+          {
+            "id": 2,
+            "label": "caf\u00e9 \u96ea",
+            "n": 42
+          },
+          {
+            "id": 3,
+            "label": "quote ' and comma,",
+            "n": -9
+          }
+        ],
+        "tools": {
+          "sqlite3": {
+            "status": null,
+            "error": "ENOENT",
+            "stdout": "",
+            "stderr": ""
+          }
+        }
+      },
+      "after": {
+        "marker": "QA409_LOCAL",
+        "files": {
+          "LICENSE": {
+            "bytes": 1072,
+            "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+          },
+          "CHANGELOG": {
+            "bytes": 18,
+            "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+          }
+        },
+        "sql": {
+          "bytes": 185,
+          "sha256": "77f8c0f5865d42b725b05c5e981c4b24e530bfbbb5764670599c4d0ec29260d4"
+        },
+        "python": "3.13.16",
+        "program_sha256": "eabeec00df2b0719d24ebab232c8f086dddd68aa59f34039f41b22d87affd168",
+        "tools": {
+          "sqlite3": {
+            "status": 0,
+            "error": null,
+            "stdout": "3.40.1 2022-12-28 14:03:47 df5c253c0b3dd24916e4ec7cf77d3db5294cc9fd45ae7b9c5e82ad8197f3alt1\n",
+            "stderr": ""
+          }
+        },
+        "rows": [
+          {
+            "id": 1,
+            "label": "alpha",
+            "n": 7
+          },
+          {
+            "id": 2,
+            "label": "caf\u00e9 \u96ea",
+            "n": 42
+          },
+          {
+            "id": 3,
+            "label": "quote ' and comma,",
+            "n": -9
+          }
+        ],
+        "builtin_rows": [
+          {
+            "id": 1,
+            "label": "alpha",
+            "n": 7
+          },
+          {
+            "id": 2,
+            "label": "caf\u00e9 \u96ea",
+            "n": 42
+          },
+          {
+            "id": 3,
+            "label": "quote ' and comma,",
+            "n": -9
+          }
+        ],
+        "builtin_sqlite": "3.40.1",
+        "database": {
+          "bytes": 8192,
+          "sha256": "d636dc282e52852da442f37189f4c68bcc1705dfa3440d65de948cd9cedee4cc",
+          "SQLite3_header": true
+        },
+        "before": {
+          "marker": "QA409_LOCAL",
+          "files": {
+            "LICENSE": {
+              "bytes": 1072,
+              "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+            },
+            "CHANGELOG": {
+              "bytes": 18,
+              "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+            }
+          },
+          "sql": {
+            "bytes": 185,
+            "sha256": "77f8c0f5865d42b725b05c5e981c4b24e530bfbbb5764670599c4d0ec29260d4"
+          },
+          "python": "3.13.16",
+          "program_sha256": "eabeec00df2b0719d24ebab232c8f086dddd68aa59f34039f41b22d87affd168",
+          "builtin_sqlite": "3.40.1",
+          "builtin_rows": [
+            {
+              "id": 1,
+              "label": "alpha",
+              "n": 7
+            },
+            {
+              "id": 2,
+              "label": "caf\u00e9 \u96ea",
+              "n": 42
+            },
+            {
+              "id": 3,
+              "label": "quote ' and comma,",
+              "n": -9
+            }
+          ],
+          "tools": {
+            "sqlite3": {
+              "status": null,
+              "error": "ENOENT",
+              "stdout": "",
+              "stderr": ""
+            }
+          }
+        }
+      },
+      "pass": true,
+      "SQL_input": "BEGIN;\nCREATE TABLE qa409(id INTEGER PRIMARY KEY,label TEXT NOT NULL,n INTEGER NOT NULL);\nINSERT INTO qa409 VALUES(1,'alpha',7),(2,'caf\u00e9 \u96ea',42),(3,'quote '' and comma,',-9);\nCOMMIT;\n"
+    }
+  ],
+  "pass": true,
+  "own_containers_context_removed": true
+}

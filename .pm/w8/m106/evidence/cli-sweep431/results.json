@@ -1,0 +1,70 @@
+{
+  "sweep": 431,
+  "filing": "w8/m106",
+  "severity": "major",
+  "attribution": "shared native static-build Hugo supply",
+  "source_head": "01798d4959c933508d4b6eee061295adaa9ebf6d",
+  "actual_serving_SHA_OCI": "unknown",
+  "both_original_native_creates_POST201_exit0": 2,
+  "both_original_first_builds_failed_missing_Hugo": 2,
+  "Hugo_install_line_only_replacements_Live": 2,
+  "source_parent_theme_and_files_unchanged": {
+    "at": "2026-10-17T12:11:04.873124+00:00",
+    "repo": "https://github.com/render-examples/hugo-quick-start",
+    "branch": "main",
+    "commit": "48eaf95c3fd4a8c438df1c14dd9e2ff983a77b7c",
+    "gitlinks": [
+      {
+        "path": "themes/ananke",
+        "mode": "160000",
+        "type": "commit",
+        "sha": "a1a99cf12681ad95b006e648a28139e6b9b75f09"
+      }
+    ],
+    "files": {
+      "config.toml": {
+        "bytes": 110,
+        "sha256": "92d852df5dfb777c852112815136bc2f76807edfb4478c3c74faf2c01e68587a"
+      },
+      ".gitmodules": {
+        "bytes": 108,
+        "sha256": "09b01e96c3a8f9041710dc09d325ecd59d12d93dc4c0004f9d42bd9e5cf78b64"
+      },
+      "content/posts/my-first-post.md": {
+        "bytes": 84,
+        "sha256": "9daad584bd1ef94d7f8dd5cb10fd960c5d3e9f7cdfb5586bd8d8843337e307b6"
+      },
+      "themes/ananke/theme.toml": {
+        "bytes": 652,
+        "sha256": "b88a6a6152e080e8092c36e52dfda0cb4bb63faaa78dd8999cc33a3c78d3e0f9"
+      },
+      "themes/ananke/layouts/index.html": {
+        "bytes": 2461,
+        "sha256": "3a23493988682d44541cbdff9b8474de4f097e9f035ab708e49d8567b9f5ad5b"
+      }
+    }
+  },
+  "actual_diagnostic_Hugo_versions": [
+    "hugo v0.111.3+extended linux/amd64 BuildDate=2023-03-16T08:41:31Z VendorInfo=debian:0.111.3-1"
+  ],
+  "real_generated_index_and_stylesheet_HTTP200": 6,
+  "original_failure_HTTP404": 2,
+  "shared_REST_GraphQL_MCP_readbacks": 12,
+  "explicit_NODE_VERSION24_API_only_reads": 4,
+  "actual_source_BuildJob_resolver_exports": 2,
+  "original_omitted_static_runtime": "node; no Hugo supplier",
+  "local_original_control_exits": [
+    127,
+    0
+  ],
+  "local_real_top_level_theme_commit_verified": "a1a99cf12681ad95b006e648a28139e6b9b75f09",
+  "full_generated_local_image_executed": false,
+  "diagnostic_Debian_Hugo0_111_3_not_adopted_platform_pin": true,
+  "scope": "static build only; no compute-runtime Hugo promise",
+  "exact_owned_two_parents_four_children_URLs_absent": true,
+  "baseline_current_inventory_quota_and_termination0": true,
+  "local_containers_Git_contexts_Go_exports_relays_copied_configs_removed": true,
+  "working_unmodified_platform_Hugo": "not yet; authored install is a diagnostic control",
+  "product_implementation": false,
+  "uncommitted": true
+}

@@ -1,0 +1,30 @@
+{
+  "at": "2026-10-17T17:13:01.598522+00:00",
+  "context": "<owned-temp>/sweep452-generated-context",
+  "case_names": [
+    "web-default",
+    "web-custom",
+    "web-empty",
+    "static-default",
+    "static-custom",
+    "static-empty"
+  ],
+  "containers": [
+    "qa452-web-default-baf3f8d0",
+    "qa452-web-custom-baf3f8d0",
+    "qa452-web-empty-baf3f8d0",
+    "qa452-static-default-baf3f8d0",
+    "qa452-static-custom-baf3f8d0",
+    "qa452-static-empty-baf3f8d0"
+  ],
+  "images": [
+    "qa452-python:web-default-baf3f8d0",
+    "qa452-python:web-custom-baf3f8d0",
+    "qa452-python:web-empty-baf3f8d0",
+    "qa452-python:static-default-baf3f8d0",
+    "qa452-python:static-custom-baf3f8d0",
+    "qa452-python:static-empty-baf3f8d0"
+  ],
+  "state": "finished: own containers/image tags/context removed; shared base/build cache retained",
+  "results": "<owned-temp>/sweep452-generated-image-results.json"
+}

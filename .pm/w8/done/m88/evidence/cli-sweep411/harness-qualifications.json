@@ -1,0 +1,10 @@
+{
+  "initial_hash_expectation": {
+    "template_SHA256": "93531fa009fed2aa8abfbedf77bfd03d2a26bda692dcebeb7e83d148ae4253f0",
+    "actual_factory_written_and_original_runtime_SHA256": "ad36e3734b331d1e688fbe07c86b355be2740dbfda2f9e6fc7b494e5fed5f677",
+    "reason": "original factory appends a newline after the template",
+    "all_other_source_startup_assertions_verified": true,
+    "retained_receipt_reclassified_without_HTTP_or_mutation_replay": true,
+    "finite_parent_stopped_before_Render_wait_shared_reads_or_restarts": true
+  }
+}

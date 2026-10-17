@@ -1,0 +1,76 @@
+{
+  "nonce": "93fef2",
+  "context": "<owned-temp>/sweep426-source-ozlm4re1",
+  "image": "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+  "cases": [
+    {
+      "case": "wrong-parent",
+      "container": "qa-subroot-93fef2-wrong-parent",
+      "absent_before": true,
+      "command": "set -e\nnode qa426-app.cjs build",
+      "exit": 1,
+      "stdout": "QA_SUBROOT_BEFORE {\"marker\":\"QA_SUBROOT_LOCAL\",\"node\":\"v24.22.0\",\"files\":{\".gitmodules\":{\"bytes\":172,\"sha256\":\"7fc5618d3820ef4716f0e799b5d99b441db82e075b1cba24a308b15ff512e880\"},\"basic/LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"basic/CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"absent\":{\"README.md\":false,\"itself\":false},\"program_sha256\":\"250c627f8d7723a3ec652b041a2a29c4c2f42db116554ae9549edd26e796293f\"}\n",
+      "stderr": "node:assert:152\n  throw new AssertionError(obj);\n  ^\n\nAssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n+ actual - expected\n\n  {\n    '.gitmodules': {\n+     bytes: 172,\n+     sha256: '7fc5618d3820ef4716f0e799b5d99b441db82e075b1cba24a308b15ff512e880'\n-     bytes: 83,\n-     sha256: '25a1f02975734c82b9df9d9756611e4d666fd087dd24d25797f02a724b4b7954'\n    },\n    'basic/CHANGELOG': {\n      bytes: 18,\n      sha256: '9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5'\n    },\n\n    at verify (/qa/qa426-app.cjs:3:27)\n    at Object.<anonymous> (/qa/qa426-app.cjs:4:101)\n    at Module._compile (node:internal/modules/cjs/loader:1929:14)\n    at Object..js (node:internal/modules/cjs/loader:2060:10)\n    at Module.load (node:internal/modules/cjs/loader:1651:32)\n    at Module._load (node:internal/modules/cjs/loader:1443:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47 {\n  generatedMessage: true,\n  code: 'ERR_ASSERTION',\n  actual: {\n    '.gitmodules': {\n      bytes: 172,\n      sha256: '7fc5618d3820ef4716f0e799b5d99b441db82e075b1cba24a308b15ff512e880'\n    },\n    'basic/LICENSE': {\n      bytes: 1072,\n      sha256: '20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09'\n    },\n    'basic/CHANGELOG': {\n      bytes: 18,\n      sha256: '9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5'\n    }\n  },\n  expected: {\n    '.gitmodules': {\n      bytes: 83,\n      sha256: '25a1f02975734c82b9df9d9756611e4d666fd087dd24d25797f02a724b4b7954'\n    },\n    'basic/LICENSE': {\n      bytes: 1072,\n      sha256: '20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09'\n    },\n    'basic/CHANGELOG': {\n      bytes: 18,\n      sha256: '9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5'\n    }\n  },\n  operator: 'deepStrictEqual',\n  diff: 'simple'\n}\n\nNode.js v24.22.0\n",
+      "pass": true
+    },
+    {
+      "case": "correct-nested",
+      "container": "qa-subroot-93fef2-correct-nested",
+      "absent_before": true,
+      "command": "set -e\nnode qa426-app.cjs build\nnode qa426-app.cjs serve > own-server.log 2>&1 &\nqa_subroot_pid=$!\ntrap 'kill \"$qa_subroot_pid\" 2>/dev/null || true' EXIT\nnode check.cjs\ncat own-server.log",
+      "exit": 0,
+      "stdout": "QA_SUBROOT_BEFORE {\"marker\":\"QA_SUBROOT_LOCAL\",\"node\":\"v24.22.0\",\"files\":{\".gitmodules\":{\"bytes\":83,\"sha256\":\"25a1f02975734c82b9df9d9756611e4d666fd087dd24d25797f02a724b4b7954\"},\"basic/LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"basic/CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"absent\":{\"README.md\":true,\"itself\":true},\"program_sha256\":\"250c627f8d7723a3ec652b041a2a29c4c2f42db116554ae9549edd26e796293f\"}\nQA_SUBROOT_AFTER {\"marker\":\"QA_SUBROOT_LOCAL\",\"node\":\"v24.22.0\",\"files\":{\".gitmodules\":{\"bytes\":83,\"sha256\":\"25a1f02975734c82b9df9d9756611e4d666fd087dd24d25797f02a724b4b7954\"},\"basic/LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"basic/CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"absent\":{\"README.md\":true,\"itself\":true},\"program_sha256\":\"250c627f8d7723a3ec652b041a2a29c4c2f42db116554ae9549edd26e796293f\"}\nQA_SUBROOT_LOCAL_HTTP [{\"path\":\"/nested?qa=1\",\"status\":200,\"files\":{\".gitmodules\":{\"bytes\":83,\"sha256\":\"25a1f02975734c82b9df9d9756611e4d666fd087dd24d25797f02a724b4b7954\"},\"basic/LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"basic/CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"absent\":{\"README.md\":true,\"itself\":true}},{\"path\":\"/?qa=2\",\"status\":200,\"files\":{\".gitmodules\":{\"bytes\":83,\"sha256\":\"25a1f02975734c82b9df9d9756611e4d666fd087dd24d25797f02a724b4b7954\"},\"basic/LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"basic/CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"absent\":{\"README.md\":true,\"itself\":true}},{\"path\":\"/nested?qa=3\",\"status\":200,\"files\":{\".gitmodules\":{\"bytes\":83,\"sha256\":\"25a1f02975734c82b9df9d9756611e4d666fd087dd24d25797f02a724b4b7954\"},\"basic/LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"basic/CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"absent\":{\"README.md\":true,\"itself\":true}}]\nQA_SUBROOT_HTTP {\"marker\":\"QA_SUBROOT_LOCAL\",\"path\":\"/\",\"files\":{\".gitmodules\":{\"bytes\":83,\"sha256\":\"25a1f02975734c82b9df9d9756611e4d666fd087dd24d25797f02a724b4b7954\"},\"basic/LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"basic/CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"absent\":{\"README.md\":true,\"itself\":true},\"boot\":\"6ad4a2b5-ebc3-4e02-bdb7-a85921648500\"}\nQA_SUBROOT_HTTP {\"marker\":\"QA_SUBROOT_LOCAL\",\"path\":\"/nested?qa=1\",\"files\":{\".gitmodules\":{\"bytes\":83,\"sha256\":\"25a1f02975734c82b9df9d9756611e4d666fd087dd24d25797f02a724b4b7954\"},\"basic/LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"basic/CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"absent\":{\"README.md\":true,\"itself\":true},\"boot\":\"6ad4a2b5-ebc3-4e02-bdb7-a85921648500\"}\nQA_SUBROOT_HTTP {\"marker\":\"QA_SUBROOT_LOCAL\",\"path\":\"/?qa=2\",\"files\":{\".gitmodules\":{\"bytes\":83,\"sha256\":\"25a1f02975734c82b9df9d9756611e4d666fd087dd24d25797f02a724b4b7954\"},\"basic/LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"basic/CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"absent\":{\"README.md\":true,\"itself\":true},\"boot\":\"6ad4a2b5-ebc3-4e02-bdb7-a85921648500\"}\nQA_SUBROOT_HTTP {\"marker\":\"QA_SUBROOT_LOCAL\",\"path\":\"/nested?qa=3\",\"files\":{\".gitmodules\":{\"bytes\":83,\"sha256\":\"25a1f02975734c82b9df9d9756611e4d666fd087dd24d25797f02a724b4b7954\"},\"basic/LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"basic/CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"absent\":{\"README.md\":true,\"itself\":true},\"boot\":\"6ad4a2b5-ebc3-4e02-bdb7-a85921648500\"}\n",
+      "stderr": "",
+      "pass": true,
+      "build": {
+        "marker": "QA_SUBROOT_LOCAL",
+        "node": "v24.22.0",
+        "files": {
+          ".gitmodules": {
+            "bytes": 83,
+            "sha256": "25a1f02975734c82b9df9d9756611e4d666fd087dd24d25797f02a724b4b7954"
+          },
+          "basic/LICENSE": {
+            "bytes": 1072,
+            "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+          },
+          "basic/CHANGELOG": {
+            "bytes": 18,
+            "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+          }
+        },
+        "absent": {
+          "README.md": true,
+          "itself": true
+        },
+        "program_sha256": "250c627f8d7723a3ec652b041a2a29c4c2f42db116554ae9549edd26e796293f"
+      }
+    }
+  ],
+  "qualification": "public HTTPS recursive clone and selected cached Node24 base, exact nested root and own loopback HTTP; not full generated native image or hosted finding",
+  "clone": {
+    "command": [
+      "git",
+      "clone",
+      "--quiet",
+      "--depth",
+      "1",
+      "--branch",
+      "master",
+      "--recurse-submodules",
+      "https://github.com/git-fixtures/submodule",
+      "OWN_TEMP_REPO"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "actual_local_pinned_commits": {
+    ".": "b685400c1f9316f350965a5993d350bc746b0bf4",
+    "itself": "47770b26e71b0f69c0ecd494b1066f8d1da4fc03",
+    "itself/itself": "c7431b5bc9d45fb64a87d4a895ce3d1073c898d2",
+    "itself/itself/basic": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5"
+  },
+  "pass": true,
+  "own_clone_context_and_containers_removed": true
+}

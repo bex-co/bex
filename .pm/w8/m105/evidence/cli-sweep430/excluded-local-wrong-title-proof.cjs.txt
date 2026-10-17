@@ -1,0 +1,9 @@
+const fs=require('fs'),crypto=require('crypto'),cp=require('child_process');
+const reference=JSON.parse(fs.readFileSync('qa430-reference.json')),marker=JSON.parse(fs.readFileSync('qa430-marker.json'));
+const hash=b=>({bytes:b.length,sha256:crypto.createHash('sha256').update(b).digest('hex')});
+const files=Object.fromEntries(Object.keys(reference.files).map(n=>[n,hash(fs.readFileSync(n))]));
+if(JSON.stringify(files)!==JSON.stringify(reference.files))throw Error('original files changed');
+const index=fs.readFileSync('_site/index.html');if(!index.includes(Buffer.from('Your awesome title'))||!index.includes(Buffer.from('Welcome to Jekyll!')))throw Error('actual Jekyll site content absent');
+const command=c=>cp.execFileSync('/bin/sh',['-c',c],{encoding:'utf8'}).trim();
+const v={marker,files,node:process.version,ruby:command('ruby --version'),bundler:command('bundle --version'),jekyll:command('bundle exec jekyll --version'),index:hash(index)};
+fs.writeFileSync('_site/qa430-evidence.json',JSON.stringify(v));console.log('QA430_AFTER '+JSON.stringify(v));

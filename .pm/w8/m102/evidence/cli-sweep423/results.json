@@ -1,0 +1,48 @@
+{
+  "sweep": 423,
+  "source_head": "c685245f5e76360f855887cbaefb32e4eb7d7722",
+  "severity": "major",
+  "bug": "native build-time pigz absent: literal gzip asset compression cannot produce publication artifact",
+  "attribution": "operator shared native build-image tool assembly",
+  "native_clients": [
+    "published Bex0.3.2/a6350da0",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "original_native_POST201_exit0": 2,
+  "original_first_builds_failed_missing_pigz": 2,
+  "single_pigz_install_native_updates0_replacements_Live": 2,
+  "actual_built_gzip_artifact_HTTP200": 6,
+  "JSON_build_runtime_artifact_proofs": 4,
+  "raw_gzip_downloads_independently_inflated": 2,
+  "exact_UTF8_input_bytes": 12544,
+  "input_sha256": "15cd0238de80b995ca27c45a8b222cfe3b79942d3c161d2b4338753da88d75b8",
+  "explicit_header_CRC32_ISIZE_checks": true,
+  "build_runtime_download_artifact_identity_correlated": true,
+  "runtime_uses_stdlib_only_no_pigz_requirement": true,
+  "native_request_events": 6,
+  "shared_REST_GraphQL_MCP_reads": 12,
+  "explicit_env_API_only_reads": 4,
+  "actual_Python": "3.13.16",
+  "observed_local_pigz": "2.6/Debian2.6-1",
+  "local_selected_Python_base_original_control_exit": [
+    127,
+    0
+  ],
+  "local_three_asserted_artifact_HTTP_controls": 3,
+  "prior_independent_real_compression_control": true,
+  "full_generated_image_executed_locally": false,
+  "actual_original_and_control_source_recipe_exports": 2,
+  "exact_owned_two_parents_four_children_URLs_absent": true,
+  "baseline_current_inventory_quota_accounted_termination0": true,
+  "unrelated_service_IDs_preserved": [],
+  "unrelated_datastore_IDs_preserved": {
+    "postgres": [],
+    "keyValues": []
+  },
+  "local_containers_contexts_relays_copied_configs_removed": true,
+  "actual_serving_SHA_OCI": "unknown",
+  "product_implementation": false,
+  "uncommitted": true,
+  "milestone": "w8/m102",
+  "evidence": ".pm/w8/m102/evidence/cli-sweep423"
+}

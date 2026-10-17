@@ -1,0 +1,22 @@
+{
+  "source_head": "99461a1fc6d5ae3d72fc1969d0045464c9c7f7c2",
+  "source_path": "lego/operator/cmd/native-init/main.go",
+  "source_sha256": "58fc81e63236cdb15ecff86e889eaf7f45f32902665f670ec29287fc114f2fc0",
+  "actual_helper_SHA256": "27977d21691fd009feb002aabe270cd2b012693ba48ca36d3e2cf8e4364df669",
+  "observed_build_exit": 0,
+  "build_args": [
+    "env",
+    "GOWORK=off",
+    "GOOS=linux",
+    "GOARCH=arm64",
+    "CGO_ENABLED=0",
+    "go",
+    "build",
+    "-o",
+    "<own-temporary-helper>",
+    "./cmd/native-init"
+  ],
+  "compiler_version_checked_after_build": "go version go1.26.5 darwin/arm64",
+  "compiled_helper_removed": true,
+  "deployed_helper_identity": "unobserved"
+}

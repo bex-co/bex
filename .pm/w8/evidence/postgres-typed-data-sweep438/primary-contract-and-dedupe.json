@@ -1,0 +1,46 @@
+{
+  "journey": "ordinary PG16 unaccent/citext/ltree/tablefunc consumers",
+  "primary_references": [
+    "https://render.com/docs/postgresql-extensions",
+    "https://www.postgresql.org/docs/16/unaccent.html",
+    "https://www.postgresql.org/docs/16/citext.html",
+    "https://www.postgresql.org/docs/16/ltree.html",
+    "https://www.postgresql.org/docs/16/tablefunc.html"
+  ],
+  "scope": "normal owned Free database and transaction-contained own schemas/data; no live role changes, other databases or background workers",
+  "cases": [
+    "accent and ligature translation with Unicode preserved",
+    "ASCII case-insensitive stock key conflict and case-sensitive text control",
+    "hierarchy predicates and actual GiST index execution",
+    "decimal sales pivot with missing quarters as JSON null"
+  ],
+  "dedupe": [
+    {
+      "command": [
+        "rg",
+        "-n",
+        "-i",
+        "citext|unaccent|ltree|crosstab|tablefunc",
+        ".pm",
+        "--glob",
+        "*.md"
+      ],
+      "exit": 0,
+      "stdout": ".pm/w4/done/274.md:396:    \"a284CrossTab\": {\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "log",
+        "-5",
+        "--oneline",
+        "--",
+        "lego/operator/internal/controller/database_extensions.go"
+      ],
+      "exit": 0,
+      "stdout": "24f738603 fix(operator): install pgvector in every managed application database (w8/m84)\n",
+      "stderr": ""
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "repo": "https://github.com/git-fixtures/basic",
+  "branch": "master",
+  "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+  "files": {
+    "LICENSE": {
+      "bytes": 1072,
+      "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+    },
+    "CHANGELOG": {
+      "bytes": 18,
+      "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+    }
+  },
+  "assets": {
+    "index.html": "<!doctype html><title>QA assets</title><p>Zoë & 李</p>\n",
+    "assets/écho.txt": "Crème brûlée — own Unicode asset\n",
+    "assets/a file.txt": "own asset with a space in its name\n",
+    "assets/draft.tmp": "excluded own draft\n"
+  },
+  "manifest": {
+    "release": "qa-1.2.3",
+    "assets": [
+      {
+        "path": "index.html",
+        "publish": true
+      },
+      {
+        "path": "assets/écho.txt",
+        "publish": true
+      },
+      {
+        "path": "assets/a file.txt",
+        "publish": true
+      },
+      {
+        "path": "assets/draft.tmp",
+        "publish": false
+      }
+    ]
+  }
+}

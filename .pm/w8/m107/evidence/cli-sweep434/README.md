@@ -1,0 +1,15 @@
+# Functional CLI sweep434 — native ZIP creation
+
+Both unchanged native clients create equivalent fresh Free Node web services with the original build/start commands and no ZIP installer. Both first builds fail `spawnSync zip ENOENT` after original-source/Node/UnZip proof. The one-line ZIP-install-only controls become Live and produce actual build and runtime ZIP archives.
+
+[Complete wire/native/build/HTTP/log/shared-state/cleanup evidence](complete-native-ZIP-failures-controls-and-cleanup.json), [results](results.json), [inventory](final-inventory.json). Four JSON responses and two raw ZIP downloads pass complete independent member-byte/length/CRC32/compression checks. Each request's fresh nonce and archive hash matches its native event. Exact source bytes and commands are retained; original runtime was not reached. Isolated human authentication remains for the continuing loop.
+
+[Immutable source reference](source-reference.json), [authored real ZIP app](authored-ZIP-app.cjs.txt), [command factory](bounded-command-factory.py.txt), [native journey](finite-native-ZIP-journey.py.txt), [HTTP decoder](independent-ZIP-HTTP-checks.py.txt), [native event correlator](native-ZIP-log-correlator.py.txt), [shared config reader](shared-config-and-env-reader.py.txt), [finite cleanup](finite-exact-owned-cleanup.py.txt).
+
+[Actual selected-base original/control results](actual-local-original-control-results.json), [local driver](finite-local-prerequisite.py.txt) prove exit 1/missing ZIP versus real archives and three asserted local HTTP responses. [Actual BuildJob/resolver exports](actual-source-export-receipt.json), [recipes](actual-original-control-recipes.json), [export program](actual-source-export-program.go.txt) establish current shared assembly. Local consumers use the immutable selected Node 24 base, not complete generated images. Own containers/contexts/Go packages/relays/copied configs are removed.
+
+[Primary contract and package research](primary-contract-and-fix-research.json), [board/history dedupe](dedupe-and-source-head.json). Render lists ZIP tools at build/runtime; Debian lists ZIP's required libraries. The diagnostic apt package is not an adopted pin. [Researched repair](../../finding.md) specifies reviewed shared supply and real generated-artifact regression gates.
+
+Both exact service parents/all recorded children/former URLs are absent; immutable baseline IDs remain; current service/Postgres/Key Value inventories agree with quotas and zero termination. Only Node 24/Free web/these ordinary archive operations are hosted. Other lines/architectures/languages/static/pre-deploy/browser, large/ZIP64/encrypted archives, Render-hosted comparisons, physical teardown and serving SHA/OCI remain unverified. Product code is unchanged and the filing is uncommitted.
+
+Finite observation windows ended while the first Bex build and its later control were still pending. Readers resumed the same recorded child IDs; no create or update was replayed. Those bounded-wait guard stops are harness sequencing evidence, not extra product findings.

@@ -1,0 +1,50 @@
+[
+  {
+    "name": "@typescript/typescript-linux-x64",
+    "version": "7.0.2",
+    "os": [
+      "linux"
+    ],
+    "cpu": [
+      "x64"
+    ],
+    "dist": {
+      "shasum": "73269cb0baba50aea0ca060445a6b88e583f1ce2",
+      "tarball": "https://registry.npmjs.org/@typescript/typescript-linux-x64/-/typescript-linux-x64-7.0.2.tgz",
+      "fileCount": 114,
+      "integrity": "sha512-EYdf2cNg7rgCWJnxCdJ+F3V39O8ihb37eHAu1LK8oAFizgTQbPOK7zHHXbPt8rX24COqODXeI3sIf0fCXG7H/A==",
+      "signatures": [
+        {
+          "sig": "MEQCID5HnnxMfpqvK60MvUY0mrH43XXckjsaCowg3RUutmw7AiB8k8eQ1fJRg/fgDXqFeQApMd2iZuIXimCW7bduggkezw==",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "unpackedSize": 27945990
+    },
+    "source": "https://registry.npmjs.org/@typescript%2ftypescript-linux-x64/7.0.2"
+  },
+  {
+    "name": "@typescript/typescript-linux-arm64",
+    "version": "7.0.2",
+    "os": [
+      "linux"
+    ],
+    "cpu": [
+      "arm64"
+    ],
+    "dist": {
+      "shasum": "d9334d96d6dac6ff85da9c865588948de939e91f",
+      "tarball": "https://registry.npmjs.org/@typescript/typescript-linux-arm64/-/typescript-linux-arm64-7.0.2.tgz",
+      "fileCount": 114,
+      "integrity": "sha512-Qh4eU4/y3yDjnfjjyPYihMj5/ODIlmt+Bzu17OI+fiSRDW57QmU5SiN63exPRNJPKUzcc1INa1NXdrJ+MqHjUQ==",
+      "signatures": [
+        {
+          "sig": "MEQCIAhJGq1zfqaEWMsX7RqdIjOT1THiTvTp9LeUh9+uc1epAiAFDEmum2ySqE73uf/64WSMwFR54uo3w0pKAo1+UCpAnw==",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "unpackedSize": 26717198
+    },
+    "source": "https://registry.npmjs.org/@typescript%2ftypescript-linux-arm64/7.0.2"
+  }
+]

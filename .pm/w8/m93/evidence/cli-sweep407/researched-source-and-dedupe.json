@@ -1,0 +1,38 @@
+{
+  "at": "2026-10-17T06:55:23.678589+00:00",
+  "source_head": "3d73a5515bcc0f9e9e1ed6b42056396cdabaa450",
+  "native_toolchain_runtimes": 6,
+  "reviewed_primary_base_lines": 16,
+  "producer_count": 1,
+  "producer": "nativeDockerfile -> nativeBuildPreparer -> BuildJob native branch",
+  "resolver": "ResolveNativeBuild rewrites the selected FROM and adds only existing companions; no Pandoc supplier",
+  "trace": {
+    "pin": "a764810a768202704e7206eb7b87a47211fcd98e /2.27.0",
+    "upstream": "cmd/servicecreate.go:127-162 -> pkg/service/create.go:130-155,273-283 -> pkg/service/repo.go:82-87 unchanged POST /v1/services",
+    "server": "apps/rest.go:455-505,1039-1068 -> apps/service.go:2891-2930 -> controller/app_controller.go:1040-1060",
+    "image": "build/native.go:283-320,404-407 -> build/build.go:1176-1182 and936-955 -> build/nativeresolve.go:53-120"
+  },
+  "primary_contracts": [
+    "https://render.com/docs/native-runtimes",
+    "https://pandoc.org/MANUAL.html#using-pandoc",
+    "https://pandoc.org/installing.html#linux"
+  ],
+  "dedupe": {
+    "done_m82": "FFmpeg only, other utility families explicitly uncertified; ImageMagick actually present and passes406",
+    "m91": "PostgreSQL client archive processing only; separate supplier/consumer family",
+    "native_Yarn_pnpm_uv_Bun_Ruby_Git_findings": "independent managers/source/defaults; no Pandoc task",
+    "all_PM_Pandoc_matches": [
+      {
+        "path": ".pm/w8/done/m82/done/t003.md",
+        "lines": [
+          {
+            "line": 44,
+            "text": "No adapter change: the tool comes with the native runtime, so REST/GraphQL/MCP/dashboard and both native clients send the same unchanged settings. Documented in ADR060 D7 (table row + w8/m82 note). Recorded divergences: FFmpeg 9.0.2 instead of Debian bookworm's 5.1.x that Render's apt environment carries; only ffmpeg/ffprobe from Render's tools table (no ImageMagick/pandoc/sqlite3 bundle); fixed release tag, so freshness drift reports rebuilds on"
+          }
+        ]
+      }
+    ]
+  },
+  "targeted_history": "",
+  "unverified": "deployed SHA/OCI; full generated-image local execution; future supplier candidates and other runtime lines"
+}

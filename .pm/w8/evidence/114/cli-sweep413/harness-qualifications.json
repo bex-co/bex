@@ -1,0 +1,5 @@
+{
+  "initial_parent": "both first children still pending after eight reads each; parent guard correctly stopped before shared reads and cleanup",
+  "followup": "resumed actual native logs on both original first children; both Live with original source/defaults; no create/update/deploy replay",
+  "initial_wait_receipts_preserved": true
+}

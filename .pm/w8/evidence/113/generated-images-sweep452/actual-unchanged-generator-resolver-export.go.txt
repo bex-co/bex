@@ -1,0 +1,30 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+package build
+import ("encoding/json";"os";"path/filepath";"testing";"crypto/sha256";"fmt")
+func TestQA452ExportGeneratedPythonArtifacts(t *testing.T) {
+ root:=os.Getenv("QA452_ROOT");if root=="" {t.Fatal("private context required")}
+ raw,e:=os.ReadFile(filepath.Join(root,"cases.json"));if e!=nil {t.Fatal(e)}
+ var cases []struct {Name,Build,Start string;Static bool};if e=json.Unmarshal(raw,&cases);e!=nil {t.Fatal(e)}
+ for _,tc:=range cases { t.Run(tc.Name,func(t *testing.T) {
+  d:=filepath.Join(root,tc.Name);o:=nativeOptions();o.Runtime="python";o.BuildEnv=nil;o.RuntimeEnvSecret="";o.StaticSite=tc.Static;o.StaticPublishPath="public";o.BuildCommand=tc.Build;o.StartCommand=tc.Start;o.NativeEnvRevision="qa452-"+tc.Name
+  f:=filepath.Join(d,"Dockerfile");if e=os.WriteFile(f,[]byte(nativeDockerfile(o)),0600);e!=nil {t.Fatal(e)}
+  choices,e:=ResolveNativeBuild("python",filepath.Join(d,"render-env"),f,filepath.Join(d,"source"));if e!=nil {t.Fatal(e)}
+  b,e:=os.ReadFile(f);if e!=nil {t.Fatal(e)};if len(choices)!=3||choices[0].Line!="3.12" {t.Fatalf("unexpected actual choices %+v",choices)}
+  v:=map[string]any{"case":tc.Name,"static":tc.Static,"choices":choices,"Dockerfile_sha256":fmt.Sprintf("%x",sha256.Sum256(b)),"actual_generator_resolver":true,"manually_supplied_harmless_encoded_bundle":true,"generated_preparation_container_not_executed":true}
+  out,e:=json.MarshalIndent(v,"","  ");if e!=nil {t.Fatal(e)};if e=os.WriteFile(filepath.Join(d,"source-export.json"),out,0600);e!=nil {t.Fatal(e)};t.Logf("exported %s with Python%s",tc.Name,choices[0].Line)
+ })}
+}

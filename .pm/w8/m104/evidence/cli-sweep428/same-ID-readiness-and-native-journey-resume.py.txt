@@ -1,0 +1,9 @@
+from pathlib import Path
+import subprocess,json
+P=Path(__file__).resolve().parent
+steps=[('ready-resumed',['sweep428-pg.py','wait-ready','bex'],600),('ping-bex',['sweep428-pg.py','ping','bex'],90),('ping-render',['sweep428-pg.py','ping','render'],90),('cache',['sweep428-prepare-connection.py'],100),('cache-before',['sweep428-cached-connection.py','before'],45)]
+for actor in ('bex','render'):
+ for i,case in enumerate(('catalog','partman','healthy','catalog')):steps.append((actor+'-'+str(i)+'-'+case,['sweep428-sql.py','sql',actor,case],100))
+for label,args,bound in steps:
+ r=subprocess.run(['python3',str(P/args[0]),*args[1:]],capture_output=True,text=True,timeout=bound);(P/('sweep428-resumed-'+label+'-receipt.json')).write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));print(r.stdout,flush=True)
+ if r.returncode:print(json.dumps({'failed_step':label,'exit':r.returncode,'stderr_tail':r.stderr[-1000:]}),flush=True);raise SystemExit(r.returncode)

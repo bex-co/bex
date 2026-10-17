@@ -1,0 +1,7 @@
+from pathlib import Path
+import subprocess,json
+P=Path(__file__).resolve().parent
+steps=[('preflight',['sweep451-preflight.py']),('create-bex',['sweep451-native-gunicorn.py','create','bex']),('create-render',['sweep451-native-gunicorn.py','create','render'])]
+for label,args in steps:
+ r=subprocess.run(['python3',str(P/args[0]),*args[1:]],capture_output=True,text=True,timeout=130);(P/('sweep451-'+label+'-receipt.json')).write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));print(r.stdout,flush=True)
+ if r.returncode:print(r.stderr[-1300:],flush=True);raise SystemExit(r.returncode)

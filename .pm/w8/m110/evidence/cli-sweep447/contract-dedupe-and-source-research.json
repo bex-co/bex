@@ -1,0 +1,781 @@
+{
+  "at": "2026-10-17T16:05:22.019775+00:00",
+  "source_head": "78f5d15a5c20924d98519e1495812a635fe124a8",
+  "sources": [
+    {
+      "url": "https://render.com/docs/postgresql-extensions",
+      "support": "pg_ivm is listed among capabilities available to PostgreSQL13+ databases, without a per-entry exception."
+    }
+  ],
+  "dedupe_and_callers": [
+    {
+      "command": [
+        "rg",
+        "-n",
+        "-i",
+        "--max-columns",
+        "220",
+        "--max-columns-preview",
+        "pg_ivm|incremental.*view|create_immv",
+        ".pm",
+        "docs",
+        "lego/operator",
+        "--glob",
+        "*.md",
+        "--glob",
+        "*.go",
+        "--glob",
+        "*.yaml"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "log",
+        "--all",
+        "--oneline",
+        "-S",
+        "pg_ivm",
+        "--",
+        "lego/operator",
+        "lego/types",
+        "lego/backend",
+        "docs"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "rg",
+        "-n",
+        "cnpgExportImage\\(|cnpgExportImages|applicationDatabaseSpec\\(|reconcileApplicationDatabase\\(",
+        "lego/operator/internal/controller",
+        "--glob",
+        "*.go"
+      ],
+      "exit": 0,
+      "stdout": "lego/operator/internal/controller/database_extensions.go:62:func applicationDatabaseSpec(clusterName, dbname, owner string) map[string]any {\nlego/operator/internal/controller/database_extensions.go:78:func (r *DatabaseReconciler) reconcileApplicationDatabase(ctx context.Context, db *appv1alpha1.Database, dbname, owner string) {\nlego/operator/internal/controller/database_extensions.go:94:\terr := upsertOwnedObject(ctx, r.Client, r.Scheme, db, child, applicationDatabaseSpec(db.Name, dbname, owner))\nlego/operator/internal/controller/database_extensions_cnpg_test.go:63:\tmajors := slices.Sorted(maps.Keys(cnpgExportImages))\nlego/operator/internal/controller/database_extensions_cnpg_test.go:123:\t\t\tchild.Object[\"spec\"] = applicationDatabaseSpec(\"pg\", dbname, owner)\nlego/operator/internal/controller/database_extensions_cnpg_test.go:177:\t\t\tbroken.Object[\"spec\"] = applicationDatabaseSpec(\"pg\", \"other_db\", \"missing_role\")\nlego/operator/internal/controller/database_export_image_pin_test.go:59:\t\timage, ok := cnpgExportImages[v]\nlego/operator/internal/controller/database_export_image_pin_test.go:61:\t\t\tt.Errorf(\"spec.version=%q is permitted by the CRD enum but cnpgExportImages has no entry.\\n\"+\nlego/operator/internal/controller/database_export_image_pin_test.go:66:\t\t\tt.Errorf(\"cnpgExportImages[%q] = %q is not digest-pinned\", v, image)\nlego/operator/internal/controller/database_export_image_pin_test.go:68:\t\tif got := cnpgExportImage(v); got != image {\nlego/operator/internal/controller/database_export_image_pin_test.go:69:\t\t\tt.Errorf(\"cnpgExportImage(%q) = %q, want %q\", v, got, image)\nlego/operator/internal/controller/database_export_image_pin_test.go:76:\t\tgot := cnpgExportImage(v)\nlego/operator/internal/controller/database_export_image_pin_test.go:78:\t\t\tt.Errorf(\"cnpgExportImage(%q) = %q \u2014 not digest-pinned\", v, got)\nlego/operator/internal/controller/database_export_image_pin_test.go:81:\tif got := cnpgExportImage(\"19\"); got != cnpgExportImages[logicalExportClientVersion] {\nlego/operator/internal/controller/database_export_image_pin_test.go:82:\t\tt.Errorf(\"cnpgExportImage(unrecognized) = %q, want the pinned default client\", got)\nlego/operator/internal/controller/database_test.go:220:\tif withVer[\"imageName\"] != cnpgExportImages[\"16\"] {\nlego/operator/internal/controller/database_exports.go:46:// cnpgExportImages pins every Postgres major a tenant may request for the\nlego/operator/internal/controller/database_exports.go:52:var cnpgExportImages = map[string]string{\nlego/operator/internal/controller/database_exports.go:64:func cnpgExportImage(version string) string {\nlego/operator/internal/controller/database_exports.go:65:\tif image, ok := cnpgExportImages[version]; ok {\nlego/operator/internal/controller/database_exports.go:68:\tif image, ok := cnpgExportImages[logicalExportClientVersion]; ok {\nlego/operator/internal/controller/database_exports.go:73:\treturn cnpgExportImages[\"18\"]\nlego/operator/internal/controller/database_exports.go:320:\t\t\t\t\t\tImage:           cnpgExportImage(version),\nlego/operator/internal/controller/database_controller.go:486:\t\tif image, ok := cnpgExportImages[p.version]; ok {\nlego/operator/internal/controller/database_controller.go:835:\tr.reconcileApplicationDatabase(ctx, &db, dbname, owner)\nlego/operator/internal/controller/database_exports_test.go:88:\twantImage := cnpgExportImage(\"16\")\nlego/operator/internal/controller/database_upgrade_test.go:135:\tif image != cnpgExportImages[\"17\"] {\n",
+      "stderr": ""
+    }
+  ],
+  "local_image_scope": "Actual immutable pg_ivm1.17 source compiled on pinned local PG17.11; not a reviewed CNPG supplier or adopted platform pin",
+  "unobserved": "Actual serving OCI/filesystem/config; hosted other majors/architectures, existing-parent transitions and restore/import/upgrade metadata behavior unrun.",
+  "source_excerpts": {
+    "lego/operator/internal/controller/database_exports.go": [
+      {
+        "line": 46,
+        "text": "// cnpgExportImages pins every Postgres major a tenant may request for the"
+      },
+      {
+        "line": 47,
+        "text": "// logical-export pg_dump Job (round-16 #11). The set is closed by"
+      },
+      {
+        "line": 48,
+        "text": "// DatabaseSpec.Version's kubebuilder enum \u2014 adding a major without a digest"
+      },
+      {
+        "line": 49,
+        "text": "// here fails TestCNPGExportImagesArePinnedForEveryPermittedVersion. Digests"
+      },
+      {
+        "line": 50,
+        "text": "// are the multi-arch index digests from"
+      },
+      {
+        "line": 51,
+        "text": "// `docker buildx imagetools inspect ghcr.io/cloudnative-pg/postgresql:<v>`."
+      },
+      {
+        "line": 52,
+        "text": "var cnpgExportImages = map[string]string{"
+      },
+      {
+        "line": 53,
+        "text": "\t\"13\": \"ghcr.io/cloudnative-pg/postgresql:13@sha256:bd12cfd185d2a5cb09ac51dd7c61cb7801da6250e8d9bd72d2891fcdedace32b\","
+      },
+      {
+        "line": 54,
+        "text": "\t\"14\": \"ghcr.io/cloudnative-pg/postgresql:14@sha256:d9bbdd7ab2bcb4c2b89bc6c9e7285060c674581c81c883c706488a66a5e0c0d9\","
+      },
+      {
+        "line": 55,
+        "text": "\t\"15\": \"ghcr.io/cloudnative-pg/postgresql:15@sha256:cbab476b80bb605e9563a6ae9b0fa7fedc0e6fa923986a99c332fd740ec80611\","
+      },
+      {
+        "line": 56,
+        "text": "\t\"16\": \"ghcr.io/cloudnative-pg/postgresql:16@sha256:e38d10bb2c7420e62efe9afabf207c005d93cdcf30f19f692d047f7dc660271e\","
+      },
+      {
+        "line": 57,
+        "text": "\t\"17\": \"ghcr.io/cloudnative-pg/postgresql:17@sha256:03cacc5491ebdabf58eeecec2ae401076f1062f14f84af9956fd6ec235082188\","
+      },
+      {
+        "line": 58,
+        "text": "\t\"18\": \"ghcr.io/cloudnative-pg/postgresql:18@sha256:d7a81cb5da3182d95d0da5fabfb9e484e375db899dcd54b684105f1e8966e9ca\","
+      },
+      {
+        "line": 59,
+        "text": "}"
+      },
+      {
+        "line": 60,
+        "text": ""
+      },
+      {
+        "line": 61,
+        "text": "// cnpgExportImage resolves the digest-pinned CNPG client image for a major."
+      },
+      {
+        "line": 62,
+        "text": "// Empty/unknown falls back to the pinned logicalExportClientVersion image \u2014"
+      },
+      {
+        "line": 63,
+        "text": "// never a mutable tag composed from the version string."
+      },
+      {
+        "line": 64,
+        "text": "func cnpgExportImage(version string) string {"
+      },
+      {
+        "line": 65,
+        "text": "\tif image, ok := cnpgExportImages[version]; ok {"
+      },
+      {
+        "line": 66,
+        "text": "\t\treturn image"
+      },
+      {
+        "line": 67,
+        "text": "\t}"
+      },
+      {
+        "line": 68,
+        "text": "\tif image, ok := cnpgExportImages[logicalExportClientVersion]; ok {"
+      },
+      {
+        "line": 69,
+        "text": "\t\treturn image"
+      },
+      {
+        "line": 70,
+        "text": "\t}"
+      },
+      {
+        "line": 71,
+        "text": "\t// Unreachable while logicalExportClientVersion stays in the map; kept so a"
+      },
+      {
+        "line": 72,
+        "text": "\t// mis-edit fails closed rather than composing a tag."
+      },
+      {
+        "line": 73,
+        "text": "\treturn cnpgExportImages[\"18\"]"
+      },
+      {
+        "line": 74,
+        "text": "}"
+      },
+      {
+        "line": 309,
+        "text": "\t\t\t\tObjectMeta: metav1.ObjectMeta{Labels: labels},"
+      },
+      {
+        "line": 310,
+        "text": "\t\t\t\tSpec: corev1.PodSpec{"
+      },
+      {
+        "line": 311,
+        "text": "\t\t\t\t\t// No legacy Docker-link env vars (w4/m123) \u2014 a platform maintenance pod."
+      },
+      {
+        "line": 312,
+        "text": "\t\t\t\t\tEnableServiceLinks:           new(false),"
+      },
+      {
+        "line": 313,
+        "text": "\t\t\t\t\tRestartPolicy:                corev1.RestartPolicyNever,"
+      },
+      {
+        "line": 314,
+        "text": "\t\t\t\t\tAutomountServiceAccountToken: new(false),"
+      },
+      {
+        "line": 315,
+        "text": "\t\t\t\t\tVolumes: []corev1.Volume{{Name: exportWorkVolume, VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{"
+      },
+      {
+        "line": 316,
+        "text": "\t\t\t\t\t\tSizeLimit: resource.NewQuantity(exportWorkVolumeSize, resource.BinarySI),"
+      },
+      {
+        "line": 317,
+        "text": "\t\t\t\t\t}}}},"
+      },
+      {
+        "line": 318,
+        "text": "\t\t\t\t\tInitContainers: []corev1.Container{{"
+      },
+      {
+        "line": 319,
+        "text": "\t\t\t\t\t\tName:            \"pg-dump\","
+      },
+      {
+        "line": 320,
+        "text": "\t\t\t\t\t\tImage:           cnpgExportImage(version),"
+      },
+      {
+        "line": 321,
+        "text": "\t\t\t\t\t\tImagePullPolicy: corev1.PullIfNotPresent,"
+      },
+      {
+        "line": 322,
+        "text": "\t\t\t\t\t\tCommand:         []string{shellBinary, \"-ec\"},"
+      },
+      {
+        "line": 323,
+        "text": "\t\t\t\t\t\tArgs: []string{`mkdir -p \"/work/${EXPORT_DIRECTORY}/${PGDATABASE}\""
+      },
+      {
+        "line": 324,
+        "text": "pg_dump --format=directory --jobs=2 --no-owner --no-privileges --file=\"/work/${EXPORT_DIRECTORY}/${PGDATABASE}\""
+      },
+      {
+        "line": 325,
+        "text": "tar -C /work -czf \"/work/${EXPORT_FILENAME}\" \"${EXPORT_DIRECTORY}\"`},"
+      }
+    ],
+    "lego/operator/internal/controller/database_controller.go": [
+      {
+        "line": 445,
+        "text": "// cnpgClusterSpec builds the CloudNativePG Cluster .spec for a Database. Pure"
+      },
+      {
+        "line": 446,
+        "text": "// (no client) so the plan->Cluster projection is unit-testable. When p.recovery"
+      },
+      {
+        "line": 447,
+        "text": "// is set (with a backup store), the cluster bootstraps through the Barman Cloud"
+      },
+      {
+        "line": 448,
+        "text": "// plugin from a source Database's backups \u2014 a NEW instance, never in place."
+      },
+      {
+        "line": 449,
+        "text": "// Eligible readers add instances independently of the HA standby. HA also"
+      },
+      {
+        "line": 450,
+        "text": "// sets pod anti-affinity to spread the primary and standby across nodes."
+      },
+      {
+        "line": 451,
+        "text": "func cnpgClusterSpec(p clusterParams) map[string]any {"
+      },
+      {
+        "line": 452,
+        "text": "\tinstances := databaseInstanceCount(p)"
+      },
+      {
+        "line": 453,
+        "text": "\tspec := map[string]any{"
+      },
+      {
+        "line": 481,
+        "text": "\t}"
+      },
+      {
+        "line": 482,
+        "text": "\tif p.version != \"\" {"
+      },
+      {
+        "line": 483,
+        "text": "\t\t// The CRD enum is closed and database_exports.go carries the reviewed"
+      },
+      {
+        "line": 484,
+        "text": "\t\t// multi-arch digest for every permitted major. A mutable major tag would"
+      },
+      {
+        "line": 485,
+        "text": "\t\t// let a registry retag silently replace the tenant's database runtime."
+      },
+      {
+        "line": 486,
+        "text": "\t\tif image, ok := cnpgExportImages[p.version]; ok {"
+      },
+      {
+        "line": 487,
+        "text": "\t\t\tspec[\"imageName\"] = image"
+      },
+      {
+        "line": 488,
+        "text": "\t\t}"
+      },
+      {
+        "line": 489,
+        "text": "\t}"
+      },
+      {
+        "line": 490,
+        "text": "\t// Bootstrap: restore-to-new (PITR) when recovery is requested and a store is"
+      },
+      {
+        "line": 523,
+        "text": "\t\t\t\t\"database\": p.dbname,"
+      },
+      {
+        "line": 524,
+        "text": "\t\t\t\t\"owner\":    p.owner,"
+      },
+      {
+        "line": 525,
+        "text": "\t\t\t\t// Create pg_stat_statements so top-queries introspection works"
+      },
+      {
+        "line": 526,
+        "text": "\t\t\t\t// without a manual CREATE EXTENSION after provisioning."
+      },
+      {
+        "line": 527,
+        "text": "\t\t\t\t\"postInitSQL\": []any{\"CREATE EXTENSION IF NOT EXISTS pg_stat_statements\"},"
+      },
+      {
+        "line": 528,
+        "text": "\t\t\t},"
+      },
+      {
+        "line": 529,
+        "text": "\t\t}"
+      },
+      {
+        "line": 530,
+        "text": "\t}"
+      },
+      {
+        "line": 531,
+        "text": "\t// Always load pg_stat_statements so the insights endpoints have it available."
+      },
+      {
+        "line": 532,
+        "text": "\t// Merge user-supplied parameters on top; shared_preload_libraries is forced"
+      },
+      {
+        "line": 533,
+        "text": "\t// to include pg_stat_statements regardless of any user value. It rides CNPG's"
+      },
+      {
+        "line": 534,
+        "text": "\t// dedicated spec.postgresql.shared_preload_libraries field \u2014 inside"
+      },
+      {
+        "line": 535,
+        "text": "\t// `parameters` it is a \"fixed configuration parameter\" the admission webhook"
+      },
+      {
+        "line": 536,
+        "text": "\t// rejects outright."
+      },
+      {
+        "line": 537,
+        "text": "\tpgParams := map[string]any{"
+      },
+      {
+        "line": 538,
+        "text": "\t\t\"pg_stat_statements.track\": \"all\","
+      },
+      {
+        "line": 539,
+        "text": "\t}"
+      },
+      {
+        "line": 540,
+        "text": "\tfor k, v := range p.parameters {"
+      },
+      {
+        "line": 541,
+        "text": "\t\tif k != \"shared_preload_libraries\" {"
+      },
+      {
+        "line": 542,
+        "text": "\t\t\tpgParams[k] = v"
+      },
+      {
+        "line": 543,
+        "text": "\t\t}"
+      },
+      {
+        "line": 544,
+        "text": "\t}"
+      },
+      {
+        "line": 545,
+        "text": "\tspec[\"postgresql\"] = map[string]any{"
+      },
+      {
+        "line": 546,
+        "text": "\t\t\"parameters\":               pgParams,"
+      },
+      {
+        "line": 547,
+        "text": "\t\t\"shared_preload_libraries\": []any{\"pg_stat_statements\"},"
+      },
+      {
+        "line": 548,
+        "text": "\t}"
+      },
+      {
+        "line": 549,
+        "text": "\tif len(p.serverAltDNSNames) > 0 {"
+      },
+      {
+        "line": 825,
+        "text": "\t\tbackupServerName: backups.targetServerName,"
+      },
+      {
+        "line": 826,
+        "text": "\t\trecovery:         db.Spec.Recovery, users: db.Spec.Users,"
+      },
+      {
+        "line": 827,
+        "text": "\t\tdeletedUsers:      db.Spec.DeletedUsers,"
+      },
+      {
+        "line": 828,
+        "text": "\t\thighAvailability:  db.Spec.HighAvailability,"
+      },
+      {
+        "line": 829,
+        "text": "\t\treadReplicas:      len(db.Spec.ReadReplicas),"
+      },
+      {
+        "line": 830,
+        "text": "\t\tparameters:        db.Spec.Parameters,"
+      },
+      {
+        "line": 831,
+        "text": "\t\tserverAltDNSNames: databaseServerAltDNSNames(&db, r.DBDomain),"
+      },
+      {
+        "line": 832,
+        "text": "\t}); err != nil {"
+      },
+      {
+        "line": 833,
+        "text": "\t\treturn r.dbFail(ctx, &db, appv1alpha1.ReasonClusterFailed, err)"
+      },
+      {
+        "line": 834,
+        "text": "\t}"
+      },
+      {
+        "line": 835,
+        "text": "\tr.reconcileApplicationDatabase(ctx, &db, dbname, owner)"
+      },
+      {
+        "line": 836,
+        "text": "\tif err := reconcileEnvironmentPeerPolicy(ctx, r.Client, r.Scheme, &db, db.Labels[labelEnvironment], \"-environment-ingress\", map[string]string{\"app.bex.co/component\": \"database\"}); err != nil {"
+      },
+      {
+        "line": 837,
+        "text": "\t\treturn r.dbFail(ctx, &db, appv1alpha1.ReasonNetworkPolicyFailed, err)"
+      },
+      {
+        "line": 838,
+        "text": "\t}"
+      },
+      {
+        "line": 839,
+        "text": ""
+      },
+      {
+        "line": 840,
+        "text": "\tr.stampConnectionStatus(&db, storageGB, backups)"
+      },
+      {
+        "line": 936,
+        "text": "}"
+      },
+      {
+        "line": 937,
+        "text": ""
+      },
+      {
+        "line": 938,
+        "text": "// reconcileCluster projects the Database onto its CNPG Cluster (same name, same"
+      },
+      {
+        "line": 939,
+        "text": "// namespace). The caller owns cluster because the readiness gate reads it back."
+      },
+      {
+        "line": 940,
+        "text": "func (r *DatabaseReconciler) reconcileCluster(ctx context.Context, db *appv1alpha1.Database, cluster *unstructured.Unstructured, params clusterParams) error {"
+      },
+      {
+        "line": 941,
+        "text": "\t_, err := controllerutil.CreateOrUpdate(ctx, r.Client, cluster, func() error {"
+      },
+      {
+        "line": 942,
+        "text": "\t\tparams.currentInstances = cnpgInstanceCount(cluster)"
+      },
+      {
+        "line": 943,
+        "text": "\t\tspec := cnpgClusterSpec(params)"
+      },
+      {
+        "line": 944,
+        "text": "\t\t// Mark CNPG-managed pods as tenant databases so the node log shipper can"
+      },
+      {
+        "line": 945,
+        "text": "\t\t// exclude platform/auth CNPG clusters. Propagate workspace identity through"
+      },
+      {
+        "line": 946,
+        "text": "\t\t// the same bounded inheritedMetadata label map for NetworkPolicy selection."
+      },
+      {
+        "line": 947,
+        "text": "\t\tinheritedLabels := map[string]any{\"app.bex.co/component\": \"database\"}"
+      },
+      {
+        "line": 948,
+        "text": "\t\tif ws := db.Labels[labelWorkspace]; ws != \"\" {"
+      },
+      {
+        "line": 949,
+        "text": "\t\t\tinheritedLabels[labelWorkspace] = ws"
+      }
+    ],
+    "lego/operator/internal/controller/database_extensions.go": [
+      {
+        "line": 53,
+        "text": "// applicationDatabaseSpec declares the application database with pgvector"
+      },
+      {
+        "line": 54,
+        "text": "// installed (w8/m84). The CNPG images package vector, but CREATE EXTENSION"
+      },
+      {
+        "line": 55,
+        "text": "// needs a superuser, which the application owner is not; installed by CNPG, a"
+      },
+      {
+        "line": 56,
+        "text": "// migration's `CREATE EXTENSION IF NOT EXISTS vector` is a no-op and the type,"
+      },
+      {
+        "line": 57,
+        "text": "// operators and indexes work for the owner. dbname and owner must be the"
+      },
+      {
+        "line": 58,
+        "text": "// database's own (create and restore record them on the spec), since CNPG"
+      },
+      {
+        "line": 59,
+        "text": "// creates a missing database; retain keeps the database and its data if this"
+      },
+      {
+        "line": 60,
+        "text": "// child is deleted, and no pinned version means CNPG never alters an installed"
+      },
+      {
+        "line": 61,
+        "text": "// extension."
+      },
+      {
+        "line": 62,
+        "text": "func applicationDatabaseSpec(clusterName, dbname, owner string) map[string]any {"
+      },
+      {
+        "line": 63,
+        "text": "\treturn map[string]any{"
+      },
+      {
+        "line": 64,
+        "text": "\t\tcnpgClusterRef:          map[string]any{\"name\": clusterName},"
+      },
+      {
+        "line": 65,
+        "text": "\t\t\"name\":                  dbname,"
+      },
+      {
+        "line": 66,
+        "text": "\t\t\"owner\":                 owner,"
+      },
+      {
+        "line": 67,
+        "text": "\t\tcnpgEnsure:              cnpgPresent,"
+      },
+      {
+        "line": 68,
+        "text": "\t\t\"databaseReclaimPolicy\": \"retain\","
+      },
+      {
+        "line": 69,
+        "text": "\t\t\"extensions\":            []any{map[string]any{\"name\": \"vector\", cnpgEnsure: cnpgPresent}},"
+      },
+      {
+        "line": 70,
+        "text": "\t}"
+      },
+      {
+        "line": 71,
+        "text": "}"
+      },
+      {
+        "line": 72,
+        "text": ""
+      },
+      {
+        "line": 78,
+        "text": "func (r *DatabaseReconciler) reconcileApplicationDatabase(ctx context.Context, db *appv1alpha1.Database, dbname, owner string) {"
+      },
+      {
+        "line": 79,
+        "text": "\tif appv1alpha1.ReservedPostgresDatabaseName(dbname) {"
+      },
+      {
+        "line": 80,
+        "text": "\t\t// CNPG refuses to manage a PostgreSQL-owned database, and a refused"
+      },
+      {
+        "line": 81,
+        "text": "\t\t// child would fail every reconcile (as a reserved role did, w4/m170)."
+      },
+      {
+        "line": 82,
+        "text": "\t\tmeta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{"
+      },
+      {
+        "line": 83,
+        "text": "\t\t\tType: conditionExtensionsReady, Status: metav1.ConditionFalse, Reason: \"ReservedDatabaseName\", ObservedGeneration: db.Generation,"
+      },
+      {
+        "line": 84,
+        "text": "\t\t\tMessage: fmt.Sprintf(\"extensions are not managed in the PostgreSQL-owned database %q\", dbname),"
+      },
+      {
+        "line": 85,
+        "text": "\t\t})"
+      },
+      {
+        "line": 86,
+        "text": "\t\treturn"
+      },
+      {
+        "line": 87,
+        "text": "\t}"
+      },
+      {
+        "line": 88,
+        "text": "\tchild := &unstructured.Unstructured{}"
+      },
+      {
+        "line": 89,
+        "text": "\tchild.SetGroupVersionKind(cnpgDatabaseGVK)"
+      },
+      {
+        "line": 90,
+        "text": "\tchild.SetName(applicationDatabaseName(db))"
+      },
+      {
+        "line": 91,
+        "text": "\tchild.SetNamespace(db.Namespace)"
+      },
+      {
+        "line": 92,
+        "text": "\t// The live object the write leaves behind carries the verdict, so no"
+      },
+      {
+        "line": 93,
+        "text": "\t// second read."
+      },
+      {
+        "line": 94,
+        "text": "\terr := upsertOwnedObject(ctx, r.Client, r.Scheme, db, child, applicationDatabaseSpec(db.Name, dbname, owner))"
+      },
+      {
+        "line": 95,
+        "text": "\tif err != nil {"
+      },
+      {
+        "line": 96,
+        "text": "\t\tlogf.FromContext(ctx).Error(err, \"apply the application database\", \"database\", child.GetName())"
+      },
+      {
+        "line": 97,
+        "text": "\t}"
+      },
+      {
+        "line": 98,
+        "text": "\tif db.Spec.Suspended {"
+      }
+    ],
+    "deploy/gitops/base/cnpg-operator.yaml": [
+      {
+        "line": 12,
+        "text": "spec:"
+      },
+      {
+        "line": 13,
+        "text": "  project: bex-platform"
+      },
+      {
+        "line": 14,
+        "text": "  source:"
+      },
+      {
+        "line": 15,
+        "text": "    repoURL: oci://ghcr.io/bex-co/bex-charts/cloudnative-pg"
+      },
+      {
+        "line": 16,
+        "text": "    path: ."
+      },
+      {
+        "line": 17,
+        "text": "    targetRevision: \"sha256:67a2cb6e865168d0c211c76c1a10d4369c6465dac7ebda9172cb72bc46217a78\""
+      },
+      {
+        "line": 18,
+        "text": "    helm:"
+      }
+    ]
+  },
+  "shared_scope": {
+    "cnpg_operand_projection_production_callers": 1,
+    "export_client_image_helper_production_callers": 1,
+    "application_database_spec_production_callers": 1,
+    "shared_CNPG_cluster_spec_production_callers": 1,
+    "preserve": "Compose pg_ivm delivery with m92/m104/m109 and existing vector/pg_stat_statements; audit export/restore/upgrade metadata requirements, avoid a blind shared client/serving pin replacement.",
+    "Render_pg_ivm_supported_Bex_majors": [
+      "13",
+      "14",
+      "15",
+      "16",
+      "17",
+      "18"
+    ],
+    "permitted_pinned_majors": [
+      "13",
+      "14",
+      "15",
+      "16",
+      "17",
+      "18"
+    ]
+  }
+}

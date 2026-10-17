@@ -1,0 +1,14 @@
+{
+  "bounded_log_window": {
+    "original": "Render control reached Live with after-render proof; unfiltered last100 build lines omitted before marker after apt output, so proof guard stopped before HTTP",
+    "correction": "additional native text/start query for QA_GS_BEFORE since exact recorded current child creation; preserve original failed receipt; no build/create/update replay"
+  },
+  "unclassified_initial_HTTP_read": {
+    "observed": "the first Render /render check ended with JSONDecodeError before the helper preserved raw curl body/status; Python receipt retained, no byte/status/cause claim",
+    "followup": "separate durable same-service read returned curl0/HTTP200/application-json; no create/update/deploy replay",
+    "correction": "every subsequent HTTP response persisted before parsing; the unclassified and diagnostic read are excluded from six accepted controls"
+  },
+  "first_readers": "both initial first children pending after initial eight observations; resumed original children without native mutation replay",
+  "control_readers": "Bex original control child pending after first eight observations; Render control accepted, finite parent stopped before shared/control readbacks and cleanup until Bex accepted",
+  "scope": "all native original and control parents/deploy IDs retained; no create/update/deploy replay"
+}

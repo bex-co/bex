@@ -1,0 +1,189 @@
+{
+  "image": "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+  "nonce": "864ec6",
+  "qualification": "actual extracted production dependency step plus exact authored command under selected pinned Node base; not full generated-image execution",
+  "context": "<owned-temp>/sweep401-local-thru7bbz",
+  "cases": [
+    {
+      "label": "default",
+      "container": "qa401-864ec6-default",
+      "absent_before": true,
+      "manual_install": false,
+      "explicit_skip": false,
+      "command": "set -e\ncat > qa401-probe.cjs <<'QA401_QA401_PROBE_CJS'\nconst fs=require('node:fs'),c=require('node:crypto'),cp=require('node:child_process'),ref=JSON.parse(fs.readFileSync('qa401-reference.json')),marker=JSON.parse(fs.readFileSync('qa401-marker.json')),phase=process.argv[2],sha=b=>c.createHash('sha256').update(b).digest('hex');\nconst files=Object.fromEntries(Object.keys(ref.files).map(p=>{const b=fs.readFileSync(p);return[p,{bytes:b.length,sha256:sha(b)}]}));if(JSON.stringify(files)!==JSON.stringify(ref.files))throw Error('source differs');\nconst installed=()=>{try{return require('express/package.json').version}catch(e){if(e.code==='MODULE_NOT_FOUND')return null;throw e}},snapshot={marker,node:process.version,yarn:cp.execFileSync('yarn',['--version'],{encoding:'utf8'}).trim(),files,node_modules_present:fs.existsSync('node_modules'),express_version:installed(),skip_present:Object.hasOwn(process.env,'SKIP_INSTALL_DEPS'),skip:process.env.SKIP_INSTALL_DEPS??null};\nif(phase==='before'){fs.writeFileSync('qa401-before.json',JSON.stringify(snapshot));console.log('QA401_BEFORE '+JSON.stringify(snapshot));process.exit(0)}\nconst express=require('express'),app=express();if(typeof app!=='function'||snapshot.express_version!=='4.18.2')throw Error('locked dependency differs');const index=Buffer.from('<!doctype html><title>qa401</title><p>'+marker+' Express '+snapshot.express_version+'</p>\\n'),result={...snapshot,before:JSON.parse(fs.readFileSync('qa401-before.json')),index:{bytes:index.length,sha256:sha(index)},instantiated_express:true};fs.mkdirSync('_site',{recursive:true});fs.writeFileSync('_site/index.html',index);fs.writeFileSync('_site/qa401-evidence.json',JSON.stringify(result));console.log('QA401_AFTER '+JSON.stringify(result));\nQA401_QA401_PROBE_CJS\ncat > qa401-reference.json <<'QA401_QA401_REFERENCE_JSON'\n{\"repo\": \"https://github.com/render-examples/express-hello-world\", \"branch\": \"master\", \"commit\": \"e7a5c56626fab0673f244d169389bf34070e754c\", \"files\": {\"package.json\": {\"bytes\": 411, \"sha256\": \"b51b5018960cfe4362b9b800a6d653290af9a708668b128699a896635d7da818\"}, \"yarn.lock\": {\"bytes\": 17064, \"sha256\": \"800187ff849756317b17f44148253dae80021e70a82f9931c6b40a396c1dc83b\"}}, \"qualification\": \"actual public Render example dependency manifest/lock; explicitly authored static dependency observer instead of its web app\"}\nQA401_QA401_REFERENCE_JSON\ncat > qa401-marker.json <<'QA401_QA401_MARKER_JSON'\n\"QA401_LOCAL\"\nQA401_QA401_MARKER_JSON\nnode qa401-probe.cjs before\nnode qa401-probe.cjs build",
+      "exit": 1,
+      "stdout": "==> Not installing dependencies automatically: yarn.lock is another package manager's; install them in the build command\nQA401_BEFORE {\"marker\":\"QA401_LOCAL\",\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"files\":{\"package.json\":{\"bytes\":411,\"sha256\":\"b51b5018960cfe4362b9b800a6d653290af9a708668b128699a896635d7da818\"},\"yarn.lock\":{\"bytes\":17064,\"sha256\":\"800187ff849756317b17f44148253dae80021e70a82f9931c6b40a396c1dc83b\"}},\"node_modules_present\":false,\"express_version\":null,\"skip_present\":false,\"skip\":null}\n",
+      "stderr": "node:internal/modules/cjs/loader:1568\n  throw err;\n  ^\n\nError: Cannot find module 'express'\nRequire stack:\n- /work/qa401-probe.cjs\n    at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)\n    at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)\n    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)\n    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)\n    at Module._load (node:internal/modules/cjs/loader:1341:5)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\n    at Module.require (node:internal/modules/cjs/loader:1674:12)\n    at require (node:internal/modules/helpers:157:16)\n    at Object.<anonymous> (/work/qa401-probe.cjs:5:15)\n    at Module._compile (node:internal/modules/cjs/loader:1929:14) {\n  code: 'MODULE_NOT_FOUND',\n  requireStack: [ '/work/qa401-probe.cjs' ]\n}\n\nNode.js v24.22.0\n",
+      "before": {
+        "marker": "QA401_LOCAL",
+        "node": "v24.22.0",
+        "yarn": "1.22.22",
+        "files": {
+          "package.json": {
+            "bytes": 411,
+            "sha256": "b51b5018960cfe4362b9b800a6d653290af9a708668b128699a896635d7da818"
+          },
+          "yarn.lock": {
+            "bytes": 17064,
+            "sha256": "800187ff849756317b17f44148253dae80021e70a82f9931c6b40a396c1dc83b"
+          }
+        },
+        "node_modules_present": false,
+        "express_version": null,
+        "skip_present": false,
+        "skip": null
+      },
+      "pass": true
+    },
+    {
+      "label": "manual",
+      "container": "qa401-864ec6-manual",
+      "absent_before": true,
+      "manual_install": true,
+      "explicit_skip": false,
+      "command": "set -e\ncat > qa401-probe.cjs <<'QA401_QA401_PROBE_CJS'\nconst fs=require('node:fs'),c=require('node:crypto'),cp=require('node:child_process'),ref=JSON.parse(fs.readFileSync('qa401-reference.json')),marker=JSON.parse(fs.readFileSync('qa401-marker.json')),phase=process.argv[2],sha=b=>c.createHash('sha256').update(b).digest('hex');\nconst files=Object.fromEntries(Object.keys(ref.files).map(p=>{const b=fs.readFileSync(p);return[p,{bytes:b.length,sha256:sha(b)}]}));if(JSON.stringify(files)!==JSON.stringify(ref.files))throw Error('source differs');\nconst installed=()=>{try{return require('express/package.json').version}catch(e){if(e.code==='MODULE_NOT_FOUND')return null;throw e}},snapshot={marker,node:process.version,yarn:cp.execFileSync('yarn',['--version'],{encoding:'utf8'}).trim(),files,node_modules_present:fs.existsSync('node_modules'),express_version:installed(),skip_present:Object.hasOwn(process.env,'SKIP_INSTALL_DEPS'),skip:process.env.SKIP_INSTALL_DEPS??null};\nif(phase==='before'){fs.writeFileSync('qa401-before.json',JSON.stringify(snapshot));console.log('QA401_BEFORE '+JSON.stringify(snapshot));process.exit(0)}\nconst express=require('express'),app=express();if(typeof app!=='function'||snapshot.express_version!=='4.18.2')throw Error('locked dependency differs');const index=Buffer.from('<!doctype html><title>qa401</title><p>'+marker+' Express '+snapshot.express_version+'</p>\\n'),result={...snapshot,before:JSON.parse(fs.readFileSync('qa401-before.json')),index:{bytes:index.length,sha256:sha(index)},instantiated_express:true};fs.mkdirSync('_site',{recursive:true});fs.writeFileSync('_site/index.html',index);fs.writeFileSync('_site/qa401-evidence.json',JSON.stringify(result));console.log('QA401_AFTER '+JSON.stringify(result));\nQA401_QA401_PROBE_CJS\ncat > qa401-reference.json <<'QA401_QA401_REFERENCE_JSON'\n{\"repo\": \"https://github.com/render-examples/express-hello-world\", \"branch\": \"master\", \"commit\": \"e7a5c56626fab0673f244d169389bf34070e754c\", \"files\": {\"package.json\": {\"bytes\": 411, \"sha256\": \"b51b5018960cfe4362b9b800a6d653290af9a708668b128699a896635d7da818\"}, \"yarn.lock\": {\"bytes\": 17064, \"sha256\": \"800187ff849756317b17f44148253dae80021e70a82f9931c6b40a396c1dc83b\"}}, \"qualification\": \"actual public Render example dependency manifest/lock; explicitly authored static dependency observer instead of its web app\"}\nQA401_QA401_REFERENCE_JSON\ncat > qa401-marker.json <<'QA401_QA401_MARKER_JSON'\n\"QA401_LOCAL\"\nQA401_QA401_MARKER_JSON\nnode qa401-probe.cjs before\nyarn install --frozen-lockfile --non-interactive\nnode qa401-probe.cjs build",
+      "exit": 0,
+      "stdout": "==> Not installing dependencies automatically: yarn.lock is another package manager's; install them in the build command\nQA401_BEFORE {\"marker\":\"QA401_LOCAL\",\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"files\":{\"package.json\":{\"bytes\":411,\"sha256\":\"b51b5018960cfe4362b9b800a6d653290af9a708668b128699a896635d7da818\"},\"yarn.lock\":{\"bytes\":17064,\"sha256\":\"800187ff849756317b17f44148253dae80021e70a82f9931c6b40a396c1dc83b\"}},\"node_modules_present\":false,\"express_version\":null,\"skip_present\":false,\"skip\":null}\nyarn install v1.22.22\n[1/5] Validating package.json...\n[2/5] Resolving packages...\n[3/5] Fetching packages...\n[4/5] Linking dependencies...\n[5/5] Building fresh packages...\nDone in 2.37s.\nQA401_AFTER {\"marker\":\"QA401_LOCAL\",\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"files\":{\"package.json\":{\"bytes\":411,\"sha256\":\"b51b5018960cfe4362b9b800a6d653290af9a708668b128699a896635d7da818\"},\"yarn.lock\":{\"bytes\":17064,\"sha256\":\"800187ff849756317b17f44148253dae80021e70a82f9931c6b40a396c1dc83b\"}},\"node_modules_present\":true,\"express_version\":\"4.18.2\",\"skip_present\":false,\"skip\":null,\"before\":{\"marker\":\"QA401_LOCAL\",\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"files\":{\"package.json\":{\"bytes\":411,\"sha256\":\"b51b5018960cfe4362b9b800a6d653290af9a708668b128699a896635d7da818\"},\"yarn.lock\":{\"bytes\":17064,\"sha256\":\"800187ff849756317b17f44148253dae80021e70a82f9931c6b40a396c1dc83b\"}},\"node_modules_present\":false,\"express_version\":null,\"skip_present\":false,\"skip\":null},\"index\":{\"bytes\":69,\"sha256\":\"8ecb9eed74cc1ace01d1a3c219f7e9b6fe585d4ec68fbf379e8cea0bfdfc82bf\"},\"instantiated_express\":true}\n",
+      "stderr": "(node:36) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.\n(Use `node --trace-deprecation ...` to show where the warning was created)\n",
+      "before": {
+        "marker": "QA401_LOCAL",
+        "node": "v24.22.0",
+        "yarn": "1.22.22",
+        "files": {
+          "package.json": {
+            "bytes": 411,
+            "sha256": "b51b5018960cfe4362b9b800a6d653290af9a708668b128699a896635d7da818"
+          },
+          "yarn.lock": {
+            "bytes": 17064,
+            "sha256": "800187ff849756317b17f44148253dae80021e70a82f9931c6b40a396c1dc83b"
+          }
+        },
+        "node_modules_present": false,
+        "express_version": null,
+        "skip_present": false,
+        "skip": null
+      },
+      "after": {
+        "marker": "QA401_LOCAL",
+        "node": "v24.22.0",
+        "yarn": "1.22.22",
+        "files": {
+          "package.json": {
+            "bytes": 411,
+            "sha256": "b51b5018960cfe4362b9b800a6d653290af9a708668b128699a896635d7da818"
+          },
+          "yarn.lock": {
+            "bytes": 17064,
+            "sha256": "800187ff849756317b17f44148253dae80021e70a82f9931c6b40a396c1dc83b"
+          }
+        },
+        "node_modules_present": true,
+        "express_version": "4.18.2",
+        "skip_present": false,
+        "skip": null,
+        "before": {
+          "marker": "QA401_LOCAL",
+          "node": "v24.22.0",
+          "yarn": "1.22.22",
+          "files": {
+            "package.json": {
+              "bytes": 411,
+              "sha256": "b51b5018960cfe4362b9b800a6d653290af9a708668b128699a896635d7da818"
+            },
+            "yarn.lock": {
+              "bytes": 17064,
+              "sha256": "800187ff849756317b17f44148253dae80021e70a82f9931c6b40a396c1dc83b"
+            }
+          },
+          "node_modules_present": false,
+          "express_version": null,
+          "skip_present": false,
+          "skip": null
+        },
+        "index": {
+          "bytes": 69,
+          "sha256": "8ecb9eed74cc1ace01d1a3c219f7e9b6fe585d4ec68fbf379e8cea0bfdfc82bf"
+        },
+        "instantiated_express": true
+      },
+      "pass": true
+    },
+    {
+      "label": "skip-manual",
+      "container": "qa401-864ec6-skip-manual",
+      "absent_before": true,
+      "manual_install": true,
+      "explicit_skip": true,
+      "command": "set -e\ncat > qa401-probe.cjs <<'QA401_QA401_PROBE_CJS'\nconst fs=require('node:fs'),c=require('node:crypto'),cp=require('node:child_process'),ref=JSON.parse(fs.readFileSync('qa401-reference.json')),marker=JSON.parse(fs.readFileSync('qa401-marker.json')),phase=process.argv[2],sha=b=>c.createHash('sha256').update(b).digest('hex');\nconst files=Object.fromEntries(Object.keys(ref.files).map(p=>{const b=fs.readFileSync(p);return[p,{bytes:b.length,sha256:sha(b)}]}));if(JSON.stringify(files)!==JSON.stringify(ref.files))throw Error('source differs');\nconst installed=()=>{try{return require('express/package.json').version}catch(e){if(e.code==='MODULE_NOT_FOUND')return null;throw e}},snapshot={marker,node:process.version,yarn:cp.execFileSync('yarn',['--version'],{encoding:'utf8'}).trim(),files,node_modules_present:fs.existsSync('node_modules'),express_version:installed(),skip_present:Object.hasOwn(process.env,'SKIP_INSTALL_DEPS'),skip:process.env.SKIP_INSTALL_DEPS??null};\nif(phase==='before'){fs.writeFileSync('qa401-before.json',JSON.stringify(snapshot));console.log('QA401_BEFORE '+JSON.stringify(snapshot));process.exit(0)}\nconst express=require('express'),app=express();if(typeof app!=='function'||snapshot.express_version!=='4.18.2')throw Error('locked dependency differs');const index=Buffer.from('<!doctype html><title>qa401</title><p>'+marker+' Express '+snapshot.express_version+'</p>\\n'),result={...snapshot,before:JSON.parse(fs.readFileSync('qa401-before.json')),index:{bytes:index.length,sha256:sha(index)},instantiated_express:true};fs.mkdirSync('_site',{recursive:true});fs.writeFileSync('_site/index.html',index);fs.writeFileSync('_site/qa401-evidence.json',JSON.stringify(result));console.log('QA401_AFTER '+JSON.stringify(result));\nQA401_QA401_PROBE_CJS\ncat > qa401-reference.json <<'QA401_QA401_REFERENCE_JSON'\n{\"repo\": \"https://github.com/render-examples/express-hello-world\", \"branch\": \"master\", \"commit\": \"e7a5c56626fab0673f244d169389bf34070e754c\", \"files\": {\"package.json\": {\"bytes\": 411, \"sha256\": \"b51b5018960cfe4362b9b800a6d653290af9a708668b128699a896635d7da818\"}, \"yarn.lock\": {\"bytes\": 17064, \"sha256\": \"800187ff849756317b17f44148253dae80021e70a82f9931c6b40a396c1dc83b\"}}, \"qualification\": \"actual public Render example dependency manifest/lock; explicitly authored static dependency observer instead of its web app\"}\nQA401_QA401_REFERENCE_JSON\ncat > qa401-marker.json <<'QA401_QA401_MARKER_JSON'\n\"QA401_LOCAL\"\nQA401_QA401_MARKER_JSON\nnode qa401-probe.cjs before\nyarn install --frozen-lockfile --non-interactive\nnode qa401-probe.cjs build",
+      "exit": 0,
+      "stdout": "==> Skipping dependency installation (SKIP_INSTALL_DEPS=true)\nQA401_BEFORE {\"marker\":\"QA401_LOCAL\",\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"files\":{\"package.json\":{\"bytes\":411,\"sha256\":\"b51b5018960cfe4362b9b800a6d653290af9a708668b128699a896635d7da818\"},\"yarn.lock\":{\"bytes\":17064,\"sha256\":\"800187ff849756317b17f44148253dae80021e70a82f9931c6b40a396c1dc83b\"}},\"node_modules_present\":false,\"express_version\":null,\"skip_present\":true,\"skip\":\"true\"}\nyarn install v1.22.22\n[1/5] Validating package.json...\n[2/5] Resolving packages...\n[3/5] Fetching packages...\n[4/5] Linking dependencies...\n[5/5] Building fresh packages...\nDone in 0.89s.\nQA401_AFTER {\"marker\":\"QA401_LOCAL\",\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"files\":{\"package.json\":{\"bytes\":411,\"sha256\":\"b51b5018960cfe4362b9b800a6d653290af9a708668b128699a896635d7da818\"},\"yarn.lock\":{\"bytes\":17064,\"sha256\":\"800187ff849756317b17f44148253dae80021e70a82f9931c6b40a396c1dc83b\"}},\"node_modules_present\":true,\"express_version\":\"4.18.2\",\"skip_present\":true,\"skip\":\"true\",\"before\":{\"marker\":\"QA401_LOCAL\",\"node\":\"v24.22.0\",\"yarn\":\"1.22.22\",\"files\":{\"package.json\":{\"bytes\":411,\"sha256\":\"b51b5018960cfe4362b9b800a6d653290af9a708668b128699a896635d7da818\"},\"yarn.lock\":{\"bytes\":17064,\"sha256\":\"800187ff849756317b17f44148253dae80021e70a82f9931c6b40a396c1dc83b\"}},\"node_modules_present\":false,\"express_version\":null,\"skip_present\":true,\"skip\":\"true\"},\"index\":{\"bytes\":69,\"sha256\":\"8ecb9eed74cc1ace01d1a3c219f7e9b6fe585d4ec68fbf379e8cea0bfdfc82bf\"},\"instantiated_express\":true}\n",
+      "stderr": "(node:36) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.\n(Use `node --trace-deprecation ...` to show where the warning was created)\n",
+      "before": {
+        "marker": "QA401_LOCAL",
+        "node": "v24.22.0",
+        "yarn": "1.22.22",
+        "files": {
+          "package.json": {
+            "bytes": 411,
+            "sha256": "b51b5018960cfe4362b9b800a6d653290af9a708668b128699a896635d7da818"
+          },
+          "yarn.lock": {
+            "bytes": 17064,
+            "sha256": "800187ff849756317b17f44148253dae80021e70a82f9931c6b40a396c1dc83b"
+          }
+        },
+        "node_modules_present": false,
+        "express_version": null,
+        "skip_present": true,
+        "skip": "true"
+      },
+      "after": {
+        "marker": "QA401_LOCAL",
+        "node": "v24.22.0",
+        "yarn": "1.22.22",
+        "files": {
+          "package.json": {
+            "bytes": 411,
+            "sha256": "b51b5018960cfe4362b9b800a6d653290af9a708668b128699a896635d7da818"
+          },
+          "yarn.lock": {
+            "bytes": 17064,
+            "sha256": "800187ff849756317b17f44148253dae80021e70a82f9931c6b40a396c1dc83b"
+          }
+        },
+        "node_modules_present": true,
+        "express_version": "4.18.2",
+        "skip_present": true,
+        "skip": "true",
+        "before": {
+          "marker": "QA401_LOCAL",
+          "node": "v24.22.0",
+          "yarn": "1.22.22",
+          "files": {
+            "package.json": {
+              "bytes": 411,
+              "sha256": "b51b5018960cfe4362b9b800a6d653290af9a708668b128699a896635d7da818"
+            },
+            "yarn.lock": {
+              "bytes": 17064,
+              "sha256": "800187ff849756317b17f44148253dae80021e70a82f9931c6b40a396c1dc83b"
+            }
+          },
+          "node_modules_present": false,
+          "express_version": null,
+          "skip_present": true,
+          "skip": "true"
+        },
+        "index": {
+          "bytes": 69,
+          "sha256": "8ecb9eed74cc1ace01d1a3c219f7e9b6fe585d4ec68fbf379e8cea0bfdfc82bf"
+        },
+        "instantiated_express": true
+      },
+      "pass": true
+    }
+  ],
+  "pass": true,
+  "own_containers_context_removed": true
+}

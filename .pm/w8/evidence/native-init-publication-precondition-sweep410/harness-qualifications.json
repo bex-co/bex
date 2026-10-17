@@ -1,0 +1,7 @@
+{
+  "initial_bounded_observer": {
+    "same_original_first_child_building_after_8_reads": true,
+    "no_create_or_deploy_replay": true,
+    "resume": "same original child"
+  }
+}

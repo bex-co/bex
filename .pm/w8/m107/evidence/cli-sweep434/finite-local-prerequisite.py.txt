@@ -1,0 +1,42 @@
+from pathlib import Path
+import subprocess,json,shutil,secrets,time,hashlib,urllib.request,base64,io,zipfile,zlib
+P=Path(__file__).resolve().parent;root=P/'sweep434-local-context';assert not root.exists();root.mkdir();ref=json.loads((P/'sweep434-primary-reference.json').read_text());ns={};f=P/'sweep434-command-factory.py';exec(compile(f.read_text(),str(f),'exec'),ns);image='node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0';out={'image':image,'kind':'authored actual zip/unzip project on pinned Node24 base; not full generated image','steps':[],'cases':[]};receipt=P/'sweep434-local-prerequisite.json';names=[]
+def save():receipt.write_text(json.dumps(out,indent=2,ensure_ascii=False))
+def run(label,args,check=True,bound=45):
+ r=subprocess.run(args,capture_output=True,timeout=bound);e={'label':label,'command':args,'exit':r.returncode,'stdout':r.stdout.decode(errors='replace'),'stderr':r.stderr.decode(errors='replace')};out['steps'].append(e);save()
+ if check:r.check_returncode()
+ return r
+for name,expected in ref['files'].items():
+ b=urllib.request.urlopen('https://raw.githubusercontent.com/git-fixtures/basic/'+ref['commit']+'/'+name,timeout=25).read();assert {'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}==expected;(root/name).write_bytes(b)
+def expect(label):return {'LICENSE':(root/'LICENSE').read_bytes(),'CHANGELOG':(root/'CHANGELOG').read_bytes(),'greeting.txt':('Crème brûlée & 李\n'*7).encode(),'two words.bin':bytes((i*31+17)&255 for i in range(8192)),'empty.txt':b'','request.txt':label.encode()}
+def decode(blob,label):
+ files=expect(label);z=zipfile.ZipFile(io.BytesIO(blob));assert z.namelist()==sorted(files) and len(set(z.namelist()))==len(files) and z.testzip() is None
+ for v in z.infolist():assert z.read(v.filename)==files[v.filename] and v.file_size==len(files[v.filename]) and v.CRC==zlib.crc32(files[v.filename])&0xffffffff and v.compress_type in [zipfile.ZIP_STORED,zipfile.ZIP_DEFLATED]
+ assert any(v.compress_type==zipfile.ZIP_DEFLATED for v in z.infolist());return [{'name':v.filename,'bytes':v.file_size,'compressed':v.compress_size,'CRC32':v.CRC,'method':v.compress_type} for v in z.infolist()]
+try:
+ for phase in ['initial','control']:
+  case=root/phase;case.mkdir()
+  for name in ref['files']:shutil.copyfile(root/name,case/name)
+  cmd=ns['commands'](P,ref,'QA434_LOCAL',phase=='control');name='qa434-zip-'+phase+'-'+secrets.token_hex(3);names.append(name);e={'phase':phase,'container':name,'HTTP':[]};out['cases'].append(e);save();base=['docker','run','--pull','never','--network','bridge' if phase=='control' else 'none','--name',name,'--mount','type=bind,src='+str(case)+',dst=/app','--workdir','/app','--entrypoint','/bin/bash']
+  if phase=='initial':
+   r=run('default-missing-zip',base+[image,'-c',cmd['build']],False,bound=80);e['exit']=r.returncode;e['pass']=r.returncode==1 and b'spawnSync zip ENOENT' in r.stderr and b'QA434_BEFORE' in r.stdout
+  else:
+   run('start-control',base[0:2]+['-d']+base[2:]+[image,'-c',cmd['build']+'\nexec '+cmd['start']],bound=80)
+   for attempt in range(30):
+    r=run('own-loopback-ready-'+str(attempt),['docker','exec',name,'node','-e',"fetch('http://127.0.0.1:3000/?qa=ready').then(r=>{if(!r.ok)process.exit(2)}).catch(()=>process.exit(3))"],False)
+    if r.returncode==0:break
+    time.sleep(1)
+   else:raise RuntimeError('Own ZIP server readiness did not converge')
+   for nonce,download in [('one',False),('two',True),('three',False)]:
+    path=('/download' if download else '/')+'?qa='+nonce;script="fetch('http://127.0.0.1:3000"+path+"').then(async r=>{if(!r.ok)process.exit(2);process.stdout.write(Buffer.from(await r.arrayBuffer()))})";r=run('own-HTTP-'+nonce,['docker','exec',name,'node','-e',script]);raw=r.stdout;v=None
+    if download:blob=raw
+    else:
+     v=json.loads(raw);assert v['marker']=='QA434_LOCAL' and v['nonce']==nonce and v['built']['source']==v['runtime']['source']==ref['files'];built=base64.b64decode(v['built']['archive']['base64']);decode(built,'QA434_LOCAL|build');blob=base64.b64decode(v['runtime']['archive']['base64']);assert v['runtime']['archive']['bytes']==len(blob) and v['runtime']['archive']['sha256']==hashlib.sha256(blob).hexdigest()
+    members=decode(blob,'QA434_LOCAL|'+nonce);e['HTTP'].append({'nonce':nonce,'raw_download':download,'wire_bytes':len(raw),'archive_bytes':len(blob),'archive_sha256':hashlib.sha256(blob).hexdigest(),'members':members,'decoded':v});save()
+   e['pass']=len(e['HTTP'])==3;run('actual-control-log',['docker','logs',name])
+  assert e['pass'];run('remove-own-case',['docker','rm','-f','-v',name]);names.remove(name);save();print(json.dumps({'phase':phase,'pass':True,'HTTP':len(e['HTTP'])}),flush=True)
+ out['pass']=all(v['pass'] for v in out['cases']);save()
+finally:
+ for name in names:run('cleanup-own-case',['docker','rm','-f','-v',name],False)
+ out['own_containers_absent']=all(run('own-container-absence',['docker','container','inspect',v['container']],False).returncode!=0 for v in out['cases']);shutil.rmtree(root);out['own_context_removed']=not root.exists();save()
+print(json.dumps({'pass':out.get('pass',False),'own_containers_absent':out['own_containers_absent'],'own_context_removed':out['own_context_removed']}))

@@ -1,0 +1,43 @@
+{
+  "sweep": 413,
+  "source_head": "8f80d74efaffc23342cccad2f275051a1501396f",
+  "note": "w8/114",
+  "native_clients": [
+    "published Bex0.3.2/a6350da0",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "original_authored_build_start_and_app_byte_identity": true,
+  "native_creates_POST201_exit0": 2,
+  "original_first_children_Live": 2,
+  "actual_Ruby": "3.4.11",
+  "actual_Rails": "8.0.4",
+  "actual_Puma": "7.1.0",
+  "build_and_runtime_RAILS_ENV": "production",
+  "prelaunch_bind": "0.0.0.0:3000",
+  "authored_RAILS_ENV_or_BINDING_override": false,
+  "replacement_or_control_deploy": false,
+  "exact_source_build_runtime_proofs": 2,
+  "actual_production_HTTP200": 6,
+  "shared_REST_GraphQL_MCP_config_reads": 6,
+  "API_only_env_readbacks_prove_no_RAILS_ENV_override": 2,
+  "exact_two_parents_two_children_URLs_absent": true,
+  "baseline_preserved_current_quota_accounted_termination0": true,
+  "unrelated_IDs_preserved": [
+    "srv-db9ijnhu2fhc73e10clg"
+  ],
+  "unrelated_datastore_IDs_preserved": {
+    "postgres": [
+      "dpg-db9ipkm22tos73dl1sug"
+    ],
+    "keyValues": [
+      "red-db9ipku22tos73dl1svg"
+    ]
+  },
+  "prior_actual_generated_image_and_override_tests": "already completed in implementation f3859bc5e; not rerun by docs-only QA",
+  "actual_serving_revision_and_OCI": "unknown",
+  "source_published_operator_pin_contains_fix": "fa9d44b85 pins b3dbca6013a3, which contains f3859bc5e; Git pin alone is not runtime proof",
+  "new_code_changed": false,
+  "uncommitted": true,
+  "note_closed": true,
+  "evidence": ".pm/w8/evidence/114/cli-sweep413"
+}

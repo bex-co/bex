@@ -1,0 +1,159 @@
+{
+  "client_process_id": 47897,
+  "command": [
+    "curl",
+    "--disable",
+    "-sS",
+    "-N",
+    "--http1.1",
+    "--max-time",
+    "12",
+    "-H",
+    "Accept: text/event-stream",
+    "-H",
+    "Accept-Encoding: identity",
+    "-D",
+    "<owned-temp>/sweep440-bex-http1.1-0.headers",
+    "https://qa-20261017-d676e6-sse.onbex.co/events?run=d676e6-http1.1&count=3"
+  ],
+  "protocol_requested": "http1.1",
+  "last_event_id": 0,
+  "nonce": "d676e6-http1.1",
+  "progress": {
+    "raw_base64": "OiBoZWFydGJlYXQNCnJldHJ5OiA1MDANCmlkOiAxDQpldmVudDogdGljaw0KZGF0YTogeyJtYXJrZXIiOiJRQTQ0MF9kNjc2ZTZfYmV4IiwiYm9vdCI6Ijk0NzU4MzUzLTUwOTEtNDUxOC04OTRkLWY4OGIwMzg4MTcxMiIsIm5vbmNlIjoiZDY3NmU2LWh0dHAxLjEiLCJzZXEiOjEsDQpkYXRhOiAidGV4dCI6IkNyw6htZSBicsO7bMOpZSAmIOadjiIsImZpbGVzIjp7IkxJQ0VOU0UiOnsiYnl0ZXMiOjEwNzIsInNoYTI1NiI6IjIwYjA2NDkxMGIzMmJjZTFiYzA0NTk1YTViMjA0NzdhMjhjNTAzOTk1ZWY4NTI4OTI5YTMxMWQ2Y2I3YTNiMDkifSwiQ0hBTkdFTE9HIjp7ImJ5dGVzIjoxOCwic2hhMjU2IjoiOWM2NWUzNjYwNTVlZGQ5YTBmNmFiOWM3YjhhMzdmYzkyODAzY2ZlMWQzMGZmYTcyN2NlZWQwYzYzOTM5YzJlNSJ9fX0NCg0KOiBoZWFydGJlYXQNCmlkOiAyDQpldmVudDogdGljaw0KZGF0YTogeyJtYXJrZXIiOiJRQTQ0MF9kNjc2ZTZfYmV4IiwiYm9vdCI6Ijk0NzU4MzUzLTUwOTEtNDUxOC04OTRkLWY4OGIwMzg4MTcxMiIsIm5vbmNlIjoiZDY3NmU2LWh0dHAxLjEiLCJzZXEiOjIsDQpkYXRhOiAidGV4dCI6IkNyw6htZSBicsO7bMOpZSAmIOadjiIsImZpbGVzIjp7IkxJQ0VOU0UiOnsiYnl0ZXMiOjEwNzIsInNoYTI1NiI6IjIwYjA2NDkxMGIzMmJjZTFiYzA0NTk1YTViMjA0NzdhMjhjNTAzOTk1ZWY4NTI4OTI5YTMxMWQ2Y2I3YTNiMDkifSwiQ0hBTkdFTE9HIjp7ImJ5dGVzIjoxOCwic2hhMjU2IjoiOWM2NWUzNjYwNTVlZGQ5YTBmNmFiOWM3YjhhMzdmYzkyODAzY2ZlMWQzMGZmYTcyN2NlZWQwYzYzOTM5YzJlNSJ9fX0NCg0KOiBoZWFydGJlYXQNCmlkOiAzDQpldmVudDogdGljaw0KZGF0YTogeyJtYXJrZXIiOiJRQTQ0MF9kNjc2ZTZfYmV4IiwiYm9vdCI6Ijk0NzU4MzUzLTUwOTEtNDUxOC04OTRkLWY4OGIwMzg4MTcxMiIsIm5vbmNlIjoiZDY3NmU2LWh0dHAxLjEiLCJzZXEiOjMsDQpkYXRhOiAidGV4dCI6IkNyw6htZSBicsO7bMOpZSAmIOadjiIsImZpbGVzIjp7IkxJQ0VOU0UiOnsiYnl0ZXMiOjEwNzIsInNoYTI1NiI6IjIwYjA2NDkxMGIzMmJjZTFiYzA0NTk1YTViMjA0NzdhMjhjNTAzOTk1ZWY4NTI4OTI5YTMxMWQ2Y2I3YTNiMDkifSwiQ0hBTkdFTE9HIjp7ImJ5dGVzIjoxOCwic2hhMjU2IjoiOWM2NWUzNjYwNTVlZGQ5YTBmNmFiOWM3YjhhMzdmYzkyODAzY2ZlMWQzMGZmYTcyN2NlZWQwYzYzOTM5YzJlNSJ9fX0NCg0K",
+    "bytes": 1218,
+    "chunks": [
+      {
+        "at": 0.8728,
+        "bytes": 194
+      },
+      {
+        "at": 0.8906,
+        "bytes": 220
+      },
+      {
+        "at": 1.6401,
+        "bytes": 182
+      },
+      {
+        "at": 1.6567,
+        "bytes": 220
+      },
+      {
+        "at": 2.4148,
+        "bytes": 182
+      },
+      {
+        "at": 2.4246,
+        "bytes": 220
+      }
+    ]
+  },
+  "native_curl_exit": 0,
+  "stderr": "",
+  "HTTP": "200",
+  "http_version": "1.1",
+  "headers": "HTTP/1.1 200 OK\nCache-Control: no-cache\nContent-Type: text/event-stream; charset=utf-8\nDate: Sat, 17 Oct 2026 14:33:29 GMT\nX-Accel-Buffering: no\nTransfer-Encoding: chunked\n\n",
+  "raw_base64": "OiBoZWFydGJlYXQNCnJldHJ5OiA1MDANCmlkOiAxDQpldmVudDogdGljaw0KZGF0YTogeyJtYXJrZXIiOiJRQTQ0MF9kNjc2ZTZfYmV4IiwiYm9vdCI6Ijk0NzU4MzUzLTUwOTEtNDUxOC04OTRkLWY4OGIwMzg4MTcxMiIsIm5vbmNlIjoiZDY3NmU2LWh0dHAxLjEiLCJzZXEiOjEsDQpkYXRhOiAidGV4dCI6IkNyw6htZSBicsO7bMOpZSAmIOadjiIsImZpbGVzIjp7IkxJQ0VOU0UiOnsiYnl0ZXMiOjEwNzIsInNoYTI1NiI6IjIwYjA2NDkxMGIzMmJjZTFiYzA0NTk1YTViMjA0NzdhMjhjNTAzOTk1ZWY4NTI4OTI5YTMxMWQ2Y2I3YTNiMDkifSwiQ0hBTkdFTE9HIjp7ImJ5dGVzIjoxOCwic2hhMjU2IjoiOWM2NWUzNjYwNTVlZGQ5YTBmNmFiOWM3YjhhMzdmYzkyODAzY2ZlMWQzMGZmYTcyN2NlZWQwYzYzOTM5YzJlNSJ9fX0NCg0KOiBoZWFydGJlYXQNCmlkOiAyDQpldmVudDogdGljaw0KZGF0YTogeyJtYXJrZXIiOiJRQTQ0MF9kNjc2ZTZfYmV4IiwiYm9vdCI6Ijk0NzU4MzUzLTUwOTEtNDUxOC04OTRkLWY4OGIwMzg4MTcxMiIsIm5vbmNlIjoiZDY3NmU2LWh0dHAxLjEiLCJzZXEiOjIsDQpkYXRhOiAidGV4dCI6IkNyw6htZSBicsO7bMOpZSAmIOadjiIsImZpbGVzIjp7IkxJQ0VOU0UiOnsiYnl0ZXMiOjEwNzIsInNoYTI1NiI6IjIwYjA2NDkxMGIzMmJjZTFiYzA0NTk1YTViMjA0NzdhMjhjNTAzOTk1ZWY4NTI4OTI5YTMxMWQ2Y2I3YTNiMDkifSwiQ0hBTkdFTE9HIjp7ImJ5dGVzIjoxOCwic2hhMjU2IjoiOWM2NWUzNjYwNTVlZGQ5YTBmNmFiOWM3YjhhMzdmYzkyODAzY2ZlMWQzMGZmYTcyN2NlZWQwYzYzOTM5YzJlNSJ9fX0NCg0KOiBoZWFydGJlYXQNCmlkOiAzDQpldmVudDogdGljaw0KZGF0YTogeyJtYXJrZXIiOiJRQTQ0MF9kNjc2ZTZfYmV4IiwiYm9vdCI6Ijk0NzU4MzUzLTUwOTEtNDUxOC04OTRkLWY4OGIwMzg4MTcxMiIsIm5vbmNlIjoiZDY3NmU2LWh0dHAxLjEiLCJzZXEiOjMsDQpkYXRhOiAidGV4dCI6IkNyw6htZSBicsO7bMOpZSAmIOadjiIsImZpbGVzIjp7IkxJQ0VOU0UiOnsiYnl0ZXMiOjEwNzIsInNoYTI1NiI6IjIwYjA2NDkxMGIzMmJjZTFiYzA0NTk1YTViMjA0NzdhMjhjNTAzOTk1ZWY4NTI4OTI5YTMxMWQ2Y2I3YTNiMDkifSwiQ0hBTkdFTE9HIjp7ImJ5dGVzIjoxOCwic2hhMjU2IjoiOWM2NWUzNjYwNTVlZGQ5YTBmNmFiOWM3YjhhMzdmYzkyODAzY2ZlMWQzMGZmYTcyN2NlZWQwYzYzOTM5YzJlNSJ9fX0NCg0K",
+  "raw_bytes": 1218,
+  "raw_sha256": "f8afa71a2968e480ac73e6918a2ea87c70fe08d392bf8c418e4a74c4bb61e16c",
+  "chunks": [
+    {
+      "at": 0.8728,
+      "bytes": 194
+    },
+    {
+      "at": 0.8906,
+      "bytes": 220
+    },
+    {
+      "at": 1.6401,
+      "bytes": 182
+    },
+    {
+      "at": 1.6567,
+      "bytes": 220
+    },
+    {
+      "at": 2.4148,
+      "bytes": 182
+    },
+    {
+      "at": 2.4246,
+      "bytes": 220
+    }
+  ],
+  "events": [
+    {
+      "retry": "500",
+      "id": "1",
+      "event": "tick",
+      "data": {
+        "marker": "QA440_d676e6_bex",
+        "boot": "94758353-5091-4518-894d-f88b03881712",
+        "nonce": "d676e6-http1.1",
+        "seq": 1,
+        "text": "Cr\u00e8me br\u00fbl\u00e9e & \u674e",
+        "files": {
+          "LICENSE": {
+            "bytes": 1072,
+            "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+          },
+          "CHANGELOG": {
+            "bytes": 18,
+            "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+          }
+        }
+      },
+      "arrived_at": 0.8906
+    },
+    {
+      "id": "2",
+      "event": "tick",
+      "data": {
+        "marker": "QA440_d676e6_bex",
+        "boot": "94758353-5091-4518-894d-f88b03881712",
+        "nonce": "d676e6-http1.1",
+        "seq": 2,
+        "text": "Cr\u00e8me br\u00fbl\u00e9e & \u674e",
+        "files": {
+          "LICENSE": {
+            "bytes": 1072,
+            "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+          },
+          "CHANGELOG": {
+            "bytes": 18,
+            "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+          }
+        }
+      },
+      "arrived_at": 1.6567
+    },
+    {
+      "id": "3",
+      "event": "tick",
+      "data": {
+        "marker": "QA440_d676e6_bex",
+        "boot": "94758353-5091-4518-894d-f88b03881712",
+        "nonce": "d676e6-http1.1",
+        "seq": 3,
+        "text": "Cr\u00e8me br\u00fbl\u00e9e & \u674e",
+        "files": {
+          "LICENSE": {
+            "bytes": 1072,
+            "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+          },
+          "CHANGELOG": {
+            "bytes": 18,
+            "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+          }
+        }
+      },
+      "arrived_at": 2.4246
+    }
+  ],
+  "event_arrival_span": 1.534,
+  "elapsed": 2.4269,
+  "pass_": true,
+  "pass": true
+}

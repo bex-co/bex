@@ -1,0 +1,5 @@
+from pathlib import Path
+import json,subprocess,sys
+P=Path(__file__).resolve().parent;CP=P.parent/'cli-qa-w8-checkpoint.json';target=sys.argv[1];stages=['initial','setuptools','packaging','full'];assert target in stages[1:];prior=stages[stages.index(target)-1];xs=[x for x in json.loads(CP.read_text())['resources'] if x.get('sweep')==424];assert len(xs)==2 and all(any(v['phase']==prior and v['pass'] for v in x.get('log_receipts',[])) and any(v['phase']==prior and v['pass'] for v in x.get('runtime_receipts',[])) for x in xs)
+for label,args,bound in [('shared-'+prior,['sweep424-shared-state.py'],180),('update-bex-'+target,['sweep424-native-pytools.py',target,'bex'],120),('update-render-'+target,['sweep424-native-pytools.py',target,'render'],120),('wait-bex-'+target,['sweep424-wait.py','bex'],480),('wait-render-'+target,['sweep424-wait.py','render'],480)]:
+ r=subprocess.run(['python3',str(P/args[0]),*args[1:]],capture_output=True,text=True,timeout=bound);(P/('sweep424-'+label+'-receipt.json')).write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));print(r.stdout,flush=True);r.check_returncode()

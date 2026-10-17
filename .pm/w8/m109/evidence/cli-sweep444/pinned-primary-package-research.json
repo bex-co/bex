@@ -1,0 +1,255 @@
+{
+  "at": "2026-10-17T15:26:32.677920+00:00",
+  "release": "v1.1.1",
+  "commit": "7b0db3737a1ab2dfb182b742322426e3c4b500af",
+  "tag_resolution": "75bae5ada175a6faafb42eb249443e000525dd69\trefs/tags/v1.1.1\n7b0db3737a1ab2dfb182b742322426e3c4b500af\trefs/tags/v1.1.1^{}\n",
+  "files": {
+    "pg_duckdb.control": {
+      "url": "https://raw.githubusercontent.com/duckdb/pg_duckdb/7b0db3737a1ab2dfb182b742322426e3c4b500af/pg_duckdb.control",
+      "bytes": 140,
+      "sha256": "edd27c7941f9f7f40ff620f283fc1935d2c72bd66c679d9133b21e4395a1b68a",
+      "relevant_lines": [
+        {
+          "line": 2,
+          "text": "default_version = '1.1.0'"
+        },
+        {
+          "line": 3,
+          "text": "module_pathname = '$libdir/pg_duckdb'"
+        }
+      ]
+    },
+    "docs/settings.md": {
+      "url": "https://raw.githubusercontent.com/duckdb/pg_duckdb/7b0db3737a1ab2dfb182b742322426e3c4b500af/docs/settings.md",
+      "bytes": 8211,
+      "sha256": "731e21a324bdbc7462668131a80392600134a9aada91fd48de2ec5adc00b1ffd",
+      "relevant_lines": [
+        {
+          "line": 3,
+          "text": "`pg_duckdb` settings are configured in the `postgresql.conf` file. Many of these settings are used to configure specific [DuckDB settings](https://duckdb.org/docs/configuration/overview.html). If there's a setting from DuckDB that you'd like to see added, please open an issue or pull request."
+        },
+        {
+          "line": 7,
+          "text": "### `duckdb.force_execution`"
+        },
+        {
+          "line": 25,
+          "text": "### `duckdb.postgres_role`"
+        },
+        {
+          "line": 27,
+          "text": "Specifies the Postgres role that is allowed to use DuckDB execution, manage secrets, and create MotherDuck tables. Defaults to superusers only. If this is configured, but the role does not exist when running `CREATE EXTENSION pg_duckdb`, it will be created automatically. This role will have access to DuckDB secrets and data in MotherDuck."
+        },
+        {
+          "line": 34,
+          "text": "Disables specific file systems, preventing access for all users, including superusers. For non-superusers who are not members of both the `pg_read_server_files` and `pg_write_server_files` roles, the `LocalFileSystem` is always disabled. If you add `LocalFileSystem` to this setting, superusers will also be unable to access the local file system through DuckDB."
+        },
+        {
+          "line": 70,
+          "text": "Allows DuckDB to access external resources (e.g., HTTP, S3). This setting is not yet well-tested, and disabling it may break unintended `pg_duckdb` functionality."
+        },
+        {
+          "line": 77,
+          "text": "Sets the azure_transport_option_type for DuckDB Azure extension. Can be used to workaround [issue #882](https://github.com/duckdb/pg_duckdb/issues/882) by setting it to `'curl'`. Only affects connections when the Azure extension is loaded."
+        },
+        {
+          "line": 84,
+          "text": "Since any connection that uses DuckDB will have its own DuckDB instance, these settings are per-connection. When using `pg_duckdb` in many concurrent connections, it can be a good idea to set some of these more conservatively than their defaults."
+        },
+        {
+          "line": 86,
+          "text": "### `duckdb.max_memory` / `duckdb.memory_limit`"
+        },
+        {
+          "line": 152,
+          "text": "Appends a custom string to the DuckDB user agent (this is appended after `pg_duckdb`)."
+        },
+        {
+          "line": 161,
+          "text": "Sets the directory where DuckDB writes temporary files. By default, DuckDB uses a directory under the PostgreSQL data directory (`DataDir/pg_duckdb/temp`). This can be useful for pointing to faster storage (e.g., an SSD) or managing disk space more effectively."
+        },
+        {
+          "line": 163,
+          "text": "- **Default**: `\"DataDir/pg_duckdb/temp\"`"
+        },
+        {
+          "line": 176,
+          "text": "Sets the directory where DuckDB stores its extensions. By default, extensions are stored under the PostgreSQL data directory (`DataDir/pg_duckdb/extensions`). This is useful for managing extension storage or sharing extensions across multiple PostgreSQL instances."
+        },
+        {
+          "line": 178,
+          "text": "- **Default**: `\"DataDir/pg_duckdb/extensions\"`"
+        }
+      ]
+    },
+    "docs/compilation.md": {
+      "url": "https://raw.githubusercontent.com/duckdb/pg_duckdb/7b0db3737a1ab2dfb182b742322426e3c4b500af/docs/compilation.md",
+      "bytes": 5228,
+      "sha256": "0576b9f6df2a096a2f541b913b13ba517dd036052859f9e6956d564182987466",
+      "relevant_lines": [
+        {
+          "line": 3,
+          "text": "This guide provides detailed instructions for building `pg_duckdb` from source on different platforms."
+        },
+        {
+          "line": 8,
+          "text": "git clone https://github.com/duckdb/pg_duckdb"
+        },
+        {
+          "line": 9,
+          "text": "cd pg_duckdb"
+        },
+        {
+          "line": 34,
+          "text": "pg_duckdb supports statically linking the DuckDB library into the extension. This is mostly useful to ensure that the right DuckDB version is used if you have installed different versions, and/or to avoid installation conflicts with other Postgres extensions that require different versions of DuckDB."
+        },
+        {
+          "line": 70,
+          "text": "### Add pg_duckdb to shared_preload_libraries"
+        },
+        {
+          "line": 73,
+          "text": "echo \"shared_preload_libraries = 'pg_duckdb'\" | sudo tee /etc/postgresql/18/main/conf.d/pg_duckdb.conf"
+        },
+        {
+          "line": 86,
+          "text": "You may wish to now create databases and users as desired. To use `pg_duckdb` immediately, you can use"
+        },
+        {
+          "line": 87,
+          "text": "the `postgres` superuser to connect to the default `postgres` database:"
+        },
+        {
+          "line": 92,
+          "text": "postgres=# CREATE EXTENSION pg_duckdb;"
+        },
+        {
+          "line": 145,
+          "text": "   echo \"shared_preload_libraries = 'pg_duckdb'\" >> /opt/homebrew/var/postgresql@18/postgresql.conf"
+        },
+        {
+          "line": 155,
+          "text": "   psql -d postgres -c \"CREATE EXTENSION pg_duckdb;\""
+        },
+        {
+          "line": 177,
+          "text": "A: `make clean` will clean the `pg_duckdb` build files, but not `libduckdb`, which only needs to be rebuilt on a DuckDB version change. To clean both `pg_duckdb` and `libduckdb`, use `make clean-all`."
+        }
+      ]
+    },
+    "Dockerfile": {
+      "url": "https://raw.githubusercontent.com/duckdb/pg_duckdb/7b0db3737a1ab2dfb182b742322426e3c4b500af/Dockerfile",
+      "bytes": 2166,
+      "sha256": "ced2cd5ce064f52454436092780141e67826d642accfc01eaa513abcaa45e47e",
+      "relevant_lines": [
+        {
+          "line": 24,
+          "text": "RUN chown -R postgres:postgres . /usr/lib/postgresql /usr/share/postgresql /out"
+        },
+        {
+          "line": 30,
+          "text": "COPY --chown=postgres:postgres Makefile Makefile.global pg_duckdb.control ./"
+        },
+        {
+          "line": 31,
+          "text": "COPY --chown=postgres:postgres .git/modules/third_party/duckdb/HEAD .git/modules/third_party/duckdb/HEAD"
+        },
+        {
+          "line": 32,
+          "text": "COPY --chown=postgres:postgres sql sql"
+        },
+        {
+          "line": 33,
+          "text": "COPY --chown=postgres:postgres src src"
+        },
+        {
+          "line": 34,
+          "text": "COPY --chown=postgres:postgres include include"
+        },
+        {
+          "line": 35,
+          "text": "COPY --chown=postgres:postgres third_party third_party"
+        },
+        {
+          "line": 36,
+          "text": "COPY --chown=postgres:postgres test test"
+        },
+        {
+          "line": 64,
+          "text": "# Automatically enable pg_duckdb"
+        },
+        {
+          "line": 65,
+          "text": "RUN echo \"shared_preload_libraries='pg_duckdb'\" >> /usr/share/postgresql/postgresql.conf.sample"
+        },
+        {
+          "line": 66,
+          "text": "COPY --chown=postgres:postgres docker/init.d/ /docker-entrypoint-initdb.d/"
+        }
+      ]
+    },
+    "docker-bake.hcl": {
+      "url": "https://raw.githubusercontent.com/duckdb/pg_duckdb/7b0db3737a1ab2dfb182b742322426e3c4b500af/docker-bake.hcl",
+      "bytes": 1050,
+      "sha256": "6012b113b8a2dafb139d3ada1e5a26cf2f1ad08039c5c4903e340de604b40ad8",
+      "relevant_lines": [
+        {
+          "line": 10,
+          "text": "  platforms = ["
+        },
+        {
+          "line": 20,
+          "text": "    postgres_base = \"docker-image://postgres:${POSTGRES_VERSION}-bookworm\""
+        },
+        {
+          "line": 32,
+          "text": "target \"pg_duckdb\" {"
+        },
+        {
+          "line": 37,
+          "text": "target \"pg_duckdb_14\" {"
+        },
+        {
+          "line": 38,
+          "text": "  inherits = [\"pg_duckdb\"]"
+        },
+        {
+          "line": 45,
+          "text": "target \"pg_duckdb_15\" {"
+        },
+        {
+          "line": 46,
+          "text": "  inherits = [\"pg_duckdb\"]"
+        },
+        {
+          "line": 53,
+          "text": "target \"pg_duckdb_16\" {"
+        },
+        {
+          "line": 54,
+          "text": "  inherits = [\"pg_duckdb\"]"
+        },
+        {
+          "line": 61,
+          "text": "target \"pg_duckdb_17\" {"
+        },
+        {
+          "line": 62,
+          "text": "  inherits = [\"pg_duckdb\"]"
+        },
+        {
+          "line": 69,
+          "text": "target \"pg_duckdb_18\" {"
+        },
+        {
+          "line": 70,
+          "text": "  inherits = [\"pg_duckdb\"]"
+        },
+        {
+          "line": 78,
+          "text": "  inherits = [\"pg_duckdb_18\"]"
+        }
+      ]
+    }
+  }
+}

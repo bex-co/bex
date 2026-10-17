@@ -1,0 +1,5 @@
+{
+  "excluded": "first native log read asked for150 while supported server limit is1..100; clean400/native1 retained",
+  "correction": "use100; preserve failed read and retry only this read",
+  "product_bug": false
+}
