@@ -1619,3 +1619,10 @@ describe("NewServicePage with a failed plan catalog (w4/m218)", () => {
     expect(screen.queryByText("Plans couldn't load")).toBeNull();
   });
 });
+
+it("keeps the service form, Port included, inside the hydration fieldset (w4/m219)", async () => {
+  renderPage("/?type=web_service");
+  const fieldset = (await screen.findByLabelText("Name")).closest("fieldset");
+  expect(fieldset).not.toBeNull();
+  expect(fieldset).toContainElement(screen.getByLabelText(/^Port/));
+});
