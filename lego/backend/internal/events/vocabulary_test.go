@@ -160,6 +160,9 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 	}
 	// apps.CreateBlueprint calls deployStack, which in turn calls AuthorizeApp for each resource
 	// it applies — the target is per-resource inside the stack apply, not the blueprint itself.
+	// w1/m181: the trigger verb records its change through
+	// RecordAutoDeployChanged under apps.SetAutoDeploy, whose event it shares.
+	excusedVerbs["apps.SetAutoDeployTrigger"] = "records apps.SetAutoDeploy via RecordAutoDeployChanged (w1/m181)"
 	excusedVerbs["apps.CreateBlueprint"] = "w2/m62: targets via deployStack → AuthorizeApp per resource; blueprint create has no per-service event type yet"
 
 	// Every sibling feature package, ENUMERATED rather than listed: a literal list

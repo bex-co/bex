@@ -253,6 +253,7 @@ var blueprintServiceFieldAppliers = []struct {
 	}},
 	{names: []string{"autoDeploy", "autoDeployTrigger"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 		dst.AutoDeploy = want.AutoDeploy
+		dst.AutoDeployTrigger = want.AutoDeployTrigger
 	}},
 	{names: []string{"ipAllowList"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 		dst.SetIPAllowListEntries(want.EffectiveIPAllowListEntries())

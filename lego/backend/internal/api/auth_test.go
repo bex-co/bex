@@ -213,6 +213,12 @@ func (callbackGitHubClient) GetFileContents(context.Context, string, string, str
 func (callbackGitHubClient) GetRepoCommitSHA(context.Context, string, string, string, string) (string, error) {
 	return "", nil
 }
+func (callbackGitHubClient) MintChecksToken(context.Context, int64) (github.InstallationToken, bool, error) {
+	return github.InstallationToken{}, false, nil
+}
+func (callbackGitHubClient) ListCheckRuns(context.Context, string, string, string, string) ([]github.CheckRun, error) {
+	return nil, nil
+}
 func (callbackGitHubClient) OpenDraftPullRequest(context.Context, int64, string, string, string, string, string, string) (github.PullRequest, error) {
 	return github.PullRequest{}, nil
 }

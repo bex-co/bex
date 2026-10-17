@@ -97,6 +97,7 @@ function serverData(id: string) {
     registryCredentialId: "",
     buildFilter: null,
     autoDeploy: false,
+    autoDeployTrigger: "off",
     environmentId: null,
     linkedEnvGroupIds: [...server.linked],
     pushDeliveryMethod: "none",

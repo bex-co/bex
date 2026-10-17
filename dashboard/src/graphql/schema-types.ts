@@ -1175,6 +1175,7 @@ export type Mutation = {
   scaleService: Maybe<Service>;
   selectGitClaim: Maybe<GitConnection>;
   setAutoDeploy: Maybe<Service>;
+  setAutoDeployTrigger: Maybe<Service>;
   setAutoscaling: Maybe<Autoscaling>;
   setBranch: Maybe<Service>;
   setBuildCommand: Maybe<Service>;
@@ -1495,6 +1496,7 @@ export type MutationCreateSandboxArgs = {
 
 export type MutationCreateServiceArgs = {
   autoDeploy?: InputMaybe<Scalars['Boolean']['input']>;
+  autoDeployTrigger?: InputMaybe<Scalars['String']['input']>;
   branch?: InputMaybe<Scalars['String']['input']>;
   buildCommand?: InputMaybe<Scalars['String']['input']>;
   buildFilter?: InputMaybe<BuildFilterInput>;
@@ -1942,6 +1944,12 @@ export type MutationSelectGitClaimArgs = {
 export type MutationSetAutoDeployArgs = {
   enabled: Scalars['Boolean']['input'];
   id: Scalars['String']['input'];
+};
+
+
+export type MutationSetAutoDeployTriggerArgs = {
+  id: Scalars['String']['input'];
+  trigger: Scalars['String']['input'];
 };
 
 

@@ -120,6 +120,7 @@ var classifiedOps = map[string]string{
 	"GQL Mutation.scaleService":                                        core.OpClassWrite,
 	"GQL Mutation.selectGitClaim":                                      core.OpClassWrite,
 	"GQL Mutation.setAutoDeploy":                                       core.OpClassWrite,
+	"GQL Mutation.setAutoDeployTrigger":                                core.OpClassWrite,
 	"GQL Mutation.setAutoscaling":                                      core.OpClassWrite,
 	"GQL Mutation.setBranch":                                           core.OpClassWrite,
 	"GQL Mutation.setBuildCommand":                                     core.OpClassWrite,

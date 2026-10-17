@@ -211,6 +211,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
             dockerfilePath={service.dockerfilePath}
             buildFilter={service.buildFilter}
             autoDeploy={service.autoDeploy ?? false}
+            autoDeployTrigger={service.autoDeployTrigger}
             pushDeliveryMethod={service.pushDeliveryMethod}
             preDeployCommand={service.preDeployCommand}
             // A cron job runs its own Command and keeps its deploy concerns in

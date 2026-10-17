@@ -284,6 +284,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     registryCredentialId: null,
     buildFilter: null,
     autoDeploy: null,
+    autoDeployTrigger: null,
     notifyOnFail: null,
     notificationsToSend: null,
     healthCheckPath: null,
@@ -487,6 +488,7 @@ describe("drafts survive a routine refresh", () => {
         service={svc({
           repo: "https://github.com/bex-co/bex",
           autoDeploy: false,
+          autoDeployTrigger: "off",
         })}
         pending={false}
       />,

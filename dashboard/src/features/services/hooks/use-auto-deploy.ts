@@ -1,15 +1,32 @@
 import { useCallback, useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
-import { SetAutoDeployDocument } from "@/graphql/definitions";
+import {
+  SetAutoDeployDocument,
+  SetAutoDeployTriggerDocument,
+} from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
+
+/** Render's Auto-Deploy choices (autoDeployTrigger, w1/m181). */
+export type AutoDeployTrigger = "commit" | "checksPass" | "off";
 
 export interface UseAutoDeployResult {
   /** Fires setAutoDeploy; resolves true on success (toasted either way). */
   setAutoDeploy: (id: string, enabled: boolean) => Promise<boolean>;
+  /** Fires setAutoDeployTrigger; resolves true on success (toasted either way). */
+  setAutoDeployTrigger: (
+    id: string,
+    trigger: AutoDeployTrigger,
+  ) => Promise<boolean>;
   busy: boolean;
 }
+
+const TRIGGER_SUCCESS = {
+  commit: "services.autoDeployOnSuccess",
+  checksPass: "services.autoDeployChecksSuccess",
+  off: "services.autoDeployOffSuccess",
+} as const;
 
 /**
  * Wires the Build & Deploy Auto-Deploy toggle to bex-api's `setAutoDeploy`
@@ -20,6 +37,7 @@ export interface UseAutoDeployResult {
 export function useAutoDeploy(): UseAutoDeployResult {
   const { t } = useTranslations();
   const [mutate] = useMutation(SetAutoDeployDocument);
+  const [mutateTrigger] = useMutation(SetAutoDeployTriggerDocument);
   const [busy, setBusy] = useState(false);
 
   const setAutoDeploy = useCallback(
@@ -43,5 +61,23 @@ export function useAutoDeploy(): UseAutoDeployResult {
     [mutate, t],
   );
 
-  return { setAutoDeploy, busy };
+  const setAutoDeployTrigger = useCallback(
+    async (id: string, trigger: AutoDeployTrigger) => {
+      setBusy(true);
+      try {
+        await mutateTrigger({ variables: { id, trigger } });
+        toast.success(t(TRIGGER_SUCCESS[trigger]));
+        return true;
+      } catch (err) {
+        // A refused checksPass names what the GitHub App must grant.
+        toast.error(mutationErrorMessage(err, t("services.autoDeployError")));
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [mutateTrigger, t],
+  );
+
+  return { setAutoDeploy, setAutoDeployTrigger, busy };
 }

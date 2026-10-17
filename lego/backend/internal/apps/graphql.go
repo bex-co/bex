@@ -445,7 +445,7 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// ("commit"|"off", w5/m53) mapped from bex's boolean spec.autoDeploy —
 		// the dashboard's Auto-Deploy select reads it. bex never emits
 		// "checksPass" (documented divergence).
-		"autoDeployTrigger": gqlutil.StrField(func(a AppView) any { return triggerEnum(a.AutoDeploy) }),
+		"autoDeployTrigger": gqlutil.StrField(func(a AppView) any { return a.AutoDeployTrigger }),
 		// pushDeliveryMethod is whether a push can REACH bex for this repo, the
 		// signal the autoDeploy setting alone cannot express (w6/m99). Populated
 		// on server(id)/service(id), empty on the list — see pushdelivery.go.
@@ -704,6 +704,15 @@ func gqlCreateRequest(args map[string]any) (CreateRequest, error) {
 	if err != nil {
 		return CreateRequest{}, err
 	}
+	// autoDeployTrigger (off|commit|checksPass) wins over the boolean
+	// autoDeploy, as on REST (w1/m181).
+	autoDeploy, checksPass, err := parseTrigger(gqlutil.Str(args, "autoDeployTrigger"))
+	if err != nil {
+		return CreateRequest{}, err
+	}
+	if autoDeploy == nil {
+		autoDeploy = gqlutil.BoolPtr(args, "autoDeploy")
+	}
 	return CreateRequest{
 		OwnerID:                 gqlutil.Str(args, "ownerId"),
 		EnvironmentID:           gqlutil.Str(args, "environmentId"),
@@ -723,7 +732,8 @@ func gqlCreateRequest(args map[string]any) (CreateRequest, error) {
 		DockerfilePath:          gqlutil.Str(args, "dockerfilePath"),
 		Builder:                 gqlutil.Str(args, "builder"),
 		Plan:                    gqlutil.Str(args, "plan"),
-		AutoDeploy:              gqlutil.BoolPtr(args, "autoDeploy"),
+		AutoDeploy:              autoDeploy,
+		AutoDeployChecksPass:    checksPass,
 		NotifyOnFail:            gqlutil.Str(args, "notifyOnFail"),
 		Port:                    int32(gqlutil.Int(args, "port")),
 		Replicas:                int32(gqlutil.Int(args, "replicas")),
@@ -1371,6 +1381,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"builder":        gqlutil.Arg(graphql.String), // auto (default) | buildpack | dockerfile
 				"plan":           gqlutil.Arg(graphql.String),
 				"autoDeploy":     gqlutil.Arg(graphql.Boolean),
+				// autoDeployTrigger: off | commit | checksPass (w1/m181); wins
+				// over autoDeploy when both are sent.
+				"autoDeployTrigger": gqlutil.Arg(graphql.String),
 				// notifyOnFail is Render's per-service deploy-failure notification
 				// override (default | notify | ignore); omitted => "default".
 				"notifyOnFail": gqlutil.Arg(graphql.String),
@@ -1702,6 +1715,18 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetAutoDeploy(p.Context, p.Args["id"].(string), p.Args["enabled"].(bool))
+			},
+		},
+		// setAutoDeployTrigger: the Settings Auto-Deploy picker with Render's
+		// three choices — off | commit | checksPass (w1/m181).
+		"setAutoDeployTrigger": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":      gqlutil.ReqArg(graphql.String),
+				"trigger": gqlutil.ReqArg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetAutoDeployTrigger(p.Context, p.Args["id"].(string), p.Args["trigger"].(string))
 			},
 		},
 		// setNotifyOnFail: the Settings → Notifications per-service override
