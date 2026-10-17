@@ -341,6 +341,27 @@ const enEnvironments: Record<string, TranslationEntry> = {
     message: 'Failed to save settings for "{name}".',
     description: "Toast shown when an Environment ACL save fails",
   },
+  "environments.resourceCountLoading": {
+    message: "Counting…",
+    description:
+      "Environment card header while its resource lists are still loading, instead of a count",
+  },
+  "environments.resourceCountUnknown": {
+    message: "Count unavailable",
+    description:
+      "Environment card header when a resource list has not answered, instead of a count",
+  },
+  "environments.resourcesUnavailable": {
+    message:
+      "Some resources couldn't load, so this environment may be incomplete or out of date.",
+    description:
+      "Inline alert on a Project environment card when a resource list failed to load; offers Try again",
+  },
+  "environments.resourcesLoading": {
+    message: "Loading resources…",
+    description:
+      "Environment card line while its resource lists are still loading, instead of the empty message",
+  },
   "environments.assignmentTitle": {
     message: "Project and Environment",
     description: "Shared create-form Project/Environment selector heading",

@@ -98,10 +98,15 @@ vi.mock("@/features/projects/hooks/use-rename-project", () => ({
 vi.mock("@/features/environments/components/environments-panel", () => ({
   EnvironmentsPanel: ({
     projectRows,
+    catalog,
   }: {
     projectRows: Array<{ name: string }>;
+    catalog?: { failed: string[] };
   }) => (
-    <div data-testid="environments-panel">
+    <div
+      data-testid="environments-panel"
+      data-failed={catalog?.failed.join(",") ?? ""}
+    >
       {projectRows.map((row) => row.name).join(",")}
     </div>
   ),
@@ -221,6 +226,30 @@ describe("ProjectPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByTestId("environments-panel")).toHaveTextContent(
       "eden-cms-v2",
+    );
+  });
+
+  // w4/m227: the page hands its resource lists' availability to the panel,
+  // so a failed read is never joined as an empty list.
+  it("passes a failed Services read to the panel as unavailable", async () => {
+    projectsState.projects = [
+      {
+        id: "prj-1",
+        name: "storefront",
+        ownerId: "tea-1",
+        serviceIds: ["eden-cms-v2"],
+        databaseIds: [],
+        keyValueIds: [],
+      },
+    ];
+    servicesState.error = new Error("deadline");
+    renderProjectPage();
+    expect(
+      await screen.findByRole("heading", { name: "storefront" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("environments-panel")).toHaveAttribute(
+      "data-failed",
+      "services",
     );
   });
 

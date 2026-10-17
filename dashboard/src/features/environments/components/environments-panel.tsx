@@ -36,9 +36,18 @@ import { ResourceTable } from "@/features/projects/components/resource-table";
 import { ProjectResourceFilters } from "@/features/projects/components/project-resource-filters";
 import {
   countProjectResources,
+  countsWithUnknown,
   filterProjectResources,
+  type ProjectResourceCatalog,
+  type ProjectResourceFamily,
   type ProjectResourceFilterState,
 } from "@/features/projects/lib/resource-filter";
+import { useCatalogRetry } from "@/common/hooks/use-catalog-retry";
+import { UnreadResourcesNotice } from "@/features/environments/components/unread-resources-notice";
+import {
+  unreadFamilies,
+  type UnreadResources,
+} from "@/features/environments/lib/unread-resources";
 
 const UNASSIGNED_ENVIRONMENT = "unassigned";
 
@@ -76,6 +85,8 @@ export interface EnvironmentsPanelProps {
   projectRows?: ResourceRow[];
   /** True until the service, database and key value lists have loaded. */
   resourcesLoading?: boolean;
+  /** Which of those lists have answered (w4/m227); the panel adds Env Groups. */
+  catalog?: ProjectResourceCatalog;
   servicePending: PendingLifecycle | null;
   onRunServiceAction: RunServiceAction;
   onDatabaseDeleted: (id: string) => void;
@@ -98,10 +109,32 @@ export function EnvironmentsPanel({
   onKeyValueDeleted,
   resourceFilter = { environmentId: null, query: "", kind: "all" },
   onResourceFilterChange = () => undefined,
+  catalog,
 }: EnvironmentsPanelProps) {
   const { t } = useTranslations();
   const { environments, loading, error } = useEnvironments(projectId);
-  const { groups: envGroups } = useEnvGroups();
+  const {
+    groups: envGroups,
+    loading: envGroupsLoading,
+    error: envGroupsError,
+    refetch: refetchEnvGroups,
+  } = useEnvGroups();
+  const base = catalog ?? NO_CATALOG;
+  const { retry, retrying } = useCatalogRetry(() =>
+    Promise.all([base.retry(), envGroupsError ? refetchEnvGroups() : null]),
+  );
+  const pendingFamilies: ProjectResourceFamily[] = envGroupsLoading
+    ? [...base.pending, "envgroups"]
+    : base.pending;
+  const failedFamilies: ProjectResourceFamily[] = envGroupsError
+    ? [...base.failed, "envgroups"]
+    : base.failed;
+  const unread = {
+    pending: pendingFamilies,
+    failed: failedFamilies,
+    onRetry: () => void retry(),
+    retrying,
+  };
   const [newOpen, setNewOpen] = useState(false);
 
   const unassignedRows = useMemo(() => {
@@ -119,8 +152,17 @@ export function EnvironmentsPanel({
   // data wins the network race against the Project resource lists. Without
   // this, the transient empty `projectRows` canonicalizes a shareable
   // `?env=unassigned` URL to the first Environment before its rows arrive.
+  // Unassigned rows come from the Project's members joined with the service,
+  // database and key value lists (Env Groups never appear there), so while
+  // any of those is unread its rows are unknown (w4/m227).
+  const unassignedUnknown = unreadFamilies(unread).filter(
+    (family) => family !== "envgroups",
+  );
+  const rowsUnknown = resourcesLoading || unassignedUnknown.length > 0;
   const canShowUnassigned =
-    unassignedRows.length > 0 || requestedId === UNASSIGNED_ENVIRONMENT;
+    unassignedRows.length > 0 ||
+    requestedId === UNASSIGNED_ENVIRONMENT ||
+    unread.failed.some((family) => family !== "envgroups");
   const selectedId = selectEnvironmentId(
     environments,
     requestedId,
@@ -132,10 +174,10 @@ export function EnvironmentsPanel({
   // leave the browser showing a fallback that differs from its address bar.
   // Wait for the resource lists too: on a cold load the Environments usually
   // arrive first, and canonicalizing then pins environments[0] into the URL
-  // before the moved resource's Unassigned row exists (w1/m159).
+  // before the moved resource's Unassigned row exists (w1/m159). A failed
+  // list is no better evidence than a pending one (w4/m227).
   useEffect(() => {
-    if (loading || resourcesLoading || error || selectedId === requestedId)
-      return;
+    if (loading || rowsUnknown || error || selectedId === requestedId) return;
     onResourceFilterChange({
       environmentId: selectedId,
       query: resourceFilter.query,
@@ -146,7 +188,7 @@ export function EnvironmentsPanel({
     loading,
     onResourceFilterChange,
     requestedId,
-    resourcesLoading,
+    rowsUnknown,
     resourceFilter.kind,
     resourceFilter.query,
     selectedId,
@@ -252,6 +294,7 @@ export function EnvironmentsPanel({
           envGroups={envGroups}
           resourceFilter={selectedFilter}
           onResourceFilterChange={onResourceFilterChange}
+          unread={unread}
         />
       ) : selectedId === UNASSIGNED_ENVIRONMENT ? (
         <UnassignedResources
@@ -262,11 +305,19 @@ export function EnvironmentsPanel({
           onRunServiceAction={onRunServiceAction}
           onDatabaseDeleted={onDatabaseDeleted}
           onKeyValueDeleted={onKeyValueDeleted}
+          unread={unread}
+          unknown={unassignedUnknown}
         />
       ) : (
         <Card>
-          <CardContent className="py-6 text-center text-sm text-muted-foreground">
-            {t("environments.emptyBody")}
+          <CardContent className="space-y-4 py-6 text-center text-sm text-muted-foreground">
+            <p>{t("environments.emptyBody")}</p>
+            {/* No Environment yet, but unread lists may hide Unassigned
+                members (w4/m227). */}
+            <UnreadResourcesNotice
+              unread={unread}
+              families={unassignedUnknown}
+            />
           </CardContent>
         </Card>
       )}
@@ -288,6 +339,8 @@ function UnassignedResources({
   onRunServiceAction,
   onDatabaseDeleted,
   onKeyValueDeleted,
+  unread,
+  unknown,
 }: {
   rows: ResourceRow[];
   filter: ProjectResourceFilterState;
@@ -296,6 +349,9 @@ function UnassignedResources({
   onRunServiceAction: RunServiceAction;
   onDatabaseDeleted: (id: string) => void;
   onKeyValueDeleted: (id: string) => void;
+  unread: UnreadResources;
+  /** The families its rows depend on that have not answered. */
+  unknown: ProjectResourceFamily[];
 }) {
   const { t } = useTranslations();
   const visibleRows = filterProjectResources(rows, filter);
@@ -310,10 +366,12 @@ function UnassignedResources({
         <ProjectResourceFilters
           environmentName={t("environments.unassignedOption")}
           filter={filter}
-          counts={countProjectResources(rows)}
+          counts={countsWithUnknown(countProjectResources(rows), unknown)}
           onChange={onFilterChange}
         />
-        {visibleRows.length === 0 ? (
+        <UnreadResourcesNotice unread={unread} families={unknown} />
+        {visibleRows.length === 0 &&
+        unknown.length > 0 ? null : visibleRows.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             {rows.length === 0
               ? t("environments.cardEmpty")
@@ -333,3 +391,9 @@ function UnassignedResources({
     </Card>
   );
 }
+
+const NO_CATALOG: ProjectResourceCatalog = {
+  pending: [],
+  failed: [],
+  retry: async () => undefined,
+};

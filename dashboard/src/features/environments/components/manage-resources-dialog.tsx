@@ -13,6 +13,12 @@ import {
   TabsTrigger,
 } from "@/common/components/ui/tabs";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { UnreadResourcesNotice } from "@/features/environments/components/unread-resources-notice";
+import {
+  unreadFamilies,
+  type UnreadResources,
+} from "@/features/environments/lib/unread-resources";
+import type { ProjectResourceFamily } from "@/features/projects/lib/resource-filter";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import { useSetEnvironmentServices } from "@/features/environments/hooks/use-set-environment-services";
 import { useSetEnvironmentDatabases } from "@/features/environments/hooks/use-set-environment-databases";
@@ -28,7 +34,7 @@ import type { KeyValueView } from "@/features/keyvalue/types";
 import { useEnvGroups } from "@/features/env-groups/hooks/use-env-groups";
 
 /** The dialog's four tabs, which are also its four independent draft keys. */
-type ResourceKind = "services" | "databases" | "keyvalues" | "envgroups";
+type ResourceKind = ProjectResourceFamily;
 
 export interface ManageResourcesDialogProps {
   environment: EnvironmentView;
@@ -38,6 +44,8 @@ export interface ManageResourcesDialogProps {
   keyValues: KeyValueView[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Resource lists that have not answered; their tabs offer no Save (w4/m227). */
+  unread?: UnreadResources;
 }
 
 /**
@@ -55,6 +63,7 @@ export function ManageResourcesDialog({
   keyValues,
   open,
   onOpenChange,
+  unread,
 }: ManageResourcesDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -69,6 +78,7 @@ export function ManageResourcesDialog({
           services={services}
           databases={databases}
           keyValues={keyValues}
+          unread={unread}
           onClose={() => onOpenChange(false)}
         />
       </DialogContent>
@@ -82,12 +92,14 @@ function ManageResourcesForm({
   databases,
   keyValues,
   onClose,
+  unread,
 }: {
   environment: EnvironmentView;
   services: ServiceView[];
   databases: DatabaseView[];
   keyValues: KeyValueView[];
   onClose: () => void;
+  unread?: UnreadResources;
 }) {
   const { t } = useTranslations();
   const { setServices, busyId: servicesBusyId } = useSetEnvironmentServices();
@@ -131,6 +143,11 @@ function ManageResourcesForm({
     [],
   );
 
+  // A tab whose list has not answered shows why instead of an empty
+  // checklist, and offers no Save over an unread list (w4/m227).
+  const unreadKind = (kind: ResourceKind) =>
+    unread != null && unreadFamilies(unread).includes(kind);
+
   return (
     <>
       <DialogHeader>
@@ -158,70 +175,88 @@ function ManageResourcesForm({
           </TabsTrigger>
         </TabsList>
         <TabsContent value="services">
-          <ResourceChecklist
-            items={services.map((s) => ({
-              id: s.id,
-              name: s.name,
-              badge: <ServiceStatusBadge service={s} />,
-            }))}
-            checked={drafts.services}
-            onToggle={(id, next) => toggle("services", id, next)}
-            busy={servicesBusyId === environment.id}
-            emptyLabel={t("environments.manageNoServices")}
-            onSave={(ids) => setServices(environment.id, environment.name, ids)}
-            onClose={onClose}
-          />
+          {unreadKind("services") ? (
+            <UnreadResourcesNotice unread={unread!} families={["services"]} />
+          ) : (
+            <ResourceChecklist
+              items={services.map((s) => ({
+                id: s.id,
+                name: s.name,
+                badge: <ServiceStatusBadge service={s} />,
+              }))}
+              checked={drafts.services}
+              onToggle={(id, next) => toggle("services", id, next)}
+              busy={servicesBusyId === environment.id}
+              emptyLabel={t("environments.manageNoServices")}
+              onSave={(ids) =>
+                setServices(environment.id, environment.name, ids)
+              }
+              onClose={onClose}
+            />
+          )}
         </TabsContent>
         <TabsContent value="databases">
-          <ResourceChecklist
-            items={databases.map((d) => ({
-              id: d.id,
-              name: d.name,
-              badge: <DatabaseStatusBadge database={d} />,
-            }))}
-            checked={drafts.databases}
-            onToggle={(id, next) => toggle("databases", id, next)}
-            busy={databasesBusyId === environment.id}
-            emptyLabel={t("environments.manageNoDatabases")}
-            onSave={(ids) =>
-              setDatabases(environment.id, environment.name, ids)
-            }
-            onClose={onClose}
-          />
+          {unreadKind("databases") ? (
+            <UnreadResourcesNotice unread={unread!} families={["databases"]} />
+          ) : (
+            <ResourceChecklist
+              items={databases.map((d) => ({
+                id: d.id,
+                name: d.name,
+                badge: <DatabaseStatusBadge database={d} />,
+              }))}
+              checked={drafts.databases}
+              onToggle={(id, next) => toggle("databases", id, next)}
+              busy={databasesBusyId === environment.id}
+              emptyLabel={t("environments.manageNoDatabases")}
+              onSave={(ids) =>
+                setDatabases(environment.id, environment.name, ids)
+              }
+              onClose={onClose}
+            />
+          )}
         </TabsContent>
         <TabsContent value="keyvalues">
-          <ResourceChecklist
-            items={keyValues.map((k) => ({
-              id: k.id,
-              name: k.name,
-              badge: <KeyValueStatusBadge keyValue={k} />,
-            }))}
-            checked={drafts.keyvalues}
-            onToggle={(id, next) => toggle("keyvalues", id, next)}
-            busy={keyValuesBusyId === environment.id}
-            emptyLabel={t("environments.manageNoKeyValues")}
-            onSave={(ids) =>
-              setKeyValues(environment.id, environment.name, ids)
-            }
-            onClose={onClose}
-          />
+          {unreadKind("keyvalues") ? (
+            <UnreadResourcesNotice unread={unread!} families={["keyvalues"]} />
+          ) : (
+            <ResourceChecklist
+              items={keyValues.map((k) => ({
+                id: k.id,
+                name: k.name,
+                badge: <KeyValueStatusBadge keyValue={k} />,
+              }))}
+              checked={drafts.keyvalues}
+              onToggle={(id, next) => toggle("keyvalues", id, next)}
+              busy={keyValuesBusyId === environment.id}
+              emptyLabel={t("environments.manageNoKeyValues")}
+              onSave={(ids) =>
+                setKeyValues(environment.id, environment.name, ids)
+              }
+              onClose={onClose}
+            />
+          )}
         </TabsContent>
         <TabsContent value="envgroups">
-          <ResourceChecklist
-            items={envGroups.map((group) => ({
-              id: group.id,
-              name: group.name,
-              badge: null,
-            }))}
-            checked={drafts.envgroups}
-            onToggle={(id, next) => toggle("envgroups", id, next)}
-            busy={envGroupsBusyId === environment.id}
-            emptyLabel={t("environments.manageNoEnvGroups")}
-            onSave={(ids) =>
-              setEnvGroups(environment.id, environment.name, ids)
-            }
-            onClose={onClose}
-          />
+          {unreadKind("envgroups") ? (
+            <UnreadResourcesNotice unread={unread!} families={["envgroups"]} />
+          ) : (
+            <ResourceChecklist
+              items={envGroups.map((group) => ({
+                id: group.id,
+                name: group.name,
+                badge: null,
+              }))}
+              checked={drafts.envgroups}
+              onToggle={(id, next) => toggle("envgroups", id, next)}
+              busy={envGroupsBusyId === environment.id}
+              emptyLabel={t("environments.manageNoEnvGroups")}
+              onSave={(ids) =>
+                setEnvGroups(environment.id, environment.name, ids)
+              }
+              onClose={onClose}
+            />
+          )}
         </TabsContent>
       </Tabs>
     </>

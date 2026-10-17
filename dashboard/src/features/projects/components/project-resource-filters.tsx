@@ -3,7 +3,7 @@ import { Input } from "@/common/components/ui/input";
 import { Button } from "@/common/components/ui/button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type {
-  ProjectResourceCounts,
+  ProjectResourceDisplayCounts,
   ProjectResourceFilterState,
   ProjectResourceKind,
 } from "@/features/projects/lib/resource-filter";
@@ -32,7 +32,7 @@ export function ProjectResourceFilters({
 }: {
   environmentName: string;
   filter: ProjectResourceFilterState;
-  counts: ProjectResourceCounts;
+  counts: ProjectResourceDisplayCounts;
   onChange: (filter: ProjectResourceFilterState) => void;
 }) {
   const { t } = useTranslations();
@@ -55,7 +55,8 @@ export function ProjectResourceFilters({
               aria-pressed={selected}
               onClick={() => onChange({ ...filter, kind })}
             >
-              {t(key)} ({counts[kind]})
+              {/* An unread family has no count, not zero (w4/m227). */}
+              {t(key)} ({counts[kind] ?? "—"})
             </Button>
           );
         })}
