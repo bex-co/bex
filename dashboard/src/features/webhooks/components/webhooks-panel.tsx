@@ -17,6 +17,7 @@ import {
 } from "@/common/components/panel-states";
 import { isForbiddenError } from "@/common/lib/graphql-error";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import { useWebhooks } from "@/features/webhooks/hooks/use-webhooks";
 import { useSetWebhookEnabled } from "@/features/webhooks/hooks/use-set-webhook-enabled";
 import { WebhookRow } from "@/features/webhooks/components/webhook-row";
@@ -39,6 +40,7 @@ export function WebhooksPanel() {
   const { canManage } = useCapabilities();
   // Fail-closed: only show create when affirmatively allowed.
   const showCreate = canManage;
+  const hydrated = useIsHydrated();
   const [search, setSearch] = useState("");
 
   const forbidden = isForbiddenError(error);
@@ -118,6 +120,9 @@ export function WebhooksPanel() {
                 id="webhook-search"
                 type="search"
                 value={search}
+                // Uneditable until handlers attach: a query typed into the
+                // server HTML is wiped by hydration (w4/m219).
+                disabled={!hydrated}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder={t("webhooks.searchEndpoints")}
                 aria-describedby="webhook-search-help"
