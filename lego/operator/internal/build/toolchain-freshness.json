@@ -147,6 +147,24 @@
       "files": ["lego/operator/internal/build/nativeffmpeg.go"]
     },
     {
+      "id": "native-hugo-amd64",
+      "kind": "release-asset",
+      "upstream": "github.com/gohugoio/hugo/hugo_extended_0.111.3_linux-amd64.tar.gz:v0.111.3",
+      "committed": "hugo_extended_0.111.3_linux-amd64.tar.gz@sha256:b382aacb522a470455ab771d0e8296e42488d3ea4e61fe49c11c32ec7fb6ee8b",
+      "resolved_at": "2026-10-17T12:00:00Z",
+      "source": "GitHub release gohugoio/hugo v0.111.3 asset hugo_extended_0.111.3_linux-amd64.tar.gz, sha256 matching the release's hugo_0.111.3_checksums.txt; Hugo extended for every native static build (w8/m106), Debian 12's release because Render's Hugo quickstart theme needs resources.ToCSS, which later Hugo removed; a fixed tag, so drift means a re-uploaded asset, and a new Hugo is a reviewed bump",
+      "files": ["lego/operator/internal/build/nativehugo.go"]
+    },
+    {
+      "id": "native-hugo-arm64",
+      "kind": "release-asset",
+      "upstream": "github.com/gohugoio/hugo/hugo_extended_0.111.3_linux-arm64.tar.gz:v0.111.3",
+      "committed": "hugo_extended_0.111.3_linux-arm64.tar.gz@sha256:695176416dbe09d8c84abeb093f5f27132e6811221569811c855b577122bd670",
+      "resolved_at": "2026-10-17T12:00:00Z",
+      "source": "GitHub release gohugoio/hugo v0.111.3 asset hugo_extended_0.111.3_linux-arm64.tar.gz, sha256 matching the release's hugo_0.111.3_checksums.txt; Hugo extended for every native static build (w8/m106), Debian 12's release because Render's Hugo quickstart theme needs resources.ToCSS, which later Hugo removed; a fixed tag, so drift means a re-uploaded asset, and a new Hugo is a reviewed bump",
+      "files": ["lego/operator/internal/build/nativehugo.go"]
+    },
+    {
       "id": "native-pnpm",
       "kind": "npm-package",
       "upstream": "registry.npmjs.org/pnpm:latest-10",
