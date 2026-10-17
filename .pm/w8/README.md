@@ -295,7 +295,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **118** — [Forward stdin to noninteractive psql imports](118.md) (55m, major) ← functional CLI sweep399; released Bex, Render pin and HEAD silently import0 rows from supplied CSV, filename/direct controls import3. Upstream stdin handoff researched; exact database/data/credentials cleaned.
+- [ ] **118** — [Forward stdin to noninteractive psql imports](blocked/118.md) (55m, major) — **BLOCKED (2026-10-16: upstream patch + real-child regressions prepared in `blocked/118-upstream.patch` (and a variant stacked on 079 in `blocked/118-upstream-stacked-on-079.patch`): the pinned CLI's non-interactive psql never sets the child's stdin, so `\copy … FROM pstdin` reads EOF and imports 0 rows; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release and the two-client import replay with cleanup; no fork per DO_NOT_DO)**
 
 - [ ] **117** — [Native Ruby builds silently rewrite stale dependency lockfiles](blocked/117.md) (55m, major) — **BLOCKED (2026-10-16: implemented — primary Ruby images default Render's BUNDLE_DEPLOYMENT=true with its BUNDLE_PATH/BUNDLE_BIN outside the source tree (binstubs first on PATH), so a stale or missing Gemfile.lock fails the build while matched locks install and serve exactly; service values (deployment/frozen off, own path) win; real-Bundler gate + fail-before verified; needs the operator deployed plus the hosted both-client stale/matched replay, runnable with the QA CLI login)**
 

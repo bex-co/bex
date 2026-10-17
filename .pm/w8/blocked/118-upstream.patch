@@ -1,0 +1,93 @@
+diff --git a/cmd/psql.go b/cmd/psql.go
+index 3ff0ae7..0836a9f 100644
+--- a/cmd/psql.go
++++ b/cmd/psql.go
+@@ -100,7 +100,7 @@ func init() {
+ 				return fmt.Errorf("postgres ID or name is required in non-interactive mode")
+ 			}
+ 
+-			result, err := views.ExecutePSQLNonInteractive(ctx, &input)
++			result, err := views.ExecutePSQLNonInteractive(ctx, &input, cmd.InOrStdin())
+ 			if err != nil {
+ 				return err
+ 			}
+diff --git a/pkg/tui/views/psql.go b/pkg/tui/views/psql.go
+index 0acd74d..55e3d14 100644
+--- a/pkg/tui/views/psql.go
++++ b/pkg/tui/views/psql.go
+@@ -42,7 +42,10 @@ type PSQLResult struct {
+ 	Output string `json:"output"`
+ }
+ 
+-func ExecutePSQLNonInteractive(ctx context.Context, input *PSQLInput) (*PSQLResult, error) {
++// ExecutePSQLNonInteractive runs input.Command and returns the tool's stdout.
++// The tool reads stdin, so data the caller pipes in reaches commands that
++// consume it, such as \copy ... FROM pstdin.
++func ExecutePSQLNonInteractive(ctx context.Context, input *PSQLInput, stdin io.Reader) (*PSQLResult, error) {
+ 	c, err := client.NewDefaultClient()
+ 	if err != nil {
+ 		return nil, err
+@@ -77,13 +80,16 @@ func ExecutePSQLNonInteractive(ctx context.Context, input *PSQLInput) (*PSQLResu
+ 		args = append(args, arg)
+ 	}
+ 
+-	cmd := exec.CommandContext(ctx, string(input.Tool), args...)
++	return runPSQLCommand(exec.CommandContext(ctx, string(input.Tool), args...), stdin)
++}
+ 
++func runPSQLCommand(cmd *exec.Cmd, stdin io.Reader) (*PSQLResult, error) {
+ 	var stdout, stderr bytes.Buffer
++	cmd.Stdin = stdin
+ 	cmd.Stdout = &stdout
+ 	cmd.Stderr = &stderr
+ 
+-	err = cmd.Run()
++	err := cmd.Run()
+ 	if err != nil {
+ 		errMsg := stderr.String()
+ 		if errMsg != "" {
+diff --git a/pkg/tui/views/psql_test.go b/pkg/tui/views/psql_test.go
+index 8d9ff6c..d1650b1 100644
+--- a/pkg/tui/views/psql_test.go
++++ b/pkg/tui/views/psql_test.go
+@@ -2,6 +2,8 @@ package views
+ 
+ import (
+ 	"encoding/json"
++	"os/exec"
++	"strings"
+ 	"testing"
+ 
+ 	"github.com/stretchr/testify/require"
+@@ -48,3 +50,31 @@ func TestPSQLResult_YAMLMarshal(t *testing.T) {
+ 	require.Contains(t, string(b), "output:")
+ 	require.Contains(t, string(b), "hello world")
+ }
++
++func TestRunPSQLCommandForwardsStdin(t *testing.T) {
++	csv := "id,body\n1,\"a, \"\"quoted\"\"\nline\"\n2,\"\u00e9\u6f22\"\n3,\"\"\n"
++	tests := []struct {
++		name   string
++		script string
++		stdin  string
++		output string
++		err    string
++	}{
++		{"exact bytes reach the child", `cat`, csv, csv, ""},
++		{"empty stdin", `cat`, "", "", ""},
++		{"a command that reads nothing", `printf 'SELECT 1\n'`, csv, "SELECT 1\n", ""},
++		{"child error keeps stderr in the error", `cat >/dev/null; printf 'ERROR:  bad input\n' >&2; exit 1`, csv, "", "exit status 1: ERROR:  bad input"},
++	}
++	for _, tt := range tests {
++		t.Run(tt.name, func(t *testing.T) {
++			result, err := runPSQLCommand(exec.Command("sh", "-c", tt.script), strings.NewReader(tt.stdin))
++			if tt.err != "" {
++				require.EqualError(t, err, tt.err)
++				require.Nil(t, result)
++				return
++			}
++			require.NoError(t, err)
++			require.Equal(t, tt.output, result.Output)
++		})
++	}
++}
