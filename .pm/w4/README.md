@@ -323,6 +323,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **336** — [Mobile Postgres section links hide their destination titles](336.md) (55m) — minor; fresh360/390 native SQL and HA links put the full card title beneath the sticky row. Desktop passes; a reversible local margin control identifies the offset mechanism. Six navigation owners audited in source; sibling behavior remains verification work. SQL data, timeout, paging and history controls pass. Owned database, all18 runtime/snapshot scopes, inventories and exact session cleaned. Filing only.
+
 - [ ] **335** — [Static UTF-8 text renders with the wrong charset](335.md) (55m) — minor; correct 57-byte UTF-8 text displays as mojibake at fresh desktop/mobile direct and rewritten URLs because populated origin text/plain omits charset. Native charset controls pass; removing them reproduces with the same Live revision. Normalize only valid UTF-8 plain-object metadata before caching; preserve declared encodings, other MIME types and owner overrides. All 23 runtime/snapshot checks, API inventories and session cleaned. Filing only.
 
 - [ ] **334** — [Canceling a retry promises a live release when none has served](334.md) (30m) — minor; fresh 390/1440 retry dialogs promise a live fallback despite empty revision and complete canceled-only prior history. Native Cancel/zero-pod/public 503 behavior and a real prior-Live marker control pass. Follow-up to 103's explicitly deferred case; make the shared generic en/zh copy conditional. Owned fixtures, 32 physical scopes, 9 API paths and session cleaned. Filing only.
