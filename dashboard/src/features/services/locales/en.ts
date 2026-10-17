@@ -4590,12 +4590,13 @@ const enServices: Record<string, TranslationEntry> = {
   "services.environmentRestoredTitle": {
     message: "Restored unsaved changes",
     description:
-      "Heading of the banner shown when an env draft is recovered after a session-expiry redirect (w3/m80)",
+      "Heading of the banner shown when an unsaved env draft is recovered in this tab, after a reload or a session-expiry sign-in (w3/m80)",
   },
   "services.environmentRestoredBody": {
     message:
-      "We brought back the environment edits you were making before signing in again. Review them, then save or discard.",
-    description: "Body of the restored-draft banner",
+      "Your unsaved environment edits were restored. Review them, then save or discard.",
+    description:
+      "Body of the restored-draft banner. Names no cause: an ordinary reload restores the draft as a sign-in does (w4/337)",
   },
   "services.environmentRestoredDiscard": {
     message: "Discard restored changes",
