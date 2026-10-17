@@ -1,0 +1,1230 @@
+{
+  "pass": "a838",
+  "probeHead": "4d4bcb41650acbf331a624784cb0b845b0410ccf",
+  "researchHead": "2d0766a062bd8d8790b0c1b81fc1aad0c961d56d",
+  "scope": "Two separately traced log-search roots lose pre-handler text.",
+  "scripts": {
+    "serviceFactory": "function(url,label,width,marker){return `async(page)=>{\nawait page.setViewportSize({width:${width},height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-D60ymwlM.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.getByLabel(${JSON.stringify(label)},{exact:true}),marker=${JSON.stringify(marker)};\ntry{\nawait page.goto(${JSON.stringify(url)},{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.disabled,readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const after=await n.count()?await n.inputValue():null;let readyControl=null;if(await n.count()&&await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(700);readyControl=await n.inputValue();}\nreturn {at:new Date().toISOString(),url:page.url(),width:${width},scripts,before,typed,events,samples,after,readyControl,noResponseRewriting:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}`}",
+    "service1440": "async(page)=>{\nawait page.setViewportSize({width:1440,height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-D60ymwlM.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.getByLabel(\"Search logs\",{exact:true}),marker=\"qa-a838-search-1440\";\ntry{\nawait page.goto(\"https://dashboard.bex.co/services/srv-db9emes50quc73dl5p2g/logs\",{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.disabled,readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const after=await n.count()?await n.inputValue():null;let readyControl=null;if(await n.count()&&await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(700);readyControl=await n.inputValue();}\nreturn {at:new Date().toISOString(),url:page.url(),width:1440,scripts,before,typed,events,samples,after,readyControl,noResponseRewriting:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}",
+    "service390": "async(page)=>{\nawait page.setViewportSize({width:390,height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-D60ymwlM.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.getByLabel(\"Search logs\",{exact:true}),marker=\"qa-a838-search-390\";\ntry{\nawait page.goto(\"https://dashboard.bex.co/services/srv-db9emes50quc73dl5p2g/logs\",{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.disabled,readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const after=await n.count()?await n.inputValue():null;let readyControl=null;if(await n.count()&&await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(700);readyControl=await n.inputValue();}\nreturn {at:new Date().toISOString(),url:page.url(),width:390,scripts,before,typed,events,samples,after,readyControl,noResponseRewriting:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}",
+    "serviceRepeat": "async(page)=>{\nawait page.setViewportSize({width:390,height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-D60ymwlM.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.getByLabel(\"Search logs\",{exact:true}),marker=\"qa-a838-log-repeat\";\ntry{\nawait page.goto(\"https://dashboard.bex.co/services/srv-db9emes50quc73dl5p2g/logs\",{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.disabled,readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();await page.screenshot({path:'qa-a838-service-search-before.png'});}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const after=await n.count()?await n.inputValue():null;await page.screenshot({path:'qa-a838-service-search-after.png'});let readyControl=null;if(await n.count()&&await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(700);readyControl=await n.inputValue();}\nreturn {at:new Date().toISOString(),url:page.url(),width:390,scripts,before,typed,events,samples,after,readyControl,noResponseRewriting:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}",
+    "deployFactory": "function(url,label,width,marker){return `async(page)=>{\nawait page.setViewportSize({width:${width},height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-D60ymwlM.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.getByPlaceholder(${JSON.stringify(label)},{exact:true}),marker=${JSON.stringify(marker)};\ntry{\nawait page.goto(${JSON.stringify(url)},{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.disabled,readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const after=await n.count()?await n.inputValue():null;let readyControl=null;if(await n.count()&&await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(700);readyControl=await n.inputValue();}\nreturn {at:new Date().toISOString(),url:page.url(),width:${width},scripts,before,typed,events,samples,after,readyControl,noResponseRewriting:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}`}",
+    "deploy1440": "async(page)=>{\nawait page.setViewportSize({width:1440,height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-D60ymwlM.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.getByPlaceholder(\"Search logs…\",{exact:true}),marker=\"qa-a838-deploy-1440\";\ntry{\nawait page.goto(\"https://dashboard.bex.co/services/srv-db9emes50quc73dl5p2g/deploys/dep-db9emes50quc73dl5p30\",{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.disabled,readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const after=await n.count()?await n.inputValue():null;let readyControl=null;if(await n.count()&&await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(700);readyControl=await n.inputValue();}\nreturn {at:new Date().toISOString(),url:page.url(),width:1440,scripts,before,typed,events,samples,after,readyControl,noResponseRewriting:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}",
+    "deploy390": "async(page)=>{\nawait page.setViewportSize({width:390,height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-D60ymwlM.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.getByPlaceholder(\"Search logs…\",{exact:true}),marker=\"qa-a838-deploy-390\";\ntry{\nawait page.goto(\"https://dashboard.bex.co/services/srv-db9emes50quc73dl5p2g/deploys/dep-db9emes50quc73dl5p30\",{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.disabled,readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const after=await n.count()?await n.inputValue():null;let readyControl=null;if(await n.count()&&await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(700);readyControl=await n.inputValue();}\nreturn {at:new Date().toISOString(),url:page.url(),width:390,scripts,before,typed,events,samples,after,readyControl,noResponseRewriting:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}",
+    "deployRepeat": "async(page)=>{\nawait page.setViewportSize({width:390,height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-D60ymwlM.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.getByPlaceholder(\"Search logs…\",{exact:true}),marker=\"qa-a838-deploy-repeat\";\ntry{\nawait page.goto(\"https://dashboard.bex.co/services/srv-db9emes50quc73dl5p2g/deploys/dep-db9emes50quc73dl5p30\",{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.disabled,readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();await page.screenshot({path:'qa-a838-deploy-search-before.png'});}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const after=await n.count()?await n.inputValue():null;await page.screenshot({path:'qa-a838-deploy-search-after.png'});let readyControl=null;if(await n.count()&&await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(700);readyControl=await n.inputValue();}\nreturn {at:new Date().toISOString(),url:page.url(),width:390,scripts,before,typed,events,samples,after,readyControl,noResponseRewriting:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}"
+  },
+  "receipts": {
+    "a838Created": {
+      "at": "2026-10-17T03:27:55.938Z",
+      "request": {
+        "operationName": "CreateService",
+        "variables": {
+          "image": "node:24-alpine",
+          "name": "qa-20261016-a838-logs",
+          "type": "web_service",
+          "registryCredentialId": "",
+          "runtime": "image",
+          "startCommand": "node -e 'console.log(\"qa-a838 startup 雪🦊\");setInterval(()=>console.log(\"qa-a838 tick 雪🦊\"),20000);require(\"http\").createServer((q,s)=>s.end(\"qa-a838 live\\n\")).listen(process.env.PORT||8138,\"0.0.0.0\")'",
+          "plan": "free",
+          "port": 8138,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db9emes50quc73dl5p2g",
+            "latestDeployId": "dep-db9emes50quc73dl5p30",
+            "name": "qa-20261016-a838-logs",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": "",
+            "type": "web_service"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792207674646.011,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.13,
+        "responseStart": 581.627,
+        "responseEnd": 582.078
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9emes50quc73dl5p2g/deploys/dep-db9emes50quc73dl5p30"
+    },
+    "a838LogsReady": {
+      "at": "2026-10-17T03:28:06.091Z",
+      "aria": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261016-a838-logs\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261016-a838-logs\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Created\"':\n    - /url: /services/srv-db9emes50quc73dl5p2g/deploys/dep-db9emes50quc73dl5p30\n    - text: Latest deploy Created\n  - link \"Free\":\n    - /url: /services/srv-db9emes50quc73dl5p2g/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db9emes50quc73dl5p2g\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261016-a838-logs.onbex.co\":\n    - /url: https://qa-20261016-a838-logs.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261016-a838-logs\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: now\n  - combobox \"Log type\": All logs\n  - textbox \"Search logs\"\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\" [checked]\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - text: 08:27:57 PM\n  - button \"Filter logs by instance srv-db9emes50quc73dl5p2g-csheanrv9b5n51kfc2mf\": \"[cshea]\"\n  - text: qa-a838 startup 雪🦊\n  - paragraph: Live — streaming new lines"
+    },
+    "a838Startup1440": {
+      "at": "2026-10-17T03:28:26.664Z",
+      "url": "https://dashboard.bex.co/services/srv-db9emes50quc73dl5p2g/logs?text=qa-a838-search-1440-ready",
+      "width": 1440,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-D60ymwlM.js",
+          "status": 200,
+          "bytes": 1952882,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "count": 1,
+        "enabled": true,
+        "readOnly": false,
+        "reactProps": false,
+        "id": ""
+      },
+      "typed": "qa-a838-search-1440",
+      "events": [
+        {
+          "trusted": true,
+          "value": "qa-a838-search-1440",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 2131.600000023842,
+          "value": "qa-a838-search-1440",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 2286.7000000476837,
+          "value": "qa-a838-search-1440",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2443,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2599.4000000953674,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2754.3000000715256,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2912.100000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3068.7000000476837,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3225.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3381.7000000476837,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3536.100000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3691.9000000953674,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3848,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4004.3000000715256,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4159.200000047684,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4315.200000047684,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4471.100000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4627.800000071526,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4786,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4941.400000095367,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5099.400000095367,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "after": "",
+      "readyControl": "qa-a838-search-1440-ready",
+      "noResponseRewriting": true
+    },
+    "a838Startup390": {
+      "at": "2026-10-17T03:28:33.017Z",
+      "url": "https://dashboard.bex.co/services/srv-db9emes50quc73dl5p2g/logs?text=qa-a838-search-390-ready",
+      "width": 390,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-D60ymwlM.js",
+          "status": 200,
+          "bytes": 1952882,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "count": 1,
+        "enabled": true,
+        "readOnly": false,
+        "reactProps": false,
+        "id": ""
+      },
+      "typed": "qa-a838-search-390",
+      "events": [
+        {
+          "trusted": true,
+          "value": "qa-a838-search-390",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 1658.2999999523163,
+          "value": "qa-a838-search-390",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 1812.5,
+          "value": "qa-a838-search-390",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 1967.2999999523163,
+          "value": "qa-a838-search-390",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2121.600000023842,
+          "value": "qa-a838-search-390",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2277.2999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2432.899999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2588.7999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2746.100000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2901.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3055.7999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3210,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3365.6999999284744,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3521.2999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3675.899999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3830.6999999284744,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3985,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4140.299999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4295.799999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4450.799999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4607.399999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "after": "",
+      "readyControl": "qa-a838-search-390-ready",
+      "noResponseRewriting": true
+    },
+    "a838ServiceSearchRepeat": {
+      "at": "2026-10-17T03:29:25.040Z",
+      "url": "https://dashboard.bex.co/services/srv-db9emes50quc73dl5p2g/logs?text=qa-a838-log-repeat-ready",
+      "width": 390,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-D60ymwlM.js",
+          "status": 200,
+          "bytes": 1952882,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "count": 1,
+        "enabled": true,
+        "readOnly": false,
+        "reactProps": false,
+        "id": ""
+      },
+      "typed": "qa-a838-log-repeat",
+      "events": [
+        {
+          "trusted": true,
+          "value": "qa-a838-log-repeat",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 2170,
+          "value": "qa-a838-log-repeat",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 2341.399999976158,
+          "value": "qa-a838-log-repeat",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2519.1999999284744,
+          "value": "qa-a838-log-repeat",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2698.1999999284744,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2862.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3023.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3185.7999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3354.5999999046326,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3515.2999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3688.0999999046326,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3871.399999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4130.199999928474,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4299.299999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4489,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4657.599999904633,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4854.399999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5021.599999904633,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5202.899999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5374.399999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5538,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "after": "",
+      "readyControl": "qa-a838-log-repeat-ready",
+      "noResponseRewriting": true
+    },
+    "a838DeploySearchReady": {
+      "at": "2026-10-17T03:29:28.189Z",
+      "searchInputs": [
+        {
+          "placeholder": "Search logs…",
+          "ariaLabel": null,
+          "type": "text"
+        }
+      ],
+      "tail": "30\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db9emes50quc73dl5p2g/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db9emes50quc73dl5p2g\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261016-a838-logs.onbex.co\":\n    - /url: https://qa-20261016-a838-logs.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261016-a838-logs\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 1m\n  - text: Deploy status Live First Deploy dep-db9emes50quc73dl5p30\n  - paragraph: node:24-alpine\n  - term: \"Created:\"\n  - definition: October 16, 2026 at 8:27 PM\n  - term: \"Updated:\"\n  - definition: October 16, 2026 at 8:28 PM\n  - term: \"Finished:\"\n  - definition: October 16, 2026 at 8:28 PM\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 16, 2026 at 8:27 PM\n    - listitem:\n      - paragraph: Live\n      - time: October 16, 2026 at 8:28 PM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\"\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: Loading logs…"
+    },
+    "a838DeployStartup1440": {
+      "at": "2026-10-17T03:29:50.598Z",
+      "url": "https://dashboard.bex.co/services/srv-db9emes50quc73dl5p2g/deploys/dep-db9emes50quc73dl5p30",
+      "width": 1440,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-D60ymwlM.js",
+          "status": 200,
+          "bytes": 1952882,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "count": 1,
+        "enabled": true,
+        "readOnly": false,
+        "reactProps": false,
+        "id": ""
+      },
+      "typed": "qa-a838-deploy-1440",
+      "events": [
+        {
+          "trusted": true,
+          "value": "qa-a838-deploy-1440",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 1724.3999999761581,
+          "value": "qa-a838-deploy-1440",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 1881.3999999761581,
+          "value": "qa-a838-deploy-1440",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2036.2000000476837,
+          "value": "qa-a838-deploy-1440",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2191.600000023842,
+          "value": "qa-a838-deploy-1440",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2347.2000000476837,
+          "value": "qa-a838-deploy-1440",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2504.899999976158,
+          "value": "qa-a838-deploy-1440",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2658.8000000715256,
+          "value": "qa-a838-deploy-1440",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2814.8000000715256,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2968.100000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3122.3000000715256,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3275.8000000715256,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3433.8000000715256,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3588.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3744.600000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3899.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4055.100000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4209.600000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4365.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4519.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4674.300000071526,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "after": "",
+      "readyControl": "qa-a838-deploy-1440-ready",
+      "noResponseRewriting": true
+    },
+    "a838DeployStartup390": {
+      "at": "2026-10-17T03:29:56.897Z",
+      "url": "https://dashboard.bex.co/services/srv-db9emes50quc73dl5p2g/deploys/dep-db9emes50quc73dl5p30",
+      "width": 390,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-D60ymwlM.js",
+          "status": 200,
+          "bytes": 1952882,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "count": 1,
+        "enabled": true,
+        "readOnly": false,
+        "reactProps": false,
+        "id": ""
+      },
+      "typed": "qa-a838-deploy-390",
+      "events": [
+        {
+          "trusted": true,
+          "value": "qa-a838-deploy-390",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 1704.7999999523163,
+          "value": "qa-a838-deploy-390",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 1859.7000000476837,
+          "value": "qa-a838-deploy-390",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2015.7999999523163,
+          "value": "qa-a838-deploy-390",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2172,
+          "value": "qa-a838-deploy-390",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2327.100000023842,
+          "value": "qa-a838-deploy-390",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2483.899999976158,
+          "value": "qa-a838-deploy-390",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2638.100000023842,
+          "value": "qa-a838-deploy-390",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2792.100000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2946,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3100.7999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3256,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3410.2000000476837,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3564.7999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3718.899999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3873.7999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4028.600000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4182.700000047684,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4338.200000047684,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4492.600000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4646.200000047684,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "after": "",
+      "readyControl": "qa-a838-deploy-390-ready",
+      "noResponseRewriting": true
+    },
+    "a838DeploySearchRepeat": {
+      "at": "2026-10-17T03:30:42.919Z",
+      "url": "https://dashboard.bex.co/services/srv-db9emes50quc73dl5p2g/deploys/dep-db9emes50quc73dl5p30",
+      "width": 390,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-D60ymwlM.js",
+          "status": 200,
+          "bytes": 1952882,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "count": 1,
+        "enabled": true,
+        "readOnly": false,
+        "reactProps": false,
+        "id": ""
+      },
+      "typed": "qa-a838-deploy-repeat",
+      "events": [
+        {
+          "trusted": true,
+          "value": "qa-a838-deploy-repeat",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 2647.3000000715256,
+          "value": "qa-a838-deploy-repeat",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 2802.2000000476837,
+          "value": "qa-a838-deploy-repeat",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2959.4000000953674,
+          "value": "qa-a838-deploy-repeat",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3114.4000000953674,
+          "value": "qa-a838-deploy-repeat",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3269.600000023842,
+          "value": "qa-a838-deploy-repeat",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3424.2000000476837,
+          "value": "qa-a838-deploy-repeat",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3581.600000023842,
+          "value": "qa-a838-deploy-repeat",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3737.7000000476837,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3893.7000000476837,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4048.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4203.300000071526,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4359.100000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4513.600000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4669.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4824.400000095367,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4978.600000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5133.200000047684,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5287.100000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5441.900000095367,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5598.600000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "after": "",
+      "readyControl": "qa-a838-deploy-repeat-ready",
+      "noResponseRewriting": true
+    },
+    "a838Deleted": {
+      "at": "2026-10-17T03:31:15.084Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db9emes50quc73dl5p2g"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "timing": {
+        "startTime": 1792207873965.136,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.323,
+        "responseStart": 401.601,
+        "responseEnd": 402.731
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "a838InventoryCleanup": {
+      "at": "2026-10-17T03:31:28.261Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [
+        {
+          "path": "/v1/services/srv-db9emes50quc73dl5p2g",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9emes50quc73dl5p2g/deploys/dep-db9emes50quc73dl5p30",
+          "status": 404
+        }
+      ],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "httpFailures": [
+        {
+          "method": "GET",
+          "url": "https://api.bex.co/v1/services/srv-db9emes50quc73dl5p2g",
+          "status": 404
+        },
+        {
+          "method": "GET",
+          "url": "https://api.bex.co/v1/services/srv-db9emes50quc73dl5p2g/deploys/dep-db9emes50quc73dl5p30",
+          "status": 404
+        }
+      ]
+    },
+    "a838SessionCleared": {
+      "at": "2026-10-17T03:31:33.569Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  },
+  "sourceCensus": {
+    "LogFilterBarMounts": [
+      {
+        "path": "dashboard/src/features/logs/components/log-viewer.tsx",
+        "line": 298
+      }
+    ],
+    "LogViewerMounts": [
+      {
+        "path": "dashboard/src/routes/services.$serviceId.logs.tsx",
+        "line": 116
+      }
+    ],
+    "ServiceLogsPageRouteMounts": [
+      {
+        "path": "dashboard/src/routes/services.$serviceId.logs.tsx",
+        "line": 65
+      }
+    ],
+    "DeployLogPanelMounts": [
+      {
+        "path": "dashboard/src/features/deploys/components/deploy-detail-page.tsx",
+        "line": 136
+      }
+    ],
+    "DeployDetailPageMounts": [
+      {
+        "path": "dashboard/src/routes/services.$serviceId.deploys.$deployId.tsx",
+        "line": 29
+      },
+      {
+        "path": "dashboard/src/routes/static.$serviceId.deploys.$deployId.tsx",
+        "line": 24
+      }
+    ],
+    "separateDatastoreViewerMounts": [
+      {
+        "path": "dashboard/src/routes/databases.$databaseId.tsx",
+        "line": 228
+      },
+      {
+        "path": "dashboard/src/routes/keyvalue.$keyValueId.tsx",
+        "line": 195
+      }
+    ],
+    "LogFilterBarSearchInputSites": 1,
+    "DeployLogPanelSearchInputSites": 1,
+    "LogFilterBarTotalInputSites": 2,
+    "LogFilterBarOtherInputSiteUnchanged": 246
+  },
+  "screenshots": [
+    "qa-a838-service-search-before.png",
+    "qa-a838-service-search-after.png",
+    "qa-a838-deploy-search-before.png",
+    "qa-a838-deploy-search-after.png"
+  ],
+  "libraryBasis": "Pinned react-dom19.3.1 source was reopened for a837; see m219-a837-webhook-search-startup.json. Deployed React version not independently extracted.",
+  "limits": [
+    "No post-hydration update is attributed to one particular query.",
+    "Ready controls establish retained input text, not a separately captured filtered-result body.",
+    "SSR select labels and asynchronously arriving service/deploy metadata change in screenshots; those differences are separate from same-node input loss.",
+    "Only owned Free web live-driven. Private/worker/cron and static deploy alias are source-traced; PG/KV use a distinct viewer and are not claimed affected."
+  ],
+  "physicalCleanup": {
+    "at": "2026-10-17T03:33:48.605509+00:00",
+    "checks": [
+      {
+        "kind": "App",
+        "command": [
+          "kubectl",
+          "--context",
+          "hetzner-prod",
+          "get",
+          "apps.app.bex.co",
+          "-A",
+          "--field-selector",
+          "metadata.name=tea-d98210cbbpdc73dcrkvg-qa-20261016-a838-logs",
+          "-o",
+          "name"
+        ],
+        "exitCode": 0,
+        "remaining": []
+      },
+      {
+        "kind": "servingPods",
+        "command": [
+          "kubectl",
+          "--context",
+          "hetzner-prod",
+          "get",
+          "pods",
+          "-A",
+          "-l",
+          "app.bex.co/app=tea-d98210cbbpdc73dcrkvg-qa-20261016-a838-logs",
+          "-o",
+          "name"
+        ],
+        "exitCode": 0,
+        "remaining": []
+      },
+      {
+        "kind": "buildChildren",
+        "command": [
+          "kubectl",
+          "--context",
+          "hetzner-prod",
+          "get",
+          "jobs,pods",
+          "-A",
+          "-l",
+          "app.bex.co/build=tea-d98210cbbpdc73dcrkvg-qa-20261016-a838-logs",
+          "-o",
+          "name"
+        ],
+        "exitCode": 0,
+        "remaining": []
+      }
+    ],
+    "publicStatus": "404",
+    "publicExitCode": 0
+  },
+  "postPullMain": "af6a6310e",
+  "mergeDisposition": "Preserve completed webhook gate and done/t010; reopen closing checks only for new t011/t012 log roots."
+}
