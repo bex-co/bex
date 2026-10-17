@@ -1,0 +1,2312 @@
+{
+  "pass": "a821",
+  "researchHead": "5448f8d9c3f30db207bc896b83985f4fdefbac42",
+  "recorded": "2026-10-17 UTC",
+  "scope": "Read-only Environment Groups list geometry; no fixtures, server mutations, reveal calls or paid actions.",
+  "probes": {
+    "pendingFactory": "function(width){return `async(page)=>{\nawait page.setViewportSize({width:${width},height:844});await page.goto(\"https://dashboard.bex.co/blueprints/new\");await page.waitForTimeout(1200);\nlet release,released=false;const gate=new Promise(r=>release=r),captures=[],tasks=[];\nconst pattern=\"https://api.bex.co/graphql\";const handler=async route=>{let q;try{q=route.request().postDataJSON()}catch{await route.continue();return};const qs=Array.isArray(q)?q:[q],i=qs.findIndex(x=>x.operationName===\"EnvGroups\");if(i<0){await route.continue();return};const task=(async()=>{const r=await route.fetch();const body=await r.json();captures.push({request:qs[i],status:r.status(),body:Array.isArray(body)?body[i]:body,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};\nconst measure=()=>page.evaluate(()=>{const rect=e=>{if(!e)return null;const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height}};const s=document.querySelector('[data-route-skeleton=\"env-groups-list\"]'),h=Array.from(document.querySelectorAll('main h1')).find(e=>e.textContent===\"Environment Groups\"),i=document.querySelector('input[aria-label=\"Search environment groups by name\"]'),table=document.querySelector(\"main table\"),region=s?.querySelector('[data-skeleton-region=\"env-groups-table\"]'),grid=region?.querySelector('[style*=\"grid-template-columns\"]');return {width:innerWidth,docWidth:document.documentElement.scrollWidth,frame:rect(s),header:rect(s?.querySelector('[data-skeleton-region=\"page-header\"]')||h?.parentElement?.parentElement),heading:rect(h),search:rect(s?.querySelector('[data-skeleton-region=\"search\"]')?.firstElementChild||i),table:rect(region?.firstElementChild||table),headerParts:s?Array.from(s.querySelectorAll('[data-skeleton-region=\"page-header\"] [data-slot=\"skeleton\"]')).map(e=>rect(e)):[{title:rect(h),description:rect(h?.parentElement?.querySelector(\"p\")),action:rect(Array.from(document.querySelectorAll(\"main button\")).find(e=>e.textContent===\"New Environment Group\"))}],skeletonColumns:grid?.children.length||0,skeletonGrid:grid?getComputedStyle(grid).gridTemplateColumns:null,headers:table?Array.from(table.querySelectorAll(\"th\")).map(e=>({text:e.textContent,...rect(e)})):[],mainText:s?null:document.querySelector(\"main\")?.innerText};});\nawait page.route(pattern,handler);\ntry{await page.getByRole(\"button\",{name:\"Search\",exact:true}).click();await page.getByRole(\"option\",{name:\"Environment Groups\",exact:true}).click();await page.locator('[data-route-skeleton=\"env-groups-list\"]').waitFor({state:\"visible\",timeout:15000});for(let j=0;j<350&&!captures.length;j++)await page.waitForTimeout(100);if(!captures.length)throw Error(\"Real EnvGroups response not captured\");\nconst pending=await measure();await page.screenshot({path:\"qa-a821-envgroups-pending-${width}.png\"});\nreleased=true;release();await Promise.allSettled(tasks);await page.getByRole(\"textbox\",{name:\"Search environment groups by name\",exact:true}).waitFor({timeout:15000});await page.waitForTimeout(1000);\nconst ready=await measure();await page.screenshot({path:\"qa-a821-envgroups-ready-${width}.png\"});return{at:new Date().toISOString(),url:page.url(),captures,pending,ready,unchangedResponses:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);}\n}`}",
+    "freshMobileHeader": "async(page)=>{await page.setViewportSize({width:390,height:844});await page.goto('https://dashboard.bex.co/env-groups');await page.getByRole('textbox',{name:'Search environment groups by name',exact:true}).waitFor({timeout:15000});await page.waitForTimeout(1200);const measure=()=>page.evaluate(()=>{const t=document.querySelector('main table'),rect=e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height}};return{width:innerWidth,docWidth:document.documentElement.scrollWidth,table:rect(t),container:rect(t.parentElement),scrollWidth:t.parentElement.scrollWidth,headers:Array.from(t.querySelectorAll('th')).map(e=>{const s=getComputedStyle(e);const chars=[];for(let j=0;j<(e.firstChild?.textContent||'').length;j++){const r=document.createRange();try{r.setStart(e.firstChild,j);r.setEnd(e.firstChild,j+1);const x=r.getBoundingClientRect();chars.push({char:e.firstChild.textContent[j],y:x.y,height:x.height})}catch{}}return{text:e.textContent,...rect(e),whiteSpace:s.whiteSpace,overflowWrap:s.overflowWrap,wordBreak:s.wordBreak,lineHeight:s.lineHeight,chars}})}});const initial=await measure();await page.locator('main [data-slot=\"table-container\"]').evaluate(e=>e.scrollLeft=e.scrollWidth);await page.screenshot({path:'qa-a821-envgroups-mobile-right.png'});const afterScroll=await measure();return{at:new Date().toISOString(),initial,afterScroll};}",
+    "fresh360Header": "async(page)=>{await page.setViewportSize({width:360,height:844});await page.goto('https://dashboard.bex.co/env-groups');await page.getByRole('textbox',{name:'Search environment groups by name',exact:true}).waitFor({timeout:15000});await page.waitForTimeout(1200);const measure=()=>page.evaluate(()=>{const t=document.querySelector('main table'),rect=e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height}};return{width:innerWidth,docWidth:document.documentElement.scrollWidth,table:rect(t),container:rect(t.parentElement),scrollWidth:t.parentElement.scrollWidth,headers:Array.from(t.querySelectorAll('th')).map(e=>{const s=getComputedStyle(e);const chars=[];for(let j=0;j<(e.firstChild?.textContent||'').length;j++){const r=document.createRange();try{r.setStart(e.firstChild,j);r.setEnd(e.firstChild,j+1);const x=r.getBoundingClientRect();chars.push({char:e.firstChild.textContent[j],y:x.y,height:x.height})}catch{}}return{text:e.textContent,...rect(e),whiteSpace:s.whiteSpace,overflowWrap:s.overflowWrap,wordBreak:s.wordBreak,lineHeight:s.lineHeight,chars}})}});const initial=await measure();await page.locator('main [data-slot=\"table-container\"]').evaluate(e=>e.scrollLeft=e.scrollWidth);await page.screenshot({path:'qa-a821-envgroups-mobile-right-360.png'});const afterScroll=await measure();return{at:new Date().toISOString(),initial,afterScroll};}",
+    "localCssControl": "async(page)=>{const measure=()=>page.evaluate(()=>({width:innerWidth,docWidth:document.documentElement.scrollWidth,headers:Array.from(document.querySelectorAll('main table th')).map(e=>{const r=e.getBoundingClientRect();return{text:e.textContent,width:r.width,height:r.height,whiteSpace:getComputedStyle(e).whiteSpace}}),container:{clientWidth:document.querySelector('main [data-slot=\"table-container\"]').clientWidth,scrollWidth:document.querySelector('main [data-slot=\"table-container\"]').scrollWidth}}));const before=await measure();const style=await page.addStyleTag({content:'main table thead th { white-space: nowrap; }'});try{return{at:new Date().toISOString(),before,localCssControl:await measure(),notDeployedFix:true}}finally{await style.evaluate(e=>e.remove())}}"
+  },
+  "limits": [
+    "The original early six-column claim was corrected: both skeleton and ready list have five columns. Column count is not a finding.",
+    "Pending probe delays whole native HTTP batches containing EnvGroups. Only that exact operation and its complete corresponding response are retained; sibling batch payloads/names are not recorded. This is not an isolated-operation delay.",
+    "Two captures per valid pending replay: first held true, later normal read held false after release. Original responses are fulfilled unchanged; no API error injection.",
+    "The first short-wait probe failed before recording its response and is excluded. Desktop V2's search measurement used its region rather than its bar; V3 metrics below supersede that measurement.",
+    "The temporary nowrap CSS control was removed immediately; it is not a deployed product fix.",
+    "Screenshots are ignored supplementary evidence. Complete measured DOM and exact scripts below survive handoff."
+  ],
+  "receipts": {
+    "EnvGroupsPendingDesktopV3": {
+      "at": "2026-10-17T01:41:45.041Z",
+      "url": "https://dashboard.bex.co/env-groups",
+      "captures": [
+        {
+          "request": {
+            "operationName": "EnvGroups",
+            "variables": {
+              "ownerId": "tea-d98210cbbpdc73dcrkvg"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query EnvGroups($ownerId: String) {\n  envGroups(ownerId: $ownerId) {\n    id\n    name\n    ownerId\n    environmentId\n    createdAt\n    updatedAt\n    revision\n    availability\n    serviceLinks\n    envVars {\n      key\n      __typename\n    }\n    secretFiles {\n      name\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "envGroups": [
+                {
+                  "__typename": "EnvGroup",
+                  "availability": "",
+                  "createdAt": "2026-10-04T03:14:27.018052935Z",
+                  "envVars": [
+                    {
+                      "__typename": "EnvGroupVar",
+                      "key": "QA_R85_NORMAL"
+                    },
+                    {
+                      "__typename": "EnvGroupVar",
+                      "key": "__proto__"
+                    },
+                    {
+                      "__typename": "EnvGroupVar",
+                      "key": "constructor"
+                    },
+                    {
+                      "__typename": "EnvGroupVar",
+                      "key": "toString"
+                    }
+                  ],
+                  "environmentId": null,
+                  "id": "evg-db0s94c48ccs739jikr0",
+                  "name": "qa-20261003-keys-r85",
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "revision": "egr1_AAAAAAAAAAE",
+                  "secretFiles": [],
+                  "serviceLinks": [],
+                  "updatedAt": "2026-10-04T03:14:27.018052935Z"
+                }
+              ]
+            }
+          },
+          "delayApplied": true
+        },
+        {
+          "request": {
+            "operationName": "EnvGroups",
+            "variables": {
+              "ownerId": "tea-d98210cbbpdc73dcrkvg"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query EnvGroups($ownerId: String) {\n  envGroups(ownerId: $ownerId) {\n    id\n    name\n    ownerId\n    environmentId\n    createdAt\n    updatedAt\n    revision\n    availability\n    serviceLinks\n    envVars {\n      key\n      __typename\n    }\n    secretFiles {\n      name\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "envGroups": [
+                {
+                  "__typename": "EnvGroup",
+                  "availability": "",
+                  "createdAt": "2026-10-04T03:14:27.018052935Z",
+                  "envVars": [
+                    {
+                      "__typename": "EnvGroupVar",
+                      "key": "QA_R85_NORMAL"
+                    },
+                    {
+                      "__typename": "EnvGroupVar",
+                      "key": "__proto__"
+                    },
+                    {
+                      "__typename": "EnvGroupVar",
+                      "key": "constructor"
+                    },
+                    {
+                      "__typename": "EnvGroupVar",
+                      "key": "toString"
+                    }
+                  ],
+                  "environmentId": null,
+                  "id": "evg-db0s94c48ccs739jikr0",
+                  "name": "qa-20261003-keys-r85",
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "revision": "egr1_AAAAAAAAAAE",
+                  "secretFiles": [],
+                  "serviceLinks": [],
+                  "updatedAt": "2026-10-04T03:14:27.018052935Z"
+                }
+              ]
+            }
+          },
+          "delayApplied": false
+        }
+      ],
+      "pending": {
+        "width": 1440,
+        "docWidth": 1440,
+        "frame": {
+          "x": 256,
+          "y": 48,
+          "width": 1184,
+          "height": 796
+        },
+        "header": {
+          "x": 256,
+          "y": 48,
+          "width": 1184,
+          "height": 79
+        },
+        "heading": null,
+        "search": {
+          "x": 336,
+          "y": 151,
+          "width": 448,
+          "height": 36
+        },
+        "table": {
+          "x": 336,
+          "y": 203,
+          "width": 1024,
+          "height": 207
+        },
+        "headerParts": [
+          {
+            "x": 280,
+            "y": 64,
+            "width": 192,
+            "height": 24
+          },
+          {
+            "x": 280,
+            "y": 94,
+            "width": 288,
+            "height": 16
+          },
+          {
+            "x": 1320,
+            "y": 69,
+            "width": 96,
+            "height": 36
+          }
+        ],
+        "skeletonColumns": 5,
+        "skeletonGrid": "185.188px 185.203px 185.203px 185.203px 185.188px",
+        "headers": [],
+        "mainText": null
+      },
+      "ready": {
+        "width": 1440,
+        "docWidth": 1440,
+        "frame": null,
+        "header": {
+          "x": 256,
+          "y": 48,
+          "width": 1184,
+          "height": 81
+        },
+        "heading": {
+          "x": 280,
+          "y": 64,
+          "width": 393.1875,
+          "height": 28
+        },
+        "search": {
+          "x": 336,
+          "y": 153,
+          "width": 448,
+          "height": 36
+        },
+        "table": {
+          "x": 337,
+          "y": 206,
+          "width": 1022,
+          "height": 88.5
+        },
+        "headerParts": [
+          {
+            "title": {
+              "x": 280,
+              "y": 64,
+              "width": 393.1875,
+              "height": 28
+            },
+            "description": {
+              "x": 280,
+              "y": 92,
+              "width": 393.1875,
+              "height": 20
+            },
+            "action": {
+              "x": 1213.828125,
+              "y": 72,
+              "width": 202.171875,
+              "height": 32
+            }
+          }
+        ],
+        "skeletonColumns": 0,
+        "skeletonGrid": null,
+        "headers": [
+          {
+            "text": "Env Group Name",
+            "x": 337,
+            "y": 206,
+            "width": 332.5,
+            "height": 36
+          },
+          {
+            "text": "Environment",
+            "x": 669.5,
+            "y": 206,
+            "width": 247.671875,
+            "height": 36
+          },
+          {
+            "text": "Env Vars",
+            "x": 917.171875,
+            "y": 206,
+            "width": 88.96875,
+            "height": 36
+          },
+          {
+            "text": "Secret Files",
+            "x": 1006.140625,
+            "y": 206,
+            "width": 113.984375,
+            "height": 36
+          },
+          {
+            "text": "Updated",
+            "x": 1120.125,
+            "y": 206,
+            "width": 238.875,
+            "height": 36
+          }
+        ],
+        "mainText": "Environment Groups\nSearch\n⌘ K\nNew\nP\nEnvironment Groups\n\nShare environment variables and secret files across services.\n\nNew Environment Group\nEnv Group Name\tEnvironment\tEnv Vars\tSecret Files\tUpdated\nqa-20261003-keys-r85\n\nevg-db0s94c48ccs739jikr0 · 0 linked services\n\n\tWorkspace (no Environment)\t4\t0\tOctober 3, 2026 at 8:14 PM"
+      },
+      "unchangedResponses": true
+    },
+    "EnvGroupsPendingMobile": {
+      "at": "2026-10-17T01:39:23.600Z",
+      "url": "https://dashboard.bex.co/env-groups",
+      "captures": [
+        {
+          "request": {
+            "operationName": "EnvGroups",
+            "variables": {
+              "ownerId": "tea-d98210cbbpdc73dcrkvg"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query EnvGroups($ownerId: String) {\n  envGroups(ownerId: $ownerId) {\n    id\n    name\n    ownerId\n    environmentId\n    createdAt\n    updatedAt\n    revision\n    availability\n    serviceLinks\n    envVars {\n      key\n      __typename\n    }\n    secretFiles {\n      name\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "envGroups": [
+                {
+                  "__typename": "EnvGroup",
+                  "availability": "",
+                  "createdAt": "2026-10-04T03:14:27.018052935Z",
+                  "envVars": [
+                    {
+                      "__typename": "EnvGroupVar",
+                      "key": "QA_R85_NORMAL"
+                    },
+                    {
+                      "__typename": "EnvGroupVar",
+                      "key": "__proto__"
+                    },
+                    {
+                      "__typename": "EnvGroupVar",
+                      "key": "constructor"
+                    },
+                    {
+                      "__typename": "EnvGroupVar",
+                      "key": "toString"
+                    }
+                  ],
+                  "environmentId": null,
+                  "id": "evg-db0s94c48ccs739jikr0",
+                  "name": "qa-20261003-keys-r85",
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "revision": "egr1_AAAAAAAAAAE",
+                  "secretFiles": [],
+                  "serviceLinks": [],
+                  "updatedAt": "2026-10-04T03:14:27.018052935Z"
+                }
+              ]
+            }
+          },
+          "delayApplied": true
+        },
+        {
+          "request": {
+            "operationName": "EnvGroups",
+            "variables": {
+              "ownerId": "tea-d98210cbbpdc73dcrkvg"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query EnvGroups($ownerId: String) {\n  envGroups(ownerId: $ownerId) {\n    id\n    name\n    ownerId\n    environmentId\n    createdAt\n    updatedAt\n    revision\n    availability\n    serviceLinks\n    envVars {\n      key\n      __typename\n    }\n    secretFiles {\n      name\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "envGroups": [
+                {
+                  "__typename": "EnvGroup",
+                  "availability": "",
+                  "createdAt": "2026-10-04T03:14:27.018052935Z",
+                  "envVars": [
+                    {
+                      "__typename": "EnvGroupVar",
+                      "key": "QA_R85_NORMAL"
+                    },
+                    {
+                      "__typename": "EnvGroupVar",
+                      "key": "__proto__"
+                    },
+                    {
+                      "__typename": "EnvGroupVar",
+                      "key": "constructor"
+                    },
+                    {
+                      "__typename": "EnvGroupVar",
+                      "key": "toString"
+                    }
+                  ],
+                  "environmentId": null,
+                  "id": "evg-db0s94c48ccs739jikr0",
+                  "name": "qa-20261003-keys-r85",
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "revision": "egr1_AAAAAAAAAAE",
+                  "secretFiles": [],
+                  "serviceLinks": [],
+                  "updatedAt": "2026-10-04T03:14:27.018052935Z"
+                }
+              ]
+            }
+          },
+          "delayApplied": false
+        }
+      ],
+      "pending": {
+        "width": 390,
+        "docWidth": 390,
+        "frame": {
+          "x": 0,
+          "y": 48,
+          "width": 390,
+          "height": 796
+        },
+        "header": {
+          "x": 0,
+          "y": 48,
+          "width": 390,
+          "height": 127
+        },
+        "heading": null,
+        "search": {
+          "x": 16,
+          "y": 191,
+          "width": 358,
+          "height": 36
+        },
+        "table": {
+          "x": 16,
+          "y": 243,
+          "width": 358,
+          "height": 207
+        },
+        "headerParts": [
+          {
+            "x": 16,
+            "y": 64,
+            "width": 192,
+            "height": 24
+          },
+          {
+            "x": 16,
+            "y": 94,
+            "width": 253.5,
+            "height": 16
+          },
+          {
+            "x": 16,
+            "y": 122,
+            "width": 96,
+            "height": 36
+          }
+        ],
+        "skeletonColumns": 5,
+        "skeletonGrid": "52px 52px 52px 52px 52px",
+        "headers": [],
+        "mainText": null
+      },
+      "ready": {
+        "width": 390,
+        "docWidth": 390,
+        "frame": null,
+        "header": {
+          "x": 0,
+          "y": 48,
+          "width": 390,
+          "height": 145
+        },
+        "heading": {
+          "x": 16,
+          "y": 64,
+          "width": 358,
+          "height": 28
+        },
+        "search": {
+          "x": 16,
+          "y": 209,
+          "width": 358,
+          "height": 36
+        },
+        "table": {
+          "x": 17,
+          "y": 262,
+          "width": 677.09375,
+          "height": 257
+        },
+        "headerParts": [
+          {
+            "title": {
+              "x": 16,
+              "y": 64,
+              "width": 358,
+              "height": 28
+            },
+            "description": {
+              "x": 16,
+              "y": 92,
+              "width": 358,
+              "height": 40
+            },
+            "action": {
+              "x": 16,
+              "y": 144,
+              "width": 202.171875,
+              "height": 32
+            }
+          }
+        ],
+        "skeletonColumns": 0,
+        "skeletonGrid": null,
+        "headers": [
+          {
+            "text": "Env Group Name",
+            "x": 17,
+            "y": 262,
+            "width": 272,
+            "height": 200.5
+          },
+          {
+            "text": "Environment",
+            "x": 289,
+            "y": 262,
+            "width": 160,
+            "height": 200.5
+          },
+          {
+            "text": "Env Vars",
+            "x": 449,
+            "y": 262,
+            "width": 24.765625,
+            "height": 200.5
+          },
+          {
+            "text": "Secret Files",
+            "x": 473.765625,
+            "y": 262,
+            "width": 24.953125,
+            "height": 200.5
+          },
+          {
+            "text": "Updated",
+            "x": 498.71875,
+            "y": 262,
+            "width": 195.375,
+            "height": 200.5
+          }
+        ],
+        "mainText": "Toggle Sidebar\nEnvironment Groups\nNew\nP\nEnvironment Groups\n\nShare environment variables and secret files across services.\n\nNew Environment Group\nEnv Group Name\tEnvironment\tEnv Vars\tSecret Files\tUpdated\nqa-20261003-keys-r85\n\nevg-db0s94c48ccs739jikr0 · 0 linked services\n\n\tWorkspace (no Environment)\t4\t0\tOctober 3, 2026 at 8:14 PM"
+      },
+      "unchangedResponses": true
+    },
+    "EnvGroupsPendingMobile360": {
+      "at": "2026-10-17T01:42:30.477Z",
+      "url": "https://dashboard.bex.co/env-groups",
+      "captures": [
+        {
+          "request": {
+            "operationName": "EnvGroups",
+            "variables": {
+              "ownerId": "tea-d98210cbbpdc73dcrkvg"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query EnvGroups($ownerId: String) {\n  envGroups(ownerId: $ownerId) {\n    id\n    name\n    ownerId\n    environmentId\n    createdAt\n    updatedAt\n    revision\n    availability\n    serviceLinks\n    envVars {\n      key\n      __typename\n    }\n    secretFiles {\n      name\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "envGroups": [
+                {
+                  "__typename": "EnvGroup",
+                  "availability": "",
+                  "createdAt": "2026-10-04T03:14:27.018052935Z",
+                  "envVars": [
+                    {
+                      "__typename": "EnvGroupVar",
+                      "key": "QA_R85_NORMAL"
+                    },
+                    {
+                      "__typename": "EnvGroupVar",
+                      "key": "__proto__"
+                    },
+                    {
+                      "__typename": "EnvGroupVar",
+                      "key": "constructor"
+                    },
+                    {
+                      "__typename": "EnvGroupVar",
+                      "key": "toString"
+                    }
+                  ],
+                  "environmentId": null,
+                  "id": "evg-db0s94c48ccs739jikr0",
+                  "name": "qa-20261003-keys-r85",
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "revision": "egr1_AAAAAAAAAAE",
+                  "secretFiles": [],
+                  "serviceLinks": [],
+                  "updatedAt": "2026-10-04T03:14:27.018052935Z"
+                }
+              ]
+            }
+          },
+          "delayApplied": true
+        },
+        {
+          "request": {
+            "operationName": "EnvGroups",
+            "variables": {
+              "ownerId": "tea-d98210cbbpdc73dcrkvg"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query EnvGroups($ownerId: String) {\n  envGroups(ownerId: $ownerId) {\n    id\n    name\n    ownerId\n    environmentId\n    createdAt\n    updatedAt\n    revision\n    availability\n    serviceLinks\n    envVars {\n      key\n      __typename\n    }\n    secretFiles {\n      name\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "envGroups": [
+                {
+                  "__typename": "EnvGroup",
+                  "availability": "",
+                  "createdAt": "2026-10-04T03:14:27.018052935Z",
+                  "envVars": [
+                    {
+                      "__typename": "EnvGroupVar",
+                      "key": "QA_R85_NORMAL"
+                    },
+                    {
+                      "__typename": "EnvGroupVar",
+                      "key": "__proto__"
+                    },
+                    {
+                      "__typename": "EnvGroupVar",
+                      "key": "constructor"
+                    },
+                    {
+                      "__typename": "EnvGroupVar",
+                      "key": "toString"
+                    }
+                  ],
+                  "environmentId": null,
+                  "id": "evg-db0s94c48ccs739jikr0",
+                  "name": "qa-20261003-keys-r85",
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "revision": "egr1_AAAAAAAAAAE",
+                  "secretFiles": [],
+                  "serviceLinks": [],
+                  "updatedAt": "2026-10-04T03:14:27.018052935Z"
+                }
+              ]
+            }
+          },
+          "delayApplied": false
+        }
+      ],
+      "pending": {
+        "width": 360,
+        "docWidth": 360,
+        "frame": {
+          "x": 0,
+          "y": 48,
+          "width": 360,
+          "height": 796
+        },
+        "header": {
+          "x": 0,
+          "y": 48,
+          "width": 360,
+          "height": 127
+        },
+        "heading": null,
+        "search": {
+          "x": 16,
+          "y": 191,
+          "width": 328,
+          "height": 36
+        },
+        "table": {
+          "x": 16,
+          "y": 243,
+          "width": 328,
+          "height": 207
+        },
+        "headerParts": [
+          {
+            "x": 16,
+            "y": 64,
+            "width": 192,
+            "height": 24
+          },
+          {
+            "x": 16,
+            "y": 94,
+            "width": 234,
+            "height": 16
+          },
+          {
+            "x": 16,
+            "y": 122,
+            "width": 96,
+            "height": 36
+          }
+        ],
+        "skeletonColumns": 5,
+        "skeletonGrid": "46px 46px 46px 46px 46px",
+        "headers": [],
+        "mainText": null
+      },
+      "ready": {
+        "width": 360,
+        "docWidth": 360,
+        "frame": null,
+        "header": {
+          "x": 0,
+          "y": 48,
+          "width": 360,
+          "height": 145
+        },
+        "heading": {
+          "x": 16,
+          "y": 64,
+          "width": 328,
+          "height": 28
+        },
+        "search": {
+          "x": 16,
+          "y": 209,
+          "width": 328,
+          "height": 36
+        },
+        "table": {
+          "x": 17,
+          "y": 262,
+          "width": 677.09375,
+          "height": 257
+        },
+        "headerParts": [
+          {
+            "title": {
+              "x": 16,
+              "y": 64,
+              "width": 328,
+              "height": 28
+            },
+            "description": {
+              "x": 16,
+              "y": 92,
+              "width": 328,
+              "height": 40
+            },
+            "action": {
+              "x": 16,
+              "y": 144,
+              "width": 202.171875,
+              "height": 32
+            }
+          }
+        ],
+        "skeletonColumns": 0,
+        "skeletonGrid": null,
+        "headers": [
+          {
+            "text": "Env Group Name",
+            "x": 17,
+            "y": 262,
+            "width": 272,
+            "height": 200.5
+          },
+          {
+            "text": "Environment",
+            "x": 289,
+            "y": 262,
+            "width": 160,
+            "height": 200.5
+          },
+          {
+            "text": "Env Vars",
+            "x": 449,
+            "y": 262,
+            "width": 24.765625,
+            "height": 200.5
+          },
+          {
+            "text": "Secret Files",
+            "x": 473.765625,
+            "y": 262,
+            "width": 24.953125,
+            "height": 200.5
+          },
+          {
+            "text": "Updated",
+            "x": 498.71875,
+            "y": 262,
+            "width": 195.375,
+            "height": 200.5
+          }
+        ],
+        "mainText": "Toggle Sidebar\nEnvironment Groups\nNew\nP\nEnvironment Groups\n\nShare environment variables and secret files across services.\n\nNew Environment Group\nEnv Group Name\tEnvironment\tEnv Vars\tSecret Files\tUpdated\nqa-20261003-keys-r85\n\nevg-db0s94c48ccs739jikr0 · 0 linked services\n\n\tWorkspace (no Environment)\t4\t0\tOctober 3, 2026 at 8:14 PM"
+      },
+      "unchangedResponses": true
+    },
+    "MobileHeadersFresh": {
+      "at": "2026-10-17T01:40:13.751Z",
+      "initial": {
+        "width": 390,
+        "docWidth": 390,
+        "table": {
+          "x": 17,
+          "y": 262,
+          "width": 677.09375,
+          "height": 257
+        },
+        "container": {
+          "x": 17,
+          "y": 262,
+          "width": 356,
+          "height": 257
+        },
+        "scrollWidth": 677,
+        "headers": [
+          {
+            "text": "Env Group Name",
+            "x": 17,
+            "y": 262,
+            "width": 272,
+            "height": 200.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "E",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "v",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "G",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "u",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "p",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "N",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "m",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 353,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Environment",
+            "x": 289,
+            "y": 262,
+            "width": 160,
+            "height": 200.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "E",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "v",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "m",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 353,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Env Vars",
+            "x": 449,
+            "y": 262,
+            "width": 24.765625,
+            "height": 200.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "E",
+                "y": 293,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 313,
+                "height": 17
+              },
+              {
+                "char": "v",
+                "y": 333,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 333,
+                "height": 17
+              },
+              {
+                "char": "V",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 373,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 393,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 413,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Secret Files",
+            "x": 473.765625,
+            "y": 262,
+            "width": 24.953125,
+            "height": 200.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "S",
+                "y": 263,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 283,
+                "height": 17
+              },
+              {
+                "char": "c",
+                "y": 303,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 323,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 343,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 363,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 363,
+                "height": 17
+              },
+              {
+                "char": "F",
+                "y": 383,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 403,
+                "height": 17
+              },
+              {
+                "char": "l",
+                "y": 403,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 423,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 443,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Updated",
+            "x": 498.71875,
+            "y": 262,
+            "width": 195.375,
+            "height": 200.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "U",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "p",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 353,
+                "height": 17
+              }
+            ]
+          }
+        ]
+      },
+      "afterScroll": {
+        "width": 390,
+        "docWidth": 390,
+        "table": {
+          "x": -304,
+          "y": 262,
+          "width": 677.09375,
+          "height": 257
+        },
+        "container": {
+          "x": 17,
+          "y": 262,
+          "width": 356,
+          "height": 257
+        },
+        "scrollWidth": 677,
+        "headers": [
+          {
+            "text": "Env Group Name",
+            "x": -304,
+            "y": 262,
+            "width": 272,
+            "height": 200.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "E",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "v",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "G",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "u",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "p",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "N",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "m",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 353,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Environment",
+            "x": -32,
+            "y": 262,
+            "width": 160,
+            "height": 200.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "E",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "v",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "m",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 353,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Env Vars",
+            "x": 128,
+            "y": 262,
+            "width": 24.765625,
+            "height": 200.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "E",
+                "y": 293,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 313,
+                "height": 17
+              },
+              {
+                "char": "v",
+                "y": 333,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 333,
+                "height": 17
+              },
+              {
+                "char": "V",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 373,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 393,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 413,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Secret Files",
+            "x": 152.765625,
+            "y": 262,
+            "width": 24.953125,
+            "height": 200.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "S",
+                "y": 263,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 283,
+                "height": 17
+              },
+              {
+                "char": "c",
+                "y": 303,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 323,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 343,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 363,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 363,
+                "height": 17
+              },
+              {
+                "char": "F",
+                "y": 383,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 403,
+                "height": 17
+              },
+              {
+                "char": "l",
+                "y": 403,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 423,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 443,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Updated",
+            "x": 177.71875,
+            "y": 262,
+            "width": 195.375,
+            "height": 200.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "U",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "p",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 353,
+                "height": 17
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "MobileHeadersFresh360": {
+      "at": "2026-10-17T01:41:05.964Z",
+      "initial": {
+        "width": 360,
+        "docWidth": 360,
+        "table": {
+          "x": 17,
+          "y": 262,
+          "width": 677.09375,
+          "height": 257
+        },
+        "container": {
+          "x": 17,
+          "y": 262,
+          "width": 326,
+          "height": 257
+        },
+        "scrollWidth": 677,
+        "headers": [
+          {
+            "text": "Env Group Name",
+            "x": 17,
+            "y": 262,
+            "width": 272,
+            "height": 200.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "E",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "v",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "G",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "u",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "p",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "N",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "m",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 353,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Environment",
+            "x": 289,
+            "y": 262,
+            "width": 160,
+            "height": 200.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "E",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "v",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "m",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 353,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Env Vars",
+            "x": 449,
+            "y": 262,
+            "width": 24.765625,
+            "height": 200.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "E",
+                "y": 293,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 313,
+                "height": 17
+              },
+              {
+                "char": "v",
+                "y": 333,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 333,
+                "height": 17
+              },
+              {
+                "char": "V",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 373,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 393,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 413,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Secret Files",
+            "x": 473.765625,
+            "y": 262,
+            "width": 24.953125,
+            "height": 200.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "S",
+                "y": 263,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 283,
+                "height": 17
+              },
+              {
+                "char": "c",
+                "y": 303,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 323,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 343,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 363,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 363,
+                "height": 17
+              },
+              {
+                "char": "F",
+                "y": 383,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 403,
+                "height": 17
+              },
+              {
+                "char": "l",
+                "y": 403,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 423,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 443,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Updated",
+            "x": 498.71875,
+            "y": 262,
+            "width": 195.375,
+            "height": 200.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "U",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "p",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 353,
+                "height": 17
+              }
+            ]
+          }
+        ]
+      },
+      "afterScroll": {
+        "width": 360,
+        "docWidth": 360,
+        "table": {
+          "x": -334,
+          "y": 262,
+          "width": 677.09375,
+          "height": 257
+        },
+        "container": {
+          "x": 17,
+          "y": 262,
+          "width": 326,
+          "height": 257
+        },
+        "scrollWidth": 677,
+        "headers": [
+          {
+            "text": "Env Group Name",
+            "x": -334,
+            "y": 262,
+            "width": 272,
+            "height": 200.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "E",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "v",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "G",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "u",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "p",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "N",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "m",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 353,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Environment",
+            "x": -62,
+            "y": 262,
+            "width": 160,
+            "height": 200.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "E",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "v",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "m",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 353,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Env Vars",
+            "x": 98,
+            "y": 262,
+            "width": 24.765625,
+            "height": 200.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "E",
+                "y": 293,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 313,
+                "height": 17
+              },
+              {
+                "char": "v",
+                "y": 333,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 333,
+                "height": 17
+              },
+              {
+                "char": "V",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 373,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 393,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 413,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Secret Files",
+            "x": 122.765625,
+            "y": 262,
+            "width": 24.953125,
+            "height": 200.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "S",
+                "y": 263,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 283,
+                "height": 17
+              },
+              {
+                "char": "c",
+                "y": 303,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 323,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 343,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 363,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 363,
+                "height": 17
+              },
+              {
+                "char": "F",
+                "y": 383,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 403,
+                "height": 17
+              },
+              {
+                "char": "l",
+                "y": 403,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 423,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 443,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Updated",
+            "x": 147.71875,
+            "y": 262,
+            "width": 195.375,
+            "height": 200.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "U",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "p",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 353,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 353,
+                "height": 17
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "LocalNoWrapControl": {
+      "at": "2026-10-17T01:42:31.223Z",
+      "before": {
+        "width": 360,
+        "docWidth": 360,
+        "headers": [
+          {
+            "text": "Env Group Name",
+            "width": 272,
+            "height": 200.5,
+            "whiteSpace": "normal"
+          },
+          {
+            "text": "Environment",
+            "width": 160,
+            "height": 200.5,
+            "whiteSpace": "normal"
+          },
+          {
+            "text": "Env Vars",
+            "width": 24.765625,
+            "height": 200.5,
+            "whiteSpace": "normal"
+          },
+          {
+            "text": "Secret Files",
+            "width": 24.953125,
+            "height": 200.5,
+            "whiteSpace": "normal"
+          },
+          {
+            "text": "Updated",
+            "width": 195.375,
+            "height": 200.5,
+            "whiteSpace": "normal"
+          }
+        ],
+        "container": {
+          "clientWidth": 326,
+          "scrollWidth": 677
+        }
+      },
+      "localCssControl": {
+        "width": 360,
+        "docWidth": 360,
+        "headers": [
+          {
+            "text": "Env Group Name",
+            "width": 272,
+            "height": 36,
+            "whiteSpace": "nowrap"
+          },
+          {
+            "text": "Environment",
+            "width": 160,
+            "height": 36,
+            "whiteSpace": "nowrap"
+          },
+          {
+            "text": "Env Vars",
+            "width": 72.78125,
+            "height": 36,
+            "whiteSpace": "nowrap"
+          },
+          {
+            "text": "Secret Files",
+            "width": 93.25,
+            "height": 36,
+            "whiteSpace": "nowrap"
+          },
+          {
+            "text": "Updated",
+            "width": 195.375,
+            "height": 36,
+            "whiteSpace": "nowrap"
+          }
+        ],
+        "container": {
+          "clientWidth": 326,
+          "scrollWidth": 793
+        }
+      },
+      "notDeployedFix": true
+    },
+    "InventoryCleanup": {
+      "at": "2026-10-17T01:42:44.005Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [],
+      "consoleErrors": [],
+      "httpFailures": []
+    },
+    "SessionCleared": {
+      "at": "2026-10-17T01:42:50.546Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  }
+}

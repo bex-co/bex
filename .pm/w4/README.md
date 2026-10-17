@@ -16,6 +16,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 ## Milestones
 
 - [ ] **m219** — Gate creation forms and group search until handlers are ready (9 tasks, 3h30) ← functional QA a797/a800/a815, 2026-10-16–17; startup input-loss evidence across five service types, Key Value, Blueprint and Environment Groups search; preserve passing controls. [Creation finding](m219/finding.md), [search extension](m219/finding-a815.md), [durable search evidence](evidence/m219-a815-search-startup.json).
+- [ ] **m220** — Keep Environment Groups readable and stable while loading (8 tasks, 2h20) ← functional QA a821, 2026-10-17; mobile count labels stack into a200px header and pending header/action/table geometry differs from ready. [Findings](m220/finding.md), [durable evidence](evidence/m220-a821-env-groups-layout.json).
 
 - [ ] **m218** — [Recover plan catalogs in creation and datastore details](m218/README.md) (10 tasks) ← functional live QA a785/a796, 2026-10-16: three create forms and both datastore detail plan editors hide settled catalog errors and offer no Retry; browser-local fault injection only, no production API outage observed.
 
