@@ -34,7 +34,7 @@ One shared install path reaches static REST/GraphQL/MCP/Blueprint/dashboard sour
 
 ## Dedupe, verification and limits
 
-[Dedupe](evidence/cli-sweep401/dedupe.txt) searched open/blocked/done PM and docs for Yarn automatic installs, yarn.lock/install and nativestaticdeps. [Completed npm m86](../done/m86/README.md) explicitly left Yarn/pnpm/Bun automatic installation unverified; its npm DoD remains distinct. [w4/320](../../w4/done/320.md) concerns Node26 lacking the Yarn executable, while this Node24 fixture successfully runs Yarn. The source helper's only history is npm implementation10dda1f1c; no later Yarn fix was found. Current anti-goals/compatibility ledger remain consistent with this bounded hosting repair.
+[Dedupe](evidence/cli-sweep401/dedupe.txt) searched open/blocked/done PM and docs for Yarn automatic installs, yarn.lock/install and nativestaticdeps. [Completed npm m86](../../done/m86/README.md) explicitly left Yarn/pnpm/Bun automatic installation unverified; its npm DoD remains distinct. [w4/320](../../../w4/done/320.md) concerns Node26 lacking the Yarn executable, while this Node24 fixture successfully runs Yarn. The source helper's only history is npm implementation10dda1f1c; no later Yarn fix was found. Current anti-goals/compatibility ledger remain consistent with this bounded hosting repair.
 
 Two actual BuildJob/ResolveNativeBuild observations retain both resolved recipes. Three real source-pinned base-image controls execute the exact extracted install step and authored command: default skips/fails1; explicit installation passes with unchanged lock; skip=true/manual passes. These are not full generated-image executions. Required future meaningful tests and shared blast-radius review are separate milestone tasks.
 
