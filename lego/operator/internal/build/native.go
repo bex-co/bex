@@ -334,13 +334,20 @@ COPY <<'%s' %s
 // Python gets Render's Gunicorn flags, preloading the app and writing access
 // lines to stdout (w8/113). Render's --bind is left out: Gunicorn binds the
 // platform's PORT by default, which a bind in gunicorn.conf.py or on the
-// command line still replaces, as it would without these flags.
+// command line still replaces, as it would without these flags. It also gets
+// Render's FORWARDED_ALLOW_IPS=* (w8/116): requests arrive from the ingress,
+// never loopback, so without it Gunicorn (and Uvicorn, which reads the same
+// variable) ignores X-Forwarded-Proto and an HTTPS request reaches the app
+// as http. The ingress replaces the client's forwarding headers with its own,
+// and only it and the platform's namespaces reach a pod from outside its
+// workspace.
 func nativeBuildDefaults(o Options) string {
 	switch nativeRuntime(o) {
 	case "elixir":
 		return "ENV MIX_ENV=prod\n"
 	case nativePythonRuntime:
-		return `ENV GUNICORN_CMD_ARGS="--preload --access-logfile -"` + "\n"
+		return `ENV GUNICORN_CMD_ARGS="--preload --access-logfile -"` + "\n" +
+			`ENV FORWARDED_ALLOW_IPS="*"` + "\n"
 	case nativeRubyRuntime:
 		return "ENV RAILS_ENV=production\n"
 	}
