@@ -1,6 +1,6 @@
 # w8 · m104 — Supply pg_partman for ordinary partition migrations
 
-**Worker:** worker8 **Goal:** app owners can install and use the documented partition-management extension. **Status:** todo
+**Worker:** worker8 **Goal:** app owners can install and use the documented partition-management extension. **Status:** blocked — needs the user's managed Postgres extension decision ([decision](../m92/design.md)); no task started
 
 ## Tasks (in order)
 
@@ -22,7 +22,7 @@ Compatible reviewed immutable SQL-only pg_partman supply for PostgreSQL14..18 pe
 ## Source + Goal linkage
 
 - **Source:** Authorized ordinary functional CLI sweep428,2026-10-17: both native SQL clients fail pg_partman installation on a fresh owned Free PostgreSQL18.6, with matching catalogs and healthy extension/partition controls. A separate ordinary-owner localPG17 SQL-only reference works.
-- **Goal linkage:** [ADR008](../../../docs/ADR008-vision.md), [managed PostgreSQL ADR009](../../../docs/ADR009-postgresql-management.md), [Render parity ADR018](../../../docs/ADR018-render-parity.md): supported app migrations should work through normal managed database connections.
+- **Goal linkage:** [ADR008](../../../../docs/ADR008-vision.md), [managed PostgreSQL ADR009](../../../../docs/ADR009-postgresql-management.md), [Render parity ADR018](../../../../docs/ADR018-render-parity.md): supported app migrations should work through normal managed database connections.
 - **Expected outcome:** Partition-management migrations and maintenance run without server-file workarounds or changed app authority.
 - **Why now:** Two original failures and actual missing catalog entry establish a distinct supply gap; no existing pg_partman work was found. Coordinate the shared image rollout with [m92](../m92/README.md); The m92 plan does not establish pg_partman supply in its future candidate images.
 - **Render parity:** Included because shared database image supply reaches native/REST/GraphQL/MCP/Blueprint/dashboard consumers. No extension-management product or automatic background-worker service is introduced.

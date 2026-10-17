@@ -15,11 +15,11 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m111** — [Make documented text similarity usable in managed Postgres](m111/README.md) (7 tasks;220m) ← major functional CLI sweep450:both pg_similarity migrations unavailable on PG15, ordinary SQL and real local functions/operators pass; exact cleanup.
+- [ ] **m111** — [Make documented text similarity usable in managed Postgres](blocked/m111/README.md) (7 tasks;220m) — **BLOCKED (2026-10-17: needs the user to decide how managed Postgres supplies Render's extensions — [decision](blocked/m92/design.md): operand image (CNPG PostGIS-only vs a bex-built image per major), activation (pre-install like vector vs on-demand allowlist) and a rolling restart of every managed Postgres pod, possibly with m65; no task started)**
 
-- [ ] **m110** — [Make incremental views usable in managed Postgres](m110/README.md) (7 tasks;285m) ← major functional CLI sweep447:both pg_ivm migrations unavailable, normal SQL and actual local IMMV controls pass; exact cleanup.
+- [ ] **m110** — [Make incremental views usable in managed Postgres](blocked/m110/README.md) (7 tasks;285m) — **BLOCKED (2026-10-17: needs the user to decide how managed Postgres supplies Render's extensions — [decision](blocked/m92/design.md): operand image (CNPG PostGIS-only vs a bex-built image per major), activation (pre-install like vector vs on-demand allowlist) and a rolling restart of every managed Postgres pod, possibly with m65; no task started)**
 
-- [ ] **m109** — [Make documented DuckDB analytics usable in managed Postgres](m109/README.md) (7 tasks;290m) ← major functional CLI sweep444:both pg_duckdb migrations unavailable, normal SQL and actual local analytics controls pass; exact cleanup.
+- [ ] **m109** — [Make documented DuckDB analytics usable in managed Postgres](blocked/m109/README.md) (7 tasks;290m) — **BLOCKED (2026-10-17: needs the user to decide how managed Postgres supplies Render's extensions — [decision](blocked/m92/design.md): operand image (CNPG PostGIS-only vs a bex-built image per major), activation (pre-install like vector vs on-demand allowlist) and a rolling restart of every managed Postgres pod, possibly with m65; no task started)**
 
 - [ ] **m108** — [Preserve ordinary uploads beyond the ingress body-read deadline](m108/README.md) (6 tasks;210m) ← major functional CLI sweep441:both one-MiB paced uploads499 at60s; same-body fast and local one-setting controls succeed; exact cleanup.
 
@@ -29,7 +29,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m105** — [Make the Jekyll static quickstart build normally](m105/README.md) (7 tasks;260m) ← major functional CLI sweep430:both original missing-Bundler failures and Ruby-only missing-dependency failures; frozen bundle-install controls produce real sites; exact cleanup.
 
-- [ ] **m104** — [Supply pg_partman for ordinary partition migrations](m104/README.md) (6 tasks;200m) ← major functional CLI sweep428:both native migrations fail missing server extension; healthy real partition/extension controls, ordinary-owner local reference and exact cleanup.
+- [ ] **m104** — [Supply pg_partman for ordinary partition migrations](blocked/m104/README.md) (6 tasks;200m) — **BLOCKED (2026-10-17: needs the user to decide how managed Postgres supplies Render's extensions — [decision](blocked/m92/design.md): operand image (CNPG PostGIS-only vs a bex-built image per major), activation (pre-install like vector vs on-demand allowlist) and a rolling restart of every managed Postgres pod, possibly with m65; no task started)**
 
 - [ ] **m103** — [Supply native Python packaging and development tools](blocked/m103/README.md) (8 tasks, 335m, 3 major omissions) — **BLOCKED (2026-10-17: needs the user to choose how native builds supply Render's native tools table — [decision](blocked/m91/design.md): A apt-get in every build (+242 s cold, ~+550 MB per app image), B relocatable tools image (fragile), C per-line bex native base images published by CI (recommended), or D documented divergence; no task started)**
 
@@ -53,7 +53,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m93** — [Supply Pandoc in native builds and runtime](blocked/m93/README.md) (6 tasks) — **BLOCKED (2026-10-17: needs the user to choose how native builds supply Render's native tools table — [decision](blocked/m91/design.md): A apt-get in every build (+242 s cold, ~+550 MB per app image), B relocatable tools image (fragile), C per-line bex native base images published by CI (recommended), or D documented divergence; no task started)**
 
-- [ ] **m92** — [Make PostGIS usable in managed Postgres](m92/README.md) (7 tasks;250m) ← major functional CLI sweep403:both original PostGIS migrations fail unavailable extension; healthy controls/catalog preservation and complete owned cleanup pass.
+- [ ] **m92** — [Make PostGIS usable in managed Postgres](blocked/m92/README.md) (7 tasks;250m) — **BLOCKED (2026-10-17: needs the user to decide how managed Postgres supplies Render's extensions — [decision](blocked/m92/design.md): operand image (CNPG PostGIS-only vs a bex-built image per major), activation (pre-install like vector vs on-demand allowlist) and a rolling restart of every managed Postgres pod, possibly with m65; no task started)**
 
 - [ ] **m91** — [Supply PostgreSQL clients in native builds and runtime](blocked/m91/README.md) (6 tasks;205m) — **BLOCKED (2026-10-17: needs the user to choose how native builds supply Render's native tools table — [decision](blocked/m91/design.md): A apt-get in every build (+242 s cold, ~+550 MB per app image), B relocatable tools image (fragile), C per-line bex native base images published by CI (recommended), or D documented divergence; no task started)**
 
