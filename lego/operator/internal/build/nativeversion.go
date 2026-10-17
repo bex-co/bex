@@ -77,7 +77,7 @@ func ResolveNativeVersion(runtime string, env map[string]string, readFile func(s
 	case nativeNodeRuntime:
 		return r.first(r.fromEnv("NODE_VERSION", r.nodeRequest), r.fromFile(".node-version", r.nodeRequest),
 			r.fromFile(".nvmrc", r.nodeRequest), r.fromPackageEngines)
-	case "ruby":
+	case nativeRubyRuntime:
 		return r.first(r.fromLockedRuby, r.fromFile(".ruby-version", r.rubyFileLine), r.fromToolVersions("ruby", r.rubyFileLine), r.fromGemfile)
 	case "elixir":
 		return r.elixir()
