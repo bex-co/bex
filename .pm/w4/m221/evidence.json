@@ -1,0 +1,1359 @@
+{
+  "pass": "a856",
+  "date": "2026-10-17 UTC",
+  "sourceHead": "24e10c7f8",
+  "scope": "Functional creation placement recovery. Five browser-local per-operation GraphQL read error injections; actual backend read results were successful. One real native Free web create omitted the lost environment, then owned placement recovery and full cleanup.",
+  "faultModel": {
+    "externalBackendOutageObserved": false,
+    "status": 200,
+    "replacement": {
+      "data": null,
+      "errors": [
+        {
+          "message": "qa-a856 simulated environment-list read failure",
+          "extensions": {
+            "code": "INTERNAL_SERVER_ERROR"
+          }
+        }
+      ]
+    },
+    "onlyTargetOperationResultChanged": true,
+    "neighborsPreservedByExactRecordedMap": true,
+    "writeResponsesNotModified": true
+  },
+  "scripts": {
+    "a856CreateCode": "async(page)=>{const pending=page.waitForResponse(r=>{if(!r.url().endsWith(\"/graphql\")||r.request().method()!==\"POST\")return false;try{const q=r.request().postDataJSON();return(Array.isArray(q)?q:[q]).some(x=>x.operationName===\"CreateProject\"&&(!null||x.variables.id===null));}catch{return false;}},{timeout:45000}).then(response=>({response}),error=>({waitError:String(error)}));{await page.getByRole('dialog').getByRole('button',{name:'Create Project',exact:true}).click();};const waited=await pending;if(waited.waitError)throw new Error(waited.waitError);const r=waited.response;const q=r.request().postDataJSON(),b=await r.json(),qs=Array.isArray(q)?q:[q],bs=Array.isArray(b)?b:[b];const i=qs.findIndex(x=>x.operationName===\"CreateProject\");await page.waitForTimeout(700);return{at:new Date().toISOString(),request:qs[i],status:r.status(),body:bs[i],timing:r.request().timing(),url:page.url()};}",
+    "a856CreateEnvironmentCode": "async(page)=>{const pending=page.waitForResponse(r=>{if(!r.url().endsWith(\"/graphql\")||r.request().method()!==\"POST\")return false;try{const q=r.request().postDataJSON();return(Array.isArray(q)?q:[q]).some(x=>x.operationName===\"CreateEnvironment\"&&(!null||x.variables.id===null));}catch{return false;}},{timeout:45000}).then(response=>({response}),error=>({waitError:String(error)}));{await page.getByRole('dialog').getByRole('button',{name:'Create Environment',exact:true}).click();};const waited=await pending;if(waited.waitError)throw new Error(waited.waitError);const r=waited.response;const q=r.request().postDataJSON(),b=await r.json(),qs=Array.isArray(q)?q:[q],bs=Array.isArray(b)?b:[b];const i=qs.findIndex(x=>x.operationName===\"CreateEnvironment\");await page.waitForTimeout(700);return{at:new Date().toISOString(),request:qs[i],status:r.status(),body:bs[i],timing:r.request().timing(),url:page.url()};}",
+    "a856TypesCode": "async(page)=>{const writes=[];const watch=req=>{if(req.url().endsWith('/graphql'))try{const x=req.postDataJSON();for(const q of Array.isArray(x)?x:[x])if(/^\\s*mutation\\b/.test(q.query||''))writes.push(q.operationName);}catch{}};page.on('request',watch);try{const results=[];const types=[['web_service','Web Service Expose your service on a public URL'],['static_site','Static Site Build and serve a static site from object storage'],['private_service','Private Service Accessible only within the platform network'],['background_worker','Background Worker Run background processing with no port or URL'],['cron_job','Cron Job Run a command on a recurring schedule']];for(const width of [1440,390]){await page.setViewportSize({width,height:844});for(const [kind,label]of types){await page.getByRole('radio',{name:label,exact:true}).check();await page.waitForTimeout(200);results.push({width,kind,selected:await page.getByRole('radio',{name:label,exact:true}).isChecked(),url:page.url(),project:await page.getByRole('combobox',{name:'Project',exact:true}).innerText(),environment:await page.getByRole('combobox',{name:'Environment',exact:true}).innerText(),submitDisabled:await page.getByRole('button',{name:'Deploy Service',exact:true}).isDisabled()});}}return {at:new Date().toISOString(),results,writes,errors:(await page.consoleMessages()).filter(m=>m.type()==='error').map(m=>m.text())};}finally{page.off('request',watch);}}",
+    "a856EnvFailureCode": "async(page)=>{const d=page.getByRole('alertdialog');if(await d.count())await d.getByRole('button',{name:'Cancel',exact:true}).click();await page.waitForTimeout(350);await page.setViewportSize({width:390,height:844});await page.goto('about:blank',{waitUntil:'commit'});const captures=[];const pattern='https://api.bex.co/graphql';let replaced=false;const handler=async route=>{const req=route.request();let raw;try{raw=req.postDataJSON();}catch{return route.continue();}const qs=Array.isArray(raw)?raw:[raw];const index=qs.findIndex(q=>q.operationName==='Environments'&&q.variables.projectId==='prj-db9gd79qj49s73b3i95g');if(index<0||replaced)return route.continue();replaced=true;const response=await route.fetch();const rawBody=await response.json();const bs=Array.isArray(rawBody)?rawBody:[rawBody];const injected={data:null,errors:[{message:'qa-a856 simulated environment-list read failure',extensions:{code:'INTERNAL_SERVER_ERROR'}}]};captures.push({request:qs[index],status:response.status(),original:bs[index],injected,neighborOperationCount:qs.length-1,onlyTargetResultReplaced:true});const changed=bs.map((b,i)=>i===index?injected:b);await route.fulfill({response,body:JSON.stringify(Array.isArray(rawBody)?changed:changed[0])});};await page.route(pattern,handler);try{await page.goto('https://dashboard.bex.co/services/new?type=web_service&projectId=prj-db9gd79qj49s73b3i95g&environmentId=evm-db9gdb1qj49s73b3i96g',{waitUntil:'domcontentloaded'});const samples=[];for(let i=0;i<140;i++){const env=page.getByRole('combobox',{name:'Environment',exact:true});if(await env.count()){const label=await env.innerText();if(i%10===0||captures.length&&label==='No environment')samples.push({at:new Date().toISOString(),environment:label,project:await page.getByRole('combobox',{name:'Project',exact:true}).innerText()});if(captures.length&&label==='No environment')break;}await page.waitForTimeout(200);}await page.waitForTimeout(500);return {at:new Date().toISOString(),url:page.url(),captures,samples,environment:await page.getByRole('combobox',{name:'Environment',exact:true}).innerText(),project:await page.getByRole('combobox',{name:'Project',exact:true}).innerText(),alerts:await page.locator('main [role=alert]').allTextContents(),statuses:await page.locator('main [role=status]').allTextContents(),captured:replaced};}finally{await page.unroute(pattern,handler);}}",
+    "a856EnvFailureDesktopCode": "async(page)=>{const d=page.getByRole('alertdialog');if(await d.count())await d.getByRole('button',{name:'Cancel',exact:true}).click();await page.waitForTimeout(350);await page.setViewportSize({width:1440,height:844});await page.goto('about:blank',{waitUntil:'commit'});const captures=[];const pattern='https://api.bex.co/graphql';let replaced=false;const handler=async route=>{const req=route.request();let raw;try{raw=req.postDataJSON();}catch{return route.continue();}const qs=Array.isArray(raw)?raw:[raw];const index=qs.findIndex(q=>q.operationName==='Environments'&&q.variables.projectId==='prj-db9gd79qj49s73b3i95g');if(index<0||replaced)return route.continue();replaced=true;const response=await route.fetch();const rawBody=await response.json();const bs=Array.isArray(rawBody)?rawBody:[rawBody];const injected={data:null,errors:[{message:'qa-a856 simulated environment-list read failure',extensions:{code:'INTERNAL_SERVER_ERROR'}}]};captures.push({request:qs[index],status:response.status(),original:bs[index],injected,neighborOperationCount:qs.length-1,onlyTargetResultReplaced:true});const changed=bs.map((b,i)=>i===index?injected:b);await route.fulfill({response,body:JSON.stringify(Array.isArray(rawBody)?changed:changed[0])});};await page.route(pattern,handler);try{await page.goto('https://dashboard.bex.co/services/new?type=web_service&projectId=prj-db9gd79qj49s73b3i95g&environmentId=evm-db9gdb1qj49s73b3i96g',{waitUntil:'domcontentloaded'});const samples=[];for(let i=0;i<140;i++){const env=page.getByRole('combobox',{name:'Environment',exact:true});if(await env.count()){const label=await env.innerText();if(i%10===0||captures.length&&label==='No environment')samples.push({at:new Date().toISOString(),environment:label,project:await page.getByRole('combobox',{name:'Project',exact:true}).innerText()});if(captures.length&&label==='No environment')break;}await page.waitForTimeout(200);}await page.waitForTimeout(500);await page.getByRole('combobox',{name:'Project',exact:true}).locator('..').locator('..').screenshot({path:'qa-a856-scope-error-desktop.png'});return {at:new Date().toISOString(),url:page.url(),captures,samples,environment:await page.getByRole('combobox',{name:'Environment',exact:true}).innerText(),project:await page.getByRole('combobox',{name:'Project',exact:true}).innerText(),alerts:await page.locator('main [role=alert]').allTextContents(),statuses:await page.locator('main [role=status]').allTextContents(),captured:replaced};}finally{await page.unroute(pattern,handler);}}",
+    "a856ProjectFailure390Code": "async(page)=>{const d=page.getByRole('alertdialog');if(await d.count())await d.getByRole('button',{name:'Cancel',exact:true}).click();await page.waitForTimeout(350);await page.setViewportSize({width:390,height:844});await page.goto('about:blank',{waitUntil:'commit'});const captures=[];const pattern='https://api.bex.co/graphql';let replaced=false;const handler=async route=>{const req=route.request();let raw;try{raw=req.postDataJSON();}catch{return route.continue();}const qs=Array.isArray(raw)?raw:[raw];const index=qs.findIndex(q=>q.operationName==='Projects'&&q.variables.ownerId==='tea-d98210cbbpdc73dcrkvg');if(index<0||replaced)return route.continue();replaced=true;const response=await route.fetch();const rawBody=await response.json();const bs=Array.isArray(rawBody)?rawBody:[rawBody];const injected={data:null,errors:[{message:'qa-a856 simulated project-list read failure',extensions:{code:'INTERNAL_SERVER_ERROR'}}]};captures.push({request:qs[index],status:response.status(),original:bs[index],injected,neighborOperationCount:qs.length-1,onlyTargetResultReplaced:true});const changed=bs.map((b,i)=>i===index?injected:b);await route.fulfill({response,body:JSON.stringify(Array.isArray(rawBody)?changed:changed[0])});};await page.route(pattern,handler);try{await page.goto('https://dashboard.bex.co/services/new?type=web_service&projectId=prj-db9gd79qj49s73b3i95g&environmentId=evm-db9gdb1qj49s73b3i96g',{waitUntil:'domcontentloaded'});const samples=[];for(let i=0;i<140;i++){const env=page.getByRole('combobox',{name:'Environment',exact:true});if(await env.count()){const label=await env.innerText();if(i%10===0||captures.length&&label==='No environment')samples.push({at:new Date().toISOString(),environment:label,project:await page.getByRole('combobox',{name:'Project',exact:true}).innerText()});if(captures.length&&label==='No environment')break;}await page.waitForTimeout(200);}await page.waitForTimeout(500);return {at:new Date().toISOString(),url:page.url(),captures,samples,environment:await page.getByRole('combobox',{name:'Environment',exact:true}).innerText(),project:await page.getByRole('combobox',{name:'Project',exact:true}).innerText(),alerts:await page.locator('main [role=alert]').allTextContents(),statuses:await page.locator('main [role=status]').allTextContents(),captured:replaced};}finally{await page.unroute(pattern,handler);}}",
+    "a856ProjectFailure1440Code": "async(page)=>{const d=page.getByRole('alertdialog');if(await d.count())await d.getByRole('button',{name:'Cancel',exact:true}).click();await page.waitForTimeout(350);await page.setViewportSize({width:1440,height:844});await page.goto('about:blank',{waitUntil:'commit'});const captures=[];const pattern='https://api.bex.co/graphql';let replaced=false;const handler=async route=>{const req=route.request();let raw;try{raw=req.postDataJSON();}catch{return route.continue();}const qs=Array.isArray(raw)?raw:[raw];const index=qs.findIndex(q=>q.operationName==='Projects'&&q.variables.ownerId==='tea-d98210cbbpdc73dcrkvg');if(index<0||replaced)return route.continue();replaced=true;const response=await route.fetch();const rawBody=await response.json();const bs=Array.isArray(rawBody)?rawBody:[rawBody];const injected={data:null,errors:[{message:'qa-a856 simulated project-list read failure',extensions:{code:'INTERNAL_SERVER_ERROR'}}]};captures.push({request:qs[index],status:response.status(),original:bs[index],injected,neighborOperationCount:qs.length-1,onlyTargetResultReplaced:true});const changed=bs.map((b,i)=>i===index?injected:b);await route.fulfill({response,body:JSON.stringify(Array.isArray(rawBody)?changed:changed[0])});};await page.route(pattern,handler);try{await page.goto('https://dashboard.bex.co/services/new?type=web_service&projectId=prj-db9gd79qj49s73b3i95g&environmentId=evm-db9gdb1qj49s73b3i96g',{waitUntil:'domcontentloaded'});const samples=[];for(let i=0;i<140;i++){const env=page.getByRole('combobox',{name:'Environment',exact:true});if(await env.count()){const label=await env.innerText();if(i%10===0||captures.length&&label==='No environment')samples.push({at:new Date().toISOString(),environment:label,project:await page.getByRole('combobox',{name:'Project',exact:true}).innerText()});if(captures.length&&label==='No environment')break;}await page.waitForTimeout(200);}await page.waitForTimeout(500);return {at:new Date().toISOString(),url:page.url(),captures,samples,environment:await page.getByRole('combobox',{name:'Environment',exact:true}).innerText(),project:await page.getByRole('combobox',{name:'Project',exact:true}).innerText(),alerts:await page.locator('main [role=alert]').allTextContents(),statuses:await page.locator('main [role=status]').allTextContents(),captured:replaced};}finally{await page.unroute(pattern,handler);}}",
+    "a856EnvFailureBeforeCreateCode": "async(page)=>{const d=page.getByRole('alertdialog');if(await d.count())await d.getByRole('button',{name:'Cancel',exact:true}).click();await page.waitForTimeout(350);await page.setViewportSize({width:390,height:844});await page.goto('about:blank',{waitUntil:'commit'});const captures=[];const pattern='https://api.bex.co/graphql';let replaced=false;const handler=async route=>{const req=route.request();let raw;try{raw=req.postDataJSON();}catch{return route.continue();}const qs=Array.isArray(raw)?raw:[raw];const index=qs.findIndex(q=>q.operationName==='Environments'&&q.variables.projectId==='prj-db9gd79qj49s73b3i95g');if(index<0||replaced)return route.continue();replaced=true;const response=await route.fetch();const rawBody=await response.json();const bs=Array.isArray(rawBody)?rawBody:[rawBody];const injected={data:null,errors:[{message:'qa-a856 simulated environment-list read failure',extensions:{code:'INTERNAL_SERVER_ERROR'}}]};captures.push({request:qs[index],status:response.status(),original:bs[index],injected,neighborOperationCount:qs.length-1,onlyTargetResultReplaced:true});const changed=bs.map((b,i)=>i===index?injected:b);await route.fulfill({response,body:JSON.stringify(Array.isArray(rawBody)?changed:changed[0])});};await page.route(pattern,handler);try{await page.goto('https://dashboard.bex.co/services/new?type=web_service&projectId=prj-db9gd79qj49s73b3i95g&environmentId=evm-db9gdb1qj49s73b3i96g',{waitUntil:'domcontentloaded'});const samples=[];for(let i=0;i<140;i++){const env=page.getByRole('combobox',{name:'Environment',exact:true});if(await env.count()){const label=await env.innerText();if(i%10===0||captures.length&&label==='No environment')samples.push({at:new Date().toISOString(),environment:label,project:await page.getByRole('combobox',{name:'Project',exact:true}).innerText()});if(captures.length&&label==='No environment')break;}await page.waitForTimeout(200);}await page.waitForTimeout(500);return {at:new Date().toISOString(),url:page.url(),captures,samples,environment:await page.getByRole('combobox',{name:'Environment',exact:true}).innerText(),project:await page.getByRole('combobox',{name:'Project',exact:true}).innerText(),alerts:await page.locator('main [role=alert]').allTextContents(),statuses:await page.locator('main [role=status]').allTextContents(),captured:replaced};}finally{await page.unroute(pattern,handler);}}",
+    "a856CreateServiceCode": "async(page)=>{const pending=page.waitForResponse(r=>{if(!r.url().endsWith(\"/graphql\")||r.request().method()!==\"POST\")return false;try{const q=r.request().postDataJSON();return(Array.isArray(q)?q:[q]).some(x=>x.operationName===\"CreateService\"&&(!null||x.variables.id===null));}catch{return false;}},{timeout:45000}).then(response=>({response}),error=>({waitError:String(error)}));{const qaStaticType=page.getByRole('radio',{name:'Static Site Build and serve a static site from object storage',exact:true});const qaStaticSelected=await qaStaticType.count()===1&&await qaStaticType.isChecked();if(qaStaticSelected){if(await page.getByRole('heading',{name:'New Static Site',exact:true}).count()!==1||await page.getByRole('radio',{name:/^Free/}).count()!==0)throw new Error('Static create shape is not confirmed; create blocked');}else{const qaFreePlan=page.getByRole('radio',{name:/^Free/});if(await qaFreePlan.count()!==1||!(await qaFreePlan.isChecked()))throw new Error('Free plan is not confirmed; create blocked');\n}\nawait page.getByRole('button',{name:'Deploy Service',exact:true}).click();};const waited=await pending;if(waited.waitError)throw new Error(waited.waitError);const r=waited.response;const q=r.request().postDataJSON(),b=await r.json(),qs=Array.isArray(q)?q:[q],bs=Array.isArray(b)?b:[b];const i=qs.findIndex(x=>x.operationName===\"CreateService\");await page.waitForTimeout(700);return{at:new Date().toISOString(),request:qs[i],status:r.status(),body:bs[i],timing:r.request().timing(),url:page.url()};}",
+    "a856RecoverySaveCode": "async(page)=>{const pending=page.waitForResponse(r=>{if(!r.url().endsWith(\"/graphql\")||r.request().method()!==\"POST\")return false;try{const q=r.request().postDataJSON();return(Array.isArray(q)?q:[q]).some(x=>x.operationName===\"SetEnvironmentServices\"&&(!\"evm-db9gdb1qj49s73b3i96g\"||x.variables.id===\"evm-db9gdb1qj49s73b3i96g\"));}catch{return false;}},{timeout:45000}).then(response=>({response}),error=>({waitError:String(error)}));{await page.getByRole('dialog').getByRole('button',{name:'Save',exact:true}).click();};const waited=await pending;if(waited.waitError)throw new Error(waited.waitError);const r=waited.response;const q=r.request().postDataJSON(),b=await r.json(),qs=Array.isArray(q)?q:[q],bs=Array.isArray(b)?b:[b];const i=qs.findIndex(x=>x.operationName===\"SetEnvironmentServices\");await page.waitForTimeout(700);return{at:new Date().toISOString(),request:qs[i],status:r.status(),body:bs[i],timing:r.request().timing(),url:page.url()};}",
+    "a856DeleteServiceCode": "async(page)=>{const pending=page.waitForResponse(r=>{if(!r.url().endsWith(\"/graphql\")||r.request().method()!==\"POST\")return false;try{const q=r.request().postDataJSON();return(Array.isArray(q)?q:[q]).some(x=>x.operationName===\"DeleteService\"&&(!\"srv-db9ghm51hj4s73e9bmig\"||x.variables.id===\"srv-db9ghm51hj4s73e9bmig\"));}catch{return false;}},{timeout:45000}).then(response=>({response}),error=>({waitError:String(error)}));{const d=page.getByRole('alertdialog');await d.getByRole('textbox',{name:'Sudo Command',exact:true}).fill('sudo delete web service qa-20261016-a856-scope');await d.getByRole('button',{name:'Delete Service',exact:true}).click();};const waited=await pending;if(waited.waitError)throw new Error(waited.waitError);const r=waited.response;const q=r.request().postDataJSON(),b=await r.json(),qs=Array.isArray(q)?q:[q],bs=Array.isArray(b)?b:[b];const i=qs.findIndex(x=>x.operationName===\"DeleteService\");await page.waitForTimeout(700);return{at:new Date().toISOString(),request:qs[i],status:r.status(),body:bs[i],timing:r.request().timing(),url:page.url()};}",
+    "a856DeleteProjectCode": "async(page)=>{const pending=page.waitForResponse(r=>{if(!r.url().endsWith(\"/graphql\")||r.request().method()!==\"POST\")return false;try{const q=r.request().postDataJSON();return(Array.isArray(q)?q:[q]).some(x=>x.operationName===\"DeleteProject\"&&(!\"prj-db9gd79qj49s73b3i95g\"||x.variables.id===\"prj-db9gd79qj49s73b3i95g\"));}catch{return false;}},{timeout:45000}).then(response=>({response}),error=>({waitError:String(error)}));{await page.getByRole('alertdialog').getByRole('button',{name:'Delete Project',exact:true}).click();};const waited=await pending;if(waited.waitError)throw new Error(waited.waitError);const r=waited.response;const q=r.request().postDataJSON(),b=await r.json(),qs=Array.isArray(q)?q:[q],bs=Array.isArray(b)?b:[b];const i=qs.findIndex(x=>x.operationName===\"DeleteProject\");await page.waitForTimeout(700);return{at:new Date().toISOString(),request:qs[i],status:r.status(),body:bs[i],timing:r.request().timing(),url:page.url()};}"
+  },
+  "replayInstructions": "Create fresh own Project and Environment, substitute their IDs in the exact probe scripts, and use qa-prefixed Free fixtures. Original IDs are deleted. No credential literals are included.",
+  "sourceCensus": {
+    "selector": "dashboard/src/features/environments/components/project-environment-selector.tsx:32-61",
+    "selectSites": 2,
+    "lookupHooks": 2,
+    "productionMounts": 3,
+    "mounts": [
+      "dashboard/src/routes/services.new.tsx:522",
+      "dashboard/src/routes/keyvalue.new.tsx:266",
+      "dashboard/src/features/databases/components/create-database-dialog.tsx:368"
+    ],
+    "cause": "Both lookup hooks expose error/refetch, but this consumer reads only lists/loading. Failed first reads map missing data to empty arrays with loading false; the stale-selection effect clears valid selected IDs.",
+    "consumers": [
+      "Service input: environmentId:form.environmentId || undefined at create-service-input.ts:196",
+      "Key Value create: environmentId ?? undefined at keyvalue.new.tsx:127",
+      "Postgres create: environmentId ?? undefined at create-database-dialog.tsx:170"
+    ],
+    "scope": "Five App creation types share one service mount; PG/KV share the same selector via their own local state. Failure probes and real create were web only; all five App types had healthy desktop/mobile preview controls.",
+    "aliases": [
+      "/web/new",
+      "/pserv/new",
+      "/worker/new",
+      "/cron/new",
+      "/static/new",
+      "/keyvalue/new",
+      "/new/redis",
+      "/r/new",
+      "/new/database",
+      "/d/new",
+      "/?new=database"
+    ],
+    "postgresDialogProductionMount": "dashboard/src/routes/index.tsx:301",
+    "aliasesSourceInspected": [
+      "dashboard/src/common/lib/render-alias.ts",
+      "dashboard/src/routes/new.redis.tsx",
+      "dashboard/src/routes/new.database.tsx"
+    ]
+  },
+  "framework": {
+    "name": "@apollo/client",
+    "version": "4.3.3",
+    "lockAndRuntimeExtensionsAgree": true,
+    "actualSourceOpened": ".playwright-mcp/qa-a720-apollo-source/package/core/QueryManager.js:641-676",
+    "mechanism": "Under errorPolicy all the result can expose failed read data and an error with loading false. Local hooks map absent lists to []; the selector's error-blind effect is the application defect.",
+    "excludedInstalledVersion": "4.1.3"
+  },
+  "screenshot": {
+    "path": ".playwright-mcp/qa-a856-scope-error-desktop.png",
+    "viewed": true,
+    "scope": "Both selected-placement controls and existing explanatory hint, no credentials."
+  },
+  "publicControl": {
+    "request": {
+      "method": "GET",
+      "url": "https://qa-20261016-a856-scope.onbex.co"
+    },
+    "status": 200,
+    "body": "qa-a856 scope\n",
+    "bodyBytes": 14,
+    "exitCode": 0,
+    "responseHeadersNotCaptured": true
+  },
+  "cleanupFinalizer": {
+    "logoutConfirmed": true,
+    "exitCode": 0,
+    "browser": {
+      "at": "2026-10-17T05:39:36.782Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "handlesRemoved": true
+  },
+  "limits": [
+    "Failures were deliberately substituted in this browser only; do not claim a production backend outage.",
+    "PG/KV read-error behavior, warm-cache failures, partial field-null errors, transport/timeout classes and explicit choice during a pending read remain audit/test work.",
+    "Pending blank labels were observed, but no separate layout/latency finding is asserted.",
+    "Initial sparse REST placement projection did not establish null placement; the full independent GraphQL SavedPlacement receipt is the proof.",
+    "One early Project confirmation capture timed out before any DeleteProject request; readback confirmed this before one successful actual deletion. No second product finding is asserted."
+  ],
+  "receipts": {
+    "Created": {
+      "at": "2026-10-17T05:24:45.883Z",
+      "request": {
+        "operationName": "CreateProject",
+        "variables": {
+          "name": "qa-20261016-a856-context",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateProject($name: String!, $ownerId: String!) {\n  createProject(name: $name, ownerId: $ownerId) {\n    ...ProjectFields\n    __typename\n  }\n}\n\nfragment ProjectFields on Project {\n  id\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  __typename\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createProject": {
+            "__typename": "Project",
+            "createdAt": "2026-10-17T05:24:45Z",
+            "databaseIds": [],
+            "id": "prj-db9gd79qj49s73b3i95g",
+            "keyValueIds": [],
+            "name": "qa-20261016-a856-context",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "serviceIds": []
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792214684906.468,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.113,
+        "responseStart": 258.39,
+        "responseEnd": 259.025
+      },
+      "url": "https://dashboard.bex.co/project/prj-db9gd79qj49s73b3i95g"
+    },
+    "EnvironmentCreated": {
+      "at": "2026-10-17T05:25:01.490Z",
+      "request": {
+        "operationName": "CreateEnvironment",
+        "variables": {
+          "name": "qa-20261016-a856-target",
+          "projectId": "prj-db9gd79qj49s73b3i95g"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateEnvironment($name: String!, $projectId: String!) {\n  createEnvironment(name: $name, projectId: $projectId) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createEnvironment": {
+            "__typename": "Environment",
+            "createdAt": "2026-10-17T05:25:00Z",
+            "databaseIds": [],
+            "envGroupIds": [],
+            "id": "evm-db9gdb1qj49s73b3i96g",
+            "ipAllowList": ["0.0.0.0/0", "::/0"],
+            "ipAllowListEntries": [
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "0.0.0.0/0",
+                "description": "Allow all (default)"
+              },
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "::/0",
+                "description": "Allow all (default)"
+              }
+            ],
+            "ipAllowListProxiedDomains": [],
+            "keyValueIds": [],
+            "name": "qa-20261016-a856-target",
+            "networkIsolationEnabled": false,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "projectId": "prj-db9gd79qj49s73b3i95g",
+            "protectedStatus": "unprotected",
+            "serviceIds": []
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792214700455.617,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.137,
+        "responseStart": 332.275,
+        "responseEnd": 332.689
+      },
+      "url": "https://dashboard.bex.co/project/prj-db9gd79qj49s73b3i95g"
+    },
+    "ContextForm": {
+      "at": "2026-10-17T05:25:16.093Z",
+      "href": "/services/new?projectId=prj-db9gd79qj49s73b3i95g&environmentId=evm-db9gdb1qj49s73b3i96g",
+      "url": "https://dashboard.bex.co/services/new?projectId=prj-db9gd79qj49s73b3i95g&environmentId=evm-db9gdb1qj49s73b3i96g",
+      "project": "qa-20261016-a856-context",
+      "environment": "qa-20261016-a856-target",
+      "disabled": false
+    },
+    "TypeContext": {
+      "at": "2026-10-17T05:25:47.574Z",
+      "results": [
+        {
+          "width": 1440,
+          "kind": "web_service",
+          "selected": true,
+          "url": "https://dashboard.bex.co/services/new?projectId=prj-db9gd79qj49s73b3i95g&environmentId=evm-db9gdb1qj49s73b3i96g",
+          "project": "qa-20261016-a856-context",
+          "environment": "qa-20261016-a856-target",
+          "submitDisabled": true
+        },
+        {
+          "width": 1440,
+          "kind": "static_site",
+          "selected": true,
+          "url": "https://dashboard.bex.co/services/new?projectId=prj-db9gd79qj49s73b3i95g&environmentId=evm-db9gdb1qj49s73b3i96g&type=static_site",
+          "project": "qa-20261016-a856-context",
+          "environment": "qa-20261016-a856-target",
+          "submitDisabled": true
+        },
+        {
+          "width": 1440,
+          "kind": "private_service",
+          "selected": true,
+          "url": "https://dashboard.bex.co/services/new?projectId=prj-db9gd79qj49s73b3i95g&environmentId=evm-db9gdb1qj49s73b3i96g&type=private_service",
+          "project": "qa-20261016-a856-context",
+          "environment": "qa-20261016-a856-target",
+          "submitDisabled": true
+        },
+        {
+          "width": 1440,
+          "kind": "background_worker",
+          "selected": true,
+          "url": "https://dashboard.bex.co/services/new?projectId=prj-db9gd79qj49s73b3i95g&environmentId=evm-db9gdb1qj49s73b3i96g&type=background_worker",
+          "project": "qa-20261016-a856-context",
+          "environment": "qa-20261016-a856-target",
+          "submitDisabled": true
+        },
+        {
+          "width": 1440,
+          "kind": "cron_job",
+          "selected": true,
+          "url": "https://dashboard.bex.co/services/new?projectId=prj-db9gd79qj49s73b3i95g&environmentId=evm-db9gdb1qj49s73b3i96g&type=cron_job",
+          "project": "qa-20261016-a856-context",
+          "environment": "qa-20261016-a856-target",
+          "submitDisabled": true
+        },
+        {
+          "width": 390,
+          "kind": "web_service",
+          "selected": true,
+          "url": "https://dashboard.bex.co/services/new?projectId=prj-db9gd79qj49s73b3i95g&environmentId=evm-db9gdb1qj49s73b3i96g&type=web_service",
+          "project": "qa-20261016-a856-context",
+          "environment": "qa-20261016-a856-target",
+          "submitDisabled": true
+        },
+        {
+          "width": 390,
+          "kind": "static_site",
+          "selected": true,
+          "url": "https://dashboard.bex.co/services/new?projectId=prj-db9gd79qj49s73b3i95g&environmentId=evm-db9gdb1qj49s73b3i96g&type=static_site",
+          "project": "qa-20261016-a856-context",
+          "environment": "qa-20261016-a856-target",
+          "submitDisabled": true
+        },
+        {
+          "width": 390,
+          "kind": "private_service",
+          "selected": true,
+          "url": "https://dashboard.bex.co/services/new?projectId=prj-db9gd79qj49s73b3i95g&environmentId=evm-db9gdb1qj49s73b3i96g&type=private_service",
+          "project": "qa-20261016-a856-context",
+          "environment": "qa-20261016-a856-target",
+          "submitDisabled": true
+        },
+        {
+          "width": 390,
+          "kind": "background_worker",
+          "selected": true,
+          "url": "https://dashboard.bex.co/services/new?projectId=prj-db9gd79qj49s73b3i95g&environmentId=evm-db9gdb1qj49s73b3i96g&type=background_worker",
+          "project": "qa-20261016-a856-context",
+          "environment": "qa-20261016-a856-target",
+          "submitDisabled": true
+        },
+        {
+          "width": 390,
+          "kind": "cron_job",
+          "selected": true,
+          "url": "https://dashboard.bex.co/services/new?projectId=prj-db9gd79qj49s73b3i95g&environmentId=evm-db9gdb1qj49s73b3i96g&type=cron_job",
+          "project": "qa-20261016-a856-context",
+          "environment": "qa-20261016-a856-target",
+          "submitDisabled": true
+        }
+      ],
+      "writes": [],
+      "errors": []
+    },
+    "FreshContext": {
+      "at": "2026-10-17T05:26:33.393Z",
+      "url": "https://dashboard.bex.co/services/new?projectId=prj-db9gd79qj49s73b3i95g&environmentId=evm-db9gdb1qj49s73b3i96g&type=static_site",
+      "staticSelected": true,
+      "project": "qa-20261016-a856-context",
+      "environment": "qa-20261016-a856-target",
+      "samples": [
+        {
+          "at": "2026-10-17T05:26:23.624Z",
+          "label": "",
+          "disabled": false
+        },
+        {
+          "at": "2026-10-17T05:26:33.391Z",
+          "label": "qa-20261016-a856-target",
+          "disabled": false
+        }
+      ]
+    },
+    "EnvFailure": {
+      "at": "2026-10-17T05:30:12.237Z",
+      "url": "https://dashboard.bex.co/services/new?type=web_service&projectId=prj-db9gd79qj49s73b3i95g&environmentId=evm-db9gdb1qj49s73b3i96g",
+      "captures": [
+        {
+          "request": {
+            "operationName": "Environments",
+            "variables": {
+              "projectId": "prj-db9gd79qj49s73b3i95g"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Environments($projectId: String!) {\n  environments(projectId: $projectId) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+          },
+          "status": 200,
+          "original": {
+            "data": {
+              "environments": [
+                {
+                  "__typename": "Environment",
+                  "createdAt": "2026-10-17T05:25:00Z",
+                  "databaseIds": [],
+                  "envGroupIds": [],
+                  "id": "evm-db9gdb1qj49s73b3i96g",
+                  "ipAllowList": ["0.0.0.0/0", "::/0"],
+                  "ipAllowListEntries": [
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "0.0.0.0/0",
+                      "description": "Allow all (default)"
+                    },
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "::/0",
+                      "description": "Allow all (default)"
+                    }
+                  ],
+                  "ipAllowListProxiedDomains": [],
+                  "keyValueIds": [],
+                  "name": "qa-20261016-a856-target",
+                  "networkIsolationEnabled": false,
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "projectId": "prj-db9gd79qj49s73b3i95g",
+                  "protectedStatus": "unprotected",
+                  "serviceIds": []
+                }
+              ]
+            }
+          },
+          "injected": {
+            "data": null,
+            "errors": [
+              {
+                "message": "qa-a856 simulated environment-list read failure",
+                "extensions": {
+                  "code": "INTERNAL_SERVER_ERROR"
+                }
+              }
+            ]
+          },
+          "neighborOperationCount": 6,
+          "onlyTargetResultReplaced": true
+        }
+      ],
+      "samples": [
+        {
+          "at": "2026-10-17T05:29:56.353Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:29:58.436Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:30:00.508Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:30:02.585Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:30:04.654Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:30:06.734Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:30:08.814Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:30:10.902Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:30:11.733Z",
+          "environment": "No environment",
+          "project": "qa-20261016-a856-context"
+        }
+      ],
+      "environment": "No environment",
+      "project": "qa-20261016-a856-context",
+      "alerts": [],
+      "statuses": [],
+      "captured": true
+    },
+    "EnvFailureDesktop": {
+      "at": "2026-10-17T05:31:08.522Z",
+      "url": "https://dashboard.bex.co/services/new?type=web_service&projectId=prj-db9gd79qj49s73b3i95g&environmentId=evm-db9gdb1qj49s73b3i96g",
+      "captures": [
+        {
+          "request": {
+            "operationName": "Environments",
+            "variables": {
+              "projectId": "prj-db9gd79qj49s73b3i95g"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Environments($projectId: String!) {\n  environments(projectId: $projectId) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+          },
+          "status": 200,
+          "original": {
+            "data": {
+              "environments": [
+                {
+                  "__typename": "Environment",
+                  "createdAt": "2026-10-17T05:25:00Z",
+                  "databaseIds": [],
+                  "envGroupIds": [],
+                  "id": "evm-db9gdb1qj49s73b3i96g",
+                  "ipAllowList": ["0.0.0.0/0", "::/0"],
+                  "ipAllowListEntries": [
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "0.0.0.0/0",
+                      "description": "Allow all (default)"
+                    },
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "::/0",
+                      "description": "Allow all (default)"
+                    }
+                  ],
+                  "ipAllowListProxiedDomains": [],
+                  "keyValueIds": [],
+                  "name": "qa-20261016-a856-target",
+                  "networkIsolationEnabled": false,
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "projectId": "prj-db9gd79qj49s73b3i95g",
+                  "protectedStatus": "unprotected",
+                  "serviceIds": []
+                }
+              ]
+            }
+          },
+          "injected": {
+            "data": null,
+            "errors": [
+              {
+                "message": "qa-a856 simulated environment-list read failure",
+                "extensions": {
+                  "code": "INTERNAL_SERVER_ERROR"
+                }
+              }
+            ]
+          },
+          "neighborOperationCount": 4,
+          "onlyTargetResultReplaced": true
+        }
+      ],
+      "samples": [
+        {
+          "at": "2026-10-17T05:30:54.239Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:30:56.324Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:30:58.396Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:31:00.442Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:31:02.515Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:31:04.607Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:31:06.676Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:31:07.922Z",
+          "environment": "No environment",
+          "project": "qa-20261016-a856-context"
+        }
+      ],
+      "environment": "No environment",
+      "project": "qa-20261016-a856-context",
+      "alerts": [],
+      "statuses": [],
+      "captured": true
+    },
+    "ProjectFailure390": {
+      "at": "2026-10-17T05:33:12.958Z",
+      "url": "https://dashboard.bex.co/services/new?type=web_service&projectId=prj-db9gd79qj49s73b3i95g&environmentId=evm-db9gdb1qj49s73b3i96g",
+      "captures": [
+        {
+          "request": {
+            "operationName": "Projects",
+            "variables": {
+              "ownerId": "tea-d98210cbbpdc73dcrkvg"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Projects($ownerId: String!) {\n  projects(ownerId: $ownerId) {\n    ...ProjectFields\n    __typename\n  }\n}\n\nfragment ProjectFields on Project {\n  id\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  __typename\n}"
+          },
+          "status": 200,
+          "original": {
+            "data": {
+              "projects": [
+                {
+                  "__typename": "Project",
+                  "createdAt": "2026-07-18T04:56:00Z",
+                  "databaseIds": [],
+                  "id": "prj-d9dgeo0bd9nc73a0vh1g",
+                  "keyValueIds": [],
+                  "name": "bex.co",
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "serviceIds": [
+                    "srv-d9bkcspg9s7c73d0n8ug",
+                    "srv-d9e40ei9086p3l1jri30"
+                  ]
+                },
+                {
+                  "__typename": "Project",
+                  "createdAt": "2026-07-19T05:14:27Z",
+                  "databaseIds": [],
+                  "id": "prj-d9e5qct5qe4s73b1mjn0",
+                  "keyValueIds": [],
+                  "name": "beancount.io",
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "serviceIds": ["srv-d9bj8s3eg85c7390eb9g"]
+                },
+                {
+                  "__typename": "Project",
+                  "createdAt": "2026-08-09T23:06:05Z",
+                  "databaseIds": [],
+                  "id": "prj-d9sgfnbjghus73cg6hg0",
+                  "keyValueIds": [],
+                  "name": "forums",
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "serviceIds": ["srv-d9nqg9dcavls73fp8m2g"]
+                },
+                {
+                  "__typename": "Project",
+                  "createdAt": "2026-10-17T05:24:45Z",
+                  "databaseIds": [],
+                  "id": "prj-db9gd79qj49s73b3i95g",
+                  "keyValueIds": [],
+                  "name": "qa-20261016-a856-context",
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "serviceIds": []
+                }
+              ]
+            }
+          },
+          "injected": {
+            "data": null,
+            "errors": [
+              {
+                "message": "qa-a856 simulated project-list read failure",
+                "extensions": {
+                  "code": "INTERNAL_SERVER_ERROR"
+                }
+              }
+            ]
+          },
+          "neighborOperationCount": 6,
+          "onlyTargetResultReplaced": true
+        }
+      ],
+      "samples": [
+        {
+          "at": "2026-10-17T05:32:59.429Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:33:01.486Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:33:03.544Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:33:05.614Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:33:07.668Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:33:09.758Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:33:11.828Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:33:12.456Z",
+          "environment": "No environment",
+          "project": "No project"
+        }
+      ],
+      "environment": "No environment",
+      "project": "No project",
+      "alerts": [],
+      "statuses": [],
+      "captured": true
+    },
+    "ProjectFailure1440": {
+      "at": "2026-10-17T05:33:26.157Z",
+      "url": "https://dashboard.bex.co/services/new?type=web_service&projectId=prj-db9gd79qj49s73b3i95g&environmentId=evm-db9gdb1qj49s73b3i96g",
+      "captures": [
+        {
+          "request": {
+            "operationName": "Projects",
+            "variables": {
+              "ownerId": "tea-d98210cbbpdc73dcrkvg"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Projects($ownerId: String!) {\n  projects(ownerId: $ownerId) {\n    ...ProjectFields\n    __typename\n  }\n}\n\nfragment ProjectFields on Project {\n  id\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  __typename\n}"
+          },
+          "status": 200,
+          "original": {
+            "data": {
+              "projects": [
+                {
+                  "__typename": "Project",
+                  "createdAt": "2026-07-18T04:56:00Z",
+                  "databaseIds": [],
+                  "id": "prj-d9dgeo0bd9nc73a0vh1g",
+                  "keyValueIds": [],
+                  "name": "bex.co",
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "serviceIds": [
+                    "srv-d9bkcspg9s7c73d0n8ug",
+                    "srv-d9e40ei9086p3l1jri30"
+                  ]
+                },
+                {
+                  "__typename": "Project",
+                  "createdAt": "2026-07-19T05:14:27Z",
+                  "databaseIds": [],
+                  "id": "prj-d9e5qct5qe4s73b1mjn0",
+                  "keyValueIds": [],
+                  "name": "beancount.io",
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "serviceIds": ["srv-d9bj8s3eg85c7390eb9g"]
+                },
+                {
+                  "__typename": "Project",
+                  "createdAt": "2026-08-09T23:06:05Z",
+                  "databaseIds": [],
+                  "id": "prj-d9sgfnbjghus73cg6hg0",
+                  "keyValueIds": [],
+                  "name": "forums",
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "serviceIds": ["srv-d9nqg9dcavls73fp8m2g"]
+                },
+                {
+                  "__typename": "Project",
+                  "createdAt": "2026-10-17T05:24:45Z",
+                  "databaseIds": [],
+                  "id": "prj-db9gd79qj49s73b3i95g",
+                  "keyValueIds": [],
+                  "name": "qa-20261016-a856-context",
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "serviceIds": []
+                }
+              ]
+            }
+          },
+          "injected": {
+            "data": null,
+            "errors": [
+              {
+                "message": "qa-a856 simulated project-list read failure",
+                "extensions": {
+                  "code": "INTERNAL_SERVER_ERROR"
+                }
+              }
+            ]
+          },
+          "neighborOperationCount": 7,
+          "onlyTargetResultReplaced": true
+        }
+      ],
+      "samples": [
+        {
+          "at": "2026-10-17T05:33:15.046Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:33:17.101Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:33:19.192Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:33:21.270Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:33:23.357Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:33:25.423Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:33:25.654Z",
+          "environment": "No environment",
+          "project": "No project"
+        }
+      ],
+      "environment": "No environment",
+      "project": "No project",
+      "alerts": [],
+      "statuses": [],
+      "captured": true
+    },
+    "EnvFailureBeforeCreate": {
+      "at": "2026-10-17T05:34:02.368Z",
+      "url": "https://dashboard.bex.co/services/new?type=web_service&projectId=prj-db9gd79qj49s73b3i95g&environmentId=evm-db9gdb1qj49s73b3i96g",
+      "captures": [
+        {
+          "request": {
+            "operationName": "Environments",
+            "variables": {
+              "projectId": "prj-db9gd79qj49s73b3i95g"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Environments($projectId: String!) {\n  environments(projectId: $projectId) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+          },
+          "status": 200,
+          "original": {
+            "data": {
+              "environments": [
+                {
+                  "__typename": "Environment",
+                  "createdAt": "2026-10-17T05:25:00Z",
+                  "databaseIds": [],
+                  "envGroupIds": [],
+                  "id": "evm-db9gdb1qj49s73b3i96g",
+                  "ipAllowList": ["0.0.0.0/0", "::/0"],
+                  "ipAllowListEntries": [
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "0.0.0.0/0",
+                      "description": "Allow all (default)"
+                    },
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "::/0",
+                      "description": "Allow all (default)"
+                    }
+                  ],
+                  "ipAllowListProxiedDomains": [],
+                  "keyValueIds": [],
+                  "name": "qa-20261016-a856-target",
+                  "networkIsolationEnabled": false,
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "projectId": "prj-db9gd79qj49s73b3i95g",
+                  "protectedStatus": "unprotected",
+                  "serviceIds": []
+                }
+              ]
+            }
+          },
+          "injected": {
+            "data": null,
+            "errors": [
+              {
+                "message": "qa-a856 simulated environment-list read failure",
+                "extensions": {
+                  "code": "INTERNAL_SERVER_ERROR"
+                }
+              }
+            ]
+          },
+          "neighborOperationCount": 6,
+          "onlyTargetResultReplaced": true
+        }
+      ],
+      "samples": [
+        {
+          "at": "2026-10-17T05:33:47.523Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:33:49.605Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:33:51.688Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:33:53.792Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:33:55.894Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:33:57.951Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:33:59.998Z",
+          "environment": "",
+          "project": ""
+        },
+        {
+          "at": "2026-10-17T05:34:01.864Z",
+          "environment": "No environment",
+          "project": "qa-20261016-a856-context"
+        }
+      ],
+      "environment": "No environment",
+      "project": "qa-20261016-a856-context",
+      "alerts": [],
+      "statuses": [],
+      "captured": true
+    },
+    "RecoveredOptionsStillCleared": {
+      "at": "2026-10-17T05:31:59.651Z",
+      "environment": "No environment",
+      "choices": "- listbox:\n  - option \"No environment\" [selected]\n  - option \"qa-20261016-a856-target\"",
+      "tabs": ["GitHub", "Public Git URL", "Existing Image"]
+    },
+    "MisplacedCreateReady": {
+      "at": "2026-10-17T05:34:13.966Z",
+      "url": "https://dashboard.bex.co/services/new?type=web_service&projectId=prj-db9gd79qj49s73b3i95g&environmentId=evm-db9gdb1qj49s73b3i96g",
+      "project": "qa-20261016-a856-context",
+      "environment": "No environment",
+      "freeChecked": true,
+      "submitEnabled": true,
+      "alerts": []
+    },
+    "ServiceCreated": {
+      "at": "2026-10-17T05:34:17.062Z",
+      "request": {
+        "operationName": "CreateService",
+        "variables": {
+          "image": "docker.io/library/node:24-alpine",
+          "name": "qa-20261016-a856-scope",
+          "type": "web_service",
+          "registryCredentialId": "",
+          "runtime": "image",
+          "startCommand": "node -e 'require(\"http\").createServer((req,res)=>res.end(\"qa-a856 scope\\n\")).listen(3000,\"0.0.0.0\")'",
+          "plan": "free",
+          "port": 3000,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db9ghm51hj4s73e9bmig",
+            "latestDeployId": "dep-db9ghm51hj4s73e9bmj0",
+            "name": "qa-20261016-a856-scope",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": "",
+            "type": "web_service"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792215255739.0808,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.124,
+        "responseStart": 597.895,
+        "responseEnd": 598.758
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9ghm51hj4s73e9bmig/deploys/dep-db9ghm51hj4s73e9bmj0"
+    },
+    "SavedPlacement": {
+      "at": "2026-10-17T05:36:46.741Z",
+      "request": {
+        "operationName": "Qaa856SavedPlacement",
+        "query": "query Qaa856SavedPlacement($serviceId:String!,$projectId:String!){server(id:$serviceId){id projectId environmentId} project(id:$projectId){id name serviceIds}}",
+        "variables": {
+          "serviceId": "srv-db9ghm51hj4s73e9bmig",
+          "projectId": "prj-db9gd79qj49s73b3i95g"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "project": {
+            "id": "prj-db9gd79qj49s73b3i95g",
+            "name": "qa-20261016-a856-context",
+            "serviceIds": []
+          },
+          "server": {
+            "environmentId": null,
+            "id": "srv-db9ghm51hj4s73e9bmig",
+            "projectId": null
+          }
+        }
+      }
+    },
+    "RecoverySelection": {
+      "at": "2026-10-17T05:36:47.337Z",
+      "checked": ["qa-20261016-a856-scopeRunning"],
+      "saveEnabled": true
+    },
+    "RecoverySaved": {
+      "at": "2026-10-17T05:37:08.374Z",
+      "request": {
+        "operationName": "SetEnvironmentServices",
+        "variables": {
+          "id": "evm-db9gdb1qj49s73b3i96g",
+          "serviceIds": ["srv-db9ghm51hj4s73e9bmig"]
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetEnvironmentServices($id: String!, $serviceIds: [String!]!) {\n  setEnvironmentServices(id: $id, serviceIds: $serviceIds) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setEnvironmentServices": {
+            "__typename": "Environment",
+            "createdAt": "2026-10-17T05:25:00Z",
+            "databaseIds": [],
+            "envGroupIds": [],
+            "id": "evm-db9gdb1qj49s73b3i96g",
+            "ipAllowList": ["0.0.0.0/0", "::/0"],
+            "ipAllowListEntries": [
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "0.0.0.0/0",
+                "description": "Allow all (default)"
+              },
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "::/0",
+                "description": "Allow all (default)"
+              }
+            ],
+            "ipAllowListProxiedDomains": [],
+            "keyValueIds": [],
+            "name": "qa-20261016-a856-target",
+            "networkIsolationEnabled": false,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "projectId": "prj-db9gd79qj49s73b3i95g",
+            "protectedStatus": "unprotected",
+            "serviceIds": ["srv-db9ghm51hj4s73e9bmig"]
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792215414583.915,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.137,
+        "responseStart": 13081.035,
+        "responseEnd": 13081.686
+      },
+      "url": "https://dashboard.bex.co/project/prj-db9gd79qj49s73b3i95g?env=evm-db9gdb1qj49s73b3i96g"
+    },
+    "RecoveredPlacement": {
+      "at": "2026-10-17T05:37:44.208Z",
+      "request": {
+        "operationName": "Qaa856RecoveredPlacement",
+        "query": "query Qaa856RecoveredPlacement($serviceId:String!,$projectId:String!){server(id:$serviceId){id projectId environmentId} project(id:$projectId){id name serviceIds}}",
+        "variables": {
+          "serviceId": "srv-db9ghm51hj4s73e9bmig",
+          "projectId": "prj-db9gd79qj49s73b3i95g"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "project": {
+            "id": "prj-db9gd79qj49s73b3i95g",
+            "name": "qa-20261016-a856-context",
+            "serviceIds": ["srv-db9ghm51hj4s73e9bmig"]
+          },
+          "server": {
+            "environmentId": "evm-db9gdb1qj49s73b3i96g",
+            "id": "srv-db9ghm51hj4s73e9bmig",
+            "projectId": "prj-db9gd79qj49s73b3i95g"
+          }
+        }
+      },
+      "deploys": {
+        "status": 200,
+        "body": [
+          {
+            "deploy": {
+              "id": "dep-db9ghm51hj4s73e9bmj0",
+              "serviceId": "srv-db9ghm51hj4s73e9bmig",
+              "status": "live",
+              "trigger": "other",
+              "bexTrigger": "create",
+              "image": {
+                "ref": "docker.io/library/node:24-alpine"
+              },
+              "createdAt": "2026-10-17T05:34:16.070973Z",
+              "updatedAt": "2026-10-17T05:35:15.198101Z",
+              "startedAt": "2026-10-17T05:34:59.204768Z",
+              "finishedAt": "2026-10-17T05:35:15.198099Z"
+            },
+            "cursor": "dep-db9ghm51hj4s73e9bmj0"
+          }
+        ]
+      }
+    },
+    "ServiceDeleted": {
+      "at": "2026-10-17T05:38:06.161Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db9ghm51hj4s73e9bmig"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "timing": {
+        "startTime": 1792215484865.024,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.135,
+        "responseStart": 570.301,
+        "responseEnd": 570.944
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "ProjectDeleted": {
+      "at": "2026-10-17T05:39:02.170Z",
+      "request": {
+        "operationName": "DeleteProject",
+        "variables": {
+          "id": "prj-db9gd79qj49s73b3i95g"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteProject($id: String!) {\n  deleteProject(id: $id)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteProject": "prj-db9gd79qj49s73b3i95g"
+        }
+      },
+      "timing": {
+        "startTime": 1792215532797.321,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.182,
+        "responseStart": 8656.445,
+        "responseEnd": 8658.001
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "InventoryCleanup": {
+      "at": "2026-10-17T05:39:22.319Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [
+        {
+          "path": "/v1/services/srv-db9ghm51hj4s73e9bmig",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9ghm51hj4s73e9bmig/deploys/dep-db9ghm51hj4s73e9bmj0",
+          "status": 404
+        },
+        {
+          "path": "/v1/projects/prj-db9gd79qj49s73b3i95g",
+          "status": 404
+        },
+        {
+          "path": "/v1/environments/evm-db9gdb1qj49s73b3i96g",
+          "status": 404
+        }
+      ]
+    },
+    "SessionCleared": {
+      "at": "2026-10-17T05:39:36.782Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  },
+  "physicalCleanup": {
+    "at": "2026-10-17T05:39:59.640003+00:00",
+    "app": {
+      "exitCode": 0,
+      "resources": []
+    },
+    "servingPods": {
+      "exitCode": 0,
+      "resources": []
+    },
+    "buildjobs": {
+      "exitCode": 0,
+      "resources": []
+    },
+    "buildpods": {
+      "exitCode": 0,
+      "resources": []
+    },
+    "publishjobs": {
+      "exitCode": 0,
+      "resources": []
+    },
+    "publishpods": {
+      "exitCode": 0,
+      "resources": []
+    },
+    "publicStatus": "404",
+    "publicExitCode": 0
+  },
+  "baselineIds": {
+    "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+    "databases": [
+      "dpg-d9nqg95cavls73fp8m20",
+      "dpg-d9rrkoc4h4mc73edurp0",
+      "dpg-d9rs3ee0ccis738kc7c0",
+      "dpg-db34l9bor55s73cqpq9g"
+    ],
+    "envGroups": ["evg-db0s94c48ccs739jikr0"],
+    "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+    "projects": [
+      "prj-d9dgeo0bd9nc73a0vh1g",
+      "prj-d9e5qct5qe4s73b1mjn0",
+      "prj-d9sgfnbjghus73cg6hg0"
+    ],
+    "services": [
+      "srv-d9bj8s3eg85c7390eb9g",
+      "srv-d9bkcspg9s7c73d0n8ug",
+      "srv-d9e40ei9086p3l1jri30",
+      "srv-d9ndt8hmcglc739fkp50",
+      "srv-d9nqg9dcavls73fp8m2g"
+    ],
+    "webhookEndpoints": []
+  },
+  "reviewedThroughHead": "f3859bc5eb41b0d6f46c5cad15069710aac2626a",
+  "sourceBlobs": {
+    "dashboard/src/features/environments/components/project-environment-selector.tsx": "6435a5bc0494f55f69245a4083f95d51fb0c2af8",
+    "dashboard/src/features/projects/hooks/use-projects.ts": "385f39aaaf9129901d6a651447202e74c2e1a68d",
+    "dashboard/src/features/environments/hooks/use-environments.ts": "f15ef42c69cafc15997b22d56ef358c57068118a",
+    "dashboard/src/features/services/lib/create-service-input.ts": "610084a1c29d53e33af101482f23fe40c1b6a73a"
+  }
+}
