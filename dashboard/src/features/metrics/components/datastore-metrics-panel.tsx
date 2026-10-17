@@ -6,6 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/common/components/ui/card.tsx";
+import { Skeleton } from "@/common/components/ui/skeleton";
 import {
   SvgLineChart,
   ChartLegend,
@@ -175,6 +176,15 @@ export function DatastoreMetricsPanel({
                     value: formatMetricValue("bytes", diskCapacityValue),
                   })}
                 </span>
+              ) : diskCapacity.loading ? (
+                // Hold the label's slot while it loads: beside the Postgres
+                // autoscaling box at phone width it takes a row of its own,
+                // so arriving late would push the chart down.
+                <Skeleton
+                  aria-hidden="true"
+                  data-testid="disk-capacity-pending"
+                  className="h-4 w-24"
+                />
               ) : null}
               {diskHeaderExtra}
             </div>

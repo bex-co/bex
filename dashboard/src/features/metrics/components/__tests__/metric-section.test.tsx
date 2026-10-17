@@ -159,3 +159,20 @@ describe("MetricSection throttled state", () => {
     );
   });
 });
+
+// The body's overflow-wrap:anywhere lets a flex item shrink below its longest
+// word, so a wide headerExtra squeezed "Disk" to one letter per line at 390px.
+describe("MetricSection title", () => {
+  it("keeps the title's words whole beside a header extra", () => {
+    render(
+      <MetricSection
+        title="Disk"
+        result={result()}
+        headerExtra={<div>Disk autoscaling</div>}
+      >
+        {CHILD}
+      </MetricSection>,
+    );
+    expect(screen.getByText("Disk")).toHaveClass("[overflow-wrap:normal]");
+  });
+});

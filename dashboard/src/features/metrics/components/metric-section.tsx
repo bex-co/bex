@@ -77,7 +77,11 @@ export function MetricSection({
   return (
     <div>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="text-sm font-medium text-foreground">{title}</div>
+        {/* The body's overflow-wrap:anywhere would let a wide headerExtra
+            squeeze a one-word title to a letter per line; words stay whole. */}
+        <div className="text-sm font-medium text-foreground [overflow-wrap:normal]">
+          {title}
+        </div>
         {headerExtra}
       </div>
       {body}
