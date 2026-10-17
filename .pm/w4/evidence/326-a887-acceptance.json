@@ -1,0 +1,4074 @@
+{
+  "pass": "a887",
+  "date": "2026-10-17",
+  "kind": "Post-release live acceptance w4/326, plus functional environment-group/service controls. No new bug or product fix.",
+  "researchHead": "3ddccbc82eefe964b0b0a5a0f8fe8f8439d84775",
+  "servingBuildSha": "not independently established",
+  "fixtures": {
+    "groupIds": ["evg-db9nu3cflioc739mcms0", "evg-db9nvicflioc739mcmug"],
+    "serviceId": "srv-db9o0css300s73dskfpg",
+    "deployIds": [
+      "dep-db9o28ks300s73dskfvg",
+      "dep-db9o1v4s300s73dskfu0",
+      "dep-db9o1qks300s73dskfs0",
+      "dep-db9o1h4s300s73dskfrg",
+      "dep-db9o0u4flioc739mcn00",
+      "dep-db9o0css300s73dskfq0"
+    ],
+    "allDeleted": true
+  },
+  "originalEvidence": {
+    "path": ".pm/w4/evidence/326-a725.json",
+    "sha256": "08b3cf7d3e0722059dcf8c14ecda6689401be88f93743d0825411dfde2b05a80"
+  },
+  "records": {
+    "Baseline": {
+      "at": "2026-10-17T13:55:29.170Z",
+      "status": 200,
+      "inventory": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      }
+    },
+    "CreateFilled": {
+      "at": "2026-10-17T13:56:57.757Z",
+      "checkedServiceCount": 0,
+      "createEnabled": true,
+      "inputs": {
+        "names": ["QA_A887_EMPTY", "QA_A887_MARKER"],
+        "values": ["", "source=A 雪\nsecond=2"],
+        "files": ["qa-a887-empty.txt", "qa-a887-marker.txt"],
+        "contents": ["", "file=A 雪\nsecond=2\n"]
+      }
+    },
+    "SourceCreated": {
+      "at": "2026-10-17T13:57:24.423Z",
+      "request": {
+        "operationName": "CreateEnvGroup",
+        "variables": {
+          "name": "qa-20261017-a887-source",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "envVars": [
+            {
+              "key": "QA_A887_EMPTY",
+              "value": ""
+            },
+            {
+              "key": "QA_A887_MARKER",
+              "value": "source=A 雪\nsecond=2"
+            }
+          ],
+          "secretFiles": [
+            {
+              "name": "qa-a887-empty.txt",
+              "content": ""
+            },
+            {
+              "name": "qa-a887-marker.txt",
+              "content": "file=A 雪\nsecond=2\n"
+            }
+          ],
+          "serviceIds": [],
+          "environmentId": null
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateEnvGroup($name: String!, $ownerId: String, $envVars: [EnvGroupVarInput!], $secretFiles: [EnvGroupSecretFileInput!], $serviceIds: [String!], $environmentId: String) {\n  createEnvGroup(\n    name: $name\n    ownerId: $ownerId\n    envVars: $envVars\n    secretFiles: $secretFiles\n    serviceIds: $serviceIds\n    environmentId: $environmentId\n  ) {\n    id\n    name\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": null,
+        "errors": [
+          {
+            "message": "the change ran out of time and may have been applied in part or in full; reload to see its outcome before trying again",
+            "locations": [],
+            "extensions": {
+              "code": "WRITE_OUTCOME_UNKNOWN"
+            }
+          }
+        ]
+      },
+      "timing": {
+        "startTime": 1792245418466.212,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.137,
+        "responseStart": 25237.355,
+        "responseEnd": 25238.246
+      },
+      "url": "https://dashboard.bex.co/env-groups"
+    },
+    "OutcomeOwnerList": {
+      "at": "2026-10-17T13:57:56.923Z",
+      "request": {
+        "operationName": "QaA887OwnedGroups",
+        "query": "query QaA887OwnedGroups($ownerId:String!){envGroups(ownerId:$ownerId){id name revision environmentId serviceLinks envVars{key} secretFiles{name}}}",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "envGroups": [
+            {
+              "envVars": [
+                {
+                  "key": "QA_R85_NORMAL"
+                },
+                {
+                  "key": "__proto__"
+                },
+                {
+                  "key": "constructor"
+                },
+                {
+                  "key": "toString"
+                }
+              ],
+              "environmentId": null,
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85",
+              "revision": "egr1_AAAAAAAAAAE",
+              "secretFiles": [],
+              "serviceLinks": []
+            }
+          ]
+        }
+      },
+      "dialog": "- dialog \"Create environment group\":\n  - heading \"Create environment group\" [level=2]\n  - paragraph: Add variables, secret files, and service links now or leave them empty.\n  - text: Group name\n  - textbox \"Group name\":\n    - /placeholder: shared-production\n    - text: qa-20261017-a887-source\n  - heading \"Environment Variables\" [level=3]\n  - paragraph: Set literal values or generate strong secrets during creation.\n  - text: Key\n  - textbox \"Key\":\n    - /placeholder: API_TOKEN\n    - text: QA_A887_EMPTY\n  - text: Value\n  - textbox \"Value\":\n    - /placeholder: Secret value\n  - button \"Generate\"\n  - button \"Remove variable 1\"\n  - text: Key\n  - textbox \"Key\":\n    - /placeholder: API_TOKEN\n    - text: QA_A887_MARKER\n  - text: Value\n  - textbox \"Value\":\n    - /placeholder: Secret value\n    - text: source=A 雪 second=2\n  - button \"Generate\"\n  - button \"Remove variable 2\"\n  - button \"Add Environment Variable\"\n  - button \"Import from .env\"\n  - heading \"Secret Files\" [level=3]\n  - paragraph: Files are encrypted and mounted under /etc/secrets.\n  - text: File name\n  - textbox \"File name\":\n    - /placeholder: credentials.json\n    - text: qa-a887-empty.txt\n  - text: Contents\n  - textbox \"Contents\":\n    - /placeholder: File contents\n  - button \"Remove secret file 1\"\n  - text: File name\n  - textbox \"File name\":\n    - /placeholder: credentials.json\n    - text: qa-a887-marker.txt\n  - text: Contents\n  - textbox \"Contents\":\n    - /placeholder: File contents\n    - text: file=A 雪 second=2\n  - button \"Remove secret file 2\"\n  - button \"Add Secret File\"\n  - heading \"Linked Services\" [level=3]\n  - paragraph: Selected services receive this group as soon as it is created.\n  - text: Environment\n  - combobox \"Environment\": Workspace (no Environment)\n  - checkbox \"agentmarketcap-1 srv-d9bkcspg9s7c73d0n8ug\"\n  - text: agentmarketcap-1 srv-d9bkcspg9s7c73d0n8ug\n  - checkbox \"beancount-cms-v2 srv-d9bj8s3eg85c7390eb9g\"\n  - text: beancount-cms-v2 srv-d9bj8s3eg85c7390eb9g\n  - checkbox \"beancount-forum srv-d9nqg9dcavls73fp8m2g\"\n  - text: beancount-forum srv-d9nqg9dcavls73fp8m2g\n  - checkbox \"eden-dash-v3 srv-d9ndt8hmcglc739fkp50\"\n  - text: eden-dash-v3 srv-d9ndt8hmcglc739fkp50\n  - checkbox \"eden-cms-v2 srv-d9e40ei9086p3l1jri30\"\n  - text: eden-cms-v2 srv-d9e40ei9086p3l1jri30\n  - button \"Cancel\"\n  - button \"Create Environment Group\"\n  - button \"Close\""
+    },
+    "EmptySourceCreated": {
+      "at": "2026-10-17T13:58:49.869Z",
+      "request": {
+        "operationName": "CreateEnvGroup",
+        "variables": {
+          "name": "qa-20261017-a887-source",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "envVars": [],
+          "secretFiles": [],
+          "serviceIds": [],
+          "environmentId": null
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateEnvGroup($name: String!, $ownerId: String, $envVars: [EnvGroupVarInput!], $secretFiles: [EnvGroupSecretFileInput!], $serviceIds: [String!], $environmentId: String) {\n  createEnvGroup(\n    name: $name\n    ownerId: $ownerId\n    envVars: $envVars\n    secretFiles: $secretFiles\n    serviceIds: $serviceIds\n    environmentId: $environmentId\n  ) {\n    id\n    name\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createEnvGroup": {
+            "__typename": "EnvGroup",
+            "id": "evg-db9nu3cflioc739mcms0",
+            "name": "qa-20261017-a887-source"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792245507513.9612,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.133,
+        "responseStart": 21646.253,
+        "responseEnd": 21647.074
+      },
+      "url": "https://dashboard.bex.co/env-groups"
+    },
+    "SourceContentsSaved": {
+      "at": "2026-10-17T14:01:23.107Z",
+      "request": {
+        "operationName": "PatchEnvGroupEnvironment",
+        "variables": {
+          "id": "evg-db9nu3cflioc739mcms0",
+          "envVars": [
+            {
+              "key": "QA_A887_EMPTY",
+              "value": ""
+            },
+            {
+              "key": "QA_A887_MARKER",
+              "value": "source=A 雪\nsecond=2"
+            }
+          ],
+          "secretFiles": [
+            {
+              "name": "qa-a887-empty.txt",
+              "content": ""
+            },
+            {
+              "name": "qa-a887-marker.txt",
+              "content": "file=A 雪\nsecond=2\n"
+            }
+          ],
+          "saveMode": "save_only",
+          "expectedRevision": "egr1_AAAAAAAAAAE"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation PatchEnvGroupEnvironment($id: String!, $envVars: [EnvGroupVarPatchInput!], $secretFiles: [EnvGroupSecretFilePatchInput!], $saveMode: String!, $expectedRevision: String) {\n  patchEnvGroupEnvironment(\n    id: $id\n    envVars: $envVars\n    secretFiles: $secretFiles\n    saveMode: $saveMode\n    expectedRevision: $expectedRevision\n  ) {\n    envVarKeys\n    secretFileNames\n    revision\n    affectedServiceIds\n    failedServiceIds\n    pendingServiceIds\n    rolledOut\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "patchEnvGroupEnvironment": {
+            "__typename": "EnvGroupEnvironmentPatchResult",
+            "affectedServiceIds": [],
+            "envVarKeys": ["QA_A887_EMPTY", "QA_A887_MARKER"],
+            "failedServiceIds": [],
+            "pendingServiceIds": [],
+            "revision": "egr1_AAAAAAAAAAI",
+            "rolledOut": false,
+            "secretFileNames": ["qa-a887-empty.txt", "qa-a887-marker.txt"]
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792245680295.954,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.144,
+        "responseStart": 2107.702,
+        "responseEnd": 2108.143
+      },
+      "url": "https://dashboard.bex.co/env-groups/evg-db9nu3cflioc739mcms0"
+    },
+    "CloneAttempt": {
+      "at": "2026-10-17T14:01:58.238Z",
+      "request": {
+        "operationName": "CloneEnvGroup",
+        "variables": {
+          "id": "evg-db9nu3cflioc739mcms0",
+          "name": "qa-20261017-a887-clone",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "environmentId": null
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CloneEnvGroup($id: String!, $name: String!, $ownerId: String, $environmentId: String) {\n  cloneEnvGroup(\n    id: $id\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n  ) {\n    id\n    name\n    ownerId\n    environmentId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "cloneEnvGroup": {
+            "__typename": "EnvGroup",
+            "environmentId": null,
+            "id": "evg-db9nvicflioc739mcmug",
+            "name": "qa-20261017-a887-clone",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792245694696.0151,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.14,
+        "responseStart": 22833.35,
+        "responseEnd": 22833.779
+      },
+      "url": "https://dashboard.bex.co/env-groups/evg-db9nvicflioc739mcmug"
+    },
+    "SourceCloneRestContents": {
+      "at": "2026-10-17T14:02:15.971Z",
+      "results": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nu3cflioc739mcms0/secret-files/qa-a887-empty.txt"
+          },
+          "status": 200,
+          "body": {
+            "name": "qa-a887-empty.txt",
+            "content": ""
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nu3cflioc739mcms0/secret-files/qa-a887-marker.txt"
+          },
+          "status": 200,
+          "body": {
+            "name": "qa-a887-marker.txt",
+            "content": "file=A 雪\nsecond=2\n"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nu3cflioc739mcms0/secret-files/qa-a887-missing.txt"
+          },
+          "status": 404,
+          "body": {
+            "code": "NOT_FOUND",
+            "error": "not found",
+            "id": "not_found",
+            "message": "not found",
+            "params": null
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nu3cflioc739mcms0/env-vars/QA_A887_EMPTY"
+          },
+          "status": 200,
+          "body": {
+            "key": "QA_A887_EMPTY",
+            "value": ""
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nu3cflioc739mcms0/env-vars/QA_A887_MARKER"
+          },
+          "status": 200,
+          "body": {
+            "key": "QA_A887_MARKER",
+            "value": "source=A 雪\nsecond=2"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nvicflioc739mcmug/secret-files/qa-a887-empty.txt"
+          },
+          "status": 200,
+          "body": {
+            "name": "qa-a887-empty.txt",
+            "content": ""
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nvicflioc739mcmug/secret-files/qa-a887-marker.txt"
+          },
+          "status": 200,
+          "body": {
+            "name": "qa-a887-marker.txt",
+            "content": "file=A 雪\nsecond=2\n"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nvicflioc739mcmug/secret-files/qa-a887-missing.txt"
+          },
+          "status": 404,
+          "body": {
+            "code": "NOT_FOUND",
+            "error": "not found",
+            "id": "not_found",
+            "message": "not found",
+            "params": null
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nvicflioc739mcmug/env-vars/QA_A887_EMPTY"
+          },
+          "status": 200,
+          "body": {
+            "key": "QA_A887_EMPTY",
+            "value": ""
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nvicflioc739mcmug/env-vars/QA_A887_MARKER"
+          },
+          "status": 200,
+          "body": {
+            "key": "QA_A887_MARKER",
+            "value": "source=A 雪\nsecond=2"
+          }
+        }
+      ]
+    },
+    "FreshSourceMobileEdit": {
+      "at": "2026-10-17T14:02:27.924Z",
+      "ui": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - link \"Environment Groups\":\n      - /url: /env-groups\n    - text: qa-20261017-a887-source\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - link \"Back to environment groups\":\n    - /url: /env-groups\n  - heading \"qa-20261017-a887-source\" [level=1]\n  - paragraph: evg-db9nu3cflioc739mcms0\n  - button \"Manage\"\n  - text: Group Metadata\n  - term: Owner\n  - definition: tea-d98210cbbpdc73dcrkvg\n  - term: Environment\n  - definition: Workspace (no Environment)\n  - term: Created\n  - definition:\n    - time: October 17, 2026 at 6:58 AM\n  - term: Updated\n  - definition:\n    - time: October 17, 2026 at 7:01 AM\n  - text: Environment Variables Values are encrypted and applied to every linked service.\n  - button \"Export\"\n  - button \"Add variable\"\n  - textbox \"Key\":\n    - /placeholder: NAME_OF_VARIABLE\n    - text: QA_A887_EMPTY\n  - textbox \"Value for QA_A887_EMPTY\":\n    - /placeholder: Unchanged (masked)\n  - button \"Delete QA_A887_EMPTY\"\n  - textbox \"Key\":\n    - /placeholder: NAME_OF_VARIABLE\n    - text: QA_A887_MARKER\n  - textbox \"Value for QA_A887_MARKER\":\n    - /placeholder: Unchanged (masked)\n  - button \"Delete QA_A887_MARKER\"\n  - text: Secret Files Encrypted files are mounted into every linked service at /etc/secrets.\n  - button \"Add secret file\"\n  - button \"Upload files\"\n  - button \"Choose File\"\n  - textbox \"File name\":\n    - /placeholder: filename.ext\n    - text: qa-a887-empty.txt\n  - button \"View contents of qa-a887-empty.txt\": View contents\n  - button \"Delete secret file qa-a887-empty.txt\"\n  - textbox \"File name\":\n    - /placeholder: filename.ext\n    - text: qa-a887-marker.txt\n  - button \"View contents of qa-a887-marker.txt\": View contents\n  - button \"Delete secret file qa-a887-marker.txt\"\n  - paragraph: Unsaved environment changes\n  - paragraph: 0 variable operations · 0 file operations\n  - button \"Cancel\"\n  - button \"Save and deploy\" [disabled]\n  - button \"Environment save options\" [disabled]\n  - text: Linked Services Linking or unlinking changes service configuration and can restart services even when auto-deploy is off. This group isn't linked to any services yet. It is still fully editable."
+    },
+    "NativeEmptyFileRead": {
+      "at": "2026-10-17T14:02:29.580Z",
+      "request": {
+        "operationName": "EnvGroupSecretFileContent",
+        "variables": {
+          "id": "evg-db9nu3cflioc739mcms0",
+          "name": "qa-a887-empty.txt"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query EnvGroupSecretFileContent($id: String!, $name: String!) {\n  envGroupSecretFile(id: $id, name: $name) {\n    name\n    content\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "envGroupSecretFile": {
+            "__typename": "EnvGroupSecretFile",
+            "content": "",
+            "name": "qa-a887-empty.txt"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792245748562.088,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.148,
+        "responseStart": 312.635,
+        "responseEnd": 313.161
+      },
+      "url": "https://dashboard.bex.co/env-groups/evg-db9nu3cflioc739mcms0"
+    },
+    "EmptyViewDoneNoop": {
+      "at": "2026-10-17T14:02:30.198Z",
+      "contents": "",
+      "dialog": "- dialog \"Contents of qa-a887-empty.txt\":\n  - heading \"Contents of qa-a887-empty.txt\" [level=2]\n  - paragraph: This file is mounted read-only at /etc/secrets after the next deploy.\n  - textbox \"Contents\"\n  - button \"Cancel\"\n  - button \"Done\"\n  - button \"Close\"",
+      "saveDisabled": true
+    },
+    "SourceCloneMcpContents": {
+      "at": "2026-10-17T14:02:43.416Z",
+      "results": [
+        {
+          "request": {
+            "jsonrpc": "2.0",
+            "id": 8871,
+            "method": "tools/call",
+            "params": {
+              "name": "get_env_group_secret_file",
+              "arguments": {
+                "id": "evg-db9nu3cflioc739mcms0",
+                "name": "qa-a887-empty.txt"
+              }
+            }
+          },
+          "status": 200,
+          "contentType": "text/event-stream",
+          "raw": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":8871,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"content\\\":\\\"\\\",\\\"name\\\":\\\"qa-a887-empty.txt\\\"}\"}],\"structuredContent\":{\"content\":\"\",\"name\":\"qa-a887-empty.txt\"}}}\n\n",
+          "messages": [
+            {
+              "jsonrpc": "2.0",
+              "id": 8871,
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"content\":\"\",\"name\":\"qa-a887-empty.txt\"}"
+                  }
+                ],
+                "structuredContent": {
+                  "content": "",
+                  "name": "qa-a887-empty.txt"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "request": {
+            "jsonrpc": "2.0",
+            "id": 8872,
+            "method": "tools/call",
+            "params": {
+              "name": "get_env_group_secret_file",
+              "arguments": {
+                "id": "evg-db9nu3cflioc739mcms0",
+                "name": "qa-a887-marker.txt"
+              }
+            }
+          },
+          "status": 200,
+          "contentType": "text/event-stream",
+          "raw": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":8872,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"content\\\":\\\"file=A 雪\\\\nsecond=2\\\\n\\\",\\\"name\\\":\\\"qa-a887-marker.txt\\\"}\"}],\"structuredContent\":{\"content\":\"file=A 雪\\nsecond=2\\n\",\"name\":\"qa-a887-marker.txt\"}}}\n\n",
+          "messages": [
+            {
+              "jsonrpc": "2.0",
+              "id": 8872,
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"content\":\"file=A 雪\\nsecond=2\\n\",\"name\":\"qa-a887-marker.txt\"}"
+                  }
+                ],
+                "structuredContent": {
+                  "content": "file=A 雪\nsecond=2\n",
+                  "name": "qa-a887-marker.txt"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "request": {
+            "jsonrpc": "2.0",
+            "id": 8873,
+            "method": "tools/call",
+            "params": {
+              "name": "get_env_group_secret_file",
+              "arguments": {
+                "id": "evg-db9nu3cflioc739mcms0",
+                "name": "qa-a887-missing.txt"
+              }
+            }
+          },
+          "status": 200,
+          "contentType": "text/event-stream",
+          "raw": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":8873,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"NOT_FOUND: not found\"}],\"isError\":true}}\n\n",
+          "messages": [
+            {
+              "jsonrpc": "2.0",
+              "id": 8873,
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "NOT_FOUND: not found"
+                  }
+                ],
+                "isError": true
+              }
+            }
+          ]
+        },
+        {
+          "request": {
+            "jsonrpc": "2.0",
+            "id": 8874,
+            "method": "tools/call",
+            "params": {
+              "name": "get_env_group_secret_file",
+              "arguments": {
+                "id": "evg-db9nvicflioc739mcmug",
+                "name": "qa-a887-empty.txt"
+              }
+            }
+          },
+          "status": 200,
+          "contentType": "text/event-stream",
+          "raw": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":8874,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"content\\\":\\\"\\\",\\\"name\\\":\\\"qa-a887-empty.txt\\\"}\"}],\"structuredContent\":{\"content\":\"\",\"name\":\"qa-a887-empty.txt\"}}}\n\n",
+          "messages": [
+            {
+              "jsonrpc": "2.0",
+              "id": 8874,
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"content\":\"\",\"name\":\"qa-a887-empty.txt\"}"
+                  }
+                ],
+                "structuredContent": {
+                  "content": "",
+                  "name": "qa-a887-empty.txt"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "request": {
+            "jsonrpc": "2.0",
+            "id": 8875,
+            "method": "tools/call",
+            "params": {
+              "name": "get_env_group_secret_file",
+              "arguments": {
+                "id": "evg-db9nvicflioc739mcmug",
+                "name": "qa-a887-marker.txt"
+              }
+            }
+          },
+          "status": 200,
+          "contentType": "text/event-stream",
+          "raw": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":8875,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"content\\\":\\\"file=A 雪\\\\nsecond=2\\\\n\\\",\\\"name\\\":\\\"qa-a887-marker.txt\\\"}\"}],\"structuredContent\":{\"content\":\"file=A 雪\\nsecond=2\\n\",\"name\":\"qa-a887-marker.txt\"}}}\n\n",
+          "messages": [
+            {
+              "jsonrpc": "2.0",
+              "id": 8875,
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"content\":\"file=A 雪\\nsecond=2\\n\",\"name\":\"qa-a887-marker.txt\"}"
+                  }
+                ],
+                "structuredContent": {
+                  "content": "file=A 雪\nsecond=2\n",
+                  "name": "qa-a887-marker.txt"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "request": {
+            "jsonrpc": "2.0",
+            "id": 8876,
+            "method": "tools/call",
+            "params": {
+              "name": "get_env_group_secret_file",
+              "arguments": {
+                "id": "evg-db9nvicflioc739mcmug",
+                "name": "qa-a887-missing.txt"
+              }
+            }
+          },
+          "status": 200,
+          "contentType": "text/event-stream",
+          "raw": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":8876,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"NOT_FOUND: not found\"}],\"isError\":true}}\n\n",
+          "messages": [
+            {
+              "jsonrpc": "2.0",
+              "id": 8876,
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "NOT_FOUND: not found"
+                  }
+                ],
+                "isError": true
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "CloneMobileReady": {
+      "at": "2026-10-17T14:02:45.827Z",
+      "url": "https://dashboard.bex.co/env-groups/evg-db9nvicflioc739mcmug",
+      "ui": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - link \"Environment Groups\":\n      - /url: /env-groups\n    - text: qa-20261017-a887-clone\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - link \"Back to environment groups\":\n    - /url: /env-groups\n  - heading \"qa-20261017-a887-clone\" [level=1]\n  - paragraph: evg-db9nvicflioc739mcmug\n  - button \"Manage\"\n  - text: Group Metadata\n  - term: Owner\n  - definition: tea-d98210cbbpdc73dcrkvg\n  - term: Environment\n  - definition: Workspace (no Environment)\n  - term: Created\n  - definition:\n    - time: October 17, 2026 at 7:01 AM\n  - term: Updated\n  - definition:\n    - time: October 17, 2026 at 7:01 AM\n  - text: Environment Variables Values are encrypted and applied to every linked service.\n  - button \"Export\"\n  - button \"Add variable\"\n  - textbox \"Key\":\n    - /placeholder: NAME_OF_VARIABLE\n    - text: QA_A887_EMPTY\n  - textbox \"Value for QA_A887_EMPTY\":\n    - /placeholder: Unchanged (masked)\n  - button \"Delete QA_A887_EMPTY\"\n  - textbox \"Key\":\n    - /placeholder: NAME_OF_VARIABLE\n    - text: QA_A887_MARKER\n  - textbox \"Value for QA_A887_MARKER\":\n    - /placeholder: Unchanged (masked)\n  - button \"Delete QA_A887_MARKER\"\n  - text: Secret Files Encrypted files are mounted into every linked service at /etc/secrets.\n  - button \"Add secret file\"\n  - button \"Upload files\"\n  - button \"Choose File\"\n  - textbox \"File name\":\n    - /placeholder: filename.ext\n    - text: qa-a887-empty.txt\n  - button \"View contents of qa-a887-empty.txt\": View contents\n  - button \"Delete secret file qa-a887-empty.txt\"\n  - textbox \"File name\":\n    - /placeholder: filename.ext\n    - text: qa-a887-marker.txt\n  - button \"View contents of qa-a887-marker.txt\": View contents\n  - button \"Delete secret file qa-a887-marker.txt\"\n  - paragraph: Unsaved environment changes\n  - paragraph: 0 variable operations · 0 file operations\n  - button \"Cancel\"\n  - button \"Save and deploy\" [disabled]\n  - button \"Environment save options\" [disabled]\n  - text: Linked Services Linking or unlinking changes service configuration and can restart services even when auto-deploy is off. This group isn't linked to any services yet. It is still fully editable."
+    },
+    "CloneNativeEmptyRead": {
+      "at": "2026-10-17T14:02:47.417Z",
+      "request": {
+        "operationName": "EnvGroupSecretFileContent",
+        "variables": {
+          "id": "evg-db9nvicflioc739mcmug",
+          "name": "qa-a887-empty.txt"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query EnvGroupSecretFileContent($id: String!, $name: String!) {\n  envGroupSecretFile(id: $id, name: $name) {\n    name\n    content\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "envGroupSecretFile": {
+            "__typename": "EnvGroupSecretFile",
+            "content": "",
+            "name": "qa-a887-empty.txt"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792245766461.0952,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.153,
+        "responseStart": 249.746,
+        "responseEnd": 250.198
+      },
+      "url": "https://dashboard.bex.co/env-groups/evg-db9nvicflioc739mcmug"
+    },
+    "CloneFileSaved": {
+      "at": "2026-10-17T14:02:51.274Z",
+      "request": {
+        "operationName": "PatchEnvGroupEnvironment",
+        "variables": {
+          "id": "evg-db9nvicflioc739mcmug",
+          "envVars": [],
+          "secretFiles": [
+            {
+              "name": "qa-a887-empty.txt",
+              "content": "CLONE ONLY 雪\n"
+            }
+          ],
+          "saveMode": "save_only",
+          "expectedRevision": "egr1_AAAAAAAAAAE"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation PatchEnvGroupEnvironment($id: String!, $envVars: [EnvGroupVarPatchInput!], $secretFiles: [EnvGroupSecretFilePatchInput!], $saveMode: String!, $expectedRevision: String) {\n  patchEnvGroupEnvironment(\n    id: $id\n    envVars: $envVars\n    secretFiles: $secretFiles\n    saveMode: $saveMode\n    expectedRevision: $expectedRevision\n  ) {\n    envVarKeys\n    secretFileNames\n    revision\n    affectedServiceIds\n    failedServiceIds\n    pendingServiceIds\n    rolledOut\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "patchEnvGroupEnvironment": {
+            "__typename": "EnvGroupEnvironmentPatchResult",
+            "affectedServiceIds": [],
+            "envVarKeys": ["QA_A887_EMPTY", "QA_A887_MARKER"],
+            "failedServiceIds": [],
+            "pendingServiceIds": [],
+            "revision": "egr1_AAAAAAAAAAI",
+            "rolledOut": false,
+            "secretFileNames": ["qa-a887-empty.txt", "qa-a887-marker.txt"]
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792245768695.417,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.152,
+        "responseStart": 1870.329,
+        "responseEnd": 1870.99
+      },
+      "url": "https://dashboard.bex.co/env-groups/evg-db9nvicflioc739mcmug"
+    },
+    "CloneEditedIndependentReadback": {
+      "at": "2026-10-17T14:03:08.494Z",
+      "rows": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nu3cflioc739mcms0"
+          },
+          "status": 200,
+          "body": {
+            "id": "evg-db9nu3cflioc739mcms0",
+            "name": "qa-20261017-a887-source",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "envVars": [
+              {
+                "key": "QA_A887_EMPTY"
+              },
+              {
+                "key": "QA_A887_MARKER"
+              }
+            ],
+            "secretFiles": [
+              {
+                "name": "qa-a887-empty.txt"
+              },
+              {
+                "name": "qa-a887-marker.txt"
+              }
+            ],
+            "createdAt": "2026-10-17T13:58:48.652014649Z",
+            "updatedAt": "2026-10-17T14:01:21.887678362Z",
+            "revision": "egr1_AAAAAAAAAAI",
+            "serviceLinks": []
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nu3cflioc739mcms0/secret-files/qa-a887-empty.txt"
+          },
+          "status": 200,
+          "body": {
+            "name": "qa-a887-empty.txt",
+            "content": ""
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nu3cflioc739mcms0/secret-files/qa-a887-marker.txt"
+          },
+          "status": 200,
+          "body": {
+            "name": "qa-a887-marker.txt",
+            "content": "file=A 雪\nsecond=2\n"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nu3cflioc739mcms0/env-vars/QA_A887_EMPTY"
+          },
+          "status": 200,
+          "body": {
+            "key": "QA_A887_EMPTY",
+            "value": ""
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nu3cflioc739mcms0/env-vars/QA_A887_MARKER"
+          },
+          "status": 200,
+          "body": {
+            "key": "QA_A887_MARKER",
+            "value": "source=A 雪\nsecond=2"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nvicflioc739mcmug"
+          },
+          "status": 200,
+          "body": {
+            "id": "evg-db9nvicflioc739mcmug",
+            "name": "qa-20261017-a887-clone",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "envVars": [
+              {
+                "key": "QA_A887_EMPTY"
+              },
+              {
+                "key": "QA_A887_MARKER"
+              }
+            ],
+            "secretFiles": [
+              {
+                "name": "qa-a887-empty.txt"
+              },
+              {
+                "name": "qa-a887-marker.txt"
+              }
+            ],
+            "createdAt": "2026-10-17T14:01:56.496847931Z",
+            "updatedAt": "2026-10-17T14:02:49.286105248Z",
+            "revision": "egr1_AAAAAAAAAAI",
+            "serviceLinks": []
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nvicflioc739mcmug/secret-files/qa-a887-empty.txt"
+          },
+          "status": 200,
+          "body": {
+            "name": "qa-a887-empty.txt",
+            "content": "CLONE ONLY 雪\n"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nvicflioc739mcmug/secret-files/qa-a887-marker.txt"
+          },
+          "status": 200,
+          "body": {
+            "name": "qa-a887-marker.txt",
+            "content": "file=A 雪\nsecond=2\n"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nvicflioc739mcmug/env-vars/QA_A887_EMPTY"
+          },
+          "status": 200,
+          "body": {
+            "key": "QA_A887_EMPTY",
+            "value": ""
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nvicflioc739mcmug/env-vars/QA_A887_MARKER"
+          },
+          "status": 200,
+          "body": {
+            "key": "QA_A887_MARKER",
+            "value": "source=A 雪\nsecond=2"
+          }
+        }
+      ]
+    },
+    "ServiceCreateFilled": {
+      "at": "2026-10-17T14:03:30.465Z",
+      "freeChecked": true,
+      "freeLabel": null,
+      "command": "node -e 'const http=require(\"http\"),fs=require(\"fs\");const read=(name)=>{try{return fs.readFileSync(\"/etc/secrets/\"+name,\"utf8\")}catch{return null}};const startedAt=new Date().toISOString();http.createServer((req,res)=>{res.setHeader(\"content-type\",\"application/json\");res.end(JSON.stringify({marker:process.env.QA_A887_MARKER??null,empty:process.env.QA_A887_EMPTY??null,emptyFile:read(\"qa-a887-empty.txt\"),markerFile:read(\"qa-a887-marker.txt\"),startedAt,pid:process.pid}))}).listen(Number(process.env.PORT||8080),\"0.0.0.0\")'",
+      "deployEnabled": true
+    },
+    "ServiceCreated": {
+      "at": "2026-10-17T14:03:32.806Z",
+      "request": {
+        "operationName": "CreateService",
+        "variables": {
+          "image": "docker.io/library/node:24-alpine",
+          "name": "qa-20261017-a887-groups",
+          "type": "web_service",
+          "registryCredentialId": "",
+          "runtime": "image",
+          "startCommand": "node -e 'const http=require(\"http\"),fs=require(\"fs\");const read=(name)=>{try{return fs.readFileSync(\"/etc/secrets/\"+name,\"utf8\")}catch{return null}};const startedAt=new Date().toISOString();http.createServer((req,res)=>{res.setHeader(\"content-type\",\"application/json\");res.end(JSON.stringify({marker:process.env.QA_A887_MARKER??null,empty:process.env.QA_A887_EMPTY??null,emptyFile:read(\"qa-a887-empty.txt\"),markerFile:read(\"qa-a887-marker.txt\"),startedAt,pid:process.pid}))}).listen(Number(process.env.PORT||8080),\"0.0.0.0\")'",
+          "plan": "free",
+          "port": 8080,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db9o0css300s73dskfpg",
+            "latestDeployId": "dep-db9o0css300s73dskfq0",
+            "name": "qa-20261017-a887-groups",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": "",
+            "type": "web_service"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792245811793.3262,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.134,
+        "responseStart": 291.907,
+        "responseEnd": 292.574
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9o0css300s73dskfpg/deploys/dep-db9o0css300s73dskfq0"
+    },
+    "InitialServiceVerified": {
+      "at": "2026-10-17T14:04:23.216Z",
+      "request": {
+        "operationName": "QaA887ServiceRuntime",
+        "query": "query QaA887ServiceRuntime($id:String!,$deployId:String!){server(id:$id){id name url phase linkedEnvGroupIds undeployedChanges undeployedChangesApplying} deploy(serviceId:$id,deployId:$deployId){id status trigger failureReason}}",
+        "variables": {
+          "id": "srv-db9o0css300s73dskfpg",
+          "deployId": "dep-db9o0css300s73dskfq0"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploy": {
+            "failureReason": "",
+            "id": "dep-db9o0css300s73dskfq0",
+            "status": "live",
+            "trigger": "create"
+          },
+          "server": {
+            "id": "srv-db9o0css300s73dskfpg",
+            "linkedEnvGroupIds": [],
+            "name": "qa-20261017-a887-groups",
+            "phase": "Running",
+            "undeployedChanges": false,
+            "undeployedChangesApplying": false,
+            "url": "https://qa-20261017-a887-groups.onbex.co"
+          }
+        }
+      }
+    },
+    "SourceLinked": {
+      "at": "2026-10-17T14:04:41.505Z",
+      "request": {
+        "operationName": "LinkEnvGroup",
+        "variables": {
+          "id": "evg-db9nu3cflioc739mcms0",
+          "serviceId": "srv-db9o0css300s73dskfpg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation LinkEnvGroup($id: String!, $serviceId: String!) {\n  linkEnvGroup(id: $id, serviceId: $serviceId)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "linkEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792245880242.6782,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.138,
+        "responseStart": 549.642,
+        "responseEnd": 550.432
+      },
+      "url": "https://dashboard.bex.co/env-groups/evg-db9nu3cflioc739mcms0"
+    },
+    "SourceLinkedRuntime": {
+      "at": "2026-10-17T14:05:03.978Z",
+      "request": {
+        "operationName": "QaA887Runtime",
+        "query": "query QaA887Runtime($id:String!){server(id:$id){id name phase url linkedEnvGroupIds undeployedChanges undeployedChangesApplying} deploys(serviceId:$id,limit:20){id status trigger failureReason}}",
+        "variables": {
+          "id": "srv-db9o0css300s73dskfpg"
+        }
+      },
+      "expected": {
+        "marker": "source=A 雪\nsecond=2",
+        "empty": "",
+        "emptyFile": "",
+        "markerFile": "file=A 雪\nsecond=2\n"
+      },
+      "polls": [
+        {
+          "at": "2026-10-17T14:04:43.164Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "created",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": ["evg-db9nu3cflioc739mcms0"],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Deploying",
+                "undeployedChanges": true,
+                "undeployedChangesApplying": true,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":null,\"empty\":null,\"emptyFile\":null,\"markerFile\":null,\"startedAt\":\"2026-10-17T14:03:34.187Z\",\"pid\":1}",
+            "body": {
+              "marker": null,
+              "empty": null,
+              "emptyFile": null,
+              "markerFile": null,
+              "startedAt": "2026-10-17T14:03:34.187Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:04:46.147Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "created",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": ["evg-db9nu3cflioc739mcms0"],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Deploying",
+                "undeployedChanges": true,
+                "undeployedChangesApplying": true,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":null,\"empty\":null,\"emptyFile\":null,\"markerFile\":null,\"startedAt\":\"2026-10-17T14:03:34.187Z\",\"pid\":1}",
+            "body": {
+              "marker": null,
+              "empty": null,
+              "emptyFile": null,
+              "markerFile": null,
+              "startedAt": "2026-10-17T14:03:34.187Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:04:49.156Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "update_in_progress",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": ["evg-db9nu3cflioc739mcms0"],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Deploying",
+                "undeployedChanges": true,
+                "undeployedChangesApplying": true,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":null,\"empty\":null,\"emptyFile\":null,\"markerFile\":null,\"startedAt\":\"2026-10-17T14:03:34.187Z\",\"pid\":1}",
+            "body": {
+              "marker": null,
+              "empty": null,
+              "emptyFile": null,
+              "markerFile": null,
+              "startedAt": "2026-10-17T14:03:34.187Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:04:52.107Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "update_in_progress",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": ["evg-db9nu3cflioc739mcms0"],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Running",
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":null,\"empty\":null,\"emptyFile\":null,\"markerFile\":null,\"startedAt\":\"2026-10-17T14:03:34.187Z\",\"pid\":1}",
+            "body": {
+              "marker": null,
+              "empty": null,
+              "emptyFile": null,
+              "markerFile": null,
+              "startedAt": "2026-10-17T14:03:34.187Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:04:55.177Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "update_in_progress",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": ["evg-db9nu3cflioc739mcms0"],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Running",
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":\"source=A 雪\\nsecond=2\",\"empty\":\"\",\"emptyFile\":\"\",\"markerFile\":\"file=A 雪\\nsecond=2\\n\",\"startedAt\":\"2026-10-17T14:04:46.102Z\",\"pid\":1}",
+            "body": {
+              "marker": "source=A 雪\nsecond=2",
+              "empty": "",
+              "emptyFile": "",
+              "markerFile": "file=A 雪\nsecond=2\n",
+              "startedAt": "2026-10-17T14:04:46.102Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:04:58.122Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "update_in_progress",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": ["evg-db9nu3cflioc739mcms0"],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Running",
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":\"source=A 雪\\nsecond=2\",\"empty\":\"\",\"emptyFile\":\"\",\"markerFile\":\"file=A 雪\\nsecond=2\\n\",\"startedAt\":\"2026-10-17T14:04:46.102Z\",\"pid\":1}",
+            "body": {
+              "marker": "source=A 雪\nsecond=2",
+              "empty": "",
+              "emptyFile": "",
+              "markerFile": "file=A 雪\nsecond=2\n",
+              "startedAt": "2026-10-17T14:04:46.102Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:05:01.030Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "update_in_progress",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": ["evg-db9nu3cflioc739mcms0"],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Running",
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":\"source=A 雪\\nsecond=2\",\"empty\":\"\",\"emptyFile\":\"\",\"markerFile\":\"file=A 雪\\nsecond=2\\n\",\"startedAt\":\"2026-10-17T14:04:46.102Z\",\"pid\":1}",
+            "body": {
+              "marker": "source=A 雪\nsecond=2",
+              "empty": "",
+              "emptyFile": "",
+              "markerFile": "file=A 雪\nsecond=2\n",
+              "startedAt": "2026-10-17T14:04:46.102Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:05:03.978Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": ["evg-db9nu3cflioc739mcms0"],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Running",
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":\"source=A 雪\\nsecond=2\",\"empty\":\"\",\"emptyFile\":\"\",\"markerFile\":\"file=A 雪\\nsecond=2\\n\",\"startedAt\":\"2026-10-17T14:04:46.102Z\",\"pid\":1}",
+            "body": {
+              "marker": "source=A 雪\nsecond=2",
+              "empty": "",
+              "emptyFile": "",
+              "markerFile": "file=A 雪\nsecond=2\n",
+              "startedAt": "2026-10-17T14:04:46.102Z",
+              "pid": 1
+            }
+          }
+        }
+      ]
+    },
+    "SourceBSavedOnly": {
+      "at": "2026-10-17T14:05:22.730Z",
+      "request": {
+        "operationName": "PatchEnvGroupEnvironment",
+        "variables": {
+          "id": "evg-db9nu3cflioc739mcms0",
+          "envVars": [
+            {
+              "key": "QA_A887_MARKER",
+              "value": "source=B 風\nsecond=3"
+            }
+          ],
+          "secretFiles": [
+            {
+              "name": "qa-a887-marker.txt",
+              "content": "file=B 風\nsecond=3\n"
+            }
+          ],
+          "saveMode": "save_only",
+          "expectedRevision": "egr1_AAAAAAAAAAI"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation PatchEnvGroupEnvironment($id: String!, $envVars: [EnvGroupVarPatchInput!], $secretFiles: [EnvGroupSecretFilePatchInput!], $saveMode: String!, $expectedRevision: String) {\n  patchEnvGroupEnvironment(\n    id: $id\n    envVars: $envVars\n    secretFiles: $secretFiles\n    saveMode: $saveMode\n    expectedRevision: $expectedRevision\n  ) {\n    envVarKeys\n    secretFileNames\n    revision\n    affectedServiceIds\n    failedServiceIds\n    pendingServiceIds\n    rolledOut\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "patchEnvGroupEnvironment": {
+            "__typename": "EnvGroupEnvironmentPatchResult",
+            "affectedServiceIds": ["srv-db9o0css300s73dskfpg"],
+            "envVarKeys": ["QA_A887_EMPTY", "QA_A887_MARKER"],
+            "failedServiceIds": [],
+            "pendingServiceIds": [],
+            "revision": "egr1_AAAAAAAAAAM",
+            "rolledOut": false,
+            "secretFileNames": ["qa-a887-empty.txt", "qa-a887-marker.txt"]
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792245920641.098,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.153,
+        "responseStart": 1378.02,
+        "responseEnd": 1379.189
+      },
+      "url": "https://dashboard.bex.co/env-groups/evg-db9nu3cflioc739mcms0"
+    },
+    "SaveOnlyRuntimeA": {
+      "at": "2026-10-17T14:05:24.447Z",
+      "request": {
+        "operationName": "QaA887Runtime",
+        "query": "query QaA887Runtime($id:String!){server(id:$id){id name phase url linkedEnvGroupIds undeployedChanges undeployedChangesApplying} deploys(serviceId:$id,limit:20){id status trigger failureReason}}",
+        "variables": {
+          "id": "srv-db9o0css300s73dskfpg"
+        }
+      },
+      "expected": {
+        "marker": "source=A 雪\nsecond=2",
+        "empty": "",
+        "emptyFile": "",
+        "markerFile": "file=A 雪\nsecond=2\n"
+      },
+      "polls": [
+        {
+          "at": "2026-10-17T14:05:24.447Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": ["evg-db9nu3cflioc739mcms0"],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Running",
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":\"source=A 雪\\nsecond=2\",\"empty\":\"\",\"emptyFile\":\"\",\"markerFile\":\"file=A 雪\\nsecond=2\\n\",\"startedAt\":\"2026-10-17T14:04:46.102Z\",\"pid\":1}",
+            "body": {
+              "marker": "source=A 雪\nsecond=2",
+              "empty": "",
+              "emptyFile": "",
+              "markerFile": "file=A 雪\nsecond=2\n",
+              "startedAt": "2026-10-17T14:04:46.102Z",
+              "pid": 1
+            }
+          }
+        }
+      ]
+    },
+    "SavedBSourceCloneUnchanged": {
+      "at": "2026-10-17T14:05:28.679Z",
+      "rows": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nu3cflioc739mcms0"
+          },
+          "status": 200,
+          "body": {
+            "id": "evg-db9nu3cflioc739mcms0",
+            "name": "qa-20261017-a887-source",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "envVars": [
+              {
+                "key": "QA_A887_EMPTY"
+              },
+              {
+                "key": "QA_A887_MARKER"
+              }
+            ],
+            "secretFiles": [
+              {
+                "name": "qa-a887-empty.txt"
+              },
+              {
+                "name": "qa-a887-marker.txt"
+              }
+            ],
+            "createdAt": "2026-10-17T13:58:48.652014649Z",
+            "updatedAt": "2026-10-17T14:05:21.38399289Z",
+            "revision": "egr1_AAAAAAAAAAM",
+            "serviceLinks": [
+              {
+                "id": "srv-db9o0css300s73dskfpg",
+                "name": "qa-20261017-a887-groups",
+                "type": "web"
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nu3cflioc739mcms0/secret-files/qa-a887-empty.txt"
+          },
+          "status": 200,
+          "body": {
+            "name": "qa-a887-empty.txt",
+            "content": ""
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nu3cflioc739mcms0/secret-files/qa-a887-marker.txt"
+          },
+          "status": 200,
+          "body": {
+            "name": "qa-a887-marker.txt",
+            "content": "file=B 風\nsecond=3\n"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nu3cflioc739mcms0/env-vars/QA_A887_EMPTY"
+          },
+          "status": 200,
+          "body": {
+            "key": "QA_A887_EMPTY",
+            "value": ""
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nu3cflioc739mcms0/env-vars/QA_A887_MARKER"
+          },
+          "status": 200,
+          "body": {
+            "key": "QA_A887_MARKER",
+            "value": "source=B 風\nsecond=3"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nvicflioc739mcmug"
+          },
+          "status": 200,
+          "body": {
+            "id": "evg-db9nvicflioc739mcmug",
+            "name": "qa-20261017-a887-clone",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "envVars": [
+              {
+                "key": "QA_A887_EMPTY"
+              },
+              {
+                "key": "QA_A887_MARKER"
+              }
+            ],
+            "secretFiles": [
+              {
+                "name": "qa-a887-empty.txt"
+              },
+              {
+                "name": "qa-a887-marker.txt"
+              }
+            ],
+            "createdAt": "2026-10-17T14:01:56.496847931Z",
+            "updatedAt": "2026-10-17T14:02:49.286105248Z",
+            "revision": "egr1_AAAAAAAAAAI",
+            "serviceLinks": []
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nvicflioc739mcmug/secret-files/qa-a887-empty.txt"
+          },
+          "status": 200,
+          "body": {
+            "name": "qa-a887-empty.txt",
+            "content": "CLONE ONLY 雪\n"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nvicflioc739mcmug/secret-files/qa-a887-marker.txt"
+          },
+          "status": 200,
+          "body": {
+            "name": "qa-a887-marker.txt",
+            "content": "file=A 雪\nsecond=2\n"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nvicflioc739mcmug/env-vars/QA_A887_EMPTY"
+          },
+          "status": 200,
+          "body": {
+            "key": "QA_A887_EMPTY",
+            "value": ""
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nvicflioc739mcmug/env-vars/QA_A887_MARKER"
+          },
+          "status": 200,
+          "body": {
+            "key": "QA_A887_MARKER",
+            "value": "source=A 雪\nsecond=2"
+          }
+        }
+      ]
+    },
+    "SaveOnlyPendingObservation": {
+      "at": "2026-10-17T14:05:52.931Z",
+      "request": {
+        "operationName": "QaA887Runtime",
+        "query": "query QaA887Runtime($id:String!){server(id:$id){id name phase url linkedEnvGroupIds undeployedChanges undeployedChangesApplying} deploys(serviceId:$id,limit:20){id status trigger failureReason}}",
+        "variables": {
+          "id": "srv-db9o0css300s73dskfpg"
+        }
+      },
+      "polls": [
+        {
+          "at": "2026-10-17T14:05:48.008Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": ["evg-db9nu3cflioc739mcms0"],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Running",
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:05:52.739Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": ["evg-db9nu3cflioc739mcms0"],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Running",
+                "undeployedChanges": true,
+                "undeployedChangesApplying": false,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          }
+        }
+      ],
+      "public": {
+        "status": 200,
+        "body": {
+          "marker": "source=A 雪\nsecond=2",
+          "empty": "",
+          "emptyFile": "",
+          "markerFile": "file=A 雪\nsecond=2\n",
+          "startedAt": "2026-10-17T14:04:46.102Z",
+          "pid": 1
+        }
+      }
+    },
+    "SourceCDeployed": {
+      "at": "2026-10-17T14:05:57.447Z",
+      "request": {
+        "operationName": "PatchEnvGroupEnvironment",
+        "variables": {
+          "id": "evg-db9nu3cflioc739mcms0",
+          "envVars": [
+            {
+              "key": "QA_A887_MARKER",
+              "value": "source=C 雨\nsecond=4"
+            }
+          ],
+          "secretFiles": [
+            {
+              "name": "qa-a887-marker.txt",
+              "content": "file=C 雨\nsecond=4\n"
+            }
+          ],
+          "saveMode": "deploy",
+          "expectedRevision": "egr1_AAAAAAAAAAM"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation PatchEnvGroupEnvironment($id: String!, $envVars: [EnvGroupVarPatchInput!], $secretFiles: [EnvGroupSecretFilePatchInput!], $saveMode: String!, $expectedRevision: String) {\n  patchEnvGroupEnvironment(\n    id: $id\n    envVars: $envVars\n    secretFiles: $secretFiles\n    saveMode: $saveMode\n    expectedRevision: $expectedRevision\n  ) {\n    envVarKeys\n    secretFileNames\n    revision\n    affectedServiceIds\n    failedServiceIds\n    pendingServiceIds\n    rolledOut\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "patchEnvGroupEnvironment": {
+            "__typename": "EnvGroupEnvironmentPatchResult",
+            "affectedServiceIds": ["srv-db9o0css300s73dskfpg"],
+            "envVarKeys": ["QA_A887_EMPTY", "QA_A887_MARKER"],
+            "failedServiceIds": [],
+            "pendingServiceIds": [],
+            "revision": "egr1_AAAAAAAAAAQ",
+            "rolledOut": true,
+            "secretFileNames": ["qa-a887-empty.txt", "qa-a887-marker.txt"]
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792245955041.9587,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.119,
+        "responseStart": 1699.621,
+        "responseEnd": 1700.171
+      },
+      "url": "https://dashboard.bex.co/env-groups/evg-db9nu3cflioc739mcms0"
+    },
+    "SourceCRuntime": {
+      "at": "2026-10-17T14:06:19.524Z",
+      "request": {
+        "operationName": "QaA887Runtime",
+        "query": "query QaA887Runtime($id:String!){server(id:$id){id name phase url linkedEnvGroupIds undeployedChanges undeployedChangesApplying} deploys(serviceId:$id,limit:20){id status trigger failureReason}}",
+        "variables": {
+          "id": "srv-db9o0css300s73dskfpg"
+        }
+      },
+      "expected": {
+        "marker": "source=C 雨\nsecond=4",
+        "empty": "",
+        "emptyFile": "",
+        "markerFile": "file=C 雨\nsecond=4\n"
+      },
+      "polls": [
+        {
+          "at": "2026-10-17T14:05:58.981Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1h4s300s73dskfrg",
+                  "status": "created",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": ["evg-db9nu3cflioc739mcms0"],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Deploying",
+                "undeployedChanges": true,
+                "undeployedChangesApplying": true,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":\"source=A 雪\\nsecond=2\",\"empty\":\"\",\"emptyFile\":\"\",\"markerFile\":\"file=A 雪\\nsecond=2\\n\",\"startedAt\":\"2026-10-17T14:04:46.102Z\",\"pid\":1}",
+            "body": {
+              "marker": "source=A 雪\nsecond=2",
+              "empty": "",
+              "emptyFile": "",
+              "markerFile": "file=A 雪\nsecond=2\n",
+              "startedAt": "2026-10-17T14:04:46.102Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:06:01.911Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1h4s300s73dskfrg",
+                  "status": "created",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": ["evg-db9nu3cflioc739mcms0"],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Deploying",
+                "undeployedChanges": true,
+                "undeployedChangesApplying": true,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":\"source=A 雪\\nsecond=2\",\"empty\":\"\",\"emptyFile\":\"\",\"markerFile\":\"file=A 雪\\nsecond=2\\n\",\"startedAt\":\"2026-10-17T14:04:46.102Z\",\"pid\":1}",
+            "body": {
+              "marker": "source=A 雪\nsecond=2",
+              "empty": "",
+              "emptyFile": "",
+              "markerFile": "file=A 雪\nsecond=2\n",
+              "startedAt": "2026-10-17T14:04:46.102Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:06:04.865Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1h4s300s73dskfrg",
+                  "status": "update_in_progress",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": ["evg-db9nu3cflioc739mcms0"],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Deploying",
+                "undeployedChanges": true,
+                "undeployedChangesApplying": true,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":\"source=A 雪\\nsecond=2\",\"empty\":\"\",\"emptyFile\":\"\",\"markerFile\":\"file=A 雪\\nsecond=2\\n\",\"startedAt\":\"2026-10-17T14:04:46.102Z\",\"pid\":1}",
+            "body": {
+              "marker": "source=A 雪\nsecond=2",
+              "empty": "",
+              "emptyFile": "",
+              "markerFile": "file=A 雪\nsecond=2\n",
+              "startedAt": "2026-10-17T14:04:46.102Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:06:07.793Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1h4s300s73dskfrg",
+                  "status": "update_in_progress",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": ["evg-db9nu3cflioc739mcms0"],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Deploying",
+                "undeployedChanges": true,
+                "undeployedChangesApplying": true,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":\"source=A 雪\\nsecond=2\",\"empty\":\"\",\"emptyFile\":\"\",\"markerFile\":\"file=A 雪\\nsecond=2\\n\",\"startedAt\":\"2026-10-17T14:04:46.102Z\",\"pid\":1}",
+            "body": {
+              "marker": "source=A 雪\nsecond=2",
+              "empty": "",
+              "emptyFile": "",
+              "markerFile": "file=A 雪\nsecond=2\n",
+              "startedAt": "2026-10-17T14:04:46.102Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:06:10.732Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1h4s300s73dskfrg",
+                  "status": "update_in_progress",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": ["evg-db9nu3cflioc739mcms0"],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Running",
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":\"source=C 雨\\nsecond=4\",\"empty\":\"\",\"emptyFile\":\"\",\"markerFile\":\"file=C 雨\\nsecond=4\\n\",\"startedAt\":\"2026-10-17T14:05:59.205Z\",\"pid\":1}",
+            "body": {
+              "marker": "source=C 雨\nsecond=4",
+              "empty": "",
+              "emptyFile": "",
+              "markerFile": "file=C 雨\nsecond=4\n",
+              "startedAt": "2026-10-17T14:05:59.205Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:06:13.642Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1h4s300s73dskfrg",
+                  "status": "update_in_progress",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": ["evg-db9nu3cflioc739mcms0"],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Running",
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":\"source=C 雨\\nsecond=4\",\"empty\":\"\",\"emptyFile\":\"\",\"markerFile\":\"file=C 雨\\nsecond=4\\n\",\"startedAt\":\"2026-10-17T14:05:59.205Z\",\"pid\":1}",
+            "body": {
+              "marker": "source=C 雨\nsecond=4",
+              "empty": "",
+              "emptyFile": "",
+              "markerFile": "file=C 雨\nsecond=4\n",
+              "startedAt": "2026-10-17T14:05:59.205Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:06:16.576Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1h4s300s73dskfrg",
+                  "status": "update_in_progress",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": ["evg-db9nu3cflioc739mcms0"],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Running",
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":\"source=C 雨\\nsecond=4\",\"empty\":\"\",\"emptyFile\":\"\",\"markerFile\":\"file=C 雨\\nsecond=4\\n\",\"startedAt\":\"2026-10-17T14:05:59.205Z\",\"pid\":1}",
+            "body": {
+              "marker": "source=C 雨\nsecond=4",
+              "empty": "",
+              "emptyFile": "",
+              "markerFile": "file=C 雨\nsecond=4\n",
+              "startedAt": "2026-10-17T14:05:59.205Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:06:19.524Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1h4s300s73dskfrg",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": ["evg-db9nu3cflioc739mcms0"],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Running",
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":\"source=C 雨\\nsecond=4\",\"empty\":\"\",\"emptyFile\":\"\",\"markerFile\":\"file=C 雨\\nsecond=4\\n\",\"startedAt\":\"2026-10-17T14:05:59.205Z\",\"pid\":1}",
+            "body": {
+              "marker": "source=C 雨\nsecond=4",
+              "empty": "",
+              "emptyFile": "",
+              "markerFile": "file=C 雨\nsecond=4\n",
+              "startedAt": "2026-10-17T14:05:59.205Z",
+              "pid": 1
+            }
+          }
+        }
+      ]
+    },
+    "SourceUnlinked": {
+      "at": "2026-10-17T14:06:35.087Z",
+      "request": {
+        "operationName": "UnlinkEnvGroup",
+        "variables": {
+          "id": "evg-db9nu3cflioc739mcms0",
+          "serviceId": "srv-db9o0css300s73dskfpg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation UnlinkEnvGroup($id: String!, $serviceId: String!) {\n  unlinkEnvGroup(id: $id, serviceId: $serviceId)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "unlinkEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792245993875.107,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.246,
+        "responseStart": 501.124,
+        "responseEnd": 502.049
+      },
+      "url": "https://dashboard.bex.co/env-groups/evg-db9nu3cflioc739mcms0"
+    },
+    "UnlinkedRuntime": {
+      "at": "2026-10-17T14:06:48.556Z",
+      "request": {
+        "operationName": "QaA887Runtime",
+        "query": "query QaA887Runtime($id:String!){server(id:$id){id name phase url linkedEnvGroupIds undeployedChanges undeployedChangesApplying} deploys(serviceId:$id,limit:20){id status trigger failureReason}}",
+        "variables": {
+          "id": "srv-db9o0css300s73dskfpg"
+        }
+      },
+      "expected": {
+        "marker": null,
+        "empty": null,
+        "emptyFile": null,
+        "markerFile": null
+      },
+      "polls": [
+        {
+          "at": "2026-10-17T14:06:36.695Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1qks300s73dskfs0",
+                  "status": "created",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1h4s300s73dskfrg",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": [],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Deploying",
+                "undeployedChanges": true,
+                "undeployedChangesApplying": true,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":\"source=C 雨\\nsecond=4\",\"empty\":\"\",\"emptyFile\":\"\",\"markerFile\":\"file=C 雨\\nsecond=4\\n\",\"startedAt\":\"2026-10-17T14:05:59.205Z\",\"pid\":1}",
+            "body": {
+              "marker": "source=C 雨\nsecond=4",
+              "empty": "",
+              "emptyFile": "",
+              "markerFile": "file=C 雨\nsecond=4\n",
+              "startedAt": "2026-10-17T14:05:59.205Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:06:39.672Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1qks300s73dskfs0",
+                  "status": "created",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1h4s300s73dskfrg",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": [],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Deploying",
+                "undeployedChanges": true,
+                "undeployedChangesApplying": true,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":\"source=C 雨\\nsecond=4\",\"empty\":\"\",\"emptyFile\":\"\",\"markerFile\":\"file=C 雨\\nsecond=4\\n\",\"startedAt\":\"2026-10-17T14:05:59.205Z\",\"pid\":1}",
+            "body": {
+              "marker": "source=C 雨\nsecond=4",
+              "empty": "",
+              "emptyFile": "",
+              "markerFile": "file=C 雨\nsecond=4\n",
+              "startedAt": "2026-10-17T14:05:59.205Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:06:42.638Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1qks300s73dskfs0",
+                  "status": "created",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1h4s300s73dskfrg",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": [],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Deploying",
+                "undeployedChanges": true,
+                "undeployedChangesApplying": true,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":\"source=C 雨\\nsecond=4\",\"empty\":\"\",\"emptyFile\":\"\",\"markerFile\":\"file=C 雨\\nsecond=4\\n\",\"startedAt\":\"2026-10-17T14:05:59.205Z\",\"pid\":1}",
+            "body": {
+              "marker": "source=C 雨\nsecond=4",
+              "empty": "",
+              "emptyFile": "",
+              "markerFile": "file=C 雨\nsecond=4\n",
+              "startedAt": "2026-10-17T14:05:59.205Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:06:45.567Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1qks300s73dskfs0",
+                  "status": "created",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1h4s300s73dskfrg",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": [],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Running",
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":null,\"empty\":null,\"emptyFile\":null,\"markerFile\":null,\"startedAt\":\"2026-10-17T14:06:36.196Z\",\"pid\":1}",
+            "body": {
+              "marker": null,
+              "empty": null,
+              "emptyFile": null,
+              "markerFile": null,
+              "startedAt": "2026-10-17T14:06:36.196Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:06:48.555Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1qks300s73dskfs0",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1h4s300s73dskfrg",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": [],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Running",
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":null,\"empty\":null,\"emptyFile\":null,\"markerFile\":null,\"startedAt\":\"2026-10-17T14:06:36.196Z\",\"pid\":1}",
+            "body": {
+              "marker": null,
+              "empty": null,
+              "emptyFile": null,
+              "markerFile": null,
+              "startedAt": "2026-10-17T14:06:36.196Z",
+              "pid": 1
+            }
+          }
+        }
+      ]
+    },
+    "CloneLinked": {
+      "at": "2026-10-17T14:06:53.648Z",
+      "request": {
+        "operationName": "LinkEnvGroup",
+        "variables": {
+          "id": "evg-db9nvicflioc739mcmug",
+          "serviceId": "srv-db9o0css300s73dskfpg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation LinkEnvGroup($id: String!, $serviceId: String!) {\n  linkEnvGroup(id: $id, serviceId: $serviceId)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "linkEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792246012240.2617,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.253,
+        "responseStart": 696.377,
+        "responseEnd": 697.27
+      },
+      "url": "https://dashboard.bex.co/env-groups/evg-db9nvicflioc739mcmug"
+    },
+    "CloneLinkedRuntime": {
+      "at": "2026-10-17T14:07:15.279Z",
+      "request": {
+        "operationName": "QaA887Runtime",
+        "query": "query QaA887Runtime($id:String!){server(id:$id){id name phase url linkedEnvGroupIds undeployedChanges undeployedChangesApplying} deploys(serviceId:$id,limit:20){id status trigger failureReason}}",
+        "variables": {
+          "id": "srv-db9o0css300s73dskfpg"
+        }
+      },
+      "expected": {
+        "marker": "source=A 雪\nsecond=2",
+        "empty": "",
+        "emptyFile": "CLONE ONLY 雪\n",
+        "markerFile": "file=A 雪\nsecond=2\n"
+      },
+      "polls": [
+        {
+          "at": "2026-10-17T14:07:09.349Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1v4s300s73dskfu0",
+                  "status": "update_in_progress",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1qks300s73dskfs0",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1h4s300s73dskfrg",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": ["evg-db9nvicflioc739mcmug"],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Running",
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":\"source=A 雪\\nsecond=2\",\"empty\":\"\",\"emptyFile\":\"CLONE ONLY 雪\\n\",\"markerFile\":\"file=A 雪\\nsecond=2\\n\",\"startedAt\":\"2026-10-17T14:06:57.960Z\",\"pid\":1}",
+            "body": {
+              "marker": "source=A 雪\nsecond=2",
+              "empty": "",
+              "emptyFile": "CLONE ONLY 雪\n",
+              "markerFile": "file=A 雪\nsecond=2\n",
+              "startedAt": "2026-10-17T14:06:57.960Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:07:12.339Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1v4s300s73dskfu0",
+                  "status": "update_in_progress",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1qks300s73dskfs0",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1h4s300s73dskfrg",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": ["evg-db9nvicflioc739mcmug"],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Running",
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":\"source=A 雪\\nsecond=2\",\"empty\":\"\",\"emptyFile\":\"CLONE ONLY 雪\\n\",\"markerFile\":\"file=A 雪\\nsecond=2\\n\",\"startedAt\":\"2026-10-17T14:06:57.960Z\",\"pid\":1}",
+            "body": {
+              "marker": "source=A 雪\nsecond=2",
+              "empty": "",
+              "emptyFile": "CLONE ONLY 雪\n",
+              "markerFile": "file=A 雪\nsecond=2\n",
+              "startedAt": "2026-10-17T14:06:57.960Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:07:15.278Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1v4s300s73dskfu0",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1qks300s73dskfs0",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1h4s300s73dskfrg",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": ["evg-db9nvicflioc739mcmug"],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Running",
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":\"source=A 雪\\nsecond=2\",\"empty\":\"\",\"emptyFile\":\"CLONE ONLY 雪\\n\",\"markerFile\":\"file=A 雪\\nsecond=2\\n\",\"startedAt\":\"2026-10-17T14:06:57.960Z\",\"pid\":1}",
+            "body": {
+              "marker": "source=A 雪\nsecond=2",
+              "empty": "",
+              "emptyFile": "CLONE ONLY 雪\n",
+              "markerFile": "file=A 雪\nsecond=2\n",
+              "startedAt": "2026-10-17T14:06:57.960Z",
+              "pid": 1
+            }
+          }
+        }
+      ]
+    },
+    "BeforeGroupDeletionContents": {
+      "at": "2026-10-17T14:07:18.488Z",
+      "rows": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nu3cflioc739mcms0"
+          },
+          "status": 200,
+          "body": {
+            "id": "evg-db9nu3cflioc739mcms0",
+            "name": "qa-20261017-a887-source",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "envVars": [
+              {
+                "key": "QA_A887_EMPTY"
+              },
+              {
+                "key": "QA_A887_MARKER"
+              }
+            ],
+            "secretFiles": [
+              {
+                "name": "qa-a887-empty.txt"
+              },
+              {
+                "name": "qa-a887-marker.txt"
+              }
+            ],
+            "createdAt": "2026-10-17T13:58:48.652014649Z",
+            "updatedAt": "2026-10-17T14:06:34.066367104Z",
+            "revision": "egr1_AAAAAAAAAAQ",
+            "serviceLinks": []
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nu3cflioc739mcms0/secret-files/qa-a887-empty.txt"
+          },
+          "status": 200,
+          "body": {
+            "name": "qa-a887-empty.txt",
+            "content": ""
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nu3cflioc739mcms0/secret-files/qa-a887-marker.txt"
+          },
+          "status": 200,
+          "body": {
+            "name": "qa-a887-marker.txt",
+            "content": "file=C 雨\nsecond=4\n"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nu3cflioc739mcms0/env-vars/QA_A887_EMPTY"
+          },
+          "status": 200,
+          "body": {
+            "key": "QA_A887_EMPTY",
+            "value": ""
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nu3cflioc739mcms0/env-vars/QA_A887_MARKER"
+          },
+          "status": 200,
+          "body": {
+            "key": "QA_A887_MARKER",
+            "value": "source=C 雨\nsecond=4"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nvicflioc739mcmug"
+          },
+          "status": 200,
+          "body": {
+            "id": "evg-db9nvicflioc739mcmug",
+            "name": "qa-20261017-a887-clone",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "envVars": [
+              {
+                "key": "QA_A887_EMPTY"
+              },
+              {
+                "key": "QA_A887_MARKER"
+              }
+            ],
+            "secretFiles": [
+              {
+                "name": "qa-a887-empty.txt"
+              },
+              {
+                "name": "qa-a887-marker.txt"
+              }
+            ],
+            "createdAt": "2026-10-17T14:01:56.496847931Z",
+            "updatedAt": "2026-10-17T14:06:52.76789245Z",
+            "revision": "egr1_AAAAAAAAAAI",
+            "serviceLinks": [
+              {
+                "id": "srv-db9o0css300s73dskfpg",
+                "name": "qa-20261017-a887-groups",
+                "type": "web"
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nvicflioc739mcmug/secret-files/qa-a887-empty.txt"
+          },
+          "status": 200,
+          "body": {
+            "name": "qa-a887-empty.txt",
+            "content": "CLONE ONLY 雪\n"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nvicflioc739mcmug/secret-files/qa-a887-marker.txt"
+          },
+          "status": 200,
+          "body": {
+            "name": "qa-a887-marker.txt",
+            "content": "file=A 雪\nsecond=2\n"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nvicflioc739mcmug/env-vars/QA_A887_EMPTY"
+          },
+          "status": 200,
+          "body": {
+            "key": "QA_A887_EMPTY",
+            "value": ""
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db9nvicflioc739mcmug/env-vars/QA_A887_MARKER"
+          },
+          "status": 200,
+          "body": {
+            "key": "QA_A887_MARKER",
+            "value": "source=A 雪\nsecond=2"
+          }
+        }
+      ]
+    },
+    "CloneDeleted": {
+      "at": "2026-10-17T14:07:32.017Z",
+      "request": {
+        "operationName": "DeleteEnvGroup",
+        "variables": {
+          "id": "evg-db9nvicflioc739mcmug"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteEnvGroup($id: String!) {\n  deleteEnvGroup(id: $id)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792246050389.388,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.116,
+        "responseStart": 917.377,
+        "responseEnd": 918.168
+      },
+      "url": "https://dashboard.bex.co/env-groups"
+    },
+    "DeletedCloneRuntimeRemoved": {
+      "at": "2026-10-17T14:07:48.414Z",
+      "request": {
+        "operationName": "QaA887Runtime",
+        "query": "query QaA887Runtime($id:String!){server(id:$id){id name phase url linkedEnvGroupIds undeployedChanges undeployedChangesApplying} deploys(serviceId:$id,limit:20){id status trigger failureReason}}",
+        "variables": {
+          "id": "srv-db9o0css300s73dskfpg"
+        }
+      },
+      "expected": {
+        "marker": null,
+        "empty": null,
+        "emptyFile": null,
+        "markerFile": null
+      },
+      "polls": [
+        {
+          "at": "2026-10-17T14:07:39.341Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o28ks300s73dskfvg",
+                  "status": "update_in_progress",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1v4s300s73dskfu0",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1qks300s73dskfs0",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1h4s300s73dskfrg",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": [],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Deploying",
+                "undeployedChanges": true,
+                "undeployedChangesApplying": true,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":\"source=A 雪\\nsecond=2\",\"empty\":\"\",\"emptyFile\":\"CLONE ONLY 雪\\n\",\"markerFile\":\"file=A 雪\\nsecond=2\\n\",\"startedAt\":\"2026-10-17T14:06:57.960Z\",\"pid\":1}",
+            "body": {
+              "marker": "source=A 雪\nsecond=2",
+              "empty": "",
+              "emptyFile": "CLONE ONLY 雪\n",
+              "markerFile": "file=A 雪\nsecond=2\n",
+              "startedAt": "2026-10-17T14:06:57.960Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:07:42.341Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o28ks300s73dskfvg",
+                  "status": "update_in_progress",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1v4s300s73dskfu0",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1qks300s73dskfs0",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1h4s300s73dskfrg",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": [],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Running",
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":null,\"empty\":null,\"emptyFile\":null,\"markerFile\":null,\"startedAt\":\"2026-10-17T14:07:32.950Z\",\"pid\":1}",
+            "body": {
+              "marker": null,
+              "empty": null,
+              "emptyFile": null,
+              "markerFile": null,
+              "startedAt": "2026-10-17T14:07:32.950Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:07:45.416Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o28ks300s73dskfvg",
+                  "status": "update_in_progress",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1v4s300s73dskfu0",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1qks300s73dskfs0",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1h4s300s73dskfrg",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": [],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Running",
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":null,\"empty\":null,\"emptyFile\":null,\"markerFile\":null,\"startedAt\":\"2026-10-17T14:07:32.950Z\",\"pid\":1}",
+            "body": {
+              "marker": null,
+              "empty": null,
+              "emptyFile": null,
+              "markerFile": null,
+              "startedAt": "2026-10-17T14:07:32.950Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:07:48.414Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o28ks300s73dskfvg",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1v4s300s73dskfu0",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1qks300s73dskfs0",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o1h4s300s73dskfrg",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0u4flioc739mcn00",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o0css300s73dskfq0",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "id": "srv-db9o0css300s73dskfpg",
+                "linkedEnvGroupIds": [],
+                "name": "qa-20261017-a887-groups",
+                "phase": "Running",
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false,
+                "url": "https://qa-20261017-a887-groups.onbex.co"
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a887-groups.onbex.co"
+            },
+            "status": 200,
+            "raw": "{\"marker\":null,\"empty\":null,\"emptyFile\":null,\"markerFile\":null,\"startedAt\":\"2026-10-17T14:07:32.950Z\",\"pid\":1}",
+            "body": {
+              "marker": null,
+              "empty": null,
+              "emptyFile": null,
+              "markerFile": null,
+              "startedAt": "2026-10-17T14:07:32.950Z",
+              "pid": 1
+            }
+          }
+        }
+      ]
+    },
+    "SourceDeleted": {
+      "at": "2026-10-17T14:07:52.841Z",
+      "request": {
+        "operationName": "DeleteEnvGroup",
+        "variables": {
+          "id": "evg-db9nu3cflioc739mcms0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteEnvGroup($id: String!) {\n  deleteEnvGroup(id: $id)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792246071090.229,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.139,
+        "responseStart": 1036.55,
+        "responseEnd": 1037.44
+      },
+      "url": "https://dashboard.bex.co/env-groups"
+    },
+    "ServiceDeleted": {
+      "at": "2026-10-17T14:08:52.802Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db9o0css300s73dskfpg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "timing": {
+        "startTime": 1792246131571.9858,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.135,
+        "responseStart": 499.026,
+        "responseEnd": 499.98
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "InventoryCleanup": {
+      "at": "2026-10-17T14:09:11.644Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [
+        {
+          "path": "/v1/env-groups/evg-db9nu3cflioc739mcms0",
+          "status": 404
+        },
+        {
+          "path": "/v1/env-groups/evg-db9nu3cflioc739mcms0/env-vars/QA_A887_EMPTY",
+          "status": 404
+        },
+        {
+          "path": "/v1/env-groups/evg-db9nu3cflioc739mcms0/env-vars/QA_A887_MARKER",
+          "status": 404
+        },
+        {
+          "path": "/v1/env-groups/evg-db9nu3cflioc739mcms0/secret-files/qa-a887-empty.txt",
+          "status": 404
+        },
+        {
+          "path": "/v1/env-groups/evg-db9nu3cflioc739mcms0/secret-files/qa-a887-marker.txt",
+          "status": 404
+        },
+        {
+          "path": "/v1/env-groups/evg-db9nvicflioc739mcmug",
+          "status": 404
+        },
+        {
+          "path": "/v1/env-groups/evg-db9nvicflioc739mcmug/env-vars/QA_A887_EMPTY",
+          "status": 404
+        },
+        {
+          "path": "/v1/env-groups/evg-db9nvicflioc739mcmug/env-vars/QA_A887_MARKER",
+          "status": 404
+        },
+        {
+          "path": "/v1/env-groups/evg-db9nvicflioc739mcmug/secret-files/qa-a887-empty.txt",
+          "status": 404
+        },
+        {
+          "path": "/v1/env-groups/evg-db9nvicflioc739mcmug/secret-files/qa-a887-marker.txt",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9o0css300s73dskfpg",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9o0css300s73dskfpg/deploys/dep-db9o28ks300s73dskfvg",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9o0css300s73dskfpg/deploys/dep-db9o1v4s300s73dskfu0",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9o0css300s73dskfpg/deploys/dep-db9o1qks300s73dskfs0",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9o0css300s73dskfpg/deploys/dep-db9o1h4s300s73dskfrg",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9o0css300s73dskfpg/deploys/dep-db9o0u4flioc739mcn00",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9o0css300s73dskfpg/deploys/dep-db9o0css300s73dskfq0",
+          "status": 404
+        }
+      ]
+    },
+    "SessionCleared": {
+      "at": "2026-10-17T14:09:17.259Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "FinishSummary": {
+      "logoutConfirmed": true,
+      "exitCode": 0,
+      "browser": {
+        "at": "2026-10-17T14:09:17.259Z",
+        "whoami": 401,
+        "cookies": 0,
+        "pages": 1,
+        "url": "about:blank"
+      },
+      "handlesRemoved": true
+    }
+  },
+  "physicalCleanup": {
+    "at": "2026-10-17T14:10:06.032677+00:00",
+    "namespace": "tea-d98210cbbpdc73dcrkvg",
+    "app": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a887-groups",
+    "serviceId": "srv-db9o0css300s73dskfpg",
+    "groupIds": ["evg-db9nu3cflioc739mcms0", "evg-db9nvicflioc739mcmug"],
+    "scope": "Read-only exact owned app names and labels; source/group/snapshot Secret names only, filtered by exact owned IDs/app or prefix. No Vault purge inspection.",
+    "checks": [
+      {
+        "check": "apps.app.bex.co",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "deployment",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "service",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "ingress",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "certificate",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "pods:app.bex.co/app",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "pods:bex.co/app-id",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "replicasets:app.bex.co/app",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "replicasets:bex.co/app-id",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "jobs:app.bex.co/app",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "jobs:bex.co/app-id",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "owned-source-and-snapshot-secrets",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "networkpolicies",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "roles",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "rolebindings",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "serviceaccounts",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      }
+    ],
+    "allAbsent": true,
+    "public": {
+      "request": {
+        "method": "GET",
+        "url": "https://qa-20261017-a887-groups.onbex.co"
+      },
+      "exitCode": 0,
+      "status": 404,
+      "stderr": ""
+    }
+  },
+  "networkSummary": {
+    "baselineExclusive": 1397,
+    "count": 205,
+    "statuses": {
+      "200": 186,
+      "204": 16,
+      "FAILED": 2,
+      "unknown": 1
+    },
+    "nonSuccess": [
+      "1496. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_CONNECTION_CLOSED",
+      "1596. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_ABORTED",
+      "1723. [POST] https://api.bex.co/graphql"
+    ]
+  },
+  "nonSuccessOperationBodies": {
+    "1496": {
+      "operationName": "ViewerCapabilities",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "fresh": false
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.3.3"
+        }
+      },
+      "query": "query ViewerCapabilities($ownerId: String, $fresh: Boolean) {\n  viewerCapabilities(ownerId: $ownerId, fresh: $fresh) {\n    role\n    canView\n    canViewLogs\n    canOperate\n    canCreate\n    canViewSensitive\n    canManageKeys\n    canManage\n    canManageBilling\n    fresh\n    grants {\n      action\n      outcome\n      reason\n      __typename\n    }\n    __typename\n  }\n}"
+    },
+    "1596": {
+      "operationName": "DeployActions",
+      "variables": {
+        "serviceId": "srv-db9o0css300s73dskfpg",
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.3.3"
+        }
+      },
+      "query": "query DeployActions($serviceId: String!, $ownerId: String!) {\n  deployActions(serviceId: $serviceId, ownerId: $ownerId) {\n    action\n    outcome\n    reason\n    precondition\n    __typename\n  }\n}"
+    },
+    "1723": [
+      {
+        "operationName": "EnvGroups",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query EnvGroups($ownerId: String) {\n  envGroups(ownerId: $ownerId) {\n    id\n    name\n    ownerId\n    environmentId\n    createdAt\n    updatedAt\n    revision\n    availability\n    serviceLinks\n    envVars {\n      key\n      __typename\n    }\n    secretFiles {\n      name\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      {
+        "operationName": "Services",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Services($ownerId: String) {\n  services(ownerId: $ownerId) {\n    id\n    name\n    immutableName\n    slug\n    displayName\n    type\n    suspended\n    dashboardUrl\n    url\n    createdAt\n    updatedAt\n    runtime\n    region\n    phase\n    replicas\n    revision\n    plan\n    idleTTLSeconds\n    __typename\n  }\n}"
+      },
+      {
+        "operationName": "EnvGroupScopeIndex",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query EnvGroupScopeIndex($ownerId: String!) {\n  projects(ownerId: $ownerId) {\n    ...ProjectFields\n    __typename\n  }\n  workspaceEnvironments(ownerId: $ownerId) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment ProjectFields on Project {\n  id\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  __typename\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+      }
+    ]
+  },
+  "consoleCapture": {
+    "error": false,
+    "summary": "### Result\nTotal messages: 0 (Errors: 0, Warnings: 0)\n"
+  },
+  "sourceExcerpts": [
+    {
+      "path": "lego/backend/internal/envgroups/service.go",
+      "sha256": "3ba7abc93388759a1a55fc3e7d417a8d54880de7006574ab4e82d37c5b783d1c",
+      "startLine": 132,
+      "endLine": 158,
+      "excerpt": "\n// SecretFileView is a group secret file ({name, content}); content follows the\n// same names-first discipline as EnvVarView.\ntype SecretFileView struct {\n\tName    string `json:\"name\"`\n\tContent string `json:\"content,omitempty\"`\n}\n\n// SecretFileContent is a revealed group file: the content-read answer of REST\n// and MCP. Unlike SecretFileView — names-only in metadata and write\n// acknowledgements, where omitempty is the masking — content is always present,\n// so a revealed empty file reads `content:\"\"` rather than looking unrevealed\n// (w4/326).\ntype SecretFileContent struct {\n\tName    string `json:\"name\"`\n\tContent string `json:\"content\"`\n}\n\n// revealEnvGroupFile is GetEnvGroupFile in the content-read shape — unexported:\n// it is the REST/MCP adapters' projection of that verb, not a verb of its own.\nfunc (s *Service) revealEnvGroupFile(ctx context.Context, gid, name string) (SecretFileContent, error) {\n\tf, err := s.GetEnvGroupFile(ctx, gid, name)\n\tif err != nil {\n\t\treturn SecretFileContent{}, err\n\t}\n\treturn SecretFileContent{Name: f.Name, Content: f.Content}, nil\n}"
+    },
+    {
+      "path": "lego/backend/internal/envgroups/rest.go",
+      "sha256": "a1338ef3adb5e90f46fead1a7bc6209e7c0effdf4767d0fbafa0ea9079a78b8f",
+      "startLine": 166,
+      "endLine": 182,
+      "excerpt": "\n\t// Group secret files: upsert one, reveal one, delete one.\n\tmux.HandleFunc(\"PUT /v1/env-groups/{id}/secret-files/{name}\", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {\n\t\treq, err := core.DecodeBody[struct {\n\t\t\tContent string `json:\"content\"`\n\t\t}](r)\n\t\tif err != nil {\n\t\t\treturn nil, err\n\t\t}\n\t\treturn s.SetEnvGroupFile(r.Context(), r.PathValue(\"id\"), r.PathValue(\"name\"), req.Content)\n\t}))\n\tmux.HandleFunc(\"GET /v1/env-groups/{id}/secret-files/{name}\", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {\n\t\treturn s.revealEnvGroupFile(r.Context(), r.PathValue(\"id\"), r.PathValue(\"name\"))\n\t}))\n\tmux.HandleFunc(\"DELETE /v1/env-groups/{id}/secret-files/{name}\", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {\n\t\treturn s.DeleteEnvGroupFile(r.Context(), r.PathValue(\"id\"), r.PathValue(\"name\"))\n\t}))"
+    },
+    {
+      "path": "lego/backend/internal/envgroups/mcp.go",
+      "sha256": "23423368fcf6e3c8f331634f583bbede17519705d820c9356ad1b734b7f2473d",
+      "startLine": 252,
+      "endLine": 260,
+      "excerpt": "\t})\n\n\tmcputil.AddTool(srv, &mcp.Tool{\n\t\tName:        \"get_env_group_secret_file\",\n\t\tDescription: \"Reveal one secret file's contents in an environment group.\",\n\t}, func(ctx context.Context, _ *mcp.CallToolRequest, in envGroupFileArgs) (*mcp.CallToolResult, SecretFileContent, error) {\n\t\tf, err := s.revealEnvGroupFile(ctx, in.ID, in.Name)\n\t\treturn nil, f, err\n\t})"
+    },
+    {
+      "path": "lego/backend/internal/envgroups/graphql.go",
+      "sha256": "fe518b9bb7b91aa9f783b31d8212e606e45d0a003486d802c10d1d5675122279",
+      "startLine": 225,
+      "endLine": 232,
+      "excerpt": "\t\t\t},\n\t\t},\n\t\t\"envGroup\":           gqlutil.IDVerb(envGroupGQLType, s.GetEnvGroup),\n\t\t\"envGroupVar\":        gqlutil.ArgMutation(envGroupVarGQLType, \"key\", s.GetEnvGroupVar),\n\t\t\"envGroupSecretFile\": gqlutil.ArgMutation(envGroupFileGQLType, \"name\", s.GetEnvGroupFile),\n\t}\n}\n"
+    },
+    {
+      "path": "dashboard/src/features/env-groups/hooks/use-env-groups.ts",
+      "sha256": "880af145aef4a8bd09a18cc8f5d7a631d59bb64a701865ec2122556ee8a392a8",
+      "startLine": 599,
+      "endLine": 613,
+      "excerpt": "export function useRevealEnvGroupSecretFile(groupId: string) {\n  const client = useApolloClient();\n  return useCallback(\n    async (name: string): Promise<string> => {\n      const result = await client.query({\n        query: EnvGroupSecretFileContentDocument,\n        variables: { id: groupId, name },\n        fetchPolicy: \"no-cache\",\n        errorPolicy: \"none\",\n      });\n      return result.data?.envGroupSecretFile?.content ?? \"\";\n    },\n    [client, groupId],\n  );\n}"
+    },
+    {
+      "path": "lego/backend/internal/envgroups/rest_test.go",
+      "sha256": "a6e576d31650c1cb0154740c8a8f0889d84b72f2e598769368f571cf3e2fbdb0",
+      "startLine": 480,
+      "endLine": 526,
+      "excerpt": "// TestRevealedEmptyGroupFileCarriesItsContent (w4/326, a725): reading a present\n// zero-byte group file answered {\"name\":…} with no content field over REST and\n// MCP — indistinguishable from a names-only metadata row — while GraphQL said\n// \"\". A content read now always carries content; metadata and the masked write\n// acknowledgement stay names-only, and a missing file stays 404.\nfunc TestRevealedEmptyGroupFileCarriesItsContent(t *testing.T) {\n\tsvc := newService(newFakeStore(), sampleApp(\"web\"))\n\tw := serveREST(svc, \"POST\", \"/v1/env-groups\", `{\"name\":\"a725\"}`)\n\tvar g EnvGroupView\n\tif err := json.Unmarshal(w.Body.Bytes(), &g); w.Code != 201 || err != nil {\n\t\tt.Fatalf(\"create => %d %s\", w.Code, w.Body.String())\n\t}\n\tfor name, content := range map[string]string{\"qa-a725-empty.txt\": \"\", \"qa-a725.txt\": \"雪\\n\"} {\n\t\tack := serveREST(svc, \"PUT\", \"/v1/env-groups/\"+g.ID+\"/secret-files/\"+name, `{\"content\":`+strconv.Quote(content)+`}`)\n\t\tif ack.Code != 200 || strings.Contains(ack.Body.String(), `\"content\"`) {\n\t\t\tt.Fatalf(\"PUT %s => %d %s, want a names-only acknowledgement\", name, ack.Code, ack.Body.String())\n\t\t}\n\t}\n\tfor name, want := range map[string]string{\"qa-a725-empty.txt\": `{\"name\":\"qa-a725-empty.txt\",\"content\":\"\"}`, \"qa-a725.txt\": `{\"name\":\"qa-a725.txt\",\"content\":\"雪\\n\"}`} {\n\t\tread := serveREST(svc, \"GET\", \"/v1/env-groups/\"+g.ID+\"/secret-files/\"+name, \"\")\n\t\tvar got, wantObj map[string]any\n\t\t_ = json.Unmarshal(read.Body.Bytes(), &got)\n\t\t_ = json.Unmarshal([]byte(want), &wantObj)\n\t\tif read.Code != 200 || !reflect.DeepEqual(got, wantObj) {\n\t\t\tt.Fatalf(\"GET %s => %d %s, want %s\", name, read.Code, read.Body.String(), want)\n\t\t}\n\t}\n\tif c := serveREST(svc, \"GET\", \"/v1/env-groups/\"+g.ID+\"/secret-files/missing.txt\", \"\").Code; c != 404 {\n\t\tt.Fatalf(\"missing file => %d, want 404\", c)\n\t}\n\tdetail := serveREST(svc, \"GET\", \"/v1/env-groups/\"+g.ID, \"\")\n\tif detail.Code != 200 || strings.Contains(detail.Body.String(), `\"content\"`) {\n\t\tt.Fatalf(\"group detail => %d %s, want names-only files\", detail.Code, detail.Body.String())\n\t}\n}"
+    },
+    {
+      "path": "lego/backend/internal/envgroups/envgroups_test.go",
+      "sha256": "14a89c9930f73884379b72a8ffbf2e3281e9cc92fbfc15c288ee9f2c0a6340e9",
+      "startLine": 781,
+      "endLine": 794,
+      "excerpt": "\tcall(\"set_env_group_secret_file\", map[string]any{\"id\": group.ID, \"name\": \"empty.txt\", \"content\": \"\"}, nil)\n\tempty, err := cs.CallTool(ctx, &mcp.CallToolParams{\n\t\tName: \"get_env_group_secret_file\", Arguments: map[string]any{\"id\": group.ID, \"name\": \"empty.txt\"},\n\t})\n\tif err != nil || empty.IsError {\n\t\tt.Fatalf(\"get_env_group_secret_file empty: err=%v result=%+v\", err, empty)\n\t}\n\tstructured, _ := json.Marshal(empty.StructuredContent)\n\tif string(structured) != `{\"content\":\"\",\"name\":\"empty.txt\"}` && string(structured) != `{\"name\":\"empty.txt\",\"content\":\"\"}` {\n\t\tt.Fatalf(\"empty file structured result = %s, want name and content \\\"\\\"\", structured)\n\t}\n\tif len(empty.Content) == 0 || !strings.Contains(empty.Content[0].(*mcp.TextContent).Text, `\"content\":\"\"`) {\n\t\tt.Fatalf(\"empty file text result = %+v, want content \\\"\\\"\", empty.Content)\n\t}"
+    }
+  ],
+  "validation": {
+    "count": 95,
+    "passed": [
+      "Baseline successful HTTP200/no GraphQL errors",
+      "OutcomeOwnerList successful HTTP200/no GraphQL errors",
+      "EmptySourceCreated successful HTTP200/no GraphQL errors",
+      "SourceContentsSaved successful HTTP200/no GraphQL errors",
+      "CloneAttempt successful HTTP200/no GraphQL errors",
+      "NativeEmptyFileRead successful HTTP200/no GraphQL errors",
+      "CloneNativeEmptyRead successful HTTP200/no GraphQL errors",
+      "CloneFileSaved successful HTTP200/no GraphQL errors",
+      "ServiceCreated successful HTTP200/no GraphQL errors",
+      "InitialServiceVerified successful HTTP200/no GraphQL errors",
+      "SourceLinked successful HTTP200/no GraphQL errors",
+      "SourceBSavedOnly successful HTTP200/no GraphQL errors",
+      "SourceCDeployed successful HTTP200/no GraphQL errors",
+      "SourceUnlinked successful HTTP200/no GraphQL errors",
+      "CloneLinked successful HTTP200/no GraphQL errors",
+      "CloneDeleted successful HTTP200/no GraphQL errors",
+      "SourceDeleted successful HTTP200/no GraphQL errors",
+      "ServiceDeleted successful HTTP200/no GraphQL errors",
+      "Original populated create is existing m206 unknown outcome",
+      "Original create reached25s budget",
+      "Complete owner-list reconciles before retry",
+      "Same-name empty create recovers without foreign links",
+      "Native source patch supplies two vars/two files",
+      "Native clone is in same workspace and unscoped",
+      "Native clone finishes within25s",
+      "Ten complete independent REST item reads",
+      "evg-db9nu3cflioc739mcms0: REST file qa-a887-empty.txt",
+      "evg-db9nu3cflioc739mcms0: REST file qa-a887-marker.txt",
+      "evg-db9nu3cflioc739mcms0: REST variable QA_A887_EMPTY",
+      "evg-db9nu3cflioc739mcms0: REST variable QA_A887_MARKER",
+      "evg-db9nu3cflioc739mcms0: missing file404",
+      "evg-db9nvicflioc739mcmug: REST file qa-a887-empty.txt",
+      "evg-db9nvicflioc739mcmug: REST file qa-a887-marker.txt",
+      "evg-db9nvicflioc739mcmug: REST variable QA_A887_EMPTY",
+      "evg-db9nvicflioc739mcmug: REST variable QA_A887_MARKER",
+      "evg-db9nvicflioc739mcmug: missing file404",
+      "Six complete MCP reads",
+      "8871: successful SSE transport",
+      "8871: raw SSE parses exactly",
+      "evg-db9nu3cflioc739mcms0: MCP structured exact qa-a887-empty.txt",
+      "evg-db9nu3cflioc739mcms0: MCP text exact qa-a887-empty.txt",
+      "8872: successful SSE transport",
+      "8872: raw SSE parses exactly",
+      "evg-db9nu3cflioc739mcms0: MCP structured exact qa-a887-marker.txt",
+      "evg-db9nu3cflioc739mcms0: MCP text exact qa-a887-marker.txt",
+      "8873: successful SSE transport",
+      "8873: raw SSE parses exactly",
+      "evg-db9nu3cflioc739mcms0: MCP missing stays error",
+      "8874: successful SSE transport",
+      "8874: raw SSE parses exactly",
+      "evg-db9nvicflioc739mcmug: MCP structured exact qa-a887-empty.txt",
+      "evg-db9nvicflioc739mcmug: MCP text exact qa-a887-empty.txt",
+      "8875: successful SSE transport",
+      "8875: raw SSE parses exactly",
+      "evg-db9nvicflioc739mcmug: MCP structured exact qa-a887-marker.txt",
+      "evg-db9nvicflioc739mcmug: MCP text exact qa-a887-marker.txt",
+      "8876: successful SSE transport",
+      "8876: raw SSE parses exactly",
+      "evg-db9nvicflioc739mcmug: MCP missing stays error",
+      "NativeEmptyFileRead: native empty file read",
+      "CloneNativeEmptyRead: native empty file read",
+      "Native empty View/Done no-op keeps Save disabled",
+      "Clone edit patches one file only",
+      "evg-db9nu3cflioc739mcms0: metadata masks values and has no links",
+      "evg-db9nu3cflioc739mcms0: independent edit leaves correct empty-file value",
+      "evg-db9nvicflioc739mcmug: metadata masks values and has no links",
+      "evg-db9nvicflioc739mcmug: independent edit leaves correct empty-file value",
+      "Only Free service created",
+      "SourceLinkedRuntime: exact public runtime values",
+      "SourceLinkedRuntime: canonical links and no in-flight deploy",
+      "SaveOnlyRuntimeA: exact public runtime values",
+      "SaveOnlyRuntimeA: canonical links and no in-flight deploy",
+      "Save-only preserves same process and deploy IDs",
+      "Group save-only explicitly reports not rolled out",
+      "Periodic pending status observed without rollout",
+      "SourceCRuntime: exact public runtime values",
+      "SourceCRuntime: canonical links and no in-flight deploy",
+      "Deploying save rolls out",
+      "UnlinkedRuntime: exact public runtime values",
+      "UnlinkedRuntime: canonical links and no in-flight deploy",
+      "CloneLinkedRuntime: exact public runtime values",
+      "CloneLinkedRuntime: canonical links and no in-flight deploy",
+      "DeletedCloneRuntimeRemoved: exact public runtime values",
+      "DeletedCloneRuntimeRemoved: canonical links and no in-flight deploy",
+      "Six retained deploys with terminal final live",
+      "CloneDeleted accepted",
+      "SourceDeleted accepted",
+      "ServiceDeleted accepted",
+      "Seven inventory ID sets restored",
+      "17 owned API paths404 including both groups/eight items/service/six deploys",
+      "Sole session revoked and exact handles removed",
+      "16 read-only physical scopes empty and public404",
+      "Native network snapshot classified",
+      "Console capture empty",
+      "Original a725 evidence byte-unchanged"
+    ]
+  },
+  "scopeNotes": [
+    "The initial populated create timed out with WRITE_OUTCOME_UNKNOWN and a terminal response. A complete owner read omitted its name before a single empty same-name create recovered. Native patch then populated it, and the native clone preserved all four entries. This records existing m206 admission behavior; m206 is not closed.",
+    "The326 remaining gate concerns present empty-file read shape, nonempty/missing/GraphQL controls and independent native clone editing. Those all pass. Initial-content create admission, generic clone timing and all m206 scope/move/reservation gates are not accepted by this pass.",
+    "REST group metadata remains names-only live. Names-only PUT acknowledgements and inferred MCP output schema remain maintained implementation regressions; no new live PUT, schema-list, refused or unavailable-runtime probes were made.",
+    "The original finding and implementation notes retain SDK path research and old-shape failures. This acceptance adds actual production receipts without changing product code or rerunning suites.",
+    "One ViewerCapabilities read failed net::ERR_CONNECTION_CLOSED, one DeployActions read aborted around navigation, and one post-delete group/services/scope read lacked a completion at snapshot. Later native pages and independent reads succeeded; no reproducible impact was established, so no new finding is claimed. Snapshot205 is native browser traffic only; explicit page.request probes have their own receipts.",
+    "Harness errors excluded: nonexistent env-groups/new route redirected home; Add variable first opens a menu; value labels become key-specific; service delete button is Delete Service; malformed serviceLinks sub-selection and guessed applyingSavedChanges field were corrected. No writer was replayed from a missing observer receipt.",
+    "No Vault purge inspection, foreign-resource mutation, paid action, Chinese UI, other browser or authenticated Render comparison.",
+    "Public serving-state GETs used the browser HTTP client; external curl checked post-delete404 only."
+  ]
+}
