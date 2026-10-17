@@ -53,6 +53,14 @@ func runClone(t *testing.T, o Options, dest string) (string, int) {
 	if script == c.Args[0] {
 		t.Fatalf("clone script no longer starts in /source:\n%s", c.Args[0])
 	}
+	// The prelude keeps its exit status and log at fixed /tmp paths, private
+	// to each build pod. Parallel runs on one host share /tmp and would delete
+	// each other's status file ("exit status unavailable", exit 91), so each
+	// host run gets its own; the integration container has its own /tmp.
+	if !strings.Contains(script, "/tmp/bex-rc") {
+		t.Fatalf("clone script no longer keeps its status at /tmp/bex-rc:\n%s", script)
+	}
+	hostScript := strings.ReplaceAll(script, "/tmp/bex-", filepath.Join(t.TempDir(), "bex-"))
 	// Submodules over file:// need the opt-in Git gives every local transport;
 	// production fetches over HTTPS.
 	env := []string{"BEX_TEST_DEST=" + dest, "GIT_CONFIG_GLOBAL=/dev/null",
@@ -62,7 +70,7 @@ func runClone(t *testing.T, o Options, dest string) (string, int) {
 			env = append(env, e.Name+"="+strings.Replace(e.Value, sourceMount, dest, 1))
 		}
 	}
-	cmd := exec.Command("sh", "-eu", "-c", script)
+	cmd := exec.Command("sh", "-eu", "-c", hostScript)
 	cmd.Env = append(os.Environ(), env...)
 	if os.Getenv("BEX_BUILDKIT_INTEGRATION") != "" {
 		fixture := filepath.Dir(strings.TrimPrefix(o.Repo, "file://"))
