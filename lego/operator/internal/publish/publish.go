@@ -52,7 +52,7 @@ const DefaultAWSCLIImage = "amazon/aws-cli:2.22.35@sha256:6977c83ae3dc99f28fcf82
 
 // DefaultGitImage is the clone image the direct (no-Dockerfile) publish path
 // uses (w9/010) — pinned like every other platform-plane image.
-const DefaultGitImage = "alpine/git:v2.43.0@sha256:76fdb7210689fc26c6ff101c4adacf9d12d3d25a919a7d8ff42ebaef5bedba65"
+const DefaultGitImage = "alpine/git:v2.52.0@sha256:4a0e72d49596a1f5d3701aeedafdadc5c0da4062be4657c7bdc4017387f591cc"
 
 // publishTimeout bounds a single publish Job's wall-clock; the Job's own
 // activeDeadlineSeconds matches so a stuck upload is reaped, not left lingering.
@@ -551,6 +551,15 @@ const extractTerminationPolicy = corev1.TerminationMessageFallbackToLogsOnError
 // repo authenticates through the same CloneSecret token contract as the build
 // plane (x-access-token basic auth), supplied to git via an inline credential
 // helper so the token never lands in argv or on disk.
+// directSubmodules brings in the submodules the published directory may hold
+// (w8/m89), each failure in this operator's own words.
+var directSubmodules = execution.GitSubmoduleUpdate(
+	func(command string) string {
+		return command + ` || fail $? "could not fetch the submodule \"$module\" — check that its repository exists and that bex has access to it"`
+	},
+	func(message string) string { return `fail 1 "` + message + `"` },
+)
+
 func cloneContainer(o Options) corev1.Container {
 	img := o.GitImage
 	if img == "" {
@@ -574,9 +583,10 @@ fail() { printf '%s\n' "$2" > /dev/termination-log; exit "$1"; }
 mkdir -p /work && cd /work
 git init -q .
 git remote add origin "$REPO"
-git -c ` + execution.GitHubCredentialHelper + ` fetch -q --depth 1 origin -- "$REF" || fail $? "could not fetch \"$REF\" from this service's repository — check that the branch or commit exists and that bex still has access to the repo"
+set -- -c ` + execution.GitHubCredentialHelper + `
+git "$@" fetch -q --depth 1 origin -- "$REF" || fail $? "could not fetch \"$REF\" from this service's repository — check that the branch or commit exists and that bex still has access to the repo"
 git checkout -q FETCH_HEAD || fail $? "fetched \"$REF\" but could not check it out"
-cd "/work/$SRC_DIR" || fail $? "the publish directory \"$SRC_DIR\" does not exist in the repository at \"$REF\""
+` + directSubmodules + `cd "/work/$SRC_DIR" || fail $? "the publish directory \"$SRC_DIR\" does not exist in the repository at \"$REF\""
 cp -a . ` + outMount + `/ || fail $? "the publish directory \"$SRC_DIR\" exists but its contents could not be staged for upload"`
 	env := []corev1.EnvVar{
 		{Name: "REPO", Value: o.Repo},

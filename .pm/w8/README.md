@@ -15,7 +15,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m89** — [Materialize pinned Git submodules before source builds](m89/README.md) (7 tasks;130m/2h10m) ← major functional CLI sweep393:both native first builds omit the required pinned child file; exact source/clone and working fetch controls researched, fully cleaned.
+- [ ] **m89** — [Materialize pinned Git submodules before source builds](blocked/m89/README.md) (7 tasks;130m/2h10m) — **BLOCKED (2026-10-16: t001, t002, t004–t006 done — build and static direct-publish clones now initialize every top-level `.gitmodules` gitlink at its parent-pinned commit (HTTPS only, GitHub SSH rewritten, existing token) before the source checks, failing visibly on an unreachable child; clone image moved to alpine/git 2.52.0 past CVE-2025-48384 with control-character paths refused; real-clone, busybox, public-fixture and fail-before verified; needs the operator deployed plus the hosted both-client first-deployment replay (t003) and closeout (t007), runnable with the QA CLI login)**
 
 - [ ] **m88** — [Preserve graceful shutdown through native npm startup](blocked/m88/README.md) (8 tasks) — **BLOCKED (2026-10-16: t001–t003, t005–t007 done — primary Node service images now start under bex's `native-init`, which forwards signals and, when `npm start` exits on SIGTERM before its app, passes the signal on and waits for the app to drain within the grace period; pinned-BuildKit gate stops npm/pnpm/Yarn/direct-node apps mid-request and gets 200 with one SIGTERM each, fail-before EOF for npm/pnpm/Yarn; needs the operator deployed plus the hosted both-client npm restart replay (t004) and closeout (t008), runnable with the QA CLI login)**
 

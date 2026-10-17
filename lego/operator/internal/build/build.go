@@ -69,7 +69,7 @@ const (
 // the daemon's PID namespace.
 const (
 	defaultBuildkitImage = "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f"
-	defaultGitImage      = "alpine/git:v2.43.0@sha256:76fdb7210689fc26c6ff101c4adacf9d12d3d25a919a7d8ff42ebaef5bedba65"
+	defaultGitImage      = "alpine/git:v2.52.0@sha256:4a0e72d49596a1f5d3701aeedafdadc5c0da4062be4657c7bdc4017387f591cc"
 	// The digest is the OCI IMAGE INDEX quay.io actually stores for v1.22.2.
 	// The previous pin (sha256:c7d3c512…) 404s by digest: quay converts an index
 	// to a Docker manifest list on the fly when a client asks for that media
@@ -1435,6 +1435,15 @@ func repoRelative(dir string) string {
 	return ""
 }
 
+// cloneSubmodules classifies a submodule fetch like the parent's and refuses
+// a crafted path as tenant input.
+var cloneSubmodules = execution.GitSubmoduleUpdate(
+	func(command string) string { return "bex_run " + command },
+	func(message string) string {
+		return `{ echo "` + message + `" >&2; exit ` + fmt.Sprint(ExitTenantError) + `; }`
+	},
+)
+
 func buildCloneContainer(o Options, image string) corev1.Container {
 	ref := o.Ref
 	if ref == "" {
@@ -1464,25 +1473,26 @@ func buildCloneContainer(o Options, image string) corev1.Container {
 		Command: []string{"sh", "-eu", "-c"},
 		// The credential helper is execution.GitHubCredentialHelper — host-bound
 		// to github.com; its SECURITY comment lives on the shared constant.
-		// The fetch is the only step here that can fail on tenant input (a bad
-		// repo URL, a ref that does not exist, or a token that cannot read the
-		// repo), so it is the step that classifies. bex_run leaves $REPO/$REF as
-		// environment lookups exactly as before — they are never spliced into the
-		// script text.
+		// The fetches are the steps here that can fail on tenant input (a bad
+		// repo URL, a ref that does not exist, a token that cannot read the
+		// repo, an unreachable submodule), so they are the steps that classify.
+		// bex_run leaves $REPO/$REF as environment lookups exactly as before —
+		// they are never spliced into the script text.
+		//
+		// Submodules (w8/m89) come in before the source checks, since a root
+		// directory may live inside one, and before .git goes.
 		Args: []string{classifyPrelude + `cd /source
 git init -q .
 git remote add origin "$REPO"
-if [ -n "${GIT_AUTH_TOKEN:-}" ]; then
-  bex_run git -c ` + execution.GitHubCredentialHelper + ` fetch --depth 1 origin -- "$REF"
-else
-  bex_run git fetch --depth 1 origin -- "$REF"
-fi
+set --
+if [ -n "${GIT_AUTH_TOKEN:-}" ]; then set -- -c ` + execution.GitHubCredentialHelper + `; fi
+bex_run git "$@" fetch --depth 1 origin -- "$REF"
 git checkout -q FETCH_HEAD
 if [ -n "${EXPECTED_COMMIT:-}" ]; then
   actual_commit="$(git rev-parse HEAD)"
   [ "$actual_commit" = "$EXPECTED_COMMIT" ] || { echo "fetched commit does not match EXPECTED_COMMIT" >&2; exit 1; }
 fi
-commit="$(git rev-parse HEAD)"
+` + cloneSubmodules + `commit="$(git rev-parse HEAD)"
 bex_require() {
   [ "$1" "$2" ] && return 0
   echo "the $3 \"$4\" does not exist in the repository at \"$commit\"" >&2
