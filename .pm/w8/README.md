@@ -157,7 +157,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [Native5MiB downloads and bounded upload observations](evidence/native-file-transfers-sweep396/README.md) — sweep396:both first native fixtures serve exact full/range/header/conditional controls (16 passes); three smaller uploads match native logs. Five5MiB upload attempts time out or499near61s, with variable observed progress; cause/compatibility unconfirmed, no new issue. Exact cleanup passes.
 
-- **New major [117](117.md)** — native Ruby silently rewrites stale dependency locks; both first deployments serve the changed gem, build-only deployment-mode controls correctly refuse, prior boots remain serving and exact cleanup passes ([sweep394 evidence](evidence/117/README.md)).
+- **New major [117](blocked/117.md)** — native Ruby silently rewrites stale dependency locks; both first deployments serve the changed gem, build-only deployment-mode controls correctly refuse, prior boots remain serving and exact cleanup passes ([sweep394 evidence](evidence/117/README.md)).
 
 - [Native Poetry installed application environments](evidence/native-poetry-project-sweep392/README.md) — sweep392:default2.1.3/explicit1.8.5 real dependency installs, generated lock and isolated project interpreter persist through build/pre-deploy/runtime; both first children serve original Flask HTTP200,8 shared/env reads and exact cleanup pass. No new issue.
 
@@ -296,6 +296,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 ## Inbox
 
 - [ ] **118** — [Forward stdin to noninteractive psql imports](118.md) (55m, major) ← functional CLI sweep399; released Bex, Render pin and HEAD silently import0 rows from supplied CSV, filename/direct controls import3. Upstream stdin handoff researched; exact database/data/credentials cleaned.
+
+- [ ] **117** — [Native Ruby builds silently rewrite stale dependency lockfiles](blocked/117.md) (55m, major) — **BLOCKED (2026-10-16: implemented — primary Ruby images default Render's BUNDLE_DEPLOYMENT=true with its BUNDLE_PATH/BUNDLE_BIN outside the source tree (binstubs first on PATH), so a stale or missing Gemfile.lock fails the build while matched locks install and serve exactly; service values (deployment/frozen off, own path) win; real-Bundler gate + fail-before verified; needs the operator deployed plus the hosted both-client stale/matched replay, runnable with the QA CLI login)**
 
 - [ ] **116** — [Native Python generates HTTP URLs for HTTPS requests](blocked/116.md) (55m, major) — **BLOCKED (2026-10-16: implemented — primary Python images default Render's FORWARDED_ALLOW_IPS="*" before the build RUN, the service's own value (incl. empty) and explicit Gunicorn --forwarded-allow-ips winning; real-Gunicorn gate from a non-loopback peer + fail-before verified, Traefik header-trust reviewed; needs the operator deployed plus the hosted both-client Flask replay, runnable with the QA CLI login)**
 
