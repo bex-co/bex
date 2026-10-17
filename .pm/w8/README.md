@@ -21,7 +21,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m109** — [Make documented DuckDB analytics usable in managed Postgres](blocked/m109/README.md) (7 tasks;290m) — **BLOCKED (2026-10-17: needs the user to decide how managed Postgres supplies Render's extensions — [decision](blocked/m92/design.md): operand image (CNPG PostGIS-only vs a bex-built image per major), activation (pre-install like vector vs on-demand allowlist) and a rolling restart of every managed Postgres pod, possibly with m65; no task started)**
 
-- [ ] **m108** — [Preserve ordinary uploads beyond the ingress body-read deadline](m108/README.md) (6 tasks;210m) ← major functional CLI sweep441:both one-MiB paced uploads499 at60s; same-body fast and local one-setting controls succeed; exact cleanup.
+- [ ] **m108** — [Preserve ordinary uploads beyond the ingress body-read deadline](blocked/m108/README.md) (6 tasks;210m) — **BLOCKED (2026-10-17: needs the user to choose the public entrypoints' read budget — [decision](blocked/m108/design.md): Traefik v3.7.5's readTimeout also bounds headers and the pre-TLS peek, so Render's 100 minutes lets any client hold an edge connection for 100 minutes; options 100m, a bounded 10m (recommended), or an upstream readHeaderTimeout first; no task started)**
 
 - [ ] **m107** — [Supply ZIP creation in native builds and runtimes](blocked/m107/README.md) (6 tasks;190m) — **BLOCKED (2026-10-17: needs the user to choose how native builds supply Render's native tools table — [decision](blocked/m91/design.md): A apt-get in every build (+242 s cold, ~+550 MB per app image), B relocatable tools image (fragile), C per-line bex native base images published by CI (recommended), or D documented divergence; no task started)**
 
