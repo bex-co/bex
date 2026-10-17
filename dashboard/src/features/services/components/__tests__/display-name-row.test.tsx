@@ -68,14 +68,7 @@ describe("DisplayNameRow", () => {
 
   it("sets a trimmed human label without changing the service id", async () => {
     const user = userEvent.setup();
-    const onChanged = vi.fn();
-    render(
-      <DisplayNameRow
-        serviceId="stable-id"
-        displayName={null}
-        onChanged={onChanged}
-      />,
-    );
+    render(<DisplayNameRow serviceId="stable-id" displayName={null} />);
 
     await user.click(screen.getByRole("button", { name: "Edit service name" }));
     const input = screen.getByRole("textbox", { name: "Service Name" });
@@ -84,7 +77,6 @@ describe("DisplayNameRow", () => {
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
     expect(setDisplayName).toHaveBeenCalledWith("stable-id", "Customer API");
-    expect(onChanged).toHaveBeenCalledOnce();
   });
 
   it("clears a custom label so the immutable-id fallback can return", async () => {

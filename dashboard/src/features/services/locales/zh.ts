@@ -1157,6 +1157,17 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "自定义服务名称已清除。",
     description: "Toast after clearing displayName",
   },
+  "services.displayNameRefreshFailed": {
+    message:
+      "已重命名为「{name}」，但页面刷新失败。请重试或重新加载以查看已保存的名称。",
+    description:
+      "Warning after a service rename committed but the page could not re-read the saved name; offers Try again",
+  },
+  "services.displayNameUnpublished": {
+    message: "新名称已保存，但页面尚未显示。请在提示中重试或重新加载后再编辑。",
+    description:
+      "Why the service name row is locked after a rename saved but its re-read failed",
+  },
   "services.displayNameError": {
     message: "无法重命名服务，请重试。",
     description: "Toast after setDisplayName fails",
