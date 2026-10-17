@@ -224,7 +224,9 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 				if metricType == renderActiveConnections {
 					series, err = s.activeConnections(ctx, id, q.Start, q.End, q.Resolution)
 				} else if isDatastoreResource(id) {
-					series, err = s.datastoreAppMetric(ctx, metricIDFor(metricType), id, q.Start, q.End, q.Resolution)
+					dq := q
+					dq.Metric = metricIDFor(metricType)
+					series, err = s.datastoreAppMetric(ctx, dq, id)
 				} else {
 					q.App, q.Metric = id, metricIDFor(metricType)
 					// MetricsWithQuantiles fans http_latency out over q.Quantiles (the
@@ -261,7 +263,7 @@ type getDatastoreMetricsArgs struct {
 	ResourceID        string   `json:"resourceId,omitempty" jsonschema:"the Database, KeyValue, or service id (dpg-…/red-…/srv-…) — Render-shaped alias of resource"`
 	Resource          string   `json:"resource,omitempty" jsonschema:"legacy spelling of resourceId — the CR name, not the display name; ignored when resourceId is also set"`
 	Kind              string   `json:"kind,omitempty" jsonschema:"database|keyvalue|service; omit to infer it from the id prefix (red- keyvalue, srv- service, otherwise database); service reads the disk attached to a service (ADR082)"`
-	MetricTypes       []string `json:"metricTypes" jsonschema:"metric ids: disk|disk_capacity (Database, KeyValue, or a service with an attached disk) | db_connections|replication_lag (Database only; replication_lag is omitted until Postgres HA is enabled, w1/m22) | kv_memory|kv_connections (KeyValue only)"`
+	MetricTypes       []string `json:"metricTypes" jsonschema:"metric ids: disk|disk_capacity (Database, KeyValue, or a service with an attached disk) | db_connections|replication_lag (Database only; replication_lag is omitted until Postgres HA is enabled, w1/m22) | kv_memory|kv_connections (KeyValue only) | cpu|memory|cpu_limit|memory_limit (Database or KeyValue: the datastore's own container; a KeyValue's memory is kv_memory)"`
 	StartTime         string   `json:"startTime,omitempty" jsonschema:"RFC3339 start of the window"`
 	EndTime           string   `json:"endTime,omitempty" jsonschema:"RFC3339 end of the window"`
 	Resolution        *int64   `json:"resolution,omitempty" jsonschema:"step in seconds — Render-shaped alias of resolutionSeconds"`
@@ -282,7 +284,7 @@ func (a getDatastoreMetricsArgs) resolutionSeconds() int64 {
 func RegisterDatastoreMetricsMCP(s *Service, srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_datastore_metrics",
-		Description: "Get disk usage, active-connections, replication-lag (Postgres), and memory/connections (Key Value) metrics for one managed Postgres or Key Value instance — or, with kind=service, the used/capacity bytes of the persistent disk attached to a service (ADR082) — as Render-shaped time-series. bex extension (no Render equivalent).",
+		Description: "Get disk usage, cpu/memory and their limits, active-connections, replication-lag (Postgres), and connections (Key Value) metrics for one managed Postgres or Key Value instance — or, with kind=service, the used/capacity bytes of the persistent disk attached to a service (ADR082) — as Render-shaped time-series. bex extension (no Render equivalent).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getDatastoreMetricsArgs) (*mcp.CallToolResult, getMetricsResult, error) {
 		resource, err := in.resource()
 		if err != nil {

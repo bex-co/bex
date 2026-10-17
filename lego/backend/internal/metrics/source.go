@@ -279,24 +279,12 @@ const instanceLivenessWindow = "90s"
 func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 	matchers := egressquery.PodNameMatcher(req.Namespace, req.App)
 	switch req.Metric {
-	case MetricMemory:
-		// `max by (pod, container)` before the sum collapses cAdvisor's DUPLICATE
-		// series for one container across a restart: while a container is being
-		// OOM-killed and its replacement starts, cAdvisor briefly reports BOTH
-		// instances (same pod + container labels, different cgroup id), so a bare
-		// `sum by (pod)` added the dying and the new instance and read ABOVE the
-		// pod's real working set — a Guaranteed 512Mi App momentarily showed
-		// ~745 MiB (~145% against the enforced limit) at every OOM restart, which
-		// read as an enforcement gap when the limit was in fact being applied
-		// (w4/050, confirmed on prod: single-instance peak 508.9 MiB vs the
-		// double-counted 743 MiB, and per-pod instance count reaching 2). Taking
-		// the per-container max first yields one truthful value per running
-		// container; the outer sum still adds genuinely distinct containers.
-		return fmt.Sprintf(`sum by (pod) (max by (pod, container) (container_memory_working_set_bytes{%s}))`, matchers)
+	case MetricMemory, MetricCPU:
+		return resourceUsageQuery(req.Metric, matchers, req.Resolution)
 	case MetricInstanceCount:
 		// The inner `sum by (pod)` already reduces a pod's (possibly duplicated)
 		// container series to one series per pod, so counting pods is unaffected
-		// by the restart double-count above — no per-container max needed here.
+		// by the restart double-count below — no per-container max needed here.
 		//
 		// Count only pods that actually reported inside instanceLivenessWindow,
 		// never pods merely carried forward by Prometheus's 5m lookback (w4/m110
@@ -311,11 +299,34 @@ func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 		// the one query that must be liveness-gated.
 		return fmt.Sprintf(`count(sum by (pod) (count_over_time(container_memory_working_set_bytes{%s}[%s])) > 0)`,
 			matchers, instanceLivenessWindow)
+	}
+	return resourceUsageQuery(MetricCPU, matchers, req.Resolution)
+}
+
+// resourceUsageQuery is the per-pod cpu (cores) or memory (bytes) usage over
+// cAdvisor for pods matched by matchers — a service's (promResourceQueryFor)
+// or a datastore's (promDatastoreResourceQuery).
+func resourceUsageQuery(metric, matchers string, resolution time.Duration) string {
+	switch metric {
+	case MetricMemory:
+		// `max by (pod, container)` before the sum collapses cAdvisor's DUPLICATE
+		// series for one container across a restart: while a container is being
+		// OOM-killed and its replacement starts, cAdvisor briefly reports BOTH
+		// instances (same pod + container labels, different cgroup id), so a bare
+		// `sum by (pod)` added the dying and the new instance and read ABOVE the
+		// pod's real working set — a Guaranteed 512Mi App momentarily showed
+		// ~745 MiB (~145% against the enforced limit) at every OOM restart, which
+		// read as an enforcement gap when the limit was in fact being applied
+		// (w4/050, confirmed on prod: single-instance peak 508.9 MiB vs the
+		// double-counted 743 MiB, and per-pod instance count reaching 2). Taking
+		// the per-container max first yields one truthful value per running
+		// container; the outer sum still adds genuinely distinct containers.
+		return fmt.Sprintf(`sum by (pod) (max by (pod, container) (container_memory_working_set_bytes{%s}))`, matchers)
 	default: // cpu
 		// Same cAdvisor restart double-count guard as memory: dedupe a container's
 		// overlapping instances before summing across containers (w4/050).
 		return fmt.Sprintf(`sum by (pod) (max by (pod, container) (rate(container_cpu_usage_seconds_total{%s}[%ds])))`,
-			matchers, rateLookbackSeconds(req.Resolution))
+			matchers, rateLookbackSeconds(resolution))
 	}
 }
 
@@ -390,7 +401,12 @@ func promLimitQueryFor(req ResourceLimitRangeRequest) string {
 	default:
 		return ""
 	}
-	matchers := egressquery.PodNameMatcher(req.Namespace, req.App)
+	return resourceLimitQuery(egressquery.PodNameMatcher(req.Namespace, req.App), resource)
+}
+
+// resourceLimitQuery is the per-pod configured limit (kube-state-metrics) of
+// resource ("cpu" cores or "memory" bytes) for pods matched by matchers.
+func resourceLimitQuery(matchers, resource string) string {
 	return fmt.Sprintf(`sum by (pod) (kube_pod_container_resource_limits{%s,resource=%q})`, matchers, resource)
 }
 
@@ -681,34 +697,54 @@ func NewPrometheusKeyValueStatsSource(base string, hc *http.Client) KeyValueStat
 		}
 		q := fmt.Sprintf(`sum by (pod) (%s{namespace=%q,pod=~%q})`,
 			metric, req.Namespace, fmt.Sprintf(`%s-[0-9]+`, egressquery.RegexEscape(req.Resource)))
-		series, err := promQueryRange(ctx, hc, base, q, req.Start, req.End, stepSeconds(req.Resolution))
-		if err != nil {
-			return nil, err
-		}
-		for i := range series {
-			labels := map[string]string{"resource": req.Resource}
-			if pod := series[i].Labels["pod"]; pod != "" {
-				labels["instance"] = pod
-			}
-			series[i].Labels = labels
-			series[i].Unit = unit
-		}
-		return series, nil
+		return promInstanceQuery(ctx, hc, base, q, req.Resource, unit, req.Start, req.End, stepSeconds(req.Resolution))
 	}
 }
 
-// cnpgInstanceQuery runs a query_range for a CNPG-cluster-scoped metric and
-// relabels each series onto Core's vocabulary (pod => instance, plus the
-// cluster's resource tag) with the given unit — the shared scaffold behind
-// NewPrometheusDBConnectionsSource and NewPrometheusReplicationLagSource,
-// which differ only in their PromQL and unit.
-func cnpgInstanceQuery(ctx context.Context, hc *http.Client, base, query, cluster, unit string, start, end time.Time, step int64) ([]MetricSeries, error) {
+// NewPrometheusDatastoreResourceSource returns the production
+// DatastoreResourceSource: the App resource queries (promResourceQueryFor,
+// promLimitQueryFor) narrowed to a datastore's numbered instance pods and its
+// own container (w1/m180). base/hc as NewPrometheusRequestSource.
+func NewPrometheusDatastoreResourceSource(base string, hc *http.Client) DatastoreResourceSource {
+	if hc == nil {
+		hc = core.UpstreamClient
+	}
+	base = strings.TrimRight(base, "/")
+	return func(ctx context.Context, req DatastoreResourceRequest) ([]MetricSeries, error) {
+		return promInstanceQuery(ctx, hc, base, promDatastoreResourceQuery(req), req.Resource, resourceUnit(req.Metric),
+			req.Start, req.End, stepSeconds(req.Resolution))
+	}
+}
+
+// promDatastoreResourceQuery builds the PromQL for a datastore resource series.
+// The container matcher keeps sidecars (the Valkey exporter) and cAdvisor's
+// pod-level aggregate out; the anchored pod regex keeps CNPG's initdb/join Job
+// pods (<cluster>-1-initdb-…) out.
+func promDatastoreResourceQuery(req DatastoreResourceRequest) string {
+	matchers := fmt.Sprintf(`namespace=%q,pod=~%q,container=%q`,
+		req.Namespace, egressquery.RegexEscape(req.Resource)+`-[0-9]+`, req.Container)
+	switch req.Metric {
+	case MetricCPULimit:
+		return resourceLimitQuery(matchers, "cpu")
+	case MetricMemoryLimit:
+		return resourceLimitQuery(matchers, "memory")
+	default:
+		return resourceUsageQuery(req.Metric, matchers, req.Resolution)
+	}
+}
+
+// promInstanceQuery runs a query_range for a datastore-instance-scoped metric
+// and relabels each series onto Core's vocabulary (pod => instance, plus the
+// datastore's resource tag) with the given unit — the shared scaffold behind
+// the CNPG, Key Value and datastore resource sources, which differ only in
+// their PromQL and unit.
+func promInstanceQuery(ctx context.Context, hc *http.Client, base, query, resource, unit string, start, end time.Time, step int64) ([]MetricSeries, error) {
 	series, err := promQueryRange(ctx, hc, base, query, start, end, step)
 	if err != nil {
 		return nil, err
 	}
 	for i := range series {
-		labels := map[string]string{"resource": cluster}
+		labels := map[string]string{"resource": resource}
 		if pod := series[i].Labels["pod"]; pod != "" {
 			labels["instance"] = pod
 		}
@@ -731,7 +767,7 @@ func NewPrometheusDBConnectionsSource(base string, hc *http.Client) DBConnection
 	return func(ctx context.Context, req DBConnectionsRequest) ([]MetricSeries, error) {
 		q := fmt.Sprintf(`sum by (pod) (cnpg_backends_total{namespace=%q,cnpg_io_cluster=%q})`,
 			req.Namespace, egressquery.RegexEscape(req.Cluster))
-		return cnpgInstanceQuery(ctx, hc, base, q, req.Cluster, unitCount, req.Start, req.End, stepSeconds(req.Resolution))
+		return promInstanceQuery(ctx, hc, base, q, req.Cluster, unitCount, req.Start, req.End, stepSeconds(req.Resolution))
 	}
 }
 
@@ -751,7 +787,7 @@ func NewPrometheusReplicationLagSource(base string, hc *http.Client) Replication
 	return func(ctx context.Context, req ReplicationLagRequest) ([]MetricSeries, error) {
 		q := fmt.Sprintf(`max by (pod) (cnpg_pg_replication_lag{namespace=%q,cnpg_io_cluster=%q})`,
 			req.Namespace, egressquery.RegexEscape(req.Cluster))
-		return cnpgInstanceQuery(ctx, hc, base, q, req.Cluster, unitSeconds, req.Start, req.End, stepSeconds(req.Resolution))
+		return promInstanceQuery(ctx, hc, base, q, req.Cluster, unitSeconds, req.Start, req.End, stepSeconds(req.Resolution))
 	}
 }
 

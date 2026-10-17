@@ -1,25 +1,25 @@
 # w1 · m180 — Serve datastore CPU and memory metrics on Render's paths
 
-**Worker:** worker1 **Goal:** Postgres and Key Value CPU, memory and their limits are served on Render's metric paths, bex GraphQL, MCP and the dashboard. **Status:** todo
+**Worker:** worker1 **Goal:** Postgres and Key Value CPU, memory and their limits are served on Render's metric paths, bex GraphQL, MCP and the dashboard. **Status:** blocked (t001–t004, t006–t008 done 2026-10-17; t005's ADR018 half done, its live half waits for the release pipeline to deploy bex-api and the dashboard)
 
 ## Tasks (in order)
 
 | id   | title                                                                             | est | depends_on |
 | ---- | --------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Design the datastore CPU and memory queries and confirm the series exist in production | 45m | —          |
-| t002 | Serve datastore cpu, memory and their limits on REST                              | 1h  | t001       |
-| t003 | GraphQL and MCP serve the same datastore metrics                                  | 40m | t002       |
-| t004 | Dashboard datastore Metrics panel shows CPU and Memory with limit lines           | 1h  | t003       |
+| t001 | Design the datastore CPU and memory queries and confirm the series exist in production — **DONE** | 45m | —          |
+| t002 | Serve datastore cpu, memory and their limits on REST — **DONE** | 1h  | t001       |
+| t003 | GraphQL and MCP serve the same datastore metrics — **DONE** | 40m | t002       |
+| t004 | Dashboard datastore Metrics panel shows CPU and Memory with limit lines — **DONE** | 1h  | t003       |
 | t005 | Update ADR018 and verify live                                                     | 40m | t004       |
-| t006 | Render parity                                                                     | 20m | t005       |
-| t007 | Simplify                                                                          | 15m | t006       |
-| t008 | Test coverage                                                                     | 40m | t006       |
+| t006 | Render parity — **DONE** | 20m | t005       |
+| t007 | Simplify — **DONE** | 15m | t006       |
+| t008 | Test coverage — **DONE** | 40m | t006       |
 | t009 | Closeout                                                                          | 10m | t008       |
 
 ## Definition of done
 
 - `GET /v1/metrics/{cpu,memory,cpu-limit,memory-limit}?resource=<dpg-…|red-…>` returns series for live datastores (Key Value `memory` per t001's decision); GraphQL and MCP return the same; other datastore pairs keep the coded 400; service metrics are unchanged.
-- The dashboard Postgres and Key Value Metrics pages chart CPU and memory with limit lines in en/zh, with matching loading skeletons.
+- The dashboard Postgres and Key Value Metrics pages chart CPU and memory in en/zh, with matching loading skeletons; limit lines on CPU for both and on memory for Postgres (amended 2026-10-17: a Key Value's memory is its used memory, which Valkey caps at 80% of the container limit under a maxmemory policy, so that limit would overstate headroom).
 - `docs/ADR018-render-parity.md:224` no longer marks datastore CPU/memory ◐, and t005's production check shows non-empty series on REST, MCP and the dashboard.
 
 ## Evidence (verified 2026-10-17 at `2c95fd35b`)

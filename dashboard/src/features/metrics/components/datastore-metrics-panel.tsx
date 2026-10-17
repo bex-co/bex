@@ -22,6 +22,9 @@ import { formatMetricValue } from "@/features/metrics/lib/format";
 import { latestValue } from "@/features/metrics/lib/series";
 import type { ChartSeries, DatastoreKind } from "@/features/metrics/types";
 
+/** Configured limits change only with the plan, so they poll every 5 minutes. */
+const LIMIT_POLL_MS = 300_000;
+
 /** Maps a ChartSeries list onto the line chart's per-instance input shape. */
 function toLineSeries(series: ChartSeries[]): LineSeriesInput[] {
   return series.map((s, i) => ({
@@ -56,10 +59,10 @@ interface DatastoreMetricsPanelProps {
 
 /**
  * The managed-datastore sibling of ApplicationMetricsCard/NetworkMetricsCard
- * (w3/m10): disk usage for both Postgres and Key Value, active-connections and
- * replication-lag for Postgres only, and memory + connected-clients for Key
- * Value only (w5/011, redis_exporter). bex extension — Render's dashboard has
- * no equivalent panel.
+ * (w3/m10): disk usage for both Postgres and Key Value, CPU and memory against
+ * their limits for both (w1/m180; Key Value memory is its used memory, w5/011),
+ * active-connections and replication-lag for Postgres only, and
+ * connected-clients for Key Value only.
  *
  * kind="service" (w1/m86) renders just the disk section for the persistent disk
  * attached to a service: a service has no datastore process, so every other
@@ -76,6 +79,8 @@ export function DatastoreMetricsPanel({
   const { t } = useTranslations();
   const isDatabase = kind === "database";
   const isKeyValue = kind === "keyvalue";
+  // A service's disk has no datastore process, so no CPU or memory.
+  const isDatastore = isDatabase || isKeyValue;
 
   const disk = useDatastoreMetrics(kind, resource, "disk");
   const diskCapacity = useDatastoreMetrics(kind, resource, "disk_capacity");
@@ -88,12 +93,27 @@ export function DatastoreMetricsPanel({
     "replication_lag",
     { skip: !isDatabase || !highAvailabilityEnabled },
   );
-  // Key Value only: used-memory bytes and connected-clients count (w5/011).
-  const kvMemory = useDatastoreMetrics(kind, resource, "kv_memory", {
-    skip: !isKeyValue,
-  });
+  // Key Value only: connected-clients count (w5/011).
   const kvConnections = useDatastoreMetrics(kind, resource, "kv_connections", {
     skip: !isKeyValue,
+  });
+  // CPU and memory (w1/m180): Postgres's own container; a Key Value's memory
+  // is its used memory (w5/011). Its container limit is no line for that
+  // chart: under a maxmemory policy Valkey evicts at 80% of it. Limits barely
+  // move, so they poll slowly.
+  const cpu = useDatastoreMetrics(kind, resource, "cpu", {
+    skip: !isDatastore,
+  });
+  const cpuLimit = useDatastoreMetrics(kind, resource, "cpu_limit", {
+    skip: !isDatastore,
+    pollIntervalMs: LIMIT_POLL_MS,
+  });
+  const memory = useDatastoreMetrics(kind, resource, "memory", {
+    skip: !isDatastore,
+  });
+  const memoryLimit = useDatastoreMetrics(kind, resource, "memory_limit", {
+    skip: !isDatabase,
+    pollIntervalMs: LIMIT_POLL_MS,
   });
 
   const diskSeries = useMemo(() => toLineSeries(disk.series), [disk.series]);
@@ -104,10 +124,22 @@ export function DatastoreMetricsPanel({
     [connections.series],
   );
 
-  const kvMemorySeries = useMemo(
-    () => toLineSeries(kvMemory.series),
-    [kvMemory.series],
+  const cpuSeries = useMemo(() => toLineSeries(cpu.series), [cpu.series]);
+  const cpuLimitValue = latestValue(cpuLimit.series);
+  const memorySeries = useMemo(
+    () => toLineSeries(memory.series),
+    [memory.series],
   );
+  const memoryLimitValue = latestValue(memoryLimit.series);
+  const limitLabel = (unit: string, value: number | null) =>
+    value != null ? (
+      <span className="text-xs text-muted-foreground">
+        {t("metrics.datastoreLimitLabel", {
+          value: formatMetricValue(unit, value),
+        })}
+      </span>
+    ) : null;
+
   const kvConnectionSeries = useMemo(
     () => toLineSeries(kvConnections.series),
     [kvConnections.series],
@@ -156,6 +188,36 @@ export function DatastoreMetricsPanel({
           <ChartLegend entries={diskSeries} />
         </MetricSection>
 
+        {isDatastore && (
+          <>
+            <MetricSection
+              title={t("metrics.datastoreCpuTitle")}
+              result={cpu}
+              headerExtra={limitLabel("cpu", cpuLimitValue)}
+            >
+              <SvgLineChart
+                unit={cpu.series[0]?.unit ?? "cpu"}
+                series={cpuSeries}
+                referenceValue={cpuLimitValue ?? undefined}
+              />
+              <ChartLegend entries={cpuSeries} />
+            </MetricSection>
+
+            <MetricSection
+              title={t("metrics.memoryTitle")}
+              result={memory}
+              headerExtra={limitLabel("bytes", memoryLimitValue)}
+            >
+              <SvgLineChart
+                unit={memory.series[0]?.unit ?? "bytes"}
+                series={memorySeries}
+                referenceValue={memoryLimitValue ?? undefined}
+              />
+              <ChartLegend entries={memorySeries} />
+            </MetricSection>
+          </>
+        )}
+
         {isDatabase && (
           <>
             <MetricSection
@@ -193,26 +255,16 @@ export function DatastoreMetricsPanel({
         )}
 
         {isKeyValue && (
-          <>
-            <MetricSection title={t("metrics.memoryTitle")} result={kvMemory}>
-              <SvgLineChart
-                unit={kvMemory.series[0]?.unit ?? "bytes"}
-                series={kvMemorySeries}
-              />
-              <ChartLegend entries={kvMemorySeries} />
-            </MetricSection>
-
-            <MetricSection
-              title={t("metrics.kvConnectionsTitle")}
-              result={kvConnections}
-            >
-              <SvgLineChart
-                unit={kvConnections.series[0]?.unit ?? "count"}
-                series={kvConnectionSeries}
-              />
-              <ChartLegend entries={kvConnectionSeries} />
-            </MetricSection>
-          </>
+          <MetricSection
+            title={t("metrics.kvConnectionsTitle")}
+            result={kvConnections}
+          >
+            <SvgLineChart
+              unit={kvConnections.series[0]?.unit ?? "count"}
+              series={kvConnectionSeries}
+            />
+            <ChartLegend entries={kvConnectionSeries} />
+          </MetricSection>
         )}
       </CardContent>
     </Card>

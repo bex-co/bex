@@ -60,7 +60,7 @@ func TestMetricsValidationMessagesSurviveGraphQLSanitization(t *testing.T) {
 		{`datastoreMetrics(query: {resource: "pg", name: "FOO_METRIC"})`, `unknown datastore metrics name "FOO_METRIC"`},
 		{`datastoreMetrics(query: {resource: "", name: "DISK"})`, "resource is required"},
 		{`datastoreMetrics(query: {resource: "pg", name: "DISK", kind: "bogus"})`, `unknown datastore kind "bogus"`},
-		{`datastoreMetrics(query: {resource: "pg", name: "MEMORY"})`, `metric "kv_memory" is key-value-only`},
+		{`datastoreMetrics(query: {resource: "pg", name: "CONNECTIONS"})`, `metric "kv_connections" is key-value-only`},
 		{`datastoreMetrics(query: {resource: "kv", name: "DB_CONNECTIONS", kind: "keyvalue"})`, `metric "db_connections" is Postgres-only`},
 		{`datastoreMetrics(query: {resource: "web", name: "DB_CONNECTIONS", kind: "service"})`, `metric "db_connections" is not valid for a service resource`},
 	} {

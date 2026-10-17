@@ -303,7 +303,16 @@ const enMetrics: Record<string, TranslationEntry> = {
   "metrics.memoryTitle": {
     message: "Memory",
     description:
-      "Datastore metrics panel: Key Value used-memory chart section title",
+      "Datastore metrics panel: memory chart section title (Postgres container memory; Key Value used memory)",
+  },
+  "metrics.datastoreCpuTitle": {
+    message: "CPU",
+    description: "Datastore metrics panel: CPU usage chart section title",
+  },
+  "metrics.datastoreLimitLabel": {
+    message: "Limit {value}",
+    description:
+      "Datastore CPU/memory chart header annotation showing the instance's configured limit",
   },
   "metrics.kvConnectionsTitle": {
     message: "Connections",

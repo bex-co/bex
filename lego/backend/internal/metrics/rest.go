@@ -146,19 +146,29 @@ func isDatastoreResource(resource string) bool {
 
 // datastoreAppMetric answers one of Render's App-metric paths (cpu, memory,
 // *-limit, instance-count, http-*, bandwidth) for a datastore id (w8/061).
-// Render scopes them to Postgres and Key Value too; Key Value memory is the
-// dashboard's kv_memory series, and DatastoreMetrics refuses every other pair
-// by name after authorizing the resource, so it is never mistaken for a
-// missing id.
-func (s *Service) datastoreAppMetric(ctx context.Context, metric, resource string, start, end time.Time, resolution time.Duration) ([]MetricSeries, error) {
+// Render scopes them to Postgres and Key Value too. DatastoreMetrics serves cpu,
+// memory and their limits (w1/m180; Key Value memory is its kv_memory series)
+// and refuses every other pair by name after authorizing the resource, so it
+// is never mistaken for a missing id. Replica aggregation applies to its
+// per-instance series as to a service's; percentage and instance filters are
+// refused rather than silently ignored, since an answer in cores to a
+// percentage request, or every instance to an instance filter, would be the
+// wrong shape.
+func (s *Service) datastoreAppMetric(ctx context.Context, q MetricQuery, resource string) ([]MetricSeries, error) {
 	kind := datastoreKindFor(resource)
-	if kind == DatastoreKeyValue && metric == MetricMemory {
-		metric = MetricKVMemory
+	if q.Percentage || len(q.Instances) > 0 {
+		return nil, fmt.Errorf("%w: percentage and instance filters apply to services, not %s %s",
+			core.ErrBadRequest, datastoreNoun(kind), resource)
 	}
-	return s.DatastoreMetrics(ctx, DatastoreMetricQuery{
-		Kind: kind, Resource: resource, Metric: metric,
-		Start: start, End: end, Resolution: resolution,
+	series, err := s.DatastoreMetrics(ctx, DatastoreMetricQuery{
+		Kind: kind, Resource: resource, Metric: q.Metric,
+		Start: q.Start, End: q.End, Resolution: q.Resolution,
 	})
+	if err != nil {
+		return nil, err
+	}
+	q.App = resource
+	return applyInstanceSelection(q, series, nil)
 }
 
 func (s *Service) activeConnectionsQuery(w http.ResponseWriter, r *http.Request) {
@@ -266,7 +276,7 @@ func (s *Service) metricQuery(w http.ResponseWriter, r *http.Request, metric str
 	var all []MetricSeries
 	for _, res := range resources {
 		if isDatastoreResource(res) {
-			series, err := s.datastoreAppMetric(r.Context(), metric, res, q.Start, q.End, q.Resolution)
+			series, err := s.datastoreAppMetric(r.Context(), q, res)
 			if err != nil {
 				core.WriteErr(w, err)
 				return

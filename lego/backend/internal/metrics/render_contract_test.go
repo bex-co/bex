@@ -189,9 +189,10 @@ func TestRESTDatastorePathsInferTheKindFromTheID(t *testing.T) {
 	}
 }
 
-// TestRenderAppMetricPathsAnswerForDatastores is w8/061: Render scopes its
-// cpu/memory/... paths to Postgres and Key Value too. A Key Value's memory is
-// the dashboard's kv_memory series; every other datastore pair is a coded
+// TestRenderAppMetricPathsAnswerForDatastores is w8/061 and w1/m180: Render
+// scopes its cpu/memory/... paths to Postgres and Key Value too. cpu, memory
+// and their limits answer from the datastore's own container (a Key Value's
+// memory is its kv_memory series); every other datastore pair is a coded
 // refusal naming the metric, and only a missing id is 404.
 func TestRenderAppMetricPathsAnswerForDatastores(t *testing.T) {
 	const kvID, pgID = "red-c185th5c2rvvnhbfiltg", "dpg-c185th5c2rvvnhbfiltg"
@@ -201,6 +202,8 @@ func TestRenderAppMetricPathsAnswerForDatastores(t *testing.T) {
 		asked = req
 		return []MetricSeries{{Labels: map[string]string{}, Unit: unitBytes, Points: []MetricPoint{{Value: 4096}}}}, nil
 	}
+	var resources []DatastoreResourceRequest
+	svc.DatastoreResource = recordingResourceSource(&resources)
 
 	rec := serveREST(svc, "/v1/metrics/memory?resource="+kvID)
 	got := seriesFrom(t, rec.Body.Bytes())
@@ -208,12 +211,19 @@ func TestRenderAppMetricPathsAnswerForDatastores(t *testing.T) {
 		t.Fatalf("Key Value memory = %d %s (asked %+v), want the kv_memory series", rec.Code, rec.Body, asked)
 	}
 
+	served := map[string]bool{"cpu": true, "memory": true, "cpu-limit": true, "memory-limit": true}
 	for seg := range metricPaths {
 		for _, id := range []string{kvID, pgID} {
 			if seg == "memory" && id == kvID {
 				continue
 			}
 			rec := serveREST(svc, "/v1/metrics/"+seg+"?resource="+id)
+			if served[seg] {
+				if rec.Code != http.StatusOK || len(seriesFrom(t, rec.Body.Bytes())) != 1 {
+					t.Errorf("%s on %s = %d %s, want the datastore container's series", seg, id, rec.Code, rec.Body)
+				}
+				continue
+			}
 			if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "is not served for") || !strings.Contains(rec.Body.String(), id) {
 				t.Errorf("%s on %s = %d %s, want a coded 400 naming the pair", seg, id, rec.Code, rec.Body)
 			}
@@ -236,6 +246,8 @@ func TestMCPGetMetricsAnswersForDatastores(t *testing.T) {
 	svc.KeyValueStats = func(context.Context, KeyValueStatsRequest) ([]MetricSeries, error) {
 		return []MetricSeries{{Labels: map[string]string{}, Unit: unitBytes, Points: []MetricPoint{{Value: 4096}}}}, nil
 	}
+	var resources []DatastoreResourceRequest
+	svc.DatastoreResource = recordingResourceSource(&resources)
 	cs := mcpSession(t, svc)
 	call := func(metricType string) *mcp.CallToolResult {
 		t.Helper()
@@ -248,13 +260,18 @@ func TestMCPGetMetricsAnswersForDatastores(t *testing.T) {
 		}
 		return result
 	}
-	if result := call("memory_usage"); result.IsError {
-		t.Fatalf("memory_usage on a Key Value: %+v", result.Content)
+	for _, metricType := range []string{"memory_usage", "cpu_usage", "cpu_limit", "memory_limit"} {
+		if result := call(metricType); result.IsError {
+			t.Fatalf("%s on a Key Value: %+v", metricType, result.Content)
+		}
 	}
-	result := call("cpu_usage")
+	if len(resources) != 3 || resources[0].Container != keyValueContainer {
+		t.Errorf("container reads = %+v, want cpu and both limits from the valkey container", resources)
+	}
+	result := call("instance_count")
 	raw, _ := json.Marshal(result.Content)
 	if !result.IsError || !strings.Contains(string(raw), "is not served for Key Value") {
-		t.Errorf("cpu_usage on a Key Value = %s, want a refusal naming the pair", raw)
+		t.Errorf("instance_count on a Key Value = %s, want a refusal naming the pair", raw)
 	}
 }
 
