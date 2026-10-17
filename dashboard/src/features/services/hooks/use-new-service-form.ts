@@ -55,7 +55,8 @@ interface PlainFields {
  * `NewServiceForm` the submit rules read, so the page holds no field state.
  */
 export function useNewServiceForm(search: NewServiceSearch) {
-  const { instanceTypes } = useInstanceTypes();
+  const catalog = useInstanceTypes();
+  const { instanceTypes } = catalog;
   const build = useBuildRuntimeFields();
   const initialType = search.type ?? DEFAULT_SERVICE_TYPE;
   const [fields, setFields] = useState<PlainFields>(() => ({
@@ -93,8 +94,7 @@ export function useNewServiceForm(search: NewServiceSearch) {
   const set = useCallback(
     (
       patch:
-        | Partial<PlainFields>
-        | ((current: PlainFields) => Partial<PlainFields>),
+        Partial<PlainFields> | ((current: PlainFields) => Partial<PlainFields>),
     ) =>
       setFields((current) => ({
         ...current,
@@ -185,5 +185,13 @@ export function useNewServiceForm(search: NewServiceSearch) {
     build,
     name,
     instanceTypes: offeredTypes,
+    /** The plan catalog's read state, so the page can tell pending from a
+     *  settled failure and retry it in place (w4/m218). */
+    catalog: {
+      loading: catalog.loading,
+      error: catalog.error,
+      retry: catalog.retry,
+      retrying: catalog.retrying,
+    },
   };
 }

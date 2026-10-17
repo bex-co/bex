@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PlanCatalogUnavailable } from "@/common/components/plan-catalog-unavailable";
 import {
   Card,
   CardContent,
@@ -32,7 +33,8 @@ export function DatabasePlanSection({
   const operateDenied = !canOperate;
   const operateReasonKey = capabilities.reasonKey("can_operate");
   const operateReason = operateReasonKey ? t(operateReasonKey) : undefined;
-  const { instanceTypes, loading } = useDatabaseInstanceTypes();
+  const { instanceTypes, loading, retry, retrying } =
+    useDatabaseInstanceTypes();
   const { updatePlan, busy } = useUpdateDatabasePlan();
   const [selected, setSelected] = useState<string | null>(database.plan);
   const [confirming, setConfirming] = useState(false);
@@ -103,6 +105,12 @@ export function DatabasePlanSection({
         ) : null}
         {loading && instanceTypes.length === 0 ? (
           <PlanTierSlots />
+        ) : instanceTypes.length === 0 ? (
+          // A settled failed or empty catalog, not an empty choice (w4/m218).
+          <PlanCatalogUnavailable
+            onRetry={() => void retry()}
+            retrying={retrying}
+          />
         ) : (
           <PlanCardGrid
             instanceTypes={instanceTypes}

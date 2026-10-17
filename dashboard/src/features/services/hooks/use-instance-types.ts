@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
+import { useCatalogRetry } from "@/common/hooks/use-catalog-retry";
 import { InstanceTypesDocument } from "@/graphql/definitions";
 
 /** One catalog tier, as the picker and Settings row consume it. */
@@ -20,6 +21,9 @@ export interface UseInstanceTypesResult {
   error: Error | undefined;
   /** O(1) lookup by Render plan id — undefined for an unknown/empty plan. */
   byID: (id: string | null | undefined) => InstanceTypeView | undefined;
+  /** Re-reads the catalog in place; busy in `retrying` (w4/m218). */
+  retry: () => Promise<void>;
+  retrying: boolean;
 }
 
 /**
@@ -29,7 +33,8 @@ export interface UseInstanceTypesResult {
  * rarely changes, so the default Apollo cache-first policy is fine.
  */
 export function useInstanceTypes(): UseInstanceTypesResult {
-  const { data, loading, error } = useQuery(InstanceTypesDocument);
+  const { data, loading, error, refetch } = useQuery(InstanceTypesDocument);
+  const { retry, retrying } = useCatalogRetry(refetch);
 
   const instanceTypes = useMemo<InstanceTypeView[]>(
     () =>
@@ -48,5 +53,5 @@ export function useInstanceTypes(): UseInstanceTypesResult {
   const byID = (id: string | null | undefined) =>
     id ? instanceTypes.find((t) => t.id === id) : undefined;
 
-  return { instanceTypes, loading, error, byID };
+  return { instanceTypes, loading, error, byID, retry, retrying };
 }

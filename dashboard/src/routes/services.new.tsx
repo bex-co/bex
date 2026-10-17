@@ -60,6 +60,7 @@ import {
 } from "@/features/services/lib/create-context";
 import { ServiceCreatePageSkeleton } from "@/common/components/route-skeletons";
 import { PlanTierSlots } from "@/common/components/datastore-plan-preview";
+import { PlanCatalogUnavailable } from "@/common/components/plan-catalog-unavailable";
 import { servicePlanSlotCount } from "@/features/services/lib/instance-type";
 
 export const Route = createFileRoute("/services/new")({
@@ -83,8 +84,16 @@ export function NewServicePage() {
   const search = Route.useSearch();
   const { create, busy, capLimit, nameConflict, clearNameConflict } =
     useCreateService();
-  const { form, set, setTab, setServiceType, build, name, instanceTypes } =
-    useNewServiceForm(search);
+  const {
+    form,
+    set,
+    setTab,
+    setServiceType,
+    build,
+    name,
+    instanceTypes,
+    catalog,
+  } = useNewServiceForm(search);
   const shape = buildShape(form);
   const createCopy = serviceTypeCreateCopy(form.serviceType);
 
@@ -468,7 +477,12 @@ export function NewServicePage() {
                 {shape.showPlan ? (
                   <div className="space-y-2">
                     <Label>{t("services.createFieldPlan")}</Label>
-                    {instanceTypes.length === 0 ? (
+                    {instanceTypes.length === 0 && !catalog.loading ? (
+                      <PlanCatalogUnavailable
+                        onRetry={() => void catalog.retry()}
+                        retrying={catalog.retrying}
+                      />
+                    ) : instanceTypes.length === 0 ? (
                       <PlanTierSlots
                         count={servicePlanSlotCount(form.serviceType)}
                         lastWraps

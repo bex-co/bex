@@ -28,11 +28,20 @@ beforeAll(() => {
   }
 });
 
+const retryCatalog = vi.fn(async () => undefined);
 const instanceTypesState: {
   instanceTypes: KeyValueInstanceTypeView[];
   loading: boolean;
   error: Error | undefined;
-} = { instanceTypes: [], loading: false, error: undefined };
+  retry: () => Promise<void>;
+  retrying: boolean;
+} = {
+  instanceTypes: [],
+  loading: false,
+  error: undefined,
+  retry: retryCatalog,
+  retrying: false,
+};
 
 vi.mock("@/features/keyvalue/hooks/use-key-value-instance-types", () => ({
   useKeyValueInstanceTypes: () => instanceTypesState,
@@ -269,11 +278,20 @@ describe("NewKeyValuePage plan region while the catalog loads (w4/330)", () => {
     expect(submit).toBeEnabled();
   });
 
-  it("does not show a settled empty catalog as pending", async () => {
+  it("explains a settled failed catalog and retries it in place (w4/m218)", async () => {
+    const user = userEvent.setup();
     instanceTypesState.instanceTypes = [];
     instanceTypesState.loading = false;
+    instanceTypesState.error = new Error("catalog unavailable");
+    retryCatalog.mockClear();
     renderPage();
-    expect(await screen.findByRole("radiogroup")).toBeInTheDocument();
-    expect(screen.queryAllByRole("radio")).toHaveLength(0);
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Plans couldn't load");
+    expect(screen.queryByRole("radiogroup")).toBeNull();
+    await user.type(screen.getByLabelText("Name"), "qa-a785-kv");
+    await user.click(within(alert).getByRole("button", { name: "Try again" }));
+    expect(retryCatalog).toHaveBeenCalledOnce();
+    expect(screen.getByLabelText("Name")).toHaveValue("qa-a785-kv");
+    instanceTypesState.error = undefined;
   });
 });
