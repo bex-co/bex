@@ -1011,11 +1011,12 @@ func deployCloseFailureReason(cur *appv1alpha1.App, open Deploy, status string, 
 	return "", ""
 }
 
-// recordedRolloutFailure reads the operator's durable verdict on a rollout
-// that failed over a release that had already served
-// (status.conditions[Rollout], w8/m44) for one deploy row's release
-// generation: the diagnosis message and its reason. Ready cannot carry it —
-// over a prior release Ready describes the release that keeps serving.
+// recordedRolloutFailure reads the operator's durable verdict on a failed
+// rollout (status.conditions[Rollout], w8/m44) for one deploy row's release
+// generation: the diagnosis message and its reason. Ready cannot carry it over
+// a prior release — Ready then describes the release that keeps serving. A
+// first release that never served records the same verdict (w1/m179), so its
+// row closes from the release-scoped record as well.
 func recordedRolloutFailure(app *appv1alpha1.App, generation int64) (string, string, bool) {
 	cond := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionRollout)
 	if generation == 0 || cond == nil || cond.ObservedGeneration != generation ||

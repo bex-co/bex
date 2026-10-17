@@ -167,6 +167,15 @@ func newHandler(c client.Client, cache *hostCache, log logr.Logger) http.Handler
 			return
 		}
 
+		// A first release that never served and failed is stopped at zero
+		// (w1/m179): there is no release to wake into, and a wake would only
+		// start the failed pod again for the operator to stop. It answers like
+		// an unrouted host — no Retry-After, because retrying cannot help.
+		if app.Status.ActiveRevision == "" && app.Status.Phase == appv1alpha1.PhaseFailed {
+			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
 		// Coalesce concurrent wake requests per App so a retry flood issues one
 		// last-active patch + scale-up instead of N.
 		key := app.Namespace + "/" + app.Name

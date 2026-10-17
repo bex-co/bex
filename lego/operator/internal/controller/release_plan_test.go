@@ -33,12 +33,13 @@ func forEachReleaseFacts(now time.Time, fn func(releaseFacts)) {
 		at       time.Time
 	}{{}, {true, now.Add(-rolloutVerdictGrace / 2)}, {true, now.Add(-rolloutVerdictGrace - time.Minute)}}
 	unavailable := []time.Time{{}, now.Add(-servedWakeBudget / 2), now.Add(-servedWakeBudget - time.Minute)}
-	const flags = 10
+	const flags = 11
 	for mask := range 1 << flags {
 		bit := func(i int) bool { return mask&(1<<i) != 0 }
 		base := releaseFacts{
 			suspended: bit(0), idle: bit(1), newer: bit(2), servedRuntime: bit(3), wokeForRelease: bit(4),
 			preDeployPassed: bit(5), preDeployFailed: bit(6), scaled: bit(7), ready: bit(8), restorable: bit(9),
+			firstReleaseFailed: bit(10),
 		}
 		for _, verdict := range verdicts {
 			for _, template := range templates {
@@ -144,11 +145,31 @@ var releaseInvariants = []struct {
 		return !due || p.act == actWake
 	},
 }, {
-	// The deferred park is bounded by the deadline plus the grace (w6/m147).
+	// The deferred park is bounded by the deadline plus the grace (w6/m147). A
+	// stopped first release is already at zero (w1/m179).
 	name: "an idle service parks once the grace has passed",
 	holds: func(f releaseFacts, p releasePlan, now time.Time) bool {
 		overdue := f.idle && f.deadlineExceeded && now.Sub(f.deadlineAt) >= rolloutVerdictGrace
-		return !overdue || p.parked
+		return !overdue || p.parked || p.stopped
+	},
+}, {
+	// A first release whose rollout settled failed stops at zero, stays Failed
+	// rather than parking as Hibernated, and never writes Deploying (w1/m179).
+	name: "a failed first release stops",
+	holds: func(f releaseFacts, p releasePlan, _ time.Time) bool {
+		return !f.firstReleaseFailed || f.suspended || p.stopped && !p.autoHibernating && !p.deploying()
+	},
+}, {
+	// Nothing else stops: every other release runs, parks or is held (w1/m179).
+	name: "only a failed first release stops",
+	holds: func(f releaseFacts, p releasePlan, _ time.Time) bool {
+		return !p.stopped || f.firstReleaseFailed && !f.suspended
+	},
+}, {
+	// A suspend parks a stopped release as it parks any other (w1/m179).
+	name: "a suspended failed first release parks",
+	holds: func(f releaseFacts, p releasePlan, _ time.Time) bool {
+		return !f.firstReleaseFailed || !f.suspended || p.parked && !p.stopped
 	},
 }, {
 	// A served release that overran its budget does not hold the newer release
