@@ -8,7 +8,7 @@ Why: a usable-looking log search silently clears text entered before its handler
 
 Fresh-load Key Value `/keyvalue/{id}?tab=logs` at1440/390, hold the fetched real entry, type into **Search logs…**, then release it unchanged. Repeat mobile. Run the same desktop/mobile probe on Postgres `/databases/{id}?tab=logs`, using its actual label **Search database logs**.
 
-[Exact scripts and complete receipts](../evidence/m219-a850-datastore-search-startup.json) preserve all five failures. Each field is effectively enabled and writable without React props, accepts trusted input, retains it into initial React-props samples, then clears on the same node. Each case has20 matching node samples and an unchanged HTTP200 entry, `index-pJFig2Dm.js`,1,954,259bytes. Ready typing persists and writes the expected `text` URL filter. Separate ready URL controls retain the exact text and show **No matching logs** for both kinds, without console errors.
+[Exact scripts and complete receipts](../../evidence/m219-a850-datastore-search-startup.json) preserve all five failures. Each field is effectively enabled and writable without React props, accepts trusted input, retains it into initial React-props samples, then clears on the same node. Each case has20 matching node samples and an unchanged HTTP200 entry, `index-pJFig2Dm.js`,1,954,259bytes. Ready typing persists and writes the expected `text` URL filter. Separate ready URL controls retain the exact text and show **No matching logs** for both kinds, without console errors.
 
 Viewed supplementary `.playwright-mcp/qa-a850-datastore-{before,after}.png` images contain only the input parent. No datastore log contents or credentials were captured. The first PG probe used the KV label and is excluded; it proves no absence control.
 

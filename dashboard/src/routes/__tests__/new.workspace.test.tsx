@@ -10,6 +10,8 @@ import {
 } from "@tanstack/react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NewWorkspacePage } from "../new.workspace";
+import type { WorkspaceCreationAttempt } from "@/features/workspaces/hooks/use-workspace-creation-billing";
+import { serverRendered } from "@/test/hydration";
 
 const prepare = vi.fn();
 const finalize = vi.fn();
@@ -20,7 +22,7 @@ const creationState = {
     paymentRequired: false,
     providerAvailable: false,
   },
-  attempt: null,
+  attempt: null as WorkspaceCreationAttempt | null,
 };
 vi.mock("@/features/workspaces/hooks/use-workspace-creation-billing", () => ({
   useWorkspaceCreationBilling: () => ({
@@ -48,7 +50,7 @@ vi.mock("@/common/components/dashboard-layout", () => ({
   ),
 }));
 
-function renderPage() {
+function pageRouter() {
   const rootRoute = createRootRoute();
   const newRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -70,6 +72,11 @@ function renderPage() {
       } as never,
     },
   });
+  return router;
+}
+
+function renderPage() {
+  const router = pageRouter();
   return { ...render(<RouterProvider router={router} />), router };
 }
 
@@ -212,4 +219,55 @@ describe("NewWorkspacePage", () => {
       "readonly",
     );
   });
+});
+
+// w4/m219 (a846): a slug typed into the server-rendered form before handlers
+// attach is wiped by hydration.
+it("keeps the slug uneditable until hydration, then focuses it (w4/m219)", async () => {
+  const router = pageRouter();
+  await router.load();
+  const { hydrate, getByLabelText } = serverRendered(
+    <RouterProvider router={router} />,
+  );
+  const slug = () => getByLabelText<HTMLInputElement>("Workspace slug");
+  expect(slug().disabled).toBe(true);
+  await hydrate();
+  expect(slug().disabled).toBe(false);
+  expect(slug()).toHaveFocus();
+  await userEvent.type(slug(), "Acme-Prod");
+  expect(slug().value).toBe("acme-prod");
+});
+
+it("hands focus to the slug only when nothing else holds it (w4/m219)", async () => {
+  const router = pageRouter();
+  await router.load();
+  const { hydrate, getByLabelText } = serverRendered(
+    <RouterProvider router={router} />,
+  );
+  const email = getByLabelText<HTMLInputElement>(/Billing email/i);
+  email.focus();
+  await hydrate();
+  expect(email).toHaveFocus();
+});
+
+it("keeps a resumed attempt's slug locked after hydration (w4/m219)", async () => {
+  creationState.attempt = {
+    id: "wca-resume",
+    name: "acme",
+    plan: "hobby",
+    billingEmail: "user@example.com",
+    paymentRequired: false,
+    state: "prepared",
+    clientSecret: "",
+    publishableKey: "",
+  };
+  const router = pageRouter();
+  await router.load();
+  const { hydrate, getByLabelText } = serverRendered(
+    <RouterProvider router={router} />,
+  );
+  const slug = () => getByLabelText<HTMLInputElement>("Workspace slug");
+  await hydrate();
+  expect(slug().disabled).toBe(true);
+  expect(slug().value).toBe("acme");
 });
