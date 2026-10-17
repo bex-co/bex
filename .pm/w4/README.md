@@ -323,6 +323,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **337** — [Restored environment drafts claim a sign-in after an ordinary reload](337.md) (20m) — minor; independent active-session1440/390 reloads retain the draft but the shared body claims a sign-in that did not occur. Use neutral en/zh recovery wording; preserve storage and recovery behavior. Normal import/save/runtime controls pass; m222 remains blocked with its old importer still served. Owned service/two deploys, all23 runtime/snapshot scopes, inventories and exact session cleaned. Filing only.
+
 - [ ] **336** — [Mobile Postgres section links hide their destination titles](336.md) (55m) — minor; fresh360/390 native SQL and HA links put the full card title beneath the sticky row. Desktop passes; a reversible local margin control identifies the offset mechanism. Six navigation owners audited in source; sibling behavior remains verification work. SQL data, timeout, paging and history controls pass. Owned database, all18 runtime/snapshot scopes, inventories and exact session cleaned. Filing only.
 
 - [ ] **335** — [Static UTF-8 text renders with the wrong charset](335.md) (55m) — minor; correct 57-byte UTF-8 text displays as mojibake at fresh desktop/mobile direct and rewritten URLs because populated origin text/plain omits charset. Native charset controls pass; removing them reproduces with the same Live revision. Normalize only valid UTF-8 plain-object metadata before caching; preserve declared encodings, other MIME types and owner overrides. All 23 runtime/snapshot checks, API inventories and session cleaned. Filing only.
