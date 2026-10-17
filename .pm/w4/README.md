@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m222** — [Ignore obsolete dotenv file reads](m222/README.md) (6 tasks,2h15) — major; delayed earlier reads replace the latest selection or repopulate a canceled import. Controlled desktop/mobile failures, actual saved/runtime consequence and healthy recovery; owned Free fixture/session fully cleaned. Filing only.
+
 - [ ] **m221** — [Preserve creation placement when lookup reads fail](m221/README.md) (6 tasks, 2h35) ← a856: five browser-local read-error probes clear valid scope; one real Free create omits environmentId and lands unassigned. Shared selector has three clients; preserve explicit-none semantics and add read-only recovery. [Evidence](m221/finding.md).
 
 - [ ] **m219** — [Gate forms and searches until handlers are ready](m219/README.md) (18 tasks) — **ACTIVE: a859 adds two populated static Routes/Headers roots and a shared-caller/control audit (t017/t018).** The prior ten-root implementation and its checks remain complete; standing t005–t007 reopen for this addition, and t008 retains the full twelve-root deployed acceptance. [Four failures and passing controls](m219/finding-a859.md). Filing only.
