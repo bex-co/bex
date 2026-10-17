@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Search } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import { useNow } from "@/common/hooks/use-now";
 import { useUrlEcho } from "@/common/hooks/use-url-echo";
 import { formatTimeAgo } from "@/common/lib/format";
@@ -105,6 +106,7 @@ export function DeploysListPage({
   onFiltersChange,
 }: DeploysListPageProps) {
   const { t, i18n } = useTranslations();
+  const hydrated = useIsHydrated();
   // Row times are elapsed ("Deployed 2 hours ago", Render's deploy list)
   // rather than absolute: timezone-neutral, so they render on the SSR pass
   // too, and one page-level minute ticker keeps every row's text moving. The
@@ -367,6 +369,9 @@ export function DeploysListPage({
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
+              // Uneditable until handlers attach: a query typed into the
+              // server HTML is wiped by hydration (w4/m219).
+              disabled={!hydrated}
               onChange={(event) =>
                 changeFilters({ search: event.target.value })
               }

@@ -1,6 +1,6 @@
 # w4 · m219 — Gate forms and searches until handlers are ready
 
-**Worker:** worker4 **Goal:** ten observed SSR roots accept edits only when handlers can retain them. **Status:** todo — t001–t004, t009 and t010 remain done, including the webhook fix in af6a6310e. New t011–t016 and standing t005–t007 cover only the added log-search, deployment-history, Workspace slug and datastore-search scope; deployed-build replay t008 remains owed.
+**Worker:** worker4 **Goal:** ten observed SSR roots accept edits only when handlers can retain them. **Status:** todo — t001–t004 and t009–t013 are done, including the webhook fix in af6a6310e. New t011–t016 and standing t005–t007 cover only the added log-search, deployment-history, Workspace slug and datastore-search scope; deployed-build replay t008 remains owed.
 
 **Estimate:** 5h45 (16 tasks). Filing only; no product fix shipped by the hunt.
 
@@ -14,9 +14,9 @@
 | t009 | Gate Environment Groups search through startup — **DONE** | 15m | — |
 | t004 | Audit native fields, aliases and existing hydration consumers — **DONE** | 30m | t001, t002, t003, t009 |
 | t010 | Gate populated webhook list search through startup — **DONE** | 20m | — |
-| t011 | Gate service log search through startup | 20m | — |
-| t012 | Gate deploy log search through startup | 20m | — |
-| t013 | Gate deployment-history search through startup | 20m | — |
+| t011 | Gate service log search through startup — **DONE** | 20m | — |
+| t012 | Gate deploy log search through startup — **DONE** | 20m | — |
+| t013 | Gate deployment-history search through startup — **DONE** | 20m | — |
 | t014 | Gate workspace slug through startup | 20m | — |
 | t015 | Gate datastore log search through startup | 20m | — |
 | t016 | Audit both datastore viewer callers and preserved controls | 15m | t015 |
@@ -65,6 +65,7 @@
 - **t001–t003:** `HydrationFieldset` (`dashboard/src/common/components/hydration-fieldset.tsx`) wraps the `CardContent` of `/keyvalue/new`, `/services/new` (every type, so Name and Port among them) and `/blueprints/new` (Name and path). It is `disabled` with `aria-busy` while `useIsHydrated()` is false: a native disabled fieldset, so the server HTML itself rejects typing. It uses `display: contents`, so `space-y` and the card's flex layout are unchanged, and it becomes an ordinary enabled fieldset once hydrated (or on client navigation).
 - **t009:** the `/env-groups` search `Input` is `disabled={!hydrated}`: visible, but not editable before handlers. Matching and reset are unchanged.
 - **t010 (a837, 2026-10-16):** the populated `/webhooks` list search `Input` in `WebhooksPanel` is `disabled={!hydrated}` the same way: same geometry, uneditable before handlers. Filtering, the capability-driven Create action, links/toggles, empty/error/loading branches and CSR navigation (already hydrated: enabled on mount) are unchanged; the one route mount is `/webhooks`. a805's `/webhooks/new` control is untouched. The global `Input` and hook are unchanged.
+- **t011–t013 (a838/a841, 2026-10-16):** the visible search `Input` of `LogFilterBar` (its one chain: `LogViewer` → `/services/$serviceId/logs`), `DeployLogPanel` (the one deploy-detail mount, service and static) and `DeploysListPage` (the service and static deploy-history routes) is `disabled={!hydrated}` the same way: same geometry, uneditable before handlers, enabled on mount after client navigation. The log popover's Path field is not server-rendered and stays as is. URL adoption, debounce, type/instance/status filters, literal matching, partial history, paging and row actions are unchanged; no log API, global `Input` or hook change. A new failure-safe `serverRendered()` test helper (`dashboard/src/test/hydration.ts`, torn down by `onTestFinished`, returning scoped queries) backs a real server render → hydrate test for each (ships disabled, hydration enables, typed text kept; history also filters), and the fieldset and webhook tests moved onto it. Each new test fails with its gate removed; ADR018's m219 note lists all five searches. Dashboard suite (5117 tests) and lint pass. t005–t007 stay open for t014–t016.
 - **t005–t007 reopened for t010:** ADR018's m219 note now lists the Webhooks list search. `webhooks-panel.test.tsx` server-renders the real panel inside its router, asserts the search ships disabled, hydrates the same markup, then types `pager` and sees the list filter; it fails with the gate removed. Dashboard suite (5114 tests), lint and typecheck pass.
 - **t004:** only these four roots were gated. The passing controls (webhook create, the Postgres create dialog) and the shared Input, `useIsHydrated` and the other native fields are untouched. Aliases (`/web|pserv|worker|cron|static/new`, `/new/redis`, `/r/new`) redirect into the gated canonical routes.
 - **t005/t006:** ADR018's create-service row records the startup behavior. Reviewed inline: one small component and four call sites.
