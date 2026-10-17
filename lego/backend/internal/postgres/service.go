@@ -427,7 +427,13 @@ func (req CreatePostgresRequest) validatePhysicalIdentifiers() error {
 func dbStatus(d *appv1alpha1.Database) string {
 	switch d.Status.Phase {
 	case appv1alpha1.DBPhaseReady:
-		return core.DatastoreReadyStatus(d.Status.Conditions, d.Generation)
+		status := core.DatastoreReadyStatus(d.Status.Conditions, d.Generation)
+		// A database resumed before it ever served is still being created,
+		// not restarting (w4/m223).
+		if status == core.DatastoreConfigRestart && !d.Status.Provisioned {
+			return core.DatastoreCreating
+		}
+		return status
 	case appv1alpha1.DBPhaseUpgrading:
 		return "upgrading"
 	case appv1alpha1.DBPhaseFailed:
@@ -454,6 +460,7 @@ var unavailableReasons = map[string]string{
 	appv1alpha1.ReasonBackupStoreUnavailable:       "The database's backup storage could not be set up.",
 	appv1alpha1.ReasonScheduledBackupFailed:        "The daily backup could not be scheduled.",
 	appv1alpha1.ReasonScheduledBackupCleanupFailed: "The daily backup schedule could not be removed.",
+	appv1alpha1.ReasonExtensionsFailed:             "The database's managed extensions could not be installed, so it is not available yet.",
 }
 
 func pgView(d *appv1alpha1.Database) PostgresView {

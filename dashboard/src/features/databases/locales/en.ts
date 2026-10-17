@@ -295,6 +295,11 @@ const enDatabases: Record<string, TranslationEntry> = {
     description:
       "Why an unavailable database is unavailable: the operator's PoolerFailed Ready reason (bex-api statusReasonCode)",
   },
+  "databases.statusReasonExtensionsFailed": {
+    message: "The database's managed extensions could not be installed, so it is not available yet.",
+    description:
+      "Why an unavailable database is unavailable: the operator's ExtensionsFailed Ready reason (bex-api statusReasonCode)",
+  },
   "databases.statusReasonPostUpgradeBackupFailed": {
     message: "The backup after the version upgrade could not be taken.",
     description:

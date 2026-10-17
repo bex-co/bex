@@ -1109,8 +1109,10 @@ func (r *DatabaseReconciler) reconcileScheduledBackup(ctx context.Context, db *a
 // compute, so waiting on readyInstances would never converge (mirrors the
 // KeyValue suspend path).
 func (r *DatabaseReconciler) settleSuspended(ctx context.Context, db *appv1alpha1.Database, exportRequeue time.Duration) (ctrl.Result, error) {
+	// Suspension does not complete the first-serving latch: a database
+	// suspended before it ever served still needs its first Ready, with its
+	// managed extensions, after resume (w4/m223).
 	db.Status.Phase = appv1alpha1.DBPhaseReady
-	db.Status.Provisioned = true
 	meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reasonSuspended,
 		Message: "postgres suspended (hibernated; PVC and config kept)", ObservedGeneration: db.Generation,
@@ -1361,17 +1363,18 @@ func (r *DatabaseReconciler) reconcileDatabaseReadiness(
 	}
 
 	restarting := r.restartPending(ctx, db, cluster, desiredInstances)
-	if clusterState.ready >= desiredInstances && !restarting {
-		// A major upgrade creates a new PostgreSQL system ID/timeline; pre-upgrade
-		// backups cannot provide PITR into the new major. Start a fresh base backup
-		// as soon as CNPG reports the upgraded cluster healthy.
-		if backupEnabled && previousVersion != "" && clusterState.currentVersion != "" && previousVersion != clusterState.currentVersion {
-			name := fmt.Sprintf("%s-post-upgrade-pg%s", db.Name, clusterState.currentVersion)
-			if err := upsertOwned(ctx, r.Client, r.Scheme, db, cnpgBackupGVK, name, onDemandBackupSpec(db.Name)); err != nil {
-				return r.dbFail(ctx, db, appv1alpha1.ReasonPostUpgradeBackupFailed, err)
-			}
-			db.Status.BackupServerName = targetBackupServerName
+	healthy := clusterState.ready >= desiredInstances && !restarting
+	// Before any extensions hold, which still records the new version.
+	if healthy && backupEnabled {
+		if err := r.startPostUpgradeBackup(ctx, db, previousVersion, clusterState.currentVersion, targetBackupServerName); err != nil {
+			return r.dbFail(ctx, db, appv1alpha1.ReasonPostUpgradeBackupFailed, err)
 		}
+	}
+	extensionsHeld, extensionsFailure := firstReadyHeldForExtensions(db)
+	if healthy && extensionsFailure != "" {
+		return r.failFirstReady(ctx, db, extensionsFailure, exportRequeue)
+	}
+	if healthy && !extensionsHeld {
 		db.Status.Phase = appv1alpha1.DBPhaseReady
 		db.Status.Provisioned = true
 		meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
@@ -1389,10 +1392,15 @@ func (r *DatabaseReconciler) reconcileDatabaseReadiness(
 	}
 
 	reason, message, requeue := string(appv1alpha1.DBPhaseProvisioning), "waiting for CloudNativePG", 10*time.Second
-	if restarting {
+	switch {
+	case restarting:
 		// Nothing watches the CNPG Pods for this reconciler, so poll the
 		// rollout closely: Ready returns within seconds of the last instance.
 		reason, message, requeue = "Restarting", "waiting for CloudNativePG to restart every instance", 3*time.Second
+	case healthy:
+		// Only the managed extensions hold a healthy cluster here; the
+		// watched child reconciles as soon as CNPG reports.
+		reason, message = reasonInitializingExtensions, "waiting for CloudNativePG to install vector in the application database"
 	}
 	db.Status.Phase = appv1alpha1.DBPhaseProvisioning
 	meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
@@ -1827,4 +1835,60 @@ done`,
 		},
 	}
 	return job
+}
+
+// firstReadyHeldForExtensions reports whether a database that has never
+// served must stay out of Ready for its managed extensions, and why their
+// initial installation failed (w4/m223). A tenant takes the first Available as
+// the moment a vector migration can run, and the healthy cluster arrives
+// seconds before the CNPG Database child applies. A refused child write counts
+// as a failure too, so a persistent refusal is named rather than an endless
+// "creating". Once a database has served, the child is optional again, so a
+// later extension or backfill problem never takes it out of service; the
+// PostgreSQL-owned database CNPG cannot manage is exempt. The condition is
+// restamped earlier in every non-suspended reconcile, so it is current.
+func firstReadyHeldForExtensions(db *appv1alpha1.Database) (held bool, failure string) {
+	if db.Status.Provisioned {
+		return false, ""
+	}
+	extensions := meta.FindStatusCondition(db.Status.Conditions, conditionExtensionsReady)
+	switch {
+	case extensions == nil:
+		return true, ""
+	case extensions.Reason == reasonReservedDatabaseName, extensions.Status == metav1.ConditionTrue:
+		return false, ""
+	case extensions.Status == metav1.ConditionFalse:
+		return true, extensions.Message
+	default:
+		return true, ""
+	}
+}
+
+// startPostUpgradeBackup starts a fresh base backup once an upgraded major is
+// healthy: a major upgrade creates a new PostgreSQL system ID/timeline, so
+// pre-upgrade backups cannot provide PITR into it.
+func (r *DatabaseReconciler) startPostUpgradeBackup(ctx context.Context, db *appv1alpha1.Database, previousVersion, currentVersion, targetBackupServerName string) error {
+	if previousVersion == "" || currentVersion == "" || previousVersion == currentVersion {
+		return nil
+	}
+	name := fmt.Sprintf("%s-post-upgrade-pg%s", db.Name, currentVersion)
+	if err := upsertOwned(ctx, r.Client, r.Scheme, db, cnpgBackupGVK, name, onDemandBackupSpec(db.Name)); err != nil {
+		return err
+	}
+	db.Status.BackupServerName = targetBackupServerName
+	return nil
+}
+
+// failFirstReady reports a new database whose managed extensions could not be
+// installed as unavailable, and retries (w4/m223).
+func (r *DatabaseReconciler) failFirstReady(ctx context.Context, db *appv1alpha1.Database, failure string, exportRequeue time.Duration) (ctrl.Result, error) {
+	db.Status.Phase = appv1alpha1.DBPhaseFailed
+	meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: appv1alpha1.ReasonExtensionsFailed,
+		Message: failure, ObservedGeneration: db.Generation,
+	})
+	if err := updateStatusIfChanged(ctx, r.Client, db); err != nil {
+		return ctrl.Result{}, err
+	}
+	return ctrl.Result{RequeueAfter: soonerRequeue(30*time.Second, exportRequeue)}, nil
 }

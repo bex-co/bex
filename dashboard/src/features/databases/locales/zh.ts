@@ -291,6 +291,11 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description:
       "Why an unavailable database is unavailable: the operator's PoolerFailed Ready reason (bex-api statusReasonCode)",
   },
+  "databases.statusReasonExtensionsFailed": {
+    message: "数据库的托管扩展无法安装，因此暂不可用。",
+    description:
+      "Why an unavailable database is unavailable: the operator's ExtensionsFailed Ready reason (bex-api statusReasonCode)",
+  },
   "databases.statusReasonPostUpgradeBackupFailed": {
     message: "版本升级后的备份未能完成。",
     description:

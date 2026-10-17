@@ -38,6 +38,7 @@ const STATUS_REASON_LABEL: Record<string, keyof typeof en> = {
   ScheduledBackupFailed: "databases.statusReasonScheduledBackupFailed",
   ScheduledBackupCleanupFailed:
     "databases.statusReasonScheduledBackupCleanupFailed",
+  ExtensionsFailed: "databases.statusReasonExtensionsFailed",
 };
 
 /** The translation key of an unavailable database's reason, if this dashboard knows its code. */

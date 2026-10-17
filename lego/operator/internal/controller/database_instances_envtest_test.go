@@ -73,6 +73,7 @@ var _ = Describe("Database named reader capacity", func() {
 			Expect(db.Status.Phase).NotTo(Equal(appv1alpha1.DBPhaseReady))
 			Expect(unstructured.SetNestedField(cluster.Object, want, "status", "readyInstances")).To(Succeed())
 			Expect(k8sClient.Status().Update(ctx, cluster)).To(Succeed())
+			Expect(markApplicationDatabaseApplied(ctx, k8sClient, db)).To(Succeed())
 			run()
 			Expect(db.Status.Phase).To(Equal(appv1alpha1.DBPhaseReady))
 			Expect(db.Status.HighAvailabilityEnabled).To(Equal(ha))
