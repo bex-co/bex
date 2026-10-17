@@ -1,17 +1,17 @@
 # w8 · m105 — Make the Jekyll static quickstart build normally
 
-**Worker:** worker8 **Goal:** the documented Jekyll source builds and publishes without authored tool/dependency installers. **Status:** todo
+**Worker:** worker8 **Goal:** the documented Jekyll source builds and publishes without authored tool/dependency installers. **Status:** blocked — t001–t006 done; t007 needs the operator published and the hosted both-client unchanged quickstart acceptance
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Supply reviewed Ruby and Bundler for Gemfile static builds](t001.md) | 75m | — |
-| t002 | [Install Gemfile dependencies before authored static commands](t002.md) | 45m | t001 |
-| t003 | [Audit shared static callers versions roots and cache behavior](t003.md) | 35m | t002 |
-| t004 | [Verify documented Jekyll and static dependency parity](t004.md) | 20m | t003 |
-| t005 | [Simplify the changed static tool and dependency paths](t005.md) | 15m | t004 |
-| t006 | [Test actual generated Ruby static builds and neighbors](t006.md) | 50m | t004 |
+| t001 | [Supply reviewed Ruby and Bundler for Gemfile static builds](done/t001.md) | 75m | — — **DONE 2026-10-17** |
+| t002 | [Install Gemfile dependencies before authored static commands](done/t002.md) | 45m | t001 — **DONE 2026-10-17** |
+| t003 | [Audit shared static callers versions roots and cache behavior](done/t003.md) | 35m | t002 — **DONE 2026-10-17** |
+| t004 | [Verify documented Jekyll and static dependency parity](done/t004.md) | 20m | t003 — **DONE 2026-10-17** |
+| t005 | [Simplify the changed static tool and dependency paths](done/t005.md) | 15m | t004 — **DONE 2026-10-17** |
+| t006 | [Test actual generated Ruby static builds and neighbors](done/t006.md) | 50m | t004 — **DONE 2026-10-17** |
 | t007 | [Accept unchanged native quickstart and close the milestone](t007.md) | 20m | t005, t006 |
 
 **Total:**7 tasks/260m. [Finding](finding.md) · [complete evidence](evidence/cli-sweep430/README.md).
@@ -23,7 +23,7 @@ The unchanged documented Jekyll source and authored command build/publish on fre
 ## Source + Goal linkage
 
 - **Source:** Authorized ordinary functional CLI sweep430,2026-10-17: both native first static Jekyll builds fail missing Bundler; Ruby-only controls fail missing dependencies; frozen bundle-install additions produce real sites. Actual shared build exports and local real-project controls isolate the prerequisites.
-- **Goal linkage:** [ADR008](../../../docs/ADR008-vision.md), [static hosting ADR029](../../../docs/ADR029-static-sites.md), [build reliability ADR060](../../../docs/ADR060-build-worker-reliability-and-performance.md), [Render parity ADR018](../../../docs/ADR018-render-parity.md): a documented ordinary static-site quickstart should work without owner-supplied platform tooling.
+- **Goal linkage:** [ADR008](../../../../docs/ADR008-vision.md), [static hosting ADR029](../../../../docs/ADR029-static-sites.md), [build reliability ADR060](../../../../docs/ADR060-build-worker-reliability-and-performance.md), [Render parity ADR018](../../../../docs/ADR018-render-parity.md): a documented ordinary static-site quickstart should work without owner-supplied platform tooling.
 - **Expected outcome:** Jekyll projects build through normal CLI static commands, respecting supported Ruby selection and dependency/skip behavior.
-- **Why now:** Two matching original failures and incremental controls establish a distinct static Ruby/Gemfile gap. Prior npm/Yarn and primary-Ruby fixes do not schedule it. Coordinate shared static changes with [m90](../blocked/m90/README.md), preserving accepted earlier scopes.
+- **Why now:** Two matching original failures and incremental controls establish a distinct static Ruby/Gemfile gap. Prior npm/Yarn and primary-Ruby fixes do not schedule it. Coordinate shared static changes with [m90](../m90/README.md), preserving accepted earlier scopes.
 - **Render parity:** Included because shared static build behavior reaches REST/GraphQL/MCP/Blueprint/dashboard/native consumers. No CLI fork, runtime-selection API or general buildpack product is proposed.

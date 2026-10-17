@@ -19,6 +19,7 @@ package build
 import (
 	"bufio"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -48,8 +49,8 @@ const (
 // the service's root directory in the checkout, and the runtime. It returns
 // the choices it applied, the primary toolchain first, then Python's Poetry
 // (w8/m72) and, for a uv project, uv (w8/m81), Ruby's and Python's Node
-// (w8/m77) and any opted-in companion (Bun); an *UnsupportedVersionError is
-// tenant input.
+// (w8/m77), a Gemfile static site's Ruby (w8/m105) and any opted-in companion
+// (Bun); an *UnsupportedVersionError is tenant input.
 func ResolveNativeBuild(runtime, bundlePath, dockerfilePath, sourceDir string) ([]NativeChoice, error) {
 	env, err := readEnvBundle(bundlePath)
 	if err != nil {
@@ -106,6 +107,26 @@ func ResolveNativeBuild(runtime, bundlePath, dockerfilePath, sourceDir string) (
 			return nil, err
 		}
 		choices = append(choices, node)
+	}
+	// A static site whose dependencies bex installs gets the Ruby its Gemfile
+	// asks for, chosen as a Ruby service's would be (w8/m105). The Gemfile
+	// need not be the site's — a mobile app's CocoaPods Gemfile pins its own
+	// Ruby — so a Ruby no line serves is left out with a line saying so, and
+	// the site builds as it did before Ruby was supplied.
+	if strings.Contains(rewritten, nativeStaticInstallCopy) && hasGemfile(sourceDir) {
+		ruby, err := ResolveNativeVersion(nativeRubyRuntime, env, readFile)
+		var unsupported *UnsupportedVersionError
+		switch {
+		case errors.As(err, &unsupported):
+			choices = append(choices, NativeChoice{Label: nativeToolchains[nativeRubyRuntime].label, declined: unsupported.Error()})
+		case err != nil:
+			return nil, err
+		default:
+			if rewritten, err = afterNativeBase(rewritten, choice.Image, nativeRubyToolLines(ruby.Image)); err != nil {
+				return nil, err
+			}
+			choices = append(choices, ruby)
+		}
 	}
 	if withBun {
 		if rewritten, err = addNativeBun(rewritten, choice.Image, bun.Image); err != nil {
@@ -174,6 +195,22 @@ func nativeJSToolLines(nodeImage string) string {
 		nativeYarnInstall() + nativePnpmInstall()
 }
 
+// nativeRubyToolLines copies the selected Ruby line's /usr/local — the
+// interpreter, standard library, headers and executables (gem, bundle, rake,
+// …) its pinned image installs there — and gives Bundler Render's layout, as a
+// Ruby service has (w8/117): gems and binstubs in nativeRubyGems, beside the
+// source rather than in the published tree, a committed .bundle/config still
+// honored, and Ruby reading source as UTF-8 (the node images set no LANG).
+// Deployment mode is a Ruby service's default only. The two images' /usr/local
+// trees share no file, and both are Debian bookworm on buildpack-deps, so the
+// shared libraries Ruby links (libyaml, libssl, libffi, libgmp, zlib) are
+// already there.
+func nativeRubyToolLines(rubyImage string) string {
+	return "COPY --link --from=" + rubyImage + " /usr/local/ /usr/local/\n" +
+		"ENV LANG=C.UTF-8 BUNDLE_SILENCE_ROOT_WARNING=1 BUNDLE_PATH=" + nativeRubyGems + " BUNDLE_BIN=" + nativeRubyGems + "/bin" +
+		" PATH=" + nativeRubyGems + "/bin:$PATH\n"
+}
+
 // addNativePoetry installs the chosen Poetry (w8/m72); see
 // nativePythonToolInstall.
 func addNativePoetry(dockerfile, baseImage, version string) (string, error) {
@@ -240,6 +277,13 @@ func readEnvBundle(path string) (map[string]string, error) {
 		env[key] = string(value)
 	}
 	return env, scanner.Err()
+}
+
+// hasGemfile reports whether the service's root directory has a regular
+// Gemfile, judged like readVersionFile, which never follows a link.
+func hasGemfile(sourceDir string) bool {
+	info, err := os.Lstat(filepath.Join(sourceDir, "Gemfile"))
+	return err == nil && info.Mode().IsRegular()
 }
 
 // readVersionFile reads name from the service's root directory. Only a

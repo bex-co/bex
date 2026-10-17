@@ -32,10 +32,16 @@ type NativeChoice struct {
 	Line   string // "3.11"
 	Image  string // the pinned image of that line
 	Source string // "PYTHON_VERSION=3.11.9", ".nvmrc", or "" for the default
+	// declined, when set, says why an optional companion was left out; the
+	// choice then carries no line or image.
+	declined string
 }
 
 // Narration is the build-log line that names the choice and its source.
 func (c NativeChoice) Narration() string {
+	if c.declined != "" {
+		return fmt.Sprintf("==> Not adding %s: %s", c.Label, c.declined)
+	}
 	from := "default"
 	if c.Source != "" {
 		from = "from " + c.Source

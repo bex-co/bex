@@ -18,6 +18,7 @@ package build
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -257,8 +258,8 @@ func TestNativeStaticInstallChoosesTheManager(t *testing.T) {
 		t.Skip("needs bash 4 or later, as every toolchain image has")
 	}
 	stubs, script := t.TempDir(), filepath.Join(t.TempDir(), "install-deps")
-	for _, tool := range []string{"npm", "yarn"} {
-		must(t, os.WriteFile(filepath.Join(stubs, tool), []byte("#!/bin/sh\necho "+tool+" \"$*\" > \"$BEX_RAN\"\n"), 0o755))
+	for _, tool := range []string{"npm", "yarn", "bundle"} {
+		must(t, os.WriteFile(filepath.Join(stubs, tool), []byte("#!/bin/sh\necho "+tool+" \"$*\" >> \"$BEX_RAN\"\n"), 0o755))
 	}
 	must(t, os.WriteFile(script, []byte(nativeStaticInstallScript), 0o644))
 	const (
@@ -291,6 +292,11 @@ func TestNativeStaticInstallChoosesTheManager(t *testing.T) {
 			log: "more than one package manager is named (package-lock.json packageManager pnpm@10.34.7)"},
 		{name: "pnpm", files: map[string]string{"package.json": "{}", "pnpm-lock.yaml": ""}, log: "this is a pnpm project (pnpm-lock.yaml)"},
 		{name: "Bun", files: map[string]string{"package.json": "{}", "bun.lock": ""}, log: "this is a bun project (bun.lock)"},
+		{name: "a locked Gemfile", files: map[string]string{"Gemfile": "", "Gemfile.lock": ""}, ran: "bundle install", log: "Installing dependencies with Bundler (Gemfile.lock)"},
+		{name: "a Gemfile beside a skipped manager", files: map[string]string{"Gemfile": "", "package.json": "{}", "pnpm-lock.yaml": ""},
+			ran: "bundle install", log: "this is a pnpm project"},
+		{name: "a Gemfile beside npm", files: map[string]string{"Gemfile": "", "package.json": "{}"}, ran: npm + "\nbundle install", log: "Installing dependencies with Bundler\n"},
+		{name: "skip true with a Gemfile", skip: "true", files: map[string]string{"Gemfile": "", "package.json": "{}"}, log: "Skipping dependency installation"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
@@ -312,12 +318,14 @@ func TestNativeStaticInstallChoosesTheManager(t *testing.T) {
 	}
 }
 
-// TestNativeStaticBuildRunsTheInstallStep is w8/m86's execution gate: the
-// generated static image installs an npm project's dependencies (devDependencies
-// included, whatever NODE_ENV) before the unchanged build script, with or
-// without a lockfile; SKIP_INSTALL_DEPS=true leaves installing to the build
-// command; another manager's project and a project with no package.json keep
-// their former behavior. Opt-in: needs Docker and network for the npm registry.
+// TestNativeStaticBuildRunsTheInstallStep is the static install step's
+// execution gate: the generated static image installs an npm (w8/m86) or Yarn
+// Classic (w8/m90) project's dependencies, devDependencies included whatever
+// NODE_ENV, and a Gemfile project's gems with the Ruby it selects (w8/m105),
+// before the unchanged build command — Render's Jekyll quickstart included;
+// SKIP_INSTALL_DEPS=true leaves installing to the build command; another
+// manager's project and a project with no package.json keep their former
+// behavior. Opt-in: needs Docker and network for npm and RubyGems.
 func TestNativeStaticBuildRunsTheInstallStep(t *testing.T) {
 	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
 		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build the generated image")
@@ -325,11 +333,32 @@ func TestNativeStaticBuildRunsTheInstallStep(t *testing.T) {
 	withLock := map[string]string{"package.json": staticDepsPackage, "package-lock.json": staticDepsLock, "build.js": staticDepsBuild}
 	withYarnLock := map[string]string{"package.json": staticDepsPackage, "yarn.lock": staticYarnLock, "committed.lock": staticYarnLock, "build.js": staticYarnBuild}
 	const yarnBuilt = "<p>built 7.0.3 true</p>"
+	ruby33, _ := nativeToolchains[nativeRubyRuntime].find("3.3")
+	gems := map[string]string{"Gemfile": staticGemfile, "Gemfile.lock": staticGemfileLock, "committed.lock": staticGemfileLock,
+		"build.rb": staticGemBuild, ".ruby-version": "3.3.5\n"}
+	gemsBuilt := "<p>13.2.1 3.1.8 0.3 UTF-8 " + ruby33.version + " true</p>"
+	rubyDefault, _ := nativeToolchains[nativeRubyRuntime].find(nativeToolchains[nativeRubyRuntime].defaultLine)
+	gemsDefault := maps.Clone(gems)
+	delete(gemsDefault, ".ruby-version")
+	gemsDefaultBuilt := "<p>13.2.1 3.1.8 0.3 UTF-8 " + rubyDefault.version + " true</p>"
+	gemsWithNpm := maps.Clone(withLock)
+	maps.Copy(gemsWithNpm, gems)
+	jekyll := map[string]string{}
+	must(t, filepath.WalkDir("testdata/render-jekyll", func(p string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		raw, err := os.ReadFile(p)
+		jekyll[strings.TrimPrefix(p, "testdata/render-jekyll/")] = string(raw)
+		return err
+	}))
 	for i, tc := range []struct {
 		name, command, publish string
 		env, src               map[string]string
 		want                   string // the published index, or "" when the build must fail
+		wantIn                 string // instead, a string the published index carries
 		log                    string // a line the build log must carry
+		fails                  string // a failing build's own error, when not cross-env's 127
 	}{
 		{name: "locked npm project", command: "npm run build", src: withLock, want: "<p>built</p>"},
 		{name: "NODE_ENV production keeps build tools", command: "npm run build", env: map[string]string{"NODE_ENV": "production"}, src: withLock, want: "<p>built</p>"},
@@ -345,6 +374,14 @@ func TestNativeStaticBuildRunsTheInstallStep(t *testing.T) {
 			want: "<p>built</p>", log: "Installing dependencies with Yarn (packageManager yarn@1.22.22)"},
 		{name: "skip with the build command running Yarn", command: "yarn install --frozen-lockfile --non-interactive && yarn build",
 			env: map[string]string{"SKIP_INSTALL_DEPS": "true"}, src: withYarnLock, want: yarnBuilt},
+		{name: "locked Gemfile project", command: "bundle exec ruby build.rb", publish: "_site", src: gems, want: gemsBuilt,
+			log: "Installing dependencies with Bundler (Gemfile.lock)"},
+		{name: "Gemfile on the default Ruby line", command: "bundle exec ruby build.rb", publish: "_site", src: gemsDefault, want: gemsDefaultBuilt},
+		{name: "Gemfile beside a locked npm project", command: "npm run build && bundle exec ruby build.rb", publish: "_site", src: gemsWithNpm, want: gemsBuilt},
+		{name: "skip leaves Bundler to the build command", command: "bundle exec ruby build.rb", publish: "_site",
+			env: map[string]string{"SKIP_INSTALL_DEPS": "true"}, src: gems, fails: "Could not find rake-13.2.1"},
+		{name: "Render's Jekyll quickstart", command: "bundle exec jekyll build", publish: "_site", src: jekyll,
+			wantIn: `<meta name="generator" content="Jekyll v4.3.3" />`, log: "Installing dependencies with Bundler (Gemfile.lock)"},
 		{name: "no package.json publishes raw files", command: "mkdir -p _site && printf raw > _site/index.html", src: map[string]string{"index.html": "x"}, want: "raw"},
 		{name: "a failed install still runs the build command", command: "mkdir -p _site && printf ok > _site/index.html",
 			src:  map[string]string{"package.json": `{"name":"x","version":"1.0.0","dependencies":{"bex-no-such-package-m86":"1.0.0"}}`},
@@ -366,7 +403,13 @@ func TestNativeStaticBuildRunsTheInstallStep(t *testing.T) {
 			o.NativeEnvRevision = fmt.Sprintf("it-%d-%d", i, os.Getpid())
 			tag := fmt.Sprintf("bex-native-static-deps-it-%d-%d", i, os.Getpid())
 			out, err := dockerBuildResolved(t, o, tc.env, tc.src, tag)
-			if tc.want == "" {
+			if tc.fails != "" {
+				if err == nil || !strings.Contains(string(out), tc.fails) {
+					t.Fatalf("build = %v, want it to fail with %q:\n%s", err, tc.fails, out)
+				}
+				return
+			}
+			if tc.want == "" && tc.wantIn == "" {
 				if err == nil || !strings.Contains(string(out), "cross-env: not found") {
 					t.Fatalf("build = %v, want the build script's own 127 on missing cross-env:\n%s", err, out)
 				}
@@ -385,9 +428,79 @@ func TestNativeStaticBuildRunsTheInstallStep(t *testing.T) {
 				t.Fatalf("build log lacks %q:\n%s", tc.log, out)
 			}
 			index, err := exec.Command("docker", "run", "--rm", "--entrypoint", "/bin/cat", tag, "/opt/render/project/src/_site/index.html").CombinedOutput()
-			if err != nil || strings.TrimSpace(string(index)) != tc.want {
-				t.Fatalf("published index = %v %q, want %q", err, index, tc.want)
+			if err != nil || (tc.wantIn == "" && strings.TrimSpace(string(index)) != tc.want) || !strings.Contains(string(index), tc.wantIn) {
+				t.Fatalf("published index = %v %q, want %q%q", err, index, tc.want, tc.wantIn)
 			}
 		})
+	}
+}
+
+// staticGemfile pins a newer rake than the Ruby images carry and a bigdecimal
+// that compiles a native extension, so a build shows whether Bundler installed
+// the locked gems (w8/m105).
+const (
+	staticGemfile     = "source \"https://rubygems.org\"\n\ngem \"rake\", \"13.2.1\"\ngem \"bigdecimal\", \"3.1.8\"\n"
+	staticGemfileLock = `GEM
+  remote: https://rubygems.org/
+  specs:
+    bigdecimal (3.1.8)
+    rake (13.2.1)
+
+PLATFORMS
+  aarch64-linux
+  ruby
+  x86_64-linux
+
+DEPENDENCIES
+  bigdecimal (= 3.1.8)
+  rake (= 13.2.1)
+
+BUNDLED WITH
+   2.5.22
+`
+	// staticGemBuild publishes the gem versions it loaded, a BigDecimal sum,
+	// the source encoding, the Ruby and whether Gemfile.lock is unchanged.
+	staticGemBuild = `require "bigdecimal"
+require "rake"
+Dir.mkdir("_site") unless Dir.exist?("_site")
+kept = File.read("Gemfile.lock") == File.read("committed.lock")
+File.write("_site/index.html", "<p>#{Rake::VERSION} #{BigDecimal::VERSION} #{(BigDecimal("0.1") + BigDecimal("0.2")).to_s("F")} #{Encoding.default_external} #{RUBY_VERSION} #{kept}</p>")
+`
+)
+
+// A static Node build whose root has a Gemfile gets the Ruby the Gemfile's
+// project asks for, chosen with a Ruby service's precedence, and the narration
+// says so; one without a Gemfile, a compute Node service and a static site
+// publishing its root (no install step) do not (w8/m105).
+func TestNativeStaticGemfileAddsRuby(t *testing.T) {
+	static := nativeOptions()
+	static.StaticSite, static.Runtime, static.StartCommand, static.StaticPublishPath = true, "", "", "_site"
+	ruby33, _ := nativeToolchains[nativeRubyRuntime].find("3.3")
+	gemfile := map[string]string{"Gemfile": staticGemfile, ".ruby-version": "3.3.5\n"}
+	df, choices := resolveFixture(t, static, nil, gemfile)
+	if !strings.Contains(df, nativeRubyToolLines(ruby33.image)) || len(choices) != 2 || choices[1].Image != ruby33.image {
+		t.Fatalf("a Gemfile static build lacks Ruby %s (choices %+v):\n%s", ruby33.version, choices, df)
+	}
+	rootPublish := static
+	rootPublish.StaticPublishPath = "."
+	compute := nativeOptions()
+	compute.Runtime = nativeNodeRuntime
+	for name, c := range map[string]struct {
+		o     Options
+		files map[string]string
+	}{
+		"no Gemfile":      {static, map[string]string{".ruby-version": "3.3.5\n"}},
+		"a compute build": {compute, gemfile},
+		"a root publish":  {rootPublish, gemfile},
+	} {
+		if df, choices := resolveFixture(t, c.o, nil, c.files); strings.Contains(df, "/usr/local/lib/ruby") || len(choices) != 1 {
+			t.Errorf("%s gained Ruby (choices %+v):\n%s", name, choices, df)
+		}
+	}
+	// A Ruby no line serves (a CocoaPods Gemfile's, say) leaves Ruby out and
+	// says so, rather than failing a site that may never run Ruby.
+	df, choices = resolveFixture(t, static, nil, map[string]string{"Gemfile": staticGemfile, ".ruby-version": "2.7.8\n"})
+	if strings.Contains(df, "/usr/local/lib/ruby") || len(choices) != 2 || !strings.HasPrefix(choices[1].Narration(), "==> Not adding Ruby: ") {
+		t.Fatalf("Ruby 2.7 choices %+v, want Ruby declined and absent:\n%s", choices, df)
 	}
 }

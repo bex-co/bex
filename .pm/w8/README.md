@@ -27,7 +27,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m106** — [Supply Hugo for the documented static quickstart](m106/README.md) (6 tasks;195m) ← major functional CLI sweep431:both first builds fail missing Hugo; install-only controls generate real index and theme stylesheet; exact cleanup.
 
-- [ ] **m105** — [Make the Jekyll static quickstart build normally](m105/README.md) (7 tasks;260m) ← major functional CLI sweep430:both original missing-Bundler failures and Ruby-only missing-dependency failures; frozen bundle-install controls produce real sites; exact cleanup.
+- [ ] **m105** — [Make the Jekyll static quickstart build normally](blocked/m105/README.md) (7 tasks;260m) — **BLOCKED (2026-10-17: t001–t006 done — a native static build with a root `Gemfile` now gets the Ruby line its project selects (copied from the pinned Ruby image, gems in /usr/local/bundle, UTF-8) and `bundle install` before the unchanged command; Render's own Jekyll quickstart builds unchanged in the real-image gate, which fails before the fix; needs the operator published plus the hosted both-client fresh quickstart replay (t007), runnable with the QA CLI login)**
 
 - [ ] **m104** — [Supply pg_partman for ordinary partition migrations](blocked/m104/README.md) (6 tasks;200m) — **BLOCKED (2026-10-17: needs the user to decide how managed Postgres supplies Render's extensions — [decision](blocked/m92/design.md): operand image (CNPG PostGIS-only vs a bex-built image per major), activation (pre-install like vector vs on-demand allowlist) and a rolling restart of every managed Postgres pod, possibly with m65; no task started)**
 
