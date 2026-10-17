@@ -21,10 +21,12 @@ import (
 	"errors"
 	"testing"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -133,7 +135,7 @@ func TestApplicationDatabaseChildNeverWedgesTheDatabase(t *testing.T) {
 		spec         appv1alpha1.DatabaseSpec
 		failWrite    bool
 	}{
-		{name: "reserved database name", reason: "ReservedDatabaseName", spec: appv1alpha1.DatabaseSpec{Name: "legacy", DatabaseName: "template1"}},
+		{name: "reserved database name", reason: reasonReservedDatabaseName, spec: appv1alpha1.DatabaseSpec{Name: "legacy", DatabaseName: "template1"}},
 		{name: "child write refused", reason: "ApplyError", spec: appv1alpha1.DatabaseSpec{Name: "orders"}, failWrite: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -175,7 +177,219 @@ func TestApplicationDatabaseChildNeverWedgesTheDatabase(t *testing.T) {
 				t.Errorf("ExtensionsReady = %+v, want False/%s", condition, tc.reason)
 			}
 			if got.Status.Phase == appv1alpha1.DBPhaseFailed {
-				t.Errorf("phase = Failed; the child must not fail the database")
+				t.Errorf("phase = Failed; the child must not fail a database whose cluster is not yet healthy")
+			}
+		})
+	}
+}
+
+// setApplicationDatabaseStatus stands in for CloudNativePG: it writes status
+// onto db's application Database child.
+func setApplicationDatabaseStatus(ctx context.Context, cl client.Client, db *appv1alpha1.Database, status func(generation int64) map[string]any) error {
+	child := &unstructured.Unstructured{}
+	child.SetGroupVersionKind(cnpgDatabaseGVK)
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: db.Namespace, Name: applicationDatabaseName(db)}, child); err != nil {
+		return err
+	}
+	if err := unstructured.SetNestedMap(child.Object, status(child.GetGeneration()), "status"); err != nil {
+		return err
+	}
+	if err := cl.Status().Update(ctx, child); err == nil {
+		return nil
+	}
+	return cl.Update(ctx, child)
+}
+
+// markApplicationDatabaseApplied reports db's application Database child
+// applied for its current generation, which a new database needs before its
+// first Ready (w4/m223).
+func markApplicationDatabaseApplied(ctx context.Context, cl client.Client, db *appv1alpha1.Database) error {
+	return setApplicationDatabaseStatus(ctx, cl, db, func(generation int64) map[string]any {
+		return map[string]any{"applied": true, "observedGeneration": generation}
+	})
+}
+
+// healthyNewDatabase is a database that has never served, reconciled once,
+// whose CNPG cluster now reports a healthy instance. A new database's first
+// Ready waits for its managed extensions (w4/m223, a868: it used to arrive
+// 8-18s before vector, failing a migration run at the first Available).
+func healthyNewDatabase(t *testing.T, spec appv1alpha1.DatabaseSpec, funcs ...interceptor.Funcs) (*DatabaseReconciler, client.Client, reconcile.Request, *appv1alpha1.Database) {
+	t.Helper()
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	for _, gvk := range []schema.GroupVersionKind{cnpgClusterGVK, cnpgDatabaseGVK, cnpgBackupGVK, cnpgScheduledBackupGVK, cnpgPoolerGVK} {
+		scheme.AddKnownTypeWithName(gvk, &unstructured.Unstructured{})
+	}
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "dpg-first", Namespace: "default", UID: "uid-dpg-first", Finalizers: []string{dbFinalizer}},
+		Spec:       spec,
+	}
+	builder := fake.NewClientBuilder().WithScheme(scheme).WithObjects(db).WithStatusSubresource(&appv1alpha1.Database{})
+	for _, f := range funcs {
+		builder = builder.WithInterceptorFuncs(f)
+	}
+	cl := builder.Build()
+	r := &DatabaseReconciler{Client: cl, Scheme: scheme}
+	req := reconcile.Request{NamespacedName: types.NamespacedName{Name: db.Name, Namespace: db.Namespace}}
+	reconcileDB(t, r, cl, req)
+	setClusterStatus(t, cl, req, "Cluster in healthy state", 1, 0)
+	return r, cl, req, db
+}
+
+// readyReason is the Ready condition as "Status/Reason".
+func readyReason(db appv1alpha1.Database) string {
+	if c := meta.FindStatusCondition(db.Status.Conditions, appv1alpha1.ConditionReady); c != nil {
+		return string(c.Status) + "/" + c.Reason
+	}
+	return ""
+}
+
+func vectorUnavailable(int64) map[string]any {
+	return map[string]any{"applied": false, "message": `extension "vector" is not available`}
+}
+
+func TestFirstReadyWaitsForPendingExtensions(t *testing.T) {
+	ctx := context.Background()
+	for _, tc := range []struct {
+		name   string
+		status func(int64) map[string]any
+	}{
+		{"pending child", nil},
+		{"verdict for another generation", func(g int64) map[string]any {
+			return map[string]any{"applied": true, "observedGeneration": g + 7}
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r, cl, req, db := healthyNewDatabase(t, appv1alpha1.DatabaseSpec{Name: "orders"})
+			if tc.status != nil {
+				if err := setApplicationDatabaseStatus(ctx, cl, db, tc.status); err != nil {
+					t.Fatal(err)
+				}
+			}
+			got := reconcileDB(t, r, cl, req)
+			if got.Status.Phase != appv1alpha1.DBPhaseProvisioning || got.Status.Provisioned ||
+				readyReason(got) != "False/"+reasonInitializingExtensions {
+				t.Fatalf("phase %q provisioned %v Ready %s, want Provisioning, not provisioned, False/%s",
+					got.Status.Phase, got.Status.Provisioned, readyReason(got), reasonInitializingExtensions)
+			}
+			if err := markApplicationDatabaseApplied(ctx, cl, db); err != nil {
+				t.Fatal(err)
+			}
+			got = reconcileDB(t, r, cl, req)
+			if got.Status.Phase != appv1alpha1.DBPhaseReady || !got.Status.Provisioned || readyReason(got) != "True/"+appv1alpha1.ReasonProvisioned {
+				t.Fatalf("after apply: phase %q provisioned %v Ready %s, want first Ready", got.Status.Phase, got.Status.Provisioned, readyReason(got))
+			}
+		})
+	}
+}
+
+func TestInitialExtensionFailureIsNamedAndRetried(t *testing.T) {
+	ctx := context.Background()
+	r, cl, req, db := healthyNewDatabase(t, appv1alpha1.DatabaseSpec{Name: "orders"})
+	if err := setApplicationDatabaseStatus(ctx, cl, db, vectorUnavailable); err != nil {
+		t.Fatal(err)
+	}
+	result, err := r.Reconcile(ctx, req)
+	if err != nil || result.RequeueAfter <= 0 {
+		t.Fatalf("reconcile = %+v, %v; want a retry", result, err)
+	}
+	got := reconcileDB(t, r, cl, req)
+	if got.Status.Phase != appv1alpha1.DBPhaseFailed || got.Status.Provisioned ||
+		readyReason(got) != "False/"+appv1alpha1.ReasonExtensionsFailed {
+		t.Fatalf("phase %q provisioned %v Ready %s, want Failed/%s", got.Status.Phase, got.Status.Provisioned, readyReason(got), appv1alpha1.ReasonExtensionsFailed)
+	}
+	if err := markApplicationDatabaseApplied(ctx, cl, db); err != nil {
+		t.Fatal(err)
+	}
+	if got := reconcileDB(t, r, cl, req); got.Status.Phase != appv1alpha1.DBPhaseReady {
+		t.Fatalf("after a successful retry phase = %q, want Ready", got.Status.Phase)
+	}
+}
+
+func TestServedDatabaseKeepsServingThroughALaterExtensionFailure(t *testing.T) {
+	ctx := context.Background()
+	r, cl, req, db := healthyNewDatabase(t, appv1alpha1.DatabaseSpec{Name: "orders"})
+	if err := markApplicationDatabaseApplied(ctx, cl, db); err != nil {
+		t.Fatal(err)
+	}
+	if got := reconcileDB(t, r, cl, req); got.Status.Phase != appv1alpha1.DBPhaseReady {
+		t.Fatalf("first Ready phase = %q", got.Status.Phase)
+	}
+	if err := setApplicationDatabaseStatus(ctx, cl, db, vectorUnavailable); err != nil {
+		t.Fatal(err)
+	}
+	got := reconcileDB(t, r, cl, req)
+	extensions := meta.FindStatusCondition(got.Status.Conditions, conditionExtensionsReady)
+	if got.Status.Phase != appv1alpha1.DBPhaseReady || readyReason(got) != "True/"+appv1alpha1.ReasonProvisioned ||
+		extensions == nil || extensions.Reason != reasonExtensionsApplyFailed {
+		t.Fatalf("phase %q Ready %s ExtensionsReady %+v, want still Ready with the failure on ExtensionsReady only",
+			got.Status.Phase, readyReason(got), extensions)
+	}
+}
+
+func TestReservedDatabaseNameKeepsItsLegacyFirstReady(t *testing.T) {
+	r, cl, req, _ := healthyNewDatabase(t, appv1alpha1.DatabaseSpec{Name: "legacy", DatabaseName: "template1"})
+	if got := reconcileDB(t, r, cl, req); got.Status.Phase != appv1alpha1.DBPhaseReady || !got.Status.Provisioned {
+		t.Fatalf("reserved-name phase %q provisioned %v, want Ready", got.Status.Phase, got.Status.Provisioned)
+	}
+}
+
+func TestSuspendingANeverServedDatabaseKeepsItsFirstReadyPending(t *testing.T) {
+	ctx := context.Background()
+	r, cl, req, db := healthyNewDatabase(t, appv1alpha1.DatabaseSpec{Name: "orders"})
+	setSuspended := func(suspended bool) {
+		var current appv1alpha1.Database
+		if err := cl.Get(ctx, req.NamespacedName, &current); err != nil {
+			t.Fatal(err)
+		}
+		current.Spec.Suspended = suspended
+		if err := cl.Update(ctx, &current); err != nil {
+			t.Fatal(err)
+		}
+	}
+	setSuspended(true)
+	if got := reconcileDB(t, r, cl, req); got.Status.Provisioned {
+		t.Fatal("suspension set provisioned on a database that never served")
+	}
+	setSuspended(false)
+	setClusterStatus(t, cl, req, "Cluster in healthy state", 1, 0)
+	if got := reconcileDB(t, r, cl, req); got.Status.Phase != appv1alpha1.DBPhaseProvisioning || got.Status.Provisioned {
+		t.Fatalf("resumed before extensions: phase %q provisioned %v, want Provisioning", got.Status.Phase, got.Status.Provisioned)
+	}
+	if err := markApplicationDatabaseApplied(ctx, cl, db); err != nil {
+		t.Fatal(err)
+	}
+	if got := reconcileDB(t, r, cl, req); got.Status.Phase != appv1alpha1.DBPhaseReady || !got.Status.Provisioned {
+		t.Fatalf("resumed and applied: phase %q provisioned %v, want Ready", got.Status.Phase, got.Status.Provisioned)
+	}
+}
+
+// A refused child write names the failure on a healthy new database instead of
+// leaving it creating forever; a conflict or busy API server is only retried.
+func TestRefusedChildWriteOnAHealthyNewDatabase(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		refusal   error
+		wantPhase appv1alpha1.DatabasePhase
+		wantReady string
+	}{
+		{"admission refusal", errors.New("admission webhook denied the request"),
+			appv1alpha1.DBPhaseFailed, "False/" + appv1alpha1.ReasonExtensionsFailed},
+		{"conflict", apierrors.NewConflict(schema.GroupResource{Group: "postgresql.cnpg.io", Resource: "databases"}, "dpg-first-app", errors.New("modified")),
+			appv1alpha1.DBPhaseProvisioning, "False/" + reasonInitializingExtensions},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			refuse := interceptor.Funcs{Create: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+				if u, ok := obj.(*unstructured.Unstructured); ok && u.GroupVersionKind() == cnpgDatabaseGVK {
+					return tc.refusal
+				}
+				return c.Create(ctx, obj, opts...)
+			}}
+			r, cl, req, _ := healthyNewDatabase(t, appv1alpha1.DatabaseSpec{Name: "orders"}, refuse)
+			got := reconcileDB(t, r, cl, req)
+			if got.Status.Phase != tc.wantPhase || readyReason(got) != tc.wantReady || got.Status.Provisioned {
+				t.Fatalf("phase %q Ready %s provisioned %v, want %q %s", got.Status.Phase, readyReason(got), got.Status.Provisioned, tc.wantPhase, tc.wantReady)
 			}
 		})
 	}

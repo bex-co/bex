@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -46,6 +47,21 @@ var cnpgDatabaseGVK = schema.GroupVersionKind{Group: cnpgGroup, Version: "v1", K
 // extensions are installed.
 const conditionExtensionsReady = "ExtensionsReady"
 
+const (
+	// reasonReservedDatabaseName marks the PostgreSQL-owned database CNPG
+	// cannot manage, which keeps its legacy no-extensions treatment.
+	reasonReservedDatabaseName = "ReservedDatabaseName"
+	// reasonInitializingExtensions keeps a new database creating while its
+	// managed extensions install (w4/m223).
+	reasonInitializingExtensions = "InitializingExtensions"
+
+	// ExtensionsReady reasons from CNPG's verdict on the child.
+	reasonExtensionsApplied     = "Applied"
+	reasonExtensionsApplyFailed = "ApplyFailed"
+	reasonExtensionsApplyError  = "ApplyError"
+	reasonExtensionsPending     = "Pending"
+)
+
 // applicationDatabaseName names the CNPG Database child for db's application
 // database.
 func applicationDatabaseName(db *appv1alpha1.Database) string { return db.Name + "-app" }
@@ -71,8 +87,9 @@ func applicationDatabaseSpec(clusterName, dbname, owner string) map[string]any {
 }
 
 // reconcileApplicationDatabase applies db's CNPG Database child and projects
-// CNPG's verdict onto the ExtensionsReady condition. The child is optional to
-// serving, so a problem with it degrades only that condition. A suspended
+// CNPG's verdict onto the ExtensionsReady condition. Once a database has
+// served, the child is optional to serving and a problem with it degrades only
+// that condition; before that it gates the first Ready (w4/m223). A suspended
 // database keeps its last verdict: its cluster is hibernated, so CNPG cannot
 // reach it.
 func (r *DatabaseReconciler) reconcileApplicationDatabase(ctx context.Context, db *appv1alpha1.Database, dbname, owner string) {
@@ -80,7 +97,7 @@ func (r *DatabaseReconciler) reconcileApplicationDatabase(ctx context.Context, d
 		// CNPG refuses to manage a PostgreSQL-owned database, and a refused
 		// child would fail every reconcile (as a reserved role did, w4/m170).
 		meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
-			Type: conditionExtensionsReady, Status: metav1.ConditionFalse, Reason: "ReservedDatabaseName", ObservedGeneration: db.Generation,
+			Type: conditionExtensionsReady, Status: metav1.ConditionFalse, Reason: reasonReservedDatabaseName, ObservedGeneration: db.Generation,
 			Message: fmt.Sprintf("extensions are not managed in the PostgreSQL-owned database %q", dbname),
 		})
 		return
@@ -99,8 +116,14 @@ func (r *DatabaseReconciler) reconcileApplicationDatabase(ctx context.Context, d
 		return
 	}
 	condition := extensionsCondition(child, db.Generation)
-	if err != nil {
-		condition.Status, condition.Reason, condition.Message = metav1.ConditionFalse, "ApplyError", err.Error()
+	switch {
+	case err == nil:
+	case transientAPIError(err):
+		// A conflict or a busy API server is retried on the next pass, not
+		// reported as a failure that would mark a new database unavailable.
+		condition.Status, condition.Reason, condition.Message = metav1.ConditionUnknown, reasonExtensionsPending, "retrying the application database"
+	default:
+		condition.Status, condition.Reason, condition.Message = metav1.ConditionFalse, reasonExtensionsApplyError, err.Error()
 	}
 	meta.SetStatusCondition(&db.Status.Conditions, condition)
 }
@@ -115,11 +138,18 @@ func extensionsCondition(child *unstructured.Unstructured, generation int64) met
 	message, _, _ := unstructured.NestedString(child.Object, "status", "message")
 	switch {
 	case found && !applied && message != "":
-		condition.Status, condition.Reason, condition.Message = metav1.ConditionFalse, "ApplyFailed", message
+		condition.Status, condition.Reason, condition.Message = metav1.ConditionFalse, reasonExtensionsApplyFailed, message
 	case found && applied && observed == child.GetGeneration():
-		condition.Status, condition.Reason, condition.Message = metav1.ConditionTrue, "Applied", "vector is installed in the application database"
+		condition.Status, condition.Reason, condition.Message = metav1.ConditionTrue, reasonExtensionsApplied, "vector is installed in the application database"
 	default:
-		condition.Status, condition.Reason, condition.Message = metav1.ConditionUnknown, "Pending", "waiting for CloudNativePG to apply the application database"
+		condition.Status, condition.Reason, condition.Message = metav1.ConditionUnknown, reasonExtensionsPending, "waiting for CloudNativePG to apply the application database"
 	}
 	return condition
+}
+
+// transientAPIError is a write refusal the API server expects a retry to
+// clear.
+func transientAPIError(err error) bool {
+	return apierrors.IsConflict(err) || apierrors.IsServerTimeout(err) || apierrors.IsTimeout(err) ||
+		apierrors.IsTooManyRequests(err) || apierrors.IsServiceUnavailable(err)
 }
