@@ -4,7 +4,7 @@
 
 ## Reproduce and evidence
 
-Fresh-load `https://dashboard.bex.co/env-groups` at1440px and390px. Hold only the already fetched, real HTTP200 startup entry `https://dashboard.bex.co/assets/index-D60ymwlM.js` (1,952,882 bytes), using the exact factory in [durable evidence](../../evidence/m219-a815-search-startup.json). The enabled, writable **Search environment groups by name** input is present before React props/handlers. Focus and insert the synthetic marker with native keyboard input, then release the original script response unchanged.
+Fresh-load `https://dashboard.bex.co/env-groups` at1440px and390px. Hold only the already fetched, real HTTP200 startup entry `https://dashboard.bex.co/assets/index-D60ymwlM.js` (1,952,882 bytes), using the exact factory in [durable evidence](../evidence/m219-a815-search-startup.json). The enabled, writable **Search environment groups by name** input is present before React props/handlers. Focus and insert the synthetic marker with native keyboard input, then release the original script response unchanged.
 
 | Capture | Width | Accepted trusted text | After startup | Ready control |
 | --- | --- | --- | --- | --- |
