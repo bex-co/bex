@@ -990,20 +990,29 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 	if err := r.relocateBuildSecret(ctx, app, buildNs, app.Spec.CloneSecret, "clone secret"); err != nil {
 		return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, err))
 	}
-	var native nativeBuildInputs
+	var inputs buildInputs
 	buildLiterals := buildEnv(builder, app.Spec.Env)
 	switch builder {
-	case build.BuilderNative:
-		var err error
-		if native, err = r.projectNativeBuildInputs(ctx, app, buildNs, buildLiterals); err != nil {
-			return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, err))
-		}
 	case build.BuilderBuildpack:
 		projected, err := r.projectBuildpackBuildEnv(ctx, app, buildLiterals)
 		if err != nil {
 			return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, err))
 		}
 		buildLiterals = projected
+	default:
+		// Native builds and Dockerfile builds (including "auto", which builds
+		// the repo's Dockerfile) both receive the merged env and secret files:
+		// a Dockerfile build as build args and Render-id build secrets, as on
+		// Render (w1/m178). Its literals reach BuildKit directly, so they need
+		// no Secret, and only native builds use the cache revision they feed.
+		projectLiterals := buildLiterals
+		if builder != build.BuilderNative {
+			projectLiterals = nil
+		}
+		var err error
+		if inputs, err = r.projectBuildInputs(ctx, app, buildNs, projectLiterals); err != nil {
+			return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, err))
+		}
 	}
 	buildRegistryPullSecret, err := r.prepareBuildRegistrySecret(ctx, app, buildNs, builder)
 	if err != nil {
@@ -1039,10 +1048,10 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		BuildCommand:      app.Spec.BuildCommand,
 		StartCommand:      app.Spec.StartCommand,
 		BuildEnv:          buildLiterals,
-		RuntimeEnvSecret:  native.envSecret,
-		NativeEnvRevision: native.revision,
-		NativeFilesSecret: native.filesSecret,
-		NativeFiles:       native.files,
+		RuntimeEnvSecret:  inputs.envSecret,
+		NativeEnvRevision: inputs.revision,
+		NativeFilesSecret: inputs.filesSecret,
+		NativeFiles:       inputs.files,
 		// bex's own image runs the version resolver (w8/m51); unresolved, the
 		// build keeps its runtime's default line.
 		NativeResolverImage:  r.BackupHelperImage,
@@ -1513,27 +1522,27 @@ func (r *AppReconciler) relocateBuildSecret(ctx context.Context, app *appv1alpha
 	return nil
 }
 
-// nativeBuildInputs is what a native build receives beside its source: the
-// merged env Secret, the opaque cache revision covering env and file bytes, and
-// the merged secret-files Secret with its sorted file names.
-type nativeBuildInputs struct {
+// buildInputs is what a native or Dockerfile build receives beside its source:
+// the merged env Secret, the opaque native cache revision covering env and file
+// bytes, and the merged secret-files Secret with its sorted file names.
+type buildInputs struct {
 	envSecret, revision, filesSecret string
 	files                            []string
 }
 
-// projectNativeBuildInputs projects the in-flight release's secret files and
+// projectBuildInputs projects the in-flight release's secret files and
 // environment next to the build Job. Files go first because their bytes feed
 // the environment Secret's revision (w4/m163).
-func (r *AppReconciler) projectNativeBuildInputs(ctx context.Context, app *appv1alpha1.App, buildNs string, literals []corev1.EnvVar) (nativeBuildInputs, error) {
+func (r *AppReconciler) projectBuildInputs(ctx context.Context, app *appv1alpha1.App, buildNs string, literals []corev1.EnvVar) (buildInputs, error) {
 	filesSecret, files, err := r.projectNativeBuildFiles(ctx, app, buildNs)
 	if err != nil {
-		return nativeBuildInputs{}, err
+		return buildInputs{}, err
 	}
 	envSecret, revision, err := r.projectNativeBuildEnv(ctx, app, buildNs, literals, files)
 	if err != nil {
-		return nativeBuildInputs{}, err
+		return buildInputs{}, err
 	}
-	return nativeBuildInputs{envSecret: envSecret, revision: revision,
+	return buildInputs{envSecret: envSecret, revision: revision,
 		filesSecret: filesSecret, files: slices.Sorted(maps.Keys(files))}, nil
 }
 
@@ -1579,7 +1588,9 @@ func (r *AppReconciler) projectNativeBuildEnv(ctx context.Context, app *appv1alp
 	// envFromSources owns the source list, order, and optionality — iterating
 	// its output keeps build-time and runtime environments single-sourced.
 	sources := envFromSources(inFlightRelease(app))
-	literals = nativeBuildLiterals(literals)
+	// The preparer's own literal set, so the revision covers exactly what the
+	// native RUN exports.
+	literals = build.BuildLiterals(literals)
 	if len(sources) == 0 && len(literals) == 0 && len(files) == 0 {
 		return "", build.NativeEnvNoneRevision, nil
 	}
@@ -1613,7 +1624,7 @@ func (r *AppReconciler) projectNativeBuildEnv(ctx context.Context, app *appv1alp
 		merged.Annotations[annotNativeEnvInput] = input
 		return nil
 	}); err != nil {
-		return "", "", fmt.Errorf("projecting native build env: %w", err)
+		return "", "", fmt.Errorf("projecting build env: %w", err)
 	}
 	if revision == "" {
 		// CreateOrUpdate can short-circuit when the live object already matched;
@@ -1715,7 +1726,7 @@ func (r *AppReconciler) projectNativeBuildFiles(ctx context.Context, app *appv1a
 		merged.Labels = artifactLabels(app, "native-files-secret")
 		return nil
 	}); err != nil {
-		return "", nil, fmt.Errorf("projecting native build files: %w", err)
+		return "", nil, fmt.Errorf("projecting build secret files: %w", err)
 	}
 	return name, data, nil
 }
@@ -1761,20 +1772,6 @@ func (r *AppReconciler) projectBuildpackBuildEnv(ctx context.Context, app *appv1
 // (BPE_) configuration — the only names a kpack build receives.
 func buildpackEnvName(name string) bool {
 	return strings.HasPrefix(name, "BP_") || strings.HasPrefix(name, "BPE_")
-}
-
-// nativeBuildLiterals keeps the preparer's build-relevant literal set so the
-// environment revision covers exactly what the native RUN exports.
-func nativeBuildLiterals(env []corev1.EnvVar) []corev1.EnvVar {
-	out := make([]corev1.EnvVar, 0, len(env))
-	for _, item := range env {
-		if item.Name == "" || item.ValueFrom != nil || item.Name == "PORT" || strings.HasPrefix(item.Name, "BEX_NATIVE_") {
-			continue
-		}
-		out = append(out, item)
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
-	return out
 }
 
 // nativeEnvInputToken is a keyed equality fingerprint over the effective native
