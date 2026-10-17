@@ -1,6 +1,6 @@
 # w8 · m99 — Supply TypeScript for native builds and runtime
 
-**Worker:** worker8 **Goal:** ordinary strict TypeScript builds emit a working JavaScript service using the documented compiler without tenant installation workarounds. **Status:** todo
+**Worker:** worker8 **Goal:** ordinary strict TypeScript builds emit a working JavaScript service using the documented compiler without tenant installation workarounds. **Status:** blocked — needs the user's choice of native tool-supply mechanism ([decision](../m91/design.md)); no task started
 
 ## Tasks (in order)
 
@@ -22,7 +22,7 @@ A reviewed immutable multiarch compiler payload with compatible executable/libra
 ## Source + Goal linkage
 
 - **Source:** Authorized ordinary functional CLI sweep420,2026-10-17: both unchanged native creates POST201/exit0, both original first builds fail missing-tsc, both single pinned-compiler-install replacements Live with six real emitted-JavaScript/typed-result responses.
-- **Goal:** [ADR008](../../../docs/ADR008-vision.md), [Render parity ADR018](../../../docs/ADR018-render-parity.md), [native assembly ADR060](../../../docs/ADR060-build-worker-reliability-and-performance.md): regular hosting compiler commands should work as documented.
+- **Goal:** [ADR008](../../../../docs/ADR008-vision.md), [Render parity ADR018](../../../../docs/ADR018-render-parity.md), [native assembly ADR060](../../../../docs/ADR060-build-worker-reliability-and-performance.md): regular hosting compiler commands should work as documented.
 - **Outcome:** Native TypeScript builds and runtime scripts can use an actual compiler without changing CLI requests or adding tenant install workarounds.
 - **Why now:** Real independent native first failures and compiler-only controls isolate missing compiler delivery; neither source nor board/history has an existing supplier repair. Native package/data layout and shared-base adoption require a deliberate reviewed implementation.
 - **Render parity:** Included because native tool contents affect tenant build/runtime behavior across REST/GraphQL/MCP/Blueprint/dashboard. No new API field, version selector or launcher fork.

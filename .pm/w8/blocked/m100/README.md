@@ -1,6 +1,6 @@
 # w8 · m100 — Supply SWIG for native C-binding builds
 
-**Worker:** worker8 **Goal:** ordinary Python binding builds generate, compile and import their C extension using the documented native SWIG tool without tenant installation workarounds. **Status:** todo
+**Worker:** worker8 **Goal:** ordinary Python binding builds generate, compile and import their C extension using the documented native SWIG tool without tenant installation workarounds. **Status:** blocked — needs the user's choice of native tool-supply mechanism ([decision](../m91/design.md)); no task started
 
 ## Tasks (in order)
 
@@ -22,7 +22,7 @@ A reviewed immutable multiarch SWIG payload with compatible executable/libraries
 ## Source + Goal linkage
 
 - **Source:** Authorized ordinary functional CLI sweep421,2026-10-17: both unchanged native creates POST201/exit0, both original first builds fail missing-swig, both one-line SWIG-install replacements Live with six real compiled-C-extension HTTP responses.
-- **Goal:** [ADR008](../../../docs/ADR008-vision.md), [Render parity ADR018](../../../docs/ADR018-render-parity.md), [native assembly ADR060](../../../docs/ADR060-build-worker-reliability-and-performance.md): regular native binding build tools should work as documented.
+- **Goal:** [ADR008](../../../../docs/ADR008-vision.md), [Render parity ADR018](../../../../docs/ADR018-render-parity.md), [native assembly ADR060](../../../../docs/ADR060-build-worker-reliability-and-performance.md): regular native binding build tools should work as documented.
 - **Outcome:** Native Python C-binding builds can generate their wrappers and run the resulting extension without rewriting commands or CLI requests.
 - **Why now:** Real first failures and SWIG-only controls isolate missing delivery; source/board/history has no existing supplier repair. Required SWIG data trees and shared-base adoption need deliberate reviewed delivery.
 - **Render parity:** Included because native tool contents affect tenant builds/runtime across REST/GraphQL/MCP/Blueprint/dashboard. No new API field, version selector or launcher fork.

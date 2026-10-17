@@ -1,6 +1,6 @@
 # w8 · m93 — Supply Pandoc in native builds and runtime
 
-**Worker:** worker8 **Goal:** ordinary native document-generating apps can build and serve converted HTML using supplied Pandoc. **Status:** todo
+**Worker:** worker8 **Goal:** ordinary native document-generating apps can build and serve converted HTML using supplied Pandoc. **Status:** blocked — needs the user's choice of native tool-supply mechanism ([decision](../m91/design.md)); no task started
 
 ## Tasks (in order)
 
@@ -22,7 +22,7 @@ A reviewed pinned multiarch Pandoc supplier runs real document conversions throu
 ## Source + Goal linkage
 
 - **Source:** Authorized ordinary functional CLI sweep407,2026-10-17: both unchanged native POST201/exit0 first builds fail missing Pandoc, both one-line install controls Live, six fresh runtime conversion/independent HTML checks pass.
-- **Goal linkage:** [ADR008](../../../docs/ADR008-vision.md), [Render parity ADR018](../../../docs/ADR018-render-parity.md) and [native assembly ADR060](../../../docs/ADR060-build-worker-reliability-and-performance.md): native hosting commands should work with the named utility contract.
+- **Goal linkage:** [ADR008](../../../../docs/ADR008-vision.md), [Render parity ADR018](../../../../docs/ADR018-render-parity.md) and [native assembly ADR060](../../../../docs/ADR060-build-worker-reliability-and-performance.md): native hosting commands should work with the named utility contract.
 - **Expected outcome:** Markdown-based document generators deploy and convert at runtime without installing a supplied tool in app code or changing CLI requests.
 - **Why now:** Both independent clients and actual selected-base controls isolate the missing program; source has no supplier or newer fix. Existing FFmpeg/PostgreSQL-client work does not provide Pandoc.
 - **Render parity:** Included because a native image change affects tenant build/runtime behavior across REST/GraphQL/MCP/Blueprint/dashboard, while preserving input/output schemas.
