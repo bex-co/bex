@@ -1,0 +1,1062 @@
+{
+  "pass": "a850",
+  "sourceHead": "4a20949ef",
+  "scope": "Functional DatastoreLogViewer startup input retention, read-only searches in existing QA-workspace PG/KV resources; separately owned Free native Rust fixture completed and deleted.",
+  "scripts": {
+    "factory": "function(url,label,width,marker){return `async(page)=>{\nawait page.setViewportSize({width:${width},height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-pJFig2Dm.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.getByLabel(${JSON.stringify(label)},{exact:true}),marker=${JSON.stringify(marker)};\ntry{\nawait page.goto(${JSON.stringify(url)},{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.matches(\":disabled\"),readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const after=await n.count()?await n.inputValue():null;let readyControl=null;if(await n.count()&&await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(700);readyControl=await n.inputValue();}\nreturn {at:new Date().toISOString(),url:page.url(),width:${width},scripts,before,typed,events,samples,after,readyControl,noResponseRewriting:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}`}",
+    "keyValueDesktop": "async(page)=>{\nawait page.setViewportSize({width:1440,height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-pJFig2Dm.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.getByLabel(\"Search logs…\",{exact:true}),marker=\"qa-a850-kv-1440\";\ntry{\nawait page.goto(\"https://dashboard.bex.co/keyvalue/red-da4086iii7bs73drbqh0?tab=logs\",{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.matches(\":disabled\"),readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const after=await n.count()?await n.inputValue():null;let readyControl=null;if(await n.count()&&await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(700);readyControl=await n.inputValue();}\nreturn {at:new Date().toISOString(),url:page.url(),width:1440,scripts,before,typed,events,samples,after,readyControl,noResponseRewriting:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}",
+    "keyValueMobile": "async(page)=>{\nawait page.setViewportSize({width:390,height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-pJFig2Dm.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.getByLabel(\"Search logs…\",{exact:true}),marker=\"qa-a850-kv-390\";\ntry{\nawait page.goto(\"https://dashboard.bex.co/keyvalue/red-da4086iii7bs73drbqh0?tab=logs\",{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.matches(\":disabled\"),readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const after=await n.count()?await n.inputValue():null;let readyControl=null;if(await n.count()&&await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(700);readyControl=await n.inputValue();}\nreturn {at:new Date().toISOString(),url:page.url(),width:390,scripts,before,typed,events,samples,after,readyControl,noResponseRewriting:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}",
+    "keyValueRepeat": "async(page)=>{\nawait page.setViewportSize({width:390,height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-pJFig2Dm.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.getByLabel(\"Search logs…\",{exact:true}),marker=\"qa-a850-kv-repeat\";\ntry{\nawait page.goto(\"https://dashboard.bex.co/keyvalue/red-da4086iii7bs73drbqh0?tab=logs\",{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.matches(\":disabled\"),readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();await n.locator(\"..\").screenshot({path:\"qa-a850-datastore-before.png\"});}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const after=await n.count()?await n.inputValue():null;await n.locator(\"..\").screenshot({path:\"qa-a850-datastore-after.png\"});let readyControl=null;if(await n.count()&&await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(700);readyControl=await n.inputValue();}\nreturn {at:new Date().toISOString(),url:page.url(),width:390,scripts,before,typed,events,samples,after,readyControl,noResponseRewriting:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}",
+    "postgresDesktop": "async(page)=>{\nawait page.setViewportSize({width:1440,height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-pJFig2Dm.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.getByLabel(\"Search database logs\",{exact:true}),marker=\"qa-a850-pg-1440\";\ntry{\nawait page.goto(\"https://dashboard.bex.co/databases/dpg-d9nqg95cavls73fp8m20?tab=logs\",{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.matches(\":disabled\"),readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const after=await n.count()?await n.inputValue():null;let readyControl=null;if(await n.count()&&await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(700);readyControl=await n.inputValue();}\nreturn {at:new Date().toISOString(),url:page.url(),width:1440,scripts,before,typed,events,samples,after,readyControl,noResponseRewriting:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}",
+    "postgresMobile": "async(page)=>{\nawait page.setViewportSize({width:390,height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-pJFig2Dm.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.getByLabel(\"Search database logs\",{exact:true}),marker=\"qa-a850-pg-390\";\ntry{\nawait page.goto(\"https://dashboard.bex.co/databases/dpg-d9nqg95cavls73fp8m20?tab=logs\",{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.matches(\":disabled\"),readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const after=await n.count()?await n.inputValue():null;let readyControl=null;if(await n.count()&&await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(700);readyControl=await n.inputValue();}\nreturn {at:new Date().toISOString(),url:page.url(),width:390,scripts,before,typed,events,samples,after,readyControl,noResponseRewriting:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}"
+  },
+  "sourceCensus": {
+    "inputSites": 1,
+    "productionMounts": 2,
+    "mounts": [
+      "dashboard/src/routes/keyvalue.$keyValueId.tsx:195",
+      "dashboard/src/routes/databases.$databaseId.tsx:228"
+    ],
+    "aliases": [
+      "/r/{id}?tab=logs -> /keyvalue/{id}?tab=logs",
+      "/d/{id}?tab=logs -> /databases/{id}?tab=logs"
+    ],
+    "localState": "datastore-log-viewer.tsx:125-126 text/committedText seeded from URL; changeText:155 updates text and commits after300ms; Input:300-306 lacks readiness gate.",
+    "consumer": "queryFilters -> useLogHistory at194; URL echo, instance, range anchoring and refusal/empty/paging branches remain unchanged.",
+    "proposedFix": "Reuse useIsHydrated on this Input only with native disabled until hydrated. Keep global Input/hook and backend log semantics unchanged.",
+    "framework": "Pinned React19.3.1 production source reopened; updateInput writes controlled values, while initInput preserves a DOM edit during hydration. Captures retain marker in initial props samples before clearing later. Exact later update trigger and deployed React version not established."
+  },
+  "screenshots": {
+    "paths": [
+      ".playwright-mcp/qa-a850-datastore-before.png",
+      ".playwright-mcp/qa-a850-datastore-after.png"
+    ],
+    "viewed": true,
+    "scope": "Input parent only; no underlying datastore logs or credentials captured."
+  },
+  "limits": [
+    "Initial PG probe used Key Value's label and is excluded; no claim of absent PG input. Corrected PG label is Search database logs.",
+    "Only listed PG/KV resource contexts and widths exercised; aliases, nonempty initial filters, instance/range changes, paging/errors and other locales remain explicit audit work.",
+    "The wider post-startup mutation observation includes only deletion of the owned Rust fixture. Datastore searches send no mutation.",
+    "Rust sample control used explicit cargo build --release and ./target/release/app; no claim about default commands or JavaScript companions."
+  ],
+  "cleanupFinalizerObserved": {
+    "logoutConfirmed": true,
+    "exitCode": 0,
+    "browser": {
+      "at": "2026-10-17T04:58:51.257Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "handlesRemoved": true
+  },
+  "receipts": {
+    "KVStartup1440": {
+      "at": "2026-10-17T04:55:48.925Z",
+      "url": "https://dashboard.bex.co/keyvalue/red-da4086iii7bs73drbqh0?tab=logs&text=qa-a850-kv-1440-ready",
+      "width": 1440,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-pJFig2Dm.js",
+          "status": 200,
+          "bytes": 1954259,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "count": 1,
+        "enabled": true,
+        "readOnly": false,
+        "reactProps": false,
+        "id": ""
+      },
+      "typed": "qa-a850-kv-1440",
+      "events": [
+        {
+          "trusted": true,
+          "value": "qa-a850-kv-1440",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 1480.7000000001863,
+          "value": "qa-a850-kv-1440",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 1636.8999999999069,
+          "value": "qa-a850-kv-1440",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 1791.7000000001863,
+          "value": "qa-a850-kv-1440",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 1946.6000000000931,
+          "value": "qa-a850-kv-1440",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2102.399999999907,
+          "value": "qa-a850-kv-1440",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2257.7000000001863,
+          "value": "qa-a850-kv-1440",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2427.399999999907,
+          "value": "qa-a850-kv-1440",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2590.600000000093,
+          "value": "qa-a850-kv-1440",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2745.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2915.899999999907,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3081.7000000001863,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3243.600000000093,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3408.399999999907,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3567.100000000093,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3741.7000000001863,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3897,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4103.600000000093,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4270.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4426.200000000186,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4585.700000000186,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "after": "",
+      "readyControl": "qa-a850-kv-1440-ready",
+      "noResponseRewriting": true
+    },
+    "KVStartup390": {
+      "at": "2026-10-17T04:55:55.138Z",
+      "url": "https://dashboard.bex.co/keyvalue/red-da4086iii7bs73drbqh0?tab=logs&text=qa-a850-kv-390-ready",
+      "width": 390,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-pJFig2Dm.js",
+          "status": 200,
+          "bytes": 1954259,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "count": 1,
+        "enabled": true,
+        "readOnly": false,
+        "reactProps": false,
+        "id": ""
+      },
+      "typed": "qa-a850-kv-390",
+      "events": [
+        {
+          "trusted": true,
+          "value": "qa-a850-kv-390",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 1629.7999999998137,
+          "value": "qa-a850-kv-390",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 1789.7999999998137,
+          "value": "qa-a850-kv-390",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 1972,
+          "value": "qa-a850-kv-390",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2130.5999999996275,
+          "value": "qa-a850-kv-390",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2289.0999999996275,
+          "value": "qa-a850-kv-390",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2446.5,
+          "value": "qa-a850-kv-390",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2605.6999999997206,
+          "value": "qa-a850-kv-390",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2843.6999999997206,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3003.399999999907,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3160.7999999998137,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3319.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3477.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3634.0999999996275,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3791.0999999996275,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3949.399999999907,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4106.899999999907,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4264.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4419.399999999907,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4576.299999999814,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4734.199999999721,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "after": "",
+      "readyControl": "qa-a850-kv-390-ready",
+      "noResponseRewriting": true
+    },
+    "KVRepeat": {
+      "at": "2026-10-17T04:56:19.044Z",
+      "url": "https://dashboard.bex.co/keyvalue/red-da4086iii7bs73drbqh0?tab=logs&text=qa-a850-kv-repeat-ready",
+      "width": 390,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-pJFig2Dm.js",
+          "status": 200,
+          "bytes": 1954259,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "count": 1,
+        "enabled": true,
+        "readOnly": false,
+        "reactProps": false,
+        "id": ""
+      },
+      "typed": "qa-a850-kv-repeat",
+      "events": [
+        {
+          "trusted": true,
+          "value": "qa-a850-kv-repeat",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 1686.7000000001863,
+          "value": "qa-a850-kv-repeat",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 1886.8999999999069,
+          "value": "qa-a850-kv-repeat",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2049.899999999907,
+          "value": "qa-a850-kv-repeat",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2208.399999999907,
+          "value": "qa-a850-kv-repeat",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2368.2000000001863,
+          "value": "qa-a850-kv-repeat",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2542.2000000001863,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2703,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2861.2999999998137,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3023.2000000001863,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3184.2000000001863,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3343.7000000001863,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3502.899999999907,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3665.600000000093,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3823.600000000093,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3984.7999999998137,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4165.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4324.899999999907,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4525.200000000186,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4686.700000000186,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4853.399999999907,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "after": "",
+      "readyControl": "qa-a850-kv-repeat-ready",
+      "noResponseRewriting": true
+    },
+    "PGCorrect1440": {
+      "at": "2026-10-17T04:57:17.478Z",
+      "url": "https://dashboard.bex.co/databases/dpg-d9nqg95cavls73fp8m20?tab=logs&text=qa-a850-pg-1440-ready",
+      "width": 1440,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-pJFig2Dm.js",
+          "status": 200,
+          "bytes": 1954259,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "count": 1,
+        "enabled": true,
+        "readOnly": false,
+        "reactProps": false,
+        "id": ""
+      },
+      "typed": "qa-a850-pg-1440",
+      "events": [
+        {
+          "trusted": true,
+          "value": "qa-a850-pg-1440",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 1803.5,
+          "value": "qa-a850-pg-1440",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 1958.8000000002794,
+          "value": "qa-a850-pg-1440",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2114.600000000093,
+          "value": "qa-a850-pg-1440",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2269.4000000003725,
+          "value": "qa-a850-pg-1440",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2424.4000000003725,
+          "value": "qa-a850-pg-1440",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2579.8000000002794,
+          "value": "qa-a850-pg-1440",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2734.4000000003725,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2889.100000000093,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3044.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3199.9000000003725,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3355.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3510.7000000001863,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3665.3000000002794,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3821.2000000001863,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3974.8000000002794,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4129.9000000003725,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4284.200000000186,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4438.800000000279,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4593.100000000093,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4747.4000000003725,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "after": "",
+      "readyControl": "qa-a850-pg-1440-ready",
+      "noResponseRewriting": true
+    },
+    "PGCorrect390": {
+      "at": "2026-10-17T04:57:23.340Z",
+      "url": "https://dashboard.bex.co/databases/dpg-d9nqg95cavls73fp8m20?tab=logs&text=qa-a850-pg-390-ready",
+      "width": 390,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-pJFig2Dm.js",
+          "status": 200,
+          "bytes": 1954259,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "count": 1,
+        "enabled": true,
+        "readOnly": false,
+        "reactProps": false,
+        "id": ""
+      },
+      "typed": "qa-a850-pg-390",
+      "events": [
+        {
+          "trusted": true,
+          "value": "qa-a850-pg-390",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 1469.0999999996275,
+          "value": "qa-a850-pg-390",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 1623.7999999998137,
+          "value": "qa-a850-pg-390",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 1778.8999999999069,
+          "value": "qa-a850-pg-390",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 1934.3999999999069,
+          "value": "qa-a850-pg-390",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2089.5,
+          "value": "qa-a850-pg-390",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2245,
+          "value": "qa-a850-pg-390",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2399.5999999996275,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2554.5999999996275,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2708.2999999998137,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2862.6999999997206,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3017.1999999997206,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3171.899999999907,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3326.399999999907,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3481.0999999996275,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3635.1999999997206,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3790.0999999996275,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3944.7999999998137,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4100.0999999996275,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4255.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4410,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "after": "",
+      "readyControl": "qa-a850-pg-390-ready",
+      "noResponseRewriting": true
+    },
+    "DatastoreReadyControls": {
+      "at": "2026-10-17T04:58:25.037Z",
+      "controls": [
+        {
+          "path": "/keyvalue/red-da4086iii7bs73drbqh0?tab=logs&text=qa-a850-ready-check",
+          "label": "Search logs…",
+          "value": "qa-a850-ready-check",
+          "emptyMessagePresent": true
+        },
+        {
+          "path": "/databases/dpg-d9nqg95cavls73fp8m20?tab=logs&text=qa-a850-ready-check",
+          "label": "Search database logs",
+          "value": "qa-a850-ready-check",
+          "emptyMessagePresent": true
+        }
+      ],
+      "mutations": [
+        {
+          "operationName": "DeleteService",
+          "resource": "srv-db9fumvto5uc73fkcvn0"
+        }
+      ],
+      "errors": []
+    },
+    "Created": {
+      "at": "2026-10-17T04:53:49.438Z",
+      "request": {
+        "operationName": "CreateService",
+        "variables": {
+          "repo": "https://github.com/bex-co/bex",
+          "branch": "main",
+          "name": "qa-20261016-a850-rust",
+          "type": "web_service",
+          "rootDir": "examples/hello-rust",
+          "runtime": "rust",
+          "buildCommand": "cargo build --release",
+          "startCommand": "./target/release/app",
+          "plan": "free",
+          "autoDeploy": false,
+          "port": 3000,
+          "envVars": [
+            {
+              "key": "MESSAGE",
+              "value": "qa-a850 native Rust 雪🦊"
+            }
+          ],
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db9fumvto5uc73fkcvn0",
+            "latestDeployId": "dep-db9fumvto5uc73fkcvng",
+            "name": "qa-20261016-a850-rust",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": null,
+            "type": "web_service"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792212826014.203,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.137,
+        "responseStart": 2711.478,
+        "responseEnd": 2711.921
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9fumvto5uc73fkcvn0/deploys/dep-db9fumvto5uc73fkcvng"
+    },
+    "RustReady": {
+      "at": "2026-10-17T04:57:48.990Z",
+      "status": 200,
+      "deploy": {
+        "id": "dep-db9fumvto5uc73fkcvng",
+        "serviceId": "srv-db9fumvto5uc73fkcvn0",
+        "status": "live",
+        "trigger": "other",
+        "bexTrigger": "create",
+        "commit": {
+          "id": "2c95fd35b8b1ac980dfddec9cb7de77fcb01a584",
+          "message": "docs(qa): file psql stdin import defect"
+        },
+        "createdAt": "2026-10-17T04:53:47.728119Z",
+        "updatedAt": "2026-10-17T04:57:10.792912Z",
+        "startedAt": "2026-10-17T04:54:55.197803Z",
+        "finishedAt": "2026-10-17T04:57:10.792911Z"
+      },
+      "selectedLogLines": [
+        "hello-rust listening on 3000: \"qa-a850 native Rust 雪🦊\""
+      ],
+      "errors": []
+    },
+    "Deleted": {
+      "at": "2026-10-17T04:58:19.751Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db9fumvto5uc73fkcvn0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "timing": {
+        "startTime": 1792213098519.559,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.12,
+        "responseStart": 516.651,
+        "responseEnd": 517.065
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "InventoryCleanup": {
+      "at": "2026-10-17T04:58:38.660Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [
+        {
+          "path": "/v1/services/srv-db9fumvto5uc73fkcvn0",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9fumvto5uc73fkcvn0/deploys/dep-db9fumvto5uc73fkcvng",
+          "status": 404
+        }
+      ]
+    },
+    "SessionCleared": {
+      "at": "2026-10-17T04:58:51.257Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  },
+  "physicalCleanup": {
+    "at": "2026-10-17T04:58:47.388494+00:00",
+    "app": {
+      "exitCode": 0,
+      "resources": []
+    },
+    "servingPods": {
+      "exitCode": 0,
+      "resources": [
+        "pod/tea-d98210cbbpdc73dcrkvg-qa-20261016-a850-rust-5b77f6f66d-xlk4s"
+      ]
+    },
+    "buildjobs": {
+      "exitCode": 0,
+      "resources": []
+    },
+    "buildpods": {
+      "exitCode": 0,
+      "resources": []
+    },
+    "publishjobs": {
+      "exitCode": 0,
+      "resources": []
+    },
+    "publishpods": {
+      "exitCode": 0,
+      "resources": []
+    },
+    "publicStatus": "404",
+    "publicExitCode": 0
+  },
+  "servingCleanupFinal": {
+    "at": "2026-10-17T04:59:09.984932+00:00",
+    "remainingServingPods": [],
+    "exitCode": 0
+  },
+  "rustPublicControl": {
+    "at": "2026-10-17T04:57:50.115069+00:00",
+    "status": "200",
+    "exitCode": 0,
+    "bodyBytes": 27,
+    "matchesSyntheticMessage": true,
+    "sha256": "ab5d2611edab8fd0f540af85a4345dbc53d350cf19366ecde17a9ed24723676a"
+  }
+}
