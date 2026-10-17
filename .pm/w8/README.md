@@ -151,6 +151,12 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## QA evidence for existing work
 
+- [Native chunked/gzip uploads](evidence/native-chunked-gzip-uploads-sweep400/README.md) — sweep400:ten exact small-body uploads across both first native apps, paced/chunked/fixed-gzip/public-H2 controls and ten native log correlations pass. Two parents/children/URLs cleaned; larger396 candidate remains inconclusive. No new issue.
+
+- [Native large Key Value pipe imports](evidence/native-keyvalue-large-pipe-sweep398/README.md) — sweep398:four accepted1MiB imports, success/type-error counts and later writes,12 exact values verified by the opposite client. Original short-wait partial attempt and prelaunch setup retained;15 exact key names/cache/credentials cleaned, history metadata unchanged. No new issue or085 closeout.
+
+- [Native5MiB downloads and bounded upload observations](evidence/native-file-transfers-sweep396/README.md) — sweep396:both first native fixtures serve exact full/range/header/conditional controls (16 passes); three smaller uploads match native logs. Five5MiB upload attempts time out or499near61s, with variable observed progress; cause/compatibility unconfirmed, no new issue. Exact cleanup passes.
+
 - **New major [117](117.md)** — native Ruby silently rewrites stale dependency locks; both first deployments serve the changed gem, build-only deployment-mode controls correctly refuse, prior boots remain serving and exact cleanup passes ([sweep394 evidence](evidence/117/README.md)).
 
 - [Native Poetry installed application environments](evidence/native-poetry-project-sweep392/README.md) — sweep392:default2.1.3/explicit1.8.5 real dependency installs, generated lock and isolated project interpreter persist through build/pre-deploy/runtime; both first children serve original Flask HTTP200,8 shared/env reads and exact cleanup pass. No new issue.
@@ -288,6 +294,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [Static byte-range acceptance and scoped rollout recheck](evidence/static-ranges-sweep317/README.md) — sweep317:62 text/binary/multipart/conditional/HEAD HTTP checks and three source controls pass; all three clients now refuse Free cron and accept the shared service/database name (six validations). Two sites/two deploys cleaned; no new issue.
 
 ## Inbox
+
+- [ ] **118** — [Forward stdin to noninteractive psql imports](118.md) (55m, major) ← functional CLI sweep399; released Bex, Render pin and HEAD silently import0 rows from supplied CSV, filename/direct controls import3. Upstream stdin handoff researched; exact database/data/credentials cleaned.
 
 - [ ] **116** — [Native Python generates HTTP URLs for HTTPS requests](116.md) (55m, major) ← functional CLI sweep380; both defaults produce wrong absolute URLs/repeated HTTPS redirects, both one-setting controls pass; exact own fixtures cleaned.
 
