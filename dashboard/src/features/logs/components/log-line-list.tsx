@@ -54,6 +54,18 @@ const ROW_ESTIMATE = 24;
 // Rows rendered above/below the viewport so a fast scroll doesn't flash blank.
 const OVERSCAN = 12;
 
+/**
+ * A display reflow (wrap or timestamps toggled) keeps re-placing the reader's
+ * row while rows remeasure: until this long after the last pass, and never
+ * longer than SETTLE_MAX_MS, so a busy live tail cannot keep it settling
+ * (w4/m228).
+ */
+const SETTLE_MS = 250;
+const SETTLE_MAX_MS = 1000;
+
+/** What a display reflow keeps in view: a row and offset, or the newest line. */
+type SettleTarget = { key: string; offset: number } | "end";
+
 // Vertical inset (previously the row container's `p-3` top/bottom padding),
 // applied through the virtualizer so it survives windowing at the very top and
 // very bottom of the list rather than being lost with the unrendered rows.
@@ -115,6 +127,15 @@ export function LogLineList({
   const [pinned, setPinned] = useState(true);
   const anchorRef = useRef<{ key: string; offset: number } | null>(null);
   const previousLines = useRef(lines);
+  // A wrap or timestamp toggle changes every row's height while the records
+  // stay the same. Until the rows have remeasured, the reader's row is kept
+  // in place by key, and transient geometry may neither replace that target
+  // nor unpin the reader (w4/m228).
+  const display = `${wrap}:${showTimestamps}`;
+  const previousDisplay = useRef(display);
+  const settling = useRef<SettleTarget | null>(null);
+  const settleDeadline = useRef(0);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadOlderRef = useRef(onLoadOlder);
   const loadingOlderRef = useRef(loadingOlder);
   const hasMoreRef = useRef(hasMore);
@@ -150,43 +171,9 @@ export function LogLineList({
   // Recompute the pin from the scroll position; releasing it while the user
   // reads up, restoring it the moment they return to the bottom. Near the top,
   // request the next older page (w4/m107).
-  const onScroll = () => {
-    const el = viewportRef.current;
-    if (!el) return;
-    const anchor = virtualizer
-      .getVirtualItems()
-      .find((row) => row.end > el.scrollTop);
-    if (anchor) {
-      anchorRef.current = {
-        key: String(anchor.key),
-        offset: el.scrollTop - anchor.start,
-      };
-    }
-    const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
-    setPinned(distance <= PIN_THRESHOLD);
-    if (
-      el.scrollTop <= LOAD_OLDER_THRESHOLD &&
-      hasMoreRef.current &&
-      !loadingOlderRef.current
-    ) {
-      loadOlderRef.current?.();
-    }
-  };
-
-  // Keep the visible row anchored when pages prepend or old rows expire.
-  // Total-height deltas also include new head/SSE rows, so they shift an
-  // unpinned reader even when nothing changed above the viewport.
-  useLayoutEffect(() => {
-    const el = viewportRef.current;
-    if (!el) return;
-    const anchor = anchorRef.current;
-    if (!pinned && anchor && previousLines.current !== lines) {
-      const index = lines.findIndex((line) => line.key === anchor.key);
-      const position =
-        index >= 0 ? virtualizer.getOffsetForIndex(index, "start") : undefined;
-      el.scrollTop = position ? Math.max(0, position[0] + anchor.offset) : 0;
-    } else {
-      // The virtualizer may publish its new visible range after onScroll.
+  // The row at the top of the viewport and how far into it the reader is.
+  const recordAnchor = useCallback(
+    (el: HTMLElement) => {
       const visible = virtualizer
         .getVirtualItems()
         .find((row) => row.end > el.scrollTop);
@@ -196,6 +183,112 @@ export function LogLineList({
           offset: el.scrollTop - visible.start,
         };
       }
+    },
+    [virtualizer],
+  );
+  const recordPin = (el: HTMLElement) =>
+    setPinned(
+      el.scrollHeight - el.scrollTop - el.clientHeight <= PIN_THRESHOLD,
+    );
+
+  // Put a row back at the top, its offset clamped to the row's current height
+  // (a row that became shorter cannot keep an offset past its end). False when
+  // the row is no longer in the buffer.
+  const placeRow = (
+    el: HTMLElement,
+    anchor: { key: string; offset: number },
+  ): boolean => {
+    const index = lines.findIndex((line) => line.key === anchor.key);
+    if (index < 0) return false;
+    const position = virtualizer.getOffsetForIndex(index, "start");
+    if (!position) return false;
+    const size = virtualizer.measurementsCache[index].size;
+    el.scrollTop = Math.max(
+      0,
+      position[0] + Math.min(anchor.offset, Math.max(0, size - 1)),
+    );
+    return true;
+  };
+
+  const onScroll = () => {
+    const el = viewportRef.current;
+    if (!el || settling.current) return;
+    recordAnchor(el);
+    recordPin(el);
+    if (
+      el.scrollTop <= LOAD_OLDER_THRESHOLD &&
+      hasMoreRef.current &&
+      !loadingOlderRef.current
+    ) {
+      loadOlderRef.current?.();
+    }
+  };
+
+  // Settled: what the reader now sees, in the final geometry, becomes the
+  // anchor and pin that later appends and scrolls work from.
+  const endSettling = useCallback(() => {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    if (!settling.current) return;
+    settling.current = null;
+    virtualizer.shouldAdjustScrollPositionOnItemSizeChange = undefined;
+    const el = viewportRef.current;
+    if (el) {
+      recordAnchor(el);
+      setPinned(
+        el.scrollHeight - el.scrollTop - el.clientHeight <= PIN_THRESHOLD,
+      );
+    }
+  }, [recordAnchor, virtualizer]);
+  useEffect(
+    () => () => {
+      if (settleTimer.current) clearTimeout(settleTimer.current);
+    },
+    [],
+  );
+
+  // Keep the visible row anchored when pages prepend or old rows expire.
+  // Total-height deltas also include new head/SSE rows, so they shift an
+  // unpinned reader even when nothing changed above the viewport.
+  useLayoutEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    if (previousDisplay.current !== display) {
+      previousDisplay.current = display;
+      const target = pinned ? "end" : anchorRef.current;
+      if (target) {
+        settling.current = target;
+        settleDeadline.current = Date.now() + SETTLE_MAX_MS;
+        // The restore below places the row; the virtualizer's own size-change
+        // compensation would fight it.
+        virtualizer.shouldAdjustScrollPositionOnItemSizeChange = () => false;
+      }
+      // Old-mode sizes are wrong. Remeasure the mounted rows now: a row whose
+      // height did not change gets no resize notification and would
+      // otherwise fall back to the estimate.
+      virtualizer.measure();
+      virtualizer.elementsCache.forEach((row) => {
+        if (row.isConnected) virtualizer.measureElement(row);
+      });
+    }
+    const target = settling.current;
+    if (target) {
+      if (target === "end") scrollToBottom();
+      else placeRow(el, target);
+      if (settleTimer.current) clearTimeout(settleTimer.current);
+      const remaining = settleDeadline.current - Date.now();
+      settleTimer.current = setTimeout(
+        endSettling,
+        Math.max(0, Math.min(SETTLE_MS, remaining)),
+      );
+      previousLines.current = lines;
+      return;
+    }
+    const anchor = anchorRef.current;
+    if (!pinned && anchor && previousLines.current !== lines) {
+      if (!placeRow(el, anchor)) el.scrollTop = 0;
+    } else {
+      // The virtualizer may publish its new visible range after onScroll.
+      recordAnchor(el);
     }
     previousLines.current = lines;
   });
@@ -224,9 +317,16 @@ export function LogLineList({
         ref={viewportRef}
         data-log-viewport=""
         onScroll={onScroll}
+        // Any reader input ends a display reflow's settling at once.
+        onWheel={endSettling}
+        onTouchStart={endSettling}
+        onPointerDown={endSettling}
+        onKeyDown={endSettling}
         style={fill ? undefined : { height: VIEWPORT_HEIGHT }}
         className={cn(
-          "overflow-auto rounded-md border bg-muted/30 font-mono text-xs leading-relaxed",
+          // The list anchors the reader itself; the browser's own overflow
+          // anchoring would move it again mid-reflow (w4/m228).
+          "overflow-auto rounded-md border bg-muted/30 font-mono text-xs leading-relaxed [overflow-anchor:none]",
           fill && "h-full",
         )}
       >
@@ -259,6 +359,9 @@ export function LogLineList({
           variant="secondary"
           className="absolute bottom-3 left-1/2 -translate-x-1/2 shadow-md"
           onClick={() => {
+            // Outside the viewport, so its pointer does not end a reflow's
+            // settling; jumping to the end must (w4/m228).
+            endSettling();
             setPinned(true);
             scrollToBottom();
           }}
