@@ -1,0 +1,21 @@
+{
+  "qualification": "Copied helper retained stale scalar sweep tag and stale sync key; create receipts and IDs were recorded, no native operation was retried. First observer exited before API lookup. Exactly these two QA390 create-owned entries reclassified; prior sweep380 history preserved.",
+  "records": [
+    {
+      "id": "srv-db9ct4k50quc73dl5mb0",
+      "client": "bex",
+      "before_sweep_tag": 380,
+      "corrected_sweep_tag": 390,
+      "native_create_replayed": false,
+      "proof": "exact native create POST201/name/ID/workspace/Free/source/QA390 commands and own persisted intent; no identity adopted from baseline"
+    },
+    {
+      "id": "srv-db9ct8c50quc73dl5md0",
+      "client": "render",
+      "before_sweep_tag": 380,
+      "corrected_sweep_tag": 390,
+      "native_create_replayed": false,
+      "proof": "exact native create POST201/name/ID/workspace/Free/source/QA390 commands and own persisted intent; no identity adopted from baseline"
+    }
+  ]
+}

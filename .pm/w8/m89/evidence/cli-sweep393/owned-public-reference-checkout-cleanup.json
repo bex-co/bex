@@ -1,0 +1,5 @@
+{
+  "own_public_reference_checkout_removed": true,
+  "ownership": "exact own private path, expected parent SHA and anonymous public origin verified",
+  "source_data_preserved": "exact URL/parent/Gitlink/file hashes and .gitmodules in public-reference.json; no reference repository contents copied wholesale"
+}

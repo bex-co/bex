@@ -1,0 +1,49 @@
+import json
+
+def fixture(nonce,actor):
+ schema='qa387_'+nonce+'_'+actor;table=schema+'.items';stmt=schema+'_insert';calc=schema+'_calc';prefix='QA387_'+nonce+'_'+actor;frames={};states={};sql=[]
+ def frame(label,payload,expected):
+  key=prefix+'_'+label;frames[key]=expected;return "SELECT jsonb_build_object('frame','"+key+"','pid',pg_backend_pid(),'payload',"+payload+")::text"
+ def emit(label,payload,expected):sql.append(frame(label,payload,expected)+';')
+ def state(label,wanted):key=prefix+'_STATE_'+label;states[key]=wanted;sql.append('\\echo '+key+' :SQLSTATE')
+ sql+=['\\set ON_ERROR_STOP off',"SET statement_timeout='10s';SET lock_timeout='500ms';SET idle_in_transaction_session_timeout='30s';"]
+ emit('initial',"jsonb_build_object('major',current_setting('server_version_num')::int/10000,'encoding',current_setting('server_encoding'),'schema_absent',to_regnamespace('"+schema+"') IS NULL)",{'major':18,'encoding':'UTF8','schema_absent':True})
+ sql+=['CREATE SCHEMA '+schema+';','CREATE TABLE '+table+' (id int PRIMARY KEY,label text NOT NULL,amount numeric,payload jsonb);']
+ sql.append(frame('bound',"jsonb_build_object('n',$1::int,'label',$2::text,'amount',$3::numeric::text,'blob',encode($4::bytea,'hex'),'json',$5::jsonb)",{'n':42,'label':'café 日本 😀','amount':'1.2300','blob':'00ff007f','json':{'hello':'世界'}})+" \\bind '42' 'café 日本 😀' '1.2300' '\\\\x00ff007f' '{\"hello\":\"世界\"}' \\g")
+ insert="INSERT INTO "+table+" VALUES($1::int,$2::text,$3::numeric,$4::jsonb) RETURNING jsonb_build_object('frame','"+prefix+"_insert_'||id::text,'pid',pg_backend_pid(),'payload',jsonb_build_object('id',id,'label',label,'amount',amount::text,'json',payload))::text"
+ rows=[(1,'one café','1.2300',{'n':1}),(2,'','0.000',{'n':2}),(3,'three 日本','3.0',{'n':3}),(4,'four 😀','4.00',{'n':4}),(5,'rolled back','5',{'n':5}),(7,'seven','7',{'n':7}),(8,'eight','8',{'n':8})]
+ for i,label,amount,value in rows:frames[prefix+'_insert_'+str(i)]={'id':i,'label':label,'amount':amount,'json':value}
+ def bind(row):
+  i,label,amount,value=row;return "\\bind_named "+stmt+" '"+str(i)+"' '"+label+"' '"+amount+"' '"+json.dumps(value,ensure_ascii=False)+"'"
+ sql.append(insert+' \\parse '+stmt)
+ sql += [bind(rows[0])+' \\g',bind(rows[1])+' \\g']
+ emit('prepared',"(SELECT to_jsonb(parameter_types::text[]) FROM pg_prepared_statements WHERE name='"+stmt+"')",['integer','text','numeric','jsonb'])
+ sql += ['\\startpipeline',bind(rows[2])+' \\sendpipeline',bind(rows[3])+' \\sendpipeline','\\flush','\\flushrequest','\\getresults 1','\\getresults','\\syncpipeline','\\getresults','\\endpipeline']
+ emit('after_first_pipeline',"(SELECT jsonb_agg(id ORDER BY id) FROM "+table+')',[1,2,3,4])
+ sql += ['\\close_prepared '+stmt]
+ emit('closed',"NOT EXISTS(SELECT1 FROM pg_prepared_statements WHERE name='"+stmt+"')".replace('SELECT1','SELECT 1'),True)
+ sql += ["\\bind_named "+stmt+" '99' 'missing' '99' '{}' \\g"]
+ state('closed','26000')
+ sql += [insert+' \\parse '+stmt,'\\startpipeline',bind(rows[4])+' \\sendpipeline',bind(rows[4])+' \\sendpipeline',"INSERT INTO "+table+" VALUES(6,'skipped',6,'{}');",'\\flushrequest','\\getresults 1','\\getresults 1']
+ state('duplicate','23505')
+ sql += ['\\getresults','\\syncpipeline','\\getresults','\\endpipeline']
+ emit('after_failed_group',"(SELECT jsonb_agg(id ORDER BY id) FROM "+table+')',[1,2,3,4])
+ sql += ['\\startpipeline',bind(rows[5])+' \\sendpipeline','\\syncpipeline',bind(rows[6])+' \\sendpipeline','\\syncpipeline','\\getresults','\\endpipeline']
+ emit('after_new_groups',"(SELECT jsonb_agg(id ORDER BY id) FROM "+table+')',[1,2,3,4,7,8])
+ sql += ['\\startpipeline',frame('parsed_in_pipeline',"$1::int",99)+' \\parse '+calc,"\\bind_named "+calc+" '99' \\sendpipeline",'\\close_prepared '+calc,'\\syncpipeline','\\getresults','\\endpipeline','\\close_prepared '+stmt]
+ emit('prepared_gone',"(SELECT count(*) FROM pg_prepared_statements WHERE name IN('"+stmt+"','"+calc+"'))",0)
+ sql.append('DROP SCHEMA '+schema+' CASCADE;')
+ emit('final_absence',"to_regnamespace('"+schema+"') IS NULL",True)
+ return {'schema':schema,'prepared':[stmt,calc],'sql':'\n'.join(sql)+'\n','frames':frames,'states':states}
+
+def verify(output,fixture):
+ actual={};pids=set();states={}
+ for line in output.splitlines():
+  at=line.find('{')
+  if at>=0:
+   try:v=json.loads(line[at:])
+   except ValueError:continue
+   if isinstance(v,dict) and v.get('frame') in fixture['frames']:actual.setdefault(v['frame'],[]).append(v['payload']);pids.add(v['pid'])
+  for key in fixture['states']:
+   if line.startswith(key+' '):states[key]=line.split()[-1]
+ checks={key:actual.get(key)==[expected] for key,expected in fixture['frames'].items()};return {'frames':actual,'states':states,'checks':checks,'backend_pids':sorted(pids),'pass':all(checks.values()) and states==fixture['states'] and len(pids)==1}

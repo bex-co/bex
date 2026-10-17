@@ -1,0 +1,7 @@
+from pathlib import Path
+import subprocess,json,time,sys
+P=Path(__file__).resolve().parent;case=sys.argv[1]
+for attempt in range(4):
+ r=subprocess.run(['python3',str(P/'sweep388-omitted-branch.py'),'observe',case,'changed'],text=True,capture_output=True,check=True,timeout=100);v=json.loads(r.stdout);print(json.dumps({'attempt':attempt+1,**v}),flush=True)
+ if v['pass'] or v['status'] in ('build_failed','update_failed','pre_deploy_failed','canceled'):break
+ if attempt<3:time.sleep(12)

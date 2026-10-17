@@ -1,0 +1,28 @@
+set -e
+mkdir qa386
+cat > qa386/server.js <<'QA386_SERVER'
+'use strict';
+const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
+const root=path.resolve(__dirname,'..'),marker=JSON.parse(fs.readFileSync(path.join(__dirname,'marker.json'))),ref=JSON.parse(fs.readFileSync(path.join(__dirname,'reference.json')));
+const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
+function proof(){const out={};for(const [name,want] of Object.entries(ref.files)){const f=path.join(root,name);if(want.absent){if(fs.existsSync(f))throw Error('unexpected source '+name);out[name]={absent:true}}else{const b=fs.readFileSync(f);out[name]={bytes:b.length,sha256:sha(b)};if(JSON.stringify(out[name])!==JSON.stringify(want))throw Error('source mismatch '+name)}}return out}
+const meta={marker,node:process.version,files:proof(),program_sha256:sha(fs.readFileSync(__filename))};
+if(process.argv.includes('--build')){fs.writeFileSync(path.join(__dirname,'built.json'),JSON.stringify(meta));console.log('QA386_BUILD '+JSON.stringify(meta));process.exit(0)}
+const boot=crypto.randomUUID(),active=new Set(),holdMs=Math.min(40000,Number(process.env.QA_HOLD_MS||40000));let terminating=false;
+const snap=()=>({...meta,boot,pid:process.pid,ppid:process.ppid,npm_lifecycle_event:process.env.npm_lifecycle_event??null,npm_command:process.env.npm_command??null,active:[...active],terminating,built:JSON.parse(fs.readFileSync(path.join(__dirname,'built.json')))});
+const event=(kind,extra={})=>console.log('QA386_EVENT '+JSON.stringify({marker,boot,kind,at:new Date().toISOString(),pid:process.pid,...extra}));
+const server=http.createServer((req,res)=>{const send=v=>{res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify(v))};if(req.url.startsWith('/hold/')){const token=req.url.slice(6);active.add(token);event('hold_begin',{token,holdMs});setTimeout(()=>{active.delete(token);event('hold_end',{token});send({...snap(),token,holdMs})},holdMs);return}send(snap())});
+process.on('SIGTERM',()=>{if(terminating)return;terminating=true;event('sigterm',{active:[...active]});server.close(()=>{event('closed');process.exit(0)});server.closeIdleConnections();setTimeout(()=>{event('forced_timeout',{active:[...active]});process.exit(1)},45000).unref()});
+server.listen(Number(process.env.PORT||10000),'0.0.0.0',()=>event('ready'));
+
+QA386_SERVER
+cat > qa386/package.json <<'QA386_PACKAGE'
+{"name": "qa386-fixture", "version": "1.0.0", "private": true, "scripts": {"start": "node server.js"}}
+QA386_PACKAGE
+cat > qa386/reference.json <<'QA386_REFERENCE'
+{"repo": "https://github.com/expressjs/express", "branch": "master", "commit": "a419aa7350389a275ab45fde2e849ed1f02449ef", "files": {"package.json": {"bytes": 2731, "sha256": "9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe"}, "package-lock.json": {"absent": true}, "lib/application.js": {"bytes": 13953, "sha256": "6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04"}, "index.js": {"bytes": 224, "sha256": "4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140"}, ".nvmrc": {"absent": true}, ".node-version": {"absent": true}}, "fresh_preparation_at": "2026-10-16T23:45:31.960304+00:00"}
+QA386_REFERENCE
+cat > qa386/marker.json <<'QA386_MARKER'
+"QA386_6caf07_render"
+QA386_MARKER
+node qa386/server.js --build

@@ -1,0 +1,34 @@
+{
+  "sweep": 385,
+  "existing_finding": "w8/112",
+  "source_head": "916cef3397ec88f6bb9d98ad422b111553a3cade",
+  "source_fix": "0d841d5bec5aafd1d9e106459f3f57a2a351dc33",
+  "serving_revision": "unknown",
+  "public_commit": "d95c60fd4aa2f0f468298b7aa3fcc384f6069b8f",
+  "native_clients": [
+    "published Bex0.3.2/a6350da0",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "unchanged_native_POST201_create0": 2,
+  "original_unprefixed_first_builds_live_HTTP200": 2,
+  "configured_MIX_ENV_or_command_workaround": false,
+  "before_original_four_file_hashes_and_prod_Mix": 2,
+  "production_deps_get_and_actual_Phoenix_compile": 2,
+  "build_runtime_prod_and_compiled_prod_artifact": 2,
+  "native_log_queries_exit0": 8,
+  "native_phase_acceptance_queries_pass": 6,
+  "shared_REST_GraphQL_MCP_readbacks_pass": 6,
+  "native_delete_exit0": 2,
+  "owned_parents_first_children_URLs_absent": [
+    2,
+    2,
+    2
+  ],
+  "original_baselines_preserved": true,
+  "all_terminating_zero": true,
+  "local_fresh_compile_HTTP_and_cleanup_pass": true,
+  "full_Phoenix_endpoint_assets_release_database_browser": "unverified",
+  "source_artifact_override_exclusion_and_required_gates": "inherited from committed implementation outcome; not rerun by this QA",
+  "new_issue": null,
+  "uncommitted": true
+}

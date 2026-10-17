@@ -1,0 +1,8 @@
+from pathlib import Path
+import json
+P=Path(__file__).resolve().parent;reference=json.loads((P/'sweep384-primary-reference.json').read_text())
+def commands(marker):
+ program=(P/'sweep384-server.js').read_text()
+ build="set -e\ncat > qa384-server.js <<'QA384_NODE_PROBE'\n"+program+"\nQA384_NODE_PROBE\ncat > qa384-reference.json <<'QA384_REFERENCE'\n"+json.dumps(reference)+"\nQA384_REFERENCE\ncat > qa384-marker.json <<'QA384_MARKER'\n"+json.dumps(marker)+"\nQA384_MARKER\nnpm install --omit=dev --ignore-scripts --no-audit --no-fund --package-lock=false\nnode qa384-server.js --build"
+ assert len(build.encode())<=4096
+ return {'build':build,'start':'node qa384-server.js','predeploy':'node qa384-server.js --predeploy','program':program}

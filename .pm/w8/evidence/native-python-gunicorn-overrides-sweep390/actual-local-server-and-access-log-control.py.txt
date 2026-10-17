@@ -1,0 +1,18 @@
+from pathlib import Path
+import json,os,subprocess,sys,time,urllib.request,signal
+case=sys.argv[1];control=sys.argv[2]=='control';extra=['--access-logfile','-','--preload'] if control else [];env=os.environ['GUNICORN_CMD_ARGS'];proofs=[]
+for phase in ['build','predeploy','runtime']:
+ r=subprocess.run([sys.executable,'qa390-observer.py',phase,*(extra if phase=='runtime' else [])],capture_output=True,text=True,check=True,timeout=15);v=json.loads(Path('qa390-'+phase+'.json').read_text());active=control and phase=='runtime';assert v['env_present'] and v['env']==env and v['accesslog']==('-' if active else ('/dev/null' if env else None)) and v['preload']==(active or bool(env));proofs.append(v)
+f=Path('qa390-local-'+case+'-'+str(control)+'.log');out=f.open('wb');proc=subprocess.Popen([sys.executable,'-m','gunicorn','app:app',*extra],stdout=out,stderr=out,start_new_session=True);paths=['/?qa390_local_'+case+'_'+str(control)+'_'+str(n) for n in range(3)];responses=[]
+try:
+ for attempt in range(60):
+  try:
+   with urllib.request.urlopen('http://127.0.0.1:3000'+paths[0],timeout=.5) as r:body=r.read();assert r.status==200 and body==b'Hello, World!';responses.append({'path':paths[0],'HTTP':200});break
+  except OSError:time.sleep(.1)
+ else:raise RuntimeError('local Gunicorn did not become ready')
+ for path in paths[1:]:
+  with urllib.request.urlopen('http://127.0.0.1:3000'+path,timeout=3) as r:assert r.status==200 and r.read()==b'Hello, World!';responses.append({'path':path,'HTTP':200})
+ time.sleep(.2)
+finally:
+ os.killpg(proc.pid,signal.SIGTERM);proc.wait(timeout=7);out.close()
+logs=f.read_text();counts={p:sum(('"GET '+p+' HTTP/' in line and '" 200 ' in line) for line in logs.splitlines()) for p in paths};assert all(v>0 for v in counts.values()) if control else all(v==0 for v in counts.values());assert proc.returncode==0;print('QA390_LOCAL_RESULT '+json.dumps({'case':case,'control':control,'proofs':proofs,'requests':responses,'access_counts':counts,'server_exit':proc.returncode,'logs':logs,'pass':True}))

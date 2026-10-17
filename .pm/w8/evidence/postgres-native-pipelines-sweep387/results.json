@@ -1,0 +1,45 @@
+{
+  "sweep": 387,
+  "source_head": "5e18f96cf7d8359b4d77c64893397cd879586f77",
+  "serving_revision": "unknown",
+  "owned_fixture": "dpg-db9c79s50quc73dl5le0",
+  "native_create_delete_exit0": [
+    0,
+    0
+  ],
+  "explicit_Free_major": 18,
+  "custom_database_user_no_pool_no_replicas": true,
+  "native_clients": [
+    "published Bex0.3.2",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "external_psql": "18.6",
+  "native_SQL_identity_controls": 2,
+  "accepted_native_pipeline_sessions": 2,
+  "natural_native_batch_exit0": 2,
+  "exact_result_frames_per_client": 17,
+  "same_distinct_backend_pids": {
+    "bex": 250,
+    "render": 253
+  },
+  "extended_typed_parameters_and_empty_text": true,
+  "named_Parse_Bind_Close_lifecycle": true,
+  "manual_flush_partial_result_reads_sync_and_pipeline_end": true,
+  "expected_SQLSTATEs_per_actor": [
+    "26000",
+    "23505"
+  ],
+  "failed_implicit_group_rollback_and_later_groups_commit": true,
+  "parse_bind_close_inside_pipeline": true,
+  "own_schema_and_prepared_statements_absent": true,
+  "cached_original_SQL_before_after_exits": [
+    0,
+    2
+  ],
+  "cached_credentials_and_CA_removed": true,
+  "local_server_data_socket_script_history_removed": true,
+  "all_baselines_preserved": true,
+  "all_terminating_zero": true,
+  "new_issue": null,
+  "uncommitted": true
+}

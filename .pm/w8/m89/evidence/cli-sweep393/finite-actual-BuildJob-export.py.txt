@@ -1,0 +1,17 @@
+from pathlib import Path
+import subprocess,tempfile,shutil,os,json
+P=Path(__file__).resolve().parent;R=Path('/Volumes/nvme4tbfish/projects/bex8');D=Path(tempfile.mkdtemp(prefix='.qa393-export-',dir=R/'lego/operator'));D.chmod(0o700);ref=json.loads((P/'sweep393-public-reference.json').read_text());header=(R/'lego/operator/hack/boilerplate.go.txt').read_text().replace('YEAR','2026');program=header+'''\npackage main
+import (
+ "encoding/json"
+ "os"
+ "github.com/bex-co/bex/lego/operator/internal/build"
+)
+func main() {
+ job := build.BuildJob(build.Options{Repo: REPO, Ref: COMMIT, ExpectedCommit: COMMIT, Name: "qa393-source", Revision: "qa393", AppUID: "qa393-local-export", Namespace: "qa393-local", Builder: build.BuilderNative, Runtime: "node"}, "example.invalid/qa393:not-pushed")
+ for _, c := range job.Spec.Template.Spec.InitContainers { if c.Name == "clone" { if err := json.NewEncoder(os.Stdout).Encode(c); err != nil { panic(err) }; return } }
+ panic("clone container absent")
+}
+''';program=program.replace('REPO',json.dumps(ref['repo'])).replace('COMMIT',json.dumps(ref['parent_commit']));(P/'sweep393-actual-export-program.go.txt').write_text(program);(D/'main.go').write_text(program)
+try:
+ r=subprocess.run(['go','run','./'+D.name],cwd=R/'lego/operator',env={**os.environ,'GOWORK':'off'},capture_output=True,text=True,timeout=150);(P/'sweep393-source-export-receipt.json').write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));r.check_returncode();v=json.loads(r.stdout);assert v['name']=='clone' and 'git checkout -q FETCH_HEAD' in v['args'][0] and not any('submodule' in a for a in v['args']);(P/'sweep393-actual-clone-container.json').write_text(json.dumps(v,indent=2));print(json.dumps({'actual_export':'BuildJob clone initContainer','image':v['image'],'script_has_submodule_init':False}))
+finally:shutil.rmtree(D);print('Owned temporary Go export package removed',flush=True)

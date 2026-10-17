@@ -1,6 +1,6 @@
 # Missing native Node runtime production default — sweep357
 
-[Finding and required acceptance](../../111.md) · [summary](results.json) · [all native commands, complete runtime JSON, captured Bex wire, shared API reads and cleanup](native-runtime-controls-cleanup.json) · [final inventory](final-inventory.json).
+[Finding and required acceptance](../../blocked/111.md) · [summary](results.json) · [all native commands, complete runtime JSON, captured Bex wire, shared API reads and cleanup](native-runtime-controls-cleanup.json) · [final inventory](final-inventory.json).
 
 Both native clients' first Free Node24 deployments are Live/HTTP200 at exact public Express commit a419aa7350389a275ab45fde2e849ed1f02449ef, with exact original package/source bytes and two successful template renders at build/runtime. Build NODE_ENV is correctly absent; runtime is also absent, making Express development mode and leaving view cache disabled. Native async create exits0 as expected. One actual Bex create wire is captured201; Render direct create is native0 with no wire capture. Exact source references/hashes/absences are retained in [primary reference](primary-source-reference.json); public source is [Express application at the exact commit](https://github.com/expressjs/express/blob/a419aa7350389a275ab45fde2e849ed1f02449ef/lib/application.js).
 

@@ -1,0 +1,474 @@
+{
+  "qualification": "own local redis-server/redis-cli8.10.1; not native Bex or hosted behavior",
+  "steps": [
+    {
+      "actor": "bex",
+      "label": "stable client identity",
+      "stdin": "CLIENT \"\\x49\\x44\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\"\n",
+      "expected": null,
+      "decoded_with_fence": [
+        4,
+        "QA389_local375_FENCE_1"
+      ],
+      "observed": [
+        4
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "RESP3 HELLO map",
+      "stdin": "HELLO \"\\x33\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\"\n",
+      "expected": null,
+      "decoded_with_fence": [
+        {
+          "server": "redis",
+          "version": "8.10.1",
+          "proto": 3,
+          "id": 4,
+          "mode": "standalone",
+          "role": "master",
+          "modules": [
+            {
+              "name": "vectorset",
+              "ver": 1,
+              "path": "",
+              "args": []
+            }
+          ]
+        },
+        "QA389_local375_FENCE_2"
+      ],
+      "observed": [
+        {
+          "server": "redis",
+          "version": "8.10.1",
+          "proto": 3,
+          "id": 4,
+          "mode": "standalone",
+          "role": "master",
+          "modules": [
+            {
+              "name": "vectorset",
+              "ver": 1,
+              "path": "",
+              "args": []
+            }
+          ]
+        }
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "stable client identity",
+      "stdin": "CLIENT \"\\x49\\x44\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x33\"\n",
+      "expected": null,
+      "decoded_with_fence": [
+        5,
+        "QA389_local375_FENCE_3"
+      ],
+      "observed": [
+        5
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "RESP3 HELLO map",
+      "stdin": "HELLO \"\\x33\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x34\"\n",
+      "expected": null,
+      "decoded_with_fence": [
+        {
+          "server": "redis",
+          "version": "8.10.1",
+          "proto": 3,
+          "id": 5,
+          "mode": "standalone",
+          "role": "master",
+          "modules": [
+            {
+              "name": "vectorset",
+              "ver": 1,
+              "path": "",
+              "args": []
+            }
+          ]
+        },
+        "QA389_local375_FENCE_4"
+      ],
+      "observed": [
+        {
+          "server": "redis",
+          "version": "8.10.1",
+          "proto": 3,
+          "id": 5,
+          "mode": "standalone",
+          "role": "master",
+          "modules": [
+            {
+              "name": "vectorset",
+              "ver": 1,
+              "path": "",
+              "args": []
+            }
+          ]
+        }
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "all exact own keys initially absent",
+      "stdin": "EXISTS \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x74\\x65\\x78\\x74\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x68\\x61\\x73\\x68\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x73\\x65\\x74\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x73\\x63\\x6f\\x72\\x65\\x73\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x6d\\x69\\x73\\x73\\x69\\x6e\\x67\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x63\\x6f\\x6c\\x64\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x65\\x78\\x70\\x69\\x72\\x79\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6f\\x74\\x68\\x65\\x72\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x76\\x61\\x6c\\x75\\x65\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x35\"\n",
+      "expected": [
+        0
+      ],
+      "decoded_with_fence": [
+        0,
+        "QA389_local375_FENCE_5"
+      ],
+      "observed": [
+        0
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "typed value setup",
+      "stdin": "SET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x74\\x65\\x78\\x74\" \"\\x6c\\x69\\x6e\\x65\\x31\\x0d\\x0a\\x6c\\x69\\x6e\\x65\\x32\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x00\\x74\\x61\\x69\\x6c\"\nHSET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x68\\x61\\x73\\x68\" \"\\x75\\x6e\\x69\\x63\\x6f\\x64\\x65\" \"\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\" \"\\x65\\x6d\\x70\\x74\\x79\" \"\"\nSADD \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x73\\x65\\x74\" \"\\x61\\x6c\\x70\\x68\\x61\" \"\\x62\\x65\\x74\\x61\"\nZADD \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x73\\x63\\x6f\\x72\\x65\\x73\" \"\\x31\\x2e\\x32\\x35\" \"\\x61\\x6c\\x70\\x68\\x61\" \"\\x2d\\x32\\x2e\\x35\" \"\\x62\\x65\\x74\\x61\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x36\"\n",
+      "expected": [
+        "OK",
+        2,
+        2,
+        2
+      ],
+      "decoded_with_fence": [
+        "OK",
+        2,
+        2,
+        2,
+        "QA389_local375_FENCE_6"
+      ],
+      "observed": [
+        "OK",
+        2,
+        2,
+        2
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "binary UTF8 and RESP3 null/map replies",
+      "stdin": "GET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x74\\x65\\x78\\x74\"\nGET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x6d\\x69\\x73\\x73\\x69\\x6e\\x67\"\nHGETALL \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x68\\x61\\x73\\x68\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x37\"\n",
+      "expected": [
+        "line1\r\nline2 café 日本 😀\u0000tail",
+        null,
+        {
+          "unicode": "日本 😀",
+          "empty": ""
+        }
+      ],
+      "decoded_with_fence": [
+        "line1\r\nline2 café 日本 😀\u0000tail",
+        null,
+        {
+          "unicode": "日本 😀",
+          "empty": ""
+        },
+        "QA389_local375_FENCE_7"
+      ],
+      "observed": [
+        "line1\r\nline2 café 日本 😀\u0000tail",
+        null,
+        {
+          "unicode": "日本 😀",
+          "empty": ""
+        }
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "RESP3 set and nested double replies",
+      "stdin": "SMEMBERS \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x73\\x65\\x74\"\nZRANGE \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x73\\x63\\x6f\\x72\\x65\\x73\" \"\\x30\" \"\\x2d\\x31\" \"\\x57\\x49\\x54\\x48\\x53\\x43\\x4f\\x52\\x45\\x53\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x38\"\n",
+      "expected": null,
+      "decoded_with_fence": [
+        [
+          "alpha",
+          "beta"
+        ],
+        [
+          [
+            "beta",
+            -2.5
+          ],
+          [
+            "alpha",
+            1.25
+          ]
+        ],
+        "QA389_local375_FENCE_8"
+      ],
+      "observed": [
+        [
+          "alpha",
+          "beta"
+        ],
+        [
+          [
+            "beta",
+            -2.5
+          ],
+          [
+            "alpha",
+            1.25
+          ]
+        ]
+      ],
+      "pass": true,
+      "shape_assertions_pass": true
+    },
+    {
+      "actor": "render",
+      "label": "binary UTF8 and RESP3 null/map replies",
+      "stdin": "GET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x74\\x65\\x78\\x74\"\nGET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x6d\\x69\\x73\\x73\\x69\\x6e\\x67\"\nHGETALL \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x68\\x61\\x73\\x68\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x39\"\n",
+      "expected": [
+        "line1\r\nline2 café 日本 😀\u0000tail",
+        null,
+        {
+          "unicode": "日本 😀",
+          "empty": ""
+        }
+      ],
+      "decoded_with_fence": [
+        "line1\r\nline2 café 日本 😀\u0000tail",
+        null,
+        {
+          "unicode": "日本 😀",
+          "empty": ""
+        },
+        "QA389_local375_FENCE_9"
+      ],
+      "observed": [
+        "line1\r\nline2 café 日本 😀\u0000tail",
+        null,
+        {
+          "unicode": "日本 😀",
+          "empty": ""
+        }
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "RESP3 set and nested double replies",
+      "stdin": "SMEMBERS \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x73\\x65\\x74\"\nZRANGE \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x73\\x63\\x6f\\x72\\x65\\x73\" \"\\x30\" \"\\x2d\\x31\" \"\\x57\\x49\\x54\\x48\\x53\\x43\\x4f\\x52\\x45\\x53\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x30\"\n",
+      "expected": null,
+      "decoded_with_fence": [
+        [
+          "alpha",
+          "beta"
+        ],
+        [
+          [
+            "beta",
+            -2.5
+          ],
+          [
+            "alpha",
+            1.25
+          ]
+        ],
+        "QA389_local375_FENCE_10"
+      ],
+      "observed": [
+        [
+          "alpha",
+          "beta"
+        ],
+        [
+          [
+            "beta",
+            -2.5
+          ],
+          [
+            "alpha",
+            1.25
+          ]
+        ]
+      ],
+      "pass": true,
+      "shape_assertions_pass": true
+    },
+    {
+      "actor": "render",
+      "label": "initialize round marker",
+      "stdin": "SET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x74\\x65\\x78\\x74\" \"\\x69\\x6e\\x69\\x74\\x69\\x61\\x6c\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x31\"\n",
+      "expected": [
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "QA389_local375_FENCE_11"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "enable normal tracking with NOLOOP",
+      "stdin": "CLIENT \"\\x54\\x52\\x41\\x43\\x4b\\x49\\x4e\\x47\" \"\\x4f\\x4e\" \"\\x4e\\x4f\\x4c\\x4f\\x4f\\x50\"\nGET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x74\\x65\\x78\\x74\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x32\"\n",
+      "expected": [
+        "OK",
+        "initial"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "initial",
+        "QA389_local375_FENCE_12"
+      ],
+      "observed": [
+        "OK",
+        "initial"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "competing exact-key write",
+      "stdin": "SET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x74\\x65\\x78\\x74\" \"\\x6f\\x74\\x68\\x65\\x72\\x20\\x62\\x65\\x78\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x33\"\n",
+      "expected": [
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "QA389_local375_FENCE_13"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    }
+  ],
+  "pushes": [],
+  "sessions": {
+    "bex": {
+      "command": [
+        "local-redis-cli",
+        "<own-unix-socket>",
+        "--json",
+        "-3",
+        "--show-pushes",
+        "yes"
+      ],
+      "intent": "own finite RESP3 client with private history/config",
+      "PID": 40852,
+      "PGID": 40852,
+      "client_id": 4,
+      "hello": {
+        "server": "redis",
+        "version": "8.10.1",
+        "proto": 3,
+        "id": 4,
+        "mode": "standalone",
+        "role": "master",
+        "modules": [
+          {
+            "name": "vectorset",
+            "ver": 1,
+            "path": "",
+            "args": []
+          }
+        ]
+      },
+      "terminal": {
+        "command": [
+          "local-redis-cli",
+          "<own-unix-socket>",
+          "--json",
+          "-3",
+          "--show-pushes",
+          "yes"
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": -15,
+        "intentional_stop": null,
+        "elapsed": 8.053,
+        "decoded_JSON": [],
+        "arrival_seconds": [],
+        "output": "redis <owned-temp>/sweep389-preflight.sock> 4\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local375_FENCE_1\"\nredis <owned-temp>/sweep389-preflight.sock> {\"server\":\"redis\",\"version\":\"8.10.1\",\"proto\":3,\"id\":4,\"mode\":\"standalone\",\"role\":\"master\",\"modules\":[{\"name\":\"vectorset\",\"ver\":1,\"path\":\"\",\"args\":[]}]}\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local375_FENCE_2\"\nredis <owned-temp>/sweep389-preflight.sock> 0\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local375_FENCE_5\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> 2\nredis <owned-temp>/sweep389-preflight.sock> 2\nredis <owned-temp>/sweep389-preflight.sock> 2\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local375_FENCE_6\"\nredis <owned-temp>/sweep389-preflight.sock> \"line1\\r\\nline2 café 日本 😀\\u0000tail\"\nredis <owned-temp>/sweep389-preflight.sock> null\nredis <owned-temp>/sweep389-preflight.sock> {\"unicode\":\"日本 😀\",\"empty\":\"\"}\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local375_FENCE_7\"\nredis <owned-temp>/sweep389-preflight.sock> [\"alpha\",\"beta\"]\nredis <owned-temp>/sweep389-preflight.sock> [[\"beta\",-2.5],[\"alpha\",1.25]]\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local375_FENCE_8\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"initial\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local375_FENCE_12\"\nredis <owned-temp>/sweep389-preflight.sock> ",
+        "own_process_group_cleaned": true
+      }
+    },
+    "render": {
+      "command": [
+        "local-redis-cli",
+        "<own-unix-socket>",
+        "--json",
+        "-3",
+        "--show-pushes",
+        "yes"
+      ],
+      "intent": "own finite RESP3 client with private history/config",
+      "PID": 40853,
+      "PGID": 40853,
+      "client_id": 5,
+      "hello": {
+        "server": "redis",
+        "version": "8.10.1",
+        "proto": 3,
+        "id": 5,
+        "mode": "standalone",
+        "role": "master",
+        "modules": [
+          {
+            "name": "vectorset",
+            "ver": 1,
+            "path": "",
+            "args": []
+          }
+        ]
+      },
+      "terminal": {
+        "command": [
+          "local-redis-cli",
+          "<own-unix-socket>",
+          "--json",
+          "-3",
+          "--show-pushes",
+          "yes"
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": -15,
+        "intentional_stop": null,
+        "elapsed": 8.041,
+        "decoded_JSON": [],
+        "arrival_seconds": [],
+        "output": "redis <owned-temp>/sweep389-preflight.sock> 5\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local375_FENCE_3\"\nredis <owned-temp>/sweep389-preflight.sock> {\"server\":\"redis\",\"version\":\"8.10.1\",\"proto\":3,\"id\":5,\"mode\":\"standalone\",\"role\":\"master\",\"modules\":[{\"name\":\"vectorset\",\"ver\":1,\"path\":\"\",\"args\":[]}]}\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local375_FENCE_4\"\nredis <owned-temp>/sweep389-preflight.sock> \"line1\\r\\nline2 café 日本 😀\\u0000tail\"\nredis <owned-temp>/sweep389-preflight.sock> null\nredis <owned-temp>/sweep389-preflight.sock> {\"unicode\":\"日本 😀\",\"empty\":\"\"}\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local375_FENCE_9\"\nredis <owned-temp>/sweep389-preflight.sock> [\"alpha\",\"beta\"]\nredis <owned-temp>/sweep389-preflight.sock> [[\"beta\",-2.5],[\"alpha\",1.25]]\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local375_FENCE_10\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local375_FENCE_11\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local375_FENCE_13\"\nredis <owned-temp>/sweep389-preflight.sock> ",
+        "own_process_group_cleaned": true
+      }
+    }
+  },
+  "keys": [
+    "qa389_local375:text",
+    "qa389_local375:hash",
+    "qa389_local375:set",
+    "qa389_local375:scores",
+    "qa389_local375:missing",
+    "qa389_local375:cold",
+    "qa389_local375:expiry",
+    "qa389_other_local375:value"
+  ],
+  "pass": false,
+  "error": "AssertionError: invalidation push absent",
+  "server_stopped": true,
+  "socket_removed": true,
+  "own_history_files_removed": true,
+  "preexisting_history_unchanged": true
+}

@@ -1,0 +1,30 @@
+{
+  "qualification": "pinned Node24 app/input/fetch/real-HTTP prerequisite; source-clone behavior is separately proven by actual exported Git initContainer",
+  "image": "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+  "cases": [
+    {
+      "label": "missing",
+      "intent": "only own exact named local container and mounted nonce files",
+      "exit": 1,
+      "stdout": "QA393_SOURCE {\"marker\":\"QA393_LOCAL\",\"phase\":\"build\",\"parent_files\":{\".gitmodules\":{\"bytes\":172,\"sha256\":\"7fc5618d3820ef4716f0e799b5d99b441db82e075b1cba24a308b15ff512e880\"},\"README.md\":{\"bytes\":20,\"sha256\":\"4bd9db68c17eeda3df27bedde7457d38d80f6cd2924a345a19dd8179dc6c975c\"}},\"child_file_exists\":false,\"child_file\":null,\"git_metadata_present\":false,\"node\":\"v24.22.0\"}\n",
+      "stderr": ""
+    },
+    {
+      "label": "fetch",
+      "intent": "only own exact named local container and mounted nonce files",
+      "exit": 0,
+      "stdout": "QA393_SOURCE {\"marker\":\"QA393_LOCAL\",\"phase\":\"build\",\"parent_files\":{\".gitmodules\":{\"bytes\":172,\"sha256\":\"7fc5618d3820ef4716f0e799b5d99b441db82e075b1cba24a308b15ff512e880\"},\"README.md\":{\"bytes\":20,\"sha256\":\"4bd9db68c17eeda3df27bedde7457d38d80f6cd2924a345a19dd8179dc6c975c\"}},\"child_file_exists\":true,\"child_file\":{\"path\":\"basic/LICENSE\",\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"git_metadata_present\":false,\"node\":\"v24.22.0\"}\n",
+      "stderr": "From https://github.com/git-fixtures/basic\n * branch            6ecf0ef2c2dffb796033e5a02219af86ec6584e5 -> FETCH_HEAD\n"
+    },
+    {
+      "label": "runtime",
+      "intent": "only own exact named local container and mounted nonce files",
+      "exit": 0,
+      "stdout": "QA393_LOCAL_HTTP {\"marker\":\"QA393_LOCAL\",\"boot\":\"ccd84f60-055b-461a-aba7-5d4d7651380b\",\"build\":{\"marker\":\"QA393_LOCAL\",\"phase\":\"build\",\"parent_files\":{\".gitmodules\":{\"bytes\":172,\"sha256\":\"7fc5618d3820ef4716f0e799b5d99b441db82e075b1cba24a308b15ff512e880\"},\"README.md\":{\"bytes\":20,\"sha256\":\"4bd9db68c17eeda3df27bedde7457d38d80f6cd2924a345a19dd8179dc6c975c\"}},\"child_file_exists\":true,\"child_file\":{\"path\":\"basic/LICENSE\",\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"git_metadata_present\":false,\"node\":\"v24.22.0\"},\"runtime\":{\"marker\":\"QA393_LOCAL\",\"phase\":\"runtime\",\"parent_files\":{\".gitmodules\":{\"bytes\":172,\"sha256\":\"7fc5618d3820ef4716f0e799b5d99b441db82e075b1cba24a308b15ff512e880\"},\"README.md\":{\"bytes\":20,\"sha256\":\"4bd9db68c17eeda3df27bedde7457d38d80f6cd2924a345a19dd8179dc6c975c\"}},\"child_file_exists\":true,\"child_file\":{\"path\":\"basic/LICENSE\",\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"git_metadata_present\":false,\"node\":\"v24.22.0\"}}\nQA393_LOCAL_SERVER_CLOSED\n",
+      "stderr": ""
+    }
+  ],
+  "pass": true,
+  "own_containers_removed": true,
+  "own_context_removed": true
+}

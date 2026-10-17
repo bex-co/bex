@@ -1,0 +1,16 @@
+from pathlib import Path
+import json,tempfile,subprocess,shutil,secrets
+P=Path(__file__).resolve().parent;D=Path(tempfile.mkdtemp(prefix='bex393-node-',dir='/tmp'));D.chmod(0o700);ref=json.loads((P/'sweep393-public-reference.json').read_text());image='node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0';names=[];e={'qualification':'pinned Node24 app/input/fetch/real-HTTP prerequisite; source-clone behavior is separately proven by actual exported Git initContainer','image':image,'cases':[]}
+def save():(P/'sweep393-node-prerequisite-results.json').write_text(json.dumps(e,indent=2))
+def run(label,args,expected,bound):
+ name='qa393-node-'+secrets.token_hex(3)+'-'+label;names.append(name);z={'label':label,'intent':'only own exact named local container and mounted nonce files'};e['cases'].append(z);save();r=subprocess.run(['docker','run','--name',name,'--mount','type=bind,source='+str(D)+',target=/qa','--workdir','/qa',*args],capture_output=True,text=True,timeout=bound);z.update(exit=r.returncode,stdout=r.stdout,stderr=r.stderr);save();assert r.returncode==expected;return z
+try:
+ for name in ref['parent_files']:shutil.copyfile(P/'sweep393-parent-reference'/name,D/name)
+ shutil.copyfile(P/'sweep393-app.cjs',D/'qa393-app.cjs');shutil.copyfile(P/'sweep393-node-prerequisite.cjs',D/'qa393-node-prerequisite.cjs');(D/'qa393-reference.json').write_text(json.dumps(ref));(D/'qa393-marker.json').write_text(json.dumps('QA393_LOCAL'))
+ a=run('missing',['--network','none',image,'node','qa393-app.cjs','build'],1,30);v=json.loads(next(l.split(' ',1)[1] for l in a['stdout'].splitlines() if l.startswith('QA393_SOURCE ')));assert v['child_file_exists'] is False
+ prefix='mkdir -p basic\ngit -C basic init -q\ngit -C basic remote add origin '+ref['gitlink']['url']+'\ngit -C basic fetch --depth 1 origin '+ref['gitlink']['commit']+'\ngit -C basic checkout -q FETCH_HEAD\n';(P/'sweep393-explicit-child-fetch-prefix.txt').write_text(prefix);b=run('fetch',['--entrypoint','/bin/bash',image,'-eu','-c',prefix+'node qa393-app.cjs build'],0,75);v=json.loads(next(l.split(' ',1)[1] for l in b['stdout'].splitlines() if l.startswith('QA393_SOURCE ')));assert v['child_file']==ref['child_file'];run('runtime',['--network','none','-e','PORT=3000',image,'node','qa393-node-prerequisite.cjs'],0,30);e['pass']=True;save()
+finally:
+ for name in names:
+  r=subprocess.run(['docker','rm','-f',name],capture_output=True,text=True);assert r.returncode==0
+ shutil.rmtree(D);e.update(own_containers_removed=True,own_context_removed=not D.exists());save()
+print(json.dumps({'missing_fails_and_exact_child_fetch_build_HTTP_pass':e.get('pass',False),'own_containers_context_removed':True}))

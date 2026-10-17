@@ -1,0 +1,17 @@
+from pathlib import Path
+import os,sys,json,subprocess,tempfile,shutil,signal,time,importlib.util
+P=Path(__file__).resolve().parent;os.umask(0o077);ns={};exec(compile((P/'sweep387-pipeline-fixture.py').read_text(),str(P/'sweep387-pipeline-fixture.py'),'exec'),ns);D=Path(tempfile.mkdtemp(prefix='bex387-',dir='/tmp'));D.chmod(0o700);sock=D/'socket';sock.mkdir(mode=0o700);data=D/'data';bin=Path('/opt/homebrew/opt/postgresql@18/bin');psql=Path('/opt/homebrew/opt/libpq/bin/psql');log=(P/'sweep387-local-pg.log').open('wb');server=None;e={'qualification':'own disposable local PostgreSQL18.6 and psql18.6 pipeline/extended-query prerequisite, not native Bex/Render wrappers or hosted database','actors':[]};ledger=P/'sweep387-local-preflight.json'
+def save():ledger.write_text(json.dumps(e,indent=2,ensure_ascii=False))
+save()
+try:
+ subprocess.run([str(bin/'initdb'),'-D',str(data),'-U','qa387','--auth=trust','--no-locale','--encoding=UTF8'],stdout=log,stderr=log,timeout=20,check=True);server=subprocess.Popen([str(bin/'postgres'),'-D',str(data),'-k',str(sock),'-p','16432','-h',''],stdout=log,stderr=log,start_new_session=True);e['own_postgres_PID']=server.pid;save()
+ for attempt in range(100):
+  if (sock/'.s.PGSQL.16432').exists():break
+  time.sleep(.05)
+ assert (sock/'.s.PGSQL.16432').exists()
+ for actor in ('bex','render'):
+  fixture=ns['fixture']('local387',actor);f=D/(actor+'.sql');f.write_text(fixture['sql']);env={k:v for k,v in os.environ.items() if not k.startswith(('PG','PSQL','QA_','BEX_','RENDER_'))};env.update(PSQL_HISTORY=str(D/('history-'+actor)),PGCLIENTENCODING='UTF8',PGCONNECT_TIMEOUT='5');args=[str(psql),'-h',str(sock),'-p','16432','-U','qa387','-d','postgres','-X','-n','-q','-t','-A','-P','pager=off','-c','\\i '+str(f)];r=subprocess.run(args,env=env,text=True,capture_output=True,timeout=35);v={'actor':actor,'fixture':fixture,'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr};e['actors'].append(v);save();assert r.returncode==0;v['verification']=ns['verify'](r.stdout,fixture);save();assert v['verification']['pass'],'local exact pipeline fixture failed; inspect retained observations before production';print(json.dumps({'actor':actor,'exit':0,'frames':len(v['verification']['checks']),'stable_backend':v['verification']['backend_pids'],'expected_error_states':v['verification']['states'],'pass':True}),flush=True)
+ e['pass']=True;save()
+finally:
+ if server is not None:os.killpg(server.pid,signal.SIGTERM);server.wait(timeout=10)
+ log.close();shutil.rmtree(D);e.update(local_server_stopped=server is not None and server.poll() is not None,local_data_socket_scripts_history_removed=not D.exists());save()

@@ -1,0 +1,631 @@
+{
+  "qualification": "own pinned Python3.12 base, real unchanged public Flask app/Gunicorn; manually supplied custom/empty env and CLI options; no generated-image or platform-default-injection claim",
+  "image": "python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b",
+  "containers": [
+    {
+      "name": "qa390-5af770-bootstrap",
+      "intent": "own bounded container; only explicitly named cleanup",
+      "args": [
+        "--mount",
+        "type=bind,source=<owned-temp>/sweep390-local-app,target=/qa",
+        "--workdir",
+        "/qa",
+        "python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b",
+        "python",
+        "-m",
+        "pip",
+        "install",
+        "--disable-pip-version-check",
+        "--target",
+        "/qa/deps",
+        "-r",
+        "requirements.txt"
+      ],
+      "exit": 0,
+      "stdout": "Collecting Flask (from -r requirements.txt (line 1))\n  Downloading flask-3.1.3-py3-none-any.whl.metadata (3.2 kB)\nCollecting Gunicorn (from -r requirements.txt (line 2))\n  Downloading gunicorn-26.2.0-py3-none-any.whl.metadata (5.5 kB)\nCollecting blinker>=1.9.0 (from Flask->-r requirements.txt (line 1))\n  Downloading blinker-1.9.0-py3-none-any.whl.metadata (1.6 kB)\nCollecting click>=8.1.3 (from Flask->-r requirements.txt (line 1))\n  Downloading click-8.5.0-py3-none-any.whl.metadata (2.6 kB)\nCollecting itsdangerous>=2.2.0 (from Flask->-r requirements.txt (line 1))\n  Downloading itsdangerous-2.2.0-py3-none-any.whl.metadata (1.9 kB)\nCollecting jinja2>=3.1.2 (from Flask->-r requirements.txt (line 1))\n  Downloading jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)\nCollecting markupsafe>=2.1.1 (from Flask->-r requirements.txt (line 1))\n  Downloading markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (2.7 kB)\nCollecting werkzeug>=3.1.0 (from Flask->-r requirements.txt (line 1))\n  Downloading werkzeug-3.1.9-py3-none-any.whl.metadata (4.1 kB)\nDownloading flask-3.1.3-py3-none-any.whl (103 kB)\nDownloading gunicorn-26.2.0-py3-none-any.whl (228 kB)\nDownloading blinker-1.9.0-py3-none-any.whl (8.5 kB)\nDownloading click-8.5.0-py3-none-any.whl (125 kB)\nDownloading itsdangerous-2.2.0-py3-none-any.whl (16 kB)\nDownloading jinja2-3.1.6-py3-none-any.whl (134 kB)\nDownloading markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (24 kB)\nDownloading werkzeug-3.1.9-py3-none-any.whl (228 kB)\nInstalling collected packages: markupsafe, itsdangerous, Gunicorn, click, blinker, werkzeug, jinja2, Flask\nSuccessfully installed Flask-3.1.3 Gunicorn-26.2.0 blinker-1.9.0 click-8.5.0 itsdangerous-2.2.0 jinja2-3.1.6 markupsafe-3.0.4 werkzeug-3.1.9\n",
+      "stderr": "WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.\n"
+    },
+    {
+      "name": "qa390-5af770-custom-0",
+      "intent": "own bounded container; only explicitly named cleanup",
+      "args": [
+        "--network",
+        "none",
+        "--mount",
+        "type=bind,source=<owned-temp>/sweep390-local-app,target=/qa",
+        "--workdir",
+        "/qa",
+        "-e",
+        "PYTHONPATH=/qa/deps",
+        "-e",
+        "PORT=3000",
+        "-e",
+        "GUNICORN_CMD_ARGS=--access-logfile /dev/null --preload",
+        "python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b",
+        "python",
+        "qa390-local-case.py",
+        "custom",
+        "configured"
+      ],
+      "exit": 0,
+      "stdout": "QA390_LOCAL_RESULT {\"case\": \"custom\", \"control\": false, \"proofs\": [{\"marker\": \"QA390_LOCAL\", \"phase\": \"build\", \"python\": \"3.12.15\", \"gunicorn\": \"26.2.0\", \"flask\": \"3.1.3\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}, \"original_absences\": {\"gunicorn.conf.py\": true, \"runtime.txt\": true, \".python-version\": true}, \"env_present\": true, \"env\": \"--access-logfile /dev/null --preload\", \"argv\": [], \"preload\": true, \"accesslog\": \"/dev/null\", \"bind\": [\"0.0.0.0:3000\"], \"port\": \"3000\"}, {\"marker\": \"QA390_LOCAL\", \"phase\": \"predeploy\", \"python\": \"3.12.15\", \"gunicorn\": \"26.2.0\", \"flask\": \"3.1.3\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}, \"original_absences\": {\"gunicorn.conf.py\": true, \"runtime.txt\": true, \".python-version\": true}, \"env_present\": true, \"env\": \"--access-logfile /dev/null --preload\", \"argv\": [], \"preload\": true, \"accesslog\": \"/dev/null\", \"bind\": [\"0.0.0.0:3000\"], \"port\": \"3000\"}, {\"marker\": \"QA390_LOCAL\", \"phase\": \"runtime\", \"python\": \"3.12.15\", \"gunicorn\": \"26.2.0\", \"flask\": \"3.1.3\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}, \"original_absences\": {\"gunicorn.conf.py\": true, \"runtime.txt\": true, \".python-version\": true}, \"env_present\": true, \"env\": \"--access-logfile /dev/null --preload\", \"argv\": [], \"preload\": true, \"accesslog\": \"/dev/null\", \"bind\": [\"0.0.0.0:3000\"], \"port\": \"3000\"}], \"requests\": [{\"path\": \"/?qa390_local_custom_False_0\", \"HTTP\": 200}, {\"path\": \"/?qa390_local_custom_False_1\", \"HTTP\": 200}, {\"path\": \"/?qa390_local_custom_False_2\", \"HTTP\": 200}], \"access_counts\": {\"/?qa390_local_custom_False_0\": 0, \"/?qa390_local_custom_False_1\": 0, \"/?qa390_local_custom_False_2\": 0}, \"server_exit\": 0, \"logs\": \"[2026-10-17 01:25:06 +0000] [11] [INFO] Starting gunicorn 26.2.0\\n[2026-10-17 01:25:06 +0000] [11] [INFO] Listening at: http://0.0.0.0:3000 (11)\\n[2026-10-17 01:25:06 +0000] [11] [INFO] Using worker: sync\\n[2026-10-17 01:25:06 +0000] [12] [INFO] Booting worker with pid: 12\\n[2026-10-17 01:25:07 +0000] [11] [INFO] Control socket listening at /root/.gunicorn/gunicorn.ctl\\n[2026-10-17 01:25:07 +0000] [12] [INFO] Worker exiting (pid: 12)\\n[2026-10-17 01:25:07 +0000] [11] [INFO] Handling signal: term\\n[2026-10-17 01:25:07 +0000] [11] [INFO] Worker (pid:12) was sent SIGTERM!\\n[2026-10-17 01:25:07 +0000] [11] [INFO] Shutting down: Master\\n\", \"pass\": true}\n",
+      "stderr": ""
+    },
+    {
+      "name": "qa390-5af770-custom-1",
+      "intent": "own bounded container; only explicitly named cleanup",
+      "args": [
+        "--network",
+        "none",
+        "--mount",
+        "type=bind,source=<owned-temp>/sweep390-local-app,target=/qa",
+        "--workdir",
+        "/qa",
+        "-e",
+        "PYTHONPATH=/qa/deps",
+        "-e",
+        "PORT=3000",
+        "-e",
+        "GUNICORN_CMD_ARGS=--access-logfile /dev/null --preload",
+        "python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b",
+        "python",
+        "qa390-local-case.py",
+        "custom",
+        "control"
+      ],
+      "exit": 0,
+      "stdout": "QA390_LOCAL_RESULT {\"case\": \"custom\", \"control\": true, \"proofs\": [{\"marker\": \"QA390_LOCAL\", \"phase\": \"build\", \"python\": \"3.12.15\", \"gunicorn\": \"26.2.0\", \"flask\": \"3.1.3\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}, \"original_absences\": {\"gunicorn.conf.py\": true, \"runtime.txt\": true, \".python-version\": true}, \"env_present\": true, \"env\": \"--access-logfile /dev/null --preload\", \"argv\": [], \"preload\": true, \"accesslog\": \"/dev/null\", \"bind\": [\"0.0.0.0:3000\"], \"port\": \"3000\"}, {\"marker\": \"QA390_LOCAL\", \"phase\": \"predeploy\", \"python\": \"3.12.15\", \"gunicorn\": \"26.2.0\", \"flask\": \"3.1.3\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}, \"original_absences\": {\"gunicorn.conf.py\": true, \"runtime.txt\": true, \".python-version\": true}, \"env_present\": true, \"env\": \"--access-logfile /dev/null --preload\", \"argv\": [], \"preload\": true, \"accesslog\": \"/dev/null\", \"bind\": [\"0.0.0.0:3000\"], \"port\": \"3000\"}, {\"marker\": \"QA390_LOCAL\", \"phase\": \"runtime\", \"python\": \"3.12.15\", \"gunicorn\": \"26.2.0\", \"flask\": \"3.1.3\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}, \"original_absences\": {\"gunicorn.conf.py\": true, \"runtime.txt\": true, \".python-version\": true}, \"env_present\": true, \"env\": \"--access-logfile /dev/null --preload\", \"argv\": [\"--access-logfile\", \"-\", \"--preload\"], \"preload\": true, \"accesslog\": \"-\", \"bind\": [\"0.0.0.0:3000\"], \"port\": \"3000\"}], \"requests\": [{\"path\": \"/?qa390_local_custom_True_0\", \"HTTP\": 200}, {\"path\": \"/?qa390_local_custom_True_1\", \"HTTP\": 200}, {\"path\": \"/?qa390_local_custom_True_2\", \"HTTP\": 200}], \"access_counts\": {\"/?qa390_local_custom_True_0\": 1, \"/?qa390_local_custom_True_1\": 1, \"/?qa390_local_custom_True_2\": 1}, \"server_exit\": 0, \"logs\": \"[2026-10-17 01:25:08 +0000] [10] [INFO] Starting gunicorn 26.2.0\\n[2026-10-17 01:25:08 +0000] [10] [INFO] Listening at: http://0.0.0.0:3000 (10)\\n[2026-10-17 01:25:08 +0000] [10] [INFO] Using worker: sync\\n[2026-10-17 01:25:08 +0000] [11] [INFO] Booting worker with pid: 11\\n127.0.0.1 - - [17/Oct/2026:01:25:08 +0000] \\\"GET /?qa390_local_custom_True_0 HTTP/1.1\\\" 200 13 \\\"-\\\" \\\"Python-urllib/3.12\\\"\\n127.0.0.1 - - [17/Oct/2026:01:25:08 +0000] \\\"GET /?qa390_local_custom_True_1 HTTP/1.1\\\" 200 13 \\\"-\\\" \\\"Python-urllib/3.12\\\"\\n127.0.0.1 - - [17/Oct/2026:01:25:08 +0000] \\\"GET /?qa390_local_custom_True_2 HTTP/1.1\\\" 200 13 \\\"-\\\" \\\"Python-urllib/3.12\\\"\\n[2026-10-17 01:25:08 +0000] [10] [INFO] Control socket listening at /root/.gunicorn/gunicorn.ctl\\n[2026-10-17 01:25:09 +0000] [11] [INFO] Worker exiting (pid: 11)\\n[2026-10-17 01:25:09 +0000] [10] [INFO] Handling signal: term\\n[2026-10-17 01:25:09 +0000] [10] [INFO] Worker (pid:11) was sent SIGTERM!\\n[2026-10-17 01:25:09 +0000] [10] [INFO] Shutting down: Master\\n\", \"pass\": true}\n",
+      "stderr": ""
+    },
+    {
+      "name": "qa390-5af770-empty-0",
+      "intent": "own bounded container; only explicitly named cleanup",
+      "args": [
+        "--network",
+        "none",
+        "--mount",
+        "type=bind,source=<owned-temp>/sweep390-local-app,target=/qa",
+        "--workdir",
+        "/qa",
+        "-e",
+        "PYTHONPATH=/qa/deps",
+        "-e",
+        "PORT=3000",
+        "-e",
+        "GUNICORN_CMD_ARGS=",
+        "python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b",
+        "python",
+        "qa390-local-case.py",
+        "empty",
+        "configured"
+      ],
+      "exit": 0,
+      "stdout": "QA390_LOCAL_RESULT {\"case\": \"empty\", \"control\": false, \"proofs\": [{\"marker\": \"QA390_LOCAL\", \"phase\": \"build\", \"python\": \"3.12.15\", \"gunicorn\": \"26.2.0\", \"flask\": \"3.1.3\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}, \"original_absences\": {\"gunicorn.conf.py\": true, \"runtime.txt\": true, \".python-version\": true}, \"env_present\": true, \"env\": \"\", \"argv\": [], \"preload\": false, \"accesslog\": null, \"bind\": [\"0.0.0.0:3000\"], \"port\": \"3000\"}, {\"marker\": \"QA390_LOCAL\", \"phase\": \"predeploy\", \"python\": \"3.12.15\", \"gunicorn\": \"26.2.0\", \"flask\": \"3.1.3\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}, \"original_absences\": {\"gunicorn.conf.py\": true, \"runtime.txt\": true, \".python-version\": true}, \"env_present\": true, \"env\": \"\", \"argv\": [], \"preload\": false, \"accesslog\": null, \"bind\": [\"0.0.0.0:3000\"], \"port\": \"3000\"}, {\"marker\": \"QA390_LOCAL\", \"phase\": \"runtime\", \"python\": \"3.12.15\", \"gunicorn\": \"26.2.0\", \"flask\": \"3.1.3\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}, \"original_absences\": {\"gunicorn.conf.py\": true, \"runtime.txt\": true, \".python-version\": true}, \"env_present\": true, \"env\": \"\", \"argv\": [], \"preload\": false, \"accesslog\": null, \"bind\": [\"0.0.0.0:3000\"], \"port\": \"3000\"}], \"requests\": [{\"path\": \"/?qa390_local_empty_False_0\", \"HTTP\": 200}, {\"path\": \"/?qa390_local_empty_False_1\", \"HTTP\": 200}, {\"path\": \"/?qa390_local_empty_False_2\", \"HTTP\": 200}], \"access_counts\": {\"/?qa390_local_empty_False_0\": 0, \"/?qa390_local_empty_False_1\": 0, \"/?qa390_local_empty_False_2\": 0}, \"server_exit\": 0, \"logs\": \"[2026-10-17 01:25:10 +0000] [10] [INFO] Starting gunicorn 26.2.0\\n[2026-10-17 01:25:10 +0000] [10] [INFO] Listening at: http://0.0.0.0:3000 (10)\\n[2026-10-17 01:25:10 +0000] [10] [INFO] Using worker: sync\\n[2026-10-17 01:25:10 +0000] [11] [INFO] Booting worker with pid: 11\\n[2026-10-17 01:25:10 +0000] [10] [INFO] Control socket listening at /root/.gunicorn/gunicorn.ctl\\n[2026-10-17 01:25:11 +0000] [10] [INFO] Handling signal: term\\n[2026-10-17 01:25:11 +0000] [11] [INFO] Worker exiting (pid: 11)\\n[2026-10-17 01:25:11 +0000] [10] [INFO] Worker (pid:11) was sent SIGTERM!\\n[2026-10-17 01:25:11 +0000] [10] [INFO] Shutting down: Master\\n\", \"pass\": true}\n",
+      "stderr": ""
+    },
+    {
+      "name": "qa390-5af770-empty-1",
+      "intent": "own bounded container; only explicitly named cleanup",
+      "args": [
+        "--network",
+        "none",
+        "--mount",
+        "type=bind,source=<owned-temp>/sweep390-local-app,target=/qa",
+        "--workdir",
+        "/qa",
+        "-e",
+        "PYTHONPATH=/qa/deps",
+        "-e",
+        "PORT=3000",
+        "-e",
+        "GUNICORN_CMD_ARGS=",
+        "python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b",
+        "python",
+        "qa390-local-case.py",
+        "empty",
+        "control"
+      ],
+      "exit": 0,
+      "stdout": "QA390_LOCAL_RESULT {\"case\": \"empty\", \"control\": true, \"proofs\": [{\"marker\": \"QA390_LOCAL\", \"phase\": \"build\", \"python\": \"3.12.15\", \"gunicorn\": \"26.2.0\", \"flask\": \"3.1.3\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}, \"original_absences\": {\"gunicorn.conf.py\": true, \"runtime.txt\": true, \".python-version\": true}, \"env_present\": true, \"env\": \"\", \"argv\": [], \"preload\": false, \"accesslog\": null, \"bind\": [\"0.0.0.0:3000\"], \"port\": \"3000\"}, {\"marker\": \"QA390_LOCAL\", \"phase\": \"predeploy\", \"python\": \"3.12.15\", \"gunicorn\": \"26.2.0\", \"flask\": \"3.1.3\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}, \"original_absences\": {\"gunicorn.conf.py\": true, \"runtime.txt\": true, \".python-version\": true}, \"env_present\": true, \"env\": \"\", \"argv\": [], \"preload\": false, \"accesslog\": null, \"bind\": [\"0.0.0.0:3000\"], \"port\": \"3000\"}, {\"marker\": \"QA390_LOCAL\", \"phase\": \"runtime\", \"python\": \"3.12.15\", \"gunicorn\": \"26.2.0\", \"flask\": \"3.1.3\", \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}, \"original_absences\": {\"gunicorn.conf.py\": true, \"runtime.txt\": true, \".python-version\": true}, \"env_present\": true, \"env\": \"\", \"argv\": [\"--access-logfile\", \"-\", \"--preload\"], \"preload\": true, \"accesslog\": \"-\", \"bind\": [\"0.0.0.0:3000\"], \"port\": \"3000\"}], \"requests\": [{\"path\": \"/?qa390_local_empty_True_0\", \"HTTP\": 200}, {\"path\": \"/?qa390_local_empty_True_1\", \"HTTP\": 200}, {\"path\": \"/?qa390_local_empty_True_2\", \"HTTP\": 200}], \"access_counts\": {\"/?qa390_local_empty_True_0\": 1, \"/?qa390_local_empty_True_1\": 1, \"/?qa390_local_empty_True_2\": 1}, \"server_exit\": 0, \"logs\": \"[2026-10-17 01:25:13 +0000] [10] [INFO] Starting gunicorn 26.2.0\\n[2026-10-17 01:25:13 +0000] [10] [INFO] Listening at: http://0.0.0.0:3000 (10)\\n[2026-10-17 01:25:13 +0000] [10] [INFO] Using worker: sync\\n[2026-10-17 01:25:13 +0000] [11] [INFO] Booting worker with pid: 11\\n127.0.0.1 - - [17/Oct/2026:01:25:13 +0000] \\\"GET /?qa390_local_empty_True_0 HTTP/1.1\\\" 200 13 \\\"-\\\" \\\"Python-urllib/3.12\\\"\\n127.0.0.1 - - [17/Oct/2026:01:25:13 +0000] \\\"GET /?qa390_local_empty_True_1 HTTP/1.1\\\" 200 13 \\\"-\\\" \\\"Python-urllib/3.12\\\"\\n127.0.0.1 - - [17/Oct/2026:01:25:13 +0000] \\\"GET /?qa390_local_empty_True_2 HTTP/1.1\\\" 200 13 \\\"-\\\" \\\"Python-urllib/3.12\\\"\\n[2026-10-17 01:25:13 +0000] [10] [INFO] Control socket listening at /root/.gunicorn/gunicorn.ctl\\n[2026-10-17 01:25:13 +0000] [11] [INFO] Worker exiting (pid: 11)\\n[2026-10-17 01:25:13 +0000] [10] [INFO] Handling signal: term\\n[2026-10-17 01:25:13 +0000] [10] [INFO] Worker (pid:11) was sent SIGTERM!\\n[2026-10-17 01:25:13 +0000] [10] [INFO] Shutting down: Master\\n\", \"pass\": true}\n",
+      "stderr": ""
+    }
+  ],
+  "cases": [
+    {
+      "case": "custom",
+      "control": false,
+      "proofs": [
+        {
+          "marker": "QA390_LOCAL",
+          "phase": "build",
+          "python": "3.12.15",
+          "gunicorn": "26.2.0",
+          "flask": "3.1.3",
+          "files": {
+            "app.py": {
+              "bytes": 109,
+              "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+            },
+            "requirements.txt": {
+              "bytes": 15,
+              "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+            }
+          },
+          "original_absences": {
+            "gunicorn.conf.py": true,
+            "runtime.txt": true,
+            ".python-version": true
+          },
+          "env_present": true,
+          "env": "--access-logfile /dev/null --preload",
+          "argv": [],
+          "preload": true,
+          "accesslog": "/dev/null",
+          "bind": [
+            "0.0.0.0:3000"
+          ],
+          "port": "3000"
+        },
+        {
+          "marker": "QA390_LOCAL",
+          "phase": "predeploy",
+          "python": "3.12.15",
+          "gunicorn": "26.2.0",
+          "flask": "3.1.3",
+          "files": {
+            "app.py": {
+              "bytes": 109,
+              "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+            },
+            "requirements.txt": {
+              "bytes": 15,
+              "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+            }
+          },
+          "original_absences": {
+            "gunicorn.conf.py": true,
+            "runtime.txt": true,
+            ".python-version": true
+          },
+          "env_present": true,
+          "env": "--access-logfile /dev/null --preload",
+          "argv": [],
+          "preload": true,
+          "accesslog": "/dev/null",
+          "bind": [
+            "0.0.0.0:3000"
+          ],
+          "port": "3000"
+        },
+        {
+          "marker": "QA390_LOCAL",
+          "phase": "runtime",
+          "python": "3.12.15",
+          "gunicorn": "26.2.0",
+          "flask": "3.1.3",
+          "files": {
+            "app.py": {
+              "bytes": 109,
+              "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+            },
+            "requirements.txt": {
+              "bytes": 15,
+              "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+            }
+          },
+          "original_absences": {
+            "gunicorn.conf.py": true,
+            "runtime.txt": true,
+            ".python-version": true
+          },
+          "env_present": true,
+          "env": "--access-logfile /dev/null --preload",
+          "argv": [],
+          "preload": true,
+          "accesslog": "/dev/null",
+          "bind": [
+            "0.0.0.0:3000"
+          ],
+          "port": "3000"
+        }
+      ],
+      "requests": [
+        {
+          "path": "/?qa390_local_custom_False_0",
+          "HTTP": 200
+        },
+        {
+          "path": "/?qa390_local_custom_False_1",
+          "HTTP": 200
+        },
+        {
+          "path": "/?qa390_local_custom_False_2",
+          "HTTP": 200
+        }
+      ],
+      "access_counts": {
+        "/?qa390_local_custom_False_0": 0,
+        "/?qa390_local_custom_False_1": 0,
+        "/?qa390_local_custom_False_2": 0
+      },
+      "server_exit": 0,
+      "logs": "[2026-10-17 01:25:06 +0000] [11] [INFO] Starting gunicorn 26.2.0\n[2026-10-17 01:25:06 +0000] [11] [INFO] Listening at: http://0.0.0.0:3000 (11)\n[2026-10-17 01:25:06 +0000] [11] [INFO] Using worker: sync\n[2026-10-17 01:25:06 +0000] [12] [INFO] Booting worker with pid: 12\n[2026-10-17 01:25:07 +0000] [11] [INFO] Control socket listening at /root/.gunicorn/gunicorn.ctl\n[2026-10-17 01:25:07 +0000] [12] [INFO] Worker exiting (pid: 12)\n[2026-10-17 01:25:07 +0000] [11] [INFO] Handling signal: term\n[2026-10-17 01:25:07 +0000] [11] [INFO] Worker (pid:12) was sent SIGTERM!\n[2026-10-17 01:25:07 +0000] [11] [INFO] Shutting down: Master\n",
+      "pass": true
+    },
+    {
+      "case": "custom",
+      "control": true,
+      "proofs": [
+        {
+          "marker": "QA390_LOCAL",
+          "phase": "build",
+          "python": "3.12.15",
+          "gunicorn": "26.2.0",
+          "flask": "3.1.3",
+          "files": {
+            "app.py": {
+              "bytes": 109,
+              "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+            },
+            "requirements.txt": {
+              "bytes": 15,
+              "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+            }
+          },
+          "original_absences": {
+            "gunicorn.conf.py": true,
+            "runtime.txt": true,
+            ".python-version": true
+          },
+          "env_present": true,
+          "env": "--access-logfile /dev/null --preload",
+          "argv": [],
+          "preload": true,
+          "accesslog": "/dev/null",
+          "bind": [
+            "0.0.0.0:3000"
+          ],
+          "port": "3000"
+        },
+        {
+          "marker": "QA390_LOCAL",
+          "phase": "predeploy",
+          "python": "3.12.15",
+          "gunicorn": "26.2.0",
+          "flask": "3.1.3",
+          "files": {
+            "app.py": {
+              "bytes": 109,
+              "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+            },
+            "requirements.txt": {
+              "bytes": 15,
+              "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+            }
+          },
+          "original_absences": {
+            "gunicorn.conf.py": true,
+            "runtime.txt": true,
+            ".python-version": true
+          },
+          "env_present": true,
+          "env": "--access-logfile /dev/null --preload",
+          "argv": [],
+          "preload": true,
+          "accesslog": "/dev/null",
+          "bind": [
+            "0.0.0.0:3000"
+          ],
+          "port": "3000"
+        },
+        {
+          "marker": "QA390_LOCAL",
+          "phase": "runtime",
+          "python": "3.12.15",
+          "gunicorn": "26.2.0",
+          "flask": "3.1.3",
+          "files": {
+            "app.py": {
+              "bytes": 109,
+              "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+            },
+            "requirements.txt": {
+              "bytes": 15,
+              "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+            }
+          },
+          "original_absences": {
+            "gunicorn.conf.py": true,
+            "runtime.txt": true,
+            ".python-version": true
+          },
+          "env_present": true,
+          "env": "--access-logfile /dev/null --preload",
+          "argv": [
+            "--access-logfile",
+            "-",
+            "--preload"
+          ],
+          "preload": true,
+          "accesslog": "-",
+          "bind": [
+            "0.0.0.0:3000"
+          ],
+          "port": "3000"
+        }
+      ],
+      "requests": [
+        {
+          "path": "/?qa390_local_custom_True_0",
+          "HTTP": 200
+        },
+        {
+          "path": "/?qa390_local_custom_True_1",
+          "HTTP": 200
+        },
+        {
+          "path": "/?qa390_local_custom_True_2",
+          "HTTP": 200
+        }
+      ],
+      "access_counts": {
+        "/?qa390_local_custom_True_0": 1,
+        "/?qa390_local_custom_True_1": 1,
+        "/?qa390_local_custom_True_2": 1
+      },
+      "server_exit": 0,
+      "logs": "[2026-10-17 01:25:08 +0000] [10] [INFO] Starting gunicorn 26.2.0\n[2026-10-17 01:25:08 +0000] [10] [INFO] Listening at: http://0.0.0.0:3000 (10)\n[2026-10-17 01:25:08 +0000] [10] [INFO] Using worker: sync\n[2026-10-17 01:25:08 +0000] [11] [INFO] Booting worker with pid: 11\n127.0.0.1 - - [17/Oct/2026:01:25:08 +0000] \"GET /?qa390_local_custom_True_0 HTTP/1.1\" 200 13 \"-\" \"Python-urllib/3.12\"\n127.0.0.1 - - [17/Oct/2026:01:25:08 +0000] \"GET /?qa390_local_custom_True_1 HTTP/1.1\" 200 13 \"-\" \"Python-urllib/3.12\"\n127.0.0.1 - - [17/Oct/2026:01:25:08 +0000] \"GET /?qa390_local_custom_True_2 HTTP/1.1\" 200 13 \"-\" \"Python-urllib/3.12\"\n[2026-10-17 01:25:08 +0000] [10] [INFO] Control socket listening at /root/.gunicorn/gunicorn.ctl\n[2026-10-17 01:25:09 +0000] [11] [INFO] Worker exiting (pid: 11)\n[2026-10-17 01:25:09 +0000] [10] [INFO] Handling signal: term\n[2026-10-17 01:25:09 +0000] [10] [INFO] Worker (pid:11) was sent SIGTERM!\n[2026-10-17 01:25:09 +0000] [10] [INFO] Shutting down: Master\n",
+      "pass": true
+    },
+    {
+      "case": "empty",
+      "control": false,
+      "proofs": [
+        {
+          "marker": "QA390_LOCAL",
+          "phase": "build",
+          "python": "3.12.15",
+          "gunicorn": "26.2.0",
+          "flask": "3.1.3",
+          "files": {
+            "app.py": {
+              "bytes": 109,
+              "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+            },
+            "requirements.txt": {
+              "bytes": 15,
+              "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+            }
+          },
+          "original_absences": {
+            "gunicorn.conf.py": true,
+            "runtime.txt": true,
+            ".python-version": true
+          },
+          "env_present": true,
+          "env": "",
+          "argv": [],
+          "preload": false,
+          "accesslog": null,
+          "bind": [
+            "0.0.0.0:3000"
+          ],
+          "port": "3000"
+        },
+        {
+          "marker": "QA390_LOCAL",
+          "phase": "predeploy",
+          "python": "3.12.15",
+          "gunicorn": "26.2.0",
+          "flask": "3.1.3",
+          "files": {
+            "app.py": {
+              "bytes": 109,
+              "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+            },
+            "requirements.txt": {
+              "bytes": 15,
+              "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+            }
+          },
+          "original_absences": {
+            "gunicorn.conf.py": true,
+            "runtime.txt": true,
+            ".python-version": true
+          },
+          "env_present": true,
+          "env": "",
+          "argv": [],
+          "preload": false,
+          "accesslog": null,
+          "bind": [
+            "0.0.0.0:3000"
+          ],
+          "port": "3000"
+        },
+        {
+          "marker": "QA390_LOCAL",
+          "phase": "runtime",
+          "python": "3.12.15",
+          "gunicorn": "26.2.0",
+          "flask": "3.1.3",
+          "files": {
+            "app.py": {
+              "bytes": 109,
+              "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+            },
+            "requirements.txt": {
+              "bytes": 15,
+              "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+            }
+          },
+          "original_absences": {
+            "gunicorn.conf.py": true,
+            "runtime.txt": true,
+            ".python-version": true
+          },
+          "env_present": true,
+          "env": "",
+          "argv": [],
+          "preload": false,
+          "accesslog": null,
+          "bind": [
+            "0.0.0.0:3000"
+          ],
+          "port": "3000"
+        }
+      ],
+      "requests": [
+        {
+          "path": "/?qa390_local_empty_False_0",
+          "HTTP": 200
+        },
+        {
+          "path": "/?qa390_local_empty_False_1",
+          "HTTP": 200
+        },
+        {
+          "path": "/?qa390_local_empty_False_2",
+          "HTTP": 200
+        }
+      ],
+      "access_counts": {
+        "/?qa390_local_empty_False_0": 0,
+        "/?qa390_local_empty_False_1": 0,
+        "/?qa390_local_empty_False_2": 0
+      },
+      "server_exit": 0,
+      "logs": "[2026-10-17 01:25:10 +0000] [10] [INFO] Starting gunicorn 26.2.0\n[2026-10-17 01:25:10 +0000] [10] [INFO] Listening at: http://0.0.0.0:3000 (10)\n[2026-10-17 01:25:10 +0000] [10] [INFO] Using worker: sync\n[2026-10-17 01:25:10 +0000] [11] [INFO] Booting worker with pid: 11\n[2026-10-17 01:25:10 +0000] [10] [INFO] Control socket listening at /root/.gunicorn/gunicorn.ctl\n[2026-10-17 01:25:11 +0000] [10] [INFO] Handling signal: term\n[2026-10-17 01:25:11 +0000] [11] [INFO] Worker exiting (pid: 11)\n[2026-10-17 01:25:11 +0000] [10] [INFO] Worker (pid:11) was sent SIGTERM!\n[2026-10-17 01:25:11 +0000] [10] [INFO] Shutting down: Master\n",
+      "pass": true
+    },
+    {
+      "case": "empty",
+      "control": true,
+      "proofs": [
+        {
+          "marker": "QA390_LOCAL",
+          "phase": "build",
+          "python": "3.12.15",
+          "gunicorn": "26.2.0",
+          "flask": "3.1.3",
+          "files": {
+            "app.py": {
+              "bytes": 109,
+              "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+            },
+            "requirements.txt": {
+              "bytes": 15,
+              "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+            }
+          },
+          "original_absences": {
+            "gunicorn.conf.py": true,
+            "runtime.txt": true,
+            ".python-version": true
+          },
+          "env_present": true,
+          "env": "",
+          "argv": [],
+          "preload": false,
+          "accesslog": null,
+          "bind": [
+            "0.0.0.0:3000"
+          ],
+          "port": "3000"
+        },
+        {
+          "marker": "QA390_LOCAL",
+          "phase": "predeploy",
+          "python": "3.12.15",
+          "gunicorn": "26.2.0",
+          "flask": "3.1.3",
+          "files": {
+            "app.py": {
+              "bytes": 109,
+              "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+            },
+            "requirements.txt": {
+              "bytes": 15,
+              "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+            }
+          },
+          "original_absences": {
+            "gunicorn.conf.py": true,
+            "runtime.txt": true,
+            ".python-version": true
+          },
+          "env_present": true,
+          "env": "",
+          "argv": [],
+          "preload": false,
+          "accesslog": null,
+          "bind": [
+            "0.0.0.0:3000"
+          ],
+          "port": "3000"
+        },
+        {
+          "marker": "QA390_LOCAL",
+          "phase": "runtime",
+          "python": "3.12.15",
+          "gunicorn": "26.2.0",
+          "flask": "3.1.3",
+          "files": {
+            "app.py": {
+              "bytes": 109,
+              "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+            },
+            "requirements.txt": {
+              "bytes": 15,
+              "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+            }
+          },
+          "original_absences": {
+            "gunicorn.conf.py": true,
+            "runtime.txt": true,
+            ".python-version": true
+          },
+          "env_present": true,
+          "env": "",
+          "argv": [
+            "--access-logfile",
+            "-",
+            "--preload"
+          ],
+          "preload": true,
+          "accesslog": "-",
+          "bind": [
+            "0.0.0.0:3000"
+          ],
+          "port": "3000"
+        }
+      ],
+      "requests": [
+        {
+          "path": "/?qa390_local_empty_True_0",
+          "HTTP": 200
+        },
+        {
+          "path": "/?qa390_local_empty_True_1",
+          "HTTP": 200
+        },
+        {
+          "path": "/?qa390_local_empty_True_2",
+          "HTTP": 200
+        }
+      ],
+      "access_counts": {
+        "/?qa390_local_empty_True_0": 1,
+        "/?qa390_local_empty_True_1": 1,
+        "/?qa390_local_empty_True_2": 1
+      },
+      "server_exit": 0,
+      "logs": "[2026-10-17 01:25:13 +0000] [10] [INFO] Starting gunicorn 26.2.0\n[2026-10-17 01:25:13 +0000] [10] [INFO] Listening at: http://0.0.0.0:3000 (10)\n[2026-10-17 01:25:13 +0000] [10] [INFO] Using worker: sync\n[2026-10-17 01:25:13 +0000] [11] [INFO] Booting worker with pid: 11\n127.0.0.1 - - [17/Oct/2026:01:25:13 +0000] \"GET /?qa390_local_empty_True_0 HTTP/1.1\" 200 13 \"-\" \"Python-urllib/3.12\"\n127.0.0.1 - - [17/Oct/2026:01:25:13 +0000] \"GET /?qa390_local_empty_True_1 HTTP/1.1\" 200 13 \"-\" \"Python-urllib/3.12\"\n127.0.0.1 - - [17/Oct/2026:01:25:13 +0000] \"GET /?qa390_local_empty_True_2 HTTP/1.1\" 200 13 \"-\" \"Python-urllib/3.12\"\n[2026-10-17 01:25:13 +0000] [10] [INFO] Control socket listening at /root/.gunicorn/gunicorn.ctl\n[2026-10-17 01:25:13 +0000] [11] [INFO] Worker exiting (pid: 11)\n[2026-10-17 01:25:13 +0000] [10] [INFO] Handling signal: term\n[2026-10-17 01:25:13 +0000] [10] [INFO] Worker (pid:11) was sent SIGTERM!\n[2026-10-17 01:25:13 +0000] [10] [INFO] Shutting down: Master\n",
+      "pass": true
+    }
+  ],
+  "base_inspect": "sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b",
+  "pass": true,
+  "all_own_containers_removed": true,
+  "own_scratch_removed": true
+}

@@ -1,0 +1,971 @@
+{
+  "qualification": "own local PostgreSQL18.6/psql18.6 prerequisite, not hosted PG18 or native wrappers",
+  "schema": "qa391_local391",
+  "steps": [
+    {
+      "at_monotonic_seconds": 0.034,
+      "actor": "bex",
+      "label": "physical identity and connection-local finite limits",
+      "stdin": "SET statement_timeout='20s';SET idle_in_transaction_session_timeout='60s';SET lock_timeout='0';\nSELECT jsonb_build_object('frame','QA391_local391_1','pid',pg_backend_pid(),'payload',jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'encoding',current_setting('server_encoding'),'statement_timeout',current_setting('statement_timeout'),'idle_in_transaction_session_timeout',current_setting('idle_in_transaction_session_timeout'),'lock_timeout',current_setting('lock_timeout')))::text;\n\\echo QA391_local391_1_END\n",
+      "expected_payload": {
+        "database": "postgres",
+        "user": "qa391",
+        "major": 18,
+        "encoding": "UTF8",
+        "statement_timeout": "20s",
+        "idle_in_transaction_session_timeout": "1min",
+        "lock_timeout": "0"
+      },
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46847,
+        "frame": "QA391_local391_1",
+        "payload": {
+          "user": "qa391",
+          "major": 18,
+          "database": "postgres",
+          "encoding": "UTF8",
+          "lock_timeout": "0",
+          "statement_timeout": "20s",
+          "idle_in_transaction_session_timeout": "1min"
+        }
+      },
+      "native_output": "LOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_1\", \"payload\": {\"user\": \"qa391\", \"major\": 18, \"database\": \"postgres\", \"encoding\": \"UTF8\", \"lock_timeout\": \"0\", \"statement_timeout\": \"20s\", \"idle_in_transaction_session_timeout\": \"1min\"}}\nLOCAL376_bex> QA391_local391_1_END\nLOCAL376_bex> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.046,
+      "actor": "render",
+      "label": "physical identity and connection-local finite limits",
+      "stdin": "SET statement_timeout='20s';SET idle_in_transaction_session_timeout='60s';SET lock_timeout='0';\nSELECT jsonb_build_object('frame','QA391_local391_2','pid',pg_backend_pid(),'payload',jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'encoding',current_setting('server_encoding'),'statement_timeout',current_setting('statement_timeout'),'idle_in_transaction_session_timeout',current_setting('idle_in_transaction_session_timeout'),'lock_timeout',current_setting('lock_timeout')))::text;\n\\echo QA391_local391_2_END\n",
+      "expected_payload": {
+        "database": "postgres",
+        "user": "qa391",
+        "major": 18,
+        "encoding": "UTF8",
+        "statement_timeout": "20s",
+        "idle_in_transaction_session_timeout": "1min",
+        "lock_timeout": "0"
+      },
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46849,
+        "frame": "QA391_local391_2",
+        "payload": {
+          "user": "qa391",
+          "major": 18,
+          "database": "postgres",
+          "encoding": "UTF8",
+          "lock_timeout": "0",
+          "statement_timeout": "20s",
+          "idle_in_transaction_session_timeout": "1min"
+        }
+      },
+      "native_output": "LOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_2\", \"payload\": {\"user\": \"qa391\", \"major\": 18, \"database\": \"postgres\", \"encoding\": \"UTF8\", \"lock_timeout\": \"0\", \"statement_timeout\": \"20s\", \"idle_in_transaction_session_timeout\": \"1min\"}}\nLOCAL376_render> QA391_local391_2_END\nLOCAL376_render> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.048,
+      "actor": "render",
+      "label": "fresh own schema absent",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_3','pid',pg_backend_pid(),'payload',to_regnamespace('qa391_local391') IS NULL)::text;\n\\echo QA391_local391_3_END\n",
+      "expected_payload": true,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46849,
+        "frame": "QA391_local391_3",
+        "payload": true
+      },
+      "native_output": "{\"pid\": 46849, \"frame\": \"QA391_local391_3\", \"payload\": true}\nLOCAL376_render> QA391_local391_3_END\nLOCAL376_render> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.048,
+      "actor": "bex",
+      "label": "create own two-row baseline",
+      "stdin": "CREATE SCHEMA qa391_local391;CREATE TABLE qa391_local391.items(id int PRIMARY KEY,value int NOT NULL);INSERT INTO qa391_local391.items VALUES(1,10),(2,20);\nSELECT jsonb_build_object('frame','QA391_local391_4','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa391_local391.items))::text;\n\\echo QA391_local391_4_END\n",
+      "expected_payload": [
+        [
+          1,
+          10
+        ],
+        [
+          2,
+          20
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46847,
+        "frame": "QA391_local391_4",
+        "payload": [
+          [
+            1,
+            10
+          ],
+          [
+            2,
+            20
+          ]
+        ]
+      },
+      "native_output": "LOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_4\", \"payload\": [[1, 10], [2, 20]]}\nLOCAL376_bex> QA391_local391_4_END\nLOCAL376_bex> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.052,
+      "actor": "bex",
+      "label": "hold row one for NOWAIT and queue selection",
+      "stdin": "BEGIN;SELECT id FROM qa391_local391.items WHERE id=1 FOR UPDATE;\nSELECT jsonb_build_object('frame','QA391_local391_5','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa391_local391.items))::text;\n\\echo QA391_local391_5_END\n",
+      "expected_payload": [
+        [
+          1,
+          10
+        ],
+        [
+          2,
+          20
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46847,
+        "frame": "QA391_local391_5",
+        "payload": [
+          [
+            1,
+            10
+          ],
+          [
+            2,
+            20
+          ]
+        ]
+      },
+      "native_output": "1\nLOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_5\", \"payload\": [[1, 10], [2, 20]]}\nLOCAL376_bex> QA391_local391_5_END\nLOCAL376_bex> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.052,
+      "actor": "render",
+      "label": "SKIP LOCKED returns only unlocked row",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_6','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM (SELECT id,value FROM qa391_local391.items ORDER BY id FOR UPDATE SKIP LOCKED) q))::text;\n\\echo QA391_local391_6_END\n",
+      "expected_payload": [
+        [
+          2,
+          20
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46849,
+        "frame": "QA391_local391_6",
+        "payload": [
+          [
+            2,
+            20
+          ]
+        ]
+      },
+      "native_output": "{\"pid\": 46849, \"frame\": \"QA391_local391_6\", \"payload\": [[2, 20]]}\nLOCAL376_render> QA391_local391_6_END\n",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.053,
+      "actor": "render",
+      "label": "NOWAIT reports lock refusal and recovers same session",
+      "stdin": "BEGIN;SELECT id FROM qa391_local391.items WHERE id=1 FOR UPDATE NOWAIT;\n\\echo QA391_local391_7_STATE :SQLSTATE\nROLLBACK;\nSELECT jsonb_build_object('frame','QA391_local391_7','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa391_local391.items))::text;\n\\echo QA391_local391_7_END\n",
+      "expected_payload": [
+        [
+          1,
+          10
+        ],
+        [
+          2,
+          20
+        ]
+      ],
+      "expected_SQLSTATE": "55P03",
+      "frame": {
+        "pid": 46849,
+        "frame": "QA391_local391_7",
+        "payload": [
+          [
+            1,
+            10
+          ],
+          [
+            2,
+            20
+          ]
+        ]
+      },
+      "native_output": "LOCAL376_render> ERROR:  could not obtain lock on row in relation \"items\"\nLOCAL376_render> QA391_local391_7_STATE 55P03\nLOCAL376_render> LOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_7\", \"payload\": [[1, 10], [2, 20]]}\nLOCAL376_render> QA391_local391_7_END\nLOCAL376_render> ",
+      "observed_SQLSTATE": "55P03",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.054,
+      "actor": "bex",
+      "label": "release row one without change",
+      "stdin": "ROLLBACK;\nSELECT jsonb_build_object('frame','QA391_local391_8','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa391_local391.items))::text;\n\\echo QA391_local391_8_END\n",
+      "expected_payload": [
+        [
+          1,
+          10
+        ],
+        [
+          2,
+          20
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46847,
+        "frame": "QA391_local391_8",
+        "payload": [
+          [
+            1,
+            10
+          ],
+          [
+            2,
+            20
+          ]
+        ]
+      },
+      "native_output": "LOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_8\", \"payload\": [[1, 10], [2, 20]]}\nLOCAL376_bex> QA391_local391_8_END\nLOCAL376_bex> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.054,
+      "actor": "bex",
+      "label": "first transaction holds row one",
+      "stdin": "BEGIN;UPDATE qa391_local391.items SET value=value+100 WHERE id=1;\nSELECT jsonb_build_object('frame','QA391_local391_9','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa391_local391.items))::text;\n\\echo QA391_local391_9_END\n",
+      "expected_payload": [
+        [
+          1,
+          110
+        ],
+        [
+          2,
+          20
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46847,
+        "frame": "QA391_local391_9",
+        "payload": [
+          [
+            1,
+            110
+          ],
+          [
+            2,
+            20
+          ]
+        ]
+      },
+      "native_output": "LOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_9\", \"payload\": [[1, 110], [2, 20]]}\nLOCAL376_bex> QA391_local391_9_END\nLOCAL376_bex> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.055,
+      "actor": "render",
+      "label": "second transaction holds row two",
+      "stdin": "BEGIN;UPDATE qa391_local391.items SET value=value+1000 WHERE id=2;\nSELECT jsonb_build_object('frame','QA391_local391_10','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa391_local391.items))::text;\n\\echo QA391_local391_10_END\n",
+      "expected_payload": [
+        [
+          1,
+          10
+        ],
+        [
+          2,
+          1020
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46849,
+        "frame": "QA391_local391_10",
+        "payload": [
+          [
+            1,
+            10
+          ],
+          [
+            2,
+            1020
+          ]
+        ]
+      },
+      "native_output": "LOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_10\", \"payload\": [[1, 10], [2, 1020]]}\nLOCAL376_render> QA391_local391_10_END\nLOCAL376_render> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.056,
+      "actor": "bex",
+      "label": "deadlock participant A waits then rolls back",
+      "stdin": "UPDATE qa391_local391.items SET value=value+1 WHERE id=2;\n\\echo QA391_local391_11_STATE :SQLSTATE\nROLLBACK;\nSELECT jsonb_build_object('frame','QA391_local391_11','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa391_local391.items))::text;\n\\echo QA391_local391_11_END\n",
+      "expected_payload": [
+        [
+          1,
+          10
+        ],
+        [
+          2,
+          20
+        ]
+      ],
+      "expected_SQLSTATE": [
+        "00000",
+        "40P01"
+      ],
+      "frame": {
+        "pid": 46847,
+        "frame": "QA391_local391_11",
+        "payload": [
+          [
+            1,
+            10
+          ],
+          [
+            2,
+            20
+          ]
+        ]
+      },
+      "native_output": "ERROR:  deadlock detected\nDETAIL:  Process 46847 waits for ShareLock on transaction 758; blocked by process 46849.\nProcess 46849 waits for ShareLock on transaction 757; blocked by process 46847.\nHINT:  See server log for query details.\nCONTEXT:  while updating tuple (0,2) in relation \"items\"\nLOCAL376_bex> QA391_local391_11_STATE 40P01\nLOCAL376_bex> LOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_11\", \"payload\": [[1, 10], [2, 20]]}\nLOCAL376_bex> QA391_local391_11_END\nLOCAL376_bex> ",
+      "observed_SQLSTATE": "40P01",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.056,
+      "actor": "render",
+      "label": "prove A blocked by B 1",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_12','pid',pg_backend_pid(),'payload',pg_blocking_pids(46847) @> ARRAY[46849])::text;\n\\echo QA391_local391_12_END\n",
+      "expected_payload": null,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46849,
+        "frame": "QA391_local391_12",
+        "payload": true
+      },
+      "native_output": "{\"pid\": 46849, \"frame\": \"QA391_local391_12\", \"payload\": true}\nLOCAL376_render> QA391_local391_12_END\nLOCAL376_render> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.057,
+      "actor": "render",
+      "label": "deadlock participant B waits then rolls back",
+      "stdin": "UPDATE qa391_local391.items SET value=value+1 WHERE id=1;\n\\echo QA391_local391_13_STATE :SQLSTATE\nROLLBACK;\nSELECT jsonb_build_object('frame','QA391_local391_13','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa391_local391.items))::text;\n\\echo QA391_local391_13_END\n",
+      "expected_payload": [
+        [
+          1,
+          10
+        ],
+        [
+          2,
+          20
+        ]
+      ],
+      "expected_SQLSTATE": [
+        "00000",
+        "40P01"
+      ],
+      "frame": {
+        "pid": 46849,
+        "frame": "QA391_local391_13",
+        "payload": [
+          [
+            1,
+            10
+          ],
+          [
+            2,
+            20
+          ]
+        ]
+      },
+      "native_output": "LOCAL376_render> QA391_local391_13_STATE 00000\nLOCAL376_render> LOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_13\", \"payload\": [[1, 10], [2, 20]]}\nLOCAL376_render> QA391_local391_13_END\nLOCAL376_render> ",
+      "observed_SQLSTATE": "00000",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.272,
+      "actor": "render",
+      "label": "independent baseline after both deadlock rollbacks",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_14','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa391_local391.items))::text;\n\\echo QA391_local391_14_END\n",
+      "expected_payload": [
+        [
+          1,
+          10
+        ],
+        [
+          2,
+          20
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46849,
+        "frame": "QA391_local391_14",
+        "payload": [
+          [
+            1,
+            10
+          ],
+          [
+            2,
+            20
+          ]
+        ]
+      },
+      "native_output": "{\"pid\": 46849, \"frame\": \"QA391_local391_14\", \"payload\": [[1, 10], [2, 20]]}\nLOCAL376_render> QA391_local391_14_END\nLOCAL376_render> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.28,
+      "actor": "bex",
+      "label": "session exclusive acquire",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_15','pid',pg_backend_pid(),'payload',pg_try_advisory_lock(59533089596549))::text;\n\\echo QA391_local391_15_END\n",
+      "expected_payload": true,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46847,
+        "frame": "QA391_local391_15",
+        "payload": true
+      },
+      "native_output": "{\"pid\": 46847, \"frame\": \"QA391_local391_15\", \"payload\": true}\nLOCAL376_bex> QA391_local391_15_END\nLOCAL376_bex> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.281,
+      "actor": "bex",
+      "label": "session exclusive nested acquire",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_16','pid',pg_backend_pid(),'payload',pg_try_advisory_lock(59533089596549))::text;\n\\echo QA391_local391_16_END\n",
+      "expected_payload": true,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46847,
+        "frame": "QA391_local391_16",
+        "payload": true
+      },
+      "native_output": "{\"pid\": 46847, \"frame\": \"QA391_local391_16\", \"payload\": true}\nLOCAL376_bex> QA391_local391_16_END\nLOCAL376_bex> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.281,
+      "actor": "render",
+      "label": "other client cannot acquire held session lock",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_17','pid',pg_backend_pid(),'payload',pg_try_advisory_lock(59533089596549))::text;\n\\echo QA391_local391_17_END\n",
+      "expected_payload": false,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46849,
+        "frame": "QA391_local391_17",
+        "payload": false
+      },
+      "native_output": "{\"pid\": 46849, \"frame\": \"QA391_local391_17\", \"payload\": false}\nLOCAL376_render> QA391_local391_17_END\n",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.282,
+      "actor": "bex",
+      "label": "rollback does not release session-level lock",
+      "stdin": "BEGIN;ROLLBACK;\nSELECT jsonb_build_object('frame','QA391_local391_18','pid',pg_backend_pid(),'payload','{}'::jsonb)::text;\n\\echo QA391_local391_18_END\n",
+      "expected_payload": null,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46847,
+        "frame": "QA391_local391_18",
+        "payload": {}
+      },
+      "native_output": "LOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_18\", \"payload\": {}}\nLOCAL376_bex> QA391_local391_18_END\nLOCAL376_bex> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.282,
+      "actor": "render",
+      "label": "session lock survives holder rollback",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_19','pid',pg_backend_pid(),'payload',pg_try_advisory_lock(59533089596549))::text;\n\\echo QA391_local391_19_END\n",
+      "expected_payload": false,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46849,
+        "frame": "QA391_local391_19",
+        "payload": false
+      },
+      "native_output": "LOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_19\", \"payload\": false}\nLOCAL376_render> QA391_local391_19_END\nLOCAL376_render> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.283,
+      "actor": "bex",
+      "label": "first nested unlock",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_20','pid',pg_backend_pid(),'payload',pg_advisory_unlock(59533089596549))::text;\n\\echo QA391_local391_20_END\n",
+      "expected_payload": true,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46847,
+        "frame": "QA391_local391_20",
+        "payload": true
+      },
+      "native_output": "{\"pid\": 46847, \"frame\": \"QA391_local391_20\", \"payload\": true}\nLOCAL376_bex> QA391_local391_20_END\nLOCAL376_bex> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.283,
+      "actor": "render",
+      "label": "one nested hold remains",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_21','pid',pg_backend_pid(),'payload',pg_try_advisory_lock(59533089596549))::text;\n\\echo QA391_local391_21_END\n",
+      "expected_payload": false,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46849,
+        "frame": "QA391_local391_21",
+        "payload": false
+      },
+      "native_output": "{\"pid\": 46849, \"frame\": \"QA391_local391_21\", \"payload\": false}\nLOCAL376_render> QA391_local391_21_END\nLOCAL376_render> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.284,
+      "actor": "bex",
+      "label": "second nested unlock",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_22','pid',pg_backend_pid(),'payload',pg_advisory_unlock(59533089596549))::text;\n\\echo QA391_local391_22_END\n",
+      "expected_payload": true,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46847,
+        "frame": "QA391_local391_22",
+        "payload": true
+      },
+      "native_output": "{\"pid\": 46847, \"frame\": \"QA391_local391_22\", \"payload\": true}\nLOCAL376_bex> QA391_local391_22_END\n",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.284,
+      "actor": "render",
+      "label": "other client acquires fully released session lock",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_23','pid',pg_backend_pid(),'payload',pg_try_advisory_lock(59533089596549))::text;\n\\echo QA391_local391_23_END\n",
+      "expected_payload": true,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46849,
+        "frame": "QA391_local391_23",
+        "payload": true
+      },
+      "native_output": "{\"pid\": 46849, \"frame\": \"QA391_local391_23\", \"payload\": true}\nLOCAL376_render> QA391_local391_23_END\n",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.285,
+      "actor": "render",
+      "label": "other client releases own session lock",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_24','pid',pg_backend_pid(),'payload',pg_advisory_unlock(59533089596549))::text;\n\\echo QA391_local391_24_END\n",
+      "expected_payload": true,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46849,
+        "frame": "QA391_local391_24",
+        "payload": true
+      },
+      "native_output": "LOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_24\", \"payload\": true}\nLOCAL376_render> QA391_local391_24_END\nLOCAL376_render> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.285,
+      "actor": "bex",
+      "label": "transaction-level advisory hold",
+      "stdin": "BEGIN;SELECT pg_advisory_xact_lock(59533089596550);\nSELECT jsonb_build_object('frame','QA391_local391_25','pid',pg_backend_pid(),'payload','{}'::jsonb)::text;\n\\echo QA391_local391_25_END\n",
+      "expected_payload": null,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46847,
+        "frame": "QA391_local391_25",
+        "payload": {}
+      },
+      "native_output": "LOCAL376_bex> \nLOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_25\", \"payload\": {}}\nLOCAL376_bex> QA391_local391_25_END\n",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.286,
+      "actor": "render",
+      "label": "held transaction lock conflicts",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_26','pid',pg_backend_pid(),'payload',pg_try_advisory_xact_lock(59533089596550))::text;\n\\echo QA391_local391_26_END\n",
+      "expected_payload": false,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46849,
+        "frame": "QA391_local391_26",
+        "payload": false
+      },
+      "native_output": "{\"pid\": 46849, \"frame\": \"QA391_local391_26\", \"payload\": false}\nLOCAL376_render> QA391_local391_26_END\n",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.286,
+      "actor": "bex",
+      "label": "rollback releases transaction advisory lock",
+      "stdin": "ROLLBACK;\nSELECT jsonb_build_object('frame','QA391_local391_27','pid',pg_backend_pid(),'payload','{}'::jsonb)::text;\n\\echo QA391_local391_27_END\n",
+      "expected_payload": null,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46847,
+        "frame": "QA391_local391_27",
+        "payload": {}
+      },
+      "native_output": "LOCAL376_bex> LOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_27\", \"payload\": {}}\nLOCAL376_bex> QA391_local391_27_END\n",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.287,
+      "actor": "render",
+      "label": "transaction advisory lock available after rollback",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_28','pid',pg_backend_pid(),'payload',pg_try_advisory_xact_lock(59533089596550))::text;\n\\echo QA391_local391_28_END\n",
+      "expected_payload": true,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46849,
+        "frame": "QA391_local391_28",
+        "payload": true
+      },
+      "native_output": "LOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_28\", \"payload\": true}\nLOCAL376_render> QA391_local391_28_END\nLOCAL376_render> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.287,
+      "actor": "bex",
+      "label": "autocommit released other transaction lock",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_29','pid',pg_backend_pid(),'payload',pg_try_advisory_xact_lock(59533089596550))::text;\n\\echo QA391_local391_29_END\n",
+      "expected_payload": true,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46847,
+        "frame": "QA391_local391_29",
+        "payload": true
+      },
+      "native_output": "LOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_29\", \"payload\": true}\nLOCAL376_bex> QA391_local391_29_END\nLOCAL376_bex> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.287,
+      "actor": "bex",
+      "label": "first shared session lock",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_30','pid',pg_backend_pid(),'payload',pg_try_advisory_lock_shared(59533089596551))::text;\n\\echo QA391_local391_30_END\n",
+      "expected_payload": true,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46847,
+        "frame": "QA391_local391_30",
+        "payload": true
+      },
+      "native_output": "{\"pid\": 46847, \"frame\": \"QA391_local391_30\", \"payload\": true}\nLOCAL376_bex> QA391_local391_30_END\nLOCAL376_bex> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.288,
+      "actor": "render",
+      "label": "second shared session lock",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_31','pid',pg_backend_pid(),'payload',pg_try_advisory_lock_shared(59533089596551))::text;\n\\echo QA391_local391_31_END\n",
+      "expected_payload": true,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46849,
+        "frame": "QA391_local391_31",
+        "payload": true
+      },
+      "native_output": "{\"pid\": 46849, \"frame\": \"QA391_local391_31\", \"payload\": true}\nLOCAL376_render> QA391_local391_31_END\nLOCAL376_render> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.288,
+      "actor": "bex",
+      "label": "other shared holder blocks exclusive upgrade",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_32','pid',pg_backend_pid(),'payload',pg_try_advisory_lock(59533089596551))::text;\n\\echo QA391_local391_32_END\n",
+      "expected_payload": false,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46847,
+        "frame": "QA391_local391_32",
+        "payload": false
+      },
+      "native_output": "{\"pid\": 46847, \"frame\": \"QA391_local391_32\", \"payload\": false}\nLOCAL376_bex> QA391_local391_32_END\nLOCAL376_bex> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.288,
+      "actor": "render",
+      "label": "release second shared hold",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_33','pid',pg_backend_pid(),'payload',pg_advisory_unlock_shared(59533089596551))::text;\n\\echo QA391_local391_33_END\n",
+      "expected_payload": true,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46849,
+        "frame": "QA391_local391_33",
+        "payload": true
+      },
+      "native_output": "{\"pid\": 46849, \"frame\": \"QA391_local391_33\", \"payload\": true}\nLOCAL376_render> QA391_local391_33_END\nLOCAL376_render> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.289,
+      "actor": "bex",
+      "label": "release first shared hold",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_34','pid',pg_backend_pid(),'payload',pg_advisory_unlock_shared(59533089596551))::text;\n\\echo QA391_local391_34_END\n",
+      "expected_payload": true,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46847,
+        "frame": "QA391_local391_34",
+        "payload": true
+      },
+      "native_output": "{\"pid\": 46847, \"frame\": \"QA391_local391_34\", \"payload\": true}\nLOCAL376_bex> QA391_local391_34_END\nLOCAL376_bex> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.289,
+      "actor": "render",
+      "label": "exclusive lock after both shared holds released",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_35','pid',pg_backend_pid(),'payload',pg_try_advisory_lock(59533089596551))::text;\n\\echo QA391_local391_35_END\n",
+      "expected_payload": true,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46849,
+        "frame": "QA391_local391_35",
+        "payload": true
+      },
+      "native_output": "{\"pid\": 46849, \"frame\": \"QA391_local391_35\", \"payload\": true}\nLOCAL376_render> QA391_local391_35_END\nLOCAL376_render> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.29,
+      "actor": "bex",
+      "label": "shared acquisition refused during exclusive hold",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_36','pid',pg_backend_pid(),'payload',pg_try_advisory_lock_shared(59533089596551))::text;\n\\echo QA391_local391_36_END\n",
+      "expected_payload": false,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46847,
+        "frame": "QA391_local391_36",
+        "payload": false
+      },
+      "native_output": "{\"pid\": 46847, \"frame\": \"QA391_local391_36\", \"payload\": false}\nLOCAL376_bex> QA391_local391_36_END\nLOCAL376_bex> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.29,
+      "actor": "render",
+      "label": "release exclusive hold",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_37','pid',pg_backend_pid(),'payload',pg_advisory_unlock(59533089596551))::text;\n\\echo QA391_local391_37_END\n",
+      "expected_payload": true,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46849,
+        "frame": "QA391_local391_37",
+        "payload": true
+      },
+      "native_output": "{\"pid\": 46849, \"frame\": \"QA391_local391_37\", \"payload\": true}\nLOCAL376_render> QA391_local391_37_END\nLOCAL376_render> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.291,
+      "actor": "render",
+      "label": "no advisory locks remain on either own session",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_38','pid',pg_backend_pid(),'payload',(SELECT count(*) FROM pg_locks WHERE locktype='advisory' AND pid IN (46847,46849)))::text;\n\\echo QA391_local391_38_END\n",
+      "expected_payload": 0,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46849,
+        "frame": "QA391_local391_38",
+        "payload": 0
+      },
+      "native_output": "{\"pid\": 46849, \"frame\": \"QA391_local391_38\", \"payload\": 0}\nLOCAL376_render> QA391_local391_38_END\nLOCAL376_render> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.292,
+      "actor": "bex",
+      "label": "same backend connection before natural exit",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_39','pid',pg_backend_pid(),'payload',pg_backend_pid())::text;\n\\echo QA391_local391_39_END\n",
+      "expected_payload": 46847,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46847,
+        "frame": "QA391_local391_39",
+        "payload": 46847
+      },
+      "native_output": "{\"pid\": 46847, \"frame\": \"QA391_local391_39\", \"payload\": 46847}\nLOCAL376_bex> QA391_local391_39_END\nLOCAL376_bex> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.292,
+      "actor": "render",
+      "label": "same backend connection before natural exit",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_40','pid',pg_backend_pid(),'payload',pg_backend_pid())::text;\n\\echo QA391_local391_40_END\n",
+      "expected_payload": 46849,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46849,
+        "frame": "QA391_local391_40",
+        "payload": 46849
+      },
+      "native_output": "{\"pid\": 46849, \"frame\": \"QA391_local391_40\", \"payload\": 46849}\nLOCAL376_render> QA391_local391_40_END\nLOCAL376_render> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.293,
+      "actor": "bex",
+      "label": "final session hold before disconnect",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_41','pid',pg_backend_pid(),'payload',pg_try_advisory_lock(59533089596552))::text;\n\\echo QA391_local391_41_END\n",
+      "expected_payload": true,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46847,
+        "frame": "QA391_local391_41",
+        "payload": true
+      },
+      "native_output": "{\"pid\": 46847, \"frame\": \"QA391_local391_41\", \"payload\": true}\nLOCAL376_bex> QA391_local391_41_END\nLOCAL376_bex> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.294,
+      "actor": "render",
+      "label": "natural disconnect releases session hold 1",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_42','pid',pg_backend_pid(),'payload',pg_try_advisory_lock(59533089596552))::text;\n\\echo QA391_local391_42_END\n",
+      "expected_payload": null,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46849,
+        "frame": "QA391_local391_42",
+        "payload": true
+      },
+      "native_output": "{\"pid\": 46849, \"frame\": \"QA391_local391_42\", \"payload\": true}\nLOCAL376_render> QA391_local391_42_END\nLOCAL376_render> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.295,
+      "actor": "render",
+      "label": "release final own session lock",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_43','pid',pg_backend_pid(),'payload',pg_advisory_unlock(59533089596552))::text;\n\\echo QA391_local391_43_END\n",
+      "expected_payload": true,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46849,
+        "frame": "QA391_local391_43",
+        "payload": true
+      },
+      "native_output": "{\"pid\": 46849, \"frame\": \"QA391_local391_43\", \"payload\": true}\nLOCAL376_render> QA391_local391_43_END\nLOCAL376_render> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.295,
+      "actor": "render",
+      "label": "exact own schema cleanup",
+      "stdin": "DROP SCHEMA qa391_local391 CASCADE;\nSELECT jsonb_build_object('frame','QA391_local391_44','pid',pg_backend_pid(),'payload',to_regnamespace('qa391_local391') IS NULL)::text;\n\\echo QA391_local391_44_END\n",
+      "expected_payload": true,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46849,
+        "frame": "QA391_local391_44",
+        "payload": true
+      },
+      "native_output": "NOTICE:  drop cascades to table qa391_local391.items\nLOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_44\", \"payload\": true}\nLOCAL376_render> QA391_local391_44_END\nLOCAL376_render> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 1.297,
+      "actor": "render",
+      "label": "all own advisory locks gone after disconnect",
+      "stdin": "SELECT jsonb_build_object('frame','QA391_local391_45','pid',pg_backend_pid(),'payload',(SELECT count(*) FROM pg_locks WHERE locktype='advisory' AND pid IN (46847,46849)))::text;\n\\echo QA391_local391_45_END\n",
+      "expected_payload": 0,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 46849,
+        "frame": "QA391_local391_45",
+        "payload": 0
+      },
+      "native_output": "{\"pid\": 46849, \"frame\": \"QA391_local391_45\", \"payload\": 0}\nLOCAL376_render> QA391_local391_45_END\nLOCAL376_render> ",
+      "pass": true
+    }
+  ],
+  "sessions": {
+    "bex": {
+      "intent": "finite own persistent native psql client/config/history",
+      "command": [
+        "local-psql",
+        "<own-unix-socket>"
+      ],
+      "PID": 46846,
+      "PGID": 46846,
+      "backend_pid": 46847,
+      "natural_exit": 0,
+      "PTY": {
+        "stdin_stdout_TTY": true,
+        "controlling_terminal": true,
+        "terminal_ISIG_enabled": true,
+        "terminal_echo_disabled": true,
+        "rows": 40,
+        "columns": 140,
+        "elapsed": 1.299,
+        "native_exit": 0,
+        "output": "LOCAL376_bex> LOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_1\", \"payload\": {\"user\": \"qa391\", \"major\": 18, \"database\": \"postgres\", \"encoding\": \"UTF8\", \"lock_timeout\": \"0\", \"statement_timeout\": \"20s\", \"idle_in_transaction_session_timeout\": \"1min\"}}\nLOCAL376_bex> QA391_local391_1_END\nLOCAL376_bex> LOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_4\", \"payload\": [[1, 10], [2, 20]]}\nLOCAL376_bex> QA391_local391_4_END\nLOCAL376_bex> 1\nLOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_5\", \"payload\": [[1, 10], [2, 20]]}\nLOCAL376_bex> QA391_local391_5_END\nLOCAL376_bex> LOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_8\", \"payload\": [[1, 10], [2, 20]]}\nLOCAL376_bex> QA391_local391_8_END\nLOCAL376_bex> LOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_9\", \"payload\": [[1, 110], [2, 20]]}\nLOCAL376_bex> QA391_local391_9_END\nLOCAL376_bex> ERROR:  deadlock detected\nDETAIL:  Process 46847 waits for ShareLock on transaction 758; blocked by process 46849.\nProcess 46849 waits for ShareLock on transaction 757; blocked by process 46847.\nHINT:  See server log for query details.\nCONTEXT:  while updating tuple (0,2) in relation \"items\"\nLOCAL376_bex> QA391_local391_11_STATE 40P01\nLOCAL376_bex> LOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_11\", \"payload\": [[1, 10], [2, 20]]}\nLOCAL376_bex> QA391_local391_11_END\nLOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_15\", \"payload\": true}\nLOCAL376_bex> QA391_local391_15_END\nLOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_16\", \"payload\": true}\nLOCAL376_bex> QA391_local391_16_END\nLOCAL376_bex> LOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_18\", \"payload\": {}}\nLOCAL376_bex> QA391_local391_18_END\nLOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_20\", \"payload\": true}\nLOCAL376_bex> QA391_local391_20_END\nLOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_22\", \"payload\": true}\nLOCAL376_bex> QA391_local391_22_END\nLOCAL376_bex> \nLOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_25\", \"payload\": {}}\nLOCAL376_bex> QA391_local391_25_END\nLOCAL376_bex> LOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_27\", \"payload\": {}}\nLOCAL376_bex> QA391_local391_27_END\nLOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_29\", \"payload\": true}\nLOCAL376_bex> QA391_local391_29_END\nLOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_30\", \"payload\": true}\nLOCAL376_bex> QA391_local391_30_END\nLOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_32\", \"payload\": false}\nLOCAL376_bex> QA391_local391_32_END\nLOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_34\", \"payload\": true}\nLOCAL376_bex> QA391_local391_34_END\nLOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_36\", \"payload\": false}\nLOCAL376_bex> QA391_local391_36_END\nLOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_39\", \"payload\": 46847}\nLOCAL376_bex> QA391_local391_39_END\nLOCAL376_bex> {\"pid\": 46847, \"frame\": \"QA391_local391_41\", \"payload\": true}\nLOCAL376_bex> QA391_local391_41_END\nLOCAL376_bex> ",
+        "own_process_group_cleaned": true,
+        "events": []
+      }
+    },
+    "render": {
+      "intent": "finite own persistent native psql client/config/history",
+      "command": [
+        "local-psql",
+        "<own-unix-socket>"
+      ],
+      "PID": 46848,
+      "PGID": 46848,
+      "backend_pid": 46849,
+      "natural_exit": 0,
+      "PTY": {
+        "stdin_stdout_TTY": true,
+        "controlling_terminal": true,
+        "terminal_ISIG_enabled": true,
+        "terminal_echo_disabled": true,
+        "rows": 40,
+        "columns": 140,
+        "elapsed": 1.264,
+        "native_exit": 0,
+        "output": "LOCAL376_render> LOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_2\", \"payload\": {\"user\": \"qa391\", \"major\": 18, \"database\": \"postgres\", \"encoding\": \"UTF8\", \"lock_timeout\": \"0\", \"statement_timeout\": \"20s\", \"idle_in_transaction_session_timeout\": \"1min\"}}\nLOCAL376_render> QA391_local391_2_END\nLOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_3\", \"payload\": true}\nLOCAL376_render> QA391_local391_3_END\nLOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_6\", \"payload\": [[2, 20]]}\nLOCAL376_render> QA391_local391_6_END\nLOCAL376_render> ERROR:  could not obtain lock on row in relation \"items\"\nLOCAL376_render> QA391_local391_7_STATE 55P03\nLOCAL376_render> LOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_7\", \"payload\": [[1, 10], [2, 20]]}\nLOCAL376_render> QA391_local391_7_END\nLOCAL376_render> LOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_10\", \"payload\": [[1, 10], [2, 1020]]}\nLOCAL376_render> QA391_local391_10_END\nLOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_12\", \"payload\": true}\nLOCAL376_render> QA391_local391_12_END\nLOCAL376_render> LOCAL376_render> QA391_local391_13_STATE 00000\nLOCAL376_render> LOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_13\", \"payload\": [[1, 10], [2, 20]]}\nLOCAL376_render> QA391_local391_13_END\nLOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_14\", \"payload\": [[1, 10], [2, 20]]}\nLOCAL376_render> QA391_local391_14_END\nLOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_17\", \"payload\": false}\nLOCAL376_render> QA391_local391_17_END\nLOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_19\", \"payload\": false}\nLOCAL376_render> QA391_local391_19_END\nLOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_21\", \"payload\": false}\nLOCAL376_render> QA391_local391_21_END\nLOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_23\", \"payload\": true}\nLOCAL376_render> QA391_local391_23_END\nLOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_24\", \"payload\": true}\nLOCAL376_render> QA391_local391_24_END\nLOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_26\", \"payload\": false}\nLOCAL376_render> QA391_local391_26_END\nLOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_28\", \"payload\": true}\nLOCAL376_render> QA391_local391_28_END\nLOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_31\", \"payload\": true}\nLOCAL376_render> QA391_local391_31_END\nLOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_33\", \"payload\": true}\nLOCAL376_render> QA391_local391_33_END\nLOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_35\", \"payload\": true}\nLOCAL376_render> QA391_local391_35_END\nLOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_37\", \"payload\": true}\nLOCAL376_render> QA391_local391_37_END\nLOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_38\", \"payload\": 0}\nLOCAL376_render> QA391_local391_38_END\nLOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_40\", \"payload\": 46849}\nLOCAL376_render> QA391_local391_40_END\nLOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_42\", \"payload\": true}\nLOCAL376_render> QA391_local391_42_END\nLOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_43\", \"payload\": true}\nLOCAL376_render> QA391_local391_43_END\nLOCAL376_render> NOTICE:  drop cascades to table qa391_local391.items\nLOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_44\", \"payload\": true}\nLOCAL376_render> QA391_local391_44_END\nLOCAL376_render> {\"pid\": 46849, \"frame\": \"QA391_local391_45\", \"payload\": 0}\nLOCAL376_render> QA391_local391_45_END\nLOCAL376_render> ",
+        "own_process_group_cleaned": true,
+        "events": []
+      }
+    }
+  },
+  "owned_schema_intent": {
+    "name": "qa391_local391",
+    "before_absent": true
+  },
+  "deadlock": {
+    "observed_blocking_edge": [
+      46847,
+      46849
+    ],
+    "SQLSTATEs": [
+      "00000",
+      "40P01"
+    ],
+    "one_victim_one_success": true,
+    "both_rolled_back_before_row_proof": true
+  },
+  "own_advisory_keys": [
+    "59533089596549",
+    "59533089596550",
+    "59533089596551",
+    "59533089596552"
+  ],
+  "pass_value": true,
+  "schema_removed": true,
+  "pass": true,
+  "local_server_stopped": true,
+  "local_data_socket_history_removed": true
+}

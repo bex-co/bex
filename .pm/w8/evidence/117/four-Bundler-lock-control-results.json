@@ -1,0 +1,78 @@
+{
+  "at": "2026-10-17T02:23:07.903952+00:00",
+  "receipts": [
+    {
+      "label": "generate",
+      "image": "ruby:3.4-bookworm@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172",
+      "env_overrides": {},
+      "script": "ruby -rjson -rbundler -e 'puts JSON.generate({ruby:RUBY_VERSION,bundler:Bundler::VERSION,deployment:Bundler.settings[:deployment],frozen:Bundler.settings[:frozen]})'; printf 'source \"https://rubygems.org\"\ngem \"rake\", \"13.2.1\"\n' > Gemfile; bundle lock",
+      "exit": 0,
+      "stdout": "{\"ruby\":\"3.4.11\",\"bundler\":\"2.6.9\",\"deployment\":null,\"frozen\":null}\nWriting lockfile to /work/Gemfile.lock\nFetching gem metadata from https://rubygems.org/.\nResolving dependencies...\n",
+      "stderr": "",
+      "elapsed": 2.015
+    },
+    {
+      "label": "matched-deployment",
+      "image": "ruby:3.4-bookworm@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172",
+      "env_overrides": {
+        "BUNDLE_DEPLOYMENT": "true"
+      },
+      "script": "cat > Gemfile <<'GEM'\nsource \"https://rubygems.org\"\ngem \"rake\", \"13.2.1\"\nGEM\ncat > Gemfile.lock <<'LOCK'\nGEM\n  remote: https://rubygems.org/\n  specs:\n    rake (13.2.1)\n\nPLATFORMS\n  aarch64-linux\n  ruby\n\nDEPENDENCIES\n  rake (= 13.2.1)\n\nBUNDLED WITH\n   2.6.9\nLOCK\nsha256sum Gemfile.lock; bundle install; result=$?; sha256sum Gemfile.lock; if [ \"$result\" -eq 0 ]; then bundle exec ruby -rjson -rrake -rbundler -e 'puts JSON.generate({ruby:RUBY_VERSION,bundler:Bundler::VERSION,rake:Rake::VERSION,deployment:Bundler.settings[:deployment],frozen:Bundler.settings[:frozen],bundle_path:Bundler.bundle_path.to_s})'; fi; exit \"$result\"",
+      "exit": 0,
+      "stdout": "fb56ff6edad17a040934b213c11f1396b686c9bf8fcef629f1f83e6acca14b2b  Gemfile.lock\nFetching gem metadata from https://rubygems.org/.\nFetching rake 13.2.1\nInstalling rake 13.2.1\nBundle complete! 1 Gemfile dependency, 2 gems now installed.\nBundled gems are installed into `./vendor/bundle`\nfb56ff6edad17a040934b213c11f1396b686c9bf8fcef629f1f83e6acca14b2b  Gemfile.lock\n{\"ruby\":\"3.4.11\",\"bundler\":\"2.6.9\",\"rake\":\"13.2.1\",\"deployment\":true,\"frozen\":null,\"bundle_path\":\"/work/vendor/bundle/ruby/3.4.0\"}\n",
+      "stderr": "",
+      "elapsed": 2.076,
+      "lock_changed": false,
+      "accepted": true
+    },
+    {
+      "label": "stale-default",
+      "image": "ruby:3.4-bookworm@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172",
+      "env_overrides": {},
+      "script": "cat > Gemfile <<'GEM'\nsource \"https://rubygems.org\"\ngem \"rake\", \"13.3.1\"\nGEM\ncat > Gemfile.lock <<'LOCK'\nGEM\n  remote: https://rubygems.org/\n  specs:\n    rake (13.2.1)\n\nPLATFORMS\n  aarch64-linux\n  ruby\n\nDEPENDENCIES\n  rake (= 13.2.1)\n\nBUNDLED WITH\n   2.6.9\nLOCK\nsha256sum Gemfile.lock; bundle install; result=$?; sha256sum Gemfile.lock; if [ \"$result\" -eq 0 ]; then bundle exec ruby -rjson -rrake -rbundler -e 'puts JSON.generate({ruby:RUBY_VERSION,bundler:Bundler::VERSION,rake:Rake::VERSION,deployment:Bundler.settings[:deployment],frozen:Bundler.settings[:frozen],bundle_path:Bundler.bundle_path.to_s})'; fi; exit \"$result\"",
+      "exit": 0,
+      "stdout": "fb56ff6edad17a040934b213c11f1396b686c9bf8fcef629f1f83e6acca14b2b  Gemfile.lock\nFetching gem metadata from https://rubygems.org/.\nResolving dependencies...\nFetching rake 13.3.1 (was 13.2.1)\nInstalling rake 13.3.1 (was 13.2.1)\nBundle complete! 1 Gemfile dependency, 2 gems now installed.\nUse `bundle info [gemname]` to see where a bundled gem is installed.\ne68a4d6cf70ba95f8a1dc48bc1ce885b207d54147543059eaf88a6c6b28141b4  Gemfile.lock\n{\"ruby\":\"3.4.11\",\"bundler\":\"2.6.9\",\"rake\":\"13.3.1\",\"deployment\":null,\"frozen\":null,\"bundle_path\":\"/usr/local/bundle\"}\n",
+      "stderr": "",
+      "elapsed": 2.031,
+      "lock_changed": true,
+      "accepted": true
+    },
+    {
+      "label": "stale-deployment",
+      "image": "ruby:3.4-bookworm@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172",
+      "env_overrides": {
+        "BUNDLE_DEPLOYMENT": "true"
+      },
+      "script": "cat > Gemfile <<'GEM'\nsource \"https://rubygems.org\"\ngem \"rake\", \"13.3.1\"\nGEM\ncat > Gemfile.lock <<'LOCK'\nGEM\n  remote: https://rubygems.org/\n  specs:\n    rake (13.2.1)\n\nPLATFORMS\n  aarch64-linux\n  ruby\n\nDEPENDENCIES\n  rake (= 13.2.1)\n\nBUNDLED WITH\n   2.6.9\nLOCK\nsha256sum Gemfile.lock; bundle install; result=$?; sha256sum Gemfile.lock; if [ \"$result\" -eq 0 ]; then bundle exec ruby -rjson -rrake -rbundler -e 'puts JSON.generate({ruby:RUBY_VERSION,bundler:Bundler::VERSION,rake:Rake::VERSION,deployment:Bundler.settings[:deployment],frozen:Bundler.settings[:frozen],bundle_path:Bundler.bundle_path.to_s})'; fi; exit \"$result\"",
+      "exit": 16,
+      "stdout": "fb56ff6edad17a040934b213c11f1396b686c9bf8fcef629f1f83e6acca14b2b  Gemfile.lock\nfb56ff6edad17a040934b213c11f1396b686c9bf8fcef629f1f83e6acca14b2b  Gemfile.lock\n",
+      "stderr": "The dependencies in your gemfile changed, but the lockfile can't be updated\nbecause frozen mode is set\n\nYou have added to the Gemfile:\n* rake (= 13.3.1)\n\nYou have deleted from the Gemfile:\n* rake (= 13.2.1)\n\nRun `bundle install` elsewhere and add the updated Gemfile.lock to version\ncontrol.\n\n\nIf this is a development machine, remove the Gemfile.lock freeze by running\n`bundle config set frozen false`.\n",
+      "elapsed": 0.499,
+      "lock_changed": false,
+      "accepted": true
+    },
+    {
+      "label": "stale-false",
+      "image": "ruby:3.4-bookworm@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172",
+      "env_overrides": {
+        "BUNDLE_DEPLOYMENT": "false"
+      },
+      "script": "cat > Gemfile <<'GEM'\nsource \"https://rubygems.org\"\ngem \"rake\", \"13.3.1\"\nGEM\ncat > Gemfile.lock <<'LOCK'\nGEM\n  remote: https://rubygems.org/\n  specs:\n    rake (13.2.1)\n\nPLATFORMS\n  aarch64-linux\n  ruby\n\nDEPENDENCIES\n  rake (= 13.2.1)\n\nBUNDLED WITH\n   2.6.9\nLOCK\nsha256sum Gemfile.lock; bundle install; result=$?; sha256sum Gemfile.lock; if [ \"$result\" -eq 0 ]; then bundle exec ruby -rjson -rrake -rbundler -e 'puts JSON.generate({ruby:RUBY_VERSION,bundler:Bundler::VERSION,rake:Rake::VERSION,deployment:Bundler.settings[:deployment],frozen:Bundler.settings[:frozen],bundle_path:Bundler.bundle_path.to_s})'; fi; exit \"$result\"",
+      "exit": 0,
+      "stdout": "fb56ff6edad17a040934b213c11f1396b686c9bf8fcef629f1f83e6acca14b2b  Gemfile.lock\nFetching gem metadata from https://rubygems.org/.\nResolving dependencies...\nFetching rake 13.3.1 (was 13.2.1)\nInstalling rake 13.3.1 (was 13.2.1)\nBundle complete! 1 Gemfile dependency, 2 gems now installed.\nUse `bundle info [gemname]` to see where a bundled gem is installed.\ne68a4d6cf70ba95f8a1dc48bc1ce885b207d54147543059eaf88a6c6b28141b4  Gemfile.lock\n{\"ruby\":\"3.4.11\",\"bundler\":\"2.6.9\",\"rake\":\"13.3.1\",\"deployment\":false,\"frozen\":null,\"bundle_path\":\"/usr/local/bundle\"}\n",
+      "stderr": "",
+      "elapsed": 1.866,
+      "lock_changed": true,
+      "accepted": true
+    }
+  ],
+  "contexts_removed": true,
+  "containers_removed": [
+    "qa394-ruby-generate",
+    "qa394-ruby-matched-deployment",
+    "qa394-ruby-stale-default",
+    "qa394-ruby-stale-deployment",
+    "qa394-ruby-stale-false"
+  ],
+  "shared_image_cache_retained": true
+}

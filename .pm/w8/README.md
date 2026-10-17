@@ -15,6 +15,10 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m89** — [Materialize pinned Git submodules before source builds](m89/README.md) (7 tasks;130m/2h10m) ← major functional CLI sweep393:both native first builds omit the required pinned child file; exact source/clone and working fetch controls researched, fully cleaned.
+
+- [ ] **m88** — [Preserve graceful shutdown through native npm startup](m88/README.md) (8 tasks) — **major, researched sweep386:** both native root restarts drop the old40s POST with502 while new short reads200; only-start-command direct Node and local supervision controls pass. Exact2-parent/6-child cleanup verified.
+
 - [ ] **m87** — [Make psql Ctrl+C stop external PostgreSQL queries](m87/README.md) (8 tasks,435m) ← major functional CLI sweep365; both native queries ignore Ctrl+C, modern control cancels in0.7s; original fixture fully cleaned.
 
 - [x] **m86** — [Install automatic npm dependencies for static builds](done/m86/README.md) (6 tasks) — **DONE 2026-10-16:** sweep379 accepts both original native first default deployments plus an explicit-skip/manual control; exact source/dependency/page hashes, nine shared readbacks and complete three-parent/child cleanup pass.
@@ -29,7 +33,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **m81** — [Provide uv for native Python lockfile projects](done/m81/README.md) (6 tasks) — **DONE 2026-10-16:** sweep381 accepts both first uv-requiring native deployments, default0.12.10/explicit0.11.3, real locked sync/run/project console/FastAPI HTTP200, six shared reads and exact two-parent/child cleanup.
 
-- [ ] **m80** — [Resolve omitted Git branches in Blueprint services](blocked/m80/README.md) (6 tasks) — **BLOCKED (2026-10-16: t001–t005 done — a Blueprint service with no branch of its own now builds its repository's GitHub default on create and on a switch to another repo (image→Git or Git→Git), through validate, preview, create and every sync, with direct-create refusal rules; same-repo re-syncs keep their branch and read nothing; source-tested root/nested fail-before/pass-after; needs the API deployed plus a hosted fresh-fixture first-deployment replay with cleanup (t006), runnable with the QA login)**
+- [x] **m80** — [Resolve omitted Git branches in Blueprint services](done/m80/README.md) (6 tasks) — **DONE 2026-10-16:** sweep388 accepts both first independent-default Git deploys with exact source/artifact/literals, delayed/no-op/canonical/six shared reads and exact2-metadata/2-service/6-child cleanup.
 
 - [x] **m79** — [Supply automatic Brotli for static sites](done/m79/README.md) (5 tasks) — **DONE 2026-10-16:** two native Free sites serve12 actual compressed text/JS/CSS representations with exact decoded content,24 base/28 neighbor HTTP checks and17 maintained serving tests pass in sweep340; all owned parents/children cleaned.
 
@@ -146,6 +150,24 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [x] **m35** — Datastore deleting-read parity: fold Postgres/Key Value onto consistent-absence (8 tasks) ← from `/pm-brainstorm for w8` 2026-09-07 #3, approved same day, promoting `w3/034` option 1 (note retired to `w3/done/034.md`; the same list-drops-but-by-id-shows-deleting incoherence w3/m81 fixed for services, standing on the two datastore families)
 
 ## QA evidence for existing work
+
+- **New major [117](117.md)** — native Ruby silently rewrites stale dependency locks; both first deployments serve the changed gem, build-only deployment-mode controls correctly refuse, prior boots remain serving and exact cleanup passes ([sweep394 evidence](evidence/117/README.md)).
+
+- [Native Poetry installed application environments](evidence/native-poetry-project-sweep392/README.md) — sweep392:default2.1.3/explicit1.8.5 real dependency installs, generated lock and isolated project interpreter persist through build/pre-deploy/runtime; both first children serve original Flask HTTP200,8 shared/env reads and exact cleanup pass. No new issue.
+
+- [Native PostgreSQL18 locking and deadlock recovery](evidence/postgres-native-locking-sweep391/README.md) — sweep391:45 native stages pass for NOWAIT/SKIP LOCKED, observed two-client deadlock with different local/live victims, session/transaction/shared advisory semantics and natural-exit release; exact owned cleanup, no new issue.
+
+- [Native Gunicorn custom/empty and CLI precedence](evidence/native-python-gunicorn-overrides-sweep390/README.md) — sweep390:both first three-phase values and start-only CLI controls pass with original HTTP/log proof,16 shared/env reads and exact cleanup; updates113, which stays blocked on remaining variants.
+
+- [Native Key Value RESP3 and cache invalidation](evidence/native-keyvalue-resp3-sweep389/README.md) — sweep389:74 command checks and20 push/quiet assertions pass across both clients, with typed replies, NOLOOP/OPTIN/own-prefix tracking, exact own cleanup and unchanged history; no new issue.
+
+- [Blueprint omitted independent default branch](evidence/blueprint-default-branch-sweep388/README.md) — sweep388:both first Git children select independent master/current commit with exact artifacts, delayed no-op/canonical/shared proof and cleanup. Closes m80; API sync stays labeled separately from14 native validations.
+
+- [Native PostgreSQL18 extended-query pipelines](evidence/postgres-native-pipelines-sweep387/README.md) — sweep387:both native sessions pass17 exact frames each, typed/empty bound values, named Parse/Bind/Close, partial reads/Sync, expected errors and rollback/recovery on stable distinct backends. Exact parent/endpoint/credential cleanup passes; no new issue.
+
+- [Native Elixir original production pipeline](evidence/native-elixir-production-sweep385/README.md) — sweep385:both first unprefixed production-dependency/compiler builds and runtime Mix/prod artifacts pass on exact original source. Eight native logs,6 shared reads and cleanup pass; closes112, no new issue.
+
+- [Native Node environment phases and explicit values](evidence/native-node-environment-phases-sweep384/README.md) — sweep384:both first native defaults, pre-deploy and staging/empty redeploys pass with exact source/render/cache proof and cleanup. Updates111; paid cron stays untested, no new issue.
 
 - [Native Ruby committed-lock first deployments](evidence/native-ruby-lock-selection-sweep383/README.md) — sweep383:both first original assertions select reviewed Ruby3.4.11 over the broader Gemfile range; exact source/markers/Node24,6 shared reads and cleanup pass. Closes m85; no new issue.
 
@@ -275,9 +297,9 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **113** — [Native Python omits Gunicorn application access logging](blocked/113.md) (55m, minor) — **BLOCKED (2026-10-16: implemented — primary Python images default GUNICORN_CMD_ARGS="--preload --access-logfile -" before the build RUN (no Render --bind; Gunicorn binds PORT), the service's own value incl. empty winning; real-Gunicorn BuildKit gate + fail-before verified; needs the operator deployed plus the hosted both-client Flask replay, runnable with the QA login)**
 
-- [ ] **112** — [Native Elixir omits production build/runtime MIX_ENV](blocked/112.md) (55m, major) — **BLOCKED (2026-10-16: implemented — primary Elixir images default MIX_ENV=prod before the build RUN for build and runtime, the service's own value (incl. empty) winning in each phase; Mix-level BuildKit gate + fail-before verified; needs the operator deployed plus the hosted both-client Phoenix replay, runnable with the QA login)**
+- [x] **112** — [Native Elixir production build/runtime MIX_ENV](done/112.md) (55m, major) — **DONE 2026-10-16:** sweep385 accepts both original unprefixed first production-dependency/compiler deployments and runtime Mix/prod artifacts, exact source,8 native log reads/6 shared reads and full exact-owned cleanup; source artifact/override/exclusion gates inherited.
 
-- [ ] **111** — [Native Node services omit runtime NODE_ENV=production](blocked/111.md) (55m, major) — **BLOCKED (2026-10-16: implemented — primary Node serving images default NODE_ENV=production after the build RUN, every configured value (incl. empty) overriding it, build unset; BuildKit gate + fail-before verified; needs the operator deployed plus the hosted both-client Express replay, runnable with the QA login)**
+- [ ] **111** — [Native Node runtime production default](blocked/111.md) (55m, major) — **BLOCKED (2026-10-16: source fixed; sweep384 passes both original first Free-web deployments, build/runtime phase split, pre-deploy and native staging/empty redeploys, twelve native log proofs/six shared reads and exact cleanup; prior paid-only cron observation remains unverified)**
 
 - [x] **109** — [Environment-group bulk writes are rejected as a missing single-key parameter](done/109.md) — **DONE 2026-10-15:** hosted sweep324 accepts the bulk short route, atomic value refusal and strict single-key/unknown/method neighbors; shared value readbacks and exact unlinked-group cleanup pass.
 

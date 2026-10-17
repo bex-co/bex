@@ -1,0 +1,15 @@
+{
+  "source_head": "009a9409a48bcc5d241d87b0460ba5b0390698a4",
+  "serving_revision": "unknown",
+  "source_boundary": "operator source cloning, not native CLI request/validation",
+  "producer": "lego/operator/internal/build/build.go:1401-1457 buildCloneContainer; parent-only init/fetch/checkout at1435-1448, source checks1454-1456, metadata removal1457; no submodule init",
+  "consumer": "BuildJob:1034 adds clone before nativeBuildPreparer at1132 and BuildKit; native.go:348 preparer materializes generated Dockerfile, whose COPY . . uses that source",
+  "shared_callers": "EnsureBuild:601-619 sends native and Dockerfile builds to BuildJob; native language/static variants share clone. Only FreeNode24 is hosted in this reproduction. Prebuilt images bypass source builds. BuilderBuildpack branches to ensureBuildpack at607 and kpack.go:142; no buildpack failure claim or unconditional kpack change.",
+  "proposed_fix": "Initialize standard top-level Gitlinks at their pinned commits after validating the fetched parent commit and before source path checks/.git removal. Reuse existing Git credential transport and bex_run classification rather than rewriting client/build commands. No --remote, recursive feature promise, new API/CLI field or arbitrary tool/image bump.",
+  "regression_requirements": "Actual clone command/image with no-module control, ordinary public HTTPS and relative module URLs, parent-pinned child differing from branch tip, root/context/Dockerfile located inside module, missing/inaccessible child classified visibly; preserve parent ExpectedCommit checks, existing metadata removal, helpers/cache inputs and other-build callers. Fresh unchanged native first deploys must work without authored child-fetch prefix.",
+  "primary_contract": "https://render.com/docs/git-provider#git-submodules",
+  "local_actual_export": "BuildJob generated clone initContainer, its default immutable alpine/git2.43 image and exact command. Original exits0/parent exact/child absent; one-level standard init control exits0/parent exact/expected child file exact. Temporary Go package, both local containers and owned source dirs removed.",
+  "local_runtime_control": "Same pinned Node24 base, harmless source/license metadata check: missing child build1, explicit exact public child fetch build0, runtimeHTTP200 matching source/hash/nonce; all three own containers/context removed.",
+  "fixture_scope": "Public git-fixtures/submodule master b685400c1f9316f350965a5993d350bc746b0bf4 with public basic Gitlink6ecf0ef2c2dffb796033e5a02219af86ec6584e5. Only basic/LICENSE1072B and SHA20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09 are consumed. Parent also declares an older itself Gitlink; no recursive/nested/private/foreign credential behavior is exercised.",
+  "unverified": "Exact serving OCI, hosted Dockerfile/static/other language/buildpack/private-provider/relative/nested variants, full source suites and physical teardown. One-line local init and authored build fetch are QA counterfactuals, not a product implementation."
+}

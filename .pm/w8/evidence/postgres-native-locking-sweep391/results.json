@@ -1,0 +1,49 @@
+{
+  "sweep": 391,
+  "source_head": "5448f8d9c3f30db207bc896b83985f4fdefbac42",
+  "serving_revision": "unknown",
+  "fixture": "dpg-db9d2ukfcf2c73c2mnd0",
+  "native_create_exit0_explicit_Free18_no_pool_no_replicas": true,
+  "physical_major18_UTF8_custom_identity_native_readiness": 2,
+  "native_persistent_sessions": 2,
+  "stages": 45,
+  "all_results_pass": true,
+  "stable_backend_PIDs": {
+    "bex": 220,
+    "render": 223
+  },
+  "NOWAIT_SQLSTATE": "55P03",
+  "SKIP_LOCKED_only_unlocked_row": true,
+  "actual_deadlock": {
+    "observed_blocking_edge": [
+      220,
+      223
+    ],
+    "SQLSTATEs": [
+      "00000",
+      "40P01"
+    ],
+    "one_victim_one_success": true,
+    "both_rolled_back_before_row_proof": true
+  },
+  "deadlock_victims": {
+    "local": "bex",
+    "hosted": "render"
+  },
+  "session_advisory_nested_unlock_and_rollback_retention": true,
+  "transaction_advisory_rollback_autocommit_release": true,
+  "shared_coexistence_exclusive_conflicts": true,
+  "natural_disconnect_releases_last_hold": true,
+  "final_own_schema_and_advisory_holds_absent": true,
+  "both_native_QUIT_exit0": true,
+  "own_PTY_config_history_tmp_removed": true,
+  "cached_before_after_exit": [
+    0,
+    2
+  ],
+  "cached_credential_and_CA_removed": true,
+  "native_delete_exit0_detail404_listempty": true,
+  "original_baselines_and_all_termination0": true,
+  "new_issue": null,
+  "uncommitted": true
+}

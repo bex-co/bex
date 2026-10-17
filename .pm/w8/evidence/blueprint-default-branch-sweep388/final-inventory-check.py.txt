@@ -1,0 +1,10 @@
+from pathlib import Path
+import sys,json
+f=Path(__file__).with_name('sweep388-omitted-branch.py');sys.argv=[str(f),'final-inventory','render-born'];exec(compile(f.read_text().split("if mode=='create':")[0],str(f),'exec'));xs=[v for v in c['resources'] if v.get('sweep')==388 and v.get('id') and not v.get('excluded_setup')];assert len(xs)==4 and all(x['state'].startswith('deleted:') for x in xs);out={}
+for kind,path in [('env-groups','/v1/env-groups?ownerId='+ws),('projects','/v1/projects?ownerId='+ws),('blueprints','/v1/blueprints?ownerId='+ws),('quota','/v1/owners/'+ws+'/limits')]:
+ r=api('GET',path);assert r['status']=='200';v=json.loads(r['response'])
+ if kind=='blueprints':
+  rows=[a.get('blueprint',a) for a in v];ok={a['id'] for a in rows}=={'blp-db136288mmqc73d4hpug'};r['response']=json.dumps([{'id':a['id'],'projection':'immutable baseline identity only; configuration omitted'} for a in rows])
+ elif kind=='quota':ok=v['services']['used']==6 and v['services']['terminating']==0 and v['postgres']['used']==0 and v['keyValues']['used']==0 and all(v[k]['terminating']==0 for k in ('services','postgres','keyValues'))
+ else:ok=v==[]
+ out[kind]={'result':r,'pass':bool(ok)};c['sweep388_cleanup_inventory']=out;save();print(json.dumps({'kind':kind,'pass':bool(ok)}),flush=True);assert ok

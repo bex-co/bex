@@ -1,0 +1,75 @@
+from pathlib import Path
+import os,sys,json,time,subprocess,signal,shutil,re,termios,fcntl,struct,importlib.util
+P=Path(__file__).resolve().parent;spec=importlib.util.spec_from_file_location('pty389',P/'sweep356-pubsub.py');mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod);Session=mod.Session;quoted=mod.quoted;ANSI=mod.ANSI
+
+def values(raw):
+ out=[]
+ for line in ANSI.sub('',bytes(raw).decode(errors='replace')).replace('\r','\n').splitlines():
+  line=re.sub(r'^[^\"\n>]+> ?','',line,count=1)
+  try:v=json.loads(line.strip())
+  except ValueError:continue
+  out.append(v)
+ return out
+
+def journey(nonce,build,persist,e):
+ prefix='qa389_'+nonce+':';keys=[prefix+x for x in ['text','hash','set','scores','missing','cold','expiry']];other='qa389_other_'+nonce+':value';keys.append(other);sessions={};e.update(steps=[],pushes=[],sessions={},keys=keys);persist();n=0;began=time.monotonic()
+ def decoded(actor):return values(sessions[actor][0].raw)
+ def pushes(actor):return [v for v in decoded(actor) if isinstance(v,list) and len(v)==2 and v[0]=='invalidate']
+ def query(actor,label,commands,expected=None,check=True):
+  nonlocal n
+  assert time.monotonic()-began<210,'finite RESP3 deadline';n+=1;marker='QA389_'+nonce+'_FENCE_'+str(n);s=sessions[actor][0];offset=len(s.raw);text=''.join(args[0]+''.join(' '+quoted(str(v)) for v in args[1:])+'\n' for args in commands)+'ECHO '+quoted(marker)+'\n';r={'actor':actor,'label':label,'stdin':text,'expected':expected};e['steps'].append(r);persist();os.write(s.master,text.encode());assert s.wait(lambda:json.dumps(marker).encode() in s.raw[offset:],12),'command fence absent: '+label;v=values(s.raw[offset:]);r['decoded_with_fence']=v;assert v and v[-1]==marker,'JSON fence parse failed';r['observed']=[z for z in v[:-1] if not (isinstance(z,list) and len(z)==2 and z[0]=='invalidate')];r['pass']=r['observed']==expected if check else True;persist();print(json.dumps({'stage':label,'actor':actor,'pass':r['pass']}),flush=True);assert r['pass'],label;return r['observed']
+ def expect_push(actor,label,before,key):
+  s=sessions[actor][0];wanted=['invalidate',[key]];assert s.wait(lambda:len(pushes(actor))>before,8),'invalidation push absent';got=pushes(actor)[before:];r={'actor':actor,'label':label,'expected':[wanted],'observed':got,'pass':got==[wanted]};e['pushes'].append(r);persist();print(json.dumps({'push':label,'actor':actor,'pass':r['pass']}),flush=True);assert r['pass']
+ def silence(actor,label,before):
+  s=sessions[actor][0];start=time.monotonic()
+  while time.monotonic()-start<.5:s.step()
+  query(actor,label+' ordered connection fence',[['PING']],['PONG']);r={'actor':actor,'label':label,'observation_seconds':round(time.monotonic()-start,3),'new_pushes':pushes(actor)[before:],'pass':len(pushes(actor))==before};e['pushes'].append(r);persist();assert r['pass'],label
+ try:
+  for actor in ['bex','render']:
+   cmd,env,logical,cleanup=build(actor);e['sessions'][actor]={'command':logical,'intent':'own finite RESP3 client with private history/config'};persist();s=Session(cmd,env);sessions[actor]=(s,logical,cleanup);fcntl.ioctl(s.master,termios.TIOCSWINSZ,struct.pack('HHHH',40,180,0,0));e['sessions'][actor].update(PID=s.proc.pid,PGID=s.proc.pid);persist();assert s.wait(lambda:b'> ' in s.raw,20),'external RESP3 prompt absent'
+   ids=query(actor,'stable client identity',[['CLIENT','ID']],check=False);assert len(ids)==1 and type(ids[0]) is int;e['sessions'][actor]['client_id']=ids[0]
+   hello=query(actor,'RESP3 HELLO map',[['HELLO','3']],check=False);assert len(hello)==1 and isinstance(hello[0],dict) and hello[0]['proto']==3 and hello[0]['id']==ids[0] and hello[0]['mode']=='standalone';e['sessions'][actor]['hello']=hello[0];persist()
+  assert e['sessions']['bex']['client_id']!=e['sessions']['render']['client_id']
+  text,h,st,z,missing,cold,expiry,_=keys;literal='line1\r\nline2 café 日本 😀\x00tail'
+  query('bex','all exact own keys initially absent',[['EXISTS',*keys]],[0]);query('bex','typed value setup',[['SET',text,literal],['HSET',h,'unicode','日本 😀','empty',''],['SADD',st,'alpha','beta'],['ZADD',z,'1.25','alpha','-2.5','beta']],['OK',2,2,2])
+  for actor in ['bex','render']:
+   query(actor,'binary UTF8 and RESP3 null/map replies',[['GET',text],['GET',missing],['HGETALL',h]],[literal,None,{'unicode':'日本 😀','empty':''}]);v=query(actor,'RESP3 set and nested double replies',[['SMEMBERS',st],['ZRANGE',z,'0','-1','WITHSCORES']],check=False);assert len(v)==2 and set(v[0])=={'alpha','beta'} and v[1]==[['beta',-2.5],['alpha',1.25]];e['steps'][-1]['shape_assertions_pass']=True;persist()
+  for actor,writer in [('bex','render'),('render','bex')]:
+   query(writer,'initialize round marker',[['SET',text,'initial']],["OK"]);query(actor,'enable normal tracking with NOLOOP',[['CLIENT','TRACKING','ON','NOLOOP'],['GET',text]],['OK','initial']);b=len(pushes(actor));query(writer,'competing exact-key write',[['SET',text,'other '+actor]],['OK']);expect_push(actor,'normal cached key invalidated',b,text)
+   query(actor,'re-read after invalidation',[['GET',text]],['other '+actor]);b=len(pushes(actor));query(actor,'NOLOOP suppresses own write',[['SET',text,'self '+actor]],['OK']);silence(actor,'no self invalidation',b)
+   query(actor,'retrack after own modification',[['GET',text]],['self '+actor]);b=len(pushes(actor));query(writer,'second competing write',[['SET',text,'second '+actor]],['OK']);expect_push(actor,'retracked key invalidated',b,text)
+   query(actor,'missing-key read is tracked',[['GET',missing]],[None]);b=len(pushes(actor));query(writer,'create previously missing key',[['SET',missing,'new '+actor]],['OK']);expect_push(actor,'missing-key creation invalidates',b,missing);query(writer,'remove missing-key fixture for next round',[['DEL',missing]],[1])
+   query(actor,'switch tracking to OPTIN',[['CLIENT','TRACKING','OFF'],['CLIENT','TRACKING','ON','OPTIN','NOLOOP'],['GET',text]],['OK','OK','second '+actor]);b=len(pushes(actor));query(writer,'unopted read mutation',[['SET',text,'not cached '+actor]],['OK']);silence(actor,'OPTIN leaves ordinary read untracked',b)
+   query(actor,'opt in exactly following read',[['CLIENT','CACHING','YES'],['GET',text]],['OK','not cached '+actor]);b=len(pushes(actor));query(writer,'opted read mutation',[['SET',text,'opted '+actor]],['OK']);expect_push(actor,'OPTIN cached read invalidates',b,text)
+   query(actor,'switch to own-prefix broadcast',[['CLIENT','TRACKING','OFF'],['CLIENT','TRACKING','ON','BCAST','PREFIX',prefix,'NOLOOP']],['OK','OK']);b=len(pushes(actor));query(writer,'write unread own prefixed key',[['SET',cold,'cold '+actor]],['OK']);expect_push(actor,'BCAST invalidates unread own key',b,cold);b=len(pushes(actor));query(writer,'write other own prefix',[['SET',other,'outside '+actor]],['OK']);silence(actor,'BCAST prefix excludes unrelated own key',b)
+   b=len(pushes(actor));query(writer,'delete own broadcast key',[['DEL',cold]],[1]);expect_push(actor,'deletion invalidates own key',b,cold)
+   query(actor,'turn tracking off',[['CLIENT','TRACKING','OFF']],['OK']);b=len(pushes(actor));query(writer,'write after tracking disabled',[['SET',text,'disabled '+actor]],['OK']);silence(actor,'disabled tracking sends no pushes',b)
+  for actor in ['bex','render']:query(actor,'same connection after replies and pushes',[['CLIENT','ID']],[e['sessions'][actor]['client_id']])
+  query('render','delete exact own surviving keys',[['DEL',*keys]],[5]);query('bex','all own keys absent',[['EXISTS',*keys]],[0])
+  for actor,(s,logical,cleanup) in sessions.items():os.write(s.master,b'QUIT\n');code=s.finish();e['sessions'][actor]['natural_exit']=code;persist();assert code==0
+  e['pass']=True;persist()
+ except BaseException as err:e.update({'pass':False,'error':type(err).__name__+': '+str(err)});persist();raise
+ finally:
+  for actor,(s,logical,cleanup) in sessions.items():s.close();e['sessions'][actor]['terminal']=s.record(logical);cleanup();persist()
+ print(json.dumps({'RESP3_journey_pass':e.get('pass',False),'stages':len(e['steps']),'push_assertions':len(e['pushes']),'own_keys_removed':True}),flush=True)
+
+if __name__=='__main__':
+ os.umask(0o077);mode=sys.argv[1];assert mode in ('preflight','live')
+ if mode=='preflight':
+  sock=P/'sweep389-preflight.sock';assert not sock.exists();history=Path.home()/'.rediscli_history';history_before=(history.stat().st_mtime_ns,history.stat().st_size) if history.exists() else None;out=(P/'sweep389-local-server.log').open('wb');proc=subprocess.Popen([shutil.which('redis-server'),'--port','0','--unixsocket',str(sock),'--unixsocketperm','700','--save','','--appendonly','no','--loglevel','warning'],stdout=out,stderr=out,start_new_session=True);e={'qualification':'own local redis-server/redis-cli8.10.1; not native Bex or hosted behavior'}
+  def persist():(P/'sweep389-local-preflight.json').write_text(json.dumps(e,indent=2,ensure_ascii=False))
+  try:
+   for _ in range(60):
+    if sock.exists():break
+    time.sleep(.04)
+   assert sock.exists()
+   def build(actor):return [shutil.which('redis-cli'),'-s',str(sock),'--json','-3','--show-pushes','yes'],{**os.environ,'TERM':'dumb','REDISCLI_HISTFILE':str(P/('sweep389-local-history-'+actor))},['local-redis-cli','<own-unix-socket>','--json','-3','--show-pushes','yes'],lambda:None
+   journey('local375',build,persist,e)
+  finally:os.killpg(proc.pid,signal.SIGTERM);proc.wait(timeout=3);out.close();sock.unlink(missing_ok=True);e.update(server_stopped=True,socket_removed=not sock.exists());[(P/('sweep389-local-history-'+actor)).unlink(missing_ok=True) for actor in ('bex','render')];e['own_history_files_removed']=all(not (P/('sweep389-local-history-'+actor)).exists() for actor in ('bex','render'));history_after=(history.stat().st_mtime_ns,history.stat().st_size) if history.exists() else None;e['preexisting_history_unchanged']=history_before==history_after;persist();assert e['preexisting_history_unchanged']
+ else:
+  f=P/'sweep389-common.py';sys.argv=[str(f),'resp3-live','bex'];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==389 and v.get('id'));sid=x['id'];assert x['workspace']==WS and x['create_result']['native_exit']==0 and x['create_response']['id']==sid and not x.get('resp3_journey');_,v=detail();assert v['status']=='available' and v['public'];e={'at':now(),'terminal_profile':'TERM=dumb real PTY; JSON replies; private native config/history per actor','state':'finite two-native-client RESP3 intent'};x['resp3_journey']=e;save()
+  def persist():save()
+  def build(actor):
+   D=P/('sweep389-native-'+actor);assert not D.exists();D.mkdir(mode=0o700);config=D/'cli.yaml';shutil.copyfile(P/'config/cli.yaml',config);config.chmod(0o600);prefix='BEX' if actor=='bex' else 'RENDER';env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_','REDIS'))};env.update({prefix+'_HOST':'https://api.bex.co/v1/',prefix+'_CLI_CONFIG_PATH':str(config),prefix+'_CLI_CONFIG_DIR':str(D),prefix+'_WORKSPACE':WS,prefix+'_NO_UPDATE_NOTIFIER':'1','BEX_CLI_DISABLE_ANALYTICS':'1','DO_NOT_TRACK':'1','BROWSER':'/usr/bin/true','TERM':'dumb','REDISCLI_HISTFILE':str(D/'history')});args=['kv-cli',sid,'-o','interactive','--','--json','-3','--show-pushes','yes'];return [str(P/('release/bex' if actor=='bex' else 'render-pin')),*args],env,[actor,*args],lambda:shutil.rmtree(D)
+  try:journey(x['nonce'],build,persist,e)
+  finally:e['private_actor_config_history_removed']=all(not (P/('sweep389-native-'+actor)).exists() for actor in ('bex','render'));save()

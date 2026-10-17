@@ -1,0 +1,1 @@
+{"exit": 0, "stdout": "Submodule path 'basic': checked out '6ecf0ef2c2dffb796033e5a02219af86ec6584e5'\n", "stderr": "Submodule 'basic' (https://github.com/git-fixtures/basic.git) registered for path 'basic'\nCloning into '<owned-temp>/sweep393-parent-reference/basic'...\n"}

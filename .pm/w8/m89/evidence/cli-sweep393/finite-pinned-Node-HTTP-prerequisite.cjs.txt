@@ -1,0 +1,7 @@
+const cp=require('node:child_process'),http=require('node:http');
+const ref=require('./qa393-reference.json'),marker=require('./qa393-marker.json');
+const child=cp.spawn(process.execPath,['qa393-app.cjs','runtime'],{stdio:['ignore','pipe','pipe']});let output='';child.stdout.on('data',d=>output+=d);child.stderr.on('data',d=>output+=d);
+const delay=ms=>new Promise(r=>setTimeout(r,ms));
+(async()=>{let value;try{for(let n=0;n<100;n++){try{value=await new Promise((ok,bad)=>http.get('http://127.0.0.1:3000/',r=>{let b='';r.on('data',d=>b+=d);r.on('end',()=>r.statusCode===200?ok(JSON.parse(b)):bad(Error('http')))}).on('error',bad));break}catch(e){await delay(100)}}
+ if(!value||value.marker!==marker||value.runtime.child_file.sha256!==ref.child_file.sha256||value.build.child_file.sha256!==ref.child_file.sha256)throw Error('HTTP source/marker differs');console.log('QA393_LOCAL_HTTP '+JSON.stringify(value));}
+ finally{child.kill('SIGTERM');await new Promise(r=>child.once('close',r));console.log('QA393_LOCAL_SERVER_CLOSED');}})().catch(e=>{console.error(e,output);process.exitCode=1});

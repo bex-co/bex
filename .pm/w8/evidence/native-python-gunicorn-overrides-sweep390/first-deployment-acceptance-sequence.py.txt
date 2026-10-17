@@ -1,0 +1,7 @@
+from pathlib import Path
+import subprocess,json,time
+P=Path(__file__).resolve().parent;CP=Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json')
+for actor in ['render','bex']:
+ for mode in ['observe','request','logs']:
+  r=subprocess.run(['python3',str(P/'sweep390-native-python.py'),mode,actor],capture_output=True,text=True,timeout=110);(P/('sweep390-initial-'+actor+'-'+mode+'.json')).write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));print(r.stdout,flush=True);r.check_returncode()
+  if mode=='observe':assert json.loads(r.stdout)['status']=='live','same first child still converging; no request round sent'

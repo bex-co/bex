@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-17T01:09:40.639224+00:00",
+  "source_head": "5e18f96cf7d8359b4d77c64893397cd879586f77",
+  "source_fix": "a3047cd759788dd308281a2f176741d2711f6458",
+  "serving_revision": "unknown",
+  "primary_contract": "https://render.com/docs/blueprint-spec#branch",
+  "expected": "independent service repo with omitted branch uses that repo default; same-repo branch inherits containing context",
+  "scope": "fresh existing-image-origin Free root web declarations through both native-born fixtures; native validation, API-only metadata/apply/reapply, first Git/default source/artifact and delayed no-op; broader matrix inherited from completed m80 source tasks",
+  "context_qualification": "source keys Node/v22.x andv20.x were disconnected during344; use publicly verified ledger-unused Node/v26.x andv23.x for new metadata without reviving any old row; independent service branch stays omitted",
+  "disconnected_source_implementation": "store/blueprints.go:106-132 skips disconnected rows on conflict(tenant_id,repo,branch); apps/blueprint.go:1757-1788 ignores best-effort upsert error; no direct live DB/error inspection",
+  "source_checks": "completed m80 t001-t005 record real source/plan/canonical/no-op/default/error matrix, fail-before, focused Go suites and lint; QA does not rerun those or claim an unobserved full suite",
+  "local_fixture": "unchanged original builtin Node metadata observer from344; public package bytes independently rehashed at current default ref; no package dependency install or app source rewrite"
+}

@@ -1,0 +1,37 @@
+{
+  "sweep": 393,
+  "finding": "w8/m89",
+  "severity": "major",
+  "source_head": "009a9409a48bcc5d241d87b0460ba5b0390698a4",
+  "serving_revision": "unknown",
+  "native_POST201_create_exit0": 2,
+  "original_first_children_build_failed": 2,
+  "native_source_proof_parent_exact_child_absent": 2,
+  "parent_commit": "b685400c1f9316f350965a5993d350bc746b0bf4",
+  "child_gitlink_commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+  "child_file": {
+    "path": "basic/LICENSE",
+    "bytes": 1072,
+    "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+  },
+  "native_build_only_diagnostic_updates_exit0": 2,
+  "same_parent_control_children_Live": 2,
+  "native_build_proofs_exact_child_restored": 2,
+  "real_runtime_HTTP200_exact_file_nonce_parent_proofs": 6,
+  "shared_REST_GraphQL_MCP_readbacks": 12,
+  "API_only_exact_env_readbacks": 4,
+  "actual_generated_clone_image_control": "original0/missing, init0/exact file present",
+  "local_Node_control": "missing1, explicit child fetch0, real HTTP200",
+  "owned_deletes0": 2,
+  "owned_parent_children_URLs_absent": [
+    2,
+    4,
+    2
+  ],
+  "original_baselines_and_terminating0": true,
+  "all_own_local_containers_contexts_reference_clone_and_Go_export_removed": true,
+  "product_fix": "not implemented; QA counterfactuals only",
+  "tasks": 7,
+  "estimate_minutes": 130,
+  "uncommitted": true
+}

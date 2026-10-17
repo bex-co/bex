@@ -1,0 +1,21 @@
+from pathlib import Path
+import json,shutil,subprocess,secrets
+P=Path(__file__).resolve().parent;D=P/'sweep392-local-context';assert not D.exists();D.mkdir(mode=0o700);base='python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b';names=[];tags=[];e={'qualification':'pinned Python base plus source-equivalent isolated Poetry installer and authored project metadata; real install/project interpreter/original app HTTP; no full Bex-generated-image or hosted claim','base':base,'cases':[]}
+def save():(P/'sweep392-local-container-preflight.json').write_text(json.dumps(e,indent=2))
+try:
+ ref=json.loads((P/'sweep392-primary-reference.json').read_text())
+ for name in ref['files']:(D/name).write_bytes(subprocess.check_output(['git','-C',str(P/'sweep362-public-source'),'show',ref['commit']+':'+name]))
+ for a,b in [('sweep392-observer.py','qa392-observer.py'),('sweep392-local-case.py','qa392-local-case.py'),('sweep392-pyproject.toml','pyproject.toml'),('sweep392-pyproject.toml','qa392-pyproject-reference.txt')]:shutil.copyfile(P/a,D/b)
+ (D/'qa392-reference.json').write_text(json.dumps(ref));(D/'qa392-marker.json').write_text(json.dumps('QA392_LOCAL'));nonce=secrets.token_hex(3)
+ for version in ['2.1.3','1.8.5']:
+  label=version.replace('.','');tag='bex-qa392-local:'+nonce+'-'+label;name='qa392-'+nonce+'-'+label;tags.append(tag);v={'Poetry_requested':version,'image':tag,'container':name};e['cases'].append(v);save()
+  dockerfile='FROM '+base+'\nRUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry=='+version+' && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry\nENV GUNICORN_CMD_ARGS="--preload --access-logfile -"\nWORKDIR /opt/render/project/src\nCOPY . .\nRUN poetry install --no-interaction --no-ansi && poetry run python qa392-observer.py build\nENV PORT=3000\n';(D/'Dockerfile').write_text(dockerfile);r=subprocess.run(['docker','build','--progress=plain','-t',tag,str(D)],capture_output=True,text=True,timeout=420);v['build']={'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr};save();r.check_returncode();names.append(name);r=subprocess.run(['docker','run','--name',name,'--network','none',tag,'python','qa392-local-case.py'],capture_output=True,text=True,timeout=45);v['runtime']={'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr};save();r.check_returncode();rs=[json.loads(l.split(' ',1)[1]) for l in r.stdout.splitlines() if l.startswith('QA392_LOCAL_RESULT ')];assert len(rs)==1 and rs[0]['pass'] and version in rs[0]['runtime']['poetry_version'];v['observed']=rs[0];v['pass']=True;save();print(json.dumps({'Poetry':version,'real_install_runtime_HTTP_pass':True}),flush=True)
+ e['pass']=True;save()
+finally:
+ for name in names:
+  r=subprocess.run(['docker','rm','-f',name],capture_output=True,text=True);assert r.returncode==0
+ for tag in tags:
+  r=subprocess.run(['docker','image','rm',tag],capture_output=True,text=True)
+  if r.returncode!=0:assert 'No such image' in r.stderr
+ e['own_containers_images_removed']=True;shutil.rmtree(D);e['own_context_removed']=not D.exists();save()
+print(json.dumps({'local_cases':len(e['cases']),'pass':e.get('pass',False),'own_containers_images_removed':True,'own_context_removed':True}))

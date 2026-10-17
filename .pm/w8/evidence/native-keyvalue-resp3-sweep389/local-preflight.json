@@ -1,0 +1,1859 @@
+{
+  "qualification": "own local redis-server/redis-cli8.10.1; not native Bex or hosted behavior",
+  "steps": [
+    {
+      "actor": "bex",
+      "label": "stable client identity",
+      "stdin": "CLIENT \"\\x49\\x44\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\"\n",
+      "expected": null,
+      "decoded_with_fence": [
+        4,
+        "QA389_local389_FENCE_1"
+      ],
+      "observed": [
+        4
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "RESP3 HELLO map",
+      "stdin": "HELLO \"\\x33\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\"\n",
+      "expected": null,
+      "decoded_with_fence": [
+        {
+          "server": "redis",
+          "version": "8.10.1",
+          "proto": 3,
+          "id": 4,
+          "mode": "standalone",
+          "role": "master",
+          "modules": [
+            {
+              "name": "vectorset",
+              "ver": 1,
+              "path": "",
+              "args": []
+            }
+          ]
+        },
+        "QA389_local389_FENCE_2"
+      ],
+      "observed": [
+        {
+          "server": "redis",
+          "version": "8.10.1",
+          "proto": 3,
+          "id": 4,
+          "mode": "standalone",
+          "role": "master",
+          "modules": [
+            {
+              "name": "vectorset",
+              "ver": 1,
+              "path": "",
+              "args": []
+            }
+          ]
+        }
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "stable client identity",
+      "stdin": "CLIENT \"\\x49\\x44\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x33\"\n",
+      "expected": null,
+      "decoded_with_fence": [
+        5,
+        "QA389_local389_FENCE_3"
+      ],
+      "observed": [
+        5
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "RESP3 HELLO map",
+      "stdin": "HELLO \"\\x33\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x34\"\n",
+      "expected": null,
+      "decoded_with_fence": [
+        {
+          "server": "redis",
+          "version": "8.10.1",
+          "proto": 3,
+          "id": 5,
+          "mode": "standalone",
+          "role": "master",
+          "modules": [
+            {
+              "name": "vectorset",
+              "ver": 1,
+              "path": "",
+              "args": []
+            }
+          ]
+        },
+        "QA389_local389_FENCE_4"
+      ],
+      "observed": [
+        {
+          "server": "redis",
+          "version": "8.10.1",
+          "proto": 3,
+          "id": 5,
+          "mode": "standalone",
+          "role": "master",
+          "modules": [
+            {
+              "name": "vectorset",
+              "ver": 1,
+              "path": "",
+              "args": []
+            }
+          ]
+        }
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "all exact own keys initially absent",
+      "stdin": "EXISTS \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x68\\x61\\x73\\x68\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x73\\x65\\x74\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x73\\x63\\x6f\\x72\\x65\\x73\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x6d\\x69\\x73\\x73\\x69\\x6e\\x67\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x63\\x6f\\x6c\\x64\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x65\\x78\\x70\\x69\\x72\\x79\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6f\\x74\\x68\\x65\\x72\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x76\\x61\\x6c\\x75\\x65\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x35\"\n",
+      "expected": [
+        0
+      ],
+      "decoded_with_fence": [
+        0,
+        "QA389_local389_FENCE_5"
+      ],
+      "observed": [
+        0
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "typed value setup",
+      "stdin": "SET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\" \"\\x6c\\x69\\x6e\\x65\\x31\\x0d\\x0a\\x6c\\x69\\x6e\\x65\\x32\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x00\\x74\\x61\\x69\\x6c\"\nHSET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x68\\x61\\x73\\x68\" \"\\x75\\x6e\\x69\\x63\\x6f\\x64\\x65\" \"\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\" \"\\x65\\x6d\\x70\\x74\\x79\" \"\"\nSADD \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x73\\x65\\x74\" \"\\x61\\x6c\\x70\\x68\\x61\" \"\\x62\\x65\\x74\\x61\"\nZADD \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x73\\x63\\x6f\\x72\\x65\\x73\" \"\\x31\\x2e\\x32\\x35\" \"\\x61\\x6c\\x70\\x68\\x61\" \"\\x2d\\x32\\x2e\\x35\" \"\\x62\\x65\\x74\\x61\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x36\"\n",
+      "expected": [
+        "OK",
+        2,
+        2,
+        2
+      ],
+      "decoded_with_fence": [
+        "OK",
+        2,
+        2,
+        2,
+        "QA389_local389_FENCE_6"
+      ],
+      "observed": [
+        "OK",
+        2,
+        2,
+        2
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "binary UTF8 and RESP3 null/map replies",
+      "stdin": "GET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\"\nGET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x6d\\x69\\x73\\x73\\x69\\x6e\\x67\"\nHGETALL \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x68\\x61\\x73\\x68\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x37\"\n",
+      "expected": [
+        "line1\r\nline2 café 日本 😀\u0000tail",
+        null,
+        {
+          "unicode": "日本 😀",
+          "empty": ""
+        }
+      ],
+      "decoded_with_fence": [
+        "line1\r\nline2 café 日本 😀\u0000tail",
+        null,
+        {
+          "unicode": "日本 😀",
+          "empty": ""
+        },
+        "QA389_local389_FENCE_7"
+      ],
+      "observed": [
+        "line1\r\nline2 café 日本 😀\u0000tail",
+        null,
+        {
+          "unicode": "日本 😀",
+          "empty": ""
+        }
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "RESP3 set and nested double replies",
+      "stdin": "SMEMBERS \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x73\\x65\\x74\"\nZRANGE \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x73\\x63\\x6f\\x72\\x65\\x73\" \"\\x30\" \"\\x2d\\x31\" \"\\x57\\x49\\x54\\x48\\x53\\x43\\x4f\\x52\\x45\\x53\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x38\"\n",
+      "expected": null,
+      "decoded_with_fence": [
+        [
+          "alpha",
+          "beta"
+        ],
+        [
+          [
+            "beta",
+            -2.5
+          ],
+          [
+            "alpha",
+            1.25
+          ]
+        ],
+        "QA389_local389_FENCE_8"
+      ],
+      "observed": [
+        [
+          "alpha",
+          "beta"
+        ],
+        [
+          [
+            "beta",
+            -2.5
+          ],
+          [
+            "alpha",
+            1.25
+          ]
+        ]
+      ],
+      "pass": true,
+      "shape_assertions_pass": true
+    },
+    {
+      "actor": "render",
+      "label": "binary UTF8 and RESP3 null/map replies",
+      "stdin": "GET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\"\nGET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x6d\\x69\\x73\\x73\\x69\\x6e\\x67\"\nHGETALL \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x68\\x61\\x73\\x68\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x39\"\n",
+      "expected": [
+        "line1\r\nline2 café 日本 😀\u0000tail",
+        null,
+        {
+          "unicode": "日本 😀",
+          "empty": ""
+        }
+      ],
+      "decoded_with_fence": [
+        "line1\r\nline2 café 日本 😀\u0000tail",
+        null,
+        {
+          "unicode": "日本 😀",
+          "empty": ""
+        },
+        "QA389_local389_FENCE_9"
+      ],
+      "observed": [
+        "line1\r\nline2 café 日本 😀\u0000tail",
+        null,
+        {
+          "unicode": "日本 😀",
+          "empty": ""
+        }
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "RESP3 set and nested double replies",
+      "stdin": "SMEMBERS \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x73\\x65\\x74\"\nZRANGE \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x73\\x63\\x6f\\x72\\x65\\x73\" \"\\x30\" \"\\x2d\\x31\" \"\\x57\\x49\\x54\\x48\\x53\\x43\\x4f\\x52\\x45\\x53\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x30\"\n",
+      "expected": null,
+      "decoded_with_fence": [
+        [
+          "alpha",
+          "beta"
+        ],
+        [
+          [
+            "beta",
+            -2.5
+          ],
+          [
+            "alpha",
+            1.25
+          ]
+        ],
+        "QA389_local389_FENCE_10"
+      ],
+      "observed": [
+        [
+          "alpha",
+          "beta"
+        ],
+        [
+          [
+            "beta",
+            -2.5
+          ],
+          [
+            "alpha",
+            1.25
+          ]
+        ]
+      ],
+      "pass": true,
+      "shape_assertions_pass": true
+    },
+    {
+      "actor": "render",
+      "label": "initialize round marker",
+      "stdin": "SET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\" \"\\x69\\x6e\\x69\\x74\\x69\\x61\\x6c\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x31\"\n",
+      "expected": [
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "QA389_local389_FENCE_11"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "enable normal tracking with NOLOOP",
+      "stdin": "CLIENT \"\\x54\\x52\\x41\\x43\\x4b\\x49\\x4e\\x47\" \"\\x4f\\x4e\" \"\\x4e\\x4f\\x4c\\x4f\\x4f\\x50\"\nGET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x32\"\n",
+      "expected": [
+        "OK",
+        "initial"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "initial",
+        "QA389_local389_FENCE_12"
+      ],
+      "observed": [
+        "OK",
+        "initial"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "competing exact-key write",
+      "stdin": "SET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\" \"\\x6f\\x74\\x68\\x65\\x72\\x20\\x62\\x65\\x78\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x33\"\n",
+      "expected": [
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "QA389_local389_FENCE_13"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "normal cached key invalidated reply/push ordering fence",
+      "stdin": "PING\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x34\"\n",
+      "expected": [
+        "PONG"
+      ],
+      "decoded_with_fence": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:text"
+          ]
+        ],
+        "PONG",
+        "QA389_local389_FENCE_14"
+      ],
+      "observed": [
+        "PONG"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "re-read after invalidation",
+      "stdin": "GET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x35\"\n",
+      "expected": [
+        "other bex"
+      ],
+      "decoded_with_fence": [
+        "other bex",
+        "QA389_local389_FENCE_15"
+      ],
+      "observed": [
+        "other bex"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "NOLOOP suppresses own write",
+      "stdin": "SET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\" \"\\x73\\x65\\x6c\\x66\\x20\\x62\\x65\\x78\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x36\"\n",
+      "expected": [
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "QA389_local389_FENCE_16"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "no self invalidation ordered connection fence",
+      "stdin": "PING\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x37\"\n",
+      "expected": [
+        "PONG"
+      ],
+      "decoded_with_fence": [
+        "PONG",
+        "QA389_local389_FENCE_17"
+      ],
+      "observed": [
+        "PONG"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "retrack after own modification",
+      "stdin": "GET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x38\"\n",
+      "expected": [
+        "self bex"
+      ],
+      "decoded_with_fence": [
+        "self bex",
+        "QA389_local389_FENCE_18"
+      ],
+      "observed": [
+        "self bex"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "second competing write",
+      "stdin": "SET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\" \"\\x73\\x65\\x63\\x6f\\x6e\\x64\\x20\\x62\\x65\\x78\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x39\"\n",
+      "expected": [
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "QA389_local389_FENCE_19"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "retracked key invalidated reply/push ordering fence",
+      "stdin": "PING\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x30\"\n",
+      "expected": [
+        "PONG"
+      ],
+      "decoded_with_fence": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:text"
+          ]
+        ],
+        "PONG",
+        "QA389_local389_FENCE_20"
+      ],
+      "observed": [
+        "PONG"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "missing-key read is tracked",
+      "stdin": "GET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x6d\\x69\\x73\\x73\\x69\\x6e\\x67\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x31\"\n",
+      "expected": [
+        null
+      ],
+      "decoded_with_fence": [
+        null,
+        "QA389_local389_FENCE_21"
+      ],
+      "observed": [
+        null
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "create previously missing key",
+      "stdin": "SET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x6d\\x69\\x73\\x73\\x69\\x6e\\x67\" \"\\x6e\\x65\\x77\\x20\\x62\\x65\\x78\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x32\"\n",
+      "expected": [
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "QA389_local389_FENCE_22"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "missing-key creation invalidates reply/push ordering fence",
+      "stdin": "PING\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x33\"\n",
+      "expected": [
+        "PONG"
+      ],
+      "decoded_with_fence": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:missing"
+          ]
+        ],
+        "PONG",
+        "QA389_local389_FENCE_23"
+      ],
+      "observed": [
+        "PONG"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "remove missing-key fixture for next round",
+      "stdin": "DEL \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x6d\\x69\\x73\\x73\\x69\\x6e\\x67\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x34\"\n",
+      "expected": [
+        1
+      ],
+      "decoded_with_fence": [
+        1,
+        "QA389_local389_FENCE_24"
+      ],
+      "observed": [
+        1
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "switch tracking to OPTIN",
+      "stdin": "CLIENT \"\\x54\\x52\\x41\\x43\\x4b\\x49\\x4e\\x47\" \"\\x4f\\x46\\x46\"\nCLIENT \"\\x54\\x52\\x41\\x43\\x4b\\x49\\x4e\\x47\" \"\\x4f\\x4e\" \"\\x4f\\x50\\x54\\x49\\x4e\" \"\\x4e\\x4f\\x4c\\x4f\\x4f\\x50\"\nGET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x35\"\n",
+      "expected": [
+        "OK",
+        "OK",
+        "second bex"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "OK",
+        "second bex",
+        "QA389_local389_FENCE_25"
+      ],
+      "observed": [
+        "OK",
+        "OK",
+        "second bex"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "unopted read mutation",
+      "stdin": "SET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\" \"\\x6e\\x6f\\x74\\x20\\x63\\x61\\x63\\x68\\x65\\x64\\x20\\x62\\x65\\x78\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x36\"\n",
+      "expected": [
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "QA389_local389_FENCE_26"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "OPTIN leaves ordinary read untracked ordered connection fence",
+      "stdin": "PING\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x37\"\n",
+      "expected": [
+        "PONG"
+      ],
+      "decoded_with_fence": [
+        "PONG",
+        "QA389_local389_FENCE_27"
+      ],
+      "observed": [
+        "PONG"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "opt in exactly following read",
+      "stdin": "CLIENT \"\\x43\\x41\\x43\\x48\\x49\\x4e\\x47\" \"\\x59\\x45\\x53\"\nGET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x38\"\n",
+      "expected": [
+        "OK",
+        "not cached bex"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "not cached bex",
+        "QA389_local389_FENCE_28"
+      ],
+      "observed": [
+        "OK",
+        "not cached bex"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "opted read mutation",
+      "stdin": "SET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\" \"\\x6f\\x70\\x74\\x65\\x64\\x20\\x62\\x65\\x78\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x39\"\n",
+      "expected": [
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "QA389_local389_FENCE_29"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "OPTIN cached read invalidates reply/push ordering fence",
+      "stdin": "PING\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x33\\x30\"\n",
+      "expected": [
+        "PONG"
+      ],
+      "decoded_with_fence": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:text"
+          ]
+        ],
+        "PONG",
+        "QA389_local389_FENCE_30"
+      ],
+      "observed": [
+        "PONG"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "switch to own-prefix broadcast",
+      "stdin": "CLIENT \"\\x54\\x52\\x41\\x43\\x4b\\x49\\x4e\\x47\" \"\\x4f\\x46\\x46\"\nCLIENT \"\\x54\\x52\\x41\\x43\\x4b\\x49\\x4e\\x47\" \"\\x4f\\x4e\" \"\\x42\\x43\\x41\\x53\\x54\" \"\\x50\\x52\\x45\\x46\\x49\\x58\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\" \"\\x4e\\x4f\\x4c\\x4f\\x4f\\x50\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x33\\x31\"\n",
+      "expected": [
+        "OK",
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "OK",
+        "QA389_local389_FENCE_31"
+      ],
+      "observed": [
+        "OK",
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "write unread own prefixed key",
+      "stdin": "SET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x63\\x6f\\x6c\\x64\" \"\\x63\\x6f\\x6c\\x64\\x20\\x62\\x65\\x78\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x33\\x32\"\n",
+      "expected": [
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "QA389_local389_FENCE_32"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "BCAST invalidates unread own key reply/push ordering fence",
+      "stdin": "PING\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x33\\x33\"\n",
+      "expected": [
+        "PONG"
+      ],
+      "decoded_with_fence": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:cold"
+          ]
+        ],
+        "PONG",
+        "QA389_local389_FENCE_33"
+      ],
+      "observed": [
+        "PONG"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "write other own prefix",
+      "stdin": "SET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6f\\x74\\x68\\x65\\x72\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x6f\\x75\\x74\\x73\\x69\\x64\\x65\\x20\\x62\\x65\\x78\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x33\\x34\"\n",
+      "expected": [
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "QA389_local389_FENCE_34"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "BCAST prefix excludes unrelated own key ordered connection fence",
+      "stdin": "PING\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x33\\x35\"\n",
+      "expected": [
+        "PONG"
+      ],
+      "decoded_with_fence": [
+        "PONG",
+        "QA389_local389_FENCE_35"
+      ],
+      "observed": [
+        "PONG"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "delete own broadcast key",
+      "stdin": "DEL \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x63\\x6f\\x6c\\x64\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x33\\x36\"\n",
+      "expected": [
+        1
+      ],
+      "decoded_with_fence": [
+        1,
+        "QA389_local389_FENCE_36"
+      ],
+      "observed": [
+        1
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "deletion invalidates own key reply/push ordering fence",
+      "stdin": "PING\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x33\\x37\"\n",
+      "expected": [
+        "PONG"
+      ],
+      "decoded_with_fence": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:cold"
+          ]
+        ],
+        "PONG",
+        "QA389_local389_FENCE_37"
+      ],
+      "observed": [
+        "PONG"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "turn tracking off",
+      "stdin": "CLIENT \"\\x54\\x52\\x41\\x43\\x4b\\x49\\x4e\\x47\" \"\\x4f\\x46\\x46\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x33\\x38\"\n",
+      "expected": [
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "QA389_local389_FENCE_38"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "write after tracking disabled",
+      "stdin": "SET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\" \"\\x64\\x69\\x73\\x61\\x62\\x6c\\x65\\x64\\x20\\x62\\x65\\x78\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x33\\x39\"\n",
+      "expected": [
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "QA389_local389_FENCE_39"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "disabled tracking sends no pushes ordered connection fence",
+      "stdin": "PING\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x34\\x30\"\n",
+      "expected": [
+        "PONG"
+      ],
+      "decoded_with_fence": [
+        "PONG",
+        "QA389_local389_FENCE_40"
+      ],
+      "observed": [
+        "PONG"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "initialize round marker",
+      "stdin": "SET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\" \"\\x69\\x6e\\x69\\x74\\x69\\x61\\x6c\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x34\\x31\"\n",
+      "expected": [
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "QA389_local389_FENCE_41"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "enable normal tracking with NOLOOP",
+      "stdin": "CLIENT \"\\x54\\x52\\x41\\x43\\x4b\\x49\\x4e\\x47\" \"\\x4f\\x4e\" \"\\x4e\\x4f\\x4c\\x4f\\x4f\\x50\"\nGET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x34\\x32\"\n",
+      "expected": [
+        "OK",
+        "initial"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "initial",
+        "QA389_local389_FENCE_42"
+      ],
+      "observed": [
+        "OK",
+        "initial"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "competing exact-key write",
+      "stdin": "SET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\" \"\\x6f\\x74\\x68\\x65\\x72\\x20\\x72\\x65\\x6e\\x64\\x65\\x72\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x34\\x33\"\n",
+      "expected": [
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "QA389_local389_FENCE_43"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "normal cached key invalidated reply/push ordering fence",
+      "stdin": "PING\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x34\\x34\"\n",
+      "expected": [
+        "PONG"
+      ],
+      "decoded_with_fence": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:text"
+          ]
+        ],
+        "PONG",
+        "QA389_local389_FENCE_44"
+      ],
+      "observed": [
+        "PONG"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "re-read after invalidation",
+      "stdin": "GET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x34\\x35\"\n",
+      "expected": [
+        "other render"
+      ],
+      "decoded_with_fence": [
+        "other render",
+        "QA389_local389_FENCE_45"
+      ],
+      "observed": [
+        "other render"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "NOLOOP suppresses own write",
+      "stdin": "SET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\" \"\\x73\\x65\\x6c\\x66\\x20\\x72\\x65\\x6e\\x64\\x65\\x72\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x34\\x36\"\n",
+      "expected": [
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "QA389_local389_FENCE_46"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "no self invalidation ordered connection fence",
+      "stdin": "PING\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x34\\x37\"\n",
+      "expected": [
+        "PONG"
+      ],
+      "decoded_with_fence": [
+        "PONG",
+        "QA389_local389_FENCE_47"
+      ],
+      "observed": [
+        "PONG"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "retrack after own modification",
+      "stdin": "GET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x34\\x38\"\n",
+      "expected": [
+        "self render"
+      ],
+      "decoded_with_fence": [
+        "self render",
+        "QA389_local389_FENCE_48"
+      ],
+      "observed": [
+        "self render"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "second competing write",
+      "stdin": "SET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\" \"\\x73\\x65\\x63\\x6f\\x6e\\x64\\x20\\x72\\x65\\x6e\\x64\\x65\\x72\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x34\\x39\"\n",
+      "expected": [
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "QA389_local389_FENCE_49"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "retracked key invalidated reply/push ordering fence",
+      "stdin": "PING\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x35\\x30\"\n",
+      "expected": [
+        "PONG"
+      ],
+      "decoded_with_fence": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:text"
+          ]
+        ],
+        "PONG",
+        "QA389_local389_FENCE_50"
+      ],
+      "observed": [
+        "PONG"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "missing-key read is tracked",
+      "stdin": "GET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x6d\\x69\\x73\\x73\\x69\\x6e\\x67\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x35\\x31\"\n",
+      "expected": [
+        null
+      ],
+      "decoded_with_fence": [
+        null,
+        "QA389_local389_FENCE_51"
+      ],
+      "observed": [
+        null
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "create previously missing key",
+      "stdin": "SET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x6d\\x69\\x73\\x73\\x69\\x6e\\x67\" \"\\x6e\\x65\\x77\\x20\\x72\\x65\\x6e\\x64\\x65\\x72\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x35\\x32\"\n",
+      "expected": [
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "QA389_local389_FENCE_52"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "missing-key creation invalidates reply/push ordering fence",
+      "stdin": "PING\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x35\\x33\"\n",
+      "expected": [
+        "PONG"
+      ],
+      "decoded_with_fence": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:missing"
+          ]
+        ],
+        "PONG",
+        "QA389_local389_FENCE_53"
+      ],
+      "observed": [
+        "PONG"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "remove missing-key fixture for next round",
+      "stdin": "DEL \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x6d\\x69\\x73\\x73\\x69\\x6e\\x67\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x35\\x34\"\n",
+      "expected": [
+        1
+      ],
+      "decoded_with_fence": [
+        1,
+        "QA389_local389_FENCE_54"
+      ],
+      "observed": [
+        1
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "switch tracking to OPTIN",
+      "stdin": "CLIENT \"\\x54\\x52\\x41\\x43\\x4b\\x49\\x4e\\x47\" \"\\x4f\\x46\\x46\"\nCLIENT \"\\x54\\x52\\x41\\x43\\x4b\\x49\\x4e\\x47\" \"\\x4f\\x4e\" \"\\x4f\\x50\\x54\\x49\\x4e\" \"\\x4e\\x4f\\x4c\\x4f\\x4f\\x50\"\nGET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x35\\x35\"\n",
+      "expected": [
+        "OK",
+        "OK",
+        "second render"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "OK",
+        "second render",
+        "QA389_local389_FENCE_55"
+      ],
+      "observed": [
+        "OK",
+        "OK",
+        "second render"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "unopted read mutation",
+      "stdin": "SET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\" \"\\x6e\\x6f\\x74\\x20\\x63\\x61\\x63\\x68\\x65\\x64\\x20\\x72\\x65\\x6e\\x64\\x65\\x72\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x35\\x36\"\n",
+      "expected": [
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "QA389_local389_FENCE_56"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "OPTIN leaves ordinary read untracked ordered connection fence",
+      "stdin": "PING\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x35\\x37\"\n",
+      "expected": [
+        "PONG"
+      ],
+      "decoded_with_fence": [
+        "PONG",
+        "QA389_local389_FENCE_57"
+      ],
+      "observed": [
+        "PONG"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "opt in exactly following read",
+      "stdin": "CLIENT \"\\x43\\x41\\x43\\x48\\x49\\x4e\\x47\" \"\\x59\\x45\\x53\"\nGET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x35\\x38\"\n",
+      "expected": [
+        "OK",
+        "not cached render"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "not cached render",
+        "QA389_local389_FENCE_58"
+      ],
+      "observed": [
+        "OK",
+        "not cached render"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "opted read mutation",
+      "stdin": "SET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\" \"\\x6f\\x70\\x74\\x65\\x64\\x20\\x72\\x65\\x6e\\x64\\x65\\x72\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x35\\x39\"\n",
+      "expected": [
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "QA389_local389_FENCE_59"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "OPTIN cached read invalidates reply/push ordering fence",
+      "stdin": "PING\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x36\\x30\"\n",
+      "expected": [
+        "PONG"
+      ],
+      "decoded_with_fence": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:text"
+          ]
+        ],
+        "PONG",
+        "QA389_local389_FENCE_60"
+      ],
+      "observed": [
+        "PONG"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "switch to own-prefix broadcast",
+      "stdin": "CLIENT \"\\x54\\x52\\x41\\x43\\x4b\\x49\\x4e\\x47\" \"\\x4f\\x46\\x46\"\nCLIENT \"\\x54\\x52\\x41\\x43\\x4b\\x49\\x4e\\x47\" \"\\x4f\\x4e\" \"\\x42\\x43\\x41\\x53\\x54\" \"\\x50\\x52\\x45\\x46\\x49\\x58\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\" \"\\x4e\\x4f\\x4c\\x4f\\x4f\\x50\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x36\\x31\"\n",
+      "expected": [
+        "OK",
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "OK",
+        "QA389_local389_FENCE_61"
+      ],
+      "observed": [
+        "OK",
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "write unread own prefixed key",
+      "stdin": "SET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x63\\x6f\\x6c\\x64\" \"\\x63\\x6f\\x6c\\x64\\x20\\x72\\x65\\x6e\\x64\\x65\\x72\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x36\\x32\"\n",
+      "expected": [
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "QA389_local389_FENCE_62"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "BCAST invalidates unread own key reply/push ordering fence",
+      "stdin": "PING\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x36\\x33\"\n",
+      "expected": [
+        "PONG"
+      ],
+      "decoded_with_fence": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:cold"
+          ]
+        ],
+        "PONG",
+        "QA389_local389_FENCE_63"
+      ],
+      "observed": [
+        "PONG"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "write other own prefix",
+      "stdin": "SET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6f\\x74\\x68\\x65\\x72\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x6f\\x75\\x74\\x73\\x69\\x64\\x65\\x20\\x72\\x65\\x6e\\x64\\x65\\x72\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x36\\x34\"\n",
+      "expected": [
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "QA389_local389_FENCE_64"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "BCAST prefix excludes unrelated own key ordered connection fence",
+      "stdin": "PING\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x36\\x35\"\n",
+      "expected": [
+        "PONG"
+      ],
+      "decoded_with_fence": [
+        "PONG",
+        "QA389_local389_FENCE_65"
+      ],
+      "observed": [
+        "PONG"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "delete own broadcast key",
+      "stdin": "DEL \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x63\\x6f\\x6c\\x64\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x36\\x36\"\n",
+      "expected": [
+        1
+      ],
+      "decoded_with_fence": [
+        1,
+        "QA389_local389_FENCE_66"
+      ],
+      "observed": [
+        1
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "deletion invalidates own key reply/push ordering fence",
+      "stdin": "PING\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x36\\x37\"\n",
+      "expected": [
+        "PONG"
+      ],
+      "decoded_with_fence": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:cold"
+          ]
+        ],
+        "PONG",
+        "QA389_local389_FENCE_67"
+      ],
+      "observed": [
+        "PONG"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "turn tracking off",
+      "stdin": "CLIENT \"\\x54\\x52\\x41\\x43\\x4b\\x49\\x4e\\x47\" \"\\x4f\\x46\\x46\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x36\\x38\"\n",
+      "expected": [
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "QA389_local389_FENCE_68"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "write after tracking disabled",
+      "stdin": "SET \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\" \"\\x64\\x69\\x73\\x61\\x62\\x6c\\x65\\x64\\x20\\x72\\x65\\x6e\\x64\\x65\\x72\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x36\\x39\"\n",
+      "expected": [
+        "OK"
+      ],
+      "decoded_with_fence": [
+        "OK",
+        "QA389_local389_FENCE_69"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "disabled tracking sends no pushes ordered connection fence",
+      "stdin": "PING\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x37\\x30\"\n",
+      "expected": [
+        "PONG"
+      ],
+      "decoded_with_fence": [
+        "PONG",
+        "QA389_local389_FENCE_70"
+      ],
+      "observed": [
+        "PONG"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "same connection after replies and pushes",
+      "stdin": "CLIENT \"\\x49\\x44\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x37\\x31\"\n",
+      "expected": [
+        4
+      ],
+      "decoded_with_fence": [
+        4,
+        "QA389_local389_FENCE_71"
+      ],
+      "observed": [
+        4
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "same connection after replies and pushes",
+      "stdin": "CLIENT \"\\x49\\x44\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x37\\x32\"\n",
+      "expected": [
+        5
+      ],
+      "decoded_with_fence": [
+        5,
+        "QA389_local389_FENCE_72"
+      ],
+      "observed": [
+        5
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "delete exact own surviving keys",
+      "stdin": "DEL \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x68\\x61\\x73\\x68\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x73\\x65\\x74\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x73\\x63\\x6f\\x72\\x65\\x73\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x6d\\x69\\x73\\x73\\x69\\x6e\\x67\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x63\\x6f\\x6c\\x64\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x65\\x78\\x70\\x69\\x72\\x79\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6f\\x74\\x68\\x65\\x72\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x76\\x61\\x6c\\x75\\x65\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x37\\x33\"\n",
+      "expected": [
+        5
+      ],
+      "decoded_with_fence": [
+        5,
+        "QA389_local389_FENCE_73"
+      ],
+      "observed": [
+        5
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "all own keys absent",
+      "stdin": "EXISTS \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x74\\x65\\x78\\x74\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x68\\x61\\x73\\x68\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x73\\x65\\x74\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x73\\x63\\x6f\\x72\\x65\\x73\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x6d\\x69\\x73\\x73\\x69\\x6e\\x67\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x63\\x6f\\x6c\\x64\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x65\\x78\\x70\\x69\\x72\\x79\" \"\\x71\\x61\\x33\\x38\\x39\\x5f\\x6f\\x74\\x68\\x65\\x72\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x3a\\x76\\x61\\x6c\\x75\\x65\"\nECHO \"\\x51\\x41\\x33\\x38\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x38\\x39\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x37\\x34\"\n",
+      "expected": [
+        0
+      ],
+      "decoded_with_fence": [
+        0,
+        "QA389_local389_FENCE_74"
+      ],
+      "observed": [
+        0
+      ],
+      "pass": true
+    }
+  ],
+  "pushes": [
+    {
+      "actor": "bex",
+      "label": "normal cached key invalidated",
+      "expected": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:text"
+          ]
+        ]
+      ],
+      "observed": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:text"
+          ]
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "no self invalidation",
+      "observation_seconds": 0.519,
+      "new_pushes": [],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "retracked key invalidated",
+      "expected": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:text"
+          ]
+        ]
+      ],
+      "observed": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:text"
+          ]
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "missing-key creation invalidates",
+      "expected": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:missing"
+          ]
+        ]
+      ],
+      "observed": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:missing"
+          ]
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "OPTIN leaves ordinary read untracked",
+      "observation_seconds": 0.515,
+      "new_pushes": [],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "OPTIN cached read invalidates",
+      "expected": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:text"
+          ]
+        ]
+      ],
+      "observed": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:text"
+          ]
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "BCAST invalidates unread own key",
+      "expected": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:cold"
+          ]
+        ]
+      ],
+      "observed": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:cold"
+          ]
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "BCAST prefix excludes unrelated own key",
+      "observation_seconds": 0.579,
+      "new_pushes": [],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "deletion invalidates own key",
+      "expected": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:cold"
+          ]
+        ]
+      ],
+      "observed": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:cold"
+          ]
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "disabled tracking sends no pushes",
+      "observation_seconds": 0.525,
+      "new_pushes": [],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "normal cached key invalidated",
+      "expected": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:text"
+          ]
+        ]
+      ],
+      "observed": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:text"
+          ]
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "no self invalidation",
+      "observation_seconds": 0.503,
+      "new_pushes": [],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "retracked key invalidated",
+      "expected": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:text"
+          ]
+        ]
+      ],
+      "observed": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:text"
+          ]
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "missing-key creation invalidates",
+      "expected": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:missing"
+          ]
+        ]
+      ],
+      "observed": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:missing"
+          ]
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "OPTIN leaves ordinary read untracked",
+      "observation_seconds": 0.502,
+      "new_pushes": [],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "OPTIN cached read invalidates",
+      "expected": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:text"
+          ]
+        ]
+      ],
+      "observed": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:text"
+          ]
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "BCAST invalidates unread own key",
+      "expected": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:cold"
+          ]
+        ]
+      ],
+      "observed": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:cold"
+          ]
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "BCAST prefix excludes unrelated own key",
+      "observation_seconds": 0.512,
+      "new_pushes": [],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "deletion invalidates own key",
+      "expected": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:cold"
+          ]
+        ]
+      ],
+      "observed": [
+        [
+          "invalidate",
+          [
+            "qa389_local389:cold"
+          ]
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "disabled tracking sends no pushes",
+      "observation_seconds": 0.51,
+      "new_pushes": [],
+      "pass": true
+    }
+  ],
+  "sessions": {
+    "bex": {
+      "command": [
+        "local-redis-cli",
+        "<own-unix-socket>",
+        "--json",
+        "-3",
+        "--show-pushes",
+        "yes"
+      ],
+      "intent": "own finite RESP3 client with private history/config",
+      "PID": 40880,
+      "PGID": 40880,
+      "client_id": 4,
+      "hello": {
+        "server": "redis",
+        "version": "8.10.1",
+        "proto": 3,
+        "id": 4,
+        "mode": "standalone",
+        "role": "master",
+        "modules": [
+          {
+            "name": "vectorset",
+            "ver": 1,
+            "path": "",
+            "args": []
+          }
+        ]
+      },
+      "natural_exit": 0,
+      "terminal": {
+        "command": [
+          "local-redis-cli",
+          "<own-unix-socket>",
+          "--json",
+          "-3",
+          "--show-pushes",
+          "yes"
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 5.141,
+        "decoded_JSON": [],
+        "arrival_seconds": [],
+        "output": "redis <owned-temp>/sweep389-preflight.sock> 4\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_1\"\nredis <owned-temp>/sweep389-preflight.sock> {\"server\":\"redis\",\"version\":\"8.10.1\",\"proto\":3,\"id\":4,\"mode\":\"standalone\",\"role\":\"master\",\"modules\":[{\"name\":\"vectorset\",\"ver\":1,\"path\":\"\",\"args\":[]}]}\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_2\"\nredis <owned-temp>/sweep389-preflight.sock> 0\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_5\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> 2\nredis <owned-temp>/sweep389-preflight.sock> 2\nredis <owned-temp>/sweep389-preflight.sock> 2\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_6\"\nredis <owned-temp>/sweep389-preflight.sock> \"line1\\r\\nline2 café 日本 😀\\u0000tail\"\nredis <owned-temp>/sweep389-preflight.sock> null\nredis <owned-temp>/sweep389-preflight.sock> {\"unicode\":\"日本 😀\",\"empty\":\"\"}\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_7\"\nredis <owned-temp>/sweep389-preflight.sock> [\"alpha\",\"beta\"]\nredis <owned-temp>/sweep389-preflight.sock> [[\"beta\",-2.5],[\"alpha\",1.25]]\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_8\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"initial\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_12\"\nredis <owned-temp>/sweep389-preflight.sock> [\"invalidate\",[\"qa389_local389:text\"]]\n\"PONG\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_14\"\nredis <owned-temp>/sweep389-preflight.sock> \"other bex\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_15\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_16\"\nredis <owned-temp>/sweep389-preflight.sock> \"PONG\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_17\"\nredis <owned-temp>/sweep389-preflight.sock> \"self bex\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_18\"\nredis <owned-temp>/sweep389-preflight.sock> [\"invalidate\",[\"qa389_local389:text\"]]\n\"PONG\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_20\"\nredis <owned-temp>/sweep389-preflight.sock> null\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_21\"\nredis <owned-temp>/sweep389-preflight.sock> [\"invalidate\",[\"qa389_local389:missing\"]]\n\"PONG\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_23\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"second bex\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_25\"\nredis <owned-temp>/sweep389-preflight.sock> \"PONG\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_27\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"not cached bex\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_28\"\nredis <owned-temp>/sweep389-preflight.sock> [\"invalidate\",[\"qa389_local389:text\"]]\n\"PONG\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_30\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_31\"\nredis <owned-temp>/sweep389-preflight.sock> [\"invalidate\",[\"qa389_local389:cold\"]]\n\"PONG\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_33\"\nredis <owned-temp>/sweep389-preflight.sock> \"PONG\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_35\"\nredis <owned-temp>/sweep389-preflight.sock> [\"invalidate\",[\"qa389_local389:cold\"]]\n\"PONG\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_37\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_38\"\nredis <owned-temp>/sweep389-preflight.sock> \"PONG\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_40\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_41\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_43\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_49\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_52\"\nredis <owned-temp>/sweep389-preflight.sock> 1\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_54\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_56\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_59\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_62\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_64\"\nredis <owned-temp>/sweep389-preflight.sock> 1\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_66\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_69\"\nredis <owned-temp>/sweep389-preflight.sock> 4\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_71\"\nredis <owned-temp>/sweep389-preflight.sock> 0\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_74\"\nredis <owned-temp>/sweep389-preflight.sock> ",
+        "own_process_group_cleaned": true
+      }
+    },
+    "render": {
+      "command": [
+        "local-redis-cli",
+        "<own-unix-socket>",
+        "--json",
+        "-3",
+        "--show-pushes",
+        "yes"
+      ],
+      "intent": "own finite RESP3 client with private history/config",
+      "PID": 40881,
+      "PGID": 40881,
+      "client_id": 5,
+      "hello": {
+        "server": "redis",
+        "version": "8.10.1",
+        "proto": 3,
+        "id": 5,
+        "mode": "standalone",
+        "role": "master",
+        "modules": [
+          {
+            "name": "vectorset",
+            "ver": 1,
+            "path": "",
+            "args": []
+          }
+        ]
+      },
+      "natural_exit": 0,
+      "terminal": {
+        "command": [
+          "local-redis-cli",
+          "<own-unix-socket>",
+          "--json",
+          "-3",
+          "--show-pushes",
+          "yes"
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 5.131,
+        "decoded_JSON": [],
+        "arrival_seconds": [],
+        "output": "redis <owned-temp>/sweep389-preflight.sock> 5\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_3\"\nredis <owned-temp>/sweep389-preflight.sock> {\"server\":\"redis\",\"version\":\"8.10.1\",\"proto\":3,\"id\":5,\"mode\":\"standalone\",\"role\":\"master\",\"modules\":[{\"name\":\"vectorset\",\"ver\":1,\"path\":\"\",\"args\":[]}]}\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_4\"\nredis <owned-temp>/sweep389-preflight.sock> \"line1\\r\\nline2 café 日本 😀\\u0000tail\"\nredis <owned-temp>/sweep389-preflight.sock> null\nredis <owned-temp>/sweep389-preflight.sock> {\"unicode\":\"日本 😀\",\"empty\":\"\"}\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_9\"\nredis <owned-temp>/sweep389-preflight.sock> [\"alpha\",\"beta\"]\nredis <owned-temp>/sweep389-preflight.sock> [[\"beta\",-2.5],[\"alpha\",1.25]]\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_10\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_11\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_13\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_19\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_22\"\nredis <owned-temp>/sweep389-preflight.sock> 1\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_24\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_26\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_29\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_32\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_34\"\nredis <owned-temp>/sweep389-preflight.sock> 1\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_36\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_39\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"initial\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_42\"\nredis <owned-temp>/sweep389-preflight.sock> [\"invalidate\",[\"qa389_local389:text\"]]\n\"PONG\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_44\"\nredis <owned-temp>/sweep389-preflight.sock> \"other render\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_45\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_46\"\nredis <owned-temp>/sweep389-preflight.sock> \"PONG\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_47\"\nredis <owned-temp>/sweep389-preflight.sock> \"self render\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_48\"\nredis <owned-temp>/sweep389-preflight.sock> [\"invalidate\",[\"qa389_local389:text\"]]\n\"PONG\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_50\"\nredis <owned-temp>/sweep389-preflight.sock> null\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_51\"\nredis <owned-temp>/sweep389-preflight.sock> [\"invalidate\",[\"qa389_local389:missing\"]]\n\"PONG\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_53\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"second render\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_55\"\nredis <owned-temp>/sweep389-preflight.sock> \"PONG\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_57\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"not cached render\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_58\"\nredis <owned-temp>/sweep389-preflight.sock> [\"invalidate\",[\"qa389_local389:text\"]]\n\"PONG\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_60\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_61\"\nredis <owned-temp>/sweep389-preflight.sock> [\"invalidate\",[\"qa389_local389:cold\"]]\n\"PONG\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_63\"\nredis <owned-temp>/sweep389-preflight.sock> \"PONG\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_65\"\nredis <owned-temp>/sweep389-preflight.sock> [\"invalidate\",[\"qa389_local389:cold\"]]\n\"PONG\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_67\"\nredis <owned-temp>/sweep389-preflight.sock> \"OK\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_68\"\nredis <owned-temp>/sweep389-preflight.sock> \"PONG\"\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_70\"\nredis <owned-temp>/sweep389-preflight.sock> 5\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_72\"\nredis <owned-temp>/sweep389-preflight.sock> 5\nredis <owned-temp>/sweep389-preflight.sock> \"QA389_local389_FENCE_73\"\nredis <owned-temp>/sweep389-preflight.sock> ",
+        "own_process_group_cleaned": true
+      }
+    }
+  },
+  "keys": [
+    "qa389_local389:text",
+    "qa389_local389:hash",
+    "qa389_local389:set",
+    "qa389_local389:scores",
+    "qa389_local389:missing",
+    "qa389_local389:cold",
+    "qa389_local389:expiry",
+    "qa389_other_local389:value"
+  ],
+  "pass": true,
+  "server_stopped": true,
+  "socket_removed": true,
+  "own_history_files_removed": true,
+  "preexisting_history_unchanged": true
+}

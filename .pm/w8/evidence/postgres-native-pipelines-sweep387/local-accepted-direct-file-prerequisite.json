@@ -1,0 +1,579 @@
+{
+  "qualification": "own disposable local PostgreSQL18.6 and psql18.6 pipeline/extended-query prerequisite, not native Bex/Render wrappers or hosted database",
+  "actors": [
+    {
+      "actor": "bex",
+      "fixture": {
+        "schema": "qa387_local387_bex",
+        "prepared": [
+          "qa387_local387_bex_insert",
+          "qa387_local387_bex_calc"
+        ],
+        "sql": "\\set ON_ERROR_STOP off\nSET statement_timeout='10s';SET lock_timeout='500ms';SET idle_in_transaction_session_timeout='30s';\nSELECT jsonb_build_object('frame','QA387_local387_bex_initial','pid',pg_backend_pid(),'payload',jsonb_build_object('major',current_setting('server_version_num')::int/10000,'encoding',current_setting('server_encoding'),'schema_absent',to_regnamespace('qa387_local387_bex') IS NULL))::text;\nCREATE SCHEMA qa387_local387_bex;\nCREATE TABLE qa387_local387_bex.items (id int PRIMARY KEY,label text NOT NULL,amount numeric,payload jsonb);\nSELECT jsonb_build_object('frame','QA387_local387_bex_bound','pid',pg_backend_pid(),'payload',jsonb_build_object('n',$1::int,'label',$2::text,'amount',$3::numeric::text,'blob',encode($4::bytea,'hex'),'json',$5::jsonb))::text \\bind '42' 'café 日本 😀' '1.2300' '\\\\x00ff007f' '{\"hello\":\"世界\"}' \\g\nINSERT INTO qa387_local387_bex.items VALUES($1::int,$2::text,$3::numeric,$4::jsonb) RETURNING jsonb_build_object('frame','QA387_local387_bex_insert_'||id::text,'pid',pg_backend_pid(),'payload',jsonb_build_object('id',id,'label',label,'amount',amount::text,'json',payload))::text \\parse qa387_local387_bex_insert\n\\bind_named qa387_local387_bex_insert '1' 'one café' '1.2300' '{\"n\": 1}' \\g\n\\bind_named qa387_local387_bex_insert '2' '' '0.000' '{\"n\": 2}' \\g\nSELECT jsonb_build_object('frame','QA387_local387_bex_prepared','pid',pg_backend_pid(),'payload',(SELECT to_jsonb(parameter_types::text[]) FROM pg_prepared_statements WHERE name='qa387_local387_bex_insert'))::text;\n\\startpipeline\n\\bind_named qa387_local387_bex_insert '3' 'three 日本' '3.0' '{\"n\": 3}' \\sendpipeline\n\\bind_named qa387_local387_bex_insert '4' 'four 😀' '4.00' '{\"n\": 4}' \\sendpipeline\n\\flush\n\\flushrequest\n\\getresults 1\n\\getresults\n\\syncpipeline\n\\getresults\n\\endpipeline\nSELECT jsonb_build_object('frame','QA387_local387_bex_after_first_pipeline','pid',pg_backend_pid(),'payload',(SELECT jsonb_agg(id ORDER BY id) FROM qa387_local387_bex.items))::text;\n\\close_prepared qa387_local387_bex_insert\nSELECT jsonb_build_object('frame','QA387_local387_bex_closed','pid',pg_backend_pid(),'payload',NOT EXISTS(SELECT 1 FROM pg_prepared_statements WHERE name='qa387_local387_bex_insert'))::text;\n\\bind_named qa387_local387_bex_insert '99' 'missing' '99' '{}' \\g\n\\echo QA387_local387_bex_STATE_closed :SQLSTATE\nINSERT INTO qa387_local387_bex.items VALUES($1::int,$2::text,$3::numeric,$4::jsonb) RETURNING jsonb_build_object('frame','QA387_local387_bex_insert_'||id::text,'pid',pg_backend_pid(),'payload',jsonb_build_object('id',id,'label',label,'amount',amount::text,'json',payload))::text \\parse qa387_local387_bex_insert\n\\startpipeline\n\\bind_named qa387_local387_bex_insert '5' 'rolled back' '5' '{\"n\": 5}' \\sendpipeline\n\\bind_named qa387_local387_bex_insert '5' 'rolled back' '5' '{\"n\": 5}' \\sendpipeline\nINSERT INTO qa387_local387_bex.items VALUES(6,'skipped',6,'{}');\n\\flushrequest\n\\getresults 1\n\\getresults 1\n\\echo QA387_local387_bex_STATE_duplicate :SQLSTATE\n\\getresults\n\\syncpipeline\n\\getresults\n\\endpipeline\nSELECT jsonb_build_object('frame','QA387_local387_bex_after_failed_group','pid',pg_backend_pid(),'payload',(SELECT jsonb_agg(id ORDER BY id) FROM qa387_local387_bex.items))::text;\n\\startpipeline\n\\bind_named qa387_local387_bex_insert '7' 'seven' '7' '{\"n\": 7}' \\sendpipeline\n\\syncpipeline\n\\bind_named qa387_local387_bex_insert '8' 'eight' '8' '{\"n\": 8}' \\sendpipeline\n\\syncpipeline\n\\getresults\n\\endpipeline\nSELECT jsonb_build_object('frame','QA387_local387_bex_after_new_groups','pid',pg_backend_pid(),'payload',(SELECT jsonb_agg(id ORDER BY id) FROM qa387_local387_bex.items))::text;\n\\startpipeline\nSELECT jsonb_build_object('frame','QA387_local387_bex_parsed_in_pipeline','pid',pg_backend_pid(),'payload',$1::int)::text \\parse qa387_local387_bex_calc\n\\bind_named qa387_local387_bex_calc '99' \\sendpipeline\n\\close_prepared qa387_local387_bex_calc\n\\syncpipeline\n\\getresults\n\\endpipeline\n\\close_prepared qa387_local387_bex_insert\nSELECT jsonb_build_object('frame','QA387_local387_bex_prepared_gone','pid',pg_backend_pid(),'payload',(SELECT count(*) FROM pg_prepared_statements WHERE name IN('qa387_local387_bex_insert','qa387_local387_bex_calc')))::text;\nDROP SCHEMA qa387_local387_bex CASCADE;\nSELECT jsonb_build_object('frame','QA387_local387_bex_final_absence','pid',pg_backend_pid(),'payload',to_regnamespace('qa387_local387_bex') IS NULL)::text;\n",
+        "frames": {
+          "QA387_local387_bex_initial": {
+            "major": 18,
+            "encoding": "UTF8",
+            "schema_absent": true
+          },
+          "QA387_local387_bex_bound": {
+            "n": 42,
+            "label": "café 日本 😀",
+            "amount": "1.2300",
+            "blob": "00ff007f",
+            "json": {
+              "hello": "世界"
+            }
+          },
+          "QA387_local387_bex_insert_1": {
+            "id": 1,
+            "label": "one café",
+            "amount": "1.2300",
+            "json": {
+              "n": 1
+            }
+          },
+          "QA387_local387_bex_insert_2": {
+            "id": 2,
+            "label": "",
+            "amount": "0.000",
+            "json": {
+              "n": 2
+            }
+          },
+          "QA387_local387_bex_insert_3": {
+            "id": 3,
+            "label": "three 日本",
+            "amount": "3.0",
+            "json": {
+              "n": 3
+            }
+          },
+          "QA387_local387_bex_insert_4": {
+            "id": 4,
+            "label": "four 😀",
+            "amount": "4.00",
+            "json": {
+              "n": 4
+            }
+          },
+          "QA387_local387_bex_insert_5": {
+            "id": 5,
+            "label": "rolled back",
+            "amount": "5",
+            "json": {
+              "n": 5
+            }
+          },
+          "QA387_local387_bex_insert_7": {
+            "id": 7,
+            "label": "seven",
+            "amount": "7",
+            "json": {
+              "n": 7
+            }
+          },
+          "QA387_local387_bex_insert_8": {
+            "id": 8,
+            "label": "eight",
+            "amount": "8",
+            "json": {
+              "n": 8
+            }
+          },
+          "QA387_local387_bex_prepared": [
+            "integer",
+            "text",
+            "numeric",
+            "jsonb"
+          ],
+          "QA387_local387_bex_after_first_pipeline": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "QA387_local387_bex_closed": true,
+          "QA387_local387_bex_after_failed_group": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "QA387_local387_bex_after_new_groups": [
+            1,
+            2,
+            3,
+            4,
+            7,
+            8
+          ],
+          "QA387_local387_bex_parsed_in_pipeline": 99,
+          "QA387_local387_bex_prepared_gone": 0,
+          "QA387_local387_bex_final_absence": true
+        },
+        "states": {
+          "QA387_local387_bex_STATE_closed": "26000",
+          "QA387_local387_bex_STATE_duplicate": "23505"
+        }
+      },
+      "exit": 0,
+      "stdout": "{\"pid\": 18490, \"frame\": \"QA387_local387_bex_initial\", \"payload\": {\"major\": 18, \"encoding\": \"UTF8\", \"schema_absent\": true}}\n{\"pid\": 18490, \"frame\": \"QA387_local387_bex_bound\", \"payload\": {\"n\": 42, \"blob\": \"00ff007f\", \"json\": {\"hello\": \"世界\"}, \"label\": \"café 日本 😀\", \"amount\": \"1.2300\"}}\n{\"pid\": 18490, \"frame\": \"QA387_local387_bex_insert_1\", \"payload\": {\"id\": 1, \"json\": {\"n\": 1}, \"label\": \"one café\", \"amount\": \"1.2300\"}}\n{\"pid\": 18490, \"frame\": \"QA387_local387_bex_insert_2\", \"payload\": {\"id\": 2, \"json\": {\"n\": 2}, \"label\": \"\", \"amount\": \"0.000\"}}\n{\"pid\": 18490, \"frame\": \"QA387_local387_bex_prepared\", \"payload\": [\"integer\", \"text\", \"numeric\", \"jsonb\"]}\n{\"pid\": 18490, \"frame\": \"QA387_local387_bex_insert_3\", \"payload\": {\"id\": 3, \"json\": {\"n\": 3}, \"label\": \"three 日本\", \"amount\": \"3.0\"}}\n{\"pid\": 18490, \"frame\": \"QA387_local387_bex_insert_4\", \"payload\": {\"id\": 4, \"json\": {\"n\": 4}, \"label\": \"four 😀\", \"amount\": \"4.00\"}}\n{\"pid\": 18490, \"frame\": \"QA387_local387_bex_after_first_pipeline\", \"payload\": [1, 2, 3, 4]}\n{\"pid\": 18490, \"frame\": \"QA387_local387_bex_closed\", \"payload\": true}\nQA387_local387_bex_STATE_closed 26000\n{\"pid\": 18490, \"frame\": \"QA387_local387_bex_insert_5\", \"payload\": {\"id\": 5, \"json\": {\"n\": 5}, \"label\": \"rolled back\", \"amount\": \"5\"}}\nQA387_local387_bex_STATE_duplicate 23505\n{\"pid\": 18490, \"frame\": \"QA387_local387_bex_after_failed_group\", \"payload\": [1, 2, 3, 4]}\n{\"pid\": 18490, \"frame\": \"QA387_local387_bex_insert_7\", \"payload\": {\"id\": 7, \"json\": {\"n\": 7}, \"label\": \"seven\", \"amount\": \"7\"}}\n{\"pid\": 18490, \"frame\": \"QA387_local387_bex_insert_8\", \"payload\": {\"id\": 8, \"json\": {\"n\": 8}, \"label\": \"eight\", \"amount\": \"8\"}}\n{\"pid\": 18490, \"frame\": \"QA387_local387_bex_after_new_groups\", \"payload\": [1, 2, 3, 4, 7, 8]}\n{\"pid\": 18490, \"frame\": \"QA387_local387_bex_parsed_in_pipeline\", \"payload\": 99}\n{\"pid\": 18490, \"frame\": \"QA387_local387_bex_prepared_gone\", \"payload\": 0}\n{\"pid\": 18490, \"frame\": \"QA387_local387_bex_final_absence\", \"payload\": true}\n",
+      "stderr": "psql:/tmp/bex387-kkf2xlh8/bex.sql:24: ERROR:  prepared statement \"qa387_local387_bex_insert\" does not exist\npsql:/tmp/bex387-kkf2xlh8/bex.sql:33: ERROR:  duplicate key value violates unique constraint \"items_pkey\"\nDETAIL:  Key (id)=(5) already exists.\npsql:/tmp/bex387-kkf2xlh8/bex.sql:35: Pipeline aborted, command did not run\npsql:/tmp/bex387-kkf2xlh8/bex.sql:57: NOTICE:  drop cascades to table qa387_local387_bex.items\n",
+      "verification": {
+        "frames": {
+          "QA387_local387_bex_initial": [
+            {
+              "major": 18,
+              "encoding": "UTF8",
+              "schema_absent": true
+            }
+          ],
+          "QA387_local387_bex_bound": [
+            {
+              "n": 42,
+              "blob": "00ff007f",
+              "json": {
+                "hello": "世界"
+              },
+              "label": "café 日本 😀",
+              "amount": "1.2300"
+            }
+          ],
+          "QA387_local387_bex_insert_1": [
+            {
+              "id": 1,
+              "json": {
+                "n": 1
+              },
+              "label": "one café",
+              "amount": "1.2300"
+            }
+          ],
+          "QA387_local387_bex_insert_2": [
+            {
+              "id": 2,
+              "json": {
+                "n": 2
+              },
+              "label": "",
+              "amount": "0.000"
+            }
+          ],
+          "QA387_local387_bex_prepared": [
+            [
+              "integer",
+              "text",
+              "numeric",
+              "jsonb"
+            ]
+          ],
+          "QA387_local387_bex_insert_3": [
+            {
+              "id": 3,
+              "json": {
+                "n": 3
+              },
+              "label": "three 日本",
+              "amount": "3.0"
+            }
+          ],
+          "QA387_local387_bex_insert_4": [
+            {
+              "id": 4,
+              "json": {
+                "n": 4
+              },
+              "label": "four 😀",
+              "amount": "4.00"
+            }
+          ],
+          "QA387_local387_bex_after_first_pipeline": [
+            [
+              1,
+              2,
+              3,
+              4
+            ]
+          ],
+          "QA387_local387_bex_closed": [
+            true
+          ],
+          "QA387_local387_bex_insert_5": [
+            {
+              "id": 5,
+              "json": {
+                "n": 5
+              },
+              "label": "rolled back",
+              "amount": "5"
+            }
+          ],
+          "QA387_local387_bex_after_failed_group": [
+            [
+              1,
+              2,
+              3,
+              4
+            ]
+          ],
+          "QA387_local387_bex_insert_7": [
+            {
+              "id": 7,
+              "json": {
+                "n": 7
+              },
+              "label": "seven",
+              "amount": "7"
+            }
+          ],
+          "QA387_local387_bex_insert_8": [
+            {
+              "id": 8,
+              "json": {
+                "n": 8
+              },
+              "label": "eight",
+              "amount": "8"
+            }
+          ],
+          "QA387_local387_bex_after_new_groups": [
+            [
+              1,
+              2,
+              3,
+              4,
+              7,
+              8
+            ]
+          ],
+          "QA387_local387_bex_parsed_in_pipeline": [
+            99
+          ],
+          "QA387_local387_bex_prepared_gone": [
+            0
+          ],
+          "QA387_local387_bex_final_absence": [
+            true
+          ]
+        },
+        "states": {
+          "QA387_local387_bex_STATE_closed": "26000",
+          "QA387_local387_bex_STATE_duplicate": "23505"
+        },
+        "checks": {
+          "QA387_local387_bex_initial": true,
+          "QA387_local387_bex_bound": true,
+          "QA387_local387_bex_insert_1": true,
+          "QA387_local387_bex_insert_2": true,
+          "QA387_local387_bex_insert_3": true,
+          "QA387_local387_bex_insert_4": true,
+          "QA387_local387_bex_insert_5": true,
+          "QA387_local387_bex_insert_7": true,
+          "QA387_local387_bex_insert_8": true,
+          "QA387_local387_bex_prepared": true,
+          "QA387_local387_bex_after_first_pipeline": true,
+          "QA387_local387_bex_closed": true,
+          "QA387_local387_bex_after_failed_group": true,
+          "QA387_local387_bex_after_new_groups": true,
+          "QA387_local387_bex_parsed_in_pipeline": true,
+          "QA387_local387_bex_prepared_gone": true,
+          "QA387_local387_bex_final_absence": true
+        },
+        "backend_pids": [
+          18490
+        ],
+        "pass": true
+      }
+    },
+    {
+      "actor": "render",
+      "fixture": {
+        "schema": "qa387_local387_render",
+        "prepared": [
+          "qa387_local387_render_insert",
+          "qa387_local387_render_calc"
+        ],
+        "sql": "\\set ON_ERROR_STOP off\nSET statement_timeout='10s';SET lock_timeout='500ms';SET idle_in_transaction_session_timeout='30s';\nSELECT jsonb_build_object('frame','QA387_local387_render_initial','pid',pg_backend_pid(),'payload',jsonb_build_object('major',current_setting('server_version_num')::int/10000,'encoding',current_setting('server_encoding'),'schema_absent',to_regnamespace('qa387_local387_render') IS NULL))::text;\nCREATE SCHEMA qa387_local387_render;\nCREATE TABLE qa387_local387_render.items (id int PRIMARY KEY,label text NOT NULL,amount numeric,payload jsonb);\nSELECT jsonb_build_object('frame','QA387_local387_render_bound','pid',pg_backend_pid(),'payload',jsonb_build_object('n',$1::int,'label',$2::text,'amount',$3::numeric::text,'blob',encode($4::bytea,'hex'),'json',$5::jsonb))::text \\bind '42' 'café 日本 😀' '1.2300' '\\\\x00ff007f' '{\"hello\":\"世界\"}' \\g\nINSERT INTO qa387_local387_render.items VALUES($1::int,$2::text,$3::numeric,$4::jsonb) RETURNING jsonb_build_object('frame','QA387_local387_render_insert_'||id::text,'pid',pg_backend_pid(),'payload',jsonb_build_object('id',id,'label',label,'amount',amount::text,'json',payload))::text \\parse qa387_local387_render_insert\n\\bind_named qa387_local387_render_insert '1' 'one café' '1.2300' '{\"n\": 1}' \\g\n\\bind_named qa387_local387_render_insert '2' '' '0.000' '{\"n\": 2}' \\g\nSELECT jsonb_build_object('frame','QA387_local387_render_prepared','pid',pg_backend_pid(),'payload',(SELECT to_jsonb(parameter_types::text[]) FROM pg_prepared_statements WHERE name='qa387_local387_render_insert'))::text;\n\\startpipeline\n\\bind_named qa387_local387_render_insert '3' 'three 日本' '3.0' '{\"n\": 3}' \\sendpipeline\n\\bind_named qa387_local387_render_insert '4' 'four 😀' '4.00' '{\"n\": 4}' \\sendpipeline\n\\flush\n\\flushrequest\n\\getresults 1\n\\getresults\n\\syncpipeline\n\\getresults\n\\endpipeline\nSELECT jsonb_build_object('frame','QA387_local387_render_after_first_pipeline','pid',pg_backend_pid(),'payload',(SELECT jsonb_agg(id ORDER BY id) FROM qa387_local387_render.items))::text;\n\\close_prepared qa387_local387_render_insert\nSELECT jsonb_build_object('frame','QA387_local387_render_closed','pid',pg_backend_pid(),'payload',NOT EXISTS(SELECT 1 FROM pg_prepared_statements WHERE name='qa387_local387_render_insert'))::text;\n\\bind_named qa387_local387_render_insert '99' 'missing' '99' '{}' \\g\n\\echo QA387_local387_render_STATE_closed :SQLSTATE\nINSERT INTO qa387_local387_render.items VALUES($1::int,$2::text,$3::numeric,$4::jsonb) RETURNING jsonb_build_object('frame','QA387_local387_render_insert_'||id::text,'pid',pg_backend_pid(),'payload',jsonb_build_object('id',id,'label',label,'amount',amount::text,'json',payload))::text \\parse qa387_local387_render_insert\n\\startpipeline\n\\bind_named qa387_local387_render_insert '5' 'rolled back' '5' '{\"n\": 5}' \\sendpipeline\n\\bind_named qa387_local387_render_insert '5' 'rolled back' '5' '{\"n\": 5}' \\sendpipeline\nINSERT INTO qa387_local387_render.items VALUES(6,'skipped',6,'{}');\n\\flushrequest\n\\getresults 1\n\\getresults 1\n\\echo QA387_local387_render_STATE_duplicate :SQLSTATE\n\\getresults\n\\syncpipeline\n\\getresults\n\\endpipeline\nSELECT jsonb_build_object('frame','QA387_local387_render_after_failed_group','pid',pg_backend_pid(),'payload',(SELECT jsonb_agg(id ORDER BY id) FROM qa387_local387_render.items))::text;\n\\startpipeline\n\\bind_named qa387_local387_render_insert '7' 'seven' '7' '{\"n\": 7}' \\sendpipeline\n\\syncpipeline\n\\bind_named qa387_local387_render_insert '8' 'eight' '8' '{\"n\": 8}' \\sendpipeline\n\\syncpipeline\n\\getresults\n\\endpipeline\nSELECT jsonb_build_object('frame','QA387_local387_render_after_new_groups','pid',pg_backend_pid(),'payload',(SELECT jsonb_agg(id ORDER BY id) FROM qa387_local387_render.items))::text;\n\\startpipeline\nSELECT jsonb_build_object('frame','QA387_local387_render_parsed_in_pipeline','pid',pg_backend_pid(),'payload',$1::int)::text \\parse qa387_local387_render_calc\n\\bind_named qa387_local387_render_calc '99' \\sendpipeline\n\\close_prepared qa387_local387_render_calc\n\\syncpipeline\n\\getresults\n\\endpipeline\n\\close_prepared qa387_local387_render_insert\nSELECT jsonb_build_object('frame','QA387_local387_render_prepared_gone','pid',pg_backend_pid(),'payload',(SELECT count(*) FROM pg_prepared_statements WHERE name IN('qa387_local387_render_insert','qa387_local387_render_calc')))::text;\nDROP SCHEMA qa387_local387_render CASCADE;\nSELECT jsonb_build_object('frame','QA387_local387_render_final_absence','pid',pg_backend_pid(),'payload',to_regnamespace('qa387_local387_render') IS NULL)::text;\n",
+        "frames": {
+          "QA387_local387_render_initial": {
+            "major": 18,
+            "encoding": "UTF8",
+            "schema_absent": true
+          },
+          "QA387_local387_render_bound": {
+            "n": 42,
+            "label": "café 日本 😀",
+            "amount": "1.2300",
+            "blob": "00ff007f",
+            "json": {
+              "hello": "世界"
+            }
+          },
+          "QA387_local387_render_insert_1": {
+            "id": 1,
+            "label": "one café",
+            "amount": "1.2300",
+            "json": {
+              "n": 1
+            }
+          },
+          "QA387_local387_render_insert_2": {
+            "id": 2,
+            "label": "",
+            "amount": "0.000",
+            "json": {
+              "n": 2
+            }
+          },
+          "QA387_local387_render_insert_3": {
+            "id": 3,
+            "label": "three 日本",
+            "amount": "3.0",
+            "json": {
+              "n": 3
+            }
+          },
+          "QA387_local387_render_insert_4": {
+            "id": 4,
+            "label": "four 😀",
+            "amount": "4.00",
+            "json": {
+              "n": 4
+            }
+          },
+          "QA387_local387_render_insert_5": {
+            "id": 5,
+            "label": "rolled back",
+            "amount": "5",
+            "json": {
+              "n": 5
+            }
+          },
+          "QA387_local387_render_insert_7": {
+            "id": 7,
+            "label": "seven",
+            "amount": "7",
+            "json": {
+              "n": 7
+            }
+          },
+          "QA387_local387_render_insert_8": {
+            "id": 8,
+            "label": "eight",
+            "amount": "8",
+            "json": {
+              "n": 8
+            }
+          },
+          "QA387_local387_render_prepared": [
+            "integer",
+            "text",
+            "numeric",
+            "jsonb"
+          ],
+          "QA387_local387_render_after_first_pipeline": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "QA387_local387_render_closed": true,
+          "QA387_local387_render_after_failed_group": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "QA387_local387_render_after_new_groups": [
+            1,
+            2,
+            3,
+            4,
+            7,
+            8
+          ],
+          "QA387_local387_render_parsed_in_pipeline": 99,
+          "QA387_local387_render_prepared_gone": 0,
+          "QA387_local387_render_final_absence": true
+        },
+        "states": {
+          "QA387_local387_render_STATE_closed": "26000",
+          "QA387_local387_render_STATE_duplicate": "23505"
+        }
+      },
+      "exit": 0,
+      "stdout": "{\"pid\": 18492, \"frame\": \"QA387_local387_render_initial\", \"payload\": {\"major\": 18, \"encoding\": \"UTF8\", \"schema_absent\": true}}\n{\"pid\": 18492, \"frame\": \"QA387_local387_render_bound\", \"payload\": {\"n\": 42, \"blob\": \"00ff007f\", \"json\": {\"hello\": \"世界\"}, \"label\": \"café 日本 😀\", \"amount\": \"1.2300\"}}\n{\"pid\": 18492, \"frame\": \"QA387_local387_render_insert_1\", \"payload\": {\"id\": 1, \"json\": {\"n\": 1}, \"label\": \"one café\", \"amount\": \"1.2300\"}}\n{\"pid\": 18492, \"frame\": \"QA387_local387_render_insert_2\", \"payload\": {\"id\": 2, \"json\": {\"n\": 2}, \"label\": \"\", \"amount\": \"0.000\"}}\n{\"pid\": 18492, \"frame\": \"QA387_local387_render_prepared\", \"payload\": [\"integer\", \"text\", \"numeric\", \"jsonb\"]}\n{\"pid\": 18492, \"frame\": \"QA387_local387_render_insert_3\", \"payload\": {\"id\": 3, \"json\": {\"n\": 3}, \"label\": \"three 日本\", \"amount\": \"3.0\"}}\n{\"pid\": 18492, \"frame\": \"QA387_local387_render_insert_4\", \"payload\": {\"id\": 4, \"json\": {\"n\": 4}, \"label\": \"four 😀\", \"amount\": \"4.00\"}}\n{\"pid\": 18492, \"frame\": \"QA387_local387_render_after_first_pipeline\", \"payload\": [1, 2, 3, 4]}\n{\"pid\": 18492, \"frame\": \"QA387_local387_render_closed\", \"payload\": true}\nQA387_local387_render_STATE_closed 26000\n{\"pid\": 18492, \"frame\": \"QA387_local387_render_insert_5\", \"payload\": {\"id\": 5, \"json\": {\"n\": 5}, \"label\": \"rolled back\", \"amount\": \"5\"}}\nQA387_local387_render_STATE_duplicate 23505\n{\"pid\": 18492, \"frame\": \"QA387_local387_render_after_failed_group\", \"payload\": [1, 2, 3, 4]}\n{\"pid\": 18492, \"frame\": \"QA387_local387_render_insert_7\", \"payload\": {\"id\": 7, \"json\": {\"n\": 7}, \"label\": \"seven\", \"amount\": \"7\"}}\n{\"pid\": 18492, \"frame\": \"QA387_local387_render_insert_8\", \"payload\": {\"id\": 8, \"json\": {\"n\": 8}, \"label\": \"eight\", \"amount\": \"8\"}}\n{\"pid\": 18492, \"frame\": \"QA387_local387_render_after_new_groups\", \"payload\": [1, 2, 3, 4, 7, 8]}\n{\"pid\": 18492, \"frame\": \"QA387_local387_render_parsed_in_pipeline\", \"payload\": 99}\n{\"pid\": 18492, \"frame\": \"QA387_local387_render_prepared_gone\", \"payload\": 0}\n{\"pid\": 18492, \"frame\": \"QA387_local387_render_final_absence\", \"payload\": true}\n",
+      "stderr": "psql:/tmp/bex387-kkf2xlh8/render.sql:24: ERROR:  prepared statement \"qa387_local387_render_insert\" does not exist\npsql:/tmp/bex387-kkf2xlh8/render.sql:33: ERROR:  duplicate key value violates unique constraint \"items_pkey\"\nDETAIL:  Key (id)=(5) already exists.\npsql:/tmp/bex387-kkf2xlh8/render.sql:35: Pipeline aborted, command did not run\npsql:/tmp/bex387-kkf2xlh8/render.sql:57: NOTICE:  drop cascades to table qa387_local387_render.items\n",
+      "verification": {
+        "frames": {
+          "QA387_local387_render_initial": [
+            {
+              "major": 18,
+              "encoding": "UTF8",
+              "schema_absent": true
+            }
+          ],
+          "QA387_local387_render_bound": [
+            {
+              "n": 42,
+              "blob": "00ff007f",
+              "json": {
+                "hello": "世界"
+              },
+              "label": "café 日本 😀",
+              "amount": "1.2300"
+            }
+          ],
+          "QA387_local387_render_insert_1": [
+            {
+              "id": 1,
+              "json": {
+                "n": 1
+              },
+              "label": "one café",
+              "amount": "1.2300"
+            }
+          ],
+          "QA387_local387_render_insert_2": [
+            {
+              "id": 2,
+              "json": {
+                "n": 2
+              },
+              "label": "",
+              "amount": "0.000"
+            }
+          ],
+          "QA387_local387_render_prepared": [
+            [
+              "integer",
+              "text",
+              "numeric",
+              "jsonb"
+            ]
+          ],
+          "QA387_local387_render_insert_3": [
+            {
+              "id": 3,
+              "json": {
+                "n": 3
+              },
+              "label": "three 日本",
+              "amount": "3.0"
+            }
+          ],
+          "QA387_local387_render_insert_4": [
+            {
+              "id": 4,
+              "json": {
+                "n": 4
+              },
+              "label": "four 😀",
+              "amount": "4.00"
+            }
+          ],
+          "QA387_local387_render_after_first_pipeline": [
+            [
+              1,
+              2,
+              3,
+              4
+            ]
+          ],
+          "QA387_local387_render_closed": [
+            true
+          ],
+          "QA387_local387_render_insert_5": [
+            {
+              "id": 5,
+              "json": {
+                "n": 5
+              },
+              "label": "rolled back",
+              "amount": "5"
+            }
+          ],
+          "QA387_local387_render_after_failed_group": [
+            [
+              1,
+              2,
+              3,
+              4
+            ]
+          ],
+          "QA387_local387_render_insert_7": [
+            {
+              "id": 7,
+              "json": {
+                "n": 7
+              },
+              "label": "seven",
+              "amount": "7"
+            }
+          ],
+          "QA387_local387_render_insert_8": [
+            {
+              "id": 8,
+              "json": {
+                "n": 8
+              },
+              "label": "eight",
+              "amount": "8"
+            }
+          ],
+          "QA387_local387_render_after_new_groups": [
+            [
+              1,
+              2,
+              3,
+              4,
+              7,
+              8
+            ]
+          ],
+          "QA387_local387_render_parsed_in_pipeline": [
+            99
+          ],
+          "QA387_local387_render_prepared_gone": [
+            0
+          ],
+          "QA387_local387_render_final_absence": [
+            true
+          ]
+        },
+        "states": {
+          "QA387_local387_render_STATE_closed": "26000",
+          "QA387_local387_render_STATE_duplicate": "23505"
+        },
+        "checks": {
+          "QA387_local387_render_initial": true,
+          "QA387_local387_render_bound": true,
+          "QA387_local387_render_insert_1": true,
+          "QA387_local387_render_insert_2": true,
+          "QA387_local387_render_insert_3": true,
+          "QA387_local387_render_insert_4": true,
+          "QA387_local387_render_insert_5": true,
+          "QA387_local387_render_insert_7": true,
+          "QA387_local387_render_insert_8": true,
+          "QA387_local387_render_prepared": true,
+          "QA387_local387_render_after_first_pipeline": true,
+          "QA387_local387_render_closed": true,
+          "QA387_local387_render_after_failed_group": true,
+          "QA387_local387_render_after_new_groups": true,
+          "QA387_local387_render_parsed_in_pipeline": true,
+          "QA387_local387_render_prepared_gone": true,
+          "QA387_local387_render_final_absence": true
+        },
+        "backend_pids": [
+          18492
+        ],
+        "pass": true
+      }
+    }
+  ],
+  "own_postgres_PID": 18479,
+  "pass": true,
+  "local_server_stopped": true,
+  "local_data_socket_scripts_history_removed": true
+}

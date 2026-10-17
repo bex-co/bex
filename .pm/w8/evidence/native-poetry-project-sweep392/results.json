@@ -1,0 +1,42 @@
+{
+  "sweep": 392,
+  "source_head": "5448f8d9c3f30db207bc896b83985f4fdefbac42",
+  "serving_revision": "unknown",
+  "native_POST201_create_exit0": 2,
+  "Poetry_requested": {
+    "bex": null,
+    "render": "1.8.5"
+  },
+  "Poetry_observed": [
+    "Poetry (version 1.8.5)",
+    "Poetry (version 2.1.3)"
+  ],
+  "Python_observed": [
+    "3.12.15"
+  ],
+  "authored_metadata_original_Flask_source_boundary": true,
+  "actual_three_phase_project_env_isolation_and_package_proofs": 6,
+  "stable_generated_lock_per_service": 2,
+  "observed_same_project_prefix_per_service": [
+    true,
+    true
+  ],
+  "first_children_Live_original_HTTP200_requests": [
+    2,
+    6
+  ],
+  "replacement_deploy_or_activation_workaround": false,
+  "shared_REST_GraphQL_MCP_reads": 6,
+  "exact_API_only_env_reads": 2,
+  "local_real_Poetry_installs_runtime_HTTP_controls": 2,
+  "local_own_containers_images_context_removed": true,
+  "native_deletes_exit0": 2,
+  "owned_parent_children_former_URLs_absent": [
+    2,
+    2,
+    2
+  ],
+  "baselines_and_all_termination0": true,
+  "new_issue": null,
+  "uncommitted": true
+}

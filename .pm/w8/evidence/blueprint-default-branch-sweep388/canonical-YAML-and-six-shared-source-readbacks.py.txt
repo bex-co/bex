@@ -1,0 +1,14 @@
+from pathlib import Path
+import sys,json
+P=Path(__file__).resolve().parent;f=P/'sweep388-omitted-branch.py';case=sys.argv[1];sys.argv=[str(f),'shared-state',case];exec(compile(f.read_text().split("if mode=='create':")[0],str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==388 and v.get('case')==case and v.get('type')=='web_service' and v.get('id'));own(x);sid=x['id'];b=next(v for v in c['resources'] if v.get('sweep')==388 and v.get('case')==case and v.get('type')=='blueprint' and v.get('id'));r=wire('/v1/blueprints/'+b['id']+'?ownerId='+ws);e={'at':now(),'receipt':r};b.setdefault('canonical_manifest_checks',[]).append(e);save();assert r['status']=='200';view=json.loads(r['response']);e['pass']=view['manifest']==manifest(x,True) and 'branch' not in yaml.safe_load(view['manifest'])['services'][0] and {v['id'] for v in view.get('resources',[])}=={sid};save();assert e['pass']
+query='query QA388 {service(id:'+json.dumps(sid)+'){id name repo branch rootDir runtime plan buildCommand startCommand autoDeploy}}'
+for surface,method,path,body in [('REST','GET','/v1/services/'+sid,None),('GraphQL','POST','/graphql',{'query':query}),('MCP','POST','/mcp',{'jsonrpc':'2.0','id':388,'method':'tools/call','params':{'name':'get_service','arguments':{'serviceId':sid,'workspaceId':ws}}})]:
+ r=api(method,path,body);e={'at':now(),'surface':surface,'receipt':r};x.setdefault('shared_state_checks',[]).append(e);save();assert r['status']=='200';raw=r['response']
+ if not raw.lstrip().startswith('{'):raw=next(line[5:].strip() for line in raw.splitlines() if line.startswith('data:'))
+ v=json.loads(raw)
+ if surface=='GraphQL':assert not v.get('errors');v=v['data']['service']
+ elif surface=='MCP':
+  assert not v.get('error') and not v['result'].get('isError');z=v['result'];v=z.get('structuredContent')
+  if v is None:v=json.loads(next(a['text'] for a in z['content'] if a['type']=='text'))
+  v=v.get('service',v)
+ d=v.get('serviceDetails',{});ec=d.get('envSpecificDetails',{});runtime=v.get('runtime') or d.get('runtime');plan=v.get('plan') or d.get('plan');build=v.get('buildCommand') if surface=='GraphQL' else ec.get('buildCommand');start=v.get('startCommand') if surface=='GraphQL' else ec.get('startCommand');e['pass']=v['id']==sid and v['name']==x['name'] and v['repo']==EXPRESS and v['branch']=='master' and v.get('rootDir','')=='' and runtime=='node' and plan=='free' and build==x['build_command'] and start==x['start_command'] and v['autoDeploy'] in (False,'no');save();print(json.dumps({'case':case,'surface':surface,'exact_independent_master_source_commands':e['pass']}),flush=True);assert e['pass']

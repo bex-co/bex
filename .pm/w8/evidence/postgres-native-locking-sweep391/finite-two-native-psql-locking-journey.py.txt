@@ -1,0 +1,99 @@
+from pathlib import Path
+import os,sys,json,time,subprocess,shutil,signal,re,tempfile,importlib.util
+P=Path(__file__).resolve().parent;spec=importlib.util.spec_from_file_location('qa391pty',P/'sweep365-pty.py');mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod);Session=mod.Session
+
+def literal(s):return "'"+s.replace("'","''")+"'"
+def journey(nonce,major,dbname,user,build,persist,e):
+ schema='qa391_'+nonce;table=schema+'.items';rowexpr="(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM "+table+")";sessions={};n=0;began=time.monotonic();e.update(schema=schema,steps=[],sessions={});persist()
+ def start_query(actor,label,statement='',payload="'{}'::jsonb",expected=None,error_state=None,recovery=''):
+  nonlocal n
+  assert time.monotonic()-began<300,'finite database locking journey deadline';n+=1;mark='QA391_'+nonce+'_'+str(n);done=mark+'_END';errmark=mark+'_STATE';s=sessions[actor][0];offset=len(s.text());script=statement.rstrip('; \n')+';\n' if statement else ''
+  if error_state is not None:script+='\\echo '+errmark+' :SQLSTATE\n'+recovery.rstrip('; \n')+';\n'
+  script+="SELECT jsonb_build_object('frame',"+literal(mark)+",'pid',pg_backend_pid(),'payload',"+payload+")::text;\n\\echo "+done+'\n';v={'at_monotonic_seconds':round(time.monotonic()-began,3),'actor':actor,'label':label,'stdin':script,'expected_payload':expected,'expected_SQLSTATE':error_state};e['steps'].append(v);persist();s.send(script);return {'actor':actor,'offset':offset,'mark':mark,'done':done,'errmark':errmark,'event':v}
+ def finish_query(q,bound=14):
+  actor=q['actor'];s=sessions[actor][0];v=q['event'];assert s.wait_since(q['done']+'\n',q['offset'],bound),'query fence absent: '+v['label'];raw=s.text()[q['offset']:];frames=[]
+  for line in raw.splitlines():
+   at=line.find('{')
+   if at<0:continue
+   try:f=json.loads(line[at:])
+   except ValueError:continue
+   if isinstance(f,dict) and f.get('frame')==q['mark']:frames.append(f)
+  assert len(frames)==1,'exact one SQL frame required';f=frames[0];v['frame']=f;v['native_output']=raw
+  if 'backend_pid' in e['sessions'][actor]:assert f['pid']==e['sessions'][actor]['backend_pid'],'native connection changed'
+  states=v['expected_SQLSTATE']
+  if states is not None:
+   match=re.search(re.escape(q['errmark'])+r'\s+([A-Z0-9]{5})\b',raw);v['observed_SQLSTATE']=match.group(1) if match else None
+  v['pass']=(v['expected_payload'] is None or f['payload']==v['expected_payload']) and (states is None or v['observed_SQLSTATE'] in ([states] if isinstance(states,str) else states));persist();print(json.dumps({'stage':v['label'],'actor':actor,'pass':v['pass'],'SQLSTATE':v.get('observed_SQLSTATE')}),flush=True);assert v['pass'],v['label'];return f
+ def query(actor,label,statement='',payload="'{}'::jsonb",expected=None,error_state=None,recovery=''):return finish_query(start_query(actor,label,statement,payload,expected,error_state,recovery))
+ def quit_actor(actor):
+  s=sessions[actor][0];s.send('\\q\n');deadline=time.monotonic()+12
+  while s.poll() is None and time.monotonic()<deadline:s.step()
+  e['sessions'][actor]['natural_exit']=s.poll();persist();assert s.poll()==0,'native session did not exit normally'
+ try:
+  for actor in ('bex','render'):
+   cmd,env,logical,prompt,cleanup=build(actor);e['sessions'][actor]={'intent':'finite own persistent native psql client/config/history','command':logical};persist();s=Session(cmd,env);sessions[actor]=(s,logical,cleanup);e['sessions'][actor].update(PID=s.pid,PGID=s.pid);persist();assert s.wait(prompt,25),'actual own psql prompt absent';metadata="jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'encoding',current_setting('server_encoding'),'statement_timeout',current_setting('statement_timeout'),'idle_in_transaction_session_timeout',current_setting('idle_in_transaction_session_timeout'),'lock_timeout',current_setting('lock_timeout'))";f=query(actor,'physical identity and connection-local finite limits',"SET statement_timeout='20s';SET idle_in_transaction_session_timeout='60s';SET lock_timeout='0'",metadata,{'database':dbname,'user':user,'major':major,'encoding':'UTF8','statement_timeout':'20s','idle_in_transaction_session_timeout':'1min','lock_timeout':'0'});e['sessions'][actor]['backend_pid']=f['pid'];persist()
+  apid=e['sessions']['bex']['backend_pid'];bpid=e['sessions']['render']['backend_pid'];assert apid!=bpid
+  query('render','fresh own schema absent','',"to_regnamespace("+literal(schema)+") IS NULL",True);e['owned_schema_intent']={'name':schema,'before_absent':True};persist();query('bex','create own two-row baseline','CREATE SCHEMA '+schema+';CREATE TABLE '+table+'(id int PRIMARY KEY,value int NOT NULL);INSERT INTO '+table+' VALUES(1,10),(2,20)',rowexpr,[[1,10],[2,20]])
+  query('bex','hold row one for NOWAIT and queue selection','BEGIN;SELECT id FROM '+table+' WHERE id=1 FOR UPDATE',rowexpr,[[1,10],[2,20]])
+  skip="(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM (SELECT id,value FROM "+table+' ORDER BY id FOR UPDATE SKIP LOCKED) q)';query('render','SKIP LOCKED returns only unlocked row','',skip,[[2,20]])
+  query('render','NOWAIT reports lock refusal and recovers same session','BEGIN;SELECT id FROM '+table+' WHERE id=1 FOR UPDATE NOWAIT',rowexpr,[[1,10],[2,20]],'55P03','ROLLBACK');query('bex','release row one without change','ROLLBACK',rowexpr,[[1,10],[2,20]])
+  query('bex','first transaction holds row one','BEGIN;UPDATE '+table+' SET value=value+100 WHERE id=1',rowexpr,[[1,110],[2,20]])
+  query('render','second transaction holds row two','BEGIN;UPDATE '+table+' SET value=value+1000 WHERE id=2',rowexpr,[[1,10],[2,1020]])
+  qa=start_query('bex','deadlock participant A waits then rolls back','UPDATE '+table+' SET value=value+1 WHERE id=2',rowexpr,[[1,10],[2,20]],['00000','40P01'],'ROLLBACK')
+  for attempt in range(6):
+   f=query('render','prove A blocked by B '+str(attempt+1),'','pg_blocking_pids('+str(apid)+') @> ARRAY['+str(bpid)+']',None)
+   if f['payload'] is True:break
+   assert f['payload'] is False;time.sleep(.1)
+  else:raise RuntimeError('own blocking edge not observed; do not invent deadlock')
+  qb=start_query('render','deadlock participant B waits then rolls back','UPDATE '+table+' SET value=value+1 WHERE id=1',rowexpr,[[1,10],[2,20]],['00000','40P01'],'ROLLBACK');deadline=time.monotonic()+24
+  while time.monotonic()<deadline:
+   for actor in ['bex','render']:sessions[actor][0].step()
+   if all(q['done']+'\n' in sessions[q['actor']][0].text()[q['offset']:] for q in [qa,qb]):break
+  else:raise RuntimeError('finite own deadlock resolution bound exhausted')
+  finish_query(qa,1);finish_query(qb,1);states=sorted(q['event']['observed_SQLSTATE'] for q in [qa,qb]);e['deadlock']={'observed_blocking_edge':[apid,bpid],'SQLSTATEs':states,'one_victim_one_success':states==['00000','40P01'],'both_rolled_back_before_row_proof':True};persist();assert e['deadlock']['one_victim_one_success'];query('render','independent baseline after both deadlock rollbacks','',rowexpr,[[1,10],[2,20]])
+  base=int.from_bytes(__import__('hashlib').sha256(nonce.encode()).digest()[:6],'big');k=[str(base+i) for i in range(4)];e['own_advisory_keys']=k;persist()
+  def advisory(actor,label,fn,key,expected):return query(actor,label,'','pg_'+fn+'('+key+')',expected)
+  advisory('bex','session exclusive acquire','try_advisory_lock',k[0],True);advisory('bex','session exclusive nested acquire','try_advisory_lock',k[0],True);advisory('render','other client cannot acquire held session lock','try_advisory_lock',k[0],False)
+  query('bex','rollback does not release session-level lock','BEGIN;ROLLBACK');advisory('render','session lock survives holder rollback','try_advisory_lock',k[0],False);advisory('bex','first nested unlock','advisory_unlock',k[0],True);advisory('render','one nested hold remains','try_advisory_lock',k[0],False);advisory('bex','second nested unlock','advisory_unlock',k[0],True);advisory('render','other client acquires fully released session lock','try_advisory_lock',k[0],True);advisory('render','other client releases own session lock','advisory_unlock',k[0],True)
+  query('bex','transaction-level advisory hold','BEGIN;SELECT pg_advisory_xact_lock('+k[1]+')');advisory('render','held transaction lock conflicts','try_advisory_xact_lock',k[1],False);query('bex','rollback releases transaction advisory lock','ROLLBACK');advisory('render','transaction advisory lock available after rollback','try_advisory_xact_lock',k[1],True);advisory('bex','autocommit released other transaction lock','try_advisory_xact_lock',k[1],True)
+  advisory('bex','first shared session lock','try_advisory_lock_shared',k[2],True);advisory('render','second shared session lock','try_advisory_lock_shared',k[2],True);advisory('bex','other shared holder blocks exclusive upgrade','try_advisory_lock',k[2],False);advisory('render','release second shared hold','advisory_unlock_shared',k[2],True);advisory('bex','release first shared hold','advisory_unlock_shared',k[2],True);advisory('render','exclusive lock after both shared holds released','try_advisory_lock',k[2],True);advisory('bex','shared acquisition refused during exclusive hold','try_advisory_lock_shared',k[2],False);advisory('render','release exclusive hold','advisory_unlock',k[2],True)
+  owncount="(SELECT count(*) FROM pg_locks WHERE locktype='advisory' AND pid IN ("+str(apid)+','+str(bpid)+'))';query('render','no advisory locks remain on either own session','',owncount,0)
+  for actor in ['bex','render']:query(actor,'same backend connection before natural exit','',"pg_backend_pid()",e['sessions'][actor]['backend_pid'])
+  advisory('bex','final session hold before disconnect','try_advisory_lock',k[3],True);quit_actor('bex')
+  for attempt in range(6):
+   f=advisory('render','natural disconnect releases session hold '+str(attempt+1),'try_advisory_lock',k[3],None)
+   if f['payload'] is True:break
+   assert f['payload'] is False;time.sleep(.1)
+  else:raise RuntimeError('closed own connection lock did not release')
+  advisory('render','release final own session lock','advisory_unlock',k[3],True);query('render','exact own schema cleanup','DROP SCHEMA '+schema+' CASCADE',"to_regnamespace("+literal(schema)+") IS NULL",True);query('render','all own advisory locks gone after disconnect','',owncount,0);quit_actor('render');e.update(pass_value=True,schema_removed=True);e['pass']=True;persist()
+ except BaseException as error:e.update({'pass':False,'error':type(error).__name__+': '+str(error)});persist();raise
+ finally:
+  for actor,(s,logical,cleanup) in sessions.items():s.close();e['sessions'][actor]['PTY']=s.record();cleanup();persist()
+ print(json.dumps({'locking_pass':e.get('pass',False),'stages':len(e['steps']),'deadlock':e.get('deadlock'),'same_connections':True}),flush=True)
+
+if __name__=='__main__':
+ os.umask(0o077);mode=sys.argv[1];assert mode in ('preflight','live')
+ if mode=='preflight':
+  D=Path(tempfile.mkdtemp(prefix='bex391-',dir='/tmp'));D.chmod(0o700);sock=D/'socket';sock.mkdir(mode=0o700);data=D/'data';bin=Path('/opt/homebrew/opt/postgresql@18/bin');psql=Path('/opt/homebrew/opt/libpq/bin/psql');log=(P/'sweep391-local-pg.log').open('wb');server=None;e={'qualification':'own local PostgreSQL18.6/psql18.6 prerequisite, not hosted PG18 or native wrappers'}
+  def persist():(P/'sweep391-local-preflight.json').write_text(json.dumps(e,indent=2,ensure_ascii=False))
+  try:
+   subprocess.run([str(bin/'initdb'),'-D',str(data),'-U','qa391','--auth=trust','--no-locale','--encoding=UTF8'],stdout=log,stderr=log,timeout=20,check=True);server=subprocess.Popen([str(bin/'postgres'),'-D',str(data),'-k',str(sock),'-p','16432','-h',''],stdout=log,stderr=log,start_new_session=True)
+   for _ in range(100):
+    if (sock/'.s.PGSQL.16432').exists():break
+    time.sleep(.05)
+   assert (sock/'.s.PGSQL.16432').exists()
+   def build(actor):
+    prompt='LOCAL376_'+actor+'> ';env={k:v for k,v in os.environ.items() if not k.startswith(('PG','PSQL','QA_','BEX_','RENDER_'))};env.update(PSQL_HISTORY=str(D/('history-'+actor)),PGCLIENTENCODING='UTF8',PGCONNECT_TIMEOUT='5');args=[str(psql),'-h',str(sock),'-p','16432','-U','qa391','-d','postgres','-X','-n','-q','-t','-A','-P','pager=off','-v','ON_ERROR_STOP=off','-v','PROMPT1='+prompt,'-v','PROMPT2=LOCAL376_CONT> '];return args,env,['local-psql','<own-unix-socket>'],prompt,lambda:None
+   journey('local391',18,'postgres','qa391',build,persist,e)
+  finally:
+   if server:os.killpg(server.pid,signal.SIGTERM);server.wait(timeout=10)
+   log.close();shutil.rmtree(D);e.update(local_server_stopped=True,local_data_socket_history_removed=not D.exists());persist()
+ else:
+  f=P/'sweep391-common.py';sys.argv=[str(f),'locking-live','bex'];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==391 and v.get('id'));sid=x['id'];assert x['workspace']==WS and x['create_result']['native_exit']==0 and x['create_response']['id']==sid and not x.get('locking_journey');_,v=detail();assert v['status']=='available' and x['create_response']['version']=='18' and (P/'sweep391-session-ca.pem').exists();e={'at':now(),'state':'finite two-native-client SQL locking/error recovery intent'};x['locking_journey']=e;save()
+  def persist():save()
+  def build(actor):
+   D=P/('sweep391-session-'+actor);assert not D.exists();D.mkdir(mode=0o700);cfg=D/'cli.yaml';shutil.copyfile(P/'config/cli.yaml',cfg);cfg.chmod(0o600);tmp=D/'tmp';tmp.mkdir(mode=0o700);prefix='BEX' if actor=='bex' else 'RENDER';env={k:v for k,v in os.environ.items() if not k.startswith(('PG','PSQL','QA_','BEX_','RENDER_'))};env.update({prefix+'_HOST':'https://api.bex.co/v1/',prefix+'_CLI_CONFIG_PATH':str(cfg),prefix+'_CLI_CONFIG_DIR':str(D),prefix+'_WORKSPACE':WS,prefix+'_NO_UPDATE_NOTIFIER':'1','BEX_CLI_DISABLE_ANALYTICS':'1','DO_NOT_TRACK':'1','BROWSER':'/usr/bin/true','TERM':'xterm-256color','PSQL_HISTORY':str(D/'history'),'PGCONNECT_TIMEOUT':'10','PGCLIENTENCODING':'UTF8','TMPDIR':str(tmp)})
+   if actor=='render':env['PGSSLROOTCERT']=str(P/'sweep391-session-ca.pem')
+   prompt='QA391_'+x['nonce']+'_'+actor+'> ';args=['psql',sid,'--confirm','-o','interactive','--','-X','-n','-q','-t','-A','-P','pager=off','-v','ON_ERROR_STOP=off','-v','PROMPT1='+prompt,'-v','PROMPT2=QA391_CONT> '];return [str(P/('release/bex' if actor=='bex' else 'render-pin')),*args],env,[actor,*args],prompt,lambda:shutil.rmtree(D)
+  try:journey(x['nonce'],18,x['database_name'],x['database_user'],build,persist,e)
+  finally:e['owned_actor_config_history_tmp_removed']=all(not (P/('sweep391-session-'+actor)).exists() for actor in ('bex','render'));save()

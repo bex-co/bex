@@ -1,0 +1,12 @@
+from pathlib import Path
+import subprocess,json,sys,time,urllib.request,os,signal
+r=subprocess.run(['poetry','run','python','qa392-observer.py','runtime'],capture_output=True,text=True,check=True,timeout=20);runtime=json.loads(Path('qa392-runtime.json').read_text());built=json.loads(Path('qa392-build.json').read_text());assert runtime['files']==built['files'] and runtime['prefix']==built['prefix'] and runtime['lock_sha256']==built['lock_sha256'];out=Path('qa392-local.log').open('wb');proc=subprocess.Popen(['poetry','run','gunicorn','app:app'],stdout=out,stderr=out,start_new_session=True)
+try:
+ for attempt in range(150):
+  try:
+   with urllib.request.urlopen('http://127.0.0.1:3000/?qa392_local',timeout=.5) as r:body=r.read();assert r.status==200 and body==b'Hello, World!';break
+  except OSError:time.sleep(.1)
+ else:raise RuntimeError('local Poetry project server not ready')
+finally:
+ os.killpg(proc.pid,signal.SIGTERM);proc.wait(timeout=10);out.close()
+print('QA392_LOCAL_RESULT '+json.dumps({'build':built,'runtime':runtime,'original_app_HTTP':200,'original_body':'Hello, World!','server_cleanup_exit':proc.returncode,'server_logs':Path('qa392-local.log').read_text(),'pass':True}))

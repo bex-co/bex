@@ -1,0 +1,14 @@
+{
+  "source_head": "5448f8d9c3f30db207bc896b83985f4fdefbac42",
+  "serving_revision": "unknown",
+  "contracts": [
+    "https://www.postgresql.org/docs/18/explicit-locking.html#LOCKING-DEADLOCKS",
+    "https://www.postgresql.org/docs/18/explicit-locking.html#ADVISORY-LOCKS",
+    "https://www.postgresql.org/docs/18/functions-admin.html#FUNCTIONS-ADVISORY-LOCKS"
+  ],
+  "dedupe": "376 transaction isolation covers lock timeout/savepoints/serialization but explicitly excludes deadlock; 368 notifications/377COPY/378cursors/387extended pipeline are separate successful journeys; m87CtrlC remains open and is never exercised here",
+  "scope": "one fresh own Free18 without pool/replicas; two actual native persistent psql sessions; own schema/two rows; NOWAIT55P03/SKIP LOCKED; one observed own blocking edge and a two-transaction deadlock with nondeterministic victim; both rollback before row proofs; own advisory keys/session nesting/transaction/shared-exclusion/normal disconnect; exact schema/lock/client/resource cleanup",
+  "limits": "connection-local statement_timeout20s, idle-in-transaction60s, no lock_timeout; deadlock itself resolved by server, not client cancellation. Helper/PTY bounds and finally cleanup remain finite. No shared/server-global configuration change.",
+  "setup_qualification": "legacy Render CA helper initially attempted to prepare a connection for psql --help before a fixture existed; stopped before a network request/native process, corrected --help bypass, six actual Bex/Render helps pass; original helper retained. Local control retains historical LOCAL376 prompt labels only; own directories/user/schema/nonce are391 and identity assertions pass.",
+  "unverified": "other PostgreSQL majors, pools/replicas, failover/load, precise victim choice, CtrlC, network fault recovery, OCI and physical teardown; no source change/new issue assumed"
+}

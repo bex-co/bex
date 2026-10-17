@@ -1,0 +1,36 @@
+{
+  "sweep": 384,
+  "existing_finding": "w8/111",
+  "source_head": "251f307e4b2cc65b0a155552245fe2358a9680e9",
+  "source_fix": "e9f283771",
+  "serving_revision": "unknown",
+  "public_commit": "a419aa7350389a275ab45fde2e849ed1f02449ef",
+  "native_clients": [
+    "published Bex0.3.2/a6350da0",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "actual_native_POST201_and_create0": 2,
+  "first_default_deploys_Live_HTTP200": 2,
+  "default_build_NODE_ENV_absent": 2,
+  "default_predeploy_runtime_production_cache1": 2,
+  "API_only_save_only_staging_and_empty_exact_no_rollout": 2,
+  "native_commit_selected_override_redeploys_exit0": 2,
+  "override_build_predeploy_runtime_exact": [
+    "staging",
+    ""
+  ],
+  "native_log_queries_exit0_and_phase_proofs": 12,
+  "REST_GraphQL_MCP_exact_readbacks": 6,
+  "native_delete_exit0": 2,
+  "owned_parents_children_URLs_absent": [
+    2,
+    4,
+    2
+  ],
+  "baselines_preserved": true,
+  "all_terminating_zero": true,
+  "local_three_case_prerequisite_pass_and_removed": true,
+  "remaining_gate": "prior outcome includes hosted cron observation; paid-only cron not allocated; other unexercised hosted variants/group sources remain explicitly unverified, inherited source gates not rerun",
+  "new_issue": null,
+  "uncommitted": true
+}
