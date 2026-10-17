@@ -109,7 +109,15 @@ export function NetworkMetricsCard({
   );
   const isAllPercentiles = percentile === PERCENTILE_ALL;
   const [statusCode, setStatusCode] = useState(""); // "" = all
-  const discoveredStatusCodes = useMetricsFilterValues(resource, "STATUS_CODE");
+  // This card is mounted for every App, so it owns refreshing the shared
+  // discovery query (w4/m224); the Application card observes it.
+  const discoveredStatusCodes = useMetricsFilterValues(
+    resource,
+    "STATUS_CODE",
+    {
+      poll: true,
+    },
+  );
   // Host: a dropdown discovered from the App's request-log hosts. Path: free
   // text (not discoverable) committed on Enter/blur, cleared with the × button.
   const [host, setHost] = useState(""); // "" = all
@@ -144,10 +152,12 @@ export function NetworkMetricsCard({
   });
   const monthToDate = useMonthToDateBandwidth(resource);
 
+  // An exact code stays selectable while chosen, even when a later discovery
+  // answer omits it, so a refresh never silently changes the request filter.
   const statusCodeOptions = [
     ...STATUS_CODE_CLASSES,
-    ...discoveredStatusCodes
-      .filter((c) => !STATUS_CODE_CLASSES.includes(c))
+    ...[...new Set([...discoveredStatusCodes, statusCode])]
+      .filter((c) => c !== "" && !STATUS_CODE_CLASSES.includes(c))
       .sort(),
   ];
 
