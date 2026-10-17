@@ -1,0 +1,1802 @@
+{
+  "pass": "a822",
+  "researchHead": "57733a6dfa32a7b8c22ea1d2cdaa318ab2a9c735",
+  "scope": "Read-only Blueprints list layout; no detail/manifest read or resource mutation.",
+  "probes": {
+    "mobile390": "async(page)=>{await page.setViewportSize({width:390,height:844});await page.goto('https://dashboard.bex.co/blueprints');await page.getByRole('heading',{name:'Blueprints',exact:true}).waitFor({timeout:15000});await page.waitForTimeout(1200);const measure=()=>page.evaluate(()=>{const t=document.querySelector('main table'),rect=e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height}};return{width:innerWidth,docWidth:document.documentElement.scrollWidth,table:rect(t),container:rect(t.parentElement),scrollWidth:t.parentElement.scrollWidth,headers:Array.from(t.querySelectorAll('th')).map(e=>{const s=getComputedStyle(e);const chars=[];for(let j=0;j<(e.firstChild?.textContent||'').length;j++){const r=document.createRange();try{r.setStart(e.firstChild,j);r.setEnd(e.firstChild,j+1);const x=r.getBoundingClientRect();chars.push({char:e.firstChild.textContent[j],y:x.y,height:x.height})}catch{}}return{text:e.textContent,...rect(e),whiteSpace:s.whiteSpace,overflowWrap:s.overflowWrap,wordBreak:s.wordBreak,lineHeight:s.lineHeight,chars}})}});const initial=await measure();await page.locator('main [data-slot=\"table-container\"]').evaluate(e=>e.scrollLeft=e.scrollWidth);await page.screenshot({path:'qa-a822-blueprints-mobile-right.png'});const afterScroll=await measure();return{at:new Date().toISOString(),initial,afterScroll};}",
+    "mobile360": "async(page)=>{await page.setViewportSize({width:360,height:844});await page.goto('https://dashboard.bex.co/blueprints');await page.getByRole('heading',{name:'Blueprints',exact:true}).waitFor({timeout:15000});await page.waitForTimeout(1200);const measure=()=>page.evaluate(()=>{const t=document.querySelector('main table'),rect=e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height}};return{width:innerWidth,docWidth:document.documentElement.scrollWidth,table:rect(t),container:rect(t.parentElement),scrollWidth:t.parentElement.scrollWidth,headers:Array.from(t.querySelectorAll('th')).map(e=>{const s=getComputedStyle(e);const chars=[];for(let j=0;j<(e.firstChild?.textContent||'').length;j++){const r=document.createRange();try{r.setStart(e.firstChild,j);r.setEnd(e.firstChild,j+1);const x=r.getBoundingClientRect();chars.push({char:e.firstChild.textContent[j],y:x.y,height:x.height})}catch{}}return{text:e.textContent,...rect(e),whiteSpace:s.whiteSpace,overflowWrap:s.overflowWrap,wordBreak:s.wordBreak,lineHeight:s.lineHeight,chars}})}});const initial=await measure();await page.locator('main [data-slot=\"table-container\"]').evaluate(e=>e.scrollLeft=e.scrollWidth);await page.screenshot({path:'qa-a822-blueprints-mobile-right-360.png'});const afterScroll=await measure();return{at:new Date().toISOString(),initial,afterScroll};}",
+    "desktop1440": "async(page)=>{await page.setViewportSize({width:1440,height:844});await page.goto('https://dashboard.bex.co/blueprints');await page.getByRole('heading',{name:'Blueprints',exact:true}).waitFor({timeout:15000});await page.waitForTimeout(1200);const measure=()=>page.evaluate(()=>{const t=document.querySelector('main table'),rect=e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height}};return{width:innerWidth,docWidth:document.documentElement.scrollWidth,table:rect(t),container:rect(t.parentElement),scrollWidth:t.parentElement.scrollWidth,headers:Array.from(t.querySelectorAll('th')).map(e=>{const s=getComputedStyle(e);const chars=[];for(let j=0;j<(e.firstChild?.textContent||'').length;j++){const r=document.createRange();try{r.setStart(e.firstChild,j);r.setEnd(e.firstChild,j+1);const x=r.getBoundingClientRect();chars.push({char:e.firstChild.textContent[j],y:x.y,height:x.height})}catch{}}return{text:e.textContent,...rect(e),whiteSpace:s.whiteSpace,overflowWrap:s.overflowWrap,wordBreak:s.wordBreak,lineHeight:s.lineHeight,chars}})}});const initial=await measure();await page.locator('main [data-slot=\"table-container\"]').evaluate(e=>e.scrollLeft=e.scrollWidth);await page.screenshot({path:'qa-a822-blueprints-desktop.png'});const afterScroll=await measure();return{at:new Date().toISOString(),initial,afterScroll};}",
+    "temporaryNoWrap": "async(page)=>{const measure=()=>page.evaluate(()=>({width:innerWidth,docWidth:document.documentElement.scrollWidth,headers:Array.from(document.querySelectorAll('main table th')).map(e=>{const r=e.getBoundingClientRect();return{text:e.textContent,width:r.width,height:r.height,whiteSpace:getComputedStyle(e).whiteSpace}}),container:{clientWidth:document.querySelector('main [data-slot=\"table-container\"]').clientWidth,scrollWidth:document.querySelector('main [data-slot=\"table-container\"]').scrollWidth}}));const before=await measure();const style=await page.addStyleTag({content:'main table thead th { white-space: nowrap; }'});try{return{at:new Date().toISOString(),before,localCssControl:await measure(),notDeployedFix:true}}finally{await style.evaluate(e=>e.remove())}}"
+  },
+  "limits": [
+    "Only Blueprints ready list header readability extends m220. Blueprint pending/ready geometry was not probed.",
+    "Temporary browser CSS was removed in finally; it is not a deployed fix.",
+    "No API field or data mismatch is alleged; DOM measurements are the durable evidence."
+  ],
+  "receipts": {
+    "BlueprintMobileFresh": {
+      "at": "2026-10-17T01:47:28.427Z",
+      "initial": {
+        "width": 390,
+        "docWidth": 390,
+        "table": {
+          "x": 17,
+          "y": 210,
+          "width": 356,
+          "height": 377
+        },
+        "container": {
+          "x": 17,
+          "y": 210,
+          "width": 356,
+          "height": 377
+        },
+        "scrollWidth": 356,
+        "headers": [
+          {
+            "text": "Name",
+            "x": 17,
+            "y": 210,
+            "width": 32.609375,
+            "height": 180.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "N",
+                "y": 261,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 281,
+                "height": 17
+              },
+              {
+                "char": "m",
+                "y": 301,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 321,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Repository",
+            "x": 49.609375,
+            "y": 210,
+            "width": 200,
+            "height": 180.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "R",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "p",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "y",
+                "y": 291,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Branch",
+            "x": 249.609375,
+            "y": 210,
+            "width": 29.4375,
+            "height": 180.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "B",
+                "y": 251,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 271,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 271,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "c",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "h",
+                "y": 331,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Status",
+            "x": 279.046875,
+            "y": 210,
+            "width": 62.765625,
+            "height": 180.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "S",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "u",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 291,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Last Updated",
+            "x": 341.8125,
+            "y": 210,
+            "width": 31.1875,
+            "height": 180.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "L",
+                "y": 211,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 231,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 231,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 251,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 251,
+                "height": 17
+              },
+              {
+                "char": "U",
+                "y": 271,
+                "height": 17
+              },
+              {
+                "char": "p",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 331,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 331,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 351,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 371,
+                "height": 17
+              }
+            ]
+          }
+        ]
+      },
+      "afterScroll": {
+        "width": 390,
+        "docWidth": 390,
+        "table": {
+          "x": 17,
+          "y": 210,
+          "width": 356,
+          "height": 377
+        },
+        "container": {
+          "x": 17,
+          "y": 210,
+          "width": 356,
+          "height": 377
+        },
+        "scrollWidth": 356,
+        "headers": [
+          {
+            "text": "Name",
+            "x": 17,
+            "y": 210,
+            "width": 32.609375,
+            "height": 180.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "N",
+                "y": 261,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 281,
+                "height": 17
+              },
+              {
+                "char": "m",
+                "y": 301,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 321,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Repository",
+            "x": 49.609375,
+            "y": 210,
+            "width": 200,
+            "height": 180.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "R",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "p",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "y",
+                "y": 291,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Branch",
+            "x": 249.609375,
+            "y": 210,
+            "width": 29.4375,
+            "height": 180.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "B",
+                "y": 251,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 271,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 271,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "c",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "h",
+                "y": 331,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Status",
+            "x": 279.046875,
+            "y": 210,
+            "width": 62.765625,
+            "height": 180.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "S",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "u",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 291,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Last Updated",
+            "x": 341.8125,
+            "y": 210,
+            "width": 31.1875,
+            "height": 180.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "L",
+                "y": 211,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 231,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 231,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 251,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 251,
+                "height": 17
+              },
+              {
+                "char": "U",
+                "y": 271,
+                "height": 17
+              },
+              {
+                "char": "p",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 331,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 331,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 351,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 371,
+                "height": 17
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "BlueprintMobileFresh360": {
+      "at": "2026-10-17T01:48:03.583Z",
+      "initial": {
+        "width": 360,
+        "docWidth": 360,
+        "table": {
+          "x": 17,
+          "y": 210,
+          "width": 347.140625,
+          "height": 537
+        },
+        "container": {
+          "x": 17,
+          "y": 210,
+          "width": 326,
+          "height": 537
+        },
+        "scrollWidth": 347,
+        "headers": [
+          {
+            "text": "Name",
+            "x": 17,
+            "y": 210,
+            "width": 28.3125,
+            "height": 220.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "N",
+                "y": 281,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 301,
+                "height": 17
+              },
+              {
+                "char": "m",
+                "y": 321,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 341,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Repository",
+            "x": 45.3125,
+            "y": 210,
+            "width": 200,
+            "height": 220.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "R",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "p",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "y",
+                "y": 311,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Branch",
+            "x": 245.3125,
+            "y": 210,
+            "width": 28.03125,
+            "height": 220.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "B",
+                "y": 261,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 281,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 301,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 321,
+                "height": 17
+              },
+              {
+                "char": "c",
+                "y": 341,
+                "height": 17
+              },
+              {
+                "char": "h",
+                "y": 361,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Status",
+            "x": 273.34375,
+            "y": 210,
+            "width": 62.765625,
+            "height": 220.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "S",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "u",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 311,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Last Updated",
+            "x": 336.109375,
+            "y": 210,
+            "width": 28.03125,
+            "height": 220.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "L",
+                "y": 211,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 231,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 251,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 271,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 271,
+                "height": 17
+              },
+              {
+                "char": "U",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "p",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 331,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 351,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 371,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 391,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 411,
+                "height": 17
+              }
+            ]
+          }
+        ]
+      },
+      "afterScroll": {
+        "width": 360,
+        "docWidth": 360,
+        "table": {
+          "x": -4,
+          "y": 210,
+          "width": 347.140625,
+          "height": 537
+        },
+        "container": {
+          "x": 17,
+          "y": 210,
+          "width": 326,
+          "height": 537
+        },
+        "scrollWidth": 347,
+        "headers": [
+          {
+            "text": "Name",
+            "x": -4,
+            "y": 210,
+            "width": 28.3125,
+            "height": 220.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "N",
+                "y": 281,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 301,
+                "height": 17
+              },
+              {
+                "char": "m",
+                "y": 321,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 341,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Repository",
+            "x": 24.3125,
+            "y": 210,
+            "width": 200,
+            "height": 220.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "R",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "p",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "y",
+                "y": 311,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Branch",
+            "x": 224.3125,
+            "y": 210,
+            "width": 28.03125,
+            "height": 220.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "B",
+                "y": 261,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 281,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 301,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 321,
+                "height": 17
+              },
+              {
+                "char": "c",
+                "y": 341,
+                "height": 17
+              },
+              {
+                "char": "h",
+                "y": 361,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Status",
+            "x": 252.34375,
+            "y": 210,
+            "width": 62.765625,
+            "height": 220.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "S",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "u",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 311,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Last Updated",
+            "x": 315.109375,
+            "y": 210,
+            "width": 28.03125,
+            "height": 220.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "L",
+                "y": 211,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 231,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 251,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 271,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 271,
+                "height": 17
+              },
+              {
+                "char": "U",
+                "y": 291,
+                "height": 17
+              },
+              {
+                "char": "p",
+                "y": 311,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 331,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 351,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 371,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 391,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 411,
+                "height": 17
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "BlueprintNoWrapControl": {
+      "at": "2026-10-17T01:48:04.337Z",
+      "before": {
+        "width": 360,
+        "docWidth": 360,
+        "headers": [
+          {
+            "text": "Name",
+            "width": 28.3125,
+            "height": 220.5,
+            "whiteSpace": "normal"
+          },
+          {
+            "text": "Repository",
+            "width": 200,
+            "height": 220.5,
+            "whiteSpace": "normal"
+          },
+          {
+            "text": "Branch",
+            "width": 28.03125,
+            "height": 220.5,
+            "whiteSpace": "normal"
+          },
+          {
+            "text": "Status",
+            "width": 62.765625,
+            "height": 220.5,
+            "whiteSpace": "normal"
+          },
+          {
+            "text": "Last Updated",
+            "width": 28.03125,
+            "height": 220.5,
+            "whiteSpace": "normal"
+          }
+        ],
+        "container": {
+          "clientWidth": 326,
+          "scrollWidth": 347
+        }
+      },
+      "localCssControl": {
+        "width": 360,
+        "docWidth": 360,
+        "headers": [
+          {
+            "text": "Name",
+            "width": 54.421875,
+            "height": 36,
+            "whiteSpace": "nowrap"
+          },
+          {
+            "text": "Repository",
+            "width": 200,
+            "height": 36,
+            "whiteSpace": "nowrap"
+          },
+          {
+            "text": "Branch",
+            "width": 62.703125,
+            "height": 36,
+            "whiteSpace": "nowrap"
+          },
+          {
+            "text": "Status",
+            "width": 62.765625,
+            "height": 36,
+            "whiteSpace": "nowrap"
+          },
+          {
+            "text": "Last Updated",
+            "width": 104.75,
+            "height": 36,
+            "whiteSpace": "nowrap"
+          }
+        ],
+        "container": {
+          "clientWidth": 326,
+          "scrollWidth": 485
+        }
+      },
+      "notDeployedFix": true
+    },
+    "BlueprintDesktopFresh": {
+      "at": "2026-10-17T01:48:07.431Z",
+      "initial": {
+        "width": 1440,
+        "docWidth": 1440,
+        "table": {
+          "x": 401,
+          "y": 194,
+          "width": 894,
+          "height": 74.5
+        },
+        "container": {
+          "x": 401,
+          "y": 194,
+          "width": 894,
+          "height": 74.5
+        },
+        "scrollWidth": 894,
+        "headers": [
+          {
+            "text": "Name",
+            "x": 401,
+            "y": 194,
+            "width": 211.640625,
+            "height": 36,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "N",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "m",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 202.75,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Repository",
+            "x": 612.640625,
+            "y": 194,
+            "width": 317.203125,
+            "height": 36,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "R",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "p",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "y",
+                "y": 202.75,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Branch",
+            "x": 929.84375,
+            "y": 194,
+            "width": 99.4375,
+            "height": 36,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "B",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "c",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "h",
+                "y": 202.75,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Status",
+            "x": 1029.28125,
+            "y": 194,
+            "width": 99.546875,
+            "height": 36,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "S",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "u",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 202.75,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Last Updated",
+            "x": 1128.828125,
+            "y": 194,
+            "width": 166.171875,
+            "height": 36,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "L",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "U",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "p",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 202.75,
+                "height": 17
+              }
+            ]
+          }
+        ]
+      },
+      "afterScroll": {
+        "width": 1440,
+        "docWidth": 1440,
+        "table": {
+          "x": 401,
+          "y": 194,
+          "width": 894,
+          "height": 74.5
+        },
+        "container": {
+          "x": 401,
+          "y": 194,
+          "width": 894,
+          "height": 74.5
+        },
+        "scrollWidth": 894,
+        "headers": [
+          {
+            "text": "Name",
+            "x": 401,
+            "y": 194,
+            "width": 211.640625,
+            "height": 36,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "N",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "m",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 202.75,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Repository",
+            "x": 612.640625,
+            "y": 194,
+            "width": 317.203125,
+            "height": 36,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "R",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "p",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "y",
+                "y": 202.75,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Branch",
+            "x": 929.84375,
+            "y": 194,
+            "width": 99.4375,
+            "height": 36,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "B",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "c",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "h",
+                "y": 202.75,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Status",
+            "x": 1029.28125,
+            "y": 194,
+            "width": 99.546875,
+            "height": 36,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "S",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "u",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 202.75,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Last Updated",
+            "x": 1128.828125,
+            "y": 194,
+            "width": 166.171875,
+            "height": 36,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "L",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "U",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "p",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 202.75,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 202.75,
+                "height": 17
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "InventoryCleanup": {
+      "at": "2026-10-17T01:48:34.295Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [],
+      "consoleErrors": [],
+      "httpFailures": []
+    },
+    "SessionCleared": {
+      "at": "2026-10-17T01:48:40.365Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  }
+}

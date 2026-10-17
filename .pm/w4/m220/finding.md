@@ -60,3 +60,7 @@ Completed **w5/m79/t006** promised Environment Groups pending/ready parity. The 
 ## Evidence and cleanup
 
 Eight complete receipts, exact probe scripts and successful matched requests/responses are durable. Supplementary inspected images under .playwright-mcp: qa-a821-envgroups-{pending,ready}-{1440,390}.png and qa-a821-envgroups-mobile-right.png. Additional360px screenshots exist. The first short-wait probe is excluded; desktop V3 corrects V2's search-region-versus-bar measurement. There are no fixture mutations. Final seven-family inventory equals baseline, no console errors or HTTP failures, and own-session revocation confirms401, zero cookies and one about:blank page.
+
+## Follow-up a822
+
+[The Blueprint list](finding-a822.md) independently reproduces the same short-header wrapping defect. The final ready-header allowlist is two route-owned tables/ten header sites; the pending-layout finding above remains scoped to Environment Groups. See the separate dated receipts for those new observations.
