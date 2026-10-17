@@ -34,9 +34,12 @@ export const VIRTUAL_VIEWPORT_HEIGHT = VIEWPORT_HEIGHT;
  */
 export const VIRTUAL_VISIBLE_ROWS = Math.ceil(VIEWPORT_HEIGHT / ROW_HEIGHT);
 
-function syntheticHeight(el: HTMLElement): number {
+function syntheticHeight(
+  el: HTMLElement,
+  rowHeight: (row: HTMLElement) => number,
+): number {
   if (el.hasAttribute("data-log-viewport")) return VIEWPORT_HEIGHT;
-  if (el.hasAttribute("data-index")) return ROW_HEIGHT;
+  if (el.hasAttribute("data-index")) return rowHeight(el);
   return 0;
 }
 
@@ -51,7 +54,12 @@ function syntheticWidth(el: HTMLElement): number {
  * Install the synthetic geometry for the current test file. Call once at the top
  * of a `describe` block; it wires its own `beforeEach`/`afterEach`.
  */
-export function setupVirtualGeometry(): void {
+export function setupVirtualGeometry({
+  rowHeight = () => ROW_HEIGHT,
+}: {
+  /** A row's height, for tests whose rows reflow (wrapped vs one line). */
+  rowHeight?: (row: HTMLElement) => number;
+} = {}): void {
   let originalHeight: PropertyDescriptor | undefined;
   let originalWidth: PropertyDescriptor | undefined;
 
@@ -67,7 +75,7 @@ export function setupVirtualGeometry(): void {
     Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
       configurable: true,
       get(this: HTMLElement) {
-        return syntheticHeight(this);
+        return syntheticHeight(this, rowHeight);
       },
     });
     Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
