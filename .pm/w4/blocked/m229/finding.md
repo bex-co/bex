@@ -2,7 +2,7 @@
 
 Why: a review should identify the configuration a sync changes, so a user can distinguish a real source migration from a change to the service name, plan or environment.
 
-**Severity:** minor. Native functional QA a903, 2026-10-17 UTC. One ordinary Free web image-to-Git transition lists all twelve declared paths as changes, including unchanged name, Free plan, type, auto-deploy, health path and literal environment. The actual migration succeeds. This is a field-attribution regression of [w4/m124](../done/m124/README.md), not a wrong-artifact, charge or data-loss finding. [Complete durable native bodies, manifests, source diagnostic, controls and cleanup](evidence.json).
+**Severity:** minor. Native functional QA a903, 2026-10-17 UTC. One ordinary Free web image-to-Git transition lists all twelve declared paths as changes, including unchanged name, Free plan, type, auto-deploy, health path and literal environment. The actual migration succeeds. This is a field-attribution regression of [w4/m124](../../done/m124/README.md), not a wrong-artifact, charge or data-loss finding. [Complete durable native bodies, manifests, source diagnostic, controls and cleanup](evidence.json).
 
 ## Native reproduction
 

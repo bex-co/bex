@@ -105,7 +105,7 @@ func blueprintServiceOmission(name string) BlueprintOmission {
 // once when any member is declared (domains|domain, autoDeploy|autoDeployTrigger).
 // Fields whose omission or interplay carries meaning (runtime and builder,
 // buildFilter, scaling and numInstances, an inherited repo) stay inline in
-// ApplyBlueprintServiceSpec; repo and image couple inside their appliers.
+// probeBlueprintServiceSpec; repo and image couple inside their appliers.
 // canonicalSlice keeps a projected list's ZERO VALUE canonical: nil, never an
 // empty non-nil slice.
 //
@@ -313,15 +313,6 @@ var blueprintServiceFieldAppliers = []struct {
 	}},
 }
 
-func anyPresent(fields map[string]BlueprintField, names ...string) bool {
-	for _, name := range names {
-		if _, ok := fields[name]; ok {
-			return true
-		}
-	}
-	return false
-}
-
 // ApplyBlueprintServiceSpec applies a normalized service only for source fields
 // that the Blueprint actually declared. It is for existing resources; creation
 // still uses specFromCreate, where product defaults are appropriate. The return
@@ -331,30 +322,44 @@ func anyPresent(fields map[string]BlueprintField, names ...string) bool {
 // filter. An explicit envVars block only upserts values the Blueprint owns;
 // dashboard/API vars not named in the Blueprint remain intact.
 func ApplyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec, fields map[string]BlueprintField) (bool, error) {
+	return probeBlueprintServiceSpec(dst, want, fields, "")
+}
+
+// probeBlueprintServiceSpec is ApplyBlueprintServiceSpec, or with only set,
+// the plan's probe of that one path: its applier alone, or what omitting it
+// does, judged beside every other field the file declares. A probe of a
+// narrowed field set read a declared repo as omitted, so every unchanged
+// field re-ran the source switch and was listed as changed (w4/m229).
+func probeBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec, fields map[string]BlueprintField, only string) (bool, error) {
 	before := *dst.DeepCopy()
+	present := func(name string) bool {
+		_, ok := fields[name]
+		return ok
+	}
+	inScope := func(name string) bool { return only == "" || only == name }
+	applies := func(names ...string) bool {
+		return slices.ContainsFunc(names, func(name string) bool { return inScope(name) && present(name) })
+	}
+	omits := func(name string) bool { return inScope(name) && !present(name) }
 	// Refuse a shrink before anything is written, the same way the database
 	// twin below refuses one. A disk cannot be shrunk at any layer — CRD, API,
 	// or store — so a Blueprint that asks for it has to fail with a source
 	// location rather than be silently clamped to the current size.
-	if _, ok := fields["disk"]; ok && want.Disk != nil && dst.Disk != nil && want.Disk.SizeGB < dst.Disk.SizeGB {
+	if applies("disk") && want.Disk != nil && dst.Disk != nil && want.Disk.SizeGB < dst.Disk.SizeGB {
 		return false, &BlueprintFieldConflictError{
 			Path:    "disk.sizeGB",
 			Message: fmt.Sprintf("cannot shrink an existing disk (currently %dGB)", dst.Disk.SizeGB),
 		}
 	}
-	present := func(name string) bool {
-		_, ok := fields[name]
-		return ok
-	}
 
 	for _, field := range blueprintServiceFieldAppliers {
-		if anyPresent(fields, field.names...) {
+		if applies(field.names...) {
 			field.apply(dst, want)
 		}
 	}
 	// A Git entry may take its repo from the Blueprint rather than declare
 	// one; on an image-backed service that is a source switch too (w8/m70).
-	if !present("repo") && !present("image") && want.Repo != "" && prebuiltImageSource(*dst) {
+	if omits("repo") && !present("image") && want.Repo != "" && prebuiltImageSource(*dst) {
 		applyBlueprintRepo(dst, want)
 	}
 	// A native or buildpack start command was baked into the image it built;
@@ -372,12 +377,12 @@ func ApplyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpe
 	// source and build inputs the sync leaves, declaring the strategy the
 	// service builds with keeps its spelling, so bex's own export re-plans as
 	// noop (w5/m117). An omitted builder is preserved, as before.
-	if present("runtime") || present("builder") {
+	if applies("runtime", "builder") {
 		next := *dst
-		if present("runtime") {
+		if applies("runtime") {
 			next.Runtime = want.Runtime
 		}
-		if present("builder") {
+		if applies("builder") {
 			next.Builder = want.Builder
 		}
 		// A source-kind switch takes the declared strategy even where the
@@ -400,26 +405,26 @@ func ApplyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpe
 		}
 	}
 
-	if present("buildFilter") {
+	if applies("buildFilter") {
 		if want.BuildFilter == nil {
 			dst.BuildFilter = nil
 		} else {
 			dst.BuildFilter = want.BuildFilter.DeepCopy()
 		}
-	} else if blueprintServiceOmission("buildFilter") == BlueprintClearOnOmission {
+	} else if omits("buildFilter") && blueprintServiceOmission("buildFilter") == BlueprintClearOnOmission {
 		dst.BuildFilter = nil
 	}
 
 	// A declared scaling block owns autoscaling. Conversely, an explicit manual
 	// count returns the service to manual scaling if no autoscaling block was
 	// declared. Omission of both preserves the currently active scaling mode.
-	if present("scaling") {
+	if applies("scaling") {
 		if want.Autoscaling == nil {
 			dst.Autoscaling = nil
 		} else {
 			dst.Autoscaling = want.Autoscaling.DeepCopy()
 		}
-	} else if present("numInstances") {
+	} else if applies("numInstances") && !present("scaling") {
 		dst.Autoscaling = nil
 		dst.Replicas = want.Replicas
 	}
