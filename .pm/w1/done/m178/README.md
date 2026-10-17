@@ -1,6 +1,6 @@
 # w1 · m178 — Dockerfile builds receive the service's env vars as build args and its secret files as build secrets
 
-**Worker:** worker1 **Goal:** a Dockerfile service's build sees its effective env vars as build args and its secret files as BuildKit secrets at Render's ids, so a Render Dockerfile builds the same on bex. **Status:** blocked (t001–t005, t007–t009 done 2026-10-17; t006 production check waits for the release pipeline to deploy the operator)
+**Worker:** worker1 **Goal:** a Dockerfile service's build sees its effective env vars as build args and its secret files as BuildKit secrets at Render's ids, so a Render Dockerfile builds the same on bex. **Status:** done (2026-10-17)
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | t003 | Expose secret files to Dockerfile builds as BuildKit secrets under Render's id rule — **DONE** | 45m | t001       |
 | t004 | Count env and secret-file revisions in Dockerfile release identity; keep secrets out of the cache — **DONE** | 30m | t002, t003 |
 | t005 | Document the Dockerfile build contract in ADR004 and ADR018 — **DONE** | 20m | t004       |
-| t006 | Live check on production after the operator deploys                                                                           | 40m | t004       |
+| t006 | Live check on production after the operator deploys — **DONE** | 40m | t004       |
 | t007 | Render parity — **DONE** | 20m | t005, t006 |
 | t008 | Simplify — **DONE** | 15m | t007       |
 | t009 | Test coverage — **DONE** | 40m | t007       |
-| t010 | Closeout                                                                                      | 10m | t009       |
+| t010 | Closeout — **DONE** | 10m | t009       |
 
 ## Definition of done
 
