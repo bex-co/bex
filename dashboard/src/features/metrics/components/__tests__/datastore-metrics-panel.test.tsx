@@ -203,6 +203,39 @@ describe("DatastoreMetricsPanel", () => {
     expect(screen.getByText("Capacity 1 GiB")).toBeInTheDocument();
   });
 
+  // Beside the Postgres autoscaling box at phone width the capacity label takes
+  // a row of its own, so its slot is held while it loads.
+  it("holds the capacity label's slot while it loads, and drops it when there is none", () => {
+    let capacity: ReturnType<typeof useDatastoreMetrics> = {
+      ...emptyResult(),
+      loading: true,
+    };
+    mockUseDatastoreMetrics.mockImplementation((_kind, _resource, metric) =>
+      metric === "disk_capacity" ? capacity : emptyResult(),
+    );
+    const panel = () => (
+      <DatastoreMetricsPanel kind="database" resource="dpg-abc" />
+    );
+
+    const { rerender } = render(panel());
+    expect(screen.getByTestId("disk-capacity-pending")).toBeInTheDocument();
+    expect(screen.queryByText(/^Capacity /)).not.toBeInTheDocument();
+
+    capacity = seriesResult("bytes", [1024 * 1024 * 1024]);
+    rerender(panel());
+    expect(
+      screen.queryByTestId("disk-capacity-pending"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Capacity 1 GiB")).toBeInTheDocument();
+
+    capacity = emptyResult();
+    rerender(panel());
+    expect(
+      screen.queryByTestId("disk-capacity-pending"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Capacity /)).not.toBeInTheDocument();
+  });
+
   it("renders the active-connections chart for a database resource", () => {
     mockUseDatastoreMetrics.mockImplementation((_kind, _resource, metric) => {
       if (metric === "db_connections")
