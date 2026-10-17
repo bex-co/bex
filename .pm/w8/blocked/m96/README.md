@@ -1,6 +1,6 @@
 # w8 · m96 — Supply GNU gettext for native message compilation
 
-**Worker:** worker8 **Goal:** ordinary native internationalized apps can compile and use their message catalogs without installing promised system tools in tenant code. **Status:** todo
+**Worker:** worker8 **Goal:** ordinary native internationalized apps can compile and use their message catalogs without installing promised system tools in tenant code. **Status:** blocked — needs the user's choice of native tool-supply mechanism ([decision](../m91/design.md)); no task started
 
 ## Tasks (in order)
 
@@ -22,7 +22,7 @@ A reviewed immutable multiarch GNU gettext utility set and complete compatible l
 ## Source + Goal linkage
 
 - **Source:** Authorized functional CLI sweep416,2026-10-17: both valid native POST201/exit0 first builds fail Django compilemessages missing-msgfmt after successful dependency install; both one-line gettext controls Live with exact real compiled-catalog and six runtime translation responses.
-- **Goal:** [ADR008](../../../docs/ADR008-vision.md), [Render parity ADR018](../../../docs/ADR018-render-parity.md), [native assembly ADR060](../../../docs/ADR060-build-worker-reliability-and-performance.md): regular hosting build/runtime dependencies work as documented.
+- **Goal:** [ADR008](../../../../docs/ADR008-vision.md), [Render parity ADR018](../../../../docs/ADR018-render-parity.md), [native assembly ADR060](../../../../docs/ADR060-build-worker-reliability-and-performance.md): regular hosting build/runtime dependencies work as documented.
 - **Outcome:** Standard translation builds and message utilities run without rewriting tenant commands or CLI requests.
 - **Why now:** Both native clients and exact selected-base controls isolate the missing GNU utility while Django and catalog data work. No matching supplier/fix exists; adjacent utility issues have different consumers/closure requirements.
 - **Render parity:** Included because native image contents affect tenant builds/runtime through REST/GraphQL/MCP/Blueprint/dashboard; no new product control or launcher fork.

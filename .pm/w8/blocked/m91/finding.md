@@ -24,7 +24,7 @@ The one recipe chain reaches six native primary runtimes/16 reviewed base lines 
 
 ## Dedupe, verification and limits
 
-[Dedupe](evidence/cli-sweep402/dedupe.txt) covers open/blocked/done PM, docs and source for PostgreSQL clients/pg_restore/pg_dump/native psql. Existing logical exports use separate CNPG client Jobs; local CLI stdin/cancellation/interactive-panel findings do not package tools in app images. [Completed FFmpeg m82](../done/m82/README.md) and ADR060 explicitly bound that delivery rather than certifying a blanket tools bundle; this new gap leaves its completion intact. No native-client supplier or later source repair was found at the recorded diagnosis head; serving revision is unknown.
+[Dedupe](evidence/cli-sweep402/dedupe.txt) covers open/blocked/done PM, docs and source for PostgreSQL clients/pg_restore/pg_dump/native psql. Existing logical exports use separate CNPG client Jobs; local CLI stdin/cancellation/interactive-panel findings do not package tools in app images. [Completed FFmpeg m82](../../done/m82/README.md) and ADR060 explicitly bound that delivery rather than certifying a blanket tools bundle; this new gap leaves its completion intact. No native-client supplier or later source repair was found at the recorded diagnosis head; serving revision is unknown.
 
 The evidence contains two actual BuildJob/ResolveNativeBuild recipes, two selected-base local controls, a real isolated PG15 backup generator and full hosted original/control/source/log receipts. It does not claim full generated-image execution or acceptance of any product fix. Harness-only invalid option/binary-text transport attempts and cleanup are preserved separately and excluded from the finding.
 
