@@ -1,0 +1,1932 @@
+{
+  "pass": "a886",
+  "date": "2026-10-17",
+  "kind": "Post-release live acceptance of w4/317 and w4/318; no new bug or product changes",
+  "researchHead": "0f455bd84b0a2232ab27b702516a3be9bdbfd3cf",
+  "servingBuildSha": "not independently established",
+  "fixture": {
+    "id": "dpg-db9nivsflioc739mcmjg",
+    "name": "qa-20261017-a886-params",
+    "plan": "free",
+    "public": false,
+    "version": "18",
+    "namespace": "tea-d98210cbbpdc73dcrkvg"
+  },
+  "originalEvidence": [
+    {
+      "path": ".pm/w4/evidence/317-parameter-name-case.json",
+      "sha256": "d8f457f8d8399ccf3d6e07da232edb60182332bd9c6429f4013ed8ad01bfe367"
+    },
+    {
+      "path": ".pm/w4/evidence/318-parameter-scroll-containment.json",
+      "sha256": "f849da78d50db30fce6003114fa02873fb957bae51e098540d6236902ab6c665"
+    }
+  ],
+  "records": {
+    "Baseline": {
+      "at": "2026-10-17T13:33:36.529Z",
+      "status": 200,
+      "inventory": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      }
+    },
+    "CreateFilled": {
+      "at": "2026-10-17T13:34:54.717Z",
+      "free": "Free — 256 MB RAM, 0.1 CPU, 1 GB · $0.00/month",
+      "version": "PostgreSQL 18",
+      "public": false,
+      "createEnabled": true
+    },
+    "Created": {
+      "at": "2026-10-17T13:34:56.693Z",
+      "request": {
+        "operationName": "CreateDatabase",
+        "variables": {
+          "name": "qa-20261017-a886-params",
+          "databaseName": "a886_data",
+          "databaseUser": "a886_owner",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "plan": "free",
+          "version": "18",
+          "public": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateDatabase($name: String!, $databaseName: String, $databaseUser: String, $ownerId: String, $environmentId: String, $plan: String, $version: String, $diskSizeGB: Int, $public: Boolean) {\n  createDatabase(\n    name: $name\n    databaseName: $databaseName\n    databaseUser: $databaseUser\n    ownerId: $ownerId\n    environmentId: $environmentId\n    plan: $plan\n    version: $version\n    diskSizeGB: $diskSizeGB\n    public: $public\n  ) {\n    id\n    name\n    databaseName\n    databaseUser\n    plan\n    status\n    projectId\n    environmentId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createDatabase": {
+            "__typename": "Database",
+            "databaseName": "a886_data",
+            "databaseUser": "a886_owner",
+            "environmentId": null,
+            "id": "dpg-db9nivsflioc739mcmjg",
+            "name": "qa-20261017-a886-params",
+            "plan": "free",
+            "projectId": null,
+            "status": "creating"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792244095496.729,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.149,
+        "responseStart": 464.779,
+        "responseEnd": 465.714
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9nivsflioc739mcmjg"
+    },
+    "InitialSettingsAndSql": {
+      "at": "2026-10-17T13:38:06.407Z",
+      "request": {
+        "operationName": "QaA886InitialSettings",
+        "query": "query QaA886InitialSettings($id:String!){databaseRecoveryInfo(id:$id){enabled earliestRecoveryTime latestRecoveryTime backups{id status createdAt}} databaseParameterSpec(id:$id){name value observationStatus observedSetting observedUnit}}",
+        "variables": {
+          "id": "dpg-db9nivsflioc739mcmjg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "databaseParameterSpec": [],
+          "databaseRecoveryInfo": {
+            "backups": [],
+            "earliestRecoveryTime": "",
+            "enabled": false,
+            "latestRecoveryTime": ""
+          }
+        }
+      },
+      "queryVisible": true
+    },
+    "BaselineSettingsSql": {
+      "at": "2026-10-17T13:38:09.406Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db9nivsflioc739mcmjg",
+          "sql": "SELECT name, setting, unit, source FROM pg_settings WHERE lower(name) IN ('timezone', 'work_mem', 'default_statistics_target') ORDER BY lower(name);",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["name", "setting", "unit", "source"],
+            "rowCount": 3,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["default_statistics_target", "100", null, "default"]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["TimeZone", "Etc/UTC", null, "configuration file"]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["work_mem", "4096", "kB", "default"]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792244287668.493,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.12,
+        "responseStart": 1029.035,
+        "responseEnd": 1029.903
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9nivsflioc739mcmjg#sql-console"
+    },
+    "SeedMarker": {
+      "at": "2026-10-17T13:38:12.449Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db9nivsflioc739mcmjg",
+          "sql": "CREATE TABLE qa_a886_marker AS SELECT 1 AS id, 'qa-a886 params 雪'::text AS note;",
+          "allowWrites": true
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": [],
+            "rowCount": 1,
+            "rows": [],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792244290834.445,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.172,
+        "responseStart": 897.209,
+        "responseEnd": 898.07
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9nivsflioc739mcmjg#sql-console"
+    },
+    "MobileDraftGeometry": {
+      "at": "2026-10-17T13:39:40.000Z",
+      "reload": false,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "empty": {
+        "at": "2026-10-17T13:39:39.316Z",
+        "geometry": {
+          "viewport": 390,
+          "documentWidth": 390,
+          "scrollX": 0
+        },
+        "ui": "- paragraph: This database sets no parameter overrides.\n- button \"Add override\"\n- button \"Save overrides\" [disabled]"
+      },
+      "draft": {
+        "at": "2026-10-17T13:39:39.344Z",
+        "geometry": {
+          "viewport": 390,
+          "documentWidth": 390,
+          "scrollX": 0,
+          "wrapper": {
+            "x": 37,
+            "y": 469.984375,
+            "width": 316,
+            "clientWidth": 316,
+            "scrollWidth": 632,
+            "scrollLeft": 0,
+            "position": "relative"
+          },
+          "table": {
+            "width": 632
+          },
+          "actionsHeading": "Actions",
+          "offsetParentIsWrapper": true
+        },
+        "saveEnabled": true,
+        "ui": "- table:\n  - rowgroup:\n    - row \"Parameter Declared value Observed setting Actions\":\n      - columnheader \"Parameter\"\n      - columnheader \"Declared value\"\n      - columnheader \"Observed setting\"\n      - columnheader \"Actions\"\n  - rowgroup:\n    - row \"work_mem 6MB No observation for this value yet. Remove work_mem\":\n      - cell \"work_mem\":\n        - textbox \"Parameter 1 name\": work_mem\n      - cell \"6MB\":\n        - textbox \"Parameter 1 value\": 6MB\n      - cell \"No observation for this value yet.\"\n      - cell \"Remove work_mem\":\n        - button \"Remove work_mem\"\n- button \"Add override\"\n- button \"Save overrides\"\n- button \"Discard changes\""
+      },
+      "localPan": {
+        "geometry": {
+          "viewport": 390,
+          "documentWidth": 390,
+          "scrollX": 0,
+          "wrapper": {
+            "x": 37,
+            "y": 469.984375,
+            "width": 316,
+            "clientWidth": 316,
+            "scrollWidth": 632,
+            "scrollLeft": 316,
+            "position": "relative"
+          },
+          "table": {
+            "width": 632
+          },
+          "actionsHeading": "Actions",
+          "offsetParentIsWrapper": true
+        },
+        "removeBox": {
+          "x": 321,
+          "y": 496.984375,
+          "width": 32,
+          "height": 32
+        }
+      },
+      "pagePan": {
+        "viewport": 390,
+        "documentWidth": 390,
+        "scrollX": 0,
+        "wrapper": {
+          "x": 37,
+          "y": 469.984375,
+          "width": 316,
+          "clientWidth": 316,
+          "scrollWidth": 632,
+          "scrollLeft": 316,
+          "position": "relative"
+        },
+        "table": {
+          "width": 632
+        },
+        "actionsHeading": "Actions",
+        "offsetParentIsWrapper": true
+      },
+      "discard": {
+        "geometry": {
+          "viewport": 390,
+          "documentWidth": 390,
+          "scrollX": 0
+        },
+        "ui": "- paragraph: This database sets no parameter overrides.\n- button \"Add override\"\n- button \"Save overrides\" [disabled]"
+      },
+      "parameterWrites": []
+    },
+    "MobileReloadDraftGeometry": {
+      "at": "2026-10-17T13:39:45.301Z",
+      "reload": true,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "empty": {
+        "at": "2026-10-17T13:39:44.547Z",
+        "geometry": {
+          "viewport": 390,
+          "documentWidth": 390,
+          "scrollX": 0
+        },
+        "ui": "- paragraph: This database sets no parameter overrides.\n- button \"Add override\"\n- button \"Save overrides\" [disabled]"
+      },
+      "draft": {
+        "at": "2026-10-17T13:39:44.595Z",
+        "geometry": {
+          "viewport": 390,
+          "documentWidth": 390,
+          "scrollX": 0,
+          "wrapper": {
+            "x": 37,
+            "y": 470,
+            "width": 316,
+            "clientWidth": 316,
+            "scrollWidth": 632,
+            "scrollLeft": 0,
+            "position": "relative"
+          },
+          "table": {
+            "width": 632
+          },
+          "actionsHeading": "Actions",
+          "offsetParentIsWrapper": true
+        },
+        "saveEnabled": true,
+        "ui": "- table:\n  - rowgroup:\n    - row \"Parameter Declared value Observed setting Actions\":\n      - columnheader \"Parameter\"\n      - columnheader \"Declared value\"\n      - columnheader \"Observed setting\"\n      - columnheader \"Actions\"\n  - rowgroup:\n    - row \"work_mem 6MB No observation for this value yet. Remove work_mem\":\n      - cell \"work_mem\":\n        - textbox \"Parameter 1 name\": work_mem\n      - cell \"6MB\":\n        - textbox \"Parameter 1 value\": 6MB\n      - cell \"No observation for this value yet.\"\n      - cell \"Remove work_mem\":\n        - button \"Remove work_mem\"\n- button \"Add override\"\n- button \"Save overrides\"\n- button \"Discard changes\""
+      },
+      "localPan": {
+        "geometry": {
+          "viewport": 390,
+          "documentWidth": 390,
+          "scrollX": 0,
+          "wrapper": {
+            "x": 37,
+            "y": 470,
+            "width": 316,
+            "clientWidth": 316,
+            "scrollWidth": 632,
+            "scrollLeft": 316,
+            "position": "relative"
+          },
+          "table": {
+            "width": 632
+          },
+          "actionsHeading": "Actions",
+          "offsetParentIsWrapper": true
+        },
+        "removeBox": {
+          "x": 321,
+          "y": 497,
+          "width": 32,
+          "height": 32
+        }
+      },
+      "pagePan": {
+        "viewport": 390,
+        "documentWidth": 390,
+        "scrollX": 0,
+        "wrapper": {
+          "x": 37,
+          "y": 470,
+          "width": 316,
+          "clientWidth": 316,
+          "scrollWidth": 632,
+          "scrollLeft": 316,
+          "position": "relative"
+        },
+        "table": {
+          "width": 632
+        },
+        "actionsHeading": "Actions",
+        "offsetParentIsWrapper": true
+      },
+      "discard": {
+        "geometry": {
+          "viewport": 390,
+          "documentWidth": 390,
+          "scrollX": 0
+        },
+        "ui": "- paragraph: This database sets no parameter overrides.\n- button \"Add override\"\n- button \"Save overrides\" [disabled]"
+      },
+      "parameterWrites": []
+    },
+    "DesktopDraftGeometry": {
+      "at": "2026-10-17T13:40:42.687Z",
+      "reload": false,
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "empty": {
+        "at": "2026-10-17T13:40:41.988Z",
+        "geometry": {
+          "viewport": 1440,
+          "documentWidth": 1440,
+          "scrollX": 0
+        },
+        "ui": "- paragraph: This database sets no parameter overrides.\n- button \"Add override\"\n- button \"Save overrides\" [disabled]"
+      },
+      "draft": {
+        "at": "2026-10-17T13:40:42.007Z",
+        "geometry": {
+          "viewport": 1440,
+          "documentWidth": 1440,
+          "scrollX": 0,
+          "wrapper": {
+            "x": 301,
+            "y": 528,
+            "width": 846,
+            "clientWidth": 846,
+            "scrollWidth": 846,
+            "scrollLeft": 0,
+            "position": "relative"
+          },
+          "table": {
+            "width": 846
+          },
+          "actionsHeading": "Actions",
+          "offsetParentIsWrapper": true
+        },
+        "saveEnabled": true,
+        "ui": "- table:\n  - rowgroup:\n    - row \"Parameter Declared value Observed setting Actions\":\n      - columnheader \"Parameter\"\n      - columnheader \"Declared value\"\n      - columnheader \"Observed setting\"\n      - columnheader \"Actions\"\n  - rowgroup:\n    - row \"work_mem 6MB No observation for this value yet. Remove work_mem\":\n      - cell \"work_mem\":\n        - textbox \"Parameter 1 name\": work_mem\n      - cell \"6MB\":\n        - textbox \"Parameter 1 value\": 6MB\n      - cell \"No observation for this value yet.\"\n      - cell \"Remove work_mem\":\n        - button \"Remove work_mem\"\n- button \"Add override\"\n- button \"Save overrides\"\n- button \"Discard changes\""
+      },
+      "localPan": {
+        "geometry": {
+          "viewport": 1440,
+          "documentWidth": 1440,
+          "scrollX": 0,
+          "wrapper": {
+            "x": 301,
+            "y": 528,
+            "width": 846,
+            "clientWidth": 846,
+            "scrollWidth": 846,
+            "scrollLeft": 0,
+            "position": "relative"
+          },
+          "table": {
+            "width": 846
+          },
+          "actionsHeading": "Actions",
+          "offsetParentIsWrapper": true
+        },
+        "removeBox": {
+          "x": 1115,
+          "y": 555,
+          "width": 32,
+          "height": 32
+        }
+      },
+      "pagePan": {
+        "viewport": 1440,
+        "documentWidth": 1440,
+        "scrollX": 0,
+        "wrapper": {
+          "x": 301,
+          "y": 528,
+          "width": 846,
+          "clientWidth": 846,
+          "scrollWidth": 846,
+          "scrollLeft": 0,
+          "position": "relative"
+        },
+        "table": {
+          "width": 846
+        },
+        "actionsHeading": "Actions",
+        "offsetParentIsWrapper": true
+      },
+      "discard": {
+        "geometry": {
+          "viewport": 1440,
+          "documentWidth": 1440,
+          "scrollX": 0
+        },
+        "ui": "- paragraph: This database sets no parameter overrides.\n- button \"Add override\"\n- button \"Save overrides\" [disabled]"
+      },
+      "parameterWrites": []
+    },
+    "LowercaseParametersSaved": {
+      "at": "2026-10-17T13:40:48.809Z",
+      "request": {
+        "operationName": "SetDatabaseParameterOverrides",
+        "variables": {
+          "id": "dpg-db9nivsflioc739mcmjg",
+          "parameters": [
+            {
+              "name": "timezone",
+              "value": "Europe/Berlin"
+            },
+            {
+              "name": "work_mem",
+              "value": "6MB"
+            },
+            {
+              "name": "default_statistics_target",
+              "value": "125"
+            }
+          ]
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetDatabaseParameterOverrides($id: String!, $parameters: [ParameterInput!]) {\n  setDatabaseParameterOverrides(id: $id, parameters: $parameters) {\n    id\n    name\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setDatabaseParameterOverrides": {
+            "__typename": "Database",
+            "id": "dpg-db9nivsflioc739mcmjg",
+            "name": "qa-20261017-a886-params"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792244447815.54,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.123,
+        "responseStart": 279.472,
+        "responseEnd": 280.21
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9nivsflioc739mcmjg#insights"
+    },
+    "LowercaseObservation": {
+      "at": "2026-10-17T13:41:29.218Z",
+      "request": {
+        "operationName": "QaA886DeclaredParameters",
+        "query": "query QaA886DeclaredParameters($id:String!){databaseParameterSpec(id:$id){name value observationStatus observedSetting observedUnit}}",
+        "variables": {
+          "id": "dpg-db9nivsflioc739mcmjg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "databaseParameterSpec": [
+            {
+              "name": "default_statistics_target",
+              "observationStatus": "observed",
+              "observedSetting": "125",
+              "observedUnit": null,
+              "value": "125"
+            },
+            {
+              "name": "timezone",
+              "observationStatus": "observed",
+              "observedSetting": "Europe/Berlin",
+              "observedUnit": null,
+              "value": "Europe/Berlin"
+            },
+            {
+              "name": "work_mem",
+              "observationStatus": "observed",
+              "observedSetting": "6144",
+              "observedUnit": "kB",
+              "value": "6MB"
+            }
+          ]
+        }
+      },
+      "editor": "- table:\n  - rowgroup:\n    - row \"Parameter Declared value Observed setting Actions\":\n      - columnheader \"Parameter\"\n      - columnheader \"Declared value\"\n      - columnheader \"Observed setting\"\n      - columnheader \"Actions\"\n  - rowgroup:\n    - row \"default_statistics_target 125 125 Live setting; this does not confirm the requested value was applied. Remove default_statistics_target\":\n      - cell \"default_statistics_target\":\n        - textbox \"Parameter 1 name\": default_statistics_target\n      - cell \"125\":\n        - textbox \"Parameter 1 value\": \"125\"\n      - cell \"125 Live setting; this does not confirm the requested value was applied.\":\n        - code: \"125\"\n        - paragraph: Live setting; this does not confirm the requested value was applied.\n      - cell \"Remove default_statistics_target\":\n        - button \"Remove default_statistics_target\"\n    - row \"timezone Europe/Berlin Europe/Berlin Live setting; this does not confirm the requested value was applied. Remove timezone\":\n      - cell \"timezone\":\n        - textbox \"Parameter 2 name\": timezone\n      - cell \"Europe/Berlin\":\n        - textbox \"Parameter 2 value\": Europe/Berlin\n      - cell \"Europe/Berlin Live setting; this does not confirm the requested value was applied.\":\n        - code: Europe/Berlin\n        - paragraph: Live setting; this does not confirm the requested value was applied.\n      - cell \"Remove timezone\":\n        - button \"Remove timezone\"\n    - row \"work_mem 6MB 6144 kB Live setting; this does not confirm the requested value was applied. Remove work_mem\":\n      - cell \"work_mem\":\n        - textbox \"Parameter 3 name\": work_mem\n      - cell \"6MB\":\n        - textbox \"Parameter 3 value\": 6MB\n      - cell \"6144 kB Live setting; this does not confirm the requested value was applied.\":\n        - code: 6144 kB\n        - paragraph: Live setting; this does not confirm the requested value was applied.\n      - cell \"Remove work_mem\":\n        - button \"Remove work_mem\"\n- button \"Add override\"\n- button \"Save overrides\" [disabled]"
+    },
+    "AppliedSettingsSql": {
+      "at": "2026-10-17T13:41:33.195Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db9nivsflioc739mcmjg",
+          "sql": "SELECT name, setting, unit, source FROM pg_settings WHERE lower(name) IN ('timezone', 'work_mem', 'default_statistics_target') ORDER BY lower(name);",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["name", "setting", "unit", "source"],
+            "rowCount": 3,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "default_statistics_target",
+                  "125",
+                  null,
+                  "configuration file"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "TimeZone",
+                  "Europe/Berlin",
+                  null,
+                  "configuration file"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["work_mem", "6144", "kB", "configuration file"]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792244491748.046,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.132,
+        "responseStart": 738.669,
+        "responseEnd": 739.334
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9nivsflioc739mcmjg#sql-console"
+    },
+    "LowercaseRestMcp": {
+      "at": "2026-10-17T13:42:35.400Z",
+      "rest": {
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db9nivsflioc739mcmjg/parameters"
+        },
+        "status": 200,
+        "body": [
+          {
+            "name": "default_statistics_target",
+            "value": "125",
+            "observationStatus": "observed",
+            "observedSetting": "125",
+            "observedUnit": null
+          },
+          {
+            "name": "timezone",
+            "value": "Europe/Berlin",
+            "observationStatus": "observed",
+            "observedSetting": "Europe/Berlin",
+            "observedUnit": null
+          },
+          {
+            "name": "work_mem",
+            "value": "6MB",
+            "observationStatus": "observed",
+            "observedSetting": "6144",
+            "observedUnit": "kB"
+          }
+        ]
+      },
+      "mcp": {
+        "request": {
+          "jsonrpc": "2.0",
+          "id": 8861,
+          "method": "tools/call",
+          "params": {
+            "name": "list_postgres_parameters",
+            "arguments": {
+              "postgresId": "dpg-db9nivsflioc739mcmjg"
+            }
+          }
+        },
+        "status": 200,
+        "contentType": "text/event-stream",
+        "raw": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":8861,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"parameters\\\":[{\\\"name\\\":\\\"default_statistics_target\\\",\\\"observationStatus\\\":\\\"observed\\\",\\\"observedSetting\\\":\\\"125\\\",\\\"observedUnit\\\":null,\\\"value\\\":\\\"125\\\"},{\\\"name\\\":\\\"timezone\\\",\\\"observationStatus\\\":\\\"observed\\\",\\\"observedSetting\\\":\\\"Europe/Berlin\\\",\\\"observedUnit\\\":null,\\\"value\\\":\\\"Europe/Berlin\\\"},{\\\"name\\\":\\\"work_mem\\\",\\\"observationStatus\\\":\\\"observed\\\",\\\"observedSetting\\\":\\\"6144\\\",\\\"observedUnit\\\":\\\"kB\\\",\\\"value\\\":\\\"6MB\\\"}]}\"}],\"structuredContent\":{\"parameters\":[{\"name\":\"default_statistics_target\",\"observationStatus\":\"observed\",\"observedSetting\":\"125\",\"observedUnit\":null,\"value\":\"125\"},{\"name\":\"timezone\",\"observationStatus\":\"observed\",\"observedSetting\":\"Europe/Berlin\",\"observedUnit\":null,\"value\":\"Europe/Berlin\"},{\"name\":\"work_mem\",\"observationStatus\":\"observed\",\"observedSetting\":\"6144\",\"observedUnit\":\"kB\",\"value\":\"6MB\"}]}}}\n\n",
+        "body": [
+          {
+            "jsonrpc": "2.0",
+            "id": 8861,
+            "result": {
+              "content": [
+                {
+                  "type": "text",
+                  "text": "{\"parameters\":[{\"name\":\"default_statistics_target\",\"observationStatus\":\"observed\",\"observedSetting\":\"125\",\"observedUnit\":null,\"value\":\"125\"},{\"name\":\"timezone\",\"observationStatus\":\"observed\",\"observedSetting\":\"Europe/Berlin\",\"observedUnit\":null,\"value\":\"Europe/Berlin\"},{\"name\":\"work_mem\",\"observationStatus\":\"observed\",\"observedSetting\":\"6144\",\"observedUnit\":\"kB\",\"value\":\"6MB\"}]}"
+                }
+              ],
+              "structuredContent": {
+                "parameters": [
+                  {
+                    "name": "default_statistics_target",
+                    "observationStatus": "observed",
+                    "observedSetting": "125",
+                    "observedUnit": null,
+                    "value": "125"
+                  },
+                  {
+                    "name": "timezone",
+                    "observationStatus": "observed",
+                    "observedSetting": "Europe/Berlin",
+                    "observedUnit": null,
+                    "value": "Europe/Berlin"
+                  },
+                  {
+                    "name": "work_mem",
+                    "observationStatus": "observed",
+                    "observedSetting": "6144",
+                    "observedUnit": "kB",
+                    "value": "6MB"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    "DesktopSavedGeometry": {
+      "at": "2026-10-17T13:42:38.717Z",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "geometry": {
+        "viewport": 1440,
+        "documentWidth": 1440,
+        "scrollX": 0,
+        "wrapperWidth": 846,
+        "clientWidth": 846,
+        "scrollWidth": 846,
+        "tableWidth": 846,
+        "position": "relative",
+        "actionsHeading": "Actions",
+        "offsetParentIsWrapper": true
+      },
+      "editor": "- table:\n  - rowgroup:\n    - row \"Parameter Declared value Observed setting Actions\":\n      - columnheader \"Parameter\"\n      - columnheader \"Declared value\"\n      - columnheader \"Observed setting\"\n      - columnheader \"Actions\"\n  - rowgroup:\n    - row \"default_statistics_target 125 125 Live setting; this does not confirm the requested value was applied. Remove default_statistics_target\":\n      - cell \"default_statistics_target\":\n        - textbox \"Parameter 1 name\": default_statistics_target\n      - cell \"125\":\n        - textbox \"Parameter 1 value\": \"125\"\n      - cell \"125 Live setting; this does not confirm the requested value was applied.\":\n        - code: \"125\"\n        - paragraph: Live setting; this does not confirm the requested value was applied.\n      - cell \"Remove default_statistics_target\":\n        - button \"Remove default_statistics_target\"\n    - row \"timezone Europe/Berlin Europe/Berlin Live setting; this does not confirm the requested value was applied. Remove timezone\":\n      - cell \"timezone\":\n        - textbox \"Parameter 2 name\": timezone\n      - cell \"Europe/Berlin\":\n        - textbox \"Parameter 2 value\": Europe/Berlin\n      - cell \"Europe/Berlin Live setting; this does not confirm the requested value was applied.\":\n        - code: Europe/Berlin\n        - paragraph: Live setting; this does not confirm the requested value was applied.\n      - cell \"Remove timezone\":\n        - button \"Remove timezone\"\n    - row \"work_mem 6MB 6144 kB Live setting; this does not confirm the requested value was applied. Remove work_mem\":\n      - cell \"work_mem\":\n        - textbox \"Parameter 3 name\": work_mem\n      - cell \"6MB\":\n        - textbox \"Parameter 3 value\": 6MB\n      - cell \"6144 kB Live setting; this does not confirm the requested value was applied.\":\n        - code: 6144 kB\n        - paragraph: Live setting; this does not confirm the requested value was applied.\n      - cell \"Remove work_mem\":\n        - button \"Remove work_mem\"\n- button \"Add override\"\n- button \"Save overrides\" [disabled]",
+      "saveDisabled": true
+    },
+    "MobileSavedGeometry": {
+      "at": "2026-10-17T13:42:43.902Z",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "geometry": {
+        "viewport": 390,
+        "documentWidth": 390,
+        "scrollX": 0,
+        "wrapperWidth": 316,
+        "clientWidth": 316,
+        "scrollWidth": 632,
+        "tableWidth": 632,
+        "position": "relative",
+        "actionsHeading": "Actions",
+        "offsetParentIsWrapper": true
+      },
+      "editor": "- table:\n  - rowgroup:\n    - row \"Parameter Declared value Observed setting Actions\":\n      - columnheader \"Parameter\"\n      - columnheader \"Declared value\"\n      - columnheader \"Observed setting\"\n      - columnheader \"Actions\"\n  - rowgroup:\n    - row \"default_statistics_target 125 125 Live setting; this does not confirm the requested value was applied. Remove default_statistics_target\":\n      - cell \"default_statistics_target\":\n        - textbox \"Parameter 1 name\": default_statistics_target\n      - cell \"125\":\n        - textbox \"Parameter 1 value\": \"125\"\n      - cell \"125 Live setting; this does not confirm the requested value was applied.\":\n        - code: \"125\"\n        - paragraph: Live setting; this does not confirm the requested value was applied.\n      - cell \"Remove default_statistics_target\":\n        - button \"Remove default_statistics_target\"\n    - row \"timezone Europe/Berlin Europe/Berlin Live setting; this does not confirm the requested value was applied. Remove timezone\":\n      - cell \"timezone\":\n        - textbox \"Parameter 2 name\": timezone\n      - cell \"Europe/Berlin\":\n        - textbox \"Parameter 2 value\": Europe/Berlin\n      - cell \"Europe/Berlin Live setting; this does not confirm the requested value was applied.\":\n        - code: Europe/Berlin\n        - paragraph: Live setting; this does not confirm the requested value was applied.\n      - cell \"Remove timezone\":\n        - button \"Remove timezone\"\n    - row \"work_mem 6MB 6144 kB Live setting; this does not confirm the requested value was applied. Remove work_mem\":\n      - cell \"work_mem\":\n        - textbox \"Parameter 3 name\": work_mem\n      - cell \"6MB\":\n        - textbox \"Parameter 3 value\": 6MB\n      - cell \"6144 kB Live setting; this does not confirm the requested value was applied.\":\n        - code: 6144 kB\n        - paragraph: Live setting; this does not confirm the requested value was applied.\n      - cell \"Remove work_mem\":\n        - button \"Remove work_mem\"\n- button \"Add override\"\n- button \"Save overrides\" [disabled]",
+      "saveDisabled": true
+    },
+    "CanonicalCaseSaved": {
+      "at": "2026-10-17T13:43:44.847Z",
+      "request": {
+        "operationName": "SetDatabaseParameterOverrides",
+        "variables": {
+          "id": "dpg-db9nivsflioc739mcmjg",
+          "parameters": [
+            {
+              "name": "default_statistics_target",
+              "value": "125"
+            },
+            {
+              "name": "TimeZone",
+              "value": "Europe/Berlin"
+            },
+            {
+              "name": "work_mem",
+              "value": "6MB"
+            }
+          ]
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetDatabaseParameterOverrides($id: String!, $parameters: [ParameterInput!]) {\n  setDatabaseParameterOverrides(id: $id, parameters: $parameters) {\n    id\n    name\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setDatabaseParameterOverrides": {
+            "__typename": "Database",
+            "id": "dpg-db9nivsflioc739mcmjg",
+            "name": "qa-20261017-a886-params"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792244623794.7449,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.145,
+        "responseStart": 341.582,
+        "responseEnd": 342.403
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9nivsflioc739mcmjg#insights"
+    },
+    "CanonicalCaseObserved": {
+      "at": "2026-10-17T13:43:47.004Z",
+      "request": {
+        "operationName": "QaA886DeclaredParameters",
+        "query": "query QaA886DeclaredParameters($id:String!){databaseParameterSpec(id:$id){name value observationStatus observedSetting observedUnit}}",
+        "variables": {
+          "id": "dpg-db9nivsflioc739mcmjg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "databaseParameterSpec": [
+            {
+              "name": "TimeZone",
+              "observationStatus": "observed",
+              "observedSetting": "Europe/Berlin",
+              "observedUnit": null,
+              "value": "Europe/Berlin"
+            },
+            {
+              "name": "default_statistics_target",
+              "observationStatus": "observed",
+              "observedSetting": "125",
+              "observedUnit": null,
+              "value": "125"
+            },
+            {
+              "name": "work_mem",
+              "observationStatus": "observed",
+              "observedSetting": "6144",
+              "observedUnit": "kB",
+              "value": "6MB"
+            }
+          ]
+        }
+      },
+      "editor": "- table:\n  - rowgroup:\n    - row \"Parameter Declared value Observed setting Actions\":\n      - columnheader \"Parameter\"\n      - columnheader \"Declared value\"\n      - columnheader \"Observed setting\"\n      - columnheader \"Actions\"\n  - rowgroup:\n    - row \"TimeZone Europe/Berlin Europe/Berlin Live setting; this does not confirm the requested value was applied. Remove TimeZone\":\n      - cell \"TimeZone\":\n        - textbox \"Parameter 1 name\": TimeZone\n      - cell \"Europe/Berlin\":\n        - textbox \"Parameter 1 value\": Europe/Berlin\n      - cell \"Europe/Berlin Live setting; this does not confirm the requested value was applied.\":\n        - code: Europe/Berlin\n        - paragraph: Live setting; this does not confirm the requested value was applied.\n      - cell \"Remove TimeZone\":\n        - button \"Remove TimeZone\"\n    - row \"default_statistics_target 125 125 Live setting; this does not confirm the requested value was applied. Remove default_statistics_target\":\n      - cell \"default_statistics_target\":\n        - textbox \"Parameter 2 name\": default_statistics_target\n      - cell \"125\":\n        - textbox \"Parameter 2 value\": \"125\"\n      - cell \"125 Live setting; this does not confirm the requested value was applied.\":\n        - code: \"125\"\n        - paragraph: Live setting; this does not confirm the requested value was applied.\n      - cell \"Remove default_statistics_target\":\n        - button \"Remove default_statistics_target\"\n    - row \"work_mem 6MB 6144 kB Live setting; this does not confirm the requested value was applied. Remove work_mem\":\n      - cell \"work_mem\":\n        - textbox \"Parameter 3 name\": work_mem\n      - cell \"6MB\":\n        - textbox \"Parameter 3 value\": 6MB\n      - cell \"6144 kB Live setting; this does not confirm the requested value was applied.\":\n        - code: 6144 kB\n        - paragraph: Live setting; this does not confirm the requested value was applied.\n      - cell \"Remove work_mem\":\n        - button \"Remove work_mem\"\n- button \"Add override\"\n- button \"Save overrides\" [disabled]"
+    },
+    "LowercaseAgainSaved": {
+      "at": "2026-10-17T13:43:48.781Z",
+      "request": {
+        "operationName": "SetDatabaseParameterOverrides",
+        "variables": {
+          "id": "dpg-db9nivsflioc739mcmjg",
+          "parameters": [
+            {
+              "name": "timezone",
+              "value": "Europe/Berlin"
+            },
+            {
+              "name": "default_statistics_target",
+              "value": "125"
+            },
+            {
+              "name": "work_mem",
+              "value": "6MB"
+            }
+          ]
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetDatabaseParameterOverrides($id: String!, $parameters: [ParameterInput!]) {\n  setDatabaseParameterOverrides(id: $id, parameters: $parameters) {\n    id\n    name\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setDatabaseParameterOverrides": {
+            "__typename": "Database",
+            "id": "dpg-db9nivsflioc739mcmjg",
+            "name": "qa-20261017-a886-params"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792244627661.526,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.133,
+        "responseStart": 400.774,
+        "responseEnd": 401.781
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9nivsflioc739mcmjg#insights"
+    },
+    "LowercaseAgainObserved": {
+      "at": "2026-10-17T13:43:53.298Z",
+      "request": {
+        "operationName": "QaA886DeclaredParameters",
+        "query": "query QaA886DeclaredParameters($id:String!){databaseParameterSpec(id:$id){name value observationStatus observedSetting observedUnit}}",
+        "variables": {
+          "id": "dpg-db9nivsflioc739mcmjg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "databaseParameterSpec": [
+            {
+              "name": "default_statistics_target",
+              "observationStatus": "observed",
+              "observedSetting": "125",
+              "observedUnit": null,
+              "value": "125"
+            },
+            {
+              "name": "timezone",
+              "observationStatus": "observed",
+              "observedSetting": "Europe/Berlin",
+              "observedUnit": null,
+              "value": "Europe/Berlin"
+            },
+            {
+              "name": "work_mem",
+              "observationStatus": "observed",
+              "observedSetting": "6144",
+              "observedUnit": "kB",
+              "value": "6MB"
+            }
+          ]
+        }
+      },
+      "editor": "- table:\n  - rowgroup:\n    - row \"Parameter Declared value Observed setting Actions\":\n      - columnheader \"Parameter\"\n      - columnheader \"Declared value\"\n      - columnheader \"Observed setting\"\n      - columnheader \"Actions\"\n  - rowgroup:\n    - row \"default_statistics_target 125 125 Live setting; this does not confirm the requested value was applied. Remove default_statistics_target\":\n      - cell \"default_statistics_target\":\n        - textbox \"Parameter 1 name\": default_statistics_target\n      - cell \"125\":\n        - textbox \"Parameter 1 value\": \"125\"\n      - cell \"125 Live setting; this does not confirm the requested value was applied.\":\n        - code: \"125\"\n        - paragraph: Live setting; this does not confirm the requested value was applied.\n      - cell \"Remove default_statistics_target\":\n        - button \"Remove default_statistics_target\"\n    - row \"timezone Europe/Berlin Europe/Berlin Live setting; this does not confirm the requested value was applied. Remove timezone\":\n      - cell \"timezone\":\n        - textbox \"Parameter 2 name\": timezone\n      - cell \"Europe/Berlin\":\n        - textbox \"Parameter 2 value\": Europe/Berlin\n      - cell \"Europe/Berlin Live setting; this does not confirm the requested value was applied.\":\n        - code: Europe/Berlin\n        - paragraph: Live setting; this does not confirm the requested value was applied.\n      - cell \"Remove timezone\":\n        - button \"Remove timezone\"\n    - row \"work_mem 6MB 6144 kB Live setting; this does not confirm the requested value was applied. Remove work_mem\":\n      - cell \"work_mem\":\n        - textbox \"Parameter 3 name\": work_mem\n      - cell \"6MB\":\n        - textbox \"Parameter 3 value\": 6MB\n      - cell \"6144 kB Live setting; this does not confirm the requested value was applied.\":\n        - code: 6144 kB\n        - paragraph: Live setting; this does not confirm the requested value was applied.\n      - cell \"Remove work_mem\":\n        - button \"Remove work_mem\"\n- button \"Add override\"\n- button \"Save overrides\" [disabled]"
+    },
+    "PaddedBothSaved": {
+      "at": "2026-10-17T13:44:37.746Z",
+      "request": {
+        "operationName": "SetDatabaseParameterOverrides",
+        "variables": {
+          "id": "dpg-db9nivsflioc739mcmjg",
+          "parameters": [
+            {
+              "name": "default_statistics_target",
+              "value": "125"
+            },
+            {
+              "name": "timezone",
+              "value": "Europe/Berlin"
+            },
+            {
+              "name": "work_mem",
+              "value": "8MB"
+            }
+          ]
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetDatabaseParameterOverrides($id: String!, $parameters: [ParameterInput!]) {\n  setDatabaseParameterOverrides(id: $id, parameters: $parameters) {\n    id\n    name\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setDatabaseParameterOverrides": {
+            "__typename": "Database",
+            "id": "dpg-db9nivsflioc739mcmjg",
+            "name": "qa-20261017-a886-params"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792244676793.228,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.135,
+        "responseStart": 246.856,
+        "responseEnd": 247.441
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9nivsflioc739mcmjg#insights"
+    },
+    "PaddedBothObserved": {
+      "at": "2026-10-17T13:44:44.227Z",
+      "request": {
+        "operationName": "QaA886DeclaredParameters",
+        "query": "query QaA886DeclaredParameters($id:String!){databaseParameterSpec(id:$id){name value observationStatus observedSetting observedUnit}}",
+        "variables": {
+          "id": "dpg-db9nivsflioc739mcmjg"
+        }
+      },
+      "polls": [
+        {
+          "at": "2026-10-17T13:44:40.900Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "databaseParameterSpec": [
+                {
+                  "name": "default_statistics_target",
+                  "observationStatus": "observed",
+                  "observedSetting": "125",
+                  "observedUnit": null,
+                  "value": "125"
+                },
+                {
+                  "name": "timezone",
+                  "observationStatus": "observed",
+                  "observedSetting": "Europe/Berlin",
+                  "observedUnit": null,
+                  "value": "Europe/Berlin"
+                },
+                {
+                  "name": "work_mem",
+                  "observationStatus": "observed",
+                  "observedSetting": "6144",
+                  "observedUnit": "kB",
+                  "value": "8MB"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T13:44:44.201Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "databaseParameterSpec": [
+                {
+                  "name": "default_statistics_target",
+                  "observationStatus": "observed",
+                  "observedSetting": "125",
+                  "observedUnit": null,
+                  "value": "125"
+                },
+                {
+                  "name": "timezone",
+                  "observationStatus": "observed",
+                  "observedSetting": "Europe/Berlin",
+                  "observedUnit": null,
+                  "value": "Europe/Berlin"
+                },
+                {
+                  "name": "work_mem",
+                  "observationStatus": "observed",
+                  "observedSetting": "8192",
+                  "observedUnit": "kB",
+                  "value": "8MB"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "fields": [
+        {
+          "name": "default_statistics_target",
+          "value": "125"
+        },
+        {
+          "name": "timezone",
+          "value": "Europe/Berlin"
+        },
+        {
+          "name": "work_mem",
+          "value": "8MB"
+        }
+      ],
+      "saveDisabled": true,
+      "discardCount": 0,
+      "editor": "- table:\n  - rowgroup:\n    - row \"Parameter Declared value Observed setting Actions\":\n      - columnheader \"Parameter\"\n      - columnheader \"Declared value\"\n      - columnheader \"Observed setting\"\n      - columnheader \"Actions\"\n  - rowgroup:\n    - row \"default_statistics_target 125 125 Live setting; this does not confirm the requested value was applied. Remove default_statistics_target\":\n      - cell \"default_statistics_target\":\n        - textbox \"Parameter 1 name\": default_statistics_target\n      - cell \"125\":\n        - textbox \"Parameter 1 value\": \"125\"\n      - cell \"125 Live setting; this does not confirm the requested value was applied.\":\n        - code: \"125\"\n        - paragraph: Live setting; this does not confirm the requested value was applied.\n      - cell \"Remove default_statistics_target\":\n        - button \"Remove default_statistics_target\"\n    - row \"timezone Europe/Berlin Europe/Berlin Live setting; this does not confirm the requested value was applied. Remove timezone\":\n      - cell \"timezone\":\n        - textbox \"Parameter 2 name\": timezone\n      - cell \"Europe/Berlin\":\n        - textbox \"Parameter 2 value\": Europe/Berlin\n      - cell \"Europe/Berlin Live setting; this does not confirm the requested value was applied.\":\n        - code: Europe/Berlin\n        - paragraph: Live setting; this does not confirm the requested value was applied.\n      - cell \"Remove timezone\":\n        - button \"Remove timezone\"\n    - row \"work_mem 8MB 6144 kB Live setting; this does not confirm the requested value was applied. Remove work_mem\":\n      - cell \"work_mem\":\n        - textbox \"Parameter 3 name\": work_mem\n      - cell \"8MB\":\n        - textbox \"Parameter 3 value\": 8MB\n      - cell \"6144 kB Live setting; this does not confirm the requested value was applied.\":\n        - code: 6144 kB\n        - paragraph: Live setting; this does not confirm the requested value was applied.\n      - cell \"Remove work_mem\":\n        - button \"Remove work_mem\"\n- button \"Add override\"\n- button \"Save overrides\" [disabled]"
+    },
+    "PaddedCanonicalRefresh": {
+      "at": "2026-10-17T13:45:25.024Z",
+      "request": {
+        "operationName": "DatabaseParameterSpec",
+        "variables": {
+          "id": "dpg-db9nivsflioc739mcmjg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query DatabaseParameterSpec($id: String!) {\n  databaseParameterSpec(id: $id) {\n    name\n    value\n    observationStatus\n    observedSetting\n    observedUnit\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "databaseParameterSpec": [
+            {
+              "__typename": "DatabaseParameterSpec",
+              "name": "default_statistics_target",
+              "observationStatus": "observed",
+              "observedSetting": "125",
+              "observedUnit": null,
+              "value": "125"
+            },
+            {
+              "__typename": "DatabaseParameterSpec",
+              "name": "timezone",
+              "observationStatus": "observed",
+              "observedSetting": "Europe/Berlin",
+              "observedUnit": null,
+              "value": "Europe/Berlin"
+            },
+            {
+              "__typename": "DatabaseParameterSpec",
+              "name": "work_mem",
+              "observationStatus": "observed",
+              "observedSetting": "8192",
+              "observedUnit": "kB",
+              "value": "8MB"
+            }
+          ]
+        }
+      },
+      "timing": {
+        "startTime": 1792244722194.135,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.133,
+        "responseStart": 2110.826,
+        "responseEnd": 2111.651
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9nivsflioc739mcmjg#insights"
+    },
+    "PaddedCanonicalControlUi": {
+      "at": "2026-10-17T13:45:27.931Z",
+      "editor": "- table:\n  - rowgroup:\n    - row \"Parameter Declared value Observed setting Actions\":\n      - columnheader \"Parameter\"\n      - columnheader \"Declared value\"\n      - columnheader \"Observed setting\"\n      - columnheader \"Actions\"\n  - rowgroup:\n    - row \"default_statistics_target 125 125 Live setting; this does not confirm the requested value was applied. Remove default_statistics_target\":\n      - cell \"default_statistics_target\":\n        - textbox \"Parameter 1 name\": default_statistics_target\n      - cell \"125\":\n        - textbox \"Parameter 1 value\": \"125\"\n      - cell \"125 Live setting; this does not confirm the requested value was applied.\":\n        - code: \"125\"\n        - paragraph: Live setting; this does not confirm the requested value was applied.\n      - cell \"Remove default_statistics_target\":\n        - button \"Remove default_statistics_target\"\n    - row \"timezone Europe/Berlin Europe/Berlin Live setting; this does not confirm the requested value was applied. Remove timezone\":\n      - cell \"timezone\":\n        - textbox \"Parameter 2 name\": timezone\n      - cell \"Europe/Berlin\":\n        - textbox \"Parameter 2 value\": Europe/Berlin\n      - cell \"Europe/Berlin Live setting; this does not confirm the requested value was applied.\":\n        - code: Europe/Berlin\n        - paragraph: Live setting; this does not confirm the requested value was applied.\n      - cell \"Remove timezone\":\n        - button \"Remove timezone\"\n    - row \"work_mem 8MB 8192 kB Live setting; this does not confirm the requested value was applied. Remove work_mem\":\n      - cell \"work_mem\":\n        - textbox \"Parameter 3 name\": work_mem\n      - cell \"8MB\":\n        - textbox \"Parameter 3 value\": 8MB\n      - cell \"8192 kB Live setting; this does not confirm the requested value was applied.\":\n        - code: 8192 kB\n        - paragraph: Live setting; this does not confirm the requested value was applied.\n      - cell \"Remove work_mem\":\n        - button \"Remove work_mem\"\n- button \"Add override\"\n- button \"Save overrides\" [disabled]",
+      "saveDisabled": true
+    },
+    "MarkerSurvived": {
+      "at": "2026-10-17T13:45:31.026Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db9nivsflioc739mcmjg",
+          "sql": "SELECT id, note FROM qa_a886_marker ORDER BY id;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["id", "note"],
+            "rowCount": 1,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["1", "qa-a886 params 雪"]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792244729977.8098,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.174,
+        "responseStart": 339.336,
+        "responseEnd": 340.207
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9nivsflioc739mcmjg#sql-console"
+    },
+    "AllOverridesRemoved": {
+      "at": "2026-10-17T13:48:26.926Z",
+      "request": {
+        "operationName": "SetDatabaseParameterOverrides",
+        "variables": {
+          "id": "dpg-db9nivsflioc739mcmjg",
+          "parameters": []
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetDatabaseParameterOverrides($id: String!, $parameters: [ParameterInput!]) {\n  setDatabaseParameterOverrides(id: $id, parameters: $parameters) {\n    id\n    name\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setDatabaseParameterOverrides": {
+            "__typename": "Database",
+            "id": "dpg-db9nivsflioc739mcmjg",
+            "name": "qa-20261017-a886-params"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792244905809.124,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.161,
+        "responseStart": 404.536,
+        "responseEnd": 405.437
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9nivsflioc739mcmjg#insights"
+    },
+    "EmptyDeclaredParametersVerified": {
+      "at": "2026-10-17T13:48:43.449Z",
+      "request": {
+        "operationName": "QaA886DeclaredParameters",
+        "query": "query QaA886DeclaredParameters($id:String!){databaseParameterSpec(id:$id){name value observationStatus observedSetting observedUnit}}",
+        "variables": {
+          "id": "dpg-db9nivsflioc739mcmjg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "databaseParameterSpec": []
+        }
+      }
+    },
+    "RestoredSettingsSql": {
+      "at": "2026-10-17T13:48:46.723Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db9nivsflioc739mcmjg",
+          "sql": "SELECT name, setting, unit, source FROM pg_settings WHERE lower(name) IN ('timezone', 'work_mem', 'default_statistics_target') ORDER BY lower(name);",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["name", "setting", "unit", "source"],
+            "rowCount": 3,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["default_statistics_target", "100", null, "default"]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["TimeZone", "Etc/UTC", null, "configuration file"]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["work_mem", "4096", "kB", "default"]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792244925307.0933,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.126,
+        "responseStart": 709.102,
+        "responseEnd": 709.82
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9nivsflioc739mcmjg#sql-console"
+    },
+    "RestoredMarkerSql": {
+      "at": "2026-10-17T13:48:48.938Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db9nivsflioc739mcmjg",
+          "sql": "SELECT id, note FROM qa_a886_marker ORDER BY id;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["id", "note"],
+            "rowCount": 1,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["1", "qa-a886 params 雪"]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792244927858.04,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.137,
+        "responseStart": 365.58,
+        "responseEnd": 366.254
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9nivsflioc739mcmjg#sql-console"
+    },
+    "MarkerDropped": {
+      "at": "2026-10-17T13:48:51.540Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db9nivsflioc739mcmjg",
+          "sql": "DROP TABLE qa_a886_marker;",
+          "allowWrites": true
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": [],
+            "rowCount": 0,
+            "rows": [],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792244930360.5461,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.327,
+        "responseStart": 460.351,
+        "responseEnd": 461.601
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9nivsflioc739mcmjg#sql-console"
+    },
+    "MarkerAbsent": {
+      "at": "2026-10-17T13:48:53.767Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db9nivsflioc739mcmjg",
+          "sql": "SELECT to_regclass('public.qa_a886_marker')::text AS marker;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["marker"],
+            "rowCount": 1,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [null]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792244932691.442,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.131,
+        "responseStart": 366.428,
+        "responseEnd": 367.418
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9nivsflioc739mcmjg#sql-console"
+    },
+    "DeleteDatabase": {
+      "at": "2026-10-17T13:50:24.070Z",
+      "request": {
+        "operationName": "DeleteDatabase",
+        "variables": {
+          "id": "dpg-db9nivsflioc739mcmjg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteDatabase($id: String!, $confirm: String) {\n  deleteDatabase(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteDatabase": true
+        }
+      },
+      "timing": {
+        "startTime": 1792245023088.4268,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.128,
+        "responseStart": 267.111,
+        "responseEnd": 267.66
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "InventoryCleanup": {
+      "at": "2026-10-17T13:50:35.525Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [
+        {
+          "path": "/v1/postgres/dpg-db9nivsflioc739mcmjg",
+          "status": 404
+        }
+      ]
+    },
+    "SessionCleared": {
+      "at": "2026-10-17T13:50:42.000Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "FinishSummary": {
+      "logoutConfirmed": true,
+      "exitCode": 0,
+      "browser": {
+        "at": "2026-10-17T13:50:42.000Z",
+        "whoami": 401,
+        "cookies": 0,
+        "pages": 1,
+        "url": "about:blank"
+      },
+      "handlesRemoved": true
+    }
+  },
+  "physicalCleanup": {
+    "at": "2026-10-17T13:51:14.076709+00:00",
+    "context": "hetzner-prod",
+    "namespace": "tea-d98210cbbpdc73dcrkvg",
+    "databaseId": "dpg-db9nivsflioc739mcmjg",
+    "scope": "Read-only exact owned names/labels; additional resources expose metadata names only and filter exact ID or ID-hyphen prefix. CNPG Database child is id-app.",
+    "checks": [
+      {
+        "check": "database",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "cluster",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "appDatabase",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "pods",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "pvc",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "services",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "secrets",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "certificates.cert-manager.io",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "networkpolicies",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "roles",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "rolebindings",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "serviceaccounts",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "poolers.postgresql.cnpg.io",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      }
+    ],
+    "allAbsent": true
+  },
+  "networkSummary": {
+    "baselineExclusive": 1043,
+    "count": 262,
+    "statuses": {
+      "200": 256,
+      "204": 6
+    },
+    "nonSuccess": []
+  },
+  "consoleErrors": {
+    "error": false,
+    "summary": "### Result\nTotal messages: 0 (Errors: 0, Warnings: 0)\n"
+  },
+  "sourceAudit": {
+    "excerpts": [
+      {
+        "path": "lego/backend/internal/postgres/insights.go",
+        "sha256": "9f5c938f5a723f7c080a2b94e361e1a4cb5d6bb4f970ba407304b6457edd42fe",
+        "startLine": 656,
+        "endLine": 705,
+        "excerpt": "func (s *Service) ParameterSpec(ctx context.Context, dbID string) ([]ParameterSpecView, error) {\n\tdb, err := s.fetchDatabaseForRead(ctx, core.RelCanView, dbID)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\tif len(db.Spec.Parameters) == 0 {\n\t\treturn []ParameterSpecView{}, nil\n\t}\n\t// Authorization failures are not runtime diagnostics. Re-check before\n\t// loading credentials, exactly as the observed-parameter endpoint does.\n\tif err := s.AuthorizeDatabaseFresh(ctx, core.RelCanView, db); err != nil {\n\t\treturn nil, err\n\t}\n\t// A restarting or unreachable server must not hold the editable declaration\n\t// hostage to the normal insight query's longer timeout.\n\tobservationCtx, cancel := context.WithTimeout(ctx, 2*time.Second)\n\tdefer cancel()\n\tobserved, observationErr := s.runAuthorizedInsight(observationCtx, db, sqlParameterOverrides, true)\n\treturn parameterSpecViews(db.Spec.Parameters, parameterOverrideViews(observed), observationErr), nil\n}\n\n// parameterSpecViews matches declarations to observations case-insensitively:\n// PostgreSQL parameter names are, so a declared `timezone` is the runtime's\n// `TimeZone` (w4/317). Only the lookup folds; each declaration keeps its\n// spelling and value.\nfunc parameterSpecViews(params map[string]string, observed []ParameterOverrideView, observationErr error) []ParameterSpecView {\n\tbyName := make(map[string]ParameterOverrideView, len(observed))\n\tfor _, row := range observed {\n\t\tbyName[strings.ToLower(row.Name)] = row\n\t}\n\tout := make([]ParameterSpecView, 0, len(params))\n\tfor name, value := range params {\n\t\trow := ParameterSpecView{Name: name, Value: value, ObservationStatus: \"not_observed\"}\n\t\tif observationErr != nil {\n\t\t\trow.ObservationStatus = \"unavailable\"\n\t\t} else if current, ok := byName[strings.ToLower(name)]; ok {\n\t\t\trow.ObservationStatus = \"observed\"\n\t\t\trow.ObservedSetting = &current.Setting\n\t\t\tif current.Unit != \"\" {\n\t\t\t\trow.ObservedUnit = &current.Unit\n\t\t\t}\n\t\t}\n\t\tout = append(out, row)\n\t}\n\tslices.SortFunc(out, func(a, b ParameterSpecView) int {\n\t\treturn strings.Compare(a.Name, b.Name)\n\t})\n\treturn out\n}\n"
+      },
+      {
+        "path": "lego/backend/internal/postgres/rest.go",
+        "sha256": "b2a7514f8e8cb743b53574e6225a62a98c119ef39e85fa6d3657b714700ebce3",
+        "startLine": 425,
+        "endLine": 432,
+        "excerpt": "\tmux.HandleFunc(\"GET \"+base+\"/{id}/table-scans\", core.HandleByID(s.TableScans))\n\tmux.HandleFunc(\"GET \"+base+\"/{id}/parameter-overrides\", core.HandleByID(s.ParameterOverrides))\n\t// The DECLARED set — what PUT below replaces. /parameter-overrides above is\n\t// the observed pg_settings config and is mostly the operator's (w6/m133).\n\tmux.HandleFunc(\"GET \"+base+\"/{id}/parameters\", core.HandleByID(s.ParameterSpec))\n\tmux.HandleFunc(\"PUT \"+base+\"/{id}/parameter-overrides\", func(w http.ResponseWriter, r *http.Request) {\n\t\tvar req struct {\n\t\t\tParameters map[string]string `json:\"parameters\"`"
+      },
+      {
+        "path": "lego/backend/internal/postgres/graphql.go",
+        "sha256": "20317f2c5dc4823d2d9af12c8c9e5484e1d553793088fd7f8e4a223022527f35",
+        "startLine": 440,
+        "endLine": 446,
+        "excerpt": "\t\t\"databaseSizes\":              gqlutil.IDVerb(sizesViewGQLType, s.Sizes),\n\t\t\"databaseTableScans\":         gqlutil.IDVerb(graphql.NewList(tableScanViewGQLType), s.TableScans),\n\t\t\"databaseParameterOverrides\": gqlutil.IDVerb(graphql.NewList(parameterOverrideViewGQLType), s.ParameterOverrides),\n\t\t\"databaseParameterSpec\":      gqlutil.IDVerb(graphql.NewList(parameterSpecViewGQLType), s.ParameterSpec),\n\t\t// --- logs (w3/m28) ---\n\t\t\"databaseLogs\": &graphql.Field{\n\t\t\tType: graphql.NewList(databaseLogGQLType),"
+      },
+      {
+        "path": "lego/backend/internal/postgres/mcp.go",
+        "sha256": "18b68928639d4ddae09b8fac338b433115646fb353d9bdc0464065a33b49ecc3",
+        "startLine": 500,
+        "endLine": 516,
+        "excerpt": "\t\t\treturn nil, parameterOverridesResult{}, err\n\t\t}\n\t\treturn nil, parameterOverridesResult{Overrides: out}, nil\n\t})\n\n\tmcputil.AddTool(srv, &mcp.Tool{\n\t\tName:        \"list_postgres_parameters\",\n\t\tDescription: \"List the postgresql.conf parameters THIS database declares (Database.spec.parameters) — the tenant-owned set that update_postgres's parameterOverrides replaces. Empty for a database nobody has configured. Use this, not list_postgres_parameter_overrides, to read back what was set. Each declaration includes observationStatus (observed, not_observed, or unavailable), observedSetting and observedUnit. Observed means the name exists in non-default pg_settings, not that the requested value has applied; units may differ.\",\n\t}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, parameterSpecResult, error) {\n\t\tout, err := s.ParameterSpec(ctx, in.PostgresID)\n\t\tif err != nil {\n\t\t\treturn nil, parameterSpecResult{}, err\n\t\t}\n\t\treturn nil, parameterSpecResult{Parameters: out}, nil\n\t})\n\n}"
+      },
+      {
+        "path": "dashboard/src/features/databases/components/parameter-overrides-editor.tsx",
+        "sha256": "588fd7ce5cfa5c7ae3d08ade5d407a825f2a1a88ebde67be11d9dbd19614ad27",
+        "startLine": 174,
+        "endLine": 207,
+        "excerpt": "    setSaveError(result.error ?? t(\"databases.insightsParamsSaveError\"));\n  }\n\n  return (\n    <div className=\"space-y-3\">\n      {rows.length === 0 ? (\n        <p className=\"text-sm text-muted-foreground\">\n          {t(\"databases.insightsNoDeclaredParams\")}\n        </p>\n      ) : (\n        <div className=\"relative overflow-x-auto\">\n          <table className=\"w-full text-xs\">\n            <thead>\n              <tr className=\"border-b text-left text-muted-foreground\">\n                <th className=\"pb-1 pr-3 font-medium\">\n                  {t(\"databases.insightsColParam\")}\n                </th>\n                <th className=\"pb-1 pr-3 font-medium\">\n                  {t(\"databases.insightsParamsDeclaredValue\")}\n                </th>\n                <th className=\"pb-1 pr-3 font-medium\">\n                  {t(\"databases.insightsParamsObservedValue\")}\n                </th>\n                <th className=\"w-9 pb-1\">\n                  <span className=\"sr-only\">\n                    {t(\"databases.insightsParamsActions\")}\n                  </span>\n                </th>\n              </tr>\n            </thead>\n            <tbody>\n              {rows.map((row, index) => {\n                const declared = persistedByName.get(row.name);\n                const persisted ="
+      },
+      {
+        "path": "dashboard/src/features/databases/components/insights-panel.tsx",
+        "sha256": "7974e1f6e557c4d76b9db00c788ae3413290364a410e871037f51d008635a63e",
+        "startLine": 327,
+        "endLine": 344,
+        "excerpt": "              {t(\"databases.loading\")}\n            </p>\n          ) : insights.parameterSpecError ? (\n            <p className=\"text-sm text-destructive\">\n              {t(\"databases.insightsUnavailable\")}\n            </p>\n          ) : (\n            // Keyed by database only: the editor adopts a new saved set\n            // itself, keeping an unsaved draft (w4/253).\n            <ParameterOverridesEditor\n              key={id}\n              parameters={insights.parameterSpec}\n              saving={insights.saving}\n              onSave={insights.saveParameters}\n            />\n          )}\n        </Section>\n"
+      },
+      {
+        "path": "dashboard/src/features/databases/hooks/use-database-insights.ts",
+        "sha256": "26268cbc8d2ed958d406f46c8fb57c66b0ab10eb84beaea428f29f683dd5bfe7",
+        "startLine": 97,
+        "endLine": 116,
+        "excerpt": "  const [setParameters, { loading: saving }] = useMutation(\n    SetDatabaseParameterOverridesDocument,\n  );\n\n  async function saveParameters(\n    params: ParameterInput[],\n  ): Promise<SaveParametersResult> {\n    try {\n      await setParameters({ variables: { id, parameters: params } });\n      // Both: the declared set is what the editor shows, and the pg_settings\n      // view moves once the operator has applied the change.\n      void parameterSpec.refetch();\n      void parameterOverrides.refetch();\n      return { ok: true };\n    } catch (err) {\n      return { ok: false, error: graphQLErrorMessage(err) };\n    }\n  }\n\n  // The generated result types carry nullable list items; the panel renders"
+      },
+      {
+        "path": "lego/operator/internal/controller/database_extensions.go",
+        "sha256": "2cd70af5b45ccc9d630b68f744f53fe26d64bba90e05639a9f34bb3e97d8673f",
+        "startLine": 49,
+        "endLine": 53,
+        "excerpt": "// applicationDatabaseName names the CNPG Database child for db's application\n// database.\nfunc applicationDatabaseName(db *appv1alpha1.Database) string { return db.Name + \"-app\" }\n\n// applicationDatabaseSpec declares the application database with pgvector"
+      }
+    ],
+    "parameterSpecViewsProductionCalls": [
+      [
+        "lego/backend/internal/postgres/insights.go",
+        674,
+        "return parameterSpecViews(db.Spec.Parameters, parameterOverrideViews(observed), observationErr), nil"
+      ]
+    ],
+    "ParameterOverridesEditorProductionMounts": [
+      [
+        "dashboard/src/features/databases/components/insights-panel.tsx",
+        336,
+        "<ParameterOverridesEditor"
+      ]
+    ],
+    "publicReadEntrypoints": [
+      "GET /v1/postgres/{id}/parameters",
+      "GraphQL databaseParameterSpec",
+      "MCP list_postgres_parameters"
+    ],
+    "historicalRegressions": "Name-case unit and real-Postgres cases, empty/unknown/unavailable/prior-effective-value controls remain present in parameter_observation{,_pg}_test.go. Implementation notes record their fail-before/suite passes. No suite rerun or live unavailable/unknown injection in this acceptance-only sweep."
+  },
+  "validation": {
+    "count": 78,
+    "passed": [
+      "Baseline: HTTP200 and no top-level GraphQL errors",
+      "Created: HTTP200 and no top-level GraphQL errors",
+      "InitialSettingsAndSql: HTTP200 and no top-level GraphQL errors",
+      "BaselineSettingsSql: HTTP200 and no top-level GraphQL errors",
+      "SeedMarker: HTTP200 and no top-level GraphQL errors",
+      "LowercaseParametersSaved: HTTP200 and no top-level GraphQL errors",
+      "LowercaseObservation: HTTP200 and no top-level GraphQL errors",
+      "AppliedSettingsSql: HTTP200 and no top-level GraphQL errors",
+      "CanonicalCaseSaved: HTTP200 and no top-level GraphQL errors",
+      "CanonicalCaseObserved: HTTP200 and no top-level GraphQL errors",
+      "LowercaseAgainSaved: HTTP200 and no top-level GraphQL errors",
+      "LowercaseAgainObserved: HTTP200 and no top-level GraphQL errors",
+      "PaddedBothSaved: HTTP200 and no top-level GraphQL errors",
+      "PaddedCanonicalRefresh: HTTP200 and no top-level GraphQL errors",
+      "MarkerSurvived: HTTP200 and no top-level GraphQL errors",
+      "AllOverridesRemoved: HTTP200 and no top-level GraphQL errors",
+      "EmptyDeclaredParametersVerified: HTTP200 and no top-level GraphQL errors",
+      "RestoredSettingsSql: HTTP200 and no top-level GraphQL errors",
+      "RestoredMarkerSql: HTTP200 and no top-level GraphQL errors",
+      "MarkerDropped: HTTP200 and no top-level GraphQL errors",
+      "MarkerAbsent: HTTP200 and no top-level GraphQL errors",
+      "DeleteDatabase: HTTP200 and no top-level GraphQL errors",
+      "Free private PostgreSQL18 create",
+      "Native owned fixture ID",
+      "Free recovery gate, empty backups and bounds",
+      "Recorded exact baseline pg_settings",
+      "Native SQL independently proves three settings applied",
+      "LowercaseObservation: preserved declaration and normalized observations",
+      "LowercaseObservation: observation caveat retained",
+      "CanonicalCaseObserved: preserved declaration and normalized observations",
+      "CanonicalCaseObserved: observation caveat retained",
+      "LowercaseAgainObserved: preserved declaration and normalized observations",
+      "LowercaseAgainObserved: observation caveat retained",
+      "REST exact lowercase declaration and all sibling observations",
+      "MCP successful complete SSE response",
+      "MCP text retains lowercase and observations",
+      "MCP structured retains lowercase and observations",
+      "MCP raw SSE matches parsed complete message",
+      "MobileDraftGeometry: empty root stays390/0",
+      "MobileDraftGeometry: draft root stays390/0",
+      "MobileDraftGeometry: localPan root stays390/0",
+      "MobileDraftGeometry: discard root stays390/0",
+      "MobileDraftGeometry: native header wheel cannot pan root",
+      "MobileDraftGeometry: local316/table632/contained Actions",
+      "MobileDraftGeometry: native local wheel reaches Remove",
+      "MobileDraftGeometry: draft saves enabled; discard empty; no parameter mutation",
+      "MobileReloadDraftGeometry: empty root stays390/0",
+      "MobileReloadDraftGeometry: draft root stays390/0",
+      "MobileReloadDraftGeometry: localPan root stays390/0",
+      "MobileReloadDraftGeometry: discard root stays390/0",
+      "MobileReloadDraftGeometry: native header wheel cannot pan root",
+      "MobileReloadDraftGeometry: local316/table632/contained Actions",
+      "MobileReloadDraftGeometry: native local wheel reaches Remove",
+      "MobileReloadDraftGeometry: draft saves enabled; discard empty; no parameter mutation",
+      "Independent mobile reload repeat recorded",
+      "Desktop draft1440 table846 and no writes",
+      "DesktopSavedGeometry: fresh saved geometry and accessible Actions",
+      "DesktopSavedGeometry: three correct observed saved rows and disabled Save",
+      "MobileSavedGeometry: fresh saved geometry and accessible Actions",
+      "MobileSavedGeometry: three correct observed saved rows and disabled Save",
+      "Padded input passing control canonicalizes clean inputs",
+      "8MB eventual runtime observed and retained UI",
+      "MarkerSurvived: marker row unchanged",
+      "RestoredMarkerSql: marker row unchanged",
+      "Native all overrides removal empty replacement",
+      "Independent declaration read empty",
+      "Native SQL exact defaults restored",
+      "Marker dropped and absent",
+      "Native exact owned database deleted",
+      "Seven baseline inventory sets preserved",
+      "Database REST404",
+      "13 physical cleanup scopes all absent",
+      "Only owned session revoked and handles removed",
+      "Pass native request snapshot262 successful transports",
+      "Browser console capture empty",
+      "Production helper one caller and editor one mount",
+      "Original evidence untouched .pm/w4/evidence/317-parameter-name-case.json",
+      "Original evidence untouched .pm/w4/evidence/318-parameter-scroll-containment.json"
+    ]
+  },
+  "limits": [
+    "Free backup/recovery is intentionally disabled; no upgrade/backup/restore/export was submitted.",
+    "Actual isolated Chromium UI geometry and ARIA used; no inline style injection or new old-source counterfactual in this sweep. Original a643 and implementation counterfactual remain historical.",
+    "Other parameter names, duplicate-case policy, write aliases, unavailable-runtime and unknown-name live variants were not reaccepted.",
+    "Other browsers, touch gestures, Chinese UI and authenticated Render parity were not reaccepted.",
+    "The padded-input hypothesis passed: canonical clean inputs, prior observation with caveat during reload, eventual8192kB; no issue filed.",
+    "Erroneous dashboard-host direct read returned HTML; corrected to native api.bex.co endpoint. Wrong Delete database case and dialog-role lookups timed out before actual alertdialog lookup; these are harness errors.",
+    "Network summary covers native MCP request log at snapshot; independent page.request probes are represented by their complete explicit receipts and may not appear in that log."
+  ]
+}
