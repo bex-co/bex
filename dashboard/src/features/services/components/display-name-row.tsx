@@ -10,7 +10,6 @@ export interface DisplayNameRowProps {
    *  (Render prefills its Name field with the service name, never the id;
    *  w5/m48/t004). Undefined while the service is still loading. */
   name?: string | null;
-  onChanged?: () => void;
 }
 
 /**
@@ -23,10 +22,9 @@ export function DisplayNameRow({
   serviceId,
   displayName,
   name,
-  onChanged,
 }: DisplayNameRowProps) {
   const { t } = useTranslations();
-  const { setDisplayName, busy } = useDisplayName();
+  const { setDisplayName, busy, unpublished } = useDisplayName();
   const current = displayName?.trim() ?? "";
   const visible = current || name?.trim() || serviceId;
 
@@ -37,14 +35,15 @@ export function DisplayNameRow({
       value={visible}
       editLabel={t("services.displayNameEdit")}
       busy={busy}
+      disabled={unpublished}
+      disabledReason={
+        unpublished ? t("services.displayNameUnpublished") : undefined
+      }
       // Clearing an already-empty label back to the immutable-id fallback is
       // not a change; anything else that differs from the visible value is.
       dirty={(value) => value !== visible && !(value === "" && current === "")}
-      onSave={async (value) => {
-        const ok = await setDisplayName(serviceId, value);
-        if (ok) onChanged?.();
-        return ok;
-      }}
+      // The hook publishes the saved label to every view before resolving.
+      onSave={(value) => setDisplayName(serviceId, value)}
     />
   );
 }

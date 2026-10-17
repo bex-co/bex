@@ -1,9 +1,5 @@
 import type { ReactNode } from "react";
-import {
-  createFileRoute,
-  getRouteApi,
-  useRouter,
-} from "@tanstack/react-router";
+import { createFileRoute, getRouteApi } from "@tanstack/react-router";
 import {
   Card,
   CardHeader,
@@ -82,7 +78,6 @@ function RouteComponent() {
  */
 export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
   const { service, loading, refetch } = useServer(serviceId, { poll: false });
-  const router = useRouter();
   const { pending, run } = useServiceLifecycle({ refetch });
   const { t } = useTranslations();
   const sections = serviceSettingsSections(service ?? undefined);
@@ -108,10 +103,10 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
               ) : (
                 <div className="space-y-6">
                   <DisplayNameRow
+                    key={serviceId}
                     serviceId={serviceId}
                     displayName={service?.displayName}
                     name={service?.name}
-                    onChanged={() => void router.invalidate()}
                   />
                   {/* Region: read-only platform placement (Render's General row),
                   projected from BEX_REGION (w1/m53). Hidden when the install
