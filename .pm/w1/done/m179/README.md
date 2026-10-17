@@ -1,6 +1,6 @@
 # w1 · m179 — A failed first release stops instead of restarting forever
 
-**Worker:** worker1 **Goal:** a release that never served and settled failed has no running or restarting pod, and comes back only through a new deploy, restart or resume. **Status:** blocked (t001–t003, t005–t007 done 2026-10-17; t004's production check waits for the release pipeline to deploy the operator)
+**Worker:** worker1 **Goal:** a release that never served and settled failed has no running or restarting pod, and comes back only through a new deploy, restart or resume. **Status:** done
 
 ## Tasks (in order)
 
@@ -9,11 +9,11 @@
 | t001 | Reproduce the restart loop on dev-1 and record Render's contract for a failed first deploy — **DONE** | 40m | —          |
 | t002 | Park a never-served failed release at zero replicas until a new deploy, restart or resume — **DONE** | 1h  | t001       |
 | t003 | Surfaces report the parked failed service truthfully — **DONE** | 30m | t002       |
-| t004 | Live check on production after the operator deploys                                                                        | 30m | t003       |
+| t004 | Live check on production after the operator deploys — **DONE**                                                                       | 30m | t003       |
 | t005 | Render parity — **DONE** | 20m | t004       |
 | t006 | Simplify — **DONE** | 15m | t005       |
 | t007 | Test coverage — **DONE** | 40m | t005       |
-| t008 | Closeout                                                                                   | 10m | t007       |
+| t008 | Closeout — **DONE**                                                                                  | 10m | t007       |
 
 ## Definition of done
 
