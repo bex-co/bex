@@ -1,0 +1,579 @@
+{
+  "pass": "a846",
+  "sourceHead": "e99af00efe64185376f19513f07ad81c2a8879d2",
+  "scope": "Ordinary functional workspace-slug startup retention; Hobby default, billing email read-only; no create, prepare, finalize, cancel-attempt, plan change or payment action.",
+  "scripts": {
+    "factory": "function(url,label,width,marker){return `async(page)=>{\nawait page.setViewportSize({width:${width},height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-pJFig2Dm.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.getByLabel(${JSON.stringify(label)},{exact:true}),marker=${JSON.stringify(marker)};\ntry{\nawait page.goto(${JSON.stringify(url)},{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.matches(\":disabled\"),readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const after=await n.count()?await n.inputValue():null;let readyControl=null;if(await n.count()&&await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(700);readyControl=await n.inputValue();}\nreturn {at:new Date().toISOString(),url:page.url(),width:${width},scripts,before,typed,events,samples,after,readyControl,noResponseRewriting:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}`}",
+    "desktop": "async(page)=>{\nawait page.setViewportSize({width:1440,height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-pJFig2Dm.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.getByLabel(\"Workspace slug\",{exact:true}),marker=\"qa-a846-startup-desktop\";\ntry{\nawait page.goto(\"https://dashboard.bex.co/new/workspace\",{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.matches(\":disabled\"),readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const after=await n.count()?await n.inputValue():null;let readyControl=null;if(await n.count()&&await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(700);readyControl=await n.inputValue();}\nreturn {at:new Date().toISOString(),url:page.url(),width:1440,scripts,before,typed,events,samples,after,readyControl,noResponseRewriting:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}",
+    "mobile": "async(page)=>{\nawait page.setViewportSize({width:390,height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-pJFig2Dm.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.getByLabel(\"Workspace slug\",{exact:true}),marker=\"qa-a846-startup-mobile\";\ntry{\nawait page.goto(\"https://dashboard.bex.co/new/workspace\",{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.matches(\":disabled\"),readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();await n.locator(\"..\").screenshot({path:\"qa-a846-slug-before.png\"});}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const after=await n.count()?await n.inputValue():null;await n.locator(\"..\").screenshot({path:\"qa-a846-slug-after.png\"});let readyControl=null;if(await n.count()&&await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(700);readyControl=await n.inputValue();}\nreturn {at:new Date().toISOString(),url:page.url(),width:390,scripts,before,typed,events,samples,after,readyControl,noResponseRewriting:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}",
+    "repeatMobile": "async(page)=>{\nawait page.setViewportSize({width:390,height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-pJFig2Dm.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.getByLabel(\"Workspace slug\",{exact:true}),marker=\"qa-a846-startup-repeat\";\ntry{\nawait page.goto(\"https://dashboard.bex.co/new/workspace\",{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.matches(\":disabled\"),readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const after=await n.count()?await n.inputValue():null;let readyControl=null;if(await n.count()&&await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(700);readyControl=await n.inputValue();}\nreturn {at:new Date().toISOString(),url:page.url(),width:390,scripts,before,typed,events,samples,after,readyControl,noResponseRewriting:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}"
+  },
+  "sourceCensus": {
+    "target": "dashboard/src/routes/new.workspace.tsx:129-140",
+    "inputs": 2,
+    "changedInputSites": 1,
+    "productionRouteRegistrations": 1,
+    "workspaceCreationHookProductionCalls": 1,
+    "planPickerProductionMounts": 2,
+    "existingHydrationHookCalls": 10,
+    "existingHydrationConsumerFiles": 9,
+    "fix": "Reuse useIsHydrated locally: disabled={!hydrated || creation.attempt != null} on slug only. Keep global Input/hook, Billing Email and PlanPicker unchanged.",
+    "aliases": "Only canonical /new/workspace registration found; switcher and empty-membership/delete redirects link to it. No new route alias producer.",
+    "consumer": "draftName starts empty, onChange lowercases; name=attempt?.name ?? draftName; isValidDnsLabel(name) and handleSubmit/handleAddPaymentMethod consume it. Preserve prepared-attempt lock and all billing predicates.",
+    "mechanism": "Official pinned React19.3.1 source reopened at updateInput:1269-1293 and initInput:1315-1343. initInput preserves a DOM draft while hydrating; later controlled update may restore state. All captures retain marker into initial React-props samples, then clear on same node. Exact triggering render not isolated; deployed React version not extracted."
+  },
+  "screenshots": {
+    "paths": [
+      ".playwright-mcp/qa-a846-slug-before.png",
+      ".playwright-mcp/qa-a846-slug-after.png"
+    ],
+    "viewed": true,
+    "scope": "Slug field's own parent only, excluding billing email/payment UI."
+  },
+  "limits": [
+    "Only no-attempt Hobby default live-tested; nonempty resume attempts, other plans/locales and policy loading/error variations are source-audit/regression work.",
+    "No mutation or resource fixture created. Seven hosting inventory ID sets match; no full workspace-ID baseline was recorded, so no workspace-inventory equality claim.",
+    "Screenshot/DOM captures exclude account billing-email value.",
+    "Pinned19.3.1 framework source is code basis only; deployed version not extracted."
+  ],
+  "receipts": {
+    "Startup1440": {
+      "at": "2026-10-17T04:13:02.266Z",
+      "url": "https://dashboard.bex.co/new/workspace",
+      "width": 1440,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-pJFig2Dm.js",
+          "status": 200,
+          "bytes": 1954259,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "count": 1,
+        "enabled": true,
+        "readOnly": false,
+        "reactProps": false,
+        "id": "workspace-name"
+      },
+      "typed": "qa-a846-startup-desktop",
+      "events": [
+        {
+          "trusted": true,
+          "value": "qa-a846-startup-desktop",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 1521.6999999284744,
+          "value": "qa-a846-startup-desktop",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 1678.7999999523163,
+          "value": "qa-a846-startup-desktop",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 1834,
+          "value": "qa-a846-startup-desktop",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 1989.6999999284744,
+          "value": "qa-a846-startup-desktop",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2153,
+          "value": "qa-a846-startup-desktop",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2306.6999999284744,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2460.6999999284744,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2615.100000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2770.2999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2924.7999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3080.2999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3234.399999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3391.399999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3546.7999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3702.7999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3859.2999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4012.6999999284744,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4168.600000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4324.199999928474,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4479.299999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "after": "",
+      "readyControl": "qa-a846-startup-desktop-ready",
+      "noResponseRewriting": true
+    },
+    "Startup390": {
+      "at": "2026-10-17T04:13:19.730Z",
+      "url": "https://dashboard.bex.co/new/workspace",
+      "width": 390,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-pJFig2Dm.js",
+          "status": 200,
+          "bytes": 1954259,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "count": 1,
+        "enabled": true,
+        "readOnly": false,
+        "reactProps": false,
+        "id": "workspace-name"
+      },
+      "typed": "qa-a846-startup-mobile",
+      "events": [
+        {
+          "trusted": true,
+          "value": "qa-a846-startup-mobile",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 1549.2999999523163,
+          "value": "qa-a846-startup-mobile",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 1704.0999999046326,
+          "value": "qa-a846-startup-mobile",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 1859.8999999761581,
+          "value": "qa-a846-startup-mobile",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2016.3999999761581,
+          "value": "qa-a846-startup-mobile",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2171.6999999284744,
+          "value": "qa-a846-startup-mobile",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2333.7999999523163,
+          "value": "qa-a846-startup-mobile",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2488.5999999046326,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2646.1999999284744,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2800.399999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2954.2999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3109.399999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3264.399999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3419.6999999284744,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3573.899999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3729.2999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3884,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4038.1999999284744,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4193.199999928474,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4348.299999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4502.799999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "after": "",
+      "readyControl": "qa-a846-startup-mobile-ready",
+      "noResponseRewriting": true
+    },
+    "StartupRepeat": {
+      "at": "2026-10-17T04:13:33.848Z",
+      "url": "https://dashboard.bex.co/new/workspace",
+      "width": 390,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-pJFig2Dm.js",
+          "status": 200,
+          "bytes": 1954259,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "count": 1,
+        "enabled": true,
+        "readOnly": false,
+        "reactProps": false,
+        "id": "workspace-name"
+      },
+      "typed": "qa-a846-startup-repeat",
+      "events": [
+        {
+          "trusted": true,
+          "value": "qa-a846-startup-repeat",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 1739.8999999761581,
+          "value": "qa-a846-startup-repeat",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 1894.8999999761581,
+          "value": "qa-a846-startup-repeat",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2050.1999999284744,
+          "value": "qa-a846-startup-repeat",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2206.6999999284744,
+          "value": "qa-a846-startup-repeat",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2362.100000023842,
+          "value": "qa-a846-startup-repeat",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2518.6999999284744,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2672.7999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2829.399999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2985.100000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3139.6999999284744,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3293.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3447.100000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3601.600000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3756.7999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3914.2999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4069.7999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4226,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4381.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4536.399999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4691.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "after": "",
+      "readyControl": "qa-a846-startup-repeat-ready",
+      "noResponseRewriting": true
+    },
+    "ReadyControl": {
+      "at": "2026-10-17T04:14:01.438Z",
+      "readyValue": "qa-a846-ready",
+      "billingReadOnly": true,
+      "selectedPlans": [
+        "Hobby\n$0/mo\n\nFor individuals getting started.\n\n1 member\nUp to 25 services\n5 Hobby workspaces per user\nPlan selected"
+      ],
+      "mutations": [],
+      "failures": [],
+      "consoleErrors": []
+    },
+    "InventoryCleanup": {
+      "at": "2026-10-17T04:14:32.721Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [],
+      "consoleErrors": [],
+      "httpFailures": []
+    },
+    "SessionCleared": {
+      "at": "2026-10-17T04:14:39.275Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "a845ProjectCancel": {
+      "at": "2026-10-17T04:12:05.203Z",
+      "results": [
+        {
+          "width": 390,
+          "beforeDisabled": true,
+          "restored": true
+        },
+        {
+          "width": 1440,
+          "beforeDisabled": true,
+          "restored": true
+        }
+      ],
+      "errors": []
+    }
+  },
+  "cleanupFinalizerObserved": {
+    "logoutConfirmed": true,
+    "ownHandlesRemoved": true,
+    "noFixturesCreated": true
+  }
+}
