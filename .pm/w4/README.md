@@ -309,7 +309,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **333** — [Expose the active project resource-type filter](333.md) (45m) ← functional QA a834, 2026-10-17; selected type is visual only, with no pressed state or named filter group in the accessibility tree. Two shared mounts; no resource writes.
 
-- [ ] **332** — [Require a Publish Directory before enabling Static Site deployment](332.md) (50m) ← functional QA a802, 2026-10-16; empty desktop and whitespace-only mobile drafts enable Deploy, then the API rejects the omitted required path. Two refused creates, no resources.
+- [ ] **332** — [Require a Publish Directory before enabling Static Site deployment](blocked/332.md) — **BLOCKED (release pipeline deploys the dashboard; QA repeats the a802 journeys on `/services/new?type=static_site`: at 1440 with Publish Directory empty and at 390 with three spaces, Deploy Service stays disabled, the field shows the Required guidance and no CreateService is sent; `.` enables it; no create)**. Implementation done 2026-10-16: static-only nonblank publish-path predicate plus required hint; dashboard suite and lint pass.
 
 - [ ] **331** — [Blueprint source tabs discard the chosen Public Git branch](blocked/331.md) — **BLOCKED (release pipeline deploys the dashboard; QA replays the a773 `/blueprints/new` Public Git URL → GitHub → Public Git round trip at desktop and fresh 390px: Branch stays `main`, the review stays successful and Deploy enabled, and the GitHub-default and service-create controls hold; no Create/Sync)**. Implementation done 2026-10-16: the Public Git branch is restored for the unchanged URL (the w4/240 policy). The route test fails on the old reset; dashboard suite and lint pass.
 
