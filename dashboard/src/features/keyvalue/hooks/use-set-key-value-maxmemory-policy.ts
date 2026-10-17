@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useMutation, useQuery } from "@apollo/client/react";
+import { useApolloClient, useMutation, useQuery } from "@apollo/client/react";
 import { toast } from "sonner";
 import {
   KeyValueMaxmemoryPolicyDocument,
@@ -8,6 +8,7 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { maxmemoryPolicyToUi } from "@/features/keyvalue/lib/labels";
+import { settleKeyValueDetailReads } from "@/features/keyvalue/lib/settle-detail-reads";
 
 export interface UseSetKeyValueMaxmemoryPolicyResult {
   /** The store's current eviction policy, or "" until the read resolves. */
@@ -34,6 +35,7 @@ export function useSetKeyValueMaxmemoryPolicy(
   onSaved?: () => void,
 ): UseSetKeyValueMaxmemoryPolicyResult {
   const { t } = useTranslations();
+  const client = useApolloClient();
 
   const policyQuery = useQuery(KeyValueMaxmemoryPolicyDocument, {
     variables: { id },
@@ -55,7 +57,18 @@ export function useSetKeyValueMaxmemoryPolicy(
   const save = useCallback(
     async (next: string): Promise<boolean> => {
       try {
-        await setPolicyMut({ variables: { id, maxmemoryPolicy: next } });
+        const result = await setPolicyMut({
+          variables: { id, maxmemoryPolicy: next },
+        });
+        await settleKeyValueDetailReads(client, id);
+        const saved = result.data?.setKeyValueMaxmemoryPolicy;
+        if (saved) {
+          client.writeQuery({
+            query: KeyValueMaxmemoryPolicyDocument,
+            variables: { id },
+            data: { keyValue: saved },
+          });
+        }
         toast.success(t("keyvalue.maxmemorySuccess", { policy: next }));
         void policyQuery.refetch();
         // Saving restarts the store: let the page watch it happen (w4/m137).
@@ -66,7 +79,7 @@ export function useSetKeyValueMaxmemoryPolicy(
         return false;
       }
     },
-    [onSaved, setPolicyMut, policyQuery, id, t],
+    [onSaved, setPolicyMut, policyQuery, client, id, t],
   );
 
   return { policy, loading: policyQuery.loading, saving, save };

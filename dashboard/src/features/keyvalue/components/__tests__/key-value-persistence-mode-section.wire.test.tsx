@@ -9,6 +9,11 @@ let readError: Error | undefined;
 let modeData: { keyValue: { persistenceMode: string } | null } | undefined;
 
 vi.mock("@apollo/client/react", () => ({
+  // Saves settle in-flight detail reads through the client (w4/m226).
+  useApolloClient: () => ({
+    refetchQueries: () => Object.assign(Promise.resolve([]), { results: [] }),
+    writeQuery: () => undefined,
+  }),
   useQuery: () => ({
     data: modeData,
     loading: false,
