@@ -87,7 +87,7 @@ type updateServiceArgs struct {
 	// DryRun mirrors PATCH /v1/services/{id}: the whole patch's checks with zero
 	// writes, answered with the service as the patch would leave it (w5/m116).
 	DryRun                  bool                     `json:"dryRun,omitempty" jsonschema:"if true, check the whole update and return the service as it would leave it, without any writes (zero side effects)"`
-	IdleTTLSeconds          *int32                   `json:"idleTTLSeconds,omitempty" jsonschema:"seconds a free-tier service may go without traffic (HTTP requests it served, or WebSocket frames it sent) before it auto-sleeps; 0 (or unset) selects the platform default window of 15 minutes, a positive value overrides it"`
+	IdleTTLSeconds          *int32                   `json:"idleTTLSeconds,omitempty" jsonschema:"seconds a free-tier web service may go without traffic (HTTP requests it served, or WebSocket frames it received or sent) before it auto-sleeps; omit it to keep the current value, 0 selects the platform default window of 15 minutes, a positive value overrides it"`
 	PublishPath             *string                  `json:"publishPath,omitempty" jsonschema:"static sites only: the built output directory served as the site root, e.g. dist, build, or public"`
 	Schedule                *string                  `json:"schedule,omitempty" jsonschema:"cron jobs only: the 5-field crontab expression, e.g. '0 0 * * *'"`
 	Command                 *string                  `json:"command,omitempty" jsonschema:"cron jobs only: a /bin/sh override of the command each run executes; empty clears the override. A native-runtime cron's own command is its startCommand, which runs in Bash"`
