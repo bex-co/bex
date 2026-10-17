@@ -1,0 +1,3141 @@
+{
+  "finding": "Default UTF8 plain static objects render as mojibake",
+  "pass": "a895",
+  "at": "2026-10-17T17:10:58.479545+00:00",
+  "researchHead": "2a409e808edb19cf05756d2f071f80f061e80336",
+  "servingCommit": "not inferred from local HEAD",
+  "fixture": {
+    "id": "srv-db9qhgks300s73dskhq0",
+    "name": "qa-20261017-a895-static-paths",
+    "appName": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a895-static-paths",
+    "appUID": "de748333-6d80-482e-93d1-cae9f217eb1e",
+    "deployId": "dep-db9qhgks300s73dskhqg",
+    "explicitFree": "StaticSite native create has no paid plan selector/plan argument",
+    "expectedText": "QA_A895_UNICODE café 雪 + percent% newline\nsecond line\n",
+    "bytes": 57,
+    "sha256": "12502f491952126f9568871e69a3032072a88479191ca0f9d0848adfddc37582",
+    "files": {
+      "index.html": "<!doctype html><title>QA a895</title><h1>QA_A895_ROOT café 雪</h1>\n",
+      "docs/index.html": "<!doctype html><title>QA docs</title><h1>QA_A895_DOCS</h1>\n",
+      "existing.html": "<!doctype html><h1>QA_A895_EXISTING</h1>\n",
+      "files/café hello+world.txt": "QA_A895_UNICODE café 雪 + percent% newline\nsecond line\n",
+      "files/report.v1.json": "{\"pass\":\"a895\",\"ok\":true,\"label\":\"雪\"}\n",
+      ".well-known/qa.txt": "QA_A895_DOT_DIRECTORY\n",
+      "robots.txt": "User-agent: *\nDisallow: /\n"
+    }
+  },
+  "records": {
+    "Baseline": {
+      "at": "2026-10-17T16:55:38.083Z",
+      "status": 200,
+      "inventory": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      }
+    },
+    "Create": {
+      "at": "2026-10-17T16:56:35.481Z",
+      "request": {
+        "operationName": "CreateService",
+        "variables": {
+          "repo": "https://github.com/bex-co/bex",
+          "branch": "main",
+          "name": "qa-20261017-a895-static-paths",
+          "type": "static_site",
+          "rootDir": "examples/static-site",
+          "buildCommand": "mkdir -p dist/docs dist/files dist/.well-known && printf %b '<!doctype html><title>QA a895</title><h1>QA_A895_ROOT café 雪</h1>\\n' > 'dist/index.html' && printf %b '<!doctype html><title>QA docs</title><h1>QA_A895_DOCS</h1>\\n' > 'dist/docs/index.html' && printf %b '<!doctype html><h1>QA_A895_EXISTING</h1>\\n' > 'dist/existing.html' && printf %b 'QA_A895_UNICODE café 雪 + percent% newline\\nsecond line\\n' > 'dist/files/café hello+world.txt' && printf %b '{\"pass\":\"a895\",\"ok\":true,\"label\":\"雪\"}\\n' > 'dist/files/report.v1.json' && printf %b 'QA_A895_DOT_DIRECTORY\\n' > 'dist/.well-known/qa.txt' && printf %b 'User-agent: *\\nDisallow: /\\n' > 'dist/robots.txt'",
+          "autoDeploy": false,
+          "publishPath": "dist",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db9qhgks300s73dskhq0",
+            "latestDeployId": "dep-db9qhgks300s73dskhqg",
+            "name": "qa-20261017-a895-static-paths",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": null,
+            "type": "static_site"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792256192887.3442,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.256,
+        "responseStart": 1875.9,
+        "responseEnd": 1877.016
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9qhgks300s73dskhq0/deploys/dep-db9qhgks300s73dskhqg"
+    },
+    "SaveRoutes": {
+      "at": "2026-10-17T16:57:12.072Z",
+      "request": {
+        "operationName": "SetStaticRoutes",
+        "variables": {
+          "id": "srv-db9qhgks300s73dskhq0",
+          "routes": [
+            {
+              "type": "rewrite",
+              "source": "/friendly",
+              "destination": "/files/caf%C3%A9%20hello%2Bworld.txt?from=rule#qa"
+            },
+            {
+              "type": "redirect",
+              "source": "/go/*",
+              "destination": "/docs/:splat?from=rule#anchor"
+            },
+            {
+              "type": "rewrite",
+              "source": "/article/*",
+              "destination": "/docs/index.html"
+            },
+            {
+              "type": "rewrite",
+              "source": "/existing.html",
+              "destination": "/index.html"
+            },
+            {
+              "type": "rewrite",
+              "source": "/healthz",
+              "destination": "/files/report.v1.json"
+            }
+          ]
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetStaticRoutes($id: String!, $routes: [StaticRouteInput]) {\n  setStaticRoutes(id: $id, routes: $routes) {\n    id\n    routes {\n      type\n      source\n      destination\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setStaticRoutes": {
+            "__typename": "Service",
+            "id": "srv-db9qhgks300s73dskhq0",
+            "routes": [
+              {
+                "__typename": "StaticRoute",
+                "destination": "/files/caf%C3%A9%20hello%2Bworld.txt?from=rule#qa",
+                "source": "/friendly",
+                "type": "rewrite"
+              },
+              {
+                "__typename": "StaticRoute",
+                "destination": "/docs/:splat?from=rule#anchor",
+                "source": "/go/*",
+                "type": "redirect"
+              },
+              {
+                "__typename": "StaticRoute",
+                "destination": "/docs/index.html",
+                "source": "/article/*",
+                "type": "rewrite"
+              },
+              {
+                "__typename": "StaticRoute",
+                "destination": "/index.html",
+                "source": "/existing.html",
+                "type": "rewrite"
+              },
+              {
+                "__typename": "StaticRoute",
+                "destination": "/files/report.v1.json",
+                "source": "/healthz",
+                "type": "rewrite"
+              }
+            ]
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792256231082.818,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.171,
+        "responseStart": 279.645,
+        "responseEnd": 280.059
+      },
+      "url": "https://dashboard.bex.co/static/srv-db9qhgks300s73dskhq0/redirects"
+    },
+    "SaveHeaders": {
+      "at": "2026-10-17T16:57:33.940Z",
+      "request": {
+        "operationName": "SetStaticHeaders",
+        "variables": {
+          "id": "srv-db9qhgks300s73dskhq0",
+          "headers": [
+            {
+              "path": "/*",
+              "name": "X-QA-Pass",
+              "value": "a895"
+            },
+            {
+              "path": "/friendly",
+              "name": "X-QA-Visitor",
+              "value": "friendly"
+            },
+            {
+              "path": "/files/*",
+              "name": "X-QA-File",
+              "value": "file-path"
+            },
+            {
+              "path": "/healthz",
+              "name": "X-QA-Visitor",
+              "value": "healthz"
+            },
+            {
+              "path": "/files/report.v1.json",
+              "name": "Cache-Control",
+              "value": "no-cache"
+            }
+          ]
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetStaticHeaders($id: String!, $headers: [StaticHeaderInput]) {\n  setStaticHeaders(id: $id, headers: $headers) {\n    id\n    headers {\n      path\n      name\n      value\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setStaticHeaders": {
+            "__typename": "Service",
+            "headers": [
+              {
+                "__typename": "StaticHeader",
+                "name": "X-QA-Pass",
+                "path": "/*",
+                "value": "a895"
+              },
+              {
+                "__typename": "StaticHeader",
+                "name": "X-QA-Visitor",
+                "path": "/friendly",
+                "value": "friendly"
+              },
+              {
+                "__typename": "StaticHeader",
+                "name": "X-QA-File",
+                "path": "/files/*",
+                "value": "file-path"
+              },
+              {
+                "__typename": "StaticHeader",
+                "name": "X-QA-Visitor",
+                "path": "/healthz",
+                "value": "healthz"
+              },
+              {
+                "__typename": "StaticHeader",
+                "name": "Cache-Control",
+                "path": "/files/report.v1.json",
+                "value": "no-cache"
+              }
+            ],
+            "id": "srv-db9qhgks300s73dskhq0"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792256252765.9,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.119,
+        "responseStart": 456.465,
+        "responseEnd": 457.146
+      },
+      "url": "https://dashboard.bex.co/static/srv-db9qhgks300s73dskhq0/headers"
+    },
+    "StaticRead": {
+      "at": "2026-10-17T16:57:45.612Z",
+      "request": {
+        "operationName": "QA895StaticRead",
+        "variables": {
+          "id": "srv-db9qhgks300s73dskhq0"
+        },
+        "query": "query QA895StaticRead($id:String!){server(id:$id){id name type phase revision url rootDir publishPath buildCommand autoDeploy routes{type source destination} headers{path name value}} deploys(serviceId:$id,limit:50){id status trigger createdAt finishedAt commitId}}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "commitId": "2a409e808edb19cf05756d2f071f80f061e80336",
+              "createdAt": "2026-10-17T16:56:34.24604Z",
+              "finishedAt": "",
+              "id": "dep-db9qhgks300s73dskhqg",
+              "status": "queued",
+              "trigger": "create"
+            }
+          ],
+          "server": {
+            "autoDeploy": false,
+            "buildCommand": "mkdir -p dist/docs dist/files dist/.well-known && printf %b '<!doctype html><title>QA a895</title><h1>QA_A895_ROOT café 雪</h1>\\n' > 'dist/index.html' && printf %b '<!doctype html><title>QA docs</title><h1>QA_A895_DOCS</h1>\\n' > 'dist/docs/index.html' && printf %b '<!doctype html><h1>QA_A895_EXISTING</h1>\\n' > 'dist/existing.html' && printf %b 'QA_A895_UNICODE café 雪 + percent% newline\\nsecond line\\n' > 'dist/files/café hello+world.txt' && printf %b '{\"pass\":\"a895\",\"ok\":true,\"label\":\"雪\"}\\n' > 'dist/files/report.v1.json' && printf %b 'QA_A895_DOT_DIRECTORY\\n' > 'dist/.well-known/qa.txt' && printf %b 'User-agent: *\\nDisallow: /\\n' > 'dist/robots.txt'",
+            "headers": [
+              {
+                "name": "X-QA-Pass",
+                "path": "/*",
+                "value": "a895"
+              },
+              {
+                "name": "X-QA-Visitor",
+                "path": "/friendly",
+                "value": "friendly"
+              },
+              {
+                "name": "X-QA-File",
+                "path": "/files/*",
+                "value": "file-path"
+              },
+              {
+                "name": "X-QA-Visitor",
+                "path": "/healthz",
+                "value": "healthz"
+              },
+              {
+                "name": "Cache-Control",
+                "path": "/files/report.v1.json",
+                "value": "no-cache"
+              }
+            ],
+            "id": "srv-db9qhgks300s73dskhq0",
+            "name": "qa-20261017-a895-static-paths",
+            "phase": "Building",
+            "publishPath": "dist",
+            "revision": "",
+            "rootDir": "examples/static-site",
+            "routes": [
+              {
+                "destination": "/files/caf%C3%A9%20hello%2Bworld.txt?from=rule#qa",
+                "source": "/friendly",
+                "type": "rewrite"
+              },
+              {
+                "destination": "/docs/:splat?from=rule#anchor",
+                "source": "/go/*",
+                "type": "redirect"
+              },
+              {
+                "destination": "/docs/index.html",
+                "source": "/article/*",
+                "type": "rewrite"
+              },
+              {
+                "destination": "/index.html",
+                "source": "/existing.html",
+                "type": "rewrite"
+              },
+              {
+                "destination": "/files/report.v1.json",
+                "source": "/healthz",
+                "type": "rewrite"
+              }
+            ],
+            "type": "static_site",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co"
+          }
+        }
+      }
+    },
+    "LiveRead": {
+      "at": "2026-10-17T16:59:20.757Z",
+      "request": {
+        "operationName": "QA895StaticRead",
+        "variables": {
+          "id": "srv-db9qhgks300s73dskhq0"
+        },
+        "query": "query QA895StaticRead($id:String!){server(id:$id){id name type phase revision url rootDir publishPath buildCommand autoDeploy routes{type source destination} headers{path name value}} deploys(serviceId:$id,limit:50){id status trigger createdAt finishedAt commitId}}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "commitId": "2a409e808edb19cf05756d2f071f80f061e80336",
+              "createdAt": "2026-10-17T16:56:34.24604Z",
+              "finishedAt": "2026-10-17T16:59:18.082935Z",
+              "id": "dep-db9qhgks300s73dskhqg",
+              "status": "live",
+              "trigger": "create"
+            }
+          ],
+          "server": {
+            "autoDeploy": false,
+            "buildCommand": "mkdir -p dist/docs dist/files dist/.well-known && printf %b '<!doctype html><title>QA a895</title><h1>QA_A895_ROOT café 雪</h1>\\n' > 'dist/index.html' && printf %b '<!doctype html><title>QA docs</title><h1>QA_A895_DOCS</h1>\\n' > 'dist/docs/index.html' && printf %b '<!doctype html><h1>QA_A895_EXISTING</h1>\\n' > 'dist/existing.html' && printf %b 'QA_A895_UNICODE café 雪 + percent% newline\\nsecond line\\n' > 'dist/files/café hello+world.txt' && printf %b '{\"pass\":\"a895\",\"ok\":true,\"label\":\"雪\"}\\n' > 'dist/files/report.v1.json' && printf %b 'QA_A895_DOT_DIRECTORY\\n' > 'dist/.well-known/qa.txt' && printf %b 'User-agent: *\\nDisallow: /\\n' > 'dist/robots.txt'",
+            "headers": [
+              {
+                "name": "X-QA-Pass",
+                "path": "/*",
+                "value": "a895"
+              },
+              {
+                "name": "X-QA-Visitor",
+                "path": "/friendly",
+                "value": "friendly"
+              },
+              {
+                "name": "X-QA-File",
+                "path": "/files/*",
+                "value": "file-path"
+              },
+              {
+                "name": "X-QA-Visitor",
+                "path": "/healthz",
+                "value": "healthz"
+              },
+              {
+                "name": "Cache-Control",
+                "path": "/files/report.v1.json",
+                "value": "no-cache"
+              }
+            ],
+            "id": "srv-db9qhgks300s73dskhq0",
+            "name": "qa-20261017-a895-static-paths",
+            "phase": "Running",
+            "publishPath": "dist",
+            "revision": "rev-1",
+            "rootDir": "examples/static-site",
+            "routes": [
+              {
+                "destination": "/files/caf%C3%A9%20hello%2Bworld.txt?from=rule#qa",
+                "source": "/friendly",
+                "type": "rewrite"
+              },
+              {
+                "destination": "/docs/:splat?from=rule#anchor",
+                "source": "/go/*",
+                "type": "redirect"
+              },
+              {
+                "destination": "/docs/index.html",
+                "source": "/article/*",
+                "type": "rewrite"
+              },
+              {
+                "destination": "/index.html",
+                "source": "/existing.html",
+                "type": "rewrite"
+              },
+              {
+                "destination": "/files/report.v1.json",
+                "source": "/healthz",
+                "type": "rewrite"
+              }
+            ],
+            "type": "static_site",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co"
+          }
+        }
+      }
+    },
+    "RoutesFresh390": {
+      "at": "2026-10-17T16:59:44.818Z",
+      "url": "https://dashboard.bex.co/static/srv-db9qhgks300s73dskhq0/redirects",
+      "sources": [
+        "/friendly",
+        "/go/*",
+        "/article/*",
+        "/existing.html",
+        "/healthz"
+      ],
+      "destinations": [
+        "/files/caf%C3%A9%20hello%2Bworld.txt?from=rule#qa",
+        "/docs/:splat?from=rule#anchor",
+        "/docs/index.html",
+        "/index.html",
+        "/files/report.v1.json"
+      ],
+      "saveDisabled": true,
+      "bounds": {
+        "viewport": 390,
+        "scrollWidth": 390
+      }
+    },
+    "PublicBrowserRewrite": {
+      "at": "2026-10-17T16:59:42.630Z",
+      "status": 200,
+      "url": "https://qa-20261017-a895-static-paths.onbex.co/friendly?visitor=browser",
+      "body": "QA_A895_UNICODE cafÃ© é›ª + percent% newline\nsecond line\n",
+      "headers": {
+        "accept-ranges": "bytes",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-length": "57",
+        "content-type": "text/plain",
+        "date": "Sat, 17 Oct 2026 16:59:42 GMT",
+        "x-qa-pass": "a895",
+        "x-qa-visitor": "friendly"
+      }
+    },
+    "DirectTextBrowserDesktop": {
+      "at": "2026-10-17T17:00:20.521Z",
+      "status": 200,
+      "url": "https://qa-20261017-a895-static-paths.onbex.co/files/caf%C3%A9%20hello%2Bworld.txt?fresh=desktop",
+      "headers": {
+        "accept-ranges": "bytes",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-length": "57",
+        "content-type": "text/plain",
+        "date": "Sat, 17 Oct 2026 17:00:20 GMT",
+        "x-qa-file": "file-path",
+        "x-qa-pass": "a895"
+      },
+      "render": {
+        "encoding": "windows-1252",
+        "text": "QA_A895_UNICODE cafÃ© é›ª + percent% newline\nsecond line\n"
+      },
+      "responseTextDecodedByChromium": "QA_A895_UNICODE cafÃ© é›ª + percent% newline\nsecond line\n",
+      "fieldCorrection": "Original observer misnamed this rawUtf8. It is decoded Chromium response text, not authoritative response bytes. The independent curl receipts retain exact bytes/hash."
+    },
+    "SaveUtf8FileHeader": {
+      "at": "2026-10-17T17:02:00.656Z",
+      "request": {
+        "operationName": "SetStaticHeaders",
+        "variables": {
+          "id": "srv-db9qhgks300s73dskhq0",
+          "headers": [
+            {
+              "path": "/*",
+              "name": "X-QA-Pass",
+              "value": "a895"
+            },
+            {
+              "path": "/friendly",
+              "name": "X-QA-Visitor",
+              "value": "friendly"
+            },
+            {
+              "path": "/files/*",
+              "name": "X-QA-File",
+              "value": "file-path"
+            },
+            {
+              "path": "/healthz",
+              "name": "X-QA-Visitor",
+              "value": "healthz"
+            },
+            {
+              "path": "/files/report.v1.json",
+              "name": "Cache-Control",
+              "value": "no-cache"
+            },
+            {
+              "path": "/files/*",
+              "name": "Content-Type",
+              "value": "text/plain; charset=utf-8"
+            }
+          ]
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetStaticHeaders($id: String!, $headers: [StaticHeaderInput]) {\n  setStaticHeaders(id: $id, headers: $headers) {\n    id\n    headers {\n      path\n      name\n      value\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setStaticHeaders": {
+            "__typename": "Service",
+            "headers": [
+              {
+                "__typename": "StaticHeader",
+                "name": "X-QA-Pass",
+                "path": "/*",
+                "value": "a895"
+              },
+              {
+                "__typename": "StaticHeader",
+                "name": "X-QA-Visitor",
+                "path": "/friendly",
+                "value": "friendly"
+              },
+              {
+                "__typename": "StaticHeader",
+                "name": "X-QA-File",
+                "path": "/files/*",
+                "value": "file-path"
+              },
+              {
+                "__typename": "StaticHeader",
+                "name": "X-QA-Visitor",
+                "path": "/healthz",
+                "value": "healthz"
+              },
+              {
+                "__typename": "StaticHeader",
+                "name": "Cache-Control",
+                "path": "/files/report.v1.json",
+                "value": "no-cache"
+              },
+              {
+                "__typename": "StaticHeader",
+                "name": "Content-Type",
+                "path": "/files/*",
+                "value": "text/plain; charset=utf-8"
+              }
+            ],
+            "id": "srv-db9qhgks300s73dskhq0"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792256519681.5999,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.137,
+        "responseStart": 261.666,
+        "responseEnd": 262.365
+      },
+      "url": "https://dashboard.bex.co/static/srv-db9qhgks300s73dskhq0/headers"
+    },
+    "Utf8FileBrowser390": {
+      "at": "2026-10-17T17:02:01.965Z",
+      "status": 200,
+      "url": "https://qa-20261017-a895-static-paths.onbex.co/files/caf%C3%A9%20hello%2Bworld.txt?fresh=utf8-control",
+      "headers": {
+        "accept-ranges": "bytes",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-length": "57",
+        "content-type": "text/plain",
+        "date": "Sat, 17 Oct 2026 17:02:02 GMT",
+        "x-qa-file": "file-path",
+        "x-qa-pass": "a895"
+      },
+      "render": {
+        "encoding": "windows-1252",
+        "text": "QA_A895_UNICODE cafÃ© é›ª + percent% newline\nsecond line\n"
+      }
+    },
+    "Utf8FileBrowserSettled390": {
+      "at": "2026-10-17T17:02:20.684Z",
+      "status": 200,
+      "url": "https://qa-20261017-a895-static-paths.onbex.co/files/caf%C3%A9%20hello%2Bworld.txt?fresh=utf8-settled",
+      "headers": {
+        "accept-ranges": "bytes",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-length": "57",
+        "content-type": "text/plain; charset=utf-8",
+        "date": "Sat, 17 Oct 2026 17:02:20 GMT",
+        "x-qa-file": "file-path",
+        "x-qa-pass": "a895"
+      },
+      "render": {
+        "encoding": "UTF-8",
+        "text": "QA_A895_UNICODE café 雪 + percent% newline\nsecond line\n"
+      }
+    },
+    "RewriteBeforeControl390": {
+      "at": "2026-10-17T17:02:21.636Z",
+      "status": 200,
+      "url": "https://qa-20261017-a895-static-paths.onbex.co/friendly?fresh=rewrite-before",
+      "headers": {
+        "accept-ranges": "bytes",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-length": "57",
+        "content-type": "text/plain",
+        "date": "Sat, 17 Oct 2026 17:02:21 GMT",
+        "x-qa-pass": "a895",
+        "x-qa-visitor": "friendly"
+      },
+      "render": {
+        "encoding": "windows-1252",
+        "text": "QA_A895_UNICODE cafÃ© é›ª + percent% newline\nsecond line\n"
+      },
+      "screenshot": "qa-a895-utf8-before.png"
+    },
+    "SaveUtf8RewriteHeader": {
+      "at": "2026-10-17T17:02:33.598Z",
+      "request": {
+        "operationName": "SetStaticHeaders",
+        "variables": {
+          "id": "srv-db9qhgks300s73dskhq0",
+          "headers": [
+            {
+              "path": "/*",
+              "name": "X-QA-Pass",
+              "value": "a895"
+            },
+            {
+              "path": "/friendly",
+              "name": "X-QA-Visitor",
+              "value": "friendly"
+            },
+            {
+              "path": "/files/*",
+              "name": "X-QA-File",
+              "value": "file-path"
+            },
+            {
+              "path": "/healthz",
+              "name": "X-QA-Visitor",
+              "value": "healthz"
+            },
+            {
+              "path": "/files/report.v1.json",
+              "name": "Cache-Control",
+              "value": "no-cache"
+            },
+            {
+              "path": "/files/*",
+              "name": "Content-Type",
+              "value": "text/plain; charset=utf-8"
+            },
+            {
+              "path": "/friendly",
+              "name": "Content-Type",
+              "value": "text/plain; charset=utf-8"
+            }
+          ]
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetStaticHeaders($id: String!, $headers: [StaticHeaderInput]) {\n  setStaticHeaders(id: $id, headers: $headers) {\n    id\n    headers {\n      path\n      name\n      value\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setStaticHeaders": {
+            "__typename": "Service",
+            "headers": [
+              {
+                "__typename": "StaticHeader",
+                "name": "X-QA-Pass",
+                "path": "/*",
+                "value": "a895"
+              },
+              {
+                "__typename": "StaticHeader",
+                "name": "X-QA-Visitor",
+                "path": "/friendly",
+                "value": "friendly"
+              },
+              {
+                "__typename": "StaticHeader",
+                "name": "X-QA-File",
+                "path": "/files/*",
+                "value": "file-path"
+              },
+              {
+                "__typename": "StaticHeader",
+                "name": "X-QA-Visitor",
+                "path": "/healthz",
+                "value": "healthz"
+              },
+              {
+                "__typename": "StaticHeader",
+                "name": "Cache-Control",
+                "path": "/files/report.v1.json",
+                "value": "no-cache"
+              },
+              {
+                "__typename": "StaticHeader",
+                "name": "Content-Type",
+                "path": "/files/*",
+                "value": "text/plain; charset=utf-8"
+              },
+              {
+                "__typename": "StaticHeader",
+                "name": "Content-Type",
+                "path": "/friendly",
+                "value": "text/plain; charset=utf-8"
+              }
+            ],
+            "id": "srv-db9qhgks300s73dskhq0"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792256552613.208,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.121,
+        "responseStart": 269.39,
+        "responseEnd": 270.089
+      },
+      "url": "https://dashboard.bex.co/static/srv-db9qhgks300s73dskhq0/headers"
+    },
+    "Utf8RewriteBrowserSettled390": {
+      "at": "2026-10-17T17:03:01.416Z",
+      "status": 200,
+      "url": "https://qa-20261017-a895-static-paths.onbex.co/friendly?fresh=utf8-rewrite-settled",
+      "headers": {
+        "accept-ranges": "bytes",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-length": "57",
+        "content-type": "text/plain; charset=utf-8",
+        "date": "Sat, 17 Oct 2026 17:03:01 GMT",
+        "x-qa-pass": "a895",
+        "x-qa-visitor": "friendly"
+      },
+      "render": {
+        "encoding": "UTF-8",
+        "text": "QA_A895_UNICODE café 雪 + percent% newline\nsecond line\n"
+      },
+      "screenshot": "qa-a895-utf8-control.png"
+    },
+    "RestoreHeaders": {
+      "at": "2026-10-17T17:03:41.185Z",
+      "request": {
+        "operationName": "SetStaticHeaders",
+        "variables": {
+          "id": "srv-db9qhgks300s73dskhq0",
+          "headers": [
+            {
+              "path": "/*",
+              "name": "X-QA-Pass",
+              "value": "a895"
+            },
+            {
+              "path": "/friendly",
+              "name": "X-QA-Visitor",
+              "value": "friendly"
+            },
+            {
+              "path": "/files/*",
+              "name": "X-QA-File",
+              "value": "file-path"
+            },
+            {
+              "path": "/healthz",
+              "name": "X-QA-Visitor",
+              "value": "healthz"
+            },
+            {
+              "path": "/files/report.v1.json",
+              "name": "Cache-Control",
+              "value": "no-cache"
+            }
+          ]
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetStaticHeaders($id: String!, $headers: [StaticHeaderInput]) {\n  setStaticHeaders(id: $id, headers: $headers) {\n    id\n    headers {\n      path\n      name\n      value\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setStaticHeaders": {
+            "__typename": "Service",
+            "headers": [
+              {
+                "__typename": "StaticHeader",
+                "name": "X-QA-Pass",
+                "path": "/*",
+                "value": "a895"
+              },
+              {
+                "__typename": "StaticHeader",
+                "name": "X-QA-Visitor",
+                "path": "/friendly",
+                "value": "friendly"
+              },
+              {
+                "__typename": "StaticHeader",
+                "name": "X-QA-File",
+                "path": "/files/*",
+                "value": "file-path"
+              },
+              {
+                "__typename": "StaticHeader",
+                "name": "X-QA-Visitor",
+                "path": "/healthz",
+                "value": "healthz"
+              },
+              {
+                "__typename": "StaticHeader",
+                "name": "Cache-Control",
+                "path": "/files/report.v1.json",
+                "value": "no-cache"
+              }
+            ],
+            "id": "srv-db9qhgks300s73dskhq0"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792256620143.093,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.21,
+        "responseStart": 329.244,
+        "responseEnd": 330.036
+      },
+      "url": "https://dashboard.bex.co/static/srv-db9qhgks300s73dskhq0/headers"
+    },
+    "RestoredRewriteBrowserDesktop": {
+      "at": "2026-10-17T17:04:36.436Z",
+      "status": 200,
+      "url": "https://qa-20261017-a895-static-paths.onbex.co/friendly?fresh=restored-desktop",
+      "headers": {
+        "accept-ranges": "bytes",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-length": "57",
+        "content-type": "text/plain",
+        "date": "Sat, 17 Oct 2026 17:04:36 GMT",
+        "x-qa-pass": "a895",
+        "x-qa-visitor": "friendly"
+      },
+      "render": {
+        "encoding": "windows-1252",
+        "text": "QA_A895_UNICODE cafÃ© é›ª + percent% newline\nsecond line\n"
+      }
+    },
+    "RestoredDirectBrowser390": {
+      "at": "2026-10-17T17:05:14.268Z",
+      "status": 200,
+      "url": "https://qa-20261017-a895-static-paths.onbex.co/files/caf%C3%A9%20hello%2Bworld.txt?fresh=restored-mobile",
+      "headers": {
+        "accept-ranges": "bytes",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-length": "57",
+        "content-type": "text/plain",
+        "date": "Sat, 17 Oct 2026 17:05:14 GMT",
+        "x-qa-file": "file-path",
+        "x-qa-pass": "a895"
+      },
+      "render": {
+        "encoding": "windows-1252",
+        "text": "QA_A895_UNICODE cafÃ© é›ª + percent% newline\nsecond line\n"
+      }
+    },
+    "FinalLiveRead": {
+      "at": "2026-10-17T17:05:15.157Z",
+      "request": {
+        "operationName": "QA895StaticRead",
+        "variables": {
+          "id": "srv-db9qhgks300s73dskhq0"
+        },
+        "query": "query QA895StaticRead($id:String!){server(id:$id){id name type phase revision url rootDir publishPath buildCommand autoDeploy routes{type source destination} headers{path name value}} deploys(serviceId:$id,limit:50){id status trigger createdAt finishedAt commitId}}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "commitId": "2a409e808edb19cf05756d2f071f80f061e80336",
+              "createdAt": "2026-10-17T16:56:34.24604Z",
+              "finishedAt": "2026-10-17T16:59:18.082935Z",
+              "id": "dep-db9qhgks300s73dskhqg",
+              "status": "live",
+              "trigger": "create"
+            }
+          ],
+          "server": {
+            "autoDeploy": false,
+            "buildCommand": "mkdir -p dist/docs dist/files dist/.well-known && printf %b '<!doctype html><title>QA a895</title><h1>QA_A895_ROOT café 雪</h1>\\n' > 'dist/index.html' && printf %b '<!doctype html><title>QA docs</title><h1>QA_A895_DOCS</h1>\\n' > 'dist/docs/index.html' && printf %b '<!doctype html><h1>QA_A895_EXISTING</h1>\\n' > 'dist/existing.html' && printf %b 'QA_A895_UNICODE café 雪 + percent% newline\\nsecond line\\n' > 'dist/files/café hello+world.txt' && printf %b '{\"pass\":\"a895\",\"ok\":true,\"label\":\"雪\"}\\n' > 'dist/files/report.v1.json' && printf %b 'QA_A895_DOT_DIRECTORY\\n' > 'dist/.well-known/qa.txt' && printf %b 'User-agent: *\\nDisallow: /\\n' > 'dist/robots.txt'",
+            "headers": [
+              {
+                "name": "X-QA-Pass",
+                "path": "/*",
+                "value": "a895"
+              },
+              {
+                "name": "X-QA-Visitor",
+                "path": "/friendly",
+                "value": "friendly"
+              },
+              {
+                "name": "X-QA-File",
+                "path": "/files/*",
+                "value": "file-path"
+              },
+              {
+                "name": "X-QA-Visitor",
+                "path": "/healthz",
+                "value": "healthz"
+              },
+              {
+                "name": "Cache-Control",
+                "path": "/files/report.v1.json",
+                "value": "no-cache"
+              }
+            ],
+            "id": "srv-db9qhgks300s73dskhq0",
+            "name": "qa-20261017-a895-static-paths",
+            "phase": "Running",
+            "publishPath": "dist",
+            "revision": "rev-1",
+            "rootDir": "examples/static-site",
+            "routes": [
+              {
+                "destination": "/files/caf%C3%A9%20hello%2Bworld.txt?from=rule#qa",
+                "source": "/friendly",
+                "type": "rewrite"
+              },
+              {
+                "destination": "/docs/:splat?from=rule#anchor",
+                "source": "/go/*",
+                "type": "redirect"
+              },
+              {
+                "destination": "/docs/index.html",
+                "source": "/article/*",
+                "type": "rewrite"
+              },
+              {
+                "destination": "/index.html",
+                "source": "/existing.html",
+                "type": "rewrite"
+              },
+              {
+                "destination": "/files/report.v1.json",
+                "source": "/healthz",
+                "type": "rewrite"
+              }
+            ],
+            "type": "static_site",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co"
+          }
+        }
+      }
+    },
+    "Delete": {
+      "at": "2026-10-17T17:06:24.635Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db9qhgks300s73dskhq0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "timing": {
+        "startTime": 1792256783548.418,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.145,
+        "responseStart": 354.162,
+        "responseEnd": 354.968
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "InventoryCleanup": {
+      "at": "2026-10-17T17:06:32.988Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [
+        {
+          "path": "/v1/services/srv-db9qhgks300s73dskhq0",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9qhgks300s73dskhq0/deploys/dep-db9qhgks300s73dskhqg",
+          "status": 404
+        }
+      ]
+    },
+    "FinishSummary": {
+      "logoutConfirmed": true,
+      "exitCode": 0,
+      "browser": {
+        "at": "2026-10-17T17:07:04.117Z",
+        "whoami": 401,
+        "cookies": 0,
+        "pages": 1,
+        "url": "about:blank"
+      },
+      "handlesRemoved": true
+    },
+    "Console": {
+      "error": false,
+      "summary": "### Result\nTotal messages: 0 (Errors: 0, Warnings: 0)\n"
+    },
+    "Aborted5606": {
+      "operationName": "DeployActions",
+      "variables": {
+        "serviceId": "srv-db9qhgks300s73dskhq0",
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.3.3"
+        }
+      },
+      "query": "query DeployActions($serviceId: String!, $ownerId: String!) {\n  deployActions(serviceId: $serviceId, ownerId: $ownerId) {\n    action\n    outcome\n    reason\n    precondition\n    __typename\n  }\n}"
+    },
+    "Unfinished5620": {
+      "operationName": "ViewerCapabilities",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "fresh": false
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.3.3"
+        }
+      },
+      "query": "query ViewerCapabilities($ownerId: String, $fresh: Boolean) {\n  viewerCapabilities(ownerId: $ownerId, fresh: $fresh) {\n    role\n    canView\n    canViewLogs\n    canOperate\n    canCreate\n    canViewSensitive\n    canManageKeys\n    canManage\n    canManageBilling\n    fresh\n    grants {\n      action\n      outcome\n      reason\n      __typename\n    }\n    __typename\n  }\n}"
+    }
+  },
+  "publicMatrices": {
+    "initial": {
+      "at": "2026-10-17T16:59:35.688162+00:00",
+      "phase": "initial",
+      "rows": [
+        {
+          "at": "2026-10-17T16:59:21.352568+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "69",
+            "content-type": "text/html",
+            "date": "Sat, 17 Oct 2026 16:59:22 GMT",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 69\nContent-Type: text/html\nDate: Sat, 17 Oct 2026 16:59:22 GMT\nX-Qa-Pass: a895\n\n",
+          "body": "<!doctype html><title>QA a895</title><h1>QA_A895_ROOT café 雪</h1>\n",
+          "bodyBytes": 69,
+          "sha256": "a7419124f3be1c8012478d5b8dea20bbf018ad3094a65070812bfbd7d78d189d",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:59:22.291725+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/docs/",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "59",
+            "content-type": "text/html",
+            "date": "Sat, 17 Oct 2026 16:59:23 GMT",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 59\nContent-Type: text/html\nDate: Sat, 17 Oct 2026 16:59:23 GMT\nX-Qa-Pass: a895\n\n",
+          "body": "<!doctype html><title>QA docs</title><h1>QA_A895_DOCS</h1>\n",
+          "bodyBytes": 59,
+          "sha256": "910a478c77f117756922ce15ce6719ac0905c7de02099a4e039cc1fb9a64a6a5",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:59:22.989925+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/existing.html",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "41",
+            "content-type": "text/html",
+            "date": "Sat, 17 Oct 2026 16:59:23 GMT",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 41\nContent-Type: text/html\nDate: Sat, 17 Oct 2026 16:59:23 GMT\nX-Qa-Pass: a895\n\n",
+          "body": "<!doctype html><h1>QA_A895_EXISTING</h1>\n",
+          "bodyBytes": 41,
+          "sha256": "75f1c5a04385fee19932d1fc5620a7a649a5b85af0922660ca0e08d19d7be813",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:59:23.640089+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/files/caf%C3%A9%20hello%2Bworld.txt",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "57",
+            "content-type": "text/plain",
+            "date": "Sat, 17 Oct 2026 16:59:24 GMT",
+            "x-qa-file": "file-path",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 57\nContent-Type: text/plain\nDate: Sat, 17 Oct 2026 16:59:24 GMT\nX-Qa-File: file-path\nX-Qa-Pass: a895\n\n",
+          "body": "QA_A895_UNICODE café 雪 + percent% newline\nsecond line\n",
+          "bodyBytes": 57,
+          "sha256": "12502f491952126f9568871e69a3032072a88479191ca0f9d0848adfddc37582",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:59:24.282230+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/files/report.v1.json",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "no-cache",
+            "content-length": "40",
+            "content-type": "application/json",
+            "date": "Sat, 17 Oct 2026 16:59:24 GMT",
+            "x-qa-file": "file-path",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: no-cache\nContent-Length: 40\nContent-Type: application/json\nDate: Sat, 17 Oct 2026 16:59:24 GMT\nX-Qa-File: file-path\nX-Qa-Pass: a895\n\n",
+          "body": "{\"pass\":\"a895\",\"ok\":true,\"label\":\"雪\"}\n",
+          "bodyBytes": 40,
+          "sha256": "4fd31aef977943cacf3adcd89e3a4ddfc06c509d6486086b47f20246c2089267",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:59:24.923676+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/.well-known/qa.txt",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "22",
+            "content-type": "text/plain",
+            "date": "Sat, 17 Oct 2026 16:59:25 GMT",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 22\nContent-Type: text/plain\nDate: Sat, 17 Oct 2026 16:59:25 GMT\nX-Qa-Pass: a895\n\n",
+          "body": "QA_A895_DOT_DIRECTORY\n",
+          "bodyBytes": 22,
+          "sha256": "a32536c0b1ff96a976836f969554de05034af238df0404bfb6ee8d455e8f968f",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:59:25.588402+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/robots.txt",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "26",
+            "content-type": "text/plain",
+            "date": "Sat, 17 Oct 2026 16:59:26 GMT",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 26\nContent-Type: text/plain\nDate: Sat, 17 Oct 2026 16:59:26 GMT\nX-Qa-Pass: a895\n\n",
+          "body": "User-agent: *\nDisallow: /\n",
+          "bodyBytes": 26,
+          "sha256": "331ea9090db0c9f6f597bd9840fd5b171830f6e0b3ba1cb24dfa91f0c95aedc1",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:59:26.261662+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/friendly?visitor=kept",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "57",
+            "content-type": "text/plain",
+            "date": "Sat, 17 Oct 2026 16:59:26 GMT",
+            "x-qa-pass": "a895",
+            "x-qa-visitor": "friendly"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 57\nContent-Type: text/plain\nDate: Sat, 17 Oct 2026 16:59:26 GMT\nX-Qa-Pass: a895\nX-Qa-Visitor: friendly\n\n",
+          "body": "QA_A895_UNICODE café 雪 + percent% newline\nsecond line\n",
+          "bodyBytes": 57,
+          "sha256": "12502f491952126f9568871e69a3032072a88479191ca0f9d0848adfddc37582",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:59:26.942171+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/healthz?visitor=a895",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "40",
+            "content-type": "application/json",
+            "date": "Sat, 17 Oct 2026 16:59:27 GMT",
+            "x-qa-pass": "a895",
+            "x-qa-visitor": "healthz"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 40\nContent-Type: application/json\nDate: Sat, 17 Oct 2026 16:59:27 GMT\nX-Qa-Pass: a895\nX-Qa-Visitor: healthz\n\n",
+          "body": "{\"pass\":\"a895\",\"ok\":true,\"label\":\"雪\"}\n",
+          "bodyBytes": 40,
+          "sha256": "4fd31aef977943cacf3adcd89e3a4ddfc06c509d6486086b47f20246c2089267",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:59:27.638881+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/article/nested/%E9%9B%AA",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "59",
+            "content-type": "text/html",
+            "date": "Sat, 17 Oct 2026 16:59:28 GMT",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 59\nContent-Type: text/html\nDate: Sat, 17 Oct 2026 16:59:28 GMT\nX-Qa-Pass: a895\n\n",
+          "body": "<!doctype html><title>QA docs</title><h1>QA_A895_DOCS</h1>\n",
+          "bodyBytes": 59,
+          "sha256": "910a478c77f117756922ce15ce6719ac0905c7de02099a4e039cc1fb9a64a6a5",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:59:28.194617+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/unconfigured/deep-link",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "69",
+            "content-type": "text/html",
+            "date": "Sat, 17 Oct 2026 16:59:29 GMT",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 69\nContent-Type: text/html\nDate: Sat, 17 Oct 2026 16:59:29 GMT\nX-Qa-Pass: a895\n\n",
+          "body": "<!doctype html><title>QA a895</title><h1>QA_A895_ROOT café 雪</h1>\n",
+          "bodyBytes": 69,
+          "sha256": "a7419124f3be1c8012478d5b8dea20bbf018ad3094a65070812bfbd7d78d189d",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:59:28.980179+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/missing-file.js",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 404,
+          "headers": {
+            "content-length": "10",
+            "content-type": "text/plain; charset=utf-8",
+            "date": "Sat, 17 Oct 2026 16:59:29 GMT",
+            "x-content-type-options": "nosniff",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 404 Not Found\nContent-Length: 10\nContent-Type: text/plain; charset=utf-8\nDate: Sat, 17 Oct 2026 16:59:29 GMT\nX-Content-Type-Options: nosniff\nX-Qa-Pass: a895\n\n",
+          "body": "not found\n",
+          "bodyBytes": 10,
+          "sha256": "709009e02c8e364113b28205aadde30cce270d709073f28153c85fdc5036c96d",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:59:29.612366+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/go/",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 301,
+          "headers": {
+            "content-length": "58",
+            "content-type": "text/html; charset=utf-8",
+            "date": "Sat, 17 Oct 2026 16:59:30 GMT",
+            "location": "/docs/?from=rule#anchor",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 301 Moved Permanently\nContent-Length: 58\nContent-Type: text/html; charset=utf-8\nDate: Sat, 17 Oct 2026 16:59:30 GMT\nLocation: /docs/?from=rule#anchor\nX-Qa-Pass: a895\n\n",
+          "body": "<a href=\"/docs/?from=rule#anchor\">Moved Permanently</a>.\n\n",
+          "bodyBytes": 58,
+          "sha256": "64af49c8b53e5073baf8e85a8c991f29c4a25150edd0e30f9e1b7c3c08863095",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:59:30.165585+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/go/caf%C3%A9%20hello%2Bworld.txt?incoming=discard",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 301,
+          "headers": {
+            "content-length": "85",
+            "content-type": "text/html; charset=utf-8",
+            "date": "Sat, 17 Oct 2026 16:59:30 GMT",
+            "location": "/docs/caf%C3%A9%20hello+world.txt?from=rule#anchor",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 301 Moved Permanently\nContent-Length: 85\nContent-Type: text/html; charset=utf-8\nDate: Sat, 17 Oct 2026 16:59:30 GMT\nLocation: /docs/caf%C3%A9%20hello+world.txt?from=rule#anchor\nX-Qa-Pass: a895\n\n",
+          "body": "<a href=\"/docs/caf%C3%A9%20hello+world.txt?from=rule#anchor\">Moved Permanently</a>.\n\n",
+          "bodyBytes": 85,
+          "sha256": "01bf71f66ee4dbfa894281f132fcb74bcecaf25c5d43117138b753258777b18b",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:59:30.835092+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "69",
+            "content-type": "text/html",
+            "date": "Sat, 17 Oct 2026 16:59:31 GMT",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 69\nContent-Type: text/html\nDate: Sat, 17 Oct 2026 16:59:31 GMT\nX-Qa-Pass: a895\n\n",
+          "body": "",
+          "bodyBytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:59:31.429602+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/friendly",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "57",
+            "content-type": "text/plain",
+            "date": "Sat, 17 Oct 2026 16:59:32 GMT",
+            "x-qa-pass": "a895",
+            "x-qa-visitor": "friendly"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 57\nContent-Type: text/plain\nDate: Sat, 17 Oct 2026 16:59:32 GMT\nX-Qa-Pass: a895\nX-Qa-Visitor: friendly\n\n",
+          "body": "",
+          "bodyBytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:59:32.267527+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/healthz",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "40",
+            "content-type": "application/json",
+            "date": "Sat, 17 Oct 2026 16:59:33 GMT",
+            "x-qa-pass": "a895",
+            "x-qa-visitor": "healthz"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 40\nContent-Type: application/json\nDate: Sat, 17 Oct 2026 16:59:33 GMT\nX-Qa-Pass: a895\nX-Qa-Visitor: healthz\n\n",
+          "body": "",
+          "bodyBytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:59:33.059860+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/missing-file.js",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 404,
+          "headers": {
+            "content-length": "10",
+            "content-type": "text/plain; charset=utf-8",
+            "date": "Sat, 17 Oct 2026 16:59:33 GMT",
+            "x-content-type-options": "nosniff",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 404 Not Found\nContent-Length: 10\nContent-Type: text/plain; charset=utf-8\nDate: Sat, 17 Oct 2026 16:59:33 GMT\nX-Content-Type-Options: nosniff\nX-Qa-Pass: a895\n\n",
+          "body": "",
+          "bodyBytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:59:33.654352+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/go/",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 301,
+          "headers": {
+            "content-type": "text/html; charset=utf-8",
+            "date": "Sat, 17 Oct 2026 16:59:34 GMT",
+            "location": "/docs/?from=rule#anchor",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 301 Moved Permanently\nContent-Type: text/html; charset=utf-8\nDate: Sat, 17 Oct 2026 16:59:34 GMT\nLocation: /docs/?from=rule#anchor\nX-Qa-Pass: a895\n\n",
+          "body": "",
+          "bodyBytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:59:34.269736+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://QA-20261017-A895-STATIC-PATHS.ONBEX.CO/",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "69",
+            "content-type": "text/html",
+            "date": "Sat, 17 Oct 2026 16:59:35 GMT",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 69\nContent-Type: text/html\nDate: Sat, 17 Oct 2026 16:59:35 GMT\nX-Qa-Pass: a895\n\n",
+          "body": "<!doctype html><title>QA a895</title><h1>QA_A895_ROOT café 雪</h1>\n",
+          "bodyBytes": 69,
+          "sha256": "a7419124f3be1c8012478d5b8dea20bbf018ad3094a65070812bfbd7d78d189d",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T16:59:35.016614+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://Qa-20261017-A895-Static-Paths.OnBeX.Co/",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "69",
+            "content-type": "text/html",
+            "date": "Sat, 17 Oct 2026 16:59:35 GMT",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 69\nContent-Type: text/html\nDate: Sat, 17 Oct 2026 16:59:35 GMT\nX-Qa-Pass: a895\n\n",
+          "body": "<!doctype html><title>QA a895</title><h1>QA_A895_ROOT café 雪</h1>\n",
+          "bodyBytes": 69,
+          "sha256": "a7419124f3be1c8012478d5b8dea20bbf018ad3094a65070812bfbd7d78d189d",
+          "stderr": ""
+        }
+      ],
+      "checks": [
+        {
+          "name": "direct exact /",
+          "pass": true
+        },
+        {
+          "name": "pass header /",
+          "pass": true
+        },
+        {
+          "name": "direct exact /docs/",
+          "pass": true
+        },
+        {
+          "name": "pass header /docs/",
+          "pass": true
+        },
+        {
+          "name": "direct exact /existing.html",
+          "pass": true
+        },
+        {
+          "name": "pass header /existing.html",
+          "pass": true
+        },
+        {
+          "name": "direct exact /files/caf%C3%A9%20hello%2Bworld.txt",
+          "pass": true
+        },
+        {
+          "name": "pass header /files/caf%C3%A9%20hello%2Bworld.txt",
+          "pass": true
+        },
+        {
+          "name": "direct exact /files/report.v1.json",
+          "pass": true
+        },
+        {
+          "name": "pass header /files/report.v1.json",
+          "pass": true
+        },
+        {
+          "name": "direct exact /.well-known/qa.txt",
+          "pass": true
+        },
+        {
+          "name": "pass header /.well-known/qa.txt",
+          "pass": true
+        },
+        {
+          "name": "direct exact /robots.txt",
+          "pass": true
+        },
+        {
+          "name": "pass header /robots.txt",
+          "pass": true
+        },
+        {
+          "name": "encoded destination serves exact object",
+          "pass": true
+        },
+        {
+          "name": "rewrite uses visitor header path",
+          "pass": true
+        },
+        {
+          "name": "healthz rewrite follows tenant path",
+          "pass": true
+        },
+        {
+          "name": "wildcard rewrite docs",
+          "pass": true
+        },
+        {
+          "name": "documented implicit SPA fallback",
+          "pass": true
+        },
+        {
+          "name": "missing asset stays404 with custom header",
+          "pass": true
+        },
+        {
+          "name": "redirect location /go/",
+          "pass": true
+        },
+        {
+          "name": "redirect location /go/caf%C3%A9%20hello%2Bworld.txt?incoming=discard",
+          "pass": true
+        },
+        {
+          "name": "HEAD status /",
+          "pass": true
+        },
+        {
+          "name": "HEAD has0body /",
+          "pass": true
+        },
+        {
+          "name": "HEAD status /friendly",
+          "pass": true
+        },
+        {
+          "name": "HEAD has0body /friendly",
+          "pass": true
+        },
+        {
+          "name": "HEAD status /healthz",
+          "pass": true
+        },
+        {
+          "name": "HEAD has0body /healthz",
+          "pass": true
+        },
+        {
+          "name": "HEAD status /missing-file.js",
+          "pass": true
+        },
+        {
+          "name": "HEAD has0body /missing-file.js",
+          "pass": true
+        },
+        {
+          "name": "HEAD status /go/",
+          "pass": true
+        },
+        {
+          "name": "HEAD has0body /go/",
+          "pass": true
+        },
+        {
+          "name": "host case https://QA-20261017-A895-STATIC-PATHS.ONBEX.CO",
+          "pass": true
+        },
+        {
+          "name": "host case https://Qa-20261017-A895-Static-Paths.OnBeX.Co",
+          "pass": true
+        },
+        {
+          "name": "origin providesETag",
+          "pass": false
+        }
+      ],
+      "passed": 34,
+      "failed": [
+        {
+          "name": "origin providesETag",
+          "pass": false
+        }
+      ]
+    },
+    "repeat": {
+      "at": "2026-10-17T17:05:28.776611+00:00",
+      "phase": "repeat",
+      "rows": [
+        {
+          "at": "2026-10-17T17:05:12.906118+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "69",
+            "content-type": "text/html",
+            "date": "Sat, 17 Oct 2026 17:05:13 GMT",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 69\nContent-Type: text/html\nDate: Sat, 17 Oct 2026 17:05:13 GMT\nX-Qa-Pass: a895\n\n",
+          "body": "<!doctype html><title>QA a895</title><h1>QA_A895_ROOT café 雪</h1>\n",
+          "bodyBytes": 69,
+          "sha256": "a7419124f3be1c8012478d5b8dea20bbf018ad3094a65070812bfbd7d78d189d",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T17:05:13.548773+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/docs/",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "59",
+            "content-type": "text/html",
+            "date": "Sat, 17 Oct 2026 17:05:14 GMT",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 59\nContent-Type: text/html\nDate: Sat, 17 Oct 2026 17:05:14 GMT\nX-Qa-Pass: a895\n\n",
+          "body": "<!doctype html><title>QA docs</title><h1>QA_A895_DOCS</h1>\n",
+          "bodyBytes": 59,
+          "sha256": "910a478c77f117756922ce15ce6719ac0905c7de02099a4e039cc1fb9a64a6a5",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T17:05:14.112039+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/existing.html",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "41",
+            "content-type": "text/html",
+            "date": "Sat, 17 Oct 2026 17:05:14 GMT",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 41\nContent-Type: text/html\nDate: Sat, 17 Oct 2026 17:05:14 GMT\nX-Qa-Pass: a895\n\n",
+          "body": "<!doctype html><h1>QA_A895_EXISTING</h1>\n",
+          "bodyBytes": 41,
+          "sha256": "75f1c5a04385fee19932d1fc5620a7a649a5b85af0922660ca0e08d19d7be813",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T17:05:14.767840+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/files/caf%C3%A9%20hello%2Bworld.txt",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "57",
+            "content-type": "text/plain",
+            "date": "Sat, 17 Oct 2026 17:05:15 GMT",
+            "x-qa-file": "file-path",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 57\nContent-Type: text/plain\nDate: Sat, 17 Oct 2026 17:05:15 GMT\nX-Qa-File: file-path\nX-Qa-Pass: a895\n\n",
+          "body": "QA_A895_UNICODE café 雪 + percent% newline\nsecond line\n",
+          "bodyBytes": 57,
+          "sha256": "12502f491952126f9568871e69a3032072a88479191ca0f9d0848adfddc37582",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T17:05:15.459065+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/files/report.v1.json",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "no-cache",
+            "content-length": "40",
+            "content-type": "application/json",
+            "date": "Sat, 17 Oct 2026 17:05:16 GMT",
+            "x-qa-file": "file-path",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: no-cache\nContent-Length: 40\nContent-Type: application/json\nDate: Sat, 17 Oct 2026 17:05:16 GMT\nX-Qa-File: file-path\nX-Qa-Pass: a895\n\n",
+          "body": "{\"pass\":\"a895\",\"ok\":true,\"label\":\"雪\"}\n",
+          "bodyBytes": 40,
+          "sha256": "4fd31aef977943cacf3adcd89e3a4ddfc06c509d6486086b47f20246c2089267",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T17:05:16.072097+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/.well-known/qa.txt",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "22",
+            "content-type": "text/plain",
+            "date": "Sat, 17 Oct 2026 17:05:16 GMT",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 22\nContent-Type: text/plain\nDate: Sat, 17 Oct 2026 17:05:16 GMT\nX-Qa-Pass: a895\n\n",
+          "body": "QA_A895_DOT_DIRECTORY\n",
+          "bodyBytes": 22,
+          "sha256": "a32536c0b1ff96a976836f969554de05034af238df0404bfb6ee8d455e8f968f",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T17:05:16.703356+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/robots.txt",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "26",
+            "content-type": "text/plain",
+            "date": "Sat, 17 Oct 2026 17:05:17 GMT",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 26\nContent-Type: text/plain\nDate: Sat, 17 Oct 2026 17:05:17 GMT\nX-Qa-Pass: a895\n\n",
+          "body": "User-agent: *\nDisallow: /\n",
+          "bodyBytes": 26,
+          "sha256": "331ea9090db0c9f6f597bd9840fd5b171830f6e0b3ba1cb24dfa91f0c95aedc1",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T17:05:17.340623+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/friendly?visitor=kept",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "57",
+            "content-type": "text/plain",
+            "date": "Sat, 17 Oct 2026 17:05:18 GMT",
+            "x-qa-pass": "a895",
+            "x-qa-visitor": "friendly"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 57\nContent-Type: text/plain\nDate: Sat, 17 Oct 2026 17:05:18 GMT\nX-Qa-Pass: a895\nX-Qa-Visitor: friendly\n\n",
+          "body": "QA_A895_UNICODE café 雪 + percent% newline\nsecond line\n",
+          "bodyBytes": 57,
+          "sha256": "12502f491952126f9568871e69a3032072a88479191ca0f9d0848adfddc37582",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T17:05:18.168687+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/healthz?visitor=a895",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "40",
+            "content-type": "application/json",
+            "date": "Sat, 17 Oct 2026 17:05:18 GMT",
+            "x-qa-pass": "a895",
+            "x-qa-visitor": "healthz"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 40\nContent-Type: application/json\nDate: Sat, 17 Oct 2026 17:05:18 GMT\nX-Qa-Pass: a895\nX-Qa-Visitor: healthz\n\n",
+          "body": "{\"pass\":\"a895\",\"ok\":true,\"label\":\"雪\"}\n",
+          "bodyBytes": 40,
+          "sha256": "4fd31aef977943cacf3adcd89e3a4ddfc06c509d6486086b47f20246c2089267",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T17:05:18.735076+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/article/nested/%E9%9B%AA",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "59",
+            "content-type": "text/html",
+            "date": "Sat, 17 Oct 2026 17:05:19 GMT",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 59\nContent-Type: text/html\nDate: Sat, 17 Oct 2026 17:05:19 GMT\nX-Qa-Pass: a895\n\n",
+          "body": "<!doctype html><title>QA docs</title><h1>QA_A895_DOCS</h1>\n",
+          "bodyBytes": 59,
+          "sha256": "910a478c77f117756922ce15ce6719ac0905c7de02099a4e039cc1fb9a64a6a5",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T17:05:19.344613+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/unconfigured/deep-link",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "69",
+            "content-type": "text/html",
+            "date": "Sat, 17 Oct 2026 17:05:20 GMT",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 69\nContent-Type: text/html\nDate: Sat, 17 Oct 2026 17:05:20 GMT\nX-Qa-Pass: a895\n\n",
+          "body": "<!doctype html><title>QA a895</title><h1>QA_A895_ROOT café 雪</h1>\n",
+          "bodyBytes": 69,
+          "sha256": "a7419124f3be1c8012478d5b8dea20bbf018ad3094a65070812bfbd7d78d189d",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T17:05:20.097575+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/missing-file.js",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 404,
+          "headers": {
+            "content-length": "10",
+            "content-type": "text/plain; charset=utf-8",
+            "date": "Sat, 17 Oct 2026 17:05:20 GMT",
+            "x-content-type-options": "nosniff",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 404 Not Found\nContent-Length: 10\nContent-Type: text/plain; charset=utf-8\nDate: Sat, 17 Oct 2026 17:05:20 GMT\nX-Content-Type-Options: nosniff\nX-Qa-Pass: a895\n\n",
+          "body": "not found\n",
+          "bodyBytes": 10,
+          "sha256": "709009e02c8e364113b28205aadde30cce270d709073f28153c85fdc5036c96d",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T17:05:20.649752+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/go/",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 301,
+          "headers": {
+            "content-length": "58",
+            "content-type": "text/html; charset=utf-8",
+            "date": "Sat, 17 Oct 2026 17:05:21 GMT",
+            "location": "/docs/?from=rule#anchor",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 301 Moved Permanently\nContent-Length: 58\nContent-Type: text/html; charset=utf-8\nDate: Sat, 17 Oct 2026 17:05:21 GMT\nLocation: /docs/?from=rule#anchor\nX-Qa-Pass: a895\n\n",
+          "body": "<a href=\"/docs/?from=rule#anchor\">Moved Permanently</a>.\n\n",
+          "bodyBytes": 58,
+          "sha256": "64af49c8b53e5073baf8e85a8c991f29c4a25150edd0e30f9e1b7c3c08863095",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T17:05:21.270690+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/go/caf%C3%A9%20hello%2Bworld.txt?incoming=discard",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 301,
+          "headers": {
+            "content-length": "85",
+            "content-type": "text/html; charset=utf-8",
+            "date": "Sat, 17 Oct 2026 17:05:22 GMT",
+            "location": "/docs/caf%C3%A9%20hello+world.txt?from=rule#anchor",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 301 Moved Permanently\nContent-Length: 85\nContent-Type: text/html; charset=utf-8\nDate: Sat, 17 Oct 2026 17:05:22 GMT\nLocation: /docs/caf%C3%A9%20hello+world.txt?from=rule#anchor\nX-Qa-Pass: a895\n\n",
+          "body": "<a href=\"/docs/caf%C3%A9%20hello+world.txt?from=rule#anchor\">Moved Permanently</a>.\n\n",
+          "bodyBytes": 85,
+          "sha256": "01bf71f66ee4dbfa894281f132fcb74bcecaf25c5d43117138b753258777b18b",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T17:05:22.001360+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "69",
+            "content-type": "text/html",
+            "date": "Sat, 17 Oct 2026 17:05:23 GMT",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 69\nContent-Type: text/html\nDate: Sat, 17 Oct 2026 17:05:23 GMT\nX-Qa-Pass: a895\n\n",
+          "body": "",
+          "bodyBytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T17:05:22.952263+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/friendly",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "57",
+            "content-type": "text/plain",
+            "date": "Sat, 17 Oct 2026 17:05:23 GMT",
+            "x-qa-pass": "a895",
+            "x-qa-visitor": "friendly"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 57\nContent-Type: text/plain\nDate: Sat, 17 Oct 2026 17:05:23 GMT\nX-Qa-Pass: a895\nX-Qa-Visitor: friendly\n\n",
+          "body": "",
+          "bodyBytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T17:05:23.630127+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/healthz",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "40",
+            "content-type": "application/json",
+            "date": "Sat, 17 Oct 2026 17:05:24 GMT",
+            "x-qa-pass": "a895",
+            "x-qa-visitor": "healthz"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 40\nContent-Type: application/json\nDate: Sat, 17 Oct 2026 17:05:24 GMT\nX-Qa-Pass: a895\nX-Qa-Visitor: healthz\n\n",
+          "body": "",
+          "bodyBytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T17:05:24.465938+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/missing-file.js",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 404,
+          "headers": {
+            "content-length": "10",
+            "content-type": "text/plain; charset=utf-8",
+            "date": "Sat, 17 Oct 2026 17:05:25 GMT",
+            "x-content-type-options": "nosniff",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 404 Not Found\nContent-Length: 10\nContent-Type: text/plain; charset=utf-8\nDate: Sat, 17 Oct 2026 17:05:25 GMT\nX-Content-Type-Options: nosniff\nX-Qa-Pass: a895\n\n",
+          "body": "",
+          "bodyBytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T17:05:25.405871+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://qa-20261017-a895-static-paths.onbex.co/go/",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 301,
+          "headers": {
+            "content-type": "text/html; charset=utf-8",
+            "date": "Sat, 17 Oct 2026 17:05:27 GMT",
+            "location": "/docs/?from=rule#anchor",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 301 Moved Permanently\nContent-Type: text/html; charset=utf-8\nDate: Sat, 17 Oct 2026 17:05:27 GMT\nLocation: /docs/?from=rule#anchor\nX-Qa-Pass: a895\n\n",
+          "body": "",
+          "bodyBytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T17:05:27.158067+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://QA-20261017-A895-STATIC-PATHS.ONBEX.CO/",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "69",
+            "content-type": "text/html",
+            "date": "Sat, 17 Oct 2026 17:05:27 GMT",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 69\nContent-Type: text/html\nDate: Sat, 17 Oct 2026 17:05:27 GMT\nX-Qa-Pass: a895\n\n",
+          "body": "<!doctype html><title>QA a895</title><h1>QA_A895_ROOT café 雪</h1>\n",
+          "bodyBytes": 69,
+          "sha256": "a7419124f3be1c8012478d5b8dea20bbf018ad3094a65070812bfbd7d78d189d",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-17T17:05:27.802598+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://Qa-20261017-A895-Static-Paths.OnBeX.Co/",
+            "headers": {}
+          },
+          "exitCode": 0,
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-length": "69",
+            "content-type": "text/html",
+            "date": "Sat, 17 Oct 2026 17:05:28 GMT",
+            "x-qa-pass": "a895"
+          },
+          "rawResponseHeaders": "HTTP/1.1 200 OK\nAccept-Ranges: bytes\nCache-Control: public, max-age=0, must-revalidate\nContent-Length: 69\nContent-Type: text/html\nDate: Sat, 17 Oct 2026 17:05:28 GMT\nX-Qa-Pass: a895\n\n",
+          "body": "<!doctype html><title>QA a895</title><h1>QA_A895_ROOT café 雪</h1>\n",
+          "bodyBytes": 69,
+          "sha256": "a7419124f3be1c8012478d5b8dea20bbf018ad3094a65070812bfbd7d78d189d",
+          "stderr": ""
+        }
+      ],
+      "checks": [
+        {
+          "name": "direct exact /",
+          "pass": true
+        },
+        {
+          "name": "pass header /",
+          "pass": true
+        },
+        {
+          "name": "direct exact /docs/",
+          "pass": true
+        },
+        {
+          "name": "pass header /docs/",
+          "pass": true
+        },
+        {
+          "name": "direct exact /existing.html",
+          "pass": true
+        },
+        {
+          "name": "pass header /existing.html",
+          "pass": true
+        },
+        {
+          "name": "direct exact /files/caf%C3%A9%20hello%2Bworld.txt",
+          "pass": true
+        },
+        {
+          "name": "pass header /files/caf%C3%A9%20hello%2Bworld.txt",
+          "pass": true
+        },
+        {
+          "name": "direct exact /files/report.v1.json",
+          "pass": true
+        },
+        {
+          "name": "pass header /files/report.v1.json",
+          "pass": true
+        },
+        {
+          "name": "direct exact /.well-known/qa.txt",
+          "pass": true
+        },
+        {
+          "name": "pass header /.well-known/qa.txt",
+          "pass": true
+        },
+        {
+          "name": "direct exact /robots.txt",
+          "pass": true
+        },
+        {
+          "name": "pass header /robots.txt",
+          "pass": true
+        },
+        {
+          "name": "encoded destination serves exact object",
+          "pass": true
+        },
+        {
+          "name": "rewrite uses visitor header path",
+          "pass": true
+        },
+        {
+          "name": "healthz rewrite follows tenant path",
+          "pass": true
+        },
+        {
+          "name": "wildcard rewrite docs",
+          "pass": true
+        },
+        {
+          "name": "documented implicit SPA fallback",
+          "pass": true
+        },
+        {
+          "name": "missing asset stays404 with custom header",
+          "pass": true
+        },
+        {
+          "name": "redirect location /go/",
+          "pass": true
+        },
+        {
+          "name": "redirect location /go/caf%C3%A9%20hello%2Bworld.txt?incoming=discard",
+          "pass": true
+        },
+        {
+          "name": "HEAD status /",
+          "pass": true
+        },
+        {
+          "name": "HEAD has0body /",
+          "pass": true
+        },
+        {
+          "name": "HEAD status /friendly",
+          "pass": true
+        },
+        {
+          "name": "HEAD has0body /friendly",
+          "pass": true
+        },
+        {
+          "name": "HEAD status /healthz",
+          "pass": true
+        },
+        {
+          "name": "HEAD has0body /healthz",
+          "pass": true
+        },
+        {
+          "name": "HEAD status /missing-file.js",
+          "pass": true
+        },
+        {
+          "name": "HEAD has0body /missing-file.js",
+          "pass": true
+        },
+        {
+          "name": "HEAD status /go/",
+          "pass": true
+        },
+        {
+          "name": "HEAD has0body /go/",
+          "pass": true
+        },
+        {
+          "name": "host case https://QA-20261017-A895-STATIC-PATHS.ONBEX.CO",
+          "pass": true
+        },
+        {
+          "name": "host case https://Qa-20261017-A895-Static-Paths.OnBeX.Co",
+          "pass": true
+        }
+      ],
+      "passed": 34,
+      "failed": []
+    }
+  },
+  "sourceResearch": [
+    {
+      "path": "lego/operator/internal/publish/publish.go",
+      "sha256": "8f5ede0f19307b927c57e4d11aeb07e8afe083052ed7de15dad1a27bee59c21c",
+      "startLine": 48,
+      "endLine": 52,
+      "excerpt": "// DefaultAWSCLIImage is the S3 uploader image. Pinned < 2.23 because newer AWS\n// CLIs send CRC64 checksums that S3-compatibles (Wasabi/Hetzner) reject — the\n// same pin the etcd/OpenBao backup CronJobs use (docs/ADR011-etcd-backup-restore.md).\nconst DefaultAWSCLIImage = \"amazon/aws-cli:2.22.35@sha256:6977c83ae3dc99f28fcf8276b9ea5eec33833cd5be40574b34112e98113ec7a2\"\n",
+      "meaning": "Pinned uploader version and digest; independently observed on own completed publish Job."
+    },
+    {
+      "path": "lego/operator/internal/publish/publish.go",
+      "sha256": "8f5ede0f19307b927c57e4d11aeb07e8afe083052ed7de15dad1a27bee59c21c",
+      "startLine": 407,
+      "endLine": 418,
+      "excerpt": "\tvar stage corev1.Container\n\tvar pullSecrets []corev1.LocalObjectReference\n\tswitch {\n\tcase o.SourcePrefix != \"\":\n\t\tstage = fetchContainer(o, awsImage, uploadEnv)\n\tcase o.Image == \"\":\n\t\tstage = cloneContainer(o)\n\tdefault:\n\t\tstage = extractContainer(o)\n\t\t// The extract initContainer pulls o.Image (the just-built Zot image) —\n\t\t// authenticate it under an auth-enabled registry (w7/m8). Clone mode\n\t\t// pulls only public platform images, so it carries no pull secret.",
+      "meaning": "Retained/source/image staging converge on the same publisher."
+    },
+    {
+      "path": "lego/operator/internal/publish/publish.go",
+      "sha256": "8f5ede0f19307b927c57e4d11aeb07e8afe083052ed7de15dad1a27bee59c21c",
+      "startLine": 442,
+      "endLine": 451,
+      "excerpt": "\t\t\tName:  \"upload\",\n\t\t\tImage: awsImage,\n\t\t\t// --no-follow-symlinks prevents tenant-controlled output from\n\t\t\t// turning /proc or another uploader-local path into an S3 object.\n\t\t\tArgs: []string{\n\t\t\t\t\"s3\", \"sync\", outMount, o.destURI(),\n\t\t\t\t\"--endpoint-url\", o.Store.Endpoint,\n\t\t\t\t\"--no-follow-symlinks\",\n\t\t\t\t\"--delete\",\n\t\t\t},",
+      "meaning": "aws s3 sync uses default MIME guessing; no charset override."
+    },
+    {
+      "path": "lego/operator/internal/staticserver/s3origin.go",
+      "sha256": "91ce184b21836b26e09af819fb5db4ec9f884b6ff0d016b578ed7ef86e252c32",
+      "startLine": 91,
+      "endLine": 119,
+      "excerpt": "func (o *S3Origin) Get(ctx context.Context, key string) (Object, error) {\n\tout, err := o.client.GetObject(ctx, &s3.GetObjectInput{\n\t\tBucket: aws.String(o.bucket),\n\t\tKey:    aws.String(key),\n\t})\n\tif err != nil {\n\t\tif isNotFound(err) {\n\t\t\treturn Object{}, ErrNotFound\n\t\t}\n\t\treturn Object{}, fmt.Errorf(\"staticserver: get %q: %w\", key, err)\n\t}\n\t// Reject up front when the origin reports a size beyond the bound, before\n\t// allocating; drain enforces the same cap defensively (codex-security #10).\n\tif out.ContentLength != nil && *out.ContentLength > maxOriginObjectBytes {\n\t\t_ = out.Body.Close()\n\t\treturn Object{}, ErrObjectTooLarge\n\t}\n\tbody, err := drain(out.Body)\n\tif err != nil {\n\t\treturn Object{}, fmt.Errorf(\"staticserver: read %q: %w\", key, err)\n\t}\n\tct := \"\"\n\tif out.ContentType != nil {\n\t\tct = *out.ContentType\n\t}\n\treturn Object{Body: body, ContentType: ct}, nil\n}\n\n// isNotFound recognizes a missing-key error across the typed errors and the",
+      "meaning": "Successful origin read buffers bounded bytes, then copies the Content-Type into Object unchanged."
+    },
+    {
+      "path": "lego/operator/internal/staticserver/staticserver.go",
+      "sha256": "1e1e957467a1eb2fe462bb98a626f2df09fd8a11e1b1c79add61038559fd20f4",
+      "startLine": 102,
+      "endLine": 106,
+      "excerpt": "// Object is a fetched origin object.\ntype Object struct {\n\tBody        []byte\n\tContentType string // from the origin; may be empty (then inferred from extension)\n\t// negative marks a cached confirmed miss. A revision prefix is immutable,",
+      "meaning": "Object.ContentType is a string and can carry MIME parameters."
+    },
+    {
+      "path": "lego/operator/internal/staticserver/staticserver.go",
+      "sha256": "1e1e957467a1eb2fe462bb98a626f2df09fd8a11e1b1c79add61038559fd20f4",
+      "startLine": 460,
+      "endLine": 489,
+      "excerpt": "func (h *Handler) get(ctx context.Context, site Site, reqPath string) (Object, error) {\n\tkey := site.keyFor(reqPath)\n\tif obj, ok := h.cache.get(key); ok {\n\t\treturn obj, negativeErr(obj)\n\t}\n\tv, err, _ := h.group.Do(key, func() (any, error) {\n\t\t// A prior leader for this key may have just populated the cache.\n\t\tif obj, ok := h.cache.get(key); ok {\n\t\t\treturn obj, nil\n\t\t}\n\t\tif !h.gate.acquire(site.AppID) {\n\t\t\treturn Object{}, ErrOverloaded\n\t\t}\n\t\tdefer h.gate.release(site.AppID)\n\t\tobj, gerr := h.origin.Get(ctx, key)\n\t\tif errors.Is(gerr, ErrNotFound) {\n\t\t\t// A confirmed miss is immutable within the revision too; cache it\n\t\t\t// so it stops costing origin round trips and fetch-gate slots.\n\t\t\t// Only ErrNotFound: a denial, timeout, or overload is transient\n\t\t\t// and must be re-asked.\n\t\t\tmiss := Object{negative: true}\n\t\t\th.cache.put(site.AppID, key, miss)\n\t\t\treturn miss, nil\n\t\t}\n\t\tif gerr != nil {\n\t\t\treturn Object{}, gerr\n\t\t}\n\t\th.cache.put(site.AppID, key, obj)\n\t\treturn obj, nil\n\t})",
+      "meaning": "One production origin.Get call fills the immutable cache; normalize successful plain UTF8 metadata once here or in S3Origin.Get, not per GET."
+    },
+    {
+      "path": "lego/operator/internal/staticserver/staticserver.go",
+      "sha256": "1e1e957467a1eb2fe462bb98a626f2df09fd8a11e1b1c79add61038559fd20f4",
+      "startLine": 366,
+      "endLine": 370,
+      "excerpt": "\thdr := w.Header()\n\thdr.Set(\"Content-Type\", contentType(servedPath, obj.ContentType))\n\thdr.Set(\"Cache-Control\", defaultCacheControl)\n\t// Custom headers win over the defaults above (last-write for a given key).\n\tapplyHeaders(hdr, site.Headers, requestPath)",
+      "meaning": "Header defaults use Object MIME, then native custom headers win."
+    },
+    {
+      "path": "lego/operator/internal/staticserver/staticserver.go",
+      "sha256": "1e1e957467a1eb2fe462bb98a626f2df09fd8a11e1b1c79add61038559fd20f4",
+      "startLine": 712,
+      "endLine": 724,
+      "excerpt": "func contentType(servedPath, originType string) string {\n\tif originType != \"\" && originType != \"application/octet-stream\" {\n\t\treturn originType\n\t}\n\tif ct := mime.TypeByExtension(path.Ext(servedPath)); ct != \"\" {\n\t\treturn ct\n\t}\n\tif originType != \"\" {\n\t\treturn originType\n\t}\n\treturn \"application/octet-stream\"\n}\n",
+      "meaning": "Nonempty text/plain origin metadata wins before MIME-by-extension fallback, preserving the missing charset."
+    },
+    {
+      "path": "lego/operator/internal/staticserver/encoding.go",
+      "sha256": "bdab7230d40a6d743991fce240ac5b7ecae1febe92b37955c77c99fba0e5f1f0",
+      "startLine": 79,
+      "endLine": 101,
+      "excerpt": "func brotliCandidate(hdr http.Header, size int) bool {\n\tif size < minBrotliBytes || size > maxBrotliBytes {\n\t\treturn false\n\t}\n\tif _, authored := hdr[\"Content-Encoding\"]; authored {\n\t\treturn false\n\t}\n\tif httpguts.HeaderValuesContainsToken(hdr.Values(\"Cache-Control\"), \"no-transform\") {\n\t\treturn false\n\t}\n\treturn compressibleType(hdr.Get(\"Content-Type\"))\n}\n\n// compressibleType reports whether a media type is text-like enough for Brotli\n// to help. Already-compressed formats (images, video, archives, woff2) are not.\nfunc compressibleType(contentType string) bool {\n\tmediaType, _, _ := strings.Cut(contentType, \";\")\n\tmediaType = strings.ToLower(strings.TrimSpace(mediaType))\n\tif strings.HasPrefix(mediaType, \"text/\") ||\n\t\tstrings.HasSuffix(mediaType, \"+json\") || strings.HasSuffix(mediaType, \"+xml\") {\n\t\treturn true\n\t}\n\tswitch mediaType {",
+      "meaning": "Automatic encoding eligibility discards MIME parameters before matching; UTF8 charset does not change text eligibility."
+    },
+    {
+      "path": "lego/operator/cmd/staticserver/main.go",
+      "sha256": "a28a07f595d758e2764e6502043e4a30b36b42f93cd6ca44949a190449bc0564",
+      "startLine": 155,
+      "endLine": 168,
+      "excerpt": "\t\torigin, err := staticserver.NewS3Origin(ctx, endpoint, region, bucket)\n\t\tif err != nil {\n\t\t\tsetupLog.Error(err, \"build s3 origin\")\n\t\t\tos.Exit(1)\n\t\t}\n\t\tif err := origin.Check(ctx); err != nil {\n\t\t\tsetupLog.Error(err, \"verify static origin credential\")\n\t\t\tos.Exit(1)\n\t\t}\n\t\tresolver := staticserver.NewCachedResolver(cl, namespace, baseDomain)\n\t\tgo resolver.Run(ctx, resync, func(err error) {\n\t\t\tsetupLog.Error(err, \"refresh static-site snapshot\")\n\t\t})\n\t\tsite = staticserver.New(resolver, origin, cacheBytes)",
+      "meaning": "One production S3Origin/handler wiring; shared by static sites."
+    },
+    {
+      "path": "lego/operator/go.mod",
+      "sha256": "4ad4b607be7c86d1dc90e008b46cc90b25298d9a65055949764f11938429329a",
+      "startLine": 8,
+      "endLine": 12,
+      "excerpt": "\tgithub.com/aws/aws-sdk-go-v2 v1.43.7\n\tgithub.com/aws/aws-sdk-go-v2/config v1.32.38\n\tgithub.com/aws/aws-sdk-go-v2/feature/s3/transfermanager v0.3.15\n\tgithub.com/aws/aws-sdk-go-v2/service/s3 v1.107.3\n\tgithub.com/aws/smithy-go v1.27.8",
+      "meaning": "Pinned S3 SDK1.107.3 used in metadata trace."
+    },
+    {
+      "path": "aws-sdk-go-v2/service/s3@v1.107.3/deserializers.go",
+      "sha256": "efcd615778e940e98d67c43afa5580ec0fe54ebdc25af2a03b9182a0a7e916d0",
+      "startLine": 6911,
+      "endLine": 6913,
+      "excerpt": "\tif headerValues := response.Header.Values(\"Content-Type\"); len(headerValues) != 0 {\n\t\theaderValues[0] = strings.TrimSpace(headerValues[0])\n\t\tv.ContentType = ptr.String(headerValues[0])",
+      "meaning": "Actual GetObject output deserializer trims and copies the Content-Type header; it does not add charset."
+    },
+    {
+      "path": "aws-cli@2.22.35/awscli/customizations/s3/s3handler.py",
+      "sha256": "16cfd3f1669720610c3829b53ff99e98d39d7b91d8c9350633f753b0651cd03a",
+      "startLine": 345,
+      "endLine": 348,
+      "excerpt": "\n    def _add_additional_subscribers(self, subscribers, fileinfo):\n        if self._should_inject_content_type():\n            subscribers.append(ProvideUploadContentTypeSubscriber())",
+      "meaning": "UploadRequestSubmitter installs the content-type subscriber.",
+      "sourceURL": "https://github.com/aws/aws-cli/blob/2.22.35/awscli/customizations/s3/s3handler.py"
+    },
+    {
+      "path": "aws-cli@2.22.35/awscli/customizations/s3/subscribers.py",
+      "sha256": "a48ff34353723b104b91506f8b15633954baae45b0240e081347943e921b94ce",
+      "startLine": 133,
+      "endLine": 136,
+      "excerpt": "    def on_queued(self, future, **kwargs):\n        guessed_type = utils.guess_content_type(self._get_filename(future))\n        if guessed_type is not None:\n            future.meta.call_args.extra_args['ContentType'] = guessed_type",
+      "meaning": "Subscriber puts guessed MIME into S3 ContentType.",
+      "sourceURL": "https://github.com/aws/aws-cli/blob/2.22.35/awscli/customizations/s3/subscribers.py"
+    },
+    {
+      "path": "aws-cli@2.22.35/awscli/customizations/s3/utils.py",
+      "sha256": "fdd30f095a2a7379e4593e77d32e98d78e031b163275c0c2611518d5a28fe8db",
+      "startLine": 335,
+      "endLine": 336,
+      "excerpt": "    try:\n        return mimetypes.guess_type(filename)[0]",
+      "meaning": "Guess uses the media-type return from mimetypes.guess_type.",
+      "sourceURL": "https://github.com/aws/aws-cli/blob/2.22.35/awscli/customizations/s3/utils.py"
+    }
+  ],
+  "publisherImage": {
+    "at": "2026-10-17T17:05:45.587781+00:00",
+    "rows": [
+      {
+        "selector": "app.bex.co/app=tea-d98210cbbpdc73dcrkvg-qa-20261017-a895-static-paths",
+        "exitCode": 0,
+        "jobs": [
+          {
+            "namespace": "bex-build",
+            "name": "bld-tea-d98210cbbpdc73dcrkvg-qa-20261017-a895-stat-cfe14a1638c6",
+            "images": [
+              "quay.io/skopeo/stable:v1.22.2@sha256:2b7d76dde38c5924e1945348840c58786fc192201f2fd545832e58b53d26f7b8"
+            ],
+            "succeeded": 1
+          },
+          {
+            "namespace": "bex-build",
+            "name": "pub-tea-d98210cbbpdc73dcrkvg-qa-20261017-a895-stat-7e27dd5d0821",
+            "images": [
+              "amazon/aws-cli:2.22.35@sha256:6977c83ae3dc99f28fcf8276b9ea5eec33833cd5be40574b34112e98113ec7a2"
+            ],
+            "succeeded": 1
+          }
+        ]
+      },
+      {
+        "selector": "bex.co/app-id=srv-db9qhgks300s73dskhq0",
+        "exitCode": 0,
+        "jobs": []
+      },
+      {
+        "selector": "app.bex.co/publish=tea-d98210cbbpdc73dcrkvg-qa-20261017-a895-static-paths",
+        "exitCode": 0,
+        "jobs": [
+          {
+            "namespace": "bex-build",
+            "name": "pub-tea-d98210cbbpdc73dcrkvg-qa-20261017-a895-stat-7e27dd5d0821",
+            "images": [
+              "amazon/aws-cli:2.22.35@sha256:6977c83ae3dc99f28fcf8276b9ea5eec33833cd5be40574b34112e98113ec7a2"
+            ],
+            "succeeded": 1
+          }
+        ]
+      }
+    ]
+  },
+  "network": {
+    "baselineMaximumIndex": 5559,
+    "records": 239,
+    "statuses": {
+      "200": 227,
+      "204": 10,
+      "FAILED": 1,
+      "unfinished": 1
+    },
+    "other": [
+      "5606. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_ABORTED",
+      "5620. [POST] https://api.bex.co/graphql"
+    ],
+    "caveat": "Metadata only; GraphQL200 is not proof of absence of query errors. Own invalid staticPublishPath field was refused and corrected to publishPath separately."
+  },
+  "physicalCleanup": {
+    "at": "2026-10-17T17:07:06.035340+00:00",
+    "scope": "Read-only exact own resource names and labels; shared namespace Secret/RBAC/network resources expose metadata names only and filter owned name prefixes.",
+    "checks": [
+      {
+        "serviceId": "srv-db9qhgks300s73dskhq0",
+        "check": "apps.app.bex.co",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "errorPresent": false
+      },
+      {
+        "serviceId": "srv-db9qhgks300s73dskhq0",
+        "check": "deployments",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "errorPresent": false
+      },
+      {
+        "serviceId": "srv-db9qhgks300s73dskhq0",
+        "check": "services",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "errorPresent": false
+      },
+      {
+        "serviceId": "srv-db9qhgks300s73dskhq0",
+        "check": "ingresses",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "errorPresent": false
+      },
+      {
+        "serviceId": "srv-db9qhgks300s73dskhq0",
+        "check": "certificates.cert-manager.io",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "errorPresent": false
+      },
+      {
+        "serviceId": "srv-db9qhgks300s73dskhq0",
+        "check": "pods app.bex.co/app=tea-d98210cbbpdc73dcrkvg-qa-20261017-a895-static-paths",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "errorPresent": false
+      },
+      {
+        "serviceId": "srv-db9qhgks300s73dskhq0",
+        "check": "replicasets app.bex.co/app=tea-d98210cbbpdc73dcrkvg-qa-20261017-a895-static-paths",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "errorPresent": false
+      },
+      {
+        "serviceId": "srv-db9qhgks300s73dskhq0",
+        "check": "jobs app.bex.co/app=tea-d98210cbbpdc73dcrkvg-qa-20261017-a895-static-paths",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "errorPresent": false
+      },
+      {
+        "serviceId": "srv-db9qhgks300s73dskhq0",
+        "check": "pods bex.co/app-id=srv-db9qhgks300s73dskhq0",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "errorPresent": false
+      },
+      {
+        "serviceId": "srv-db9qhgks300s73dskhq0",
+        "check": "replicasets bex.co/app-id=srv-db9qhgks300s73dskhq0",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "errorPresent": false
+      },
+      {
+        "serviceId": "srv-db9qhgks300s73dskhq0",
+        "check": "jobs bex.co/app-id=srv-db9qhgks300s73dskhq0",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "errorPresent": false
+      },
+      {
+        "serviceId": "srv-db9qhgks300s73dskhq0",
+        "check": "secrets owned name prefixes",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "errorPresent": false
+      },
+      {
+        "serviceId": "srv-db9qhgks300s73dskhq0",
+        "check": "configmaps owned name prefixes",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "errorPresent": false
+      },
+      {
+        "serviceId": "srv-db9qhgks300s73dskhq0",
+        "check": "networkpolicies owned name prefixes",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "errorPresent": false
+      },
+      {
+        "serviceId": "srv-db9qhgks300s73dskhq0",
+        "check": "roles owned name prefixes",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "errorPresent": false
+      },
+      {
+        "serviceId": "srv-db9qhgks300s73dskhq0",
+        "check": "rolebindings owned name prefixes",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "errorPresent": false
+      },
+      {
+        "serviceId": "srv-db9qhgks300s73dskhq0",
+        "check": "serviceaccounts owned name prefixes",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "errorPresent": false
+      },
+      {
+        "serviceId": "srv-db9qhgks300s73dskhq0",
+        "check": "pods app.bex.co/publish=tea-d98210cbbpdc73dcrkvg-qa-20261017-a895-static-paths",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "errorPresent": false
+      },
+      {
+        "serviceId": "srv-db9qhgks300s73dskhq0",
+        "check": "jobs app.bex.co/publish=tea-d98210cbbpdc73dcrkvg-qa-20261017-a895-static-paths",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "errorPresent": false
+      },
+      {
+        "serviceId": "srv-db9qhgks300s73dskhq0",
+        "check": "pods app.bex.co/purge=tea-d98210cbbpdc73dcrkvg-qa-20261017-a895-static-paths",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "errorPresent": false
+      },
+      {
+        "serviceId": "srv-db9qhgks300s73dskhq0",
+        "check": "jobs app.bex.co/purge=tea-d98210cbbpdc73dcrkvg-qa-20261017-a895-static-paths",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "errorPresent": false
+      }
+    ],
+    "public": [
+      {
+        "serviceId": "srv-db9qhgks300s73dskhq0",
+        "url": "https://qa-20261017-a895-static-paths.onbex.co",
+        "exitCode": 0,
+        "status": 404
+      }
+    ],
+    "allAbsent": true
+  },
+  "snapshotCleanup": {
+    "at": "2026-10-17T17:08:52.161777+00:00",
+    "checks": [
+      {
+        "kind": "secrets",
+        "scope": "Metadata only, all namespaces filtered by exact owned App name, service id, snapshot source or owner UID",
+        "exitCode": 0,
+        "matches": [],
+        "count": 0,
+        "errorClass": ""
+      },
+      {
+        "kind": "configmaps",
+        "scope": "Metadata only, all namespaces filtered by exact owned App name, service id, snapshot source or owner UID",
+        "exitCode": 0,
+        "matches": [],
+        "count": 0,
+        "errorClass": ""
+      }
+    ],
+    "allAbsent": true
+  },
+  "checks": [
+    {
+      "name": "DirectTextBrowserDesktop status200",
+      "pass": true
+    },
+    {
+      "name": "DirectTextBrowserDesktop bare text/plain",
+      "pass": true
+    },
+    {
+      "name": "DirectTextBrowserDesktop windows1252",
+      "pass": true
+    },
+    {
+      "name": "DirectTextBrowserDesktop wrong glyphs",
+      "pass": true
+    },
+    {
+      "name": "RewriteBeforeControl390 status200",
+      "pass": true
+    },
+    {
+      "name": "RewriteBeforeControl390 bare text/plain",
+      "pass": true
+    },
+    {
+      "name": "RewriteBeforeControl390 windows1252",
+      "pass": true
+    },
+    {
+      "name": "RewriteBeforeControl390 wrong glyphs",
+      "pass": true
+    },
+    {
+      "name": "RestoredRewriteBrowserDesktop status200",
+      "pass": true
+    },
+    {
+      "name": "RestoredRewriteBrowserDesktop bare text/plain",
+      "pass": true
+    },
+    {
+      "name": "RestoredRewriteBrowserDesktop windows1252",
+      "pass": true
+    },
+    {
+      "name": "RestoredRewriteBrowserDesktop wrong glyphs",
+      "pass": true
+    },
+    {
+      "name": "RestoredDirectBrowser390 status200",
+      "pass": true
+    },
+    {
+      "name": "RestoredDirectBrowser390 bare text/plain",
+      "pass": true
+    },
+    {
+      "name": "RestoredDirectBrowser390 windows1252",
+      "pass": true
+    },
+    {
+      "name": "RestoredDirectBrowser390 wrong glyphs",
+      "pass": true
+    },
+    {
+      "name": "Utf8FileBrowserSettled390 status200",
+      "pass": true
+    },
+    {
+      "name": "Utf8FileBrowserSettled390 UTF8 charset",
+      "pass": true
+    },
+    {
+      "name": "Utf8FileBrowserSettled390 exact rendering",
+      "pass": true
+    },
+    {
+      "name": "Utf8FileBrowserSettled390 byteCount57",
+      "pass": true
+    },
+    {
+      "name": "Utf8RewriteBrowserSettled390 status200",
+      "pass": true
+    },
+    {
+      "name": "Utf8RewriteBrowserSettled390 UTF8 charset",
+      "pass": true
+    },
+    {
+      "name": "Utf8RewriteBrowserSettled390 exact rendering",
+      "pass": true
+    },
+    {
+      "name": "Utf8RewriteBrowserSettled390 byteCount57",
+      "pass": true
+    },
+    {
+      "name": "initial raw UTF8 hash",
+      "pass": true
+    },
+    {
+      "name": "repeat raw UTF8 hash",
+      "pass": true
+    },
+    {
+      "name": "repeat ordinary edge matrix",
+      "pass": true
+    },
+    {
+      "name": "original ETag assumption excluded",
+      "pass": true
+    },
+    {
+      "name": "same rev1",
+      "pass": true
+    },
+    {
+      "name": "one original Live deploy",
+      "pass": true
+    },
+    {
+      "name": "no charset override after restore",
+      "pass": true
+    },
+    {
+      "name": "seven exact inventories",
+      "pass": true
+    },
+    {
+      "name": "two API404",
+      "pass": true
+    },
+    {
+      "name": "21 physical checks absent",
+      "pass": true
+    },
+    {
+      "name": "two snapshot checks absent",
+      "pass": true
+    },
+    {
+      "name": "public404",
+      "pass": true
+    },
+    {
+      "name": "exact session revoked",
+      "pass": true
+    }
+  ],
+  "dedupe": {
+    "openMilestones": 92,
+    "distinctClaimMatches": [],
+    "nearMatches": [
+      "w8/blocked/m83: web transfer compression, not static text decoding",
+      "w5/done/m94: audit-header character restrictions, not static MIME",
+      "w4/blocked/m160: static browser cache revalidation, not charset",
+      "w4/309: host lookup case, passed supplemental matrix but no original acceptance closeout",
+      "w8/done/m79: static Brotli; metadata prefix matching accepts parameters"
+    ],
+    "recentProductCommits": [
+      "c685245f5 chore(deploy): pin platform images to 94e8cea37f41 [skip ci]",
+      "94e8cea37 fix(dashboard): the Postgres Disk metric header keeps its title whole and its height steady at phone width (w1/133)",
+      "e7422581e chore(deploy): pin platform images to 8f80d74efaff [skip ci]",
+      "8f80d74ef fix(operator): a canceled first release stops its rollout instead of restarting (w1/132)",
+      "ba000a2bb feat(deploys): auto-deploy after CI checks pass — autoDeployTrigger checksPass (w1/m181)",
+      "fa9d44b85 chore(deploy): pin platform images to b3dbca6013a3 [skip ci]",
+      "3d73a5515 feat(metrics): serve datastore CPU and memory on Render's metric paths (w1/m180)",
+      "b9e12f689 fix(operator): native Ruby builds refuse stale Gemfile.locks like Render (w8/117)",
+      "b3dbca601 fix(operator): a failed first release stops at zero instead of restarting until deleted (w1/m179)",
+      "4d0b19325 fix(operator): native Python trusts the ingress's forwarded scheme by default (w8/116)",
+      "2cd790a14 docs(api): idle-timeout field says omission preserves and both WebSocket directions count (w8/115)",
+      "f3859bc5e fix(operator): native Ruby builds and runs Rails in production by default (w8/114)",
+      "d01786592 fix(dashboard): keep the Workspace slug and datastore log search uneditable until hydrated (w4/m219)",
+      "9da0933ac fix(ci): extract buildctl recipe args so BuildJob passes gocyclo",
+      "24e10c7f8 fix(dashboard): keep log and deploy-history searches uneditable until hydrated (w4/m219)",
+      "5123a1dc6 fix(operator): clone pinned Git submodules before builds and direct publish (w8/m89)",
+      "8e37a79f3 feat(build): Dockerfile builds receive service env as build args and secret files as build secrets (w1/m178)",
+      "d8b897000 chore(deploy): pin platform images to af6a6310e1c8 [skip ci]",
+      "e6d5c09d5 test(operator): preallocate the native-init layer digests (w8/m88)",
+      "af4f7fefb fix(operator): native Node apps drain on SIGTERM under npm start (w8/m88)",
+      "85e1144a9 chore(deploy): pin platform images to 5f41ff9326ef [skip ci]",
+      "af6a6310e fix(dashboard): keep the webhook list search uneditable until hydrated (w4/m219)",
+      "2d0766a06 fix(dashboard): expose the active project resource-type filter to assistive technology (w4/333)",
+      "c1c40bebb fix(dashboard): require a Publish Directory before a Static Site can deploy (w4/332)",
+      "bbe46c69a fix(dashboard): keep list headers readable and loading previews in their ready shape (w4/m220)",
+      "66b041df3 fix(dashboard): keep create forms and group search uneditable until hydrated (w4/m219)",
+      "5f41ff932 fix(dashboard): explain and retry a failed plan catalog in place (w4/m218)",
+      "925cc2010 chore(deploy): pin platform images to f05787b14e3c [skip ci]",
+      "4052136f3 chore(deploy): pin platform images to 37944bca41e2 [skip ci]",
+      "f05787b14 fix(dashboard): keep a Blueprint's Public Git branch across source tabs (w4/331)",
+      "8769f199c fix(dashboard): preview Key Value plan cards while the catalog loads (w4/330)",
+      "e09c97706 fix(dashboard): preview the service plan grid while its catalog loads (w4/329)",
+      "37944bca4 fix(dashboard): keep distinct log records that share a millisecond (w4/m217)",
+      "8cda59c0d chore(deploy): pin platform images to d865dc8dde6c [skip ci]",
+      "5b1f18698 chore(deploy): pin platform images to cf91746da334 [skip ci]",
+      "d865dc8dd fix(dashboard): keep a precise custom time range exact when editing it (w4/328)",
+      "b5a47b661 fix(dashboard): render a log overwrite one cell per code point (w4/327)",
+      "be55a1609 fix(envgroups): keep the file-reveal projection out of the verb sweeps (w4/326)",
+      "a3a7f4745 fix(envgroups): a revealed empty group file reads content \"\" (w4/326)",
+      "2c77f38b3 fix(dashboard): publish a post-write list after moving a Postgres database (w4/325)"
+    ],
+    "targetedHistory": [
+      "contentType introduced84e221650; no later charset normalization",
+      "S3Origin ContentType copy introduced84e221650; no later charset normalization"
+    ],
+    "antiGoal": "Static cache purge remains excluded. This is ordinary hosting response rendering and changes no hosting policy, paid feature or external integration."
+  },
+  "limits": [
+    "Only unencoded57byte UTF8 text/plain body is the browser failure/positive-control claim. HTML fixture lacks a meta charset; no HTML defect is claimed.",
+    "Explicit declared non-UTF8 charsets, invalid UTF8 bodies, malformed MIME, precompressed text and larger automatic-Brotli variants are required implementation regression work, not live acceptance this sweep.",
+    "Native header save needs ordinary resolver refresh (default10s); immediate control still used old MIME and is retained separately. Later fresh controls pass without a new deploy.",
+    "Initial matrix incorrectly expected a default ETag. No default ETag/LastModified is promised, so that check is excluded; explicit saved-ETag behavior is not probed.",
+    "One read-only diagnostic used staticPublishPath instead of schema field publishPath and was refused, then corrected; not a product bug.",
+    "Initial login helper terminated on SSL timeout before creating any session jar/handoff; terminal handle verified before a successful retry.",
+    "Network DeployActions aborted and ViewerCapabilities unfinished are retained as metadata without a causal diagnosis. HTTP200 does not establish all GraphQL bodies error-free.",
+    "An initial metadata-only snapshot template could not index absent labels and returned1. Guarded template rerun returned0 and empty for both types.",
+    "No direct object-store listing or independent physical byte purge is claimed; own App finalization, build/publish/purge Job absence, snapshots, public404 and API/inventory/session cleanup are observed.",
+    "Screenshots were viewed but remain ignored; exact requests/headers/bytes/render text in this durable artifact carry the finding.",
+    "No product implementation or product suites run; filing/acceptance only."
+  ],
+  "primaryReferences": [
+    {
+      "url": "https://render.com/docs/static-site-headers",
+      "scope": "Owner header names/values and path rules. Does not establish Render default charset or authenticated Render reproduction."
+    },
+    {
+      "url": "https://go.dev/src/mime/type.go",
+      "scope": "MIME-by-extension text defaults include UTF8; current behavior instead returns populated origin MIME first."
+    }
+  ]
+}
