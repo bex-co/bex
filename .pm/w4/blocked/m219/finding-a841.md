@@ -4,7 +4,7 @@ Why: a usable-looking history search accepts text before startup finishes and si
 
 **Severity:** minor. QA a841, 2026-10-17 UTC. Extend m219 through t013; research main e36b116e5dca0a1f757c53f640ad01cf8e337181.
 
-Fresh-load an owned populated /services/{id}/deploys at1440×844 or390×844. Fetch and hold the real startup entry, type through the browser keyboard, release it unchanged, and sample20 times. [Durable evidence](../evidence/m219-a841-history-search-startup.json) contains exact scripts and complete receipts for desktop/mobile/repeated-mobile, source census, ready controls and cleanup.
+Fresh-load an owned populated /services/{id}/deploys at1440×844 or390×844. Fetch and hold the real startup entry, type through the browser keyboard, release it unchanged, and sample20 times. [Durable evidence](../../evidence/m219-a841-history-search-startup.json) contains exact scripts and complete receipts for desktop/mobile/repeated-mobile, source census, ready controls and cleanup.
 
 All three captures expose one enabled Search loaded deploys and commits field without React props. It accepts the trusted marker, then becomes empty on the same node; all20 node-identity samples agree. Every fetched entry is HTTP200/1,952,882 bytes. The first sample with React props is already blank: the150ms sampling does not isolate the precise clearing step. No particular query or deployed React version is claimed.
 

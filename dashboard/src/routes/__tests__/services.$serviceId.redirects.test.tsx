@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-router";
 import { ServiceRedirectsPage } from "../services.$serviceId.redirects";
 import { ServiceHeadersPage } from "../services.$serviceId.headers";
+import { serverRendered } from "@/test/hydration";
 import type {
   ServiceView,
   StaticRouteView,
@@ -67,7 +68,7 @@ function staticSvc(overrides: Partial<ServiceView> = {}): ServiceView {
   } as ServiceView;
 }
 
-function renderPage(page: "redirects" | "headers") {
+function pageRouter(page: "redirects" | "headers") {
   const Component =
     page === "redirects" ? ServiceRedirectsPage : ServiceHeadersPage;
   const rootRoute = createRootRoute();
@@ -88,7 +89,11 @@ function renderPage(page: "redirects" | "headers") {
     }),
     context: { client: {} as never, session: null },
   });
-  return render(<RouterProvider router={router} />);
+  return router;
+}
+
+function renderPage(page: "redirects" | "headers") {
+  return render(<RouterProvider router={pageRouter(page)} />);
 }
 
 beforeEach(() => {
@@ -291,5 +296,49 @@ describe("post-save synchronization with the accepted rows (w4/136)", () => {
     // The in-flight save's accepted rows must NOT overwrite the newer draft.
     expect(screen.queryByDisplayValue("/first/*")).toBeNull();
     expect(screen.queryByDisplayValue(" /first/* ")).toBeNull();
+  });
+});
+
+// w4/m219 (a859): a rule typed into the server-rendered editors before
+// handlers attach is wiped by hydration. Every native control ships disabled;
+// after hydration typing survives adding another row.
+describe("static rule editors before hydration (w4/m219)", () => {
+  async function hydratedPage(page: "redirects" | "headers") {
+    const router = pageRouter(page);
+    await router.load();
+    return serverRendered(<RouterProvider router={router} />);
+  }
+
+  it("keeps the redirect rules uneditable until hydration", async () => {
+    const { hydrate, getByRole, getAllByRole } =
+      await hydratedPage("redirects");
+    const source = () => getAllByRole("textbox", { name: "Source" })[0];
+    const add = () => getByRole("button", { name: "Add rule" });
+    expect(source()).toBeDisabled();
+    expect(add()).toBeDisabled();
+    expect(getByRole("combobox", { name: "Type" })).toBeDisabled();
+    expect(getByRole("button", { name: "Remove rule" })).toBeDisabled();
+    await hydrate();
+    expect(source()).toBeEnabled();
+    expect(getByRole("combobox", { name: "Type" })).toBeEnabled();
+    await userEvent.type(source(), "page");
+    await userEvent.click(add());
+    expect(source()).toHaveValue("/*page");
+    expect(getAllByRole("textbox", { name: "Source" })).toHaveLength(2);
+  });
+
+  it("keeps the header rules uneditable until hydration", async () => {
+    const { hydrate, getByRole, getAllByRole } = await hydratedPage("headers");
+    const value = () => getAllByRole("textbox", { name: "Value" })[0];
+    const add = () => getByRole("button", { name: /Add/ });
+    expect(value()).toBeDisabled();
+    expect(add()).toBeDisabled();
+    await hydrate();
+    expect(value()).toBeEnabled();
+    await userEvent.clear(value());
+    await userEvent.type(value(), "SAMEORIGIN");
+    await userEvent.click(add());
+    expect(value()).toHaveValue("SAMEORIGIN");
+    expect(getAllByRole("textbox", { name: "Value" })).toHaveLength(2);
   });
 });
