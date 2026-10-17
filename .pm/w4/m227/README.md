@@ -37,3 +37,15 @@ Repeat the [recorded journey](finding.md) with a fresh owned Project, Blue/Green
 ## Evidence limits
 
 The original native failed-list recorder retained exact operation documents and error arrays but coalesced absent/null data. Those entries are explicitly projections, not complete original response bodies. Complete independent membership and native mutation entries are retained separately; a later complete direct read batch passed. Mobile and second-desktop reloads were healthy controls. No production fault was injected and no runtime or membership loss was caused by the read failure.
+
+## Additional live evidence — a889, 2026-10-17
+
+[Shared durable receipt](../evidence/333-m227-a889.json) adds the Unassigned consumer's native failure on a fresh390×844 view of the existing QA workspace project `prj-d9dgeo0bd9nc73a0vh1g`. This pass is read-only; it creates no fixture and changes no resource.
+
+The eight-operation native request2075 completes in25.282790s. Projects in that same batch successfully retains `srv-d9bkcspg9s7c73d0n8ug` and `srv-d9e40ei9086p3l1jri30`, and Environments successfully returns an empty list. EnvGroups returns QUERY_TIMEOUT; Services, Databases and KeyValues each return OPERATION_NOT_STARTED. At14:27:20.014Z, after the request has completed, the Unassigned card nevertheless exposes All(0), Services(0) and “No resources in this environment yet.”
+
+These are **complete decoded relevant operation entries with explicit `data:null`**, improving on a883's coalesced failure recorder. Original request/response positions and operation order are retained; unrelated BillingReadiness and Workspaces response entries are explicitly omitted. This is not a claim to retain an unmodified whole eight-entry response body. Internal stage cost is unmeasured, and the existing serial-batch timeout classifications remain correct.
+
+A later healthy native batch2085 resolves all resource families. The14:27:52.592Z snapshot has both real rows and All(2) without an intervening filter action; an independent canonical read corroborates the project/Unassigned membership. The screenshot attempted after the false-empty capture caught this recovered view and is not offered as failure proof. Subsequent native type/search/URL controls pass and separately close w4/333; they do not close m227.
+
+This extends the already scheduled Unassigned work in t002, without adding a duplicate task or changing the six-task scope/status. The exact66-request native audit contains112 query operations and zero mutations; seven baseline sets are unchanged, and the sole QA session is revoked with whoami401/zero cookies/one blank page at14:33:42.601Z. No runtime, membership, move, explicit Retry, partial-family failure or named-environment closeout is claimed by this read-only case. Original a883 evidence is byte-unchanged.
