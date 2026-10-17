@@ -40,39 +40,8 @@ func TestBlueprintEmptyEnvironmentValidationSurfaces(t *testing.T) {
 		t.Fatalf("fixture env must deserialize nil: %#v", persisted.Spec.Env)
 	}
 	svc.Client = fakeClient(persisted)
-	mux := http.NewServeMux()
-	svc.RegisterREST(mux)
-	schema := blueprintSchema(t, svc)
-	call, cleanup := appsMCPClient(t, svc)
-	defer cleanup()
 
-	for _, surface := range []struct {
-		name     string
-		validate func(*testing.T, string) map[string]any
-	}{
-		{"REST multipart", func(t *testing.T, yaml string) map[string]any {
-			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, multipartBlueprintRequest(t, "tea-workspace", "render.yaml", yaml))
-			if rec.Code != http.StatusOK {
-				t.Fatalf("validate status=%d body=%s", rec.Code, rec.Body)
-			}
-			var out map[string]any
-			if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
-				t.Fatal(err)
-			}
-			return out
-		}},
-		{"GraphQL", func(t *testing.T, yaml string) map[string]any {
-			result := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: fmt.Sprintf(`{ validateBlueprint(bexYaml: %q) { valid plan { actions { operation name changedFields { path } } } } }`, yaml)})
-			if len(result.Errors) != 0 {
-				t.Fatal(result.Errors)
-			}
-			return result.Data.(map[string]any)["validateBlueprint"].(map[string]any)
-		}},
-		{"MCP", func(t *testing.T, yaml string) map[string]any {
-			return call("validate_bex_yml", map[string]any{"bexYaml": yaml})
-		}},
-	} {
+	for _, surface := range blueprintValidationSurfaces(t, svc) {
 		t.Run(surface.name, func(t *testing.T) {
 			for _, tc := range []struct {
 				name, yaml, operation, resourceName string
@@ -100,20 +69,66 @@ func TestBlueprintEmptyEnvironmentValidationSurfaces(t *testing.T) {
 					if action["operation"] != tc.operation || action["name"] != tc.resourceName {
 						t.Fatalf("action=%+v", action)
 					}
-					// GraphQL returns an empty list; REST/MCP omit the optional field.
-					var paths []string
-					if changes, ok := action["changedFields"].([]any); ok {
-						for _, change := range changes {
-							paths = append(paths, change.(map[string]any)["path"].(string))
-						}
-					} else if surface.name == "GraphQL" || action["changedFields"] != nil {
-						t.Fatalf("unexpected changedFields representation: %+v", action)
-					}
-					if !slices.Equal(paths, tc.paths) {
+					if paths := actionPaths(t, surface.name, action); !slices.Equal(paths, tc.paths) {
 						t.Fatalf("changed paths=%v want=%v", paths, tc.paths)
 					}
 				})
 			}
 		})
 	}
+}
+
+type blueprintValidationSurface struct {
+	name     string
+	validate func(*testing.T, string) map[string]any
+}
+
+// blueprintValidationSurfaces validates a manifest through REST multipart,
+// GraphQL and MCP, each answering its native validation body.
+func blueprintValidationSurfaces(t *testing.T, svc *Service) []blueprintValidationSurface {
+	t.Helper()
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	schema := blueprintSchema(t, svc)
+	call, cleanup := appsMCPClient(t, svc)
+	t.Cleanup(cleanup)
+	return []blueprintValidationSurface{
+		{"REST multipart", func(t *testing.T, yaml string) map[string]any {
+			rec := httptest.NewRecorder()
+			mux.ServeHTTP(rec, multipartBlueprintRequest(t, "tea-workspace", "render.yaml", yaml))
+			if rec.Code != http.StatusOK {
+				t.Fatalf("validate status=%d body=%s", rec.Code, rec.Body)
+			}
+			var out map[string]any
+			if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+				t.Fatal(err)
+			}
+			return out
+		}},
+		{"GraphQL", func(t *testing.T, yaml string) map[string]any {
+			result := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: fmt.Sprintf(`{ validateBlueprint(bexYaml: %q) { valid plan { actions { operation name changedFields { path } } } } }`, yaml)})
+			if len(result.Errors) != 0 {
+				t.Fatal(result.Errors)
+			}
+			return result.Data.(map[string]any)["validateBlueprint"].(map[string]any)
+		}},
+		{"MCP", func(t *testing.T, yaml string) map[string]any {
+			return call("validate_bex_yml", map[string]any{"bexYaml": yaml})
+		}},
+	}
+}
+
+// actionPaths reads a surface action's changedFields paths. GraphQL returns an
+// empty list; REST and MCP omit the optional field.
+func actionPaths(t *testing.T, surface string, action map[string]any) []string {
+	t.Helper()
+	var paths []string
+	if changes, ok := action["changedFields"].([]any); ok {
+		for _, change := range changes {
+			paths = append(paths, change.(map[string]any)["path"].(string))
+		}
+	} else if surface == "GraphQL" || action["changedFields"] != nil {
+		t.Fatalf("unexpected changedFields representation: %+v", action)
+	}
+	return paths
 }

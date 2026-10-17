@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -227,8 +228,9 @@ func TestBlueprintGitToImageDropsABakedStartCommand(t *testing.T) {
 	}
 }
 
-// The plan attributes the switch to the declared repo and runtime, the fields
-// the apply changes, so preview and apply agree.
+// The plan attributes the switch to exactly the fields the apply changes, so
+// preview and apply agree: the equal plan and the match key stay off the list
+// (w4/m229).
 func TestBlueprintPlanAttributesASourceSwitchToRepo(t *testing.T) {
 	svc, _ := newService(nil)
 	ctx := context.Background()
@@ -240,11 +242,8 @@ func TestBlueprintPlanAttributesASourceSwitchToRepo(t *testing.T) {
 	if len(actions) != 1 || actions[0].Operation != BlueprintPlanUpdate {
 		t.Fatalf("plan = %+v, want one update", actions)
 	}
-	listed := map[string]bool{}
-	for _, change := range actions[0].ChangedFields {
-		listed[change.Path] = true
-	}
-	if !listed["repo"] || !listed["runtime"] {
-		t.Errorf("changed fields = %+v, want repo and runtime among them", actions[0].ChangedFields)
+	want := []string{"branch", "buildCommand", "repo", "runtime", "startCommand"}
+	if got := fieldPaths(actions[0].ChangedFields); !slices.Equal(got, want) {
+		t.Errorf("changed fields = %v, want exactly %v", got, want)
 	}
 }

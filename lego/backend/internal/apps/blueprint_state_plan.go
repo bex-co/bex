@@ -19,6 +19,8 @@ package apps
 import (
 	"context"
 	"fmt"
+	"iter"
+	"maps"
 	"slices"
 	"sort"
 	"strings"
@@ -192,9 +194,9 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 		if changed {
 			action.Operation = BlueprintPlanUpdate
 			live := r.services[resource.Name].Spec
-			action.ChangedFields = blueprintPlanFieldChanges(resource.Fields, func(name string) (bool, error) {
+			action.ChangedFields = blueprintPlanFieldChanges(blueprintServiceProbePaths(resource.Fields), func(name string) (bool, error) {
 				probe := *live.DeepCopy()
-				return ApplyBlueprintServiceSpec(&probe, want, oneField(svc.fields, name))
+				return probeBlueprintServiceSpec(&probe, want, svc.fields, name)
 			})
 		}
 		// A copy of a sibling's generated value lands in the store, which the
@@ -224,7 +226,7 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 		if changed {
 			action.Operation = BlueprintPlanUpdate
 			live := r.databases[resource.Name]
-			action.ChangedFields = blueprintPlanFieldChanges(resource.Fields, func(name string) (bool, error) {
+			action.ChangedFields = blueprintPlanFieldChanges(maps.Keys(resource.Fields), func(name string) (bool, error) {
 				return ApplyBlueprintDatabaseSpec(live.DeepCopy(), database.spec, oneField(database.fields, name))
 			})
 			return action, nil
@@ -238,7 +240,7 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 		if ApplyBlueprintKeyValueSpec(&probe, keyValue.spec, keyValue.fields) {
 			action.Operation = BlueprintPlanUpdate
 			live := r.keyValues[resource.Name].Spec
-			action.ChangedFields = blueprintPlanFieldChanges(resource.Fields, func(name string) (bool, error) {
+			action.ChangedFields = blueprintPlanFieldChanges(maps.Keys(resource.Fields), func(name string) (bool, error) {
 				probe := *live.DeepCopy()
 				return ApplyBlueprintKeyValueSpec(&probe, keyValue.spec, oneField(keyValue.fields, name)), nil
 			})
@@ -293,15 +295,17 @@ func parsedBlueprintKeyValue(st parsedStack, name string) (parsedKeyValue, bool)
 // whatever the difference was. A field list that does not depend on the diff is
 // not a diff.
 //
-// It is computed by applying each declared field ALONE to a copy of the live
-// spec and asking whether the spec moved, so the answer comes from the very
-// appliers a real sync would run. A diff derived any other way can disagree
-// with what apply does, which is the failure this whole milestone is about.
+// It is computed by applying each path ALONE to a copy of the live spec and
+// asking whether the spec moved, so the answer comes from the very appliers a
+// real sync would run. A diff derived any other way can disagree with what
+// apply does, which is the failure this whole milestone is about. A service
+// also probes the paths it omits, each judged beside the fields it declares
+// (probeBlueprintServiceSpec).
 //
 // applyOne returns whether applying just `name` changed the resource.
-func blueprintPlanFieldChanges(fields map[string]BlueprintField, applyOne func(name string) (bool, error)) []BlueprintFieldChange {
-	changes := make([]BlueprintFieldChange, 0, len(fields))
-	for name := range fields {
+func blueprintPlanFieldChanges(paths iter.Seq[string], applyOne func(name string) (bool, error)) []BlueprintFieldChange {
+	changes := []BlueprintFieldChange{}
+	for name := range paths {
 		changed, err := applyOne(name)
 		if err != nil {
 			// A field that cannot be applied in isolation is reported rather
@@ -328,6 +332,25 @@ func blueprintDeclaredFieldChanges(fields map[string]BlueprintField) []Blueprint
 	}
 	sort.Slice(changes, func(i, j int) bool { return changes[i].Path < changes[j].Path })
 	return changes
+}
+
+// blueprintServiceProbePaths are the paths a service plan probes: each declared
+// field, and each service field the file omits, since an omission can change a
+// service too — an omitted buildFilter clears, and an image service takes the
+// Blueprint's repo — and is then listed under the path it omits, once.
+func blueprintServiceProbePaths(declared map[string]BlueprintField) iter.Seq[string] {
+	return func(yield func(string) bool) {
+		for name := range declared {
+			if !yield(name) {
+				return
+			}
+		}
+		for _, policy := range BlueprintServiceFieldPolicies {
+			if _, ok := declared[policy.Name]; !ok && !yield(policy.Name) {
+				return
+			}
+		}
+	}
 }
 
 // oneField narrows a declared field set to a single entry, so an applier can be
