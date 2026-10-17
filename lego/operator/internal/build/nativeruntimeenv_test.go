@@ -99,13 +99,15 @@ func TestNativeNodeImageRuntimeEnvironment(t *testing.T) {
 const nativeBuildRun = "\nRUN --mount=type=secret,id=render-env"
 
 // Elixir builds and runs with MIX_ENV=prod (w8/112), Python with Render's
-// Gunicorn flags (w8/113) and Ruby with RAILS_ENV=production (w8/114): each
-// default precedes the build RUN once on every reviewed line and for an
-// explicit static build of that runtime, and no other runtime gets it.
+// Gunicorn flags (w8/113) and forwarding trust (w8/116), and Ruby with
+// RAILS_ENV=production (w8/114): each default precedes the build RUN once on
+// every reviewed line and for an explicit static build of that runtime, and
+// no other runtime gets it.
 func TestNativeBuildDefaultsPrecedeTheBuild(t *testing.T) {
 	for _, tc := range []struct{ runtime, versionEnv, versionFile, want, name string }{
 		{"elixir", "ELIXIR_VERSION", "", "ENV MIX_ENV=prod\n", "MIX_ENV"},
 		{nativePythonRuntime, "PYTHON_VERSION", "", `ENV GUNICORN_CMD_ARGS="--preload --access-logfile -"` + "\n", "GUNICORN_CMD_ARGS"},
+		{nativePythonRuntime, "PYTHON_VERSION", "", `ENV FORWARDED_ALLOW_IPS="*"` + "\n", "FORWARDED_ALLOW_IPS"},
 		{nativeRubyRuntime, "", ".ruby-version", "ENV RAILS_ENV=production\n", "RAILS_ENV"},
 	} {
 		precedesBuild := func(df string) bool {
@@ -189,16 +191,11 @@ func TestNativeElixirImageMixEnvironment(t *testing.T) {
 	}
 }
 
-// TestNativePythonImageGunicornAccessLog is w8/113's execution gate: Render's
-// Flask shape — pip install, then a bare `gunicorn app:app` — writes an access
-// line for each request to the service's stdout at the platform's port, with
-// the flags present at build too, while an explicitly empty value restores
-// Gunicorn's own default (no access log). Opt-in: needs Docker and network
-// for PyPI.
-func TestNativePythonImageGunicornAccessLog(t *testing.T) {
-	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
-		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the generated image")
-	}
+// pythonGunicornImage builds Render's Flask shape as a plain WSGI app — pip
+// install, then a bare `gunicorn app:app` — answering with the Gunicorn flags
+// the build and the runtime saw and the URL scheme the request arrived with.
+func pythonGunicornImage(t *testing.T) string {
+	t.Helper()
 	o := nativeOptions()
 	o.Runtime, o.BuildEnv = nativePythonRuntime, nil
 	o.BuildCommand = `pip install --no-cache-dir --disable-pip-version-check -q gunicorn==23.0.0 && printf '%s' "$GUNICORN_CMD_ARGS" > build.txt`
@@ -208,16 +205,28 @@ func TestNativePythonImageGunicornAccessLog(t *testing.T) {
 def app(environ, start_response):
     start_response("200 OK", [("Content-Type", "text/plain")])
     built = open("build.txt").read()
-    return [("build=%s runtime=%s" % (built, os.environ.get("GUNICORN_CMD_ARGS"))).encode()]
+    return [("build=%s runtime=%s scheme=%s" % (built, os.environ.get("GUNICORN_CMD_ARGS"), environ["wsgi.url_scheme"])).encode()]
 `
-	tag := buildResolvedImage(t, o, map[string]string{"PYTHON_VERSION": "3.12"}, map[string]string{"app.py": app},
+	return buildResolvedImage(t, o, map[string]string{"PYTHON_VERSION": "3.12"}, map[string]string{"app.py": app},
 		fmt.Sprintf("bex-native-gunicorn-it:%d", os.Getpid()))
+}
+
+// TestNativePythonImageGunicornAccessLog is w8/113's execution gate: the
+// generated Python image writes an access line for each request to the
+// service's stdout at the platform's port, with the flags present at build
+// too, while an explicitly empty value restores Gunicorn's own default (no
+// access log). Opt-in: needs Docker and network for PyPI.
+func TestNativePythonImageGunicornAccessLog(t *testing.T) {
+	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
+		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the generated image")
+	}
+	tag := pythonGunicornImage(t)
 	for i, tc := range []struct {
 		name, env, body string
 		accessLine      bool
 	}{
-		{"default", "", "build=--preload --access-logfile - runtime=--preload --access-logfile -", true},
-		{"explicit empty", "GUNICORN_CMD_ARGS=", "build=--preload --access-logfile - runtime=", false},
+		{"default", "", "build=--preload --access-logfile - runtime=--preload --access-logfile - scheme=http", true},
+		{"explicit empty", "GUNICORN_CMD_ARGS=", "build=--preload --access-logfile - runtime= scheme=http", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			args := []string{"--network", "none"}
@@ -239,6 +248,40 @@ def app(environ, start_response):
 			}
 			if got := strings.Contains(logs, `"GET /?probe=m8113 HTTP/1.1" 200`); got != tc.accessLine {
 				t.Fatalf("access line present = %v, want %v:\n%s", got, tc.accessLine, logs)
+			}
+		})
+	}
+}
+
+// TestNativePythonImageTrustsTheIngressScheme is w8/116's execution gate: a
+// request arriving from a non-loopback peer — the ingress hop, here the
+// container's own address — with X-Forwarded-Proto: https reaches the app as
+// https by default, as Render's FORWARDED_ALLOW_IPS=* has it, so generated
+// URLs and redirects stay on HTTPS. A configured empty value, or an explicit
+// Gunicorn --forwarded-allow-ips, still wins. Opt-in: needs Docker and
+// network for PyPI.
+func TestNativePythonImageTrustsTheIngressScheme(t *testing.T) {
+	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
+		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the generated image")
+	}
+	tag := pythonGunicornImage(t)
+	for i, tc := range []struct{ name, env, scheme string }{
+		{"default", "", "https"},
+		{"configured empty", "FORWARDED_ALLOW_IPS=", "http"},
+		{"explicit Gunicorn setting", "GUNICORN_CMD_ARGS=--forwarded-allow-ips=127.0.0.1", "http"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			name := fmt.Sprintf("bex-native-gunicorn-scheme-it-%d-%d", i, os.Getpid())
+			// Not --network none: the request must come from a non-loopback peer.
+			var args []string
+			if tc.env != "" {
+				args = append(args, "-e", tc.env)
+			}
+			runServing(t, tag, name, "http://127.0.0.1:10000/", args...)
+			out, err := exec.Command("docker", "exec", name, "curl", "-sf", "-H", "X-Forwarded-Proto: https",
+				"http://"+containerIP(t, name)+":10000/").Output()
+			if err != nil || !strings.HasSuffix(string(out), " scheme="+tc.scheme) {
+				t.Fatalf("forwarded request = %q (%v), want scheme=%s", out, err, tc.scheme)
 			}
 		})
 	}
@@ -301,13 +344,9 @@ end
 			if want := "built=production running=" + tc.running; body != want {
 				t.Fatalf("body = %q, want %q", body, want)
 			}
-			ip, err := exec.Command("docker", "inspect", "-f", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", name).Output()
-			if err != nil || len(strings.TrimSpace(string(ip))) == 0 {
-				t.Fatalf("container address: %v %q", err, ip)
-			}
 			// curl exits 7 when the connection is refused: nothing listens there.
-			err = exec.Command("docker", "exec", name, "curl", "-s", "-o", "/dev/null",
-				"http://"+strings.TrimSpace(string(ip))+":10000/").Run()
+			err := exec.Command("docker", "exec", name, "curl", "-s", "-o", "/dev/null",
+				"http://"+containerIP(t, name)+":10000/").Run()
 			var exit *exec.ExitError
 			if refused := errors.As(err, &exit) && exit.ExitCode() == 7; tc.public && err != nil || !tc.public && !refused {
 				t.Fatalf("on the container address: %v, want public=%v:\n%s", err, tc.public, readLogs())
@@ -334,4 +373,15 @@ func runServing(t *testing.T, tag, name, url string, args ...string) (string, fu
 			t.Fatalf("%s never served %s:\n%s", name, url, logs())
 		}
 	}
+}
+
+// containerIP is a running container's address on its Docker network.
+func containerIP(t *testing.T, name string) string {
+	t.Helper()
+	out, err := exec.Command("docker", "inspect", "-f", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", name).Output()
+	ip := strings.TrimSpace(string(out))
+	if err != nil || ip == "" {
+		t.Fatalf("container address: %v %q", err, out)
+	}
+	return ip
 }
