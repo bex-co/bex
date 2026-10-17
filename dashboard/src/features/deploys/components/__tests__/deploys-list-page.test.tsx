@@ -16,6 +16,7 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import { DeploysListPage } from "../deploys-list-page";
+import { serverRendered } from "@/test/hydration";
 import type { DeployRow, UseDeploysResult } from "../../hooks/use-deploys";
 
 const state: UseDeploysResult = {
@@ -84,7 +85,7 @@ function row(overrides: Partial<DeployRow> = {}): DeployRow {
   };
 }
 
-function renderPage() {
+function pageRouter() {
   const root = createRootRoute();
   const list = createRoute({
     getParentRoute: () => root,
@@ -103,7 +104,11 @@ function renderPage() {
     }),
     context: { client: {} as never, session: null },
   });
-  return render(<RouterProvider router={router} />);
+  return router;
+}
+
+function renderPage() {
+  return render(<RouterProvider router={pageRouter()} />);
 }
 
 // Row times are elapsed ("Deployed 3 hours ago"), so every test pins the
@@ -503,4 +508,29 @@ describe("DeploysListPage", () => {
     expect(await screen.findByText("1 deploy")).toBeInTheDocument();
     expect(screen.queryByText(/loaded/)).not.toBeInTheDocument();
   });
+});
+
+// w4/m219 (a841): a query typed into the server-rendered history search before
+// handlers attach is wiped by hydration.
+it("keeps the history search uneditable until hydration (w4/m219)", async () => {
+  state.deploys = [
+    row(),
+    row({ id: "dep-failed", commitMessage: "Broken startup" }),
+  ];
+  const router = pageRouter();
+  await router.load();
+  const { container, hydrate, getByRole } = serverRendered(
+    <RouterProvider router={router} />,
+  );
+  const search = () =>
+    getByRole<HTMLInputElement>("textbox", {
+      name: "Search loaded deploys and commits",
+    });
+  expect(search().disabled).toBe(true);
+  await hydrate();
+  expect(search().disabled).toBe(false);
+  await userEvent.type(search(), "broken");
+  expect(search().value).toBe("broken");
+  expect(container).toHaveTextContent("dep-failed");
+  expect(container).not.toHaveTextContent("dep-live");
 });

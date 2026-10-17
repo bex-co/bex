@@ -18,6 +18,7 @@ import {
   PopoverTrigger,
 } from "@/common/components/ui/popover";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import type { en } from "@/i18n";
 import { Button } from "@/common/components/ui/button";
 import { RangeSelect } from "@/features/metrics/components/range-select";
@@ -137,6 +138,7 @@ export function LogFilterBar({
   onRangeChange = () => undefined,
 }: LogFilterBarProps) {
   const { t } = useTranslations();
+  const hydrated = useIsHydrated();
 
   // Discover real observed values for each dropdown; degrades to [] without the
   // store, where the static fallbacks carry the UI.
@@ -185,6 +187,9 @@ export function LogFilterBar({
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={filters.text}
+          // Uneditable until handlers attach: text typed into the server HTML
+          // is wiped by hydration (w4/m219).
+          disabled={!hydrated}
           onChange={(e) => onChange({ text: e.target.value })}
           placeholder={t("logs.searchPlaceholder")}
           aria-label={t("logs.searchPlaceholder")}

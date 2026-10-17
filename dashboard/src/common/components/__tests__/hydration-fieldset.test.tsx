@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { act } from "@testing-library/react";
-import { renderToString } from "react-dom/server";
-import { hydrateRoot } from "react-dom/client";
+import { serverRendered } from "@/test/hydration";
 import { HydrationFieldset } from "../hydration-fieldset";
 
 // w4/m219 (a797/a800/a815): a server-rendered create form or search box took
@@ -17,23 +15,15 @@ describe("HydrationFieldset", () => {
   );
 
   it("ships disabled server HTML and enables it on hydration", async () => {
-    const container = document.createElement("div");
-    container.innerHTML = renderToString(form);
-    document.body.appendChild(container);
+    const { container, hydrate } = serverRendered(form);
+    const fieldset = () => container.querySelector("fieldset")!;
     const input = () => container.querySelector("input")!;
-    expect(container.querySelector("fieldset")!.disabled).toBe(true);
+    expect(fieldset().disabled).toBe(true);
     expect(input().matches(":disabled")).toBe(true);
 
-    let root!: ReturnType<typeof hydrateRoot>;
-    await act(async () => {
-      root = hydrateRoot(container, form);
-    });
-    expect(container.querySelector("fieldset")!.disabled).toBe(false);
-    expect(container.querySelector("fieldset")!.hasAttribute("aria-busy")).toBe(
-      false,
-    );
+    await hydrate();
+    expect(fieldset().disabled).toBe(false);
+    expect(fieldset().hasAttribute("aria-busy")).toBe(false);
     expect(input().matches(":disabled")).toBe(false);
-    act(() => root.unmount());
-    container.remove();
   });
 });

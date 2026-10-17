@@ -8,6 +8,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import { useDebounce } from "@/common/hooks/use-debounce";
 import { EmptyState } from "@/common/components/empty-state";
 import { Input } from "@/common/components/ui/input";
@@ -99,6 +100,7 @@ export function DeployLogPanel({
   limitedWindow,
 }: DeployLogPanelProps) {
   const { t } = useTranslations();
+  const hydrated = useIsHydrated();
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [typeChoice, setTypeChoice] = useState<LogTypeChoice>("all");
@@ -240,6 +242,9 @@ export function DeployLogPanel({
         </DropdownMenu>
         <Input
           value={search}
+          // Uneditable until handlers attach: text typed into the server HTML
+          // is wiped by hydration (w4/m219).
+          disabled={!hydrated}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t("deploys.logSearchPlaceholder")}
           className="max-w-sm"
