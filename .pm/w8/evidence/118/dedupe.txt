@@ -1,0 +1,29 @@
+.pm/w8/blocked/066-upstream.patch:5:@@ -67,12 +67,12 @@ func ExecutePSQLNonInteractive(ctx context.Context, input *PSQLInput) (*PSQLResu
+.pm/w8/blocked/066-upstream.patch:192:+func TestExecutePSQLNonInteractive_RejectsUnusableExternalTarget(t *testing.T) {
+.pm/w8/blocked/066-upstream.patch:198:+				result, err := ExecutePSQLNonInteractive(context.Background(), &PSQLInput{
+.pm/w8/blocked/066-upstream.patch:212:+func TestExecutePSQLNonInteractive_PassesExternalTarget(t *testing.T) {
+.pm/w8/blocked/066-upstream.patch:217:+			result, err := ExecutePSQLNonInteractive(context.Background(), &PSQLInput{
+.pm/w8/blocked/066-upstream.patch:233:+func TestExecutePSQLNonInteractive_IPNotAllowed(t *testing.T) {
+.pm/w8/blocked/066-upstream.patch:236:+	_, err := ExecutePSQLNonInteractive(context.Background(), &PSQLInput{
+.pm/w8/blocked/079.md:49:[Omitted long matching line]
+.pm/w8/blocked/079.md:84:[Omitted long matching line]
+.pm/w8/blocked/079-upstream.patch:9:-			result, err := views.ExecutePSQLNonInteractive(ctx, &input)
+.pm/w8/blocked/079-upstream.patch:10:+			result, err := views.ExecutePSQLNonInteractive(ctx, &input, cmd.ErrOrStderr())
+.pm/w8/blocked/079-upstream.patch:22:-func ExecutePSQLNonInteractive(ctx context.Context, input *PSQLInput) (*PSQLResult, error) {
+.pm/w8/blocked/079-upstream.patch:23:+// ExecutePSQLNonInteractive runs input.Command and returns the tool's stdout.
+.pm/w8/blocked/079-upstream.patch:27:+func ExecutePSQLNonInteractive(ctx context.Context, input *PSQLInput, diagnostics io.Writer) (*PSQLResult, error) {
+.pm/w8/blocked/079-upstream.patch:31:@@ -77,13 +81,15 @@ func ExecutePSQLNonInteractive(ctx context.Context, input *PSQLInput) (*PSQLResu
+.pm/w8/blocked/079-upstream.patch:49:@@ -92,6 +98,11 @@ func ExecutePSQLNonInteractive(ctx context.Context, input *PSQLInput) (*PSQLResu
+.pm/w8/evidence/079/offline-probe.go.txt:12:[Omitted long matching line]
+.pm/w8/evidence/079/caller-census.json:2:  "helper": "pkg/tui/views/psql.go:45 ExecutePSQLNonInteractive",
+.pm/w8/evidence/079/caller-census.json:19:    "pgcli": "interactive-only separate command; no production call to ExecutePSQLNonInteractive",
+.pm/w8/evidence/postgres-native-isolation-sweep376/local-preflight.json:711:[Omitted long matching line]
+.pm/w8/evidence/postgres-native-isolation-sweep376/complete-native-isolation-vector-and-cleanup.json:1384:[Omitted long matching line]
+.pm/w8/evidence/postgres-native-cursors-sweep378/local-preflight.json:342:[Omitted long matching line]
+.pm/w8/evidence/postgres-native-cursors-sweep378/local-preflight.json:578:[Omitted long matching line]
+.pm/w8/evidence/postgres-native-cursors-sweep378/local-preflight.json:1433:[Omitted long matching line]
+.pm/w8/evidence/postgres-native-cursors-sweep378/complete-native-cursors-vector-and-cleanup.json:907:[Omitted long matching line]
+.pm/w8/evidence/postgres-native-cursors-sweep378/complete-native-cursors-vector-and-cleanup.json:1143:[Omitted long matching line]
+.pm/w8/evidence/postgres-native-cursors-sweep378/complete-native-cursors-vector-and-cleanup.json:1998:[Omitted long matching line]
+.pm/w8/evidence/postgres-native-locking-sweep391/complete-native-locking-and-cleanup.json:1540:[Omitted long matching line]
+.pm/w8/evidence/postgres-native-locking-sweep391/local-preflight.json:867:[Omitted long matching line]

@@ -1,0 +1,28 @@
+from pathlib import Path
+import importlib.util,json,os,shutil,subprocess,tempfile,time,hashlib,re
+os.umask(0o077);P=Path(__file__).resolve().parent;spec=importlib.util.spec_from_file_location('data398',P/'sweep398-data.py');d=importlib.util.module_from_spec(spec);spec.loader.exec_module(d);D=Path(tempfile.mkdtemp(prefix='qa398-',dir='/tmp'));D.chmod(0o700);socket=D/'redis.sock';hist=Path.home()/'.rediscli_history'
+def stat():
+ if not hist.exists():return None
+ s=hist.stat();return {'size':s.st_size,'mtime_ns':s.st_mtime_ns,'ctime_ns':s.st_ctime_ns,'inode':s.st_ino,'mode':s.st_mode}
+before=stat();out={'at':time.time(),'server':'owned Redis on unix socket only, port0/no persistence','cases':[],'pty_readall':[],'preexisting_history_metadata_before':before};log=(D/'server.log').open('wb');server=None
+
+def save():(P/'sweep398-local-controls.json').write_text(json.dumps(out,indent=2))
+try:
+ server=subprocess.Popen(['redis-server','--port','0','--unixsocket',str(socket),'--unixsocketperm','700','--save','','--appendonly','no','--dir',str(D),'--pidfile',str(D/'pid')],stdout=log,stderr=log);out['own_server_pid']=server.pid;save()
+ for _ in range(100):
+  if socket.exists():break
+  assert server.poll() is None;time.sleep(.03)
+ assert socket.exists();env={**os.environ,'REDISCLI_HISTFILE':str(D/'history')}
+ for case in ('success','error'):
+  for client in ('bex','render'):
+   nonce='local398';payload=d.data(nonce,client,case);r=subprocess.run(['redis-cli','-s',str(socket),'--pipe','--pipe-timeout','10'],input=payload,capture_output=True,timeout=30,env=env);output=(r.stdout+r.stderr).decode(errors='replace');expected=1 if case=='error' else 0;e={'case':case,'client_namespace':client,'pipe_exit':r.returncode,'stdout':r.stdout.decode(errors='replace'),'stderr':r.stderr.decode(errors='replace'),'payload_bytes':len(payload),'payload_sha256':hashlib.sha256(payload).hexdigest(),'expected_child_exit':expected};out['cases'].append(e);save();assert r.returncode==expected and re.search(r'errors:\s*'+str(expected)+r',\s*replies:\s*4',output);vs=d.values(nonce,client,case);ver=[]
+   for key,value in vs.items():
+    z=subprocess.run(['redis-cli','-s',str(socket),'--raw','GET',key],capture_output=True,timeout=5,env=env);assert z.returncode==0 and z.stdout==value+b'\n';exists=subprocess.check_output(['redis-cli','-s',str(socket),'--raw','EXISTS',key],env=env,text=True).strip();assert exists=='1';ver.append({'key':key,'bytes':len(value),'sha256':hashlib.sha256(value).hexdigest(),'exists':True})
+   e.update(exact_values=ver,pass_=True);save();print(json.dumps({'local_case':case,'client_namespace':client,'pipe_exit':r.returncode,'all_exact_values':True}),flush=True)
+  r=subprocess.run(['python3',str(P/'sweep398-pty-pipe.py'),'preflight','unused-qa398','local398',case],capture_output=True,text=True,timeout=80);assert r.returncode==0,r.stderr;v=json.loads(r.stdout);out['pty_readall'].append(v);save();assert v['native_exit']==0 and v['payload_sent'] and not v['harness_timeout'] and ('QA398_SHA256='+v['payload_sha256']) in v['output'];print(json.dumps({'local_PTY_case':case,'all_large_payload_bytes_and_EOF':True}),flush=True)
+ out['pass']=True;save()
+finally:
+ if server:
+  server.terminate();server.wait(timeout=5)
+ log.close();shutil.rmtree(D);out.update(own_server_socket_context_removed=server is not None and server.poll() is not None and not D.exists(),preexisting_history_metadata_after=stat(),preexisting_history_metadata_unchanged=stat()==before);save()
+print(json.dumps({'local_controls_pass':out.get('pass'),'own_server_socket_context_removed':out['own_server_socket_context_removed'],'preexisting_history_metadata_unchanged':out['preexisting_history_metadata_unchanged']}))

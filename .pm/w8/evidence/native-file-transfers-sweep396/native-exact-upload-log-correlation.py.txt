@@ -1,0 +1,13 @@
+from pathlib import Path
+import sys,json,re
+f=Path(__file__).with_name('sweep396-common.py');sys.argv=[str(f),'correlate-observed','bex'];exec(compile(f.read_text(),str(f),'exec'));decoder=json.JSONDecoder()
+for x in [v for v in c['resources'] if v.get('sweep')==396]:
+ own(x);wanted=[z['decoded'] for z in x.get('upload_investigation',[]) if z.get('completed_exactly')];r=cli(['logs','--resources',x['id'],'--type','app','--text','QA396_UPLOAD','--limit','50','--confirm','-o','json'],client=x['client']);e={'at':now(),'native':r,'proofs':[],'wanted':wanted};x.setdefault('observed_upload_log_receipts',[]).append(e);save();assert r['native_exit']==0;s=r['stdout'];rows=[]
+ while s.strip():s=s.lstrip();v,n=decoder.raw_decode(s);rows.extend(v if isinstance(v,list) else [v]);s=s[n:]
+ for row in rows:
+  for m in re.finditer(r'QA396_UPLOAD (\{[^\n]+\})',row.get('message','')):
+   try:v=json.loads(m.group(1))
+   except ValueError:continue
+   if v.get('marker')==x['marker']:e['proofs'].append(v)
+ e['pass']=len(wanted)==(2 if x['client']=='bex' else 1) and all(v in e['proofs'] for v in wanted);save();print(json.dumps({'client':x['client'],'actual_native_upload_events_correlated':len(wanted),'pass':e['pass']}),flush=True);assert e['pass']
+x=next(v for v in c['resources'] if v.get('sweep')==396 and v.get('client')=='bex');x['independent_Node_client']=json.loads((P/'sweep396-Node-large-client-control.json').read_text());save()

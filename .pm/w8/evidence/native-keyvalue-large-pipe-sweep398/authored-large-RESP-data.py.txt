@@ -1,0 +1,8 @@
+import hashlib
+SIZE=1024*1024+123
+def values(nonce,client,case):
+ prefix=f'qa398:{nonce}:{client}:{case}:';line=(('QA398_'+nonce+'_'+client+'_'+case+'_'+'xYz0123456789'*35+'☃').encode()+b'\x00\r\n');big=(line*((SIZE+len(line)-1)//len(line)))[:SIZE];return {prefix+'large':big,prefix+'tail':('QA398_tail_'+nonce+'_'+client+'_'+case+'\n雪').encode()+b'\x00\r\n',prefix+'empty':b''}
+def resp(*args):
+ bs=[v.encode() if isinstance(v,str) else v for v in args];return ('*'+str(len(bs))+'\r\n').encode()+b''.join(('$'+str(len(v))+'\r\n').encode()+v+b'\r\n' for v in bs)
+def data(nonce,client,case):
+ vs=values(nonce,client,case);large,tail,empty=list(vs);return resp('SET',large,vs[large])+(resp('HSET',large,'field','value') if case.startswith('error') else resp('STRLEN',large))+resp('SET',tail,vs[tail])+resp('SET',empty,vs[empty])

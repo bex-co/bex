@@ -1,0 +1,34 @@
+from pathlib import Path
+import gzip,hashlib,json,subprocess,time
+SIZE=5*1024*1024+123
+
+def payload():return b''.join(hashlib.sha256(('QA396:'+str(i)).encode()).digest() for i in range((SIZE+31)//32))[:SIZE]
+def journey(url,marker,D,events,persist,local=False):
+ data=payload();digest=hashlib.sha256(data).hexdigest();binary=D/'generated5MiB.bin';packed=D/'generated5MiB.gz';binary.write_bytes(data);packed.write_bytes(gzip.compress(data,mtime=0));boot=None;disposition="attachment; filename=\"qa396.bin\"; filename*=UTF-8''qa396-%E9%9B%AA.bin"
+ def call(label,path,args,kind,two=False,slow=False,a=0,b=SIZE-1):
+  nonlocal boot
+  body=D/(label+'.body');headers=D/(label+'.headers');cmd=['curl','--disable','--http1.1' if local or not two else '--http2','-sS','--max-time','45','-D',str(headers),'-o',str(body),'-H','X-QA-Case: '+marker+'_'+label,*args]
+  if slow:cmd+=['--limit-rate','256K']
+  cmd+=['-w','%{http_code}|%{http_version}|%{size_upload}|%{size_download}',url+path];e={'label':label,'at':time.time(),'command':cmd,'local':local,'preferred_client_HTTP':'2' if two and not local else '1.1','kind':kind};events.append(e);persist();start=time.monotonic()
+  try:
+   r=subprocess.run(cmd,capture_output=True,text=True,timeout=52);parts=r.stdout.split('|');e.update(exit=r.returncode,elapsed=round(time.monotonic()-start,3),metadata=r.stdout,stderr=r.stderr);persist();assert r.returncode==0 and len(parts)==4, 'transfer failed; preserve response receipt before classification';status,protocol,uploaded,downloaded=parts;e.update(HTTP=status,actual_client_HTTP=protocol,bytes_uploaded=float(uploaded),bytes_downloaded=float(downloaded));hs={}
+   for line in headers.read_text().splitlines():
+    k,sep,v=line.partition(':')
+    if sep and k.lower() in ['content-length','content-range','accept-ranges','etag','content-disposition','content-type','content-encoding','cache-control','cf-cache-status']:hs[k.lower()]=v.strip()
+   e['response_headers']=hs;raw=body.read_bytes();e['pass']=False
+   if kind=='upload':
+    v=json.loads(raw);e['decoded']=v;boot=boot or v['boot'];e['pass']=status=='200' and v['marker']==marker and v['id']==marker+'_'+label and v['bytes']==SIZE and v['sha256']==digest and v['boot']==boot
+   elif kind in ('full','range'):
+    expected=data[a:b+1];e.update(body_bytes=len(raw),body_sha256=hashlib.sha256(raw).hexdigest());e['pass']=status==('200' if kind=='full' else '206') and raw==expected and hs.get('content-length')==str(len(expected)) and hs.get('etag')=='"'+digest+'"' and hs.get('content-disposition')==disposition and (kind=='full' or hs.get('content-range')=='bytes '+str(a)+'-'+str(b)+'/'+str(SIZE))
+   elif kind=='head':e['headers_only_qualification']='curl --head reads headers; raw empty wire body not independently read';e['pass']=status==('206' if a else '200') and hs.get('content-length')==str(b-a+1) and hs.get('etag')=='"'+digest+'"'
+   elif kind=='304':e.update(body_bytes=len(raw));e['pass']=status=='304' and not raw and hs.get('etag')=='"'+digest+'"'
+   elif kind=='416':e.update(body_bytes=len(raw));e['pass']=status=='416' and not raw and hs.get('content-range')=='bytes */'+str(SIZE)
+   else:raise ValueError(kind)
+   e['pass']=e['pass'] and protocol==('2' if two and not local else '1.1');persist();print(json.dumps({'case':label,'HTTP':status,'client_HTTP':protocol,'pass':e['pass'],'seconds':e['elapsed']}),flush=True);assert e['pass'],'transfer payload/header/identity differs'
+  finally:body.unlink(missing_ok=True);headers.unlink(missing_ok=True)
+ base=['-H','Content-Type: application/octet-stream','--data-binary','@'+str(binary)]
+ call('fixed-h1','/upload',base,'upload');call('fixed-h2','/upload',base,'upload',True);call('chunked-h1','/upload',['-H','Transfer-Encoding: chunked',*base],'upload');call('gzip-h2','/upload',['-H','Content-Type: application/octet-stream','-H','Content-Encoding: gzip','--data-binary','@'+str(packed)],'upload',True);call('paced-h1','/upload',base,'upload',slow=not local)
+ call('download-h1','/download',[],'full');call('download-h2','/download',[],'full',True);a,b=1048500,2097323
+ for two in (False,True):call('range-h'+('2' if two else '1'),'/download',['-H','Range: bytes='+str(a)+'-'+str(b)],'range',two,a=a,b=b)
+ call('head-h1','/download',['--head'],'head');call('head-range-h2','/download',['--head','-H','Range: bytes='+str(a)+'-'+str(b)],'head',True,a=a,b=b);call('conditional-h2','/download',['-H','If-None-Match: "'+digest+'"'],'304',True);call('unsatisfied-h1','/download',['-H','Range: bytes='+str(SIZE+100)+'-'+str(SIZE+200)],'416')
+ binary.unlink();packed.unlink();return {'pass':True,'cases':len(events),'payload_bytes':SIZE,'payload_sha256':digest,'gzip_encoded_bytes':len(gzip.compress(data,mtime=0)),'uploads':5,'download_header_and_conditional_cases':8,'boot':boot,'qualification':'client HTTP1/2 negotiated at public edge; upstream version/coding/chunk normalization recorded without end-to-end HTTP2 assertion; two HEAD cases headers-only'}

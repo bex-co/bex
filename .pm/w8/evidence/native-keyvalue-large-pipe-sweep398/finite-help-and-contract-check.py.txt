@@ -1,0 +1,10 @@
+from pathlib import Path
+import sys,json,subprocess,shutil
+f=Path(__file__).with_name('sweep398-common.py');sys.argv=[str(f),'contract','bex'];exec(compile(f.read_text(),str(f),'exec'))
+v={'source_head':c['head'],'serving_revision':'unknown','help':[],'external_redis_cli':subprocess.check_output(['redis-cli','--version'],text=True).strip(),'local_server':subprocess.check_output(['redis-server','--version'],text=True).strip(),'valkey_cli_present':bool(shutil.which('valkey-cli')),'contracts':['https://redis.io/docs/latest/develop/reference/protocol-spec/','https://redis.io/docs/latest/develop/clients/patterns/bulk-loading/','https://redis.io/docs/latest/commands/hset/'],'scope':'four normal raw RESP imports with 1MiB+123B values; positive and ordinary WRONGTYPE partial-success cases per native client; exact stored bytes and empty-key existence; known085 interactive error-panel semantics are not a new issue','dedupe':'sweep349 only small successful batches, no large/error-bearing pipe;085 already owns blank error detail; no expectation that interactive dismissal returns child status','native_command_boundary':'cmd/kvcli.go and pkg/tui/views/rediscli.go:118-165 at a764810a7682 use returned cliCommand and append exact external args; no launcher rewrite','local_qualification':'owned local Redis unixsocket/direct-pipe statuses and exact-value checks plus byte-preserving large PTY readall; all own server/socket/history files removed before production'}
+for client in ['bex','render']:
+ for args in [['--help'],['keyvalues','create','--help'],['kv-cli','--help'],['keyvalues','delete','--help']]:
+  r=cli(args);assert r['native_exit']==0
+  if args[0]=='kv-cli':assert 'kv-cli [keyValueID|keyValueName]' in r['stdout']
+  v['help'].append(r)
+(P/'sweep398-native-contract.json').write_text(json.dumps(v,indent=2));print(json.dumps({'actual_help_pass':len(v['help']),'external':v['external_redis_cli']}))

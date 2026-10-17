@@ -1,0 +1,6 @@
+from pathlib import Path
+import json,subprocess,time
+P=Path(__file__).resolve().parent
+for case in ('success','error60'):
+ for args in [['pipe','render',case],['verify','bex','render',case]]:
+  r=subprocess.run(['python3',str(P/'sweep398-kv-pipe.py'),*args],text=True,capture_output=True,timeout=135);(P/('sweep398-render-sequence-'+'-'.join(args)+'-'+str(time.time_ns())+'.json')).write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));print(r.stdout,flush=True);r.check_returncode()

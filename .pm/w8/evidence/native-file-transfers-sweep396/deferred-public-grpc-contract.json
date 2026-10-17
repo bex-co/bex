@@ -1,0 +1,10 @@
+{
+  "sweep": 395,
+  "kind": "hosting protocol contract triage",
+  "candidate": "public end-to-end HTTP2/gRPC",
+  "result": "no bug claim or fixture allocation",
+  "reason": "Render's official Temporal deployment guide states that native gRPC/mTLS over external connections is not supported; ordinary public HTTP2 does not establish end-to-end h2c or external gRPC parity",
+  "primary_sources": ["https://render.com/docs/deploy-temporal#external-access-to-your-temporal-cluster", "https://render.com/docs/web-services"],
+  "next_journey": "sweep396 ordinary 5MiB file transfers",
+  "production_mutations": 0
+}

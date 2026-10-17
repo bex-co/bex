@@ -1,0 +1,6 @@
+from pathlib import Path
+import subprocess,json,time
+P=Path(__file__).resolve().parent
+for actor in ('bex','render'):
+ for args in [['sweep400-wait.py',actor],['sweep400-native-transfer.py','http',actor],['sweep400-native-transfer.py','source-proof',actor]]:
+  r=subprocess.run(['python3',str(P/args[0]),*args[1:]],text=True,capture_output=True,timeout=190);(P/('sweep400-first-'+actor+'-'+args[0]+'-'+str(time.time_ns())+'.json')).write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));print(r.stdout,flush=True);r.check_returncode()

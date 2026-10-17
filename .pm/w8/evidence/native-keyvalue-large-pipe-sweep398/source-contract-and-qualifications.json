@@ -1,0 +1,32 @@
+{
+  "source_head": "66b041df33b19cf2a6a99b0b6c082e599f6abc10",
+  "serving_revision": "unknown",
+  "versions": {
+    "Bex": "0.3.2/a6350da0",
+    "Render": "2.27.0/a764810a7682",
+    "external_redis_cli": "8.10.1"
+  },
+  "contract": "Ordinary raw RESP pipelined commands execute independently. redis-cli --pipe counts errors/replies and waits for a final ECHO marker after stdin EOF. This is not a transaction or an all-or-nothing import.",
+  "primary_sources": [
+    "https://redis.io/docs/latest/develop/clients/patterns/bulk-loading/",
+    "https://redis.io/docs/latest/develop/reference/protocol-spec/"
+  ],
+  "native_trace": [
+    "pinned cmd/kvcli.go: command is interactive only; exact external arguments after -- are forwarded",
+    "pinned pkg/tui/views/rediscli.go:118-165 resolves own ID/name, parses returned cliCommand, appends original external args and launches actual redis-cli",
+    "pinned pkg/tui/exec.go:ExecDone.Error returns to interactive error screen, successful completion produces DoneMsg"
+  ],
+  "expected_error_UI": "After a real --pipe child reports WRONGTYPE/errors1/replies4, native parent returns to TUI. The harness deliberately dismisses it using its normal Ctrl+C key. Parent exit0 after this dismissal is expected and is not a child-status defect. Blank error detail is already tracked in w8/blocked/085.md and is not refiled.",
+  "new_coverage_gap": "sweep349 only small all-success pipe batches; sweep398 uses a 1MiB+123B value, success and one normal type-error batch per client, exact byte/empty-key/type validation and a successful write after the error.",
+  "payload": "Authored own-namespace large, tail and empty strings with newlines/CRLF/NUL/UTF8; frames have exact byte lengths and terminate with CRLF. No shared keys, flush commands or global datastore configuration.",
+  "source_sync": "Current upstream changes after the requested ship affect dashboard hydration and plan-catalog recovery, not the tested CLI/datastore path.",
+  "local": "Four own Unix-socket Redis controls produce direct child0/1 and exact data; two byte-preserving PTY read-all controls prove complete large payload and EOF. Local server/socket/context removed, personal history metadata unchanged. Local8.10.1 is not asserted to be the hosted engine version.",
+  "qualification": "An extracted elif fragment is not a standalone Python module; an attempted standalone compile returned SyntaxError before any data test. The integrated native helper compiles and its create path runs normally. No product defect is inferred from that harness command.",
+  "qualifications": [
+    "Initial Bex success/10s pipe wait passed and opposite Render verified all data. Initial Bex error/10s wait got No replies for10seconds/errors1/replies0, returned to known error TUI and was bounded by own harness after65s. Its namespace was never replayed. Later read-only reconciliation saw the full large SET value but no tail/empty keys; this is a partial attempt, not a passing pipeline or product-defect claim.",
+    "Fresh error60 namespace uses pipe-timeout60 and a bounded PTY input queue (<=512B before256B writes). Both old/new PTY readers preserve the exact actual-nonce payload with a slow local reader; no terminal corruption is asserted. Two harness parameters changed, so no single-cause timeout repair is claimed.",
+    "The first Render success setup copied its temporary config before invoking a nested native list helper; the helper refused the existing copy before list/pipe launch. Full original intent/trace is preserved, separate read-only proof finds all3 keys absent, copied config removed. Inventory now completes before the native pipe config copy. The same planned untouched namespace is then used for its first actual import.",
+    "Four accepted native imports are Bex success (original10s), Bex error60, Render success60 and Render error60. All four summaries and opposite-client exact large/tail/empty/type proofs pass. Native interactive error exits are intentional dismissal0, not an automation status guarantee.",
+    "Original timeout/prelaunch setup remain in the ledger; all exact key names including partial attempt are removed before parent deletion."
+  ]
+}

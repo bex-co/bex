@@ -1,0 +1,14 @@
+from pathlib import Path
+import json,sys,shutil,tempfile,subprocess,time,importlib.util,hashlib
+P=Path(__file__).resolve().parent;actor,label,protocol,expect,size_text=sys.argv[1:];size=int(size_text);f=P/'sweep396-common.py';sys.argv=[str(f),'investigate',actor];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==396 and v.get('client')==actor);own(x);h=history(x);assert h[0]['status']=='live' and h[0]['id']==x['first_deploy_id'];spec=importlib.util.spec_from_file_location('cases',str(P/'sweep396-transfer-cases.py'));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);D=Path(tempfile.mkdtemp(prefix='sweep396-investigate-',dir=P));D.chmod(0o700);data=m.payload()[:size];binary=D/'generated.bin';binary.write_bytes(data);marker=x['marker']+'_'+label;assert not any(z['label']==label for z in x.get('upload_investigation',[]));args=['curl','--disable','--http1.1' if protocol=='1' else '--http2','--verbose','--max-time','35','-D',str(D/'headers'),'-o',str(D/'body'),'-H','X-QA-Case: '+marker,'-H','Content-Type: application/octet-stream']
+if expect=='on':args+=['-H','Expect: 100-continue']
+elif expect=='off':args+=['-H','Expect:']
+else:assert expect=='auto'
+args+=['--data-binary','@'+str(binary),'-w','%{http_code}|%{http_version}|%{size_upload}|%{size_download}',x['create_view']['serviceDetails']['url']+'/upload'];e={'label':label,'at':now(),'protocol_requested':protocol,'expect_mode':expect,'bytes':size,'expected_sha256':hashlib.sha256(data).hexdigest(),'marker':marker,'command':args,'history':h};x.setdefault('upload_investigation',[]).append(e);save();start=time.monotonic()
+try:
+ r=subprocess.run(args,capture_output=True,text=True,timeout=42);e.update(exit=r.returncode,elapsed=round(time.monotonic()-start,3),metadata=r.stdout,stderr='\n'.join(z for z in r.stderr.splitlines() if z.startswith(('> ','< ','curl:'))),response_headers=(D/'headers').read_text() if (D/'headers').exists() else None,response_body=(D/'body').read_text(errors='replace') if (D/'body').exists() else None);e['completed_exactly']=False
+ if e['response_body']:
+  try:v=json.loads(e['response_body']);e['decoded']=v;e['completed_exactly']=r.returncode==0 and v.get('marker')==x['marker'] and v.get('id')==marker and v.get('bytes')==size and v.get('sha256')==e['expected_sha256']
+  except ValueError:pass
+ save();print(json.dumps({k:e[k] for k in ['label','exit','elapsed','metadata','completed_exactly','stderr']}),flush=True)
+finally:shutil.rmtree(D);e['own_generated_scratch_removed']=not D.exists();save()

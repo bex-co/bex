@@ -1,0 +1,5 @@
+"id","body"
+"1","first own row"
+"2","comma, quote"" and newline
+雪 café"
+"3",""

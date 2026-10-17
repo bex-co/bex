@@ -1,0 +1,124 @@
+{
+  "psql_version": "psql (PostgreSQL) 18.6",
+  "rows": [
+    {
+      "id": 1,
+      "body": "first own row"
+    },
+    {
+      "id": 2,
+      "body": "comma, quote\" and newline\n雪 café"
+    },
+    {
+      "id": 3,
+      "body": ""
+    }
+  ],
+  "CSV_bytes": 86,
+  "CSV_sha256": "7da3175343fd436431703e1e4d2dc7b9feb0f2f82c0e17fd5c7ef39640f63304",
+  "cases": [
+    {
+      "command": "CREATE SCHEMA qa399; CREATE TABLE qa399.pstdin_supplied(id integer PRIMARY KEY,body text NOT NULL);CREATE TABLE qa399.pstdin_empty(id integer PRIMARY KEY,body text NOT NULL);CREATE TABLE qa399.sql_supplied(id integer PRIMARY KEY,body text NOT NULL);CREATE TABLE qa399.sql_empty(id integer PRIMARY KEY,body text NOT NULL);CREATE TABLE qa399.file_control(id integer PRIMARY KEY,body text NOT NULL);CREATE TABLE qa399.bad_supplied(id integer PRIMARY KEY,body text NOT NULL);CREATE TABLE qa399.bad_empty(id integer PRIMARY KEY,body text NOT NULL);",
+      "stdin": "DEVNULL (counterfactual for nil exec.Cmd.Stdin)",
+      "exit": 0,
+      "stdout": "CREATE SCHEMA\nCREATE TABLE\nCREATE TABLE\nCREATE TABLE\nCREATE TABLE\nCREATE TABLE\nCREATE TABLE\nCREATE TABLE\n",
+      "stderr": ""
+    },
+    {
+      "command": "\\copy qa399.pstdin_supplied FROM pstdin WITH (FORMAT csv,HEADER true)",
+      "stdin": "supplied CSV bytes",
+      "exit": 0,
+      "stdout": "COPY 3\n",
+      "stderr": ""
+    },
+    {
+      "command": "SELECT coalesce(json_agg(t ORDER BY id),'[]')::text FROM qa399.pstdin_supplied t;",
+      "stdin": "DEVNULL (counterfactual for nil exec.Cmd.Stdin)",
+      "exit": 0,
+      "stdout": "[{\"id\":1,\"body\":\"first own row\"}, \n {\"id\":2,\"body\":\"comma, quote\\\" and newline\\n雪 café\"}, \n {\"id\":3,\"body\":\"\"}]\n",
+      "stderr": ""
+    },
+    {
+      "command": "\\copy qa399.pstdin_empty FROM pstdin WITH (FORMAT csv,HEADER true)",
+      "stdin": "DEVNULL (counterfactual for nil exec.Cmd.Stdin)",
+      "exit": 0,
+      "stdout": "COPY 0\n",
+      "stderr": ""
+    },
+    {
+      "command": "SELECT coalesce(json_agg(t ORDER BY id),'[]')::text FROM qa399.pstdin_empty t;",
+      "stdin": "DEVNULL (counterfactual for nil exec.Cmd.Stdin)",
+      "exit": 0,
+      "stdout": "[]\n",
+      "stderr": ""
+    },
+    {
+      "command": "COPY qa399.sql_supplied FROM STDIN WITH (FORMAT csv,HEADER true);",
+      "stdin": "supplied CSV bytes",
+      "exit": 0,
+      "stdout": "COPY 3\n",
+      "stderr": ""
+    },
+    {
+      "command": "SELECT coalesce(json_agg(t ORDER BY id),'[]')::text FROM qa399.sql_supplied t;",
+      "stdin": "DEVNULL (counterfactual for nil exec.Cmd.Stdin)",
+      "exit": 0,
+      "stdout": "[{\"id\":1,\"body\":\"first own row\"}, \n {\"id\":2,\"body\":\"comma, quote\\\" and newline\\n雪 café\"}, \n {\"id\":3,\"body\":\"\"}]\n",
+      "stderr": ""
+    },
+    {
+      "command": "COPY qa399.sql_empty FROM STDIN WITH (FORMAT csv,HEADER true);",
+      "stdin": "DEVNULL (counterfactual for nil exec.Cmd.Stdin)",
+      "exit": 0,
+      "stdout": "COPY 0\n",
+      "stderr": ""
+    },
+    {
+      "command": "SELECT coalesce(json_agg(t ORDER BY id),'[]')::text FROM qa399.sql_empty t;",
+      "stdin": "DEVNULL (counterfactual for nil exec.Cmd.Stdin)",
+      "exit": 0,
+      "stdout": "[]\n",
+      "stderr": ""
+    },
+    {
+      "command": "\\copy qa399.file_control FROM '/tmp/qa399-loms2dib/CSV source 雪.csv' WITH (FORMAT csv,HEADER true)",
+      "stdin": "DEVNULL (counterfactual for nil exec.Cmd.Stdin)",
+      "exit": 0,
+      "stdout": "COPY 3\n",
+      "stderr": ""
+    },
+    {
+      "command": "SELECT json_agg(t ORDER BY id)::text FROM qa399.file_control t;",
+      "stdin": "DEVNULL (counterfactual for nil exec.Cmd.Stdin)",
+      "exit": 0,
+      "stdout": "[{\"id\":1,\"body\":\"first own row\"}, \n {\"id\":2,\"body\":\"comma, quote\\\" and newline\\n雪 café\"}, \n {\"id\":3,\"body\":\"\"}]\n",
+      "stderr": ""
+    },
+    {
+      "command": "\\copy qa399.bad_supplied FROM pstdin WITH (FORMAT csv,HEADER true)",
+      "stdin": "supplied CSV bytes",
+      "exit": 1,
+      "stdout": "",
+      "stderr": "ERROR:  invalid input syntax for type integer: \"not_an_integer\"\nCONTEXT:  COPY bad_supplied, line 4, column id: \"not_an_integer\"\n"
+    },
+    {
+      "command": "SELECT coalesce(json_agg(t ORDER BY id),'[]')::text FROM qa399.bad_supplied t;",
+      "stdin": "DEVNULL (counterfactual for nil exec.Cmd.Stdin)",
+      "exit": 0,
+      "stdout": "[]\n",
+      "stderr": ""
+    },
+    {
+      "command": "\\copy qa399.bad_empty FROM pstdin WITH (FORMAT csv,HEADER true)",
+      "stdin": "DEVNULL (counterfactual for nil exec.Cmd.Stdin)",
+      "exit": 0,
+      "stdout": "COPY 0\n",
+      "stderr": ""
+    }
+  ],
+  "qualification": "real local PG18/psql18 client input controls; no native launcher or production result yet",
+  "initdb_exit": 0,
+  "owned_server_pid": 79068,
+  "pass": true,
+  "own_server_data_socket_history_removed": true
+}

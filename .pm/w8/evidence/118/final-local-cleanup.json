@@ -1,0 +1,8 @@
+{
+  "comparison_binary_removed": true,
+  "own_connection_payload_absent": true,
+  "own_CA_absent": true,
+  "own_stdin_directory_absent": true,
+  "own_direct_history_absent": true,
+  "own_pgpass_absent": true
+}

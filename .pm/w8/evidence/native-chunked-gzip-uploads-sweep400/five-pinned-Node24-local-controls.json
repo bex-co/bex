@@ -1,0 +1,460 @@
+{
+  "image": "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+  "command": {
+    "build": "set -e\ncat > qa400-app.cjs <<'QA400_QA400_APP_CJS'\nconst fs=require('node:fs'),crypto=require('node:crypto'),http=require('node:http'),zlib=require('node:zlib');\nconst ref=JSON.parse(fs.readFileSync('qa400-reference.json')),marker=fs.readFileSync('qa400-marker','utf8').trim(),phase=process.argv[2],sha=b=>crypto.createHash('sha256').update(b).digest('hex');\nconst files=Object.fromEntries(Object.keys(ref.files).map(p=>{const b=fs.readFileSync(p);return[p,{bytes:b.length,sha256:sha(b)}]}));if(JSON.stringify(files)!==JSON.stringify(ref.files))throw Error('source differs');\nconst snapshot={marker,node:process.version,files,phase};if(phase==='build'){fs.writeFileSync('qa400-build.json',JSON.stringify(snapshot));console.log('QA400_BUILD '+JSON.stringify(snapshot));process.exit(0);}\nconst built=JSON.parse(fs.readFileSync('qa400-build.json')),boot=crypto.randomUUID(),json=(res,status,v)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(v))};\nhttp.createServer((req,res)=>{const path=new URL(req.url,'http://qa.invalid').pathname;\n if(path==='/upload'&&req.method==='POST'){const start=Date.now(),raw=crypto.createHash('sha256'),decoded=crypto.createHash('sha256');let rawBytes=0,bytes=0,chunks=0,first=null;req.on('data',b=>{if(first===null)first=Date.now();rawBytes+=b.length;raw.update(b)});const input=req.headers['content-encoding']==='gzip'?req.pipe(zlib.createGunzip()):req;input.on('data',b=>{bytes+=b.length;chunks++;decoded.update(b)});input.on('error',e=>json(res,400,{marker,error:e.code||'decode'}));input.on('end',()=>{const v={marker,boot,id:req.headers['x-qa-case'],bytes,sha256:decoded.digest('hex'),rawBytes,rawSha256:raw.digest('hex'),encoding:req.headers['content-encoding']||null,length:req.headers['content-length']||null,transfer:req.headers['transfer-encoding']||null,upstream_http:req.httpVersion,chunks,firstMs:first===null?null:first-start,durationMs:Date.now()-start};console.log('QA400_UPLOAD '+JSON.stringify(v));json(res,200,v)});return;}\n json(res,200,{marker,boot,built,runtime:snapshot});\n}).listen(Number(process.env.PORT),'0.0.0.0');\nQA400_QA400_APP_CJS\ncat > qa400-reference.json <<'QA400_QA400_REFERENCE_JSON'\n{\"repo\": \"https://github.com/git-fixtures/basic\", \"branch\": \"master\", \"commit\": \"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"qualification\": \"public Git carrier only; qa400 chunked/gzip upload observer is an explicitly authored functional fixture\"}\nQA400_QA400_REFERENCE_JSON\ncat > qa400-marker <<'QA400_QA400_MARKER'\nQA400_LOCAL\nQA400_QA400_MARKER\nnode qa400-app.cjs build",
+    "start": "node qa400-app.cjs runtime",
+    "program": "const fs=require('node:fs'),crypto=require('node:crypto'),http=require('node:http'),zlib=require('node:zlib');\nconst ref=JSON.parse(fs.readFileSync('qa400-reference.json')),marker=fs.readFileSync('qa400-marker','utf8').trim(),phase=process.argv[2],sha=b=>crypto.createHash('sha256').update(b).digest('hex');\nconst files=Object.fromEntries(Object.keys(ref.files).map(p=>{const b=fs.readFileSync(p);return[p,{bytes:b.length,sha256:sha(b)}]}));if(JSON.stringify(files)!==JSON.stringify(ref.files))throw Error('source differs');\nconst snapshot={marker,node:process.version,files,phase};if(phase==='build'){fs.writeFileSync('qa400-build.json',JSON.stringify(snapshot));console.log('QA400_BUILD '+JSON.stringify(snapshot));process.exit(0);}\nconst built=JSON.parse(fs.readFileSync('qa400-build.json')),boot=crypto.randomUUID(),json=(res,status,v)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(v))};\nhttp.createServer((req,res)=>{const path=new URL(req.url,'http://qa.invalid').pathname;\n if(path==='/upload'&&req.method==='POST'){const start=Date.now(),raw=crypto.createHash('sha256'),decoded=crypto.createHash('sha256');let rawBytes=0,bytes=0,chunks=0,first=null;req.on('data',b=>{if(first===null)first=Date.now();rawBytes+=b.length;raw.update(b)});const input=req.headers['content-encoding']==='gzip'?req.pipe(zlib.createGunzip()):req;input.on('data',b=>{bytes+=b.length;chunks++;decoded.update(b)});input.on('error',e=>json(res,400,{marker,error:e.code||'decode'}));input.on('end',()=>{const v={marker,boot,id:req.headers['x-qa-case'],bytes,sha256:decoded.digest('hex'),rawBytes,rawSha256:raw.digest('hex'),encoding:req.headers['content-encoding']||null,length:req.headers['content-length']||null,transfer:req.headers['transfer-encoding']||null,upstream_http:req.httpVersion,chunks,firstMs:first===null?null:first-start,durationMs:Date.now()-start};console.log('QA400_UPLOAD '+JSON.stringify(v));json(res,200,v)});return;}\n json(res,200,{marker,boot,built,runtime:snapshot});\n}).listen(Number(process.env.PORT),'0.0.0.0');\n"
+  },
+  "events": [
+    {
+      "kind": "upload",
+      "label": "chunked-small",
+      "intended_client_protocol": "h1",
+      "local_H2_case_executed_as_H1": false,
+      "id": "QA400_LOCAL_chunked-small",
+      "plain_bytes": 65659,
+      "plain_sha256": "d13f1fded7c062f24a48a74ea1b2f16d3c4b2c9713535daa968f2e55787badc0",
+      "wire_bytes": 65659,
+      "wire_sha256": "d13f1fded7c062f24a48a74ea1b2f16d3c4b2c9713535daa968f2e55787badc0",
+      "gzip": false,
+      "fixed_length": false,
+      "paced": false,
+      "intent_at": 1792208238.552477,
+      "client_exit": 0,
+      "stdout": "{\"client_node\":\"v22.17.1\",\"protocol\":\"h1\",\"writes\":[{\"bytes\":16415,\"atMs\":2},{\"bytes\":16415,\"atMs\":2},{\"bytes\":16415,\"atMs\":2},{\"bytes\":16414,\"atMs\":2}],\"status\":200,\"response_headers\":{\"content-type\":\"application/json\",\"cache-control\":\"no-store\",\"date\":\"Sat, 17 Oct 2026 03:37:18 GMT\",\"connection\":\"close\",\"transfer-encoding\":\"chunked\"},\"raw\":\"{\\\"marker\\\":\\\"QA400_LOCAL\\\",\\\"boot\\\":\\\"0e87aee6-ed94-44cd-bb18-fa96a40659cd\\\",\\\"id\\\":\\\"QA400_LOCAL_chunked-small\\\",\\\"bytes\\\":65659,\\\"sha256\\\":\\\"d13f1fded7c062f24a48a74ea1b2f16d3c4b2c9713535daa968f2e55787badc0\\\",\\\"rawBytes\\\":65659,\\\"rawSha256\\\":\\\"d13f1fded7c062f24a48a74ea1b2f16d3c4b2c9713535daa968f2e55787badc0\\\",\\\"encoding\\\":null,\\\"length\\\":null,\\\"transfer\\\":\\\"chunked\\\",\\\"upstream_http\\\":\\\"1.1\\\",\\\"chunks\\\":5,\\\"firstMs\\\":0,\\\"durationMs\\\":0}\",\"elapsedMs\":7,\"exit\":0}\n",
+      "stderr": "",
+      "client": {
+        "client_node": "v22.17.1",
+        "protocol": "h1",
+        "writes": [
+          {
+            "bytes": 16415,
+            "atMs": 2
+          },
+          {
+            "bytes": 16415,
+            "atMs": 2
+          },
+          {
+            "bytes": 16415,
+            "atMs": 2
+          },
+          {
+            "bytes": 16414,
+            "atMs": 2
+          }
+        ],
+        "status": 200,
+        "response_headers": {
+          "content-type": "application/json",
+          "cache-control": "no-store",
+          "date": "Sat, 17 Oct 2026 03:37:18 GMT",
+          "connection": "close",
+          "transfer-encoding": "chunked"
+        },
+        "raw": "{\"marker\":\"QA400_LOCAL\",\"boot\":\"0e87aee6-ed94-44cd-bb18-fa96a40659cd\",\"id\":\"QA400_LOCAL_chunked-small\",\"bytes\":65659,\"sha256\":\"d13f1fded7c062f24a48a74ea1b2f16d3c4b2c9713535daa968f2e55787badc0\",\"rawBytes\":65659,\"rawSha256\":\"d13f1fded7c062f24a48a74ea1b2f16d3c4b2c9713535daa968f2e55787badc0\",\"encoding\":null,\"length\":null,\"transfer\":\"chunked\",\"upstream_http\":\"1.1\",\"chunks\":5,\"firstMs\":0,\"durationMs\":0}",
+        "elapsedMs": 7,
+        "exit": 0
+      },
+      "decoded": {
+        "marker": "QA400_LOCAL",
+        "boot": "0e87aee6-ed94-44cd-bb18-fa96a40659cd",
+        "id": "QA400_LOCAL_chunked-small",
+        "bytes": 65659,
+        "sha256": "d13f1fded7c062f24a48a74ea1b2f16d3c4b2c9713535daa968f2e55787badc0",
+        "rawBytes": 65659,
+        "rawSha256": "d13f1fded7c062f24a48a74ea1b2f16d3c4b2c9713535daa968f2e55787badc0",
+        "encoding": null,
+        "length": null,
+        "transfer": "chunked",
+        "upstream_http": "1.1",
+        "chunks": 5,
+        "firstMs": 0,
+        "durationMs": 0
+      },
+      "pass": true,
+      "paced_client_write_span_ms": 0,
+      "paced_server_body_observed_over_2s": false
+    },
+    {
+      "kind": "upload",
+      "label": "chunked-paced",
+      "intended_client_protocol": "h1",
+      "local_H2_case_executed_as_H1": false,
+      "id": "QA400_LOCAL_chunked-paced",
+      "plain_bytes": 65659,
+      "plain_sha256": "d13f1fded7c062f24a48a74ea1b2f16d3c4b2c9713535daa968f2e55787badc0",
+      "wire_bytes": 65659,
+      "wire_sha256": "d13f1fded7c062f24a48a74ea1b2f16d3c4b2c9713535daa968f2e55787badc0",
+      "gzip": false,
+      "fixed_length": false,
+      "paced": true,
+      "intent_at": 1792208238.59301,
+      "client_exit": 0,
+      "stdout": "{\"client_node\":\"v22.17.1\",\"protocol\":\"h1\",\"writes\":[{\"bytes\":4104,\"atMs\":1},{\"bytes\":4104,\"atMs\":252},{\"bytes\":4104,\"atMs\":502},{\"bytes\":4104,\"atMs\":752},{\"bytes\":4104,\"atMs\":1003},{\"bytes\":4104,\"atMs\":1253},{\"bytes\":4104,\"atMs\":1504},{\"bytes\":4104,\"atMs\":1755},{\"bytes\":4104,\"atMs\":2006},{\"bytes\":4104,\"atMs\":2257},{\"bytes\":4104,\"atMs\":2509},{\"bytes\":4104,\"atMs\":2760},{\"bytes\":4104,\"atMs\":3010},{\"bytes\":4104,\"atMs\":3262},{\"bytes\":4104,\"atMs\":3512},{\"bytes\":4099,\"atMs\":3763}],\"status\":200,\"response_headers\":{\"content-type\":\"application/json\",\"cache-control\":\"no-store\",\"date\":\"Sat, 17 Oct 2026 03:37:22 GMT\",\"connection\":\"close\",\"transfer-encoding\":\"chunked\"},\"raw\":\"{\\\"marker\\\":\\\"QA400_LOCAL\\\",\\\"boot\\\":\\\"0e87aee6-ed94-44cd-bb18-fa96a40659cd\\\",\\\"id\\\":\\\"QA400_LOCAL_chunked-paced\\\",\\\"bytes\\\":65659,\\\"sha256\\\":\\\"d13f1fded7c062f24a48a74ea1b2f16d3c4b2c9713535daa968f2e55787badc0\\\",\\\"rawBytes\\\":65659,\\\"rawSha256\\\":\\\"d13f1fded7c062f24a48a74ea1b2f16d3c4b2c9713535daa968f2e55787badc0\\\",\\\"encoding\\\":null,\\\"length\\\":null,\\\"transfer\\\":\\\"chunked\\\",\\\"upstream_http\\\":\\\"1.1\\\",\\\"chunks\\\":16,\\\"firstMs\\\":0,\\\"durationMs\\\":3761}\",\"elapsedMs\":3766,\"exit\":0}\n",
+      "stderr": "",
+      "client": {
+        "client_node": "v22.17.1",
+        "protocol": "h1",
+        "writes": [
+          {
+            "bytes": 4104,
+            "atMs": 1
+          },
+          {
+            "bytes": 4104,
+            "atMs": 252
+          },
+          {
+            "bytes": 4104,
+            "atMs": 502
+          },
+          {
+            "bytes": 4104,
+            "atMs": 752
+          },
+          {
+            "bytes": 4104,
+            "atMs": 1003
+          },
+          {
+            "bytes": 4104,
+            "atMs": 1253
+          },
+          {
+            "bytes": 4104,
+            "atMs": 1504
+          },
+          {
+            "bytes": 4104,
+            "atMs": 1755
+          },
+          {
+            "bytes": 4104,
+            "atMs": 2006
+          },
+          {
+            "bytes": 4104,
+            "atMs": 2257
+          },
+          {
+            "bytes": 4104,
+            "atMs": 2509
+          },
+          {
+            "bytes": 4104,
+            "atMs": 2760
+          },
+          {
+            "bytes": 4104,
+            "atMs": 3010
+          },
+          {
+            "bytes": 4104,
+            "atMs": 3262
+          },
+          {
+            "bytes": 4104,
+            "atMs": 3512
+          },
+          {
+            "bytes": 4099,
+            "atMs": 3763
+          }
+        ],
+        "status": 200,
+        "response_headers": {
+          "content-type": "application/json",
+          "cache-control": "no-store",
+          "date": "Sat, 17 Oct 2026 03:37:22 GMT",
+          "connection": "close",
+          "transfer-encoding": "chunked"
+        },
+        "raw": "{\"marker\":\"QA400_LOCAL\",\"boot\":\"0e87aee6-ed94-44cd-bb18-fa96a40659cd\",\"id\":\"QA400_LOCAL_chunked-paced\",\"bytes\":65659,\"sha256\":\"d13f1fded7c062f24a48a74ea1b2f16d3c4b2c9713535daa968f2e55787badc0\",\"rawBytes\":65659,\"rawSha256\":\"d13f1fded7c062f24a48a74ea1b2f16d3c4b2c9713535daa968f2e55787badc0\",\"encoding\":null,\"length\":null,\"transfer\":\"chunked\",\"upstream_http\":\"1.1\",\"chunks\":16,\"firstMs\":0,\"durationMs\":3761}",
+        "elapsedMs": 3766,
+        "exit": 0
+      },
+      "decoded": {
+        "marker": "QA400_LOCAL",
+        "boot": "0e87aee6-ed94-44cd-bb18-fa96a40659cd",
+        "id": "QA400_LOCAL_chunked-paced",
+        "bytes": 65659,
+        "sha256": "d13f1fded7c062f24a48a74ea1b2f16d3c4b2c9713535daa968f2e55787badc0",
+        "rawBytes": 65659,
+        "rawSha256": "d13f1fded7c062f24a48a74ea1b2f16d3c4b2c9713535daa968f2e55787badc0",
+        "encoding": null,
+        "length": null,
+        "transfer": "chunked",
+        "upstream_http": "1.1",
+        "chunks": 16,
+        "firstMs": 0,
+        "durationMs": 3761
+      },
+      "pass": true,
+      "paced_client_write_span_ms": 3762,
+      "paced_server_body_observed_over_2s": true
+    },
+    {
+      "kind": "upload",
+      "label": "gzip-fixed",
+      "intended_client_protocol": "h1",
+      "local_H2_case_executed_as_H1": false,
+      "id": "QA400_LOCAL_gzip-fixed",
+      "plain_bytes": 262267,
+      "plain_sha256": "0781d5f2c3b09600ec4fa8daa5d7903bd2ea303fbbe4c521238d2976771f0c0b",
+      "wire_bytes": 262367,
+      "wire_sha256": "b8cf24b23a6d29c8e64d224e642d59a70c8cc9e6e621ac86fff4e9f773ee35d7",
+      "gzip": true,
+      "fixed_length": true,
+      "paced": false,
+      "intent_at": 1792208242.396532,
+      "client_exit": 0,
+      "stdout": "{\"client_node\":\"v22.17.1\",\"protocol\":\"h1\",\"writes\":[{\"bytes\":65592,\"atMs\":2},{\"bytes\":65592,\"atMs\":3},{\"bytes\":65592,\"atMs\":3},{\"bytes\":65591,\"atMs\":3}],\"status\":200,\"response_headers\":{\"content-type\":\"application/json\",\"cache-control\":\"no-store\",\"date\":\"Sat, 17 Oct 2026 03:37:22 GMT\",\"connection\":\"close\",\"transfer-encoding\":\"chunked\"},\"raw\":\"{\\\"marker\\\":\\\"QA400_LOCAL\\\",\\\"boot\\\":\\\"0e87aee6-ed94-44cd-bb18-fa96a40659cd\\\",\\\"id\\\":\\\"QA400_LOCAL_gzip-fixed\\\",\\\"bytes\\\":262267,\\\"sha256\\\":\\\"0781d5f2c3b09600ec4fa8daa5d7903bd2ea303fbbe4c521238d2976771f0c0b\\\",\\\"rawBytes\\\":262367,\\\"rawSha256\\\":\\\"b8cf24b23a6d29c8e64d224e642d59a70c8cc9e6e621ac86fff4e9f773ee35d7\\\",\\\"encoding\\\":\\\"gzip\\\",\\\"length\\\":\\\"262367\\\",\\\"transfer\\\":null,\\\"upstream_http\\\":\\\"1.1\\\",\\\"chunks\\\":21,\\\"firstMs\\\":0,\\\"durationMs\\\":3}\",\"elapsedMs\":10,\"exit\":0}\n",
+      "stderr": "",
+      "client": {
+        "client_node": "v22.17.1",
+        "protocol": "h1",
+        "writes": [
+          {
+            "bytes": 65592,
+            "atMs": 2
+          },
+          {
+            "bytes": 65592,
+            "atMs": 3
+          },
+          {
+            "bytes": 65592,
+            "atMs": 3
+          },
+          {
+            "bytes": 65591,
+            "atMs": 3
+          }
+        ],
+        "status": 200,
+        "response_headers": {
+          "content-type": "application/json",
+          "cache-control": "no-store",
+          "date": "Sat, 17 Oct 2026 03:37:22 GMT",
+          "connection": "close",
+          "transfer-encoding": "chunked"
+        },
+        "raw": "{\"marker\":\"QA400_LOCAL\",\"boot\":\"0e87aee6-ed94-44cd-bb18-fa96a40659cd\",\"id\":\"QA400_LOCAL_gzip-fixed\",\"bytes\":262267,\"sha256\":\"0781d5f2c3b09600ec4fa8daa5d7903bd2ea303fbbe4c521238d2976771f0c0b\",\"rawBytes\":262367,\"rawSha256\":\"b8cf24b23a6d29c8e64d224e642d59a70c8cc9e6e621ac86fff4e9f773ee35d7\",\"encoding\":\"gzip\",\"length\":\"262367\",\"transfer\":null,\"upstream_http\":\"1.1\",\"chunks\":21,\"firstMs\":0,\"durationMs\":3}",
+        "elapsedMs": 10,
+        "exit": 0
+      },
+      "decoded": {
+        "marker": "QA400_LOCAL",
+        "boot": "0e87aee6-ed94-44cd-bb18-fa96a40659cd",
+        "id": "QA400_LOCAL_gzip-fixed",
+        "bytes": 262267,
+        "sha256": "0781d5f2c3b09600ec4fa8daa5d7903bd2ea303fbbe4c521238d2976771f0c0b",
+        "rawBytes": 262367,
+        "rawSha256": "b8cf24b23a6d29c8e64d224e642d59a70c8cc9e6e621ac86fff4e9f773ee35d7",
+        "encoding": "gzip",
+        "length": "262367",
+        "transfer": null,
+        "upstream_http": "1.1",
+        "chunks": 21,
+        "firstMs": 0,
+        "durationMs": 3
+      },
+      "pass": true,
+      "paced_client_write_span_ms": 1,
+      "paced_server_body_observed_over_2s": false
+    },
+    {
+      "kind": "upload",
+      "label": "gzip-chunked",
+      "intended_client_protocol": "h1",
+      "local_H2_case_executed_as_H1": false,
+      "id": "QA400_LOCAL_gzip-chunked",
+      "plain_bytes": 262267,
+      "plain_sha256": "0781d5f2c3b09600ec4fa8daa5d7903bd2ea303fbbe4c521238d2976771f0c0b",
+      "wire_bytes": 262367,
+      "wire_sha256": "b8cf24b23a6d29c8e64d224e642d59a70c8cc9e6e621ac86fff4e9f773ee35d7",
+      "gzip": true,
+      "fixed_length": false,
+      "paced": false,
+      "intent_at": 1792208242.441571,
+      "client_exit": 0,
+      "stdout": "{\"client_node\":\"v22.17.1\",\"protocol\":\"h1\",\"writes\":[{\"bytes\":65592,\"atMs\":2},{\"bytes\":65592,\"atMs\":3},{\"bytes\":65592,\"atMs\":4},{\"bytes\":65591,\"atMs\":4}],\"status\":200,\"response_headers\":{\"content-type\":\"application/json\",\"cache-control\":\"no-store\",\"date\":\"Sat, 17 Oct 2026 03:37:22 GMT\",\"connection\":\"close\",\"transfer-encoding\":\"chunked\"},\"raw\":\"{\\\"marker\\\":\\\"QA400_LOCAL\\\",\\\"boot\\\":\\\"0e87aee6-ed94-44cd-bb18-fa96a40659cd\\\",\\\"id\\\":\\\"QA400_LOCAL_gzip-chunked\\\",\\\"bytes\\\":262267,\\\"sha256\\\":\\\"0781d5f2c3b09600ec4fa8daa5d7903bd2ea303fbbe4c521238d2976771f0c0b\\\",\\\"rawBytes\\\":262367,\\\"rawSha256\\\":\\\"b8cf24b23a6d29c8e64d224e642d59a70c8cc9e6e621ac86fff4e9f773ee35d7\\\",\\\"encoding\\\":\\\"gzip\\\",\\\"length\\\":null,\\\"transfer\\\":\\\"chunked\\\",\\\"upstream_http\\\":\\\"1.1\\\",\\\"chunks\\\":27,\\\"firstMs\\\":0,\\\"durationMs\\\":2}\",\"elapsedMs\":9,\"exit\":0}\n",
+      "stderr": "",
+      "client": {
+        "client_node": "v22.17.1",
+        "protocol": "h1",
+        "writes": [
+          {
+            "bytes": 65592,
+            "atMs": 2
+          },
+          {
+            "bytes": 65592,
+            "atMs": 3
+          },
+          {
+            "bytes": 65592,
+            "atMs": 4
+          },
+          {
+            "bytes": 65591,
+            "atMs": 4
+          }
+        ],
+        "status": 200,
+        "response_headers": {
+          "content-type": "application/json",
+          "cache-control": "no-store",
+          "date": "Sat, 17 Oct 2026 03:37:22 GMT",
+          "connection": "close",
+          "transfer-encoding": "chunked"
+        },
+        "raw": "{\"marker\":\"QA400_LOCAL\",\"boot\":\"0e87aee6-ed94-44cd-bb18-fa96a40659cd\",\"id\":\"QA400_LOCAL_gzip-chunked\",\"bytes\":262267,\"sha256\":\"0781d5f2c3b09600ec4fa8daa5d7903bd2ea303fbbe4c521238d2976771f0c0b\",\"rawBytes\":262367,\"rawSha256\":\"b8cf24b23a6d29c8e64d224e642d59a70c8cc9e6e621ac86fff4e9f773ee35d7\",\"encoding\":\"gzip\",\"length\":null,\"transfer\":\"chunked\",\"upstream_http\":\"1.1\",\"chunks\":27,\"firstMs\":0,\"durationMs\":2}",
+        "elapsedMs": 9,
+        "exit": 0
+      },
+      "decoded": {
+        "marker": "QA400_LOCAL",
+        "boot": "0e87aee6-ed94-44cd-bb18-fa96a40659cd",
+        "id": "QA400_LOCAL_gzip-chunked",
+        "bytes": 262267,
+        "sha256": "0781d5f2c3b09600ec4fa8daa5d7903bd2ea303fbbe4c521238d2976771f0c0b",
+        "rawBytes": 262367,
+        "rawSha256": "b8cf24b23a6d29c8e64d224e642d59a70c8cc9e6e621ac86fff4e9f773ee35d7",
+        "encoding": "gzip",
+        "length": null,
+        "transfer": "chunked",
+        "upstream_http": "1.1",
+        "chunks": 27,
+        "firstMs": 0,
+        "durationMs": 2
+      },
+      "pass": true,
+      "paced_client_write_span_ms": 2,
+      "paced_server_body_observed_over_2s": false
+    },
+    {
+      "kind": "upload",
+      "label": "gzip-h2-no-length",
+      "intended_client_protocol": "h1",
+      "local_H2_case_executed_as_H1": true,
+      "id": "QA400_LOCAL_gzip-h2-no-length",
+      "plain_bytes": 262267,
+      "plain_sha256": "0781d5f2c3b09600ec4fa8daa5d7903bd2ea303fbbe4c521238d2976771f0c0b",
+      "wire_bytes": 262367,
+      "wire_sha256": "b8cf24b23a6d29c8e64d224e642d59a70c8cc9e6e621ac86fff4e9f773ee35d7",
+      "gzip": true,
+      "fixed_length": false,
+      "paced": false,
+      "intent_at": 1792208242.4850812,
+      "client_exit": 0,
+      "stdout": "{\"client_node\":\"v22.17.1\",\"protocol\":\"h1\",\"writes\":[{\"bytes\":65592,\"atMs\":2},{\"bytes\":65592,\"atMs\":3},{\"bytes\":65592,\"atMs\":3},{\"bytes\":65591,\"atMs\":3}],\"status\":200,\"response_headers\":{\"content-type\":\"application/json\",\"cache-control\":\"no-store\",\"date\":\"Sat, 17 Oct 2026 03:37:22 GMT\",\"connection\":\"close\",\"transfer-encoding\":\"chunked\"},\"raw\":\"{\\\"marker\\\":\\\"QA400_LOCAL\\\",\\\"boot\\\":\\\"0e87aee6-ed94-44cd-bb18-fa96a40659cd\\\",\\\"id\\\":\\\"QA400_LOCAL_gzip-h2-no-length\\\",\\\"bytes\\\":262267,\\\"sha256\\\":\\\"0781d5f2c3b09600ec4fa8daa5d7903bd2ea303fbbe4c521238d2976771f0c0b\\\",\\\"rawBytes\\\":262367,\\\"rawSha256\\\":\\\"b8cf24b23a6d29c8e64d224e642d59a70c8cc9e6e621ac86fff4e9f773ee35d7\\\",\\\"encoding\\\":\\\"gzip\\\",\\\"length\\\":null,\\\"transfer\\\":\\\"chunked\\\",\\\"upstream_http\\\":\\\"1.1\\\",\\\"chunks\\\":25,\\\"firstMs\\\":0,\\\"durationMs\\\":10}\",\"elapsedMs\":15,\"exit\":0}\n",
+      "stderr": "",
+      "client": {
+        "client_node": "v22.17.1",
+        "protocol": "h1",
+        "writes": [
+          {
+            "bytes": 65592,
+            "atMs": 2
+          },
+          {
+            "bytes": 65592,
+            "atMs": 3
+          },
+          {
+            "bytes": 65592,
+            "atMs": 3
+          },
+          {
+            "bytes": 65591,
+            "atMs": 3
+          }
+        ],
+        "status": 200,
+        "response_headers": {
+          "content-type": "application/json",
+          "cache-control": "no-store",
+          "date": "Sat, 17 Oct 2026 03:37:22 GMT",
+          "connection": "close",
+          "transfer-encoding": "chunked"
+        },
+        "raw": "{\"marker\":\"QA400_LOCAL\",\"boot\":\"0e87aee6-ed94-44cd-bb18-fa96a40659cd\",\"id\":\"QA400_LOCAL_gzip-h2-no-length\",\"bytes\":262267,\"sha256\":\"0781d5f2c3b09600ec4fa8daa5d7903bd2ea303fbbe4c521238d2976771f0c0b\",\"rawBytes\":262367,\"rawSha256\":\"b8cf24b23a6d29c8e64d224e642d59a70c8cc9e6e621ac86fff4e9f773ee35d7\",\"encoding\":\"gzip\",\"length\":null,\"transfer\":\"chunked\",\"upstream_http\":\"1.1\",\"chunks\":25,\"firstMs\":0,\"durationMs\":10}",
+        "elapsedMs": 15,
+        "exit": 0
+      },
+      "decoded": {
+        "marker": "QA400_LOCAL",
+        "boot": "0e87aee6-ed94-44cd-bb18-fa96a40659cd",
+        "id": "QA400_LOCAL_gzip-h2-no-length",
+        "bytes": 262267,
+        "sha256": "0781d5f2c3b09600ec4fa8daa5d7903bd2ea303fbbe4c521238d2976771f0c0b",
+        "rawBytes": 262367,
+        "rawSha256": "b8cf24b23a6d29c8e64d224e642d59a70c8cc9e6e621ac86fff4e9f773ee35d7",
+        "encoding": "gzip",
+        "length": null,
+        "transfer": "chunked",
+        "upstream_http": "1.1",
+        "chunks": 25,
+        "firstMs": 0,
+        "durationMs": 10
+      },
+      "pass": true,
+      "paced_client_write_span_ms": 1,
+      "paced_server_body_observed_over_2s": false
+    }
+  ],
+  "qualification": "exact authored build and server in pinned Node image; loopback-published ephemeral owned port; local cases all HTTP1",
+  "build": {
+    "exit": 0,
+    "stdout": "QA400_BUILD {\"marker\":\"QA400_LOCAL\",\"node\":\"v24.22.0\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"phase\":\"build\"}\n",
+    "stderr": ""
+  },
+  "container_id": "dc86a2796123085ddf8476ce525b5c837a7e6c98aecebb43441338bb25c49793",
+  "ready": {
+    "marker": "QA400_LOCAL",
+    "boot": "0e87aee6-ed94-44cd-bb18-fa96a40659cd",
+    "built": {
+      "marker": "QA400_LOCAL",
+      "node": "v24.22.0",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "phase": "build"
+    },
+    "runtime": {
+      "marker": "QA400_LOCAL",
+      "node": "v24.22.0",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "phase": "runtime"
+    }
+  },
+  "summary": {
+    "pass": true,
+    "cases": 5,
+    "exact_plain_and_wire_bytes": true,
+    "paced_cases": 1,
+    "HTTP2_native_case": false,
+    "qualification": "public-client protocol only; upstream HTTP version recorded separately; gzip decoded explicitly by authored application; pacing observations do not establish buffering contract"
+  },
+  "pass": true,
+  "logs": "QA400_UPLOAD {\"marker\":\"QA400_LOCAL\",\"boot\":\"0e87aee6-ed94-44cd-bb18-fa96a40659cd\",\"id\":\"QA400_LOCAL_chunked-small\",\"bytes\":65659,\"sha256\":\"d13f1fded7c062f24a48a74ea1b2f16d3c4b2c9713535daa968f2e55787badc0\",\"rawBytes\":65659,\"rawSha256\":\"d13f1fded7c062f24a48a74ea1b2f16d3c4b2c9713535daa968f2e55787badc0\",\"encoding\":null,\"length\":null,\"transfer\":\"chunked\",\"upstream_http\":\"1.1\",\"chunks\":5,\"firstMs\":0,\"durationMs\":0}\nQA400_UPLOAD {\"marker\":\"QA400_LOCAL\",\"boot\":\"0e87aee6-ed94-44cd-bb18-fa96a40659cd\",\"id\":\"QA400_LOCAL_chunked-paced\",\"bytes\":65659,\"sha256\":\"d13f1fded7c062f24a48a74ea1b2f16d3c4b2c9713535daa968f2e55787badc0\",\"rawBytes\":65659,\"rawSha256\":\"d13f1fded7c062f24a48a74ea1b2f16d3c4b2c9713535daa968f2e55787badc0\",\"encoding\":null,\"length\":null,\"transfer\":\"chunked\",\"upstream_http\":\"1.1\",\"chunks\":16,\"firstMs\":0,\"durationMs\":3761}\nQA400_UPLOAD {\"marker\":\"QA400_LOCAL\",\"boot\":\"0e87aee6-ed94-44cd-bb18-fa96a40659cd\",\"id\":\"QA400_LOCAL_gzip-fixed\",\"bytes\":262267,\"sha256\":\"0781d5f2c3b09600ec4fa8daa5d7903bd2ea303fbbe4c521238d2976771f0c0b\",\"rawBytes\":262367,\"rawSha256\":\"b8cf24b23a6d29c8e64d224e642d59a70c8cc9e6e621ac86fff4e9f773ee35d7\",\"encoding\":\"gzip\",\"length\":\"262367\",\"transfer\":null,\"upstream_http\":\"1.1\",\"chunks\":21,\"firstMs\":0,\"durationMs\":3}\nQA400_UPLOAD {\"marker\":\"QA400_LOCAL\",\"boot\":\"0e87aee6-ed94-44cd-bb18-fa96a40659cd\",\"id\":\"QA400_LOCAL_gzip-chunked\",\"bytes\":262267,\"sha256\":\"0781d5f2c3b09600ec4fa8daa5d7903bd2ea303fbbe4c521238d2976771f0c0b\",\"rawBytes\":262367,\"rawSha256\":\"b8cf24b23a6d29c8e64d224e642d59a70c8cc9e6e621ac86fff4e9f773ee35d7\",\"encoding\":\"gzip\",\"length\":null,\"transfer\":\"chunked\",\"upstream_http\":\"1.1\",\"chunks\":27,\"firstMs\":0,\"durationMs\":2}\nQA400_UPLOAD {\"marker\":\"QA400_LOCAL\",\"boot\":\"0e87aee6-ed94-44cd-bb18-fa96a40659cd\",\"id\":\"QA400_LOCAL_gzip-h2-no-length\",\"bytes\":262267,\"sha256\":\"0781d5f2c3b09600ec4fa8daa5d7903bd2ea303fbbe4c521238d2976771f0c0b\",\"rawBytes\":262367,\"rawSha256\":\"b8cf24b23a6d29c8e64d224e642d59a70c8cc9e6e621ac86fff4e9f773ee35d7\",\"encoding\":\"gzip\",\"length\":null,\"transfer\":\"chunked\",\"upstream_http\":\"1.1\",\"chunks\":25,\"firstMs\":0,\"durationMs\":10}\n",
+  "own_container_context_removed": true
+}

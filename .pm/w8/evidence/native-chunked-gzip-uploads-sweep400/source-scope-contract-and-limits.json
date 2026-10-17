@@ -1,0 +1,26 @@
+{
+  "sweep": 400,
+  "source_head": "af6a6310e1c83658fc57cdfc8003cafe2b054d36",
+  "serving_revision": "unknown",
+  "primary_sources": [
+    "https://render.com/docs/web-services",
+    "https://www.rfc-editor.org/rfc/rfc9112.html#section-7.1",
+    "https://www.rfc-editor.org/rfc/rfc9110.html#section-8.4"
+  ],
+  "scope": "ordinary unambiguous valid request bodies to own Free native apps; native lifecycle/source/log clients plus public HTTP data clients",
+  "limits": [
+    "Small bodies only; does not resolve396 larger-upload throughput candidate",
+    "HTTP2 ALPN describes public client connection; upstream version recorded independently",
+    "Authored application explicitly gunzips; not a platform transparent-decompression claim",
+    "Observed pacing is not a comprehensive buffering/timing guarantee",
+    "Local fifth case is HTTP1; hosted fifth case must prove actual HTTP2 ALPN",
+    "No malformed or ambiguous request framing, admin operation, foreign resource or shared setting mutation"
+  ],
+  "case_count_per_native_fixture": 5,
+  "plain_sizes": [
+    65659,
+    262267
+  ],
+  "initial_local_harness_correction": "Resolved actual existing Node executable after a guessed path was absent; failed local receipt retained and own container/context removed before retry",
+  "normal_async_wait": "Original four-read readiness window ended queued and initial HTTP assertion failed; later same unchanged first children advanced through build/update to Live, no mutation retry"
+}

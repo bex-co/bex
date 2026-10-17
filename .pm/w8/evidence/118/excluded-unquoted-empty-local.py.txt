@@ -1,0 +1,24 @@
+from pathlib import Path
+import csv,io,json,os,shutil,subprocess,tempfile,time,hashlib
+os.umask(0o077);P=Path(__file__).resolve().parent;D=Path(tempfile.mkdtemp(prefix='qa399-',dir='/tmp'));D.chmod(0o700);(D/'socket').mkdir();pg=Path('/opt/homebrew/opt/postgresql@18/bin');psql='/opt/homebrew/opt/libpq/bin/psql';user='qa399_local';rows=[{'id':1,'body':'first own row'},{'id':2,'body':'comma, quote" and newline\n雪 café'},{'id':3,'body':''}];s=io.StringIO(newline='');w=csv.writer(s,lineterminator='\r\n');w.writerow(['id','body']);w.writerows((r['id'],r['body']) for r in rows);data=s.getvalue().encode();(P/'sweep399-authored.csv').write_bytes(data);out={'psql_version':subprocess.check_output([psql,'--version'],text=True).strip(),'rows':rows,'CSV_bytes':len(data),'CSV_sha256':hashlib.sha256(data).hexdigest(),'cases':[],'qualification':'real local PG18/psql18 client input controls; no native launcher or production result yet'};server=None;log=(D/'server.log').open('wb');env={k:v for k,v in os.environ.items() if not k.startswith(('PG','PSQL','BEX_','RENDER_','QA_'))};env.update(PGHOST=str(D/'socket'),PGPORT='65499',PGUSER=user,PGDATABASE='postgres',PGCLIENTENCODING='UTF8',PSQL_HISTORY=str(D/'history'))
+def save():(P/'sweep399-local-stdin-results.json').write_text(json.dumps(out,indent=2,ensure_ascii=False))
+def sql(command,input=None,expected=0):
+ args=[psql,'-X','-v','ON_ERROR_STOP=1','-t','-A','-c',command];r=subprocess.run(args,input=input,stdin=subprocess.DEVNULL if input is None else None,env=env,capture_output=True,timeout=15);v={'command':command,'stdin':'supplied CSV bytes' if input is not None else 'DEVNULL (counterfactual for nil exec.Cmd.Stdin)','exit':r.returncode,'stdout':r.stdout.decode(),'stderr':r.stderr.decode()};out['cases'].append(v);save();assert r.returncode==expected,v;return r.stdout.decode().strip()
+try:
+ r=subprocess.run([str(pg/'initdb'),'-D',str(D/'data'),'-U',user,'-A','trust','--encoding=UTF8','--no-locale'],capture_output=True,text=True,timeout=40);out['initdb_exit']=r.returncode;save();r.check_returncode();server=subprocess.Popen([str(pg/'postgres'),'-D',str(D/'data'),'-k',str(D/'socket'),'-p','65499','-h',''],stdout=log,stderr=log,start_new_session=True);out['owned_server_pid']=server.pid;save()
+ for _ in range(100):
+  r=subprocess.run([str(pg/'pg_isready'),'-h',str(D/'socket'),'-p','65499','-U',user,'-d','postgres'],capture_output=True,env=env)
+  if r.returncode==0:break
+  assert server.poll() is None;time.sleep(.05)
+ else:raise RuntimeError('own local PG not ready')
+ sql('CREATE SCHEMA qa399; '+''.join('CREATE TABLE qa399.'+name+'(id integer PRIMARY KEY,body text NOT NULL);' for name in ['pstdin_supplied','pstdin_empty','sql_supplied','sql_empty','file_control','bad_supplied','bad_empty']))
+ for method in ('pstdin','sql'):
+  for supplied in (True,False):
+   table='qa399.'+method+('_supplied' if supplied else '_empty');command='\\copy '+table+' FROM pstdin WITH (FORMAT csv,HEADER true)' if method=='pstdin' else 'COPY '+table+' FROM STDIN WITH (FORMAT csv,HEADER true);';text=sql(command,data if supplied else None);assert text=='COPY '+('3' if supplied else '0');got=json.loads(sql("SELECT coalesce(json_agg(t ORDER BY id),'[]')::text FROM "+table+' t;'));assert got==(rows if supplied else []);print(json.dumps({'local_method':method,'stdin_supplied':supplied,'observed':text,'exact_rows':True}),flush=True)
+ f=D/'CSV source 雪.csv';f.write_bytes(data);text=sql("\\copy qa399.file_control FROM '"+str(f)+"' WITH (FORMAT csv,HEADER true)");assert text=='COPY 3';assert json.loads(sql("SELECT json_agg(t ORDER BY id)::text FROM qa399.file_control t;"))==rows
+ bad=data.replace(b'3,',b'not_an_integer,');assert bad!=data;bad_result=sql('\\copy qa399.bad_supplied FROM pstdin WITH (FORMAT csv,HEADER true)',bad,1);assert json.loads(sql("SELECT coalesce(json_agg(t ORDER BY id),'[]')::text FROM qa399.bad_supplied t;"))==[];assert sql('\\copy qa399.bad_empty FROM pstdin WITH (FORMAT csv,HEADER true)',None)=='COPY 0';out['pass']=True;save()
+finally:
+ if server:
+  server.terminate();server.wait(timeout=10)
+ log.close();shutil.rmtree(D);out['own_server_data_socket_history_removed']=not D.exists() and server is not None and server.poll() is not None;save()
+print(json.dumps({'local_stdin_vs_empty_and_file_controls':out.get('pass'),'own_local_PG_removed':out['own_server_data_socket_history_removed'],'csv_bytes':len(data)}))
