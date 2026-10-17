@@ -1,5 +1,10 @@
 import { useQuery } from "@apollo/client/react";
 import { MetricsFiltersDocument } from "@/graphql/definitions";
+import { useLastAnswer } from "@/common/hooks/use-last-answer";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 
 /**
  * Discovered values for one output-filter field (e.g. STATUS_CODE) of an App's
@@ -12,12 +17,19 @@ import { MetricsFiltersDocument } from "@/graphql/definitions";
  * Always requests INSTANCE + STATUS_CODE together so the Application and
  * Network cards share one document (w4/m100 t002) instead of two POSTs that
  * used to duplicate under concurrency.
+ *
+ * `poll` makes this caller the one owner that refreshes that shared document
+ * while the page stays open (w4/m224), so a status code the App starts
+ * returning becomes selectable without a reload; the other caller observes the
+ * same cache entry. A failed or pending refresh keeps this resource's last
+ * answer, never another resource's.
  */
 export function useMetricsFilterValues(
   resource: string,
   // STATUS_CODE and INSTANCE are discoverable; HOST/PATH filters are rejected
   // by the metrics API (w3/m12), so discovery offers no values for them.
   field: "STATUS_CODE" | "INSTANCE",
+  { poll = false }: { poll?: boolean } = {},
 ): string[] {
   const { data } = useQuery(MetricsFiltersDocument, {
     variables: {
@@ -27,11 +39,14 @@ export function useMetricsFilterValues(
       },
     },
     errorPolicy: "all",
+    pollInterval: poll ? RESOURCE_POLL_INTERVAL_MS : 0,
+    skipPollAttempt: skipPollWhenHidden,
   });
 
-  return (
+  const answered =
     data?.metricsFilters?.values
       ?.find((v) => v?.field === field)
-      ?.values?.filter((v): v is string => v != null) ?? []
-  );
+      ?.values?.filter((v): v is string => v != null) ??
+    (data?.metricsFilters?.values != null ? [] : null);
+  return useLastAnswer(`${resource}\u0000${field}`, answered) ?? [];
 }

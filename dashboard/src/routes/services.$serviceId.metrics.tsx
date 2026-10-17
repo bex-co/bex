@@ -135,6 +135,7 @@ export function ServiceMetricsPage({
         />
       )}
       <NetworkMetricsCard
+        key={serviceId}
         resource={serviceId}
         window={window}
         markers={markers}
