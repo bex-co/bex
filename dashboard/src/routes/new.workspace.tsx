@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { isValidDnsLabel } from "@/common/lib/utils/dns-label";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { WorkspaceCreatePageSkeleton } from "@/common/components/route-skeletons";
@@ -15,6 +15,7 @@ import {
   AlertDescription,
 } from "@/common/components/ui/alert";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import { useWorkspaceCreationBilling } from "@/features/workspaces/hooks/use-workspace-creation-billing";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { PlanPicker } from "@/features/workspaces/components/plan-picker";
@@ -34,6 +35,16 @@ export const Route = createFileRoute("/new/workspace")({
 
 export function NewWorkspacePage() {
   const { t } = useTranslations();
+  const hydrated = useIsHydrated();
+  const slugRef = useRef<HTMLInputElement>(null);
+  // The server HTML's native autofocus cannot land on the slug while it is
+  // disabled for hydration, so hand focus over once it enables — unless the
+  // visitor has already focused something else.
+  useEffect(() => {
+    if (hydrated && document.activeElement === document.body) {
+      slugRef.current?.focus({ preventScroll: true });
+    }
+  }, [hydrated]);
   const navigate = useNavigate();
   const { setCurrentWorkspaceId } = useWorkspace();
   const { session } = Route.useRouteContext();
@@ -127,13 +138,16 @@ export function NewWorkspacePage() {
                 {t("workspaces.fieldSlug")}
               </Label>
               <Input
+                ref={slugRef}
                 id="workspace-name"
                 value={name}
                 onChange={(e) => setDraftName(e.target.value.toLowerCase())}
                 placeholder={t("workspaces.fieldNamePlaceholder")}
                 autoComplete="off"
                 autoFocus
-                disabled={creation.attempt != null}
+                // Uneditable until handlers attach: a slug typed into the
+                // server HTML is wiped by hydration (w4/m219).
+                disabled={!hydrated || creation.attempt != null}
                 aria-invalid={showNameError}
                 aria-describedby="workspace-slug-help"
               />

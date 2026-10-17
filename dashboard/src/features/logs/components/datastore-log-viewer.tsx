@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/common/components/ui/select.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import { LogEmptyState } from "./log-empty-state";
 import { LogLineList } from "./log-line-list";
 import { LogTruncationNotice } from "./log-truncation-notice";
@@ -108,6 +109,7 @@ export function DatastoreLogViewer({
   onFiltersChange?: (patch: Partial<DatastoreLogFilters>) => void;
 }) {
   const { t } = useTranslations();
+  const hydrated = useIsHydrated();
   const copy = datastoreLogCopy(kind, t);
   const [localRange, setLocalRange] = useState<RangeSelection>(
     DEFAULT_DATASTORE_LOG_RANGE,
@@ -299,6 +301,9 @@ export function DatastoreLogViewer({
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={text}
+            // Uneditable until handlers attach: text typed into the server
+            // HTML is wiped by hydration (w4/m219).
+            disabled={!hydrated}
             onChange={(event) => changeText(event.target.value)}
             placeholder={copy.searchPlaceholder}
             aria-label={copy.searchPlaceholder}

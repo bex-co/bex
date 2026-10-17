@@ -8,7 +8,7 @@ Why: a usable-looking search field accepts text during startup and silently clea
 
 With one owned disabled endpoint listed, freshly open /webhooks at1440×844 or390×844. Fetch and hold the real startup entry response, then type into Search webhooks through the browser keyboard. Release the unchanged response and sample the input for about three seconds.
 
-[Durable evidence](../evidence/m219-a837-webhook-search-startup.json) contains exact scripts, three full receipt sets, native fixture lifecycle, source census and cleanup. Each fetched entry is HTTP200 and1,952,882 bytes at /assets/index-D60ymwlM.js; neither code nor API responses are rewritten.
+[Durable evidence](../../evidence/m219-a837-webhook-search-startup.json) contains exact scripts, three full receipt sets, native fixture lifecycle, source census and cleanup. Each fetched entry is HTTP200 and1,952,882 bytes at /assets/index-D60ymwlM.js; neither code nor API responses are rewritten.
 
 | Fresh replay | Before handlers | After normal startup | Ready control |
 | --- | --- | --- | --- |
