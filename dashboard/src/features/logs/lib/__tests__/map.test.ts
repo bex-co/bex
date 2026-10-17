@@ -348,17 +348,14 @@ describe("record identity within one millisecond (w4/m217)", () => {
   const ms = "2026-10-16T12:24:33.681";
   const fine = (n: number) => {
     const timestamp = `${ms}${String(100000 + n).slice(1)}Z`; // .681xxxxxZ
-    return toLogLine({
-      __typename: "LogEntry",
-      id: `pod-a-${timestamp}-c0ffee`,
-      timestamp,
-      message: "QA_A751 same",
-      type: "app",
-      instance: "pod-a",
-      level: null,
-      method: null,
-      statusCode: null,
-    });
+    return toLogLine(
+      gqlEntry({
+        id: `pod-a-${timestamp}-c0ffee`,
+        timestamp,
+        message: "QA_A751 same",
+        instance: "pod-a",
+      }),
+    );
   };
   const coarse = (id?: string) =>
     fromRenderLog({
@@ -375,12 +372,45 @@ describe("record identity within one millisecond (w4/m217)", () => {
     expect(mergeLogLines(twenty, [])).toHaveLength(20);
   });
 
-  it("draws one row for a record and its millisecond-precision replay, either order", () => {
+  // The w9/053 fallback: a replay that lost its nanoseconds and carries no
+  // id has only the millisecond bucket to go on, so it pairs with the one
+  // identified record there.
+  it("draws one row for a record and its ID-less millisecond replay, either order", () => {
     const record = fine(7);
-    const replay = coarse(`pod-a-${ms}Z-c0ffee`); // its id names the coarse stamp
+    const replay = coarse();
     expect(dedupeLogLines([record, replay])).toEqual([record]);
     expect(dedupeLogLines([replay, record])).toEqual([replay]);
     expect(mergeLogLines([record], [replay, record])).toEqual([record]);
+  });
+
+  it("draws one row for one id redelivered with a coarser displayed stamp", () => {
+    const record = fine(7);
+    const redelivered = coarse(`pod-a-${record.timestamp}-c0ffee`);
+    expect(redelivered.key).toBe(record.key);
+    expect(dedupeLogLines([record, redelivered])).toEqual([record]);
+    expect(dedupeLogLines([redelivered, record])).toEqual([redelivered]);
+    expect(mergeLogLines([record], [redelivered])).toEqual([record]);
+  });
+
+  // a872: a different record stamped exactly on the millisecond (Go's
+  // RFC3339Nano drops trailing zeros) carries its own id. Two known ids are
+  // two records, even when one stamp is shorter.
+  it("keeps an exact-millisecond record distinct from a finer one (a872)", () => {
+    const entry = (timestamp: string) =>
+      toLogLine(
+        gqlEntry({
+          id: `pod-a-${timestamp}-1a2b3c4d`,
+          timestamp,
+          instance: "pod-a",
+          message: "QA_A872 FAST",
+        }),
+      );
+    const fineRecord = entry("2026-10-17T09:10:19.863264187Z");
+    const exact = entry("2026-10-17T09:10:19.863Z");
+    expect(dedupeLogLines([fineRecord, exact])).toEqual([fineRecord, exact]);
+    expect(dedupeLogLines([exact, fineRecord])).toEqual([exact, fineRecord]);
+    expect(mergeLogLines([fineRecord], [exact])).toHaveLength(2);
+    expect(mergeLogLines([exact], [fineRecord])).toHaveLength(2);
   });
 
   it("keeps the other records when one coarse replay joins them", () => {
@@ -415,6 +445,18 @@ describe("record identity within one millisecond (w4/m217)", () => {
     ]);
     expect(legacy[0].key).toBe(logLineKey(`${ms}100Z`, "p", "x"));
     expect(dedupeLogLines(legacy)).toHaveLength(1);
+  });
+
+  it("forgets an evicted record once, keeping its bucket neighbor paired", () => {
+    const identity = new LogIdentity();
+    const evicted = fine(1);
+    const shown = fine(2);
+    expect(identity.admit(evicted)).toBe(true);
+    expect(identity.admit(shown)).toBe(true);
+    identity.forget(evicted);
+    identity.forget(evicted); // StrictMode's double-invoked updater
+    // The ID-less replay still pairs with the record on screen.
+    expect(identity.admit(coarse())).toBe(false);
   });
 
   it("admits an evicted record again", () => {

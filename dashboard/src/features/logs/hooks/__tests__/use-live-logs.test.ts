@@ -150,6 +150,21 @@ describe("useLiveLogs", () => {
     expect(result.current.lines).toHaveLength(1);
   });
 
+  // w4/m217 (a872): two different identified records in one millisecond, one
+  // stamped exactly on it, are two lines; the same id redelivered is one.
+  it("keeps distinct identified records that share a millisecond", () => {
+    const { result } = renderHook(() => useLiveLogs(baseOpts()));
+    const frame = (timestamp: string) => ({
+      ...renderLog("same", "bv1", timestamp),
+      id: `bv1-${timestamp}-1a2b3c4d`,
+    });
+    act(() => last!.frame(frame("2026-10-17T09:10:19.863264187Z")));
+    act(() => last!.frame(frame("2026-10-17T09:10:19.863Z")));
+    act(() => last!.frame(frame("2026-10-17T09:10:19.863Z")));
+    flush();
+    expect(result.current.lines).toHaveLength(2);
+  });
+
   it("ignores a malformed frame without tearing down the tail", () => {
     const { result } = renderHook(() => useLiveLogs(baseOpts()));
     act(() => last!.raw("{not json"));

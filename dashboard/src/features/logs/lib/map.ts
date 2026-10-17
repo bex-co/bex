@@ -11,8 +11,8 @@ import { needsAnsiParse, parseAnsi } from "./ansi";
 
 // logLineKey is a record's millisecond bucket: instance + message + the
 // timestamp at millisecond resolution. It is the key of a line the backend did
-// not identify (an older backend, or a stamp no finer than a millisecond), and
-// the bucket every line's identity is checked against (LogIdentity below).
+// not identify (an older backend, or an ID-less replay), and the bucket every
+// line's identity is checked against (LogIdentity below).
 //
 // The timestamp enters the key at MILLISECOND resolution (JS's native clock
 // precision, and finer than the viewer's second-precision clock display), not
@@ -34,11 +34,13 @@ export function logLineKey(
 
 // A record the backend identified (its per-record id: instance, original
 // timestamp, message hash — internal/logs/render.go, on GraphQL since w4/m217)
-// and stamped finer than a millisecond is keyed by that id, so twenty distinct
-// records inside one millisecond stay twenty. Anything coarser keeps the
-// bucket key; LogIdentity reconciles the two.
+// is keyed by that id, whatever its timestamp's precision: twenty distinct
+// records inside one millisecond stay twenty, and a different record stamped
+// exactly on the millisecond stays distinct from a finer neighbor. Both live
+// and history canonicalize the stamp before deriving the id, so one record
+// always carries one id. Only a line without an id keeps the bucket key;
+// LogIdentity reconciles the two.
 const ID_KEY_PREFIX = "id:";
-const SUB_MILLISECOND = /T\d{2}:\d{2}:\d{2}\.\d{4,}/;
 
 function lineKey(
   id: string | undefined,
@@ -46,9 +48,7 @@ function lineKey(
   instance: string,
   message: string,
 ): string {
-  return id && SUB_MILLISECOND.test(timestamp)
-    ? ID_KEY_PREFIX + id
-    : logLineKey(timestamp, instance, message);
+  return id ? ID_KEY_PREFIX + id : logLineKey(timestamp, instance, message);
 }
 
 // makeLogLine is the single place a LogLine is built — both wire shapes converge
@@ -139,51 +139,65 @@ export function fromRenderLog(log: RenderLog): LogLine {
   );
 }
 
+// bucketOf is a line's millisecond bucket; an ID-less line's key already is it.
+function bucketOf(line: LogLine): string {
+  return line.key.startsWith(ID_KEY_PREFIX)
+    ? logLineKey(line.timestamp, line.instance, line.message)
+    : line.key;
+}
+
 // LogIdentity decides whether a line is a record already shown. Equal keys are
-// one record. Beyond that, a record can arrive twice at different precision —
-// once identified with its nanoseconds, once re-rendered to milliseconds (the
-// w9/053 reconnect replay), where it has a different key and possibly a
-// different id. So within one millisecond bucket, the first coarse copy and
-// the first identified record are taken to be the same record, in either
-// arrival order; further identified records in that bucket are distinct
-// (w4/m217), and further coarse copies already share the coarse key.
+// one record, and two different ids are two records. The approximate bucket
+// pairing is only a fallback for a line without an id (an older backend, or an
+// ID-less replay whose stamp lost its nanoseconds, w9/053): within one
+// millisecond bucket, the first ID-less copy and the first identified record
+// are taken to be the same record, in either arrival order. Further identified
+// records in that bucket are distinct (w4/m217), and further ID-less copies
+// already share the bucket key.
 export class LogIdentity {
   private readonly keys = new Set<string>();
   private readonly buckets = new Map<
     string,
-    { fine: number; coarse: number; paired: boolean }
+    { identified: number; anonymous: number; paired: boolean }
   >();
 
   /** Records `line` and reports whether it is new. */
   admit(line: LogLine): boolean {
     if (this.keys.has(line.key)) return false;
-    const bucket = logLineKey(line.timestamp, line.instance, line.message);
+    const bucket = bucketOf(line);
     const entry = this.buckets.get(bucket) ?? {
-      fine: 0,
-      coarse: 0,
+      identified: 0,
+      anonymous: 0,
       paired: false,
     };
-    const fine = line.key.startsWith(ID_KEY_PREFIX);
+    const identified = line.key.startsWith(ID_KEY_PREFIX);
     this.keys.add(line.key);
     this.buckets.set(bucket, entry);
-    if (!entry.paired && (fine ? entry.coarse : entry.fine) > 0) {
+    if (
+      !entry.paired &&
+      (identified ? entry.anonymous : entry.identified) > 0
+    ) {
       entry.paired = true;
       return false;
     }
-    if (fine) entry.fine++;
-    else entry.coarse++;
+    if (identified) entry.identified++;
+    else entry.anonymous++;
     return true;
   }
 
   /** Forgets an evicted line, so a later copy of it is new again. */
   forget(line: LogLine): void {
-    this.keys.delete(line.key);
-    const bucket = logLineKey(line.timestamp, line.instance, line.message);
+    // Idempotent: StrictMode runs the live ring's eviction updater twice, and
+    // a second decrement would empty a bucket whose other record is on screen.
+    if (!this.keys.delete(line.key)) return;
+    const bucket = bucketOf(line);
     const entry = this.buckets.get(bucket);
     if (!entry) return;
-    if (line.key.startsWith(ID_KEY_PREFIX)) entry.fine--;
-    else entry.coarse--;
-    if (entry.fine <= 0 && entry.coarse <= 0) this.buckets.delete(bucket);
+    if (line.key.startsWith(ID_KEY_PREFIX)) entry.identified--;
+    else entry.anonymous--;
+    if (entry.identified <= 0 && entry.anonymous <= 0) {
+      this.buckets.delete(bucket);
+    }
   }
 }
 
