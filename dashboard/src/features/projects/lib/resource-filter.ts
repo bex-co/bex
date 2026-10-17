@@ -100,3 +100,36 @@ export function countProjectResources(
   }
   return counts;
 }
+
+/** A resource family: every filter kind except "all". */
+export type ProjectResourceFamily = Exclude<ProjectResourceKind, "all">;
+
+/**
+ * Whether each family's list has answered (w4/m227). Membership names ids;
+ * only these lists turn them into rows, so an unanswered or failed family's
+ * rows are unknown, never zero.
+ */
+export interface ProjectResourceCatalog {
+  /** Families whose list has not answered yet. */
+  pending: ProjectResourceFamily[];
+  /** Families whose list read failed. */
+  failed: ProjectResourceFamily[];
+  /** Re-reads the failed lists only. */
+  retry: () => Promise<unknown>;
+}
+
+/** Counts as displayed: `null` where the rows are unknown. */
+export type ProjectResourceDisplayCounts = {
+  [K in keyof ProjectResourceCounts]: number | null;
+};
+
+/** Marks unknown families, and therefore the total, as unknown. */
+export function countsWithUnknown(
+  counts: ProjectResourceCounts,
+  unknown: readonly ProjectResourceFamily[],
+): ProjectResourceDisplayCounts {
+  if (unknown.length === 0) return counts;
+  const display: ProjectResourceDisplayCounts = { ...counts, all: null };
+  for (const family of unknown) display[family] = null;
+  return display;
+}

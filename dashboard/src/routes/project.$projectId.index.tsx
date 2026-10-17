@@ -16,13 +16,11 @@ import {
 } from "@/common/components/ui/dialog.tsx";
 import { Input } from "@/common/components/ui/input.tsx";
 import { Label } from "@/common/components/ui/label";
-import { useServices } from "@/features/services/hooks/use-services";
 import { useServiceLifecycle } from "@/features/services/hooks/use-service-lifecycle";
-import { useDatabases } from "@/features/databases/hooks/use-databases";
-import { useKeyValues } from "@/features/keyvalue/hooks/use-key-values";
 import { useGroupedResources } from "@/features/projects/hooks/use-grouped-resources";
 import { useRenameProject } from "@/features/projects/hooks/use-rename-project";
 import { EnvironmentsPanel } from "@/features/environments/components/environments-panel";
+import { useProjectResourceCatalog } from "@/features/projects/hooks/use-project-resource-catalog";
 import {
   parseProjectResourceSearch,
   type ProjectResourceFilterState,
@@ -93,19 +91,13 @@ export function ProjectPage() {
 
   const {
     services,
-    loading: servicesLoading,
-    refetch: refetchServices,
-  } = useServices();
-  const {
     databases,
-    loading: databasesLoading,
-    refetch: refetchDatabases,
-  } = useDatabases();
-  const {
     keyValues,
-    loading: keyValuesLoading,
-    refetch: refetchKeyValues,
-  } = useKeyValues();
+    refetchServices,
+    refetchDatabases,
+    refetchKeyValues,
+    catalog,
+  } = useProjectResourceCatalog();
   const { pending, run } = useServiceLifecycle({ refetch: refetchServices });
   const projectResult = projectRoute.useLoaderData();
   const project =
@@ -187,9 +179,7 @@ export function ProjectPage() {
                 databases={databases}
                 keyValues={keyValues}
                 projectRows={group?.rows ?? []}
-                resourcesLoading={
-                  servicesLoading || databasesLoading || keyValuesLoading
-                }
+                catalog={catalog}
                 servicePending={pending}
                 onRunServiceAction={run}
                 onDatabaseDeleted={refetchAll}

@@ -34,6 +34,13 @@ import {
 } from "@/common/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { UnreadResourcesNotice } from "@/features/environments/components/unread-resources-notice";
+import {
+  NOTHING_UNREAD,
+  environmentMemberIds,
+  unreadFamilies,
+  type UnreadResources,
+} from "@/features/environments/lib/unread-resources";
 import { ResourceTable } from "@/features/projects/components/resource-table";
 import {
   toDatabaseRow,
@@ -61,6 +68,7 @@ import type { EnvGroupView } from "@/features/env-groups/types";
 import { ProjectResourceFilters } from "@/features/projects/components/project-resource-filters";
 import {
   countProjectResources,
+  countsWithUnknown,
   filterProjectResources,
   type ProjectResourceFilterState,
 } from "@/features/projects/lib/resource-filter";
@@ -92,6 +100,8 @@ export interface EnvironmentCardProps {
   allEnvironments?: EnvironmentView[];
   resourceFilter?: ProjectResourceFilterState;
   onResourceFilterChange?: (filter: ProjectResourceFilterState) => void;
+  /** Resource lists that have not answered (w4/m227). */
+  unread?: UnreadResources;
 }
 
 /**
@@ -118,6 +128,7 @@ export function EnvironmentCard({
     kind: "all",
   },
   onResourceFilterChange = () => undefined,
+  unread = NOTHING_UNREAD,
 }: EnvironmentCardProps) {
   const { t } = useTranslations();
 
@@ -185,7 +196,13 @@ export function EnvironmentCard({
     const kept = [...selectedKeys].filter((key) => here.has(key));
     return kept.length === selectedKeys.size ? selectedKeys : new Set(kept);
   }, [rows, selectedKeys]);
-  const counts = countProjectResources(rows);
+  // Families this environment has members of whose list has not answered:
+  // their rows are unknown, so neither they nor the total can read as zero.
+  const memberIds = environmentMemberIds(environment);
+  const unknown = unreadFamilies(unread).filter(
+    (family) => memberIds[family].length > 0,
+  );
+  const counts = countsWithUnknown(countProjectResources(rows), unknown);
   const moveTargets = allEnvironments.filter(
     (candidate) => candidate.id !== environment.id,
   );
@@ -285,9 +302,11 @@ export function EnvironmentCard({
             </Badge>
           ) : null}
           <span className="text-xs font-normal text-muted-foreground">
-            {t("environments.resourceCount", {
-              count: rows.length,
-            })}
+            {counts.all !== null
+              ? t("environments.resourceCount", { count: counts.all })
+              : unknown.some((family) => unread.failed.includes(family))
+                ? t("environments.resourceCountUnknown")
+                : t("environments.resourceCountLoading")}
           </span>
         </CardTitle>
         <CardAction className="flex items-center gap-2">
@@ -338,10 +357,13 @@ export function EnvironmentCard({
             onResourceFilterChange({ ...next, environmentId: environment.id })
           }
         />
+        <UnreadResourcesNotice unread={unread} families={unknown} />
         {rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            {t("environments.cardEmpty")}
-          </p>
+          unknown.length > 0 ? null : (
+            <p className="text-sm text-muted-foreground">
+              {t("environments.cardEmpty")}
+            </p>
+          )
         ) : visibleRows.length === 0 ? (
           <div className="py-6 text-center" role="status">
             <p className="font-medium">{t("projects.noMatchesTitle")}</p>
@@ -466,6 +488,7 @@ export function EnvironmentCard({
         keyValues={keyValues}
         open={assignOpen}
         onOpenChange={setAssignOpen}
+        unread={unread}
       />
       <EnvironmentSettingsDialog
         environment={environment}

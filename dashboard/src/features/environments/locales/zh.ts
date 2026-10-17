@@ -326,6 +326,26 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     message: "保存“{name}”的设置失败。",
     description: "Toast shown when an Environment ACL save fails",
   },
+  "environments.resourceCountLoading": {
+    message: "正在统计…",
+    description:
+      "Environment card header while its resource lists are still loading, instead of a count",
+  },
+  "environments.resourceCountUnknown": {
+    message: "数量不可用",
+    description:
+      "Environment card header when a resource list has not answered, instead of a count",
+  },
+  "environments.resourcesUnavailable": {
+    message: "部分资源加载失败，此环境的内容可能不完整或已过期。",
+    description:
+      "Inline alert on a Project environment card when a resource list failed to load; offers Try again",
+  },
+  "environments.resourcesLoading": {
+    message: "正在加载资源…",
+    description:
+      "Environment card line while its resource lists are still loading, instead of the empty message",
+  },
   "environments.assignmentTitle": {
     message: "项目和环境",
     description: "Shared create-form Project/Environment selector heading",

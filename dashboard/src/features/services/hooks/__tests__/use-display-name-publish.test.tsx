@@ -3,17 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { ApolloClient, ApolloLink, InMemoryCache } from "@apollo/client";
 import { ApolloProvider, useQuery } from "@apollo/client/react";
-import type {
-  DocumentNode,
-  FragmentDefinitionNode,
-  OperationDefinitionNode,
-  SelectionSetNode,
-} from "graphql";
 import { Observable } from "rxjs";
 import { apolloCacheConfig } from "@/common/apollo/cache";
 import { apolloDefaultOptions } from "@/common/apollo/default-options";
 import { ServerDocument, ServicesDocument } from "@/graphql/definitions";
 import { useDisplayName } from "../use-display-name";
+import { blankSelection } from "@/test/mocks/blank-selection";
 
 const invalidate = vi.fn(async () => undefined);
 const toasts = vi.hoisted(() => ({
@@ -42,44 +37,8 @@ vi.mock("@tanstack/react-router", async (original) => ({
  * faked, and the old reads are held in flight across the write.
  */
 
-// Every field a selection set selects, as null: a complete cache write
-// without copying the Server selection set.
-function blank(
-  set: SelectionSetNode,
-  fragments: Map<string, FragmentDefinitionNode>,
-): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  for (const s of set.selections) {
-    if (s.kind === "Field") out[s.alias?.value ?? s.name.value] = null;
-    else if (s.kind === "FragmentSpread")
-      Object.assign(
-        out,
-        blank(fragments.get(s.name.value)!.selectionSet, fragments),
-      );
-    else Object.assign(out, blank(s.selectionSet, fragments));
-  }
-  return out;
-}
-function serviceShape(doc: DocumentNode, field: string) {
-  const fragments = new Map(
-    doc.definitions
-      .filter(
-        (d): d is FragmentDefinitionNode => d.kind === "FragmentDefinition",
-      )
-      .map((d) => [d.name.value, d]),
-  );
-  const op = doc.definitions.find(
-    (d): d is OperationDefinitionNode => d.kind === "OperationDefinition",
-  )!;
-  const root = op.selectionSet.selections.find(
-    (s) => s.kind === "Field" && s.name.value === field,
-  );
-  if (!root || root.kind !== "Field" || !root.selectionSet)
-    throw new Error(field);
-  return blank(root.selectionSet, fragments);
-}
-const SERVER_SHAPE = serviceShape(ServerDocument, "server");
-const SERVICES_SHAPE = serviceShape(ServicesDocument, "services");
+const SERVER_SHAPE = blankSelection(ServerDocument, "server");
+const SERVICES_SHAPE = blankSelection(ServicesDocument, "services");
 
 function fakeApi() {
   const state = { label: "Old label", hold: false, failReads: 0, renames: 0 };
