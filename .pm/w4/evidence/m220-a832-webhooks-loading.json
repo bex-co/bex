@@ -1,0 +1,2143 @@
+{
+  "pass": "a832",
+  "scope": "Webhook list pending geometry only; ready wrapping is an excluded control.",
+  "scripts": {
+    "factory": "function(width){return `async(page)=>{\nawait page.setViewportSize({width:${width},height:844});await page.goto(\"https://dashboard.bex.co/blueprints/new\");await page.waitForTimeout(900);\nlet release,released=false;const gate=new Promise(r=>release=r),captures=[],tasks=[];const pattern=\"https://api.bex.co/graphql\";\nconst handler=async route=>{let q;try{q=route.request().postDataJSON()}catch{await route.continue();return};const qs=Array.isArray(q)?q:[q],i=qs.findIndex(x=>x.operationName===\"WebhookEndpoints\");if(i<0){await route.continue();return};const task=(async()=>{const r=await route.fetch(),body=await r.json();captures.push({request:qs[i],status:r.status(),body:Array.isArray(body)?body[i]:body,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};\nconst measure=()=>page.evaluate(()=>{const rect=e=>{if(!e)return null;const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height}};const pending=document.querySelector('[data-route-skeleton=\"webhooks-list\"]'),card=(pending||document.querySelector(\"main\"))?.querySelector('[data-slot=\"card\"]'),header=card?.querySelector('[data-slot=\"card-header\"]'),content=card?.querySelector('[data-slot=\"card-content\"]'),table=card?.querySelector('table');return{width:innerWidth,docWidth:document.documentElement.scrollWidth,pending:!!pending,frame:rect(pending),card:rect(card),header:rect(header),content:rect(content),title:rect(header?.querySelector('[data-slot=\"card-title\"]')),description:rect(header?.querySelector('[data-slot=\"card-description\"]')),action:rect(header?.querySelector('[data-slot=\"card-action\"]')),search:rect(document.querySelector(\"#webhook-search\")),help:rect(document.querySelector(\"#webhook-search-help\")),headerPlaceholders:header?Array.from(header.querySelectorAll('[data-slot=\"skeleton\"]')).map(e=>rect(e)):[],table:rect(table||content?.firstElementChild),tableWrapper:rect(table?.parentElement),gridColumns:content?.querySelector('[style*=\"grid-template-columns\"]')?.children.length||0,mainText:pending?null:document.querySelector(\"main\")?.innerText};});\nawait page.route(pattern,handler);\ntry{await page.getByRole(\"button\",{name:\"Search\",exact:true}).click();await page.getByRole(\"option\",{name:\"Webhooks\",exact:true}).click();await page.locator('[data-route-skeleton=\"webhooks-list\"]').waitFor({state:\"visible\",timeout:15000});for(let j=0;j<150&&!captures.length;j++)await page.waitForTimeout(100);if(!captures.length)throw Error(\"Real WebhookEndpoints response not captured\");const pending=await measure();await page.screenshot({path:\"qa-a832-webhooks-pending-${width}.png\"});released=true;release();await Promise.allSettled(tasks);await page.getByRole(\"searchbox\",{name:\"Search webhooks\",exact:true}).waitFor({timeout:15000});await page.waitForTimeout(900);const ready=await measure();await page.screenshot({path:\"qa-a832-webhooks-ready-${width}.png\"});return{at:new Date().toISOString(),url:page.url(),captures,pending,ready,unchangedResponses:true};}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);}\n}`}",
+    "probe390": "async(page)=>{\nawait page.setViewportSize({width:390,height:844});await page.goto(\"https://dashboard.bex.co/blueprints/new\");await page.waitForTimeout(900);\nlet release,released=false;const gate=new Promise(r=>release=r),captures=[],tasks=[];const pattern=\"https://api.bex.co/graphql\";\nconst handler=async route=>{let q;try{q=route.request().postDataJSON()}catch{await route.continue();return};const qs=Array.isArray(q)?q:[q],i=qs.findIndex(x=>x.operationName===\"WebhookEndpoints\");if(i<0){await route.continue();return};const task=(async()=>{const r=await route.fetch(),body=await r.json();captures.push({request:qs[i],status:r.status(),body:Array.isArray(body)?body[i]:body,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};\nconst measure=()=>page.evaluate(()=>{const rect=e=>{if(!e)return null;const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height}};const pending=document.querySelector('[data-route-skeleton=\"webhooks-list\"]'),card=(pending||document.querySelector(\"main\"))?.querySelector('[data-slot=\"card\"]'),header=card?.querySelector('[data-slot=\"card-header\"]'),content=card?.querySelector('[data-slot=\"card-content\"]'),table=card?.querySelector('table');return{width:innerWidth,docWidth:document.documentElement.scrollWidth,pending:!!pending,frame:rect(pending),card:rect(card),header:rect(header),content:rect(content),title:rect(header?.querySelector('[data-slot=\"card-title\"]')),description:rect(header?.querySelector('[data-slot=\"card-description\"]')),action:rect(header?.querySelector('[data-slot=\"card-action\"]')),search:rect(document.querySelector(\"#webhook-search\")),help:rect(document.querySelector(\"#webhook-search-help\")),headerPlaceholders:header?Array.from(header.querySelectorAll('[data-slot=\"skeleton\"]')).map(e=>rect(e)):[],table:rect(table||content?.firstElementChild),tableWrapper:rect(table?.parentElement),gridColumns:content?.querySelector('[style*=\"grid-template-columns\"]')?.children.length||0,mainText:pending?null:document.querySelector(\"main\")?.innerText};});\nawait page.route(pattern,handler);\ntry{await page.getByRole(\"button\",{name:\"Search\",exact:true}).click();await page.getByRole(\"option\",{name:\"Webhooks\",exact:true}).click();await page.locator('[data-route-skeleton=\"webhooks-list\"]').waitFor({state:\"visible\",timeout:15000});for(let j=0;j<150&&!captures.length;j++)await page.waitForTimeout(100);if(!captures.length)throw Error(\"Real WebhookEndpoints response not captured\");const pending=await measure();await page.screenshot({path:\"qa-a832-webhooks-pending-390.png\"});released=true;release();await Promise.allSettled(tasks);await page.getByRole(\"searchbox\",{name:\"Search webhooks\",exact:true}).waitFor({timeout:15000});await page.waitForTimeout(900);const ready=await measure();await page.screenshot({path:\"qa-a832-webhooks-ready-390.png\"});return{at:new Date().toISOString(),url:page.url(),captures,pending,ready,unchangedResponses:true};}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);}\n}",
+    "probe1440": "async(page)=>{\nawait page.setViewportSize({width:1440,height:844});await page.goto(\"https://dashboard.bex.co/blueprints/new\");await page.waitForTimeout(900);\nlet release,released=false;const gate=new Promise(r=>release=r),captures=[],tasks=[];const pattern=\"https://api.bex.co/graphql\";\nconst handler=async route=>{let q;try{q=route.request().postDataJSON()}catch{await route.continue();return};const qs=Array.isArray(q)?q:[q],i=qs.findIndex(x=>x.operationName===\"WebhookEndpoints\");if(i<0){await route.continue();return};const task=(async()=>{const r=await route.fetch(),body=await r.json();captures.push({request:qs[i],status:r.status(),body:Array.isArray(body)?body[i]:body,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};\nconst measure=()=>page.evaluate(()=>{const rect=e=>{if(!e)return null;const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height}};const pending=document.querySelector('[data-route-skeleton=\"webhooks-list\"]'),card=(pending||document.querySelector(\"main\"))?.querySelector('[data-slot=\"card\"]'),header=card?.querySelector('[data-slot=\"card-header\"]'),content=card?.querySelector('[data-slot=\"card-content\"]'),table=card?.querySelector('table');return{width:innerWidth,docWidth:document.documentElement.scrollWidth,pending:!!pending,frame:rect(pending),card:rect(card),header:rect(header),content:rect(content),title:rect(header?.querySelector('[data-slot=\"card-title\"]')),description:rect(header?.querySelector('[data-slot=\"card-description\"]')),action:rect(header?.querySelector('[data-slot=\"card-action\"]')),search:rect(document.querySelector(\"#webhook-search\")),help:rect(document.querySelector(\"#webhook-search-help\")),headerPlaceholders:header?Array.from(header.querySelectorAll('[data-slot=\"skeleton\"]')).map(e=>rect(e)):[],table:rect(table||content?.firstElementChild),tableWrapper:rect(table?.parentElement),gridColumns:content?.querySelector('[style*=\"grid-template-columns\"]')?.children.length||0,mainText:pending?null:document.querySelector(\"main\")?.innerText};});\nawait page.route(pattern,handler);\ntry{await page.getByRole(\"button\",{name:\"Search\",exact:true}).click();await page.getByRole(\"option\",{name:\"Webhooks\",exact:true}).click();await page.locator('[data-route-skeleton=\"webhooks-list\"]').waitFor({state:\"visible\",timeout:15000});for(let j=0;j<150&&!captures.length;j++)await page.waitForTimeout(100);if(!captures.length)throw Error(\"Real WebhookEndpoints response not captured\");const pending=await measure();await page.screenshot({path:\"qa-a832-webhooks-pending-1440.png\"});released=true;release();await Promise.allSettled(tasks);await page.getByRole(\"searchbox\",{name:\"Search webhooks\",exact:true}).waitFor({timeout:15000});await page.waitForTimeout(900);const ready=await measure();await page.screenshot({path:\"qa-a832-webhooks-ready-1440.png\"});return{at:new Date().toISOString(),url:page.url(),captures,pending,ready,unchangedResponses:true};}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);}\n}",
+    "repeat390": "async(page)=>{\nawait page.setViewportSize({width:390,height:844});await page.goto(\"https://dashboard.bex.co/blueprints/new\");await page.waitForTimeout(900);\nlet release,released=false;const gate=new Promise(r=>release=r),captures=[],tasks=[];const pattern=\"https://api.bex.co/graphql\";\nconst handler=async route=>{let q;try{q=route.request().postDataJSON()}catch{await route.continue();return};const qs=Array.isArray(q)?q:[q],i=qs.findIndex(x=>x.operationName===\"WebhookEndpoints\");if(i<0){await route.continue();return};const task=(async()=>{const r=await route.fetch(),body=await r.json();captures.push({request:qs[i],status:r.status(),body:Array.isArray(body)?body[i]:body,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};\nconst measure=()=>page.evaluate(()=>{const rect=e=>{if(!e)return null;const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height}};const pending=document.querySelector('[data-route-skeleton=\"webhooks-list\"]'),card=(pending||document.querySelector(\"main\"))?.querySelector('[data-slot=\"card\"]'),header=card?.querySelector('[data-slot=\"card-header\"]'),content=card?.querySelector('[data-slot=\"card-content\"]'),table=card?.querySelector('table');return{width:innerWidth,docWidth:document.documentElement.scrollWidth,pending:!!pending,frame:rect(pending),card:rect(card),header:rect(header),content:rect(content),title:rect(header?.querySelector('[data-slot=\"card-title\"]')),description:rect(header?.querySelector('[data-slot=\"card-description\"]')),action:rect(header?.querySelector('[data-slot=\"card-action\"]')),search:rect(document.querySelector(\"#webhook-search\")),help:rect(document.querySelector(\"#webhook-search-help\")),headerPlaceholders:header?Array.from(header.querySelectorAll('[data-slot=\"skeleton\"]')).map(e=>rect(e)):[],table:rect(table||content?.firstElementChild),tableWrapper:rect(table?.parentElement),gridColumns:content?.querySelector('[style*=\"grid-template-columns\"]')?.children.length||0,mainText:pending?null:document.querySelector(\"main\")?.innerText};});\nawait page.route(pattern,handler);\ntry{await page.getByRole(\"button\",{name:\"Search\",exact:true}).click();await page.getByRole(\"option\",{name:\"Webhooks\",exact:true}).click();await page.locator('[data-route-skeleton=\"webhooks-list\"]').waitFor({state:\"visible\",timeout:15000});for(let j=0;j<150&&!captures.length;j++)await page.waitForTimeout(100);if(!captures.length)throw Error(\"Real WebhookEndpoints response not captured\");const pending=await measure();await page.screenshot({path:\"qa-a832-webhooks-pending-390.png\"});released=true;release();await Promise.allSettled(tasks);await page.getByRole(\"searchbox\",{name:\"Search webhooks\",exact:true}).waitFor({timeout:15000});await page.waitForTimeout(900);const ready=await measure();await page.screenshot({path:\"qa-a832-webhooks-ready-390.png\"});return{at:new Date().toISOString(),url:page.url(),captures,pending,ready,unchangedResponses:true};}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);}\n}",
+    "readyHeaders390": "async(page)=>{await page.setViewportSize({width:390,height:844});await page.goto('https://dashboard.bex.co/webhooks');await page.getByRole('columnheader',{name:'Endpoint',exact:true}).waitFor({timeout:15000});await page.waitForTimeout(1200);const measure=()=>page.evaluate(()=>{const t=document.querySelector('main table'),rect=e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height}};return{width:innerWidth,docWidth:document.documentElement.scrollWidth,table:rect(t),container:rect(t.parentElement),scrollWidth:t.parentElement.scrollWidth,headers:Array.from(t.querySelectorAll('th')).map(e=>{const s=getComputedStyle(e);const chars=[];for(let j=0;j<(e.firstChild?.textContent||'').length;j++){const r=document.createRange();try{r.setStart(e.firstChild,j);r.setEnd(e.firstChild,j+1);const x=r.getBoundingClientRect();chars.push({char:e.firstChild.textContent[j],y:x.y,height:x.height})}catch{}}return{text:e.textContent,...rect(e),whiteSpace:s.whiteSpace,overflowWrap:s.overflowWrap,wordBreak:s.wordBreak,lineHeight:s.lineHeight,chars}})}});const initial=await measure();await page.locator('main [data-slot=\"table-container\"]').evaluate(e=>e.scrollLeft=e.scrollWidth);await page.screenshot({path:'qa-a832-webhooks-mobile-right.png'});const afterScroll=await measure();return{at:new Date().toISOString(),initial,afterScroll};}",
+    "readyHeaders1440": "async(page)=>{await page.setViewportSize({width:1440,height:1000});await page.goto('https://dashboard.bex.co/webhooks');await page.getByRole('columnheader',{name:'Endpoint',exact:true}).waitFor({timeout:15000});await page.waitForTimeout(1200);const measure=()=>page.evaluate(()=>{const t=document.querySelector('main table'),rect=e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height}};return{width:innerWidth,docWidth:document.documentElement.scrollWidth,table:rect(t),container:rect(t.parentElement),scrollWidth:t.parentElement.scrollWidth,headers:Array.from(t.querySelectorAll('th')).map(e=>{const s=getComputedStyle(e);const chars=[];for(let j=0;j<(e.firstChild?.textContent||'').length;j++){const r=document.createRange();try{r.setStart(e.firstChild,j);r.setEnd(e.firstChild,j+1);const x=r.getBoundingClientRect();chars.push({char:e.firstChild.textContent[j],y:x.y,height:x.height})}catch{}}return{text:e.textContent,...rect(e),whiteSpace:s.whiteSpace,overflowWrap:s.overflowWrap,wordBreak:s.wordBreak,lineHeight:s.lineHeight,chars}})}});const initial=await measure();await page.locator('main [data-slot=\"table-container\"]').evaluate(e=>e.scrollLeft=e.scrollWidth);await page.screenshot({path:'qa-a832-webhooks-desktop.png'});const afterScroll=await measure();return{at:new Date().toISOString(),initial,afterScroll};}"
+  },
+  "receipts": {
+    "a832Created": {
+      "at": "2026-10-17T02:50:27.143Z",
+      "request": {
+        "operationName": "CreateService",
+        "variables": {
+          "image": "node:24-alpine",
+          "name": "qa-20261016-a832-hook",
+          "type": "web_service",
+          "registryCredentialId": "",
+          "runtime": "image",
+          "startCommand": "node -e 'require(\"http\").createServer((q,s)=>{s.setHeader(\"Content-Type\",\"text/plain\");s.end(\"qa-a832 receiver\\n\")}).listen(process.env.PORT||8132,\"0.0.0.0\")'",
+          "plan": "free",
+          "port": 8132,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db9e4scfcf2c73c2mp40",
+            "latestDeployId": "dep-db9e4scfcf2c73c2mp4g",
+            "name": "qa-20261016-a832-hook",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": "",
+            "type": "web_service"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792205424883.193,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.162,
+        "responseStart": 1552.898,
+        "responseEnd": 1553.359
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9e4scfcf2c73c2mp40/deploys/dep-db9e4scfcf2c73c2mp4g"
+    },
+    "a832WebhookCreatedSafe": {
+      "at": "2026-10-17T02:50:49.644Z",
+      "request": {
+        "operationName": "CreateWebhookEndpoint",
+        "variables": {
+          "name": "qa-20261016-a832-delivery",
+          "url": "https://qa-20261016-a832-hook.onbex.co/hook",
+          "eventTypes": ["deploy_ended"],
+          "enabled": false,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateWebhookEndpoint($ownerId: String, $name: String, $url: String!, $eventTypes: [String]!, $enabled: Boolean) {\n  createWebhookEndpoint(\n    ownerId: $ownerId\n    name: $name\n    url: $url\n    eventTypes: $eventTypes\n    enabled: $enabled\n  ) {\n    id\n    name\n    url\n    eventTypes\n    enabled\n    secret\n    createdAt\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "result": {
+        "id": "whk-db9e52cfcf2c73c2mp60",
+        "name": "qa-20261016-a832-delivery",
+        "url": "https://qa-20261016-a832-hook.onbex.co/hook",
+        "eventTypes": ["deploy_ended"],
+        "enabled": false,
+        "createdAt": "2026-10-17T02:50:49Z"
+      },
+      "errors": [],
+      "oneTimeSecretOmitted": true,
+      "timing": {
+        "startTime": 1792205449264.9998,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.137,
+        "responseStart": 373.333,
+        "responseEnd": 373.815
+      }
+    },
+    "a832DesktopHeaders": {
+      "at": "2026-10-17T02:51:16.283Z",
+      "initial": {
+        "width": 1440,
+        "docWidth": 1440,
+        "table": {
+          "x": 533,
+          "y": 263,
+          "width": 630,
+          "height": 88.5
+        },
+        "container": {
+          "x": 533,
+          "y": 263,
+          "width": 630,
+          "height": 88.5
+        },
+        "scrollWidth": 630,
+        "headers": [
+          {
+            "text": "Endpoint",
+            "x": 533,
+            "y": 263,
+            "width": 246.640625,
+            "height": 36,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "E",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "p",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 271.75,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Events",
+            "x": 779.640625,
+            "y": 263,
+            "width": 125.390625,
+            "height": 36,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "E",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "v",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 271.75,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Latest delivery",
+            "x": 905.03125,
+            "y": 263,
+            "width": 124.59375,
+            "height": 36,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "L",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "l",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "v",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "y",
+                "y": 271.75,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Enabled",
+            "x": 1029.625,
+            "y": 263,
+            "width": 76.09375,
+            "height": 36,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "E",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "b",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "l",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 271.75,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Actions",
+            "x": 1104.71875,
+            "y": 262,
+            "width": 16,
+            "height": 36,
+            "whiteSpace": "nowrap",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "A",
+                "y": 263,
+                "height": 17
+              },
+              {
+                "char": "c",
+                "y": 263,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 263,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 263,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 263,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 263,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 263,
+                "height": 17
+              }
+            ]
+          }
+        ]
+      },
+      "afterScroll": {
+        "width": 1440,
+        "docWidth": 1440,
+        "table": {
+          "x": 533,
+          "y": 263,
+          "width": 630,
+          "height": 88.5
+        },
+        "container": {
+          "x": 533,
+          "y": 263,
+          "width": 630,
+          "height": 88.5
+        },
+        "scrollWidth": 630,
+        "headers": [
+          {
+            "text": "Endpoint",
+            "x": 533,
+            "y": 263,
+            "width": 246.640625,
+            "height": 36,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "E",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "p",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 271.75,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Events",
+            "x": 779.640625,
+            "y": 263,
+            "width": 125.390625,
+            "height": 36,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "E",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "v",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 271.75,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Latest delivery",
+            "x": 905.03125,
+            "y": 263,
+            "width": 124.59375,
+            "height": 36,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "L",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "l",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "v",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "y",
+                "y": 271.75,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Enabled",
+            "x": 1029.625,
+            "y": 263,
+            "width": 76.09375,
+            "height": 36,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "E",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "b",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "l",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 271.75,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 271.75,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Actions",
+            "x": 1104.71875,
+            "y": 262,
+            "width": 16,
+            "height": 36,
+            "whiteSpace": "nowrap",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "A",
+                "y": 263,
+                "height": 17
+              },
+              {
+                "char": "c",
+                "y": 263,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 263,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 263,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 263,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 263,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 263,
+                "height": 17
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "a832MobileHeaders": {
+      "at": "2026-10-17T02:51:19.578Z",
+      "initial": {
+        "width": 390,
+        "docWidth": 390,
+        "table": {
+          "x": 37,
+          "y": 335,
+          "width": 538.359375,
+          "height": 93
+        },
+        "container": {
+          "x": 37,
+          "y": 335,
+          "width": 316,
+          "height": 93
+        },
+        "scrollWidth": 538,
+        "headers": [
+          {
+            "text": "Endpoint",
+            "x": 37,
+            "y": 335,
+            "width": 224,
+            "height": 40.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "E",
+                "y": 346,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 346,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 346,
+                "height": 17
+              },
+              {
+                "char": "p",
+                "y": 346,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 346,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 346,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 346,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 346,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Events",
+            "x": 261,
+            "y": 335,
+            "width": 113.875,
+            "height": 40.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "E",
+                "y": 346,
+                "height": 17
+              },
+              {
+                "char": "v",
+                "y": 346,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 346,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 346,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 346,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 346,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Latest delivery",
+            "x": 374.875,
+            "y": 335,
+            "width": 96.484375,
+            "height": 40.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "L",
+                "y": 336,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 336,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 336,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 336,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 336,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 336,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 336,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 356,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 356,
+                "height": 17
+              },
+              {
+                "char": "l",
+                "y": 356,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 356,
+                "height": 17
+              },
+              {
+                "char": "v",
+                "y": 356,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 356,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 356,
+                "height": 17
+              },
+              {
+                "char": "y",
+                "y": 356,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Enabled",
+            "x": 471.359375,
+            "y": 335,
+            "width": 52,
+            "height": 40.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "E",
+                "y": 336,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 336,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 336,
+                "height": 17
+              },
+              {
+                "char": "b",
+                "y": 336,
+                "height": 17
+              },
+              {
+                "char": "l",
+                "y": 356,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 356,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 356,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Actions",
+            "x": 522.359375,
+            "y": 334,
+            "width": 16,
+            "height": 36,
+            "whiteSpace": "nowrap",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "A",
+                "y": 335,
+                "height": 17
+              },
+              {
+                "char": "c",
+                "y": 335,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 335,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 335,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 335,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 335,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 335,
+                "height": 17
+              }
+            ]
+          }
+        ]
+      },
+      "afterScroll": {
+        "width": 390,
+        "docWidth": 390,
+        "table": {
+          "x": -185,
+          "y": 335,
+          "width": 538.359375,
+          "height": 93
+        },
+        "container": {
+          "x": 37,
+          "y": 335,
+          "width": 316,
+          "height": 93
+        },
+        "scrollWidth": 538,
+        "headers": [
+          {
+            "text": "Endpoint",
+            "x": -185,
+            "y": 335,
+            "width": 224,
+            "height": 40.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "E",
+                "y": 346,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 346,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 346,
+                "height": 17
+              },
+              {
+                "char": "p",
+                "y": 346,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 346,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 346,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 346,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 346,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Events",
+            "x": 39,
+            "y": 335,
+            "width": 113.875,
+            "height": 40.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "E",
+                "y": 346,
+                "height": 17
+              },
+              {
+                "char": "v",
+                "y": 346,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 346,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 346,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 346,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 346,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Latest delivery",
+            "x": 152.875,
+            "y": 335,
+            "width": 96.484375,
+            "height": 40.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "L",
+                "y": 336,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 336,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 336,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 336,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 336,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 336,
+                "height": 17
+              },
+              {
+                "char": " ",
+                "y": 336,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 356,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 356,
+                "height": 17
+              },
+              {
+                "char": "l",
+                "y": 356,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 356,
+                "height": 17
+              },
+              {
+                "char": "v",
+                "y": 356,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 356,
+                "height": 17
+              },
+              {
+                "char": "r",
+                "y": 356,
+                "height": 17
+              },
+              {
+                "char": "y",
+                "y": 356,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Enabled",
+            "x": 249.359375,
+            "y": 335,
+            "width": 52,
+            "height": 40.5,
+            "whiteSpace": "normal",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "E",
+                "y": 336,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 336,
+                "height": 17
+              },
+              {
+                "char": "a",
+                "y": 336,
+                "height": 17
+              },
+              {
+                "char": "b",
+                "y": 336,
+                "height": 17
+              },
+              {
+                "char": "l",
+                "y": 356,
+                "height": 17
+              },
+              {
+                "char": "e",
+                "y": 356,
+                "height": 17
+              },
+              {
+                "char": "d",
+                "y": 356,
+                "height": 17
+              }
+            ]
+          },
+          {
+            "text": "Actions",
+            "x": 300.359375,
+            "y": 334,
+            "width": 16,
+            "height": 36,
+            "whiteSpace": "nowrap",
+            "overflowWrap": "anywhere",
+            "wordBreak": "normal",
+            "lineHeight": "20px",
+            "chars": [
+              {
+                "char": "A",
+                "y": 335,
+                "height": 17
+              },
+              {
+                "char": "c",
+                "y": 335,
+                "height": 17
+              },
+              {
+                "char": "t",
+                "y": 335,
+                "height": 17
+              },
+              {
+                "char": "i",
+                "y": 335,
+                "height": 17
+              },
+              {
+                "char": "o",
+                "y": 335,
+                "height": 17
+              },
+              {
+                "char": "n",
+                "y": 335,
+                "height": 17
+              },
+              {
+                "char": "s",
+                "y": 335,
+                "height": 17
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "a832Pending390V2": {
+      "at": "2026-10-17T02:52:18.554Z",
+      "url": "https://dashboard.bex.co/webhooks",
+      "captures": [
+        {
+          "request": {
+            "operationName": "WebhookEndpoints",
+            "variables": {
+              "ownerId": "tea-d98210cbbpdc73dcrkvg"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query WebhookEndpoints($ownerId: String) {\n  webhookEndpoints(ownerId: $ownerId) {\n    id\n    name\n    url\n    eventTypes\n    enabled\n    disabledReason\n    createdAt\n    latestStatus\n    latestSentAt\n    latestParentStatus\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "webhookEndpoints": [
+                {
+                  "__typename": "WebhookEndpoint",
+                  "createdAt": "2026-10-17T02:50:49Z",
+                  "disabledReason": "",
+                  "enabled": false,
+                  "eventTypes": ["deploy_ended"],
+                  "id": "whk-db9e52cfcf2c73c2mp60",
+                  "latestParentStatus": "",
+                  "latestSentAt": "",
+                  "latestStatus": "",
+                  "name": "qa-20261016-a832-delivery",
+                  "url": "https://qa-20261016-a832-hook.onbex.co/hook"
+                }
+              ]
+            }
+          },
+          "delayApplied": true
+        }
+      ],
+      "pending": {
+        "width": 390,
+        "docWidth": 390,
+        "pending": true,
+        "frame": {
+          "x": 0,
+          "y": 48,
+          "width": 390,
+          "height": 796
+        },
+        "card": {
+          "x": 16,
+          "y": 64,
+          "width": 358,
+          "height": 369
+        },
+        "header": {
+          "x": 17,
+          "y": 85,
+          "width": 356,
+          "height": 104
+        },
+        "content": {
+          "x": 17,
+          "y": 205,
+          "width": 356,
+          "height": 207
+        },
+        "title": null,
+        "description": null,
+        "action": null,
+        "search": null,
+        "help": null,
+        "headerPlaceholders": [
+          {
+            "x": 37,
+            "y": 85,
+            "width": 160,
+            "height": 20
+          },
+          {
+            "x": 37,
+            "y": 113,
+            "width": 256,
+            "height": 16
+          },
+          {
+            "x": 305,
+            "y": 85,
+            "width": 96,
+            "height": 32
+          },
+          {
+            "x": 37,
+            "y": 145,
+            "width": 364,
+            "height": 0
+          },
+          {
+            "x": 37,
+            "y": 153,
+            "width": 364,
+            "height": 36
+          }
+        ],
+        "table": {
+          "x": 37,
+          "y": 205,
+          "width": 316,
+          "height": 207
+        },
+        "tableWrapper": null,
+        "gridColumns": 5,
+        "mainText": null
+      },
+      "ready": {
+        "width": 390,
+        "docWidth": 390,
+        "pending": false,
+        "frame": null,
+        "card": {
+          "x": 16,
+          "y": 64,
+          "width": 358,
+          "height": 385
+        },
+        "header": {
+          "x": 17,
+          "y": 85,
+          "width": 356,
+          "height": 160
+        },
+        "content": {
+          "x": 17,
+          "y": 261,
+          "width": 356,
+          "height": 167
+        },
+        "title": {
+          "x": 37,
+          "y": 85,
+          "width": 178.046875,
+          "height": 16
+        },
+        "description": {
+          "x": 37,
+          "y": 105,
+          "width": 178.046875,
+          "height": 140
+        },
+        "action": {
+          "x": 219.046875,
+          "y": 85,
+          "width": 133.953125,
+          "height": 32
+        },
+        "search": {
+          "x": 37,
+          "y": 261,
+          "width": 316,
+          "height": 36
+        },
+        "help": {
+          "x": 37,
+          "y": 303,
+          "width": 316,
+          "height": 16
+        },
+        "headerPlaceholders": [],
+        "table": {
+          "x": 37,
+          "y": 335,
+          "width": 538.359375,
+          "height": 93
+        },
+        "tableWrapper": {
+          "x": 37,
+          "y": 335,
+          "width": 316,
+          "height": 93
+        },
+        "gridColumns": 0,
+        "mainText": "Toggle Sidebar\nWebhooks\nNew\nP\nWebhooks\nPush signed event notifications (deploys, suspends, restarts, scaling) to your own endpoints — no polling. The signing secret is shown once at creation.\nAdd webhook\nSearch webhooks\n\nSearch by name, destination, or event\n\nEndpoint\tEvents\tLatest delivery\tEnabled\t\nActions\n\n\nqa-20261016-a832-delivery\nhttps://qa-20261016-a832-hook.onbex.co/hook\n\t\nDeploy Ended\n\t\nNever sent\n\t\n\t"
+      },
+      "unchangedResponses": true
+    },
+    "a832Pending1440V2": {
+      "at": "2026-10-17T02:52:24.641Z",
+      "url": "https://dashboard.bex.co/webhooks",
+      "captures": [
+        {
+          "request": {
+            "operationName": "WebhookEndpoints",
+            "variables": {
+              "ownerId": "tea-d98210cbbpdc73dcrkvg"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query WebhookEndpoints($ownerId: String) {\n  webhookEndpoints(ownerId: $ownerId) {\n    id\n    name\n    url\n    eventTypes\n    enabled\n    disabledReason\n    createdAt\n    latestStatus\n    latestSentAt\n    latestParentStatus\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "webhookEndpoints": [
+                {
+                  "__typename": "WebhookEndpoint",
+                  "createdAt": "2026-10-17T02:50:49Z",
+                  "disabledReason": "",
+                  "enabled": false,
+                  "eventTypes": ["deploy_ended"],
+                  "id": "whk-db9e52cfcf2c73c2mp60",
+                  "latestParentStatus": "",
+                  "latestSentAt": "",
+                  "latestStatus": "",
+                  "name": "qa-20261016-a832-delivery",
+                  "url": "https://qa-20261016-a832-hook.onbex.co/hook"
+                }
+              ]
+            }
+          },
+          "delayApplied": true
+        }
+      ],
+      "pending": {
+        "width": 1440,
+        "docWidth": 1440,
+        "pending": true,
+        "frame": {
+          "x": 256,
+          "y": 48,
+          "width": 1184,
+          "height": 796
+        },
+        "card": {
+          "x": 512,
+          "y": 72,
+          "width": 672,
+          "height": 361
+        },
+        "header": {
+          "x": 513,
+          "y": 93,
+          "width": 670,
+          "height": 96
+        },
+        "content": {
+          "x": 513,
+          "y": 205,
+          "width": 670,
+          "height": 207
+        },
+        "title": null,
+        "description": null,
+        "action": null,
+        "search": null,
+        "help": null,
+        "headerPlaceholders": [
+          {
+            "x": 533,
+            "y": 93,
+            "width": 160,
+            "height": 20
+          },
+          {
+            "x": 533,
+            "y": 121,
+            "width": 256,
+            "height": 16
+          },
+          {
+            "x": 1067,
+            "y": 93,
+            "width": 96,
+            "height": 32
+          },
+          {
+            "x": 533,
+            "y": 153,
+            "width": 446,
+            "height": 36
+          },
+          {
+            "x": 987,
+            "y": 153,
+            "width": 176,
+            "height": 36
+          }
+        ],
+        "table": {
+          "x": 533,
+          "y": 205,
+          "width": 630,
+          "height": 207
+        },
+        "tableWrapper": null,
+        "gridColumns": 5,
+        "mainText": null
+      },
+      "ready": {
+        "width": 1440,
+        "docWidth": 1440,
+        "pending": false,
+        "frame": null,
+        "card": {
+          "x": 512,
+          "y": 72,
+          "width": 672,
+          "height": 300.5
+        },
+        "header": {
+          "x": 513,
+          "y": 93,
+          "width": 670,
+          "height": 80
+        },
+        "content": {
+          "x": 513,
+          "y": 189,
+          "width": 670,
+          "height": 162.5
+        },
+        "title": {
+          "x": 533,
+          "y": 93,
+          "width": 492.046875,
+          "height": 16
+        },
+        "description": {
+          "x": 533,
+          "y": 113,
+          "width": 492.046875,
+          "height": 60
+        },
+        "action": {
+          "x": 1029.046875,
+          "y": 93,
+          "width": 133.953125,
+          "height": 32
+        },
+        "search": {
+          "x": 533,
+          "y": 189,
+          "width": 448,
+          "height": 36
+        },
+        "help": {
+          "x": 533,
+          "y": 231,
+          "width": 448,
+          "height": 16
+        },
+        "headerPlaceholders": [],
+        "table": {
+          "x": 533,
+          "y": 263,
+          "width": 630,
+          "height": 88.5
+        },
+        "tableWrapper": {
+          "x": 533,
+          "y": 263,
+          "width": 630,
+          "height": 88.5
+        },
+        "gridColumns": 0,
+        "mainText": "Webhooks\nSearch\n⌘ K\nNew\nP\nWebhooks\nPush signed event notifications (deploys, suspends, restarts, scaling) to your own endpoints — no polling. The signing secret is shown once at creation.\nAdd webhook\nSearch webhooks\n\nSearch by name, destination, or event\n\nEndpoint\tEvents\tLatest delivery\tEnabled\t\nActions\n\n\nqa-20261016-a832-delivery\nhttps://qa-20261016-a832-hook.onbex.co/hook\n\t\nDeploy Ended\n\t\nNever sent\n\t\n\t"
+      },
+      "unchangedResponses": true
+    },
+    "a832Pending390Repeat": {
+      "at": "2026-10-17T02:53:18.349Z",
+      "url": "https://dashboard.bex.co/webhooks",
+      "captures": [
+        {
+          "request": {
+            "operationName": "WebhookEndpoints",
+            "variables": {
+              "ownerId": "tea-d98210cbbpdc73dcrkvg"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query WebhookEndpoints($ownerId: String) {\n  webhookEndpoints(ownerId: $ownerId) {\n    id\n    name\n    url\n    eventTypes\n    enabled\n    disabledReason\n    createdAt\n    latestStatus\n    latestSentAt\n    latestParentStatus\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "webhookEndpoints": [
+                {
+                  "__typename": "WebhookEndpoint",
+                  "createdAt": "2026-10-17T02:50:49Z",
+                  "disabledReason": "",
+                  "enabled": false,
+                  "eventTypes": ["deploy_ended"],
+                  "id": "whk-db9e52cfcf2c73c2mp60",
+                  "latestParentStatus": "",
+                  "latestSentAt": "",
+                  "latestStatus": "",
+                  "name": "qa-20261016-a832-delivery",
+                  "url": "https://qa-20261016-a832-hook.onbex.co/hook"
+                }
+              ]
+            }
+          },
+          "delayApplied": true
+        }
+      ],
+      "pending": {
+        "width": 390,
+        "docWidth": 390,
+        "pending": true,
+        "frame": {
+          "x": 0,
+          "y": 48,
+          "width": 390,
+          "height": 796
+        },
+        "card": {
+          "x": 16,
+          "y": 64,
+          "width": 358,
+          "height": 369
+        },
+        "header": {
+          "x": 17,
+          "y": 85,
+          "width": 356,
+          "height": 104
+        },
+        "content": {
+          "x": 17,
+          "y": 205,
+          "width": 356,
+          "height": 207
+        },
+        "title": null,
+        "description": null,
+        "action": null,
+        "search": null,
+        "help": null,
+        "headerPlaceholders": [
+          {
+            "x": 37,
+            "y": 85,
+            "width": 160,
+            "height": 20
+          },
+          {
+            "x": 37,
+            "y": 113,
+            "width": 256,
+            "height": 16
+          },
+          {
+            "x": 305,
+            "y": 85,
+            "width": 96,
+            "height": 32
+          },
+          {
+            "x": 37,
+            "y": 145,
+            "width": 364,
+            "height": 0
+          },
+          {
+            "x": 37,
+            "y": 153,
+            "width": 364,
+            "height": 36
+          }
+        ],
+        "table": {
+          "x": 37,
+          "y": 205,
+          "width": 316,
+          "height": 207
+        },
+        "tableWrapper": null,
+        "gridColumns": 5,
+        "mainText": null
+      },
+      "ready": {
+        "width": 390,
+        "docWidth": 390,
+        "pending": false,
+        "frame": null,
+        "card": {
+          "x": 16,
+          "y": 64,
+          "width": 358,
+          "height": 385
+        },
+        "header": {
+          "x": 17,
+          "y": 85,
+          "width": 356,
+          "height": 160
+        },
+        "content": {
+          "x": 17,
+          "y": 261,
+          "width": 356,
+          "height": 167
+        },
+        "title": {
+          "x": 37,
+          "y": 85,
+          "width": 178.046875,
+          "height": 16
+        },
+        "description": {
+          "x": 37,
+          "y": 105,
+          "width": 178.046875,
+          "height": 140
+        },
+        "action": {
+          "x": 219.046875,
+          "y": 85,
+          "width": 133.953125,
+          "height": 32
+        },
+        "search": {
+          "x": 37,
+          "y": 261,
+          "width": 316,
+          "height": 36
+        },
+        "help": {
+          "x": 37,
+          "y": 303,
+          "width": 316,
+          "height": 16
+        },
+        "headerPlaceholders": [],
+        "table": {
+          "x": 37,
+          "y": 335,
+          "width": 538.359375,
+          "height": 93
+        },
+        "tableWrapper": {
+          "x": 37,
+          "y": 335,
+          "width": 316,
+          "height": 93
+        },
+        "gridColumns": 0,
+        "mainText": "Toggle Sidebar\nWebhooks\nNew\nP\nWebhooks\nPush signed event notifications (deploys, suspends, restarts, scaling) to your own endpoints — no polling. The signing secret is shown once at creation.\nAdd webhook\nSearch webhooks\n\nSearch by name, destination, or event\n\nEndpoint\tEvents\tLatest delivery\tEnabled\t\nActions\n\n\nqa-20261016-a832-delivery\nhttps://qa-20261016-a832-hook.onbex.co/hook\n\t\nDeploy Ended\n\t\nNever sent\n\t\n\t"
+      },
+      "unchangedResponses": true
+    },
+    "a832WebhookDeleted": {
+      "at": "2026-10-17T02:53:30.980Z",
+      "request": {
+        "operationName": "DeleteWebhookEndpoint",
+        "variables": {
+          "id": "whk-db9e52cfcf2c73c2mp60",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteWebhookEndpoint($id: String!, $ownerId: String) {\n  deleteWebhookEndpoint(id: $id, ownerId: $ownerId)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteWebhookEndpoint": true
+        }
+      },
+      "timing": {
+        "startTime": 1792205610012.027,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.128,
+        "responseStart": 257.718,
+        "responseEnd": 562.001
+      },
+      "url": "https://dashboard.bex.co/webhooks"
+    },
+    "a832ServiceDeleted": {
+      "at": "2026-10-17T02:53:37.013Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db9e4scfcf2c73c2mp40"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "timing": {
+        "startTime": 1792205615908.561,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.126,
+        "responseStart": 388.919,
+        "responseEnd": 389.327
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "a832InventoryCleanup": {
+      "at": "2026-10-17T02:54:00.255Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [
+        {
+          "path": "/v1/services/srv-db9e4scfcf2c73c2mp40",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9e4scfcf2c73c2mp40/deploys/dep-db9e4scfcf2c73c2mp4g",
+          "status": 404
+        },
+        {
+          "path": "/v1/webhooks/whk-db9e52cfcf2c73c2mp60",
+          "status": 404
+        },
+        {
+          "path": "/v1/webhooks/whk-db9e52cfcf2c73c2mp60/deliveries",
+          "status": 404
+        }
+      ],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "httpFailures": [
+        {
+          "method": "GET",
+          "url": "https://api.bex.co/v1/services/srv-db9e4scfcf2c73c2mp40",
+          "status": 404
+        },
+        {
+          "method": "GET",
+          "url": "https://api.bex.co/v1/services/srv-db9e4scfcf2c73c2mp40/deploys/dep-db9e4scfcf2c73c2mp4g",
+          "status": 404
+        },
+        {
+          "method": "GET",
+          "url": "https://api.bex.co/v1/webhooks/whk-db9e52cfcf2c73c2mp60",
+          "status": 404
+        },
+        {
+          "method": "GET",
+          "url": "https://api.bex.co/v1/webhooks/whk-db9e52cfcf2c73c2mp60/deliveries",
+          "status": 404
+        }
+      ]
+    },
+    "a832SessionCleared": {
+      "at": "2026-10-17T02:54:07.600Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  },
+  "excluded": "a832Pending390 used an unscoped card selector and measured a hidden previous-route card as zero. Only V2 scoped measurements support pending geometry. Whole matched HTTP batches were delayed and fulfilled unchanged; only WebhookEndpoints request/response entries are retained.",
+  "screenshots": [
+    "qa-a832-webhooks-pending-390.png",
+    "qa-a832-webhooks-ready-390.png",
+    "qa-a832-webhooks-pending-1440.png",
+    "qa-a832-webhooks-ready-1440.png"
+  ],
+  "physicalCleanup": {
+    "at": "2026-10-17T02:55:51.160523+00:00",
+    "checks": [
+      {
+        "kind": "App",
+        "command": [
+          "kubectl",
+          "--context",
+          "hetzner-prod",
+          "get",
+          "apps.app.bex.co",
+          "-A",
+          "--field-selector",
+          "metadata.name=tea-d98210cbbpdc73dcrkvg-qa-20261016-a832-hook",
+          "-o",
+          "name"
+        ],
+        "exitCode": 0,
+        "remaining": [],
+        "stderr": ""
+      },
+      {
+        "kind": "servingPods",
+        "command": [
+          "kubectl",
+          "--context",
+          "hetzner-prod",
+          "get",
+          "pods",
+          "-A",
+          "-l",
+          "app.bex.co/app=tea-d98210cbbpdc73dcrkvg-qa-20261016-a832-hook",
+          "-o",
+          "name"
+        ],
+        "exitCode": 0,
+        "remaining": [],
+        "stderr": ""
+      },
+      {
+        "kind": "buildJobsPods",
+        "command": [
+          "kubectl",
+          "--context",
+          "hetzner-prod",
+          "get",
+          "jobs,pods",
+          "-A",
+          "-l",
+          "app.bex.co/build=tea-d98210cbbpdc73dcrkvg-qa-20261016-a832-hook",
+          "-o",
+          "name"
+        ],
+        "exitCode": 0,
+        "remaining": [],
+        "stderr": ""
+      }
+    ],
+    "publicStatus": "404",
+    "publicExitCode": 0
+  },
+  "sourceCensus": {
+    "directJsxSites": 10,
+    "sites": [
+      {
+        "line": 550,
+        "enclosingFunction": "BillingPageSkeleton"
+      },
+      {
+        "line": 604,
+        "enclosingFunction": "BlueprintsTableSkeleton"
+      },
+      {
+        "line": 614,
+        "enclosingFunction": "BlueprintDetailContentSkeleton"
+      },
+      {
+        "line": 617,
+        "enclosingFunction": "BlueprintDetailContentSkeleton"
+      },
+      {
+        "line": 701,
+        "enclosingFunction": "EnvGroupDetailContentSkeleton"
+      },
+      {
+        "line": 704,
+        "enclosingFunction": "EnvGroupDetailContentSkeleton"
+      },
+      {
+        "line": 717,
+        "enclosingFunction": "WebhooksListPageSkeleton"
+      },
+      {
+        "line": 1017,
+        "enclosingFunction": "WorkspaceSettingsPageSkeleton"
+      },
+      {
+        "line": 1428,
+        "enclosingFunction": "DeploysListSkeleton"
+      },
+      {
+        "line": 2087,
+        "enclosingFunction": "WebhookActivitySkeleton"
+      }
+    ]
+  }
+}
