@@ -51,14 +51,18 @@ var renderMetricNames = map[string]string{
 }
 
 // datastoreMetricNames is the datastoreMetrics query's `name` enum (w3/m10) —
-// the Database/KeyValue-scoped sibling of renderMetricNames. All four are bex
-// extensions; Render's metrics API has no datastore-scoped series.
+// the Database/KeyValue-scoped sibling of renderMetricNames. CPU, MEMORY and
+// the limits are the series Render's metrics API scopes to a datastore id
+// (w1/m180); a Key Value's MEMORY is its used memory, as it always was.
 var datastoreMetricNames = map[string]string{
 	"DISK":            MetricDisk,
 	"DISK_CAPACITY":   MetricDiskCapacity,
 	"DB_CONNECTIONS":  MetricDBConnections,
 	"REPLICATION_LAG": MetricReplicationLag,
-	"MEMORY":          MetricKVMemory,      // key-value only
+	"CPU":             MetricCPU,
+	"CPU_LIMIT":       MetricCPULimit,
+	"MEMORY":          MetricMemory,
+	"MEMORY_LIMIT":    MetricMemoryLimit,
 	"CONNECTIONS":     MetricKVConnections, // key-value only
 }
 

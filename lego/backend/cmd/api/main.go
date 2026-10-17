@@ -587,6 +587,7 @@ func wireObservability(deps *api.Deps, cfg *Config) {
 		deps.DBConnections = metrics.NewPrometheusDBConnectionsSource(promURL, nil)
 		deps.ReplicationLag = metrics.NewPrometheusReplicationLagSource(promURL, nil)
 		deps.KeyValueStats = metrics.NewPrometheusKeyValueStatsSource(promURL, nil)
+		deps.DatastoreResource = metrics.NewPrometheusDatastoreResourceSource(promURL, nil)
 	}
 }
 

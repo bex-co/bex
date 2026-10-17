@@ -307,7 +307,10 @@ type Deps struct {
 	DBConnections  metrics.DBConnectionsSource
 	ReplicationLag metrics.ReplicationLagSource
 	KeyValueStats  metrics.KeyValueStatsSource
-	APIKeys        apikeys.APIKeyStore
+	// DatastoreResource backs a datastore's own cpu/memory and their limits
+	// (w1/m180). nil => ErrMetricsUnavailable.
+	DatastoreResource metrics.DatastoreResourceSource
+	APIKeys           apikeys.APIKeyStore
 	// Account deletion is durable control-plane orchestration. These seams are
 	// nil in DB-less mode, leaving the stable API available but unavailable.
 	AccountStore  accountStore
@@ -927,6 +930,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			DBConnections:              d.DBConnections,
 			ReplicationLag:             d.ReplicationLag,
 			KeyValueStats:              d.KeyValueStats,
+			DatastoreResource:          d.DatastoreResource,
 		},
 		APIKeys:  apiKeysSvc,
 		Accounts: accountSvc,

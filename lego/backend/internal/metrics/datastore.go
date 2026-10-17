@@ -139,6 +139,31 @@ type KeyValueStatsRequest struct {
 // core.ErrMetricsUnavailable.
 type KeyValueStatsSource func(ctx context.Context, req KeyValueStatsRequest) ([]MetricSeries, error)
 
+// DatastoreResourceRequest asks for one datastore's own container — never its
+// sidecars — over cAdvisor (cpu, memory) or kube-state-metrics (cpu_limit,
+// memory_limit), the series Render scopes to a Postgres or Key Value resource
+// (w1/m180). Pods are the datastore's numbered instances (<resource>-<n>).
+type DatastoreResourceRequest struct {
+	Namespace  string
+	Resource   string
+	Container  string
+	Metric     string // cpu | memory | cpu_limit | memory_limit
+	Start, End time.Time
+	Resolution time.Duration
+}
+
+// DatastoreResourceSource returns per-instance resource series for a datastore
+// in the App metrics' units (cores, bytes).
+type DatastoreResourceSource func(ctx context.Context, req DatastoreResourceRequest) ([]MetricSeries, error)
+
+// The datastore's own container in each instance pod: CNPG names Postgres's
+// "postgres"; the operator's Valkey StatefulSet names it "valkey" beside its
+// "metrics" exporter sidecar.
+const (
+	postgresContainer = "postgres"
+	keyValueContainer = "valkey"
+)
+
 // DatastoreMetricQuery is the resolved request for the DatastoreMetrics verb —
 // the Database/KeyValue-scoped sibling of MetricQuery.
 type DatastoreMetricQuery struct {
@@ -209,8 +234,8 @@ func logicalDiskCapacitySeries(resource string, storageGB int32, now time.Time) 
 	}}
 }
 
-// DatastoreMetrics is the disk/db_connections/replication_lag read — the
-// Database/KeyValue-scoped sibling of Metrics. It fails with core.ErrNotFound
+// DatastoreMetrics is the disk/db_connections/replication_lag/kv/cpu/memory
+// read — the Database/KeyValue-scoped sibling of Metrics. It fails with core.ErrNotFound
 // for an unknown resource, core.ErrForbidden for a metric the resource kind
 // doesn't support (e.g. db_connections on a KeyValue), and returns
 // Render-shaped series.
@@ -235,6 +260,8 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 	// from the CR the same way Details "Storage" is, so disk_capacity matches it
 	// instead of the physical PVC floor. Set per kind alongside namespace/resource.
 	var logicalDiskGB int32
+	// container is the datastore's own container, for its resource series.
+	var container string
 	switch q.Kind {
 	case DatastoreDatabase:
 		db, err := s.AuthorizeDatabase(ctx, core.RelCanView, q.Resource)
@@ -246,6 +273,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		}
 		namespace = db.Namespace
 		resource = db.Name
+		container = postgresContainer
 		isHA = db.Status.HighAvailabilityEnabled
 		logicalDiskGB = tiers.Postgres.EffectiveStorageGB(db.Spec.Plan, db.Spec.StorageGB, db.Status.AllocatedStorageGB)
 		if q.Metric == MetricKVMemory || q.Metric == MetricKVConnections {
@@ -261,7 +289,13 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		}
 		namespace = kv.Namespace
 		resource = kv.Name
+		container = keyValueContainer
 		logicalDiskGB = tiers.Valkey.EffectiveStorageGB(kv.Spec.Plan, kv.Spec.StorageGB, kv.Status.AllocatedStorageGB)
+		// A Key Value's memory is its dataset's used memory (redis_exporter),
+		// the series its Memory chart has always shown (w8/061).
+		if q.Metric == MetricMemory {
+			q.Metric = MetricKVMemory
+		}
 		if q.Metric == MetricDBConnections || q.Metric == MetricReplicationLag {
 			return nil, fmt.Errorf("%w: metric %q is Postgres-only, not valid for a key-value resource", core.ErrBadRequest, q.Metric)
 		}
@@ -374,6 +408,16 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		}
 		series, err := s.KeyValueStats(ctx, KeyValueStatsRequest{
 			Namespace: namespace, Resource: resource, Dimension: dimension,
+			Start: q.Start, End: q.End, Resolution: q.Resolution,
+		})
+		projectInstanceLabels(q.Resource, series)
+		return series, err
+	case MetricCPU, MetricMemory, MetricCPULimit, MetricMemoryLimit:
+		if s.DatastoreResource == nil {
+			return nil, core.ErrMetricsUnavailable
+		}
+		series, err := s.DatastoreResource(ctx, DatastoreResourceRequest{
+			Namespace: namespace, Resource: resource, Container: container, Metric: q.Metric,
 			Start: q.Start, End: q.End, Resolution: q.Resolution,
 		})
 		projectInstanceLabels(q.Resource, series)

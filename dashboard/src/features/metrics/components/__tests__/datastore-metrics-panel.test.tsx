@@ -93,13 +93,20 @@ describe("DatastoreMetricsPanel", () => {
     // No Postgres connections/replication-lag chart sections for a keyvalue.
     expect(screen.queryByText("Active Connections")).not.toBeInTheDocument();
     expect(screen.queryByText("Replication Lag")).not.toBeInTheDocument();
-    // But the keyvalue-only Memory + Connections sections DO render (w5/011),
-    // and their queries are not skipped.
+    // But Memory (its used memory, w5/011) and the keyvalue-only Connections
+    // sections DO render, and their queries are not skipped. Its container
+    // memory limit is no line for that chart (Valkey evicts below it).
     expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
       "keyvalue",
       "sessions-cache",
-      "kv_memory",
+      "memory",
       { skip: false },
+    );
+    expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
+      "keyvalue",
+      "sessions-cache",
+      "memory_limit",
+      expect.objectContaining({ skip: true }),
     );
     expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
       "keyvalue",
@@ -111,7 +118,7 @@ describe("DatastoreMetricsPanel", () => {
     expect(screen.getByText("Connections")).toBeInTheDocument();
   });
 
-  it("skips the keyvalue memory/connections metrics for a database resource", () => {
+  it("skips the keyvalue connections metric for a database resource", () => {
     mockUseDatastoreMetrics.mockReturnValue(emptyResult());
 
     render(<DatastoreMetricsPanel kind="database" resource="pg" />);
@@ -119,19 +126,51 @@ describe("DatastoreMetricsPanel", () => {
     expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
       "database",
       "pg",
-      "kv_memory",
-      {
-        skip: true,
-      },
-    );
-    expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
-      "database",
-      "pg",
       "kv_connections",
       { skip: true },
     );
-    // The keyvalue-only Memory section doesn't render for a database.
-    expect(screen.queryByText("Memory")).not.toBeInTheDocument();
+    // A database's Memory is its container's (w1/m180), not the Key Value
+    // used-memory series, and the Key Value Connections section stays out.
+    expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
+      "database",
+      "pg",
+      "memory",
+      { skip: false },
+    );
+    expect(screen.getByText("Memory")).toBeInTheDocument();
+    expect(screen.queryByText("Connections")).not.toBeInTheDocument();
+  });
+
+  it("charts CPU and memory against their limits for a datastore", () => {
+    mockUseDatastoreMetrics.mockImplementation((_kind, _resource, metric) => {
+      if (metric === "cpu") return seriesResult("cpu", [0.1, 0.2]);
+      if (metric === "cpu_limit") return seriesResult("cpu", [0.5]);
+      if (metric === "memory") return seriesResult("bytes", [100, 200]);
+      if (metric === "memory_limit") return seriesResult("bytes", [536870912]);
+      return emptyResult();
+    });
+
+    render(<DatastoreMetricsPanel kind="database" resource="pg" />);
+
+    expect(screen.getByText("CPU")).toBeInTheDocument();
+    expect(screen.getByText(/^Limit 0\.5/)).toBeInTheDocument();
+    expect(screen.getByText(/^Limit 512/)).toBeInTheDocument();
+  });
+
+  it("asks no CPU or memory for a service's disk", () => {
+    mockUseDatastoreMetrics.mockReturnValue(emptyResult());
+
+    render(<DatastoreMetricsPanel kind="service" resource="srv-x" />);
+
+    for (const metric of ["cpu", "cpu_limit", "memory", "memory_limit"]) {
+      expect(mockUseDatastoreMetrics).toHaveBeenCalledWith(
+        "service",
+        "srv-x",
+        metric,
+        expect.objectContaining({ skip: true }),
+      );
+    }
+    expect(screen.queryByText("CPU")).not.toBeInTheDocument();
   });
 
   it("renders disk usage with a capacity reference label", () => {

@@ -279,6 +279,15 @@ const zhMetrics: Record<string, TranslationEntry> = {
     description:
       "Datastore metrics panel: Postgres active-connections chart section title",
   },
+  "metrics.datastoreCpuTitle": {
+    message: "CPU",
+    description: "Datastore metrics panel: CPU usage chart section title",
+  },
+  "metrics.datastoreLimitLabel": {
+    message: "限额 {value}",
+    description:
+      "Datastore CPU/memory chart header annotation showing the instance's configured limit",
+  },
   "metrics.memoryTitle": {
     message: "内存",
     description:
