@@ -1492,6 +1492,41 @@ describe("NewServicePage", () => {
       expect(callArg.command).toBeUndefined();
     });
 
+    // w4/332: bex-api refuses a static site with no publish directory, so a
+    // blank or whitespace one keeps Deploy disabled and says why at the field.
+    it("keeps Deploy disabled until a static site has a publish directory", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("radio", { name: /Static Site/i }),
+      );
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      const deploy = screen.getByRole("button", { name: /Deploy Service/i });
+      const field = screen.getByLabelText("Publish Directory");
+      expect(deploy).toBeDisabled();
+      expect(
+        screen.getByText(/^Required\. Enter the built output/),
+      ).toBeVisible();
+      await user.type(field, "   ");
+      expect(deploy).toBeDisabled();
+      await user.click(deploy);
+      expect(create).not.toHaveBeenCalled();
+      await user.clear(field);
+      await user.type(field, ".");
+      expect(deploy).toBeEnabled();
+      expect(
+        screen.queryByText(/^Required\. Enter the built output/),
+      ).toBeNull();
+      // Switching to a type that hides the field drops the requirement.
+      await user.clear(field);
+      await user.click(screen.getByRole("radio", { name: /Web Service/i }));
+      expect(
+        screen.getByRole("button", { name: /Deploy Service/i }),
+      ).toBeEnabled();
+    });
+
     it("submits type=web_service by default with no schedule, command, or publishPath", async () => {
       const user = userEvent.setup();
       renderPage();

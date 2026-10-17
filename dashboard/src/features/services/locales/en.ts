@@ -3332,6 +3332,12 @@ const enServices: Record<string, TranslationEntry> = {
       "The built output directory to serve as the site root (e.g. dist, build, public).",
     description: "Hint text under the publish directory field",
   },
+  "services.createFieldPublishPathRequired": {
+    message:
+      "Required. Enter the built output directory to serve as the site root (e.g. dist, build, public, or . for the repository root).",
+    description:
+      "Hint under the publish directory field while it is blank: the field is required, the placeholder is only an example",
+  },
   "services.createNoPublicUrlNote": {
     message: "This service type has no public URL.",
     description:

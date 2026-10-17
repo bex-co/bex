@@ -108,6 +108,7 @@ export function NewServicePage() {
   // Only a port-binding type reads the field, so a stale draft under a worker
   // never shows an error (or blocks Submit) for a value nothing will send.
   const portError = shape.showPort && parsePort(form.port) === null;
+  const publishPathMissing = form.publishPath.trim() === "";
   const showNameError = name.name.length > 0 && !name.nameValid;
   const showNameTaken = name.nameValid && (name.nameTaken || nameConflict);
   const canSubmit =
@@ -453,7 +454,11 @@ export function NewServicePage() {
                       placeholder={t(
                         "services.createFieldPublishPathPlaceholder",
                       )}
-                      hint={t("services.createFieldPublishPathHint")}
+                      hint={
+                        publishPathMissing
+                          ? t("services.createFieldPublishPathRequired")
+                          : t("services.createFieldPublishPathHint")
+                      }
                     />
                   ) : null}
 

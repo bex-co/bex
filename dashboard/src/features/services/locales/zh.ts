@@ -3259,6 +3259,12 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "作为站点根目录的构建输出目录（如 dist、build、public）。",
     description: "Hint text under the publish directory field",
   },
+  "services.createFieldPublishPathRequired": {
+    message:
+      "必填。请输入作为站点根目录的构建输出目录（如 dist、build、public，或用 . 表示仓库根目录）。",
+    description:
+      "Hint under the publish directory field while it is blank: the field is required, the placeholder is only an example",
+  },
   "services.createNoPublicUrlNote": {
     message: "此服务类型没有公共 URL。",
     description:

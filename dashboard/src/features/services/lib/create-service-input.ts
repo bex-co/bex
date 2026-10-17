@@ -158,6 +158,10 @@ export function isSubmittable(form: NewServiceForm): boolean {
     // that bind no port never read the field at all.
     (!shape.showPort || parsePort(form.port) !== null) &&
     (shape.isStaticType || form.plan !== "") &&
+    // bex-api refuses a static site without a publish directory, and the
+    // builder trims a blank one away, so blank never reaches Submit (w4/332).
+    // The placeholder is an example, not a default.
+    (!shape.isStaticType || form.publishPath.trim() !== "") &&
     (!shape.isCronType ||
       (form.schedule.trim() !== "" && isValidCron(form.schedule)))
   );
