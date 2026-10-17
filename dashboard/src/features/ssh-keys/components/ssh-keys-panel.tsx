@@ -41,6 +41,7 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { RelativeAge } from "@/common/components/relative-time";
 import { useSSHKeys } from "@/features/ssh-keys/hooks/use-ssh-keys";
+import { SECTION_NAVIGATION_TARGET_CLASS } from "@/common/components/section-navigation";
 
 // The panel renders only on /settings, whose validator types this search.
 const settingsRoute = getRouteApi("/settings");
@@ -78,7 +79,7 @@ export function SSHKeysPanel() {
   }
 
   return (
-    <Card id="ssh-public-keys" className="scroll-mt-4">
+    <Card id="ssh-public-keys" className={SECTION_NAVIGATION_TARGET_CLASS}>
       <CardHeader>
         <CardTitle>{t("sshKeys.title")}</CardTitle>
         <CardDescription>{t("sshKeys.description")}</CardDescription>
