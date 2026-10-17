@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
+import { useCatalogRetry } from "@/common/hooks/use-catalog-retry";
 import { DatabaseInstanceTypesDocument } from "@/graphql/definitions";
 import type { DatabaseInstanceTypeView } from "@/features/databases/types";
 
@@ -8,6 +9,9 @@ export interface UseDatabaseInstanceTypesResult {
   instanceTypes: DatabaseInstanceTypeView[];
   loading: boolean;
   error: Error | undefined;
+  /** Re-reads the catalog in place; busy in `retrying` (w4/m218). */
+  retry: () => Promise<void>;
+  retrying: boolean;
 }
 
 /**
@@ -18,7 +22,10 @@ export interface UseDatabaseInstanceTypesResult {
  * here — the plans come from the shared catalog.
  */
 export function useDatabaseInstanceTypes(): UseDatabaseInstanceTypesResult {
-  const { data, loading, error } = useQuery(DatabaseInstanceTypesDocument);
+  const { data, loading, error, refetch } = useQuery(
+    DatabaseInstanceTypesDocument,
+  );
+  const { retry, retrying } = useCatalogRetry(refetch);
 
   const instanceTypes = useMemo<DatabaseInstanceTypeView[]>(
     () =>
@@ -40,5 +47,5 @@ export function useDatabaseInstanceTypes(): UseDatabaseInstanceTypesResult {
     [data],
   );
 
-  return { instanceTypes, loading, error };
+  return { instanceTypes, loading, error, retry, retrying };
 }

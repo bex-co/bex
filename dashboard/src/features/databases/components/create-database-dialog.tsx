@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { PlanCatalogUnavailable } from "@/common/components/plan-catalog-unavailable";
 import { ArrowUpRight, Loader2, Plus } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -78,7 +79,12 @@ export function CreateDatabaseDialog({
 }: CreateDatabaseDialogProps) {
   const { t } = useTranslations();
   const navigate = useNavigate();
-  const { instanceTypes } = useDatabaseInstanceTypes();
+  const {
+    instanceTypes,
+    loading: catalogLoading,
+    retry: retryCatalog,
+    retrying: catalogRetrying,
+  } = useDatabaseInstanceTypes();
   const { create, busy, capLimit } = useCreateDatabase();
 
   const controlled = openProp !== undefined;
@@ -278,29 +284,38 @@ export function CreateDatabaseDialog({
 
           <div className="space-y-2">
             <Label htmlFor="db-plan">{t("databases.fieldPlan")}</Label>
-            <Select value={plan} onValueChange={setPlanOverride}>
-              <SelectTrigger
-                id="db-plan"
-                className="w-full min-h-9 whitespace-normal text-left data-[size=default]:h-auto *:data-[slot=select-value]:line-clamp-none *:data-[slot=select-value]:min-w-0"
-              >
-                <SelectValue
-                  placeholder={t("databases.fieldPlanPlaceholder")}
-                />
-              </SelectTrigger>
-              <SelectContent className="max-w-(--radix-select-content-available-width)">
-                {instanceTypes.map((it) => (
-                  <SelectItem key={it.id} value={it.id}>
-                    {it.name} — {formatInstanceMemory(it.memory)} RAM,{" "}
-                    {formatInstanceCPU(it.cpu)}, {it.storageGB} GB
-                    {/* Priced at the point of choice, like the service
+            {/* A settled failed or empty catalog says so and re-reads in
+                place rather than leaving an empty selector (w4/m218). */}
+            {!catalogLoading && instanceTypes.length === 0 ? (
+              <PlanCatalogUnavailable
+                onRetry={() => void retryCatalog()}
+                retrying={catalogRetrying}
+              />
+            ) : (
+              <Select value={plan} onValueChange={setPlanOverride}>
+                <SelectTrigger
+                  id="db-plan"
+                  className="w-full min-h-9 whitespace-normal text-left data-[size=default]:h-auto *:data-[slot=select-value]:line-clamp-none *:data-[slot=select-value]:min-w-0"
+                >
+                  <SelectValue
+                    placeholder={t("databases.fieldPlanPlaceholder")}
+                  />
+                </SelectTrigger>
+                <SelectContent className="max-w-(--radix-select-content-available-width)">
+                  {instanceTypes.map((it) => (
+                    <SelectItem key={it.id} value={it.id}>
+                      {it.name} — {formatInstanceMemory(it.memory)} RAM,{" "}
+                      {formatInstanceCPU(it.cpu)}, {it.storageGB} GB
+                      {/* Priced at the point of choice, like the service
                         picker (w4/156); nothing is shown for an unlisted tier. */}
-                    {it.monthlyUsd
-                      ? ` · ${t("common.pricePerMonth", { price: it.monthlyUsd })}`
-                      : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                      {it.monthlyUsd
+                        ? ` · ${t("common.pricePerMonth", { price: it.monthlyUsd })}`
+                        : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">

@@ -316,6 +316,12 @@ const enCommon: Record<string, TranslationEntry> = {
     message: "Go back",
     description: "Button label that navigates to the previous page",
   },
+  "common.planCatalogUnavailable": {
+    message:
+      "Plans couldn't load, so none can be chosen yet. Your other entries are kept.",
+    description:
+      "A plan picker whose catalog read failed or returned no plans; shown with a Try again button that re-reads only the catalog (w4/m218)",
+  },
   "common.tryAgain": {
     message: "Try again",
     description: "Button label that retries after an error",

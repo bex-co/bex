@@ -37,6 +37,7 @@ import {
   RECOMMENDED_MAXMEMORY_POLICY,
 } from "@/features/keyvalue/lib/labels";
 import { PlanTierSlots } from "@/common/components/datastore-plan-preview";
+import { PlanCatalogUnavailable } from "@/common/components/plan-catalog-unavailable";
 import { PlanCardGrid } from "@/common/components/plan-card-grid";
 import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
 import { KeyValueCreatePageSkeleton } from "@/common/components/route-skeletons";
@@ -86,7 +87,12 @@ export const Route = createFileRoute("/keyvalue/new")({
 export function NewKeyValuePage() {
   const { t } = useTranslations();
   const navigate = useNavigate();
-  const { instanceTypes, loading: catalogLoading } = useKeyValueInstanceTypes();
+  const {
+    instanceTypes,
+    loading: catalogLoading,
+    retry: retryCatalog,
+    retrying: catalogRetrying,
+  } = useKeyValueInstanceTypes();
   const { create, busy, capLimit } = useCreateKeyValue();
 
   const [name, setName] = useState("");
@@ -164,10 +170,15 @@ export function NewKeyValuePage() {
                 <Label>{t("keyvalue.fieldPlan")}</Label>
                 {/* The ready grid's three inert tier cards while the catalog
                     first loads, so the version control below doesn't jump
-                    (w4/330); an empty or failed catalog is not shown as
-                    pending. */}
+                    (w4/330); a settled failed or empty catalog says so and
+                    retries in place (w4/m218). */}
                 {catalogLoading && instanceTypes.length === 0 ? (
                   <PlanTierSlots />
+                ) : instanceTypes.length === 0 ? (
+                  <PlanCatalogUnavailable
+                    onRetry={() => void retryCatalog()}
+                    retrying={catalogRetrying}
+                  />
                 ) : (
                   <PlanCardGrid
                     instanceTypes={instanceTypes}

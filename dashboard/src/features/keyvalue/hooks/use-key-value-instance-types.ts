@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
+import { useCatalogRetry } from "@/common/hooks/use-catalog-retry";
 import { KeyValueInstanceTypesDocument } from "@/graphql/definitions";
 import type { KeyValueInstanceTypeView } from "@/features/keyvalue/types";
 
@@ -8,6 +9,9 @@ export interface UseKeyValueInstanceTypesResult {
   instanceTypes: KeyValueInstanceTypeView[];
   loading: boolean;
   error: Error | undefined;
+  /** Re-reads the catalog in place; busy in `retrying` (w4/m218). */
+  retry: () => Promise<void>;
+  retrying: boolean;
 }
 
 /**
@@ -18,7 +22,10 @@ export interface UseKeyValueInstanceTypesResult {
  * hardcoded ladder here — the plans come from the shared catalog.
  */
 export function useKeyValueInstanceTypes(): UseKeyValueInstanceTypesResult {
-  const { data, loading, error } = useQuery(KeyValueInstanceTypesDocument);
+  const { data, loading, error, refetch } = useQuery(
+    KeyValueInstanceTypesDocument,
+  );
+  const { retry, retrying } = useCatalogRetry(refetch);
 
   const instanceTypes = useMemo<KeyValueInstanceTypeView[]>(
     () =>
@@ -35,5 +42,5 @@ export function useKeyValueInstanceTypes(): UseKeyValueInstanceTypesResult {
     [data],
   );
 
-  return { instanceTypes, loading, error };
+  return { instanceTypes, loading, error, retry, retrying };
 }
