@@ -1,6 +1,6 @@
 # w4 · m217 — Preserve distinct log records within one millisecond
 
-**Worker:** worker4 **Goal:** the dashboard retains each actual log record while showing a replay of that record once **Status:** todo — original a872 live20-record cases pass; t008 repairs the source-verified identified millisecond-boundary loss; t004 post-repair replay, reopened t005/t006 and t007 remain
+**Worker:** worker4 **Goal:** the dashboard retains each actual log record while showing a replay of that record once **Status:** blocked — t001–t003, t008, t005 and t006 done 2026-10-17; t004 (post-repair live record-count/parity replay on a deployed build) and t007 closeout remain.
 
 ## Tasks (in order)
 
@@ -9,10 +9,10 @@
 | t001 | Expose existing record identity to GraphQL history — **DONE** | 45m | — |
 | t002 | Use authoritative record IDs through dashboard log mapping — **DONE** | 45m | t001 |
 | t003 | Audit shared readers, aliases and legacy replay behavior — **DONE** | 50m | t002 |
-| t008 | Keep identified millisecond-boundary records distinct | 35m | t003 |
+| t008 | Keep identified millisecond-boundary records distinct — **DONE** | 35m | t003 |
 | t004 | Render parity and live record-count replay | 25m | t008 |
-| t005 | Simplify | 15m | t004 |
-| t006 | Test coverage | 35m | t004, t005 |
+| t005 | Simplify — **DONE** | 15m | t004 |
+| t006 | Test coverage — **DONE** | 35m | t004, t005 |
 | t007 | Closeout | 15m | t006 |
 
 8 tasks, **265m (4h25m)**. t001/t002/t003 retain their completed implementation history; t008 adds35m to the original230m plan. t005/t006 are reopened for the new repair.
@@ -29,7 +29,7 @@
 ## Source + Goal linkage
 
 - **Source:** functional QA a751,2026-10-16, user-selected w4; [finding](finding.md) and [complete capture](evidence/capture.json), synchronized main ec431de07. Filing only.
-- **Goal linkage:** [ADR008](../../../docs/ADR008-vision.md), [ADR010](../../../docs/ADR010-observability.md), [ADR006](../../../docs/ADR006-bex-api.md) and [ADR018](../../../docs/ADR018-render-parity.md): real events must remain visible to customers and agents diagnosing a deployment.
+- **Goal linkage:** [ADR008](../../../../docs/ADR008-vision.md), [ADR010](../../../../docs/ADR010-observability.md), [ADR006](../../../../docs/ADR006-bex-api.md) and [ADR018](../../../../docs/ADR018-render-parity.md): real events must remain visible to customers and agents diagnosing a deployment.
 - **Expected outcome:** display deduplication recognizes a record identity without discarding different records logged inside the same millisecond.
 - **Why now:** twenty distinct returned records collapse to one on desktop and a fresh mobile page, while both controls render20. API storage and IDs are proven intact.
 - **Sizing:** more than one hour across a shared API/reader identity change, five dedupe consumers and replay compatibility.
@@ -51,3 +51,10 @@ Correct record identity, not timestamp display, ingestion, ANSI parsing, Unicode
 [Research and complete DoD walk](finding-a872.md) · [native receipts, literal module counterexample, source hashes and cleanup](evidence/a872-acceptance-and-boundary.json). The original FAST/SLOW/UNIQUE fixture returns/renders20 each at desktop and fresh390px, GraphQL/REST identities agree, and mobile FAST/SLOW live replay/pause stays20. Cleanup is complete. This validates those live cases without closing the broader target.
 
 The unmodified shared client still drops a different identified record when its timestamp is exactly millisecond-aligned and the neighboring record is finer. The second input is explicitly constructed; no new production boundary occurrence is claimed. t008 is actionable. Backend live/history timestamp consumers already canonicalize their stamps, so the residual requires no backend identity or API change. Keep t004 pending for renewed post-repair parity/live replay; t005/t006 are reopened, and t007 stays pending. This milestone moved from blocked/ back to the active w4 queue because there is concrete implementation work available. No product fix ships during this QA filing.
+
+## t008 implementation record (2026-10-17)
+
+- **t008:** `lineKey` keys every line carrying a backend id as `id:<id>`, whatever its fractional-digit count. A different record stamped exactly on the millisecond (three RFC3339Nano digits) therefore stays distinct from a finer neighbor; this supersedes the t002 "finer than a millisecond" rule above. `LogIdentity` pairs approximately only as the ID-less fallback: within a millisecond bucket, the first ID-less copy and the first identified record are one record, in either order. Two different ids are never paired, and the same id redelivered with a coarser displayed stamp is one row by key. Backend producers already canonicalize the stamp before `logID` (a872), so no backend change. While here, `forget` became idempotent (`if (!keys.delete) return`), which makes the live ring's StrictMode double-invoked eviction safe as its comment claims; `bucketOf` reuses an ID-less line's key as its bucket.
+- **Consumer audit:** the five `dedupeLogLines`/`mergeLogLines` calls (`use-log-history` ×2, `use-older-log-pages`, `use-deploy-logs` fallback, `mergeLogLines`), the live ring's `admit`/`forget` and the virtualized `line.key` all go through this layer. `use-deploy-logs`'s fast path and two-leg merge compare `line.key` directly: SSE frames have always carried the REST id and history now selects it, so both sides key the same record by the same id (previously both by bucket for an exact-millisecond stamp). An ID-less live frame against identified history would only arise from a pre-`logID` backend. Raw fields, `keyFields: false`, ordering and the SSE `Last-Event-ID` cursor are untouched. ADR010 is updated.
+- **t005/t006:** three /simplify passes. `map.test.ts` now separates the w9/053 ID-less replay (1 row, both orders), the same id at a coarser displayed stamp (1 row, both orders and merge), the a872 pair `.863264187Z` / `.863Z` with distinct ids (2 rows, both orders and both merge directions), and a double-`forget` regression. `use-live-logs.test.ts` adds the boundary pair through the live ring (2 lines, the repeated id dropped). The twenty-record, w9/053 and m192 controls pass unchanged. The a872 and same-id tests fail on the old mapping. Dashboard suite (5135 tests), lint and typecheck pass.
+- **Remaining:** t004 replays the original a751/a872 live cases on a deployed build (and records unprobed siblings and the rollout boundary); t007 closes out.
