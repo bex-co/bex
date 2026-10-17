@@ -1,0 +1,1895 @@
+{
+  "schemaVersion": 1,
+  "item": "w4/327",
+  "pass": "a869",
+  "outcome": "remaining-production-web-log-acceptance-passed",
+  "date": "2026-10-17",
+  "fixture": {
+    "name": "qa-20261017-a869-unicode",
+    "serviceId": "srv-db9j6q622tos73dl1tlg",
+    "deployId": "dep-db9j6q622tos73dl1tm0",
+    "physicalApp": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a869-unicode",
+    "plan": "Free",
+    "image": "docker.io/library/node:24-alpine",
+    "port": 8080,
+    "deleted": true
+  },
+  "target": {
+    "raw": [
+      "QA_A735_ASTRAL 𝒜Z\rQA_A735_ASTRAL AB",
+      "QA_A735_BMP XYZ\rQA_A735_BMP AB",
+      "QA_A735_LITERAL 𝒜Z"
+    ],
+    "display": ["QA_A735_ASTRAL AB", "QA_A735_BMP ABZ", "QA_A735_LITERAL 𝒜Z"],
+    "astralCodePoint": "U+1D49C"
+  },
+  "acceptance": {
+    "serviceHistory": "Fresh 1440x1000 and 390x844 pages display all three expected rows. Full corrected-text native display searches each return the original raw astral record with Live disabled and enabled.",
+    "deployDetail": "Fresh desktop and mobile pages merge build and application records. Local full corrected/ASCII/literal searches return one correct row each; spurious astral ABZ search returns no rows.",
+    "rawContract": "Six exact direct Logs requests and complete responses confirm corrected display matching, rejected spurious suffix, unchanged controls and default/explicit raw matching.",
+    "public": "Running endpoint returned200 with qa-a869-healthy newline; deleted endpoint returned404.",
+    "sourceAsset": "https://dashboard.bex.co/assets/index-B1LUnCD5.js",
+    "servingGitSha": "not independently mapped"
+  },
+  "captureNotes": [
+    "Native response observers do not intercept, rewrite, delay or synthesize product requests or messages.",
+    "a869DesktopDeployLogs captures only the first build query; the complete mobile batch separately captures both build and app requests/responses. Desktop merged-row proof is its recorded UI state.",
+    "Two ancillary build/app Logs requests occur during the desktop ASCII filter interval without text variables. Do not infer that every deploy local-search interval is network silent.",
+    "The inspected local mobile PNG shows the header and query bar; the matching row is below its nested scroll viewport. The durable row-text/ARIA and native API captures support row-content claims, not that PNG.",
+    "An initial mobile filter helper raised ReferenceError before dispatch because of a lost harness closure; the repaired self-contained helper produced the recorded successful actions.",
+    "Network summary includes navigation/connection aborts without a reproduced functional failure. HTTP200 transport alone is not treated as GraphQL success; complete targeted response bodies are retained.",
+    "Original a735 evidence is preserved byte-for-byte with its sha256 recorded below."
+  ],
+  "unverified": [
+    "Hosted colored Unicode records",
+    "Future-only SSE new arrivals (Live-on acceptance searches existing stored records)",
+    "Actual Postgres/Key Value or sibling service-family records",
+    "Malformed lone surrogates",
+    "Grapheme clusters and terminal column width",
+    "Independent deployed Git SHA"
+  ],
+  "originalEvidence": {
+    "path": "327-a735.json",
+    "sha256": "8e9ae0b5da08b4706d84fc553baa0569f226286d6aa507f83fc741c377cebf3b"
+  },
+  "records": {
+    "a869Created": {
+      "at": "2026-10-17T08:35:53.015Z",
+      "request": {
+        "operationName": "CreateService",
+        "variables": {
+          "image": "docker.io/library/node:24-alpine",
+          "name": "qa-20261017-a869-unicode",
+          "type": "web_service",
+          "registryCredentialId": "",
+          "runtime": "image",
+          "startCommand": "node -e 'const http=require(\"http\");console.log(\"QA_A735_ASTRAL 𝒜Z\\rQA_A735_ASTRAL AB\");console.log(\"QA_A735_BMP XYZ\\rQA_A735_BMP AB\");console.log(\"QA_A735_LITERAL 𝒜Z\");http.createServer((req,res)=>res.end(\"qa-a869-healthy\\n\")).listen(8080,\"0.0.0.0\");'",
+          "plan": "free",
+          "port": 8080,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db9j6q622tos73dl1tlg",
+            "latestDeployId": "dep-db9j6q622tos73dl1tm0",
+            "name": "qa-20261017-a869-unicode",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": "",
+            "type": "web_service"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792226151980.3938,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.123,
+        "responseStart": 312.486,
+        "responseEnd": 313.275
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0"
+    },
+    "a869DesktopInitialLogs": {
+      "at": "2026-10-17T08:37:17.614Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9j6q622tos73dl1tlg",
+          "text": "QA_A735",
+          "textMode": "display",
+          "startTime": "2026-10-17T07:37:16.439Z",
+          "endTime": "2026-10-17T08:37:16.439Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.640044546Z-a9c804f8",
+                "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                "level": "unknown",
+                "message": "QA_A735_ASTRAL 𝒜Z\rQA_A735_ASTRAL AB",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T08:35:54.640044546Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.643075855Z-25f40a08",
+                "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                "level": "unknown",
+                "message": "QA_A735_BMP XYZ\rQA_A735_BMP AB",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T08:35:54.643075855Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.64652294Z-fbf03215",
+                "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                "level": "unknown",
+                "message": "QA_A735_LITERAL 𝒜Z",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T08:35:54.64652294Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T08:35:54.640044545Z",
+            "nextStartTime": "2026-10-17T07:37:16.439Z"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792226236454.8108,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.094,
+        "responseStart": 438.093,
+        "responseEnd": 438.869
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/logs?text=QA_A735&live=0"
+    },
+    "a869DesktopInitialView": {
+      "at": "2026-10-17T08:37:18.224Z",
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/logs?text=QA_A735&live=0",
+      "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261017-a869-unicode\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261017-a869-unicode\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db9j6q622tos73dl1tlg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db9j6q622tos73dl1tlg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261017-a869-unicode.onbex.co\":\n    - /url: https://qa-20261017-a869-unicode.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261017-a869-unicode\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 1m\n  - combobox \"Log type\": All logs\n  - textbox \"Search logs\": QA_A735\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\"\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - text: 01:35:54 AM\n  - button \"Filter logs by instance srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli\": \"[tdm57]\"\n  - text: QA_A735_ASTRAL AB 01:35:54 AM\n  - button \"Filter logs by instance srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli\": \"[tdm57]\"\n  - text: QA_A735_BMP ABZ 01:35:54 AM\n  - button \"Filter logs by instance srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli\": \"[tdm57]\"\n  - text: QA_A735_LITERAL 𝒜Z\n  - paragraph: Live tail paused",
+      "assets": [
+        "https://js.stripe.com/dahlia/stripe.js",
+        "https://dashboard.bex.co/assets/index-B1LUnCD5.js",
+        "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092"
+      ]
+    },
+    "a869DesktopAppLogs": {
+      "at": "2026-10-17T08:39:04.229Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9j6q622tos73dl1tlg",
+          "type": "app",
+          "text": "QA_A735",
+          "textMode": "display",
+          "startTime": "2026-10-17T07:39:02.892Z",
+          "endTime": "2026-10-17T08:39:02.892Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.640044546Z-a9c804f8",
+                "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                "level": "unknown",
+                "message": "QA_A735_ASTRAL 𝒜Z\rQA_A735_ASTRAL AB",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T08:35:54.640044546Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.643075855Z-25f40a08",
+                "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                "level": "unknown",
+                "message": "QA_A735_BMP XYZ\rQA_A735_BMP AB",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T08:35:54.643075855Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.64652294Z-fbf03215",
+                "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                "level": "unknown",
+                "message": "QA_A735_LITERAL 𝒜Z",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T08:35:54.64652294Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T08:35:54.640044545Z",
+            "nextStartTime": "2026-10-17T07:39:02.892Z"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792226342908.0188,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.082,
+        "responseStart": 605.754,
+        "responseEnd": 607.151
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/logs?type=app&text=QA_A735&live=0"
+    },
+    "a869DesktopAppBaseline": {
+      "at": "2026-10-17T08:39:05.686Z",
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/logs?type=app&text=QA_A735&live=0",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "documentWidth": 1440,
+      "type": "Application logs",
+      "text": "QA_A735",
+      "live": false,
+      "rows": [
+        "01:35:54 AM[tdm57]QA_A735_ASTRAL AB",
+        "01:35:54 AM[tdm57]QA_A735_BMP ABZ",
+        "01:35:54 AM[tdm57]QA_A735_LITERAL 𝒜Z"
+      ],
+      "correctedCount": 1,
+      "wrongAstralCount": 0,
+      "asciiCount": 1,
+      "literalCount": 1,
+      "empty": 0,
+      "status": []
+    },
+    "a869DesktopOffCorrect": {
+      "at": "2026-10-17T08:39:08.813Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9j6q622tos73dl1tlg",
+          "type": "app",
+          "text": "QA_A735_ASTRAL AB",
+          "textMode": "display",
+          "startTime": "2026-10-17T07:39:06.585Z",
+          "endTime": "2026-10-17T08:39:06.585Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.640044546Z-a9c804f8",
+                "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                "level": "unknown",
+                "message": "QA_A735_ASTRAL 𝒜Z\rQA_A735_ASTRAL AB",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T08:35:54.640044546Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T08:35:54.640044545Z",
+            "nextStartTime": "2026-10-17T07:39:06.585Z"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792226346603.855,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.089,
+        "responseStart": 1493.792,
+        "responseEnd": 1494.751
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/logs?type=app&text=QA_A735_ASTRAL+AB&live=0"
+    },
+    "a869DesktopOffCorrectView": {
+      "at": "2026-10-17T08:39:10.258Z",
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/logs?type=app&text=QA_A735_ASTRAL+AB&live=0",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "documentWidth": 1440,
+      "type": "Application logs",
+      "text": "QA_A735_ASTRAL AB",
+      "live": false,
+      "rows": ["01:35:54 AM[tdm57]QA_A735_ASTRAL AB"],
+      "correctedCount": 1,
+      "wrongAstralCount": 0,
+      "asciiCount": 0,
+      "literalCount": 0,
+      "empty": 0,
+      "status": []
+    },
+    "a869DesktopLiveEnabled": {
+      "at": "2026-10-17T08:39:10.884Z",
+      "live": true,
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/logs?type=app&text=QA_A735_ASTRAL+AB"
+    },
+    "a869DesktopOnPrefix": {
+      "at": "2026-10-17T08:39:13.414Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9j6q622tos73dl1tlg",
+          "type": "app",
+          "text": "QA_A735",
+          "textMode": "display",
+          "startTime": "2026-10-17T07:39:12.269Z",
+          "endTime": "2026-10-17T08:39:12.269Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.640044546Z-a9c804f8",
+                "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                "level": "unknown",
+                "message": "QA_A735_ASTRAL 𝒜Z\rQA_A735_ASTRAL AB",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T08:35:54.640044546Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.643075855Z-25f40a08",
+                "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                "level": "unknown",
+                "message": "QA_A735_BMP XYZ\rQA_A735_BMP AB",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T08:35:54.643075855Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.64652294Z-fbf03215",
+                "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                "level": "unknown",
+                "message": "QA_A735_LITERAL 𝒜Z",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T08:35:54.64652294Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T08:35:54.640044545Z",
+            "nextStartTime": "2026-10-17T07:39:12.269Z"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792226352280.764,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.097,
+        "responseStart": 420.444,
+        "responseEnd": 421.057
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/logs?type=app&text=QA_A735"
+    },
+    "a869DesktopOnCorrect": {
+      "at": "2026-10-17T08:39:15.814Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9j6q622tos73dl1tlg",
+          "type": "app",
+          "text": "QA_A735_ASTRAL AB",
+          "textMode": "display",
+          "startTime": "2026-10-17T07:39:14.804Z",
+          "endTime": "2026-10-17T08:39:14.804Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.640044546Z-a9c804f8",
+                "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                "level": "unknown",
+                "message": "QA_A735_ASTRAL 𝒜Z\rQA_A735_ASTRAL AB",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T08:35:54.640044546Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T08:35:54.640044545Z",
+            "nextStartTime": "2026-10-17T07:39:14.804Z"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792226354821.9048,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.126,
+        "responseStart": 279.888,
+        "responseEnd": 280.769
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/logs?type=app&text=QA_A735_ASTRAL+AB"
+    },
+    "a869DesktopOnCorrectView": {
+      "at": "2026-10-17T08:39:17.251Z",
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/logs?type=app&text=QA_A735_ASTRAL+AB",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "documentWidth": 1440,
+      "type": "Application logs",
+      "text": "QA_A735_ASTRAL AB",
+      "live": true,
+      "rows": ["01:35:54 AM[tdm57]QA_A735_ASTRAL AB"],
+      "correctedCount": 1,
+      "wrongAstralCount": 0,
+      "asciiCount": 0,
+      "literalCount": 0,
+      "empty": 0,
+      "status": []
+    },
+    "a869MobileFreshPrefix": {
+      "at": "2026-10-17T08:40:09.538Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9j6q622tos73dl1tlg",
+          "type": "app",
+          "text": "QA_A735",
+          "textMode": "display",
+          "startTime": "2026-10-17T07:40:07.308Z",
+          "endTime": "2026-10-17T08:40:07.308Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.640044546Z-a9c804f8",
+                "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                "level": "unknown",
+                "message": "QA_A735_ASTRAL 𝒜Z\rQA_A735_ASTRAL AB",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T08:35:54.640044546Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.643075855Z-25f40a08",
+                "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                "level": "unknown",
+                "message": "QA_A735_BMP XYZ\rQA_A735_BMP AB",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T08:35:54.643075855Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.64652294Z-fbf03215",
+                "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                "level": "unknown",
+                "message": "QA_A735_LITERAL 𝒜Z",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T08:35:54.64652294Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T08:35:54.640044545Z",
+            "nextStartTime": "2026-10-17T07:40:07.308Z"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792226407321.0708,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.124,
+        "responseStart": 1495.623,
+        "responseEnd": 1496.289
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/logs?type=app&text=QA_A735&live=0"
+    },
+    "a869MobileFreshPrefixView": {
+      "at": "2026-10-17T08:40:10.490Z",
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/logs?type=app&text=QA_A735&live=0",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "type": "Application logs",
+      "text": "QA_A735",
+      "live": false,
+      "rows": [
+        "01:35:54 AM[tdm57]QA_A735_ASTRAL AB",
+        "01:35:54 AM[tdm57]QA_A735_BMP ABZ",
+        "01:35:54 AM[tdm57]QA_A735_LITERAL 𝒜Z"
+      ],
+      "correctedCount": 1,
+      "wrongAstralCount": 0,
+      "asciiCount": 1,
+      "literalCount": 1,
+      "empty": 0,
+      "status": []
+    },
+    "a869MobileOffCorrect": {
+      "at": "2026-10-17T08:40:12.598Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9j6q622tos73dl1tlg",
+          "type": "app",
+          "text": "QA_A735_ASTRAL AB",
+          "textMode": "display",
+          "startTime": "2026-10-17T07:40:11.392Z",
+          "endTime": "2026-10-17T08:40:11.392Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.640044546Z-a9c804f8",
+                "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                "level": "unknown",
+                "message": "QA_A735_ASTRAL 𝒜Z\rQA_A735_ASTRAL AB",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T08:35:54.640044546Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T08:35:54.640044545Z",
+            "nextStartTime": "2026-10-17T07:40:11.392Z"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792226411403.518,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.11,
+        "responseStart": 479.103,
+        "responseEnd": 480.125
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/logs?type=app&text=QA_A735_ASTRAL+AB&live=0"
+    },
+    "a869MobileOffCorrectView": {
+      "at": "2026-10-17T08:40:14.055Z",
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/logs?type=app&text=QA_A735_ASTRAL+AB&live=0",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "type": "Application logs",
+      "text": "QA_A735_ASTRAL AB",
+      "live": false,
+      "rows": ["01:35:54 AM[tdm57]QA_A735_ASTRAL AB"],
+      "correctedCount": 1,
+      "wrongAstralCount": 0,
+      "asciiCount": 0,
+      "literalCount": 0,
+      "empty": 0,
+      "status": []
+    },
+    "a869MobileLiveEnabled": {
+      "at": "2026-10-17T08:40:14.681Z",
+      "live": true
+    },
+    "a869MobileOnPrefix": {
+      "at": "2026-10-17T08:40:17.115Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9j6q622tos73dl1tlg",
+          "type": "app",
+          "text": "QA_A735",
+          "textMode": "display",
+          "startTime": "2026-10-17T07:40:16.082Z",
+          "endTime": "2026-10-17T08:40:16.082Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.640044546Z-a9c804f8",
+                "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                "level": "unknown",
+                "message": "QA_A735_ASTRAL 𝒜Z\rQA_A735_ASTRAL AB",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T08:35:54.640044546Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.643075855Z-25f40a08",
+                "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                "level": "unknown",
+                "message": "QA_A735_BMP XYZ\rQA_A735_BMP AB",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T08:35:54.643075855Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.64652294Z-fbf03215",
+                "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                "level": "unknown",
+                "message": "QA_A735_LITERAL 𝒜Z",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T08:35:54.64652294Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T08:35:54.640044545Z",
+            "nextStartTime": "2026-10-17T07:40:16.082Z"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792226416105.3582,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.071,
+        "responseStart": 293.589,
+        "responseEnd": 294.859
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/logs?type=app&text=QA_A735"
+    },
+    "a869MobileOnCorrect": {
+      "at": "2026-10-17T08:40:19.580Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9j6q622tos73dl1tlg",
+          "type": "app",
+          "text": "QA_A735_ASTRAL AB",
+          "textMode": "display",
+          "startTime": "2026-10-17T07:40:18.515Z",
+          "endTime": "2026-10-17T08:40:18.515Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.640044546Z-a9c804f8",
+                "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                "level": "unknown",
+                "message": "QA_A735_ASTRAL 𝒜Z\rQA_A735_ASTRAL AB",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T08:35:54.640044546Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T08:35:54.640044545Z",
+            "nextStartTime": "2026-10-17T07:40:18.515Z"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792226418530.872,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.122,
+        "responseStart": 335.046,
+        "responseEnd": 335.944
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/logs?type=app&text=QA_A735_ASTRAL+AB"
+    },
+    "a869MobileOnCorrectView": {
+      "at": "2026-10-17T08:40:21.034Z",
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/logs?type=app&text=QA_A735_ASTRAL+AB",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "type": "Application logs",
+      "text": "QA_A735_ASTRAL AB",
+      "live": true,
+      "rows": ["01:35:54 AM[tdm57]QA_A735_ASTRAL AB"],
+      "correctedCount": 1,
+      "wrongAstralCount": 0,
+      "asciiCount": 0,
+      "literalCount": 0,
+      "empty": 0,
+      "status": []
+    },
+    "a869RawDisplayMatrix": {
+      "controls": [
+        {
+          "label": "correct-display",
+          "at": "2026-10-17T08:40:21.980Z",
+          "request": {
+            "operationName": "Logs",
+            "variables": {
+              "resource": "srv-db9j6q622tos73dl1tlg",
+              "type": "app",
+              "text": "QA_A735_ASTRAL AB",
+              "textMode": "display",
+              "startTime": "2026-10-17T07:39:02.892Z",
+              "endTime": "2026-10-17T08:39:02.892Z",
+              "limit": 100
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "logs": {
+                "__typename": "LogList",
+                "hasMore": false,
+                "logs": [
+                  {
+                    "__typename": "LogEntry",
+                    "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.640044546Z-a9c804f8",
+                    "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                    "level": "unknown",
+                    "message": "QA_A735_ASTRAL 𝒜Z\rQA_A735_ASTRAL AB",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-17T08:35:54.640044546Z",
+                    "type": "app"
+                  }
+                ],
+                "nextEndTime": "2026-10-17T08:35:54.640044545Z",
+                "nextStartTime": "2026-10-17T07:39:02.892Z"
+              }
+            }
+          }
+        },
+        {
+          "label": "spurious-suffix-display",
+          "at": "2026-10-17T08:40:22.263Z",
+          "request": {
+            "operationName": "Logs",
+            "variables": {
+              "resource": "srv-db9j6q622tos73dl1tlg",
+              "type": "app",
+              "text": "QA_A735_ASTRAL ABZ",
+              "textMode": "display",
+              "startTime": "2026-10-17T07:39:02.892Z",
+              "endTime": "2026-10-17T08:39:02.892Z",
+              "limit": 100
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "logs": {
+                "__typename": "LogList",
+                "hasMore": false,
+                "logs": [],
+                "nextEndTime": "2026-10-17T08:39:02Z",
+                "nextStartTime": "2026-10-17T07:39:02Z"
+              }
+            }
+          }
+        },
+        {
+          "label": "ascii-display",
+          "at": "2026-10-17T08:40:22.645Z",
+          "request": {
+            "operationName": "Logs",
+            "variables": {
+              "resource": "srv-db9j6q622tos73dl1tlg",
+              "type": "app",
+              "text": "QA_A735_BMP ABZ",
+              "textMode": "display",
+              "startTime": "2026-10-17T07:39:02.892Z",
+              "endTime": "2026-10-17T08:39:02.892Z",
+              "limit": 100
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "logs": {
+                "__typename": "LogList",
+                "hasMore": false,
+                "logs": [
+                  {
+                    "__typename": "LogEntry",
+                    "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.643075855Z-25f40a08",
+                    "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                    "level": "unknown",
+                    "message": "QA_A735_BMP XYZ\rQA_A735_BMP AB",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-17T08:35:54.643075855Z",
+                    "type": "app"
+                  }
+                ],
+                "nextEndTime": "2026-10-17T08:35:54.643075854Z",
+                "nextStartTime": "2026-10-17T07:39:02.892Z"
+              }
+            }
+          }
+        },
+        {
+          "label": "untouched-unicode-display",
+          "at": "2026-10-17T08:40:22.977Z",
+          "request": {
+            "operationName": "Logs",
+            "variables": {
+              "resource": "srv-db9j6q622tos73dl1tlg",
+              "type": "app",
+              "text": "QA_A735_LITERAL 𝒜Z",
+              "textMode": "display",
+              "startTime": "2026-10-17T07:39:02.892Z",
+              "endTime": "2026-10-17T08:39:02.892Z",
+              "limit": 100
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "logs": {
+                "__typename": "LogList",
+                "hasMore": false,
+                "logs": [
+                  {
+                    "__typename": "LogEntry",
+                    "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.64652294Z-fbf03215",
+                    "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                    "level": "unknown",
+                    "message": "QA_A735_LITERAL 𝒜Z",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-17T08:35:54.64652294Z",
+                    "type": "app"
+                  }
+                ],
+                "nextEndTime": "2026-10-17T08:35:54.646522939Z",
+                "nextStartTime": "2026-10-17T07:39:02.892Z"
+              }
+            }
+          }
+        },
+        {
+          "label": "default-raw",
+          "at": "2026-10-17T08:40:23.327Z",
+          "request": {
+            "operationName": "Logs",
+            "variables": {
+              "resource": "srv-db9j6q622tos73dl1tlg",
+              "type": "app",
+              "text": "𝒜Z",
+              "startTime": "2026-10-17T07:39:02.892Z",
+              "endTime": "2026-10-17T08:39:02.892Z",
+              "limit": 100
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "logs": {
+                "__typename": "LogList",
+                "hasMore": false,
+                "logs": [
+                  {
+                    "__typename": "LogEntry",
+                    "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.640044546Z-a9c804f8",
+                    "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                    "level": "unknown",
+                    "message": "QA_A735_ASTRAL 𝒜Z\rQA_A735_ASTRAL AB",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-17T08:35:54.640044546Z",
+                    "type": "app"
+                  },
+                  {
+                    "__typename": "LogEntry",
+                    "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.64652294Z-fbf03215",
+                    "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                    "level": "unknown",
+                    "message": "QA_A735_LITERAL 𝒜Z",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-17T08:35:54.64652294Z",
+                    "type": "app"
+                  }
+                ],
+                "nextEndTime": "2026-10-17T08:35:54.640044545Z",
+                "nextStartTime": "2026-10-17T07:39:02.892Z"
+              }
+            }
+          }
+        },
+        {
+          "label": "explicit-raw",
+          "at": "2026-10-17T08:40:23.755Z",
+          "request": {
+            "operationName": "Logs",
+            "variables": {
+              "resource": "srv-db9j6q622tos73dl1tlg",
+              "type": "app",
+              "text": "𝒜Z",
+              "textMode": "raw",
+              "startTime": "2026-10-17T07:39:02.892Z",
+              "endTime": "2026-10-17T08:39:02.892Z",
+              "limit": 100
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "logs": {
+                "__typename": "LogList",
+                "hasMore": false,
+                "logs": [
+                  {
+                    "__typename": "LogEntry",
+                    "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.640044546Z-a9c804f8",
+                    "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                    "level": "unknown",
+                    "message": "QA_A735_ASTRAL 𝒜Z\rQA_A735_ASTRAL AB",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-17T08:35:54.640044546Z",
+                    "type": "app"
+                  },
+                  {
+                    "__typename": "LogEntry",
+                    "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.64652294Z-fbf03215",
+                    "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                    "level": "unknown",
+                    "message": "QA_A735_LITERAL 𝒜Z",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-17T08:35:54.64652294Z",
+                    "type": "app"
+                  }
+                ],
+                "nextEndTime": "2026-10-17T08:35:54.640044545Z",
+                "nextStartTime": "2026-10-17T07:39:02.892Z"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "a869DesktopDeployLogs": {
+      "at": "2026-10-17T08:41:30.547Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9j6q622tos73dl1tlg",
+          "startTime": "2026-10-17T08:35:52.155074Z",
+          "endTime": "2026-10-17T08:36:14.479407Z",
+          "limit": 100,
+          "type": "build"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9j6q622tos73dl1tlg-k0e14n58idsuhmcufvo3-2026-10-17T08:35:52.155074Z-0506962f",
+                "instance": "srv-db9j6q622tos73dl1tlg-k0e14n58idsuhmcufvo3",
+                "level": "",
+                "message": "==> Deploy queued",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T08:35:52.155074Z",
+                "type": "build"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9j6q622tos73dl1tlg-k0e14n58idsuhmcufvo3-2026-10-17T08:35:58.640406Z-b803f136",
+                "instance": "srv-db9j6q622tos73dl1tlg-k0e14n58idsuhmcufvo3",
+                "level": "",
+                "message": "==> Deploying image docker.io/library/node:24-alpine",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T08:35:58.640406Z",
+                "type": "build"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9j6q622tos73dl1tlg-k0e14n58idsuhmcufvo3-2026-10-17T08:36:14.479407Z-78da67b1",
+                "instance": "srv-db9j6q622tos73dl1tlg-k0e14n58idsuhmcufvo3",
+                "level": "",
+                "message": "==> Your service is live 🎉",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T08:36:14.479407Z",
+                "type": "build"
+              }
+            ],
+            "nextEndTime": "2026-10-17T08:35:52.155073999Z",
+            "nextStartTime": "2026-10-17T08:35:52.155074Z"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792226489306.923,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.254,
+        "responseStart": 527.052,
+        "responseEnd": 527.81
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0"
+    },
+    "a869DesktopDeployBaseline": {
+      "at": "2026-10-17T08:41:31.486Z",
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "documentWidth": 1440,
+      "text": "",
+      "rows": [
+        "01:35:52 AM[k0e14]==> Deploy queued",
+        "01:35:54 AM[tdm57]QA_A735_ASTRAL AB",
+        "01:35:54 AM[tdm57]QA_A735_BMP ABZ",
+        "01:35:54 AM[tdm57]QA_A735_LITERAL 𝒜Z",
+        "01:35:58 AM[k0e14]==> Deploying image docker.io/library/node:24-alpine",
+        "01:36:14 AM[k0e14]==> Your service is live 🎉"
+      ],
+      "correctedCount": 1,
+      "wrongAstralCount": 0,
+      "asciiCount": 1,
+      "literalCount": 1,
+      "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261017-a869-unicode\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261017-a869-unicode\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db9j6q622tos73dl1tlg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db9j6q622tos73dl1tlg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261017-a869-unicode.onbex.co\":\n    - /url: https://qa-20261017-a869-unicode.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261017-a869-unicode\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 5m\n  - text: Deploy status Live First Deploy dep-db9j6q622tos73dl1tm0\n  - paragraph: docker.io/library/node:24-alpine\n  - term: \"Created:\"\n  - definition: October 17, 2026 at 1:35 AM\n  - term: \"Updated:\"\n  - definition: October 17, 2026 at 1:36 AM\n  - term: \"Started:\"\n  - definition: October 17, 2026 at 1:35 AM\n  - term: \"Finished:\"\n  - definition: October 17, 2026 at 1:36 AM\n  - term: \"Duration:\"\n  - definition: 15s\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 17, 2026 at 1:35 AM\n    - listitem:\n      - paragraph: Deploy started\n      - time: October 17, 2026 at 1:35 AM\n    - listitem:\n      - paragraph: Live\n      - time: October 17, 2026 at 1:36 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\"\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: 01:35:52 AM\n  - button \"Filter logs by instance srv-db9j6q622tos73dl1tlg-k0e14n58idsuhmcufvo3\": \"[k0e14]\"\n  - text: ==> Deploy queued 01:35:54 AM\n  - button \"Filter logs by instance srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli\": \"[tdm57]\"\n  - text: QA_A735_ASTRAL AB 01:35:54 AM\n  - button \"Filter logs by instance srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli\": \"[tdm57]\"\n  - text: QA_A735_BMP ABZ 01:35:54 AM\n  - button \"Filter logs by instance srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli\": \"[tdm57]\"\n  - text: QA_A735_LITERAL 𝒜Z 01:35:58 AM\n  - button \"Filter logs by instance srv-db9j6q622tos73dl1tlg-k0e14n58idsuhmcufvo3\": \"[k0e14]\"\n  - text: ==> Deploying image docker.io/library/node:24-alpine 01:36:14 AM\n  - button \"Filter logs by instance srv-db9j6q622tos73dl1tlg-k0e14n58idsuhmcufvo3\": \"[k0e14]\"\n  - text: ==> Your service is live 🎉"
+    },
+    "a869DesktopDeployCorrect": {
+      "requests": [],
+      "at": "2026-10-17T08:41:32.948Z",
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "documentWidth": 1440,
+      "text": "QA_A735_ASTRAL AB",
+      "rows": ["01:35:54 AM[tdm57]QA_A735_ASTRAL AB"],
+      "correctedCount": 1,
+      "wrongAstralCount": 0,
+      "asciiCount": 0,
+      "literalCount": 0,
+      "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261017-a869-unicode\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261017-a869-unicode\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db9j6q622tos73dl1tlg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db9j6q622tos73dl1tlg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261017-a869-unicode.onbex.co\":\n    - /url: https://qa-20261017-a869-unicode.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261017-a869-unicode\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 5m\n  - text: Deploy status Live First Deploy dep-db9j6q622tos73dl1tm0\n  - paragraph: docker.io/library/node:24-alpine\n  - term: \"Created:\"\n  - definition: October 17, 2026 at 1:35 AM\n  - term: \"Updated:\"\n  - definition: October 17, 2026 at 1:36 AM\n  - term: \"Started:\"\n  - definition: October 17, 2026 at 1:35 AM\n  - term: \"Finished:\"\n  - definition: October 17, 2026 at 1:36 AM\n  - term: \"Duration:\"\n  - definition: 15s\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 17, 2026 at 1:35 AM\n    - listitem:\n      - paragraph: Deploy started\n      - time: October 17, 2026 at 1:35 AM\n    - listitem:\n      - paragraph: Live\n      - time: October 17, 2026 at 1:36 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\": QA_A735_ASTRAL AB\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: 01:35:54 AM\n  - button \"Filter logs by instance srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli\": \"[tdm57]\"\n  - text: QA_A735_ASTRAL AB"
+    },
+    "a869DesktopDeployAscii": {
+      "requests": [
+        {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "srv-db9j6q622tos73dl1tlg",
+            "startTime": "2026-10-17T08:35:52.155074Z",
+            "endTime": "2026-10-17T08:36:14.479407Z",
+            "limit": 100,
+            "type": "build"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "srv-db9j6q622tos73dl1tlg",
+            "startTime": "2026-10-17T08:35:52.155074Z",
+            "endTime": "2026-10-17T08:36:14.479407Z",
+            "limit": 100,
+            "type": "app"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        }
+      ],
+      "at": "2026-10-17T08:41:34.395Z",
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "documentWidth": 1440,
+      "text": "QA_A735_BMP ABZ",
+      "rows": ["01:35:54 AM[tdm57]QA_A735_BMP ABZ"],
+      "correctedCount": 0,
+      "wrongAstralCount": 0,
+      "asciiCount": 1,
+      "literalCount": 0,
+      "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261017-a869-unicode\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261017-a869-unicode\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db9j6q622tos73dl1tlg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db9j6q622tos73dl1tlg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261017-a869-unicode.onbex.co\":\n    - /url: https://qa-20261017-a869-unicode.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261017-a869-unicode\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 5m\n  - text: Deploy status Live First Deploy dep-db9j6q622tos73dl1tm0\n  - paragraph: docker.io/library/node:24-alpine\n  - term: \"Created:\"\n  - definition: October 17, 2026 at 1:35 AM\n  - term: \"Updated:\"\n  - definition: October 17, 2026 at 1:36 AM\n  - term: \"Started:\"\n  - definition: October 17, 2026 at 1:35 AM\n  - term: \"Finished:\"\n  - definition: October 17, 2026 at 1:36 AM\n  - term: \"Duration:\"\n  - definition: 15s\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 17, 2026 at 1:35 AM\n    - listitem:\n      - paragraph: Deploy started\n      - time: October 17, 2026 at 1:35 AM\n    - listitem:\n      - paragraph: Live\n      - time: October 17, 2026 at 1:36 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\": QA_A735_BMP ABZ\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: 01:35:54 AM\n  - button \"Filter logs by instance srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli\": \"[tdm57]\"\n  - text: QA_A735_BMP ABZ"
+    },
+    "a869DesktopDeployLiteral": {
+      "requests": [],
+      "at": "2026-10-17T08:41:36.356Z",
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "documentWidth": 1440,
+      "text": "QA_A735_LITERAL 𝒜Z",
+      "rows": ["01:35:54 AM[tdm57]QA_A735_LITERAL 𝒜Z"],
+      "correctedCount": 0,
+      "wrongAstralCount": 0,
+      "asciiCount": 0,
+      "literalCount": 1,
+      "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261017-a869-unicode\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261017-a869-unicode\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db9j6q622tos73dl1tlg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db9j6q622tos73dl1tlg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261017-a869-unicode.onbex.co\":\n    - /url: https://qa-20261017-a869-unicode.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261017-a869-unicode\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 5m\n  - text: Deploy status Live First Deploy dep-db9j6q622tos73dl1tm0\n  - paragraph: docker.io/library/node:24-alpine\n  - term: \"Created:\"\n  - definition: October 17, 2026 at 1:35 AM\n  - term: \"Updated:\"\n  - definition: October 17, 2026 at 1:36 AM\n  - term: \"Started:\"\n  - definition: October 17, 2026 at 1:35 AM\n  - term: \"Finished:\"\n  - definition: October 17, 2026 at 1:36 AM\n  - term: \"Duration:\"\n  - definition: 15s\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 17, 2026 at 1:35 AM\n    - listitem:\n      - paragraph: Deploy started\n      - time: October 17, 2026 at 1:35 AM\n    - listitem:\n      - paragraph: Live\n      - time: October 17, 2026 at 1:36 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\": QA_A735_LITERAL 𝒜Z\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: 01:35:54 AM\n  - button \"Filter logs by instance srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli\": \"[tdm57]\"\n  - text: QA_A735_LITERAL 𝒜Z"
+    },
+    "a869DesktopDeployWrong": {
+      "requests": [],
+      "at": "2026-10-17T08:41:37.804Z",
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "documentWidth": 1440,
+      "text": "QA_A735_ASTRAL ABZ",
+      "rows": [],
+      "correctedCount": 0,
+      "wrongAstralCount": 0,
+      "asciiCount": 0,
+      "literalCount": 0,
+      "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261017-a869-unicode\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261017-a869-unicode\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db9j6q622tos73dl1tlg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db9j6q622tos73dl1tlg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261017-a869-unicode.onbex.co\":\n    - /url: https://qa-20261017-a869-unicode.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261017-a869-unicode\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 5m\n  - text: Deploy status Live First Deploy dep-db9j6q622tos73dl1tm0\n  - paragraph: docker.io/library/node:24-alpine\n  - term: \"Created:\"\n  - definition: October 17, 2026 at 1:35 AM\n  - term: \"Updated:\"\n  - definition: October 17, 2026 at 1:36 AM\n  - term: \"Started:\"\n  - definition: October 17, 2026 at 1:35 AM\n  - term: \"Finished:\"\n  - definition: October 17, 2026 at 1:36 AM\n  - term: \"Duration:\"\n  - definition: 15s\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 17, 2026 at 1:35 AM\n    - listitem:\n      - paragraph: Deploy started\n      - time: October 17, 2026 at 1:35 AM\n    - listitem:\n      - paragraph: Live\n      - time: October 17, 2026 at 1:36 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\": QA_A735_ASTRAL ABZ\n  - button \"Log options\"\n  - button \"Maximize\"\n  - paragraph: No matching logs\n  - paragraph: No logs match these filters."
+    },
+    "a869DesktopDeployCorrectFinal": {
+      "requests": [],
+      "at": "2026-10-17T08:41:39.266Z",
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "documentWidth": 1440,
+      "text": "QA_A735_ASTRAL AB",
+      "rows": ["01:35:54 AM[tdm57]QA_A735_ASTRAL AB"],
+      "correctedCount": 1,
+      "wrongAstralCount": 0,
+      "asciiCount": 0,
+      "literalCount": 0,
+      "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261017-a869-unicode\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261017-a869-unicode\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db9j6q622tos73dl1tlg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db9j6q622tos73dl1tlg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261017-a869-unicode.onbex.co\":\n    - /url: https://qa-20261017-a869-unicode.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261017-a869-unicode\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 5m\n  - text: Deploy status Live First Deploy dep-db9j6q622tos73dl1tm0\n  - paragraph: docker.io/library/node:24-alpine\n  - term: \"Created:\"\n  - definition: October 17, 2026 at 1:35 AM\n  - term: \"Updated:\"\n  - definition: October 17, 2026 at 1:36 AM\n  - term: \"Started:\"\n  - definition: October 17, 2026 at 1:35 AM\n  - term: \"Finished:\"\n  - definition: October 17, 2026 at 1:36 AM\n  - term: \"Duration:\"\n  - definition: 15s\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 17, 2026 at 1:35 AM\n    - listitem:\n      - paragraph: Deploy started\n      - time: October 17, 2026 at 1:35 AM\n    - listitem:\n      - paragraph: Live\n      - time: October 17, 2026 at 1:36 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\": QA_A735_ASTRAL AB\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: 01:35:54 AM\n  - button \"Filter logs by instance srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli\": \"[tdm57]\"\n  - text: QA_A735_ASTRAL AB"
+    },
+    "a869MobileDeployBatch": {
+      "at": "2026-10-17T08:43:02.293Z",
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0",
+      "receipts": [
+        {
+          "at": "2026-10-17T08:43:01.577Z",
+          "request": {
+            "operationName": "Logs",
+            "variables": {
+              "resource": "srv-db9j6q622tos73dl1tlg",
+              "startTime": "2026-10-17T08:35:52.155074Z",
+              "endTime": "2026-10-17T08:36:14.479407Z",
+              "limit": 100,
+              "type": "build"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "logs": {
+                "__typename": "LogList",
+                "hasMore": false,
+                "logs": [
+                  {
+                    "__typename": "LogEntry",
+                    "id": "srv-db9j6q622tos73dl1tlg-k0e14n58idsuhmcufvo3-2026-10-17T08:35:52.155074Z-0506962f",
+                    "instance": "srv-db9j6q622tos73dl1tlg-k0e14n58idsuhmcufvo3",
+                    "level": "",
+                    "message": "==> Deploy queued",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-17T08:35:52.155074Z",
+                    "type": "build"
+                  },
+                  {
+                    "__typename": "LogEntry",
+                    "id": "srv-db9j6q622tos73dl1tlg-k0e14n58idsuhmcufvo3-2026-10-17T08:35:58.640406Z-b803f136",
+                    "instance": "srv-db9j6q622tos73dl1tlg-k0e14n58idsuhmcufvo3",
+                    "level": "",
+                    "message": "==> Deploying image docker.io/library/node:24-alpine",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-17T08:35:58.640406Z",
+                    "type": "build"
+                  },
+                  {
+                    "__typename": "LogEntry",
+                    "id": "srv-db9j6q622tos73dl1tlg-k0e14n58idsuhmcufvo3-2026-10-17T08:36:14.479407Z-78da67b1",
+                    "instance": "srv-db9j6q622tos73dl1tlg-k0e14n58idsuhmcufvo3",
+                    "level": "",
+                    "message": "==> Your service is live 🎉",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-17T08:36:14.479407Z",
+                    "type": "build"
+                  }
+                ],
+                "nextEndTime": "2026-10-17T08:35:52.155073999Z",
+                "nextStartTime": "2026-10-17T08:35:52.155074Z"
+              }
+            }
+          },
+          "timing": {
+            "startTime": 1792226581145.8271,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.086,
+            "responseStart": 426.936,
+            "responseEnd": 427.233
+          }
+        },
+        {
+          "at": "2026-10-17T08:43:01.577Z",
+          "request": {
+            "operationName": "Logs",
+            "variables": {
+              "resource": "srv-db9j6q622tos73dl1tlg",
+              "startTime": "2026-10-17T08:35:52.155074Z",
+              "endTime": "2026-10-17T08:36:14.479407Z",
+              "limit": 100,
+              "type": "app"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "logs": {
+                "__typename": "LogList",
+                "hasMore": false,
+                "logs": [
+                  {
+                    "__typename": "LogEntry",
+                    "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.640044546Z-a9c804f8",
+                    "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                    "level": "unknown",
+                    "message": "QA_A735_ASTRAL 𝒜Z\rQA_A735_ASTRAL AB",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-17T08:35:54.640044546Z",
+                    "type": "app"
+                  },
+                  {
+                    "__typename": "LogEntry",
+                    "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.643075855Z-25f40a08",
+                    "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                    "level": "unknown",
+                    "message": "QA_A735_BMP XYZ\rQA_A735_BMP AB",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-17T08:35:54.643075855Z",
+                    "type": "app"
+                  },
+                  {
+                    "__typename": "LogEntry",
+                    "id": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli-2026-10-17T08:35:54.64652294Z-fbf03215",
+                    "instance": "srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli",
+                    "level": "unknown",
+                    "message": "QA_A735_LITERAL 𝒜Z",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-17T08:35:54.64652294Z",
+                    "type": "app"
+                  }
+                ],
+                "nextEndTime": "2026-10-17T08:35:54.640044545Z",
+                "nextStartTime": "2026-10-17T08:35:52.155074Z"
+              }
+            }
+          },
+          "timing": {
+            "startTime": 1792226581145.8271,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.086,
+            "responseStart": 426.936,
+            "responseEnd": 427.233
+          }
+        }
+      ],
+      "view": {
+        "at": "2026-10-17T08:43:02.653Z",
+        "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "documentWidth": 390,
+        "text": "",
+        "rows": [
+          "01:35:52 AM[k0e14]==> Deploy queued",
+          "01:35:54 AM[tdm57]QA_A735_ASTRAL AB",
+          "01:35:54 AM[tdm57]QA_A735_BMP ABZ",
+          "01:35:54 AM[tdm57]QA_A735_LITERAL 𝒜Z",
+          "01:35:58 AM[k0e14]==> Deploying image docker.io/library/node:24-alpine",
+          "01:36:14 AM[k0e14]==> Your service is live 🎉"
+        ],
+        "correctedCount": 1,
+        "wrongAstralCount": 0,
+        "asciiCount": 1,
+        "literalCount": 1,
+        "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261017-a869-unicode\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261017-a869-unicode\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db9j6q622tos73dl1tlg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db9j6q622tos73dl1tlg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261017-a869-unicode.onbex.co\":\n    - /url: https://qa-20261017-a869-unicode.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261017-a869-unicode\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 7m\n  - text: Deploy status Live First Deploy dep-db9j6q622tos73dl1tm0\n  - paragraph: docker.io/library/node:24-alpine\n  - term: \"Created:\"\n  - definition: October 17, 2026 at 1:35 AM\n  - term: \"Updated:\"\n  - definition: October 17, 2026 at 1:36 AM\n  - term: \"Started:\"\n  - definition: October 17, 2026 at 1:35 AM\n  - term: \"Finished:\"\n  - definition: October 17, 2026 at 1:36 AM\n  - term: \"Duration:\"\n  - definition: 15s\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 17, 2026 at 1:35 AM\n    - listitem:\n      - paragraph: Deploy started\n      - time: October 17, 2026 at 1:35 AM\n    - listitem:\n      - paragraph: Live\n      - time: October 17, 2026 at 1:36 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\"\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: 01:35:52 AM\n  - button \"Filter logs by instance srv-db9j6q622tos73dl1tlg-k0e14n58idsuhmcufvo3\": \"[k0e14]\"\n  - text: ==> Deploy queued 01:35:54 AM\n  - button \"Filter logs by instance srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli\": \"[tdm57]\"\n  - text: QA_A735_ASTRAL AB 01:35:54 AM\n  - button \"Filter logs by instance srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli\": \"[tdm57]\"\n  - text: QA_A735_BMP ABZ 01:35:54 AM\n  - button \"Filter logs by instance srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli\": \"[tdm57]\"\n  - text: QA_A735_LITERAL 𝒜Z 01:35:58 AM\n  - button \"Filter logs by instance srv-db9j6q622tos73dl1tlg-k0e14n58idsuhmcufvo3\": \"[k0e14]\"\n  - text: ==> Deploying image docker.io/library/node:24-alpine 01:36:14 AM\n  - button \"Filter logs by instance srv-db9j6q622tos73dl1tlg-k0e14n58idsuhmcufvo3\": \"[k0e14]\"\n  - text: ==> Your service is live 🎉"
+      }
+    },
+    "a869MobileDeployCorrect": {
+      "requests": [],
+      "at": "2026-10-17T08:43:41.134Z",
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "text": "QA_A735_ASTRAL AB",
+      "rows": ["01:35:54 AM[tdm57]QA_A735_ASTRAL AB"],
+      "correctedCount": 1,
+      "wrongAstralCount": 0,
+      "asciiCount": 0,
+      "literalCount": 0,
+      "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261017-a869-unicode\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261017-a869-unicode\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db9j6q622tos73dl1tlg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db9j6q622tos73dl1tlg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261017-a869-unicode.onbex.co\":\n    - /url: https://qa-20261017-a869-unicode.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261017-a869-unicode\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 7m\n  - text: Deploy status Live First Deploy dep-db9j6q622tos73dl1tm0\n  - paragraph: docker.io/library/node:24-alpine\n  - term: \"Created:\"\n  - definition: October 17, 2026 at 1:35 AM\n  - term: \"Updated:\"\n  - definition: October 17, 2026 at 1:36 AM\n  - term: \"Started:\"\n  - definition: October 17, 2026 at 1:35 AM\n  - term: \"Finished:\"\n  - definition: October 17, 2026 at 1:36 AM\n  - term: \"Duration:\"\n  - definition: 15s\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 17, 2026 at 1:35 AM\n    - listitem:\n      - paragraph: Deploy started\n      - time: October 17, 2026 at 1:35 AM\n    - listitem:\n      - paragraph: Live\n      - time: October 17, 2026 at 1:36 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\": QA_A735_ASTRAL AB\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: 01:35:54 AM\n  - button \"Filter logs by instance srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli\": \"[tdm57]\"\n  - text: QA_A735_ASTRAL AB"
+    },
+    "a869MobileDeployAscii": {
+      "requests": [],
+      "at": "2026-10-17T08:43:42.588Z",
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "text": "QA_A735_BMP ABZ",
+      "rows": ["01:35:54 AM[tdm57]QA_A735_BMP ABZ"],
+      "correctedCount": 0,
+      "wrongAstralCount": 0,
+      "asciiCount": 1,
+      "literalCount": 0,
+      "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261017-a869-unicode\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261017-a869-unicode\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db9j6q622tos73dl1tlg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db9j6q622tos73dl1tlg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261017-a869-unicode.onbex.co\":\n    - /url: https://qa-20261017-a869-unicode.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261017-a869-unicode\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 7m\n  - text: Deploy status Live First Deploy dep-db9j6q622tos73dl1tm0\n  - paragraph: docker.io/library/node:24-alpine\n  - term: \"Created:\"\n  - definition: October 17, 2026 at 1:35 AM\n  - term: \"Updated:\"\n  - definition: October 17, 2026 at 1:36 AM\n  - term: \"Started:\"\n  - definition: October 17, 2026 at 1:35 AM\n  - term: \"Finished:\"\n  - definition: October 17, 2026 at 1:36 AM\n  - term: \"Duration:\"\n  - definition: 15s\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 17, 2026 at 1:35 AM\n    - listitem:\n      - paragraph: Deploy started\n      - time: October 17, 2026 at 1:35 AM\n    - listitem:\n      - paragraph: Live\n      - time: October 17, 2026 at 1:36 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\": QA_A735_BMP ABZ\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: 01:35:54 AM\n  - button \"Filter logs by instance srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli\": \"[tdm57]\"\n  - text: QA_A735_BMP ABZ"
+    },
+    "a869MobileDeployLiteral": {
+      "requests": [],
+      "at": "2026-10-17T08:43:44.042Z",
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "text": "QA_A735_LITERAL 𝒜Z",
+      "rows": ["01:35:54 AM[tdm57]QA_A735_LITERAL 𝒜Z"],
+      "correctedCount": 0,
+      "wrongAstralCount": 0,
+      "asciiCount": 0,
+      "literalCount": 1,
+      "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261017-a869-unicode\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261017-a869-unicode\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db9j6q622tos73dl1tlg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db9j6q622tos73dl1tlg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261017-a869-unicode.onbex.co\":\n    - /url: https://qa-20261017-a869-unicode.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261017-a869-unicode\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 7m\n  - text: Deploy status Live First Deploy dep-db9j6q622tos73dl1tm0\n  - paragraph: docker.io/library/node:24-alpine\n  - term: \"Created:\"\n  - definition: October 17, 2026 at 1:35 AM\n  - term: \"Updated:\"\n  - definition: October 17, 2026 at 1:36 AM\n  - term: \"Started:\"\n  - definition: October 17, 2026 at 1:35 AM\n  - term: \"Finished:\"\n  - definition: October 17, 2026 at 1:36 AM\n  - term: \"Duration:\"\n  - definition: 15s\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 17, 2026 at 1:35 AM\n    - listitem:\n      - paragraph: Deploy started\n      - time: October 17, 2026 at 1:35 AM\n    - listitem:\n      - paragraph: Live\n      - time: October 17, 2026 at 1:36 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\": QA_A735_LITERAL 𝒜Z\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: 01:35:54 AM\n  - button \"Filter logs by instance srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli\": \"[tdm57]\"\n  - text: QA_A735_LITERAL 𝒜Z"
+    },
+    "a869MobileDeployWrong": {
+      "requests": [],
+      "at": "2026-10-17T08:43:45.512Z",
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "text": "QA_A735_ASTRAL ABZ",
+      "rows": [],
+      "correctedCount": 0,
+      "wrongAstralCount": 0,
+      "asciiCount": 0,
+      "literalCount": 0,
+      "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261017-a869-unicode\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261017-a869-unicode\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db9j6q622tos73dl1tlg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db9j6q622tos73dl1tlg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261017-a869-unicode.onbex.co\":\n    - /url: https://qa-20261017-a869-unicode.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261017-a869-unicode\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 7m\n  - text: Deploy status Live First Deploy dep-db9j6q622tos73dl1tm0\n  - paragraph: docker.io/library/node:24-alpine\n  - term: \"Created:\"\n  - definition: October 17, 2026 at 1:35 AM\n  - term: \"Updated:\"\n  - definition: October 17, 2026 at 1:36 AM\n  - term: \"Started:\"\n  - definition: October 17, 2026 at 1:35 AM\n  - term: \"Finished:\"\n  - definition: October 17, 2026 at 1:36 AM\n  - term: \"Duration:\"\n  - definition: 15s\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 17, 2026 at 1:35 AM\n    - listitem:\n      - paragraph: Deploy started\n      - time: October 17, 2026 at 1:35 AM\n    - listitem:\n      - paragraph: Live\n      - time: October 17, 2026 at 1:36 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\": QA_A735_ASTRAL ABZ\n  - button \"Log options\"\n  - button \"Maximize\"\n  - paragraph: No matching logs\n  - paragraph: No logs match these filters."
+    },
+    "a869MobileDeployCorrectFinal": {
+      "requests": [],
+      "at": "2026-10-17T08:43:46.989Z",
+      "url": "https://dashboard.bex.co/services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "text": "QA_A735_ASTRAL AB",
+      "rows": ["01:35:54 AM[tdm57]QA_A735_ASTRAL AB"],
+      "correctedCount": 1,
+      "wrongAstralCount": 0,
+      "asciiCount": 0,
+      "literalCount": 0,
+      "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261017-a869-unicode\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261017-a869-unicode\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db9j6q622tos73dl1tlg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db9j6q622tos73dl1tlg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261017-a869-unicode.onbex.co\":\n    - /url: https://qa-20261017-a869-unicode.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261017-a869-unicode\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 7m\n  - text: Deploy status Live First Deploy dep-db9j6q622tos73dl1tm0\n  - paragraph: docker.io/library/node:24-alpine\n  - term: \"Created:\"\n  - definition: October 17, 2026 at 1:35 AM\n  - term: \"Updated:\"\n  - definition: October 17, 2026 at 1:36 AM\n  - term: \"Started:\"\n  - definition: October 17, 2026 at 1:35 AM\n  - term: \"Finished:\"\n  - definition: October 17, 2026 at 1:36 AM\n  - term: \"Duration:\"\n  - definition: 15s\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 17, 2026 at 1:35 AM\n    - listitem:\n      - paragraph: Deploy started\n      - time: October 17, 2026 at 1:35 AM\n    - listitem:\n      - paragraph: Live\n      - time: October 17, 2026 at 1:36 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\": QA_A735_ASTRAL AB\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: 01:35:54 AM\n  - button \"Filter logs by instance srv-db9j6q622tos73dl1tlg-tdm57cea7u8bkskfmvli\": \"[tdm57]\"\n  - text: QA_A735_ASTRAL AB"
+    },
+    "a869ConsoleBeforeCleanup": {
+      "error": false,
+      "summary": "### Result\nTotal messages: 0 (Errors: 0, Warnings: 0)\n"
+    },
+    "a869Deleted": {
+      "at": "2026-10-17T08:44:40.138Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db9j6q622tos73dl1tlg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "timing": {
+        "startTime": 1792226678833.3071,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.132,
+        "responseStart": 568.769,
+        "responseEnd": 569.599
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "a869InventoryCleanup": {
+      "at": "2026-10-17T08:44:55.208Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [
+        {
+          "path": "/v1/services/srv-db9j6q622tos73dl1tlg",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0",
+          "status": 404
+        }
+      ]
+    },
+    "a869FinishSummary": {
+      "logoutConfirmed": true,
+      "exitCode": 0,
+      "browser": {
+        "at": "2026-10-17T08:45:00.452Z",
+        "whoami": 401,
+        "cookies": 0,
+        "pages": 1,
+        "url": "about:blank"
+      },
+      "handlesRemoved": true
+    }
+  },
+  "cleanup": {
+    "inventory": {
+      "at": "2026-10-17T08:44:55.208Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [
+        {
+          "path": "/v1/services/srv-db9j6q622tos73dl1tlg",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9j6q622tos73dl1tlg/deploys/dep-db9j6q622tos73dl1tm0",
+          "status": 404
+        }
+      ]
+    },
+    "session": {
+      "logoutConfirmed": true,
+      "exitCode": 0,
+      "browser": {
+        "at": "2026-10-17T08:45:00.452Z",
+        "whoami": 401,
+        "cookies": 0,
+        "pages": 1,
+        "url": "about:blank"
+      },
+      "handlesRemoved": true
+    },
+    "physical": {
+      "at": "2026-10-17T08:46:32.461341+00:00",
+      "app": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a869-unicode",
+      "checks": {
+        "app": {
+          "count": 0
+        },
+        "serving": {
+          "count": 0
+        },
+        "build": {
+          "count": 0
+        },
+        "publish": {
+          "count": 0
+        },
+        "purge": {
+          "count": 0
+        },
+        "predeploy": {
+          "count": 0
+        }
+      },
+      "previous": {
+        "at": "2026-10-17T08:45:06.612619+00:00",
+        "app": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a869-unicode",
+        "checks": {
+          "app": {
+            "count": 0
+          },
+          "serving": {
+            "count": 1
+          },
+          "build": {
+            "count": 0
+          },
+          "publish": {
+            "count": 0
+          },
+          "purge": {
+            "count": 0
+          },
+          "predeploy": {
+            "count": 0
+          }
+        }
+      }
+    },
+    "public": {
+      "status": 404,
+      "headers": "HTTP/2 404 \ncontent-type: text/plain; charset=utf-8\nx-content-type-options: nosniff\ncontent-length: 19\ndate: Sat, 17 Oct 2026 08:46:32 GMT\n\n",
+      "body": "404 page not found\n"
+    }
+  },
+  "publicRunning": {
+    "headers": "HTTP/2 200 \ndate: Sat, 17 Oct 2026 08:37:18 GMT\ncontent-length: 16\n\n",
+    "body": "qa-a869-healthy\n"
+  },
+  "network": {
+    "afterIndex": 5447,
+    "recordCount": 188,
+    "statuses": {
+      "200": 174,
+      "204": 8
+    },
+    "httpErrors": [],
+    "failed": [
+      "5461. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_ABORTED",
+      "5516. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_ABORTED",
+      "5593. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_CONNECTION_CLOSED",
+      "5594. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_CONNECTION_CLOSED"
+    ]
+  }
+}
