@@ -159,3 +159,34 @@ describe("WebhooksPanel", () => {
     expect(screen.getAllByText("Enabled").length).toBeGreaterThan(0);
   });
 });
+
+// w4/m220 (a832): the list's loading preview must be the ready card itself,
+// or the header and table jump on load. Pixel parity is a browser measurement;
+// this pins the shared copy, action and columns.
+it("previews the ready card's copy, action, search help and columns (w4/m220)", async () => {
+  const ready = renderPanel();
+  await screen.findByText("payments");
+  const text = (el: Element | null) => el?.textContent?.trim();
+  const readyAction = text(
+    ready.container.querySelector('[data-slot="card-action"]'),
+  );
+  const readyTitle = text(
+    ready.container.querySelector('[data-slot="card-title"]'),
+  );
+  const readyLabels = [...ready.container.querySelectorAll("th")].map(text);
+  ready.unmount();
+
+  const { WebhooksListPageSkeleton } =
+    await import("@/common/components/route-skeletons");
+  const { container } = render(<WebhooksListPageSkeleton />);
+  expect(readyAction).toBeTruthy();
+  expect(text(container.querySelector('[data-slot="card-action"]'))).toBe(
+    readyAction,
+  );
+  expect(text(container.querySelector('[data-slot="card-title"]'))).toBe(
+    readyTitle,
+  );
+  expect([...container.querySelectorAll("th")].map(text)).toEqual(readyLabels);
+  // Every reserved bar sits in a positioned box, never a <p> it would escape.
+  expect(container.querySelector("p [data-slot='skeleton']")).toBeNull();
+});

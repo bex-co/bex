@@ -53,12 +53,10 @@ vi.mock("@/features/blueprints/hooks/use-blueprint", () => ({
 }));
 
 // --- sync hook mock ---
-const sync = vi.fn(
-  async (): Promise<BlueprintSyncActionResult> => ({
-    status: "success",
-    result: null,
-  }),
-);
+const sync = vi.fn(async (): Promise<BlueprintSyncActionResult> => ({
+  status: "success",
+  result: null,
+}));
 vi.mock("@/features/blueprints/hooks/use-sync-blueprint", () => ({
   useSyncBlueprint: () => ({ sync, busy: false }),
 }));
@@ -598,4 +596,15 @@ describe("BlueprintDetailPage", () => {
     });
     expect(blueprintDetailState.refetch).not.toHaveBeenCalled();
   });
+});
+
+// w4/m220 (a822): Blueprint list labels stacked vertically in a 180–220px
+// mobile header; they now stay on one line (36px, browser-measured).
+it("keeps every Blueprint column label on one line (w4/m220)", async () => {
+  blueprintsState.blueprints = [bp({ name: "hello-go" })];
+  renderBlueprintsPage();
+  await screen.findByText("hello-go");
+  for (const header of screen.getAllByRole("columnheader")) {
+    expect(header).toHaveClass("whitespace-nowrap");
+  }
 });
