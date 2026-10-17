@@ -67,6 +67,13 @@ func TestPostgresStatusTellsARestartFromCreation(t *testing.T) {
 			Phase: appv1alpha1.DBPhaseReady, Provisioned: true,
 			Conditions: ready(metav1.ConditionFalse, appv1alpha1.ReasonSuspended, 2),
 		}, "suspended"},
+		// w4/m223: a healthy new database waiting for its managed extensions.
+		{"never served, extensions installing", 1, false, false, appv1alpha1.DatabaseStatus{
+			Phase: appv1alpha1.DBPhaseProvisioning, Conditions: ready(metav1.ConditionFalse, "InitializingExtensions", 1),
+		}, "creating"},
+		{"never served, just resumed: the suspended Ready is stale", 3, false, false, appv1alpha1.DatabaseStatus{
+			Phase: appv1alpha1.DBPhaseReady, Conditions: ready(metav1.ConditionFalse, appv1alpha1.ReasonSuspended, 2),
+		}, "creating"},
 		{"deleting outranks everything", 2, true, true, appv1alpha1.DatabaseStatus{
 			Phase: appv1alpha1.DBPhaseProvisioning, Provisioned: true,
 		}, "deleting"},
@@ -109,5 +116,27 @@ func TestPendingMajorUpgradeReadsUpgradingWithTheSourceVersion(t *testing.T) {
 	view := pgView(db)
 	if view.Status != "upgrading" || view.Version != "16" {
 		t.Fatalf("pending upgrade view = status %q version %q, want upgrading on 16", view.Status, view.Version)
+	}
+}
+
+// TestInitialExtensionFailureIsANamedUnavailableState (w4/m223): a new
+// database whose managed extensions could not be installed is unavailable
+// with a safe sentence and a code clients translate, never the raw CNPG text.
+func TestInitialExtensionFailureIsANamedUnavailableState(t *testing.T) {
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "dpg-ext", Generation: 1},
+		Status: appv1alpha1.DatabaseStatus{
+			Phase: appv1alpha1.DBPhaseFailed,
+			Conditions: []metav1.Condition{{
+				Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse,
+				Reason: appv1alpha1.ReasonExtensionsFailed, ObservedGeneration: 1,
+				Message: `extension "vector" is not available in secret/dpg-ext-app`,
+			}},
+		},
+	}
+	view := pgView(db)
+	if view.Status != "unavailable" || view.StatusReasonCode != appv1alpha1.ReasonExtensionsFailed ||
+		view.StatusReason != unavailableReasons[appv1alpha1.ReasonExtensionsFailed] {
+		t.Fatalf("view = status %q reason %q code %q", view.Status, view.StatusReason, view.StatusReasonCode)
 	}
 }

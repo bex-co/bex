@@ -94,9 +94,11 @@ func newMajorUpgradeReconciler(t *testing.T, phase string) (*DatabaseReconciler,
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "upgrade-db", Namespace: "default", Finalizers: []string{dbFinalizer}},
 		Spec:       appv1alpha1.DatabaseSpec{Plan: "basic-1gb", Version: "17"},
+		// An established database: it has served, so its managed extensions
+		// no longer gate Ready (w4/m223).
 		Status: appv1alpha1.DatabaseStatus{
 			Phase: appv1alpha1.DBPhaseReady, CurrentVersion: "16", BackupsEnabled: true,
-			BackupServerName: "upgrade-db",
+			BackupServerName: "upgrade-db", Provisioned: true,
 		},
 	}
 	cluster := &unstructured.Unstructured{Object: map[string]any{
@@ -342,6 +344,13 @@ func TestPendingMajorUpgradeLeavesOtherReadinessAlone(t *testing.T) {
 			t.Fatal(err)
 		}
 		setClusterStatus(t, cl, req, "Cluster in healthy state", 1, 0)
+		// A first provision is Ready once CNPG has installed its extensions.
+		if got := reconcileDB(t, r, cl, req); got.Status.Phase != appv1alpha1.DBPhaseProvisioning {
+			t.Fatalf("first provision before extensions phase = %q, want Provisioning", got.Status.Phase)
+		}
+		if err := markApplicationDatabaseApplied(context.Background(), cl, &db); err != nil {
+			t.Fatal(err)
+		}
 		if got := reconcileDB(t, r, cl, req); got.Status.Phase != appv1alpha1.DBPhaseReady {
 			t.Fatalf("first provision phase = %q, want Ready", got.Status.Phase)
 		}
@@ -375,5 +384,31 @@ func TestMajorUpgradePending(t *testing.T) {
 		if got := majorUpgradePending(tc.desired, tc.observed); got != tc.want {
 			t.Errorf("majorUpgradePending(%q, %q) = %v, want %v", tc.desired, tc.observed, got, tc.want)
 		}
+	}
+}
+
+// A never-served database that reaches its upgraded major while its managed
+// extensions are still installing records the new version on that held pass,
+// so the post-upgrade base backup must start then, not wait for Ready (w4/m223).
+func TestPostUpgradeBackupStartsWhileFirstReadyIsHeld(t *testing.T) {
+	r, cl, req := newMajorUpgradeReconciler(t, "Upgrading Postgres major version")
+	var db appv1alpha1.Database
+	if err := cl.Get(context.Background(), req.NamespacedName, &db); err != nil {
+		t.Fatal(err)
+	}
+	db.Status.Provisioned = false
+	if err := cl.Status().Update(context.Background(), &db); err != nil {
+		t.Fatal(err)
+	}
+	reconcileDB(t, r, cl, req)
+	setClusterStatus(t, cl, req, "Cluster in healthy state", 1, 17)
+	got := reconcileDB(t, r, cl, req)
+	if got.Status.Phase != appv1alpha1.DBPhaseProvisioning || got.Status.CurrentVersion != "17" {
+		t.Fatalf("held pass = phase %q current %q, want Provisioning on 17", got.Status.Phase, got.Status.CurrentVersion)
+	}
+	backup := &unstructured.Unstructured{}
+	backup.SetGroupVersionKind(cnpgBackupGVK)
+	if err := cl.Get(context.Background(), types.NamespacedName{Namespace: "default", Name: "upgrade-db-post-upgrade-pg17"}, backup); err != nil {
+		t.Fatalf("post-upgrade backup on the held pass: %v", err)
 	}
 }

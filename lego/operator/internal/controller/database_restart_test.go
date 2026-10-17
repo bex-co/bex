@@ -49,11 +49,6 @@ func restartFixture(t *testing.T, restartedAt time.Time, podRestartedAt string) 
 	if err := cl.Update(ctx, &db); err != nil {
 		t.Fatal(err)
 	}
-	db.Status.Provisioned = true
-	if err := cl.Status().Update(ctx, &db); err != nil {
-		t.Fatal(err)
-	}
-
 	cluster := &unstructured.Unstructured{}
 	cluster.SetGroupVersionKind(cnpgClusterGVK)
 	if err := cl.Get(ctx, req.NamespacedName, cluster); err != nil {

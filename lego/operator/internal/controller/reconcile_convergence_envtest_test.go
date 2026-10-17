@@ -422,6 +422,7 @@ var _ = Describe("Reconcile convergence (w7/m84)", func() {
 		Expect(rec.sorted()).To(BeEmpty(), "webhook-defaulted Cluster must cause zero update requests")
 		Expect(unstructured.SetNestedField(cluster.Object, int64(1), "status", "readyInstances")).To(Succeed())
 		Expect(k8sClient.Status().Update(ctx, cluster)).To(Succeed())
+		Expect(markApplicationDatabaseApplied(ctx, k8sClient, db)).To(Succeed())
 		Expect(divergence(ctx, rec, run, db, "Cluster")).To(BeEmpty())
 		Expect(k8sClient.Get(ctx, nn, db)).To(Succeed())
 		Expect(db.Status.Phase).To(Equal(appv1alpha1.DBPhaseReady))
