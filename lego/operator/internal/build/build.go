@@ -929,6 +929,35 @@ func boundedSourceDir(dir string) string {
 	return sourceMount
 }
 
+// buildctlRecipeArgs is where the build's Dockerfile and its inputs come
+// from: the preparer's generated recipe, env bundle, secret files and (for a
+// Node service) native-init for a native build; the repository's own
+// Dockerfile and build secrets otherwise.
+func buildctlRecipeArgs(o Options, dockerfileDir string) []string {
+	if o.Builder != BuilderNative {
+		args := []string{"--local", "dockerfile=" + dockerfileDir}
+		if o.DockerfilePath != "" {
+			args = append(args, "--opt", "filename="+o.DockerfilePath)
+		}
+		return append(args, dockerBuildSecretArgs(o)...)
+	}
+	args := []string{
+		"--local", "dockerfile=/native",
+		"--opt", "filename=Dockerfile",
+		"--secret", "id=render-env,src=/native/render-env",
+	}
+	for i, name := range o.NativeFiles {
+		args = append(args, "--secret", "id="+nativeFileSecretID(i)+",src=/native/files/"+name)
+	}
+	if nativeServingInit(o) {
+		args = append(args,
+			"--local", nativeInitContext+"="+nativeInitDir,
+			"--opt", "context:"+nativeInitContext+"=local:"+nativeInitContext,
+		)
+	}
+	return args
+}
+
 func BuildJob(o Options, image string) *batchv1.Job {
 	buildkitImage := cmp.Or(o.BuildkitImage, defaultBuildkitImage)
 	gitImage := cmp.Or(o.GitImage, defaultGitImage)
@@ -950,28 +979,7 @@ func BuildJob(o Options, image string) *batchv1.Job {
 		"--local", "context=" + contextDir,
 		"--output", "type=oci,dest=" + outputMount + "/image.tar",
 	}
-	if o.Builder == BuilderNative {
-		args = append(args,
-			"--local", "dockerfile=/native",
-			"--opt", "filename=Dockerfile",
-			"--secret", "id=render-env,src=/native/render-env",
-		)
-		for i, name := range o.NativeFiles {
-			args = append(args, "--secret", "id="+nativeFileSecretID(i)+",src=/native/files/"+name)
-		}
-		if nativeServingInit(o) {
-			args = append(args,
-				"--local", nativeInitContext+"="+nativeInitDir,
-				"--opt", "context:"+nativeInitContext+"=local:"+nativeInitContext,
-			)
-		}
-	} else {
-		args = append(args, "--local", "dockerfile="+dockerfileDir)
-		if o.DockerfilePath != "" {
-			args = append(args, "--opt", "filename="+o.DockerfilePath)
-		}
-		args = append(args, dockerBuildSecretArgs(o)...)
-	}
+	args = append(args, buildctlRecipeArgs(o, dockerfileDir)...)
 	// mode=max because bex builds are typically multi-stage (the native path
 	// always is: build stage + runtime copy) and the default min mode discards
 	// exactly the intermediate layers worth keeping. image-manifest=true stores
