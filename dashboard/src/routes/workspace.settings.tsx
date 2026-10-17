@@ -11,7 +11,11 @@ import { WorkspaceSettingsNavigation } from "@/features/workspaces/components/wo
 import { TeamPanel } from "@/features/team/components/team-panel";
 import { LeaveWorkspaceCard } from "@/features/team/components/leave-workspace-card";
 import { WorkspaceSettingsPageSkeleton } from "@/common/components/route-skeletons";
-import { SECTION_NAVIGATION_STICKY_CLASS } from "@/common/components/section-navigation";
+import {
+  SECTION_NAVIGATION_STICKY_CLASS,
+  SECTION_NAVIGATION_TARGET_CLASS,
+} from "@/common/components/section-navigation";
+import { cn } from "@/common/lib/utils/utils";
 
 export const Route = createFileRoute("/workspace/settings")({
   staticData: { chrome: true },
@@ -95,7 +99,10 @@ function WorkspaceSettingsPage() {
               </p>
             ) : (
               <>
-                <section id="general" className="scroll-mt-6">
+                <section
+                  id="general"
+                  className={SECTION_NAVIGATION_TARGET_CLASS}
+                >
                   <WorkspaceDetailsCard
                     workspace={currentWorkspace}
                     changePlanOpen={plan === "change"}
@@ -105,14 +112,17 @@ function WorkspaceSettingsPage() {
                 {/* Team management lives here (w1/m33/t006) — members are
                     workspace-scoped objects, and this is where Render puts them;
                     it lived on account /settings from w4/m12 until now. */}
-                <section id="team" className="scroll-mt-6">
+                <section id="team" className={SECTION_NAVIGATION_TARGET_CLASS}>
                   <TeamPanel />
                 </section>
                 {/* The danger zone is now always present: Leave workspace
                     (w5/m102) lives here for every member, while Delete stays
                     gated on having somewhere else to land. The Leave card
                     renders nothing when the caller has no membership row. */}
-                <section id="danger-zone" className="scroll-mt-6 space-y-6">
+                <section
+                  id="danger-zone"
+                  className={cn(SECTION_NAVIGATION_TARGET_CLASS, "space-y-6")}
+                >
                   <LeaveWorkspaceCard workspace={currentWorkspace} />
                   {hasMultipleWorkspaces ? (
                     <DeleteWorkspaceCard workspace={currentWorkspace} />

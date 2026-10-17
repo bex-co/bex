@@ -25,6 +25,7 @@ import { useRegistryCredentials } from "@/features/registry-credentials/hooks/us
 import { useDeleteRegistryCredential } from "@/features/registry-credentials/hooks/use-delete-registry-credential";
 import { RegistryCredentialRow } from "@/features/registry-credentials/components/registry-credential-row";
 import { CreateRegistryCredentialDialog } from "@/features/registry-credentials/components/create-registry-credential-dialog";
+import { SECTION_NAVIGATION_TARGET_CLASS } from "@/common/components/section-navigation";
 
 /**
  * Settings → Integrations → Registry Credentials (w2/m14): a workspace's
@@ -49,7 +50,7 @@ export function RegistryCredentialsPanel() {
   }
 
   return (
-    <Card id="registry-credentials" className="scroll-mt-4">
+    <Card id="registry-credentials" className={SECTION_NAVIGATION_TARGET_CLASS}>
       <CardHeader>
         <CardTitle>{t("registryCredentials.title")}</CardTitle>
         <CardDescription>

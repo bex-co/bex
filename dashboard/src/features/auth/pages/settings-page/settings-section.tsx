@@ -1,4 +1,6 @@
 import { useId, type ReactNode } from "react";
+import { SECTION_NAVIGATION_TARGET_CLASS } from "@/common/components/section-navigation";
+import { cn } from "@/common/lib/utils/utils";
 
 /**
  * A labelled grouping of related cards on the account Settings page — a
@@ -26,7 +28,7 @@ export function SettingsSection({
     <section
       id={id}
       aria-labelledby={headingId}
-      className="scroll-mt-16 space-y-4 lg:scroll-mt-6"
+      className={cn(SECTION_NAVIGATION_TARGET_CLASS, "space-y-4")}
     >
       <div className="space-y-1">
         <h2 id={headingId} className="text-lg font-semibold text-foreground">

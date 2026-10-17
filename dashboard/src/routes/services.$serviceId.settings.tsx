@@ -45,7 +45,11 @@ import {
 } from "@/features/services/lib/settings-sections";
 import { toServiceView } from "@/features/services/lib/status";
 import { ServiceSettingsSkeleton } from "@/common/components/route-skeletons";
-import { SECTION_NAVIGATION_STICKY_CLASS } from "@/common/components/section-navigation";
+import {
+  SECTION_NAVIGATION_STICKY_CLASS,
+  SECTION_NAVIGATION_TARGET_CLASS,
+} from "@/common/components/section-navigation";
+import { cn } from "@/common/lib/utils/utils";
 
 export const Route = createFileRoute("/services/$serviceId/settings")({
   component: RouteComponent,
@@ -366,7 +370,10 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
           <section
             key={id}
             id={id}
-            className={id === "build" ? "scroll-mt-6 space-y-6" : "scroll-mt-6"}
+            className={cn(
+              SECTION_NAVIGATION_TARGET_CLASS,
+              id === "build" && "space-y-6",
+            )}
           >
             {renderSection(id)}
           </section>
