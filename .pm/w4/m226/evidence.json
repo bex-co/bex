@@ -1,0 +1,2574 @@
+{
+  "pass": "a881",
+  "recordedAt": "2026-10-17T12:07:24.936149+00:00",
+  "sourceHead": "b9d3cdf6c3c8bc58b7ea5d6868243744db79b11c",
+  "kind": "Functional configuration freshness with major persistence-confirmation/data-loss consequence and minor stale-policy symptom",
+  "fixture": {
+    "id": "red-db9m0hcflioc739mcl5g",
+    "name": "qa-20261017-a881-policy",
+    "workspaceId": "tea-d98210cbbpdc73dcrkvg",
+    "plan": "free",
+    "public": false,
+    "version": "8",
+    "initialPersistenceMode": "journal-snapshot",
+    "initialPolicy": "allkeys-lru"
+  },
+  "scope": "Ordinary independent dashboard documents sharing only the authenticated browser context; no delayed/replaced/error response. Data commands only on this owned store. Expected first confirmed Off discard is separate from new Off-mode markers lost by the later save without transition-specific confirmation.",
+  "observations": {
+    "CreateFilled": {
+      "at": "2026-10-17T11:47:16.060Z",
+      "free": true,
+      "public": false,
+      "policy": "allkeys-lru (recommended for caches)",
+      "persistence": "Journal + Snapshot"
+    },
+    "Created": {
+      "at": "2026-10-17T11:47:18.081Z",
+      "request": {
+        "operationName": "CreateKeyValue",
+        "variables": {
+          "name": "qa-20261017-a881-policy",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "plan": "free",
+          "public": false,
+          "maxmemoryPolicy": "allkeys-lru",
+          "persistenceMode": "journal-snapshot"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateKeyValue($name: String!, $ownerId: String, $environmentId: String, $plan: String, $version: String, $storageGB: Int, $public: Boolean, $maxmemoryPolicy: String, $persistenceMode: String) {\n  createKeyValue(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    plan: $plan\n    version: $version\n    storageGB: $storageGB\n    public: $public\n    maxmemoryPolicy: $maxmemoryPolicy\n    persistenceMode: $persistenceMode\n  ) {\n    id\n    name\n    plan\n    status\n    projectId\n    environmentId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createKeyValue": {
+            "__typename": "KeyValue",
+            "environmentId": null,
+            "id": "red-db9m0hcflioc739mcl5g",
+            "name": "qa-20261017-a881-policy",
+            "plan": "free",
+            "projectId": null,
+            "status": "creating"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792237636671.45,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.13,
+        "responseStart": 685.995,
+        "responseEnd": 686.927
+      },
+      "url": "https://dashboard.bex.co/keyvalue/red-db9m0hcflioc739mcl5g"
+    },
+    "InitialUi": {
+      "at": "2026-10-17T11:47:43.109Z",
+      "main": "- main:\n  - navigation \"Breadcrumbs\": Key Value qa-20261017-a881-policy\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - heading \"qa-20261017-a881-policy\" [level=1]\n  - text: Creating\n  - navigation \"Key Value detail navigation\":\n    - button \"Overview\"\n    - button \"Metrics\"\n    - button \"Logs\"\n  - navigation \"Key Value sections\":\n    - link \"Details\":\n      - /url: \"#metadata\"\n    - link \"Connections\":\n      - /url: \"#connection\"\n    - link \"Networking\":\n      - /url: \"#networking\"\n    - link \"Instance type\":\n      - /url: \"#plan\"\n    - link \"Maxmemory Policy\":\n      - /url: \"#maxmemory-policy\"\n    - link \"Persistence Mode\":\n      - /url: \"#persistence-mode\"\n    - link \"Danger Zone\":\n      - /url: \"#danger-zone\"\n  - text: Details Name Change the display name. The Key Value ID and all connection details stay the same.\n  - textbox \"Name\" [disabled]: qa-20261017-a881-policy\n  - button \"Edit Key Value name\"\n  - term: ID\n  - definition:\n    - code: red-db9m0hcflioc739mcl5g\n  - term: Status\n  - definition: Creating\n  - term: Instance type\n  - definition: Free\n  - term: Version\n  - definition: Valkey 8\n  - term: Public access\n  - definition: \"No\"\n  - term: Region\n  - definition: fsn1\n  - term: Created\n  - definition:\n    - time: now\n  - text: Connections Connection strings for this Key Value store. Revealed only when you ask — never shown automatically.\n  - button \"Reveal connection info\"\n  - text: Networking Restrict which source IPs can reach the external endpoint.\n  - paragraph: External connections are disabled. Save one or more IP rules to enable access.\n  - paragraph: Saving CIDR rules enables external access for matching source IPs. Saving an empty list blocks external connections. Internal access is unchanged.\n  - text: No IP rules. Save an empty list to block external connections.\n  - textbox \"New CIDR block\":\n    - /placeholder: 203.0.113.0/24\n  - textbox \"New rule description\":\n    - /placeholder: Description (optional)\n  - button \"Add\" [disabled]\n  - button \"Save allowlist\" [disabled]\n  - text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n  - radiogroup \"Instance type\":\n    - radio \"Free $0.00/month 128 MB RAM · 0.1 CPU\" [checked]\n    - radio \"Starter $7.00/month 256 MB RAM · 0.1 CPU\"\n    - radio \"Standard $21.00/month 1 GB RAM · 0.5 CPU\"\n  - button \"Cancel\" [disabled]\n  - button \"Save\" [disabled]\n  - text: Maxmemory Policy Change how keys are evicted once the store reaches its memory limit. Saving restarts the store, so connections drop for up to a minute. Maxmemory policy How keys are evicted once the store reaches its memory limit.\n  - combobox \"Maxmemory policy\" [disabled]: allkeys-lru (recommended for caches)\n  - button \"Edit maxmemory policy\"\n  - text: Persistence Mode Changing modes restarts the store and interrupts connections while data is prepared. Switching between Journal + Snapshot and Snapshot only preserves data. Switching to or from Off discards all data. Persistence mode How data is persisted to disk so it survives a restart.\n  - combobox \"Persistence mode\" [disabled]: Journal + Snapshot\n  - button \"Edit persistence mode\"\n  - button \"Delete Key Value Instance\"\n  - button \"Suspend Key Value Instance\""
+    },
+    "InitialState": {
+      "at": "2026-10-17T11:48:04.220Z",
+      "request": {
+        "operationName": "QaA881State",
+        "query": "query QaA881State($id:String!){keyValue(id:$id){id name status statusReasonCode maxmemoryPolicy persistenceMode suspended}}",
+        "variables": {
+          "id": "red-db9m0hcflioc739mcl5g"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "keyValue": {
+            "id": "red-db9m0hcflioc739mcl5g",
+            "maxmemoryPolicy": "allkeys_lru",
+            "name": "qa-20261017-a881-policy",
+            "persistenceMode": "journal_snapshot",
+            "status": "available",
+            "statusReasonCode": null,
+            "suspended": "not_suspended"
+          }
+        }
+      }
+    },
+    "PolicyCancelNoop": {
+      "at": "2026-10-17T11:48:05.675Z",
+      "original": "allkeys-lru (recommended for caches)",
+      "chosen": "volatile-lfu",
+      "restored": "allkeys-lru (recommended for caches)",
+      "noopSaveDisabled": true,
+      "calls": []
+    },
+    "NoevictionDraft": {
+      "at": "2026-10-17T11:48:27.847Z",
+      "draft": "noeviction"
+    },
+    "NoevictionSaved": {
+      "at": "2026-10-17T11:48:32.348Z",
+      "request": {
+        "operationName": "SetKeyValueMaxmemoryPolicy",
+        "variables": {
+          "id": "red-db9m0hcflioc739mcl5g",
+          "maxmemoryPolicy": "noeviction"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetKeyValueMaxmemoryPolicy($id: String!, $maxmemoryPolicy: String!) {\n  setKeyValueMaxmemoryPolicy(id: $id, maxmemoryPolicy: $maxmemoryPolicy) {\n    id\n    maxmemoryPolicy\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setKeyValueMaxmemoryPolicy": {
+            "__typename": "KeyValue",
+            "id": "red-db9m0hcflioc739mcl5g",
+            "maxmemoryPolicy": "noeviction"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792237711385.143,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.165,
+        "responseStart": 252.651,
+        "responseEnd": 253.6
+      },
+      "url": "https://dashboard.bex.co/keyvalue/red-db9m0hcflioc739mcl5g"
+    },
+    "NoevictionUi": {
+      "at": "2026-10-17T11:48:33.411Z",
+      "policy": "noeviction",
+      "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nRestarting\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n1m",
+      "notices": ["Updating maxmemory policy to noeviction…"]
+    },
+    "NoevictionReady": {
+      "request": {
+        "operationName": "QaA881State",
+        "query": "query QaA881State($id:String!){keyValue(id:$id){id name status statusReasonCode maxmemoryPolicy persistenceMode suspended}}",
+        "variables": {
+          "id": "red-db9m0hcflioc739mcl5g"
+        }
+      },
+      "polls": [
+        {
+          "at": "2026-10-17T11:48:46.400Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "id": "red-db9m0hcflioc739mcl5g",
+                "maxmemoryPolicy": "noeviction",
+                "name": "qa-20261017-a881-policy",
+                "persistenceMode": "journal_snapshot",
+                "status": "available",
+                "statusReasonCode": null,
+                "suspended": "not_suspended"
+              }
+            }
+          }
+        }
+      ],
+      "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nRestarting\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n1m",
+      "policy": "noeviction"
+    },
+    "FreshMobilePolicy": {
+      "at": "2026-10-17T11:49:15.384Z",
+      "policy": "noeviction",
+      "box": {
+        "x": 37,
+        "y": 361,
+        "width": 272,
+        "height": 38
+      },
+      "doc": 390,
+      "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n1m"
+    },
+    "MobileVolatileDraft": {
+      "at": "2026-10-17T11:49:16.271Z",
+      "options": [
+        "allkeys-lru (recommended for caches)",
+        "allkeys-lfu",
+        "volatile-lru",
+        "volatile-lfu",
+        "allkeys-random",
+        "volatile-random",
+        "volatile-ttl",
+        "noeviction"
+      ],
+      "draft": "volatile-ttl"
+    },
+    "MobileVolatileSaved": {
+      "at": "2026-10-17T11:49:19.203Z",
+      "request": {
+        "operationName": "SetKeyValueMaxmemoryPolicy",
+        "variables": {
+          "id": "red-db9m0hcflioc739mcl5g",
+          "maxmemoryPolicy": "volatile-ttl"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetKeyValueMaxmemoryPolicy($id: String!, $maxmemoryPolicy: String!) {\n  setKeyValueMaxmemoryPolicy(id: $id, maxmemoryPolicy: $maxmemoryPolicy) {\n    id\n    maxmemoryPolicy\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setKeyValueMaxmemoryPolicy": {
+            "__typename": "KeyValue",
+            "id": "red-db9m0hcflioc739mcl5g",
+            "maxmemoryPolicy": "volatile_ttl"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792237757797.893,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.138,
+        "responseStart": 701.451,
+        "responseEnd": 701.903
+      },
+      "url": "https://dashboard.bex.co/keyvalue/red-db9m0hcflioc739mcl5g#maxmemory-policy"
+    },
+    "MobileVolatileUi": {
+      "at": "2026-10-17T11:49:20.302Z",
+      "policy": "volatile-ttl",
+      "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nRestarting\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n1m",
+      "notices": ["Updating maxmemory policy to volatile-ttl…"],
+      "doc": 390
+    },
+    "VolatileReady": {
+      "request": {
+        "operationName": "QaA881State",
+        "query": "query QaA881State($id:String!){keyValue(id:$id){id name status statusReasonCode maxmemoryPolicy persistenceMode suspended}}",
+        "variables": {
+          "id": "red-db9m0hcflioc739mcl5g"
+        }
+      },
+      "polls": [
+        {
+          "at": "2026-10-17T11:50:00.424Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "id": "red-db9m0hcflioc739mcl5g",
+                "maxmemoryPolicy": "volatile_ttl",
+                "name": "qa-20261017-a881-policy",
+                "persistenceMode": "journal_snapshot",
+                "status": "available",
+                "statusReasonCode": null,
+                "suspended": "not_suspended"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "MobileCrossTabPolicy": {
+      "at": "2026-10-17T11:51:19.792Z",
+      "before": {
+        "at": "2026-10-17T11:51:02.499Z",
+        "policy": "volatile-ttl",
+        "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n2m"
+      },
+      "mutation": {
+        "at": "2026-10-17T11:51:07.133Z",
+        "request": {
+          "operationName": "SetKeyValueMaxmemoryPolicy",
+          "variables": {
+            "id": "red-db9m0hcflioc739mcl5g",
+            "maxmemoryPolicy": "allkeys-lru"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation SetKeyValueMaxmemoryPolicy($id: String!, $maxmemoryPolicy: String!) {\n  setKeyValueMaxmemoryPolicy(id: $id, maxmemoryPolicy: $maxmemoryPolicy) {\n    id\n    maxmemoryPolicy\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "setKeyValueMaxmemoryPolicy": {
+              "__typename": "KeyValue",
+              "id": "red-db9m0hcflioc739mcl5g",
+              "maxmemoryPolicy": "allkeys_lru"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792237866177.919,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.129,
+          "responseStart": 249.746,
+          "responseEnd": 250.217
+        },
+        "url": "https://dashboard.bex.co/keyvalue/red-db9m0hcflioc739mcl5g#maxmemory-policy"
+      },
+      "observed": [
+        {
+          "at": "2026-10-17T11:51:07.854Z",
+          "request": {
+            "operationName": "KeyValue",
+            "variables": {
+              "id": "red-db9m0hcflioc739mcl5g"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query KeyValue($id: String!) {\n  keyValue(id: $id) {\n    id\n    name\n    plan\n    version\n    status\n    statusReason\n    statusReasonCode\n    suspended\n    createdAt\n    updatedAt\n    externalHost\n    public\n    region\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "__typename": "KeyValue",
+                "createdAt": "2026-10-17T11:47:17Z",
+                "externalHost": "",
+                "id": "red-db9m0hcflioc739mcl5g",
+                "name": "qa-20261017-a881-policy",
+                "plan": "free",
+                "public": false,
+                "region": "fsn1",
+                "status": "config_restart",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "suspended": "not_suspended",
+                "updatedAt": "2026-10-17T11:51:06.387133188Z",
+                "version": "8"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T11:51:12.152Z",
+          "request": {
+            "operationName": "KeyValue",
+            "variables": {
+              "id": "red-db9m0hcflioc739mcl5g"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query KeyValue($id: String!) {\n  keyValue(id: $id) {\n    id\n    name\n    plan\n    version\n    status\n    statusReason\n    statusReasonCode\n    suspended\n    createdAt\n    updatedAt\n    externalHost\n    public\n    region\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "__typename": "KeyValue",
+                "createdAt": "2026-10-17T11:47:17Z",
+                "externalHost": "",
+                "id": "red-db9m0hcflioc739mcl5g",
+                "name": "qa-20261017-a881-policy",
+                "plan": "free",
+                "public": false,
+                "region": "fsn1",
+                "status": "config_restart",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "suspended": "not_suspended",
+                "updatedAt": "2026-10-17T11:51:11Z",
+                "version": "8"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T11:51:15.547Z",
+          "request": {
+            "operationName": "KeyValue",
+            "variables": {
+              "id": "red-db9m0hcflioc739mcl5g"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query KeyValue($id: String!) {\n  keyValue(id: $id) {\n    id\n    name\n    plan\n    version\n    status\n    statusReason\n    statusReasonCode\n    suspended\n    createdAt\n    updatedAt\n    externalHost\n    public\n    region\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "__typename": "KeyValue",
+                "createdAt": "2026-10-17T11:47:17Z",
+                "externalHost": "",
+                "id": "red-db9m0hcflioc739mcl5g",
+                "name": "qa-20261017-a881-policy",
+                "plan": "free",
+                "public": false,
+                "region": "fsn1",
+                "status": "config_restart",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "suspended": "not_suspended",
+                "updatedAt": "2026-10-17T11:51:11Z",
+                "version": "8"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T11:51:19.111Z",
+          "request": {
+            "operationName": "KeyValue",
+            "variables": {
+              "id": "red-db9m0hcflioc739mcl5g"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query KeyValue($id: String!) {\n  keyValue(id: $id) {\n    id\n    name\n    plan\n    version\n    status\n    statusReason\n    statusReasonCode\n    suspended\n    createdAt\n    updatedAt\n    externalHost\n    public\n    region\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "__typename": "KeyValue",
+                "createdAt": "2026-10-17T11:47:17Z",
+                "externalHost": "",
+                "id": "red-db9m0hcflioc739mcl5g",
+                "name": "qa-20261017-a881-policy",
+                "plan": "free",
+                "public": false,
+                "region": "fsn1",
+                "status": "available",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "suspended": "not_suspended",
+                "updatedAt": "2026-10-17T11:51:15Z",
+                "version": "8"
+              }
+            }
+          }
+        }
+      ],
+      "samples": [
+        {
+          "at": "2026-10-17T11:51:09.149Z",
+          "policy": "volatile-ttl",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nRestarting\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n2m"
+        },
+        {
+          "at": "2026-10-17T11:51:11.157Z",
+          "policy": "volatile-ttl",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nRestarting\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n2m"
+        },
+        {
+          "at": "2026-10-17T11:51:13.166Z",
+          "policy": "volatile-ttl",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nRestarting\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n2m"
+        },
+        {
+          "at": "2026-10-17T11:51:15.170Z",
+          "policy": "volatile-ttl",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nRestarting\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n3m"
+        },
+        {
+          "at": "2026-10-17T11:51:17.177Z",
+          "policy": "volatile-ttl",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nRestarting\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n3m"
+        },
+        {
+          "at": "2026-10-17T11:51:19.180Z",
+          "policy": "volatile-ttl",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n3m"
+        }
+      ],
+      "authoritative": {
+        "at": "2026-10-17T11:51:19.737Z",
+        "request": {
+          "operationName": "QaA881State",
+          "query": "query QaA881State($id:String!){keyValue(id:$id){id name status statusReasonCode maxmemoryPolicy persistenceMode suspended}}",
+          "variables": {
+            "id": "red-db9m0hcflioc739mcl5g"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "keyValue": {
+              "id": "red-db9m0hcflioc739mcl5g",
+              "maxmemoryPolicy": "allkeys_lru",
+              "name": "qa-20261017-a881-policy",
+              "persistenceMode": "journal_snapshot",
+              "status": "available",
+              "statusReasonCode": null,
+              "suspended": "not_suspended"
+            }
+          }
+        }
+      },
+      "scope": "Two ordinary UI clients on the same owned store; no response delay or replacement."
+    },
+    "MobileStaleEditBaseline": {
+      "at": "2026-10-17T11:52:37.558Z",
+      "shown": "volatile-ttl",
+      "noopSaveDisabled": true,
+      "calls": []
+    },
+    "FreshDesktopPersistenceBaseline": {
+      "at": "2026-10-17T11:52:40.678Z",
+      "policy": "allkeys-lru (recommended for caches)",
+      "persistence": "Journal + Snapshot",
+      "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n5m"
+    },
+    "DesktopOtherTabOff": {
+      "at": "2026-10-17T11:54:12.103Z",
+      "before": {
+        "at": "2026-10-17T11:53:36.719Z",
+        "persistence": "Journal + Snapshot",
+        "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n5m"
+      },
+      "dialogSnapshot": "- alertdialog \"Delete all data and change persistence?\":\n  - heading \"Delete all data and change persistence?\" [level=2]\n  - paragraph: Switching to or from Off deletes all data in qa-20261017-a881-policy and restarts the store. This cannot be undone.\n  - text: To continue, type sudo clear key value qa-20261017-a881-policy\n  - textbox \"To continue, type sudo clear key value qa-20261017-a881-policy\":\n    - /placeholder: sudo clear key value qa-20261017-a881-policy\n  - button \"Cancel\"\n  - button \"Delete data and change mode\" [disabled]",
+      "mutation": {
+        "at": "2026-10-17T11:53:41.490Z",
+        "request": {
+          "operationName": "SetKeyValuePersistenceMode",
+          "variables": {
+            "id": "red-db9m0hcflioc739mcl5g",
+            "persistenceMode": "off"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation SetKeyValuePersistenceMode($id: String!, $persistenceMode: String!) {\n  setKeyValuePersistenceMode(id: $id, persistenceMode: $persistenceMode) {\n    id\n    persistenceMode\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "setKeyValuePersistenceMode": {
+              "__typename": "KeyValue",
+              "id": "red-db9m0hcflioc739mcl5g",
+              "persistenceMode": "off"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792238020454.096,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.269,
+          "responseStart": 317.106,
+          "responseEnd": 317.947
+        },
+        "url": "https://dashboard.bex.co/keyvalue/red-db9m0hcflioc739mcl5g#persistence-mode"
+      },
+      "observed": [
+        {
+          "at": "2026-10-17T11:53:40.047Z",
+          "request": {
+            "operationName": "KeyValue",
+            "variables": {
+              "id": "red-db9m0hcflioc739mcl5g"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query KeyValue($id: String!) {\n  keyValue(id: $id) {\n    id\n    name\n    plan\n    version\n    status\n    statusReason\n    statusReasonCode\n    suspended\n    createdAt\n    updatedAt\n    externalHost\n    public\n    region\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "__typename": "KeyValue",
+                "createdAt": "2026-10-17T11:47:17Z",
+                "externalHost": "",
+                "id": "red-db9m0hcflioc739mcl5g",
+                "name": "qa-20261017-a881-policy",
+                "plan": "free",
+                "public": false,
+                "region": "fsn1",
+                "status": "available",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "suspended": "not_suspended",
+                "updatedAt": "2026-10-17T11:51:15Z",
+                "version": "8"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T11:54:10.419Z",
+          "request": {
+            "operationName": "KeyValue",
+            "variables": {
+              "id": "red-db9m0hcflioc739mcl5g"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query KeyValue($id: String!) {\n  keyValue(id: $id) {\n    id\n    name\n    plan\n    version\n    status\n    statusReason\n    statusReasonCode\n    suspended\n    createdAt\n    updatedAt\n    externalHost\n    public\n    region\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "__typename": "KeyValue",
+                "createdAt": "2026-10-17T11:47:17Z",
+                "externalHost": "",
+                "id": "red-db9m0hcflioc739mcl5g",
+                "name": "qa-20261017-a881-policy",
+                "plan": "free",
+                "public": false,
+                "region": "fsn1",
+                "status": "available",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "suspended": "not_suspended",
+                "updatedAt": "2026-10-17T11:53:59Z",
+                "version": "8"
+              }
+            }
+          }
+        }
+      ],
+      "samples": [
+        {
+          "at": "2026-10-17T11:53:43.501Z",
+          "persistence": "Journal + Snapshot",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n6m"
+        },
+        {
+          "at": "2026-10-17T11:53:45.510Z",
+          "persistence": "Journal + Snapshot",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n6m"
+        },
+        {
+          "at": "2026-10-17T11:53:47.513Z",
+          "persistence": "Journal + Snapshot",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n6m"
+        },
+        {
+          "at": "2026-10-17T11:53:49.522Z",
+          "persistence": "Journal + Snapshot",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n6m"
+        },
+        {
+          "at": "2026-10-17T11:53:51.529Z",
+          "persistence": "Journal + Snapshot",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n6m"
+        },
+        {
+          "at": "2026-10-17T11:53:53.538Z",
+          "persistence": "Journal + Snapshot",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n6m"
+        },
+        {
+          "at": "2026-10-17T11:53:55.549Z",
+          "persistence": "Journal + Snapshot",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n6m"
+        },
+        {
+          "at": "2026-10-17T11:53:57.559Z",
+          "persistence": "Journal + Snapshot",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n6m"
+        },
+        {
+          "at": "2026-10-17T11:53:59.570Z",
+          "persistence": "Journal + Snapshot",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n6m"
+        },
+        {
+          "at": "2026-10-17T11:54:01.579Z",
+          "persistence": "Journal + Snapshot",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n6m"
+        },
+        {
+          "at": "2026-10-17T11:54:03.588Z",
+          "persistence": "Journal + Snapshot",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n6m"
+        },
+        {
+          "at": "2026-10-17T11:54:05.597Z",
+          "persistence": "Journal + Snapshot",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n6m"
+        },
+        {
+          "at": "2026-10-17T11:54:07.604Z",
+          "persistence": "Journal + Snapshot",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n6m"
+        },
+        {
+          "at": "2026-10-17T11:54:09.611Z",
+          "persistence": "Journal + Snapshot",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n6m"
+        },
+        {
+          "at": "2026-10-17T11:54:11.614Z",
+          "persistence": "Journal + Snapshot",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n6m"
+        }
+      ],
+      "authoritative": {
+        "at": "2026-10-17T11:54:12.103Z",
+        "request": {
+          "operationName": "QaA881State",
+          "query": "query QaA881State($id:String!){keyValue(id:$id){id name status statusReasonCode maxmemoryPolicy persistenceMode suspended}}",
+          "variables": {
+            "id": "red-db9m0hcflioc739mcl5g"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "keyValue": {
+              "id": "red-db9m0hcflioc739mcl5g",
+              "maxmemoryPolicy": "allkeys_lru",
+              "name": "qa-20261017-a881-policy",
+              "persistenceMode": "off",
+              "status": "available",
+              "statusReasonCode": null,
+              "suspended": "not_suspended"
+            }
+          }
+        }
+      },
+      "scope": "Ordinary second-tab Off save with explicit owned typed clear confirmation; initial discard is expected."
+    },
+    "DesktopStalePersistence": {
+      "at": "2026-10-17T11:54:37.141Z",
+      "persistence": "Journal + Snapshot",
+      "description": "Persistence Mode\nChanging modes restarts the store and interrupts connections while data is prepared. Switching between Journal + Snapshot and Snapshot only preserves data. Switching to or from Off discards all data.\nPersistence mode\nHow data is persisted to disk so it survives a restart.\nJournal + Snapshot",
+      "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n6m"
+    },
+    "DesktopSnapshotDraft": {
+      "at": "2026-10-17T11:55:12.121Z",
+      "before": "Journal + Snapshot",
+      "draft": "Snapshot only",
+      "dialogCount": 0,
+      "description": "Persistence Mode\nChanging modes restarts the store and interrupts connections while data is prepared. Switching between Journal + Snapshot and Snapshot only preserves data. Switching to or from Off discards all data.\nPersistence mode\nHow data is persisted to disk so it survives a restart.\nSnapshot only\nCancel\nSave changes"
+    },
+    "DesktopUnwarnedSnapshotSaved": {
+      "at": "2026-10-17T11:55:14.011Z",
+      "request": {
+        "operationName": "SetKeyValuePersistenceMode",
+        "variables": {
+          "id": "red-db9m0hcflioc739mcl5g",
+          "persistenceMode": "snapshot"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetKeyValuePersistenceMode($id: String!, $persistenceMode: String!) {\n  setKeyValuePersistenceMode(id: $id, persistenceMode: $persistenceMode) {\n    id\n    persistenceMode\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setKeyValuePersistenceMode": {
+            "__typename": "KeyValue",
+            "id": "red-db9m0hcflioc739mcl5g",
+            "persistenceMode": "snapshot"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792238112912.2607,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.13,
+        "responseStart": 387.675,
+        "responseEnd": 388.397
+      },
+      "url": "https://dashboard.bex.co/keyvalue/red-db9m0hcflioc739mcl5g#persistence-mode"
+    },
+    "DesktopUnwarnedSnapshotUi": {
+      "at": "2026-10-17T11:55:15.085Z",
+      "persistence": "Snapshot only",
+      "dialogCount": 0,
+      "notices": ["Updating persistence mode to snapshot…"],
+      "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nRestarting\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n7m"
+    },
+    "DesktopSnapshotReady": {
+      "request": {
+        "operationName": "QaA881State",
+        "query": "query QaA881State($id:String!){keyValue(id:$id){id name status statusReasonCode maxmemoryPolicy persistenceMode suspended}}",
+        "variables": {
+          "id": "red-db9m0hcflioc739mcl5g"
+        }
+      },
+      "polls": [
+        {
+          "at": "2026-10-17T11:55:28.648Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "id": "red-db9m0hcflioc739mcl5g",
+                "maxmemoryPolicy": "allkeys_lru",
+                "name": "qa-20261017-a881-policy",
+                "persistenceMode": "snapshot",
+                "status": "config_restart",
+                "statusReasonCode": null,
+                "suspended": "not_suspended"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T11:55:32.529Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "id": "red-db9m0hcflioc739mcl5g",
+                "maxmemoryPolicy": "allkeys_lru",
+                "name": "qa-20261017-a881-policy",
+                "persistenceMode": "snapshot",
+                "status": "available",
+                "statusReasonCode": null,
+                "suspended": "not_suspended"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "FreshMobilePersistenceBaseline": {
+      "at": "2026-10-17T11:55:58.661Z",
+      "persistence": "Snapshot only",
+      "policy": "allkeys-lru (recommended for caches)",
+      "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n8m",
+      "doc": 390
+    },
+    "MobileOtherTabOff": {
+      "at": "2026-10-17T11:56:29.779Z",
+      "before": {
+        "at": "2026-10-17T11:55:59.245Z",
+        "persistence": "Snapshot only",
+        "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n8m"
+      },
+      "dialogSnapshot": "- alertdialog \"Delete all data and change persistence?\":\n  - heading \"Delete all data and change persistence?\" [level=2]\n  - paragraph: Switching to or from Off deletes all data in qa-20261017-a881-policy and restarts the store. This cannot be undone.\n  - text: To continue, type sudo clear key value qa-20261017-a881-policy\n  - textbox \"To continue, type sudo clear key value qa-20261017-a881-policy\":\n    - /placeholder: sudo clear key value qa-20261017-a881-policy\n  - button \"Cancel\"\n  - button \"Delete data and change mode\" [disabled]",
+      "mutation": {
+        "at": "2026-10-17T11:56:02.914Z",
+        "request": {
+          "operationName": "SetKeyValuePersistenceMode",
+          "variables": {
+            "id": "red-db9m0hcflioc739mcl5g",
+            "persistenceMode": "off"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation SetKeyValuePersistenceMode($id: String!, $persistenceMode: String!) {\n  setKeyValuePersistenceMode(id: $id, persistenceMode: $persistenceMode) {\n    id\n    persistenceMode\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "setKeyValuePersistenceMode": {
+              "__typename": "KeyValue",
+              "id": "red-db9m0hcflioc739mcl5g",
+              "persistenceMode": "off"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792238161810.7651,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.142,
+          "responseStart": 385.785,
+          "responseEnd": 386.621
+        },
+        "url": "https://dashboard.bex.co/keyvalue/red-db9m0hcflioc739mcl5g#persistence-mode"
+      },
+      "observed": [
+        {
+          "at": "2026-10-17T11:56:27.641Z",
+          "request": {
+            "operationName": "KeyValue",
+            "variables": {
+              "id": "red-db9m0hcflioc739mcl5g"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query KeyValue($id: String!) {\n  keyValue(id: $id) {\n    id\n    name\n    plan\n    version\n    status\n    statusReason\n    statusReasonCode\n    suspended\n    createdAt\n    updatedAt\n    externalHost\n    public\n    region\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "__typename": "KeyValue",
+                "createdAt": "2026-10-17T11:47:17Z",
+                "externalHost": "",
+                "id": "red-db9m0hcflioc739mcl5g",
+                "name": "qa-20261017-a881-policy",
+                "plan": "free",
+                "public": false,
+                "region": "fsn1",
+                "status": "available",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "suspended": "not_suspended",
+                "updatedAt": "2026-10-17T11:56:12Z",
+                "version": "8"
+              }
+            }
+          }
+        }
+      ],
+      "samples": [
+        {
+          "at": "2026-10-17T11:56:04.925Z",
+          "persistence": "Snapshot only",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n8m"
+        },
+        {
+          "at": "2026-10-17T11:56:06.933Z",
+          "persistence": "Snapshot only",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n8m"
+        },
+        {
+          "at": "2026-10-17T11:56:08.940Z",
+          "persistence": "Snapshot only",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n8m"
+        },
+        {
+          "at": "2026-10-17T11:56:10.948Z",
+          "persistence": "Snapshot only",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n8m"
+        },
+        {
+          "at": "2026-10-17T11:56:12.956Z",
+          "persistence": "Snapshot only",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n8m"
+        },
+        {
+          "at": "2026-10-17T11:56:14.964Z",
+          "persistence": "Snapshot only",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n8m"
+        },
+        {
+          "at": "2026-10-17T11:56:16.972Z",
+          "persistence": "Snapshot only",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n8m"
+        },
+        {
+          "at": "2026-10-17T11:56:18.979Z",
+          "persistence": "Snapshot only",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n8m"
+        },
+        {
+          "at": "2026-10-17T11:56:20.988Z",
+          "persistence": "Snapshot only",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n8m"
+        },
+        {
+          "at": "2026-10-17T11:56:22.996Z",
+          "persistence": "Snapshot only",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n8m"
+        },
+        {
+          "at": "2026-10-17T11:56:25.004Z",
+          "persistence": "Snapshot only",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n8m"
+        },
+        {
+          "at": "2026-10-17T11:56:27.011Z",
+          "persistence": "Snapshot only",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n8m"
+        },
+        {
+          "at": "2026-10-17T11:56:29.015Z",
+          "persistence": "Snapshot only",
+          "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n8m"
+        }
+      ],
+      "authoritative": {
+        "at": "2026-10-17T11:56:29.779Z",
+        "request": {
+          "operationName": "QaA881State",
+          "query": "query QaA881State($id:String!){keyValue(id:$id){id name status statusReasonCode maxmemoryPolicy persistenceMode suspended}}",
+          "variables": {
+            "id": "red-db9m0hcflioc739mcl5g"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "keyValue": {
+              "id": "red-db9m0hcflioc739mcl5g",
+              "maxmemoryPolicy": "allkeys_lru",
+              "name": "qa-20261017-a881-policy",
+              "persistenceMode": "off",
+              "status": "available",
+              "statusReasonCode": null,
+              "suspended": "not_suspended"
+            }
+          }
+        }
+      },
+      "scope": "Ordinary second-tab Off save with explicit owned typed clear confirmation; initial discard is expected."
+    },
+    "MobileStalePersistence": {
+      "at": "2026-10-17T11:56:54.260Z",
+      "persistence": "Snapshot only",
+      "metadata": "Details\nName\nChange the display name. The Key Value ID and all connection details stay the same.\nID\nred-db9m0hcflioc739mcl5g\nStatus\nAvailable\nInstance type\nFree\nVersion\nValkey 8\nPublic access\nNo\nRegion\nfsn1\nCreated\n8m",
+      "doc": 390
+    },
+    "MobileJournalDraft": {
+      "at": "2026-10-17T11:57:19.811Z",
+      "before": "Snapshot only",
+      "draft": "Journal + Snapshot",
+      "dialogCount": 0,
+      "doc": 390
+    },
+    "MobileUnwarnedJournalSaved": {
+      "at": "2026-10-17T11:57:21.573Z",
+      "request": {
+        "operationName": "SetKeyValuePersistenceMode",
+        "variables": {
+          "id": "red-db9m0hcflioc739mcl5g",
+          "persistenceMode": "journal-snapshot"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetKeyValuePersistenceMode($id: String!, $persistenceMode: String!) {\n  setKeyValuePersistenceMode(id: $id, persistenceMode: $persistenceMode) {\n    id\n    persistenceMode\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setKeyValuePersistenceMode": {
+            "__typename": "KeyValue",
+            "id": "red-db9m0hcflioc739mcl5g",
+            "persistenceMode": "journal_snapshot"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792238240607.152,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.13,
+        "responseStart": 257.969,
+        "responseEnd": 258.752
+      },
+      "url": "https://dashboard.bex.co/keyvalue/red-db9m0hcflioc739mcl5g#persistence-mode"
+    },
+    "MobileJournalReady": {
+      "request": {
+        "operationName": "QaA881State",
+        "query": "query QaA881State($id:String!){keyValue(id:$id){id name status statusReasonCode maxmemoryPolicy persistenceMode suspended}}",
+        "variables": {
+          "id": "red-db9m0hcflioc739mcl5g"
+        }
+      },
+      "polls": [
+        {
+          "at": "2026-10-17T11:57:22.899Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "id": "red-db9m0hcflioc739mcl5g",
+                "maxmemoryPolicy": "allkeys_lru",
+                "name": "qa-20261017-a881-policy",
+                "persistenceMode": "journal_snapshot",
+                "status": "config_restart",
+                "statusReasonCode": null,
+                "suspended": "not_suspended"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T11:57:26.643Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "id": "red-db9m0hcflioc739mcl5g",
+                "maxmemoryPolicy": "allkeys_lru",
+                "name": "qa-20261017-a881-policy",
+                "persistenceMode": "journal_snapshot",
+                "status": "config_restart",
+                "statusReasonCode": null,
+                "suspended": "not_suspended"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T11:57:30.406Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "id": "red-db9m0hcflioc739mcl5g",
+                "maxmemoryPolicy": "allkeys_lru",
+                "name": "qa-20261017-a881-policy",
+                "persistenceMode": "journal_snapshot",
+                "status": "config_restart",
+                "statusReasonCode": null,
+                "suspended": "not_suspended"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T11:57:34.298Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "id": "red-db9m0hcflioc739mcl5g",
+                "maxmemoryPolicy": "allkeys_lru",
+                "name": "qa-20261017-a881-policy",
+                "persistenceMode": "journal_snapshot",
+                "status": "config_restart",
+                "statusReasonCode": null,
+                "suspended": "not_suspended"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T11:57:38.106Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "id": "red-db9m0hcflioc739mcl5g",
+                "maxmemoryPolicy": "allkeys_lru",
+                "name": "qa-20261017-a881-policy",
+                "persistenceMode": "journal_snapshot",
+                "status": "available",
+                "statusReasonCode": null,
+                "suspended": "not_suspended"
+              }
+            }
+          }
+        }
+      ],
+      "dialogCount": 0,
+      "persistence": "Journal + Snapshot"
+    },
+    "DurableFreshBaseline": {
+      "at": "2026-10-17T11:58:20.135Z",
+      "persistence": "Journal + Snapshot",
+      "doc": 390
+    },
+    "DurableSnapshotDraft": {
+      "at": "2026-10-17T11:58:39.476Z",
+      "draft": "Snapshot only"
+    },
+    "DurableSnapshotSaved": {
+      "at": "2026-10-17T11:58:41.310Z",
+      "request": {
+        "operationName": "SetKeyValuePersistenceMode",
+        "variables": {
+          "id": "red-db9m0hcflioc739mcl5g",
+          "persistenceMode": "snapshot"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetKeyValuePersistenceMode($id: String!, $persistenceMode: String!) {\n  setKeyValuePersistenceMode(id: $id, persistenceMode: $persistenceMode) {\n    id\n    persistenceMode\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setKeyValuePersistenceMode": {
+            "__typename": "KeyValue",
+            "id": "red-db9m0hcflioc739mcl5g",
+            "persistenceMode": "snapshot"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792238320268.544,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.125,
+        "responseStart": 332.221,
+        "responseEnd": 332.935
+      },
+      "url": "https://dashboard.bex.co/keyvalue/red-db9m0hcflioc739mcl5g#persistence-mode"
+    },
+    "DurableSnapshotReady": {
+      "request": {
+        "operationName": "QaA881State",
+        "query": "query QaA881State($id:String!){keyValue(id:$id){id name status maxmemoryPolicy persistenceMode}}",
+        "variables": {
+          "id": "red-db9m0hcflioc739mcl5g"
+        }
+      },
+      "polls": [
+        {
+          "at": "2026-10-17T11:58:42.699Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "id": "red-db9m0hcflioc739mcl5g",
+                "maxmemoryPolicy": "allkeys_lru",
+                "name": "qa-20261017-a881-policy",
+                "persistenceMode": "snapshot",
+                "status": "config_restart"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T11:58:46.429Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "id": "red-db9m0hcflioc739mcl5g",
+                "maxmemoryPolicy": "allkeys_lru",
+                "name": "qa-20261017-a881-policy",
+                "persistenceMode": "snapshot",
+                "status": "config_restart"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T11:58:50.223Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "id": "red-db9m0hcflioc739mcl5g",
+                "maxmemoryPolicy": "allkeys_lru",
+                "name": "qa-20261017-a881-policy",
+                "persistenceMode": "snapshot",
+                "status": "config_restart"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T11:58:54.003Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "id": "red-db9m0hcflioc739mcl5g",
+                "maxmemoryPolicy": "allkeys_lru",
+                "name": "qa-20261017-a881-policy",
+                "persistenceMode": "snapshot",
+                "status": "config_restart"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T11:58:57.754Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "id": "red-db9m0hcflioc739mcl5g",
+                "maxmemoryPolicy": "allkeys_lru",
+                "name": "qa-20261017-a881-policy",
+                "persistenceMode": "snapshot",
+                "status": "available"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "FinalOffConfirmation": {
+      "at": "2026-10-17T11:59:25.606Z",
+      "dialog": "- alertdialog \"Delete all data and change persistence?\":\n  - heading \"Delete all data and change persistence?\" [level=2]\n  - paragraph: Switching to or from Off deletes all data in qa-20261017-a881-policy and restarts the store. This cannot be undone.\n  - text: To continue, type sudo clear key value qa-20261017-a881-policy\n  - textbox \"To continue, type sudo clear key value qa-20261017-a881-policy\":\n    - /placeholder: sudo clear key value qa-20261017-a881-policy\n  - button \"Cancel\"\n  - button \"Delete data and change mode\" [disabled]"
+    },
+    "FinalOffSaved": {
+      "at": "2026-10-17T11:59:27.496Z",
+      "request": {
+        "operationName": "SetKeyValuePersistenceMode",
+        "variables": {
+          "id": "red-db9m0hcflioc739mcl5g",
+          "persistenceMode": "off"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetKeyValuePersistenceMode($id: String!, $persistenceMode: String!) {\n  setKeyValuePersistenceMode(id: $id, persistenceMode: $persistenceMode) {\n    id\n    persistenceMode\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setKeyValuePersistenceMode": {
+            "__typename": "KeyValue",
+            "id": "red-db9m0hcflioc739mcl5g",
+            "persistenceMode": "off"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792238366216.178,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.186,
+        "responseStart": 569.69,
+        "responseEnd": 570.498
+      },
+      "url": "https://dashboard.bex.co/keyvalue/red-db9m0hcflioc739mcl5g#persistence-mode"
+    },
+    "FinalOffReady": {
+      "request": {
+        "operationName": "QaA881State",
+        "query": "query QaA881State($id:String!){keyValue(id:$id){id name status maxmemoryPolicy persistenceMode}}",
+        "variables": {
+          "id": "red-db9m0hcflioc739mcl5g"
+        }
+      },
+      "polls": [
+        {
+          "at": "2026-10-17T11:59:28.933Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "id": "red-db9m0hcflioc739mcl5g",
+                "maxmemoryPolicy": "allkeys_lru",
+                "name": "qa-20261017-a881-policy",
+                "persistenceMode": "off",
+                "status": "config_restart"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T11:59:32.929Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "id": "red-db9m0hcflioc739mcl5g",
+                "maxmemoryPolicy": "allkeys_lru",
+                "name": "qa-20261017-a881-policy",
+                "persistenceMode": "off",
+                "status": "config_restart"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T11:59:36.683Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "id": "red-db9m0hcflioc739mcl5g",
+                "maxmemoryPolicy": "allkeys_lru",
+                "name": "qa-20261017-a881-policy",
+                "persistenceMode": "off",
+                "status": "config_restart"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T11:59:40.399Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "id": "red-db9m0hcflioc739mcl5g",
+                "maxmemoryPolicy": "allkeys_lru",
+                "name": "qa-20261017-a881-policy",
+                "persistenceMode": "off",
+                "status": "config_restart"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T11:59:44.110Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "id": "red-db9m0hcflioc739mcl5g",
+                "maxmemoryPolicy": "allkeys_lru",
+                "name": "qa-20261017-a881-policy",
+                "persistenceMode": "off",
+                "status": "config_restart"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T11:59:47.935Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "keyValue": {
+                "id": "red-db9m0hcflioc739mcl5g",
+                "maxmemoryPolicy": "allkeys_lru",
+                "name": "qa-20261017-a881-policy",
+                "persistenceMode": "off",
+                "status": "available"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "FreshOffWarnCancel": {
+      "at": "2026-10-17T12:00:16.001Z",
+      "before": "Off",
+      "dialog": "- alertdialog \"Delete all data and change persistence?\":\n  - heading \"Delete all data and change persistence?\" [level=2]\n  - paragraph: Switching to or from Off deletes all data in qa-20261017-a881-policy and restarts the store. This cannot be undone.\n  - text: To continue, type sudo clear key value qa-20261017-a881-policy\n  - textbox \"To continue, type sudo clear key value qa-20261017-a881-policy\":\n    - /placeholder: sudo clear key value qa-20261017-a881-policy\n  - button \"Cancel\"\n  - button \"Delete data and change mode\" [disabled]",
+      "confirmDisabledWithoutPhrase": true,
+      "restored": "Off",
+      "calls": []
+    },
+    "Deleted": {
+      "at": "2026-10-17T12:00:27.924Z",
+      "request": {
+        "operationName": "DeleteKeyValue",
+        "variables": {
+          "id": "red-db9m0hcflioc739mcl5g"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteKeyValue($id: String!, $confirm: String) {\n  deleteKeyValue(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteKeyValue": true
+        }
+      },
+      "timing": {
+        "startTime": 1792238426948.2542,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.124,
+        "responseStart": 267.265,
+        "responseEnd": 267.679
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "InventoryCleanup": {
+      "at": "2026-10-17T12:00:38.505Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [
+        {
+          "path": "/v1/key-value/red-db9m0hcflioc739mcl5g",
+          "status": 404
+        }
+      ]
+    },
+    "SessionCleared": {
+      "at": "2026-10-17T12:00:44.273Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "FinishSummary": {
+      "logoutConfirmed": true,
+      "exitCode": 0,
+      "browser": {
+        "at": "2026-10-17T12:00:44.273Z",
+        "whoami": 401,
+        "cookies": 0,
+        "pages": 1,
+        "url": "about:blank"
+      },
+      "handlesRemoved": true
+    }
+  },
+  "runtimeReceipts": {
+    "after-noeviction": {
+      "atMs": 1792237719346,
+      "phase": "after-noeviction",
+      "exitCode": 1,
+      "rows": [],
+      "stderr": "error: Internal error occurred: unable to upgrade connection: container not found (\"valkey\")\n",
+      "podUid": "940c9510-cedc-43ee-a2c0-7ad25e53c2c2"
+    },
+    "noeviction-ready": {
+      "atMs": 1792237730839,
+      "phase": "noeviction-ready",
+      "exitCode": 0,
+      "rows": [
+        "PONG",
+        ["qa-a881 permanent 雪 🐟", "qa-a881 expiring"],
+        1792238563022,
+        {
+          "field": "hash line1\nline2 café"
+        },
+        ["first", "", "tail 🐟"],
+        {
+          "appendonly": "yes",
+          "save": "3600 1 300 100 60 10000",
+          "maxmemory-policy": "noeviction"
+        }
+      ],
+      "stderr": "",
+      "podUid": "940c9510-cedc-43ee-a2c0-7ad25e53c2c2"
+    },
+    "volatile-ready": {
+      "atMs": 1792237822617,
+      "phase": "volatile-ready",
+      "exitCode": 0,
+      "rows": [
+        "PONG",
+        ["qa-a881 permanent 雪 🐟", "qa-a881 expiring"],
+        1792238563022,
+        {
+          "field": "hash line1\nline2 café"
+        },
+        ["first", "", "tail 🐟"],
+        {
+          "save": "3600 1 300 100 60 10000",
+          "maxmemory-policy": "volatile-ttl",
+          "appendonly": "yes"
+        }
+      ],
+      "stderr": "",
+      "podUid": ""
+    },
+    "off-empty": {
+      "atMs": 1792238080576,
+      "phase": "off-empty",
+      "exitCode": 0,
+      "rows": [
+        "PONG",
+        [null, null],
+        -2,
+        {},
+        [],
+        {
+          "save": "",
+          "maxmemory-policy": "allkeys-lru",
+          "appendonly": "no"
+        }
+      ],
+      "stderr": "",
+      "podUid": "8457b762-15f7-4cbe-aa6e-3ce75395dbe5"
+    },
+    "seed-off": {
+      "atMs": 1792238091144,
+      "phase": "seed",
+      "exitCode": 0,
+      "rows": [
+        "OK",
+        "OK",
+        1,
+        1,
+        3,
+        "PONG",
+        ["qa-a881 OFF-only new marker 🐟", "qa-a881 OFF-only new expiry"],
+        1792238677705,
+        {
+          "field": "qa-a881 OFF-only new hash"
+        },
+        ["off-new-first", "", "off-new-tail"],
+        {
+          "save": "",
+          "maxmemory-policy": "allkeys-lru",
+          "appendonly": "no"
+        }
+      ],
+      "stderr": "",
+      "podUid": "8457b762-15f7-4cbe-aa6e-3ce75395dbe5"
+    },
+    "snapshot-after-unwarned": {
+      "atMs": 1792238138932,
+      "phase": "snapshot-after-unwarned",
+      "exitCode": 0,
+      "rows": [
+        "PONG",
+        [null, null],
+        -2,
+        {},
+        [],
+        {
+          "save": "3600 1 300 100 60 10000",
+          "appendonly": "no",
+          "maxmemory-policy": "allkeys-lru"
+        }
+      ],
+      "stderr": "",
+      "podUid": "30f926a9-c0f9-4476-b140-68953a5344bf"
+    },
+    "mobile-off-empty": {
+      "atMs": 1792238216025,
+      "phase": "mobile-off-empty",
+      "exitCode": 0,
+      "rows": [
+        "PONG",
+        [null, null],
+        -2,
+        {},
+        [],
+        {
+          "maxmemory-policy": "allkeys-lru",
+          "save": "",
+          "appendonly": "no"
+        }
+      ],
+      "stderr": "",
+      "podUid": "8ec89005-0d15-48f5-965b-9aa058ca6889"
+    },
+    "seed-mobile-off": {
+      "atMs": 1792238226513,
+      "phase": "seed-mobile-off",
+      "exitCode": 0,
+      "rows": [
+        "OK",
+        "OK",
+        1,
+        1,
+        3,
+        "PONG",
+        ["qa-a881 MOBILE OFF-only marker 雪", "qa-a881 MOBILE OFF-only expiry"],
+        1792238814823,
+        {
+          "field": "qa-a881 MOBILE OFF-only hash"
+        },
+        ["mobile-off-first", "", "mobile-off-tail"],
+        {
+          "maxmemory-policy": "allkeys-lru",
+          "save": "",
+          "appendonly": "no"
+        }
+      ],
+      "stderr": "",
+      "podUid": "8ec89005-0d15-48f5-965b-9aa058ca6889"
+    },
+    "journal-after-unwarned-mobile": {
+      "atMs": 1792238263469,
+      "phase": "journal-after-unwarned-mobile",
+      "exitCode": 0,
+      "rows": [
+        "PONG",
+        [null, null],
+        -2,
+        {},
+        [],
+        {
+          "save": "3600 1 300 100 60 10000",
+          "maxmemory-policy": "allkeys-lru",
+          "appendonly": "yes"
+        }
+      ],
+      "stderr": "",
+      "podUid": "191340ad-cf89-46e0-ac6b-656a2469f39e"
+    },
+    "seed-durable-control": {
+      "atMs": 1792238299262,
+      "phase": "seed-durable-control",
+      "exitCode": 0,
+      "rows": [
+        "OK",
+        "OK",
+        1,
+        1,
+        3,
+        "PONG",
+        ["qa-a881 DURABLE control marker 🐟", "qa-a881 DURABLE control expiry"],
+        1792238896057,
+        {
+          "field": "qa-a881 DURABLE control hash"
+        },
+        ["durable-first", "", "durable-tail"],
+        {
+          "save": "3600 1 300 100 60 10000",
+          "maxmemory-policy": "allkeys-lru",
+          "appendonly": "yes"
+        }
+      ],
+      "stderr": "",
+      "podUid": "191340ad-cf89-46e0-ac6b-656a2469f39e"
+    },
+    "durable-snapshot": {
+      "atMs": 1792238344094,
+      "phase": "durable-snapshot",
+      "exitCode": 0,
+      "rows": [
+        "PONG",
+        ["qa-a881 DURABLE control marker 🐟", "qa-a881 DURABLE control expiry"],
+        1792238896057,
+        {
+          "field": "qa-a881 DURABLE control hash"
+        },
+        ["durable-first", "", "durable-tail"],
+        {
+          "maxmemory-policy": "allkeys-lru",
+          "save": "3600 1 300 100 60 10000",
+          "appendonly": "no"
+        }
+      ],
+      "stderr": "",
+      "podUid": "b2a22089-2d3e-457c-a0e5-bd8de320f7a4"
+    },
+    "seed-fresh-off-control": {
+      "atMs": 1792238392866,
+      "phase": "seed-fresh-off-control",
+      "exitCode": 0,
+      "rows": [
+        "OK",
+        "OK",
+        1,
+        1,
+        3,
+        "PONG",
+        ["qa-a881 DURABLE control marker 🐟", "qa-a881 DURABLE control expiry"],
+        1792238896057,
+        {
+          "field": "qa-a881 DURABLE control hash"
+        },
+        ["durable-first", "", "durable-tail"],
+        {
+          "maxmemory-policy": "allkeys-lru",
+          "save": "",
+          "appendonly": "no"
+        }
+      ],
+      "stderr": "",
+      "podUid": "017436f6-6131-44ac-93e2-227e2ab645ab"
+    },
+    "fresh-off-after-cancel": {
+      "atMs": 1792238419287,
+      "phase": "fresh-off-after-cancel",
+      "exitCode": 0,
+      "rows": [
+        "PONG",
+        ["qa-a881 DURABLE control marker 🐟", "qa-a881 DURABLE control expiry"],
+        1792238896057,
+        {
+          "field": "qa-a881 DURABLE control hash"
+        },
+        ["durable-first", "", "durable-tail"],
+        {
+          "maxmemory-policy": "allkeys-lru",
+          "save": "",
+          "appendonly": "no"
+        }
+      ],
+      "stderr": "",
+      "podUid": "017436f6-6131-44ac-93e2-227e2ab645ab"
+    }
+  },
+  "runtimeHelperSource": "from pathlib import Path\nimport subprocess,json,sys,time\np=Path('.playwright-mcp');phase=sys.argv[1];vals=json.loads((p/'qa-a881-values.json').read_text());pod='red-db9m0hcflioc739mcl5g-0'\ncommands=[]\nif phase.startswith('seed'):\n commands=[['SET','qa:a881:permanent',vals['permanent']],['SET','qa:a881:expires',vals['expires']],['PEXPIREAT','qa:a881:expires',str(vals['expiryMs'])],['HSET','qa:a881:hash','field',vals['hashValue']],['RPUSH','qa:a881:list',*vals['list']]]\ncommands += [['PING'],['MGET','qa:a881:permanent','qa:a881:expires'],['PEXPIRETIME','qa:a881:expires'],['HGETALL','qa:a881:hash'],['LRANGE','qa:a881:list','0','-1'],['CONFIG','GET','appendonly','save','maxmemory-policy']]\nwire='\\n'.join(' '.join(json.dumps(s,ensure_ascii=False) for s in parts) for parts in commands)+'\\n'\nbase=['kubectl','--context','hetzner-prod','--request-timeout=15s','-n','tea-d98210cbbpdc73dcrkvg']\ntry:\n r=subprocess.run(base+['exec','-i',pod,'-c','valkey','--','sh','-c','REDISCLI_AUTH=\"$VALKEY_PASSWORD\" valkey-cli --json'],input=wire,capture_output=True,text=True,timeout=25)\n rows=[json.loads(x) for x in r.stdout.splitlines()] if r.returncode==0 else []\n out={'atMs':int(time.time()*1000),'phase':phase,'exitCode':r.returncode,'rows':rows,'stderr':r.stderr}\nexcept subprocess.TimeoutExpired:out={'atMs':int(time.time()*1000),'phase':phase,'timeoutSeconds':25}\nr=subprocess.run(base+['get','pod',pod,'-o','jsonpath={.metadata.uid}'],capture_output=True,text=True,timeout=20);out['podUid']=r.stdout\n(p/f'qa-a881-runtime-{phase}.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\\n');print(json.dumps(out,ensure_ascii=False))\n",
+  "runtimeInputProfiles": {
+    "original": {
+      "permanent": "qa-a881 permanent 雪 🐟",
+      "expires": "qa-a881 expiring",
+      "expiryMs": 1792238563022,
+      "hashValue": "hash line1\nline2 café",
+      "list": ["first", "", "tail 🐟"]
+    },
+    "mobileOff": {
+      "permanent": "qa-a881 MOBILE OFF-only marker 雪",
+      "expires": "qa-a881 MOBILE OFF-only expiry",
+      "expiryMs": 1792238814823,
+      "hashValue": "qa-a881 MOBILE OFF-only hash",
+      "list": ["mobile-off-first", "", "mobile-off-tail"]
+    },
+    "durable": {
+      "permanent": "qa-a881 DURABLE control marker 🐟",
+      "expires": "qa-a881 DURABLE control expiry",
+      "expiryMs": 1792238896057,
+      "hashValue": "qa-a881 DURABLE control hash",
+      "list": ["durable-first", "", "durable-tail"]
+    },
+    "desktopOff": {
+      "permanent": "qa-a881 OFF-only new marker 🐟",
+      "expires": "qa-a881 OFF-only new expiry",
+      "expiryMs": 1792238677705,
+      "hashValue": "qa-a881 OFF-only new hash",
+      "list": ["off-new-first", "", "off-new-tail"],
+      "provenance": "Input values reconstructed from the seed helper and its complete immediate readback; original values file was later updated for the next profile."
+    }
+  },
+  "runtimeReadCommandVectors": [
+    ["PING"],
+    ["MGET", "qa:a881:permanent", "qa:a881:expires"],
+    ["PEXPIRETIME", "qa:a881:expires"],
+    ["HGETALL", "qa:a881:hash"],
+    ["LRANGE", "qa:a881:list", "0", "-1"],
+    ["CONFIG", "GET", "appendonly", "save", "maxmemory-policy"]
+  ],
+  "runtimeSourceNote": "The original seed filename was reused; preserved noeviction-ready receipt and original-values input support earlier data control. seed-off is the separately retained desktop Off receipt. One volatile-ready pod UID lookup was blank; its data/config read succeeded. No credential data is recorded.",
+  "probeSources": {
+    "crossTabPolicy": "async(page)=>{const observed=[];const handler=async r=>{if(!r.url().endsWith('/graphql')||r.request().method()!=='POST')return;try{const raw=r.request().postDataJSON();const reqs=Array.isArray(raw)?raw:[raw];const body=await r.json();const bodies=Array.isArray(body)?body:[body];for(let i=0;i<reqs.length;i++){const req=reqs[i];if(['KeyValue','KeyValueMaxmemoryPolicy'].includes(req.operationName)&&req.variables.id==='red-db9m0hcflioc739mcl5g')observed.push({at:new Date().toISOString(),request:req,status:r.status(),body:bodies[i]});}}catch{}};page.on('response',handler);let other;try{const before={at:new Date().toISOString(),policy:await page.getByRole('combobox',{name:'Maxmemory policy',exact:true}).innerText(),metadata:await page.locator('#metadata').innerText()};other=await page.context().newPage();await other.goto('https://dashboard.bex.co/keyvalue/red-db9m0hcflioc739mcl5g#maxmemory-policy',{waitUntil:'domcontentloaded'});await other.getByRole('button',{name:'Edit maxmemory policy',exact:true}).waitFor({timeout:20000});await other.getByRole('button',{name:'Edit maxmemory policy',exact:true}).click();await other.getByRole('combobox',{name:'Maxmemory policy',exact:true}).click();await other.getByRole('option',{name:'allkeys-lru (recommended for caches)',exact:true}).click();const mutation=await (async(page)=>{const pending=page.waitForResponse(r=>{if(!r.url().endsWith(\"/graphql\")||r.request().method()!==\"POST\")return false;try{const q=r.request().postDataJSON();return(Array.isArray(q)?q:[q]).some(x=>x.operationName===\"SetKeyValueMaxmemoryPolicy\"&&(!\"red-db9m0hcflioc739mcl5g\"||x.variables.id===\"red-db9m0hcflioc739mcl5g\"));}catch{return false;}},{timeout:45000}).then(response=>({response}),error=>({waitError:String(error)}));{await page.locator('#maxmemory-policy').getByRole('button',{name:'Save changes',exact:true}).click();};const waited=await pending;if(waited.waitError)throw new Error(waited.waitError);const r=waited.response;const q=r.request().postDataJSON(),b=await r.json(),qs=Array.isArray(q)?q:[q],bs=Array.isArray(b)?b:[b];const i=qs.findIndex(x=>x.operationName===\"SetKeyValueMaxmemoryPolicy\");await page.waitForTimeout(700);return{at:new Date().toISOString(),request:qs[i],status:r.status(),body:bs[i],timing:r.request().timing(),url:page.url()};})(other);await page.bringToFront();const samples=[];for(let i=0;i<20;i++){await page.waitForTimeout(2000);samples.push({at:new Date().toISOString(),policy:await page.getByRole('combobox',{name:'Maxmemory policy',exact:true}).innerText(),metadata:await page.locator('#metadata').innerText()});if(observed.some(x=>x.at>mutation.at&&x.body?.data?.keyValue?.status==='available'))break;}const query={operationName:'QaA881State',query:'query QaA881State($id:String!){keyValue(id:$id){id name status statusReasonCode maxmemoryPolicy persistenceMode suspended}}',variables:{id:'red-db9m0hcflioc739mcl5g'}};const r=await page.request.post('https://api.bex.co/graphql',{data:query});const authoritative={at:new Date().toISOString(),request:query,status:r.status(),body:await r.json()};await page.screenshot({path:'qa-a881-mobile-cross-tab-policy.png',fullPage:false});return {at:new Date().toISOString(),before,mutation,observed,samples,authoritative,scope:'Two ordinary UI clients on the same owned store; no response delay or replacement.'};}finally{page.off('response',handler);if(other)await other.close();await page.bringToFront();}}",
+    "otherTabOff": "async(page)=>{const observed=[];const handler=async r=>{if(!r.url().endsWith('/graphql')||r.request().method()!=='POST')return;try{const qs=r.request().postDataJSON();const reqs=Array.isArray(qs)?qs:[qs],raw=await r.json(),bs=Array.isArray(raw)?raw:[raw];for(let i=0;i<reqs.length;i++)if(['KeyValue','KeyValuePersistenceMode'].includes(reqs[i].operationName)&&reqs[i].variables.id==='red-db9m0hcflioc739mcl5g')observed.push({at:new Date().toISOString(),request:reqs[i],status:r.status(),body:bs[i]});}catch{}};page.on('response',handler);let other;try{const before={at:new Date().toISOString(),persistence:await page.getByRole('combobox',{name:'Persistence mode',exact:true}).innerText(),metadata:await page.locator('#metadata').innerText()};other=await page.context().newPage();await other.goto('https://dashboard.bex.co/keyvalue/red-db9m0hcflioc739mcl5g#persistence-mode',{waitUntil:'domcontentloaded'});await other.getByRole('button',{name:'Edit persistence mode',exact:true}).waitFor({timeout:20000});await other.getByRole('button',{name:'Edit persistence mode',exact:true}).click();await other.getByRole('combobox',{name:'Persistence mode',exact:true}).click();await other.getByRole('option',{name:'Off',exact:true}).click();await other.locator('#persistence-mode').getByRole('button',{name:'Save changes',exact:true}).click();const dialog=other.getByRole('alertdialog');await dialog.waitFor();const dialogSnapshot=await dialog.ariaSnapshot();if(!dialogSnapshot.includes('sudo clear key value qa-20261017-a881-policy'))throw new Error('Owned clear phrase missing');await dialog.getByRole('textbox').fill('sudo clear key value qa-20261017-a881-policy');const mutation=await (async(page)=>{const pending=page.waitForResponse(r=>{if(!r.url().endsWith(\"/graphql\")||r.request().method()!==\"POST\")return false;try{const q=r.request().postDataJSON();return(Array.isArray(q)?q:[q]).some(x=>x.operationName===\"SetKeyValuePersistenceMode\"&&(!\"red-db9m0hcflioc739mcl5g\"||x.variables.id===\"red-db9m0hcflioc739mcl5g\"));}catch{return false;}},{timeout:45000}).then(response=>({response}),error=>({waitError:String(error)}));{await page.getByRole('alertdialog').getByRole('button',{name:'Delete data and change mode',exact:true}).click();};const waited=await pending;if(waited.waitError)throw new Error(waited.waitError);const r=waited.response;const q=r.request().postDataJSON(),b=await r.json(),qs=Array.isArray(q)?q:[q],bs=Array.isArray(b)?b:[b];const i=qs.findIndex(x=>x.operationName===\"SetKeyValuePersistenceMode\");await page.waitForTimeout(700);return{at:new Date().toISOString(),request:qs[i],status:r.status(),body:bs[i],timing:r.request().timing(),url:page.url()};})(other);await page.bringToFront();const samples=[];for(let i=0;i<22;i++){await page.waitForTimeout(2000);samples.push({at:new Date().toISOString(),persistence:await page.getByRole('combobox',{name:'Persistence mode',exact:true}).innerText(),metadata:await page.locator('#metadata').innerText()});if(observed.some(x=>x.at>mutation.at&&x.body?.data?.keyValue?.status==='available'))break;}const q={operationName:'QaA881State',query:'query QaA881State($id:String!){keyValue(id:$id){id name status statusReasonCode maxmemoryPolicy persistenceMode suspended}}',variables:{id:'red-db9m0hcflioc739mcl5g'}};const r=await page.request.post('https://api.bex.co/graphql',{data:q});return {at:new Date().toISOString(),before,dialogSnapshot,mutation,observed,samples,authoritative:{at:new Date().toISOString(),request:q,status:r.status(),body:await r.json()},scope:'Ordinary second-tab Off save with explicit owned typed clear confirmation; initial discard is expected.'};}finally{page.off('response',handler);if(other)await other.close();await page.bringToFront();}}",
+    "mobileOtherTabOff": "async(page)=>{const observed=[];const handler=async r=>{if(!r.url().endsWith('/graphql')||r.request().method()!=='POST')return;try{const qs=r.request().postDataJSON();const reqs=Array.isArray(qs)?qs:[qs],raw=await r.json(),bs=Array.isArray(raw)?raw:[raw];for(let i=0;i<reqs.length;i++)if(['KeyValue','KeyValuePersistenceMode'].includes(reqs[i].operationName)&&reqs[i].variables.id==='red-db9m0hcflioc739mcl5g')observed.push({at:new Date().toISOString(),request:reqs[i],status:r.status(),body:bs[i]});}catch{}};page.on('response',handler);let other;try{const before={at:new Date().toISOString(),persistence:await page.getByRole('combobox',{name:'Persistence mode',exact:true}).innerText(),metadata:await page.locator('#metadata').innerText()};other=await page.context().newPage();await other.goto('https://dashboard.bex.co/keyvalue/red-db9m0hcflioc739mcl5g#persistence-mode',{waitUntil:'domcontentloaded'});await other.getByRole('button',{name:'Edit persistence mode',exact:true}).waitFor({timeout:20000});await other.getByRole('button',{name:'Edit persistence mode',exact:true}).click();await other.getByRole('combobox',{name:'Persistence mode',exact:true}).click();await other.getByRole('option',{name:'Off',exact:true}).click();await other.locator('#persistence-mode').getByRole('button',{name:'Save changes',exact:true}).click();const dialog=other.getByRole('alertdialog');await dialog.waitFor();const dialogSnapshot=await dialog.ariaSnapshot();if(!dialogSnapshot.includes('sudo clear key value qa-20261017-a881-policy'))throw new Error('Owned clear phrase missing');await dialog.getByRole('textbox').fill('sudo clear key value qa-20261017-a881-policy');const mutation=await (async(page)=>{const pending=page.waitForResponse(r=>{if(!r.url().endsWith(\"/graphql\")||r.request().method()!==\"POST\")return false;try{const q=r.request().postDataJSON();return(Array.isArray(q)?q:[q]).some(x=>x.operationName===\"SetKeyValuePersistenceMode\"&&(!\"red-db9m0hcflioc739mcl5g\"||x.variables.id===\"red-db9m0hcflioc739mcl5g\"));}catch{return false;}},{timeout:45000}).then(response=>({response}),error=>({waitError:String(error)}));{await page.getByRole('alertdialog').getByRole('button',{name:'Delete data and change mode',exact:true}).click();};const waited=await pending;if(waited.waitError)throw new Error(waited.waitError);const r=waited.response;const q=r.request().postDataJSON(),b=await r.json(),qs=Array.isArray(q)?q:[q],bs=Array.isArray(b)?b:[b];const i=qs.findIndex(x=>x.operationName===\"SetKeyValuePersistenceMode\");await page.waitForTimeout(700);return{at:new Date().toISOString(),request:qs[i],status:r.status(),body:bs[i],timing:r.request().timing(),url:page.url()};})(other);await page.bringToFront();const samples=[];for(let i=0;i<22;i++){await page.waitForTimeout(2000);samples.push({at:new Date().toISOString(),persistence:await page.getByRole('combobox',{name:'Persistence mode',exact:true}).innerText(),metadata:await page.locator('#metadata').innerText()});if(observed.some(x=>x.at>mutation.at&&x.body?.data?.keyValue?.status==='available'))break;}const q={operationName:'QaA881State',query:'query QaA881State($id:String!){keyValue(id:$id){id name status statusReasonCode maxmemoryPolicy persistenceMode suspended}}',variables:{id:'red-db9m0hcflioc739mcl5g'}};const r=await page.request.post('https://api.bex.co/graphql',{data:q});return {at:new Date().toISOString(),before,dialogSnapshot,mutation,observed,samples,authoritative:{at:new Date().toISOString(),request:q,status:r.status(),body:await r.json()},scope:'Ordinary second-tab Off save with explicit owned typed clear confirmation; initial discard is expected.'};}finally{page.off('response',handler);if(other)await other.close();await page.bringToFront();}}",
+    "nativeMutationFactory": "(function(operation,id,action){const base=((operation,id,action)=>`async(page)=>{const pending=page.waitForResponse(r=>{if(!r.url().endsWith(\"/graphql\")||r.request().method()!==\"POST\")return false;try{const q=r.request().postDataJSON();return(Array.isArray(q)?q:[q]).some(x=>x.operationName===${JSON.stringify(operation)}&&(!${JSON.stringify(id)}||x.variables.id===${JSON.stringify(id)}));}catch{return false;}},{timeout:45000}).then(response=>({response}),error=>({waitError:String(error)}));{${action}};const waited=await pending;if(waited.waitError)throw new Error(waited.waitError);const r=waited.response;const q=r.request().postDataJSON(),b=await r.json(),qs=Array.isArray(q)?q:[q],bs=Array.isArray(b)?b:[b];const i=qs.findIndex(x=>x.operationName===${JSON.stringify(operation)});await page.waitForTimeout(700);return{at:new Date().toISOString(),request:qs[i],status:r.status(),body:bs[i],timing:r.request().timing(),url:page.url()};}`);if(operation==='CreateDatabase'){action=\"const qaFreeType=page.getByRole('combobox',{name:'Instance type',exact:true});if(await qaFreeType.count()!==1||!/^Free\\\\b/.test(await qaFreeType.innerText()))throw new Error('Free Postgres type is not confirmed; create blocked');\\n\"+action;}else if(operation==='CreateService'){action=\"const qaStaticType=page.getByRole('radio',{name:'Static Site Build and serve a static site from object storage',exact:true});const qaStaticSelected=await qaStaticType.count()===1&&await qaStaticType.isChecked();if(qaStaticSelected){if(await page.getByRole('heading',{name:'New Static Site',exact:true}).count()!==1||await page.getByRole('radio',{name:/^Free/}).count()!==0)throw new Error('Static create shape is not confirmed; create blocked');}else{const qaFreePlan=page.getByRole('radio',{name:/^Free/});if(await qaFreePlan.count()!==1||!(await qaFreePlan.isChecked()))throw new Error('Free plan is not confirmed; create blocked');\\n}\\n\"+action;}else if(operation==='CreateKeyValue'){action=\"const qaFreePlan=page.getByRole('radio',{name:/^Free/});if(await qaFreePlan.count()!==1||!(await qaFreePlan.isChecked()))throw new Error('Free plan is not confirmed; create blocked');\\n\"+action;}return base(operation,id,action);})"
+  },
+  "physicalCleanup": {
+    "at": "2026-10-17T12:01:52.761452+00:00",
+    "keyValueId": "red-db9m0hcflioc739mcl5g",
+    "namespace": "tea-d98210cbbpdc73dcrkvg",
+    "scope": "Exact owned names plus exact keyvalue label across namespaces; secret metadata names only",
+    "checks": [
+      {
+        "check": "keyValue",
+        "exactName": "red-db9m0hcflioc739mcl5g",
+        "count": 0,
+        "resources": []
+      },
+      {
+        "check": "statefulset",
+        "exactName": "red-db9m0hcflioc739mcl5g",
+        "count": 0,
+        "resources": []
+      },
+      {
+        "check": "service",
+        "exactName": "red-db9m0hcflioc739mcl5g",
+        "count": 0,
+        "resources": []
+      },
+      {
+        "check": "pvcExact",
+        "exactName": "data-red-db9m0hcflioc739mcl5g-0",
+        "count": 0,
+        "resources": []
+      },
+      {
+        "check": "certificate",
+        "exactName": "red-db9m0hcflioc739mcl5g-kv-tls",
+        "count": 0,
+        "resources": []
+      },
+      {
+        "check": "tlsSecretMetadata",
+        "exactName": "red-db9m0hcflioc739mcl5g-kv-tls",
+        "count": 0,
+        "resources": []
+      },
+      {
+        "check": "pods",
+        "exactName": null,
+        "count": 0,
+        "resources": []
+      },
+      {
+        "check": "jobs",
+        "exactName": null,
+        "count": 0,
+        "resources": []
+      },
+      {
+        "check": "cronjobs",
+        "exactName": null,
+        "count": 0,
+        "resources": []
+      },
+      {
+        "check": "pvc",
+        "exactName": null,
+        "count": 0,
+        "resources": []
+      },
+      {
+        "check": "secrets",
+        "exactName": null,
+        "count": 0,
+        "resources": []
+      },
+      {
+        "check": "networkpolicies",
+        "exactName": null,
+        "count": 0,
+        "resources": []
+      }
+    ],
+    "allAbsent": true
+  },
+  "networkSummary": {
+    "count": 158,
+    "baselineExclusive": 9777,
+    "statuses": {
+      "200": 150,
+      "204": 8
+    },
+    "nonSuccess": []
+  },
+  "consoleErrors": 0,
+  "dedupe": {
+    "markdownFiles": 9693,
+    "nonDoneReadmeCount": 278,
+    "nextW4Milestone": 226,
+    "matches": [
+      {
+        "path": ".pm/w4/README.md",
+        "line": 201,
+        "text": "- [x] **m127** — [A protected environment refuses to pause a database and allows `DROP TABLE` inside it](done/m127/README.md) (7 tasks, ~4h 5m) ← live `/qa-find-bugs` 2026-09-21 pass 142 (w4-targeted run, `muse.env` credentials); a free-plan Postgres and Key Value created directly into a fresh `protectedStatus: protected` environment refused `suspendDatabase`/`suspendKeyValue`/`deleteDatabase`/`deleteKeyValue` with their `sudo …` phrases, and in the same session **accepted** `executeDatabaseQuery(allowWrites:true)` for `CREATE TABLE`, `INSERT` **and `DROP TABLE`**, plus `setKeyValuePersistenceMode(\"off\")`, `setKeyValueMaxmemoryPolicy(\"allkeys_lru\")`, `failoverDatabase` and `renameDatabase` —"
+      },
+      {
+        "path": ".pm/w7/README.md",
+        "line": 81,
+        "text": "- [x] **m45** — Key Value update parity: honor memory-policy + IP allow-list on the update PATCH (6 tasks) ← from `docs/cli-compatibility-checklist.md` verification pass 2026-07-18 (six-agent CLI-compat sweep: `keyvalues update --memory-policy | --ip-allow-list | --clear-ip-allow-list` return 200 + empty diff and change nothing — `handleUpdateKeyValue`/`KeyValuePatch` decode only name/plan; the `/pm` request said \"create\" but create verified fully working, so scoped to the real `update` defect); closes the update path of m5's KV ipAllowList parity — done 2026-07-18: `KeyValuePatch` gained `MaxmemoryPolicy` + `IPAllowList` (nil=unchanged, empty list clears), `handleUpdateKeyValue` decodes the"
+      },
+      {
+        "path": ".pm/w7/README.md",
+        "line": 219,
+        "text": "> `007.md` (dashboard Key Value eviction-policy editor, the m45 follow-up) implemented 2026-07-19 — a Maxmemory Policy section on the KV detail page over the existing `setKeyValueMaxmemoryPolicy` mutation (`use-set-key-value-maxmemory-policy` hook + component test); note moved to `done/`."
+      },
+      {
+        "path": ".pm/w1/done/m166/source-w4-m137-t009.md",
+        "line": 33,
+        "text": "- [ ] For a Maxmemory change, a Persistence Mode change and a resume, a 3 s external `PING` poll and a 2–3 s `keyValue{status}` poll show no sample where status is `available` and `PING` fails, beyond one sampling interval."
+      },
+      {
+        "path": ".pm/w6/done/m127/README.md",
+        "line": 8,
+        "text": "- **`persistenceMode` is updatable post-create on all three surfaces (t002).** `KeyValuePatch` gained a `PersistenceMode *string` field with `validate`/`apply` mirroring `maxmemoryPolicy` and a shared `persistenceModeKnown` check reused by create; REST `PATCH /v1/key-value/{id}`, GraphQL `setKeyValuePersistenceMode`, and MCP `update_key_value(persistenceMode:)` all route through the shared `UpdateKeyValue`, so create and update can never diverge. `maxmemoryPolicy` post-create update is untouched and still green."
+      },
+      {
+        "path": ".pm/w6/done/m127/README.md",
+        "line": 11,
+        "text": "- **Tests (t006):** REST rescue-scenario (`off` free store → `journal_snapshot` in place), GraphQL `setKeyValuePersistenceMode`, MCP `update_key_value(persistenceMode:)`, underscore normalization, unknown-value 400/error, and nil = unchanged; the dashboard create test now asserts Free is durable-by-default and the persistence control is unlocked. Backend `internal/keyvalue` + `internal/api` and dashboard suites pass."
+      },
+      {
+        "path": ".pm/w6/done/m127/done/t006.md",
+        "line": 45,
+        "text": "Added `TestKeyValueUpdatePersistenceMode` (REST: rescue an `off` free store to `journal_snapshot` in place, underscore normalization, unknown→400 no-write, nil=unchanged on rename), `TestGraphQLSetKeyValuePersistenceMode` (mutation + unknown→error), and persistenceMode legs in `TestMCPKeyValueUpdateVerbs` (mutate + omitted-field-untouched + underscore form). Dashboard create test rewritten to assert Free is durable-by-default and unlocked. `maxmemoryPolicy` update tests stay green (not disturbed). Backend `internal/keyvalue`+`internal/api` and dashboard suites pass."
+      },
+      {
+        "path": ".pm/w6/done/m127/done/t002.md",
+        "line": 20,
+        "text": "  - plus GraphQL (`keyvalue/graphql.go`, which already carries `setKeyValueMaxmemoryPolicy` and the `maxmemoryPolicy` field at `:48`)"
+      },
+      {
+        "path": ".pm/w6/done/m127/done/t002.md",
+        "line": 52,
+        "text": "`KeyValuePatch` gained `PersistenceMode *string` with `validate`/`apply` mirroring `maxmemoryPolicy`, and a shared `persistenceModeKnown` helper reused by `CreateKeyValue` so create and update validate identically. Wired through REST `PATCH /v1/key-value/{id}` (decode + patch), GraphQL `setKeyValuePersistenceMode` (registered in the authz scope matrix), and MCP `update_key_value(persistenceMode:)` — all via the shared `UpdateKeyValue`/`PreviewUpdateKeyValue`, normalizing underscore/hyphen like create. The operator's `valkeyArgs` re-derives AOF/RDB on the changed spec and rolls the pod, untouched."
+      },
+      {
+        "path": ".pm/w7/done/007.md",
+        "line": 3,
+        "text": "Follow-up surfaced by **w7/m45** (Key Value update parity). After m45, `maxmemoryPolicy` is updatable post-create on every programmatic surface — REST `PATCH /v1/key-value/{id}`, GraphQL `setKeyValueMaxmemoryPolicy`, MCP `set_key_value_maxmemory_policy` — but the **dashboard** still only sets it at **create** (`dashboard/src/features/keyvalue/hooks/use-create-key-value.ts`, `routes/keyvalue.new.tsx`). The KV detail page has a Networking section (IP allow-list) and a plan-picker, but no eviction-policy editor."
+      },
+      {
+        "path": ".pm/w7/done/007.md",
+        "line": 7,
+        "text": "- a `use-set-key-value-maxmemory-policy` hook over a new `SetKeyValueMaxmemoryPolicy` GraphQL op (backend mutation already exists),"
+      },
+      {
+        "path": ".pm/w4/done/130.md",
+        "line": 45,
+        "text": "| `setKeyValuePersistenceMode(\"off\")`            | REFUSED — `sudo change durability of key value qa-20260922-kv` |"
+      },
+      {
+        "path": ".pm/w4/done/130.md",
+        "line": 46,
+        "text": "| `setKeyValueMaxmemoryPolicy(allkeys_lru)`      | REFUSED — `sudo change eviction on key value qa-20260922-kv` |"
+      },
+      {
+        "path": ".pm/w4/done/247.md",
+        "line": 166,
+        "text": "- The dashboard's `KeyValueView` (`features/keyvalue/types.ts:10`) and main detail query (`api/keyvalue.graphql:30`) do not carry persistence. The setting is separately queried by `KeyValuePersistenceMode:105`. The chosen **mode-independent wording** works without adding a query, inventing a default, or waiting for the settings editor's fetch. Loading/stale/missing-mode states cannot produce an unconditional preservation claim."
+      },
+      {
+        "path": ".pm/w4/done/250.md",
+        "line": 88,
+        "text": "- KeyValueMaxmemoryPolicySection, `key-value-maxmemory-policy-section.tsx:62–69`."
+      },
+      {
+        "path": ".pm/w4/done/250.md",
+        "line": 89,
+        "text": "- KeyValuePersistenceModeSection, `key-value-persistence-mode-section.tsx:99–108`; preserve its existing confirmation for transitions involving Off."
+      },
+      {
+        "path": ".pm/w4/done/046.md",
+        "line": 77,
+        "text": "- **Blast radius:** exhaustive production hook search finds **one consumer**, `KeyValueMaxmemoryPolicySection`. Scope the fix there. Its eight policies comprise seven underscore/hyphen cases and the unchanged `noeviction` control. The shared `EditableFieldRow` does not need a global normalization rule. Other service types (web/static/cron/worker/private/Postgres) do not use this hook. Key Value list/create and programmatic setter paths must retain their existing contracts."
+      },
+      {
+        "path": ".pm/w4/done/046.md",
+        "line": 95,
+        "text": "Done. bex-api reads the eviction policy back with underscores (`allkeys_lfu`) while the dashboard's option vocabulary and CRD/save path use hyphens (`allkeys-lfu`), so the detail-page Select matched no option and rendered blank. Added a narrow `maxmemoryPolicyToUi` helper in `keyvalue/lib/labels.ts` that maps a known underscored policy onto its hyphen UI form (`noeviction` unchanged; empty and unrecognized values pass through untouched — never fabricating a policy), and applied it at the one hook boundary `use-set-key-value-maxmemory-policy.ts` so the read-only display, edit draft, cancel/reset baseline, and dirty check all read the same normalized value. Save is unchanged (already sends the"
+      },
+      {
+        "path": ".pm/w4/done/066.md",
+        "line": 29,
+        "text": "| backend setter | ✅ `setKeyValueMaxmemoryPolicy` | ✅ `setKeyValuePersistenceMode` (`graphql.go:231`) |"
+      },
+      {
+        "path": ".pm/w4/done/066.md",
+        "line": 39,
+        "text": "> `setKeyValuePersistenceMode` is the sibling of `setKeyValueMaxmemoryPolicy` (w6/m127): `persistenceMode` becomes updatable post-create through the same [path]"
+      },
+      {
+        "path": ".pm/w4/done/066.md",
+        "line": 43,
+        "text": "Mirror `maxmemoryPolicy` exactly, one layer at a time: add `persistenceMode` to the detail query's selection set, add a `SetKeyValuePersistenceMode` mutation document and a `use-set-key-value-persistence-mode.ts` hook next to its sibling, and render a section modelled on the Maxmemory Policy one — same copy shape (\"The operator applies the new policy on the next reconcile\"), the three CRD values (`journal-snapshot` / `snapshot` / `off`), and the en+zh strings the create form already has. The `definitions.ts` splice follows `dashboard/CLAUDE.md`'s per-feature rule (offline codegen to reconcile, never a wholesale accept)."
+      },
+      {
+        "path": ".pm/w4/done/251.md",
+        "line": 74,
+        "text": "Source census is **22 production EditableFieldRow sites in15 files**. Limit this change to its **four options Select sites**: ServiceNotificationsRow (:34–40), Auto-Deploy in BuildDeploySection (:175–181), KeyValueMaxmemoryPolicySection (:62–69), and KeyValuePersistenceModeSection (:99–108). The16 Input sites and2 searchable Combobox sites must retain their behavior. Source files and the census are also recorded in w4/250; that separate keyboard finding needs no layout expansion."
+      },
+      {
+        "path": ".pm/w4/blocked/m208/source-301.md",
+        "line": 30,
+        "text": "The complete delayed HTTP JSON batches in [the catalog-loading receipt](../../evidence/301-keyvalue-catalog-loading.json) contain exactly **KeyValueInstanceTypes, KeyValueIpAllowList, KeyValueMaxmemoryPolicy, KeyValuePersistenceMode**, all fulfilled unchanged with HTTP 200. This is not a catalog-only network delay. The card consumes the catalog, resource plan and capability state, not the held networking/policy fields. All request/response JSON bodies and the batch cardinality are retained; headers are excluded and the generic scrub recorded zero redactions. Compare within-card anatomy/height, not sibling/page movement."
+      },
+      {
+        "path": ".pm/w4/done/m153/live-acceptance.md",
+        "line": 12,
+        "text": "| 07:07:41 | `setKeyValuePersistenceMode snapshot` | GraphQL/REST `config_restart` until 07:08:39, then `available` |"
+      },
+      {
+        "path": ".pm/w4/done/m153/live-acceptance.md",
+        "line": 26,
+        "text": "| 07:11:04 | `setKeyValueMaxmemoryPolicy noeviction` | `config_restart` → `available` 07:11:34 |"
+      },
+      {
+        "path": ".pm/w4/done/m153/live-acceptance.md",
+        "line": 29,
+        "text": "| 07:12:34 | UI: Edit persistence mode → Journal + Snapshot → Save changes. No typed confirm for a durable→durable change. | `setKeyValuePersistenceMode` returned `journal_snapshot`. The Status row showed **Restarting** from +4 s to +16 s, then Available at +20 s. 0 console errors. |"
+      },
+      {
+        "path": ".pm/w4/done/m153/finding.md",
+        "line": 68,
+        "text": "- The patch writer has **three persistence-setting public adapters**: PATCH `/v1/key-value/{id}`, GraphQL `setKeyValuePersistenceMode`, and MCP `update_key_value(persistenceMode:)`. The dashboard calls that GraphQL setter; the pinned CLI uses REST. REST/MCP writes and Blueprint/direct-CR updates were not repeated live in this hunt."
+      },
+      {
+        "path": ".pm/w4/done/m153/finding.md",
+        "line": 799,
+        "text": "### SetKeyValuePersistenceMode — 2026-10-02T12:08:15.147Z"
+      },
+      {
+        "path": ".pm/w4/done/m153/finding.md",
+        "line": 808,
+        "text": "    \"operationName\": \"SetKeyValuePersistenceMode\","
+      },
+      {
+        "path": ".pm/w4/done/m153/finding.md",
+        "line": 819,
+        "text": "    \"query\": \"mutation SetKeyValuePersistenceMode($id: String!, $persistenceMode: String!) {\\n  setKeyValuePersistenceMode(id: $id, persistenceMode: $persistenceMode) {\\n    id\\n    persistenceMode\\n    __typename\\n  }\\n}\""
+      },
+      {
+        "path": ".pm/w4/done/m153/finding.md",
+        "line": 830,
+        "text": "      \"setKeyValuePersistenceMode\": {"
+      },
+      {
+        "path": ".pm/w4/done/m153/finding.md",
+        "line": 840,
+        "text": "### SetKeyValuePersistenceMode — 2026-10-02T12:09:44.470Z"
+      },
+      {
+        "path": ".pm/w4/done/m153/finding.md",
+        "line": 849,
+        "text": "    \"operationName\": \"SetKeyValuePersistenceMode\","
+      },
+      {
+        "path": ".pm/w4/done/m153/finding.md",
+        "line": 860,
+        "text": "    \"query\": \"mutation SetKeyValuePersistenceMode($id: String!, $persistenceMode: String!) {\\n  setKeyValuePersistenceMode(id: $id, persistenceMode: $persistenceMode) {\\n    id\\n    persistenceMode\\n    __typename\\n  }\\n}\""
+      },
+      {
+        "path": ".pm/w4/done/m153/finding.md",
+        "line": 871,
+        "text": "      \"setKeyValuePersistenceMode\": {"
+      },
+      {
+        "path": ".pm/w4/done/m153/finding.md",
+        "line": 881,
+        "text": "### SetKeyValuePersistenceMode — 2026-10-02T12:11:45.879Z"
+      },
+      {
+        "path": ".pm/w4/done/m153/finding.md",
+        "line": 890,
+        "text": "    \"operationName\": \"SetKeyValuePersistenceMode\","
+      },
+      {
+        "path": ".pm/w4/done/m153/finding.md",
+        "line": 901,
+        "text": "    \"query\": \"mutation SetKeyValuePersistenceMode($id: String!, $persistenceMode: String!) {\\n  setKeyValuePersistenceMode(id: $id, persistenceMode: $persistenceMode) {\\n    id\\n    persistenceMode\\n    __typename\\n  }\\n}\""
+      },
+      {
+        "path": ".pm/w4/done/m153/finding.md",
+        "line": 912,
+        "text": "      \"setKeyValuePersistenceMode\": {"
+      },
+      {
+        "path": ".pm/w4/done/m153/finding.md",
+        "line": 922,
+        "text": "### SetKeyValueMaxmemoryPolicy — 2026-10-02T12:13:46.414Z"
+      },
+      {
+        "path": ".pm/w4/done/m153/finding.md",
+        "line": 931,
+        "text": "    \"operationName\": \"SetKeyValueMaxmemoryPolicy\","
+      },
+      {
+        "path": ".pm/w4/done/m153/finding.md",
+        "line": 942,
+        "text": "    \"query\": \"mutation SetKeyValueMaxmemoryPolicy($id: String!, $maxmemoryPolicy: String!) {\\n  setKeyValueMaxmemoryPolicy(id: $id, maxmemoryPolicy: $maxmemoryPolicy) {\\n    id\\n    maxmemoryPolicy\\n    __typename\\n  }\\n}\""
+      },
+      {
+        "path": ".pm/w4/done/m153/finding.md",
+        "line": 953,
+        "text": "      \"setKeyValueMaxmemoryPolicy\": {"
+      },
+      {
+        "path": ".pm/w4/done/m153/finding.md",
+        "line": 963,
+        "text": "### SetKeyValuePersistenceMode — 2026-10-02T12:15:11.752Z"
+      },
+      {
+        "path": ".pm/w4/done/m153/finding.md",
+        "line": 972,
+        "text": "    \"operationName\": \"SetKeyValuePersistenceMode\","
+      },
+      {
+        "path": ".pm/w4/done/m153/finding.md",
+        "line": 983,
+        "text": "    \"query\": \"mutation SetKeyValuePersistenceMode($id: String!, $persistenceMode: String!) {\\n  setKeyValuePersistenceMode(id: $id, persistenceMode: $persistenceMode) {\\n    id\\n    persistenceMode\\n    __typename\\n  }\\n}\""
+      },
+      {
+        "path": ".pm/w4/done/m153/finding.md",
+        "line": 994,
+        "text": "      \"setKeyValuePersistenceMode\": {"
+      },
+      {
+        "path": ".pm/w4/done/m132/source-115.md",
+        "line": 52,
+        "text": "- Whether the same pass-through exists on the Key Value config surface — `setKeyValueMaxmemoryPolicy` and `setKeyValuePersistenceMode` both validate strictly (pass 120 saw them refuse unknown values with the full valid set enumerated), so the two datastore surfaces appear to disagree about whether to validate. That comparison is worth making part of the fix."
+      },
+      {
+        "path": ".pm/w4/done/m127/README.md",
+        "line": 22,
+        "text": "- **Durability cannot be turned off silently.** `setKeyValuePersistenceMode(persistenceMode: \"off\")` on a protected Key Value is refused without the phrase. Today it succeeds, on the same instance whose *suspend* is refused."
+      },
+      {
+        "path": ".pm/w4/done/m127/README.md",
+        "line": 23,
+        "text": "- **Eviction cannot be turned on silently.** `setKeyValueMaxmemoryPolicy(maxmemoryPolicy: \"allkeys_lru\")` on a protected Key Value is refused without the phrase."
+      },
+      {
+        "path": ".pm/w4/done/m127/README.md",
+        "line": 42,
+        "text": "  setKeyValuePersistenceMode  \"off\"        → ACCEPTED"
+      },
+      {
+        "path": ".pm/w4/done/m127/README.md",
+        "line": 43,
+        "text": "  setKeyValueMaxmemoryPolicy  \"allkeys_lru\"→ ACCEPTED"
+      },
+      {
+        "path": ".pm/w4/done/m127/done/t001.md",
+        "line": 27,
+        "text": "| `setKeyValuePersistenceMode(\"off\")`                      | accepted |"
+      },
+      {
+        "path": ".pm/w4/done/m127/done/t001.md",
+        "line": 28,
+        "text": "| `setKeyValueMaxmemoryPolicy(\"allkeys_lru\")`              | accepted |"
+      },
+      {
+        "path": ".pm/w4/done/m127/done/t001.md",
+        "line": 41,
+        "text": "The accepted verbs are structurally outside it: introspection shows `deleteDatabase(id, confirm)` and `suspendKeyValue(id, confirm)` carry a `confirm` argument, while `failoverDatabase(id)`, `renameDatabase(id, name, dryRun)`, `setKeyValueMaxmemoryPolicy(id, maxmemoryPolicy, dryRun)`, `setKeyValuePersistenceMode(id, persistenceMode, dryRun)` and `executeDatabaseQuery(id, sql, allowWrites)` carry none. A caller who wanted to confirm could not."
+      },
+      {
+        "path": ".pm/w4/done/m127/done/t002.md",
+        "line": 16,
+        "text": "- Accepted live on protected datastores with no confirmation: `setKeyValuePersistenceMode(\"off\")`, `setKeyValueMaxmemoryPolicy(\"allkeys_lru\")`, `failoverDatabase`, `renameDatabase`."
+      },
+      {
+        "path": ".pm/w4/done/m124/done/t002.md",
+        "line": 19,
+        "text": "- ~~The two enum-ish values are a second candidate: REST reports `maxmemoryPolicy: \"allkeys_lru\"` and `persistenceMode: \"journal_snapshot\"` (underscores) while the manifest uses hyphens.~~ **Weakened by live evidence, pass 120 — start with `ipAllowList` instead.** The write path accepts *both* spellings: `setKeyValueMaxmemoryPolicy(maxmemoryPolicy: \"allkeys_lfu\")` — the underscored form a read returns — was accepted **and applied** (`noeviction` → `allkeys_lfu`, confirmed by re-read), as was `persistenceMode: \"journal_snapshot\"`. Only genuinely unknown values are refused. So a canonicalizing parse does exist somewhere on that path, and the enum spelling is unlikely to be what flips `DeepEqua"
+      },
+      {
+        "path": ".pm/w4/done/m137/done/t008.md",
+        "line": 25,
+        "text": "- [ ] After a maxmemory or persistence save, the detail header polls fast (for example `eagerRefetch` on the detail query) and shows t003's \"Restarting\" for the duration, then settles."
+      },
+      {
+        "path": ".pm/w4/done/m137/done/t008.md",
+        "line": 30,
+        "text": "(1) Resume: the suspended Ready is now `config_restart`, not `available` (t001's generation/Suspended-reason rule, table row \"resumed\"). (2) Config saves: `useSetKeyValueMaxmemoryPolicy`/`useSetKeyValuePersistenceMode` take an `onSaved` callback, and the detail route passes its `refetch` (`eagerRefetch`, the 3s converging cadence), so the header polls through the restart. `use-set-key-value-config.test.ts` covers that it fires on success and not on failure. Render has no \"resuming\" value, so resume reads `config_restart`."
+      }
+    ],
+    "antiGoalsSha256": "5944859eec9419ce7fe189523912bc73946bb7cffd507c268508f4d14015029a",
+    "disposition": "Existing config freshness and truthful destructive confirmation; no anti-goal matches. No matching open owner; done m153 runtime conversion remains a separate passing-control lineage."
+  },
+  "links": [
+    {
+      "url": "https://render.com/docs/key-value",
+      "claim": "Policy configuration and no persistence on Render Free; no authenticated cross-client timing tested."
+    },
+    {
+      "url": "https://render.com/docs/free",
+      "claim": "Render Free Key Value may restart and lose data; Bex durable Free support is an intentional divergence."
+    },
+    {
+      "url": "https://valkey.io/topics/persistence/",
+      "claim": "AOF/RDB persistence mechanisms; explicit Off-boundary reset in Bex is sourced locally."
+    }
+  ],
+  "sourceExcerpts": [
+    {
+      "path": "dashboard/src/features/keyvalue/api/keyvalue.graphql",
+      "sha256": "ac033efe15558ce3659c27f0b0eb159844a294c6eb105723fa41868b31165791",
+      "fromLine": 30,
+      "throughLine": 49,
+      "text": "query KeyValue($id: String!) {\n  keyValue(id: $id) {\n    id\n    name\n    plan\n    version\n    status\n    # Why an unavailable store is unavailable; the code is translated by\n    # STATUS_REASON_LABEL (w5/m129).\n    statusReason\n    statusReasonCode\n    suspended\n    createdAt\n    updatedAt\n    externalHost\n    public\n    region\n  }\n}\n"
+    },
+    {
+      "path": "dashboard/src/features/keyvalue/api/keyvalue.graphql",
+      "sha256": "ac033efe15558ce3659c27f0b0eb159844a294c6eb105723fa41868b31165791",
+      "fromLine": 104,
+      "throughLine": 126,
+      "text": "# Sibling of KeyValueMaxmemoryPolicy for the Persistence Mode editor (w4/066).\nquery KeyValuePersistenceMode($id: String!) {\n  keyValue(id: $id) {\n    id\n    persistenceMode\n  }\n}\n\n# `ownerId` (w6/m14) names the workspace to create the store in — the switcher's\n# selection, mirroring the `keyValues` list query. Omitted => the caller's default\n# (oldest) workspace; a workspace the caller isn't a member of => forbidden.\nmutation CreateKeyValue(\n  $name: String!\n  $ownerId: String\n  $environmentId: String\n  $plan: String\n  $version: String\n  $storageGB: Int\n  $public: Boolean\n  $maxmemoryPolicy: String\n  $persistenceMode: String\n) {\n  createKeyValue("
+    },
+    {
+      "path": "dashboard/src/features/keyvalue/hooks/use-key-value.ts",
+      "sha256": "ef15b39c01a5a3a8ff9e2be549753283ec323ec9644d863c7b4a32a250253e94",
+      "fromLine": 34,
+      "throughLine": 71,
+      "text": "  } = {},\n): UseKeyValueResult {\n  const { data, loading, error, refetch, startPolling, stopPolling } = useQuery(\n    KeyValueDocument,\n    { variables: { id }, fetchPolicy: \"cache-first\", errorPolicy: \"all\" },\n  );\n\n  const keyValue = useMemo(\n    () => (data?.keyValue ? toKeyValueView(data.keyValue) : null),\n    [data],\n  );\n\n  // Poll fast until we know the store is settled: while it hasn't loaded yet,\n  // or while it's still creating. Once available/unavailable, fall back to the\n  // baseline cadence so out-of-band changes still show up.\n  useConvergingPoll(\n    startPolling,\n    stopPolling,\n    keyValue ? isConverging(keyValue) : true,\n    poll,\n  );\n\n  return {\n    keyValue,\n    loading,\n    error,\n    refetch: () => eagerRefetch(startPolling, refetch),\n  };\n}"
+    },
+    {
+      "path": "dashboard/src/features/keyvalue/hooks/use-set-key-value-persistence-mode.ts",
+      "sha256": "1ff08b7a4fb60eff6be1c4c9b6e0139ebbc75ea150d051b3c7f97c7e74190c35",
+      "fromLine": 23,
+      "throughLine": 64,
+      "text": "export function useSetKeyValuePersistenceMode(\n  id: string,\n  onSaved?: () => void,\n): UseSetKeyValuePersistenceModeResult {\n  const { t } = useTranslations();\n\n  const modeQuery = useQuery(KeyValuePersistenceModeDocument, {\n    variables: { id },\n    fetchPolicy: \"cache-and-network\",\n    errorPolicy: \"all\",\n  });\n  const [setModeMut, { loading: saving }] = useMutation(\n    SetKeyValuePersistenceModeDocument,\n  );\n\n  const mode = persistenceModeToUi(\n    modeQuery.data?.keyValue?.persistenceMode ?? \"\",\n  );\n\n  const save = useCallback(\n    async (next: string): Promise<boolean> => {\n      try {\n        await setModeMut({ variables: { id, persistenceMode: next } });\n        toast.success(t(\"keyvalue.persistenceSuccess\", { mode: next }));\n        void modeQuery.refetch();\n        // Saving restarts the store: let the page watch it happen (w4/m137).\n        onSaved?.();\n        return true;\n      } catch (err) {\n        toast.error(mutationErrorMessage(err, t(\"keyvalue.persistenceError\")));\n        return false;\n      }\n    },\n    [onSaved, setModeMut, modeQuery, id, t],\n  );\n\n  return { mode, loading: modeQuery.loading, saving, save };\n}"
+    },
+    {
+      "path": "dashboard/src/features/keyvalue/hooks/use-set-key-value-maxmemory-policy.ts",
+      "sha256": "c5e3106673121609a24ab88e1f448d23f50a628fbe7c107abb6f37933fe16ddd",
+      "fromLine": 32,
+      "throughLine": 79,
+      "text": "export function useSetKeyValueMaxmemoryPolicy(\n  id: string,\n  onSaved?: () => void,\n): UseSetKeyValueMaxmemoryPolicyResult {\n  const { t } = useTranslations();\n\n  const policyQuery = useQuery(KeyValueMaxmemoryPolicyDocument, {\n    variables: { id },\n    fetchPolicy: \"cache-and-network\",\n    errorPolicy: \"all\",\n  });\n  const [setPolicyMut, { loading: saving }] = useMutation(\n    SetKeyValueMaxmemoryPolicyDocument,\n  );\n\n  // Normalize the API's underscored read onto the UI's hyphen vocabulary so the\n  // selector shows the saved policy instead of a blank (w4/046). The read-only\n  // display, the edit draft, the cancel/reset baseline, and the dirty check all\n  // read this one value, so they stay consistent.\n  const policy = maxmemoryPolicyToUi(\n    policyQuery.data?.keyValue?.maxmemoryPolicy ?? \"\",\n  );\n\n  const save = useCallback(\n    async (next: string): Promise<boolean> => {\n      try {\n        await setPolicyMut({ variables: { id, maxmemoryPolicy: next } });\n        toast.success(t(\"keyvalue.maxmemorySuccess\", { policy: next }));\n        void policyQuery.refetch();\n        // Saving restarts the store: let the page watch it happen (w4/m137).\n        onSaved?.();\n        return true;\n      } catch (err) {\n        toast.error(mutationErrorMessage(err, t(\"keyvalue.maxmemoryError\")));\n        return false;\n      }\n    },\n    [onSaved, setPolicyMut, policyQuery, id, t],\n  );\n\n  return { policy, loading: policyQuery.loading, saving, save };\n}"
+    },
+    {
+      "path": "dashboard/src/features/keyvalue/components/key-value-persistence-mode-section.tsx",
+      "sha256": "7602495a761e93b3f2f9a41eaa7e631e8371d7e21cf354081044ac2d1bba2987",
+      "fromLine": 40,
+      "throughLine": 90,
+      "text": "  onChanged?: () => void;\n}) {\n  const { t } = useTranslations();\n  const { mode, loading, saving, save } = useSetKeyValuePersistenceMode(\n    id,\n    onChanged,\n  );\n  const [pending, setPending] = useState<{\n    id: string;\n    from: string;\n    to: string;\n  } | null>(null);\n  const [editRevision, setEditRevision] = useState(0);\n  const confirming = useRef(false);\n  const modeKnown = PERSISTENCE_MODES.some((known) => known === mode);\n  const confirmationCurrent = pending?.id === id && pending.from === mode;\n\n  async function requestSave(next: string) {\n    if (!modeKnown) return false;\n    if (next !== mode && (mode === \"off\" || next === \"off\")) {\n      setPending({ id, from: mode, to: next });\n      return false;\n    }\n    return save(next);\n  }\n\n  async function confirmSave() {\n    if (!pending || !modeKnown || !confirmationCurrent || confirming.current)\n      return;\n    confirming.current = true;\n    try {\n      if (await save(pending.to)) {\n        setPending(null);\n        setEditRevision((revision) => revision + 1);\n      }\n    } finally {\n      confirming.current = false;\n    }\n  }\n\n  const options = useMemo(\n    () =>\n      PERSISTENCE_MODES.map((value) => ({\n        value,\n        label: t(PERSISTENCE_LABEL_KEYS[value]),\n      })),\n    [t],\n  );\n\n  return (\n    <Card>"
+    },
+    {
+      "path": "dashboard/src/features/keyvalue/components/key-value-persistence-mode-section.tsx",
+      "sha256": "7602495a761e93b3f2f9a41eaa7e631e8371d7e21cf354081044ac2d1bba2987",
+      "fromLine": 105,
+      "throughLine": 147,
+      "text": "        ) : (\n          <EditableFieldRow\n            key={`${id}:${editRevision}`}\n            label={t(\"keyvalue.persistenceLabel\")}\n            hint={t(\"keyvalue.fieldPersistenceModeHint\")}\n            value={mode}\n            editLabel={t(\"keyvalue.persistenceEdit\")}\n            busy={saving}\n            disabled={!modeKnown}\n            options={options}\n            onSave={requestSave}\n          />\n        )}\n      </CardContent>\n      <ConfirmDialog\n        key={`${id}:${name}:${mode}:${pending?.from}:${pending?.to}`}\n        open={pending !== null && confirmationCurrent}\n        onOpenChange={(open) => {\n          if (!open && !saving) setPending(null);\n        }}\n        title={t(\"keyvalue.persistenceConfirmTitle\")}\n        description={t(\"keyvalue.persistenceConfirmDescription\", { name })}\n        confirmLabel={t(\"keyvalue.persistenceConfirmAction\")}\n        phrase={`sudo clear key value ${name}`}\n        pending={saving}\n        closeOnConfirm={false}\n        onConfirm={() => void confirmSave()}\n      />\n    </Card>\n  );\n}"
+    },
+    {
+      "path": "dashboard/src/features/keyvalue/components/key-value-maxmemory-policy-section.tsx",
+      "sha256": "b68926dec4a7e4b9a53c3e9e1c894d857105c49c8d9679d7a536bda330129236",
+      "fromLine": 32,
+      "throughLine": 89,
+      "text": "  id: string;\n  /** Fired after a successful save, which restarts the store (w4/m137). */\n  onChanged?: () => void;\n}) {\n  const { t } = useTranslations();\n  const { policy, loading, saving, save } = useSetKeyValueMaxmemoryPolicy(\n    id,\n    onChanged,\n  );\n  // Stable identity so EditableFieldRow's focus effect doesn't re-run each render.\n  const options = useMemo(\n    () =>\n      MAXMEMORY_POLICIES.map((p) => ({\n        value: p,\n        label:\n          p === RECOMMENDED_MAXMEMORY_POLICY\n            ? `${p} ${t(\"keyvalue.fieldMaxmemoryRecommended\")}`\n            : p,\n      })),\n    [t],\n  );\n\n  return (\n    <Card>\n      <CardHeader>\n        <CardTitle>{t(\"keyvalue.maxmemoryTitle\")}</CardTitle>\n        <CardDescription>{t(\"keyvalue.maxmemoryDescription\")}</CardDescription>\n      </CardHeader>\n      <CardContent>\n        {loading && !policy ? (\n          // The field's own anatomy, so the row keeps its bounds (w4/299).\n          <EditableFieldRowPreview\n            label={t(\"keyvalue.maxmemoryLabel\")}\n            hint={t(\"keyvalue.fieldMaxmemoryPolicyHint\")}\n            select={{ narrowLines: 2 }}\n          />\n        ) : (\n          <EditableFieldRow\n            label={t(\"keyvalue.maxmemoryLabel\")}\n            hint={t(\"keyvalue.fieldMaxmemoryPolicyHint\")}\n            value={policy}\n            editLabel={t(\"keyvalue.maxmemoryEdit\")}\n            busy={saving}\n            options={options}\n            onSave={save}\n          />\n        )}\n      </CardContent>\n    </Card>\n  );\n}"
+    },
+    {
+      "path": "dashboard/src/routes/keyvalue.$keyValueId.tsx",
+      "sha256": "d2fcc4c623122e8257bae62ef16e8d09260bd962f8faf8d8aef1d1da3406d9db",
+      "fromLine": 70,
+      "throughLine": 81,
+      "text": "    ...parseDatastoreLogSearch(search),\n  }),\n  loader: ({ context, params, cause }) =>\n    loadRouteResource(\n      () =>\n        context.client.query({\n          query: KeyValueDocument,\n          variables: { id: params.keyValueId },\n          fetchPolicy: titleLoaderFetchPolicy(cause),\n          errorPolicy: \"all\",\n        }),\n      (data) => (data?.keyValue?.name?.trim() ? data.keyValue : null),"
+    },
+    {
+      "path": "dashboard/src/routes/keyvalue.$keyValueId.tsx",
+      "sha256": "d2fcc4c623122e8257bae62ef16e8d09260bd962f8faf8d8aef1d1da3406d9db",
+      "fromLine": 244,
+      "throughLine": 264,
+      "text": "                  <KeyValuePlanSection\n                    keyValue={keyValue}\n                    onChanged={() => void refetch()}\n                  />\n                </section>\n                <section id=\"maxmemory-policy\" className=\"scroll-mt-6\">\n                  <KeyValueMaxmemoryPolicySection\n                    id={keyValue.id}\n                    onChanged={() => void refetch()}\n                  />\n                </section>\n                <section id=\"persistence-mode\" className=\"scroll-mt-6\">\n                  <KeyValuePersistenceModeSection\n                    key={keyValueId}\n                    id={keyValue.id}\n                    name={keyValue.name}\n                    onChanged={() => void refetch()}\n                  />\n                </section>\n                <section id=\"danger-zone\" className=\"scroll-mt-6\">\n                  <KeyValueDangerActions"
+    },
+    {
+      "path": "dashboard/src/common/components/dashboard-layout/dashboard-breadcrumbs.tsx",
+      "sha256": "64004361a1c9762a30f757103671d485f9c410652c9e3365e2975baf074f47e9",
+      "fromLine": 184,
+      "throughLine": 195,
+      "text": "  );\n}\n\nfunction KeyValueBreadcrumbs({ id }: { id: string }) {\n  const { t } = useTranslations();\n  const { keyValue } = useKeyValue(id, { poll: false });\n  return (\n    <DatastoreBreadcrumbs\n      id={keyValue?.id || id}\n      name={keyValue?.name || id}\n      icon={KeyRound}\n      typeLabel={t(\"keyvalue.resourceType\")}"
+    },
+    {
+      "path": "dashboard/src/features/keyvalue/components/__tests__/key-value-persistence-mode-section.test.tsx",
+      "sha256": "f86e24bbef2b3858704e035f1e295d6185dafd66d883c72b1a1953fc2f06dce6",
+      "fromLine": 8,
+      "throughLine": 64,
+      "text": "  mode: \"journal-snapshot\",\n  loading: false,\n  saving: false,\n  save,\n};\n\nvi.mock(\"@/features/keyvalue/hooks/use-set-key-value-persistence-mode\", () => ({\n  useSetKeyValuePersistenceMode: () => hookState,\n}));\n\nbeforeEach(() => {\n  save.mockReset();\n  save.mockResolvedValue(true);\n  hookState = {\n    mode: \"journal-snapshot\",\n    loading: false,\n    saving: false,\n    save,\n  };\n});\n\ndescribe(\"KeyValuePersistenceModeSection\", () => {\n  it(\"keeps failed writes open and refuses a confirmation after the saved mode changes\", async () => {\n    hookState.mode = \"off\";\n    save.mockResolvedValue(false);\n    const user = userEvent.setup({ pointerEventsCheck: 0 });\n    const { rerender } = render(\n      <KeyValuePersistenceModeSection id=\"red-abc\" name=\"cache\" />,\n    );\n    await user.click(\n      screen.getByRole(\"button\", { name: \"Edit persistence mode\" }),\n    );\n    await user.click(\n      screen.getByRole(\"combobox\", { name: \"Persistence mode\" }),\n    );\n    await user.click(screen.getByRole(\"option\", { name: \"Snapshot only\" }));\n    await user.click(screen.getByRole(\"button\", { name: \"Save changes\" }));\n    const dialog = screen.getByRole(\"alertdialog\");\n    await user.type(\n      within(dialog).getByRole(\"textbox\"),\n      \"sudo clear key value cache\",\n    );\n    await user.click(\n      within(dialog).getByRole(\"button\", {\n        name: \"Delete data and change mode\",\n      }),\n    );\n    expect(screen.getByRole(\"alertdialog\")).toBeInTheDocument();\n    expect(save).toHaveBeenCalledExactlyOnceWith(\"snapshot\");\n    hookState.mode = \"journal-snapshot\";\n    rerender(<KeyValuePersistenceModeSection id=\"red-abc\" name=\"cache\" />);\n    expect(screen.queryByRole(\"alertdialog\")).toBeNull();\n    expect(save).toHaveBeenCalledTimes(1);\n  });\n\n  it(\"is read-only until the pencil, then fires the mutation with the new mode\", async () => {\n    const user = userEvent.setup({ pointerEventsCheck: 0 });"
+    },
+    {
+      "path": "dashboard/src/features/services/components/editable-field-row.tsx",
+      "sha256": "56d5adbe2eabc6621f282e2a59d54aecb9ef2666a8b646406d90d3e081eee99e",
+      "fromLine": 138,
+      "throughLine": 151,
+      "text": "  const inputRef = useRef<HTMLInputElement>(null);\n  const triggerRef = useRef<HTMLButtonElement>(null);\n  const editButtonRef = useRef<HTMLButtonElement>(null);\n  // Set only by an explicit Cancel/Escape so the post-render effect returns\n  // focus to the restored pencil — never on mount, a server refresh, or a\n  // save (w4/293).\n  const restoreFocusRef = useRef(false);\n  const editable = !disabled;\n  // The disabled control always shows the persisted value; the draft only\n  // exists while editing (seeded on Edit), so an external value update never\n  // clobbers an in-progress edit.\n  const shown = editing ? draft : value;\n\n  // Focus (and select, for inputs) the control once editing enables it."
+    },
+    {
+      "path": "dashboard/src/features/keyvalue/lib/labels.ts",
+      "sha256": "4a5b2032c600f57cb1f2199d1639920efc6db53b942b28c59e78362061b6099b",
+      "fromLine": 108,
+      "throughLine": 152,
+      "text": "export const PERSISTENCE_MODES = [\n  \"journal-snapshot\",\n  \"snapshot\",\n  \"off\",\n] as const;\n\n/** Normalize underscored API reads onto the hyphen UI vocabulary. */\nexport function persistenceModeToUi(apiValue: string): string {\n  const hyphenated = apiValue.replace(/_/g, \"-\");\n  return (PERSISTENCE_MODES as readonly string[]).includes(hyphenated)\n    ? hyphenated\n    : apiValue;\n}"
+    },
+    {
+      "path": "lego/backend/internal/keyvalue/graphql.go",
+      "sha256": "642f9b6628f20c1521362eb73b3e50eca25c0e6e5c35e9a51108cefc311617ac",
+      "fromLine": 45,
+      "throughLine": 54,
+      "text": "\t\t\"dashboardUrl\":       gqlutil.StrField(func(v KeyValueView) any { return v.DashboardURL }),\n\t\t\"externalHost\":       gqlutil.StrField(func(v KeyValueView) any { return v.ExternalHost }),\n\t\t\"public\":             gqlutil.BoolField(func(v KeyValueView) any { return v.Public }),\n\t\t\"ipAllowList\":        gqlutil.StrsField(func(v KeyValueView) any { return core.AllowListCIDRs(v.IPAllowList) }),\n\t\t\"ipAllowListEntries\": gqlutil.Typed(graphql.NewList(gqlutil.IPAllowEntryType), func(v KeyValueView) any { return v.IPAllowList }),\n\t\t\"maxmemoryPolicy\":    gqlutil.StrField(func(v KeyValueView) any { return v.MaxmemoryPolicy }),\n\t\t\"persistenceMode\":    gqlutil.StrField(func(v KeyValueView) any { return v.PersistenceMode }),\n\t\t\"ownerId\":            gqlutil.StrField(func(v KeyValueView) any { return v.OwnerID }),\n\t\t\"projectId\":          gqlutil.OptionalStrField(func(v KeyValueView) any { return v.ProjectID }),\n\t\t\"environmentId\":      gqlutil.OptionalStrField(func(v KeyValueView) any { return v.EnvironmentID }),"
+    },
+    {
+      "path": "lego/backend/internal/keyvalue/graphql.go",
+      "sha256": "642f9b6628f20c1521362eb73b3e50eca25c0e6e5c35e9a51108cefc311617ac",
+      "fromLine": 227,
+      "throughLine": 241,
+      "text": "\t\t// maxmemoryPolicy field (w7/m45): the per-field verb pattern updateKeyValuePlan\n\t\t// / setKeyValueIpAllowList already follow, routed through the shared\n\t\t// UpdateKeyValue so all surfaces normalize + validate the policy identically.\n\t\t\"setKeyValueMaxmemoryPolicy\": gqlutil.PatchMutation(keyValueGQLType, \"maxmemoryPolicy\",\n\t\t\tfunc(policy string) KeyValuePatch { return KeyValuePatch{MaxmemoryPolicy: &policy} },\n\t\t\ts.UpdateKeyValue, s.UpdateKeyValueDryRun),\n\t\t// setKeyValuePersistenceMode is the sibling of setKeyValueMaxmemoryPolicy\n\t\t// (w6/m127): persistenceMode becomes updatable post-create through the same\n\t\t// shared UpdateKeyValue, so a store created on `off` can reach durable\n\t\t// persistence without being recreated. Render's PATCH input carries it too.\n\t\t\"setKeyValuePersistenceMode\": gqlutil.PatchMutation(keyValueGQLType, \"persistenceMode\",\n\t\t\tfunc(mode string) KeyValuePatch { return KeyValuePatch{PersistenceMode: &mode} },\n\t\t\ts.UpdateKeyValue, s.UpdateKeyValueDryRun),\n\t\t\"renameKeyValue\": gqlutil.PatchMutation(keyValueGQLType, \"name\",\n\t\t\tfunc(name string) KeyValuePatch { return KeyValuePatch{Name: &name} },"
+    },
+    {
+      "path": "lego/backend/internal/keyvalue/service.go",
+      "sha256": "e1c11bbdca96b7f2fbf37f0e36b72ed84db1b14434a188271d28e8c468cc7c69",
+      "fromLine": 846,
+      "throughLine": 861,
+      "text": "func (patch KeyValuePatch) apply(kv *appv1alpha1.KeyValue) {\n\tif patch.Name != nil {\n\t\tkv.Spec.Name = *patch.Name\n\t}\n\tif patch.Plan != nil {\n\t\tkv.Spec.Plan = tiers.Valkey.CanonicalID(*patch.Plan)\n\t}\n\tif patch.MaxmemoryPolicy != nil {\n\t\tkv.Spec.MaxmemoryPolicy = renderToCRD(*patch.MaxmemoryPolicy)\n\t}\n\tif patch.PersistenceMode != nil {\n\t\tkv.Spec.PersistenceMode = renderToCRD(*patch.PersistenceMode)\n\t}\n\tif patch.IPAllowList != nil {\n\t\tkv.Spec.IPAllowList = core.AllowListToSpec(*patch.IPAllowList)\n\t\tkv.Spec.Public = len(*patch.IPAllowList) > 0"
+    },
+    {
+      "path": "lego/operator/internal/controller/keyvalue_persistence.go",
+      "sha256": "fdbe7804cca6e6b223649b7ce772df292a11a726da2804f3e48a715cdccf29dc",
+      "fromLine": 138,
+      "throughLine": 157,
+      "text": "done\ncommit_mode() {\n printf '%s\\n%s\\n' \"$1\" \"$token\" > \"$marker.tmp\"\n sync \"$marker.tmp\"\n mv \"$marker.tmp\" \"$marker\"\n sync .\n}\nif [ \"$new\" = yes ] && [ ! -f \"$marker\" ]; then commit_mode \"new:$target\"; fi\nif [ \"$target\" = off ] || [ \"$source\" = off ]; then\n commit_mode off\n # These are the exact managed Valkey defaults, never glob the volume.\n rm -rf -- dump.rdb appendonly.aof appendonlydir\n sync .\n if [ \"$target\" = off ]; then exit 0; fi\n # Off's discard intent remains authoritative across interrupted bootstrap.\n source=snapshot\n new=yes\nfi\nif [ \"$new\" = no ]; then\n if [ \"$source\" = snapshot ]; then"
+    },
+    {
+      "path": "dashboard/src/common/apollo/cache.ts",
+      "sha256": "95aa21d01fb0d6c22e280373d911bcb6d5ab761a5f31251b3fe110a161a949c7",
+      "fromLine": 1,
+      "throughLine": 22,
+      "text": "import type { InMemoryCacheConfig } from \"@apollo/client\";\n\n// Shared InMemoryCache configuration for both CSR and SSR Apollo clients.\n// Types without a standard `id` field use keyFields: false so Apollo stores\n// them inline under their parent field rather than attempting normalization.\nexport const apolloCacheConfig: InMemoryCacheConfig = {\n  typePolicies: {\n    UsageSummary: { keyFields: false },\n    ServiceUsage: { keyFields: false },\n    UsageRow: { keyFields: false },\n    // A log entry's id is a record identity for the reader's dedupe (w4/m217),\n    // not a cache identity: entries stay embedded in their query's result, as\n    // they were before the id was selected.\n    LogEntry: { keyFields: false },\n  },\n};"
+    },
+    {
+      "path": "dashboard/src/common/apollo/default-options.ts",
+      "sha256": "a7dc85582fb996ec7dc35948d9aba2d3b6173c8d0ef39011a2e4dfdedebfc8c3",
+      "fromLine": 1,
+      "throughLine": 24,
+      "text": "import type { ApolloClient } from \"@apollo/client\";\n\n/**\n * Query defaults every Apollo client in the dashboard shares (w1/m153).\n *\n * Apollo 4 changed `notifyOnNetworkStatusChange` to default to `true`, so a\n * poll or refetch over cached data re-emits `loading: true`. Every consumer\n * that gates a skeleton on `loading` then unmounted the page it already\n * rendered on each 30 s tick, closing open dialogs and dropping typed drafts\n * and focus. `false` stops a background poll, `refetch()` or `fetchMore` from\n * re-announcing `loading` over data already on screen.\n *\n * `loading` can still be true while data is present — mounting a\n * `cache-and-network` query over a warm cache, or switching to variables that\n * are already cached — so a skeleton gate stays `loading && no data yet`.\n *\n * Opt back in with `notifyOnNetworkStatusChange: true` on a query that needs a\n * visible in-flight state, and always on `useLazyQuery`: a lazy query learns\n * of its own request only through that emission, so without it `loading`\n * never turns true when it runs.\n */\nexport const apolloDefaultOptions = {\n  watchQuery: { notifyOnNetworkStatusChange: false },\n} satisfies ApolloClient.DefaultOptions;"
+    },
+    {
+      "path": ".playwright-mcp/qa-a720-apollo-source/package/cache/inmemory/helpers.js",
+      "sha256": "b021d53919b7f248d7b6e0fe3ea37462027bc7398c898ec079048ba2fa19c6e9",
+      "fromLine": 1,
+      "throughLine": 26,
+      "text": "import { Kind } from \"graphql\";\nimport { isReference } from \"@apollo/client/utilities\";\nimport { compact, createFragmentMap, DeepMerger, getFragmentDefinitions, isArray, isField, isNonNullObject, resultKeyNameFromField, shouldInclude, } from \"@apollo/client/utilities/internal\";\nexport const { hasOwnProperty: hasOwn } = Object.prototype;\nexport function defaultDataIdFromObject({ __typename, id, _id }, context) {\n    if (typeof __typename === \"string\") {\n        if (context) {\n            context.keyObject =\n                id != null ? { id }\n                    : _id != null ? { _id }\n                        : void 0;\n        }\n        // If there is no object.id, fall back to object._id.\n        if (id == null && _id != null) {\n            id = _id;\n        }\n        if (id != null) {\n            return `${__typename}:${typeof id === \"number\" || typeof id === \"string\" ?\n                id\n                : JSON.stringify(id)}`;\n        }\n    }\n}\nconst defaultConfig = {\n    dataIdFromObject: defaultDataIdFromObject,\n    resultCaching: true,"
+    },
+    {
+      "path": ".playwright-mcp/qa-a720-apollo-source/package/core/QueryInfo.js",
+      "sha256": "f3363a788fa8b55c478bde5fb0c7229919e3b7fa672def2a599d7812a716c87f",
+      "fromLine": 92,
+      "throughLine": 132,
+      "text": "        if (skipCache || !shouldWriteResult(result, errorPolicy)) {\n            return result;\n        }\n        // Using a transaction here so we have a chance to read the result\n        // back from the cache before the watch callback fires as a result\n        // of writeQuery, so we can store the new diff quietly and ignore\n        // it when we receive it redundantly from the watch callback.\n        this.cache.batch({\n            onWatchUpdated: (\n            // all additional options on ObservableQuery.CacheWatchOptions are\n            // optional so we can use the type here\n            watch, diff) => {\n                if (watch.watcher === this.observableQuery) {\n                    // see comment on `lastOwnDiff` for explanation\n                    watch.lastOwnDiff = diff;\n                }\n            },\n            update: (cache) => {\n                cache.writeQuery({\n                    query,\n                    data: result.data,\n                    variables,\n                    overwrite: cacheWriteBehavior === 1 /* CacheWriteBehavior.OVERWRITE */,\n                    extensions: result.extensions,\n                });\n                const { dataState, result: diffResult } = this.getDiff({\n                    ...diffOptions,\n                    returnPartialData: returnPartialData &&\n                        // Never deliver partial data for network-only requests\n                        (fetchPolicy !== \"network-only\" ||\n                            networkStatus === NetworkStatus.refetch),\n                }, this.getIncrementalInfo({ prune }));\n                if (dataState === \"complete\" ||\n                    dataState === \"streaming\" ||\n                    (returnPartialData && dataState === \"partial\")) {\n                    result = { ...result, data: diffResult, dataState };\n                }\n                else if (__DEV__ &&\n                    // A result that is still streaming is expected to read back\n                    // incomplete until the remaining chunks arrive.\n                    !this.hasNext) {"
+    },
+    {
+      "path": ".playwright-mcp/qa-a720-apollo-source/package/cache/inmemory/entityStore.js",
+      "sha256": "8e4aaebc9d889732e40825a0ec9c433fa7551b15074a908295928af365cdc4aa",
+      "fromLine": 63,
+      "throughLine": 107,
+      "text": "    merge(older, newer) {\n        let dataId;\n        // Convert unexpected references to ID strings.\n        if (isReference(older))\n            older = older.__ref;\n        if (isReference(newer))\n            newer = newer.__ref;\n        const existing = typeof older === \"string\" ? this.lookup((dataId = older)) : older;\n        let incoming = typeof newer === \"string\" ? this.lookup((dataId = newer)) : newer;\n        // If newer was a string ID, but that ID was not defined in this store,\n        // then there are no fields to be merged, so we're done.\n        if (!incoming)\n            return;\n        invariant(typeof dataId === \"string\", 108);\n        // Parse all scalars before merging so that the storeObjectReconciler can\n        // deep compare the parsed value with the existing value\n        incoming = this.coerceStoreObject(incoming, (scalar, value) => scalar.coerceToParsed(value), incoming.__typename ||\n            existing?.__typename ||\n            this.policies.rootTypenamesById[dataId]);\n        const merged = new DeepMerger({\n            reconciler: storeObjectReconciler,\n        }).merge(existing, incoming);\n        // Even if merged === existing, existing may have come from a lower\n        // layer, so we always need to set this.data[dataId] on this level.\n        this.data[dataId] = merged;\n        if (merged !== existing) {\n            delete this.refs[dataId];\n            if (this.group.caching) {\n                const fieldsToDirty = {};\n                // If we added a new StoreObject where there was previously none, dirty\n                // anything that depended on the existence of this dataId, such as the\n                // EntityStore#has method.\n                if (!existing)\n                    fieldsToDirty.__exists = 1;\n                // Now invalidate dependents who called getFieldValue for any fields\n                // that are changing as a result of this merge.\n                Object.keys(incoming).forEach((storeFieldName) => {\n                    if (!existing ||\n                        existing[storeFieldName] !== merged[storeFieldName]) {\n                        // Always dirty the full storeFieldName, which may include\n                        // serialized arguments following the fieldName prefix.\n                        fieldsToDirty[storeFieldName] = 1;\n                        // Also dirty fieldNameFromStoreName(storeFieldName) if it's\n                        // different from storeFieldName and this field does not have\n                        // keyArgs configured, because that means the cache can't make"
+    }
+  ],
+  "sourceHashes": [
+    {
+      "path": "dashboard/yarn.lock",
+      "sha256": "e3eb7681438c9cc6027a030f6c30cbdec02bd18319547ffac9cd662b5c02ca73"
+    },
+    {
+      "path": "dashboard/src/graphql/definitions.ts",
+      "sha256": "ecf93f01c391cd7a271bac081fe9669ae2bf4b34def6686a172076815ef29fdd"
+    },
+    {
+      "path": ".playwright-mcp/qa-a720-apollo-source/package/package.json",
+      "sha256": "a86882f4bfaa893e4869f1ef0faa7a0da35dc95389a0245b1c96c6be393661db"
+    },
+    {
+      "path": "docs/ADR021-keyvalue-management.md",
+      "sha256": "79926293c0ee9fd2215801446272f41f623e52c3385beca958f0e86c3ed9912b"
+    },
+    {
+      "path": ".pm/DO_NOT_DO.md",
+      "sha256": "5944859eec9419ce7fe189523912bc73946bb7cffd507c268508f4d14015029a"
+    }
+  ],
+  "framework": {
+    "package": "@apollo/client",
+    "version": "4.3.3",
+    "primaryTarball": "https://registry.npmjs.org/@apollo/client/-/client-4.3.3.tgz",
+    "basis": "Matches lockfile and native request extension; source inspected from primary package, not local installed4.1.3."
+  },
+  "screenshots": [
+    {
+      "path": ".playwright-mcp/qa-a881-mobile-cross-tab-policy.png",
+      "sha256": "96ac54ccc6198143c1d332e32e46c519cddb76cc93a837e4dfddaafd42282744",
+      "bytes": 73353,
+      "viewed": true,
+      "durability": "Supplementary gitignored local screenshot; durable timed DOM/API/runtime data are included."
+    },
+    {
+      "path": ".playwright-mcp/qa-a881-mobile-stale-persistence.png",
+      "sha256": "df87d993cbb48a75ebe7a13ace2063b56f1928b40fb146e6d4fcbe77cdebc5e3",
+      "bytes": 70903,
+      "viewed": true,
+      "durability": "Supplementary gitignored local screenshot; durable timed DOM/API/runtime data are included."
+    }
+  ],
+  "generatedContract": {
+    "KeyValueQuery": "{ keyValue: { __typename: 'KeyValue', id: string | null, name: string | null, plan: string | null, version: string | null, status: string | null, statusReason: string | null, statusReasonCode: string | null, suspended: string | null, createdAt: string | null, updatedAt: string | null, externalHost: string | null, public: boolean | null, region: string | null } | null }",
+    "KeyValueMaxmemoryPolicyQuery": "{ keyValue: { __typename: 'KeyValue', id: string | null, maxmemoryPolicy: string | null } | null }",
+    "KeyValuePersistenceModeQuery": "{ keyValue: { __typename: 'KeyValue', id: string | null, persistenceMode: string | null } | null }"
+  },
+  "census": {
+    "useKeyValue": [
+      {
+        "path": "dashboard/src/routes/keyvalue.$keyValueId.tsx",
+        "line": 100,
+        "poll": "owner"
+      },
+      {
+        "path": "dashboard/src/common/components/dashboard-layout/dashboard-breadcrumbs.tsx",
+        "line": 189,
+        "poll": false
+      }
+    ],
+    "mainLoader": {
+      "path": "dashboard/src/routes/keyvalue.$keyValueId.tsx",
+      "line": 76
+    },
+    "configurationHookCallers": {
+      "useSetKeyValuePersistenceMode": [
+        "dashboard/src/features/keyvalue/components/key-value-persistence-mode-section.tsx:43"
+      ],
+      "useSetKeyValueMaxmemoryPolicy": [
+        "dashboard/src/features/keyvalue/components/key-value-maxmemory-policy-section.tsx:37"
+      ]
+    },
+    "configurationMounts": [
+      "dashboard/src/routes/keyvalue.$keyValueId.tsx:250",
+      "dashboard/src/routes/keyvalue.$keyValueId.tsx:256"
+    ]
+  }
+}
