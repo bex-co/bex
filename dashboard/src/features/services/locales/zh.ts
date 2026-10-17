@@ -4647,6 +4647,11 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Dotenv import error: text after a quoted value's closing quote (w4/159)",
   },
+  "services.envImportReading": {
+    message: "正在读取文件…",
+    description:
+      "Status while a chosen dotenv file is being read; Add waits for it",
+  },
   "services.envImportFileError": {
     message: "请选择不超过 1 MiB 的可读文本文件。",
     description: "Dotenv file read or size error",

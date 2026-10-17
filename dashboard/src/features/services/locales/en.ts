@@ -4766,6 +4766,11 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Dotenv import error: text after a quoted value's closing quote (w4/159)",
   },
+  "services.envImportReading": {
+    message: "Reading file…",
+    description:
+      "Status while a chosen dotenv file is being read; Add waits for it",
+  },
   "services.envImportFileError": {
     message: "Choose a readable text file no larger than 1 MiB.",
     description: "Dotenv file read or size error",
