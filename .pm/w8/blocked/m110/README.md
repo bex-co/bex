@@ -1,6 +1,6 @@
 # w8 · m110 — Make incremental views usable in managed Postgres
 
-**Worker:** worker8 **Goal:** ordinary applications can use documented incremental views on managed PostgreSQL. **Status:** todo
+**Worker:** worker8 **Goal:** ordinary applications can use documented incremental views on managed PostgreSQL. **Status:** blocked — needs the user's managed Postgres extension decision ([decision](../m92/design.md)); no task started
 
 ## Tasks (in order)
 
@@ -23,7 +23,7 @@ On supported managed PostgreSQL13–18, ordinary application connections can run
 ## Source + Goal linkage
 
 - **Source:** [Native functional CLI sweep447](finding.md), [complete evidence](evidence/cli-sweep447/README.md): both native enable commands fail1 with missing control file, both ordinary SQL controls and all8 data snapshots pass; a real source-compiled local IMMV reference succeeds.
-- **Goal:** [ADR008 usable hosting](../../../docs/ADR008-vision.md), [ADR009 managed PostgreSQL](../../../docs/ADR009-postgresql-management.md), [ADR018 Render compatibility](../../../docs/ADR018-render-parity.md).
+- **Goal:** [ADR008 usable hosting](../../../../docs/ADR008-vision.md), [ADR009 managed PostgreSQL](../../../../docs/ADR009-postgresql-management.md), [ADR018 Render compatibility](../../../../docs/ADR018-render-parity.md).
 - **Expected outcome:** Applications can maintain documented incremental views through their existing managed database and unchanged clients.
 - **Why now:** A documented capability is absent from the ordinary operand/configuration. Packaging/preload/activation and metadata restoration require a coordinated repair; a package-presence change alone would leave correctness gaps.
 - **Render parity:** Included because the database capability is tenant-visible across REST/GraphQL/MCP/dashboard/Blueprint authoring. Preserve current fields and document Bex's provisioning policy; compose supplier work with m92/m104/m109 without duplicating their distinct consumers.

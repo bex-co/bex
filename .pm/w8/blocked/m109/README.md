@@ -1,6 +1,6 @@
 # w8 · m109 — Make documented DuckDB analytics usable in managed Postgres
 
-**Worker:** worker8 **Goal:** ordinary applications can use the documented PostgreSQL16+ DuckDB capability. **Status:** todo
+**Worker:** worker8 **Goal:** ordinary applications can use the documented PostgreSQL16+ DuckDB capability. **Status:** blocked — needs the user's managed Postgres extension decision ([decision](../m92/design.md)); no task started
 
 ## Tasks (in order)
 
@@ -23,7 +23,7 @@ On supported managed PostgreSQL16–18, an ordinary application connection can e
 ## Source + Goal linkage
 
 - **Source:** [Functional native CLI sweep444 finding](finding.md) and [complete evidence](evidence/cli-sweep444/README.md): both native enable commands fail1, both ordinary SQL controls pass and four catalogs omit the package; a real local DuckDB reference succeeds.
-- **Goal linkage:** [ADR008 AI-native usable hosting](../../../docs/ADR008-vision.md), [ADR009 managed PostgreSQL](../../../docs/ADR009-postgresql-management.md), [ADR018 Render compatibility](../../../docs/ADR018-render-parity.md).
+- **Goal linkage:** [ADR008 AI-native usable hosting](../../../../docs/ADR008-vision.md), [ADR009 managed PostgreSQL](../../../../docs/ADR009-postgresql-management.md), [ADR018 Render compatibility](../../../../docs/ADR018-render-parity.md).
 - **Expected outcome:** Applications can use the documented PostgreSQL16+ DuckDB analytics capability through the existing managed database and unchanged clients.
 - **Why now:** The standard operand/configuration has no supplier for a documented extension. Packaging alone would leave preload and application use incomplete; explicit lifecycle and shared-export checks prevent the repair from disrupting existing databases.
 - **Render parity:** Included because this changes the tenant-visible database capability across REST/GraphQL/MCP/dashboard/Blueprint authoring; preserve existing fields and document any preenabled Bex policy. Coordinate with m92/m104 supplier work while retaining their distinct consumers.
