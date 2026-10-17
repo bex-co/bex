@@ -27,8 +27,8 @@ An initial local oracle expected mathematical raw distance0 for empty/empty, whi
 
 The [source and pinned consumer trace](evidence/cli-sweep450/contract-dedupe-and-source-research.json) follows native create → POST /v1/postgres → managed Database/CNPG, then native psql ID/name → connection-info → real external psql → PostgreSQL's extension loader. This is not a REST SQL-envelope defect or launcher rewrite.
 
-- [database_exports.go:52–59](../../../lego/operator/internal/controller/database_exports.go) selects six ordinary CNPG operand pins, shared by the serving projection at [database_controller.go:486–489](../../../lego/operator/internal/controller/database_controller.go) and the logical-export client at database_exports.go320.
-- [database_extensions.go:62–70](../../../lego/operator/internal/controller/database_extensions.go) manages vector alone; applicationDatabaseSpec has one production caller at94 and no current major argument. Repository source/history contains no pg_similarity supplier or provisioning.
+- [database_exports.go:52–59](../../../../lego/operator/internal/controller/database_exports.go) selects six ordinary CNPG operand pins, shared by the serving projection at [database_controller.go:486–489](../../../../lego/operator/internal/controller/database_controller.go) and the logical-export client at database_exports.go320.
+- [database_extensions.go:62–70](../../../../lego/operator/internal/controller/database_extensions.go) manages vector alone; applicationDatabaseSpec has one production caller at94 and no current major argument. Repository source/history contains no pg_similarity supplier or provisioning.
 - Both image consumers and the one application-database producer need an explicit shared audit. Source absence and observed package unavailability support the diagnosis; the exact deployed operand is unobserved.
 
 ## Fix, acceptance and dedupe

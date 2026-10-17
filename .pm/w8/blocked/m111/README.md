@@ -1,6 +1,6 @@
 # w8 · m111 — Make documented text similarity usable in managed Postgres
 
-**Worker:** worker8 **Goal:** ordinary applications can use documented PostgreSQL13–15 text-similarity functions and operators. **Status:** todo
+**Worker:** worker8 **Goal:** ordinary applications can use documented PostgreSQL13–15 text-similarity functions and operators. **Status:** blocked — needs the user's managed Postgres extension decision ([decision](../m92/design.md)); no task started
 
 ## Tasks (in order)
 
@@ -23,7 +23,7 @@ On the documented managed PostgreSQL13–15 operands, both unchanged native clie
 ## Source + Goal linkage
 
 - **Source:** [Functional native CLI sweep450 finding](finding.md), [complete evidence](evidence/cli-sweep450/README.md): both migrations exit1 with missing package/control file, both ordinary SQL controls and a real source-compiled local function/operator reference pass.
-- **Goal linkage:** [ADR008 usable hosting](../../../docs/ADR008-vision.md), [ADR009 managed PostgreSQL](../../../docs/ADR009-postgresql-management.md), [ADR018 Render compatibility](../../../docs/ADR018-render-parity.md).
+- **Goal linkage:** [ADR008 usable hosting](../../../../docs/ADR008-vision.md), [ADR009 managed PostgreSQL](../../../../docs/ADR009-postgresql-management.md), [ADR018 Render compatibility](../../../../docs/ADR018-render-parity.md).
 - **Expected outcome:** Applications can use documented text-similarity migrations and SQL through their existing database and unchanged clients.
 - **Why now:** Both native consumers connect and execute ordinary SQL, but the documented module is absent. Package delivery, normal usability and lifecycle/major compatibility require coordinated work.
 - **Render parity:** Included because the database capability is tenant-visible across REST/GraphQL/MCP/dashboard/Blueprint authoring. Preserve fields/errors/selectors and coordinate the existing shared supplier work from m92/m104/m109/m110; those separate modules do not provide this consumer.
