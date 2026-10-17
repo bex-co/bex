@@ -23,7 +23,7 @@ The reason is source-traced: `routes/index.tsx:150–166` derives the open state
 
 ## Handoff and cleanup
 
-[Durable evidence](../../evidence/m219-a800-siblings.json) holds the four complete failure receipts, exact Postgres comparison code and receipt, dependency mechanism, inventory check and session-clear receipt. Reuse the exact a797 V2 factory and listed parameters for service replays. Primary bootstrap and React-controlled input research remain in [the original finding](finding.md).
+[Durable evidence](../evidence/m219-a800-siblings.json) holds the four complete failure receipts, exact Postgres comparison code and receipt, dependency mechanism, inventory check and session-clear receipt. Reuse the exact a797 V2 factory and listed parameters for service replays. Primary bootstrap and React-controlled input research remain in [the original finding](finding.md).
 
 Add these observed type/width cases to m219's live acceptance and regression matrix, preserve the Postgres control, and leave dialog behavior unchanged. The local readiness gate still belongs to the same three SSR form roots; estimates and closing task order remain unchanged. Existing source-route alias coverage remains work to verify, not a new live claim.
 

@@ -1,0 +1,1910 @@
+{
+  "schema": 1,
+  "pass": "a859",
+  "date": "2026-10-17 UTC",
+  "surface": "Static RoutesEditor and HeadersEditor SSR readiness",
+  "researchHead": "457b04078836b1767259d4cbd1ef709c855af089",
+  "reviewedThroughHead": "b3dbca6013a318be3e050ba080ec3fcaf1648aaf",
+  "sourceBlobs": {
+    "dashboard/src/features/services/components/static-site-section.tsx": "e4ef5e698274404381163fe6d44786fee5f94fd9",
+    "dashboard/src/features/services/components/static-edge-rule-page.tsx": "b05269c6d8b8c3daba5eed7e3d1d1aaacde2616b",
+    "dashboard/src/common/components/hydration-fieldset.tsx": "2da3c95f13be85d88ff8efab6189027210888bb7",
+    "dashboard/src/routes/services.$serviceId.headers.tsx": "2150040ba9f9cc088e54ca8e35d26b0a3c8ea29d",
+    "dashboard/src/routes/services.$serviceId.redirects.tsx": "57562f5ae7674ee19de7b7d2088b075dfc860c45",
+    "dashboard/src/routes/static.$serviceId.headers.tsx": "5d8250f7a931c11c84d3358828f58c8c416cc382",
+    "dashboard/src/routes/static.$serviceId.redirects.tsx": "5ff9f70d5831181f5431e946525c1233e936b0ba"
+  },
+  "fixture": {
+    "name": "qa-20261016-a859-routing",
+    "serviceId": "srv-db9h2fg7bp4s73el3m10",
+    "deployId": "dep-db9h2fg7bp4s73el3m1g",
+    "physicalApp": "tea-d98210cbbpdc73dcrkvg-qa-20261016-a859-routing",
+    "plan": "Free static site",
+    "allDeleted": true
+  },
+  "scripts": {
+    "factory": "function(url,selector,width,marker,addButton,shotStem){return `async(page)=>{\nconst writes=[];const requestListener=r=>{if(!r.url().endsWith(\"/graphql\")||r.method()!==\"POST\")return;try{const q=r.postDataJSON();for(const x of Array.isArray(q)?q:[q])if(/^mutation\\\\b/.test(x.query||\"\"))writes.push({operationName:x.operationName,variables:x.variables});}catch{}};page.on(\"request\",requestListener);await page.setViewportSize({width:${width},height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-ByZLA702.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.locator(${JSON.stringify(selector)}),marker=${JSON.stringify(marker)};\ntry{\nawait page.goto(${JSON.stringify(url)},{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.matches(\":disabled\"),readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();if(${JSON.stringify(shotStem)})await page.screenshot({path:${JSON.stringify(shotStem)}+\"-before.png\"});}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const beforeRender=await n.count()?await n.inputValue():null;let readyControl=null,after=null,afterRender=null,readyAfterRender=null;if(await n.count()){await n.evaluate(e=>Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")));for(let i=0;i<60;i++){if(await n.evaluate(e=>Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))))break;await page.waitForTimeout(100);}await page.getByRole(\"button\",{name:${JSON.stringify(addButton)},exact:true}).click();await page.waitForTimeout(250);afterRender=await n.evaluate(e=>({value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));after=afterRender.value;if(${JSON.stringify(shotStem)})await page.screenshot({path:${JSON.stringify(shotStem)}+\"-after.png\"});if(await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(300);readyControl=await n.inputValue();await page.getByRole(\"button\",{name:${JSON.stringify(addButton)},exact:true}).click();await page.waitForTimeout(250);readyAfterRender=await n.inputValue();}}\nreturn {at:new Date().toISOString(),url:page.url(),width:${width},scripts,before,typed,events,samples,beforeRender,after,afterRender,readyControl,readyAfterRender,writes,noResponseRewriting:true};\n}finally{page.off(\"request\",requestListener);released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}`}",
+    "executed": {
+      "Header1440V3": "async(page)=>{\nconst writes=[];const requestListener=r=>{if(!r.url().endsWith(\"/graphql\")||r.method()!==\"POST\")return;try{const q=r.postDataJSON();for(const x of Array.isArray(q)?q:[q])if(/^mutation\\b/.test(x.query||\"\"))writes.push({operationName:x.operationName,variables:x.variables});}catch{}};page.on(\"request\",requestListener);await page.setViewportSize({width:1440,height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-ByZLA702.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.locator(\"input[aria-label=\\\"Value\\\"] >> nth=0\"),marker=\"routing-a859-typed\";\ntry{\nawait page.goto(\"https://dashboard.bex.co/static/srv-db9h2fg7bp4s73el3m10/headers\",{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.matches(\":disabled\"),readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();if(\"qa-a859-header-startup\")await page.screenshot({path:\"qa-a859-header-startup\"+\"-before.png\"});}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const beforeRender=await n.count()?await n.inputValue():null;let readyControl=null,after=null,afterRender=null,readyAfterRender=null;if(await n.count()){await n.evaluate(e=>Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")));for(let i=0;i<60;i++){if(await n.evaluate(e=>Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))))break;await page.waitForTimeout(100);}await page.getByRole(\"button\",{name:\"Add header\",exact:true}).click();await page.waitForTimeout(250);afterRender=await n.evaluate(e=>({value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));after=afterRender.value;if(\"qa-a859-header-startup\")await page.screenshot({path:\"qa-a859-header-startup\"+\"-after.png\"});if(await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(300);readyControl=await n.inputValue();await page.getByRole(\"button\",{name:\"Add header\",exact:true}).click();await page.waitForTimeout(250);readyAfterRender=await n.inputValue();}}\nreturn {at:new Date().toISOString(),url:page.url(),width:1440,scripts,before,typed,events,samples,beforeRender,after,afterRender,readyControl,readyAfterRender,writes,noResponseRewriting:true};\n}finally{page.off(\"request\",requestListener);released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}",
+      "Header390": "async(page)=>{\nconst writes=[];const requestListener=r=>{if(!r.url().endsWith(\"/graphql\")||r.method()!==\"POST\")return;try{const q=r.postDataJSON();for(const x of Array.isArray(q)?q:[q])if(/^mutation\\b/.test(x.query||\"\"))writes.push({operationName:x.operationName,variables:x.variables});}catch{}};page.on(\"request\",requestListener);await page.setViewportSize({width:390,height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-ByZLA702.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.locator(\"input[aria-label=\\\"Value\\\"] >> nth=0\"),marker=\"routing-a859-typed\";\ntry{\nawait page.goto(\"https://dashboard.bex.co/static/srv-db9h2fg7bp4s73el3m10/headers\",{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.matches(\":disabled\"),readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();if(null)await page.screenshot({path:null+\"-before.png\"});}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const beforeRender=await n.count()?await n.inputValue():null;let readyControl=null,after=null,afterRender=null,readyAfterRender=null;if(await n.count()){await n.evaluate(e=>Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")));for(let i=0;i<60;i++){if(await n.evaluate(e=>Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))))break;await page.waitForTimeout(100);}await page.getByRole(\"button\",{name:\"Add header\",exact:true}).click();await page.waitForTimeout(250);afterRender=await n.evaluate(e=>({value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));after=afterRender.value;if(null)await page.screenshot({path:null+\"-after.png\"});if(await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(300);readyControl=await n.inputValue();await page.getByRole(\"button\",{name:\"Add header\",exact:true}).click();await page.waitForTimeout(250);readyAfterRender=await n.inputValue();}}\nreturn {at:new Date().toISOString(),url:page.url(),width:390,scripts,before,typed,events,samples,beforeRender,after,afterRender,readyControl,readyAfterRender,writes,noResponseRewriting:true};\n}finally{page.off(\"request\",requestListener);released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}",
+      "Route1440Corrected": "async(page)=>{\nconst writes=[];const requestListener=r=>{if(!r.url().endsWith(\"/graphql\")||r.method()!==\"POST\")return;try{const q=r.postDataJSON();for(const x of Array.isArray(q)?q:[q])if(/^mutation\\b/.test(x.query||\"\"))writes.push({operationName:x.operationName,variables:x.variables});}catch{}};page.on(\"request\",requestListener);await page.setViewportSize({width:1440,height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-ByZLA702.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.locator(\"input[aria-label=\\\"Source\\\"] >> nth=0\"),marker=\"/qa-a859-typed\";\ntry{\nawait page.goto(\"https://dashboard.bex.co/static/srv-db9h2fg7bp4s73el3m10/redirects\",{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.matches(\":disabled\"),readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();if(null)await page.screenshot({path:null+\"-before.png\"});}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const beforeRender=await n.count()?await n.inputValue():null;let readyControl=null,after=null,afterRender=null,readyAfterRender=null;if(await n.count()){await n.evaluate(e=>Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")));for(let i=0;i<60;i++){if(await n.evaluate(e=>Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))))break;await page.waitForTimeout(100);}await page.getByRole(\"button\",{name:\"Add rule\",exact:true}).click();await page.waitForTimeout(250);afterRender=await n.evaluate(e=>({value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));after=afterRender.value;if(null)await page.screenshot({path:null+\"-after.png\"});if(await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(300);readyControl=await n.inputValue();await page.getByRole(\"button\",{name:\"Add rule\",exact:true}).click();await page.waitForTimeout(250);readyAfterRender=await n.inputValue();}}\nreturn {at:new Date().toISOString(),url:page.url(),width:1440,scripts,before,typed,events,samples,beforeRender,after,afterRender,readyControl,readyAfterRender,writes,noResponseRewriting:true};\n}finally{page.off(\"request\",requestListener);released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}",
+      "Route390Corrected": "async(page)=>{\nconst writes=[];const requestListener=r=>{if(!r.url().endsWith(\"/graphql\")||r.method()!==\"POST\")return;try{const q=r.postDataJSON();for(const x of Array.isArray(q)?q:[q])if(/^mutation\\b/.test(x.query||\"\"))writes.push({operationName:x.operationName,variables:x.variables});}catch{}};page.on(\"request\",requestListener);await page.setViewportSize({width:390,height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-ByZLA702.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.locator(\"input[aria-label=\\\"Source\\\"] >> nth=0\"),marker=\"/qa-a859-typed\";\ntry{\nawait page.goto(\"https://dashboard.bex.co/static/srv-db9h2fg7bp4s73el3m10/redirects\",{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.matches(\":disabled\"),readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();if(null)await page.screenshot({path:null+\"-before.png\"});}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const beforeRender=await n.count()?await n.inputValue():null;let readyControl=null,after=null,afterRender=null,readyAfterRender=null;if(await n.count()){await n.evaluate(e=>Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")));for(let i=0;i<60;i++){if(await n.evaluate(e=>Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))))break;await page.waitForTimeout(100);}await page.getByRole(\"button\",{name:\"Add rule\",exact:true}).click();await page.waitForTimeout(250);afterRender=await n.evaluate(e=>({value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));after=afterRender.value;if(null)await page.screenshot({path:null+\"-after.png\"});if(await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(300);readyControl=await n.inputValue();await page.getByRole(\"button\",{name:\"Add rule\",exact:true}).click();await page.waitForTimeout(250);readyAfterRender=await n.inputValue();}}\nreturn {at:new Date().toISOString(),url:page.url(),width:390,scripts,before,typed,events,samples,beforeRender,after,afterRender,readyControl,readyAfterRender,writes,noResponseRewriting:true};\n}finally{page.off(\"request\",requestListener);released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}"
+    }
+  },
+  "receipts": {
+    "Header1440V3": {
+      "at": "2026-10-17T06:13:28.481Z",
+      "url": "https://dashboard.bex.co/static/srv-db9h2fg7bp4s73el3m10/headers",
+      "width": 1440,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-ByZLA702.js",
+          "status": 200,
+          "bytes": 1957482,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "count": 1,
+        "enabled": true,
+        "readOnly": false,
+        "reactProps": false,
+        "id": ""
+      },
+      "typed": "routing-a859-typed",
+      "events": [
+        {
+          "trusted": true,
+          "value": "routing-a859-typed",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 4256.100000000559,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 4412.9000000003725,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4574.200000000186,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4735.100000000559,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4896.9000000003725,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5054.100000000559,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5209.700000000186,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5367.100000000559,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5526.799999999814,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5692.600000000559,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5856.299999999814,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 6022.4000000003725,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 6177.9000000003725,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 6339.299999999814,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 6502.799999999814,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 6664.100000000559,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 6828.9000000003725,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 6990.9000000003725,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 7154.9000000003725,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 7321.100000000559,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "beforeRender": "routing-a859-typed",
+      "after": "routing-a859",
+      "afterRender": {
+        "value": "routing-a859",
+        "sameNode": true,
+        "reactProps": true
+      },
+      "readyControl": "routing-a859-typed-ready",
+      "readyAfterRender": "routing-a859-typed-ready",
+      "writes": [],
+      "noResponseRewriting": true
+    },
+    "Header390": {
+      "at": "2026-10-17T06:13:43.180Z",
+      "url": "https://dashboard.bex.co/static/srv-db9h2fg7bp4s73el3m10/headers",
+      "width": 390,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-ByZLA702.js",
+          "status": 200,
+          "bytes": 1957482,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "count": 1,
+        "enabled": true,
+        "readOnly": false,
+        "reactProps": false,
+        "id": ""
+      },
+      "typed": "routing-a859-typed",
+      "events": [
+        {
+          "trusted": true,
+          "value": "routing-a859-typed",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 2878.899999999441,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 3035.399999999441,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3193,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3348.699999999255,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3508.7999999998137,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3666.2999999998137,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3831.5,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3995,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4152.899999999441,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4307.199999999255,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4464.5999999996275,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4626.5999999996275,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4788.899999999441,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4949.799999999814,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5110.5999999996275,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5271.299999999814,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5433.299999999814,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5594.199999999255,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5750.799999999814,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5909.799999999814,
+          "value": "routing-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "beforeRender": "routing-a859-typed",
+      "after": "routing-a859",
+      "afterRender": {
+        "value": "routing-a859",
+        "sameNode": true,
+        "reactProps": true
+      },
+      "readyControl": "routing-a859-typed-ready",
+      "readyAfterRender": "routing-a859-typed-ready",
+      "writes": [],
+      "noResponseRewriting": true
+    },
+    "Route1440Corrected": {
+      "at": "2026-10-17T06:14:16.070Z",
+      "url": "https://dashboard.bex.co/static/srv-db9h2fg7bp4s73el3m10/redirects",
+      "width": 1440,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-ByZLA702.js",
+          "status": 200,
+          "bytes": 1957482,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "count": 1,
+        "enabled": true,
+        "readOnly": false,
+        "reactProps": false,
+        "id": ""
+      },
+      "typed": "/qa-a859-typed",
+      "events": [
+        {
+          "trusted": true,
+          "value": "/qa-a859-typed",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 4247,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 4403,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4560,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4718.5999999996275,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4879.399999999441,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5036.799999999814,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5194.399999999441,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5351.299999999814,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5507.899999999441,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5667.700000000186,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5831.5,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5994.5,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 6157.5,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 6319.799999999814,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 6483.299999999814,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 6646.899999999441,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 6802.399999999441,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 6962.5,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 7124,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 7280.0999999996275,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "beforeRender": "/qa-a859-typed",
+      "after": "/qa-jump/*",
+      "afterRender": {
+        "value": "/qa-jump/*",
+        "sameNode": true,
+        "reactProps": true
+      },
+      "readyControl": "/qa-a859-typed-ready",
+      "readyAfterRender": "/qa-a859-typed-ready",
+      "writes": [],
+      "noResponseRewriting": true
+    },
+    "Route390Corrected": {
+      "at": "2026-10-17T06:14:22.967Z",
+      "url": "https://dashboard.bex.co/static/srv-db9h2fg7bp4s73el3m10/redirects",
+      "width": 390,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-ByZLA702.js",
+          "status": 200,
+          "bytes": 1957482,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "count": 1,
+        "enabled": true,
+        "readOnly": false,
+        "reactProps": false,
+        "id": ""
+      },
+      "typed": "/qa-a859-typed",
+      "events": [
+        {
+          "trusted": true,
+          "value": "/qa-a859-typed",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 2186.2999999998137,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 2340.2999999998137,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2494.2000000001863,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2653.5999999996275,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2818.7000000001863,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2975.9000000003725,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3133.0999999996275,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3290.2999999998137,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3443.4000000003725,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3606,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3769.2999999998137,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3933.7999999998137,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4094.5,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4255.5,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4416.799999999814,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4579.5,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4744.799999999814,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4906.700000000186,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5070.9000000003725,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5229.5999999996275,
+          "value": "/qa-a859-typed",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "beforeRender": "/qa-a859-typed",
+      "after": "/qa-jump/*",
+      "afterRender": {
+        "value": "/qa-jump/*",
+        "sameNode": true,
+        "reactProps": true
+      },
+      "readyControl": "/qa-a859-typed-ready",
+      "readyAfterRender": "/qa-a859-typed-ready",
+      "writes": [],
+      "noResponseRewriting": true
+    }
+  },
+  "setup": {
+    "created": {
+      "at": "2026-10-17T06:10:08.387Z",
+      "request": {
+        "operationName": "CreateService",
+        "variables": {
+          "repo": "https://github.com/bex-co/bex",
+          "branch": "main",
+          "name": "qa-20261016-a859-routing",
+          "type": "static_site",
+          "rootDir": "examples/static-site",
+          "autoDeploy": false,
+          "publishPath": ".",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db9h2fg7bp4s73el3m10",
+            "latestDeployId": "dep-db9h2fg7bp4s73el3m1g",
+            "name": "qa-20261016-a859-routing",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": null,
+            "type": "static_site"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792217405379.251,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.154,
+        "responseStart": 2287.431,
+        "responseEnd": 2288.221
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9h2fg7bp4s73el3m10/deploys/dep-db9h2fg7bp4s73el3m1g"
+    },
+    "routesSaved": {
+      "at": "2026-10-17T06:10:43.303Z",
+      "request": {
+        "operationName": "SetStaticRoutes",
+        "variables": {
+          "id": "srv-db9h2fg7bp4s73el3m10",
+          "routes": [
+            {
+              "type": "redirect",
+              "source": "/qa-jump/*",
+              "destination": "/docs/:splat?from=rule#section"
+            },
+            {
+              "type": "redirect",
+              "source": "/qa-plain",
+              "destination": "/index.html"
+            },
+            {
+              "type": "rewrite",
+              "source": "/friendly.yaml",
+              "destination": "/render.yaml?from=rule"
+            },
+            {
+              "type": "redirect",
+              "source": "/render.yaml",
+              "destination": "/should-not-win"
+            }
+          ]
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetStaticRoutes($id: String!, $routes: [StaticRouteInput]) {\n  setStaticRoutes(id: $id, routes: $routes) {\n    id\n    routes {\n      type\n      source\n      destination\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setStaticRoutes": {
+            "__typename": "Service",
+            "id": "srv-db9h2fg7bp4s73el3m10",
+            "routes": [
+              {
+                "__typename": "StaticRoute",
+                "destination": "/docs/:splat?from=rule#section",
+                "source": "/qa-jump/*",
+                "type": "redirect"
+              },
+              {
+                "__typename": "StaticRoute",
+                "destination": "/index.html",
+                "source": "/qa-plain",
+                "type": "redirect"
+              },
+              {
+                "__typename": "StaticRoute",
+                "destination": "/render.yaml?from=rule",
+                "source": "/friendly.yaml",
+                "type": "rewrite"
+              },
+              {
+                "__typename": "StaticRoute",
+                "destination": "/should-not-win",
+                "source": "/render.yaml",
+                "type": "redirect"
+              }
+            ]
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792217442095.5981,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.138,
+        "responseStart": 485.69,
+        "responseEnd": 486.563
+      },
+      "url": "https://dashboard.bex.co/static/srv-db9h2fg7bp4s73el3m10/redirects"
+    },
+    "headersSaved": {
+      "at": "2026-10-17T06:11:43.435Z",
+      "request": {
+        "operationName": "SetStaticHeaders",
+        "variables": {
+          "id": "srv-db9h2fg7bp4s73el3m10",
+          "headers": [
+            {
+              "path": "/*",
+              "name": "X-QA-A859",
+              "value": "routing-a859"
+            },
+            {
+              "path": "/friendly.yaml",
+              "name": "Cache-Control",
+              "value": "no-store"
+            }
+          ]
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetStaticHeaders($id: String!, $headers: [StaticHeaderInput]) {\n  setStaticHeaders(id: $id, headers: $headers) {\n    id\n    headers {\n      path\n      name\n      value\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setStaticHeaders": {
+            "__typename": "Service",
+            "headers": [
+              {
+                "__typename": "StaticHeader",
+                "name": "X-QA-A859",
+                "path": "/*",
+                "value": "routing-a859"
+              },
+              {
+                "__typename": "StaticHeader",
+                "name": "Cache-Control",
+                "path": "/friendly.yaml",
+                "value": "no-store"
+              }
+            ],
+            "id": "srv-db9h2fg7bp4s73el3m10"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792217502443.515,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.135,
+        "responseStart": 274.718,
+        "responseEnd": 275.262
+      },
+      "url": "https://dashboard.bex.co/static/srv-db9h2fg7bp4s73el3m10/headers"
+    },
+    "storedRules": {
+      "at": "2026-10-17T06:14:54.969Z",
+      "request": {
+        "operationName": "Qaa859StoredRules",
+        "variables": {
+          "id": "srv-db9h2fg7bp4s73el3m10"
+        },
+        "query": "query Qaa859StoredRules($id:String!){server(id:$id){id phase revision routes{type source destination} headers{path name value}} deploys(serviceId:$id,limit:20){id status trigger}}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "id": "dep-db9h2fg7bp4s73el3m1g",
+              "status": "live",
+              "trigger": "create"
+            }
+          ],
+          "server": {
+            "headers": [
+              {
+                "name": "X-QA-A859",
+                "path": "/*",
+                "value": "routing-a859"
+              },
+              {
+                "name": "Cache-Control",
+                "path": "/friendly.yaml",
+                "value": "no-store"
+              }
+            ],
+            "id": "srv-db9h2fg7bp4s73el3m10",
+            "phase": "Running",
+            "revision": "rev-1",
+            "routes": [
+              {
+                "destination": "/docs/:splat?from=rule#section",
+                "source": "/qa-jump/*",
+                "type": "redirect"
+              },
+              {
+                "destination": "/index.html",
+                "source": "/qa-plain",
+                "type": "redirect"
+              },
+              {
+                "destination": "/render.yaml?from=rule",
+                "source": "/friendly.yaml",
+                "type": "rewrite"
+              },
+              {
+                "destination": "/should-not-win",
+                "source": "/render.yaml",
+                "type": "redirect"
+              }
+            ]
+          }
+        }
+      },
+      "rest": [
+        {
+          "path": "/v1/services/srv-db9h2fg7bp4s73el3m10/routes",
+          "status": 200,
+          "body": [
+            {
+              "route": {
+                "id": "rte-vuni8aj5qi3lop515lch",
+                "type": "redirect",
+                "source": "/qa-jump/*",
+                "destination": "/docs/:splat?from=rule#section",
+                "priority": 0
+              },
+              "cursor": "rte-vuni8aj5qi3lop515lch"
+            },
+            {
+              "route": {
+                "id": "rte-7bc3rknodgv88gio2jdv",
+                "type": "redirect",
+                "source": "/qa-plain",
+                "destination": "/index.html",
+                "priority": 1
+              },
+              "cursor": "rte-7bc3rknodgv88gio2jdv"
+            },
+            {
+              "route": {
+                "id": "rte-ipoa2ciobrng7rj4dknt",
+                "type": "rewrite",
+                "source": "/friendly.yaml",
+                "destination": "/render.yaml?from=rule",
+                "priority": 2
+              },
+              "cursor": "rte-ipoa2ciobrng7rj4dknt"
+            },
+            {
+              "route": {
+                "id": "rte-0u1edefmqfsp2e9d3a61",
+                "type": "redirect",
+                "source": "/render.yaml",
+                "destination": "/should-not-win",
+                "priority": 3
+              },
+              "cursor": "rte-0u1edefmqfsp2e9d3a61"
+            }
+          ]
+        },
+        {
+          "path": "/v1/services/srv-db9h2fg7bp4s73el3m10/headers",
+          "status": 200,
+          "body": [
+            {
+              "header": {
+                "id": "hdr-k9h9k3o5nuglv3dbvcvt",
+                "path": "/*",
+                "name": "X-QA-A859",
+                "value": "routing-a859"
+              },
+              "cursor": "hdr-k9h9k3o5nuglv3dbvcvt"
+            },
+            {
+              "header": {
+                "id": "hdr-p1k3babfhkhab5qu267l",
+                "path": "/friendly.yaml",
+                "name": "Cache-Control",
+                "value": "no-store"
+              },
+              "cursor": "hdr-p1k3babfhkhab5qu267l"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "http": {
+    "before": {
+      "at": "2026-10-17T06:11:02.568549+00:00",
+      "rows": [
+        {
+          "case": "root",
+          "path": "/",
+          "status": 200,
+          "location": null,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/html",
+            "date": "Sat, 17 Oct 2026 06:11:00 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "1548"
+          },
+          "bytes": 1548,
+          "sha256": "1eb4041e1174aaf5fc0d19dc504fccca37749fd03e73974ed230433614d7e8bb"
+        },
+        {
+          "case": "yaml",
+          "path": "/render.yaml",
+          "status": 200,
+          "location": null,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "binary/octet-stream",
+            "date": "Sat, 17 Oct 2026 06:11:00 GMT",
+            "content-length": "795"
+          },
+          "bytes": 795,
+          "sha256": "8c76de576c5a2331f5dc4aa2ab3df80d4b90386868bd05ce44375b6b635598dd"
+        },
+        {
+          "case": "rewrite",
+          "path": "/friendly.yaml",
+          "status": 200,
+          "location": null,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "binary/octet-stream",
+            "date": "Sat, 17 Oct 2026 06:11:00 GMT",
+            "content-length": "795"
+          },
+          "bytes": 795,
+          "sha256": "8c76de576c5a2331f5dc4aa2ab3df80d4b90386868bd05ce44375b6b635598dd"
+        },
+        {
+          "case": "hash",
+          "path": "/qa-jump/a%23b.yaml?incoming=one",
+          "status": 301,
+          "location": "/docs/a%23b.yaml?from=rule#section",
+          "headers": {
+            "content-type": "text/html; charset=utf-8",
+            "date": "Sat, 17 Oct 2026 06:11:01 GMT",
+            "location": "/docs/a%23b.yaml?from=rule#section",
+            "content-length": "69"
+          },
+          "bytes": 69,
+          "sha256": "b1710be534c4877d827a3fb4dd4c3471b48306a0877a27a3685260cea951964c"
+        },
+        {
+          "case": "query",
+          "path": "/qa-jump/a%3Fb.yaml?incoming=one",
+          "status": 301,
+          "location": "/docs/a%3Fb.yaml?from=rule#section",
+          "headers": {
+            "content-type": "text/html; charset=utf-8",
+            "date": "Sat, 17 Oct 2026 06:11:01 GMT",
+            "location": "/docs/a%3Fb.yaml?from=rule#section",
+            "content-length": "69"
+          },
+          "bytes": 69,
+          "sha256": "7121c9197214f4d7bb7b53bd3598b395b2335bbd8e1c0ba0e6e85ece67cd4bd0"
+        },
+        {
+          "case": "space",
+          "path": "/qa-jump/a%20b.yaml",
+          "status": 301,
+          "location": "/docs/a%20b.yaml?from=rule#section",
+          "headers": {
+            "content-type": "text/html; charset=utf-8",
+            "date": "Sat, 17 Oct 2026 06:11:01 GMT",
+            "location": "/docs/a%20b.yaml?from=rule#section",
+            "content-length": "69"
+          },
+          "bytes": 69,
+          "sha256": "3c4ed0ee0043a7cb9a0d9caf6a38b94281cf050fdbeebd77b8116a6542d928e8"
+        },
+        {
+          "case": "percent",
+          "path": "/qa-jump/a%25b.yaml",
+          "status": 301,
+          "location": "/docs/a%25b.yaml?from=rule#section",
+          "headers": {
+            "content-type": "text/html; charset=utf-8",
+            "date": "Sat, 17 Oct 2026 06:11:02 GMT",
+            "location": "/docs/a%25b.yaml?from=rule#section",
+            "content-length": "69"
+          },
+          "bytes": 69,
+          "sha256": "cfa44fca18269c0aeffb65a0731d1dc15aacfa5a6a68bc2c6695315bd657c410"
+        },
+        {
+          "case": "plain",
+          "path": "/qa-plain?incoming=one",
+          "status": 301,
+          "location": "/index.html",
+          "headers": {
+            "content-type": "text/html; charset=utf-8",
+            "date": "Sat, 17 Oct 2026 06:11:02 GMT",
+            "location": "/index.html",
+            "content-length": "46"
+          },
+          "bytes": 46,
+          "sha256": "6650558ce74ec719a2e6e0ad15db0fd10131b12ed7b964787e0cb5188d084542"
+        }
+      ]
+    },
+    "after": {
+      "at": "2026-10-17T06:15:35.665388+00:00",
+      "rows": [
+        {
+          "case": "root",
+          "path": "/",
+          "method": "GET",
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/html",
+            "date": "Sat, 17 Oct 2026 06:15:32 GMT",
+            "vary": "Accept-Encoding",
+            "x-qa-a859": "routing-a859",
+            "content-length": "1548"
+          },
+          "bytes": 1548,
+          "bodySha256": "1eb4041e1174aaf5fc0d19dc504fccca37749fd03e73974ed230433614d7e8bb"
+        },
+        {
+          "case": "root",
+          "path": "/",
+          "method": "HEAD",
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/html",
+            "date": "Sat, 17 Oct 2026 06:15:32 GMT",
+            "vary": "Accept-Encoding",
+            "x-qa-a859": "routing-a859",
+            "content-length": "1548"
+          },
+          "bytes": 220,
+          "bodySha256": null
+        },
+        {
+          "case": "yaml",
+          "path": "/render.yaml",
+          "method": "GET",
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "binary/octet-stream",
+            "date": "Sat, 17 Oct 2026 06:15:32 GMT",
+            "x-qa-a859": "routing-a859",
+            "content-length": "795"
+          },
+          "bytes": 795,
+          "bodySha256": "8c76de576c5a2331f5dc4aa2ab3df80d4b90386868bd05ce44375b6b635598dd"
+        },
+        {
+          "case": "yaml",
+          "path": "/render.yaml",
+          "method": "HEAD",
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "binary/octet-stream",
+            "date": "Sat, 17 Oct 2026 06:15:33 GMT",
+            "x-qa-a859": "routing-a859",
+            "content-length": "795"
+          },
+          "bytes": 206,
+          "bodySha256": null
+        },
+        {
+          "case": "rewrite",
+          "path": "/friendly.yaml",
+          "method": "GET",
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "no-store",
+            "content-type": "binary/octet-stream",
+            "date": "Sat, 17 Oct 2026 06:15:33 GMT",
+            "x-qa-a859": "routing-a859",
+            "content-length": "795"
+          },
+          "bytes": 795,
+          "bodySha256": "8c76de576c5a2331f5dc4aa2ab3df80d4b90386868bd05ce44375b6b635598dd"
+        },
+        {
+          "case": "rewrite",
+          "path": "/friendly.yaml",
+          "method": "HEAD",
+          "status": 200,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "no-store",
+            "content-type": "binary/octet-stream",
+            "date": "Sat, 17 Oct 2026 06:15:33 GMT",
+            "x-qa-a859": "routing-a859",
+            "content-length": "795"
+          },
+          "bytes": 180,
+          "bodySha256": null
+        },
+        {
+          "case": "hash",
+          "path": "/qa-jump/a%23b.yaml?incoming=one",
+          "method": "GET",
+          "status": 301,
+          "headers": {
+            "content-type": "text/html; charset=utf-8",
+            "date": "Sat, 17 Oct 2026 06:15:33 GMT",
+            "location": "/docs/a%23b.yaml?from=rule#section",
+            "x-qa-a859": "routing-a859",
+            "content-length": "69"
+          },
+          "bytes": 69,
+          "bodySha256": "b1710be534c4877d827a3fb4dd4c3471b48306a0877a27a3685260cea951964c"
+        },
+        {
+          "case": "hash",
+          "path": "/qa-jump/a%23b.yaml?incoming=one",
+          "method": "HEAD",
+          "status": 301,
+          "headers": {
+            "content-type": "text/html; charset=utf-8",
+            "date": "Sat, 17 Oct 2026 06:15:33 GMT",
+            "location": "/docs/a%23b.yaml?from=rule#section",
+            "x-qa-a859": "routing-a859"
+          },
+          "bytes": 163,
+          "bodySha256": null
+        },
+        {
+          "case": "query",
+          "path": "/qa-jump/a%3Fb.yaml?incoming=one",
+          "method": "GET",
+          "status": 301,
+          "headers": {
+            "content-type": "text/html; charset=utf-8",
+            "date": "Sat, 17 Oct 2026 06:15:33 GMT",
+            "location": "/docs/a%3Fb.yaml?from=rule#section",
+            "x-qa-a859": "routing-a859",
+            "content-length": "69"
+          },
+          "bytes": 69,
+          "bodySha256": "7121c9197214f4d7bb7b53bd3598b395b2335bbd8e1c0ba0e6e85ece67cd4bd0"
+        },
+        {
+          "case": "query",
+          "path": "/qa-jump/a%3Fb.yaml?incoming=one",
+          "method": "HEAD",
+          "status": 301,
+          "headers": {
+            "content-type": "text/html; charset=utf-8",
+            "date": "Sat, 17 Oct 2026 06:15:34 GMT",
+            "location": "/docs/a%3Fb.yaml?from=rule#section",
+            "x-qa-a859": "routing-a859"
+          },
+          "bytes": 163,
+          "bodySha256": null
+        },
+        {
+          "case": "space",
+          "path": "/qa-jump/a%20b.yaml",
+          "method": "GET",
+          "status": 301,
+          "headers": {
+            "content-type": "text/html; charset=utf-8",
+            "date": "Sat, 17 Oct 2026 06:15:34 GMT",
+            "location": "/docs/a%20b.yaml?from=rule#section",
+            "x-qa-a859": "routing-a859",
+            "content-length": "69"
+          },
+          "bytes": 69,
+          "bodySha256": "3c4ed0ee0043a7cb9a0d9caf6a38b94281cf050fdbeebd77b8116a6542d928e8"
+        },
+        {
+          "case": "space",
+          "path": "/qa-jump/a%20b.yaml",
+          "method": "HEAD",
+          "status": 301,
+          "headers": {
+            "content-type": "text/html; charset=utf-8",
+            "date": "Sat, 17 Oct 2026 06:15:34 GMT",
+            "location": "/docs/a%20b.yaml?from=rule#section",
+            "x-qa-a859": "routing-a859"
+          },
+          "bytes": 163,
+          "bodySha256": null
+        },
+        {
+          "case": "percent",
+          "path": "/qa-jump/a%25b.yaml",
+          "method": "GET",
+          "status": 301,
+          "headers": {
+            "content-type": "text/html; charset=utf-8",
+            "date": "Sat, 17 Oct 2026 06:15:35 GMT",
+            "location": "/docs/a%25b.yaml?from=rule#section",
+            "x-qa-a859": "routing-a859",
+            "content-length": "69"
+          },
+          "bytes": 69,
+          "bodySha256": "cfa44fca18269c0aeffb65a0731d1dc15aacfa5a6a68bc2c6695315bd657c410"
+        },
+        {
+          "case": "percent",
+          "path": "/qa-jump/a%25b.yaml",
+          "method": "HEAD",
+          "status": 301,
+          "headers": {
+            "content-type": "text/html; charset=utf-8",
+            "date": "Sat, 17 Oct 2026 06:15:35 GMT",
+            "location": "/docs/a%25b.yaml?from=rule#section",
+            "x-qa-a859": "routing-a859"
+          },
+          "bytes": 163,
+          "bodySha256": null
+        },
+        {
+          "case": "plain",
+          "path": "/qa-plain?incoming=one",
+          "method": "GET",
+          "status": 301,
+          "headers": {
+            "content-type": "text/html; charset=utf-8",
+            "date": "Sat, 17 Oct 2026 06:15:35 GMT",
+            "location": "/index.html",
+            "x-qa-a859": "routing-a859",
+            "content-length": "46"
+          },
+          "bytes": 46,
+          "bodySha256": "6650558ce74ec719a2e6e0ad15db0fd10131b12ed7b964787e0cb5188d084542"
+        },
+        {
+          "case": "plain",
+          "path": "/qa-plain?incoming=one",
+          "method": "HEAD",
+          "status": 301,
+          "headers": {
+            "content-type": "text/html; charset=utf-8",
+            "date": "Sat, 17 Oct 2026 06:15:35 GMT",
+            "location": "/index.html",
+            "x-qa-a859": "routing-a859"
+          },
+          "bytes": 140,
+          "bodySha256": null
+        }
+      ]
+    },
+    "getBodies": {
+      "qa-a859-final-root-GET.body": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>bex static site</title>\n    <style>\n      *,\n      *::before,\n      *::after {\n        box-sizing: border-box;\n        margin: 0;\n        padding: 0;\n      }\n      body {\n        font-family: system-ui, sans-serif;\n        background: #0f172a;\n        color: #e2e8f0;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        min-height: 100vh;\n      }\n      .card {\n        text-align: center;\n        padding: 3rem 4rem;\n        border: 1px solid #1e293b;\n        border-radius: 1rem;\n        background: #1e293b;\n        max-width: 480px;\n      }\n      h1 {\n        font-size: 2rem;\n        font-weight: 700;\n        letter-spacing: -0.03em;\n        color: #f8fafc;\n      }\n      p {\n        margin-top: 0.75rem;\n        color: #94a3b8;\n        line-height: 1.6;\n      }\n      .badge {\n        display: inline-block;\n        margin-top: 1.5rem;\n        padding: 0.35rem 0.85rem;\n        border-radius: 9999px;\n        font-size: 0.8rem;\n        font-weight: 600;\n        background: #6366f1;\n        color: #fff;\n      }\n    </style>\n  </head>\n  <body>\n    <div class=\"card\">\n      <h1>Hello from bex</h1>\n      <p>\n        This static site is served by bex \u2014 no server, no Dockerfile. Edit\n        <code>index.html</code>, push to git, and bex redeploys instantly.\n      </p>\n      <span class=\"badge\">static_site</span>\n    </div>\n  </body>\n</html>\n",
+      "qa-a859-final-query-GET.body": "<a href=\"/docs/a%3Fb.yaml?from=rule#section\">Moved Permanently</a>.\n\n",
+      "qa-a859-final-percent-GET.body": "<a href=\"/docs/a%25b.yaml?from=rule#section\">Moved Permanently</a>.\n\n",
+      "qa-a859-final-space-GET.body": "<a href=\"/docs/a%20b.yaml?from=rule#section\">Moved Permanently</a>.\n\n",
+      "qa-a859-final-plain-GET.body": "<a href=\"/index.html\">Moved Permanently</a>.\n\n",
+      "qa-a859-final-rewrite-GET.body": "# render.yaml \u2014 static_site example: no Dockerfile and no build command needed \u2014\n# bex clones the repo and publishes rootDir/staticPublishPath as-is to object storage\n# (w9/010, Render parity), serving it through the shared static-server at a\n# https URL (docs/ADR029-static-sites.md). Declaring a dockerfilePath, a\n# buildCommand, or a runtime instead opts into the build path: the image's\n# staticPublishPath directory then holds the built site.\n# A git push redeploys automatically via the push webhook.\nservices:\n  - name: static-site\n    type: web\n    runtime: static\n    repo: https://github.com/bex-co/bex # replace with your fork/checkout\n    rootDir: examples/static-site\n    branch: main\n    staticPublishPath: . # publish this directory as-is; set to \"dist\" for a real build step\n",
+      "qa-a859-final-hash-GET.body": "<a href=\"/docs/a%23b.yaml?from=rule#section\">Moved Permanently</a>.\n\n",
+      "qa-a859-final-yaml-GET.body": "# render.yaml \u2014 static_site example: no Dockerfile and no build command needed \u2014\n# bex clones the repo and publishes rootDir/staticPublishPath as-is to object storage\n# (w9/010, Render parity), serving it through the shared static-server at a\n# https URL (docs/ADR029-static-sites.md). Declaring a dockerfilePath, a\n# buildCommand, or a runtime instead opts into the build path: the image's\n# staticPublishPath directory then holds the built site.\n# A git push redeploys automatically via the push webhook.\nservices:\n  - name: static-site\n    type: web\n    runtime: static\n    repo: https://github.com/bex-co/bex # replace with your fork/checkout\n    rootDir: examples/static-site\n    branch: main\n    staticPublishPath: . # publish this directory as-is; set to \"dist\" for a real build step\n"
+    },
+    "note": "HEAD curl --head output files contain headers, not response bodies; their recorded bytes are capture-file lengths. GET bodies are complete above. No Location following was requested."
+  },
+  "cleanup": {
+    "deleted": {
+      "at": "2026-10-17T06:15:49.552Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db9h2fg7bp4s73el3m10"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "timing": {
+        "startTime": 1792217748451.673,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.123,
+        "responseStart": 378.226,
+        "responseEnd": 378.918
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "inventory": {
+      "at": "2026-10-17T06:16:03.701Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [
+        {
+          "path": "/v1/services/srv-db9h2fg7bp4s73el3m10",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9h2fg7bp4s73el3m10/deploys/dep-db9h2fg7bp4s73el3m1g",
+          "status": 404
+        }
+      ]
+    },
+    "session": {
+      "logoutConfirmed": true,
+      "exitCode": 0,
+      "browser": {
+        "at": "2026-10-17T06:16:09.117Z",
+        "whoami": 401,
+        "cookies": 0,
+        "pages": 1,
+        "url": "about:blank"
+      },
+      "handlesRemoved": true
+    },
+    "physical": {
+      "at": "2026-10-17T06:16:41.422957+00:00",
+      "physicalApp": "tea-d98210cbbpdc73dcrkvg-qa-20261016-a859-routing",
+      "resources": {
+        "app": [],
+        "appChildren": [],
+        "buildChildren": [],
+        "publishChildren": [],
+        "purgeChildren": [],
+        "predeployChildren": []
+      },
+      "allGone": true
+    },
+    "publicStatus": 404,
+    "publicReceipt": {
+      "method": "GET",
+      "url": "https://qa-20261016-a859-routing.onbex.co",
+      "status": 404,
+      "rawHeaders": "HTTP/2 404 \ncontent-type: text/plain; charset=utf-8\nx-content-type-options: nosniff\ncontent-length: 19\ndate: Sat, 17 Oct 2026 06:18:13 GMT\n\n",
+      "body": "404 page not found\n"
+    }
+  },
+  "sourceCensus": {
+    "editorDefinitions": 2,
+    "productionEditorMounts": 2,
+    "routeEntries": 4,
+    "ruleInputSites": 4,
+    "directHeaderValueInputSites": 1,
+    "routeTypeSelectSites": 1,
+    "existingHydrationFieldsetMounts": 3
+  },
+  "framework": {
+    "version": "react-dom 19.3.1",
+    "lock": "dashboard/yarn.lock:10564-10566",
+    "source": "https://registry.npmjs.org/react-dom/-/react-dom-19.3.1.tgz",
+    "cachedSource": ".playwright-mcp/qa-a797-react-dom/package/cjs/react-dom-client.production.js",
+    "paths": "initInput:1315-1357 preserves DOM during hydration; updateInput:1269-1293 writes differing controlled state on updates. Application readiness gap; no framework defect claimed. Deployed entry is not independently mapped to a React version."
+  },
+  "dedupe": {
+    "matched": "w4/m219: extend with two new roots",
+    "openMilestoneCount": 89,
+    "openMilestones": [
+      {
+        "path": ".pm/w11/blocked/m8/README.md",
+        "title": "# w11 \u00b7 m8 \u2014 Tier-2 mobile quick actions"
+      },
+      {
+        "path": ".pm/w11/blocked/m6/README.md",
+        "title": "# w11 \u00b7 m6 \u2014 Phase-1 agent mission control"
+      },
+      {
+        "path": ".pm/w11/blocked/m7/README.md",
+        "title": "# w11 \u00b7 m7 \u2014 Live agent attach and needs-decision steering"
+      },
+      {
+        "path": ".pm/w11/blocked/m5/README.md",
+        "title": "# w11 \u00b7 m5 \u2014 Push channel + notification hygiene"
+      },
+      {
+        "path": ".pm/w4/m221/README.md",
+        "title": "# w4 \u00b7 m221 \u2014 Preserve creation placement when lookup reads fail"
+      },
+      {
+        "path": ".pm/w4/blocked/m212/README.md",
+        "title": "# w4 \u00b7 m212 \u2014 Keep webhook disable intervals consistent"
+      },
+      {
+        "path": ".pm/w4/blocked/m215/README.md",
+        "title": "# w4 \u00b7 m215 \u2014 Keep accepted Postgres upgrades non-Ready"
+      },
+      {
+        "path": ".pm/w4/blocked/m214/README.md",
+        "title": "# w4 \u00b7 m214 \u2014 Recover datastore cleanup from transient lock conflicts"
+      },
+      {
+        "path": ".pm/w4/blocked/m213/README.md",
+        "title": "# w4 \u00b7 m213 \u2014 Supply JavaScript companions in native Go, Rust and Elixir"
+      },
+      {
+        "path": ".pm/w4/blocked/m162/README.md",
+        "title": "# w4 \u00b7 m162 \u2014 Keep platform health checks off tenant HTTP paths"
+      },
+      {
+        "path": ".pm/w4/blocked/m165/README.md",
+        "title": "# w4 \u00b7 m165 \u2014 Loop1: workspace-switch navigation + identical-cancel undeployed flag"
+      },
+      {
+        "path": ".pm/w4/blocked/m164/README.md",
+        "title": "# w4 \u00b7 m164 \u2014 Count initial and newly scraped traffic before free web auto-sleep"
+      },
+      {
+        "path": ".pm/w4/blocked/m163/README.md",
+        "title": "# w4 \u00b7 m163 \u2014 Make saved secret files available to native builds"
+      },
+      {
+        "path": ".pm/w4/blocked/m130/README.md",
+        "title": "# w4 \u00b7 m130 \u2014 `patchServiceEnvironment` applies the write and then reports a conflict"
+      },
+      {
+        "path": ".pm/w4/blocked/m139/README.md",
+        "title": "# w4 \u00b7 m139 \u2014 Billing's Charges card: a subscription-period total labelled \"month to date\" over a calendar-month tree, and a coverage watermark that never leaves the 1st"
+      },
+      {
+        "path": ".pm/w4/blocked/m179/README.md",
+        "title": "# w4 \u00b7 m179 \u2014 Revoke deleted Postgres logins even when objects reference the role"
+      },
+      {
+        "path": ".pm/w4/blocked/m184/README.md",
+        "title": "# w4 \u00b7 m184 \u2014 Say \"applying\" while the carrying deploy runs, not \"deploy to apply\""
+      },
+      {
+        "path": ".pm/w4/blocked/m170/README.md",
+        "title": "# w4 \u00b7 m170 \u2014 Refuse reserved Postgres identifiers so a database name or user can't break or wedge a database"
+      },
+      {
+        "path": ".pm/w4/blocked/m177/README.md",
+        "title": "# w4 \u00b7 m177 \u2014 Report container startup failures as startup failures"
+      },
+      {
+        "path": ".pm/w4/blocked/m183/README.md",
+        "title": "# w4 \u00b7 m183 \u2014 Make SSH remedies truthful and usable"
+      },
+      {
+        "path": ".pm/w4/blocked/m182/README.md",
+        "title": "# w4 \u00b7 m182 \u2014 Keep configured port changes available"
+      },
+      {
+        "path": ".pm/w4/blocked/m176/README.md",
+        "title": "# w4 \u00b7 m176 \u2014 Protected environments: a deploy with `imageUrl`/`commitId` or a rollback swaps the running code without the \"repoint\" confirmation"
+      },
+      {
+        "path": ".pm/w4/blocked/m171/README.md",
+        "title": "# w4 \u00b7 m171 \u2014 A deploy cut off by a user suspend closes canceled, not as a false health-gate failure"
+      },
+      {
+        "path": ".pm/w4/blocked/m200/README.md",
+        "title": "# w4 \u00b7 m200 \u2014 Preserve logical records in mixed stdout/stderr pod logs"
+      },
+      {
+        "path": ".pm/w4/blocked/m207/README.md",
+        "title": "# w4 \u00b7 m207 \u2014 Make card-radio pickers work with the keyboard"
+      },
+      {
+        "path": ".pm/w4/blocked/m209/README.md",
+        "title": "# w4 \u00b7 m209 \u2014 Keep metrics geometry stable and labels readable"
+      },
+      {
+        "path": ".pm/w4/blocked/m208/README.md",
+        "title": "# w4 \u00b7 m208 \u2014 Datastore plan previews match their ready cards"
+      },
+      {
+        "path": ".pm/w4/blocked/m206/README.md",
+        "title": "# w4 \u00b7 m206 \u2014 Make environment-group creation and moves recoverable"
+      },
+      {
+        "path": ".pm/w4/blocked/m218/README.md",
+        "title": "# w4 \u00b7 m218 \u2014 Recover plan catalogs in creation and datastore details"
+      },
+      {
+        "path": ".pm/w4/blocked/m220/README.md",
+        "title": "# w4 \u00b7 m220 \u2014 Keep list headers readable and loading previews stable"
+      },
+      {
+        "path": ".pm/w4/blocked/m216/README.md",
+        "title": "# w4 \u00b7 m216 \u2014 Keep deploy log search on the established literal contract"
+      },
+      {
+        "path": ".pm/w4/blocked/m211/README.md",
+        "title": "# w4 \u00b7 m211 \u2014 Keep batched hosting changes inside one response budget"
+      },
+      {
+        "path": ".pm/w4/blocked/m210/README.md",
+        "title": "# w4 \u00b7 m210 \u2014 Keep capped cron history chronological"
+      },
+      {
+        "path": ".pm/w4/blocked/m217/README.md",
+        "title": "# w4 \u00b7 m217 \u2014 Preserve distinct log records within one millisecond"
+      },
+      {
+        "path": ".pm/w4/blocked/m219/README.md",
+        "title": "# w4 \u00b7 m219 \u2014 Gate forms and searches until handlers are ready"
+      },
+      {
+        "path": ".pm/w4/blocked/m166/README.md",
+        "title": "# w4 \u00b7 m166 \u2014 Loop2: Docker Command for image-source services"
+      },
+      {
+        "path": ".pm/w4/blocked/m159/README.md",
+        "title": "# w4 \u00b7 m159 \u2014 Keep confirmations open through permission refresh"
+      },
+      {
+        "path": ".pm/w4/blocked/m161/README.md",
+        "title": "# w4 \u00b7 m161 \u2014 Bind environment-group revisions to editing drafts"
+      },
+      {
+        "path": ".pm/w4/blocked/m157/README.md",
+        "title": "# w4 \u00b7 m157 \u2014 Preserve typed Postgres query values"
+      },
+      {
+        "path": ".pm/w4/blocked/m168/README.md",
+        "title": "# w4 \u00b7 m168 \u2014 Loop6: bound env/secret-file key length so a long name can't wedge a service's environment"
+      },
+      {
+        "path": ".pm/w4/blocked/m156/README.md",
+        "title": "# w4 \u00b7 m156 \u2014 Report honest start times for successful deploys"
+      },
+      {
+        "path": ".pm/w4/blocked/m169/README.md",
+        "title": "# w4 \u00b7 m169 \u2014 Blueprint by-id verbs resolve the Blueprint's own workspace"
+      },
+      {
+        "path": ".pm/w4/blocked/m160/README.md",
+        "title": "# w4 \u00b7 m160 \u2014 Revalidate static files across deployments"
+      },
+      {
+        "path": ".pm/w4/blocked/m167/README.md",
+        "title": "# w4 \u00b7 m167 \u2014 Loop5: redact secrets from Postgres Insights query text"
+      },
+      {
+        "path": ".pm/w4/blocked/m158/README.md",
+        "title": "# w4 \u00b7 m158 \u2014 Preserve exact SQL numbers in MCP responses"
+      },
+      {
+        "path": ".pm/w4/blocked/m174/README.md",
+        "title": "# w4 \u00b7 m174 \u2014 Fast-exiting App containers intermittently lose stderr lines from their logs"
+      },
+      {
+        "path": ".pm/w4/blocked/m180/README.md",
+        "title": "# w4 \u00b7 m180 \u2014 Save and deploy reuses the serving artifact"
+      },
+      {
+        "path": ".pm/w4/blocked/m173/README.md",
+        "title": "# w4 \u00b7 m173 \u2014 `instance_seconds` meters how many container series appeared in an hour, not how long instances ran"
+      },
+      {
+        "path": ".pm/w4/blocked/m116/README.md",
+        "title": "# w4 \u00b7 m116 \u2014 CLI hunt sweep 1: psql trust, KV publish, one-off jobs, resume path"
+      },
+      {
+        "path": ".pm/w4/blocked/m172/README.md",
+        "title": "# w4 \u00b7 m172 \u2014 By-id REST verbs resolve the resource's own workspace, not the caller's default"
+      },
+      {
+        "path": ".pm/w4/blocked/m181/README.md",
+        "title": "# w4 \u00b7 m181 \u2014 Keep pre-deploy jobs out of serving endpoints"
+      },
+      {
+        "path": ".pm/w4/blocked/m175/README.md",
+        "title": "# w4 \u00b7 m175 \u2014 Include newest request buckets and clip them to the selected window"
+      },
+      {
+        "path": ".pm/w4/blocked/m204/README.md",
+        "title": "# w4 \u00b7 m204 \u2014 Keep service Logs filters aligned with navigation"
+      },
+      {
+        "path": ".pm/w4/blocked/m203/README.md",
+        "title": "# w4 \u00b7 m203 \u2014 Anchor a newly selected relative range at the current time"
+      },
+      {
+        "path": ".pm/w4/blocked/m202/README.md",
+        "title": "# w4 \u00b7 m202 \u2014 Honor image commands after switching from native Git"
+      },
+      {
+        "path": ".pm/w4/blocked/m205/README.md",
+        "title": "# w4 \u00b7 m205 \u2014 Keep overlapping file uploads unique"
+      },
+      {
+        "path": ".pm/w3/blocked/m79/README.md",
+        "title": "# w3 \u00b7 m79 \u2014 Run the full agent-session stack locally on `dev-N`"
+      },
+      {
+        "path": ".pm/w2/blocked/m162/README.md",
+        "title": "# w2 \u00b7 m162 \u2014 One GitHub account, many workspaces: the N:N connection model"
+      },
+      {
+        "path": ".pm/w2/blocked/m96/README.md",
+        "title": "# w2 \u00b7 m96 \u2014 Charges and webhook deliveries name their resource, even after deletion"
+      },
+      {
+        "path": ".pm/w5/blocked/m114/README.md",
+        "title": "# w5 \u00b7 m114 \u2014 Suspend ends the release it interrupts, not just its deploy row"
+      },
+      {
+        "path": ".pm/w5/blocked/m105/README.md",
+        "title": "# w5 \u00b7 m105 \u2014 Settings command edits take effect in the deployed artifact"
+      },
+      {
+        "path": ".pm/w5/blocked/m118/README.md",
+        "title": "# w5 \u00b7 m118 \u2014 One source of truth for naming and config-key rules across Go, TypeScript, Kubernetes and CNPG"
+      },
+      {
+        "path": ".pm/w5/blocked/m111/README.md",
+        "title": "# w5 \u00b7 m111 \u2014 `instance_seconds` stops metering terminated pods through Prometheus's 5-minute lookback"
+      },
+      {
+        "path": ".pm/w9/m166/README.md",
+        "title": "# w9 \u00b7 m166 \u2014 Reject invalid service patches before applying any settings"
+      },
+      {
+        "path": ".pm/w9/blocked/m164/README.md",
+        "title": "# w9 \u00b7 m164 \u2014 Dual-stack IP allow-list trap: a datastore denies the client's IPv6 with an opaque TLS EOF"
+      },
+      {
+        "path": ".pm/w7/blocked/m156/README.md",
+        "title": "# w7 \u00b7 m156 \u2014 Repair CNPG replica WAL metric collection"
+      },
+      {
+        "path": ".pm/w7/blocked/m158/README.md",
+        "title": "# w7 \u00b7 m158 \u2014 Repair recurring registry garbage-collection failures"
+      },
+      {
+        "path": ".pm/w6/blocked/m146/README.md",
+        "title": "# w6 \u00b7 m146 \u2014 Keep service action permissions current through confirmation"
+      },
+      {
+        "path": ".pm/w1/m179/README.md",
+        "title": "# w1 \u00b7 m179 \u2014 A failed first release stops instead of restarting forever"
+      },
+      {
+        "path": ".pm/w1/m180/README.md",
+        "title": "# w1 \u00b7 m180 \u2014 Serve datastore CPU and memory metrics on Render's paths"
+      },
+      {
+        "path": ".pm/w1/m181/README.md",
+        "title": "# w1 \u00b7 m181 \u2014 Auto-deploy after CI checks pass (`autoDeployTrigger: checksPass`)"
+      },
+      {
+        "path": ".pm/w1/blocked/m171/README.md",
+        "title": "# w1 \u00b7 m171 \u2014 Warn when an inbound IP allowlist sits behind a Cloudflare-proxied custom domain"
+      },
+      {
+        "path": ".pm/w1/blocked/m178/README.md",
+        "title": "# w1 \u00b7 m178 \u2014 Dockerfile builds receive the service's env vars as build args and its secret files as build secrets"
+      },
+      {
+        "path": ".pm/w1/blocked/m174/README.md",
+        "title": "# w1 \u00b7 m174 \u2014 Get main's red checks passing again: x/net CVEs, lint OOM, flaky tests, Dependabot, schema re-pin"
+      },
+      {
+        "path": ".pm/w8/blocked/m62/README.md",
+        "title": "# w8 \u00b7 m62 \u2014 Reject unlaunchable environment values"
+      },
+      {
+        "path": ".pm/w8/blocked/m65/README.md",
+        "title": "# w8 \u00b7 m65 \u2014 Retain PostgreSQL process logs during bursts"
+      },
+      {
+        "path": ".pm/w8/blocked/m64/README.md",
+        "title": "# w8 \u00b7 m64 \u2014 Keep Blueprint environment copies consistent across applies"
+      },
+      {
+        "path": ".pm/w8/blocked/m63/README.md",
+        "title": "# w8 \u00b7 m63 \u2014 Keep completed initial hooks out of later deploys"
+      },
+      {
+        "path": ".pm/w8/blocked/m84/README.md",
+        "title": "# w8 \u00b7 m84 \u2014 Make packaged pgvector usable in managed Postgres"
+      },
+      {
+        "path": ".pm/w8/blocked/m83/README.md",
+        "title": "# w8 \u00b7 m83 \u2014 Supply automatic compression for web responses"
+      },
+      {
+        "path": ".pm/w8/blocked/m59/README.md",
+        "title": "# w8 \u00b7 m59 \u2014 Return static sites to direct publication after clearing their build command"
+      },
+      {
+        "path": ".pm/w8/blocked/m68/README.md",
+        "title": "# w8 \u00b7 m68 \u2014 Preserve executable command text"
+      },
+      {
+        "path": ".pm/w8/blocked/m57/README.md",
+        "title": "# w8 \u00b7 m57 \u2014 Preserve literal string lists in interactive CLI forms"
+      },
+      {
+        "path": ".pm/w8/blocked/m69/README.md",
+        "title": "# w8 \u00b7 m69 \u2014 Preserve native cron startup semantics"
+      },
+      {
+        "path": ".pm/w8/blocked/m60/README.md",
+        "title": "# w8 \u00b7 m60 \u2014 Preserve accepted arguments when copying CLI commands"
+      },
+      {
+        "path": ".pm/w8/blocked/m67/README.md",
+        "title": "# w8 \u00b7 m67 \u2014 Keep native live logs running after a transient disconnect"
+      },
+      {
+        "path": ".pm/w8/blocked/m89/README.md",
+        "title": "# w8 \u00b7 m89 \u2014 Materialize pinned Git submodules before source builds"
+      },
+      {
+        "path": ".pm/w8/blocked/m87/README.md",
+        "title": "# w8 \u00b7 m87 \u2014 Make psql Ctrl+C stop external PostgreSQL queries"
+      },
+      {
+        "path": ".pm/w8/blocked/m88/README.md",
+        "title": "# w8 \u00b7 m88 \u2014 Preserve graceful shutdown through native npm startup"
+      }
+    ],
+    "excludedEvidenceReadmes": [
+      ".pm/w8/evidence/m61/README.md",
+      ".pm/w8/evidence/m62/README.md"
+    ],
+    "controls": [
+      "w4/136 accepted-row normalization and later-draft guard",
+      "w4/268 untouched saved-row refresh"
+    ],
+    "antiGoals": "DO_NOT_DO reviewed; existing functional hosting editor fix, no non-goal expansion."
+  },
+  "screenshots": [
+    ".playwright-mcp/qa-a859-header-startup-before.png",
+    ".playwright-mcp/qa-a859-header-startup-after.png"
+  ],
+  "limits": [
+    "A V1 Header1440 capture retained typed DOM through three seconds of hydration; the exact V3 adds the ordinary Add render that demonstrates its loss. This contradicts any claim of immediate overwrite at hydration.",
+    "The original Add-header click without a row was exploratory and lacked pre-handler timing capture; it is not a separate filed bug.",
+    "An initial #route-0-source selector matched nothing because RuleInput's id names its error only; excluded from primary evidence. Corrected aria-label Source selectors produce both route failures.",
+    "Header Path/Name, route Destination/Type, pre-handler add/remove/cancel, empty lists, client navigation, nondefault locales and services-base browser aliases remain audit/test work. Only the four primary populated static-route cases are observed failures.",
+    "No API response rewriting, paid fixture, existing-resource mutation or product fix. No new claim about inherited incoming redirect query strings; only configured destination components were checked."
+  ]
+}
