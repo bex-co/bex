@@ -1,0 +1,37 @@
+{
+  "sweep": 400,
+  "source_head": "af6a6310e1c83658fc57cdfc8003cafe2b054d36",
+  "serving_revision": "unknown",
+  "native_Free_Node24_POST201_create_exit0": 2,
+  "original_first_children_Live_exact_source": 2,
+  "actual_hosted_Node": "24.22.0",
+  "public_client_Node": "22.17.1",
+  "accepted_hosted_uploads_HTTP200": 10,
+  "client_HTTP1": 8,
+  "client_HTTP2_ALPN_h2": 2,
+  "identity_65659B": 4,
+  "gzip_262367B_to_262267B": 6,
+  "exact_raw_and_decoded_hashes": 10,
+  "explicit_paced_requests_client_write_span_at_least3500ms": 2,
+  "app_paced_body_duration_ms": [
+    3466,
+    6221
+  ],
+  "native_exact_correlated_app_log_events": 10,
+  "native_exact_build_source_log_proofs": 2,
+  "shared_REST_GraphQL_MCP_source_commands": 6,
+  "API_only_explicit_env_reads": 2,
+  "local_HTTP1_cases": 5,
+  "separate_loopback_H2_client_control": true,
+  "native_deletes0": 2,
+  "owned_parents_children_URLs_absent": [
+    2,
+    2,
+    2
+  ],
+  "original_baselines_quota_termination_pass": true,
+  "own_containers_contexts_payloads_local_H2_server_removed": true,
+  "new_issue": null,
+  "sweep396_larger_upload_candidate": "unresolved, not replayed or reclassified",
+  "uncommitted": true
+}

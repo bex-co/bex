@@ -1,0 +1,68 @@
+{
+  "image": "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+  "command": {
+    "build": "set -e\ncat > qa400-app.cjs <<'QA400_QA400_APP_CJS'\nconst fs=require('node:fs'),crypto=require('node:crypto'),http=require('node:http'),zlib=require('node:zlib');\nconst ref=JSON.parse(fs.readFileSync('qa400-reference.json')),marker=fs.readFileSync('qa400-marker','utf8').trim(),phase=process.argv[2],sha=b=>crypto.createHash('sha256').update(b).digest('hex');\nconst files=Object.fromEntries(Object.keys(ref.files).map(p=>{const b=fs.readFileSync(p);return[p,{bytes:b.length,sha256:sha(b)}]}));if(JSON.stringify(files)!==JSON.stringify(ref.files))throw Error('source differs');\nconst snapshot={marker,node:process.version,files,phase};if(phase==='build'){fs.writeFileSync('qa400-build.json',JSON.stringify(snapshot));console.log('QA400_BUILD '+JSON.stringify(snapshot));process.exit(0);}\nconst built=JSON.parse(fs.readFileSync('qa400-build.json')),boot=crypto.randomUUID(),json=(res,status,v)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(v))};\nhttp.createServer((req,res)=>{const path=new URL(req.url,'http://qa.invalid').pathname;\n if(path==='/upload'&&req.method==='POST'){const start=Date.now(),raw=crypto.createHash('sha256'),decoded=crypto.createHash('sha256');let rawBytes=0,bytes=0,chunks=0,first=null;req.on('data',b=>{if(first===null)first=Date.now();rawBytes+=b.length;raw.update(b)});const input=req.headers['content-encoding']==='gzip'?req.pipe(zlib.createGunzip()):req;input.on('data',b=>{bytes+=b.length;chunks++;decoded.update(b)});input.on('error',e=>json(res,400,{marker,error:e.code||'decode'}));input.on('end',()=>{const v={marker,boot,id:req.headers['x-qa-case'],bytes,sha256:decoded.digest('hex'),rawBytes,rawSha256:raw.digest('hex'),encoding:req.headers['content-encoding']||null,length:req.headers['content-length']||null,transfer:req.headers['transfer-encoding']||null,upstream_http:req.httpVersion,chunks,firstMs:first===null?null:first-start,durationMs:Date.now()-start};console.log('QA400_UPLOAD '+JSON.stringify(v));json(res,200,v)});return;}\n json(res,200,{marker,boot,built,runtime:snapshot});\n}).listen(Number(process.env.PORT),'0.0.0.0');\nQA400_QA400_APP_CJS\ncat > qa400-reference.json <<'QA400_QA400_REFERENCE_JSON'\n{\"repo\": \"https://github.com/git-fixtures/basic\", \"branch\": \"master\", \"commit\": \"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"qualification\": \"public Git carrier only; qa400 chunked/gzip upload observer is an explicitly authored functional fixture\"}\nQA400_QA400_REFERENCE_JSON\ncat > qa400-marker <<'QA400_QA400_MARKER'\nQA400_LOCAL\nQA400_QA400_MARKER\nnode qa400-app.cjs build",
+    "start": "node qa400-app.cjs runtime",
+    "program": "const fs=require('node:fs'),crypto=require('node:crypto'),http=require('node:http'),zlib=require('node:zlib');\nconst ref=JSON.parse(fs.readFileSync('qa400-reference.json')),marker=fs.readFileSync('qa400-marker','utf8').trim(),phase=process.argv[2],sha=b=>crypto.createHash('sha256').update(b).digest('hex');\nconst files=Object.fromEntries(Object.keys(ref.files).map(p=>{const b=fs.readFileSync(p);return[p,{bytes:b.length,sha256:sha(b)}]}));if(JSON.stringify(files)!==JSON.stringify(ref.files))throw Error('source differs');\nconst snapshot={marker,node:process.version,files,phase};if(phase==='build'){fs.writeFileSync('qa400-build.json',JSON.stringify(snapshot));console.log('QA400_BUILD '+JSON.stringify(snapshot));process.exit(0);}\nconst built=JSON.parse(fs.readFileSync('qa400-build.json')),boot=crypto.randomUUID(),json=(res,status,v)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(v))};\nhttp.createServer((req,res)=>{const path=new URL(req.url,'http://qa.invalid').pathname;\n if(path==='/upload'&&req.method==='POST'){const start=Date.now(),raw=crypto.createHash('sha256'),decoded=crypto.createHash('sha256');let rawBytes=0,bytes=0,chunks=0,first=null;req.on('data',b=>{if(first===null)first=Date.now();rawBytes+=b.length;raw.update(b)});const input=req.headers['content-encoding']==='gzip'?req.pipe(zlib.createGunzip()):req;input.on('data',b=>{bytes+=b.length;chunks++;decoded.update(b)});input.on('error',e=>json(res,400,{marker,error:e.code||'decode'}));input.on('end',()=>{const v={marker,boot,id:req.headers['x-qa-case'],bytes,sha256:decoded.digest('hex'),rawBytes,rawSha256:raw.digest('hex'),encoding:req.headers['content-encoding']||null,length:req.headers['content-length']||null,transfer:req.headers['transfer-encoding']||null,upstream_http:req.httpVersion,chunks,firstMs:first===null?null:first-start,durationMs:Date.now()-start};console.log('QA400_UPLOAD '+JSON.stringify(v));json(res,200,v)});return;}\n json(res,200,{marker,boot,built,runtime:snapshot});\n}).listen(Number(process.env.PORT),'0.0.0.0');\n"
+  },
+  "events": [
+    {
+      "kind": "upload",
+      "label": "chunked-small",
+      "intended_client_protocol": "h1",
+      "local_H2_case_executed_as_H1": false,
+      "id": "QA400_LOCAL_chunked-small",
+      "plain_bytes": 65659,
+      "plain_sha256": "d13f1fded7c062f24a48a74ea1b2f16d3c4b2c9713535daa968f2e55787badc0",
+      "wire_bytes": 65659,
+      "wire_sha256": "d13f1fded7c062f24a48a74ea1b2f16d3c4b2c9713535daa968f2e55787badc0",
+      "gzip": false,
+      "fixed_length": false,
+      "paced": false,
+      "intent_at": 1792208219.098228
+    }
+  ],
+  "qualification": "exact authored build and server in pinned Node image; loopback-published ephemeral owned port; local cases all HTTP1",
+  "build": {
+    "exit": 0,
+    "stdout": "QA400_BUILD {\"marker\":\"QA400_LOCAL\",\"node\":\"v24.22.0\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"phase\":\"build\"}\n",
+    "stderr": ""
+  },
+  "container_id": "4a1aa97dd6a07a7d71990da1cedab9586e1d17ec8a6832278884015453543f0a",
+  "ready": {
+    "marker": "QA400_LOCAL",
+    "boot": "f9e5d6e4-6917-4655-9ba0-51bcb5db5f28",
+    "built": {
+      "marker": "QA400_LOCAL",
+      "node": "v24.22.0",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "phase": "build"
+    },
+    "runtime": {
+      "marker": "QA400_LOCAL",
+      "node": "v24.22.0",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "phase": "runtime"
+    }
+  },
+  "logs": "",
+  "own_container_context_removed": true
+}

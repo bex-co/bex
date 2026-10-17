@@ -1,0 +1,28 @@
+import os,sys,subprocess,time,json,pathlib,re
+p=pathlib.Path(__file__).parent
+env={k:v for k,v in os.environ.items() if not k.startswith(("RENDER_","BEX_","QA_"))}
+env.update(RENDER_HOST="https://api.bex.co/v1/",RENDER_CLI_CONFIG_DIR=str(p/"render-config"),RENDER_CLI_CONFIG_PATH=str(p/"render-config/cli.yaml"),RENDER_NO_UPDATE_NOTIFIER="1",DO_NOT_TRACK="1",BROWSER="/usr/bin/true")
+ws=p/"workspace.txt"
+if ws.exists():env["RENDER_WORKSPACE"]=ws.read_text().strip()
+args=sys.argv[1:];bound=45
+if args and args[0].startswith('--bound='):bound=int(args.pop(0).split('=',1)[1])
+start=time.monotonic();timedout=False
+try:
+ r=subprocess.run([str(p/"render-pin"),*args],env=env,text=True,capture_output=True,timeout=bound);code=r.returncode;stdout=r.stdout;stderr=r.stderr
+except subprocess.TimeoutExpired as err:
+ timedout=True;code=124;stdout=err.stdout or '';stderr=err.stderr or ''
+ if isinstance(stdout,bytes):stdout=stdout.decode(errors='replace')
+ if isinstance(stderr,bytes):stderr=stderr.decode(errors='replace')
+ stderr+='\nQA harness bound reached; native exit not observed. Reconcile any mutation before retrying.'
+record={"binary":"unmodified Render pin a764810a7682","command":["render",*args],"exit":code,"native_exit":None if timedout else code,"harness_timeout":timedout,"elapsed":round(time.monotonic()-start,3),"stdout":stdout,"stderr":stderr}
+mask=[]
+for line in (p/"config/cli.yaml").read_text().splitlines():
+ k,sep,v=line.strip().partition(":");v=v.strip().strip("\"'")
+ if sep and re.search(r"(?i)(token|secret|password|key)",k) and len(v)>8:mask.append(v)
+for line in pathlib.Path("/Volumes/nvme4tbfish/projects/bex8/muse.env").read_text().splitlines():
+ k,sep,v=line.partition("=");v=v.strip().strip("\"'")
+ if sep and k.strip() in ("QA_EMAIL","QA_PASSWORD") and v:mask.append(v)
+for key in ("stdout","stderr"):
+ for value in mask:record[key]=record[key].replace(value,"QA_PRIVATE_VALUE_REDACTED")
+ record[key]=re.sub(r"(?:postgres(?:ql)?|rediss?)://[^\s\"']+","[CONNECTION URI REDACTED]",record[key])
+(p/"render-commands.jsonl").open("a").write(json.dumps(record)+"\n");print(json.dumps(record))

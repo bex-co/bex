@@ -1,0 +1,22 @@
+from pathlib import Path
+import ast,json,os,shutil,subprocess,sys,tempfile,time
+P=Path(__file__).resolve().parent;sys.path.insert(0,str(P));from importlib.machinery import SourceFileLoader
+m=SourceFileLoader('transfercases',str(P/'sweep396-transfer-cases.py')).load_module();ref=json.loads((P/'sweep396-public-reference.json').read_text());ns={'P':P,'reference':ref,'json':json};node=next(v for v in ast.parse((P/'sweep396-native-transfer.py').read_text()).body if isinstance(v,ast.FunctionDef) and v.name=='commands');exec(compile(ast.Module(body=[node],type_ignores=[]),'factory','exec'),ns);marker='QA396_LOCAL';cmd=ns['commands'](marker);root=Path(tempfile.mkdtemp(prefix='sweep396-local-',dir=P));root.chmod(0o700);project=root/'project';project.mkdir();scratch=root/'payloads';scratch.mkdir();name='qa396-native-transfer-prereq';image='node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0';out={'image':image,'command':cmd,'events':[],'qualification':'exact authored build and server in pinned Node image; loopback-published ephemeral owned port; local cases all HTTP1'};assert subprocess.run(['docker','inspect',name],capture_output=True).returncode!=0
+
+def save():(P/'sweep396-local-prerequisite.json').write_text(json.dumps(out,indent=2))
+save()
+try:
+ for f in ref['files']:subprocess.run(['curl','--disable','-fsS','--max-time','20','https://raw.githubusercontent.com/git-fixtures/basic/'+ref['commit']+'/'+f,'-o',str(project/f)],check=True,timeout=25)
+ r=subprocess.run(['docker','run','--rm','--network','none','--name',name,'-v',str(project)+':/work','-w','/work',image,'bash','-c',cmd['build']],text=True,capture_output=True,timeout=30);out['build']={'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr};save();r.check_returncode();r=subprocess.run(['docker','run','-d','--name',name,'-p','127.0.0.1::3000','-e','PORT=3000','-v',str(project)+':/work','-w','/work',image,'bash','-c',cmd['start']],text=True,capture_output=True,timeout=20);r.check_returncode();out['container_id']=r.stdout.strip();save();port=subprocess.check_output(['docker','port',name,'3000/tcp'],text=True).strip().rsplit(':',1)[1];url='http://127.0.0.1:'+port
+ for _ in range(70):
+  r=subprocess.run(['curl','--disable','-sS','--max-time','1',url],capture_output=True,text=True)
+  if r.returncode==0:
+   v=json.loads(r.stdout);assert v['marker']==marker and v['built']['files']==v['runtime']['files']==ref['files'];out['ready']=v;save();break
+  time.sleep(.1)
+ else:raise RuntimeError('own local app not ready')
+ out['summary']=m.journey(url,marker,scratch,out['events'],save,local=True);out['pass']=True;save()
+finally:
+ if subprocess.run(['docker','inspect',name],capture_output=True).returncode==0:
+  out['logs']=subprocess.check_output(['docker','logs',name],text=True,stderr=subprocess.STDOUT);subprocess.run(['docker','rm','-f',name],capture_output=True,check=True)
+ shutil.rmtree(root);out['own_container_context_removed']=subprocess.run(['docker','inspect',name],capture_output=True).returncode!=0 and not root.exists();save()
+print(json.dumps({'pass':out.get('pass'),'local_cases':len(out['events']),'build_bytes':len(cmd['build'].encode()),'own_container_context_removed':out['own_container_context_removed']}))

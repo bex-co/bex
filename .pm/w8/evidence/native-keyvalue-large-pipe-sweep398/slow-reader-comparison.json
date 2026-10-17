@@ -1,0 +1,78 @@
+{
+  "qualification": "local slow read-all comparison only; not a datastore or production defect",
+  "cases": [
+    {
+      "label": "old",
+      "runner_exit": 0,
+      "stderr": "",
+      "native": {
+        "at": 1792206419.114997,
+        "actor": "preflight",
+        "command": [
+          "preflight",
+          "kv-cli",
+          "unused-qa398",
+          "-o",
+          "interactive",
+          "--",
+          "--pipe",
+          "--pipe-timeout",
+          "10"
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "payload_bytes": 1048982,
+        "payload_sha256": "9fd375d7c9c7f17706d7fadb8d4bfd0746528114442d97d5f528c80d3eeffced",
+        "payload_sent": true,
+        "case": "error60",
+        "expected_error_summary_seen": false,
+        "intentional_TUI_dismissal": false,
+        "input_bytes_written": 1048983,
+        "exact_process_group_cleanup": true,
+        "child_PID": 72570,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 6.082,
+        "output": "QA398_STDIN_READY\nQA398_SHA256=9fd375d7c9c7f17706d7fadb8d4bfd0746528114442d97d5f528c80d3eeffced\nQA398_BYTES=1048982\n"
+      },
+      "all_bytes_exact": true
+    },
+    {
+      "label": "flow",
+      "runner_exit": 0,
+      "stderr": "",
+      "native": {
+        "at": 1792206425.3213959,
+        "actor": "preflight",
+        "command": [
+          "preflight",
+          "kv-cli",
+          "unused-qa398",
+          "-o",
+          "interactive",
+          "--",
+          "--pipe",
+          "--pipe-timeout",
+          "60"
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "payload_bytes": 1048982,
+        "payload_sha256": "9fd375d7c9c7f17706d7fadb8d4bfd0746528114442d97d5f528c80d3eeffced",
+        "payload_sent": true,
+        "case": "error60",
+        "expected_error_summary_seen": false,
+        "intentional_TUI_dismissal": false,
+        "input_bytes_written": 1048983,
+        "terminal_input_flow_control": "write at most256B only while owned slave queued bytes<=512; avoids overfilling canonical input behind a slow consumer",
+        "exact_process_group_cleanup": true,
+        "child_PID": 72584,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 6.153,
+        "output": "QA398_STDIN_READY\nQA398_SHA256=9fd375d7c9c7f17706d7fadb8d4bfd0746528114442d97d5f528c80d3eeffced\nQA398_BYTES=1048982\n"
+      },
+      "all_bytes_exact": true
+    }
+  ]
+}

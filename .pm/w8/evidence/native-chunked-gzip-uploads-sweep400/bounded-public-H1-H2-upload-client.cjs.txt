@@ -1,0 +1,12 @@
+const fs=require('node:fs'),http=require('node:http'),https=require('node:https'),h2=require('node:http2'),{once}=require('node:events');
+const o=JSON.parse(fs.readFileSync(process.argv[2])),body=fs.readFileSync(o.file),started=Date.now(),out={client_node:process.version,protocol:o.protocol,writes:[]};let timer,session;
+(async()=>{let req,reply;
+ const headers={'content-type':'application/octet-stream','x-qa-case':o.id};if(o.gzip)headers['content-encoding']='gzip';if(o.fixed)headers['content-length']=String(body.length);
+ if(o.protocol==='h2'){session=h2.connect(new URL(o.url).origin);session.on('error',()=>{});await once(session,'connect');out.ALPN=session.socket.alpnProtocol;req=session.request({':method':'POST',':path':'/upload',...headers});reply=new Promise((resolve,reject)=>{req.once('response',h=>resolve({status:h[':status'],headers:h}));req.once('error',reject)})}
+ else{if(!o.fixed)headers['transfer-encoding']='chunked';const u=new URL('/upload',o.url);req=(u.protocol==='https:'?https:http).request(u,{method:'POST',headers,agent:false});reply=new Promise((resolve,reject)=>{req.once('response',r=>resolve({status:r.statusCode,headers:r.headers,stream:r}));req.once('error',reject)});req.flushHeaders()}
+ const responseDone=reply.then(async r=>{const s=r.stream||req,parts=[];for await(const b of s)parts.push(b);out.status=r.status;out.response_headers=r.headers;out.raw=Buffer.concat(parts).toString();out.elapsedMs=Date.now()-started});
+ timer=setTimeout(()=>{req.destroy(Error('owned client35s bound'));if(session)session.destroy()},35000);
+ const count=o.paced?16:4,step=Math.ceil(body.length/count);
+ for(let p=0;p<body.length;p+=step){if(o.paced&&p)await new Promise(r=>setTimeout(r,250));const b=body.subarray(p,Math.min(body.length,p+step));out.writes.push({bytes:b.length,atMs:Date.now()-started});if(!req.write(b))await once(req,'drain')}
+ req.end();await responseDone;clearTimeout(timer);if(session)session.close();out.exit=0;console.log(JSON.stringify(out))
+})().catch(e=>{clearTimeout(timer);if(session)session.destroy();out.exit=1;out.error=String(e);console.log(JSON.stringify(out));process.exitCode=1});

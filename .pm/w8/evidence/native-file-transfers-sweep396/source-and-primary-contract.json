@@ -1,0 +1,26 @@
+{
+  "source_head": "7a41843a92d97a0612bf1c93f556086dae06f411",
+  "serving_revision": "unknown",
+  "primary_contracts": [
+    "https://render.com/docs/web-services",
+    "https://www.rfc-editor.org/rfc/rfc9110.html#name-range-requests"
+  ],
+  "scope": "ordinary generated 5MiB+123B files through explicit Free Node24 web fixtures; two unchanged native clients against Bex; client HTTP1 and HTTP2, no end-to-end HTTP2 claim",
+  "prior_gap": "sweep370 proved 64KiB file/raw/gzip/multipart only; new matrix covers larger actual transfer bodies, pacing and binary downloads/ranges without changing production global limits",
+  "generated_payload": "concatenate SHA256(UTF8(\"QA396:\"+decimal index)) blocks and truncate to 5243003 bytes; independently generated in Node server and Python client",
+  "paced_upload": "one 256KiB/s normal content-length upload per hosted service, bounded45s; local prerequisite deliberately unpaced",
+  "source_boundary": "unchanged public git-fixtures/basic commit and LICENSE/CHANGELOG manifests; qa396 app and all payloads authored/generated locally, no repo source-code execution claim or remote edits",
+  "pipeline": "native source/build artifact -> existing reconcileIngressWithMiddlewares/reconcileIngress routes, app responses through existing ingress; no middleware/global config change, no forced hibernation/awakening or assertion of physical serving path",
+  "qualifications": [
+    "First local client assumed curl always creates an output file for bodyless304; it stopped before production. Conditional304/416 now permit absent output only with success/zero downloaded bytes; original receipt/helper retained and complete corrected local pass exists.",
+    "An earlier local-only matrix exercised an authored HEAD+Range206 branch. Accepted matrix instead uses ordinary HEAD200 over each client protocol; no hosted HEAD+Range/RFC-compliance claim. Original local-only variant retained.",
+    "First bounded initial observer ended at build_in_progress; no create/update retry. Exact original first children stay in ledger for later acceptance.",
+    "HEAD checks use curl --head and compare headers; raw wire-body absence is not independently measured.",
+    "No maximum-size limit, HTTP3, multipart changes, sustained load, broad concurrency, compression-default repair or generated-image/full-suite claim.",
+    "Full hosted 13-case/5MiB upload matrix did not pass and was not replayed. Reproduction has separate unique case IDs and owns only generated payloads; incomplete uploads have no app-level write side effect.",
+    "An independent Node HTTPS client was allowed to continue beyond the curl trial bound; its actual response499arrived at60.7s before its own115s socket timeout. It ended and was not killed for the original45s bound.",
+    "Isolated long upload recorded all81 curl send-data events/5MiB overroughly59s and actual final499at60.6s. It uses no inherited HTTP proxy. The exact cause of slow upload progress remains unverified."
+  ],
+  "actual_hosted_scope": "Original planned 13-case large-transfer matrix stopped at first 5MiB upload curl28/45s. Subsequent exact small/1MiB/2MiB uploads passed, original unchanged services/boot retained; 5MiB upload HTTP1/HTTP2/Expect/noExpect attempts incomplete or499around61s. Independent Node client499/EPIPEat61s. Isolated noExpect curl trace handed all5MiB overabout59s then499at60.6s; actual serving revision/network bottleneck unknown. This is inconclusive coverage, not a researched product fix. Download submatrix accepted separately; no full13-case hosted pass.",
+  "read_timeout_source": "Source-pinned Traefik3.7.5 default whole-request readTimeout60s, no explicit override in base/prod values; matching timing does not prove actual deployed revision, upload bottleneck or a Render compatibility violation."
+}

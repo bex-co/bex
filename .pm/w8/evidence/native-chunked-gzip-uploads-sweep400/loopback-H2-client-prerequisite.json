@@ -1,0 +1,11 @@
+{
+  "qualification": "Host Node22 client/parser prerequisite over an own loopback plaintext HTTP2 server, not hosted TLS/ALPN or native Node24 acceptance",
+  "own_server_pid": 87589,
+  "client": {
+    "exit": 0,
+    "stdout": "{\"client_node\":\"v22.17.1\",\"protocol\":\"h2\",\"writes\":[{\"bytes\":65592,\"atMs\":4},{\"bytes\":65592,\"atMs\":6},{\"bytes\":65592,\"atMs\":6},{\"bytes\":65591,\"atMs\":6}],\"status\":200,\"response_headers\":{\":status\":200,\"content-type\":\"application/json\",\"date\":\"Sat, 17 Oct 2026 03:39:44 GMT\"},\"raw\":\"{\\\"wireBytes\\\":262367,\\\"wireSha\\\":\\\"b8cf24b23a6d29c8e64d224e642d59a70c8cc9e6e621ac86fff4e9f773ee35d7\\\",\\\"bytes\\\":262267,\\\"sha\\\":\\\"0781d5f2c3b09600ec4fa8daa5d7903bd2ea303fbbe4c521238d2976771f0c0b\\\",\\\"http\\\":\\\"2.0\\\",\\\"encoding\\\":\\\"gzip\\\"}\",\"elapsedMs\":10,\"exit\":0}\n",
+    "stderr": ""
+  },
+  "pass": true,
+  "own_server_context_removed": true
+}

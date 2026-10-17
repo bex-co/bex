@@ -1,0 +1,6 @@
+{
+  "attempt": "cleanup started while prior native log reader still held the checkpoint writer lock",
+  "actual": "BlockingIOError35 at common helper initial flock, before reading checkpoint or issuing delete; no mutation",
+  "resolution": "waited for both log controls and parent exit0 before running cleanup again",
+  "product_bug": false
+}

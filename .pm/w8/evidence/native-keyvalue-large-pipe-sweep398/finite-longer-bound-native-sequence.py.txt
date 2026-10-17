@@ -1,0 +1,6 @@
+from pathlib import Path
+import subprocess,json,time
+P=Path(__file__).resolve().parent;assert json.loads((P/'sweep398-slow-reader-comparison.json').read_text())['cases'][-1]['all_bytes_exact']
+for actor,case in [('bex','error60'),('render','success'),('render','error60')]:
+ for args in [['pipe',actor,case],['verify','render' if actor=='bex' else 'bex',actor,case]]:
+  r=subprocess.run(['python3',str(P/'sweep398-kv-pipe.py'),*args],text=True,capture_output=True,timeout=135);(P/('sweep398-long-sequence-'+'-'.join(args)+'-'+str(time.time_ns())+'.json')).write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));print(r.stdout,flush=True);r.check_returncode()

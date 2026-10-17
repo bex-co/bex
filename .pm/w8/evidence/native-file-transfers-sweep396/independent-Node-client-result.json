@@ -1,0 +1,13 @@
+{
+  "owned_service": "srv-db9dv8450quc73dl5o1g",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "at": 1792205091.709836,
+  "marker": "QA396_644384_bex",
+  "request_case": "QA396_644384_bex_Node-large",
+  "size": 5243003,
+  "intent": "independent normal HTTPS POST of same generated test bytes with exact Content-Length and no Expect; native-owned source unchanged",
+  "exit": 1,
+  "stdout": "{\"HTTP\":499,\"headers\":{\"date\":\"Sat, 17 Oct 2026 02:45:52 GMT\",\"content-length\":\"21\",\"connection\":\"close\"},\"body\":\"Client Closed Request\",\"elapsed\":60.656,\"node\":\"v22.17.1\",\"size\":5243003,\"hash\":\"21e0797366843dd91f8ea3ef7e5435520ba2022b8486c04aef7fe41fc61fae86\",\"pass\":false}\n{\"error\":\"write EPIPE\",\"elapsed\":61.448,\"node\":\"v22.17.1\",\"size\":5243003,\"hash\":\"21e0797366843dd91f8ea3ef7e5435520ba2022b8486c04aef7fe41fc61fae86\",\"bytesWritten\":5243198,\"pass\":false}\n",
+  "stderr": "",
+  "elapsed": 61.592
+}

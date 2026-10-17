@@ -1,0 +1,39 @@
+{
+  "psql_version": "psql (PostgreSQL) 18.6",
+  "rows": [
+    {
+      "id": 1,
+      "body": "first own row"
+    },
+    {
+      "id": 2,
+      "body": "comma, quote\" and newline\n雪 café"
+    },
+    {
+      "id": 3,
+      "body": ""
+    }
+  ],
+  "CSV_bytes": 72,
+  "CSV_sha256": "8739ba305d89095578ce7ffefc113a5ebfc5f5ca650698748667f157d1cd4eed",
+  "cases": [
+    {
+      "command": "CREATE SCHEMA qa399; CREATE TABLE qa399.pstdin_supplied(id integer PRIMARY KEY,body text NOT NULL);CREATE TABLE qa399.pstdin_empty(id integer PRIMARY KEY,body text NOT NULL);CREATE TABLE qa399.sql_supplied(id integer PRIMARY KEY,body text NOT NULL);CREATE TABLE qa399.sql_empty(id integer PRIMARY KEY,body text NOT NULL);CREATE TABLE qa399.file_control(id integer PRIMARY KEY,body text NOT NULL);CREATE TABLE qa399.bad_supplied(id integer PRIMARY KEY,body text NOT NULL);CREATE TABLE qa399.bad_empty(id integer PRIMARY KEY,body text NOT NULL);",
+      "stdin": "DEVNULL (counterfactual for nil exec.Cmd.Stdin)",
+      "exit": 0,
+      "stdout": "CREATE SCHEMA\nCREATE TABLE\nCREATE TABLE\nCREATE TABLE\nCREATE TABLE\nCREATE TABLE\nCREATE TABLE\nCREATE TABLE\n",
+      "stderr": ""
+    },
+    {
+      "command": "\\copy qa399.pstdin_supplied FROM pstdin WITH (FORMAT csv,HEADER true)",
+      "stdin": "supplied CSV bytes",
+      "exit": 1,
+      "stdout": "",
+      "stderr": "ERROR:  null value in column \"body\" of relation \"pstdin_supplied\" violates not-null constraint\nDETAIL:  Failing row contains (3, null).\nCONTEXT:  COPY pstdin_supplied, line 4: \"3,\"\n"
+    }
+  ],
+  "qualification": "real local PG18/psql18 client input controls; no native launcher or production result yet",
+  "initdb_exit": 0,
+  "owned_server_pid": 78711,
+  "own_server_data_socket_history_removed": true
+}

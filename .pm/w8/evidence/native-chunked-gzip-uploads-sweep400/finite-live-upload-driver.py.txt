@@ -1,0 +1,6 @@
+from pathlib import Path
+import sys,json,tempfile,shutil,importlib.util
+P=Path(__file__).resolve().parent;actor=sys.argv[1];f=P/'sweep400-common.py';sys.argv=[str(f),'transfers',actor];exec(compile(f.read_text(),str(f),'exec'));spec=importlib.util.spec_from_file_location('transfercases',str(P/'sweep400-transfer-cases.py'));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);x=next(v for v in c['resources'] if v.get('sweep')==400 and v.get('client')==actor);own(x);h=history(x);assert len(h)==1 and h[0]['id']==x['first_deploy_id'] and h[0]['status']=='live' and x['runtime_receipts'][-1]['first_live_pass'] and not x.get('transfer_events');D=Path(tempfile.mkdtemp(prefix='sweep400-live-'+actor+'-',dir=P));D.chmod(0o700);x['transfer_events']=[];x['transfer_intent']={'at':now(),'source':'generated harmless deterministic 256KiB+123B bytes; no user file upload','payload_bytes':m.SIZE,'cases':5,'paced_uploads':1};save()
+try:x['transfer_summary']=m.journey(x['create_view']['serviceDetails']['url'],x['marker'],D,x['transfer_events'],save);save()
+finally:shutil.rmtree(D);x['own_transfer_payload_scratch_removed']=not D.exists();save()
+print(json.dumps({'client':actor,'summary':x['transfer_summary']}))

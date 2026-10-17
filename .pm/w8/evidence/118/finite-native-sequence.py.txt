@@ -1,0 +1,6 @@
+from pathlib import Path
+import json,subprocess,time
+P=Path(__file__).resolve().parent
+sequence=[('import','bex','bex_pipe'),('verify','render','bex_pipe'),('import','render','render_file'),('verify','bex','render_file'),('import','bex','bex_path'),('verify','render','bex_path'),('import','render','render_path'),('verify','bex','render_path'),('import','bex','head_pipe'),('verify','render','head_pipe'),('import','bex','bex_sql'),('verify','render','bex_sql'),('import','bex','bad_native'),('verify','render','bad_native'),('direct','render','direct_valid'),('direct','bex','direct_bad')]
+for args in sequence:
+ r=subprocess.run(['python3',str(P/'sweep399-stdin.py'),*args],text=True,capture_output=True,timeout=100);(P/('sweep399-sequence-'+'-'.join(args)+'-'+str(time.time_ns())+'.json')).write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));print(r.stdout,flush=True);r.check_returncode()

@@ -1,0 +1,6 @@
+from pathlib import Path
+import sys,json,tempfile,shutil,importlib.util
+P=Path(__file__).resolve().parent;actor=sys.argv[1];f=P/'sweep396-common.py';sys.argv=[str(f),'transfers',actor];exec(compile(f.read_text(),str(f),'exec'));spec=importlib.util.spec_from_file_location('transfercases',str(P/'sweep396-download-cases.py'));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);x=next(v for v in c['resources'] if v.get('sweep')==396 and v.get('client')==actor);own(x);h=history(x);assert len(h)==1 and h[0]['id']==x['first_deploy_id'] and h[0]['status']=='live' and x['runtime_receipts'][-1]['first_live_pass'] and not x.get('download_events');D=Path(tempfile.mkdtemp(prefix='sweep396-live-'+actor+'-',dir=P));D.chmod(0o700);x['download_events']=[];x['download_intent']={'at':now(),'source':'generated harmless deterministic 5MiB+123B downloads/ranges/HEAD/conditional; no uploads in this accepted submatrix','payload_bytes':m.SIZE,'cases':8,'uploads':0};save()
+try:x['download_summary']=m.journey(x['create_view']['serviceDetails']['url'],x['marker'],D,x['download_events'],save);save()
+finally:shutil.rmtree(D);x['own_transfer_payload_scratch_removed']=not D.exists();save()
+print(json.dumps({'client':actor,'summary':x['download_summary']}))

@@ -1,0 +1,210 @@
+{
+  "at": 1792205890.6064892,
+  "server": "owned Redis on unix socket only, port0/no persistence",
+  "cases": [
+    {
+      "case": "success",
+      "client_namespace": "bex",
+      "pipe_exit": 0,
+      "stdout": "All data transferred. Waiting for the last reply...\nLast reply received from server.\nerrors: 0, replies: 4\n",
+      "stderr": "",
+      "payload_bytes": 1048972,
+      "payload_sha256": "c13ca478119309f9f086f2ee831d591edc3f91d0e7a4f8e423358df8686b96d6",
+      "expected_child_exit": 0,
+      "exact_values": [
+        {
+          "key": "qa398:local398:bex:success:large",
+          "bytes": 1048699,
+          "sha256": "b811cc81ef05ef83500a8232497f033242fbe102bc4426c85b29487127e1ba50",
+          "exists": true
+        },
+        {
+          "key": "qa398:local398:bex:success:tail",
+          "bytes": 38,
+          "sha256": "a28e22d0923e1fa7d6485ee3cab9a46d744f4c81983fa8c3a953b0d71d685df0",
+          "exists": true
+        },
+        {
+          "key": "qa398:local398:bex:success:empty",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "exists": true
+        }
+      ],
+      "pass_": true
+    },
+    {
+      "case": "success",
+      "client_namespace": "render",
+      "pipe_exit": 0,
+      "stdout": "All data transferred. Waiting for the last reply...\nLast reply received from server.\nerrors: 0, replies: 4\n",
+      "stderr": "",
+      "payload_bytes": 1048987,
+      "payload_sha256": "78a59bbc4777d8a707618d4bcb1f9b4da55fa12fe7f855ce8c473d15fd10c103",
+      "expected_child_exit": 0,
+      "exact_values": [
+        {
+          "key": "qa398:local398:render:success:large",
+          "bytes": 1048699,
+          "sha256": "750794d8010f62739c5f4d8ebca8a4d19b4684e4818fe7aa242b56199a15b8fd",
+          "exists": true
+        },
+        {
+          "key": "qa398:local398:render:success:tail",
+          "bytes": 41,
+          "sha256": "09af7e091a78c82ac13f24c4c985f64077deea9597b4d121381a1b8076366c61",
+          "exists": true
+        },
+        {
+          "key": "qa398:local398:render:success:empty",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "exists": true
+        }
+      ],
+      "pass_": true
+    },
+    {
+      "case": "error",
+      "client_namespace": "bex",
+      "pipe_exit": 1,
+      "stdout": "All data transferred. Waiting for the last reply...\nLast reply received from server.\nerrors: 1, replies: 4\n",
+      "stderr": "WRONGTYPE Operation against a key holding the wrong kind of value\n",
+      "payload_bytes": 1048982,
+      "payload_sha256": "380741ddc807940dc68040df3a7e96337a6464b036306ce8c2b16f85bc8601e0",
+      "expected_child_exit": 1,
+      "exact_values": [
+        {
+          "key": "qa398:local398:bex:error:large",
+          "bytes": 1048699,
+          "sha256": "d04a765fdfbdc38c0e80b9e845e248cad88aea55c2a2c7869f913f038650c552",
+          "exists": true
+        },
+        {
+          "key": "qa398:local398:bex:error:tail",
+          "bytes": 36,
+          "sha256": "20d78e7dc77106da27759b6673985ccf6ea7c6e35392c2781273770f887362d1",
+          "exists": true
+        },
+        {
+          "key": "qa398:local398:bex:error:empty",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "exists": true
+        }
+      ],
+      "pass_": true
+    },
+    {
+      "case": "error",
+      "client_namespace": "render",
+      "pipe_exit": 1,
+      "stdout": "All data transferred. Waiting for the last reply...\nLast reply received from server.\nerrors: 1, replies: 4\n",
+      "stderr": "WRONGTYPE Operation against a key holding the wrong kind of value\n",
+      "payload_bytes": 1048997,
+      "payload_sha256": "17be357344ab69d9dc9d63c454b52ae1249c3c15b5b16cf3ce6693f7fa68a0e8",
+      "expected_child_exit": 1,
+      "exact_values": [
+        {
+          "key": "qa398:local398:render:error:large",
+          "bytes": 1048699,
+          "sha256": "7e4c1c19af0e3a70ef94ef44639d7dfd40e19d822f6cd190ad11b1bad96fd93a",
+          "exists": true
+        },
+        {
+          "key": "qa398:local398:render:error:tail",
+          "bytes": 39,
+          "sha256": "6ddf521548eaf5d7e1aee3a92aaec478e8e56d35eeff93e56c2246a01cda85ad",
+          "exists": true
+        },
+        {
+          "key": "qa398:local398:render:error:empty",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "exists": true
+        }
+      ],
+      "pass_": true
+    }
+  ],
+  "pty_readall": [
+    {
+      "at": 1792205890.89012,
+      "actor": "preflight",
+      "command": [
+        "preflight",
+        "kv-cli",
+        "unused-qa398",
+        "-o",
+        "interactive",
+        "--",
+        "--pipe",
+        "--pipe-timeout",
+        "10"
+      ],
+      "stdin_TTY": true,
+      "streams_merged_PTY": true,
+      "payload_bytes": 1048972,
+      "payload_sha256": "c13ca478119309f9f086f2ee831d591edc3f91d0e7a4f8e423358df8686b96d6",
+      "payload_sent": true,
+      "case": "success",
+      "expected_error_summary_seen": false,
+      "intentional_TUI_dismissal": false,
+      "input_bytes_written": 1048973,
+      "exact_process_group_cleanup": true,
+      "child_PID": 69734,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.094,
+      "output": "QA398_STDIN_READY\nQA398_SHA256=c13ca478119309f9f086f2ee831d591edc3f91d0e7a4f8e423358df8686b96d6\n"
+    },
+    {
+      "at": 1792205891.267412,
+      "actor": "preflight",
+      "command": [
+        "preflight",
+        "kv-cli",
+        "unused-qa398",
+        "-o",
+        "interactive",
+        "--",
+        "--pipe",
+        "--pipe-timeout",
+        "10"
+      ],
+      "stdin_TTY": true,
+      "streams_merged_PTY": true,
+      "payload_bytes": 1048982,
+      "payload_sha256": "380741ddc807940dc68040df3a7e96337a6464b036306ce8c2b16f85bc8601e0",
+      "payload_sent": true,
+      "case": "error",
+      "expected_error_summary_seen": false,
+      "intentional_TUI_dismissal": false,
+      "input_bytes_written": 1048983,
+      "exact_process_group_cleanup": true,
+      "child_PID": 69766,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.182,
+      "output": "QA398_STDIN_READY\nQA398_SHA256=380741ddc807940dc68040df3a7e96337a6464b036306ce8c2b16f85bc8601e0\n"
+    }
+  ],
+  "preexisting_history_metadata_before": {
+    "size": 5,
+    "mtime_ns": 1792185892482816095,
+    "ctime_ns": 1792185892482929180,
+    "inode": 442423912,
+    "mode": 33152
+  },
+  "own_server_pid": 69718,
+  "pass": true,
+  "own_server_socket_context_removed": true,
+  "preexisting_history_metadata_after": {
+    "size": 5,
+    "mtime_ns": 1792185892482816095,
+    "ctime_ns": 1792185892482929180,
+    "inode": 442423912,
+    "mode": 33152
+  },
+  "preexisting_history_metadata_unchanged": true
+}

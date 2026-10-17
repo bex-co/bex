@@ -1,0 +1,9 @@
+from pathlib import Path
+import json,subprocess,time
+P=Path(__file__).resolve().parent;nonce=(P/'sweep398-actual-nonce.private.txt').read_text();out={'qualification':'local slow read-all comparison only; not a datastore or production defect','cases':[]}
+for label in ('old','flow'):
+ r=subprocess.run(['python3',str(P/('sweep398-slow-reader-'+label+'.py')),'preflight','unused-qa398',nonce,'error60'],capture_output=True,text=True,timeout=105);e={'label':label,'runner_exit':r.returncode,'stderr':r.stderr};out['cases'].append(e)
+ if r.returncode==0:
+  v=json.loads(r.stdout);e['native']=v;e['all_bytes_exact']=v['native_exit']==0 and v['payload_sent'] and ('QA398_SHA256='+v['payload_sha256']) in v['output']
+ (P/'sweep398-slow-reader-comparison.json').write_text(json.dumps(out,indent=2));print(json.dumps({'local_reader':label,'complete_exact_payload':e.get('all_bytes_exact'),'runner_exit':r.returncode}),flush=True)
+assert out['cases'][-1]['all_bytes_exact'];print('New controlled PTY passes actual-nonce slow read-all before further imports',flush=True)

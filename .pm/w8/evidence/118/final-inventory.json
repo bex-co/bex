@@ -1,0 +1,90 @@
+{
+  "env-groups": {
+    "at": "2026-10-17T03:31:38.568779+00:00",
+    "receipt": {
+      "at": "2026-10-17T03:31:38.568566+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups?ownerId=tea-daif693dqjvc73e7as3g",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 1.022,
+      "response": "[]",
+      "stderr": ""
+    },
+    "count": 0,
+    "pass": true,
+    "qualification": "own fixture and baseline membership are checked separately; preserve every unrelated workstream resource"
+  },
+  "projects": {
+    "at": "2026-10-17T03:31:39.236852+00:00",
+    "receipt": {
+      "at": "2026-10-17T03:31:39.236705+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/projects?ownerId=tea-daif693dqjvc73e7as3g",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.344,
+      "response": "[]",
+      "stderr": ""
+    },
+    "count": 0,
+    "pass": true,
+    "qualification": "own fixture and baseline membership are checked separately; preserve every unrelated workstream resource"
+  },
+  "blueprints": {
+    "at": "2026-10-17T03:31:39.839866+00:00",
+    "receipt": {
+      "at": "2026-10-17T03:31:39.839670+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/blueprints?ownerId=tea-daif693dqjvc73e7as3g",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.27,
+      "response": "[{\"id\": \"blp-db136288mmqc73d4hpug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}]",
+      "stderr": ""
+    },
+    "count": 1,
+    "pass": true,
+    "qualification": "own fixture and baseline membership are checked separately; preserve every unrelated workstream resource"
+  },
+  "quota": {
+    "at": "2026-10-17T03:31:40.552650+00:00",
+    "receipt": {
+      "at": "2026-10-17T03:31:40.552531+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.384,
+      "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+      "stderr": ""
+    },
+    "count": null,
+    "pass": true,
+    "qualification": "own fixture and baseline membership are checked separately; preserve every unrelated workstream resource"
+  }
+}

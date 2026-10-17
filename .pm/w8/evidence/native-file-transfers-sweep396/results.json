@@ -1,0 +1,46 @@
+{
+  "sweep": 396,
+  "source_head": "7a41843a92d97a0612bf1c93f556086dae06f411",
+  "serving_revision": "unknown",
+  "native_actual_POST201_create_exit0": 2,
+  "original_first_children_Live": 2,
+  "native_build_proofs_exact_source": 2,
+  "download_header_conditional_cases_accepted": 16,
+  "public_protocol_counts": {
+    "HTTP1.1": 8,
+    "HTTP2": 8
+  },
+  "download_HTTP_status_counts": {
+    "200": 8,
+    "206": 4,
+    "304": 2,
+    "416": 2
+  },
+  "full_file_bytes": 5243003,
+  "full_file_sha256": "21e0797366843dd91f8ea3ef7e5435520ba2022b8486c04aef7fe41fc61fae86",
+  "successful_upload_sizes": [
+    65536,
+    1048699,
+    2097275
+  ],
+  "native_upload_events_correlated": 3,
+  "planned_13_case_hosted_large_upload_matrix": "not passed; stopped on first upload",
+  "five_MiB_upload_candidate": "inconclusive, no researched product fix",
+  "five_MiB_upload_attempts": 5,
+  "uploaded_5MiB_server_consumption_proved": false,
+  "hosted_gzip_chunked_and_paced_uploads": "not reached/unverified",
+  "local_prerequisite_cases": 13,
+  "local_protocol": "HTTP1 only, unpaced",
+  "shared_REST_GraphQL_MCP_reads": 6,
+  "exact_env_reads": 2,
+  "native_deletes0": 2,
+  "owned_parents_children_URLs_absent": [
+    2,
+    2,
+    2
+  ],
+  "original_baselines_and_termination0": true,
+  "own_clients_ended_contexts_containers_payloads_removed": true,
+  "new_issue": null,
+  "uncommitted": true
+}

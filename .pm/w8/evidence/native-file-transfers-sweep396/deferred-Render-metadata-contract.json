@@ -1,0 +1,7 @@
+{
+  "candidate": "Render-named platform metadata/default flags",
+  "result": "deliberate exclusion; no finding or fixture allocated",
+  "source": "docs/ADR018-render-parity.md Environment and config default-variable divergence; inherited sweep332 explicit nonfinding",
+  "primary_reference": "https://render.com/docs/deploy-django",
+  "qualification": "Django guide depends on Render-named variables but Bex explicitly excludes those equivalents; this does not establish a new Bex defect. Only contract research performed."
+}

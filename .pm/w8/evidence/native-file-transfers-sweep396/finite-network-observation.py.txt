@@ -1,0 +1,9 @@
+from pathlib import Path
+import json,sys,subprocess,tempfile,shutil,time,hashlib
+P=Path(__file__).resolve().parent;f=P/'sweep396-common.py';sys.argv=[str(f),'network-observation','bex'];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==396 and v.get('client')=='bex');own(x);out={'at':now(),'id':x['id'],'checks':[]};x.setdefault('network_observations',[]).append(out);save();D=Path(tempfile.mkdtemp(prefix='sweep396-network-',dir=P));D.chmod(0o700)
+try:
+ for label,path,args in [('root','/',[]),('download-5MiB-h2','/download',['--http2'])]:
+  body=D/(label+'.body');headers=D/(label+'.headers');cmd=['curl','--disable','-sS','--max-time','40','-o',str(body),'-D',str(headers),*args,'-w','%{http_code}|%{http_version}|%{size_download}|%{speed_download}|%{time_total}',x['create_view']['serviceDetails']['url']+path];e={'label':label,'at':now(),'command':cmd};out['checks'].append(e);save();r=subprocess.run(cmd,text=True,capture_output=True,timeout=46);e.update(exit=r.returncode,metadata=r.stdout,stderr=r.stderr,headers=headers.read_text() if headers.exists() else None,body_bytes=body.stat().st_size if body.exists() else None,sha256=hashlib.sha256(body.read_bytes()).hexdigest() if body.exists() else None)
+  if label=='root' and body.exists():e['root']=json.loads(body.read_text())
+  save();print(json.dumps({k:e[k] for k in ['label','exit','metadata','body_bytes']}),flush=True)
+finally:shutil.rmtree(D);out['own_scratch_removed']=not D.exists();save()
