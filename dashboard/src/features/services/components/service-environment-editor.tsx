@@ -360,7 +360,8 @@ export function EnvironmentEditor({
     withResolver: true,
   });
 
-  // Restore a draft stranded by a prior session expiry — once, in an effect
+  // Restore a draft this tab left unsaved, by a reload or a session expiry
+  // (the banner names neither, w4/337) — once, in an effect
   // (not a render initializer) so the client's first render still matches the
   // draft-less SSR output and there's no hydration mismatch.
   useEffect(() => {

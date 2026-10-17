@@ -864,6 +864,12 @@ describe("ServiceEnvironmentEditor restored-draft row identity (w4/139)", () => 
     first.unmount();
     renderEditor();
     expect(await screen.findByText("Restored unsaved changes")).toBeVisible();
+    // No sign-in happened, so the notice names none (w4/337).
+    expect(
+      screen.getByText(
+        "Your unsaved environment edits were restored. Review them, then save or discard.",
+      ),
+    ).toBeVisible();
 
     await addVariable(user);
     const keys = screen.getAllByRole("textbox", { name: "Key" });

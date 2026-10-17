@@ -325,7 +325,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
-- [ ] **337** — [Restored environment drafts claim a sign-in after an ordinary reload](337.md) (20m) — minor; independent active-session1440/390 reloads retain the draft but the shared body claims a sign-in that did not occur. Use neutral en/zh recovery wording; preserve storage and recovery behavior. Normal import/save/runtime controls pass; m222 remains blocked with its old importer still served. Owned service/two deploys, all23 runtime/snapshot scopes, inventories and exact session cleaned. Filing only.
+- [ ] **337** — [Restored environment drafts claim a sign-in after an ordinary reload](blocked/337.md) — **BLOCKED (release pipeline deploys the dashboard; QA repeats a899: on a fresh owned Free service, an ordinary reload at 1440 and fresh 390 restores the exact typed draft under the neutral body with no sign-in claim, Discard clears it and the stored value is unchanged; then clean up)**. Implementation done 2026-10-17: the en/zh restored-draft body names no cause; title, Discard and recovery are unchanged.
 
 - [ ] **336** — [Mobile Postgres section links hide their destination titles](336.md) (55m) — minor; fresh360/390 native SQL and HA links put the full card title beneath the sticky row. Desktop passes; a reversible local margin control identifies the offset mechanism. Six navigation owners audited in source; sibling behavior remains verification work. SQL data, timeout, paging and history controls pass. Owned database, all18 runtime/snapshot scopes, inventories and exact session cleaned. Filing only.
 
