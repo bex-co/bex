@@ -13,6 +13,9 @@ external/
 # vendored third-party chart (don't reformat upstream)
 deploy/gitops/charts/opensandbox-controller/
 
+# vendored upstream test fixture (Render's Jekyll quickstart, byte for byte)
+lego/operator/internal/build/testdata/render-jekyll/
+
 # vendored third-party skill (don't reformat upstream — tracked by skills-lock.json)
 .claude/skills/security-audit/
 .agents/skills/security-audit/

@@ -1,0 +1,4 @@
+Render's Jekyll quickstart (https://render.com/docs/deploy-jekyll), copied
+unchanged from https://github.com/render-examples/jekyll at commit
+3b8ab7b410353d995588b79ae412ee40efd4bdd9 (MIT, see LICENSE), for the w8/m105
+generated-image gate in nativestaticdeps_test.go.

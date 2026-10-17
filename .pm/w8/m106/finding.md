@@ -24,7 +24,7 @@ Keep the fix scoped to static build availability unless another contract and sep
 
 ## Dedupe, acceptance and limits
 
-No Hugo/HUGO_VERSION board/docs/operator match or targeted supplier-history fix was found. [m105](../m105/README.md) schedules Ruby/Bundler/Gemfile static prerequisites, not Hugo; coordinate the shared generator. [m90](../blocked/m90/README.md) covers Yarn dependencies. [m89](../done/m89/README.md) remains done: the actual pinned top-level theme bytes work in these controls, with no recursive-module requirement.
+No Hugo/HUGO_VERSION board/docs/operator match or targeted supplier-history fix was found. [m105](../blocked/m105/README.md) schedules Ruby/Bundler/Gemfile static prerequisites, not Hugo; coordinate the shared generator. [m90](../blocked/m90/README.md) covers Yarn dependencies. [m89](../done/m89/README.md) remains done: the actual pinned top-level theme bytes work in these controls, with no recursive-module requirement.
 
 Meaningful generated-image/static integration must fail without the supplier, run the unchanged real Hugo project/theme through minification, and verify index/CSS bytes over publication. Check reviewed supplier versions/architectures, static runtime/Node lines, PATH/env/cache/root/extraction and nonstatic/Dockerfile/buildless neighbors. After publication both clients' fresh original builds must pass without an install line. Local base controls and serialized source recipes do not certify the fixed generated image or untested platforms.
 
