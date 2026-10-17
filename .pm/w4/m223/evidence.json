@@ -1,0 +1,1270 @@
+{
+  "pass": "a868",
+  "date": "2026-10-17 UTC",
+  "kind": "Functional initial Postgres readiness gap",
+  "researchHead": "8f80d74efaffc23342cccad2f275051a1501396f",
+  "initialHead": "8f37dc877a89418e8e8e5b096c53efb048998ff7",
+  "fixtures": {
+    "desktop": {
+      "id": "dpg-db9ip44rd81c73829ga0",
+      "name": "qa-20261017-a868-readiness",
+      "plan": "free",
+      "version": "18",
+      "public": false
+    },
+    "mobile": {
+      "id": "dpg-db9irjcrd81c73829gd0",
+      "name": "qa-20261017-a868-mobile",
+      "plan": "free",
+      "version": "18",
+      "public": false
+    }
+  },
+  "desktop": {
+    "create": {
+      "at": "2026-10-17T08:06:41.066Z",
+      "request": {
+        "operationName": "CreateDatabase",
+        "variables": {
+          "name": "qa-20261017-a868-readiness",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "plan": "free",
+          "public": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateDatabase($name: String!, $databaseName: String, $databaseUser: String, $ownerId: String, $environmentId: String, $plan: String, $version: String, $diskSizeGB: Int, $public: Boolean) {\n  createDatabase(\n    name: $name\n    databaseName: $databaseName\n    databaseUser: $databaseUser\n    ownerId: $ownerId\n    environmentId: $environmentId\n    plan: $plan\n    version: $version\n    diskSizeGB: $diskSizeGB\n    public: $public\n  ) {\n    id\n    name\n    databaseName\n    databaseUser\n    plan\n    status\n    projectId\n    environmentId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createDatabase": {
+            "__typename": "Database",
+            "databaseName": "dpg_db9ip44rd81c73829ga0",
+            "databaseUser": "dpg_db9ip44rd81c73829ga0_user",
+            "environmentId": null,
+            "id": "dpg-db9ip44rd81c73829ga0",
+            "name": "qa-20261017-a868-readiness",
+            "plan": "free",
+            "projectId": null,
+            "status": "creating"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792224400026.201,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.175,
+        "responseStart": 309.096,
+        "responseEnd": 310.03
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9ip44rd81c73829ga0"
+    },
+    "prepared": {
+      "at": "2026-10-17T08:07:17.458Z",
+      "url": "https://dashboard.bex.co/databases/dpg-db9ip44rd81c73829ga0#sql-console",
+      "statusText": "- main:\n  - navigation \"Breadcrumbs\": Database qa-20261017-a868-readiness\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - heading \"qa-20261017-a868-readiness\" [level=1]\n  - text: Creating\n  - button \"Open actions menu\"\n  - navigation \"Database details\":\n    - button \"Overview\"\n    - button \"Logs\"\n  - navigation \"Database sections\":\n    - link \"Details\":\n      - /url: \"#metadata\"\n    - link \"Connections\":\n      - /url: \"#connection\"\n    - link \"SQL console\":\n      - /url: \"#sql-console\"\n    - link \"High Availability\":\n      - /url: \"#high-availability\"\n    - link \"Metrics\":\n      - /url: \"#me"
+    },
+    "firstAvailable": {
+      "waitingAt": "2026-10-17T08:08:14.556Z",
+      "readySeenAt": "2026-10-17T08:08:31.992Z",
+      "at": "2026-10-17T08:08:37.320Z",
+      "notReady": false,
+      "catalog": {
+        "at": "2026-10-17T08:08:34.260Z",
+        "request": {
+          "operationName": "ExecuteDatabaseQuery",
+          "variables": {
+            "id": "dpg-db9ip44rd81c73829ga0",
+            "sql": "SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS vector_installed, current_timestamp::text AS observed_at;",
+            "allowWrites": false
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "executeDatabaseQuery": {
+              "__typename": "DatabaseQueryResult",
+              "columns": ["vector_installed", "observed_at"],
+              "rowCount": 1,
+              "rows": [
+                {
+                  "__typename": "DatabaseQueryRow",
+                  "values": ["false", "2026-10-17 08:08:33.28254+00"]
+                }
+              ],
+              "truncated": false
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792224512053.545,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.135,
+          "responseStart": 1498.874,
+          "responseEnd": 1499.566
+        },
+        "url": "https://dashboard.bex.co/databases/dpg-db9ip44rd81c73829ga0#sql-console"
+      },
+      "migration": {
+        "at": "2026-10-17T08:08:37.076Z",
+        "request": {
+          "operationName": "ExecuteDatabaseQuery",
+          "variables": {
+            "id": "dpg-db9ip44rd81c73829ga0",
+            "sql": "CREATE EXTENSION IF NOT EXISTS vector;",
+            "allowWrites": true
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "executeDatabaseQuery": null
+          },
+          "errors": [
+            {
+              "message": "bad request (SQLSTATE 42501)",
+              "locations": [
+                {
+                  "line": 2,
+                  "column": 3
+                }
+              ],
+              "path": ["executeDatabaseQuery"]
+            }
+          ]
+        },
+        "timing": {
+          "startTime": 1792224514586.549,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.139,
+          "responseStart": 1778.282,
+          "responseEnd": 1779.128
+        },
+        "url": "https://dashboard.bex.co/databases/dpg-db9ip44rd81c73829ga0#sql-console"
+      },
+      "statusRead": {
+        "request": {
+          "operationName": "Qaa868Ready",
+          "variables": {
+            "id": "dpg-db9ip44rd81c73829ga0"
+          },
+          "query": "query Qaa868Ready($id:String!){database(id:$id){id status plan version public suspended}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "database": {
+              "id": "dpg-db9ip44rd81c73829ga0",
+              "plan": "free",
+              "public": false,
+              "status": "available",
+              "suspended": "not_suspended",
+              "version": "18"
+            }
+          }
+        }
+      },
+      "main": "- main:\n  - navigation \"Breadcrumbs\": Database qa-20261017-a868-readiness\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - heading \"qa-20261017-a868-readiness\" [level=1]\n  - text: Available\n  - button \"Open actions menu\"\n  - navigation \"Database details\":\n    - button \"Overview\"\n    - button \"Logs\"\n  - navigation \"Database sections\":\n    - link \"Details\":\n      - /url: \"#metadata\"\n    - link \"Connections\":\n      - /url: \"#connection\"\n    - link \"SQL console\":\n      - /url: \"#sql-console\"\n    - link \"High Availability\":\n      - /url: \"#high-availability\"\n    - link \"Metrics\":\n      - /url: \"#metrics\"\n    - link \"Instance type\":\n      - /url: \"#plan\"\n    - link \"Insights\":\n      - /url: \"#insights\"\n    - link \"Recovery\":\n      - /url: \"#recovery\"\n    - link \"Access control\":\n      - /url: \"#access-control\"\n    - link \"Danger Zone\":\n      -"
+    },
+    "settledCatalog": {
+      "at": "2026-10-17T08:09:46.642Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db9ip44rd81c73829ga0",
+          "sql": "SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS vector_installed, current_timestamp::text AS observed_at;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["vector_installed", "observed_at"],
+            "rowCount": 1,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["true", "2026-10-17 08:09:45.809677+00"]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792224585419.327,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.134,
+        "responseStart": 516.779,
+        "responseEnd": 517.477
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9ip44rd81c73829ga0#sql-console"
+    },
+    "settledMigration": {
+      "at": "2026-10-17T08:09:49.137Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db9ip44rd81c73829ga0",
+          "sql": "CREATE EXTENSION IF NOT EXISTS vector;",
+          "allowWrites": true
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": [],
+            "rowCount": 0,
+            "rows": [],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792224588030.421,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.158,
+        "responseStart": 400.224,
+        "responseEnd": 400.784
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9ip44rd81c73829ga0#sql-console"
+    },
+    "settledDistance": {
+      "at": "2026-10-17T08:09:51.635Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db9ip44rd81c73829ga0",
+          "sql": "SELECT '[1,2,3]'::vector(3) AS value, '[1,2,3]'::vector <-> '[1,2,4]'::vector AS distance;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["value", "distance"],
+            "rowCount": 1,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["[1,2,3]", "1"]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792224590280.335,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.134,
+        "responseStart": 647.808,
+        "responseEnd": 648.557
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9ip44rd81c73829ga0#sql-console"
+    },
+    "delete": {
+      "at": "2026-10-17T08:11:14.755Z",
+      "request": {
+        "operationName": "DeleteDatabase",
+        "variables": {
+          "id": "dpg-db9ip44rd81c73829ga0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteDatabase($id: String!, $confirm: String) {\n  deleteDatabase(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteDatabase": true
+        }
+      },
+      "timing": {
+        "startTime": 1792224673328.5332,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.141,
+        "responseStart": 717.625,
+        "responseEnd": 718.134
+      },
+      "url": "https://dashboard.bex.co/"
+    }
+  },
+  "mobile": {
+    "create": {
+      "at": "2026-10-17T08:11:58.085Z",
+      "request": {
+        "operationName": "CreateDatabase",
+        "variables": {
+          "name": "qa-20261017-a868-mobile",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "plan": "free",
+          "public": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateDatabase($name: String!, $databaseName: String, $databaseUser: String, $ownerId: String, $environmentId: String, $plan: String, $version: String, $diskSizeGB: Int, $public: Boolean) {\n  createDatabase(\n    name: $name\n    databaseName: $databaseName\n    databaseUser: $databaseUser\n    ownerId: $ownerId\n    environmentId: $environmentId\n    plan: $plan\n    version: $version\n    diskSizeGB: $diskSizeGB\n    public: $public\n  ) {\n    id\n    name\n    databaseName\n    databaseUser\n    plan\n    status\n    projectId\n    environmentId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createDatabase": {
+            "__typename": "Database",
+            "databaseName": "dpg_db9irjcrd81c73829gd0",
+            "databaseUser": "dpg_db9irjcrd81c73829gd0_user",
+            "environmentId": null,
+            "id": "dpg-db9irjcrd81c73829gd0",
+            "name": "qa-20261017-a868-mobile",
+            "plan": "free",
+            "projectId": null,
+            "status": "creating"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792224717024.987,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.135,
+        "responseStart": 339.881,
+        "responseEnd": 340.565
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9irjcrd81c73829gd0"
+    },
+    "freshPrepared": {
+      "at": "2026-10-17T08:11:59.974Z",
+      "url": "https://dashboard.bex.co/databases/dpg-db9irjcrd81c73829gd0#sql-console",
+      "width": 390,
+      "documentWidth": 390,
+      "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\": qa-20261017-a868-mobile\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - heading \"qa-20261017-a868-mobile\" [level=1]\n  - text: Creating\n  - button \"Open actions menu\"\n  - navigation \"Database details\":\n    - button \"Overview\"\n    - button \"Logs\"\n  - navigation \"Database sections\":\n    - link \"Details\":\n      - /url: \"#metadata\"\n    - link \"Connections\":\n      - /url: \"#connection\"\n    - link \"SQL console\":\n      - /url: \"#s"
+    },
+    "firstAvailable": {
+      "alreadyAvailable": false,
+      "waitingAt": "2026-10-17T08:13:36.588Z",
+      "readySeenAt": "2026-10-17T08:13:56.060Z",
+      "at": "2026-10-17T08:14:03.686Z",
+      "notReady": false,
+      "catalog": {
+        "at": "2026-10-17T08:13:58.711Z",
+        "request": {
+          "operationName": "ExecuteDatabaseQuery",
+          "variables": {
+            "id": "dpg-db9irjcrd81c73829gd0",
+            "sql": "SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS vector_installed, current_timestamp::text AS observed_at;",
+            "allowWrites": false
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "executeDatabaseQuery": {
+              "__typename": "DatabaseQueryResult",
+              "columns": ["vector_installed", "observed_at"],
+              "rowCount": 1,
+              "rows": [
+                {
+                  "__typename": "DatabaseQueryRow",
+                  "values": ["false", "2026-10-17 08:13:57.595209+00"]
+                }
+              ],
+              "truncated": false
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792224836118.216,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.142,
+          "responseStart": 1886.997,
+          "responseEnd": 1887.549
+        },
+        "url": "https://dashboard.bex.co/databases/dpg-db9irjcrd81c73829gd0#sql-console"
+      },
+      "migration": {
+        "at": "2026-10-17T08:14:03.346Z",
+        "request": {
+          "operationName": "ExecuteDatabaseQuery",
+          "variables": {
+            "id": "dpg-db9irjcrd81c73829gd0",
+            "sql": "CREATE EXTENSION IF NOT EXISTS vector;",
+            "allowWrites": true
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "executeDatabaseQuery": null
+          },
+          "errors": [
+            {
+              "message": "bad request (SQLSTATE 23505)",
+              "locations": [
+                {
+                  "line": 2,
+                  "column": 3
+                }
+              ],
+              "path": ["executeDatabaseQuery"]
+            }
+          ]
+        },
+        "timing": {
+          "startTime": 1792224839017.4917,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.138,
+          "responseStart": 3621.823,
+          "responseEnd": 3622.664
+        },
+        "url": "https://dashboard.bex.co/databases/dpg-db9irjcrd81c73829gd0#sql-console"
+      },
+      "statusRead": {
+        "request": {
+          "operationName": "Qaa868Ready",
+          "variables": {
+            "id": "dpg-db9irjcrd81c73829gd0"
+          },
+          "query": "query Qaa868Ready($id:String!){database(id:$id){id status plan version public suspended}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "database": {
+              "id": "dpg-db9irjcrd81c73829gd0",
+              "plan": "free",
+              "public": false,
+              "status": "available",
+              "suspended": "not_suspended",
+              "version": "18"
+            }
+          }
+        }
+      },
+      "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\": qa-20261017-a868-mobile\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - heading \"qa-20261017-a868-mobile\" [level=1]\n  - text: Available\n  - button \"Open actions menu\"\n  - navigation \"Database details\":\n    - button \"Overview\"\n    - button \"Logs\"\n  - navigation \"Database sections\":\n    - link \"Details\":\n      - /url: \"#metadata\"\n    - link \"Connections\":\n      - /url: \"#connection\"\n    - link \"SQL console\":\n      - /url: \"#sql-console\"\n    - link \"High Availability\":\n      - /url: \"#high-availability\"\n    - link \"Metrics\":\n      - /url: \"#metrics\"\n    - link \"Instance type\":\n      - /url: \"#plan\"\n    - link \"Insights\":\n      - /url: \"#insights\"\n    - link \"Recovery\":\n      - /url: \"#recovery\"\n    - link \"Access control\":\n      - /url: \"#access-control\"\n    - link \"Danger Zone\":\n      - /url: \"#danger-zone\"\n  - text:"
+    },
+    "failureUI": {
+      "at": "2026-10-17T08:14:55.561Z",
+      "url": "https://dashboard.bex.co/databases/dpg-db9irjcrd81c73829gd0#sql-console",
+      "width": 390,
+      "documentWidth": 390,
+      "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\": qa-20261017-a868-mobile\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - heading \"qa-20261017-a868-mobile\" [level=1]\n  - text: Available\n  - button \"Open actions menu\"\n  - navigation \"Database details\":\n    - button \"Overview\"\n    - button \"Logs\"\n  - navigation \"Database sections\":\n    - link \"Details\":\n      - /url: \"#metadata\"\n    - link \"Connections\":\n      - /url: \"#connection\"\n    - link \"SQL console\":\n      - /url: \"#sql-console\"\n    - link \"High Availability\":\n      - /url: \"#high-availability\"\n    - link \"Metrics\":\n      - /url: \"#metrics\"\n    - link \"Instance type\":\n      - /url: \"#plan\"\n    - link \"Insights\":\n      - /url: \"#insights\"\n    - link \"Recovery\":\n      - /url: \"#recovery\"\n    - link \"Access control\":\n      - /url: \"#access-control\"\n    - link \"Danger Zone\":\n      - /url: \"#danger-zone\"\n  - text: Details Name Change the display name. The database ID and all connection details stay the same.\n  - textbox \"Name\" [disabled]: qa-20261017-a868-mobile\n  - button \"Edit database name\"\n  - term: Status\n  - definition: Available\n  - term: Instance type\n  - definition: Free\n  - term: Version\n  - definition: PostgreSQL 18\n  - term: Database\n  - definition: dpg_db9irjcrd81c73829gd0\n  - term: User\n  - definition: dpg_db9irjcrd81c73829gd0_user\n  - term: Storage\n  - definition: 1 GB\n  - term: High availability\n  - definition: \"No\"\n  - term: Public access\n  - definition: \"No\"\n  - term: Region\n  - definition: fsn1\n  - term: Created\n  - definition:\n    - time: 2m\n  - text: Connections Connection strings and the database password. Revealed only when you ask — never shown automatically.\n  - button \"Reveal connection info\"\n  - text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n  - textbox \"SQL query\": CREATE EXTENSION IF NOT EXISTS vector;\n  - paragraph: Press Ctrl+Enter or ⌘+Enter to run\n  - button \"Run query\"\n  - alert: bad request (SQLSTATE 23505)\n  - paragraph: Query history\n  - button \"Clear\"\n  - button \"CREATE EXTENSION IF NOT EXISTS vector;\"\n  - button \"SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS vector_installed, current_timestamp::text AS observed_at;\"\n  - text: High Availability Replicated cluster with automatic failover. When enabled, a standby is always ready to take over. Status Disabled\n  - paragraph: High availability requires a plan with at least 1 CPU. This database's plan does not offer it.\n  - text: Metrics Live resource usage for this instance Disk Capacity 1 GiB Disk autoscaling 1 GB current · 1 GB max This plan does not support disk autoscaling. An existing setting can be turned off.\n  - switch \"Disk autoscaling\" [disabled]\n  - img \"Line chart with 2 data points\": 0 B 31.5 MiB 63.1 MiB\n  - text: Active Connections\n  - img \"Line chart with 1 data point\": 0 0.5 1\n  - text: Replication Lag N/A — no replica (enable High Availability to see replication lag) Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n  - radiogroup \"Instance type\":\n    - radio \"Free $0.00/month 256 MB RAM · 0.1 CPU\" [checked]\n    - radio \"Basic 256MB $4.90/month 256 MB RAM · 0.1 CPU\"\n    - radio \"Basic 1GB $14.00/month 1 GB RAM · 0.5 CPU\"\n  - button \"Cancel\" [disabled]\n  - button \"Save\" [disabled]\n  - button \"Delete Database\"\n  - button \"Restart Database\"\n  - button \"Suspend Database\""
+    },
+    "settledCatalog": {
+      "at": "2026-10-17T08:14:58.461Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db9irjcrd81c73829gd0",
+          "sql": "SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS vector_installed, current_timestamp::text AS observed_at;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["vector_installed", "observed_at"],
+            "rowCount": 1,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["true", "2026-10-17 08:14:57.749913+00"]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792224897347.352,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.136,
+        "responseStart": 410.317,
+        "responseEnd": 410.717
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9irjcrd81c73829gd0#sql-console"
+    },
+    "settledMigration": {
+      "at": "2026-10-17T08:15:00.881Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db9irjcrd81c73829gd0",
+          "sql": "CREATE EXTENSION IF NOT EXISTS vector;",
+          "allowWrites": true
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": [],
+            "rowCount": 0,
+            "rows": [],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792224899845.689,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.136,
+        "responseStart": 329.878,
+        "responseEnd": 330.33
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9irjcrd81c73829gd0#sql-console"
+    },
+    "settledDistance": {
+      "at": "2026-10-17T08:15:03.061Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db9irjcrd81c73829gd0",
+          "sql": "SELECT '[1,2,3]'::vector(3) AS value, '[1,2,3]'::vector <-> '[1,2,4]'::vector AS distance;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["value", "distance"],
+            "rowCount": 1,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["[1,2,3]", "1"]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792224902012.842,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.12,
+        "responseStart": 341.182,
+        "responseEnd": 341.786
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9irjcrd81c73829gd0#sql-console"
+    },
+    "delete": {
+      "at": "2026-10-17T08:16:33.294Z",
+      "request": {
+        "operationName": "DeleteDatabase",
+        "variables": {
+          "id": "dpg-db9irjcrd81c73829gd0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteDatabase($id: String!, $confirm: String) {\n  deleteDatabase(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteDatabase": true
+        }
+      },
+      "timing": {
+        "startTime": 1792224992312.0679,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.224,
+        "responseStart": 272.943,
+        "responseEnd": 273.377
+      },
+      "url": "https://dashboard.bex.co/"
+    }
+  },
+  "exactProbeCode": {
+    "desktop": "async(page)=>{const waitingAt=new Date().toISOString();try{await page.getByText('Available',{exact:true}).first().waitFor({timeout:30000});}catch(e){if(!String(e).includes('Timeout'))throw e;return{waitingAt,at:new Date().toISOString(),notReady:true,url:page.url(),main:(await page.locator('main').ariaSnapshot()).slice(0,900)};}const readySeenAt=new Date().toISOString();if(!page.url().startsWith('https://dashboard.bex.co/databases/dpg-db9ip44rd81c73829ga0'))throw Error('Own database page changed');const catalog=await (async(page)=>{await page.getByRole('textbox',{name:'SQL query',exact:true}).fill(\"SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS vector_installed, current_timestamp::text AS observed_at;\");return await (async(page)=>{const pending=page.waitForResponse(r=>{if(!r.url().endsWith(\"/graphql\")||r.request().method()!==\"POST\")return false;try{const q=r.request().postDataJSON();return(Array.isArray(q)?q:[q]).some(x=>x.operationName===\"ExecuteDatabaseQuery\"&&(!\"dpg-db9ip44rd81c73829ga0\"||x.variables.id===\"dpg-db9ip44rd81c73829ga0\"));}catch{return false;}},{timeout:45000}).then(response=>({response}),error=>({waitError:String(error)}));{await page.getByRole('button',{name:'Run query',exact:true}).click();};const waited=await pending;if(waited.waitError)throw new Error(waited.waitError);const r=waited.response;const q=r.request().postDataJSON(),b=await r.json(),qs=Array.isArray(q)?q:[q],bs=Array.isArray(b)?b:[b];const i=qs.findIndex(x=>x.operationName===\"ExecuteDatabaseQuery\");await page.waitForTimeout(700);return{at:new Date().toISOString(),request:qs[i],status:r.status(),body:bs[i],timing:r.request().timing(),url:page.url()};})(page);})(page);const migration=await (async(page)=>{await page.getByRole('textbox',{name:'SQL query',exact:true}).fill(\"CREATE EXTENSION IF NOT EXISTS vector;\");await page.getByRole('button',{name:'Run query',exact:true}).click();await page.getByRole('alertdialog',{name:'Run a statement that can modify data?',exact:true}).waitFor();return await (async(page)=>{const pending=page.waitForResponse(r=>{if(!r.url().endsWith(\"/graphql\")||r.request().method()!==\"POST\")return false;try{const q=r.request().postDataJSON();return(Array.isArray(q)?q:[q]).some(x=>x.operationName===\"ExecuteDatabaseQuery\"&&(!\"dpg-db9ip44rd81c73829ga0\"||x.variables.id===\"dpg-db9ip44rd81c73829ga0\"));}catch{return false;}},{timeout:45000}).then(response=>({response}),error=>({waitError:String(error)}));{await page.getByRole('alertdialog').getByRole('button',{name:'Run statement',exact:true}).click();};const waited=await pending;if(waited.waitError)throw new Error(waited.waitError);const r=waited.response;const q=r.request().postDataJSON(),b=await r.json(),qs=Array.isArray(q)?q:[q],bs=Array.isArray(b)?b:[b];const i=qs.findIndex(x=>x.operationName===\"ExecuteDatabaseQuery\");await page.waitForTimeout(700);return{at:new Date().toISOString(),request:qs[i],status:r.status(),body:bs[i],timing:r.request().timing(),url:page.url()};})(page);})(page);const request={\"operationName\":\"Qaa868Ready\",\"variables\":{\"id\":\"dpg-db9ip44rd81c73829ga0\"},\"query\":\"query Qaa868Ready($id:String!){database(id:$id){id status plan version public suspended}}\"};const r=await page.request.post('https://api.bex.co/graphql',{data:request,timeout:15000});return{waitingAt,readySeenAt,at:new Date().toISOString(),notReady:false,catalog,migration,statusRead:{request,status:r.status(),body:await r.json()},main:(await page.locator('main').ariaSnapshot()).slice(0,900)};}",
+    "mobile": "async(page)=>{const waitingAt=new Date().toISOString();const alreadyAvailable=await page.getByText('Available',{exact:true}).first().isVisible().catch(()=>false);try{await page.getByText('Available',{exact:true}).first().waitFor({timeout:30000});}catch(e){if(!String(e).includes('Timeout'))throw e;return{alreadyAvailable,waitingAt,at:new Date().toISOString(),notReady:true,url:page.url(),main:(await page.locator('main').ariaSnapshot()).slice(0,900)};}const readySeenAt=new Date().toISOString();if(!page.url().startsWith('https://dashboard.bex.co/databases/dpg-db9irjcrd81c73829gd0'))throw Error('Own database page changed');const catalog=await (async(page)=>{await page.getByRole('textbox',{name:'SQL query',exact:true}).fill(\"SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS vector_installed, current_timestamp::text AS observed_at;\");return await (async(page)=>{const pending=page.waitForResponse(r=>{if(!r.url().endsWith(\"/graphql\")||r.request().method()!==\"POST\")return false;try{const q=r.request().postDataJSON();return(Array.isArray(q)?q:[q]).some(x=>x.operationName===\"ExecuteDatabaseQuery\"&&(!\"dpg-db9irjcrd81c73829gd0\"||x.variables.id===\"dpg-db9irjcrd81c73829gd0\"));}catch{return false;}},{timeout:45000}).then(response=>({response}),error=>({waitError:String(error)}));{await page.getByRole('button',{name:'Run query',exact:true}).click();};const waited=await pending;if(waited.waitError)throw new Error(waited.waitError);const r=waited.response;const q=r.request().postDataJSON(),b=await r.json(),qs=Array.isArray(q)?q:[q],bs=Array.isArray(b)?b:[b];const i=qs.findIndex(x=>x.operationName===\"ExecuteDatabaseQuery\");await page.waitForTimeout(700);return{at:new Date().toISOString(),request:qs[i],status:r.status(),body:bs[i],timing:r.request().timing(),url:page.url()};})(page);})(page);const migration=await (async(page)=>{await page.getByRole('textbox',{name:'SQL query',exact:true}).fill(\"CREATE EXTENSION IF NOT EXISTS vector;\");await page.getByRole('button',{name:'Run query',exact:true}).click();await page.getByRole('alertdialog',{name:'Run a statement that can modify data?',exact:true}).waitFor();return await (async(page)=>{const pending=page.waitForResponse(r=>{if(!r.url().endsWith(\"/graphql\")||r.request().method()!==\"POST\")return false;try{const q=r.request().postDataJSON();return(Array.isArray(q)?q:[q]).some(x=>x.operationName===\"ExecuteDatabaseQuery\"&&(!\"dpg-db9irjcrd81c73829gd0\"||x.variables.id===\"dpg-db9irjcrd81c73829gd0\"));}catch{return false;}},{timeout:45000}).then(response=>({response}),error=>({waitError:String(error)}));{await page.getByRole('alertdialog').getByRole('button',{name:'Run statement',exact:true}).click();};const waited=await pending;if(waited.waitError)throw new Error(waited.waitError);const r=waited.response;const q=r.request().postDataJSON(),b=await r.json(),qs=Array.isArray(q)?q:[q],bs=Array.isArray(b)?b:[b];const i=qs.findIndex(x=>x.operationName===\"ExecuteDatabaseQuery\");await page.waitForTimeout(700);return{at:new Date().toISOString(),request:qs[i],status:r.status(),body:bs[i],timing:r.request().timing(),url:page.url()};})(page);})(page);const request={\"operationName\":\"Qaa868Ready\",\"variables\":{\"id\":\"dpg-db9irjcrd81c73829gd0\"},\"query\":\"query Qaa868Ready($id:String!){database(id:$id){id status plan version public suspended}}\"};const r=await page.request.post('https://api.bex.co/graphql',{data:request,timeout:15000});return{alreadyAvailable,waitingAt,readySeenAt,at:new Date().toISOString(),notReady:false,catalog,migration,statusRead:{request,status:r.status(),body:await r.json()},main:(await page.locator('main').ariaSnapshot()).slice(0,900)};}"
+  },
+  "finalInventory": {
+    "at": "2026-10-17T08:16:47.929Z",
+    "inventoryStatus": 200,
+    "ids": {
+      "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+      "databases": [
+        "dpg-d9nqg95cavls73fp8m20",
+        "dpg-d9rrkoc4h4mc73edurp0",
+        "dpg-d9rs3ee0ccis738kc7c0",
+        "dpg-db34l9bor55s73cqpq9g"
+      ],
+      "envGroups": ["evg-db0s94c48ccs739jikr0"],
+      "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+      "projects": [
+        "prj-d9dgeo0bd9nc73a0vh1g",
+        "prj-d9e5qct5qe4s73b1mjn0",
+        "prj-d9sgfnbjghus73cg6hg0"
+      ],
+      "services": [
+        "srv-d9bj8s3eg85c7390eb9g",
+        "srv-d9bkcspg9s7c73d0n8ug",
+        "srv-d9e40ei9086p3l1jri30",
+        "srv-d9ndt8hmcglc739fkp50",
+        "srv-d9nqg9dcavls73fp8m2g"
+      ],
+      "webhookEndpoints": []
+    },
+    "comparison": {
+      "blueprints": true,
+      "databases": true,
+      "envGroups": true,
+      "keyValues": true,
+      "projects": true,
+      "services": true,
+      "webhookEndpoints": true
+    },
+    "details": [
+      {
+        "path": "/v1/postgres/dpg-db9ip44rd81c73829ga0",
+        "status": 404
+      },
+      {
+        "path": "/v1/postgres/dpg-db9irjcrd81c73829gd0",
+        "status": 404
+      }
+    ]
+  },
+  "session": {
+    "logoutConfirmed": true,
+    "exitCode": 0,
+    "browser": {
+      "at": "2026-10-17T08:16:54.353Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "handlesRemoved": true
+  },
+  "consoleAfterCleanup": {
+    "error": false,
+    "summary": "### Result\nTotal messages: 0 (Errors: 0, Warnings: 0)\n"
+  },
+  "earlierSettledNeighbor": {
+    "pass": "a867",
+    "pgTrgmEnable": {
+      "at": "2026-10-17T07:56:41.327Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db9iiopu2fhc73e10cd0",
+          "sql": "CREATE EXTENSION IF NOT EXISTS pg_trgm;",
+          "allowWrites": true
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": [],
+            "rowCount": 0,
+            "rows": [],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792223799509.629,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.217,
+        "responseStart": 1104.37,
+        "responseEnd": 1105.625
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9iiopu2fhc73e10cd0"
+    },
+    "pgTrgmQuery": {
+      "at": "2026-10-17T07:56:49.615Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db9iiopu2fhc73e10cd0",
+          "sql": "SELECT id, note, similarity(note, 'hello') AS similarity FROM qa_a867_notes ORDER BY id;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["id", "note", "similarity"],
+            "rowCount": 3,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["1", "hello", "1"]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["2", "hello world", "0.5"]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["3", "雪\n星", "0"]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792223808459.254,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.136,
+        "responseStart": 448.12,
+        "responseEnd": 448.844
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9iiopu2fhc73e10cd0"
+    },
+    "pgTrgmDrop": {
+      "at": "2026-10-17T07:58:16.519Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db9iiopu2fhc73e10cd0",
+          "sql": "DROP EXTENSION pg_trgm;",
+          "allowWrites": true
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": [],
+            "rowCount": 0,
+            "rows": [],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792223895003.87,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.136,
+        "responseStart": 802.598,
+        "responseEnd": 803.517
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9iiopu2fhc73e10cd0#sql-console"
+    },
+    "tableAfterDrop": {
+      "at": "2026-10-17T07:58:18.876Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db9iiopu2fhc73e10cd0",
+          "sql": "SELECT id, note FROM qa_a867_notes ORDER BY id;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["id", "note"],
+            "rowCount": 3,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["1", "hello"]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["2", "hello world"]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["3", "雪\n星"]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792223897635.923,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.118,
+        "responseStart": 535.598,
+        "responseEnd": 535.993
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9iiopu2fhc73e10cd0#sql-console"
+    },
+    "managedExtensionsAfterDrop": {
+      "at": "2026-10-17T07:58:21.132Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db9iiopu2fhc73e10cd0",
+          "sql": "SELECT extname, extversion FROM pg_extension WHERE extname IN ('vector','pg_trgm','pg_stat_statements') ORDER BY extname;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["extname", "extversion"],
+            "rowCount": 2,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["pg_stat_statements", "1.12"]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["vector", "0.8.6"]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792223900021.1191,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.138,
+        "responseStart": 398.127,
+        "responseEnd": 398.981
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9iiopu2fhc73e10cd0#sql-console"
+    }
+  },
+  "scopeNotes": [
+    "Exact matching native GraphQL operation requests and complete responses are retained, without auth headers, cookies, credentials or connection URIs. SQL uses the ordinary CNPG application connection; no role or privilege changes were requested.",
+    "Kubernetes conditions/error log/cleanup attached below are explicitly selected projections, not complete Kubernetes responses.",
+    "No response interception, artificial server latency, SQL sleep, concurrent human writer or automatic retry was added. The queued code only observes natural Available then clicks the normal SQL controls.",
+    "The desktop first30s observation chunk remained Creating. Its second chunk waited17.436s for Available. Mobile started alreadyAvailable:false on a fresh390px document.",
+    "42501 and23505 are distinct observed SQLSTATEs; the mobile filtered PostgreSQL record specifically identifies pg_extension_name_index/extname vector. No further catalog internals or privilege mechanism is inferred.",
+    "Settled retries are labeled controls: both catalogs later report true, both identical migrations succeed and both vector-distance results equal1. This is not a never-installed extension or a missing package.",
+    "Only fresh default-identity Free/private PostgreSQL18 was exercised. Other majors/plans, custom identities, restore/import, initial suspend/resume, hosted pre-fix backfill, external CLI and live MCP/REST status parity remain unverified here.",
+    "w8/m84 owns installation and hosted existing-parent backfill. Its installer/ExtensionsReady verdict are working. This residual is first Core Ready/Available publication, which does not consume that verdict; no pending first-availability task was found in the indexed91 open/blocked milestones.",
+    "The a867 readiness timestamp lead alone was not a reproduction. The two a868 native failures are the evidence.",
+    "The mobile screenshot was opened and inspected, but remains a local ignored supplement. Durable mobile ARIA and native/API/log evidence support the finding without the PNG.",
+    "Console/network were captured after cleanup/logout. Native GraphQL HTTP200 errors are preserved separately; aborted navigation records are not classified as an independent bug.",
+    "No product fix was implemented. No paid or foreign resources were changed. Both exact database IDs and all7 baseline ID sets are checked below; provider disk erasure beyond PVC removal is not claimed."
+  ],
+  "primaryReferences": [
+    {
+      "url": "https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/v1.30.0/docs/src/declarative_database_management.md",
+      "use": "Applied/current observedGeneration report successful declarative database reconciliation; only declared extensions are managed."
+    },
+    {
+      "url": "https://www.postgresql.org/docs/18/sql-createextension.html",
+      "use": "Ordinary IF NOT EXISTS on an installed extension should be a no-op; installation requirements depend on the extension."
+    },
+    {
+      "url": "https://www.postgresql.org/docs/18/errcodes-appendix.html",
+      "use": "42501 insufficient_privilege;23505 unique_violation."
+    },
+    {
+      "url": "https://render.com/docs/postgresql-extensions",
+      "use": "Lists vector for PostgreSQL13+ and CREATE EXTENSION as the documented workflow. Authenticated Render first-Available timing was not tested."
+    }
+  ],
+  "desktopConditions": {
+    "at": "2026-10-17T08:09:44.172116+00:00",
+    "checks": {
+      "databases.app.bex.co": {
+        "name": "dpg-db9ip44rd81c73829ga0",
+        "generation": 1,
+        "status": {
+          "phase": "Ready",
+          "provisioned": true,
+          "observedGeneration": 1,
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-17T08:08:48Z",
+              "message": "vector is installed in the application database",
+              "observedGeneration": 1,
+              "reason": "Applied",
+              "status": "True",
+              "type": "ExtensionsReady"
+            },
+            {
+              "lastTransitionTime": "2026-10-17T08:08:30Z",
+              "message": "postgres ready",
+              "observedGeneration": 1,
+              "reason": "Provisioned",
+              "status": "True",
+              "type": "Ready"
+            }
+          ]
+        }
+      },
+      "databases.postgresql.cnpg.io": {
+        "name": "dpg-db9ip44rd81c73829ga0-app",
+        "generation": 1,
+        "status": {
+          "observedGeneration": 1,
+          "applied": true,
+          "extensions": [
+            {
+              "applied": true,
+              "name": "vector"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "mobileConditions": {
+    "at": "2026-10-17T08:14:56.167402+00:00",
+    "checks": {
+      "databases.app.bex.co": {
+        "name": "dpg-db9irjcrd81c73829gd0",
+        "generation": 1,
+        "status": {
+          "phase": "Ready",
+          "provisioned": true,
+          "observedGeneration": 1,
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-17T08:14:02Z",
+              "message": "vector is installed in the application database",
+              "observedGeneration": 1,
+              "reason": "Applied",
+              "status": "True",
+              "type": "ExtensionsReady"
+            },
+            {
+              "lastTransitionTime": "2026-10-17T08:13:54Z",
+              "message": "postgres ready",
+              "observedGeneration": 1,
+              "reason": "Provisioned",
+              "status": "True",
+              "type": "Ready"
+            }
+          ]
+        }
+      },
+      "databases.postgresql.cnpg.io": {
+        "name": "dpg-db9irjcrd81c73829gd0-app",
+        "generation": 1,
+        "status": {
+          "observedGeneration": 1,
+          "applied": true,
+          "extensions": [
+            {
+              "applied": true,
+              "name": "vector"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "mobileErrorLog": {
+    "capturedAt": "2026-10-17T08:16:27.080653+00:00",
+    "pod": "dpg-db9irjcrd81c73829gd0-1",
+    "exit": 0,
+    "records": [
+      {
+        "at": "2026-10-17 08:14:02.637 UTC",
+        "database": "dpg_db9irjcrd81c73829gd0",
+        "user": "dpg_db9irjcrd81c73829gd0_user",
+        "application": null,
+        "sqlstate": "23505",
+        "message": "duplicate key value violates unique constraint \"pg_extension_name_index\"",
+        "detail": "Key (extname)=(vector) already exists.",
+        "statement": "CREATE EXTENSION IF NOT EXISTS vector"
+      }
+    ]
+  },
+  "desktopPhysicalCleanup": {
+    "at": "2026-10-17T08:11:41.147072+00:00",
+    "checks": {
+      "database": {
+        "count": 0
+      },
+      "cluster": {
+        "count": 0
+      },
+      "applicationDatabase": {
+        "count": 0
+      },
+      "pods": {
+        "count": 0
+      },
+      "pvcs": {
+        "count": 0
+      }
+    }
+  },
+  "mobilePhysicalCleanup": {
+    "at": "2026-10-17T08:18:14.264353+00:00",
+    "checks": {
+      "database": {
+        "count": 0
+      },
+      "cluster": {
+        "count": 0
+      },
+      "applicationDatabase": {
+        "count": 0
+      },
+      "pods": {
+        "count": 0
+      },
+      "pvcs": {
+        "count": 0
+      }
+    }
+  },
+  "networkAfterCleanup": {
+    "afterIndex": 5173,
+    "recordCount": 209,
+    "httpErrors": [],
+    "failed": [
+      "5187. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_ABORTED",
+      "5349. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_ABORTED"
+    ],
+    "scope": "Captured after exact-session logout. 401 from logout/background reads and intentional cleanup404 are retained, not classified as a new defect. Native SQL GraphQL200 errors are separately preserved."
+  },
+  "dedupe": [
+    {
+      "file": ".pm/w8/blocked/m84/done/t001.md",
+      "matches": [
+        "Every Database reconcile applies an owned `postgresql.cnpg.io/v1` Database child `<db>-app` (`database_extensions.go`) adopting the application database (its recorded name and owner; restores copy the source's) with `extensions: [{name: vector, ensure: present}]`, `ensure: present`, `databaseReclaimPolicy: retain` and no pinned version. CNPG installs vector as superuser, so the owner's `CREATE EXTENSION IF NOT EXISTS vector` becomes a no-op. The verdict projects onto a new `ExtensionsReady` condition (Pending/Applied/ApplyFailed — failure read regardless of generation since CNPG bumps observedGeneration only on success; ApplyError on a write error; ReservedDatabaseName for a PostgreSQL-owned name, which gets no child). The child never fails the Database. Watched via `Owns` (resourceVersion), RBAC (`config/rbac/role.yaml`, day-to-day read role) and the operator object-namespace admission policy cover `databases`."
+      ]
+    }
+  ],
+  "sourceFiles": [
+    {
+      "path": "lego/operator/internal/controller/database_controller.go",
+      "gitBlob": "e7582028a4649e2039698a588f6f6924df43114c"
+    },
+    {
+      "path": "lego/operator/internal/controller/database_extensions.go",
+      "gitBlob": "434dd24e0e1f5b387a66184709112220db3f91e4"
+    },
+    {
+      "path": "lego/backend/internal/postgres/service.go",
+      "gitBlob": "13952c5932144522765a3e2b8b3649afb877789b"
+    },
+    {
+      "path": "lego/backend/internal/postgres/query.go",
+      "gitBlob": "fba94af2d4c2619032b79c61b7bf9ba3d0ee8336"
+    },
+    {
+      "path": "lego/backend/internal/core/datastore_status.go",
+      "gitBlob": "9205262797b8bc65f56af11f4eeab3949dce8e5a"
+    },
+    {
+      "path": "lego/types/v1alpha1/database_types.go",
+      "gitBlob": "3d29e44a6af6a1cd7c6735c575cd2c2cacbe5526"
+    }
+  ],
+  "status": "reproduced-researched-deduped-clean"
+}

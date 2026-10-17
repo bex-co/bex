@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m223** — [Make first Postgres availability include vector](m223/README.md) (6 tasks,2h55m) — major; two fresh Free PostgreSQL 18 databases advertise Available while vector is absent and their immediate native migrations fail (42501/23505), then pass after initialization. Scope the initial readiness/latch consumer and preserve established-database backfill behavior. [Exact evidence and research](m223/finding.md). Both fixtures/session fully cleaned. Filing only.
+
 - [ ] **m222** — [Ignore obsolete dotenv file reads](m222/README.md) (6 tasks,2h15) — major; delayed earlier reads replace the latest selection or repopulate a canceled import. Controlled desktop/mobile failures, actual saved/runtime consequence and healthy recovery; owned Free fixture/session fully cleaned. Filing only.
 
 - [ ] **m221** — [Preserve creation placement when lookup reads fail](m221/README.md) (6 tasks, 2h35) ← a856: five browser-local read-error probes clear valid scope; one real Free create omits environmentId and lands unassigned. Shared selector has three clients; preserve explicit-none semantics and add read-only recovery. [Evidence](m221/finding.md).
