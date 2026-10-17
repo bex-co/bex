@@ -2627,7 +2627,7 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 	if builder == buildBuildpack && strings.EqualFold(runtime, blueprintBuildpackRuntime) {
 		runtime = "" // the schema's required runtime; buildpacks select the build
 	}
-	startCommand, autoDeploy, err := manifestStartAndAutoDeploy(a)
+	startCommand, autoDeploy, checksPass, err := manifestStartAndAutoDeploy(a)
 	if err != nil {
 		return CreateRequest{}, serviceEnv{}, err
 	}
@@ -2664,6 +2664,7 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 		Env:                     literal,
 		Hosts:                   hosts,
 		AutoDeploy:              autoDeploy,
+		AutoDeployChecksPass:    checksPass,
 		PreDeployCommand:        a.PreDeployCommand,
 		InitialDeployHook:       commandText(a.InitialDeployHook),
 		MaintenanceMode:         maintenanceMode,
@@ -2746,27 +2747,28 @@ func manifestPlanAndMaintenance(a bexService) (string, *MaintenanceModeView, err
 // the build runs a container command (w5/080). Elsewhere a create ignores it
 // as inert, and a Blueprint refuses it as it does its other inert fields: on a
 // buildpack build too, which declares runtime docker (w5/102).
-func manifestStartAndAutoDeploy(a bexService) (string, *bool, error) {
+func manifestStartAndAutoDeploy(a bexService) (string, *bool, *bool, error) {
 	startCommand := a.StartCommand
 	if a.DockerCommand != "" {
 		if !blueprintReadsDockerCommand(a.Runtime, extensionBuilder(a.XBex)) {
-			return "", nil, fmt.Errorf("%w: service %q dockerCommand requires a Dockerfile build or a prebuilt image; a native or buildpack build takes startCommand", core.ErrBadRequest, a.Name)
+			return "", nil, nil, fmt.Errorf("%w: service %q dockerCommand requires a Dockerfile build or a prebuilt image; a native or buildpack build takes startCommand", core.ErrBadRequest, a.Name)
 		}
 		if startCommand != "" {
-			return "", nil, fmt.Errorf("%w: service %q cannot set both dockerCommand and startCommand", core.ErrBadRequest, a.Name)
+			return "", nil, nil, fmt.Errorf("%w: service %q cannot set both dockerCommand and startCommand", core.ErrBadRequest, a.Name)
 		}
 		startCommand = a.DockerCommand
 	}
 
 	autoDeploy := a.AutoDeploy
+	var checksPass *bool
 	if a.AutoDeployTrigger != "" {
 		var err error
-		autoDeploy, err = parseTrigger(a.AutoDeployTrigger)
+		autoDeploy, checksPass, err = parseTrigger(a.AutoDeployTrigger)
 		if err != nil {
-			return "", nil, fmt.Errorf("service %q: %w", a.Name, err)
+			return "", nil, nil, fmt.Errorf("service %q: %w", a.Name, err)
 		}
 	}
-	return startCommand, autoDeploy, nil
+	return startCommand, autoDeploy, checksPass, nil
 }
 
 // classifyServiceEnv classifies each env var of one services[] entry
@@ -3451,6 +3453,13 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 			}
 		}
 	}
+	// A sync that turns checksPass on proves the gate can work, as the trigger
+	// verb does (w1/m181).
+	if checksGated(final.Spec) && !checksGated(existing.Spec) {
+		if err := s.requireChecksPermitted(ctx, final); err != nil {
+			return AppView{}, err
+		}
+	}
 	actualSpecChanged := !reflect.DeepEqual(existing.Spec, final.Spec)
 	maintenanceOnly := actualSpecChanged && serviceSpecChangedOnlyByMaintenance(existing.Spec, final.Spec)
 	if maintenanceOnly && !changes.environmentChanged {
@@ -3476,6 +3485,9 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 		existing.Spec = final.Spec
 		if maintenanceChanged {
 			existing.Spec.MaintenanceMode = currentMaintenance
+		}
+		if !checksGated(existing.Spec) {
+			delete(existing.Annotations, annotChecksPendingCommit)
 		}
 	}
 	if changes.initialHookChanged {

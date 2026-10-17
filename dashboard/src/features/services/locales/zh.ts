@@ -2326,6 +2326,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "自动部署",
     description: "Build & Deploy: label for the auto-deploy toggle",
   },
+  "services.autoDeployAfterChecks": {
+    message: "CI 检查通过后",
+    description:
+      "Auto-Deploy select option: redeploy a pushed commit once all its GitHub checks pass (Render's autoDeployTrigger 'checksPass', w1/m181)",
+  },
   "services.autoDeployOnCommit": {
     message: "提交时",
     description:
@@ -2357,6 +2362,10 @@ const zhServices: Record<string, TranslationEntry> = {
       "正在检查推送如何送达 bex… 若持续如此，则表示无法连接 GitHub，暂时无法确认送达方式。",
     description:
       "Build & Deploy: source indicator while the per-repo push-delivery check is loading or returned unknown (GitHub unreachable) — states the uncertainty instead of naming a mechanism (w6/m99)",
+  },
+  "services.autoDeployChecksSuccess": {
+    message: "自动部署将等待 CI 检查通过。",
+    description: "Toast after choosing After CI Checks Pass",
   },
   "services.autoDeployOnSuccess": {
     message: "已开启自动部署。",

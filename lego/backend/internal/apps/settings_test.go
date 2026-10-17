@@ -49,7 +49,7 @@ func TestServicePatchTableOrderIsRESTApplicationOrder(t *testing.T) {
 		{"MaxShutdownDelaySeconds"},
 		{"RootDir"},
 		{"BuildFilter"},
-		{"AutoDeploy"},
+		{"AutoDeploy", "AutoDeployChecksPass"},
 		{"Schedule", "Command"},
 		{"HealthCheckPath"},
 		{"PreDeployCommand"},

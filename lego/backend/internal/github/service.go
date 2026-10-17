@@ -23,6 +23,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -82,6 +83,8 @@ type APIClient interface {
 	GetFileContents(ctx context.Context, token, owner, repo, path, ref string) (FileContents, error)
 	GetRepoCommitSHA(ctx context.Context, token, owner, repo, branch string) (string, error)
 	OpenDraftPullRequest(ctx context.Context, installationID int64, owner, repo, head, base, title, body string) (PullRequest, error)
+	MintChecksToken(ctx context.Context, installationID int64) (InstallationToken, bool, error)
+	ListCheckRuns(ctx context.Context, token, owner, repo, sha string) ([]CheckRun, error)
 }
 
 // InstallationVerifier proves the user completing a browser flow actually
@@ -1220,6 +1223,76 @@ func (s *Service) grantedRepo(ctx context.Context, workspaceID, repoURL string) 
 		return "", Repo{}, false, nil
 	}
 	return tok.Token, meta, true, nil
+}
+
+// checksSource adapts the Service to apps' ChecksSource seam (w1/m181), the
+// tokenSource precedent: the deploy path authorizes its own verb, so these
+// reads are not exported Service verbs.
+type checksSource struct{ s *Service }
+
+// DeployChecksSource returns the checksPass seam (wired onto apps.Service in
+// the composition root).
+func (s *Service) DeployChecksSource() checksSource { return checksSource{s} }
+
+// ChecksPermitted reports whether repoURL belongs to the workspace's GitHub
+// connection, that installation granted Checks: read, and it receives Check
+// suite events — without them a checksPass service would wait silently. Not
+// connected, not a github.com repository, or GitHub unconfigured all answer
+// false.
+func (t checksSource) ChecksPermitted(ctx context.Context, workspaceID, repoURL string) (bool, error) {
+	_, permitted, err := t.s.checksToken(ctx, workspaceID, repoURL)
+	if err != nil || !permitted {
+		return false, err
+	}
+	owner, _, _ := githubOwnerRepo(repoURL)
+	row, err := t.s.Store.GetGitConnectionByOwner(ctx, workspaceID, owner)
+	if err != nil {
+		return false, err
+	}
+	inst, err := t.s.GitHub.GetInstallation(ctx, row.InstallationID)
+	if err != nil {
+		return false, err
+	}
+	return slices.Contains(inst.Events, "check_suite"), nil
+}
+
+// CommitCheckRuns lists sha's latest check runs through the connection that
+// owns repoURL. A connection without Checks: read is an error here: the
+// caller only asks for a service that already passed ChecksPermitted.
+func (t checksSource) CommitCheckRuns(ctx context.Context, workspaceID, repoURL, sha string) ([]CheckRun, error) {
+	token, permitted, err := t.s.checksToken(ctx, workspaceID, repoURL)
+	if err != nil {
+		return nil, err
+	}
+	if !permitted {
+		return nil, fmt.Errorf("github: %s cannot read checks: grant the GitHub App Checks: read", repoURL)
+	}
+	owner, repo, _ := githubOwnerRepo(repoURL)
+	return t.s.GitHub.ListCheckRuns(ctx, token, owner, repo, sha)
+}
+
+// checksToken mints a checks-scoped token from the connection that owns
+// repoURL's account (ADR078 §4, the grantedRepo rule).
+func (s *Service) checksToken(ctx context.Context, workspaceID, repoURL string) (string, bool, error) {
+	if !s.configured() {
+		return "", false, nil
+	}
+	owner, _, ok := githubOwnerRepo(repoURL)
+	if !ok {
+		return "", false, nil
+	}
+	row, err := s.Store.GetGitConnectionByOwner(ctx, workspaceID, owner)
+	if errors.Is(err, store.ErrNotFound) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	tok, permitted, err := s.GitHub.MintChecksToken(ctx, row.InstallationID)
+	if err != nil || !permitted {
+		return "", false, err
+	}
+	return tok.Token, true, nil
 }
 
 // commitSource adapts the Service to the deploys/apps CommitResolver seam

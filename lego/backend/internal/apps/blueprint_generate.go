@@ -479,6 +479,8 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 	}
 	if !a.Spec.AutoDeploy && a.Spec.Repo != "" {
 		entry["autoDeployTrigger"] = "off"
+	} else if a.Spec.AutoDeploy && a.Spec.AutoDeployTrigger == checksPassTrigger {
+		entry["autoDeployTrigger"] = checksPassTrigger
 	}
 	if a.Spec.PreDeployCommand != "" && !static && svcType != appv1alpha1.TypeCronJob {
 		entry["preDeployCommand"] = a.Spec.PreDeployCommand

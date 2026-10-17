@@ -192,6 +192,17 @@ func (h *GitWebhook) scopesFor(ctx context.Context, key verifiedKey, installatio
 // and App.spec.buildFilter, monorepo support) — GitHub and Gitea both carry
 // added/removed/modified paths per commit in this shape — and the head commit,
 // which becomes the deploy row's provenance without a round trip to the git host.
+// gitRepository is the repository block every git event carries; urls lists
+// its addresses, any of which an App's spec.repo may name.
+type gitRepository struct {
+	CloneURL string `json:"clone_url"`
+	SSHURL   string `json:"ssh_url"`
+	HTMLURL  string `json:"html_url"`
+	URL      string `json:"url"`
+}
+
+func (r gitRepository) urls() []string { return []string{r.CloneURL, r.SSHURL, r.HTMLURL, r.URL} }
+
 type pushEvent struct {
 	Ref         string `json:"ref"` // e.g. refs/heads/main
 	After       string `json:"after"`
@@ -205,12 +216,7 @@ type pushEvent struct {
 	Installation struct {
 		ID int64 `json:"id"`
 	} `json:"installation"`
-	Repository struct {
-		CloneURL string `json:"clone_url"`
-		SSHURL   string `json:"ssh_url"`
-		HTMLURL  string `json:"html_url"`
-		URL      string `json:"url"`
-	} `json:"repository"`
+	Repository gitRepository `json:"repository"`
 	HeadCommit struct {
 		ID        string `json:"id"`
 		URL       string `json:"url"`
@@ -238,12 +244,7 @@ type deleteEvent struct {
 	Installation struct {
 		ID int64 `json:"id"`
 	} `json:"installation"`
-	Repository struct {
-		CloneURL string `json:"clone_url"`
-		SSHURL   string `json:"ssh_url"`
-		HTMLURL  string `json:"html_url"`
-		URL      string `json:"url"`
-	} `json:"repository"`
+	Repository gitRepository `json:"repository"`
 }
 
 // commitInfo lifts the payload's head commit into the deploy row's provenance
@@ -253,8 +254,14 @@ func (ev pushEvent) commitInfo() store.CommitInfo {
 	if !validGitObjectID(ev.After) || isZeroSHA(ev.After) {
 		return store.CommitInfo{}
 	}
-	info := store.CommitInfo{Hash: ev.After, Message: ev.HeadCommit.Message}
-	if at, err := time.Parse(time.RFC3339, ev.HeadCommit.Timestamp); err == nil {
+	return newCommitInfo(ev.After, ev.HeadCommit.Message, ev.HeadCommit.Timestamp)
+}
+
+// newCommitInfo is a deploy row's provenance from a git event's head commit;
+// an unparsable timestamp is left out, as every CommitInfo source does.
+func newCommitInfo(sha, message, timestamp string) store.CommitInfo {
+	info := store.CommitInfo{Hash: sha, Message: message}
+	if at, err := time.Parse(time.RFC3339, timestamp); err == nil {
 		utc := at.UTC()
 		info.AuthorAt = &utc
 	}
@@ -309,6 +316,10 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.serveDelete(w, r, body, key)
 		return
 	}
+	if event == "check_suite" {
+		h.serveCheckSuite(w, r, body, key)
+		return
+	}
 	if event != "" && event != "push" {
 		core.WriteJSON(w, http.StatusOK, map[string]string{"ignored": event})
 		return
@@ -345,7 +356,7 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		core.WriteJSON(w, http.StatusOK, map[string]any{"redeployed": []string{}})
 		return
 	}
-	urls := []string{ev.Repository.CloneURL, ev.Repository.SSHURL, ev.Repository.HTMLURL, ev.Repository.URL}
+	urls := ev.Repository.urls()
 	// Branch-delete carries no commit — Apps only (disable auto-deploy). Skip
 	// Blueprint discovery/enqueue entirely (w8/m38).
 	branchDeleted := ev.Deleted || isZeroSHA(ev.After)
@@ -457,7 +468,7 @@ func (h *GitWebhook) serveDelete(w http.ResponseWriter, r *http.Request, body []
 		core.WriteJSON(w, http.StatusOK, map[string]any{"branchDeleted": []string{}})
 		return
 	}
-	urls := []string{ev.Repository.CloneURL, ev.Repository.SSHURL, ev.Repository.HTMLURL, ev.Repository.URL}
+	urls := ev.Repository.urls()
 	claims := &deliveryClaims{h: h}
 	deleted := []string{}
 	anyFresh, anyWork := false, false
@@ -787,6 +798,7 @@ func (h *GitWebhook) recordBranchDeletedFact(ctx context.Context, app *appv1alph
 func (h *GitWebhook) disableAutoDeploy(ctx context.Context, app *appv1alpha1.App) error {
 	patch := client.MergeFrom(app.DeepCopy())
 	app.Spec.AutoDeploy = false
+	delete(app.Annotations, annotChecksPendingCommit)
 	return h.Svc.Client.Patch(ctx, app, patch)
 }
 
@@ -796,7 +808,7 @@ func (h *GitWebhook) disableAutoDeploy(ctx context.Context, app *appv1alpha1.App
 // signature already authorized this call. It also returns a set of tenant IDs
 // whose Apps share this repo (used for blueprint auto-sync post-response).
 func (h *GitWebhook) redeployMatching(ctx context.Context, ev pushEvent, branch, scope string) (redeployed []string, tenants map[string]struct{}, err error) {
-	urls := []string{ev.Repository.CloneURL, ev.Repository.SSHURL, ev.Repository.HTMLURL, ev.Repository.URL}
+	urls := ev.Repository.urls()
 	candidates, err := h.repoCandidates(ctx, urls, scope)
 	if err != nil {
 		return nil, nil, err
@@ -841,6 +853,20 @@ func (h *GitWebhook) redeployCandidates(ctx context.Context, ev pushEvent, branc
 		// than 5xx (which would cause retries and generation churn).
 		if err := h.Svc.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
 			log.Printf("webhook: skip redeploy %s: billing enforced: %v", a.Name, err)
+			continue
+		}
+		// checksPass (w1/m181): the push names the commit to deploy once its
+		// GitHub checks pass (serveCheckSuite). Checks that already passed — a
+		// commit CI checked on another branch before this fast-forward — deploy
+		// it now, since no further suite will complete for it.
+		if a.Spec.AutoDeployTrigger == checksPassTrigger {
+			if err := h.awaitChecks(ctx, a, ev.After); err != nil {
+				log.Printf("webhook: await checks for %s: %v", a.Name, err)
+				continue
+			}
+			if h.deployIfChecksPass(ctx, a, ev.After, ev.commitInfo()) {
+				redeployed = append(redeployed, a.Name)
+			}
 			continue
 		}
 		if _, err := h.Svc.redeployFetched(ctx, a, ev.commitInfo()); err != nil {
@@ -898,7 +924,7 @@ func (h *GitWebhook) recordCommitIgnored(ctx context.Context, app *appv1alpha1.A
 // comparing against every URL form the payload carries (clone/ssh/html/api),
 // each canonicalized so an https clone URL matches a ".git"-suffixed spec.
 func repoMatches(specRepo string, ev pushEvent) bool {
-	return repoURLsMatch(specRepo, ev.Repository.CloneURL, ev.Repository.SSHURL, ev.Repository.HTMLURL, ev.Repository.URL)
+	return repoURLsMatch(specRepo, ev.Repository.urls()...)
 }
 
 // repoURLsMatch reports whether specRepo names any of the given repository URL

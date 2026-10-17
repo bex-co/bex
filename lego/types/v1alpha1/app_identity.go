@@ -82,6 +82,7 @@ var AppSpecIdentityClasses = map[string]SpecIdentityClass{
 	"HealthCheckPath":            IdentityRelease,
 	"MaxShutdownDelaySeconds":    IdentityRelease,
 	"AutoDeploy":                 IdentityOperational,
+	"AutoDeployTrigger":          IdentityOperational,
 	"NotifyOnFail":               IdentityOperational,
 	"NotificationsToSend":        IdentityOperational,
 	"PreDeployCommand":           IdentityRelease,

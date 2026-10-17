@@ -658,6 +658,14 @@ type AppSpec struct {
 	// +optional
 	AutoDeploy bool `json:"autoDeploy,omitempty"`
 
+	// AutoDeployTrigger refines AutoDeploy with Render's autoDeployTrigger
+	// (w1/m181): "checksPass" deploys a pushed commit only once all of its
+	// GitHub checks pass; empty (or "commit") deploys on push. bex-api reads it
+	// only while AutoDeploy is true. The operator never reads it.
+	// +optional
+	// +kubebuilder:validation:Enum=commit;checksPass
+	AutoDeployTrigger string `json:"autoDeployTrigger,omitempty"`
+
 	// NotifyOnFail is Render's per-service deploy-failure notification override
 	// (spec.notifyOnFail, byte-identical name/enum to Render's service object —
 	// docs/render-artifacts/notify-on-fail.md): "default" defers to each

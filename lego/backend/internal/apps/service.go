@@ -152,6 +152,9 @@ type Service struct {
 	// same seam deploys.Service.Commits wires. nil => the deploy rows this
 	// package opens carry no commit metadata.
 	Commits CommitResolver
+	// Checks reads a commit's GitHub check runs for autoDeployTrigger
+	// checksPass (w1/m181). nil => checksPass is refused and never deploys.
+	Checks ChecksSource
 	// StartedNotifier is invoked asynchronously after a signed git push has
 	// successfully started the redeploy. nil leaves push-to-deploy unchanged.
 	StartedNotifier DeployStartedNotifier
@@ -590,6 +593,9 @@ type AppView struct {
 	// (spec.autoDeploy, Render's Auto-Deploy toggle). The Settings → Build &
 	// Deploy section reads it to render the toggle and writes it via SetAutoDeploy.
 	AutoDeploy bool `json:"autoDeploy"`
+	// AutoDeployTrigger is Render's enum for the same setting: off, commit or
+	// checksPass (w1/m181).
+	AutoDeployTrigger string `json:"autoDeployTrigger"`
 	// PushDeliveryMethod is how a push to Branch can REACH bex for this specific
 	// repo — github_app | manual_webhook | none | unknown (see pushdelivery.go).
 	// AutoDeploy above is the on/off setting; this is whether the setting has a
@@ -1139,6 +1145,7 @@ func view(a *appv1alpha1.App) AppView {
 		Disk:                  serviceDiskView(a.Spec.Disk),
 		LinkedEnvGroupIDs:     linkedEnvGroupIDs(a),
 		AutoDeploy:            a.Spec.AutoDeploy,
+		AutoDeployTrigger:     triggerEnum(a.Spec.AutoDeploy, a.Spec.AutoDeployTrigger),
 		NotifyOnFail:          notifyOnFail,
 		NotificationsToSend:   policy,
 		RenderSubdomainPolicy: subdomainPolicy,
@@ -1842,6 +1849,10 @@ type CreateRequest struct {
 	// repo-backed service (Render's default too), off for an image-backed one
 	// (nothing to rebuild on push).
 	AutoDeploy *bool
+	// AutoDeployChecksPass makes an enabled Auto-Deploy wait for the pushed
+	// commit's GitHub checks (autoDeployTrigger checksPass, w1/m181). nil or
+	// false => deploy on push.
+	AutoDeployChecksPass *bool
 	// NotifyOnFail is Render's per-service deploy-failure notification override
 	// (spec.notifyOnFail): default | notify | ignore, docs/render-artifacts/
 	// notify-on-fail.md. Empty means "default" (defer to each member's own
@@ -2506,6 +2517,11 @@ func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *a
 		}
 		a.Spec.CloneSecret = secretName
 	}
+	if checksGated(a.Spec) {
+		if err := s.requireChecksPermitted(ctx, a); err != nil {
+			return AppView{}, rollbackStoreRow(err)
+		}
+	}
 	pullSecretName, err := s.ensureExternalRegistryPullSecret(ctx, a)
 	if err != nil {
 		return AppView{}, rollbackStoreRow(err)
@@ -2939,11 +2955,12 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		MaxShutdownDelaySeconds: clonePtr(
 			req.MaxShutdownDelaySeconds,
 		),
-		Env:              req.Env,
-		AutoDeploy:       autoDeploy,
-		NotifyOnFail:     notifyOnFail,
-		SubdomainPolicy:  subdomainPolicy,
-		PreDeployCommand: commandText(req.PreDeployCommand),
+		Env:               req.Env,
+		AutoDeploy:        autoDeploy,
+		AutoDeployTrigger: createAutoDeployTrigger(autoDeploy, req.AutoDeployChecksPass),
+		NotifyOnFail:      notifyOnFail,
+		SubdomainPolicy:   subdomainPolicy,
+		PreDeployCommand:  commandText(req.PreDeployCommand),
 		// The one-time hook keeps its own role; the operator runs it in place of
 		// preDeployCommand until it succeeds (w8/m63).
 		InitialDeployHook: commandText(req.InitialDeployHook),
@@ -3079,6 +3096,15 @@ func useRepositoryDefaultBranch(spec *appv1alpha1.AppSpec, reported string) erro
 	}
 	spec.Branch = reported
 	return nil
+}
+
+// createAutoDeployTrigger is spec.autoDeployTrigger for a create: checksPass
+// only on an enabled Auto-Deploy.
+func createAutoDeployTrigger(autoDeploy bool, checksPass *bool) string {
+	if autoDeploy && checksPass != nil && *checksPass {
+		return checksPassTrigger
+	}
+	return ""
 }
 
 // normalizeCreateDefaults bounds-checks the create's port/replica values and
@@ -3370,6 +3396,7 @@ func applyCreateToSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 	dst.MaxShutdownDelaySeconds = clonePtr(want.MaxShutdownDelaySeconds)
 	dst.Env = want.Env
 	dst.AutoDeploy = want.AutoDeploy
+	dst.AutoDeployTrigger = want.AutoDeployTrigger
 	dst.NotifyOnFail = want.NotifyOnFail
 	dst.NotificationsToSend = want.NotificationsToSend
 	dst.SubdomainPolicy = want.SubdomainPolicy
@@ -4566,8 +4593,46 @@ func (s *Service) SetAutoDeploy(ctx context.Context, name string, enabled bool) 
 	if err != nil {
 		return AppView{}, err
 	}
+	return s.setAutoDeployFetched(ctx, a, enabled, nil)
+}
+
+// SetAutoDeployTrigger sets Auto-Deploy from Render's autoDeployTrigger enum:
+// off, commit, or checksPass, which waits for the pushed commit's GitHub
+// checks (w1/m181) and needs the GitHub App's Checks: read permission.
+func (s *Service) SetAutoDeployTrigger(ctx context.Context, name, trigger string) (AppView, error) {
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	enabled, checksPass, err := parseTrigger(trigger)
+	if err != nil {
+		return AppView{}, err
+	}
+	if enabled == nil {
+		return AppView{}, fmt.Errorf("%w: autoDeployTrigger is required", core.ErrBadRequest)
+	}
+	return s.setAutoDeployFetched(ctx, a, *enabled, checksPass)
+}
+
+// setAutoDeployFetched writes spec.autoDeploy and, when checksPass is non-nil,
+// the checks gate, on an App its caller authorized. Turning checksPass on first
+// proves the gate can work.
+func (s *Service) setAutoDeployFetched(ctx context.Context, a *appv1alpha1.App, enabled bool, checksPass *bool) (AppView, error) {
+	trigger := a.Spec.AutoDeployTrigger
+	if checksPass != nil {
+		trigger = createAutoDeployTrigger(true, checksPass)
+	}
+	if enabled && trigger == checksPassTrigger && !checksGated(a.Spec) {
+		if err := s.requireChecksPermitted(ctx, a); err != nil {
+			return AppView{}, err
+		}
+	}
 	result, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.AutoDeploy = enabled
+		a.Spec.AutoDeployTrigger = trigger
+		if !enabled || trigger != checksPassTrigger {
+			delete(a.Annotations, annotChecksPendingCommit)
+		}
 	})
 	if err != nil {
 		return AppView{}, err

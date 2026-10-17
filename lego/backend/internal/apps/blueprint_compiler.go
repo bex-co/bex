@@ -421,13 +421,12 @@ func blueprintPrebuiltImageProblems(object map[string]any, path []string, locati
 		if sourceField.blueprintName == "autoDeploy" && object["autoDeploy"] == false {
 			continue
 		}
-		// Only the enabled, otherwise-supported trigger is incompatible.
-		// checksPass and an invalid enum already have a more
-		// specific registry/schema diagnosis at this same path; emitting both
+		// Only an enabled trigger is incompatible. An invalid enum already has
+		// a more specific schema diagnosis at this same path; emitting both
 		// would make one edit look like two independently actionable errors.
 		if sourceField.blueprintName == "autoDeployTrigger" {
 			trigger, _ := object[sourceField.blueprintName].(string)
-			if trigger != "commit" {
+			if trigger != "commit" && trigger != checksPassTrigger {
 				continue
 			}
 		}
@@ -723,8 +722,6 @@ func blueprintUnsupportedEnumMessage(registry *BlueprintCapabilityRegistry, fiel
 	case "#/definitions/database/properties/postgresMajorVersion/enum":
 		// The create API's wording and supported list, from one source (w8/054).
 		return field + ": " + postgres.UnsupportedVersionMessage(value)
-	case "#/definitions/autoDeployTrigger/enum":
-		return "autoDeployTrigger: checksPass requires CI-check gating, which is not available on bex"
 	case "#/definitions/serverPlan/enum", "#/definitions/cronPlan/enum", "#/definitions/keyValuePlan/enum", "#/definitions/postgresPlan/enum":
 		return "plan names a Render compute plan size that bex does not offer"
 	case "#/definitions/serviceType/enum":

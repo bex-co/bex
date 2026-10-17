@@ -312,14 +312,18 @@ func yesNoEnum(autoDeploy bool) string {
 	return "no"
 }
 
-// triggerEnum renders Render's autoDeployTrigger for bex's boolean autoDeploy:
-// "commit" (a push redeploys) or "off". bex never emits "checksPass" — it has no
-// CI-gated deploy trigger (documented divergence, docs/ADR018-render-parity.md).
-func triggerEnum(autoDeploy bool) string {
-	if autoDeploy {
+// triggerEnum renders Render's autoDeployTrigger from spec.autoDeploy and its
+// checks gate: "off", "commit" (a push redeploys) or "checksPass" (a push
+// redeploys once its GitHub checks pass, w1/m181).
+func triggerEnum(autoDeploy bool, trigger string) string {
+	switch {
+	case !autoDeploy:
+		return "off"
+	case trigger == checksPassTrigger:
+		return checksPassTrigger
+	default:
 		return "commit"
 	}
-	return "off"
 }
 
 func toRenderService(a AppView) renderService {
@@ -383,7 +387,7 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		Autoscaling:               toRenderAutoscaling(a.Autoscaling),
 		AutoDeploy:                yesNoEnum(a.AutoDeploy),
 		LinkedEnvGroupIDs:         a.LinkedEnvGroupIDs,
-		AutoDeployTrigger:         triggerEnum(a.AutoDeploy),
+		AutoDeployTrigger:         a.AutoDeployTrigger,
 		PushDeliveryMethod:        a.PushDeliveryMethod,
 		NotifyOnFail:              a.NotifyOnFail,
 		NotificationsToSend:       a.NotificationsToSend,

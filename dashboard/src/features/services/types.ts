@@ -163,6 +163,11 @@ export interface ServiceView {
    */
   autoDeploy: boolean | null;
   /**
+   * Render's Auto-Deploy enum — off | commit | checksPass (w1/m181); null when
+   * not selected (list query).
+   */
+  autoDeployTrigger: string | null;
+  /**
    * The linked environment groups in PRECEDENCE order (w2/m94/t003): the order
    * the links were added, which is `spec.envFromSecrets` order. The operator
    * emits those Secrets as `envFrom` sources in this order and Kubernetes lets

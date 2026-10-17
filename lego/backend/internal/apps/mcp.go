@@ -104,6 +104,7 @@ type updateServiceArgs struct {
 	Port                    *int32                   `json:"port,omitempty" jsonschema:"the port the container listens on, which the platform injects as PORT and targets with the Service, Ingress and health probe (1-65535). Changing it rolls the pods. web_service and private_service only — a worker or cron job has no listener, and a static site is served on the platform's own port. This is the setting bex's reserved-PORT refusal points at: set the port here rather than as an environment variable"`
 	MaxShutdownDelaySeconds *int32                   `json:"maxShutdownDelaySeconds,omitempty" jsonschema:"seconds after SIGTERM before Kubernetes sends SIGKILL (1-300; default 30); web, private, and background-worker services"`
 	AutoDeploy              *bool                    `json:"autoDeploy,omitempty" jsonschema:"true = a signed git push to the tracked branch redeploys (Render's Auto-Deploy); false = only explicit deploys. Setting it does not itself redeploy"`
+	AutoDeployTrigger       *string                  `json:"autoDeployTrigger,omitempty" jsonschema:"Render's Auto-Deploy enum: off, commit (deploy on push), or checksPass (deploy a pushed commit once all its GitHub checks pass; needs the GitHub App's Checks: read). Wins over autoDeploy when both are sent"`
 	BuildFilter             *buildFilterArg          `json:"buildFilter,omitempty" jsonschema:"Render's Build Filters: repository-root-relative globs (paths/ignoredPaths) deciding whether a git push triggers an auto-deploy; ignored wins over included. Pass empty paths and ignoredPaths to clear the filter"`
 	NotifyOnFail            *string                  `json:"notifyOnFail,omitempty" jsonschema:"deploy-failure notification override: default (defer to each member's own preference), notify (always email every member on a failed deploy), or ignore (never email anyone for this service). Governs failure mail only"`
 	NotificationsToSend     *string                  `json:"notificationsToSend,omitempty" jsonschema:"service notification policy: default (inherit workspace/member preferences, failure-only), failure, all, or none"`
@@ -232,7 +233,7 @@ type listCronJobRunsResult struct {
 // tool's refusals, then toCreateRequest with the call's workspace and the
 // resolved allowlist (TestCreateWireFieldsReachTheRequest drives it).
 func (a createWebServiceArgs) createRequest(ctx context.Context) (CreateRequest, error) {
-	if _, err := parseAutoDeploy(a.AutoDeploy, ""); err != nil {
+	if _, _, err := parseAutoDeploy(a.AutoDeploy, ""); err != nil {
 		return CreateRequest{}, err
 	}
 	if err := a.dockerDetails().conflict(); err != nil {
@@ -321,7 +322,7 @@ type createCronJobArgs struct {
 
 // createRequest is create_cron_job's whole wire-to-request step.
 func (a createCronJobArgs) createRequest(ctx context.Context) (CreateRequest, error) {
-	if _, err := parseAutoDeploy(a.AutoDeploy, ""); err != nil {
+	if _, _, err := parseAutoDeploy(a.AutoDeploy, ""); err != nil {
 		return CreateRequest{}, err
 	}
 	if err := a.dockerDetails().conflict(); err != nil {
@@ -544,7 +545,7 @@ type createStaticSiteArgs struct {
 
 // createRequest is create_static_site's whole wire-to-request step.
 func (a createStaticSiteArgs) createRequest(ctx context.Context) (CreateRequest, error) {
-	if _, err := parseAutoDeploy(a.AutoDeploy, ""); err != nil {
+	if _, _, err := parseAutoDeploy(a.AutoDeploy, ""); err != nil {
 		return CreateRequest{}, err
 	}
 	allowList, err := core.ResolveAllowListInputs(a.IPAllowListEntries, a.IPAllowListEntries != nil, a.IPAllowList, a.IPAllowList != nil)
@@ -828,6 +829,12 @@ func (s *Service) applyServicePatch(ctx context.Context, in updateServiceArgs) (
 	if err != nil {
 		return AppView{}, err
 	}
+	autoDeploy, checksPass := in.AutoDeploy, (*bool)(nil)
+	if in.AutoDeployTrigger != nil {
+		if autoDeploy, checksPass, err = parseTrigger(*in.AutoDeployTrigger); err != nil {
+			return AppView{}, err
+		}
+	}
 
 	p := ServicePatch{
 		DisplayName:          in.DisplayName,
@@ -845,7 +852,8 @@ func (s *Service) applyServicePatch(ctx context.Context, in updateServiceArgs) (
 		MaxShutdownDelaySeconds:        in.MaxShutdownDelaySeconds,
 		RootDir:                        in.RootDir,
 		BuildFilter:                    in.BuildFilter.toView(),
-		AutoDeploy:                     in.AutoDeploy,
+		AutoDeploy:                     autoDeploy,
+		AutoDeployChecksPass:           checksPass,
 		Schedule:                       in.Schedule,
 		Command:                        in.Command,
 		HealthCheckPath:                in.HealthCheckPath,

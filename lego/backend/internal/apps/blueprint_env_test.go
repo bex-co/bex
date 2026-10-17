@@ -286,14 +286,14 @@ func TestValidateFiveFormsCrossSurface(t *testing.T) {
     type: web
     runtime: image
     image: {url: nginx:1}
-    autoDeployTrigger: checksPass
+    pullRequestPreviewsEnabled: true
 `
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/validate", strings.NewReader(fmt.Sprintf(`{"bexYaml":%q}`, unsupported))))
 	if err := json.Unmarshal(rec.Body.Bytes(), &rest); err != nil {
 		t.Fatalf("REST unsupported unmarshal: %v", err)
 	}
-	if rest.Valid || len(rest.Errors) != 1 || rest.Errors[0].Code != "BLUEPRINT_CAPABILITY_UNSUPPORTED" || rest.Errors[0].Path == nil || *rest.Errors[0].Path != "services[0].autoDeployTrigger" {
+	if rest.Valid || len(rest.Errors) != 1 || rest.Errors[0].Code != "BLUEPRINT_CAPABILITY_UNSUPPORTED" || rest.Errors[0].Path == nil || *rest.Errors[0].Path != "services[0].pullRequestPreviewsEnabled" {
 		t.Errorf("REST unsupported result = %+v", rest)
 	}
 	q = fmt.Sprintf(`{ validateBlueprint(bexYaml: %q) { valid errorDetails { code path } } }`, unsupported)
@@ -303,14 +303,14 @@ func TestValidateFiveFormsCrossSurface(t *testing.T) {
 	}
 	gv = res.Data.(map[string]any)["validateBlueprint"].(map[string]any)
 	details, _ := gv["errorDetails"].([]any)
-	if gv["valid"] != false || len(details) != 1 || details[0].(map[string]any)["code"] != "BLUEPRINT_CAPABILITY_UNSUPPORTED" || details[0].(map[string]any)["path"] != "services[0].autoDeployTrigger" {
+	if gv["valid"] != false || len(details) != 1 || details[0].(map[string]any)["code"] != "BLUEPRINT_CAPABILITY_UNSUPPORTED" || details[0].(map[string]any)["path"] != "services[0].pullRequestPreviewsEnabled" {
 		t.Errorf("GraphQL unsupported result = %+v", gv)
 	}
 	mcpResult = call("validate_bex_yml", map[string]any{"bexYaml": unsupported})
 	mcpErrors, _ := mcpResult["errors"].([]any)
 	if mcpResult["valid"] != false || len(mcpErrors) != 1 {
 		t.Errorf("MCP unsupported result = %+v", mcpResult)
-	} else if detail, _ := mcpErrors[0].(map[string]any); detail["code"] != "BLUEPRINT_CAPABILITY_UNSUPPORTED" || detail["path"] != "services[0].autoDeployTrigger" {
+	} else if detail, _ := mcpErrors[0].(map[string]any); detail["code"] != "BLUEPRINT_CAPABILITY_UNSUPPORTED" || detail["path"] != "services[0].pullRequestPreviewsEnabled" {
 		t.Errorf("MCP unsupported detail = %+v", detail)
 	}
 }

@@ -1,25 +1,25 @@
 # w1 · m181 — Auto-deploy after CI checks pass (`autoDeployTrigger: checksPass`)
 
-**Worker:** worker1 **Goal:** a Git service set to "After CI Checks Pass" deploys a pushed commit only when all of its GitHub checks pass, on every surface and from Blueprints, as on Render. **Status:** todo
+**Worker:** worker1 **Goal:** a Git service set to "After CI Checks Pass" deploys a pushed commit only when all of its GitHub checks pass, on every surface and from Blueprints, as on Render. **Status:** blocked (t001–t005, t007–t009 done 2026-10-17; t006 needs the production GitHub App to be granted Checks: read and the Check suite event by its owner)
 
 ## Tasks (in order)
 
 | id   | title                                                                                     | est   | depends_on |
 | ---- | ----------------------------------------------------------------------------------------- | ----- | ---------- |
-| t001 | Record Render's After-CI-Checks-Pass contract                                              | 30m   | —          |
-| t002 | GitHub App: request checks read access and check events; refuse checksPass clearly when they are missing | 45m | t001 |
-| t003 | Gate auto-deploy on the commit's checks                                                    | 1h30m | t002       |
-| t004 | Accept checksPass on REST, GraphQL, MCP, Blueprints and the dashboard                      | 1h    | t003       |
-| t005 | Update the parity docs                                                                     | 20m   | t004       |
+| t001 | Record Render's After-CI-Checks-Pass contract — **DONE** | 30m   | —          |
+| t002 | GitHub App: request checks read access and check events; refuse checksPass clearly when they are missing — **DONE** | 45m | t001 |
+| t003 | Gate auto-deploy on the commit's checks — **DONE** | 1h30m | t002       |
+| t004 | Accept checksPass on REST, GraphQL, MCP, Blueprints and the dashboard — **DONE** | 1h    | t003       |
+| t005 | Update the parity docs — **DONE** | 20m   | t004       |
 | t006 | Live check with a GitHub Actions repository                                                | 45m   | t004       |
-| t007 | Render parity                                                                              | 20m   | t005, t006 |
-| t008 | Simplify                                                                                   | 15m   | t007       |
-| t009 | Test coverage                                                                              | 40m   | t007       |
+| t007 | Render parity — **DONE** | 20m   | t005, t006 |
+| t008 | Simplify — **DONE** | 15m   | t007       |
+| t009 | Test coverage — **DONE** | 40m   | t007       |
 | t010 | Closeout                                                                                   | 10m   | t009       |
 
 ## Definition of done
 
-- With `autoDeployTrigger: checksPass`, a pushed commit deploys only when all its GitHub checks conclude `success`/`neutral`/`skipped`; a failing or check-less commit does not deploy; a newer push supersedes a pending one (t001 contract).
+- With `autoDeployTrigger: checksPass`, a pushed commit deploys only when all its GitHub checks conclude `success`/`neutral`/`skipped`; a failing or check-less commit does not deploy (a passing re-run of a failed check does, amended 2026-10-17 as a bex decision); a newer push supersedes a pending one (t001 contract).
 - REST, GraphQL, MCP, the Blueprint compiler and the dashboard accept and read back `checksPass`; `commit` and `off` are unchanged.
 - An installation without `checks: read` gets a coded refusal naming the permission.
 - t006's live check passes on a real repository.

@@ -546,9 +546,9 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 			return CreateRequest{}, err
 		}
 	}
-	// Auto-Deploy: autoDeployTrigger (off|commit) wins over the legacy autoDeploy
-	// enum when both are sent; checksPass is rejected (w5/m53).
-	autoDeploy, err := parseAutoDeploy(r.AutoDeploy, r.AutoDeployTrigger)
+	// Auto-Deploy: autoDeployTrigger (off|commit|checksPass) wins over the
+	// legacy autoDeploy enum when both are sent (w5/m53, w1/m181).
+	autoDeploy, checksPass, err := parseAutoDeploy(r.AutoDeploy, r.AutoDeployTrigger)
 	if err != nil {
 		return CreateRequest{}, err
 	}
@@ -581,6 +581,7 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 		SecretFiles:             secretFiles,
 		Hosts:                   r.Domains,
 		AutoDeploy:              autoDeploy,
+		AutoDeployChecksPass:    checksPass,
 		NotifyOnFail:            r.NotifyOnFail,
 		SubdomainPolicy:         subdomainPolicy,
 		PreDeployCommand:        preDeploy,
@@ -608,44 +609,41 @@ func parseYesNo(s string) *bool {
 	}
 }
 
-// parseTrigger maps Render's autoDeployTrigger enum ("off"|"commit") to a
-// tri-state *bool. "checksPass" is rejected — bex deploys on every matching push
-// or not at all, with no CI-checks-gated trigger (a documented divergence,
-// docs/ADR018-render-parity.md); any other non-empty value is a bad request too.
-// "" => nil (not provided).
-func parseTrigger(s string) (*bool, error) {
+// parseTrigger maps Render's autoDeployTrigger enum to whether a push
+// deploys (autoDeploy) and whether it first waits for CI checks (checksPass,
+// w1/m181). "" => both nil (not provided); any other value is a bad request.
+func parseTrigger(s string) (autoDeploy, checksPass *bool, err error) {
+	on, off := true, false
 	switch s {
 	case "":
-		return nil, nil
+		return nil, nil, nil
 	case "commit":
-		t := true
-		return &t, nil
+		return &on, &off, nil
 	case "off":
-		f := false
-		return &f, nil
-	case "checksPass":
-		return nil, fmt.Errorf("%w: autoDeployTrigger %q is not supported — bex deploys on every matching push (%q) or not at all (%q); it has no CI-checks-gated deploy trigger", core.ErrBadRequest, s, "commit", "off")
+		return &off, &off, nil
+	case checksPassTrigger:
+		return &on, &on, nil
 	default:
-		return nil, fmt.Errorf("%w: autoDeployTrigger must be %q or %q", core.ErrBadRequest, "off", "commit")
+		return nil, nil, fmt.Errorf("%w: autoDeployTrigger must be %q, %q or %q", core.ErrBadRequest, "off", "commit", checksPassTrigger)
 	}
 }
 
 // parseAutoDeploy resolves Render's two Auto-Deploy fields into one tri-state
 // *bool: autoDeployTrigger takes precedence over the legacy autoDeploy enum when
 // both are present (Render's documented precedence), validating the trigger.
-func parseAutoDeploy(autoDeploy, trigger string) (*bool, error) {
-	t, err := parseTrigger(trigger)
-	if err != nil {
-		return nil, err
-	}
-	if t != nil {
-		return t, nil
+//
+// The legacy enum knows no checks gate, so it leaves the gate as it is
+// (checksPass nil) on every surface; only autoDeployTrigger sets it.
+func parseAutoDeploy(autoDeploy, trigger string) (enabled, checksPass *bool, err error) {
+	enabled, checksPass, err = parseTrigger(trigger)
+	if err != nil || enabled != nil {
+		return enabled, checksPass, err
 	}
 	legacy := parseYesNo(autoDeploy)
 	if legacy == nil && autoDeploy != "" {
-		return nil, fmt.Errorf("%w: autoDeploy must be yes or no", core.ErrBadRequest)
+		return nil, nil, fmt.Errorf("%w: autoDeploy must be yes or no", core.ErrBadRequest)
 	}
-	return legacy, nil
+	return legacy, nil, nil
 }
 
 // servicesBase is Render's canonical /v1/services route prefix, shared by the
@@ -826,6 +824,7 @@ type patchFields struct {
 	registryCredentialID                                    *string
 	ipAllowList                                             *[]core.IPAllowListEntry // nil = not provided (leave unchanged); non-nil = replace
 	autoDeploy                                              *bool
+	autoDeployChecksPass                                    *bool
 	port                                                    *int32
 }
 
@@ -904,13 +903,13 @@ func (req patchServiceRequest) resolveFields(r *http.Request) (patchFields, erro
 		return patchFields{}, registryErr
 	}
 	f.registryCredentialID = registryCredentialID
-	// Auto-Deploy: autoDeployTrigger (off|commit) wins over the legacy
-	// autoDeploy enum when both are sent; checksPass is rejected (w5/m53).
-	autoDeploy, autoDeployErr := parseAutoDeploy(req.AutoDeploy, req.AutoDeployTrigger)
+	// Auto-Deploy: autoDeployTrigger (off|commit|checksPass) wins over the
+	// legacy autoDeploy enum when both are sent (w5/m53, w1/m181).
+	autoDeploy, checksPass, autoDeployErr := parseAutoDeploy(req.AutoDeploy, req.AutoDeployTrigger)
 	if autoDeployErr != nil {
 		return patchFields{}, autoDeployErr
 	}
-	f.autoDeploy = autoDeploy
+	f.autoDeploy, f.autoDeployChecksPass = autoDeploy, checksPass
 	if req.Name != nil {
 		f.displayName = req.Name
 	}
@@ -1004,6 +1003,7 @@ func (req patchServiceRequest) toServicePatch(f patchFields, maintenanceMode *Ma
 		RootDir:                        req.RootDir,
 		BuildFilter:                    req.BuildFilter,
 		AutoDeploy:                     f.autoDeploy,
+		AutoDeployChecksPass:           f.autoDeployChecksPass,
 		Schedule:                       f.schedule,
 		Command:                        req.Command,
 		HealthCheckPath:                f.healthCheckPath,

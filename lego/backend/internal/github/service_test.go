@@ -255,6 +255,12 @@ func (f *fakeStore) DeleteGitConnection(_ context.Context, workspaceID string, i
 }
 
 type fakeClient struct {
+	// checksDenied makes MintChecksToken report the installation has not
+	// granted Checks: read; checkRuns is ListCheckRuns' answer (w1/m181).
+	checksDenied  bool
+	installEvents []string
+	checkRuns     []CheckRun
+	gotChecksFor  []string // (token, owner, repo, sha)
 	installErr    error
 	login         string
 	repos         []Repo
@@ -308,7 +314,7 @@ func (c *fakeClient) GetInstallation(_ context.Context, id int64) (Installation,
 	if c.installErr != nil {
 		return Installation{}, c.installErr
 	}
-	return Installation{ID: id, AccountLogin: c.login}, nil
+	return Installation{ID: id, AccountLogin: c.login, Events: c.installEvents}, nil
 }
 
 func (c *fakeClient) ListRepos(_ context.Context, installationID int64) ([]Repo, error) {
@@ -388,6 +394,19 @@ func (c *fakeClient) GetRepoCommitSHA(_ context.Context, _, _, _, _ string) (str
 }
 func (c *fakeClient) OpenDraftPullRequest(_ context.Context, _ int64, _, _, _, _, _, _ string) (PullRequest, error) {
 	return PullRequest{}, nil
+}
+func (c *fakeClient) MintChecksToken(_ context.Context, _ int64) (InstallationToken, bool, error) {
+	if c.tokenErr != nil {
+		return InstallationToken{}, false, c.tokenErr
+	}
+	if c.checksDenied {
+		return InstallationToken{}, false, nil
+	}
+	return InstallationToken{Token: "checks-" + c.token}, true, nil
+}
+func (c *fakeClient) ListCheckRuns(_ context.Context, token, owner, repo, sha string) ([]CheckRun, error) {
+	c.gotChecksFor = []string{token, owner, repo, sha}
+	return c.checkRuns, nil
 }
 
 // allowChecker allows exactly the relations in its set.

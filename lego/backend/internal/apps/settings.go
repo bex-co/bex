@@ -78,6 +78,7 @@ type ServicePatch struct {
 	RootDir                        *string
 	BuildFilter                    *BuildFilterView
 	AutoDeploy                     *bool
+	AutoDeployChecksPass           *bool
 	Schedule                       *string
 	Command                        *string
 	HealthCheckPath                *string
@@ -294,7 +295,7 @@ var servicePatchTable = []servicePatchOp{
 		},
 	},
 	{
-		fields:   []string{"AutoDeploy"},
+		fields:   []string{"AutoDeploy", "AutoDeployChecksPass"},
 		present:  func(p ServicePatch) bool { return p.AutoDeploy != nil },
 		relation: canOperate,
 		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
@@ -302,7 +303,11 @@ var servicePatchTable = []servicePatchOp{
 			return nil
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
-			return s.SetAutoDeploy(ctx, id, *p.AutoDeploy)
+			a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, id)
+			if err != nil {
+				return AppView{}, err
+			}
+			return s.setAutoDeployFetched(ctx, a, *p.AutoDeploy, p.AutoDeployChecksPass)
 		},
 	},
 	{

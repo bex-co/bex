@@ -80,6 +80,8 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
       "registryCredentialId" in s ? (s.registryCredentialId ?? null) : null,
     buildFilter: "buildFilter" in s ? toBuildFilter(s.buildFilter) : null,
     autoDeploy: "autoDeploy" in s ? (s.autoDeploy ?? null) : null,
+    autoDeployTrigger:
+      "autoDeployTrigger" in s ? (s.autoDeployTrigger ?? null) : null,
     linkedEnvGroupIds:
       "linkedEnvGroupIds" in s
         ? ((s.linkedEnvGroupIds ?? []).filter(

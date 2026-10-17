@@ -238,7 +238,7 @@ Render's create-service JSON and Blueprint YAML are different contracts. `secret
 | `envVars: {key, fromService}` (host/port/hostport) | ✅ | → literal |
 | `databases`: `name`/`plan`/`diskSizeGB`/`postgresMajorVersion`/`ipAllowList`/`readReplicas`/`highAvailability` | ✅ | → Database CR spec |
 | service `type: keyvalue` / `redis` | ✅ | → KeyValue CR spec; may be root, environment-scoped, or ungrouped |
-| `autoDeployTrigger` | ◐ | `commit`→on and `off`→off; `checksPass` is explicitly rejected because bex has no CI-check gate |
+| `autoDeployTrigger` | ✅ | `commit`→on, `off`→off, `checksPass`→on and waits for the pushed commit's GitHub checks (w1/m181); refused by name when the GitHub App lacks Checks: read |
 | `preDeployCommand` | ◐ | → `App.spec.preDeployCommand` for web/private/worker services; explicitly rejected for cron jobs and static sites, which have no pre-deploy phase |
 | `buildFilter` (`paths`/`ignoredPaths`) | ✅ | → `App.spec.buildFilter` (w1/m34): Render's Build Filters — repository-root-relative globs gating git-push auto-deploys (empty `paths` = every path; `ignoredPaths` wins over `paths`); malformed globs rejected at parse |
 | `maintenanceMode: {enabled, uri?}` | ✅ | → `App.spec.maintenanceMode` (w1/m37), paid web services only; omitted `uri` means the default page; omission of the whole field preserves an API/dashboard edit on re-sync |

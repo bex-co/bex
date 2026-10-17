@@ -320,10 +320,11 @@ func TestParseBlueprintServiceRejectsUnsupportedFieldsAndUsesXBexBuilder(t *test
 	}); err == nil {
 		t.Fatal("unnamespaced builder was accepted")
 	}
-	if _, _, err := parseService(blueprintParseOverrides{}, bexService{
+	checked, _, err := parseService(blueprintParseOverrides{}, bexService{
 		Name: "api", Type: "web", Runtime: "docker", Repo: "https://example.test/api.git", AutoDeployTrigger: "checksPass",
-	}); err == nil {
-		t.Fatal("checksPass was accepted")
+	})
+	if err != nil || deref(checked.AutoDeploy) != true || deref(checked.AutoDeployChecksPass) != true {
+		t.Fatalf("checksPass = autoDeploy %v checksPass %v, err %v; want the checks-gated trigger (w1/m181)", deref(checked.AutoDeploy), deref(checked.AutoDeployChecksPass), err)
 	}
 }
 

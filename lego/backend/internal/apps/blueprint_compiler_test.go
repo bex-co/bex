@@ -289,11 +289,11 @@ services:
     name: api
     runtime: image
     image: {url: nginx:1.27}
-    autoDeployTrigger: checksPass
+    pullRequestPreviewsEnabled: true
 `)
 	problem := findBlueprintProblem(problems, "BLUEPRINT_CAPABILITY_UNSUPPORTED")
-	if problem == nil || problem.Path != "#/services/0/autoDeployTrigger" {
-		t.Fatalf("checksPass problem = %+v; all = %+v", problem, problems)
+	if problem == nil || problem.Path != "#/services/0/pullRequestPreviewsEnabled" {
+		t.Fatalf("pull request previews problem = %+v; all = %+v", problem, problems)
 	}
 
 	_, problems = CompileBlueprintSource(`

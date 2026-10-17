@@ -2386,6 +2386,11 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Auto-Deploy select option: redeploy on every matching git push (Render's autoDeployTrigger 'commit', w5/m53)",
   },
+  "services.autoDeployAfterChecks": {
+    message: "After CI Checks Pass",
+    description:
+      "Auto-Deploy select option: redeploy a pushed commit once all its GitHub checks pass (Render's autoDeployTrigger 'checksPass', w1/m181)",
+  },
   "services.autoDeployOff": {
     message: "Off",
     description:
@@ -2417,6 +2422,10 @@ const enServices: Record<string, TranslationEntry> = {
   "services.autoDeployOnSuccess": {
     message: "Auto-Deploy turned on.",
     description: "Toast after enabling auto-deploy",
+  },
+  "services.autoDeployChecksSuccess": {
+    message: "Auto-Deploy now waits for CI checks to pass.",
+    description: "Toast after choosing After CI Checks Pass",
   },
   "services.autoDeployOffSuccess": {
     message: "Auto-Deploy turned off.",

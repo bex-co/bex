@@ -6,5 +6,18 @@ mutation SetAutoDeploy($id: String!, $enabled: Boolean!) {
   setAutoDeploy(id: $id, enabled: $enabled) {
     id
     autoDeploy
+    autoDeployTrigger
+  }
+}
+
+# setAutoDeployTrigger is the Settings Auto-Deploy picker with Render's three
+# choices (w1/m181): off | commit | checksPass. checksPass waits for the pushed
+# commit's GitHub checks and is refused, with the reason, when the GitHub App
+# lacks Checks: read.
+mutation SetAutoDeployTrigger($id: String!, $trigger: String!) {
+  setAutoDeployTrigger(id: $id, trigger: $trigger) {
+    id
+    autoDeploy
+    autoDeployTrigger
   }
 }
