@@ -10,6 +10,16 @@ export interface SectionNavigationItem {
 export const SECTION_NAVIGATION_STICKY_CLASS =
   "sticky top-0 z-20 -mx-4 border-y bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6 lg:top-6 lg:col-start-2 lg:row-start-1 lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none";
 
+/**
+ * Scroll margin for anything a link scrolls to beneath the section row. Below
+ * lg the 54px row sticks at the scroll container's padding edge (p-4, sm:p-6,
+ * or none on service settings), so it covers up to the top 78px of the
+ * scrollport; 96px leaves the target's heading clear of it (w4/336). The lg
+ * rail sits beside the content, which keeps the plain 24px. Usage and account
+ * Settings copy the row's classes inline, so a height change there moves this.
+ */
+export const SECTION_NAVIGATION_TARGET_CLASS = "scroll-mt-24 lg:scroll-mt-6";
+
 export const SECTION_NAVIGATION_ITEMS_CLASS =
   "flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible";
 

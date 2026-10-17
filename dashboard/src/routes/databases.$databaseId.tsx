@@ -47,7 +47,10 @@ import {
 } from "@/common/lib/document-head";
 import { DatastorePlanPreview } from "@/common/components/datastore-plan-preview";
 import { DeferredMount } from "@/common/components/deferred-mount";
-import { SECTION_NAVIGATION_STICKY_CLASS } from "@/common/components/section-navigation";
+import {
+  SECTION_NAVIGATION_STICKY_CLASS,
+  SECTION_NAVIGATION_TARGET_CLASS,
+} from "@/common/components/section-navigation";
 
 const RecoveryPanel = lazy(() =>
   import("@/features/databases/components/recovery-panel").then((m) => ({
@@ -250,14 +253,20 @@ function DatabaseDetailPage() {
               />
 
               <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
-                <section id="metadata" className="scroll-mt-6">
+                <section
+                  id="metadata"
+                  className={SECTION_NAVIGATION_TARGET_CLASS}
+                >
                   <DatabaseMetadataCard
                     database={database}
                     onVersionChanged={() => void refetch()}
                     onRenamed={() => void router.invalidate()}
                   />
                 </section>
-                <section id="connection" className="scroll-mt-6">
+                <section
+                  id="connection"
+                  className={SECTION_NAVIGATION_TARGET_CLASS}
+                >
                   {/* A revealed snapshot belongs to one publication state: when a
                       confirmed access change flips `public`, remount so the old
                       external URL is no longer copyable and a fresh Reveal is
@@ -267,7 +276,10 @@ function DatabaseDetailPage() {
                     id={database.id}
                   />
                 </section>
-                <section id="sql-console" className="scroll-mt-6">
+                <section
+                  id="sql-console"
+                  className={SECTION_NAVIGATION_TARGET_CLASS}
+                >
                   <DeferredMount hashId="sql-console" minHeight={280}>
                     <Suspense fallback={<CardSkeleton rows={4} />}>
                       <SQLConsole
@@ -278,14 +290,20 @@ function DatabaseDetailPage() {
                     </Suspense>
                   </DeferredMount>
                 </section>
-                <section id="high-availability" className="scroll-mt-6">
+                <section
+                  id="high-availability"
+                  className={SECTION_NAVIGATION_TARGET_CLASS}
+                >
                   <DeferredMount hashId="high-availability" minHeight={160}>
                     <Suspense fallback={<CardSkeleton rows={2} />}>
                       <HAPanel database={database} refetch={refetch} />
                     </Suspense>
                   </DeferredMount>
                 </section>
-                <section id="metrics" className="scroll-mt-6">
+                <section
+                  id="metrics"
+                  className={SECTION_NAVIGATION_TARGET_CLASS}
+                >
                   <DeferredMount hashId="metrics" minHeight={320}>
                     <Suspense fallback={<CardSkeleton rows={4} />}>
                       <DatastoreMetricsPanel
@@ -304,7 +322,7 @@ function DatabaseDetailPage() {
                     </Suspense>
                   </DeferredMount>
                 </section>
-                <section id="plan" className="scroll-mt-6">
+                <section id="plan" className={SECTION_NAVIGATION_TARGET_CLASS}>
                   {/* The ready plan card's bounds for a three-tier catalog
                       (w4/m208): 441px stacked on mobile, 237px from sm. */}
                   <DeferredMount
@@ -312,7 +330,9 @@ function DatabaseDetailPage() {
                     minHeight="var(--plan-reserve)"
                     className="[--plan-reserve:441px] sm:[--plan-reserve:237px]"
                   >
-                    <Suspense fallback={<DatastorePlanPreview kind="postgres" />}>
+                    <Suspense
+                      fallback={<DatastorePlanPreview kind="postgres" />}
+                    >
                       <DatabasePlanSection
                         database={database}
                         onChanged={() => void refetch()}
@@ -320,21 +340,30 @@ function DatabaseDetailPage() {
                     </Suspense>
                   </DeferredMount>
                 </section>
-                <section id="insights" className="scroll-mt-6">
+                <section
+                  id="insights"
+                  className={SECTION_NAVIGATION_TARGET_CLASS}
+                >
                   <DeferredMount hashId="insights" minHeight={360}>
                     <Suspense fallback={<CardSkeleton rows={4} />}>
                       <InsightsPanel id={database.id} />
                     </Suspense>
                   </DeferredMount>
                 </section>
-                <section id="recovery" className="scroll-mt-6">
+                <section
+                  id="recovery"
+                  className={SECTION_NAVIGATION_TARGET_CLASS}
+                >
                   <DeferredMount hashId="recovery" minHeight={240}>
                     <Suspense fallback={<CardSkeleton rows={3} />}>
                       <RecoveryPanel id={database.id} />
                     </Suspense>
                   </DeferredMount>
                 </section>
-                <section id="access-control" className="scroll-mt-6">
+                <section
+                  id="access-control"
+                  className={SECTION_NAVIGATION_TARGET_CLASS}
+                >
                   <DeferredMount hashId="access-control" minHeight={240}>
                     <Suspense fallback={<CardSkeleton rows={3} />}>
                       <AccessControlPanel
@@ -344,7 +373,10 @@ function DatabaseDetailPage() {
                     </Suspense>
                   </DeferredMount>
                 </section>
-                <section id="danger-zone" className="scroll-mt-6">
+                <section
+                  id="danger-zone"
+                  className={SECTION_NAVIGATION_TARGET_CLASS}
+                >
                   <DatabaseDangerActions
                     database={database}
                     onDeleted={() => void navigate({ to: "/", replace: true })}

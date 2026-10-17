@@ -45,7 +45,10 @@ import {
   titleLoaderFetchPolicy,
   translatedText,
 } from "@/common/lib/document-head";
-import { SECTION_NAVIGATION_STICKY_CLASS } from "@/common/components/section-navigation";
+import {
+  SECTION_NAVIGATION_STICKY_CLASS,
+  SECTION_NAVIGATION_TARGET_CLASS,
+} from "@/common/components/section-navigation";
 
 export const Route = createFileRoute("/keyvalue/$keyValueId")({
   staticData: { chrome: true },
@@ -221,13 +224,19 @@ export function KeyValueDetailPage() {
               />
 
               <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
-                <section id="metadata" className="scroll-mt-6">
+                <section
+                  id="metadata"
+                  className={SECTION_NAVIGATION_TARGET_CLASS}
+                >
                   <KeyValueMetadataCard
                     keyValue={keyValue}
                     onRenamed={() => void router.invalidate()}
                   />
                 </section>
-                <section id="connection" className="scroll-mt-6">
+                <section
+                  id="connection"
+                  className={SECTION_NAVIGATION_TARGET_CLASS}
+                >
                   {/* A revealed snapshot belongs to one publication state: when a
                       confirmed access change flips `public`, remount so the old
                       external URL is no longer copyable and a fresh Reveal is
@@ -237,22 +246,31 @@ export function KeyValueDetailPage() {
                     id={keyValue.id}
                   />
                 </section>
-                <section id="networking" className="scroll-mt-6">
+                <section
+                  id="networking"
+                  className={SECTION_NAVIGATION_TARGET_CLASS}
+                >
                   <KeyValueNetworkingPanel id={keyValue.id} />
                 </section>
-                <section id="plan" className="scroll-mt-6">
+                <section id="plan" className={SECTION_NAVIGATION_TARGET_CLASS}>
                   <KeyValuePlanSection
                     keyValue={keyValue}
                     onChanged={() => void refetch()}
                   />
                 </section>
-                <section id="maxmemory-policy" className="scroll-mt-6">
+                <section
+                  id="maxmemory-policy"
+                  className={SECTION_NAVIGATION_TARGET_CLASS}
+                >
                   <KeyValueMaxmemoryPolicySection
                     id={keyValue.id}
                     onChanged={() => void refetch()}
                   />
                 </section>
-                <section id="persistence-mode" className="scroll-mt-6">
+                <section
+                  id="persistence-mode"
+                  className={SECTION_NAVIGATION_TARGET_CLASS}
+                >
                   <KeyValuePersistenceModeSection
                     key={keyValueId}
                     id={keyValue.id}
@@ -260,7 +278,10 @@ export function KeyValueDetailPage() {
                     onChanged={() => void refetch()}
                   />
                 </section>
-                <section id="danger-zone" className="scroll-mt-6">
+                <section
+                  id="danger-zone"
+                  className={SECTION_NAVIGATION_TARGET_CLASS}
+                >
                   <KeyValueDangerActions
                     keyValue={keyValue}
                     onDeleted={() => void navigate({ to: "/", replace: true })}

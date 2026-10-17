@@ -35,6 +35,7 @@ import { PaymentMethodCard } from "./payment-method-card";
 import { ChargesCard } from "./charges-card";
 import { CreditBalanceCard, InvoiceHistoryCard } from "./billing-summary-cards";
 import { UsageNavigation } from "./usage-navigation";
+import { SECTION_NAVIGATION_TARGET_CLASS } from "@/common/components/section-navigation";
 
 /**
  * The workspace billing page (`/billing`).
@@ -118,16 +119,22 @@ export function UsagePage() {
               </Alert>
             )}
 
-            <section id="plan" className="scroll-mt-6">
+            <section id="plan" className={SECTION_NAVIGATION_TARGET_CLASS}>
               <PlanCard />
             </section>
-            <section id="payment-method" className="scroll-mt-6">
+            <section
+              id="payment-method"
+              className={SECTION_NAVIGATION_TARGET_CLASS}
+            >
               <PaymentMethodCard />
             </section>
-            <section id="included-usage" className="scroll-mt-6">
+            <section
+              id="included-usage"
+              className={SECTION_NAVIGATION_TARGET_CLASS}
+            >
               <WorkspaceResourceCaps />
             </section>
-            <section id="charges" className="scroll-mt-6">
+            <section id="charges" className={SECTION_NAVIGATION_TARGET_CLASS}>
               <ChargesCard
                 estimatedCost={summary?.estimatedCost ?? null}
                 coverage={summary?.coverage ?? null}
@@ -139,10 +146,16 @@ export function UsagePage() {
                 period={period ?? ""}
               />
             </section>
-            <section id="credit-balance" className="scroll-mt-6">
+            <section
+              id="credit-balance"
+              className={SECTION_NAVIGATION_TARGET_CLASS}
+            >
               <CreditBalanceCard billing={billing} />
             </section>
-            <section id="invoice-history" className="scroll-mt-6">
+            <section
+              id="invoice-history"
+              className={SECTION_NAVIGATION_TARGET_CLASS}
+            >
               <InvoiceHistoryCard billing={billing} />
             </section>
           </div>
