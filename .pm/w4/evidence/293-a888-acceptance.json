@@ -1,0 +1,2756 @@
+{
+  "pass": "a888",
+  "date": "2026-10-17",
+  "kind": "Post-release live acceptance w4/293 and functional port/health controls; no new bug or product change.",
+  "researchHead": "ce1c8745ad75ce2048a05f613afef3140cc36158",
+  "servingBuildSha": "not independently established",
+  "fixture": {
+    "serviceId": "srv-db9o5s4flioc739mcn40",
+    "name": "qa-20261017-a888-keyboard",
+    "plan": "free",
+    "deployIds": [
+      "dep-db9o81ss300s73dskg6g",
+      "dep-db9o7lcs300s73dskg5g",
+      "dep-db9o794s300s73dskg40",
+      "dep-db9o5s4flioc739mcn4g"
+    ],
+    "deleted": true
+  },
+  "originalEvidence": {
+    "path": ".pm/w4/evidence/293-inline-cancel-focus.json",
+    "sha256": "a71d0b08106df27d8582a98acb509a9297531a0c271163632b53b5bc94a4d928"
+  },
+  "records": {
+    "Baseline": {
+      "at": "2026-10-17T14:14:47.884Z",
+      "status": 200,
+      "inventory": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      }
+    },
+    "CreateFilled": {
+      "at": "2026-10-17T14:15:10.719Z",
+      "freeChecked": true,
+      "name": "qa-20261017-a888-keyboard",
+      "port": "8846",
+      "command": "node -e 'const http=require(\"http\");const startedAt=new Date().toISOString();http.createServer((req,res)=>{res.setHeader(\"content-type\",\"application/json\");res.end(JSON.stringify({pass:\"a888\",port:Number(process.env.PORT),path:req.url,startedAt,pid:process.pid}))}).listen(Number(process.env.PORT||8846),\"0.0.0.0\")'",
+      "deployEnabled": true
+    },
+    "Created": {
+      "at": "2026-10-17T14:15:13.204Z",
+      "request": {
+        "operationName": "CreateService",
+        "variables": {
+          "image": "docker.io/library/node:24-alpine",
+          "name": "qa-20261017-a888-keyboard",
+          "type": "web_service",
+          "registryCredentialId": "",
+          "runtime": "image",
+          "startCommand": "node -e 'const http=require(\"http\");const startedAt=new Date().toISOString();http.createServer((req,res)=>{res.setHeader(\"content-type\",\"application/json\");res.end(JSON.stringify({pass:\"a888\",port:Number(process.env.PORT),path:req.url,startedAt,pid:process.pid}))}).listen(Number(process.env.PORT||8846),\"0.0.0.0\")'",
+          "plan": "free",
+          "port": 8846,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db9o5s4flioc739mcn40",
+            "latestDeployId": "dep-db9o5s4flioc739mcn4g",
+            "name": "qa-20261017-a888-keyboard",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": "",
+            "type": "web_service"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792246512063.606,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.117,
+        "responseStart": 414.871,
+        "responseEnd": 415.63
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9o5s4flioc739mcn40/deploys/dep-db9o5s4flioc739mcn4g"
+    },
+    "FreshDesktopSettings": {
+      "at": "2026-10-17T14:16:02.261Z",
+      "health": "- text: Health Checks Configure the HTTP path bex polls periodically to monitor your service. Health Check Path An HTTP path bex polls to decide whether your service is healthy; it must answer 2xx or 3xx within 5 seconds, and 60 seconds of consecutive failures restarts the instance — point it at a cheap route. Leave it empty to check only that the process is listening on its port — the right choice when the service has no cheap route that returns 2xx.\n- textbox \"Health Check Path\" [disabled]:\n  - /placeholder: Empty — check the port only\n- button \"Edit Health Check Path\"",
+      "port": "- text: Port The port your container listens on. bex routes traffic to it and injects it as $PORT. Port The port your container listens on (default 3000). bex routes traffic to it, injects it as $PORT, and refuses PORT as an environment variable because of it. Saving starts a new deploy and restarts the instances.\n- spinbutton \"Port\" [disabled]: \"8846\"\n- button \"Edit Port\"",
+      "active": {
+        "tag": "BODY",
+        "label": null,
+        "text": "BbexToggle SidebarDashboardqa-20261017-a888-keyboardDeploysSettingsMonitorEventsLogsMetricsManageEnv"
+      }
+    },
+    "DesktopHealthEscape": {
+      "at": "2026-10-17T14:16:04.422Z",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "label": "Health Check Path",
+      "tabs": 1,
+      "reached": {
+        "tag": "BUTTON",
+        "label": "Edit Health Check Path",
+        "text": "",
+        "value": ""
+      },
+      "opened": {
+        "active": {
+          "tag": "INPUT",
+          "label": "Health Check Path",
+          "text": "",
+          "value": ""
+        },
+        "disabled": false,
+        "value": ""
+      },
+      "draft": {
+        "value": "/qa-a888-draft",
+        "active": {
+          "tag": "INPUT",
+          "label": "Health Check Path",
+          "text": "",
+          "value": "/qa-a888-draft"
+        }
+      },
+      "escaped": {
+        "active": {
+          "tag": "BUTTON",
+          "label": "Edit Health Check Path",
+          "text": "",
+          "value": ""
+        },
+        "disabled": true,
+        "value": "",
+        "editVisible": true
+      },
+      "reopened": {
+        "active": {
+          "tag": "INPUT",
+          "label": "Health Check Path",
+          "text": "",
+          "value": ""
+        },
+        "disabled": false,
+        "value": ""
+      },
+      "final": {
+        "tag": "BUTTON",
+        "label": "Edit Health Check Path",
+        "text": "",
+        "value": ""
+      },
+      "mutations": []
+    },
+    "DesktopHealthKeyboardCancel": {
+      "at": "2026-10-17T14:16:33.825Z",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "initial": {
+        "value": "/qa-a888-cancel",
+        "disabled": false
+      },
+      "cancelFocused": {
+        "tag": "BUTTON",
+        "text": "Cancel",
+        "label": null
+      },
+      "cancelled": {
+        "active": {
+          "tag": "BUTTON",
+          "label": "Edit Health Check Path"
+        },
+        "value": "",
+        "disabled": true
+      },
+      "reopened": {
+        "active": {
+          "tag": "INPUT",
+          "label": "Health Check Path"
+        },
+        "value": "",
+        "disabled": false
+      }
+    },
+    "DesktopPortEscape": {
+      "at": "2026-10-17T14:16:35.577Z",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "label": "Port",
+      "tabs": 63,
+      "reached": {
+        "tag": "BUTTON",
+        "label": "Edit Port",
+        "text": "",
+        "value": ""
+      },
+      "opened": {
+        "active": {
+          "tag": "INPUT",
+          "label": "Port",
+          "text": null,
+          "value": "8846"
+        },
+        "disabled": false,
+        "value": "8846"
+      },
+      "draft": {
+        "value": "8847",
+        "active": {
+          "tag": "INPUT",
+          "label": "Port",
+          "text": null,
+          "value": "8847"
+        }
+      },
+      "escaped": {
+        "active": {
+          "tag": "BUTTON",
+          "label": "Edit Port",
+          "text": "",
+          "value": ""
+        },
+        "disabled": true,
+        "value": "8846",
+        "editVisible": true
+      },
+      "reopened": {
+        "active": {
+          "tag": "INPUT",
+          "label": "Port",
+          "text": null,
+          "value": "8846"
+        },
+        "disabled": false,
+        "value": "8846"
+      },
+      "final": {
+        "tag": "BUTTON",
+        "label": "Edit Port",
+        "text": "",
+        "value": ""
+      },
+      "mutations": []
+    },
+    "FreshMobileSettings": {
+      "at": "2026-10-17T14:16:40.429Z",
+      "url": "https://dashboard.bex.co/services/srv-db9o5s4flioc739mcn40/settings",
+      "health": "- text: Health Checks Configure the HTTP path bex polls periodically to monitor your service. Health Check Path An HTTP path bex polls to decide whether your service is healthy; it must answer 2xx or 3xx within 5 seconds, and 60 seconds of consecutive failures restarts the instance — point it at a cheap route. Leave it empty to check only that the process is listening on its port — the right choice when the service has no cheap route that returns 2xx.\n- textbox \"Health Check Path\" [disabled]:\n  - /placeholder: Empty — check the port only\n- button \"Edit Health Check Path\"",
+      "port": "- text: Port The port your container listens on. bex routes traffic to it and injects it as $PORT. Port The port your container listens on (default 3000). bex routes traffic to it, injects it as $PORT, and refuses PORT as an environment variable because of it. Saving starts a new deploy and restarts the instances.\n- spinbutton \"Port\" [disabled]: \"8846\"\n- button \"Edit Port\""
+    },
+    "MobileHealthEscape": {
+      "at": "2026-10-17T14:16:42.144Z",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "label": "Health Check Path",
+      "tabs": 48,
+      "reached": {
+        "tag": "BUTTON",
+        "label": "Edit Health Check Path",
+        "text": "",
+        "value": ""
+      },
+      "opened": {
+        "active": {
+          "tag": "INPUT",
+          "label": "Health Check Path",
+          "text": null,
+          "value": ""
+        },
+        "disabled": false,
+        "value": ""
+      },
+      "draft": {
+        "value": "/qa-a888-mobile-escape",
+        "active": {
+          "tag": "INPUT",
+          "label": "Health Check Path",
+          "text": null,
+          "value": "/qa-a888-mobile-escape"
+        }
+      },
+      "escaped": {
+        "active": {
+          "tag": "BUTTON",
+          "label": "Edit Health Check Path",
+          "text": "",
+          "value": ""
+        },
+        "disabled": true,
+        "value": "",
+        "editVisible": true
+      },
+      "reopened": {
+        "active": {
+          "tag": "INPUT",
+          "label": "Health Check Path",
+          "text": null,
+          "value": ""
+        },
+        "disabled": false,
+        "value": ""
+      },
+      "final": {
+        "tag": "BUTTON",
+        "label": "Edit Health Check Path",
+        "text": "",
+        "value": ""
+      },
+      "mutations": []
+    },
+    "MobileHealthKeyboardCancel": {
+      "at": "2026-10-17T14:16:43.488Z",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "initial": {
+        "value": "/qa-a888-mobile-cancel",
+        "disabled": false
+      },
+      "cancelFocused": {
+        "tag": "BUTTON",
+        "text": "Cancel",
+        "label": null
+      },
+      "cancelled": {
+        "active": {
+          "tag": "BUTTON",
+          "label": "Edit Health Check Path"
+        },
+        "value": "",
+        "disabled": true
+      },
+      "reopened": {
+        "active": {
+          "tag": "INPUT",
+          "label": "Health Check Path"
+        },
+        "value": "",
+        "disabled": false
+      }
+    },
+    "MobilePortEscape": {
+      "at": "2026-10-17T14:16:45.223Z",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "label": "Port",
+      "tabs": 46,
+      "reached": {
+        "tag": "BUTTON",
+        "label": "Edit Port",
+        "text": "",
+        "value": ""
+      },
+      "opened": {
+        "active": {
+          "tag": "INPUT",
+          "label": "Port",
+          "text": null,
+          "value": "8846"
+        },
+        "disabled": false,
+        "value": "8846"
+      },
+      "draft": {
+        "value": "8847",
+        "active": {
+          "tag": "INPUT",
+          "label": "Port",
+          "text": null,
+          "value": "8847"
+        }
+      },
+      "escaped": {
+        "active": {
+          "tag": "BUTTON",
+          "label": "Edit Port",
+          "text": "",
+          "value": ""
+        },
+        "disabled": true,
+        "value": "8846",
+        "editVisible": true
+      },
+      "reopened": {
+        "active": {
+          "tag": "INPUT",
+          "label": "Port",
+          "text": null,
+          "value": "8846"
+        },
+        "disabled": false,
+        "value": "8846"
+      },
+      "final": {
+        "tag": "BUTTON",
+        "label": "Edit Port",
+        "text": "",
+        "value": ""
+      },
+      "mutations": []
+    },
+    "PortValidationControlsVerified": {
+      "at": "2026-10-17T14:18:10.011Z",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "controls": [
+        {
+          "requested": "0",
+          "value": "0",
+          "saveDisabled": true,
+          "invalid": "true",
+          "ui": "- text: Port The port your container listens on. bex routes traffic to it and injects it as $PORT. Port The port your container listens on (default 3000). bex routes traffic to it, injects it as $PORT, and refuses PORT as an environment variable because of it. Saving starts a new deploy and restarts the instances.\n- spinbutton \"Port\" [invalid]: \"0\"\n- button \"Cancel\"\n- button \"Save changes\" [disabled]\n- paragraph: Enter a port between 1024 and 65535.",
+          "afterEnterValue": "0",
+          "afterEnterDisabled": false
+        },
+        {
+          "requested": "1023",
+          "value": "1023",
+          "saveDisabled": true,
+          "invalid": "true",
+          "ui": "- text: Port The port your container listens on. bex routes traffic to it and injects it as $PORT. Port The port your container listens on (default 3000). bex routes traffic to it, injects it as $PORT, and refuses PORT as an environment variable because of it. Saving starts a new deploy and restarts the instances.\n- spinbutton \"Port\" [invalid]: \"1023\"\n- button \"Cancel\"\n- button \"Save changes\" [disabled]\n- paragraph: Enter a port between 1024 and 65535.",
+          "afterEnterValue": "1023",
+          "afterEnterDisabled": false
+        },
+        {
+          "requested": "65536",
+          "value": "65536",
+          "saveDisabled": true,
+          "invalid": "true",
+          "ui": "- text: Port The port your container listens on. bex routes traffic to it and injects it as $PORT. Port The port your container listens on (default 3000). bex routes traffic to it, injects it as $PORT, and refuses PORT as an environment variable because of it. Saving starts a new deploy and restarts the instances.\n- spinbutton \"Port\" [invalid]: \"65536\"\n- button \"Cancel\"\n- button \"Save changes\" [disabled]\n- paragraph: Enter a port between 1024 and 65535.",
+          "afterEnterValue": "65536",
+          "afterEnterDisabled": false
+        },
+        {
+          "requested": "8846.5",
+          "value": "8846.5",
+          "saveDisabled": true,
+          "invalid": "true",
+          "ui": "- text: Port The port your container listens on. bex routes traffic to it and injects it as $PORT. Port The port your container listens on (default 3000). bex routes traffic to it, injects it as $PORT, and refuses PORT as an environment variable because of it. Saving starts a new deploy and restarts the instances.\n- spinbutton \"Port\" [invalid]: \"8846.5\"\n- button \"Cancel\"\n- button \"Save changes\" [disabled]\n- paragraph: Enter a port between 1024 and 65535.",
+          "afterEnterValue": "8846.5",
+          "afterEnterDisabled": false
+        },
+        {
+          "requested": "",
+          "value": "",
+          "saveDisabled": true,
+          "invalid": "true",
+          "ui": "- text: Port The port your container listens on. bex routes traffic to it and injects it as $PORT. Port The port your container listens on (default 3000). bex routes traffic to it, injects it as $PORT, and refuses PORT as an environment variable because of it. Saving starts a new deploy and restarts the instances.\n- spinbutton \"Port\" [invalid]\n- button \"Cancel\"\n- button \"Save changes\" [disabled]\n- paragraph: Enter a port between 1024 and 65535.",
+          "afterEnterValue": "",
+          "afterEnterDisabled": false
+        },
+        {
+          "requested": "08846",
+          "value": "08846",
+          "saveDisabled": true,
+          "invalid": null,
+          "ui": "- text: Port The port your container listens on. bex routes traffic to it and injects it as $PORT. Port The port your container listens on (default 3000). bex routes traffic to it, injects it as $PORT, and refuses PORT as an environment variable because of it. Saving starts a new deploy and restarts the instances.\n- spinbutton \"Port\": \"08846\"\n- button \"Cancel\"\n- button \"Save changes\" [disabled]",
+          "afterEnterValue": "08846",
+          "afterEnterDisabled": false
+        }
+      ],
+      "mutations": [],
+      "finalValue": "8846",
+      "finalDisabled": true,
+      "focus": {
+        "tag": "BUTTON",
+        "label": "Edit Port"
+      }
+    },
+    "CancellationStateUnchanged": {
+      "at": "2026-10-17T14:18:11.372Z",
+      "request": {
+        "operationName": "QaA888SettingsState",
+        "query": "query QaA888SettingsState($id:String!){server(id:$id){id name phase port healthCheckPath undeployedChanges undeployedChangesApplying} deploys(serviceId:$id,limit:20){id status trigger failureReason}}",
+        "variables": {
+          "id": "srv-db9o5s4flioc739mcn40"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "failureReason": "",
+              "id": "dep-db9o5s4flioc739mcn4g",
+              "status": "live",
+              "trigger": "create"
+            }
+          ],
+          "server": {
+            "healthCheckPath": "",
+            "id": "srv-db9o5s4flioc739mcn40",
+            "name": "qa-20261017-a888-keyboard",
+            "phase": "Running",
+            "port": 8846,
+            "undeployedChanges": false,
+            "undeployedChangesApplying": false
+          }
+        }
+      }
+    },
+    "PortChangeReady": {
+      "at": "2026-10-17T14:18:11.982Z",
+      "ui": "- text: Port The port your container listens on. bex routes traffic to it and injects it as $PORT. Port The port your container listens on (default 3000). bex routes traffic to it, injects it as $PORT, and refuses PORT as an environment variable because of it. Saving starts a new deploy and restarts the instances.\n- spinbutton \"Port\": \"8847\"\n- button \"Cancel\"\n- button \"Save changes\""
+    },
+    "PortChanged": {
+      "at": "2026-10-17T14:18:13.617Z",
+      "request": {
+        "operationName": "SetPort",
+        "variables": {
+          "id": "srv-db9o5s4flioc739mcn40",
+          "port": 8847
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetPort($id: String!, $port: Int!) {\n  setPort(id: $id, port: $port) {\n    id\n    port\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setPort": {
+            "__typename": "Service",
+            "id": "srv-db9o5s4flioc739mcn40",
+            "port": 8847
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792246692611.982,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.125,
+        "responseStart": 289.99,
+        "responseEnd": 290.681
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9o5s4flioc739mcn40/settings"
+    },
+    "PortChangedRuntime": {
+      "at": "2026-10-17T14:18:33.497Z",
+      "request": {
+        "operationName": "QaA888SettingsState",
+        "query": "query QaA888SettingsState($id:String!){server(id:$id){id name phase port healthCheckPath undeployedChanges undeployedChangesApplying} deploys(serviceId:$id,limit:20){id status trigger failureReason}}",
+        "variables": {
+          "id": "srv-db9o5s4flioc739mcn40"
+        }
+      },
+      "polls": [
+        {
+          "at": "2026-10-17T14:18:15.245Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o794s300s73dskg40",
+                  "status": "created",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o5s4flioc739mcn4g",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "healthCheckPath": "",
+                "id": "srv-db9o5s4flioc739mcn40",
+                "name": "qa-20261017-a888-keyboard",
+                "phase": "Deploying",
+                "port": 8847,
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a888-keyboard.onbex.co/qa-a888"
+            },
+            "status": 200,
+            "raw": "{\"pass\":\"a888\",\"port\":8846,\"path\":\"/qa-a888\",\"startedAt\":\"2026-10-17T14:15:14.737Z\",\"pid\":1}",
+            "body": {
+              "pass": "a888",
+              "port": 8846,
+              "path": "/qa-a888",
+              "startedAt": "2026-10-17T14:15:14.737Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:18:18.315Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o794s300s73dskg40",
+                  "status": "created",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o5s4flioc739mcn4g",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "healthCheckPath": "",
+                "id": "srv-db9o5s4flioc739mcn40",
+                "name": "qa-20261017-a888-keyboard",
+                "phase": "Deploying",
+                "port": 8847,
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a888-keyboard.onbex.co/qa-a888"
+            },
+            "status": 200,
+            "raw": "{\"pass\":\"a888\",\"port\":8846,\"path\":\"/qa-a888\",\"startedAt\":\"2026-10-17T14:15:14.737Z\",\"pid\":1}",
+            "body": {
+              "pass": "a888",
+              "port": 8846,
+              "path": "/qa-a888",
+              "startedAt": "2026-10-17T14:15:14.737Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:18:21.374Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o794s300s73dskg40",
+                  "status": "update_in_progress",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o5s4flioc739mcn4g",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "healthCheckPath": "",
+                "id": "srv-db9o5s4flioc739mcn40",
+                "name": "qa-20261017-a888-keyboard",
+                "phase": "Deploying",
+                "port": 8847,
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a888-keyboard.onbex.co/qa-a888"
+            },
+            "status": 200,
+            "raw": "{\"pass\":\"a888\",\"port\":8846,\"path\":\"/qa-a888\",\"startedAt\":\"2026-10-17T14:15:14.737Z\",\"pid\":1}",
+            "body": {
+              "pass": "a888",
+              "port": 8846,
+              "path": "/qa-a888",
+              "startedAt": "2026-10-17T14:15:14.737Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:18:24.438Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o794s300s73dskg40",
+                  "status": "update_in_progress",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o5s4flioc739mcn4g",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "healthCheckPath": "",
+                "id": "srv-db9o5s4flioc739mcn40",
+                "name": "qa-20261017-a888-keyboard",
+                "phase": "Running",
+                "port": 8847,
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a888-keyboard.onbex.co/qa-a888"
+            },
+            "status": 200,
+            "raw": "{\"pass\":\"a888\",\"port\":8846,\"path\":\"/qa-a888\",\"startedAt\":\"2026-10-17T14:15:14.737Z\",\"pid\":1}",
+            "body": {
+              "pass": "a888",
+              "port": 8846,
+              "path": "/qa-a888",
+              "startedAt": "2026-10-17T14:15:14.737Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:18:27.532Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o794s300s73dskg40",
+                  "status": "update_in_progress",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o5s4flioc739mcn4g",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "healthCheckPath": "",
+                "id": "srv-db9o5s4flioc739mcn40",
+                "name": "qa-20261017-a888-keyboard",
+                "phase": "Running",
+                "port": 8847,
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a888-keyboard.onbex.co/qa-a888"
+            },
+            "status": 200,
+            "raw": "{\"pass\":\"a888\",\"port\":8847,\"path\":\"/qa-a888\",\"startedAt\":\"2026-10-17T14:18:17.551Z\",\"pid\":1}",
+            "body": {
+              "pass": "a888",
+              "port": 8847,
+              "path": "/qa-a888",
+              "startedAt": "2026-10-17T14:18:17.551Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:18:30.573Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o794s300s73dskg40",
+                  "status": "update_in_progress",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o5s4flioc739mcn4g",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "healthCheckPath": "",
+                "id": "srv-db9o5s4flioc739mcn40",
+                "name": "qa-20261017-a888-keyboard",
+                "phase": "Running",
+                "port": 8847,
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a888-keyboard.onbex.co/qa-a888"
+            },
+            "status": 200,
+            "raw": "{\"pass\":\"a888\",\"port\":8847,\"path\":\"/qa-a888\",\"startedAt\":\"2026-10-17T14:18:17.551Z\",\"pid\":1}",
+            "body": {
+              "pass": "a888",
+              "port": 8847,
+              "path": "/qa-a888",
+              "startedAt": "2026-10-17T14:18:17.551Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:18:33.497Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o794s300s73dskg40",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o5s4flioc739mcn4g",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "healthCheckPath": "",
+                "id": "srv-db9o5s4flioc739mcn40",
+                "name": "qa-20261017-a888-keyboard",
+                "phase": "Running",
+                "port": 8847,
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a888-keyboard.onbex.co/qa-a888"
+            },
+            "status": 200,
+            "raw": "{\"pass\":\"a888\",\"port\":8847,\"path\":\"/qa-a888\",\"startedAt\":\"2026-10-17T14:18:17.551Z\",\"pid\":1}",
+            "body": {
+              "pass": "a888",
+              "port": 8847,
+              "path": "/qa-a888",
+              "startedAt": "2026-10-17T14:18:17.551Z",
+              "pid": 1
+            }
+          }
+        }
+      ]
+    },
+    "HealthSavePrepared": {
+      "at": "2026-10-17T14:19:00.647Z",
+      "ui": "- text: Health Checks Configure the HTTP path bex polls periodically to monitor your service. Health Check Path An HTTP path bex polls to decide whether your service is healthy; it must answer 2xx or 3xx within 5 seconds, and 60 seconds of consecutive failures restarts the instance — point it at a cheap route. Leave it empty to check only that the process is listening on its port — the right choice when the service has no cheap route that returns 2xx.\n- textbox \"Health Check Path\":\n  - /placeholder: Empty — check the port only\n  - text: /qa-a888-health?test=1\n- button \"Cancel\"\n- button \"Save changes\""
+    },
+    "HealthSaved": {
+      "at": "2026-10-17T14:19:02.277Z",
+      "request": {
+        "operationName": "SetHealthCheckPath",
+        "variables": {
+          "id": "srv-db9o5s4flioc739mcn40",
+          "path": "/qa-a888-health?test=1"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetHealthCheckPath($id: String!, $path: String!) {\n  setHealthCheckPath(id: $id, path: $path) {\n    id\n    healthCheckPath\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setHealthCheckPath": {
+            "__typename": "Service",
+            "healthCheckPath": "/qa-a888-health?test=1",
+            "id": "srv-db9o5s4flioc739mcn40"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792246741260.188,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.126,
+        "responseStart": 304.441,
+        "responseEnd": 305.073
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9o5s4flioc739mcn40/settings"
+    },
+    "SuccessfulSaveUi": {
+      "at": "2026-10-17T14:19:03.375Z",
+      "focus": {
+        "tag": "BODY",
+        "label": null
+      },
+      "health": "- text: Health Checks Configure the HTTP path bex polls periodically to monitor your service. Health Check Path An HTTP path bex polls to decide whether your service is healthy; it must answer 2xx or 3xx within 5 seconds, and 60 seconds of consecutive failures restarts the instance — point it at a cheap route. Leave it empty to check only that the process is listening on its port — the right choice when the service has no cheap route that returns 2xx.\n- textbox \"Health Check Path\" [disabled]:\n  - /placeholder: Empty — check the port only\n  - text: /qa-a888-health?test=1\n- button \"Edit Health Check Path\""
+    },
+    "HealthSavedRuntime": {
+      "at": "2026-10-17T14:19:19.801Z",
+      "request": {
+        "operationName": "QaA888SettingsState",
+        "query": "query QaA888SettingsState($id:String!){server(id:$id){id name phase port healthCheckPath undeployedChanges undeployedChangesApplying} deploys(serviceId:$id,limit:20){id status trigger failureReason}}",
+        "variables": {
+          "id": "srv-db9o5s4flioc739mcn40"
+        }
+      },
+      "polls": [
+        {
+          "at": "2026-10-17T14:19:04.446Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o7lcs300s73dskg5g",
+                  "status": "created",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o794s300s73dskg40",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o5s4flioc739mcn4g",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "healthCheckPath": "/qa-a888-health?test=1",
+                "id": "srv-db9o5s4flioc739mcn40",
+                "name": "qa-20261017-a888-keyboard",
+                "phase": "Deploying",
+                "port": 8847,
+                "undeployedChanges": true,
+                "undeployedChangesApplying": true
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a888-keyboard.onbex.co/qa-a888"
+            },
+            "status": 200,
+            "raw": "{\"pass\":\"a888\",\"port\":8847,\"path\":\"/qa-a888\",\"startedAt\":\"2026-10-17T14:18:17.551Z\",\"pid\":1}",
+            "body": {
+              "pass": "a888",
+              "port": 8847,
+              "path": "/qa-a888",
+              "startedAt": "2026-10-17T14:18:17.551Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:19:07.355Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o7lcs300s73dskg5g",
+                  "status": "created",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o794s300s73dskg40",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o5s4flioc739mcn4g",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "healthCheckPath": "/qa-a888-health?test=1",
+                "id": "srv-db9o5s4flioc739mcn40",
+                "name": "qa-20261017-a888-keyboard",
+                "phase": "Deploying",
+                "port": 8847,
+                "undeployedChanges": true,
+                "undeployedChangesApplying": true
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a888-keyboard.onbex.co/qa-a888"
+            },
+            "status": 200,
+            "raw": "{\"pass\":\"a888\",\"port\":8847,\"path\":\"/qa-a888\",\"startedAt\":\"2026-10-17T14:18:17.551Z\",\"pid\":1}",
+            "body": {
+              "pass": "a888",
+              "port": 8847,
+              "path": "/qa-a888",
+              "startedAt": "2026-10-17T14:18:17.551Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:19:10.499Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o7lcs300s73dskg5g",
+                  "status": "created",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o794s300s73dskg40",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o5s4flioc739mcn4g",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "healthCheckPath": "/qa-a888-health?test=1",
+                "id": "srv-db9o5s4flioc739mcn40",
+                "name": "qa-20261017-a888-keyboard",
+                "phase": "Deploying",
+                "port": 8847,
+                "undeployedChanges": true,
+                "undeployedChangesApplying": true
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a888-keyboard.onbex.co/qa-a888"
+            },
+            "status": 200,
+            "raw": "{\"pass\":\"a888\",\"port\":8847,\"path\":\"/qa-a888\",\"startedAt\":\"2026-10-17T14:18:17.551Z\",\"pid\":1}",
+            "body": {
+              "pass": "a888",
+              "port": 8847,
+              "path": "/qa-a888",
+              "startedAt": "2026-10-17T14:18:17.551Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:19:13.863Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o7lcs300s73dskg5g",
+                  "status": "created",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o794s300s73dskg40",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o5s4flioc739mcn4g",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "healthCheckPath": "/qa-a888-health?test=1",
+                "id": "srv-db9o5s4flioc739mcn40",
+                "name": "qa-20261017-a888-keyboard",
+                "phase": "Running",
+                "port": 8847,
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a888-keyboard.onbex.co/qa-a888"
+            },
+            "status": 200,
+            "raw": "{\"pass\":\"a888\",\"port\":8847,\"path\":\"/qa-a888\",\"startedAt\":\"2026-10-17T14:18:17.551Z\",\"pid\":1}",
+            "body": {
+              "pass": "a888",
+              "port": 8847,
+              "path": "/qa-a888",
+              "startedAt": "2026-10-17T14:18:17.551Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:19:16.850Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o7lcs300s73dskg5g",
+                  "status": "created",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o794s300s73dskg40",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o5s4flioc739mcn4g",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "healthCheckPath": "/qa-a888-health?test=1",
+                "id": "srv-db9o5s4flioc739mcn40",
+                "name": "qa-20261017-a888-keyboard",
+                "phase": "Running",
+                "port": 8847,
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a888-keyboard.onbex.co/qa-a888"
+            },
+            "status": 200,
+            "raw": "{\"pass\":\"a888\",\"port\":8847,\"path\":\"/qa-a888\",\"startedAt\":\"2026-10-17T14:19:03.725Z\",\"pid\":1}",
+            "body": {
+              "pass": "a888",
+              "port": 8847,
+              "path": "/qa-a888",
+              "startedAt": "2026-10-17T14:19:03.725Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:19:19.801Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o7lcs300s73dskg5g",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o794s300s73dskg40",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o5s4flioc739mcn4g",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "healthCheckPath": "/qa-a888-health?test=1",
+                "id": "srv-db9o5s4flioc739mcn40",
+                "name": "qa-20261017-a888-keyboard",
+                "phase": "Running",
+                "port": 8847,
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a888-keyboard.onbex.co/qa-a888"
+            },
+            "status": 200,
+            "raw": "{\"pass\":\"a888\",\"port\":8847,\"path\":\"/qa-a888\",\"startedAt\":\"2026-10-17T14:19:03.725Z\",\"pid\":1}",
+            "body": {
+              "pass": "a888",
+              "port": 8847,
+              "path": "/qa-a888",
+              "startedAt": "2026-10-17T14:19:03.725Z",
+              "pid": 1
+            }
+          }
+        }
+      ]
+    },
+    "HealthClearReady": {
+      "at": "2026-10-17T14:19:50.549Z",
+      "ui": "- text: Health Checks Configure the HTTP path bex polls periodically to monitor your service. Health Check Path An HTTP path bex polls to decide whether your service is healthy; it must answer 2xx or 3xx within 5 seconds, and 60 seconds of consecutive failures restarts the instance — point it at a cheap route. Leave it empty to check only that the process is listening on its port — the right choice when the service has no cheap route that returns 2xx.\n- textbox \"Health Check Path\":\n  - /placeholder: Empty — check the port only\n- button \"Cancel\"\n- button \"Save changes\""
+    },
+    "HealthCleared": {
+      "at": "2026-10-17T14:19:52.146Z",
+      "request": {
+        "operationName": "SetHealthCheckPath",
+        "variables": {
+          "id": "srv-db9o5s4flioc739mcn40",
+          "path": ""
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetHealthCheckPath($id: String!, $path: String!) {\n  setHealthCheckPath(id: $id, path: $path) {\n    id\n    healthCheckPath\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setHealthCheckPath": {
+            "__typename": "Service",
+            "healthCheckPath": "",
+            "id": "srv-db9o5s4flioc739mcn40"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792246791160.393,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.128,
+        "responseStart": 271.563,
+        "responseEnd": 272.156
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9o5s4flioc739mcn40/settings"
+    },
+    "HealthClearedRuntime": {
+      "at": "2026-10-17T14:20:20.858Z",
+      "request": {
+        "operationName": "QaA888SettingsState",
+        "query": "query QaA888SettingsState($id:String!){server(id:$id){id name phase port healthCheckPath undeployedChanges undeployedChangesApplying} deploys(serviceId:$id,limit:20){id status trigger failureReason}}",
+        "variables": {
+          "id": "srv-db9o5s4flioc739mcn40"
+        }
+      },
+      "polls": [
+        {
+          "at": "2026-10-17T14:19:53.655Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o81ss300s73dskg6g",
+                  "status": "created",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o7lcs300s73dskg5g",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o794s300s73dskg40",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o5s4flioc739mcn4g",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "healthCheckPath": "",
+                "id": "srv-db9o5s4flioc739mcn40",
+                "name": "qa-20261017-a888-keyboard",
+                "phase": "Deploying",
+                "port": 8847,
+                "undeployedChanges": true,
+                "undeployedChangesApplying": true
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a888-keyboard.onbex.co/qa-a888"
+            },
+            "status": 200,
+            "raw": "{\"pass\":\"a888\",\"port\":8847,\"path\":\"/qa-a888\",\"startedAt\":\"2026-10-17T14:19:03.725Z\",\"pid\":1}",
+            "body": {
+              "pass": "a888",
+              "port": 8847,
+              "path": "/qa-a888",
+              "startedAt": "2026-10-17T14:19:03.725Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:19:56.693Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o81ss300s73dskg6g",
+                  "status": "created",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o7lcs300s73dskg5g",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o794s300s73dskg40",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o5s4flioc739mcn4g",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "healthCheckPath": "",
+                "id": "srv-db9o5s4flioc739mcn40",
+                "name": "qa-20261017-a888-keyboard",
+                "phase": "Deploying",
+                "port": 8847,
+                "undeployedChanges": true,
+                "undeployedChangesApplying": true
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a888-keyboard.onbex.co/qa-a888"
+            },
+            "status": 200,
+            "raw": "{\"pass\":\"a888\",\"port\":8847,\"path\":\"/qa-a888\",\"startedAt\":\"2026-10-17T14:19:03.725Z\",\"pid\":1}",
+            "body": {
+              "pass": "a888",
+              "port": 8847,
+              "path": "/qa-a888",
+              "startedAt": "2026-10-17T14:19:03.725Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:19:59.719Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o81ss300s73dskg6g",
+                  "status": "created",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o7lcs300s73dskg5g",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o794s300s73dskg40",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o5s4flioc739mcn4g",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "healthCheckPath": "",
+                "id": "srv-db9o5s4flioc739mcn40",
+                "name": "qa-20261017-a888-keyboard",
+                "phase": "Deploying",
+                "port": 8847,
+                "undeployedChanges": true,
+                "undeployedChangesApplying": true
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a888-keyboard.onbex.co/qa-a888"
+            },
+            "status": 200,
+            "raw": "{\"pass\":\"a888\",\"port\":8847,\"path\":\"/qa-a888\",\"startedAt\":\"2026-10-17T14:19:03.725Z\",\"pid\":1}",
+            "body": {
+              "pass": "a888",
+              "port": 8847,
+              "path": "/qa-a888",
+              "startedAt": "2026-10-17T14:19:03.725Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:20:02.648Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o81ss300s73dskg6g",
+                  "status": "created",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o7lcs300s73dskg5g",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o794s300s73dskg40",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o5s4flioc739mcn4g",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "healthCheckPath": "",
+                "id": "srv-db9o5s4flioc739mcn40",
+                "name": "qa-20261017-a888-keyboard",
+                "phase": "Deploying",
+                "port": 8847,
+                "undeployedChanges": true,
+                "undeployedChangesApplying": true
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a888-keyboard.onbex.co/qa-a888"
+            },
+            "status": 200,
+            "raw": "{\"pass\":\"a888\",\"port\":8847,\"path\":\"/qa-a888\",\"startedAt\":\"2026-10-17T14:19:53.561Z\",\"pid\":1}",
+            "body": {
+              "pass": "a888",
+              "port": 8847,
+              "path": "/qa-a888",
+              "startedAt": "2026-10-17T14:19:53.561Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:20:05.655Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o81ss300s73dskg6g",
+                  "status": "created",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o7lcs300s73dskg5g",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o794s300s73dskg40",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o5s4flioc739mcn4g",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "healthCheckPath": "",
+                "id": "srv-db9o5s4flioc739mcn40",
+                "name": "qa-20261017-a888-keyboard",
+                "phase": "Running",
+                "port": 8847,
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a888-keyboard.onbex.co/qa-a888"
+            },
+            "status": 200,
+            "raw": "{\"pass\":\"a888\",\"port\":8847,\"path\":\"/qa-a888\",\"startedAt\":\"2026-10-17T14:19:53.561Z\",\"pid\":1}",
+            "body": {
+              "pass": "a888",
+              "port": 8847,
+              "path": "/qa-a888",
+              "startedAt": "2026-10-17T14:19:53.561Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:20:08.875Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o81ss300s73dskg6g",
+                  "status": "created",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o7lcs300s73dskg5g",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o794s300s73dskg40",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o5s4flioc739mcn4g",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "healthCheckPath": "",
+                "id": "srv-db9o5s4flioc739mcn40",
+                "name": "qa-20261017-a888-keyboard",
+                "phase": "Running",
+                "port": 8847,
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a888-keyboard.onbex.co/qa-a888"
+            },
+            "status": 200,
+            "raw": "{\"pass\":\"a888\",\"port\":8847,\"path\":\"/qa-a888\",\"startedAt\":\"2026-10-17T14:19:53.561Z\",\"pid\":1}",
+            "body": {
+              "pass": "a888",
+              "port": 8847,
+              "path": "/qa-a888",
+              "startedAt": "2026-10-17T14:19:53.561Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:20:11.767Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o81ss300s73dskg6g",
+                  "status": "created",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o7lcs300s73dskg5g",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o794s300s73dskg40",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o5s4flioc739mcn4g",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "healthCheckPath": "",
+                "id": "srv-db9o5s4flioc739mcn40",
+                "name": "qa-20261017-a888-keyboard",
+                "phase": "Running",
+                "port": 8847,
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a888-keyboard.onbex.co/qa-a888"
+            },
+            "status": 200,
+            "raw": "{\"pass\":\"a888\",\"port\":8847,\"path\":\"/qa-a888\",\"startedAt\":\"2026-10-17T14:19:53.561Z\",\"pid\":1}",
+            "body": {
+              "pass": "a888",
+              "port": 8847,
+              "path": "/qa-a888",
+              "startedAt": "2026-10-17T14:19:53.561Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:20:14.852Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o81ss300s73dskg6g",
+                  "status": "created",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o7lcs300s73dskg5g",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o794s300s73dskg40",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o5s4flioc739mcn4g",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "healthCheckPath": "",
+                "id": "srv-db9o5s4flioc739mcn40",
+                "name": "qa-20261017-a888-keyboard",
+                "phase": "Running",
+                "port": 8847,
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a888-keyboard.onbex.co/qa-a888"
+            },
+            "status": 200,
+            "raw": "{\"pass\":\"a888\",\"port\":8847,\"path\":\"/qa-a888\",\"startedAt\":\"2026-10-17T14:19:53.561Z\",\"pid\":1}",
+            "body": {
+              "pass": "a888",
+              "port": 8847,
+              "path": "/qa-a888",
+              "startedAt": "2026-10-17T14:19:53.561Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:20:17.811Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o81ss300s73dskg6g",
+                  "status": "created",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o7lcs300s73dskg5g",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o794s300s73dskg40",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o5s4flioc739mcn4g",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "healthCheckPath": "",
+                "id": "srv-db9o5s4flioc739mcn40",
+                "name": "qa-20261017-a888-keyboard",
+                "phase": "Running",
+                "port": 8847,
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a888-keyboard.onbex.co/qa-a888"
+            },
+            "status": 200,
+            "raw": "{\"pass\":\"a888\",\"port\":8847,\"path\":\"/qa-a888\",\"startedAt\":\"2026-10-17T14:19:53.561Z\",\"pid\":1}",
+            "body": {
+              "pass": "a888",
+              "port": 8847,
+              "path": "/qa-a888",
+              "startedAt": "2026-10-17T14:19:53.561Z",
+              "pid": 1
+            }
+          }
+        },
+        {
+          "at": "2026-10-17T14:20:20.858Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o81ss300s73dskg6g",
+                  "status": "live",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o7lcs300s73dskg5g",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o794s300s73dskg40",
+                  "status": "deactivated",
+                  "trigger": "config_change"
+                },
+                {
+                  "failureReason": "",
+                  "id": "dep-db9o5s4flioc739mcn4g",
+                  "status": "deactivated",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "healthCheckPath": "",
+                "id": "srv-db9o5s4flioc739mcn40",
+                "name": "qa-20261017-a888-keyboard",
+                "phase": "Running",
+                "port": 8847,
+                "undeployedChanges": false,
+                "undeployedChangesApplying": false
+              }
+            }
+          },
+          "public": {
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261017-a888-keyboard.onbex.co/qa-a888"
+            },
+            "status": 200,
+            "raw": "{\"pass\":\"a888\",\"port\":8847,\"path\":\"/qa-a888\",\"startedAt\":\"2026-10-17T14:19:53.561Z\",\"pid\":1}",
+            "body": {
+              "pass": "a888",
+              "port": 8847,
+              "path": "/qa-a888",
+              "startedAt": "2026-10-17T14:19:53.561Z",
+              "pid": 1
+            }
+          }
+        }
+      ]
+    },
+    "FinalFreshDesktopSettings": {
+      "at": "2026-10-17T14:20:24.020Z",
+      "port": "- text: Port The port your container listens on. bex routes traffic to it and injects it as $PORT. Port The port your container listens on (default 3000). bex routes traffic to it, injects it as $PORT, and refuses PORT as an environment variable because of it. Saving starts a new deploy and restarts the instances.\n- spinbutton \"Port\" [disabled]: \"8847\"\n- button \"Edit Port\"",
+      "health": "- text: Health Checks Configure the HTTP path bex polls periodically to monitor your service. Health Check Path An HTTP path bex polls to decide whether your service is healthy; it must answer 2xx or 3xx within 5 seconds, and 60 seconds of consecutive failures restarts the instance — point it at a cheap route. Leave it empty to check only that the process is listening on its port — the right choice when the service has no cheap route that returns 2xx.\n- textbox \"Health Check Path\" [disabled]:\n  - /placeholder: Empty — check the port only\n- button \"Edit Health Check Path\""
+    },
+    "FreshDesktopTabHealthEscape": {
+      "at": "2026-10-17T14:20:25.763Z",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "label": "Health Check Path",
+      "tabs": 64,
+      "reached": {
+        "tag": "BUTTON",
+        "label": "Edit Health Check Path",
+        "text": "",
+        "value": ""
+      },
+      "opened": {
+        "active": {
+          "tag": "INPUT",
+          "label": "Health Check Path",
+          "text": null,
+          "value": ""
+        },
+        "disabled": false,
+        "value": ""
+      },
+      "draft": {
+        "value": "/qa-a888-fresh-desktop",
+        "active": {
+          "tag": "INPUT",
+          "label": "Health Check Path",
+          "text": null,
+          "value": "/qa-a888-fresh-desktop"
+        }
+      },
+      "escaped": {
+        "active": {
+          "tag": "BUTTON",
+          "label": "Edit Health Check Path",
+          "text": "",
+          "value": ""
+        },
+        "disabled": true,
+        "value": "",
+        "editVisible": true
+      },
+      "reopened": {
+        "active": {
+          "tag": "INPUT",
+          "label": "Health Check Path",
+          "text": null,
+          "value": ""
+        },
+        "disabled": false,
+        "value": ""
+      },
+      "final": {
+        "tag": "BUTTON",
+        "label": "Edit Health Check Path",
+        "text": "",
+        "value": ""
+      },
+      "mutations": []
+    },
+    "Deleted": {
+      "at": "2026-10-17T14:20:57.556Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db9o5s4flioc739mcn40"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "timing": {
+        "startTime": 1792246855975.954,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.142,
+        "responseStart": 851.439,
+        "responseEnd": 851.914
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "InventoryCleanup": {
+      "at": "2026-10-17T14:21:12.881Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [
+        {
+          "path": "/v1/services/srv-db9o5s4flioc739mcn40",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9o5s4flioc739mcn40/deploys/dep-db9o81ss300s73dskg6g",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9o5s4flioc739mcn40/deploys/dep-db9o7lcs300s73dskg5g",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9o5s4flioc739mcn40/deploys/dep-db9o794s300s73dskg40",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9o5s4flioc739mcn40/deploys/dep-db9o5s4flioc739mcn4g",
+          "status": 404
+        }
+      ]
+    },
+    "SessionCleared": {
+      "at": "2026-10-17T14:21:34.788Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "FinishSummary": {
+      "logoutConfirmed": true,
+      "exitCode": 0,
+      "browser": {
+        "at": "2026-10-17T14:21:34.788Z",
+        "whoami": 401,
+        "cookies": 0,
+        "pages": 1,
+        "url": "about:blank"
+      },
+      "handlesRemoved": true
+    }
+  },
+  "externalPortRuntime": {
+    "at": "2026-10-17T14:19:00.555943+00:00",
+    "request": {
+      "method": "GET",
+      "url": "https://qa-20261017-a888-keyboard.onbex.co/qa-a888"
+    },
+    "exitCode": 0,
+    "status": 200,
+    "body": {
+      "pass": "a888",
+      "port": 8847,
+      "path": "/qa-a888",
+      "startedAt": "2026-10-17T14:18:17.551Z",
+      "pid": 1
+    },
+    "stderr": ""
+  },
+  "httpHealthProbe": {
+    "at": "2026-10-17T14:19:50.745490+00:00",
+    "kubernetes": {
+      "request": [
+        "kubectl",
+        "--context",
+        "hetzner-prod",
+        "--request-timeout=15s",
+        "-n",
+        "tea-d98210cbbpdc73dcrkvg",
+        "get",
+        "deployment",
+        "tea-d98210cbbpdc73dcrkvg-qa-20261017-a888-keyboard",
+        "-o",
+        "jsonpath={.spec.template.spec.containers[0].ports[0].containerPort}{\"\\n\"}{.spec.template.spec.containers[0].readinessProbe.httpGet.path}{\"\\n\"}{.spec.template.spec.containers[0].readinessProbe.httpGet.port}{\"\\n\"}{.status.readyReplicas}{\"\\n\"}"
+      ],
+      "exitCode": 0,
+      "stdout": "8847\n/qa-a888-health?test=1\n8847\n1\n",
+      "stderr": "",
+      "projection": {
+        "containerPort": 8847,
+        "httpReadinessPath": "/qa-a888-health?test=1",
+        "readinessPort": 8847,
+        "readyReplicas": 1
+      }
+    },
+    "public": {
+      "request": {
+        "method": "GET",
+        "url": "https://qa-20261017-a888-keyboard.onbex.co/qa-a888-health?test=1"
+      },
+      "exitCode": 0,
+      "status": 200,
+      "body": {
+        "pass": "a888",
+        "port": 8847,
+        "path": "/qa-a888-health?test=1",
+        "startedAt": "2026-10-17T14:19:03.725Z",
+        "pid": 1
+      },
+      "stderr": ""
+    }
+  },
+  "tcpHealthProbe": {
+    "at": "2026-10-17T14:20:45.312889+00:00",
+    "request": [
+      "kubectl",
+      "--context",
+      "hetzner-prod",
+      "--request-timeout=15s",
+      "-n",
+      "tea-d98210cbbpdc73dcrkvg",
+      "get",
+      "deployment",
+      "tea-d98210cbbpdc73dcrkvg-qa-20261017-a888-keyboard",
+      "-o",
+      "jsonpath={.spec.template.spec.containers[0].ports[0].containerPort}{\"\\n\"}{.spec.template.spec.containers[0].readinessProbe.httpGet.path}{\"\\n\"}{.spec.template.spec.containers[0].readinessProbe.tcpSocket.port}{\"\\n\"}{.status.readyReplicas}{\"\\n\"}"
+    ],
+    "exitCode": 0,
+    "stdout": "8847\n\n8847\n1\n",
+    "stderr": "",
+    "projection": {
+      "containerPort": 8847,
+      "httpReadinessPath": "",
+      "tcpReadinessPort": 8847,
+      "readyReplicas": 1
+    }
+  },
+  "physicalCleanup": {
+    "at": "2026-10-17T14:22:05.476542+00:00",
+    "namespace": "tea-d98210cbbpdc73dcrkvg",
+    "app": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a888-keyboard",
+    "serviceId": "srv-db9o5s4flioc739mcn40",
+    "scope": "Read-only exact owned app/name IDs and labels; Secrets exposed as metadata names only and exact app/id prefix filtered.",
+    "checks": [
+      {
+        "check": "apps.app.bex.co",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "deployment",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "service",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "ingress",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "certificate",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "pods:app.bex.co/app",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "pods:bex.co/app-id",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "replicasets:app.bex.co/app",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "replicasets:bex.co/app-id",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "jobs:app.bex.co/app",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "jobs:bex.co/app-id",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "secrets",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "networkpolicies",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "roles",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "rolebindings",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "serviceaccounts",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      }
+    ],
+    "allAbsent": true,
+    "public": {
+      "request": {
+        "method": "GET",
+        "url": "https://qa-20261017-a888-keyboard.onbex.co"
+      },
+      "exitCode": 0,
+      "status": 404,
+      "stderr": ""
+    }
+  },
+  "networkSummary": {
+    "baselineExclusive": 1797,
+    "count": 142,
+    "statuses": {
+      "200": 135,
+      "204": 6,
+      "FAILED": 1
+    },
+    "nonSuccess": [
+      "1835. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_ABORTED"
+    ]
+  },
+  "abortedReadOperation": {
+    "operationName": "DeployActions",
+    "variables": {
+      "serviceId": "srv-db9o5s4flioc739mcn40",
+      "ownerId": "tea-d98210cbbpdc73dcrkvg"
+    },
+    "extensions": {
+      "clientLibrary": {
+        "name": "@apollo/client",
+        "version": "4.3.3"
+      }
+    },
+    "query": "query DeployActions($serviceId: String!, $ownerId: String!) {\n  deployActions(serviceId: $serviceId, ownerId: $ownerId) {\n    action\n    outcome\n    reason\n    precondition\n    __typename\n  }\n}"
+  },
+  "consoleCapture": {
+    "error": false,
+    "summary": "### Result\nTotal messages: 0 (Errors: 0, Warnings: 0)\n"
+  },
+  "sourceCensus": {
+    "definition": "Exact JSX EditableFieldRow token; excludes tests and the separate EditableFieldRowPreview token",
+    "files": 15,
+    "sites": 22,
+    "rows": [
+      {
+        "path": "dashboard/src/routes/services.$serviceId.settings.tsx",
+        "sites": 1,
+        "matches": [
+          {
+            "line": 124,
+            "tag": "<EditableFieldRow"
+          }
+        ]
+      },
+      {
+        "path": "dashboard/src/features/services/components/max-shutdown-delay-row.tsx",
+        "sites": 1,
+        "matches": [
+          {
+            "line": 23,
+            "tag": "<EditableFieldRow"
+          }
+        ]
+      },
+      {
+        "path": "dashboard/src/features/services/components/service-port-row.tsx",
+        "sites": 1,
+        "matches": [
+          {
+            "line": 32,
+            "tag": "<EditableFieldRow"
+          }
+        ]
+      },
+      {
+        "path": "dashboard/src/features/services/components/health-check-path-row.tsx",
+        "sites": 1,
+        "matches": [
+          {
+            "line": 31,
+            "tag": "<EditableFieldRow"
+          }
+        ]
+      },
+      {
+        "path": "dashboard/src/features/services/components/deploy-card.tsx",
+        "sites": 2,
+        "matches": [
+          {
+            "line": 103,
+            "tag": "<EditableFieldRow"
+          },
+          {
+            "line": 122,
+            "tag": "<EditableFieldRow"
+          }
+        ]
+      },
+      {
+        "path": "dashboard/src/features/services/components/static-site-section.tsx",
+        "sites": 1,
+        "matches": [
+          {
+            "line": 178,
+            "tag": "<EditableFieldRow"
+          }
+        ]
+      },
+      {
+        "path": "dashboard/src/features/services/components/maintenance-mode-section.tsx",
+        "sites": 1,
+        "matches": [
+          {
+            "line": 84,
+            "tag": "<EditableFieldRow"
+          }
+        ]
+      },
+      {
+        "path": "dashboard/src/features/services/components/build-deploy-section.tsx",
+        "sites": 6,
+        "matches": [
+          {
+            "line": 186,
+            "tag": "<EditableFieldRow"
+          },
+          {
+            "line": 219,
+            "tag": "<EditableFieldRow"
+          },
+          {
+            "line": 240,
+            "tag": "<EditableFieldRow"
+          },
+          {
+            "line": 271,
+            "tag": "<EditableFieldRow"
+          },
+          {
+            "line": 354,
+            "tag": "<EditableFieldRow"
+          },
+          {
+            "line": 372,
+            "tag": "<EditableFieldRow"
+          }
+        ]
+      },
+      {
+        "path": "dashboard/src/features/services/components/display-name-row.tsx",
+        "sites": 1,
+        "matches": [
+          {
+            "line": 34,
+            "tag": "<EditableFieldRow"
+          }
+        ]
+      },
+      {
+        "path": "dashboard/src/features/services/components/service-notifications-row.tsx",
+        "sites": 1,
+        "matches": [
+          {
+            "line": 34,
+            "tag": "<EditableFieldRow"
+          }
+        ]
+      },
+      {
+        "path": "dashboard/src/features/services/components/cron-deploy-section.tsx",
+        "sites": 2,
+        "matches": [
+          {
+            "line": 95,
+            "tag": "<EditableFieldRow"
+          },
+          {
+            "line": 131,
+            "tag": "<EditableFieldRow"
+          }
+        ]
+      },
+      {
+        "path": "dashboard/src/features/keyvalue/components/key-value-persistence-mode-section.tsx",
+        "sites": 1,
+        "matches": [
+          {
+            "line": 106,
+            "tag": "<EditableFieldRow"
+          }
+        ]
+      },
+      {
+        "path": "dashboard/src/features/keyvalue/components/key-value-name-row.tsx",
+        "sites": 1,
+        "matches": [
+          {
+            "line": 24,
+            "tag": "<EditableFieldRow"
+          }
+        ]
+      },
+      {
+        "path": "dashboard/src/features/keyvalue/components/key-value-maxmemory-policy-section.tsx",
+        "sites": 1,
+        "matches": [
+          {
+            "line": 69,
+            "tag": "<EditableFieldRow"
+          }
+        ]
+      },
+      {
+        "path": "dashboard/src/features/databases/components/database-name-row.tsx",
+        "sites": 1,
+        "matches": [
+          {
+            "line": 24,
+            "tag": "<EditableFieldRow"
+          }
+        ]
+      }
+    ],
+    "separatePreviewSites": [
+      {
+        "path": "dashboard/src/common/components/datastore-overview-previews.tsx",
+        "sites": 2
+      },
+      {
+        "path": "dashboard/src/features/keyvalue/components/key-value-persistence-mode-section.tsx",
+        "sites": 1
+      },
+      {
+        "path": "dashboard/src/features/keyvalue/components/key-value-maxmemory-policy-section.tsx",
+        "sites": 1
+      }
+    ]
+  },
+  "sourceExcerpts": [
+    {
+      "path": "dashboard/src/features/services/components/editable-field-row.tsx",
+      "sha256": "56d5adbe2eabc6621f282e2a59d54aecb9ef2666a8b646406d90d3e081eee99e",
+      "startLine": 134,
+      "endLine": 197,
+      "excerpt": "  const errorId = useId();\n  const [editing, setEditing] = useState(false);\n  const [draft, setDraft] = useState(value);\n  const [confirming, setConfirming] = useState(false);\n  const inputRef = useRef<HTMLInputElement>(null);\n  const triggerRef = useRef<HTMLButtonElement>(null);\n  const editButtonRef = useRef<HTMLButtonElement>(null);\n  // Set only by an explicit Cancel/Escape so the post-render effect returns\n  // focus to the restored pencil — never on mount, a server refresh, or a\n  // save (w4/293).\n  const restoreFocusRef = useRef(false);\n  const editable = !disabled;\n  // The disabled control always shows the persisted value; the draft only\n  // exists while editing (seeded on Edit), so an external value update never\n  // clobbers an in-progress edit.\n  const shown = editing ? draft : value;\n\n  // Focus (and select, for inputs) the control once editing enables it.\n  useEffect(() => {\n    if (!editing) return;\n    if (options) triggerRef.current?.focus();\n    else {\n      inputRef.current?.focus();\n      inputRef.current?.select();\n    }\n  }, [editing, options]);\n\n  // Cancel disables the focused control and unmounts Cancel/Save, which would\n  // drop keyboard focus to <body>; hand it to this row's restored pencil once\n  // it is mounted. A disabled row renders no pencil, so focus stays put.\n  useEffect(() => {\n    if (editing || !restoreFocusRef.current) return;\n    restoreFocusRef.current = false;\n    editButtonRef.current?.focus();\n  }, [editing]);\n\n  const normalized = normalize(draft);\n  const validationError = editing ? (validate?.(draft) ?? null) : null;\n  const description =\n    validationError === null ? (describe?.(shown) ?? null) : null;\n  const isDirty = dirty ? dirty(normalized) : normalized !== value;\n  const canSave = isDirty && validationError === null;\n\n  function startEdit() {\n    setDraft(value);\n    setEditing(true);\n  }\n\n  function cancel() {\n    restoreFocusRef.current = true;\n    setDraft(value);\n    setEditing(false);\n  }\n\n  async function persist() {\n    setConfirming(false);\n    const ok = await onSave(normalized);\n    if (ok) setEditing(false);\n  }\n\n  function requestSave() {\n    if (!canSave) return;\n    if (confirm) setConfirming(true);\n    else void persist();"
+    },
+    {
+      "path": "dashboard/src/features/services/components/editable-field-row.tsx",
+      "sha256": "56d5adbe2eabc6621f282e2a59d54aecb9ef2666a8b646406d90d3e081eee99e",
+      "startLine": 309,
+      "endLine": 352,
+      "excerpt": "              \"flex-1\",\n              prefixedEdit && \"basis-full sm:basis-0\",\n              mono && \"font-mono text-sm\",\n            )}\n            onChange={(event) => setDraft(event.target.value)}\n            onKeyDown={(event) => {\n              if (event.key === \"Enter\") {\n                event.preventDefault();\n                requestSave();\n              }\n              if (event.key === \"Escape\") cancel();\n            }}\n          />\n        )}\n\n        {editing ? (\n          <>\n            <Button variant=\"ghost\" size=\"sm\" disabled={busy} onClick={cancel}>\n              {t(\"services.editRowCancel\")}\n            </Button>\n            <Button size=\"sm\" disabled={busy || !canSave} onClick={requestSave}>\n              {busy && <Loader2 className=\"animate-spin\" />}\n              {t(\"services.editRowSave\")}\n            </Button>\n          </>\n        ) : (\n          editable && (\n            <Button\n              ref={editButtonRef}\n              size=\"icon\"\n              variant=\"ghost\"\n              aria-label={editLabel}\n              onClick={startEdit}\n            >\n              <Pencil />\n            </Button>\n          )\n        )}\n      </div>\n\n      {description != null && (\n        <p className=\"text-muted-foreground text-sm\">{description}</p>\n      )}\n"
+    },
+    {
+      "path": "dashboard/src/features/services/components/health-check-path-row.tsx",
+      "sha256": "81fc0019588209a54728357c64a72ffba736893e09ef0cf0f73fee3c65b3e3c0",
+      "startLine": 26,
+      "endLine": 49,
+      "excerpt": "  const { t } = useTranslations();\n  const { setHealthCheckPath, busy } = useHealthCheckPath();\n  const current = healthCheckPath ?? \"\";\n\n  return (\n    <EditableFieldRow\n      label={t(\"services.settingsHealthCheckPath\")}\n      hint={t(\"services.settingsHealthCheckPathHint\")}\n      value={current}\n      placeholder={t(\"services.settingsHealthCheckPathPlaceholder\")}\n      editLabel={t(\"services.settingsHealthCheckPathEdit\")}\n      mono\n      busy={busy}\n      // A path may carry meaningful characters, so compare the raw draft.\n      // Empty is passed through, not coerced: it clears the path and selects\n      // the TCP check.\n      normalize={(draft) => draft}\n      onSave={(value) => setHealthCheckPath(serviceId, value)}\n    />\n  );\n}"
+    },
+    {
+      "path": "dashboard/src/features/services/components/service-port-row.tsx",
+      "sha256": "19111e250498aba25f2fd7184457ca2942b41023fc474175a00bef1cde2d4e18",
+      "startLine": 28,
+      "endLine": 73,
+      "excerpt": "  const { setPort, busy } = usePort();\n  const current = port != null ? String(port) : \"\";\n\n  return (\n    <EditableFieldRow\n      label={t(\"services.settingsPort\")}\n      hint={t(\"services.settingsPortHint\", {\n        port: String(DEFAULT_SERVICE_PORT),\n      })}\n      value={current}\n      placeholder={String(DEFAULT_SERVICE_PORT)}\n      editLabel={t(\"services.settingsPortEdit\")}\n      type=\"number\"\n      min={MIN_SERVICE_PORT}\n      max={MAX_SERVICE_PORT}\n      busy={busy}\n      // Dirty-compare the parsed port, not the text: \"03000\" is port 3000, and\n      // saving it would roll an identical deploy (w4/278).\n      dirty={(draft) => {\n        const parsed = parsePort(draft);\n        return parsed !== null && parsed !== port;\n      }}\n      validate={(draft) =>\n        parsePort(draft) === null\n          ? t(\"services.portRangeError\", {\n              min: String(MIN_SERVICE_PORT),\n              max: String(MAX_SERVICE_PORT),\n            })\n          : null\n      }\n      onSave={async (value) => {\n        const parsed = parsePort(value);\n        // validate() already blocks Save on an unparseable draft; this is the\n        // type narrowing, not a second gate.\n        if (parsed === null) return false;\n        return setPort(serviceId, parsed);\n      }}\n    />\n  );\n}"
+    },
+    {
+      "path": "dashboard/src/features/services/components/__tests__/editable-field-row.test.tsx",
+      "sha256": "aba8f4ef879b373760ac11906470b440e937434914fc268faec35eccbacf4b62",
+      "startLine": 461,
+      "endLine": 548,
+      "excerpt": "  describe(\"cancel returns keyboard focus to the pencil (w4/293)\", () => {\n    it(\"Escape on a text field focuses Edit, and Enter reopens the saved value\", async () => {\n      const user = userEvent.setup();\n      const onSave = ok();\n      render(\n        <EditableFieldRow\n          label=\"Health Check Path\"\n          value=\"/healthz\"\n          editLabel=\"Edit health check path\"\n          onSave={onSave}\n        />,\n      );\n\n      screen.getByRole(\"button\", { name: \"Edit health check path\" }).focus();\n      await user.keyboard(\"{Enter}\");\n      const input = screen.getByRole(\"textbox\", { name: \"Health Check Path\" });\n      expect(input).toHaveFocus();\n      await user.type(input, \"/draft\");\n      await user.keyboard(\"{Escape}\");\n\n      expect(input).toHaveValue(\"/healthz\");\n      expect(input).toBeDisabled();\n      const pencil = screen.getByRole(\"button\", {\n        name: \"Edit health check path\",\n      });\n      expect(pencil).toHaveFocus();\n\n      await user.keyboard(\"{Enter}\");\n      expect(input).toBeEnabled();\n      expect(input).toHaveValue(\"/healthz\");\n      expect(input).toHaveFocus();\n      expect(onSave).not.toHaveBeenCalled();\n    });\n\n    it(\"Escape on a number field focuses Edit, and Enter reopens it\", async () => {\n      const user = userEvent.setup();\n      render(\n        <EditableFieldRow\n          label=\"Port\"\n          value=\"8846\"\n          editLabel=\"Edit port\"\n          type=\"number\"\n          onSave={ok()}\n        />,\n      );\n\n      screen.getByRole(\"button\", { name: \"Edit port\" }).focus();\n      await user.keyboard(\"{Enter}\");\n      const input = screen.getByRole(\"spinbutton\", { name: \"Port\" });\n      await user.clear(input);\n      await user.type(input, \"8847\");\n      await user.keyboard(\"{Escape}\");\n\n      expect(input).toHaveValue(8846);\n      expect(screen.getByRole(\"button\", { name: \"Edit port\" })).toHaveFocus();\n      await user.keyboard(\"{Enter}\");\n      expect(input).toBeEnabled();\n      expect(input).toHaveFocus();\n    });\n\n    it(\"keyboard activation of Cancel focuses Edit\", async () => {\n      const user = userEvent.setup();\n      render(\n        <EditableFieldRow\n          label=\"Health Check Path\"\n          value=\"/healthz\"\n          editLabel=\"Edit health check path\"\n          onSave={ok()}\n        />,\n      );\n\n      await user.click(\n        screen.getByRole(\"button\", { name: \"Edit health check path\" }),\n      );\n      await user.type(\n        screen.getByRole(\"textbox\", { name: \"Health Check Path\" }),\n        \"/draft\",\n      );\n      await user.tab();\n      expect(screen.getByRole(\"button\", { name: \"Cancel\" })).toHaveFocus();\n      await user.keyboard(\"{Enter}\");\n\n      expect(\n        screen.getByRole(\"button\", { name: \"Edit health check path\" }),\n      ).toHaveFocus();\n    });\n\n    it(\"select: popup Escape keeps editing; explicit Cancel focuses Edit\", async () => {"
+    },
+    {
+      "path": "dashboard/src/features/services/components/__tests__/editable-field-row.test.tsx",
+      "sha256": "aba8f4ef879b373760ac11906470b440e937434914fc268faec35eccbacf4b62",
+      "startLine": 548,
+      "endLine": 659,
+      "excerpt": "    it(\"select: popup Escape keeps editing; explicit Cancel focuses Edit\", async () => {\n      const user = userEvent.setup();\n      render(\n        <EditableFieldRow\n          label=\"Notifications\"\n          value=\"default\"\n          editLabel=\"Edit notifications\"\n          options={[\n            { value: \"default\", label: \"Use workspace default\" },\n            { value: \"none\", label: \"No notifications\" },\n          ]}\n          onSave={ok()}\n        />,\n      );\n\n      await user.click(\n        screen.getByRole(\"button\", { name: \"Edit notifications\" }),\n      );\n      const trigger = screen.getByRole(\"combobox\", { name: \"Notifications\" });\n      await user.click(trigger);\n      await user.keyboard(\"{Escape}\");\n      expect(trigger).toBeEnabled();\n      expect(\n        screen.queryByRole(\"button\", { name: \"Edit notifications\" }),\n      ).not.toBeInTheDocument();\n\n      screen.getByRole(\"button\", { name: \"Cancel\" }).focus();\n      await user.keyboard(\"{Enter}\");\n      expect(trigger).toBeDisabled();\n      expect(\n        screen.getByRole(\"button\", { name: \"Edit notifications\" }),\n      ).toHaveFocus();\n    });\n\n    it(\"combobox: explicit Cancel focuses Edit\", async () => {\n      const user = userEvent.setup();\n      render(\n        <EditableFieldRow\n          label=\"Branch\"\n          value=\"main\"\n          editLabel=\"Edit branch\"\n          comboboxOptions={[{ value: \"main\", label: \"main\" }]}\n          onSave={ok()}\n        />,\n      );\n\n      await user.click(screen.getByRole(\"button\", { name: \"Edit branch\" }));\n      await user.click(screen.getByRole(\"button\", { name: \"Cancel\" }));\n\n      expect(screen.getByRole(\"combobox\", { name: \"Branch\" })).toHaveValue(\n        \"main\",\n      );\n      expect(screen.getByRole(\"button\", { name: \"Edit branch\" })).toHaveFocus();\n    });\n\n    it(\"never moves focus on mount, on save, or into a row that became disabled\", async () => {\n      const user = userEvent.setup();\n      const props = {\n        label: \"Health Check Path\",\n        value: \"/healthz\",\n        editLabel: \"Edit health check path\",\n        onSave: ok(),\n      };\n      const { rerender } = render(\n        <>\n          <button type=\"button\">Elsewhere</button>\n          <EditableFieldRow {...props} />\n        </>,\n      );\n      expect(\n        screen.getByRole(\"button\", { name: \"Edit health check path\" }),\n      ).not.toHaveFocus();\n\n      // A successful save is not a cancellation: no focus hand-off.\n      await user.click(\n        screen.getByRole(\"button\", { name: \"Edit health check path\" }),\n      );\n      await user.type(\n        screen.getByRole(\"textbox\", { name: \"Health Check Path\" }),\n        \"/v2\",\n      );\n      await user.click(screen.getByRole(\"button\", { name: \"Save changes\" }));\n      expect(props.onSave).toHaveBeenCalledWith(\"/healthz/v2\");\n      expect(\n        screen.getByRole(\"button\", { name: \"Edit health check path\" }),\n      ).not.toHaveFocus();\n\n      // Cancel on a row that lost edit rights renders no pencil, so nothing\n      // is focused, and re-enabling it later does not steal focus.\n      await user.click(\n        screen.getByRole(\"button\", { name: \"Edit health check path\" }),\n      );\n      rerender(\n        <>\n          <button type=\"button\">Elsewhere</button>\n          <EditableFieldRow {...props} disabled />\n        </>,\n      );\n      await user.click(screen.getByRole(\"button\", { name: \"Cancel\" }));\n      expect(\n        screen.queryByRole(\"button\", { name: \"Edit health check path\" }),\n      ).not.toBeInTheDocument();\n      screen.getByRole(\"button\", { name: \"Elsewhere\" }).focus();\n      rerender(\n        <>\n          <button type=\"button\">Elsewhere</button>\n          <EditableFieldRow {...props} />\n        </>,\n      );\n      expect(screen.getByRole(\"button\", { name: \"Elsewhere\" })).toHaveFocus();\n    });\n  });"
+    }
+  ],
+  "validation": {
+    "count": 80,
+    "passed": [
+      "Baseline HTTP200/no GraphQL errors",
+      "Created HTTP200/no GraphQL errors",
+      "CancellationStateUnchanged HTTP200/no GraphQL errors",
+      "PortChanged HTTP200/no GraphQL errors",
+      "HealthSaved HTTP200/no GraphQL errors",
+      "HealthCleared HTTP200/no GraphQL errors",
+      "Deleted HTTP200/no GraphQL errors",
+      "Free image create8846",
+      "DesktopHealthEscape: reached actual Edit with native Tab",
+      "DesktopHealthEscape: Enter opens and focuses saved input",
+      "DesktopHealthEscape: Escape restores disabled baseline and Edit focus",
+      "DesktopHealthEscape: native Enter reopens same saved field",
+      "DesktopHealthEscape: zero captured mutation operations",
+      "DesktopPortEscape: reached actual Edit with native Tab",
+      "DesktopPortEscape: Enter opens and focuses saved input",
+      "DesktopPortEscape: Escape restores disabled baseline and Edit focus",
+      "DesktopPortEscape: native Enter reopens same saved field",
+      "DesktopPortEscape: zero captured mutation operations",
+      "MobileHealthEscape: reached actual Edit with native Tab",
+      "MobileHealthEscape: Enter opens and focuses saved input",
+      "MobileHealthEscape: Escape restores disabled baseline and Edit focus",
+      "MobileHealthEscape: native Enter reopens same saved field",
+      "MobileHealthEscape: zero captured mutation operations",
+      "MobilePortEscape: reached actual Edit with native Tab",
+      "MobilePortEscape: Enter opens and focuses saved input",
+      "MobilePortEscape: Escape restores disabled baseline and Edit focus",
+      "MobilePortEscape: native Enter reopens same saved field",
+      "MobilePortEscape: zero captured mutation operations",
+      "FreshDesktopTabHealthEscape: reached actual Edit with native Tab",
+      "FreshDesktopTabHealthEscape: Enter opens and focuses saved input",
+      "FreshDesktopTabHealthEscape: Escape restores disabled baseline and Edit focus",
+      "FreshDesktopTabHealthEscape: native Enter reopens same saved field",
+      "FreshDesktopTabHealthEscape: zero captured mutation operations",
+      "DesktopHealthKeyboardCancel: Tab reaches native Cancel",
+      "DesktopHealthKeyboardCancel: Enter on Cancel restores baseline and Edit focus",
+      "DesktopHealthKeyboardCancel: Enter reopens health field",
+      "MobileHealthKeyboardCancel: Tab reaches native Cancel",
+      "MobileHealthKeyboardCancel: Enter on Cancel restores baseline and Edit focus",
+      "MobileHealthKeyboardCancel: Enter reopens health field",
+      "Fresh mobile exact390x844",
+      "Fresh desktop exact1440x1000 after actual reload",
+      "Six native port controls and no writes",
+      "Port '0' disabled save and Enter keeps editing",
+      "Port '0' expected validation",
+      "Port '1023' disabled save and Enter keeps editing",
+      "Port '1023' expected validation",
+      "Port '65536' disabled save and Enter keeps editing",
+      "Port '65536' expected validation",
+      "Port '8846.5' disabled save and Enter keeps editing",
+      "Port '8846.5' expected validation",
+      "Port '' disabled save and Enter keeps editing",
+      "Port '' expected validation",
+      "Port '08846' disabled save and Enter keeps editing",
+      "Port '08846' expected validation",
+      "Port controls cancel restores8846 and focus",
+      "All cancellation/validation journeys leave canonical settings and single original Live deploy",
+      "Native port save8847",
+      "Native health path preserves exact query",
+      "Native clear preserves empty path",
+      "PortChangedRuntime: actual canonical settings and terminal Live",
+      "PortChangedRuntime: public process serves8847",
+      "HealthSavedRuntime: actual canonical settings and terminal Live",
+      "HealthSavedRuntime: public process serves8847",
+      "HealthClearedRuntime: actual canonical settings and terminal Live",
+      "HealthClearedRuntime: public process serves8847",
+      "Successful save retains existing BODY focus behavior",
+      "Independent external curl port8847",
+      "Applied actual HTTP readiness path/port and one ready replica",
+      "Independent external health URL200 and exact path",
+      "Actual clear restores TCP readiness8847",
+      "Four retained deploys",
+      "Delete accepted exact owned ID",
+      "Seven canonical baseline sets restored",
+      "Service and four deploys404",
+      "Exact session revoked, no cookies/other page and handles removed",
+      "16 physical scopes empty and public404",
+      "142 native transports classified",
+      "Console capture empty",
+      "Exact interactive row JSX census22 sites/15 files",
+      "Original a416 evidence byte-unchanged"
+    ]
+  },
+  "scopeNotes": [
+    "Cancellation focus and Enter reopening were live-tested on text and number rows at1440x1000 and a fresh390x844 page; Health Check Path native keyboard Cancel uses actual Tab then Enter. Pointer Edit was also used for that Cancel trial and successful saves.",
+    "The final fresh desktop replay used64 actual Tab presses with no programmatic focus. The first desktop hash-targeted page needed1 Tab; those entry conditions are recorded separately, not conflated.",
+    "The original implementation has six maintained regressions covering text/number/keyboard-Cancel, Select popup-only Escape, Combobox explicit Cancel and no focus steal. Their historical pass remains historical; no suite rerun or product test/source change in this acceptance filing.",
+    "Select/Combobox live cancellation, sibling service/datastore types, aliases, restricted/busy/unmount scenarios, Chinese UI, other browsers and authenticated Render focus were not reaccepted.",
+    "Successful save still leaves BODY focused and returns the saved disabled input; changing that focus policy was explicitly outside293. No new issue is claimed for it.",
+    "Zero mutations were captured inside the Escape and port-validation trials; the independent canonical state after all six primary desktop/mobile cases and validation retained one original Live deploy and the original settings. The Cancel factory did not install a separate request listener, so it is not itself a zero-write network receipt.",
+    "One native DeployActions read aborted during navigation; no other captured transport failure and no console errors. Explicit independent page.request probes retain their own receipts, outside the native network snapshot.",
+    "Wrong Save label was corrected to Save changes before any submit. The first native network dump exceeded the local stdout cap; the same live browser/log was reread with a larger output budget after logout. No browser restart, write replay or product failure was inferred.",
+    "No paid action or pre-existing-resource mutation. Only owned exact App/name IDs and labels were inspected for physical cleanup."
+  ]
+}
