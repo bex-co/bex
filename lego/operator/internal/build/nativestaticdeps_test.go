@@ -343,15 +343,7 @@ func TestNativeStaticBuildRunsTheInstallStep(t *testing.T) {
 	gemsDefaultBuilt := "<p>13.2.1 3.1.8 0.3 UTF-8 " + rubyDefault.version + " true</p>"
 	gemsWithNpm := maps.Clone(withLock)
 	maps.Copy(gemsWithNpm, gems)
-	jekyll := map[string]string{}
-	must(t, filepath.WalkDir("testdata/render-jekyll", func(p string, d os.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return err
-		}
-		raw, err := os.ReadFile(p)
-		jekyll[strings.TrimPrefix(p, "testdata/render-jekyll/")] = string(raw)
-		return err
-	}))
+	jekyll := sourceTree(t, "testdata/render-jekyll")
 	for i, tc := range []struct {
 		name, command, publish string
 		env, src               map[string]string

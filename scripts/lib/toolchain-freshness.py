@@ -19,11 +19,15 @@ from pathlib import Path
 
 SCHEMA = "bex.build-toolchain-freshness/v1"
 CLUSTER_BUILDER_ID = "cnb-builder"
-KINDS = frozenset({"builder", "stack", "native-base", "helper", "npm-package"})
+KINDS = frozenset({"builder", "stack", "native-base", "helper", "npm-package", "release-asset"})
 # An npm-package pin (w8/m73 pnpm) is a registry tarball, not an image: its
 # upstream is registry.npmjs.org/<name>:<dist-tag> and its digest is the sha256
 # of the tarball that dist-tag currently names.
 NPM_REGISTRY = "registry.npmjs.org"
+# A release-asset pin (w8/m106 Hugo) is one file of a GitHub release: its
+# upstream is github.com/<owner>/<repo>/<asset>:<tag> and its digest is the
+# sha256 of that asset as the release serves it now.
+GITHUB = "github.com"
 DIGEST_RE = re.compile(r"sha256:[a-f0-9]{64}")
 ID_RE = re.compile(r"^[a-z][a-z0-9-]{0,62}$")
 
@@ -31,6 +35,7 @@ CANONICAL_PIN_SITES = (
     "lego/operator/internal/build/native.go",
     "lego/operator/internal/build/nativepnpm.go",
     "lego/operator/internal/build/nativeffmpeg.go",
+    "lego/operator/internal/build/nativehugo.go",
     "lego/operator/internal/build/build.go",
     "lego/operator/cmd/manager/main.go",
     "lego/operator/config/manager/manager.yaml",
@@ -130,6 +135,14 @@ def parse_inventory(raw: str) -> dict:
             fail(f"{prefix}.kind must be one of {sorted(KINDS)}")
         if not isinstance(image["upstream"], str) or ":" not in image["upstream"] or "@" in image["upstream"]:
             fail(f"{prefix}.upstream must be a host/name:tag reference")
+        # The resolver routes by upstream host, so a kind's upstream must name
+        # the host its kind resolves through.
+        hosts = {"npm-package": NPM_REGISTRY + "/", "release-asset": GITHUB + "/"}
+        want_host = hosts.get(image["kind"])
+        if want_host and not image["upstream"].startswith(want_host):
+            fail(f"{prefix}.upstream of a {image['kind']} must start with {want_host}")
+        if not want_host and image["upstream"].startswith(tuple(hosts.values())):
+            fail(f"{prefix}.upstream of a {image['kind']} must be an image reference")
         try:
             digest_of(image["committed"])
         except ValueError:
@@ -264,6 +277,15 @@ def resolve_npm_package(ref: str) -> str:
     return http_sha256(tarball)
 
 
+def resolve_release_asset(ref: str) -> str:
+    name, tag = split_name_tag(ref.removeprefix(GITHUB + "/"))
+    parts = name.split("/")
+    if len(parts) != 3 or not all(parts):
+        raise RuntimeError(f"{ref}: want {GITHUB}/<owner>/<repo>/<asset>:<tag>")
+    owner, repo, asset = (urllib.parse.quote(part) for part in parts)
+    return http_sha256(f"https://{GITHUB}/{owner}/{repo}/releases/download/{urllib.parse.quote(tag)}/{asset}")
+
+
 def resolve_upstream(ref: str) -> str:
     fixtures = fixture_digests()
     if fixtures is not None:
@@ -275,6 +297,8 @@ def resolve_upstream(ref: str) -> str:
             fail(f"FRESHNESS_DIGESTS digest for {ref} is malformed")
     if ref.startswith(NPM_REGISTRY + "/"):
         return resolve_npm_package(ref)
+    if ref.startswith(GITHUB + "/"):
+        return resolve_release_asset(ref)
     registry, repo, tag = parse_upstream(ref)
     api_host = REGISTRY_API.get(registry, registry)
     auth = REGISTRY_AUTH.get(registry)

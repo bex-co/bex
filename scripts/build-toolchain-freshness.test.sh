@@ -199,6 +199,39 @@ else
   fails=$((fails + 1))
 fi
 
+# release-asset upstream (w8/m106 `native-hugo-*`): hash the GitHub release
+# asset the tag serves — never an image registry.
+if asset_out="$(python3 - "$here/lib/toolchain-freshness.py" <<'PY' 2>&1
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("freshness", sys.argv[1])
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+calls = []
+def fake_sha256(url):
+    calls.append(url)
+    return "sha256:" + "f" * 64
+def no_image_registry(*args):
+    raise AssertionError("release-asset resolved through an image registry")
+m.http_sha256, m.http_digest, m.http_json = fake_sha256, no_image_registry, no_image_registry
+ref = "github.com/gohugoio/hugo/hugo_extended_0.111.3_linux-amd64.tar.gz:v0.111.3"
+assert m.resolve_upstream(ref) == "sha256:" + "f" * 64
+assert calls == [
+    "https://github.com/gohugoio/hugo/releases/download/v0.111.3/hugo_extended_0.111.3_linux-amd64.tar.gz",
+], calls
+try:
+    m.resolve_upstream("github.com/gohugoio/hugo:v0.111.3")
+except RuntimeError:
+    pass
+else:
+    raise AssertionError("an asset-less release-asset ref resolved")
+PY
+)"; then
+  echo "ok: release-asset upstream resolves via the GitHub release download sha256"
+else
+  echo "FAIL: release-asset upstream resolve — $asset_out" >&2
+  fails=$((fails + 1))
+fi
+
 body="$(env "$SCRIPT" issue-body "$tmp/drift.json")"
 if ! printf '%s' "$body" | grep -qF "$DIGEST_A" || ! printf '%s' "$body" | grep -qF "$DIGEST_B"; then
   echo "FAIL: issue body omitted exact digests" >&2
