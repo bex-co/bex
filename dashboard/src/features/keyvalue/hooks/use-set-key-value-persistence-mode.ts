@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useMutation, useQuery } from "@apollo/client/react";
+import { useApolloClient, useMutation, useQuery } from "@apollo/client/react";
 import { toast } from "sonner";
 import {
   KeyValuePersistenceModeDocument,
@@ -8,6 +8,7 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { persistenceModeToUi } from "@/features/keyvalue/lib/labels";
+import { settleKeyValueDetailReads } from "@/features/keyvalue/lib/settle-detail-reads";
 
 export interface UseSetKeyValuePersistenceModeResult {
   mode: string;
@@ -25,6 +26,7 @@ export function useSetKeyValuePersistenceMode(
   onSaved?: () => void,
 ): UseSetKeyValuePersistenceModeResult {
   const { t } = useTranslations();
+  const client = useApolloClient();
 
   const modeQuery = useQuery(KeyValuePersistenceModeDocument, {
     variables: { id },
@@ -42,7 +44,18 @@ export function useSetKeyValuePersistenceMode(
   const save = useCallback(
     async (next: string): Promise<boolean> => {
       try {
-        await setModeMut({ variables: { id, persistenceMode: next } });
+        const result = await setModeMut({
+          variables: { id, persistenceMode: next },
+        });
+        await settleKeyValueDetailReads(client, id);
+        const saved = result.data?.setKeyValuePersistenceMode;
+        if (saved) {
+          client.writeQuery({
+            query: KeyValuePersistenceModeDocument,
+            variables: { id },
+            data: { keyValue: saved },
+          });
+        }
         toast.success(t("keyvalue.persistenceSuccess", { mode: next }));
         void modeQuery.refetch();
         // Saving restarts the store: let the page watch it happen (w4/m137).
@@ -53,7 +66,7 @@ export function useSetKeyValuePersistenceMode(
         return false;
       }
     },
-    [onSaved, setModeMut, modeQuery, id, t],
+    [onSaved, setModeMut, modeQuery, client, id, t],
   );
 
   return { mode, loading: modeQuery.loading, saving, save };

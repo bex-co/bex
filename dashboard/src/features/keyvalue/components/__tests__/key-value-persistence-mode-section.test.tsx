@@ -60,6 +60,32 @@ describe("KeyValuePersistenceModeSection", () => {
     expect(save).toHaveBeenCalledTimes(1);
   });
 
+  // w4/m226: a confirmation voided by a mode change must not reopen by itself
+  // if the mode later returns to the one it was opened against.
+  it("does not reopen a voided confirmation when the mode returns", async () => {
+    hookState.mode = "off";
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    const { rerender } = render(
+      <KeyValuePersistenceModeSection id="red-abc" name="cache" />,
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Edit persistence mode" }),
+    );
+    await user.click(
+      screen.getByRole("combobox", { name: "Persistence mode" }),
+    );
+    await user.click(screen.getByRole("option", { name: "Snapshot only" }));
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    hookState.mode = "journal-snapshot";
+    rerender(<KeyValuePersistenceModeSection id="red-abc" name="cache" />);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    hookState.mode = "off";
+    rerender(<KeyValuePersistenceModeSection id="red-abc" name="cache" />);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(save).not.toHaveBeenCalled();
+  });
+
   it("is read-only until the pencil, then fires the mutation with the new mode", async () => {
     const user = userEvent.setup({ pointerEventsCheck: 0 });
     render(
