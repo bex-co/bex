@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m227** — [Explain unavailable project resource lists](m227/README.md) (6 tasks,2h20m) — major; a fresh native read failure leaves known web/KV members behind successful-looking zero counts and an empty invitation. Project Overview drops the list errors; healthy reads and both move directions retain membership. [Evidence and source trace](m227/finding.md). Owned resources, exact cluster children and session fully cleaned. Filing only.
+
 - [ ] **m226** — [Refresh Key Value configuration before classifying persistence changes](m226/README.md) (6 tasks,2h40m) — major; two ordinary desktop/fresh-mobile clients retain a durable label after successful Available polls although the store is Off, then submit an Off-to-durable change without its typed deletion confirmation and lose new QA keys. Same producer leaves Maxmemory Policy stale. Fresh durable conversion and Off-confirmation/Cancel controls pass. [Evidence and source trace](m226/finding.md). Owned store, exact cluster objects and session cleaned. Filing only.
 
 - [ ] **m225** — [Publish a saved service name after older detail reads](m225/README.md) (6 tasks,2h30m) — minor; four controlled successful pre-write Server-response delays restore the old field/heading after SetDisplayName commits, while fresh API reads retain the new label. Normal Unicode/clear/search/runtime controls pass. [Evidence and source trace](m225/finding.md). Owned Free service, exact cluster objects and session fully cleaned. Filing only.
