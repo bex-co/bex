@@ -752,6 +752,15 @@ func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alp
 	// for something the user did on purpose — contradicting its own deploy row,
 	// which reads "canceled" (w6/m52). Nothing here failed; there is simply no
 	// release yet.
+	// Nothing served, so the canceled release is all that would run: stop it,
+	// as a canceled deploy runs nothing on Render, rather than leave a rolling
+	// first release's pods restarting (w1/132). The template, Service and
+	// Ingress stay; the next release scales it back up.
+	if scalableRuntime(app) {
+		if err := r.scaleDeploymentToZero(ctx, app); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
 	app.Status.Phase = appv1alpha1.PhaseCanceled
 	app.Status.ObservedGeneration = app.Generation
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
