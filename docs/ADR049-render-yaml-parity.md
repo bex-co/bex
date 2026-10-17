@@ -150,6 +150,8 @@ GraphQL, MCP, and dashboard validation retain the shared compiler result (`valid
 
 The plan is a current-state diff, not a declaration count. It identifies create, update, no-op, unsupported, and conflict actions and is the exact immutable input to execution. Validation without store access may return a clearly labeled structural plan; it must not present declaration counts as the number of changes.
 
+**A service update's `changedFields` name what moved, once each (w4/m229).** Each path is probed alone against the live service, as w4/m124 introduced. The probe is still judged beside every other field the file declares. Narrowing the file to one field made a declared `repo` look omitted. Every probe of an image-backed service then re-ran the inherited-repo switch (w8/m70), so the image-to-Git preview listed all twelve declared paths, including the unchanged name and Free plan. An omission that changes a service gets one path too: the path it omits. An image service taking the Blueprint's repo is listed as `repo`, and a cleared `buildFilter` as `buildFilter`. Neither is attributed to every declared field. The full apply is unchanged. Postgres and Key Value keep their per-field probes, and env groups keep their conservative declared-set update.
+
 Dashboard, GraphQL, and MCP may wrap the result in their native envelope, but field paths, codes, semantics, and plan actions come from the same core result.
 
 ### D7 — Close adapter gaps; reject unavailable product features
