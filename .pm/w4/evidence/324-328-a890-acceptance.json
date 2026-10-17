@@ -1,0 +1,4314 @@
+{
+  "pass": "a890",
+  "date": "2026-10-17",
+  "kind": "Post-release acceptance w4/324 and w4/328. Functional controls only; no new bug or product change.",
+  "researchHead": "e27576d8a05acdc0447dfe094da042de9fedd406",
+  "servingBuildSha": "not independently established",
+  "fixture": {
+    "serviceId": "srv-db9oi3sflioc739mcnag",
+    "deployId": "dep-db9oi3sflioc739mcnb0",
+    "name": "qa-20261017-a890-ranges",
+    "plan": "free",
+    "discoveredInstance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+    "deleted": true
+  },
+  "originalEvidence": [
+    {
+      "path": ".pm/w4/evidence/324-log-filter-mobile-chip.json",
+      "sha256": "81945606d9028b3b98723fc68fbdade6d113b82dc3bbfd756c8fb777b057a05f"
+    },
+    {
+      "path": ".pm/w4/evidence/328-a761.json",
+      "sha256": "0de4eba7d955a74865b60f4fb371c795d3a774911252ad6303162ef9e90b73b6"
+    }
+  ],
+  "ranges": {
+    "at": "2026-10-17T14:42:42.894Z",
+    "timezone": "America/Los_Angeles",
+    "sameMinute": {
+      "start": "2026-10-17T14:41:10.123Z",
+      "end": "2026-10-17T14:41:50.987Z"
+    },
+    "wide": {
+      "start": "2026-10-17T14:40:10.123Z",
+      "end": "2026-10-17T14:41:50.987Z"
+    },
+    "wholeMinute": {
+      "start": "2026-10-17T14:39:00.000Z",
+      "end": "2026-10-17T14:40:00.000Z"
+    },
+    "editedEnd": "2026-10-17T14:41:51.987Z"
+  },
+  "records": {
+    "Baseline": {
+      "at": "2026-10-17T14:41:14.571Z",
+      "status": 200,
+      "inventory": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      }
+    },
+    "CreateFilled": {
+      "at": "2026-10-17T14:41:16.335Z",
+      "freeChecked": true,
+      "name": "qa-20261017-a890-ranges",
+      "port": "8093",
+      "command": "node -e 'const http=require(\"http\");const startedAt=new Date().toISOString();console.error(JSON.stringify({level:\"error\",message:\"qa-a890 range 雪\",startedAt}));http.createServer((req,res)=>{console.log(JSON.stringify({level:\"info\",message:\"qa-a890 request\",path:req.url}));res.setHeader(\"content-type\",\"application/json\");res.end(JSON.stringify({pass:\"a890\",port:Number(process.env.PORT),startedAt,pid:process.pid}))}).listen(Number(process.env.PORT||8093),\"0.0.0.0\")'",
+      "deployEnabled": true
+    },
+    "Created": {
+      "at": "2026-10-17T14:41:20.451Z",
+      "request": {
+        "operationName": "CreateService",
+        "variables": {
+          "image": "docker.io/library/node:24-alpine",
+          "name": "qa-20261017-a890-ranges",
+          "type": "web_service",
+          "registryCredentialId": "",
+          "runtime": "image",
+          "startCommand": "node -e 'const http=require(\"http\");const startedAt=new Date().toISOString();console.error(JSON.stringify({level:\"error\",message:\"qa-a890 range 雪\",startedAt}));http.createServer((req,res)=>{console.log(JSON.stringify({level:\"info\",message:\"qa-a890 request\",path:req.url}));res.setHeader(\"content-type\",\"application/json\");res.end(JSON.stringify({pass:\"a890\",port:Number(process.env.PORT),startedAt,pid:process.pid}))}).listen(Number(process.env.PORT||8093),\"0.0.0.0\")'",
+          "plan": "free",
+          "port": 8093,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db9oi3sflioc739mcnag",
+            "latestDeployId": "dep-db9oi3sflioc739mcnb0",
+            "name": "qa-20261017-a890-ranges",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": "",
+            "type": "web_service"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792248079341.333,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.131,
+        "responseStart": 385.517,
+        "responseEnd": 386.268
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/deploys/dep-db9oi3sflioc739mcnb0"
+    },
+    "LiveRuntime": {
+      "at": "2026-10-17T14:41:41.711Z",
+      "request": {
+        "operationName": "QaA890Ready",
+        "query": "query QaA890Ready($id:String!,$deployId:String!){server(id:$id){id name phase url} deploy(serviceId:$id,deployId:$deployId){id status failureReason}}",
+        "variables": {
+          "id": "srv-db9oi3sflioc739mcnag",
+          "deployId": "dep-db9oi3sflioc739mcnb0"
+        }
+      },
+      "polls": [
+        {
+          "at": "2026-10-17T14:41:40.983Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploy": {
+                "failureReason": "",
+                "id": "dep-db9oi3sflioc739mcnb0",
+                "status": "live"
+              },
+              "server": {
+                "id": "srv-db9oi3sflioc739mcnag",
+                "name": "qa-20261017-a890-ranges",
+                "phase": "Running",
+                "url": "https://qa-20261017-a890-ranges.onbex.co"
+              }
+            }
+          }
+        }
+      ],
+      "public": {
+        "status": 200,
+        "body": {
+          "pass": "a890",
+          "port": 8093,
+          "startedAt": "2026-10-17T14:41:22.013Z",
+          "pid": 1
+        }
+      }
+    },
+    "RangeBounds": {
+      "at": "2026-10-17T14:42:42.894Z",
+      "timezone": "America/Los_Angeles",
+      "sameMinute": {
+        "start": "2026-10-17T14:41:10.123Z",
+        "end": "2026-10-17T14:41:50.987Z"
+      },
+      "wide": {
+        "start": "2026-10-17T14:40:10.123Z",
+        "end": "2026-10-17T14:41:50.987Z"
+      },
+      "wholeMinute": {
+        "start": "2026-10-17T14:39:00.000Z",
+        "end": "2026-10-17T14:40:00.000Z"
+      },
+      "editedEnd": "2026-10-17T14:41:51.987Z"
+    },
+    "NativeBandwidthChartResponse": {
+      "index": 2368,
+      "selectedIndex": 13,
+      "request": {
+        "operationName": "Metrics",
+        "variables": {
+          "query": {
+            "filters": [
+              {
+                "field": "RESOURCE",
+                "values": ["srv-db9oi3sflioc739mcnag"]
+              }
+            ],
+            "name": "BANDWIDTH",
+            "start": "2026-10-17T14:41:10.123Z",
+            "end": "2026-10-17T14:41:50.987Z",
+            "resolution": 60
+          }
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "body": {
+        "data": {
+          "metrics": null
+        },
+        "errors": [
+          {
+            "message": "bad request: a bandwidth window must span at least 60 seconds",
+            "locations": [
+              {
+                "line": 2,
+                "column": 3
+              }
+            ],
+            "path": ["metrics"]
+          }
+        ]
+      }
+    },
+    "NativeBandwidthRead1": {
+      "index": 2368,
+      "selectedIndex": 14,
+      "batchOperationCount": 16,
+      "request": {
+        "operationName": "MonthToDateBandwidth",
+        "variables": {
+          "resourceId": "srv-db9oi3sflioc739mcnag"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query MonthToDateBandwidth($resourceId: String!) {\n  monthToDateBandwidth(resourceId: $resourceId) {\n    egressBandwidthMB\n    httpEgressBandwidthMB\n    natEgressBandwidthMB\n    privateLinkEgressBandwidthMB\n    websocketEgressBandwidthMB\n    degradedSources\n    __typename\n  }\n}"
+      },
+      "body": {
+        "data": {
+          "monthToDateBandwidth": {
+            "__typename": "MonthToDateBandwidth",
+            "degradedSources": ["http", "websocket", "direct"],
+            "egressBandwidthMB": 0,
+            "httpEgressBandwidthMB": 0,
+            "natEgressBandwidthMB": 0,
+            "privateLinkEgressBandwidthMB": 0,
+            "websocketEgressBandwidthMB": 0
+          }
+        }
+      }
+    },
+    "NativeBandwidthRead2": {
+      "index": 2404,
+      "selectedIndex": 14,
+      "batchOperationCount": 16,
+      "request": {
+        "operationName": "MonthToDateBandwidth",
+        "variables": {
+          "resourceId": "srv-db9oi3sflioc739mcnag"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query MonthToDateBandwidth($resourceId: String!) {\n  monthToDateBandwidth(resourceId: $resourceId) {\n    egressBandwidthMB\n    httpEgressBandwidthMB\n    natEgressBandwidthMB\n    privateLinkEgressBandwidthMB\n    websocketEgressBandwidthMB\n    degradedSources\n    __typename\n  }\n}"
+      },
+      "body": {
+        "data": {
+          "monthToDateBandwidth": {
+            "__typename": "MonthToDateBandwidth",
+            "degradedSources": ["http", "websocket", "direct"],
+            "egressBandwidthMB": 0,
+            "httpEgressBandwidthMB": 0,
+            "natEgressBandwidthMB": 0,
+            "privateLinkEgressBandwidthMB": 0,
+            "websocketEgressBandwidthMB": 0
+          }
+        }
+      }
+    },
+    "IndependentBandwidthRead": {
+      "at": "2026-10-17T14:47:55.591Z",
+      "completedAt": "2026-10-17T14:47:56.091Z",
+      "durationMs": 500,
+      "request": {
+        "operationName": "MonthToDateBandwidth",
+        "query": "query MonthToDateBandwidth($resourceId:String!){monthToDateBandwidth(resourceId:$resourceId){egressBandwidthMB httpEgressBandwidthMB natEgressBandwidthMB privateLinkEgressBandwidthMB websocketEgressBandwidthMB degradedSources}}",
+        "variables": {
+          "resourceId": "srv-db9oi3sflioc739mcnag"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "monthToDateBandwidth": {
+            "degradedSources": ["http", "websocket", "direct"],
+            "egressBandwidthMB": 0,
+            "httpEgressBandwidthMB": 0,
+            "natEgressBandwidthMB": 0,
+            "privateLinkEgressBandwidthMB": 0,
+            "websocketEgressBandwidthMB": 0
+          }
+        }
+      }
+    },
+    "InvalidOrderAndClear": {
+      "at": "2026-10-17T14:49:42.953Z",
+      "before": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?range=custom&rangeStart=2026-10-17T14%3A40%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A51.987Z&type=app&live=0",
+      "invalid": {
+        "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?range=custom&rangeStart=2026-10-17T14%3A40%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A51.987Z&type=app&live=0",
+        "dialogVisible": true,
+        "alerts": ["The end must be after the start."]
+      },
+      "reopened": {
+        "alerts": [],
+        "inputs": [
+          {
+            "id": "range-custom-start",
+            "value": "2026-10-17T07:40:10.123"
+          },
+          {
+            "id": "range-custom-end",
+            "value": "2026-10-17T07:41:51.987"
+          }
+        ]
+      }
+    },
+    "TooLongAndClear": {
+      "at": "2026-10-17T14:49:44.973Z",
+      "before": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?range=custom&rangeStart=2026-10-17T14%3A40%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A51.987Z&type=app&live=0",
+      "invalid": {
+        "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?range=custom&rangeStart=2026-10-17T14%3A40%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A51.987Z&type=app&live=0",
+        "dialogVisible": true,
+        "alerts": ["Choose a window of 30 days or less."]
+      },
+      "reopened": {
+        "alerts": [],
+        "inputs": [
+          {
+            "id": "range-custom-start",
+            "value": "2026-10-17T07:40:10.123"
+          },
+          {
+            "id": "range-custom-end",
+            "value": "2026-10-17T07:41:51.987"
+          }
+        ]
+      }
+    },
+    "ApplicationLogsSelectedVerified": {
+      "at": "2026-10-17T14:52:33.501Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9oi3sflioc739mcnag",
+          "type": "app",
+          "startTime": "2026-10-17T13:52:32.985Z",
+          "endTime": "2026-10-17T14:52:32.985Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:22.094330813Z-5000d83f",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "error",
+                "message": "{\"level\":\"error\",\"message\":\"qa-a890 range 雪\",\"startedAt\":\"2026-10-17T14:41:22.013Z\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:22.094330813Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:41.663780785Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:41.663780785Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:42.88591783Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:42.88591783Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T14:41:22.094330812Z",
+            "nextStartTime": "2026-10-17T13:52:32.985Z"
+          }
+        }
+      },
+      "batch": {
+        "operationCount": 1,
+        "selectedIndex": 0
+      },
+      "timing": {
+        "startTime": 1792248753000.9229,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.106,
+        "responseStart": 292.847,
+        "responseEnd": 293.491
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0"
+    },
+    "LevelErrorSelectedVerified": {
+      "at": "2026-10-17T14:52:40.666Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9oi3sflioc739mcnag",
+          "type": "app",
+          "level": ["error"],
+          "startTime": "2026-10-17T13:52:40.001Z",
+          "endTime": "2026-10-17T14:52:40.001Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:22.094330813Z-5000d83f",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "error",
+                "message": "{\"level\":\"error\",\"message\":\"qa-a890 range 雪\",\"startedAt\":\"2026-10-17T14:41:22.013Z\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:22.094330813Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T14:41:22.094330812Z",
+            "nextStartTime": "2026-10-17T13:52:40.001Z"
+          }
+        }
+      },
+      "batch": {
+        "operationCount": 1,
+        "selectedIndex": 0
+      },
+      "timing": {
+        "startTime": 1792248760018.949,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.119,
+        "responseStart": 430.432,
+        "responseEnd": 431.148
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&level=error&live=0"
+    },
+    "InstanceDiscoveryActual": {
+      "at": "2026-10-17T14:52:41.794Z",
+      "list": "- listbox:\n  - option \"All instances\" [selected]\n  - option \"srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i\"",
+      "options": [
+        "All instances",
+        "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i"
+      ]
+    },
+    "InstanceSelected": {
+      "at": "2026-10-17T14:52:54.490Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9oi3sflioc739mcnag",
+          "type": "app",
+          "level": ["error"],
+          "instance": ["srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i"],
+          "startTime": "2026-10-17T13:52:53.818Z",
+          "endTime": "2026-10-17T14:52:53.818Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:22.094330813Z-5000d83f",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "error",
+                "message": "{\"level\":\"error\",\"message\":\"qa-a890 range 雪\",\"startedAt\":\"2026-10-17T14:41:22.013Z\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:22.094330813Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T14:41:22.094330812Z",
+            "nextStartTime": "2026-10-17T13:52:53.818Z"
+          }
+        }
+      },
+      "batch": {
+        "operationCount": 1,
+        "selectedIndex": 0
+      },
+      "timing": {
+        "startTime": 1792248773835.557,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.1,
+        "responseStart": 437.062,
+        "responseEnd": 437.878
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&level=error&instance=srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i&live=0"
+    },
+    "FilteredReady": {
+      "at": "2026-10-17T14:52:55.842Z",
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&level=error&instance=srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i&live=0",
+      "ui": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261017-a890-ranges\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261017-a890-ranges\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db9oi3sflioc739mcnag/deploys/dep-db9oi3sflioc739mcnb0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db9oi3sflioc739mcnag/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db9oi3sflioc739mcnag\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261017-a890-ranges.onbex.co\":\n    - /url: https://qa-20261017-a890-ranges.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261017-a890-ranges\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 11m\n  - combobox \"Log type\": Application logs\n  - textbox \"Search logs\"\n  - combobox \"Log history range\": Last hour\n  - button \"Filters 2\"\n  - switch \"Live\" [disabled]\n  - text: \"Live Level: error\"\n  - button \"Remove Level filter\"\n  - text: \"Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i\"\n  - button \"Remove Instance filter\"\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - text: 07:41:22 AM\n  - button \"Filter logs by instance srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i\": \"[t6ner]\"\n  - text: \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"qa-a890 range 雪\\\",\\\"startedAt\\\":\\\"2026-10-17T14:41:22.013Z\\\"}\"\n  - paragraph: Live tail is off — request-log and structured filters can't be tailed.",
+      "removeButtons": ["", ""],
+      "removeLabels": ["Remove Level filter", "Remove Instance filter"]
+    },
+    "DeployInstanceSelected": {
+      "at": "2026-10-17T14:55:49.499Z",
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/deploys/dep-db9oi3sflioc739mcnb0",
+      "selectedButtons": 1
+    },
+    "DeployDesktopChipGeometry": {
+      "at": "2026-10-17T14:55:50.111Z",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/deploys/dep-db9oi3sflioc739mcnb0",
+      "params": {},
+      "geometry": {
+        "documentWidth": 1440,
+        "scrollX": 0,
+        "viewport": 1440
+      },
+      "chips": [
+        {
+          "removeLabel": "Remove Instance filter",
+          "button": {
+            "x": 763.625,
+            "y": 704,
+            "width": 16,
+            "height": 16,
+            "right": 779.625,
+            "bottom": 720
+          },
+          "chip": {
+            "x": 400,
+            "y": 701,
+            "width": 384.625,
+            "height": 22,
+            "right": 784.625,
+            "bottom": 723
+          },
+          "row": {
+            "x": 400,
+            "y": 701,
+            "width": 896,
+            "height": 22,
+            "right": 1296,
+            "bottom": 723,
+            "clientWidth": 896,
+            "scrollWidth": 896
+          },
+          "label": {
+            "text": "Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+            "title": "Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+            "clientWidth": 351,
+            "scrollWidth": 351,
+            "textOverflow": "ellipsis"
+          },
+          "buttonVisible": true,
+          "chipText": "Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i"
+        }
+      ],
+      "uiProjection": "Unrelated main UI omitted; complete relevant chip geometry/text/title/ARIA label values above are retained.",
+      "relevantAriaLines": [
+        "  - text: \"Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i\"",
+        "  - button \"Remove Instance filter\""
+      ]
+    },
+    "DeployMobile390ChipGeometry": {
+      "at": "2026-10-17T14:55:51.296Z",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/deploys/dep-db9oi3sflioc739mcnb0",
+      "params": {},
+      "geometry": {
+        "documentWidth": 390,
+        "scrollX": 0,
+        "viewport": 390
+      },
+      "chips": [
+        {
+          "removeLabel": "Remove Instance filter",
+          "button": {
+            "x": 353,
+            "y": 867,
+            "width": 16,
+            "height": 16,
+            "right": 369,
+            "bottom": 883
+          },
+          "chip": {
+            "x": 16,
+            "y": 864,
+            "width": 358,
+            "height": 22,
+            "right": 374,
+            "bottom": 886
+          },
+          "row": {
+            "x": 16,
+            "y": 864,
+            "width": 358,
+            "height": 22,
+            "right": 374,
+            "bottom": 886,
+            "clientWidth": 358,
+            "scrollWidth": 358
+          },
+          "label": {
+            "text": "Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+            "title": "Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+            "clientWidth": 324,
+            "scrollWidth": 351,
+            "textOverflow": "ellipsis"
+          },
+          "buttonVisible": true,
+          "chipText": "Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i"
+        }
+      ],
+      "uiProjection": "Unrelated main UI omitted; complete relevant chip geometry/text/title/ARIA label values above are retained.",
+      "relevantAriaLines": [
+        "  - text: \"Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i\"",
+        "  - button \"Remove Instance filter\""
+      ]
+    },
+    "DeployMobile360ChipGeometry": {
+      "at": "2026-10-17T14:55:52.491Z",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/deploys/dep-db9oi3sflioc739mcnb0",
+      "params": {},
+      "geometry": {
+        "documentWidth": 360,
+        "scrollX": 0,
+        "viewport": 360
+      },
+      "chips": [
+        {
+          "removeLabel": "Remove Instance filter",
+          "button": {
+            "x": 323,
+            "y": 867,
+            "width": 16,
+            "height": 16,
+            "right": 339,
+            "bottom": 883
+          },
+          "chip": {
+            "x": 16,
+            "y": 864,
+            "width": 328,
+            "height": 22,
+            "right": 344,
+            "bottom": 886
+          },
+          "row": {
+            "x": 16,
+            "y": 864,
+            "width": 328,
+            "height": 22,
+            "right": 344,
+            "bottom": 886,
+            "clientWidth": 328,
+            "scrollWidth": 328
+          },
+          "label": {
+            "text": "Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+            "title": "Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+            "clientWidth": 294,
+            "scrollWidth": 351,
+            "textOverflow": "ellipsis"
+          },
+          "buttonVisible": true,
+          "chipText": "Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i"
+        }
+      ],
+      "uiProjection": "Unrelated main UI omitted; complete relevant chip geometry/text/title/ARIA label values above are retained.",
+      "relevantAriaLines": [
+        "  - text: \"Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i\"",
+        "  - button \"Remove Instance filter\""
+      ]
+    },
+    "DeployChipRemoved": {
+      "at": "2026-10-17T14:55:53.242Z",
+      "before": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/deploys/dep-db9oi3sflioc739mcnb0",
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/deploys/dep-db9oi3sflioc739mcnb0",
+      "removeChipCount": 0,
+      "ui": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261017-a890-ranges\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261017-a890-ranges\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db9oi3sflioc739mcnag/deploys/dep-db9oi3sflioc739mcnb0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db9oi3sflioc739mcnag/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db9oi3sflioc739mcnag\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261017-a890-ranges.onbex.co\":\n    - /url: https://qa-20261017-a890-ranges.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261017-a890-ranges\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 14m\n  - text: Deploy status Live First Deploy dep-db9oi3sflioc739mcnb0\n  - paragraph: docker.io/library/node:24-alpine\n  - term: \"Created:\"\n  - definition: October 17, 2026 at 7:41 AM\n  - term: \"Updated:\"\n  - definition: October 17, 2026 at 7:41 AM\n  - term: \"Finished:\"\n  - definition: October 17, 2026 at 7:41 AM\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 17, 2026 at 7:41 AM\n    - listitem:\n      - paragraph: Live\n      - time: October 17, 2026 at 7:41 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\"\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: 07:41:19 AM\n  - button \"Filter logs by instance srv-db9oi3sflioc739mcnag-043pc0fg6stqgv2447jr\": \"[043pc]\"\n  - text: ==> Deploy queued 07:41:22 AM\n  - button \"Filter logs by instance srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i\": \"[t6ner]\"\n  - text: \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"qa-a890 range 雪\\\",\\\"startedAt\\\":\\\"2026-10-17T14:41:22.013Z\\\"} 07:41:32 AM\"\n  - button \"Filter logs by instance srv-db9oi3sflioc739mcnag-043pc0fg6stqgv2447jr\": \"[043pc]\"\n  - text: ==> Your service is live 🎉"
+    },
+    "Deleted": {
+      "at": "2026-10-17T14:56:50.773Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db9oi3sflioc739mcnag"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "timing": {
+        "startTime": 1792249009626.69,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.131,
+        "responseStart": 410.993,
+        "responseEnd": 411.947
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "InventoryCleanup": {
+      "at": "2026-10-17T14:57:05.272Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [
+        {
+          "path": "/v1/services/srv-db9oi3sflioc739mcnag",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9oi3sflioc739mcnag/deploys/dep-db9oi3sflioc739mcnb0",
+          "status": 404
+        }
+      ]
+    },
+    "SessionCleared": {
+      "at": "2026-10-17T14:57:10.948Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "FinishSummary": {
+      "logoutConfirmed": true,
+      "exitCode": 0,
+      "browser": {
+        "at": "2026-10-17T14:57:10.948Z",
+        "whoami": 401,
+        "cookies": 0,
+        "pages": 1,
+        "url": "about:blank"
+      },
+      "handlesRemoved": true
+    },
+    "DesktopMetricsInitial": {
+      "at": "2026-10-17T14:43:24.891Z",
+      "request": {
+        "operationName": "Metrics",
+        "variables": {
+          "query": {
+            "filters": [
+              {
+                "field": "RESOURCE",
+                "values": ["srv-db9oi3sflioc739mcnag"]
+              }
+            ],
+            "name": "HTTP_REQUESTS",
+            "start": "2026-10-17T14:41:10.123Z",
+            "end": "2026-10-17T14:41:50.987Z",
+            "resolution": 1
+          }
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "metrics": [
+            {
+              "__typename": "MetricSeries",
+              "labels": [
+                {
+                  "__typename": "MetricLabel",
+                  "field": "resource",
+                  "value": "srv-db9oi3sflioc739mcnag"
+                }
+              ],
+              "parameters": [],
+              "unit": "count",
+              "values": [
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-17T14:41:42Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-17T14:41:43Z",
+                  "value": 1
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "batch": {
+        "operationCount": 16,
+        "selectedIndex": 11
+      },
+      "timing": {
+        "startTime": 1792248203363.452,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.103,
+        "responseStart": 1301.61,
+        "responseEnd": 1302.088
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/metrics?range=custom&rangeStart=2026-10-17T14%3A41%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z"
+    },
+    "DesktopMetricsDialog": {
+      "at": "2026-10-17T14:43:25.515Z",
+      "dialog": "- dialog \"Custom range\":\n  - heading \"Custom range\" [level=2]\n  - paragraph: Choose an absolute start and end. Windows over 30 days aren't available.\n  - text: Start\n  - textbox \"Start\": 2026-10-17T07:41:10.123\n  - text: End\n  - textbox \"End\": 2026-10-17T07:41:50.987\n  - button \"Cancel\"\n  - button \"Apply\"\n  - button \"Close\"",
+      "inputs": [
+        {
+          "id": "range-custom-start",
+          "value": "2026-10-17T07:41:10.123",
+          "type": "datetime-local",
+          "step": "0.001",
+          "valid": true,
+          "stepMismatch": false
+        },
+        {
+          "id": "range-custom-end",
+          "value": "2026-10-17T07:41:50.987",
+          "type": "datetime-local",
+          "step": "0.001",
+          "valid": true,
+          "stepMismatch": false
+        }
+      ],
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/metrics?range=custom&rangeStart=2026-10-17T14%3A41%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z"
+    },
+    "DesktopMetricsApplied": {
+      "at": "2026-10-17T14:44:18.761Z",
+      "before": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/metrics?range=custom&rangeStart=2026-10-17T14%3A41%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z",
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/metrics?range=custom&rangeStart=2026-10-17T14%3A41%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z",
+      "values": [
+        {
+          "id": "range-custom-start",
+          "value": "2026-10-17T07:41:10.123",
+          "step": "0.001"
+        },
+        {
+          "id": "range-custom-end",
+          "value": "2026-10-17T07:41:50.987",
+          "step": "0.001"
+        }
+      ],
+      "dialogVisible": false,
+      "params": {
+        "range": "custom",
+        "rangeStart": "2026-10-17T14:41:10.123Z",
+        "rangeEnd": "2026-10-17T14:41:50.987Z"
+      },
+      "alerts": ["Couldn't load bandwidth — try refreshing"]
+    },
+    "DesktopMetricsNextRead": {
+      "at": "2026-10-17T14:44:22.641Z",
+      "request": {
+        "operationName": "Metrics",
+        "variables": {
+          "query": {
+            "filters": [
+              {
+                "field": "RESOURCE",
+                "values": ["srv-db9oi3sflioc739mcnag"]
+              }
+            ],
+            "name": "HTTP_REQUESTS",
+            "start": "2026-10-17T14:41:10.123Z",
+            "end": "2026-10-17T14:41:50.987Z",
+            "resolution": 1
+          }
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "metrics": [
+            {
+              "__typename": "MetricSeries",
+              "labels": [
+                {
+                  "__typename": "MetricLabel",
+                  "field": "resource",
+                  "value": "srv-db9oi3sflioc739mcnag"
+                }
+              ],
+              "parameters": [],
+              "unit": "count",
+              "values": [
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-17T14:41:42Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-17T14:41:43Z",
+                  "value": 1
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "batch": {
+        "operationCount": 16,
+        "selectedIndex": 11
+      },
+      "timing": {
+        "startTime": 1792248261274.018,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.108,
+        "responseStart": 1149.604,
+        "responseEnd": 1150.022
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/metrics?range=custom&rangeStart=2026-10-17T14%3A41%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z"
+    },
+    "DesktopLogsSameInitial": {
+      "at": "2026-10-17T14:44:25.156Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9oi3sflioc739mcnag",
+          "type": "app",
+          "startTime": "2026-10-17T14:41:10.123Z",
+          "endTime": "2026-10-17T14:41:50.987Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:22.094330813Z-5000d83f",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "error",
+                "message": "{\"level\":\"error\",\"message\":\"qa-a890 range 雪\",\"startedAt\":\"2026-10-17T14:41:22.013Z\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:22.094330813Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:41.663780785Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:41.663780785Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:42.88591783Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:42.88591783Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T14:41:22.094330812Z",
+            "nextStartTime": "2026-10-17T14:41:10.123Z"
+          }
+        }
+      },
+      "batch": {
+        "operationCount": 5,
+        "selectedIndex": 4
+      },
+      "timing": {
+        "startTime": 1792248264602.822,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.09,
+        "responseStart": 334.034,
+        "responseEnd": 334.559
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A41%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z"
+    },
+    "DesktopLogsSameDialog": {
+      "at": "2026-10-17T14:44:25.777Z",
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A41%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "dialog": "- dialog \"Custom range\":\n  - heading \"Custom range\" [level=2]\n  - paragraph: Choose an absolute start and end. Windows over 30 days aren't available.\n  - text: Start\n  - textbox \"Start\": 2026-10-17T07:41:10.123\n  - text: End\n  - textbox \"End\": 2026-10-17T07:41:50.987\n  - button \"Cancel\"\n  - button \"Apply\"\n  - button \"Close\"",
+      "inputs": [
+        {
+          "id": "range-custom-start",
+          "value": "2026-10-17T07:41:10.123",
+          "step": "0.001",
+          "valid": true,
+          "stepMismatch": false
+        },
+        {
+          "id": "range-custom-end",
+          "value": "2026-10-17T07:41:50.987",
+          "step": "0.001",
+          "valid": true,
+          "stepMismatch": false
+        }
+      ]
+    },
+    "DesktopLogsSameApplied": {
+      "at": "2026-10-17T14:44:27.173Z",
+      "before": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A41%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z",
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A41%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z",
+      "values": [
+        {
+          "id": "range-custom-start",
+          "value": "2026-10-17T07:41:10.123",
+          "step": "0.001"
+        },
+        {
+          "id": "range-custom-end",
+          "value": "2026-10-17T07:41:50.987",
+          "step": "0.001"
+        }
+      ],
+      "dialogVisible": false,
+      "params": {
+        "type": "app",
+        "live": "0",
+        "range": "custom",
+        "rangeStart": "2026-10-17T14:41:10.123Z",
+        "rangeEnd": "2026-10-17T14:41:50.987Z"
+      },
+      "alerts": []
+    },
+    "DesktopLogsSameNextRead": {
+      "at": "2026-10-17T14:44:29.542Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9oi3sflioc739mcnag",
+          "type": "app",
+          "startTime": "2026-10-17T14:41:10.123Z",
+          "endTime": "2026-10-17T14:41:50.987Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:22.094330813Z-5000d83f",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "error",
+                "message": "{\"level\":\"error\",\"message\":\"qa-a890 range 雪\",\"startedAt\":\"2026-10-17T14:41:22.013Z\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:22.094330813Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:41.663780785Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:41.663780785Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:42.88591783Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:42.88591783Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T14:41:22.094330812Z",
+            "nextStartTime": "2026-10-17T14:41:10.123Z"
+          }
+        }
+      },
+      "batch": {
+        "operationCount": 5,
+        "selectedIndex": 4
+      },
+      "timing": {
+        "startTime": 1792248269014.019,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.098,
+        "responseStart": 315.055,
+        "responseEnd": 315.558
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A41%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z"
+    },
+    "DesktopLogsWideInitial": {
+      "at": "2026-10-17T14:44:31.726Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9oi3sflioc739mcnag",
+          "type": "app",
+          "startTime": "2026-10-17T14:40:10.123Z",
+          "endTime": "2026-10-17T14:41:50.987Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:22.094330813Z-5000d83f",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "error",
+                "message": "{\"level\":\"error\",\"message\":\"qa-a890 range 雪\",\"startedAt\":\"2026-10-17T14:41:22.013Z\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:22.094330813Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:41.663780785Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:41.663780785Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:42.88591783Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:42.88591783Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T14:41:22.094330812Z",
+            "nextStartTime": "2026-10-17T14:40:10.123Z"
+          }
+        }
+      },
+      "batch": {
+        "operationCount": 5,
+        "selectedIndex": 4
+      },
+      "timing": {
+        "startTime": 1792248271171.8528,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.067,
+        "responseStart": 345.693,
+        "responseEnd": 345.97
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A40%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z"
+    },
+    "DesktopLogsWideDialog": {
+      "at": "2026-10-17T14:44:32.326Z",
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A40%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "dialog": "- dialog \"Custom range\":\n  - heading \"Custom range\" [level=2]\n  - paragraph: Choose an absolute start and end. Windows over 30 days aren't available.\n  - text: Start\n  - textbox \"Start\": 2026-10-17T07:40:10.123\n  - text: End\n  - textbox \"End\": 2026-10-17T07:41:50.987\n  - button \"Cancel\"\n  - button \"Apply\"\n  - button \"Close\"",
+      "inputs": [
+        {
+          "id": "range-custom-start",
+          "value": "2026-10-17T07:40:10.123",
+          "step": "0.001",
+          "valid": true,
+          "stepMismatch": false
+        },
+        {
+          "id": "range-custom-end",
+          "value": "2026-10-17T07:41:50.987",
+          "step": "0.001",
+          "valid": true,
+          "stepMismatch": false
+        }
+      ]
+    },
+    "DesktopLogsWideApplied": {
+      "at": "2026-10-17T14:44:33.259Z",
+      "before": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A40%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z",
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A40%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z",
+      "values": [
+        {
+          "id": "range-custom-start",
+          "value": "2026-10-17T07:40:10.123",
+          "step": "0.001"
+        },
+        {
+          "id": "range-custom-end",
+          "value": "2026-10-17T07:41:50.987",
+          "step": "0.001"
+        }
+      ],
+      "dialogVisible": false,
+      "params": {
+        "type": "app",
+        "live": "0",
+        "range": "custom",
+        "rangeStart": "2026-10-17T14:40:10.123Z",
+        "rangeEnd": "2026-10-17T14:41:50.987Z"
+      },
+      "alerts": []
+    },
+    "DesktopLogsWideNextRead": {
+      "at": "2026-10-17T14:44:35.890Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9oi3sflioc739mcnag",
+          "type": "app",
+          "startTime": "2026-10-17T14:40:10.123Z",
+          "endTime": "2026-10-17T14:41:50.987Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:22.094330813Z-5000d83f",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "error",
+                "message": "{\"level\":\"error\",\"message\":\"qa-a890 range 雪\",\"startedAt\":\"2026-10-17T14:41:22.013Z\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:22.094330813Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:41.663780785Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:41.663780785Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:42.88591783Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:42.88591783Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T14:41:22.094330812Z",
+            "nextStartTime": "2026-10-17T14:40:10.123Z"
+          }
+        }
+      },
+      "batch": {
+        "operationCount": 5,
+        "selectedIndex": 4
+      },
+      "timing": {
+        "startTime": 1792248275149.301,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.094,
+        "responseStart": 533.963,
+        "responseEnd": 534.229
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A40%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z"
+    },
+    "DesktopLogsMinuteInitial": {
+      "at": "2026-10-17T14:45:26.693Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9oi3sflioc739mcnag",
+          "type": "app",
+          "startTime": "2026-10-17T14:39:00.000Z",
+          "endTime": "2026-10-17T14:40:00.000Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [],
+            "nextEndTime": "2026-10-17T14:40:00Z",
+            "nextStartTime": "2026-10-17T14:39:00Z"
+          }
+        }
+      },
+      "batch": {
+        "operationCount": 7,
+        "selectedIndex": 6
+      },
+      "timing": {
+        "startTime": 1792248325812.854,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.096,
+        "responseStart": 655.328,
+        "responseEnd": 656.281
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A39%3A00.000Z&rangeEnd=2026-10-17T14%3A40%3A00.000Z"
+    },
+    "DesktopLogsMinuteDialog": {
+      "at": "2026-10-17T14:45:27.308Z",
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A39%3A00.000Z&rangeEnd=2026-10-17T14%3A40%3A00.000Z",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "dialog": "- dialog \"Custom range\":\n  - heading \"Custom range\" [level=2]\n  - paragraph: Choose an absolute start and end. Windows over 30 days aren't available.\n  - text: Start\n  - textbox \"Start\": 2026-10-17T07:39\n  - text: End\n  - textbox \"End\": 2026-10-17T07:40\n  - button \"Cancel\"\n  - button \"Apply\"\n  - button \"Close\"",
+      "inputs": [
+        {
+          "id": "range-custom-start",
+          "value": "2026-10-17T07:39",
+          "step": null,
+          "valid": true,
+          "stepMismatch": false
+        },
+        {
+          "id": "range-custom-end",
+          "value": "2026-10-17T07:40",
+          "step": null,
+          "valid": true,
+          "stepMismatch": false
+        }
+      ]
+    },
+    "DesktopLogsMinuteApplied": {
+      "at": "2026-10-17T14:45:28.241Z",
+      "before": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A39%3A00.000Z&rangeEnd=2026-10-17T14%3A40%3A00.000Z",
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A39%3A00.000Z&rangeEnd=2026-10-17T14%3A40%3A00.000Z",
+      "values": [
+        {
+          "id": "range-custom-start",
+          "value": "2026-10-17T07:39",
+          "step": null
+        },
+        {
+          "id": "range-custom-end",
+          "value": "2026-10-17T07:40",
+          "step": null
+        }
+      ],
+      "dialogVisible": false,
+      "params": {
+        "type": "app",
+        "live": "0",
+        "range": "custom",
+        "rangeStart": "2026-10-17T14:39:00.000Z",
+        "rangeEnd": "2026-10-17T14:40:00.000Z"
+      },
+      "alerts": []
+    },
+    "DesktopLogsMinuteNextRead": {
+      "at": "2026-10-17T14:45:30.849Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9oi3sflioc739mcnag",
+          "type": "app",
+          "startTime": "2026-10-17T14:39:00.000Z",
+          "endTime": "2026-10-17T14:40:00.000Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [],
+            "nextEndTime": "2026-10-17T14:40:00Z",
+            "nextStartTime": "2026-10-17T14:39:00Z"
+          }
+        }
+      },
+      "batch": {
+        "operationCount": 5,
+        "selectedIndex": 4
+      },
+      "timing": {
+        "startTime": 1792248330258.441,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.088,
+        "responseStart": 373.989,
+        "responseEnd": 374.637
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A39%3A00.000Z&rangeEnd=2026-10-17T14%3A40%3A00.000Z"
+    },
+    "MobileMetricsInitial": {
+      "at": "2026-10-17T14:46:40.927Z",
+      "request": {
+        "operationName": "Metrics",
+        "variables": {
+          "query": {
+            "filters": [
+              {
+                "field": "RESOURCE",
+                "values": ["srv-db9oi3sflioc739mcnag"]
+              }
+            ],
+            "name": "HTTP_REQUESTS",
+            "start": "2026-10-17T14:41:10.123Z",
+            "end": "2026-10-17T14:41:50.987Z",
+            "resolution": 1
+          }
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "metrics": [
+            {
+              "__typename": "MetricSeries",
+              "labels": [
+                {
+                  "__typename": "MetricLabel",
+                  "field": "resource",
+                  "value": "srv-db9oi3sflioc739mcnag"
+                }
+              ],
+              "parameters": [],
+              "unit": "count",
+              "values": [
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-17T14:41:42Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-17T14:41:43Z",
+                  "value": 1
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "batch": {
+        "operationCount": 21,
+        "selectedIndex": 16
+      },
+      "timing": {
+        "startTime": 1792248399073.6033,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.116,
+        "responseStart": 1619.568,
+        "responseEnd": 1620.294
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/metrics?range=custom&rangeStart=2026-10-17T14%3A41%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z"
+    },
+    "MobileMetricsDialog": {
+      "at": "2026-10-17T14:46:41.557Z",
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/metrics?range=custom&rangeStart=2026-10-17T14%3A41%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "dialog": "- dialog \"Custom range\":\n  - heading \"Custom range\" [level=2]\n  - paragraph: Choose an absolute start and end. Windows over 30 days aren't available.\n  - text: Start\n  - textbox \"Start\": 2026-10-17T07:41:10.123\n  - text: End\n  - textbox \"End\": 2026-10-17T07:41:50.987\n  - button \"Cancel\"\n  - button \"Apply\"\n  - button \"Close\"",
+      "inputs": [
+        {
+          "id": "range-custom-start",
+          "value": "2026-10-17T07:41:10.123",
+          "step": "0.001",
+          "valid": true,
+          "stepMismatch": false
+        },
+        {
+          "id": "range-custom-end",
+          "value": "2026-10-17T07:41:50.987",
+          "step": "0.001",
+          "valid": true,
+          "stepMismatch": false
+        }
+      ]
+    },
+    "MobileMetricsApplied": {
+      "at": "2026-10-17T14:46:42.474Z",
+      "before": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/metrics?range=custom&rangeStart=2026-10-17T14%3A41%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z",
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/metrics?range=custom&rangeStart=2026-10-17T14%3A41%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z",
+      "values": [
+        {
+          "id": "range-custom-start",
+          "value": "2026-10-17T07:41:10.123",
+          "step": "0.001"
+        },
+        {
+          "id": "range-custom-end",
+          "value": "2026-10-17T07:41:50.987",
+          "step": "0.001"
+        }
+      ],
+      "dialogVisible": false,
+      "params": {
+        "range": "custom",
+        "rangeStart": "2026-10-17T14:41:10.123Z",
+        "rangeEnd": "2026-10-17T14:41:50.987Z"
+      },
+      "alerts": ["Couldn't load bandwidth — try refreshing"]
+    },
+    "MobileMetricsNextRead": {
+      "at": "2026-10-17T14:46:47.250Z",
+      "request": {
+        "operationName": "Metrics",
+        "variables": {
+          "query": {
+            "filters": [
+              {
+                "field": "RESOURCE",
+                "values": ["srv-db9oi3sflioc739mcnag"]
+              }
+            ],
+            "name": "HTTP_REQUESTS",
+            "start": "2026-10-17T14:41:10.123Z",
+            "end": "2026-10-17T14:41:50.987Z",
+            "resolution": 1
+          }
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "metrics": [
+            {
+              "__typename": "MetricSeries",
+              "labels": [
+                {
+                  "__typename": "MetricLabel",
+                  "field": "resource",
+                  "value": "srv-db9oi3sflioc739mcnag"
+                }
+              ],
+              "parameters": [],
+              "unit": "count",
+              "values": [
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-17T14:41:42Z",
+                  "value": 1
+                },
+                {
+                  "__typename": "MetricValue",
+                  "time": "2026-10-17T14:41:43Z",
+                  "value": 1
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "batch": {
+        "operationCount": 20,
+        "selectedIndex": 15
+      },
+      "timing": {
+        "startTime": 1792248404899.809,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.109,
+        "responseStart": 2112.839,
+        "responseEnd": 2113.68
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/metrics?range=custom&rangeStart=2026-10-17T14%3A41%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z"
+    },
+    "MobileLogsSameInitial": {
+      "at": "2026-10-17T14:46:50.046Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9oi3sflioc739mcnag",
+          "type": "app",
+          "startTime": "2026-10-17T14:41:10.123Z",
+          "endTime": "2026-10-17T14:41:50.987Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:22.094330813Z-5000d83f",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "error",
+                "message": "{\"level\":\"error\",\"message\":\"qa-a890 range 雪\",\"startedAt\":\"2026-10-17T14:41:22.013Z\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:22.094330813Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:41.663780785Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:41.663780785Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:42.88591783Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:42.88591783Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T14:41:22.094330812Z",
+            "nextStartTime": "2026-10-17T14:41:10.123Z"
+          }
+        }
+      },
+      "batch": {
+        "operationCount": 9,
+        "selectedIndex": 8
+      },
+      "timing": {
+        "startTime": 1792248408999.788,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.127,
+        "responseStart": 818.986,
+        "responseEnd": 819.988
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A41%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z"
+    },
+    "MobileLogsSameDialog": {
+      "at": "2026-10-17T14:46:50.690Z",
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A41%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "dialog": "- dialog \"Custom range\":\n  - heading \"Custom range\" [level=2]\n  - paragraph: Choose an absolute start and end. Windows over 30 days aren't available.\n  - text: Start\n  - textbox \"Start\": 2026-10-17T07:41:10.123\n  - text: End\n  - textbox \"End\": 2026-10-17T07:41:50.987\n  - button \"Cancel\"\n  - button \"Apply\"\n  - button \"Close\"",
+      "inputs": [
+        {
+          "id": "range-custom-start",
+          "value": "2026-10-17T07:41:10.123",
+          "step": "0.001",
+          "valid": true,
+          "stepMismatch": false
+        },
+        {
+          "id": "range-custom-end",
+          "value": "2026-10-17T07:41:50.987",
+          "step": "0.001",
+          "valid": true,
+          "stepMismatch": false
+        }
+      ]
+    },
+    "MobileLogsSameApplied": {
+      "at": "2026-10-17T14:46:51.587Z",
+      "before": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A41%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z",
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A41%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z",
+      "values": [
+        {
+          "id": "range-custom-start",
+          "value": "2026-10-17T07:41:10.123",
+          "step": "0.001"
+        },
+        {
+          "id": "range-custom-end",
+          "value": "2026-10-17T07:41:50.987",
+          "step": "0.001"
+        }
+      ],
+      "dialogVisible": false,
+      "params": {
+        "type": "app",
+        "live": "0",
+        "range": "custom",
+        "rangeStart": "2026-10-17T14:41:10.123Z",
+        "rangeEnd": "2026-10-17T14:41:50.987Z"
+      },
+      "alerts": []
+    },
+    "MobileLogsSameNextRead": {
+      "at": "2026-10-17T14:46:54.519Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9oi3sflioc739mcnag",
+          "type": "app",
+          "startTime": "2026-10-17T14:41:10.123Z",
+          "endTime": "2026-10-17T14:41:50.987Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:22.094330813Z-5000d83f",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "error",
+                "message": "{\"level\":\"error\",\"message\":\"qa-a890 range 雪\",\"startedAt\":\"2026-10-17T14:41:22.013Z\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:22.094330813Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:41.663780785Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:41.663780785Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:42.88591783Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:42.88591783Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T14:41:22.094330812Z",
+            "nextStartTime": "2026-10-17T14:41:10.123Z"
+          }
+        }
+      },
+      "batch": {
+        "operationCount": 9,
+        "selectedIndex": 8
+      },
+      "timing": {
+        "startTime": 1792248413385.315,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.116,
+        "responseStart": 913.217,
+        "responseEnd": 913.833
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A41%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z"
+    },
+    "MobileLogsWideInitial": {
+      "at": "2026-10-17T14:46:57.576Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9oi3sflioc739mcnag",
+          "type": "app",
+          "startTime": "2026-10-17T14:40:10.123Z",
+          "endTime": "2026-10-17T14:41:50.987Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:22.094330813Z-5000d83f",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "error",
+                "message": "{\"level\":\"error\",\"message\":\"qa-a890 range 雪\",\"startedAt\":\"2026-10-17T14:41:22.013Z\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:22.094330813Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:41.663780785Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:41.663780785Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:42.88591783Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:42.88591783Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T14:41:22.094330812Z",
+            "nextStartTime": "2026-10-17T14:40:10.123Z"
+          }
+        }
+      },
+      "batch": {
+        "operationCount": 11,
+        "selectedIndex": 10
+      },
+      "timing": {
+        "startTime": 1792248416162.9338,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.097,
+        "responseStart": 1197.046,
+        "responseEnd": 1202.005
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A40%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z"
+    },
+    "MobileLogsWideDialog": {
+      "at": "2026-10-17T14:46:58.205Z",
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A40%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "dialog": "- dialog \"Custom range\":\n  - heading \"Custom range\" [level=2]\n  - paragraph: Choose an absolute start and end. Windows over 30 days aren't available.\n  - text: Start\n  - textbox \"Start\": 2026-10-17T07:40:10.123\n  - text: End\n  - textbox \"End\": 2026-10-17T07:41:50.987\n  - button \"Cancel\"\n  - button \"Apply\"\n  - button \"Close\"",
+      "inputs": [
+        {
+          "id": "range-custom-start",
+          "value": "2026-10-17T07:40:10.123",
+          "step": "0.001",
+          "valid": true,
+          "stepMismatch": false
+        },
+        {
+          "id": "range-custom-end",
+          "value": "2026-10-17T07:41:50.987",
+          "step": "0.001",
+          "valid": true,
+          "stepMismatch": false
+        }
+      ]
+    },
+    "MobileLogsWideApplied": {
+      "at": "2026-10-17T14:46:59.117Z",
+      "before": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A40%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z",
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A40%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z",
+      "values": [
+        {
+          "id": "range-custom-start",
+          "value": "2026-10-17T07:40:10.123",
+          "step": "0.001"
+        },
+        {
+          "id": "range-custom-end",
+          "value": "2026-10-17T07:41:50.987",
+          "step": "0.001"
+        }
+      ],
+      "dialogVisible": false,
+      "params": {
+        "type": "app",
+        "live": "0",
+        "range": "custom",
+        "rangeStart": "2026-10-17T14:40:10.123Z",
+        "rangeEnd": "2026-10-17T14:41:50.987Z"
+      },
+      "alerts": []
+    },
+    "MobileLogsWideNextRead": {
+      "at": "2026-10-17T14:47:02.419Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9oi3sflioc739mcnag",
+          "type": "app",
+          "startTime": "2026-10-17T14:40:10.123Z",
+          "endTime": "2026-10-17T14:41:50.987Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:22.094330813Z-5000d83f",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "error",
+                "message": "{\"level\":\"error\",\"message\":\"qa-a890 range 雪\",\"startedAt\":\"2026-10-17T14:41:22.013Z\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:22.094330813Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:41.663780785Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:41.663780785Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:42.88591783Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:42.88591783Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T14:41:22.094330812Z",
+            "nextStartTime": "2026-10-17T14:40:10.123Z"
+          }
+        }
+      },
+      "batch": {
+        "operationCount": 11,
+        "selectedIndex": 10
+      },
+      "timing": {
+        "startTime": 1792248420899.791,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.111,
+        "responseStart": 1297.167,
+        "responseEnd": 1297.642
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A40%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z"
+    },
+    "MobileLogsMinuteInitial": {
+      "at": "2026-10-17T14:47:05.058Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9oi3sflioc739mcnag",
+          "type": "app",
+          "startTime": "2026-10-17T14:39:00.000Z",
+          "endTime": "2026-10-17T14:40:00.000Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [],
+            "nextEndTime": "2026-10-17T14:40:00Z",
+            "nextStartTime": "2026-10-17T14:39:00Z"
+          }
+        }
+      },
+      "batch": {
+        "operationCount": 9,
+        "selectedIndex": 8
+      },
+      "timing": {
+        "startTime": 1792248424023.6667,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.11,
+        "responseStart": 791.777,
+        "responseEnd": 810.959
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A39%3A00.000Z&rangeEnd=2026-10-17T14%3A40%3A00.000Z"
+    },
+    "MobileLogsMinuteDialog": {
+      "at": "2026-10-17T14:47:05.707Z",
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A39%3A00.000Z&rangeEnd=2026-10-17T14%3A40%3A00.000Z",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "dialog": "- dialog \"Custom range\":\n  - heading \"Custom range\" [level=2]\n  - paragraph: Choose an absolute start and end. Windows over 30 days aren't available.\n  - text: Start\n  - textbox \"Start\": 2026-10-17T07:39\n  - text: End\n  - textbox \"End\": 2026-10-17T07:40\n  - button \"Cancel\"\n  - button \"Apply\"\n  - button \"Close\"",
+      "inputs": [
+        {
+          "id": "range-custom-start",
+          "value": "2026-10-17T07:39",
+          "step": null,
+          "valid": true,
+          "stepMismatch": false
+        },
+        {
+          "id": "range-custom-end",
+          "value": "2026-10-17T07:40",
+          "step": null,
+          "valid": true,
+          "stepMismatch": false
+        }
+      ]
+    },
+    "MobileLogsMinuteApplied": {
+      "at": "2026-10-17T14:47:06.619Z",
+      "before": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A39%3A00.000Z&rangeEnd=2026-10-17T14%3A40%3A00.000Z",
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A39%3A00.000Z&rangeEnd=2026-10-17T14%3A40%3A00.000Z",
+      "values": [
+        {
+          "id": "range-custom-start",
+          "value": "2026-10-17T07:39",
+          "step": null
+        },
+        {
+          "id": "range-custom-end",
+          "value": "2026-10-17T07:40",
+          "step": null
+        }
+      ],
+      "dialogVisible": false,
+      "params": {
+        "type": "app",
+        "live": "0",
+        "range": "custom",
+        "rangeStart": "2026-10-17T14:39:00.000Z",
+        "rangeEnd": "2026-10-17T14:40:00.000Z"
+      },
+      "alerts": []
+    },
+    "MobileLogsMinuteNextRead": {
+      "at": "2026-10-17T14:47:09.394Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9oi3sflioc739mcnag",
+          "type": "app",
+          "startTime": "2026-10-17T14:39:00.000Z",
+          "endTime": "2026-10-17T14:40:00.000Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [],
+            "nextEndTime": "2026-10-17T14:40:00Z",
+            "nextStartTime": "2026-10-17T14:39:00Z"
+          }
+        }
+      },
+      "batch": {
+        "operationCount": 9,
+        "selectedIndex": 8
+      },
+      "timing": {
+        "startTime": 1792248428273.0232,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.104,
+        "responseStart": 900.199,
+        "responseEnd": 902.199
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A39%3A00.000Z&rangeEnd=2026-10-17T14%3A40%3A00.000Z"
+    },
+    "DesktopLogsEndOnlyInitial": {
+      "at": "2026-10-17T14:45:33.219Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9oi3sflioc739mcnag",
+          "type": "app",
+          "startTime": "2026-10-17T14:40:10.123Z",
+          "endTime": "2026-10-17T14:41:50.987Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:22.094330813Z-5000d83f",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "error",
+                "message": "{\"level\":\"error\",\"message\":\"qa-a890 range 雪\",\"startedAt\":\"2026-10-17T14:41:22.013Z\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:22.094330813Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:41.663780785Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:41.663780785Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:42.88591783Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:42.88591783Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T14:41:22.094330812Z",
+            "nextStartTime": "2026-10-17T14:40:10.123Z"
+          }
+        }
+      },
+      "batch": {
+        "operationCount": 5,
+        "selectedIndex": 4
+      },
+      "timing": {
+        "startTime": 1792248332583.6511,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.085,
+        "responseStart": 411.115,
+        "responseEnd": 411.809
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A40%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z"
+    },
+    "DesktopLogsEndOnlyDialog": {
+      "at": "2026-10-17T14:45:33.826Z",
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A40%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "dialog": "- dialog \"Custom range\":\n  - heading \"Custom range\" [level=2]\n  - paragraph: Choose an absolute start and end. Windows over 30 days aren't available.\n  - text: Start\n  - textbox \"Start\": 2026-10-17T07:40:10.123\n  - text: End\n  - textbox \"End\": 2026-10-17T07:41:50.987\n  - button \"Cancel\"\n  - button \"Apply\"\n  - button \"Close\"",
+      "inputs": [
+        {
+          "id": "range-custom-start",
+          "value": "2026-10-17T07:40:10.123",
+          "step": "0.001",
+          "valid": true,
+          "stepMismatch": false
+        },
+        {
+          "id": "range-custom-end",
+          "value": "2026-10-17T07:41:50.987",
+          "step": "0.001",
+          "valid": true,
+          "stepMismatch": false
+        }
+      ]
+    },
+    "DesktopLogsEndOnlyEdited": {
+      "at": "2026-10-17T14:45:34.437Z",
+      "editedEndIso": "2026-10-17T14:41:51.987Z",
+      "before": [
+        {
+          "id": "range-custom-start",
+          "value": "2026-10-17T07:40:10.123",
+          "step": "0.001"
+        },
+        {
+          "id": "range-custom-end",
+          "value": "2026-10-17T07:41:50.987",
+          "step": "0.001"
+        }
+      ],
+      "after": [
+        {
+          "id": "range-custom-start",
+          "value": "2026-10-17T07:40:10.123",
+          "step": "0.001",
+          "valid": true
+        },
+        {
+          "id": "range-custom-end",
+          "value": "2026-10-17T07:41:51.987",
+          "step": "0.001",
+          "valid": true
+        }
+      ],
+      "dialog": "- dialog \"Custom range\":\n  - heading \"Custom range\" [level=2]\n  - paragraph: Choose an absolute start and end. Windows over 30 days aren't available.\n  - text: Start\n  - textbox \"Start\": 2026-10-17T07:40:10.123\n  - text: End\n  - textbox \"End\": 2026-10-17T07:41:51.987\n  - button \"Cancel\"\n  - button \"Apply\"\n  - button \"Close\""
+    },
+    "DesktopLogsEndOnlyNextRead": {
+      "at": "2026-10-17T14:45:36.322Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9oi3sflioc739mcnag",
+          "type": "app",
+          "startTime": "2026-10-17T14:40:10.123Z",
+          "endTime": "2026-10-17T14:41:51.987Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:22.094330813Z-5000d83f",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "error",
+                "message": "{\"level\":\"error\",\"message\":\"qa-a890 range 雪\",\"startedAt\":\"2026-10-17T14:41:22.013Z\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:22.094330813Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:41.663780785Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:41.663780785Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:42.88591783Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:42.88591783Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T14:41:22.094330812Z",
+            "nextStartTime": "2026-10-17T14:40:10.123Z"
+          }
+        }
+      },
+      "batch": {
+        "operationCount": 1,
+        "selectedIndex": 0
+      },
+      "timing": {
+        "startTime": 1792248335749.3699,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.26,
+        "responseStart": 358.428,
+        "responseEnd": 359.309
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?range=custom&rangeStart=2026-10-17T14%3A40%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A51.987Z&type=app&live=0"
+    },
+    "DesktopLogsEndOnlyApplied": {
+      "at": "2026-10-17T14:45:37.422Z",
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?range=custom&rangeStart=2026-10-17T14%3A40%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A51.987Z&type=app&live=0",
+      "dialogVisible": false,
+      "params": {
+        "range": "custom",
+        "rangeStart": "2026-10-17T14:40:10.123Z",
+        "rangeEnd": "2026-10-17T14:41:51.987Z",
+        "type": "app",
+        "live": "0"
+      }
+    },
+    "MobileLogsEndOnlyInitial": {
+      "at": "2026-10-17T14:47:12.051Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9oi3sflioc739mcnag",
+          "type": "app",
+          "startTime": "2026-10-17T14:40:10.123Z",
+          "endTime": "2026-10-17T14:41:50.987Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:22.094330813Z-5000d83f",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "error",
+                "message": "{\"level\":\"error\",\"message\":\"qa-a890 range 雪\",\"startedAt\":\"2026-10-17T14:41:22.013Z\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:22.094330813Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:41.663780785Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:41.663780785Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:42.88591783Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:42.88591783Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T14:41:22.094330812Z",
+            "nextStartTime": "2026-10-17T14:40:10.123Z"
+          }
+        }
+      },
+      "batch": {
+        "operationCount": 10,
+        "selectedIndex": 9
+      },
+      "timing": {
+        "startTime": 1792248431103.965,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.098,
+        "responseStart": 726.855,
+        "responseEnd": 727.504
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A40%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z"
+    },
+    "MobileLogsEndOnlyDialog": {
+      "at": "2026-10-17T14:47:12.672Z",
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&live=0&range=custom&rangeStart=2026-10-17T14%3A40%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A50.987Z",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "dialog": "- dialog \"Custom range\":\n  - heading \"Custom range\" [level=2]\n  - paragraph: Choose an absolute start and end. Windows over 30 days aren't available.\n  - text: Start\n  - textbox \"Start\": 2026-10-17T07:40:10.123\n  - text: End\n  - textbox \"End\": 2026-10-17T07:41:50.987\n  - button \"Cancel\"\n  - button \"Apply\"\n  - button \"Close\"",
+      "inputs": [
+        {
+          "id": "range-custom-start",
+          "value": "2026-10-17T07:40:10.123",
+          "step": "0.001",
+          "valid": true,
+          "stepMismatch": false
+        },
+        {
+          "id": "range-custom-end",
+          "value": "2026-10-17T07:41:50.987",
+          "step": "0.001",
+          "valid": true,
+          "stepMismatch": false
+        }
+      ]
+    },
+    "MobileLogsEndOnlyEdited": {
+      "at": "2026-10-17T14:47:13.282Z",
+      "editedEndIso": "2026-10-17T14:41:51.987Z",
+      "before": [
+        {
+          "id": "range-custom-start",
+          "value": "2026-10-17T07:40:10.123",
+          "step": "0.001"
+        },
+        {
+          "id": "range-custom-end",
+          "value": "2026-10-17T07:41:50.987",
+          "step": "0.001"
+        }
+      ],
+      "after": [
+        {
+          "id": "range-custom-start",
+          "value": "2026-10-17T07:40:10.123",
+          "step": "0.001",
+          "valid": true
+        },
+        {
+          "id": "range-custom-end",
+          "value": "2026-10-17T07:41:51.987",
+          "step": "0.001",
+          "valid": true
+        }
+      ],
+      "dialog": "- dialog \"Custom range\":\n  - heading \"Custom range\" [level=2]\n  - paragraph: Choose an absolute start and end. Windows over 30 days aren't available.\n  - text: Start\n  - textbox \"Start\": 2026-10-17T07:40:10.123\n  - text: End\n  - textbox \"End\": 2026-10-17T07:41:51.987\n  - button \"Cancel\"\n  - button \"Apply\"\n  - button \"Close\""
+    },
+    "MobileLogsEndOnlyNextRead": {
+      "at": "2026-10-17T14:47:14.557Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9oi3sflioc739mcnag",
+          "type": "app",
+          "startTime": "2026-10-17T14:40:10.123Z",
+          "endTime": "2026-10-17T14:41:51.987Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:22.094330813Z-5000d83f",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "error",
+                "message": "{\"level\":\"error\",\"message\":\"qa-a890 range 雪\",\"startedAt\":\"2026-10-17T14:41:22.013Z\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:22.094330813Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:41.663780785Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:41.663780785Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:42.88591783Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:42.88591783Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T14:41:22.094330812Z",
+            "nextStartTime": "2026-10-17T14:40:10.123Z"
+          }
+        }
+      },
+      "batch": {
+        "operationCount": 1,
+        "selectedIndex": 0
+      },
+      "timing": {
+        "startTime": 1792248434117.395,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.147,
+        "responseStart": 224.103,
+        "responseEnd": 224.865
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?range=custom&rangeStart=2026-10-17T14%3A40%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A51.987Z&type=app&live=0"
+    },
+    "MobileLogsEndOnlyApplied": {
+      "at": "2026-10-17T14:47:15.655Z",
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?range=custom&rangeStart=2026-10-17T14%3A40%3A10.123Z&rangeEnd=2026-10-17T14%3A41%3A51.987Z&type=app&live=0",
+      "dialogVisible": false,
+      "params": {
+        "range": "custom",
+        "rangeStart": "2026-10-17T14:40:10.123Z",
+        "rangeEnd": "2026-10-17T14:41:51.987Z",
+        "type": "app",
+        "live": "0"
+      }
+    },
+    "Mobile390ChipFreshReadVerified": {
+      "at": "2026-10-17T14:54:34.419Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9oi3sflioc739mcnag",
+          "type": "app",
+          "level": ["error"],
+          "instance": ["srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i"],
+          "startTime": "2026-10-17T13:54:33.264Z",
+          "endTime": "2026-10-17T14:54:33.264Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:22.094330813Z-5000d83f",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "error",
+                "message": "{\"level\":\"error\",\"message\":\"qa-a890 range 雪\",\"startedAt\":\"2026-10-17T14:41:22.013Z\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:22.094330813Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T14:41:22.094330812Z",
+            "nextStartTime": "2026-10-17T13:54:33.264Z"
+          }
+        }
+      },
+      "batch": {
+        "operationCount": 9,
+        "selectedIndex": 8
+      },
+      "timing": {
+        "startTime": 1792248873276.0432,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.087,
+        "responseStart": 918.936,
+        "responseEnd": 923.231
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&level=error&instance=srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i&live=0"
+    },
+    "Mobile390ChipGeometryVerified": {
+      "at": "2026-10-17T14:54:35.029Z",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&level=error&instance=srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i&live=0",
+      "params": {
+        "type": "app",
+        "level": "error",
+        "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+        "live": "0"
+      },
+      "geometry": {
+        "documentWidth": 390,
+        "scrollX": 0,
+        "viewport": 390
+      },
+      "chips": [
+        {
+          "removeLabel": "Remove Level filter",
+          "button": {
+            "x": 94.625,
+            "y": 537,
+            "width": 16,
+            "height": 16,
+            "right": 110.625,
+            "bottom": 553
+          },
+          "chip": {
+            "x": 16,
+            "y": 534,
+            "width": 99.625,
+            "height": 22,
+            "right": 115.625,
+            "bottom": 556
+          },
+          "row": {
+            "x": 16,
+            "y": 534,
+            "width": 358,
+            "height": 50,
+            "right": 374,
+            "bottom": 584,
+            "clientWidth": 358,
+            "scrollWidth": 358
+          },
+          "label": {
+            "text": "Level: error",
+            "title": "Level: error",
+            "clientWidth": 66,
+            "scrollWidth": 66,
+            "textOverflow": "ellipsis"
+          },
+          "buttonVisible": true,
+          "chipText": "Level: error"
+        },
+        {
+          "removeLabel": "Remove Instance filter",
+          "button": {
+            "x": 353,
+            "y": 565,
+            "width": 16,
+            "height": 16,
+            "right": 369,
+            "bottom": 581
+          },
+          "chip": {
+            "x": 16,
+            "y": 562,
+            "width": 358,
+            "height": 22,
+            "right": 374,
+            "bottom": 584
+          },
+          "row": {
+            "x": 16,
+            "y": 534,
+            "width": 358,
+            "height": 50,
+            "right": 374,
+            "bottom": 584,
+            "clientWidth": 358,
+            "scrollWidth": 358
+          },
+          "label": {
+            "text": "Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+            "title": "Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+            "clientWidth": 324,
+            "scrollWidth": 351,
+            "textOverflow": "ellipsis"
+          },
+          "buttonVisible": true,
+          "chipText": "Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i"
+        }
+      ],
+      "uiProjection": "Unrelated main UI omitted; complete relevant chip geometry/text/title/ARIA label values above are retained.",
+      "relevantAriaLines": [
+        "  - text: \"Live Level: error\"",
+        "  - button \"Remove Level filter\"",
+        "  - text: \"Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i\"",
+        "  - button \"Remove Instance filter\""
+      ]
+    },
+    "Mobile390InstanceRemovedVerified": {
+      "at": "2026-10-17T14:54:57.204Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9oi3sflioc739mcnag",
+          "type": "app",
+          "level": ["error"],
+          "startTime": "2026-10-17T13:54:56.664Z",
+          "endTime": "2026-10-17T14:54:56.664Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:22.094330813Z-5000d83f",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "error",
+                "message": "{\"level\":\"error\",\"message\":\"qa-a890 range 雪\",\"startedAt\":\"2026-10-17T14:41:22.013Z\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:22.094330813Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T14:41:22.094330812Z",
+            "nextStartTime": "2026-10-17T13:54:56.664Z"
+          }
+        }
+      },
+      "batch": {
+        "operationCount": 1,
+        "selectedIndex": 0
+      },
+      "timing": {
+        "startTime": 1792248896679.6138,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.089,
+        "responseStart": 309.145,
+        "responseEnd": 310.183
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&level=error&live=0"
+    },
+    "Mobile390AfterRemoveGeometryVerified": {
+      "at": "2026-10-17T14:54:58.305Z",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&level=error&live=0",
+      "params": {
+        "type": "app",
+        "level": "error",
+        "live": "0"
+      },
+      "geometry": {
+        "documentWidth": 390,
+        "scrollX": 0,
+        "viewport": 390
+      },
+      "chips": [
+        {
+          "removeLabel": "Remove Level filter",
+          "button": {
+            "x": 94.625,
+            "y": 537,
+            "width": 16,
+            "height": 16,
+            "right": 110.625,
+            "bottom": 553
+          },
+          "chip": {
+            "x": 16,
+            "y": 534,
+            "width": 99.625,
+            "height": 22,
+            "right": 115.625,
+            "bottom": 556
+          },
+          "row": {
+            "x": 16,
+            "y": 534,
+            "width": 358,
+            "height": 22,
+            "right": 374,
+            "bottom": 556,
+            "clientWidth": 358,
+            "scrollWidth": 358
+          },
+          "label": {
+            "text": "Level: error",
+            "title": "Level: error",
+            "clientWidth": 66,
+            "scrollWidth": 66,
+            "textOverflow": "ellipsis"
+          },
+          "buttonVisible": true,
+          "chipText": "Level: error"
+        }
+      ],
+      "uiProjection": "Unrelated main UI omitted; complete relevant chip geometry/text/title/ARIA label values above are retained.",
+      "relevantAriaLines": [
+        "  - text: \"Live Level: error\"",
+        "  - button \"Remove Level filter\""
+      ]
+    },
+    "Mobile360ChipFreshReadVerified": {
+      "at": "2026-10-17T14:55:02.516Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9oi3sflioc739mcnag",
+          "type": "app",
+          "level": ["error"],
+          "instance": ["srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i"],
+          "startTime": "2026-10-17T13:55:01.424Z",
+          "endTime": "2026-10-17T14:55:01.424Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:22.094330813Z-5000d83f",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "error",
+                "message": "{\"level\":\"error\",\"message\":\"qa-a890 range 雪\",\"startedAt\":\"2026-10-17T14:41:22.013Z\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:22.094330813Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T14:41:22.094330812Z",
+            "nextStartTime": "2026-10-17T13:55:01.424Z"
+          }
+        }
+      },
+      "batch": {
+        "operationCount": 11,
+        "selectedIndex": 10
+      },
+      "timing": {
+        "startTime": 1792248901437.222,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.105,
+        "responseStart": 855.617,
+        "responseEnd": 856.173
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&level=error&instance=srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i&live=0"
+    },
+    "Mobile360ChipGeometryVerified": {
+      "at": "2026-10-17T14:55:03.124Z",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&level=error&instance=srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i&live=0",
+      "params": {
+        "type": "app",
+        "level": "error",
+        "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+        "live": "0"
+      },
+      "geometry": {
+        "documentWidth": 360,
+        "scrollX": 0,
+        "viewport": 360
+      },
+      "chips": [
+        {
+          "removeLabel": "Remove Level filter",
+          "button": {
+            "x": 94.625,
+            "y": 537,
+            "width": 16,
+            "height": 16,
+            "right": 110.625,
+            "bottom": 553
+          },
+          "chip": {
+            "x": 16,
+            "y": 534,
+            "width": 99.625,
+            "height": 22,
+            "right": 115.625,
+            "bottom": 556
+          },
+          "row": {
+            "x": 16,
+            "y": 534,
+            "width": 328,
+            "height": 50,
+            "right": 344,
+            "bottom": 584,
+            "clientWidth": 328,
+            "scrollWidth": 328
+          },
+          "label": {
+            "text": "Level: error",
+            "title": "Level: error",
+            "clientWidth": 66,
+            "scrollWidth": 66,
+            "textOverflow": "ellipsis"
+          },
+          "buttonVisible": true,
+          "chipText": "Level: error"
+        },
+        {
+          "removeLabel": "Remove Instance filter",
+          "button": {
+            "x": 323,
+            "y": 565,
+            "width": 16,
+            "height": 16,
+            "right": 339,
+            "bottom": 581
+          },
+          "chip": {
+            "x": 16,
+            "y": 562,
+            "width": 328,
+            "height": 22,
+            "right": 344,
+            "bottom": 584
+          },
+          "row": {
+            "x": 16,
+            "y": 534,
+            "width": 328,
+            "height": 50,
+            "right": 344,
+            "bottom": 584,
+            "clientWidth": 328,
+            "scrollWidth": 328
+          },
+          "label": {
+            "text": "Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+            "title": "Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+            "clientWidth": 294,
+            "scrollWidth": 351,
+            "textOverflow": "ellipsis"
+          },
+          "buttonVisible": true,
+          "chipText": "Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i"
+        }
+      ],
+      "uiProjection": "Unrelated main UI omitted; complete relevant chip geometry/text/title/ARIA label values above are retained.",
+      "relevantAriaLines": [
+        "  - text: \"Live Level: error\"",
+        "  - button \"Remove Level filter\"",
+        "  - text: \"Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i\"",
+        "  - button \"Remove Instance filter\""
+      ]
+    },
+    "Mobile360InstanceRemovedVerified": {
+      "at": "2026-10-17T14:55:04.236Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9oi3sflioc739mcnag",
+          "type": "app",
+          "level": ["error"],
+          "startTime": "2026-10-17T13:55:03.726Z",
+          "endTime": "2026-10-17T14:55:03.726Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:22.094330813Z-5000d83f",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "error",
+                "message": "{\"level\":\"error\",\"message\":\"qa-a890 range 雪\",\"startedAt\":\"2026-10-17T14:41:22.013Z\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:22.094330813Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T14:41:22.094330812Z",
+            "nextStartTime": "2026-10-17T13:55:03.726Z"
+          }
+        }
+      },
+      "batch": {
+        "operationCount": 1,
+        "selectedIndex": 0
+      },
+      "timing": {
+        "startTime": 1792248903746.8992,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.065,
+        "responseStart": 270.724,
+        "responseEnd": 271.373
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&level=error&live=0"
+    },
+    "Mobile360AfterRemoveGeometryVerified": {
+      "at": "2026-10-17T14:55:05.339Z",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&level=error&live=0",
+      "params": {
+        "type": "app",
+        "level": "error",
+        "live": "0"
+      },
+      "geometry": {
+        "documentWidth": 360,
+        "scrollX": 0,
+        "viewport": 360
+      },
+      "chips": [
+        {
+          "removeLabel": "Remove Level filter",
+          "button": {
+            "x": 94.625,
+            "y": 537,
+            "width": 16,
+            "height": 16,
+            "right": 110.625,
+            "bottom": 553
+          },
+          "chip": {
+            "x": 16,
+            "y": 534,
+            "width": 99.625,
+            "height": 22,
+            "right": 115.625,
+            "bottom": 556
+          },
+          "row": {
+            "x": 16,
+            "y": 534,
+            "width": 328,
+            "height": 22,
+            "right": 344,
+            "bottom": 556,
+            "clientWidth": 328,
+            "scrollWidth": 328
+          },
+          "label": {
+            "text": "Level: error",
+            "title": "Level: error",
+            "clientWidth": 66,
+            "scrollWidth": 66,
+            "textOverflow": "ellipsis"
+          },
+          "buttonVisible": true,
+          "chipText": "Level: error"
+        }
+      ],
+      "uiProjection": "Unrelated main UI omitted; complete relevant chip geometry/text/title/ARIA label values above are retained.",
+      "relevantAriaLines": [
+        "  - text: \"Live Level: error\"",
+        "  - button \"Remove Level filter\""
+      ]
+    },
+    "DesktopChipFreshReadVerified": {
+      "at": "2026-10-17T14:55:09.347Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9oi3sflioc739mcnag",
+          "type": "app",
+          "level": ["error"],
+          "instance": ["srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i"],
+          "startTime": "2026-10-17T13:55:08.244Z",
+          "endTime": "2026-10-17T14:55:08.244Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:22.094330813Z-5000d83f",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "error",
+                "message": "{\"level\":\"error\",\"message\":\"qa-a890 range 雪\",\"startedAt\":\"2026-10-17T14:41:22.013Z\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:22.094330813Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T14:41:22.094330812Z",
+            "nextStartTime": "2026-10-17T13:55:08.244Z"
+          }
+        }
+      },
+      "batch": {
+        "operationCount": 9,
+        "selectedIndex": 8
+      },
+      "timing": {
+        "startTime": 1792248908256.448,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.101,
+        "responseStart": 868.073,
+        "responseEnd": 868.587
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&level=error&instance=srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i&live=0"
+    },
+    "DesktopChipGeometryVerified": {
+      "at": "2026-10-17T14:55:09.964Z",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&level=error&instance=srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i&live=0",
+      "params": {
+        "type": "app",
+        "level": "error",
+        "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+        "live": "0"
+      },
+      "geometry": {
+        "documentWidth": 1440,
+        "scrollX": 0,
+        "viewport": 1440
+      },
+      "chips": [
+        {
+          "removeLabel": "Remove Level filter",
+          "button": {
+            "x": 478.625,
+            "y": 302,
+            "width": 16,
+            "height": 16,
+            "right": 494.625,
+            "bottom": 318
+          },
+          "chip": {
+            "x": 400,
+            "y": 299,
+            "width": 99.625,
+            "height": 22,
+            "right": 499.625,
+            "bottom": 321
+          },
+          "row": {
+            "x": 400,
+            "y": 299,
+            "width": 896,
+            "height": 22,
+            "right": 1296,
+            "bottom": 321,
+            "clientWidth": 896,
+            "scrollWidth": 896
+          },
+          "label": {
+            "text": "Level: error",
+            "title": "Level: error",
+            "clientWidth": 66,
+            "scrollWidth": 66,
+            "textOverflow": "ellipsis"
+          },
+          "buttonVisible": true,
+          "chipText": "Level: error"
+        },
+        {
+          "removeLabel": "Remove Instance filter",
+          "button": {
+            "x": 869.25,
+            "y": 302,
+            "width": 16,
+            "height": 16,
+            "right": 885.25,
+            "bottom": 318
+          },
+          "chip": {
+            "x": 505.625,
+            "y": 299,
+            "width": 384.625,
+            "height": 22,
+            "right": 890.25,
+            "bottom": 321
+          },
+          "row": {
+            "x": 400,
+            "y": 299,
+            "width": 896,
+            "height": 22,
+            "right": 1296,
+            "bottom": 321,
+            "clientWidth": 896,
+            "scrollWidth": 896
+          },
+          "label": {
+            "text": "Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+            "title": "Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+            "clientWidth": 351,
+            "scrollWidth": 351,
+            "textOverflow": "ellipsis"
+          },
+          "buttonVisible": true,
+          "chipText": "Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i"
+        }
+      ],
+      "uiProjection": "Unrelated main UI omitted; complete relevant chip geometry/text/title/ARIA label values above are retained.",
+      "relevantAriaLines": [
+        "  - text: \"Live Level: error\"",
+        "  - button \"Remove Level filter\"",
+        "  - text: \"Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i\"",
+        "  - button \"Remove Instance filter\""
+      ]
+    },
+    "DesktopShortLevelRemovedVerified": {
+      "at": "2026-10-17T14:55:11.124Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db9oi3sflioc739mcnag",
+          "type": "app",
+          "instance": ["srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i"],
+          "startTime": "2026-10-17T13:55:10.563Z",
+          "endTime": "2026-10-17T14:55:10.563Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      id\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:22.094330813Z-5000d83f",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "error",
+                "message": "{\"level\":\"error\",\"message\":\"qa-a890 range 雪\",\"startedAt\":\"2026-10-17T14:41:22.013Z\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:22.094330813Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:41.663780785Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:41.663780785Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "id": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i-2026-10-17T14:41:42.88591783Z-55282b41",
+                "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+                "level": "info",
+                "message": "{\"level\":\"info\",\"message\":\"qa-a890 request\",\"path\":\"/qa-a890\"}",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-17T14:41:42.88591783Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-17T14:41:22.094330812Z",
+            "nextStartTime": "2026-10-17T13:55:10.563Z"
+          }
+        }
+      },
+      "batch": {
+        "operationCount": 1,
+        "selectedIndex": 0
+      },
+      "timing": {
+        "startTime": 1792248910580.031,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.077,
+        "responseStart": 332.88,
+        "responseEnd": 333.622
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&instance=srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i&live=0"
+    },
+    "DesktopAfterShortRemovalVerified": {
+      "at": "2026-10-17T14:55:12.211Z",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9oi3sflioc739mcnag/logs?type=app&instance=srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i&live=0",
+      "params": {
+        "type": "app",
+        "instance": "srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+        "live": "0"
+      },
+      "geometry": {
+        "documentWidth": 1440,
+        "scrollX": 0,
+        "viewport": 1440
+      },
+      "chips": [
+        {
+          "removeLabel": "Remove Instance filter",
+          "button": {
+            "x": 763.625,
+            "y": 302,
+            "width": 16,
+            "height": 16,
+            "right": 779.625,
+            "bottom": 318
+          },
+          "chip": {
+            "x": 400,
+            "y": 299,
+            "width": 384.625,
+            "height": 22,
+            "right": 784.625,
+            "bottom": 321
+          },
+          "row": {
+            "x": 400,
+            "y": 299,
+            "width": 896,
+            "height": 22,
+            "right": 1296,
+            "bottom": 321,
+            "clientWidth": 896,
+            "scrollWidth": 896
+          },
+          "label": {
+            "text": "Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+            "title": "Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i",
+            "clientWidth": 351,
+            "scrollWidth": 351,
+            "textOverflow": "ellipsis"
+          },
+          "buttonVisible": true,
+          "chipText": "Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i"
+        }
+      ],
+      "uiProjection": "Unrelated main UI omitted; complete relevant chip geometry/text/title/ARIA label values above are retained.",
+      "relevantAriaLines": [
+        "  - text: \"Live Instance: srv-db9oi3sflioc739mcnag-t6nero324adqtat83c5i\"",
+        "  - button \"Remove Instance filter\""
+      ]
+    }
+  },
+  "externalPublicRuntime": {
+    "at": "2026-10-17T14:41:42.935840+00:00",
+    "request": {
+      "method": "GET",
+      "url": "https://qa-20261017-a890-ranges.onbex.co/qa-a890"
+    },
+    "exitCode": 0,
+    "status": 200,
+    "body": {
+      "pass": "a890",
+      "port": 8093,
+      "startedAt": "2026-10-17T14:41:22.013Z",
+      "pid": 1
+    },
+    "stderr": ""
+  },
+  "physicalCleanup": {
+    "at": "2026-10-17T14:58:23.129910+00:00",
+    "namespace": "tea-d98210cbbpdc73dcrkvg",
+    "app": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a890-ranges",
+    "serviceId": "srv-db9oi3sflioc739mcnag",
+    "scope": "Read-only exact owned app/id names and labels; source/snapshot Secrets exposed as metadata names only and prefix filtered.",
+    "checks": [
+      {
+        "check": "apps.app.bex.co",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "deployment",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "service",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "ingress",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "certificate",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "pods:app.bex.co/app",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "pods:bex.co/app-id",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "replicasets:app.bex.co/app",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "replicasets:bex.co/app-id",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "jobs:app.bex.co/app",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "jobs:bex.co/app-id",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "secrets",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "networkpolicies",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "roles",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "rolebindings",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      },
+      {
+        "check": "serviceaccounts",
+        "exitCode": 0,
+        "count": 0,
+        "names": [],
+        "stderr": ""
+      }
+    ],
+    "allAbsent": true,
+    "public": {
+      "request": {
+        "method": "GET",
+        "url": "https://qa-20261017-a890-ranges.onbex.co"
+      },
+      "exitCode": 0,
+      "status": 404,
+      "stderr": ""
+    }
+  },
+  "networkSummary": {
+    "baselineExclusive": 2264,
+    "count": 359,
+    "statuses": {
+      "200": 321,
+      "204": 36,
+      "FAILED": 2
+    },
+    "nonSuccess": [
+      "2302. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_ABORTED",
+      "2925. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_CONNECTION_CLOSED"
+    ]
+  },
+  "failedNativeRequestBodies": {
+    "2302": {
+      "operationName": "DeployActions",
+      "variables": {
+        "serviceId": "srv-db9oi3sflioc739mcnag",
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.3.3"
+        }
+      },
+      "query": "query DeployActions($serviceId: String!, $ownerId: String!) {\n  deployActions(serviceId: $serviceId, ownerId: $ownerId) {\n    action\n    outcome\n    reason\n    precondition\n    __typename\n  }\n}"
+    },
+    "2925": {
+      "operationName": "ViewerCapabilities",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "fresh": false
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.3.3"
+        }
+      },
+      "query": "query ViewerCapabilities($ownerId: String, $fresh: Boolean) {\n  viewerCapabilities(ownerId: $ownerId, fresh: $fresh) {\n    role\n    canView\n    canViewLogs\n    canOperate\n    canCreate\n    canViewSensitive\n    canManageKeys\n    canManage\n    canManageBilling\n    fresh\n    grants {\n      action\n      outcome\n      reason\n      __typename\n    }\n    __typename\n  }\n}"
+    }
+  },
+  "consoleCapture": {
+    "error": false,
+    "summary": "### Result\nTotal messages: 0 (Errors: 0, Warnings: 0)\n"
+  },
+  "productionCensus": {
+    "definition": "Exact production JSX token over complete source files, including multiline tags; excludes tests",
+    "rows": [
+      {
+        "component": "RangeSelect",
+        "path": "dashboard/src/features/logs/components/log-filter-bar.tsx",
+        "line": 200
+      },
+      {
+        "component": "RemovableChip",
+        "path": "dashboard/src/features/logs/components/log-filter-bar.tsx",
+        "line": 283
+      },
+      {
+        "component": "RangeSelect",
+        "path": "dashboard/src/features/logs/components/datastore-log-viewer.tsx",
+        "line": 271
+      },
+      {
+        "component": "RemovableChip",
+        "path": "dashboard/src/features/deploys/components/deploy-log-panel.tsx",
+        "line": 331
+      },
+      {
+        "component": "RangeSelect",
+        "path": "dashboard/src/features/metrics/components/metrics-filters.tsx",
+        "line": 70
+      }
+    ],
+    "counts": {
+      "RangeSelect": 3,
+      "RemovableChip": 2
+    }
+  },
+  "sourceExcerpts": [
+    {
+      "path": "dashboard/src/features/metrics/components/range-select.tsx",
+      "sha256": "67c7fcc94ade58d552152129e24776e4e1784ae7b20688b0d4cf28bc6af969be",
+      "startLine": 76,
+      "endLine": 106,
+      "excerpt": "  function openPicker() {\n    const now = new Date();\n    const startAt = isCustomRange(range)\n      ? new Date(range.startTime)\n      : new Date(now.getTime() - 24 * 60 * 60 * 1000);\n    const endAt = isCustomRange(range) ? new Date(range.endTime) : now;\n    const start = toLocalInput(startAt);\n    const end = toLocalInput(endAt);\n    setDraft({\n      start,\n      end,\n      seed: {\n        start,\n        end,\n        startIso: startAt.toISOString(),\n        endIso: endAt.toISOString(),\n      },\n    });\n    setPickerOpen(true);\n  }\n\n  return (\n    <>\n      <Select\n        value={range.id}\n        onValueChange={(v) => {\n          if (v === CUSTOM) {\n            openPicker();\n            return;\n          }\n          const preset = parseRangePreset(v);"
+    },
+    {
+      "path": "dashboard/src/features/metrics/components/range-select.tsx",
+      "sha256": "67c7fcc94ade58d552152129e24776e4e1784ae7b20688b0d4cf28bc6af969be",
+      "startLine": 164,
+      "endLine": 206,
+      "excerpt": "  draft,\n  onDraftChange,\n  onApply,\n}: {\n  open: boolean;\n  onOpenChange: (open: boolean) => void;\n  draft: RangeDraft;\n  onDraftChange: (draft: RangeDraft) => void;\n  onApply: (custom: RangeSelection) => void;\n}) {\n  const { t } = useTranslations();\n  const [error, setError] = useState<string | null>(null);\n\n  function apply() {\n    const seed = draft.seed;\n    const made = makeCustomRange(\n      seed && draft.start === seed.start\n        ? seed.startIso\n        : fromLocalInput(draft.start),\n      seed && draft.end === seed.end ? seed.endIso : fromLocalInput(draft.end),\n    );\n    if (typeof made === \"string\") {\n      setError(\n        made === \"order\"\n          ? t(\"metrics.rangeCustomErrorOrder\")\n          : t(\"metrics.rangeCustomErrorTooLong\"),\n      );\n      return;\n    }\n    setError(null);\n    onApply(made);\n  }\n\n  // Every close — Radix dismissal and the footer Cancel alike — drops the\n  // warning, or reopening shows it beside the reseeded valid dates (w4/279).\n  function changeOpen(next: boolean) {\n    if (!next) setError(null);\n    onOpenChange(next);\n  }\n\n  return (\n    <Dialog open={open} onOpenChange={changeOpen}>\n      <DialogContent>"
+    },
+    {
+      "path": "dashboard/src/features/metrics/components/range-select.tsx",
+      "sha256": "67c7fcc94ade58d552152129e24776e4e1784ae7b20688b0d4cf28bc6af969be",
+      "startLine": 261,
+      "endLine": 285,
+      "excerpt": " *  extended with seconds and milliseconds only when the instant has them, so a\n *  whole-minute range looks as it always did and a precise one stays precise. */\nfunction toLocalInput(date: Date): string {\n  const pad = (n: number, width = 2) => String(n).padStart(width, \"0\");\n  let time = `${pad(date.getHours())}:${pad(date.getMinutes())}`;\n  if (date.getSeconds() || date.getMilliseconds()) {\n    time += `:${pad(date.getSeconds())}`;\n    if (date.getMilliseconds()) time += `.${pad(date.getMilliseconds(), 3)}`;\n  }\n  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${time}`;\n}\n\n/** The input step that lets a datetime-local hold its value's precision (the\n *  default is 60 seconds); undefined keeps the minute picker for minute values. */\nfunction inputStep(value: string): number | undefined {\n  const seconds = value.split(\"T\")[1]?.split(\":\")[2];\n  if (seconds === undefined) return undefined;\n  return seconds.includes(\".\") ? 0.001 : 1;\n}\n\n/** A datetime-local value (local wall time) → an ISO instant, or \"\" if blank. */\nfunction fromLocalInput(value: string): string {\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? \"\" : date.toISOString();\n}"
+    },
+    {
+      "path": "dashboard/src/common/components/removable-chip.tsx",
+      "sha256": "b24fe7cd47f3c7463842311758bd977370d14116badf26a967cb15a71acac189",
+      "startLine": 16,
+      "endLine": 52,
+      "excerpt": "/** A secondary Badge carrying an inline dismiss button: an applied log filter,\n *  an instance selection, a composer mention.\n *\n *  The chip never outgrows its row (w4/324: a discovered instance id made a\n *  406px chip in a 358px phone row, with its remove button off screen). Its\n *  text shrinks and ellipsizes; the full value stays in the DOM for assistive\n *  technology and in a tooltip, and the remove button keeps its size. */\nexport function RemovableChip({\n  icon,\n  children,\n  removeLabel,\n  onRemove,\n  className,\n}: RemovableChipProps) {\n  const text = Children.toArray(children)\n    .filter((child) => typeof child === \"string\" || typeof child === \"number\")\n    .join(\"\");\n  return (\n    <Badge\n      variant=\"secondary\"\n      className={cn(\"max-w-full min-w-0 gap-1 pr-1\", className)}\n    >\n      {icon}\n      <span className=\"min-w-0 truncate\" title={text || undefined}>\n        {children}\n      </span>\n      <button\n        type=\"button\"\n        aria-label={removeLabel}\n        onClick={onRemove}\n        className=\"hover:bg-muted-foreground/20 shrink-0 rounded-full p-0.5\"\n      >\n        <X className=\"size-3\" />\n      </button>\n    </Badge>\n  );\n}"
+    },
+    {
+      "path": "dashboard/src/features/metrics/components/network-metrics-card.tsx",
+      "sha256": "ee069d56b240bd4ac11da5be5270988a166f5cfce5309daba6c53f4fac9273db",
+      "startLine": 135,
+      "endLine": 145,
+      "excerpt": "  // A bandwidth bucket finer than the API's 60s minimum would fall between\n  // 15s counter scrapes and read as zero (w4/241), so only this call is\n  // coarsened; start/end and the other charts keep the window's resolution.\n  const bandwidth = useMetrics(resource, \"bandwidth\", {\n    ...window,\n    resolutionSeconds: Math.max(\n      MIN_BANDWIDTH_RESOLUTION_SECONDS,\n      window.resolutionSeconds ?? MIN_BANDWIDTH_RESOLUTION_SECONDS,\n    ),\n  });\n  const monthToDate = useMonthToDateBandwidth(resource);"
+    },
+    {
+      "path": "dashboard/src/features/deploys/components/deploy-log-panel.tsx",
+      "sha256": "cecef45f129ebfed34382f71b2fdce656fb02024f38d90d6eb711f08d14fc405",
+      "startLine": 327,
+      "endLine": 346,
+      "excerpt": "        </div>\n      </div>\n      {instanceFilter ? (\n        <div className=\"flex flex-wrap items-center gap-1.5\">\n          <RemovableChip\n            removeLabel={t(\"logs.chipRemove\", {\n              label: t(\"logs.instanceLabel\"),\n            })}\n            onRemove={() => setInstanceFilter(\"\")}\n          >\n            {t(\"logs.instanceLabel\")}: {instanceFilter}\n          </RemovableChip>\n        </div>\n      ) : null}\n      {buildStoreUnavailable && lines.length > 0 ? (\n        <div\n          role=\"status\"\n          className=\"rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground\"\n        >\n          <span className=\"font-medium text-foreground\">"
+    },
+    {
+      "path": "dashboard/src/features/metrics/components/__tests__/range-select.test.tsx",
+      "sha256": "78b9b4d01bdcc75f667a7aa5157efc03f07481c2e5a412542daa47a06034fc86",
+      "startLine": 264,
+      "endLine": 350,
+      "excerpt": "// with both fields cut to 18:28, so an unchanged Apply was refused (\"end must\n// be after the start\"), and a wider one silently moved to whole minutes.\ndescribe(\"RangeSelect keeps a precise custom window (w4/328)\", () => {\n  const precise = (startTime: string, endTime: string): RangeSelection => ({\n    id: \"custom\",\n    startTime,\n    endTime,\n    resolutionSeconds: 60,\n  });\n\n  it.each([\n    [\n      \"a sub-minute window\",\n      \"2026-10-16T18:28:10.123Z\",\n      \"2026-10-16T18:28:50.987Z\",\n    ],\n    [\"a wider window\", \"2026-10-16T18:27:10.123Z\", \"2026-10-16T18:28:50.987Z\"],\n    [\n      \"a whole-second window\",\n      \"2026-10-16T18:27:10.000Z\",\n      \"2026-10-16T18:28:50.000Z\",\n    ],\n  ])(\n    \"applies %s unchanged at its exact instants\",\n    async (_, startTime, endTime) => {\n      const user = userEvent.setup();\n      const onRangeChange = vi.fn();\n      render(\n        <StatefulRangeSelect\n          initial={precise(startTime, endTime)}\n          onRangeChange={onRangeChange}\n        />,\n      );\n      await user.click(\n        screen.getByRole(\"button\", { name: \"Edit custom range\" }),\n      );\n      // The fields show the precision they carry.\n      expect(\n        (screen.getByLabelText(\"Start\") as HTMLInputElement).value,\n      ).toMatch(/:\\d{2}:\\d{2}/);\n      await user.click(screen.getByRole(\"button\", { name: \"Apply\" }));\n      expect(screen.queryByRole(\"alert\")).not.toBeInTheDocument();\n      expect(screen.queryByRole(\"dialog\")).not.toBeInTheDocument();\n      expect(onRangeChange).toHaveBeenLastCalledWith(\n        expect.objectContaining({ id: \"custom\", startTime, endTime }),\n      );\n    },\n  );\n\n  it(\"keeps the untouched bound exact when only the other is edited\", async () => {\n    const user = userEvent.setup();\n    const onRangeChange = vi.fn();\n    render(\n      <StatefulRangeSelect\n        initial={precise(\n          \"2026-10-16T18:27:10.123Z\",\n          \"2026-10-16T18:28:50.987Z\",\n        )}\n        onRangeChange={onRangeChange}\n      />,\n    );\n    await user.click(screen.getByRole(\"button\", { name: \"Edit custom range\" }));\n    fireEvent.change(screen.getByLabelText(\"End\"), {\n      target: { value: \"2026-10-16T23:59\" },\n    });\n    await user.click(screen.getByRole(\"button\", { name: \"Apply\" }));\n    expect(onRangeChange).toHaveBeenLastCalledWith(\n      expect.objectContaining({\n        startTime: \"2026-10-16T18:27:10.123Z\",\n        endTime: iso(\"2026-10-16T23:59\"),\n      }),\n    );\n  });\n\n  it(\"still shows a whole-minute window in minutes\", async () => {\n    const user = userEvent.setup();\n    render(\n      <StatefulRangeSelect\n        initial={precise(iso(\"2026-10-10T17:45\"), iso(\"2026-10-10T17:46\"))}\n        onRangeChange={vi.fn()}\n      />,\n    );\n    await user.click(screen.getByRole(\"button\", { name: \"Edit custom range\" }));\n    expect(screen.getByLabelText(\"Start\")).toHaveValue(\"2026-10-10T17:45\");\n    expect(screen.getByLabelText(\"Start\")).not.toHaveAttribute(\"step\");\n  });\n});"
+    },
+    {
+      "path": "dashboard/src/features/logs/components/__tests__/log-filter-bar.test.tsx",
+      "sha256": "d5930698b8f587226fdb774051b804242f237c6a32cf05ef22f5c93e645e4f85",
+      "startLine": 169,
+      "endLine": 181,
+      "excerpt": "  it(\"keeps a long chip's full value inspectable and removes only it (w4/324)\", () => {\n    const instance = \"srv-db8tm129cl7s73ae4cm0-n0dcsp78kvbge9eodeos\";\n    const { onChange } = renderBar({ filters: { level: \"error\", instance } });\n    // The chip ellipsizes on a phone (a real-browser measurement: 406px → the\n    // 358px row); the value itself is never shortened.\n    const label = screen.getByText(`Instance: ${instance}`);\n    expect(label).toHaveAttribute(\"title\", `Instance: ${instance}`);\n    fireEvent.click(screen.getByLabelText(\"Remove Instance filter\"));\n    expect(onChange).toHaveBeenCalledWith({ instance: \"\" });\n    expect(onChange).not.toHaveBeenCalledWith({ level: \"\" });\n  });\n\n  it(\"emits a text patch from the search box\", () => {"
+    }
+  ],
+  "validation": {
+    "count": 173,
+    "passed": [
+      "Baseline HTTP200/no GraphQL errors",
+      "Created HTTP200/no GraphQL errors",
+      "IndependentBandwidthRead HTTP200/no GraphQL errors",
+      "ApplicationLogsSelectedVerified HTTP200/no GraphQL errors",
+      "LevelErrorSelectedVerified HTTP200/no GraphQL errors",
+      "InstanceSelected HTTP200/no GraphQL errors",
+      "Deleted HTTP200/no GraphQL errors",
+      "DesktopMetricsInitial HTTP200/no GraphQL errors",
+      "DesktopMetricsNextRead HTTP200/no GraphQL errors",
+      "DesktopLogsSameInitial HTTP200/no GraphQL errors",
+      "DesktopLogsSameNextRead HTTP200/no GraphQL errors",
+      "DesktopLogsWideInitial HTTP200/no GraphQL errors",
+      "DesktopLogsWideNextRead HTTP200/no GraphQL errors",
+      "DesktopLogsMinuteInitial HTTP200/no GraphQL errors",
+      "DesktopLogsMinuteNextRead HTTP200/no GraphQL errors",
+      "MobileMetricsInitial HTTP200/no GraphQL errors",
+      "MobileMetricsNextRead HTTP200/no GraphQL errors",
+      "MobileLogsSameInitial HTTP200/no GraphQL errors",
+      "MobileLogsSameNextRead HTTP200/no GraphQL errors",
+      "MobileLogsWideInitial HTTP200/no GraphQL errors",
+      "MobileLogsWideNextRead HTTP200/no GraphQL errors",
+      "MobileLogsMinuteInitial HTTP200/no GraphQL errors",
+      "MobileLogsMinuteNextRead HTTP200/no GraphQL errors",
+      "DesktopLogsEndOnlyInitial HTTP200/no GraphQL errors",
+      "DesktopLogsEndOnlyNextRead HTTP200/no GraphQL errors",
+      "MobileLogsEndOnlyInitial HTTP200/no GraphQL errors",
+      "MobileLogsEndOnlyNextRead HTTP200/no GraphQL errors",
+      "Mobile390ChipFreshReadVerified HTTP200/no GraphQL errors",
+      "Mobile390InstanceRemovedVerified HTTP200/no GraphQL errors",
+      "Mobile360ChipFreshReadVerified HTTP200/no GraphQL errors",
+      "Mobile360InstanceRemovedVerified HTTP200/no GraphQL errors",
+      "DesktopChipFreshReadVerified HTTP200/no GraphQL errors",
+      "DesktopShortLevelRemovedVerified HTTP200/no GraphQL errors",
+      "Free image service8093",
+      "Live exact public synthetic marker",
+      "Non-UTC actual browser timezone",
+      "All chosen precise bounds already past",
+      "DesktopMetrics initial: complete successful native query",
+      "DesktopMetrics initial: exact owned resource and query class",
+      "DesktopMetrics next native reload: complete successful native query",
+      "DesktopMetrics next native reload: exact owned resource and query class",
+      "DesktopMetrics: unchanged Apply closes and keeps full URL",
+      "DesktopMetrics: URL retains exact instants",
+      "DesktopMetrics: no range-order/length validation alert",
+      "DesktopMetrics: native fields hold required precision and are valid",
+      "DesktopMetrics: original milliseconds remain visible",
+      "DesktopLogsSame initial: complete successful native query",
+      "DesktopLogsSame initial: exact owned resource and query class",
+      "DesktopLogsSame next native reload: complete successful native query",
+      "DesktopLogsSame next native reload: exact owned resource and query class",
+      "DesktopLogsSame: unchanged Apply closes and keeps full URL",
+      "DesktopLogsSame: URL retains exact instants",
+      "DesktopLogsSame: no range-order/length validation alert",
+      "DesktopLogsSame: native fields hold required precision and are valid",
+      "DesktopLogsSame: original milliseconds remain visible",
+      "DesktopLogsSame: paused app Logs retained",
+      "DesktopLogsSame: same retained row IDs after reload",
+      "DesktopLogsWide initial: complete successful native query",
+      "DesktopLogsWide initial: exact owned resource and query class",
+      "DesktopLogsWide next native reload: complete successful native query",
+      "DesktopLogsWide next native reload: exact owned resource and query class",
+      "DesktopLogsWide: unchanged Apply closes and keeps full URL",
+      "DesktopLogsWide: URL retains exact instants",
+      "DesktopLogsWide: no range-order/length validation alert",
+      "DesktopLogsWide: native fields hold required precision and are valid",
+      "DesktopLogsWide: original milliseconds remain visible",
+      "DesktopLogsWide: paused app Logs retained",
+      "DesktopLogsWide: same retained row IDs after reload",
+      "DesktopLogsMinute initial: complete successful native query",
+      "DesktopLogsMinute initial: exact owned resource and query class",
+      "DesktopLogsMinute next native reload: complete successful native query",
+      "DesktopLogsMinute next native reload: exact owned resource and query class",
+      "DesktopLogsMinute: unchanged Apply closes and keeps full URL",
+      "DesktopLogsMinute: URL retains exact instants",
+      "DesktopLogsMinute: no range-order/length validation alert",
+      "DesktopLogsMinute: native fields hold required precision and are valid",
+      "DesktopLogsMinute: original minute form remains HH:mm",
+      "DesktopLogsMinute: paused app Logs retained",
+      "DesktopLogsMinute: same retained row IDs after reload",
+      "MobileMetrics initial: complete successful native query",
+      "MobileMetrics initial: exact owned resource and query class",
+      "MobileMetrics next native reload: complete successful native query",
+      "MobileMetrics next native reload: exact owned resource and query class",
+      "MobileMetrics: unchanged Apply closes and keeps full URL",
+      "MobileMetrics: URL retains exact instants",
+      "MobileMetrics: no range-order/length validation alert",
+      "MobileMetrics: native fields hold required precision and are valid",
+      "MobileMetrics: original milliseconds remain visible",
+      "MobileLogsSame initial: complete successful native query",
+      "MobileLogsSame initial: exact owned resource and query class",
+      "MobileLogsSame next native reload: complete successful native query",
+      "MobileLogsSame next native reload: exact owned resource and query class",
+      "MobileLogsSame: unchanged Apply closes and keeps full URL",
+      "MobileLogsSame: URL retains exact instants",
+      "MobileLogsSame: no range-order/length validation alert",
+      "MobileLogsSame: native fields hold required precision and are valid",
+      "MobileLogsSame: original milliseconds remain visible",
+      "MobileLogsSame: paused app Logs retained",
+      "MobileLogsSame: same retained row IDs after reload",
+      "MobileLogsWide initial: complete successful native query",
+      "MobileLogsWide initial: exact owned resource and query class",
+      "MobileLogsWide next native reload: complete successful native query",
+      "MobileLogsWide next native reload: exact owned resource and query class",
+      "MobileLogsWide: unchanged Apply closes and keeps full URL",
+      "MobileLogsWide: URL retains exact instants",
+      "MobileLogsWide: no range-order/length validation alert",
+      "MobileLogsWide: native fields hold required precision and are valid",
+      "MobileLogsWide: original milliseconds remain visible",
+      "MobileLogsWide: paused app Logs retained",
+      "MobileLogsWide: same retained row IDs after reload",
+      "MobileLogsMinute initial: complete successful native query",
+      "MobileLogsMinute initial: exact owned resource and query class",
+      "MobileLogsMinute next native reload: complete successful native query",
+      "MobileLogsMinute next native reload: exact owned resource and query class",
+      "MobileLogsMinute: unchanged Apply closes and keeps full URL",
+      "MobileLogsMinute: URL retains exact instants",
+      "MobileLogsMinute: no range-order/length validation alert",
+      "MobileLogsMinute: native fields hold required precision and are valid",
+      "MobileLogsMinute: original minute form remains HH:mm",
+      "MobileLogsMinute: paused app Logs retained",
+      "MobileLogsMinute: same retained row IDs after reload",
+      "DesktopLogsEndOnly initial: complete successful native query",
+      "DesktopLogsEndOnly initial: exact owned resource and query class",
+      "DesktopLogsEndOnly Apply-triggered read: complete successful native query",
+      "DesktopLogsEndOnly Apply-triggered read: exact owned resource and query class",
+      "DesktopLogsEndOnly: Start untouched and End deliberately changed",
+      "DesktopLogsEndOnly: committed URL and paused app filters exact",
+      "MobileLogsEndOnly initial: complete successful native query",
+      "MobileLogsEndOnly initial: exact owned resource and query class",
+      "MobileLogsEndOnly Apply-triggered read: complete successful native query",
+      "MobileLogsEndOnly Apply-triggered read: exact owned resource and query class",
+      "MobileLogsEndOnly: Start untouched and End deliberately changed",
+      "MobileLogsEndOnly: committed URL and paused app filters exact",
+      "Fresh desktop/mobile primary geometry widths",
+      "InvalidOrderAndClear: refusal retains committed URL",
+      "InvalidOrderAndClear: close/reopen clears warning",
+      "TooLongAndClear: refusal retains committed URL",
+      "TooLongAndClear: close/reopen clears warning",
+      "Real discovery supplies normal owned instance",
+      "InstanceSelected: exact error/instance filter and one own record",
+      "Mobile390ChipFreshReadVerified: exact error/instance filter and one own record",
+      "Mobile390InstanceRemovedVerified: exact error/instance filter and one own record",
+      "Mobile390: actual document/row/chip contain long value",
+      "Mobile390: remove control horizontally inside row and viewport",
+      "Mobile390: full text/title retained with real truncation",
+      "Mobile390: removing only Instance preserves Level",
+      "Mobile390: short Level chip unchanged",
+      "Mobile360ChipFreshReadVerified: exact error/instance filter and one own record",
+      "Mobile360InstanceRemovedVerified: exact error/instance filter and one own record",
+      "Mobile360: actual document/row/chip contain long value",
+      "Mobile360: remove control horizontally inside row and viewport",
+      "Mobile360: full text/title retained with real truncation",
+      "Mobile360: removing only Instance preserves Level",
+      "Mobile360: short Level chip unchanged",
+      "Desktop chip readable without label truncation",
+      "Short Level removal keeps Instance predicate and app type",
+      "Short Level removal preserves Instance UI",
+      "DeployDesktopChipGeometry: actual shared chip horizontal containment",
+      "DeployMobile390ChipGeometry: actual shared chip horizontal containment",
+      "DeployMobile360ChipGeometry: actual shared chip horizontal containment",
+      "Deploy-local Enter removal clears chip without URL change",
+      "Known241 subminute bandwidth contract retained",
+      "Separate monthly total is successful with reported degradation",
+      "Native exact fixture deletion",
+      "Service/sole deploy404 and seven inventories restored",
+      "Sole session revoked and exact handles removed",
+      "16 physical scopes empty and independent public404",
+      "359 native transports classified",
+      "Console capture empty",
+      "Exact multiline JSX census3 range/two chip mounts",
+      "Original evidence unchanged .pm/w4/evidence/324-log-filter-mobile-chip.json",
+      "Original evidence unchanged .pm/w4/evidence/328-a761.json",
+      "Independent public Live marker verified"
+    ]
+  },
+  "limits": [
+    "Eight unchanged-Apply cases use an explicit native browser reload for the next request, because an unchanged range need not trigger a new query. The two End-only changes do trigger their captured native Logs reads. Same-minute/wider reads include the actual synthetic records; this does not establish exact subsecond sampling or record-loss semantics.",
+    "Actual America/Los_Angeles Chromium fields carry milliseconds/step0.001. Whole-minute fields retain HH:mm/default step. Untouched bounds and deliberate edits pass; no live DST ambiguity, alternate browser, Chinese or datastore/static sibling certification.",
+    "The BANDWIDTH chart intentionally refuses this40.864s range even at resolution60, per completed241. Its named bad-request body is retained. HTTP_REQUESTS succeeds at resolution1 and the separate monthly total succeeds with reported degraded sources. The visible chart alert was initially misidentified as a monthly footer failure and corrected from actual requests/source; no new issue is claimed.",
+    "Chip controls are native exact discovered-instance application/error reads at fresh390/360 and desktop. Mouse removal at390 and Enter at360 preserve Level; short Level removal preserves Instance. Titles/full DOM text and horizontal geometry are retained; native tooltip display and physical touch gestures were not tested.",
+    "Deploy-detail instance filtering is client-local; the URL stays unchanged. Desktop/390/360 shared-chip geometry is real. Mobile deployment measurements were below the fold before normal keyboard focus scrolling; only horizontal containment is claimed, not initial intersection with the vertical viewport. Static deploy-detail route, other log types and long path values were not reaccepted.",
+    "No style/ARIA injection or new old-source counterfactual in this sweep. Original failing geometry, implementation checks and regressions remain historical. No source/test changes or suite rerun for this acceptance-only filing.",
+    "Wrong service Log type role and Application option label were corrected before dependent actions. One navigation observer deferred a response body until after navigation; its protocol/body error is excluded and the fresh native read was recaptured while consuming the body at response time. No write was replayed and no browser restarted.",
+    "Transport abort2302 is a DeployActions query; connection closure2925 is a ViewerCapabilities query. Later independent/native reads and cleanup pass. Snapshot contains native browser traffic; explicit APIRequestContext probes have their complete separate receipts.",
+    "Unrelated All-logs request metadata and raw mixed-response siblings are excluded. Only the complete relevant native operation body is retained when the original HTTP batch contained several operations with the same name. Selected index and batch length disambiguate HTTP_REQUESTS from other Metrics operations."
+  ]
+}
