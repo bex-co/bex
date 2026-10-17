@@ -1,6 +1,6 @@
 # w8 · m107 — Supply ZIP creation in native builds and runtimes
 
-**Worker:** worker8 **Goal:** native builds and download handlers create correct ZIP archives without an authored installer. **Status:** todo
+**Worker:** worker8 **Goal:** native builds and download handlers create correct ZIP archives without an authored installer. **Status:** blocked — needs the user's choice of native tool-supply mechanism ([decision](../m91/design.md)); no task started
 
 ## Tasks (in order)
 
@@ -22,7 +22,7 @@ Reviewed immutable ZIP contents and compatible required libraries are available 
 ## Source + Goal linkage
 
 - **Source:** Authorized ordinary functional CLI sweep434, 2026-10-17: both unchanged creates POST 201/native 0; first builds fail missing ZIP; install-only controls create genuine build/runtime ZIPs verified independently through four JSON responses and two raw downloads.
-- **Goal:** [ADR008](../../../docs/ADR008-vision.md), [Render parity ADR018](../../../docs/ADR018-render-parity.md), [native build assembly ADR060](../../../docs/ADR060-build-worker-reliability-and-performance.md): documented native tools work in ordinary hosting journeys.
+- **Goal:** [ADR008](../../../../docs/ADR008-vision.md), [Render parity ADR018](../../../../docs/ADR018-render-parity.md), [native build assembly ADR060](../../../../docs/ADR060-build-worker-reliability-and-performance.md): documented native tools work in ordinary hosting journeys.
 - **Expected outcome:** Native asset builds and download handlers can create ZIP archives without tenant install workarounds.
 - **Why now:** Actual missing-tool failures plus supplier-only controls isolate an uncovered native-image omission. Complete package/library delivery and shared base/phase/architecture checks require reviewed implementation and real artifact tests.
 - **Render parity:** Included because native image contents affect tenant-facing hosting through REST/GraphQL/MCP/Blueprint/dashboard. Preserve existing fields, commands, source/env and CLI wire contracts; no new selector or client fork is needed.

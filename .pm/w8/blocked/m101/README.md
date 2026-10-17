@@ -1,6 +1,6 @@
 # w8 · m101 — Supply Webpack for native production bundles
 
-**Worker:** worker8 **Goal:** ordinary native production bundling emits a working JavaScript service with a supplied noninteractive compiler/CLI, without tenant installation workarounds. **Status:** todo
+**Worker:** worker8 **Goal:** ordinary native production bundling emits a working JavaScript service with a supplied noninteractive compiler/CLI, without tenant installation workarounds. **Status:** blocked — needs the user's choice of native tool-supply mechanism ([decision](../m91/design.md)); no task started
 
 ## Tasks (in order)
 
@@ -22,7 +22,7 @@ A reviewed immutable multiarch Webpack payload with compatible noninteractive CL
 ## Source + Goal linkage
 
 - **Source:** Authorized ordinary functional CLI sweep422, 2026-10-17: both unchanged native creates POST 201/exit 0, both original first builds fail missing-webpack, both single pinned core/CLI-install replacements Live with six actual generated-bundle HTTP responses.
-- **Goal:** [ADR008](../../../docs/ADR008-vision.md), [Render parity ADR018](../../../docs/ADR018-render-parity.md), [native assembly ADR060](../../../docs/ADR060-build-worker-reliability-and-performance.md): normal native bundling commands should work as documented.
+- **Goal:** [ADR008](../../../../docs/ADR008-vision.md), [Render parity ADR018](../../../../docs/ADR018-render-parity.md), [native assembly ADR060](../../../../docs/ADR060-build-worker-reliability-and-performance.md): normal native bundling commands should work as documented.
 - **Outcome:** Native builds can bundle their modules and run the output without rewriting requests or adding tenant install workarounds.
 - **Why now:** Actual first failures and supplier-only controls isolate missing compiler/CLI delivery; no existing source/board/history repair supplies it. Full dependency closure, engine compatibility and shared-base adoption require deliberate review.
 - **Render parity:** Included because native tool contents affect tenant build/runtime behavior through REST/GraphQL/MCP/Blueprint/dashboard. No new API field, version selector or launcher fork.

@@ -1,6 +1,6 @@
 # w8 · m94 — Supply SQLite CLI in native builds and runtime
 
-**Worker:** worker8 **Goal:** ordinary native SQLite seed/import/export commands can use the supplied executable without replacing a working language library. **Status:** todo
+**Worker:** worker8 **Goal:** ordinary native SQLite seed/import/export commands can use the supplied executable without replacing a working language library. **Status:** blocked — needs the user's choice of native tool-supply mechanism ([decision](../m91/design.md)); no task started
 
 ## Tasks (in order)
 
@@ -22,7 +22,7 @@ A reviewed immutable multiarch sqlite3 executable with complete required librari
 ## Source + Goal linkage
 
 - **Source:** Authorized ordinary functional CLI sweep409,2026-10-17: both unchanged native POST201/exit0 first builds fail missing sqlite3 after healthy independent Python-library seed controls; both one-line install controls Live and six real readonly runtime exports pass.
-- **Goal linkage:** [ADR008](../../../docs/ADR008-vision.md), [Render parity ADR018](../../../docs/ADR018-render-parity.md) and [native assembly ADR060](../../../docs/ADR060-build-worker-reliability-and-performance.md): ordinary hosting commands should work with named supplied utilities.
+- **Goal linkage:** [ADR008](../../../../docs/ADR008-vision.md), [Render parity ADR018](../../../../docs/ADR018-render-parity.md) and [native assembly ADR060](../../../../docs/ADR060-build-worker-reliability-and-performance.md): ordinary hosting commands should work with named supplied utilities.
 - **Expected outcome:** Native SQLite seed/import/export commands deploy and run without installing the executable in tenant code or rewriting CLI input.
 - **Why now:** Both independent native clients and actual selected-base controls isolate the absent executable while the library and exact SQL/data work; there is no supplier or newer fix. PostgreSQL/Pandoc tool work has separate dependency and acceptance boundaries.
 - **Render parity:** Included because native image contents affect tenant build/runtime behavior across REST/GraphQL/MCP/Blueprint/dashboard; no new schema field or CLI fork.

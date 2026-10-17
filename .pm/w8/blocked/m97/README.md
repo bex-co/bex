@@ -1,6 +1,6 @@
 # w8 · m97 — Supply Ghostscript for native PDF rendering
 
-**Worker:** worker8 **Goal:** ordinary native PDF-processing apps can invoke the promised renderer without tenant installation workarounds. **Status:** todo
+**Worker:** worker8 **Goal:** ordinary native PDF-processing apps can invoke the promised renderer without tenant installation workarounds. **Status:** blocked — needs the user's choice of native tool-supply mechanism ([decision](../m91/design.md)); no task started
 
 ## Tasks (in order)
 
@@ -22,7 +22,7 @@ A reviewed immutable multiarch Ghostscript supplier with compatible executable/l
 ## Source + Goal linkage
 
 - **Source:** Authorized ordinary functional CLI sweep418,2026-10-17: both unchanged native POST201/exit0 first builds fail missing-gs, both one-line Ghostscript controls Live with six real PDF conversions and independently checked PNG pixels.
-- **Goal:** [ADR008](../../../docs/ADR008-vision.md), [Render parity ADR018](../../../docs/ADR018-render-parity.md), [native assembly ADR060](../../../docs/ADR060-build-worker-reliability-and-performance.md): regular hosting build/runtime tools work as documented.
+- **Goal:** [ADR008](../../../../docs/ADR008-vision.md), [Render parity ADR018](../../../../docs/ADR018-render-parity.md), [native assembly ADR060](../../../../docs/ADR060-build-worker-reliability-and-performance.md): regular hosting build/runtime tools work as documented.
 - **Outcome:** Native PDF conversion commands run without rewriting tenant dependencies or CLI requests.
 - **Why now:** Both native clients and exact selected-base controls isolate the missing renderer with real source/PDF/pixel proofs; no supplier or newer fix exists. Adjacent image/media utility issues have separate consumers and closure requirements.
 - **Render parity:** Included because image contents affect tenant build/runtime through REST/GraphQL/MCP/Blueprint/dashboard; no new API field or launcher fork.

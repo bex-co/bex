@@ -1,6 +1,6 @@
 # w8 · m98 — Supply jq and rsync for native asset builds
 
-**Worker:** worker8 **Goal:** normal native JSON-manifest and local asset-copy builds run with their documented utilities without tenant installation workarounds. **Status:** todo
+**Worker:** worker8 **Goal:** normal native JSON-manifest and local asset-copy builds run with their documented utilities without tenant installation workarounds. **Status:** blocked — needs the user's choice of native tool-supply mechanism ([decision](../m91/design.md)); no task started
 
 ## Tasks (in order)
 
@@ -23,7 +23,7 @@ Reviewed immutable multiarch jq and rsync payloads with compatible required libr
 ## Source + Goal linkage
 
 - **Source:** Authorized ordinary functional CLI sweep419,2026-10-17: both original native POST201/exit0 first builds fail missing-jq; both jq-only builds generate correct manifests then fail missing-rsync; both complete-tool replacements Live with six real manifest/file-copy/HTML responses.
-- **Goal:** [ADR008](../../../docs/ADR008-vision.md), [Render parity ADR018](../../../docs/ADR018-render-parity.md), [native assembly ADR060](../../../docs/ADR060-build-worker-reliability-and-performance.md): regular hosting build/runtime tools should work as documented.
+- **Goal:** [ADR008](../../../../docs/ADR008-vision.md), [Render parity ADR018](../../../../docs/ADR018-render-parity.md), [native assembly ADR060](../../../../docs/ADR060-build-worker-reliability-and-performance.md): regular hosting build/runtime tools should work as documented.
 - **Outcome:** Native asset builds and runtime scripts can filter JSON and copy local files without rewriting commands or CLI requests.
 - **Why now:** Actual independent native stages plus selected-base controls isolate two missing executables in one ordinary asset workflow; there is no supplier/newer fix. Shared delivery/audit/acceptance is coherent, while each missing tool has its own implementation and regression task.
 - **Render parity:** Included because native image contents affect tenant builds/runtime through REST/GraphQL/MCP/Blueprint/dashboard. No new API field, version selector or launcher fork.

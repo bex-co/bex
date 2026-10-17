@@ -1,6 +1,6 @@
 # w8 · m103 — Supply native Python packaging and development tools
 
-**Worker:** worker8 **Goal:** ordinary native Node builds can generate Python package metadata, install an owned wheel and compile/import their Python C extension with the documented prerequisites, without tenant install workarounds. **Status:** todo
+**Worker:** worker8 **Goal:** ordinary native Node builds can generate Python package metadata, install an owned wheel and compile/import their Python C extension with the documented prerequisites, without tenant install workarounds. **Status:** blocked — needs the user's choice of native tool-supply mechanism ([decision](../m91/design.md)); no task started
 
 ## Tasks (in order)
 
@@ -24,7 +24,7 @@ Reviewed immutable multiarch setuptools, pip and matching development-header/con
 ## Source + Goal linkage
 
 - **Source:** Authorized ordinary functional CLI sweep424, 2026-10-17: both original first builds fail missing setuptools; both setuptools-only builds prove metadata then fail missing pip; both packaging builds prove local wheel installation then fail missing Python.h; both complete-prerequisite fourth deployments Live with six real integrated HTTP responses.
-- **Goal:** [ADR008](../../../docs/ADR008-vision.md), [Render parity ADR018](../../../docs/ADR018-render-parity.md), [native assembly ADR060](../../../docs/ADR060-build-worker-reliability-and-performance.md): native package and extension builds should work with their documented preloaded tools.
+- **Goal:** [ADR008](../../../../docs/ADR008-vision.md), [Render parity ADR018](../../../../docs/ADR018-render-parity.md), [native assembly ADR060](../../../../docs/ADR060-build-worker-reliability-and-performance.md): native package and extension builds should work with their documented preloaded tools.
 - **Outcome:** Node/Python integrations can build and use their genuine modules without rewriting supported requests or installing platform-promised prerequisites themselves.
 - **Why now:** Four real native stages plus selected-base application controls independently isolate three missing prerequisites in one workflow; no matching supplier repair exists. Coherent per-base Python ABI/distro delivery and a shared acceptance/audit are useful together, while each omission has its own implementation/regression task.
 - **Render parity:** Included because native tool contents affect tenant build/runtime behavior through REST/GraphQL/MCP/Blueprint/dashboard. Preserve existing fields and runtime selectors.
