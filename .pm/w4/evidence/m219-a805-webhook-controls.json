@@ -1,0 +1,822 @@
+{
+  "schemaVersion": 1,
+  "pass": "a805",
+  "sourceHead": "916cef3397ec88f6bb9d98ad422b111553a3cade",
+  "scope": "Passing controls for m219's allowlist. No resource created, no endpoint submitted, no outbound webhook sent.",
+  "startupControlFactory": "function(width){return `async(page)=>{\nawait page.setViewportSize({width:${width},height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-D60ymwlM.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\ntry{\nawait page.goto(\"https://dashboard.bex.co/webhooks/new\",{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup entry not intercepted\");await page.waitForTimeout(1200);\nconst before={nameCount:await page.getByRole(\"textbox\",{name:\"Name\",exact:true}).count(),urlCount:await page.getByRole(\"textbox\",{name:\"Destination URL\",exact:true}).count(),main:await page.locator(\"main\").ariaSnapshot()};released=true;release();await Promise.allSettled(tasks);\nconst name=page.getByRole(\"textbox\",{name:\"Name\",exact:true}),url=page.getByRole(\"textbox\",{name:\"Destination URL\",exact:true});await name.waitFor({timeout:15000});const ready=await name.evaluate(e=>({enabled:!e.disabled,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));await name.click();await page.keyboard.insertText(\"qa-a805-startup-ready\");await url.click();await page.keyboard.insertText(\"https://example.com/qa-a805\");await page.waitForTimeout(1500);return{at:new Date().toISOString(),width:${width},scripts,before,ready,after:{name:await name.inputValue(),url:await url.inputValue()},noSubmit:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);}\n}`}",
+  "catalogRecoveryFactory": "function(width){return `async(page)=>{\nawait page.setViewportSize({width:${width},height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});const records=[],tasks=[];let attempt=0;\nconst handler=async route=>{let a;try{const q=route.request().postDataJSON();a=Array.isArray(q)?q:[q];}catch{return route.continue();}const idx=a.findIndex(x=>x.operationName===\"WebhookEventTypes\");if(idx<0)return route.continue();const n=++attempt;const task=(async()=>{const response=await route.fetch();const raw=await response.json(),entry=Array.isArray(raw)?raw[idx]:raw;const served=n<=2?{data:{webhookEventTypes:null},errors:[{message:\"qa-a805-synthetic-event-catalog-failure\",path:[\"webhookEventTypes\"]}]}:entry;records.push({attempt:n,request:a[idx],status:response.status(),realEntry:entry,servedEntry:served,synthetic:n<=2,siblingOperations:a.filter((_,i)=>i!==idx).map(x=>x.operationName),siblingBodiesPreserved:true});if(n<=2){const body=Array.isArray(raw)?raw.map((x,i)=>i===idx?served:x):served;await route.fulfill({response,body:JSON.stringify(body)});}else await route.fulfill({response});})();tasks.push(task);await task;};\nawait page.route(\"**/graphql\",handler);\nconst state=async()=>({name:await page.getByRole(\"textbox\",{name:\"Name\",exact:true}).inputValue(),url:await page.getByRole(\"textbox\",{name:\"Destination URL\",exact:true}).inputValue(),alerts:await page.getByRole(\"alert\").allTextContents(),retryCount:await page.getByRole(\"button\",{name:\"Retry event types\",exact:true}).count(),createDisabled:await page.getByRole(\"button\",{name:\"Create webhook\",exact:true}).isDisabled(),checkboxCount:await page.getByRole(\"checkbox\").count()});\ntry{\nawait page.goto(\"https://dashboard.bex.co/webhooks/new\");await page.getByRole(\"button\",{name:\"Retry event types\",exact:true}).waitFor({timeout:15000});await page.getByRole(\"textbox\",{name:\"Name\",exact:true}).fill(\"qa-a805-catalog\");await page.getByRole(\"textbox\",{name:\"Destination URL\",exact:true}).fill(\"https://example.com/qa-a805\");const first=await state();await page.getByRole(\"button\",{name:\"Retry event types\",exact:true}).click();for(let i=0;i<100&&records.length<2;i++)await page.waitForTimeout(100);await page.getByRole(\"button\",{name:\"Retry event types\",exact:true}).waitFor({timeout:10000});const second=await state();await page.getByRole(\"button\",{name:\"Retry event types\",exact:true}).click();await page.getByRole(\"checkbox\",{name:\"Deploy Ended\",exact:true}).waitFor({timeout:15000});await page.getByRole(\"checkbox\",{name:\"Deploy Ended\",exact:true}).check();const recovered=await state();await page.waitForTimeout(500);return{at:new Date().toISOString(),width:${width},first,second,recovered,records,noEndpointSubmitted:true,widths:await page.evaluate(()=>({viewport:innerWidth,document:document.documentElement.scrollWidth}))};\n}finally{await Promise.allSettled(tasks);await page.unroute(\"**/graphql\",handler);}\n}`}",
+  "catalogQualification": "Only the selected WebhookEventTypes response entry was replaced for the first two requests per viewport. All real upstream replies were healthy HTTP200 with53 types. Third response and all sibling entries were released unchanged. This is local recovery simulation, not a production outage.",
+  "claim": "At1440px and390px, the webhook create page's Name/URL do not exist before the held startup entry is released. Once they appear, React props are present and native typing stays. Unlike the three affected form roots, its canManage conditional with checking initial capabilities prevents pre-handler native edits.",
+  "receipts": {
+    "a805WebhookStartupDesktop": {
+      "at": "2026-10-17T00:02:11.099Z",
+      "width": 1440,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-D60ymwlM.js",
+          "status": 200,
+          "bytes": 1952882,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "nameCount": 0,
+        "urlCount": 0,
+        "main": "- main:\n  - navigation \"Breadcrumbs\": Create a new webhook\n  - button \"Search\": Search Ctrl K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - link \"Back to webhooks\":\n    - /url: /webhooks\n  - heading \"Create a new webhook\" [level=1]\n  - text: Add a webhook bex will POST a signed JSON payload to this URL whenever a subscribed event happens."
+      },
+      "ready": {
+        "enabled": true,
+        "reactProps": true
+      },
+      "after": {
+        "name": "qa-a805-startup-ready",
+        "url": "https://example.com/qa-a805"
+      },
+      "noSubmit": true
+    },
+    "a805WebhookStartupMobile": {
+      "at": "2026-10-17T00:02:17.148Z",
+      "width": 390,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-D60ymwlM.js",
+          "status": 200,
+          "bytes": 1952882,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "nameCount": 0,
+        "urlCount": 0,
+        "main": "- main:\n  - navigation \"Breadcrumbs\": Create a new webhook\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - link \"Back to webhooks\":\n    - /url: /webhooks\n  - heading \"Create a new webhook\" [level=1]\n  - text: Add a webhook bex will POST a signed JSON payload to this URL whenever a subscribed event happens."
+      },
+      "ready": {
+        "enabled": true,
+        "reactProps": true
+      },
+      "after": {
+        "name": "qa-a805-startup-ready",
+        "url": "https://example.com/qa-a805"
+      },
+      "noSubmit": true
+    },
+    "a805CatalogRecoveryDesktop": {
+      "at": "2026-10-17T00:02:54.347Z",
+      "width": 1440,
+      "first": {
+        "name": "qa-a805-catalog",
+        "url": "https://example.com/qa-a805",
+        "alerts": [
+          "Event types couldn't be loaded. Retry before saving.Retry event types"
+        ],
+        "retryCount": 1,
+        "createDisabled": true,
+        "checkboxCount": 0
+      },
+      "second": {
+        "name": "qa-a805-catalog",
+        "url": "https://example.com/qa-a805",
+        "alerts": [
+          "Event types couldn't be loaded. Retry before saving.Retry event types"
+        ],
+        "retryCount": 1,
+        "createDisabled": true,
+        "checkboxCount": 0
+      },
+      "recovered": {
+        "name": "qa-a805-catalog",
+        "url": "https://example.com/qa-a805",
+        "alerts": [],
+        "retryCount": 0,
+        "createDisabled": false,
+        "checkboxCount": 64
+      },
+      "records": [
+        {
+          "attempt": 1,
+          "request": {
+            "operationName": "WebhookEventTypes",
+            "variables": {},
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query WebhookEventTypes {\n  webhookEventTypes\n}"
+          },
+          "status": 200,
+          "realEntry": {
+            "data": {
+              "webhookEventTypes": [
+                "auto_deploy_disabled",
+                "auto_deploy_enabled",
+                "autoscaling_config_changed",
+                "autoscaling_ended",
+                "autoscaling_started",
+                "branch_changed",
+                "branch_deleted",
+                "build_ended",
+                "build_started",
+                "commit_ignored",
+                "cron_job_run_ended",
+                "cron_job_run_started",
+                "deploy_ended",
+                "deploy_started",
+                "disk_created",
+                "disk_deleted",
+                "disk_updated",
+                "image_pull_failed",
+                "instance_count_changed",
+                "job_run_ended",
+                "key_value_available",
+                "key_value_config_restart",
+                "key_value_unhealthy",
+                "maintenance_mode_enabled",
+                "maintenance_mode_uri_updated",
+                "plan_changed",
+                "postgres_available",
+                "postgres_backup_completed",
+                "postgres_backup_failed",
+                "postgres_backup_started",
+                "postgres_connection_pool_enabled_changed",
+                "postgres_created",
+                "postgres_credentials_created",
+                "postgres_credentials_deleted",
+                "postgres_disk_size_changed",
+                "postgres_ha_status_changed",
+                "postgres_restarted",
+                "postgres_restore_failed",
+                "postgres_restore_succeeded",
+                "postgres_unavailable",
+                "postgres_upgrade_failed",
+                "postgres_upgrade_started",
+                "postgres_upgrade_succeeded",
+                "pre_deploy_ended",
+                "pre_deploy_started",
+                "server_available",
+                "server_failed",
+                "server_restarted",
+                "service_hibernated",
+                "service_moved",
+                "service_resumed",
+                "service_suspended",
+                "service_woken"
+              ]
+            }
+          },
+          "servedEntry": {
+            "data": {
+              "webhookEventTypes": null
+            },
+            "errors": [
+              {
+                "message": "qa-a805-synthetic-event-catalog-failure",
+                "path": ["webhookEventTypes"]
+              }
+            ]
+          },
+          "synthetic": true,
+          "siblingOperations": [
+            "RouterAvailable",
+            "BillingReadiness",
+            "Workspaces",
+            "WebhookEndpoints"
+          ],
+          "siblingBodiesPreserved": true
+        },
+        {
+          "attempt": 2,
+          "request": {
+            "operationName": "WebhookEventTypes",
+            "variables": {},
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query WebhookEventTypes {\n  webhookEventTypes\n}"
+          },
+          "status": 200,
+          "realEntry": {
+            "data": {
+              "webhookEventTypes": [
+                "auto_deploy_disabled",
+                "auto_deploy_enabled",
+                "autoscaling_config_changed",
+                "autoscaling_ended",
+                "autoscaling_started",
+                "branch_changed",
+                "branch_deleted",
+                "build_ended",
+                "build_started",
+                "commit_ignored",
+                "cron_job_run_ended",
+                "cron_job_run_started",
+                "deploy_ended",
+                "deploy_started",
+                "disk_created",
+                "disk_deleted",
+                "disk_updated",
+                "image_pull_failed",
+                "instance_count_changed",
+                "job_run_ended",
+                "key_value_available",
+                "key_value_config_restart",
+                "key_value_unhealthy",
+                "maintenance_mode_enabled",
+                "maintenance_mode_uri_updated",
+                "plan_changed",
+                "postgres_available",
+                "postgres_backup_completed",
+                "postgres_backup_failed",
+                "postgres_backup_started",
+                "postgres_connection_pool_enabled_changed",
+                "postgres_created",
+                "postgres_credentials_created",
+                "postgres_credentials_deleted",
+                "postgres_disk_size_changed",
+                "postgres_ha_status_changed",
+                "postgres_restarted",
+                "postgres_restore_failed",
+                "postgres_restore_succeeded",
+                "postgres_unavailable",
+                "postgres_upgrade_failed",
+                "postgres_upgrade_started",
+                "postgres_upgrade_succeeded",
+                "pre_deploy_ended",
+                "pre_deploy_started",
+                "server_available",
+                "server_failed",
+                "server_restarted",
+                "service_hibernated",
+                "service_moved",
+                "service_resumed",
+                "service_suspended",
+                "service_woken"
+              ]
+            }
+          },
+          "servedEntry": {
+            "data": {
+              "webhookEventTypes": null
+            },
+            "errors": [
+              {
+                "message": "qa-a805-synthetic-event-catalog-failure",
+                "path": ["webhookEventTypes"]
+              }
+            ]
+          },
+          "synthetic": true,
+          "siblingOperations": [],
+          "siblingBodiesPreserved": true
+        },
+        {
+          "attempt": 3,
+          "request": {
+            "operationName": "WebhookEventTypes",
+            "variables": {},
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query WebhookEventTypes {\n  webhookEventTypes\n}"
+          },
+          "status": 200,
+          "realEntry": {
+            "data": {
+              "webhookEventTypes": [
+                "auto_deploy_disabled",
+                "auto_deploy_enabled",
+                "autoscaling_config_changed",
+                "autoscaling_ended",
+                "autoscaling_started",
+                "branch_changed",
+                "branch_deleted",
+                "build_ended",
+                "build_started",
+                "commit_ignored",
+                "cron_job_run_ended",
+                "cron_job_run_started",
+                "deploy_ended",
+                "deploy_started",
+                "disk_created",
+                "disk_deleted",
+                "disk_updated",
+                "image_pull_failed",
+                "instance_count_changed",
+                "job_run_ended",
+                "key_value_available",
+                "key_value_config_restart",
+                "key_value_unhealthy",
+                "maintenance_mode_enabled",
+                "maintenance_mode_uri_updated",
+                "plan_changed",
+                "postgres_available",
+                "postgres_backup_completed",
+                "postgres_backup_failed",
+                "postgres_backup_started",
+                "postgres_connection_pool_enabled_changed",
+                "postgres_created",
+                "postgres_credentials_created",
+                "postgres_credentials_deleted",
+                "postgres_disk_size_changed",
+                "postgres_ha_status_changed",
+                "postgres_restarted",
+                "postgres_restore_failed",
+                "postgres_restore_succeeded",
+                "postgres_unavailable",
+                "postgres_upgrade_failed",
+                "postgres_upgrade_started",
+                "postgres_upgrade_succeeded",
+                "pre_deploy_ended",
+                "pre_deploy_started",
+                "server_available",
+                "server_failed",
+                "server_restarted",
+                "service_hibernated",
+                "service_moved",
+                "service_resumed",
+                "service_suspended",
+                "service_woken"
+              ]
+            }
+          },
+          "servedEntry": {
+            "data": {
+              "webhookEventTypes": [
+                "auto_deploy_disabled",
+                "auto_deploy_enabled",
+                "autoscaling_config_changed",
+                "autoscaling_ended",
+                "autoscaling_started",
+                "branch_changed",
+                "branch_deleted",
+                "build_ended",
+                "build_started",
+                "commit_ignored",
+                "cron_job_run_ended",
+                "cron_job_run_started",
+                "deploy_ended",
+                "deploy_started",
+                "disk_created",
+                "disk_deleted",
+                "disk_updated",
+                "image_pull_failed",
+                "instance_count_changed",
+                "job_run_ended",
+                "key_value_available",
+                "key_value_config_restart",
+                "key_value_unhealthy",
+                "maintenance_mode_enabled",
+                "maintenance_mode_uri_updated",
+                "plan_changed",
+                "postgres_available",
+                "postgres_backup_completed",
+                "postgres_backup_failed",
+                "postgres_backup_started",
+                "postgres_connection_pool_enabled_changed",
+                "postgres_created",
+                "postgres_credentials_created",
+                "postgres_credentials_deleted",
+                "postgres_disk_size_changed",
+                "postgres_ha_status_changed",
+                "postgres_restarted",
+                "postgres_restore_failed",
+                "postgres_restore_succeeded",
+                "postgres_unavailable",
+                "postgres_upgrade_failed",
+                "postgres_upgrade_started",
+                "postgres_upgrade_succeeded",
+                "pre_deploy_ended",
+                "pre_deploy_started",
+                "server_available",
+                "server_failed",
+                "server_restarted",
+                "service_hibernated",
+                "service_moved",
+                "service_resumed",
+                "service_suspended",
+                "service_woken"
+              ]
+            }
+          },
+          "synthetic": false,
+          "siblingOperations": [],
+          "siblingBodiesPreserved": true
+        }
+      ],
+      "noEndpointSubmitted": true,
+      "widths": {
+        "viewport": 1440,
+        "document": 1440
+      }
+    },
+    "a805CatalogRecoveryMobile": {
+      "at": "2026-10-17T00:02:58.527Z",
+      "width": 390,
+      "first": {
+        "name": "qa-a805-catalog",
+        "url": "https://example.com/qa-a805",
+        "alerts": [
+          "Event types couldn't be loaded. Retry before saving.Retry event types"
+        ],
+        "retryCount": 1,
+        "createDisabled": true,
+        "checkboxCount": 0
+      },
+      "second": {
+        "name": "qa-a805-catalog",
+        "url": "https://example.com/qa-a805",
+        "alerts": [
+          "Event types couldn't be loaded. Retry before saving.Retry event types"
+        ],
+        "retryCount": 1,
+        "createDisabled": true,
+        "checkboxCount": 0
+      },
+      "recovered": {
+        "name": "qa-a805-catalog",
+        "url": "https://example.com/qa-a805",
+        "alerts": [],
+        "retryCount": 0,
+        "createDisabled": false,
+        "checkboxCount": 64
+      },
+      "records": [
+        {
+          "attempt": 1,
+          "request": {
+            "operationName": "WebhookEventTypes",
+            "variables": {},
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query WebhookEventTypes {\n  webhookEventTypes\n}"
+          },
+          "status": 200,
+          "realEntry": {
+            "data": {
+              "webhookEventTypes": [
+                "auto_deploy_disabled",
+                "auto_deploy_enabled",
+                "autoscaling_config_changed",
+                "autoscaling_ended",
+                "autoscaling_started",
+                "branch_changed",
+                "branch_deleted",
+                "build_ended",
+                "build_started",
+                "commit_ignored",
+                "cron_job_run_ended",
+                "cron_job_run_started",
+                "deploy_ended",
+                "deploy_started",
+                "disk_created",
+                "disk_deleted",
+                "disk_updated",
+                "image_pull_failed",
+                "instance_count_changed",
+                "job_run_ended",
+                "key_value_available",
+                "key_value_config_restart",
+                "key_value_unhealthy",
+                "maintenance_mode_enabled",
+                "maintenance_mode_uri_updated",
+                "plan_changed",
+                "postgres_available",
+                "postgres_backup_completed",
+                "postgres_backup_failed",
+                "postgres_backup_started",
+                "postgres_connection_pool_enabled_changed",
+                "postgres_created",
+                "postgres_credentials_created",
+                "postgres_credentials_deleted",
+                "postgres_disk_size_changed",
+                "postgres_ha_status_changed",
+                "postgres_restarted",
+                "postgres_restore_failed",
+                "postgres_restore_succeeded",
+                "postgres_unavailable",
+                "postgres_upgrade_failed",
+                "postgres_upgrade_started",
+                "postgres_upgrade_succeeded",
+                "pre_deploy_ended",
+                "pre_deploy_started",
+                "server_available",
+                "server_failed",
+                "server_restarted",
+                "service_hibernated",
+                "service_moved",
+                "service_resumed",
+                "service_suspended",
+                "service_woken"
+              ]
+            }
+          },
+          "servedEntry": {
+            "data": {
+              "webhookEventTypes": null
+            },
+            "errors": [
+              {
+                "message": "qa-a805-synthetic-event-catalog-failure",
+                "path": ["webhookEventTypes"]
+              }
+            ]
+          },
+          "synthetic": true,
+          "siblingOperations": [
+            "BillingReadiness",
+            "Workspaces",
+            "WebhookEndpoints"
+          ],
+          "siblingBodiesPreserved": true
+        },
+        {
+          "attempt": 2,
+          "request": {
+            "operationName": "WebhookEventTypes",
+            "variables": {},
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query WebhookEventTypes {\n  webhookEventTypes\n}"
+          },
+          "status": 200,
+          "realEntry": {
+            "data": {
+              "webhookEventTypes": [
+                "auto_deploy_disabled",
+                "auto_deploy_enabled",
+                "autoscaling_config_changed",
+                "autoscaling_ended",
+                "autoscaling_started",
+                "branch_changed",
+                "branch_deleted",
+                "build_ended",
+                "build_started",
+                "commit_ignored",
+                "cron_job_run_ended",
+                "cron_job_run_started",
+                "deploy_ended",
+                "deploy_started",
+                "disk_created",
+                "disk_deleted",
+                "disk_updated",
+                "image_pull_failed",
+                "instance_count_changed",
+                "job_run_ended",
+                "key_value_available",
+                "key_value_config_restart",
+                "key_value_unhealthy",
+                "maintenance_mode_enabled",
+                "maintenance_mode_uri_updated",
+                "plan_changed",
+                "postgres_available",
+                "postgres_backup_completed",
+                "postgres_backup_failed",
+                "postgres_backup_started",
+                "postgres_connection_pool_enabled_changed",
+                "postgres_created",
+                "postgres_credentials_created",
+                "postgres_credentials_deleted",
+                "postgres_disk_size_changed",
+                "postgres_ha_status_changed",
+                "postgres_restarted",
+                "postgres_restore_failed",
+                "postgres_restore_succeeded",
+                "postgres_unavailable",
+                "postgres_upgrade_failed",
+                "postgres_upgrade_started",
+                "postgres_upgrade_succeeded",
+                "pre_deploy_ended",
+                "pre_deploy_started",
+                "server_available",
+                "server_failed",
+                "server_restarted",
+                "service_hibernated",
+                "service_moved",
+                "service_resumed",
+                "service_suspended",
+                "service_woken"
+              ]
+            }
+          },
+          "servedEntry": {
+            "data": {
+              "webhookEventTypes": null
+            },
+            "errors": [
+              {
+                "message": "qa-a805-synthetic-event-catalog-failure",
+                "path": ["webhookEventTypes"]
+              }
+            ]
+          },
+          "synthetic": true,
+          "siblingOperations": [],
+          "siblingBodiesPreserved": true
+        },
+        {
+          "attempt": 3,
+          "request": {
+            "operationName": "WebhookEventTypes",
+            "variables": {},
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query WebhookEventTypes {\n  webhookEventTypes\n}"
+          },
+          "status": 200,
+          "realEntry": {
+            "data": {
+              "webhookEventTypes": [
+                "auto_deploy_disabled",
+                "auto_deploy_enabled",
+                "autoscaling_config_changed",
+                "autoscaling_ended",
+                "autoscaling_started",
+                "branch_changed",
+                "branch_deleted",
+                "build_ended",
+                "build_started",
+                "commit_ignored",
+                "cron_job_run_ended",
+                "cron_job_run_started",
+                "deploy_ended",
+                "deploy_started",
+                "disk_created",
+                "disk_deleted",
+                "disk_updated",
+                "image_pull_failed",
+                "instance_count_changed",
+                "job_run_ended",
+                "key_value_available",
+                "key_value_config_restart",
+                "key_value_unhealthy",
+                "maintenance_mode_enabled",
+                "maintenance_mode_uri_updated",
+                "plan_changed",
+                "postgres_available",
+                "postgres_backup_completed",
+                "postgres_backup_failed",
+                "postgres_backup_started",
+                "postgres_connection_pool_enabled_changed",
+                "postgres_created",
+                "postgres_credentials_created",
+                "postgres_credentials_deleted",
+                "postgres_disk_size_changed",
+                "postgres_ha_status_changed",
+                "postgres_restarted",
+                "postgres_restore_failed",
+                "postgres_restore_succeeded",
+                "postgres_unavailable",
+                "postgres_upgrade_failed",
+                "postgres_upgrade_started",
+                "postgres_upgrade_succeeded",
+                "pre_deploy_ended",
+                "pre_deploy_started",
+                "server_available",
+                "server_failed",
+                "server_restarted",
+                "service_hibernated",
+                "service_moved",
+                "service_resumed",
+                "service_suspended",
+                "service_woken"
+              ]
+            }
+          },
+          "servedEntry": {
+            "data": {
+              "webhookEventTypes": [
+                "auto_deploy_disabled",
+                "auto_deploy_enabled",
+                "autoscaling_config_changed",
+                "autoscaling_ended",
+                "autoscaling_started",
+                "branch_changed",
+                "branch_deleted",
+                "build_ended",
+                "build_started",
+                "commit_ignored",
+                "cron_job_run_ended",
+                "cron_job_run_started",
+                "deploy_ended",
+                "deploy_started",
+                "disk_created",
+                "disk_deleted",
+                "disk_updated",
+                "image_pull_failed",
+                "instance_count_changed",
+                "job_run_ended",
+                "key_value_available",
+                "key_value_config_restart",
+                "key_value_unhealthy",
+                "maintenance_mode_enabled",
+                "maintenance_mode_uri_updated",
+                "plan_changed",
+                "postgres_available",
+                "postgres_backup_completed",
+                "postgres_backup_failed",
+                "postgres_backup_started",
+                "postgres_connection_pool_enabled_changed",
+                "postgres_created",
+                "postgres_credentials_created",
+                "postgres_credentials_deleted",
+                "postgres_disk_size_changed",
+                "postgres_ha_status_changed",
+                "postgres_restarted",
+                "postgres_restore_failed",
+                "postgres_restore_succeeded",
+                "postgres_unavailable",
+                "postgres_upgrade_failed",
+                "postgres_upgrade_started",
+                "postgres_upgrade_succeeded",
+                "pre_deploy_ended",
+                "pre_deploy_started",
+                "server_available",
+                "server_failed",
+                "server_restarted",
+                "service_hibernated",
+                "service_moved",
+                "service_resumed",
+                "service_suspended",
+                "service_woken"
+              ]
+            }
+          },
+          "synthetic": false,
+          "siblingOperations": [],
+          "siblingBodiesPreserved": true
+        }
+      ],
+      "noEndpointSubmitted": true,
+      "widths": {
+        "viewport": 390,
+        "document": 390
+      }
+    },
+    "a805InventoryCleanup": {
+      "at": "2026-10-17T00:03:24.700Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [],
+      "consoleErrors": [],
+      "httpFailures": []
+    },
+    "a805SessionCleared": {
+      "at": "2026-10-17T00:03:30.463Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  }
+}
