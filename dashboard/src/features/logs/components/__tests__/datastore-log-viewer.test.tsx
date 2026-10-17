@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { UseLogHistoryResult } from "../../hooks/use-log-history";
 import { DatastoreLogViewer } from "../datastore-log-viewer";
+import userEvent from "@testing-library/user-event";
+import { serverRendered } from "@/test/hydration";
 import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 import { EMPTY_LOG_FILTERS, type LogLine } from "../../types";
 import {
@@ -197,3 +199,25 @@ describe("DatastoreLogViewer", () => {
     });
   });
 });
+
+// w4/m219 (a850): text typed into the server-rendered datastore log search
+// before handlers attach is wiped by hydration — on both callers.
+it.each([
+  ["databases", "dpg-example", "Search database logs"],
+  ["keyvalue", "red-example", "Search logs…"],
+] as const)(
+  "keeps the %s log search uneditable until hydration (w4/m219)",
+  async (kind, resource, label) => {
+    state.lines = [line(0)];
+    const { hydrate, getByRole } = serverRendered(
+      <DatastoreLogViewer kind={kind} resource={resource} />,
+    );
+    const search = () =>
+      getByRole<HTMLInputElement>("textbox", { name: label });
+    expect(search().disabled).toBe(true);
+    await hydrate();
+    expect(search().disabled).toBe(false);
+    await userEvent.type(search(), "checkpoint");
+    expect(search().value).toBe("checkpoint");
+  },
+);
