@@ -1,0 +1,2929 @@
+{
+  "pass": "a863",
+  "date": "2026-10-17 UTC",
+  "purpose": "Live acceptance of w4/322; no new bug and no product change",
+  "origin": "https://dashboard.bex.co",
+  "fixture": {
+    "service": "srv-db9hr9ps93ac73869cp0",
+    "name": "qa-20261017-a863-precedence",
+    "image": "docker.io/library/node:24-alpine",
+    "plan": "free",
+    "port": 3000,
+    "url": "https://qa-20261017-a863-precedence.onbex.co",
+    "olderA": "evg-db9hs01s93ac73869cr0",
+    "newerZ": "evg-db9hsol496fs739dn26g"
+  },
+  "observations": {
+    "a863LinkedZ": {
+      "at": "2026-10-17T07:07:58.426Z",
+      "request": {
+        "operationName": "LinkEnvGroup",
+        "variables": {
+          "id": "evg-db9hsol496fs739dn26g",
+          "serviceId": "srv-db9hr9ps93ac73869cp0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation LinkEnvGroup($id: String!, $serviceId: String!) {\n  linkEnvGroup(id: $id, serviceId: $serviceId)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "linkEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792220877277.523,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.126,
+        "responseStart": 444.751,
+        "responseEnd": 445.178
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9hr9ps93ac73869cp0/env"
+    },
+    "a863DesktopLinkedA": {
+      "at": "2026-10-17T07:09:16.804Z",
+      "request": {
+        "operationName": "LinkEnvGroup",
+        "variables": {
+          "id": "evg-db9hs01s93ac73869cr0",
+          "serviceId": "srv-db9hr9ps93ac73869cp0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation LinkEnvGroup($id: String!, $serviceId: String!) {\n  linkEnvGroup(id: $id, serviceId: $serviceId)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "linkEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792220955575.5762,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.132,
+        "responseStart": 520.023,
+        "responseEnd": 520.749
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9hr9ps93ac73869cp0/env"
+    },
+    "a863UnlinkedAForMobile": {
+      "at": "2026-10-17T07:10:22.836Z",
+      "request": {
+        "operationName": "UnlinkEnvGroup",
+        "variables": {
+          "id": "evg-db9hs01s93ac73869cr0",
+          "serviceId": "srv-db9hr9ps93ac73869cp0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation UnlinkEnvGroup($id: String!, $serviceId: String!) {\n  unlinkEnvGroup(id: $id, serviceId: $serviceId)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "unlinkEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792221020907.187,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.15,
+        "responseStart": 1221.878,
+        "responseEnd": 1222.765
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9hr9ps93ac73869cp0/env"
+    },
+    "a863MobileLinkedA": {
+      "at": "2026-10-17T07:12:10.882Z",
+      "width": 390,
+      "receipt": {
+        "at": "2026-10-17T07:11:54.930Z",
+        "request": {
+          "operationName": "LinkEnvGroup",
+          "variables": {
+            "id": "evg-db9hs01s93ac73869cr0",
+            "serviceId": "srv-db9hr9ps93ac73869cp0"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation LinkEnvGroup($id: String!, $serviceId: String!) {\n  linkEnvGroup(id: $id, serviceId: $serviceId)\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "linkEnvGroup": true
+          }
+        },
+        "timing": {
+          "startTime": 1792221114269.916,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.133,
+          "responseStart": 655.101,
+          "responseEnd": 655.796
+        }
+      },
+      "samples": [
+        {
+          "at": 1792221114951,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221115208,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221115470,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221115732,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221116000,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221116260,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221116527,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221116785,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221117050,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221117312,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221117579,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221117846,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221118112,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221118377,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221118644,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221118907,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221119168,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221119430,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221119695,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221119960,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221120223,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221120490,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221120755,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221121020,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221121284,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221121549,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221121814,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221122079,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221122345,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221122607,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221122863,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221123120,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221123375,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221123630,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221123897,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221124163,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221124417,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221124672,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221124927,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221125182,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221125439,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221125694,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221125956,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221126217,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221126478,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221126735,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221126996,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221127259,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221127515,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [
+            "Saved changes go live when the current deploy finishes.",
+            "Saved changes go live when the current deploy finishes."
+          ],
+          "alerts": []
+        },
+        {
+          "at": 1792221127769,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [
+            "Saved changes go live when the current deploy finishes.",
+            "Saved changes go live when the current deploy finishes."
+          ],
+          "alerts": []
+        },
+        {
+          "at": 1792221128026,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [
+            "Saved changes go live when the current deploy finishes.",
+            "Saved changes go live when the current deploy finishes."
+          ],
+          "alerts": []
+        },
+        {
+          "at": 1792221128287,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [
+            "Saved changes go live when the current deploy finishes.",
+            "Saved changes go live when the current deploy finishes."
+          ],
+          "alerts": []
+        },
+        {
+          "at": 1792221128543,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [
+            "Saved changes go live when the current deploy finishes.",
+            "Saved changes go live when the current deploy finishes."
+          ],
+          "alerts": []
+        },
+        {
+          "at": 1792221128798,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [
+            "Saved changes go live when the current deploy finishes.",
+            "Saved changes go live when the current deploy finishes."
+          ],
+          "alerts": []
+        },
+        {
+          "at": 1792221129052,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [
+            "Saved changes go live when the current deploy finishes.",
+            "Saved changes go live when the current deploy finishes."
+          ],
+          "alerts": []
+        },
+        {
+          "at": 1792221129312,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [
+            "Saved changes go live when the current deploy finishes.",
+            "Saved changes go live when the current deploy finishes."
+          ],
+          "alerts": []
+        },
+        {
+          "at": 1792221129574,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [
+            "Saved changes go live when the current deploy finishes.",
+            "Saved changes go live when the current deploy finishes."
+          ],
+          "alerts": []
+        },
+        {
+          "at": 1792221129841,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [
+            "Saved changes go live when the current deploy finishes.",
+            "Saved changes go live when the current deploy finishes."
+          ],
+          "alerts": []
+        },
+        {
+          "at": 1792221130105,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [
+            "Saved changes go live when the current deploy finishes.",
+            "Saved changes go live when the current deploy finishes."
+          ],
+          "alerts": []
+        },
+        {
+          "at": 1792221130368,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [
+            "Saved changes go live when the current deploy finishes.",
+            "Saved changes go live when the current deploy finishes."
+          ],
+          "alerts": []
+        },
+        {
+          "at": 1792221130625,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [
+            "Saved changes go live when the current deploy finishes.",
+            "Saved changes go live when the current deploy finishes."
+          ],
+          "alerts": []
+        },
+        {
+          "at": 1792221130882,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [],
+          "alerts": []
+        }
+      ]
+    },
+    "a863OverridesSaved": {
+      "at": "2026-10-17T07:13:08.666Z",
+      "request": {
+        "operationName": "PatchServiceEnvironment",
+        "variables": {
+          "serviceId": "srv-db9hr9ps93ac73869cp0",
+          "envVars": [
+            {
+              "key": "SHARED",
+              "value": "SERVICE_SHARED"
+            }
+          ],
+          "secretFiles": [
+            {
+              "name": "shared.txt",
+              "content": "SERVICE_FILE\n雪"
+            }
+          ],
+          "saveMode": "deploy"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation PatchServiceEnvironment($serviceId: String!, $envVars: [EnvironmentEnvVarPatchInput!], $secretFiles: [EnvironmentSecretFilePatchInput!], $saveMode: String!) {\n  patchServiceEnvironment(\n    serviceId: $serviceId\n    envVars: $envVars\n    secretFiles: $secretFiles\n    saveMode: $saveMode\n  ) {\n    envVarKeys\n    secretFileNames\n    rolledOut\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "patchServiceEnvironment": {
+            "__typename": "EnvironmentPatchResult",
+            "envVarKeys": ["LOCAL", "SHARED"],
+            "rolledOut": true,
+            "secretFileNames": ["shared.txt"]
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792221187385.584,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.142,
+        "responseStart": 569.458,
+        "responseEnd": 570.274
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9hr9ps93ac73869cp0/env"
+    },
+    "a863OwnOverrideMarkers": {
+      "at": "2026-10-17T07:14:18.963Z",
+      "url": "https://dashboard.bex.co/services/srv-db9hr9ps93ac73869cp0/env",
+      "rows": [
+        {
+          "name": "qa-20261017-a863-a-old",
+          "markers": [
+            {
+              "text": "SHARED",
+              "title": "Overridden by this service's own SHARED environment variable"
+            },
+            {
+              "text": "shared.txt",
+              "title": "Overridden by this service's own shared.txt secret file"
+            }
+          ],
+          "badges": [
+            {
+              "text": "SHARED",
+              "title": "Overridden by this service's own SHARED environment variable"
+            },
+            {
+              "text": "shared.txt",
+              "title": "Overridden by this service's own shared.txt secret file"
+            }
+          ]
+        },
+        {
+          "name": "qa-20261017-a863-z-new",
+          "markers": [
+            {
+              "text": "SHARED",
+              "title": "Overridden by this service's own SHARED environment variable"
+            },
+            {
+              "text": "shared.txt",
+              "title": "Overridden by this service's own shared.txt secret file"
+            }
+          ],
+          "badges": [
+            {
+              "text": "SHARED",
+              "title": "Overridden by this service's own SHARED environment variable"
+            },
+            {
+              "text": "shared.txt",
+              "title": "Overridden by this service's own shared.txt secret file"
+            }
+          ]
+        }
+      ],
+      "status": [],
+      "alerts": []
+    },
+    "a863UnlinkedAWithOverrides": {
+      "at": "2026-10-17T07:14:27.460Z",
+      "request": {
+        "operationName": "UnlinkEnvGroup",
+        "variables": {
+          "id": "evg-db9hs01s93ac73869cr0",
+          "serviceId": "srv-db9hr9ps93ac73869cp0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation UnlinkEnvGroup($id: String!, $serviceId: String!) {\n  unlinkEnvGroup(id: $id, serviceId: $serviceId)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "unlinkEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792221266264.68,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.126,
+        "responseStart": 488.469,
+        "responseEnd": 488.946
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9hr9ps93ac73869cp0/env"
+    },
+    "a863RemovedOwnOverrides": {
+      "at": "2026-10-17T07:17:22.534Z",
+      "request": {
+        "operationName": "PatchServiceEnvironment",
+        "variables": {
+          "serviceId": "srv-db9hr9ps93ac73869cp0",
+          "envVars": [
+            {
+              "key": "SHARED",
+              "delete": true
+            }
+          ],
+          "secretFiles": [
+            {
+              "name": "shared.txt",
+              "delete": true
+            }
+          ],
+          "saveMode": "deploy"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation PatchServiceEnvironment($serviceId: String!, $envVars: [EnvironmentEnvVarPatchInput!], $secretFiles: [EnvironmentSecretFilePatchInput!], $saveMode: String!) {\n  patchServiceEnvironment(\n    serviceId: $serviceId\n    envVars: $envVars\n    secretFiles: $secretFiles\n    saveMode: $saveMode\n  ) {\n    envVarKeys\n    secretFileNames\n    rolledOut\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "patchServiceEnvironment": {
+            "__typename": "EnvironmentPatchResult",
+            "envVarKeys": ["LOCAL"],
+            "rolledOut": true,
+            "secretFileNames": []
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792221441424.9822,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.184,
+        "responseStart": 394.48,
+        "responseEnd": 395.479
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9hr9ps93ac73869cp0/env"
+    },
+    "a863DesktopReplayFreshZ": {
+      "at": "2026-10-17T07:17:50.709Z",
+      "url": "https://dashboard.bex.co/services/srv-db9hr9ps93ac73869cp0/env",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261017-a863-precedence\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261017-a863-precedence\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db9hr9ps93ac73869cp0/deploys/dep-db9i209s93ac73869d1g\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db9hr9ps93ac73869cp0/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db9hr9ps93ac73869cp0\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261017-a863-precedence.onbex.co\":\n    - /url: https://qa-20261017-a863-precedence.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261017-a863-precedence\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-8\n  - term: Created\n  - definition:\n    - time: 14m\n  - heading \"Environment\" [level=1]\n  - paragraph: Manage service-specific variables, secret files, and linked environment groups.\n  - button \"Create group\"\n  - text: Environment Variables Set environment-specific config and secrets, then read those values from your code.\n  - button \"Export\"\n  - button \"Edit\"\n  - code: LOCAL\n  - code: ••••••••••••\n  - button \"Reveal\"\n  - button \"Copy LOCAL\"\n  - text: Secret Files Store files with secret contents (certificates, credentials) mounted into this service at deploy time.\n  - paragraph: No secret files\n  - paragraph: Add a file to mount secret contents into this service.\n  - button \"Add secret file\"\n  - text: Linked Environment Groups Reusable bundles of environment variables and secret files you can link to this and other services.\n  - button \"Create group\"\n  - heading \"Linked (1)\" [level=3]\n  - list:\n    - listitem:\n      - link \"qa-20261017-a863-z-new\":\n        - /url: /env-groups/evg-db9hsol496fs739dn26g\n      - text: Linked SHARED Z_ONLY shared.txt z.txt\n      - button \"Unlink\"\n  - heading \"Available to link (2)\" [level=3]\n  - list:\n    - listitem:\n      - link \"qa-20261003-keys-r85\":\n        - /url: /env-groups/evg-db0s94c48ccs739jikr0\n      - text: QA_R85_NORMAL __proto__ constructor toString\n      - button \"Link\"\n    - listitem:\n      - link \"qa-20261017-a863-a-old\":\n        - /url: /env-groups/evg-db9hs01s93ac73869cr0\n      - text: A_ONLY SHARED a.txt shared.txt\n      - button \"Link\""
+    },
+    "a863DesktopImmediate": {
+      "at": "2026-10-17T07:18:04.541Z",
+      "width": 1440,
+      "receipt": {
+        "at": "2026-10-17T07:17:52.403Z",
+        "request": {
+          "operationName": "LinkEnvGroup",
+          "variables": {
+            "id": "evg-db9hs01s93ac73869cr0",
+            "serviceId": "srv-db9hr9ps93ac73869cp0"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation LinkEnvGroup($id: String!, $serviceId: String!) {\n  linkEnvGroup(id: $id, serviceId: $serviceId)\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "linkEnvGroup": true
+          }
+        },
+        "timing": {
+          "startTime": 1792221471958.603,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.14,
+          "responseStart": 436.013,
+          "responseEnd": 436.84
+        }
+      },
+      "samples": [
+        {
+          "at": 1792221472427,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221472692,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221472954,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221473214,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221473481,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221473746,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221474013,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221474279,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221474549,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221474814,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221475070,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221475327,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221475591,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221475846,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221476102,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221476362,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221476618,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221476876,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221477138,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221477401,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221477668,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221477932,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221478196,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221478462,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221478727,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221478994,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221479259,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221479520,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221479782,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221480045,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221480308,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221480575,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221480833,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221481099,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [],
+              "disabled": true
+            }
+          ],
+          "status": [],
+          "alerts": []
+        },
+        {
+          "at": 1792221481358,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [
+            "Saved changes aren't live yet. Use a standard deploy to apply them.",
+            "Saved changes aren't live yet. Use a standard deploy to apply them."
+          ],
+          "alerts": []
+        },
+        {
+          "at": 1792221481624,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [
+            "Saved changes aren't live yet. Use a standard deploy to apply them.",
+            "Saved changes aren't live yet. Use a standard deploy to apply them."
+          ],
+          "alerts": []
+        },
+        {
+          "at": 1792221481890,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [
+            "Saved changes aren't live yet. Use a standard deploy to apply them.",
+            "Saved changes aren't live yet. Use a standard deploy to apply them."
+          ],
+          "alerts": []
+        },
+        {
+          "at": 1792221482155,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [
+            "Saved changes aren't live yet. Use a standard deploy to apply them.",
+            "Saved changes aren't live yet. Use a standard deploy to apply them."
+          ],
+          "alerts": []
+        },
+        {
+          "at": 1792221482422,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [
+            "Saved changes aren't live yet. Use a standard deploy to apply them.",
+            "Saved changes aren't live yet. Use a standard deploy to apply them."
+          ],
+          "alerts": []
+        },
+        {
+          "at": 1792221482688,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [
+            "Saved changes aren't live yet. Use a standard deploy to apply them.",
+            "Saved changes aren't live yet. Use a standard deploy to apply them."
+          ],
+          "alerts": []
+        },
+        {
+          "at": 1792221482955,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [
+            "Saved changes aren't live yet. Use a standard deploy to apply them.",
+            "Saved changes aren't live yet. Use a standard deploy to apply them."
+          ],
+          "alerts": []
+        },
+        {
+          "at": 1792221483222,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [
+            "Saved changes aren't live yet. Use a standard deploy to apply them.",
+            "Saved changes aren't live yet. Use a standard deploy to apply them."
+          ],
+          "alerts": []
+        },
+        {
+          "at": 1792221483486,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [
+            "Saved changes aren't live yet. Use a standard deploy to apply them.",
+            "Saved changes aren't live yet. Use a standard deploy to apply them."
+          ],
+          "alerts": []
+        },
+        {
+          "at": 1792221483752,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [
+            "Saved changes aren't live yet. Use a standard deploy to apply them.",
+            "Saved changes aren't live yet. Use a standard deploy to apply them."
+          ],
+          "alerts": []
+        },
+        {
+          "at": 1792221484017,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [
+            "Saved changes aren't live yet. Use a standard deploy to apply them.",
+            "Saved changes aren't live yet. Use a standard deploy to apply them."
+          ],
+          "alerts": []
+        },
+        {
+          "at": 1792221484284,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [
+            "Saved changes aren't live yet. Use a standard deploy to apply them.",
+            "Saved changes aren't live yet. Use a standard deploy to apply them."
+          ],
+          "alerts": []
+        },
+        {
+          "at": 1792221484541,
+          "rows": [
+            {
+              "name": "qa-20261017-a863-a-old",
+              "markers": [],
+              "disabled": false
+            },
+            {
+              "name": "qa-20261017-a863-z-new",
+              "markers": [
+                {
+                  "text": "SHARED",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                },
+                {
+                  "text": "shared.txt",
+                  "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+                }
+              ],
+              "disabled": false
+            }
+          ],
+          "status": [],
+          "alerts": []
+        }
+      ],
+      "serverReads": [
+        {
+          "at": 1792221481143,
+          "operationName": "Server",
+          "requestStartedAt": 1792221472411.2139,
+          "status": 200,
+          "server": {
+            "id": "srv-db9hr9ps93ac73869cp0",
+            "linkedEnvGroupIds": [
+              "evg-db9hsol496fs739dn26g",
+              "evg-db9hs01s93ac73869cr0"
+            ]
+          }
+        },
+        {
+          "at": 1792221484431,
+          "operationName": "Server",
+          "requestStartedAt": 1792221484166.486,
+          "status": 200,
+          "server": {
+            "id": "srv-db9hr9ps93ac73869cp0",
+            "linkedEnvGroupIds": [
+              "evg-db9hsol496fs739dn26g",
+              "evg-db9hs01s93ac73869cr0"
+            ]
+          }
+        }
+      ]
+    },
+    "a863DesktopImmediateState": {
+      "at": "2026-10-17T07:18:14.832Z",
+      "url": "https://dashboard.bex.co/services/srv-db9hr9ps93ac73869cp0/env",
+      "request": {
+        "operationName": "Qaa863Order",
+        "variables": {
+          "id": "srv-db9hr9ps93ac73869cp0"
+        },
+        "query": "query Qaa863Order($id:String!){server(id:$id){id phase revision linkedEnvGroupIds} deploys(serviceId:$id,limit:20){id status trigger}}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "id": "dep-db9i285496fs739dn2gg",
+              "status": "live",
+              "trigger": "config_change"
+            },
+            {
+              "id": "dep-db9i209s93ac73869d1g",
+              "status": "deactivated",
+              "trigger": "config_change"
+            },
+            {
+              "id": "dep-db9i0kl496fs739dn2d0",
+              "status": "deactivated",
+              "trigger": "config_change"
+            },
+            {
+              "id": "dep-db9i00ps93ac73869d0g",
+              "status": "deactivated",
+              "trigger": "config_change"
+            },
+            {
+              "id": "dep-db9hvehs93ac73869cv0",
+              "status": "deactivated",
+              "trigger": "config_change"
+            },
+            {
+              "id": "dep-db9hund496fs739dn2bg",
+              "status": "deactivated",
+              "trigger": "config_change"
+            },
+            {
+              "id": "dep-db9hu6ps93ac73869ctg",
+              "status": "deactivated",
+              "trigger": "config_change"
+            },
+            {
+              "id": "dep-db9htj9s93ac73869cs0",
+              "status": "deactivated",
+              "trigger": "config_change"
+            },
+            {
+              "id": "dep-db9hr9ps93ac73869cpg",
+              "status": "deactivated",
+              "trigger": "create"
+            }
+          ],
+          "server": {
+            "id": "srv-db9hr9ps93ac73869cp0",
+            "linkedEnvGroupIds": [
+              "evg-db9hsol496fs739dn26g",
+              "evg-db9hs01s93ac73869cr0"
+            ],
+            "phase": "Running",
+            "revision": "rev-9"
+          }
+        }
+      },
+      "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261017-a863-precedence\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261017-a863-precedence\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db9hr9ps93ac73869cp0/deploys/dep-db9i285496fs739dn2gg\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db9hr9ps93ac73869cp0/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db9hr9ps93ac73869cp0\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261017-a863-precedence.onbex.co\":\n    - /url: https://qa-20261017-a863-precedence.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261017-a863-precedence\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-9\n  - term: Created\n  - definition:\n    - time: 14m\n  - heading \"Environment\" [level=1]\n  - paragraph: Manage service-specific variables, secret files, and linked environment groups.\n  - button \"Create group\"\n  - text: Environment Variables Set environment-specific config and secrets, then read those values from your code.\n  - button \"Export\"\n  - button \"Edit\"\n  - code: LOCAL\n  - code: ••••••••••••\n  - button \"Reveal\"\n  - button \"Copy LOCAL\"\n  - text: Secret Files Store files with secret contents (certificates, credentials) mounted into this service at deploy time.\n  - paragraph: No secret files\n  - paragraph: Add a file to mount secret contents into this service.\n  - button \"Add secret file\"\n  - text: Linked Environment Groups Reusable bundles of environment variables and secret files you can link to this and other services.\n  - button \"Create group\"\n  - heading \"Linked (2)\" [level=3]\n  - list:\n    - listitem:\n      - link \"qa-20261017-a863-a-old\":\n        - /url: /env-groups/evg-db9hs01s93ac73869cr0\n      - text: Linked A_ONLY SHARED a.txt shared.txt\n      - button \"Unlink\"\n    - listitem:\n      - link \"qa-20261017-a863-z-new\":\n        - /url: /env-groups/evg-db9hsol496fs739dn26g\n      - text: Linked SHARED Z_ONLY shared.txt z.txt\n      - button \"Unlink\"\n  - heading \"Available to link (1)\" [level=3]\n  - list:\n    - listitem:\n      - link \"qa-20261003-keys-r85\":\n        - /url: /env-groups/evg-db0s94c48ccs739jikr0\n      - text: QA_R85_NORMAL __proto__ constructor toString\n      - button \"Link\""
+    },
+    "a863DesktopImmediateMarkers": {
+      "at": "2026-10-17T07:18:15.428Z",
+      "url": "https://dashboard.bex.co/services/srv-db9hr9ps93ac73869cp0/env",
+      "rows": [
+        {
+          "name": "qa-20261017-a863-a-old",
+          "markers": [],
+          "badges": []
+        },
+        {
+          "name": "qa-20261017-a863-z-new",
+          "markers": [
+            {
+              "text": "SHARED",
+              "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+            },
+            {
+              "text": "shared.txt",
+              "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+            }
+          ],
+          "badges": [
+            {
+              "text": "SHARED",
+              "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+            },
+            {
+              "text": "shared.txt",
+              "title": "Overridden by qa-20261017-a863-a-old, which is linked later"
+            }
+          ]
+        }
+      ],
+      "status": [],
+      "alerts": []
+    },
+    "a863FinalUnlinkA": {
+      "at": "2026-10-17T07:18:17.495Z",
+      "request": {
+        "operationName": "UnlinkEnvGroup",
+        "variables": {
+          "id": "evg-db9hs01s93ac73869cr0",
+          "serviceId": "srv-db9hr9ps93ac73869cp0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation UnlinkEnvGroup($id: String!, $serviceId: String!) {\n  unlinkEnvGroup(id: $id, serviceId: $serviceId)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "unlinkEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792221496057.5417,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.184,
+        "responseStart": 728.718,
+        "responseEnd": 729.418
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9hr9ps93ac73869cp0/env"
+    },
+    "a863FinalUnlinkZ": {
+      "at": "2026-10-17T07:18:31.237Z",
+      "request": {
+        "operationName": "UnlinkEnvGroup",
+        "variables": {
+          "id": "evg-db9hsol496fs739dn26g",
+          "serviceId": "srv-db9hr9ps93ac73869cp0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation UnlinkEnvGroup($id: String!, $serviceId: String!) {\n  unlinkEnvGroup(id: $id, serviceId: $serviceId)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "unlinkEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792221509789.18,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.126,
+        "responseStart": 740.025,
+        "responseEnd": 740.91
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9hr9ps93ac73869cp0/env"
+    },
+    "a863BeforeDeleteState": {
+      "at": "2026-10-17T07:18:51.602Z",
+      "url": "https://dashboard.bex.co/env-groups/evg-db9hs01s93ac73869cr0",
+      "request": {
+        "operationName": "Qaa863Order",
+        "variables": {
+          "id": "srv-db9hr9ps93ac73869cp0"
+        },
+        "query": "query Qaa863Order($id:String!){server(id:$id){id phase revision linkedEnvGroupIds} deploys(serviceId:$id,limit:20){id status trigger}}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "id": "dep-db9i2hkfa25s73dj245g",
+              "status": "live",
+              "trigger": "config_change"
+            },
+            {
+              "id": "dep-db9i2e4fa25s73dj244g",
+              "status": "canceled",
+              "trigger": "config_change"
+            },
+            {
+              "id": "dep-db9i285496fs739dn2gg",
+              "status": "deactivated",
+              "trigger": "config_change"
+            },
+            {
+              "id": "dep-db9i209s93ac73869d1g",
+              "status": "deactivated",
+              "trigger": "config_change"
+            },
+            {
+              "id": "dep-db9i0kl496fs739dn2d0",
+              "status": "deactivated",
+              "trigger": "config_change"
+            },
+            {
+              "id": "dep-db9i00ps93ac73869d0g",
+              "status": "deactivated",
+              "trigger": "config_change"
+            },
+            {
+              "id": "dep-db9hvehs93ac73869cv0",
+              "status": "deactivated",
+              "trigger": "config_change"
+            },
+            {
+              "id": "dep-db9hund496fs739dn2bg",
+              "status": "deactivated",
+              "trigger": "config_change"
+            },
+            {
+              "id": "dep-db9hu6ps93ac73869ctg",
+              "status": "deactivated",
+              "trigger": "config_change"
+            },
+            {
+              "id": "dep-db9htj9s93ac73869cs0",
+              "status": "deactivated",
+              "trigger": "config_change"
+            },
+            {
+              "id": "dep-db9hr9ps93ac73869cpg",
+              "status": "deactivated",
+              "trigger": "create"
+            }
+          ],
+          "server": {
+            "id": "srv-db9hr9ps93ac73869cp0",
+            "linkedEnvGroupIds": [],
+            "phase": "Running",
+            "revision": "rev-11"
+          }
+        }
+      },
+      "main": ""
+    },
+    "a863DeletedA": {
+      "at": "2026-10-17T07:19:02.094Z",
+      "request": {
+        "operationName": "DeleteEnvGroup",
+        "variables": {
+          "id": "evg-db9hs01s93ac73869cr0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteEnvGroup($id: String!) {\n  deleteEnvGroup(id: $id)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792221540122.751,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.125,
+        "responseStart": 1257.181,
+        "responseEnd": 1258.233
+      },
+      "url": "https://dashboard.bex.co/env-groups"
+    },
+    "a863DeletedZ": {
+      "at": "2026-10-17T07:19:22.193Z",
+      "request": {
+        "operationName": "DeleteEnvGroup",
+        "variables": {
+          "id": "evg-db9hsol496fs739dn26g"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteEnvGroup($id: String!) {\n  deleteEnvGroup(id: $id)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792221560587.992,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.136,
+        "responseStart": 888.857,
+        "responseEnd": 889.478
+      },
+      "url": "https://dashboard.bex.co/env-groups"
+    },
+    "a863DeletedService": {
+      "at": "2026-10-17T07:20:02.575Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db9hr9ps93ac73869cp0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "timing": {
+        "startTime": 1792221600986.167,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.192,
+        "responseStart": 852.799,
+        "responseEnd": 853.415
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "a863InventoryCleanup": {
+      "at": "2026-10-17T07:20:18.183Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [
+        {
+          "path": "/v1/services/srv-db9hr9ps93ac73869cp0",
+          "status": 404
+        },
+        {
+          "path": "/v1/env-groups/evg-db9hs01s93ac73869cr0",
+          "status": 404
+        },
+        {
+          "path": "/v1/env-groups/evg-db9hsol496fs739dn26g",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9hr9ps93ac73869cp0/deploys/dep-db9i2hkfa25s73dj245g",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9hr9ps93ac73869cp0/deploys/dep-db9i2e4fa25s73dj244g",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9hr9ps93ac73869cp0/deploys/dep-db9i285496fs739dn2gg",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9hr9ps93ac73869cp0/deploys/dep-db9i209s93ac73869d1g",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9hr9ps93ac73869cp0/deploys/dep-db9i0kl496fs739dn2d0",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9hr9ps93ac73869cp0/deploys/dep-db9i00ps93ac73869d0g",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9hr9ps93ac73869cp0/deploys/dep-db9hvehs93ac73869cv0",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9hr9ps93ac73869cp0/deploys/dep-db9hund496fs739dn2bg",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9hr9ps93ac73869cp0/deploys/dep-db9hu6ps93ac73869ctg",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9hr9ps93ac73869cp0/deploys/dep-db9htj9s93ac73869cs0",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9hr9ps93ac73869cp0/deploys/dep-db9hr9ps93ac73869cpg",
+          "status": 404
+        }
+      ]
+    },
+    "a863FinishSummary": {
+      "logoutConfirmed": true,
+      "exitCode": 0,
+      "browser": {
+        "at": "2026-10-17T07:20:24.551Z",
+        "whoami": 401,
+        "cookies": 0,
+        "pages": 1,
+        "url": "about:blank"
+      },
+      "handlesRemoved": true
+    },
+    "a863MobileAState": {
+      "at": "2026-10-17T07:12:51.383Z",
+      "url": "https://dashboard.bex.co/services/srv-db9hr9ps93ac73869cp0/env",
+      "request": {
+        "operationName": "Qaa863Order",
+        "variables": {
+          "id": "srv-db9hr9ps93ac73869cp0"
+        },
+        "query": "query Qaa863Order($id:String!){server(id:$id){id phase revision linkedEnvGroupIds} deploys(serviceId:$id,limit:20){id status trigger}}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "id": "dep-db9hvehs93ac73869cv0",
+              "status": "live",
+              "trigger": "config_change"
+            },
+            {
+              "id": "dep-db9hund496fs739dn2bg",
+              "status": "deactivated",
+              "trigger": "config_change"
+            },
+            {
+              "id": "dep-db9hu6ps93ac73869ctg",
+              "status": "deactivated",
+              "trigger": "config_change"
+            },
+            {
+              "id": "dep-db9htj9s93ac73869cs0",
+              "status": "deactivated",
+              "trigger": "config_change"
+            },
+            {
+              "id": "dep-db9hr9ps93ac73869cpg",
+              "status": "deactivated",
+              "trigger": "create"
+            }
+          ],
+          "server": {
+            "id": "srv-db9hr9ps93ac73869cp0",
+            "linkedEnvGroupIds": [
+              "evg-db9hsol496fs739dn26g",
+              "evg-db9hs01s93ac73869cr0"
+            ],
+            "phase": "Running",
+            "revision": "rev-5"
+          }
+        }
+      },
+      "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261017-a863-precedence\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261017-a863-precedence\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db9hr9ps93ac73869cp0/deploys/dep-db9hvehs93ac73869cv0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db9hr9ps93ac73869cp0/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db9hr9ps93ac73869cp0\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261017-a863-precedence.onbex.co\":\n    - /url: https://qa-20261017-a863-precedence.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261017-a863-precedence\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-5\n  - term: Created\n  - definition:\n    - time: 9m\n  - heading \"Environment\" [level=1]\n  - paragraph: Manage service-specific variables, secret files, and linked environment groups.\n  - button \"Create group\"\n  - text: Environment Variables Set environment-specific config and secrets, then read those values from your code.\n  - button \"Export\"\n  - button \"Edit\"\n  - code: LOCAL\n  - code: ••••••••••••\n  - button \"Reveal\"\n  - button \"Copy LOCAL\"\n  - text: Secret Files Store files with secret contents (certificates, credentials) mounted into this service at deploy time.\n  - paragraph: No secret files\n  - paragraph: Add a file to mount secret contents into this service.\n  - button \"Add secret file\"\n  - text: Linked Environment Groups Reusable bundles of environment variables and secret files you can link to this and other services.\n  - button \"Create group\"\n  - heading \"Linked (2)\" [level=3]\n  - list:\n    - listitem:\n      - link \"qa-20261017-a863-a-old\":\n        - /url: /env-groups/evg-db9hs01s93ac73869cr0\n      - text: Linked A_ONLY SHARED a.txt shared.txt\n      - button \"Unlink\"\n    - listitem:\n      - link \"qa-20261017-a863-z-new\":\n        - /url: /env-groups/evg-db9hsol496fs739dn26g\n      - text: Linked SHARED Z_ONLY shared.txt z.txt\n      - button \"Unlink\"\n  - heading \"Available to link (1)\" [level=3]\n  - list:\n    - listitem:\n      - link \"qa-20261003-keys-r85\":\n        - /url: /env-groups/evg-db0s94c48ccs739jikr0\n      - text: QA_R85_NORMAL __proto__ constructor toString\n      - button \"Link\""
+    }
+  },
+  "limits": [
+    "Only Free image web exercised; no claim for static/cron/worker/private, Postgres or Key Value.",
+    "No failed-refresh fault injection or create-with-initial-service replay this pass; implementation evidence remains in the original note.",
+    "Original m94 repo auto-deploy and over-quota gates were not replayed.",
+    "Desktop repeat has 47 samples and mobile repeat 62, stopping at two linked rows with enabled Unlink buttons and no status. No sample marks A as losing. Native requests and DOM/runtime controls are real; no response delay or interception was used.",
+    "Desktop response observer records only the selected Server ID and link order, never broad Server fields. No independently mapped deployed Git SHA.",
+    "A prior desktop final state passed but its shorter sampling ended before completion; acceptance relies on the later continuous desktop repeat.",
+    "Setup harness selector/timeouts and network-log parse failure are observation limits; no product defect inferred from those. Console error collection returned zero messages before service deletion and cleanup readback."
+  ],
+  "publicControls": {
+    "baseline": {
+      "capturedFileTime": "2026-10-17T07:05:14.488377+00:00",
+      "url": "https://qa-20261017-a863-precedence.onbex.co",
+      "body": {
+        "shared": null,
+        "aOnly": null,
+        "zOnly": null,
+        "local": "SERVICE_LOCAL",
+        "file": null,
+        "aFile": null,
+        "zFile": null
+      },
+      "headers": "HTTP/2 200 \ncontent-type: application/json\ndate: Sat, 17 Oct 2026 07:05:14 GMT\ncontent-length: 103\n\n"
+    },
+    "z": {
+      "capturedFileTime": "2026-10-17T07:08:49.377189+00:00",
+      "url": "https://qa-20261017-a863-precedence.onbex.co",
+      "body": {
+        "shared": "Z_SHARED",
+        "aOnly": null,
+        "zOnly": "Z_UNIQUE",
+        "local": "SERVICE_LOCAL",
+        "file": "Z_FILE\n雪",
+        "aFile": null,
+        "zFile": "Z_ONLY_FILE"
+      },
+      "headers": "HTTP/2 200 \ncontent-type: application/json\ndate: Sat, 17 Oct 2026 07:08:49 GMT\ncontent-length: 133\n\n"
+    },
+    "a-desktop": {
+      "capturedFileTime": "2026-10-17T07:09:59.228686+00:00",
+      "url": "https://qa-20261017-a863-precedence.onbex.co",
+      "body": {
+        "shared": "A_SHARED",
+        "aOnly": "A_UNIQUE",
+        "zOnly": "Z_UNIQUE",
+        "local": "SERVICE_LOCAL",
+        "file": "A_FILE\n雪",
+        "aFile": "A_ONLY_FILE",
+        "zFile": "Z_ONLY_FILE"
+      },
+      "headers": "HTTP/2 200 \ncontent-type: application/json\ndate: Sat, 17 Oct 2026 07:09:58 GMT\ncontent-length: 148\n\n"
+    },
+    "z-before-mobile": {
+      "capturedFileTime": "2026-10-17T07:11:41.239748+00:00",
+      "url": "https://qa-20261017-a863-precedence.onbex.co",
+      "body": {
+        "shared": "Z_SHARED",
+        "aOnly": null,
+        "zOnly": "Z_UNIQUE",
+        "local": "SERVICE_LOCAL",
+        "file": "Z_FILE\n雪",
+        "aFile": null,
+        "zFile": "Z_ONLY_FILE"
+      },
+      "headers": "HTTP/2 200 \ncontent-type: application/json\ndate: Sat, 17 Oct 2026 07:11:41 GMT\ncontent-length: 133\n\n"
+    },
+    "a-mobile": {
+      "capturedFileTime": "2026-10-17T07:12:52.671604+00:00",
+      "url": "https://qa-20261017-a863-precedence.onbex.co",
+      "body": {
+        "shared": "A_SHARED",
+        "aOnly": "A_UNIQUE",
+        "zOnly": "Z_UNIQUE",
+        "local": "SERVICE_LOCAL",
+        "file": "A_FILE\n雪",
+        "aFile": "A_ONLY_FILE",
+        "zFile": "Z_ONLY_FILE"
+      },
+      "headers": "HTTP/2 200 \ncontent-type: application/json\ndate: Sat, 17 Oct 2026 07:12:52 GMT\ncontent-length: 148\n\n"
+    },
+    "own": {
+      "capturedFileTime": "2026-10-17T07:14:26.775720+00:00",
+      "url": "https://qa-20261017-a863-precedence.onbex.co",
+      "body": {
+        "shared": "SERVICE_SHARED",
+        "aOnly": "A_UNIQUE",
+        "zOnly": "Z_UNIQUE",
+        "local": "SERVICE_LOCAL",
+        "file": "SERVICE_FILE\n雪",
+        "aFile": "A_ONLY_FILE",
+        "zFile": "Z_ONLY_FILE"
+      },
+      "headers": "HTTP/2 200 \ncontent-type: application/json\ndate: Sat, 17 Oct 2026 07:14:26 GMT\ncontent-length: 160\n\n"
+    },
+    "own-after-unlink": {
+      "capturedFileTime": "2026-10-17T07:17:09.383055+00:00",
+      "url": "https://qa-20261017-a863-precedence.onbex.co",
+      "body": {
+        "shared": "SERVICE_SHARED",
+        "aOnly": null,
+        "zOnly": "Z_UNIQUE",
+        "local": "SERVICE_LOCAL",
+        "file": "SERVICE_FILE\n雪",
+        "aFile": null,
+        "zFile": "Z_ONLY_FILE"
+      }
+    },
+    "z-after-remove": {
+      "capturedFileTime": "2026-10-17T07:17:51.846719+00:00",
+      "url": "https://qa-20261017-a863-precedence.onbex.co",
+      "body": {
+        "shared": "Z_SHARED",
+        "aOnly": null,
+        "zOnly": "Z_UNIQUE",
+        "local": "SERVICE_LOCAL",
+        "file": "Z_FILE\n雪",
+        "aFile": null,
+        "zFile": "Z_ONLY_FILE"
+      }
+    },
+    "a-desktop-immediate": {
+      "capturedFileTime": "2026-10-17T07:18:14.414302+00:00",
+      "url": "https://qa-20261017-a863-precedence.onbex.co",
+      "body": {
+        "shared": "A_SHARED",
+        "aOnly": "A_UNIQUE",
+        "zOnly": "Z_UNIQUE",
+        "local": "SERVICE_LOCAL",
+        "file": "A_FILE\n雪",
+        "aFile": "A_ONLY_FILE",
+        "zFile": "Z_ONLY_FILE"
+      },
+      "headers": "HTTP/2 200 \ncontent-type: application/json\ndate: Sat, 17 Oct 2026 07:18:14 GMT\ncontent-length: 148\n\n"
+    },
+    "z-final": {
+      "capturedFileTime": "2026-10-17T07:18:29.674591+00:00",
+      "url": "https://qa-20261017-a863-precedence.onbex.co",
+      "body": {
+        "shared": "Z_SHARED",
+        "aOnly": null,
+        "zOnly": "Z_UNIQUE",
+        "local": "SERVICE_LOCAL",
+        "file": "Z_FILE\n雪",
+        "aFile": null,
+        "zFile": "Z_ONLY_FILE"
+      }
+    },
+    "final-baseline": {
+      "capturedFileTime": "2026-10-17T07:18:52.860981+00:00",
+      "url": "https://qa-20261017-a863-precedence.onbex.co",
+      "body": {
+        "shared": null,
+        "aOnly": null,
+        "zOnly": null,
+        "local": "SERVICE_LOCAL",
+        "file": null,
+        "aFile": null,
+        "zFile": null
+      }
+    }
+  },
+  "physicalCleanup": {
+    "at": "2026-10-17T07:21:06.739090+00:00",
+    "app": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a863-precedence",
+    "checks": {
+      "app": {
+        "count": 0
+      },
+      "serving": {
+        "count": 0
+      },
+      "build": {
+        "count": 0
+      },
+      "publish": {
+        "count": 0
+      },
+      "purge": {
+        "count": 0
+      },
+      "predeploy": {
+        "count": 0
+      }
+    },
+    "previous": {
+      "at": "2026-10-17T07:20:25.198648+00:00",
+      "app": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a863-precedence",
+      "checks": {
+        "app": {
+          "count": 0
+        },
+        "serving": {
+          "count": 1
+        },
+        "build": {
+          "count": 0
+        },
+        "publish": {
+          "count": 0
+        },
+        "purge": {
+          "count": 0
+        },
+        "predeploy": {
+          "count": 0
+        }
+      }
+    }
+  },
+  "publicCleanup": {
+    "headers": "HTTP/2 404 \ncontent-type: text/plain; charset=utf-8\nx-content-type-options: nosniff\ncontent-length: 19\ndate: Sat, 17 Oct 2026 07:20:41 GMT\n\n",
+    "body": "404 page not found\n"
+  },
+  "status": "accepted-and-cleaned"
+}
