@@ -74,10 +74,10 @@
     {
       "id": "helper-git",
       "kind": "helper",
-      "upstream": "docker.io/alpine/git:v2.43.0",
-      "committed": "alpine/git:v2.43.0@sha256:76fdb7210689fc26c6ff101c4adacf9d12d3d25a919a7d8ff42ebaef5bedba65",
-      "resolved_at": "2026-08-18T00:00:00Z",
-      "source": "Docker Hub alpine/git:v2.43.0 multi-arch index",
+      "upstream": "docker.io/alpine/git:v2.52.0",
+      "committed": "alpine/git:v2.52.0@sha256:4a0e72d49596a1f5d3701aeedafdadc5c0da4062be4657c7bdc4017387f591cc",
+      "resolved_at": "2026-10-16T00:00:00Z",
+      "source": "Docker Hub alpine/git:v2.52.0 multi-arch index (git 2.52.0, past CVE-2025-48384, which submodule init exposes — w8/m89)",
       "files": [
         "lego/operator/internal/build/build.go",
         "lego/operator/internal/publish/publish.go"
