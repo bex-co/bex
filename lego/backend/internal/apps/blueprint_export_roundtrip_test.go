@@ -43,6 +43,7 @@ func TestGenerateBlueprintRoundTripsRealCreates(t *testing.T) {
 	for _, req := range roundTripCreates(t) {
 		svc, cl := newService(nil)
 		svc.RegistryCreds = probeRegistryCreds()
+		svc.Checks = &fakeChecks{permitted: true}
 		if _, err := svc.Create(ctx, req); err != nil {
 			t.Errorf("%s: create: %v", req.Name, err)
 			continue

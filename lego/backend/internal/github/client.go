@@ -288,6 +288,9 @@ type Installation struct {
 	ID           int64  `json:"id"`
 	AccountLogin string `json:"accountLogin"`
 	AccountType  string `json:"accountType"`
+	// Events are the webhook events this installation receives — the App's
+	// subscriptions the installation has accepted (w1/m181 reads check_suite).
+	Events []string `json:"events,omitempty"`
 }
 
 // GetInstallation fetches one installation by id (GET /app/installations/{id}),
@@ -315,8 +318,9 @@ func (c *Client) GetInstallation(ctx context.Context, installationID int64) (Ins
 		return Installation{}, &APIError{Status: resp.StatusCode, Body: string(body)}
 	}
 	var out struct {
-		ID         int64  `json:"id"`
-		TargetType string `json:"target_type"`
+		ID         int64    `json:"id"`
+		TargetType string   `json:"target_type"`
+		Events     []string `json:"events"`
 		Account    struct {
 			Login string `json:"login"`
 		} `json:"account"`
@@ -324,7 +328,7 @@ func (c *Client) GetInstallation(ctx context.Context, installationID int64) (Ins
 	if err := json.Unmarshal(body, &out); err != nil {
 		return Installation{}, fmt.Errorf("github: decode installation response: %w", err)
 	}
-	return Installation{ID: out.ID, AccountLogin: out.Account.Login, AccountType: out.TargetType}, nil
+	return Installation{ID: out.ID, AccountLogin: out.Account.Login, AccountType: out.TargetType, Events: out.Events}, nil
 }
 
 // VerifyInstallationAdmin reports whether the GitHub user identified by the
@@ -562,6 +566,74 @@ func (c *Client) LookupRepo(ctx context.Context, token, owner, repo string) (Rep
 	default:
 		return Repo{}, false, &APIError{Status: resp.StatusCode, Body: string(body)}
 	}
+}
+
+// MintChecksToken mints an installation token that may read check runs
+// (w1/m181). GitHub refuses the mint with 422 when the installation has not
+// granted Checks: read, which is reported as permitted=false rather than an
+// error: it is the answer to "can this connection gate on checks".
+func (c *Client) MintChecksToken(ctx context.Context, installationID int64) (InstallationToken, bool, error) {
+	tok, err := c.mintInstallationToken(ctx, installationID, struct {
+		Permissions map[string]string `json:"permissions"`
+	}{Permissions: map[string]string{"checks": "read", "metadata": "read"}})
+	var apiErr *APIError
+	if errors.As(err, &apiErr) && apiErr.Status == http.StatusUnprocessableEntity {
+		return InstallationToken{}, false, nil
+	}
+	if err != nil {
+		return InstallationToken{}, false, err
+	}
+	return tok, true, nil
+}
+
+// CheckRun is one GitHub check run on a commit: status is queued,
+// in_progress or completed; conclusion is set once completed (success,
+// neutral, skipped, failure, cancelled, timed_out, action_required, stale).
+type CheckRun struct {
+	Name       string `json:"name"`
+	Status     string `json:"status"`
+	Conclusion string `json:"conclusion"`
+}
+
+// maxCheckRunPages bounds ListCheckRuns: 10 pages of 100 is far beyond any
+// real commit, and a runaway listing must not hold a webhook delivery open.
+const maxCheckRunPages = 10
+
+// ListCheckRuns lists the latest check run of every check on sha
+// (GET /repos/{owner}/{repo}/commits/{sha}/check-runs?filter=latest).
+func (c *Client) ListCheckRuns(ctx context.Context, token, owner, repo, sha string) ([]CheckRun, error) {
+	var runs []CheckRun
+	for page := 1; page <= maxCheckRunPages; page++ {
+		url := fmt.Sprintf("%s/repos/%s/%s/commits/%s/check-runs?filter=latest&per_page=100&page=%d",
+			c.baseURL, owner, repo, neturl.PathEscape(sha), page)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			return nil, err
+		}
+		setTokenAuth(req, token)
+		req.Header.Set("Accept", acceptHeader)
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("github: list check runs: %w", err)
+		}
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return nil, &APIError{Status: resp.StatusCode, Body: string(body)}
+		}
+		var out struct {
+			TotalCount int        `json:"total_count"`
+			CheckRuns  []CheckRun `json:"check_runs"`
+		}
+		if err := json.Unmarshal(body, &out); err != nil {
+			return nil, fmt.Errorf("github: decode check runs: %w", err)
+		}
+		runs = append(runs, out.CheckRuns...)
+		if len(out.CheckRuns) < 100 || len(runs) >= out.TotalCount {
+			return runs, nil
+		}
+	}
+	return nil, fmt.Errorf("github: commit %s has more than %d check runs", sha, maxCheckRunPages*100)
 }
 
 // Commit is the resolved tip of a ref — the SHA plus its message and author

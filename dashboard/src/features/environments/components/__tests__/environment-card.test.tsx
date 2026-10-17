@@ -139,6 +139,7 @@ const apiService: ServiceView = {
   registryCredentialId: null,
   buildFilter: null,
   autoDeploy: null,
+  autoDeployTrigger: null,
   notifyOnFail: null,
   notificationsToSend: null,
   healthCheckPath: null,

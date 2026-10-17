@@ -18,7 +18,10 @@ import { useBranch } from "@/features/services/hooks/use-branch";
 import { useRootDir } from "@/features/services/hooks/use-root-dir";
 import { useBuildCommand } from "@/features/services/hooks/use-build-command";
 import { useDockerfilePath } from "@/features/services/hooks/use-dockerfile-path";
-import { useAutoDeploy } from "@/features/services/hooks/use-auto-deploy";
+import {
+  useAutoDeploy,
+  type AutoDeployTrigger,
+} from "@/features/services/hooks/use-auto-deploy";
 import { useBuildFilter } from "@/features/services/hooks/use-build-filter";
 import { useRepoBranches } from "@/features/services/hooks/use-repo-branches";
 import { useSetRepo } from "@/features/services/hooks/use-set-repo";
@@ -52,6 +55,8 @@ export interface BuildDeploySectionProps {
   buildFilter?: BuildFilterView | null;
   /** spec.autoDeploy — whether a signed git push redeploys this App. */
   autoDeploy: boolean;
+  /** Render's Auto-Deploy enum — off | commit | checksPass (w1/m181). */
+  autoDeployTrigger?: string | null;
   /** Server-computed push deliverability for THIS repo — see autoDeployHintKey. */
   pushDeliveryMethod?: string | null;
   /** spec.preDeployCommand; empty/null means no pre-deploy step (w1/m33). */
@@ -131,6 +136,7 @@ export function BuildDeploySection({
   dockerfilePath = null,
   buildFilter,
   autoDeploy,
+  autoDeployTrigger,
   pushDeliveryMethod = null,
   preDeployCommand,
   showPreDeployCommand,
@@ -155,15 +161,16 @@ export function BuildDeploySection({
   const { setRootDir, busy } = useRootDir();
   const { setBuildCommand, busy: buildCommandBusy } = useBuildCommand();
   const { setDockerfilePath, busy: dockerfilePathBusy } = useDockerfilePath();
-  const { setAutoDeploy, busy: autoDeployBusy } = useAutoDeploy();
+  const { setAutoDeployTrigger, busy: autoDeployBusy } = useAutoDeploy();
   const autoDeployHint = t(autoDeployHintKey(pushDeliveryMethod));
 
-  // Render presents Auto-Deploy as a select ("On Commit" | "Off"), not a switch
-  // (w5/m53). bex has only two states — its boolean spec.autoDeploy maps to
-  // Render's autoDeployTrigger "commit"/"off"; "checksPass" is unsupported.
+  // Render presents Auto-Deploy as a select, not a switch (w5/m53), with its
+  // three autoDeployTrigger choices: On Commit, After CI Checks Pass (w1/m181)
+  // and Off.
   const autoDeployOptions = useMemo(
     () => [
       { value: "commit", label: t("services.autoDeployOnCommit") },
+      { value: "checksPass", label: t("services.autoDeployAfterChecks") },
       { value: "off", label: t("services.autoDeployOff") },
     ],
     [t],
@@ -179,14 +186,16 @@ export function BuildDeploySection({
     <EditableFieldRow
       label={t("services.autoDeployLabel")}
       hint={autoDeployHint}
-      value={autoDeploy ? "commit" : "off"}
+      value={autoDeployTrigger ?? (autoDeploy ? "commit" : "off")}
       editLabel={t("services.autoDeployEdit")}
       busy={autoDeployBusy}
       options={autoDeployOptions}
       // Bound to the saved prop, never a local copy: a poll or another tab's
       // save must reach an untouched row, its Edit baseline and Cancel (w4/281).
       // The accepted mutation normalizes Service.autoDeploy into the cache.
-      onSave={(value) => setAutoDeploy(serviceId, value === "commit")}
+      onSave={(value) =>
+        setAutoDeployTrigger(serviceId, value as AutoDeployTrigger)
+      }
     />
   );
 

@@ -28,85 +28,84 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// TestAutoDeployTriggerMapping verifies bex's boolean spec.autoDeploy maps
-// consistently onto Render's two wire representations: the legacy autoDeploy
-// enum ("yes"/"no") and autoDeployTrigger ("commit"/"off") — never "checksPass"
-// (a documented divergence, w5/m53).
+// TestAutoDeployTriggerMapping verifies spec.autoDeploy and its checks gate map
+// onto Render's two wire representations: the legacy autoDeploy enum
+// ("yes"/"no", which knows no gate) and autoDeployTrigger (off, commit,
+// checksPass — w5/m53, w1/m181).
 func TestAutoDeployTriggerMapping(t *testing.T) {
 	for _, c := range []struct {
 		autoDeploy     bool
+		specTrigger    string
 		yesNo, trigger string
 	}{
-		{true, "yes", "commit"},
-		{false, "no", "off"},
+		{true, "", "yes", "commit"},
+		{true, "commit", "yes", "commit"},
+		{true, checksPassTrigger, "yes", "checksPass"},
+		{false, "", "no", "off"},
+		{false, checksPassTrigger, "no", "off"},
 	} {
 		if got := yesNoEnum(c.autoDeploy); got != c.yesNo {
 			t.Errorf("yesNoEnum(%v) = %q, want %q", c.autoDeploy, got, c.yesNo)
 		}
-		if got := triggerEnum(c.autoDeploy); got != c.trigger {
-			t.Errorf("triggerEnum(%v) = %q, want %q", c.autoDeploy, got, c.trigger)
+		if got := triggerEnum(c.autoDeploy, c.specTrigger); got != c.trigger {
+			t.Errorf("triggerEnum(%v, %q) = %q, want %q", c.autoDeploy, c.specTrigger, got, c.trigger)
 		}
 	}
 }
 
-// TestParseTriggerRejectsChecksPass covers the accept side: the trigger enum
-// maps to a tri-state *bool, and "checksPass" is rejected with a Render-shaped
-// ErrBadRequest whose message names the divergence (w5/m53).
-func TestParseTriggerRejectsChecksPass(t *testing.T) {
-	ptr := func(b bool) *bool { return &b }
+// TestParseTrigger covers the accept side: each Render trigger maps to
+// whether a push deploys and whether it waits for checks; anything else is a
+// Render-shaped ErrBadRequest naming the three values.
+func TestParseTrigger(t *testing.T) {
 	for _, c := range []struct {
-		in   string
-		want *bool
+		in                  string
+		enabled, checksPass *bool
 	}{
-		{"", nil},
-		{"commit", ptr(true)},
-		{"off", ptr(false)},
+		{"", nil, nil},
+		{"commit", boolPtr(true), boolPtr(false)},
+		{"off", boolPtr(false), boolPtr(false)},
+		{"checksPass", boolPtr(true), boolPtr(true)},
 	} {
-		got, err := parseTrigger(c.in)
+		enabled, checksPass, err := parseTrigger(c.in)
 		if err != nil {
 			t.Fatalf("parseTrigger(%q) unexpected error: %v", c.in, err)
 		}
-		if (got == nil) != (c.want == nil) || (got != nil && *got != *c.want) {
-			t.Errorf("parseTrigger(%q) = %v, want %v", c.in, deref(got), deref(c.want))
+		if deref(enabled) != deref(c.enabled) || deref(checksPass) != deref(c.checksPass) {
+			t.Errorf("parseTrigger(%q) = %v/%v, want %v/%v", c.in, deref(enabled), deref(checksPass), deref(c.enabled), deref(c.checksPass))
 		}
 	}
-
-	_, err := parseTrigger("checksPass")
-	if err == nil || !errors.Is(err, core.ErrBadRequest) {
-		t.Fatalf("parseTrigger(checksPass) = %v, want ErrBadRequest", err)
-	}
-	if !strings.Contains(err.Error(), "checksPass") || !strings.Contains(err.Error(), "commit") {
-		t.Errorf("checksPass error should name the divergence, got %q", err.Error())
-	}
-	if _, err := parseTrigger("garbage"); err == nil || !errors.Is(err, core.ErrBadRequest) {
-		t.Errorf("parseTrigger(garbage) = %v, want ErrBadRequest", err)
+	_, _, err := parseTrigger("garbage")
+	if err == nil || !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "checksPass") {
+		t.Errorf("parseTrigger(garbage) = %v, want ErrBadRequest naming the values", err)
 	}
 }
 
 // TestParseAutoDeployPrecedence: autoDeployTrigger wins over the legacy
-// autoDeploy enum when both are sent (Render's precedence), and the checks-pass
-// rejection propagates through even alongside a valid autoDeploy (w5/m53).
+// autoDeploy enum when both are sent (Render's precedence); the legacy enum
+// alone leaves the checks gate as it is, on every surface.
 func TestParseAutoDeployPrecedence(t *testing.T) {
-	// Trigger wins over a conflicting legacy value.
-	if got, err := parseAutoDeploy("no", "commit"); err != nil || got == nil || !*got {
-		t.Errorf("parseAutoDeploy(no, commit) = %v, %v; want true", deref(got), err)
+	for _, c := range []struct {
+		legacy, trigger     string
+		enabled, checksPass *bool
+	}{
+		{"no", "commit", boolPtr(true), boolPtr(false)},
+		{"yes", "off", boolPtr(false), boolPtr(false)},
+		{"no", "checksPass", boolPtr(true), boolPtr(true)},
+		{"yes", "", boolPtr(true), nil},
+		{"no", "", boolPtr(false), nil},
+		{"", "", nil, nil},
+	} {
+		enabled, checksPass, err := parseAutoDeploy(c.legacy, c.trigger)
+		if err != nil || deref(enabled) != deref(c.enabled) || deref(checksPass) != deref(c.checksPass) {
+			t.Errorf("parseAutoDeploy(%q, %q) = %v/%v, %v; want %v/%v", c.legacy, c.trigger, deref(enabled), deref(checksPass), err, deref(c.enabled), deref(c.checksPass))
+		}
 	}
-	if got, err := parseAutoDeploy("yes", "off"); err != nil || got == nil || *got {
-		t.Errorf("parseAutoDeploy(yes, off) = %v, %v; want false", deref(got), err)
-	}
-	// Falls back to the legacy enum when no trigger is sent.
-	if got, err := parseAutoDeploy("yes", ""); err != nil || got == nil || !*got {
-		t.Errorf("parseAutoDeploy(yes, \"\") = %v, %v; want true", deref(got), err)
-	}
-	// Neither field present => nil (leave unchanged / platform default).
-	if got, err := parseAutoDeploy("", ""); err != nil || got != nil {
-		t.Errorf("parseAutoDeploy(\"\", \"\") = %v, %v; want nil", deref(got), err)
-	}
-	// checksPass is rejected even alongside a valid legacy value.
-	if _, err := parseAutoDeploy("yes", "checksPass"); err == nil {
-		t.Error("parseAutoDeploy(yes, checksPass) should reject checksPass")
+	if _, _, err := parseAutoDeploy("maybe", ""); err == nil {
+		t.Error("parseAutoDeploy(maybe) should reject an invalid legacy value")
 	}
 }
+
+func boolPtr(b bool) *bool { return &b }
 
 func deref(b *bool) any {
 	if b == nil {

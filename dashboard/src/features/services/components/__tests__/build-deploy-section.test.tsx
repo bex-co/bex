@@ -7,7 +7,7 @@ import { mockCapabilities } from "@/test/mocks/capabilities";
 
 const setRootDir = vi.fn(async () => true);
 const setBranch = vi.fn(async () => true);
-const setAutoDeploy = vi.fn(async () => true);
+const setAutoDeployTrigger = vi.fn(async () => true);
 const setPreDeployCommand = vi.fn(async () => true);
 const setBuildFilter = vi.fn(async () => true);
 const setBuildCommand = vi.fn(async () => true);
@@ -43,7 +43,7 @@ vi.mock("@/features/services/hooks/use-pre-deploy-command", () => ({
 }));
 
 vi.mock("@/features/services/hooks/use-auto-deploy", () => ({
-  useAutoDeploy: () => ({ setAutoDeploy, busy: false }),
+  useAutoDeploy: () => ({ setAutoDeployTrigger, busy: false }),
 }));
 
 // The Deploy card embeds the Deploy Hook rows (w5/m52), which read useDeployHook.
@@ -81,8 +81,8 @@ beforeEach(() => {
   setRootDir.mockResolvedValue(true);
   setBranch.mockClear();
   setBranch.mockResolvedValue(true);
-  setAutoDeploy.mockClear();
-  setAutoDeploy.mockResolvedValue(true);
+  setAutoDeployTrigger.mockClear();
+  setAutoDeployTrigger.mockResolvedValue(true);
   setPreDeployCommand.mockClear();
   setPreDeployCommand.mockResolvedValue(true);
   setBuildFilter.mockClear();
@@ -494,7 +494,7 @@ describe("BuildDeploySection", () => {
     expect(screen.getByDisplayValue("docker/Dockerfile.prod")).toBeVisible();
   });
 
-  it("Auto-Deploy is a disabled select; editing to 'On Commit' calls setAutoDeploy(id, true)", async () => {
+  it("Auto-Deploy is a disabled select; editing to 'On Commit' calls setAutoDeployTrigger(id, 'commit')", async () => {
     const user = userEvent.setup();
     render(
       <BuildDeploySection
@@ -518,11 +518,55 @@ describe("BuildDeploySection", () => {
     await user.click(screen.getByRole("option", { name: "On Commit" }));
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
-    expect(setAutoDeploy).toHaveBeenCalledWith("app", true);
+    expect(setAutoDeployTrigger).toHaveBeenCalledWith("app", "commit");
   });
 
-  it("keeps the saved Auto-Deploy value when setAutoDeploy fails", async () => {
-    setAutoDeploy.mockResolvedValue(false);
+  it("offers Render's three Auto-Deploy choices and saves After CI Checks Pass", async () => {
+    const user = userEvent.setup();
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir={null}
+        autoDeploy={true}
+        autoDeployTrigger="commit"
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Edit Auto-Deploy" }));
+    await user.click(screen.getByRole("combobox", { name: "Auto-Deploy" }));
+    expect(
+      screen.getAllByRole("option").map((option) => option.textContent),
+    ).toEqual(["On Commit", "After CI Checks Pass", "Off"]);
+    await user.click(screen.getByRole("option", { name: "After CI Checks Pass" }));
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(setAutoDeployTrigger).toHaveBeenCalledWith("app", "checksPass");
+  });
+
+  it("shows a saved checksPass service as After CI Checks Pass", () => {
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir={null}
+        autoDeploy={true}
+        autoDeployTrigger="checksPass"
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+      />,
+    );
+    expect(
+      screen.getByRole("combobox", { name: "Auto-Deploy" }),
+    ).toHaveTextContent("After CI Checks Pass");
+  });
+
+  it("keeps the saved Auto-Deploy value when setAutoDeployTrigger fails", async () => {
+    setAutoDeployTrigger.mockResolvedValue(false);
     const user = userEvent.setup();
     render(
       <BuildDeploySection
@@ -544,7 +588,7 @@ describe("BuildDeploySection", () => {
     await user.click(screen.getByRole("option", { name: "Off" }));
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
-    expect(setAutoDeploy).toHaveBeenCalledWith("app", false);
+    expect(setAutoDeployTrigger).toHaveBeenCalledWith("app", "off");
     // A failed save keeps the row in edit mode with the draft for a retry (like
     // the other rows); Cancel shows the unchanged saved "On Commit".
     expect(

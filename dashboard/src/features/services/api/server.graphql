@@ -79,6 +79,8 @@ query Server($id: String!) {
     }
     # Auto-Deploy toggle (w2/m9) — whether a signed git push redeploys the App.
     autoDeploy
+    # Render's Auto-Deploy enum (w1/m181): off | commit | checksPass.
+    autoDeployTrigger
     # environmentId is the service's authoritative Environment scope; null means
     # workspace-scoped (no Environment). The Environment tab's env-groups panel
     # decides link compatibility and Create's initial scope from it rather than

@@ -355,6 +355,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     dockerfilePath: null,
     buildFilter: null,
     autoDeploy: null,
+    autoDeployTrigger: null,
     notifyOnFail: null,
     notificationsToSend: null,
     preDeployCommand: null,

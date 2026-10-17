@@ -56,6 +56,16 @@ spec:
               autoDeploy:
                 description: AutoDeploy triggers a deploy on each push to Branch.
                 type: boolean
+              autoDeployTrigger:
+                description: |-
+                  AutoDeployTrigger refines AutoDeploy with Render's autoDeployTrigger
+                  (w1/m181): "checksPass" deploys a pushed commit only once all of its
+                  GitHub checks pass; empty (or "commit") deploys on push. bex-api reads it
+                  only while AutoDeploy is true. The operator never reads it.
+                enum:
+                - commit
+                - checksPass
+                type: string
               autoscaling:
                 description: |-
                   Autoscaling declares the per-service autoscaling policy. When enabled, the

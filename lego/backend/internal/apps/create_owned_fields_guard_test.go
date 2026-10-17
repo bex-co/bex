@@ -148,6 +148,7 @@ func createProbeRequests() []CreateRequest {
 			SecretFiles:             []core.SecretFile{{ID: "sf-probe", Name: "probe.txt", Content: "x"}},
 			Hosts:                   []string{"www.probe.example.com", "probe.example.com"},
 			AutoDeploy:              &autoDeploy,
+			AutoDeployChecksPass:    &autoDeploy,
 			NotifyOnFail:            "notify",
 			SubdomainPolicy:         appv1alpha1.SubdomainPolicyEnabled,
 			PreDeployCommand:        "bin/migrate",

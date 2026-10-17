@@ -168,6 +168,7 @@ const link = new ApolloLink(
               registryCredentialId: "",
               buildFilter: null,
               autoDeploy: false,
+              autoDeployTrigger: "off",
               environmentId: null,
               linkedEnvGroupIds: [],
               pushDeliveryMethod: "none",

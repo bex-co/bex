@@ -1946,7 +1946,7 @@ func TestBlueprintCoreEntrypointsRefuseUnsupportedManifestBeforeWrites(t *testin
     type: web
     runtime: image
     image: {url: nginx:latest}
-    autoDeployTrigger: checksPass
+    pullRequestPreviewsEnabled: true
 `
 	ws := fakeWorkspace{"user-a": "tea-a"}
 	fs := newFakeBlueprintStore(store.Blueprint{

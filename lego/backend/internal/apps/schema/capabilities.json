@@ -1124,8 +1124,10 @@
         "reason": "maps to commit-triggered automatic deploys"
       },
       "\"checksPass\"": {
-        "state": "unsupported",
-        "reason": "requires a commit-status/CI-checks integration bex does not have; collapsing checksPass to commit would deploy earlier than the author intended (ADR049 D7 forbids the lossy collapse)"
+        "state": "translated",
+        "handler": "parseService",
+        "fixture": "internal/apps/checks_pass_test.go:TestBlueprintChecksPassTrigger",
+        "reason": "maps to automatic deploys that wait for all of the pushed commit's GitHub checks to pass (w1/m181)"
       }
     },
     "#/definitions/connectionPool/enum": {

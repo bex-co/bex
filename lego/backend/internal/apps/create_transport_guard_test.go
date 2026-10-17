@@ -220,6 +220,7 @@ var gqlCreateRules = map[string]wireRule{
 	"builder":                          to("Builder"),
 	"plan":                             to("Plan"),
 	"autoDeploy":                       to("AutoDeploy"),
+	"autoDeployTrigger":                to("AutoDeploy").given("commit", "off"),
 	"notifyOnFail":                     to("NotifyOnFail"),
 	"port":                             to("Port"),
 	"replicas":                         to("Replicas"),
