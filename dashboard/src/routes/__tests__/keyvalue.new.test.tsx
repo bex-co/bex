@@ -295,3 +295,12 @@ describe("NewKeyValuePage plan region while the catalog loads (w4/330)", () => {
     instanceTypesState.error = undefined;
   });
 });
+
+// w4/m219: the form's fields sit inside the hydration fieldset, so the server
+// HTML cannot take a name its hydration would wipe.
+it("keeps the Key Value form inside the hydration fieldset (w4/m219)", async () => {
+  renderPage();
+  const fieldset = (await screen.findByLabelText("Name")).closest("fieldset");
+  expect(fieldset).not.toBeNull();
+  expect(fieldset).not.toBeDisabled(); // a client render is hydrated
+});

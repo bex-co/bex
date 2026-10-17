@@ -686,3 +686,12 @@ describe("NewBlueprintPage first preview (w4/282)", () => {
     expect(deploy()).toBeDisabled();
   });
 });
+
+it("keeps the Blueprint form, path included, inside the hydration fieldset (w4/m219)", async () => {
+  renderPage();
+  const fieldset = (await screen.findByLabelText(/Blueprint Name/i)).closest(
+    "fieldset",
+  );
+  expect(fieldset).not.toBeNull();
+  expect(fieldset).toContainElement(screen.getByLabelText(/Blueprint Path/i));
+});
