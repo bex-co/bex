@@ -288,25 +288,13 @@ func (s *Service) ListEnvGroupsFiltered(ctx context.Context, filter EnvGroupList
 				continue
 			}
 			seen[g.ID] = struct{}{}
-			view, err := s.viewOf(ctx, g)
-			if err != nil {
-				return nil, err
-			}
-			out = append(out, view)
+			out = append(out, viewOf(g))
 		}
 	}
 	if out == nil {
 		out = []EnvGroupView{}
 	}
 	return out, nil
-}
-
-func availabilityFromConflict(err error) string {
-	var coded *core.CodedError
-	if errors.As(err, &coded) && coded.Code == codeRestorationFailed {
-		return store.EnvGroupRepairRequired
-	}
-	return store.EnvGroupBusy
 }
 
 func matchesEnvGroupFilter(g store.EnvGroup, filter EnvGroupListFilter) bool {
@@ -380,7 +368,7 @@ func (s *Service) GetEnvGroup(ctx context.Context, gid string) (EnvGroupView, er
 	if err != nil {
 		return EnvGroupView{}, err
 	}
-	return s.viewOf(ctx, g)
+	return viewOf(g), nil
 }
 
 // ExportEnvGroup returns a group's display name and env-var key names for
@@ -391,10 +379,13 @@ func (s *Service) ExportEnvGroup(ctx context.Context, gid string) (name string, 
 	if err != nil {
 		return "", nil, err
 	}
-	view, err := s.viewOf(ctx, g)
-	if err != nil {
-		return "", nil, err
+	if g.Content.State == store.EnvGroupRepairRequired {
+		return "", nil, envGroupRestorationFailed()
 	}
+	if g.Content.State != store.EnvGroupIdle {
+		return "", nil, envGroupRevisionConflict()
+	}
+	view := viewOf(g)
 	keys = make([]string, 0, len(view.EnvVars))
 	for _, v := range view.EnvVars {
 		if v.Key != "" {
@@ -471,10 +462,7 @@ func (s *Service) createEnvGroupAuthorized(ctx context.Context, req CreateEnvGro
 	if err != nil {
 		return EnvGroupView{}, err
 	}
-	view, err := s.viewOf(ctx, g)
-	if err != nil {
-		return EnvGroupView{}, err
-	}
+	view := viewOf(g)
 	view.PendingServiceIDs = pending
 	return view, nil
 }
@@ -681,7 +669,7 @@ func (s *Service) MoveEnvGroup(ctx context.Context, gid, environmentID string) (
 		return EnvGroupView{}, err
 	}
 	if g.EnvironmentID == environmentID {
-		return s.viewOf(ctx, g)
+		return viewOf(g), nil
 	}
 	g, err = s.mutateGroup(ctx, gid, func(cur *store.EnvGroup) error {
 		if cur.EnvironmentID == environmentID {
@@ -697,7 +685,7 @@ func (s *Service) MoveEnvGroup(ctx context.Context, gid, environmentID string) (
 	if err != nil {
 		return EnvGroupView{}, err
 	}
-	return s.viewOf(ctx, g)
+	return viewOf(g), nil
 }
 
 // DetachEnvironment returns a group still scoped to expectedEnvironmentID to
@@ -761,7 +749,7 @@ func (s *Service) RenameEnvGroup(ctx context.Context, gid, name string) (EnvGrou
 		return EnvGroupView{}, fmt.Errorf("%w: env group name is required", core.ErrBadRequest)
 	}
 	if g.Name == name {
-		return s.viewOf(ctx, g)
+		return viewOf(g), nil
 	}
 	oldName := g.Name
 	g, err = s.mutateGroup(ctx, gid, func(cur *store.EnvGroup) error {
@@ -778,7 +766,7 @@ func (s *Service) RenameEnvGroup(ctx context.Context, gid, name string) (EnvGrou
 	if err != nil {
 		return EnvGroupView{}, err
 	}
-	return s.viewOf(ctx, g)
+	return viewOf(g), nil
 }
 
 // DeleteEnvGroup removes the group's row, then unlinks it from every service it
@@ -792,9 +780,14 @@ func (s *Service) DeleteEnvGroup(ctx context.Context, gid string) error {
 	if _, err := s.authorizeGroup(ctx, core.RelCanCreate, gid); err != nil {
 		return err
 	}
-	deleted, err := s.Groups.DeleteEnvGroup(ctx, gid)
+	var deleted store.EnvGroup
+	err := s.Groups.WithEnvGroupContentLock(ctx, gid, func(ctx context.Context) error {
+		var err error
+		deleted, err = s.Groups.DeleteEnvGroup(ctx, gid)
+		return err
+	})
 	if err != nil {
-		return groupErr(err)
+		return contentErr(err, groupErr(err))
 	}
 	// Detach from linked services first (drop the spec refs + roll) so no pod is
 	// left referencing a Secret about to be deleted.
@@ -830,18 +823,29 @@ func (s *Service) SetEnvGroupVars(ctx context.Context, gid string, vars []EnvVar
 		v.Key = key
 		desired[key] = v // retain replace-all's historical last-declaration-wins rule
 	}
-	writes := make([]EnvVarPatch, 0, len(g.EnvKeys)+len(desired))
-	for _, key := range g.EnvKeys {
-		if _, keep := desired[key]; !keep {
-			writes = append(writes, EnvVarPatch{Key: key, Delete: true})
+	var result EnvironmentPatchResult
+	err = s.withGroupContent(ctx, gid, func(ctx context.Context, g store.EnvGroup) error {
+		prior, err := s.readGroupContents(ctx, g)
+		if err != nil {
+			return err
 		}
-	}
-	for _, key := range slices.Sorted(maps.Keys(desired)) {
-		v := desired[key]
-		writes = append(writes, EnvVarPatch{Key: key, Value: v.Value, ValueSet: v.ValueSet, GenerateValue: v.GenerateValue})
-	}
-	result, err := s.patchEnvironmentAuthorized(ctx, g, EnvironmentPatch{EnvVars: writes, SaveMode: SaveModeDeploy})
+		writes := make([]EnvVarPatch, 0, len(prior.env)+len(desired))
+		for _, key := range slices.Sorted(maps.Keys(prior.env)) {
+			if _, keep := desired[key]; !keep {
+				writes = append(writes, EnvVarPatch{Key: key, Delete: true})
+			}
+		}
+		for _, key := range slices.Sorted(maps.Keys(desired)) {
+			v := desired[key]
+			writes = append(writes, EnvVarPatch{Key: key, Value: v.Value, ValueSet: v.ValueSet, GenerateValue: v.GenerateValue})
+		}
+		result, err = s.patchContentsFromSnapshot(ctx, g, prior, EnvironmentPatch{EnvVars: writes, SaveMode: SaveModeDeploy})
+		return err
+	})
 	if err != nil {
+		return nil, err
+	}
+	if _, err := s.rollGroupPatch(ctx, g.ID, SaveModeDeploy, result); err != nil {
 		return nil, err
 	}
 	return envKeyViewsFromKeys(result.EnvVarKeys), nil
@@ -859,7 +863,12 @@ func (s *Service) GetEnvGroupVar(ctx context.Context, gid, key string) (EnvVarVi
 	if err := s.authorizeGroupSensitiveFresh(ctx, g); err != nil {
 		return EnvVarView{}, err
 	}
-	env, err := s.getGroupMap(ctx, g.TenantID, envPath(gid))
+	var env map[string]string
+	err = s.withGroupContent(ctx, gid, func(ctx context.Context, g store.EnvGroup) error {
+		var err error
+		env, err = s.getGroupMap(ctx, g.TenantID, envPath(gid))
+		return err
+	})
 	if err != nil {
 		return EnvVarView{}, err
 	}
@@ -966,7 +975,12 @@ func (s *Service) GetEnvGroupFile(ctx context.Context, gid, name string) (Secret
 	if err := s.authorizeGroupSensitiveFresh(ctx, g); err != nil {
 		return SecretFileView{}, err
 	}
-	files, err := s.getGroupMap(ctx, g.TenantID, filesPath(gid))
+	var files map[string]string
+	err = s.withGroupContent(ctx, gid, func(ctx context.Context, g store.EnvGroup) error {
+		var err error
+		files, err = s.getGroupMap(ctx, g.TenantID, filesPath(gid))
+		return err
+	})
 	if err != nil {
 		return SecretFileView{}, err
 	}
@@ -1017,6 +1031,12 @@ func (s *Service) linkFetched(ctx context.Context, gid string, a *appv1alpha1.Ap
 	// Secret refs; a write-only OAuth grant or a freshly revoked developer must
 	// not turn App control into indirect secret disclosure.
 	if err := s.authorizeGroupSensitiveFresh(ctx, g); err != nil {
+		return err
+	}
+	if err = s.withGroupContent(ctx, gid, func(_ context.Context, fresh store.EnvGroup) error {
+		g = fresh
+		return nil
+	}); err != nil {
 		return err
 	}
 	// Keep the idempotency decision behind the sensitive gate. In particular, a
@@ -1393,34 +1413,48 @@ func (s *Service) ApplyEnvGroup(ctx context.Context, name string, literals map[s
 		}, env, map[string]string{}, nil)
 		return err
 	}
-	env, err := s.getGroupMap(ctx, g.TenantID, envPath(g.ID))
-	if err != nil {
+	var result EnvironmentPatchResult
+	changed := false
+	err = s.withGroupContent(ctx, g.ID, func(ctx context.Context, g store.EnvGroup) error {
+		env, err := s.getGroupMap(ctx, g.TenantID, envPath(g.ID))
+		if err != nil {
+			return err
+		}
+		writes := make([]EnvVarPatch, 0, len(literals)+len(generates))
+		for _, key := range core.SortedKeys(literals) {
+			if err := core.CheckEnvKey(key); err != nil {
+				return err
+			}
+			// An absent key reads as "", so presence decides too: a declared
+			// empty variable must be written, not mistaken for current (w8/095).
+			if current, ok := env[key]; !ok || current != literals[key] {
+				writes = append(writes, EnvVarPatch{Key: key, Value: literals[key], ValueSet: true})
+			}
+		}
+		for _, key := range generates {
+			if err := core.CheckEnvKey(key); err != nil {
+				return err
+			}
+			if _, ok := env[key]; ok {
+				continue // generate-once: an existing value persists across syncs
+			}
+			writes = append(writes, EnvVarPatch{Key: key, GenerateValue: true})
+		}
+		if len(writes) == 0 {
+			return nil
+		}
+		files, err := s.getGroupMap(ctx, g.TenantID, filesPath(g.ID))
+		if err != nil {
+			return err
+		}
+		result, err = s.patchContentsFromSnapshot(ctx, g, groupContents{env: env, files: files}, EnvironmentPatch{EnvVars: writes, SaveMode: SaveModeDeploy})
+		changed = err == nil
+		return err
+	})
+	if err != nil || !changed {
 		return err
 	}
-	writes := make([]EnvVarPatch, 0, len(literals)+len(generates))
-	for _, key := range core.SortedKeys(literals) {
-		if err := core.CheckEnvKey(key); err != nil {
-			return err
-		}
-		// An absent key reads as "", so presence decides too: a declared
-		// empty variable must be written, not mistaken for current (w8/095).
-		if current, ok := env[key]; !ok || current != literals[key] {
-			writes = append(writes, EnvVarPatch{Key: key, Value: literals[key], ValueSet: true})
-		}
-	}
-	for _, key := range generates {
-		if err := core.CheckEnvKey(key); err != nil {
-			return err
-		}
-		if _, ok := env[key]; ok {
-			continue // generate-once: an existing value persists across syncs
-		}
-		writes = append(writes, EnvVarPatch{Key: key, GenerateValue: true})
-	}
-	if len(writes) == 0 {
-		return nil
-	}
-	_, err = s.patchEnvironmentAuthorized(ctx, g, EnvironmentPatch{EnvVars: writes, SaveMode: SaveModeDeploy})
+	_, err = s.rollGroupPatch(ctx, g.ID, SaveModeDeploy, result)
 	return err
 }
 
@@ -1534,26 +1568,19 @@ func (s *Service) authorizeGroupSensitiveFresh(ctx context.Context, g store.EnvG
 
 // --- store + secret helpers ---------------------------------------------------
 
-// viewOf builds the (secret-free) view of a group from its row. A group whose
-// content is not idle is first offered to recovery (an expired lease or a
-// stranded repair may be resolvable now); one still held answers with its
-// availability and no content names.
-func (s *Service) viewOf(ctx context.Context, g store.EnvGroup) (EnvGroupView, error) {
-	operable, err := s.operableGroup(ctx, g)
-	if err != nil {
-		if !errors.Is(err, core.ErrConflict) {
-			return EnvGroupView{}, err
-		}
-		view := baseView(g)
-		view.Availability = availabilityFromConflict(err)
-		return view, nil
-	}
-	g = operable
+// viewOf builds a secret-free view solely from the row. A save that is busy or
+// needs repair reports its availability without reading or modifying its maps;
+// the next content mutation or clone offers it to recovery.
+func viewOf(g store.EnvGroup) EnvGroupView {
 	view := baseView(g)
+	if g.Content.State != store.EnvGroupIdle {
+		view.Availability = g.Content.State
+		return view
+	}
 	view.EnvVars = envKeyViewsFromKeys(g.EnvKeys)
 	view.SecretFiles = fileNameViewsFromNames(g.FileNames)
 	view.Revision = encodeEnvGroupRevision(g.Content.Generation)
-	return view, nil
+	return view
 }
 
 // baseView is a group's view without its content names or revision — all a
