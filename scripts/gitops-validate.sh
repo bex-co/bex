@@ -309,7 +309,8 @@ liveness_probe="$(yq -N '
   .jobs."public-edge-liveness".steps[] |
   select(.id == "tls_probe") | .run
 ' .github/workflows/ssh-edge-liveness.yml)"
-if ! grep -qF 'bash scripts/onbex-default-tls-verify.sh "$ONBEX_PROBE_HOST"' <<<"$liveness_probe"; then
+if ! grep -qF 'bash scripts/edge-probe.sh tls "$ONBEX_PROBE_HOST" tls-probe.txt' <<<"$liveness_probe" \
+  || ! grep -qF 'tls) cmd=(bash "$here/onbex-default-tls-verify.sh") ;;' scripts/edge-probe.sh; then
   echo "FAIL: production edge liveness lost the onbex fallback TLS probe" >&2
   fail=1
 fi
