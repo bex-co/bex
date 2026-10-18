@@ -24,7 +24,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/graphql-go/graphql"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -373,9 +372,6 @@ func TestWorkspaceLifecycleE2E(t *testing.T) {
 	aliceCtx := core.WithIdentity(ctx, core.Identity{Subject: "alice", Method: "session"})
 	if _, err := secretsSvc.SetEnvVar(aliceCtx, "worker", "FOO", secrets.EnvVarWrite{Value: "bar"}); err != nil {
 		t.Fatalf("seed secret: %v", err)
-	}
-	if err := st.CompleteEnvGroupCutover(ctx, time.Now()); err != nil {
-		t.Fatal(err)
 	}
 	group, err := (&envgroups.Service{Base: base, Store: secretsStore, Groups: st}).CreateEnvGroup(aliceCtx, envgroups.CreateEnvGroupRequest{
 		Name: "workspace-delete", EnvVars: []envgroups.CreateEnvVarInput{{Key: "K", Value: "v"}},

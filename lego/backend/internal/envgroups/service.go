@@ -36,7 +36,6 @@ import (
 	"slices"
 	"sort"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -88,10 +87,6 @@ type Service struct {
 	// another API instance may reclaim it from durable recovery evidence
 	// (w4/m98). Zero uses defaultEnvGroupOpLease.
 	OpLease time.Duration
-
-	// cutoverDone caches the one-shot cutover marker once seen (w8/m114;
-	// transitional, see groups).
-	cutoverDone atomic.Bool
 }
 
 // EnvVarView is a group env var ({key, value}); value is empty in list/get
@@ -320,13 +315,9 @@ type EnvironmentMembership struct {
 
 // ListEnvironmentMemberships returns one workspace's group-to-Environment
 // assignments. It shares ListEnvGroups' exact workspace binding and
-// authorization path. Until the store cutover has run there are no groups to
-// report, so an Environment lists none rather than failing (w8/m114).
+// authorization path.
 func (s *Service) ListEnvironmentMemberships(ctx context.Context, ownerID string) ([]EnvironmentMembership, error) {
 	groups, err := s.listGroups(ctx, ownerID)
-	if isCutoverPending(err) {
-		return []EnvironmentMembership{}, nil
-	}
 	if err != nil {
 		return nil, err
 	}
@@ -351,7 +342,7 @@ func (s *Service) listGroups(ctx context.Context, ownerID string) ([]store.EnvGr
 // workspaceGroups reads the acting workspace's rows; its callers have already
 // authorized. A caller with no resolvable workspace sees none.
 func (s *Service) workspaceGroups(ctx context.Context) ([]store.EnvGroup, error) {
-	if err := s.requireGroups(ctx); err != nil {
+	if err := s.requireGroups(); err != nil {
 		return nil, err
 	}
 	workspace, ok := s.Tenant(ctx)
@@ -415,7 +406,7 @@ func (s *Service) CreateEnvGroup(ctx context.Context, req CreateEnvGroupRequest)
 // a second public mutation.
 func (s *Service) createEnvGroupAuthorized(ctx context.Context, req CreateEnvGroupRequest) (EnvGroupView, error) {
 	req.EnvironmentID = id.EnvironmentStorageID(req.EnvironmentID)
-	if err := s.requireGroups(ctx); err != nil {
+	if err := s.requireGroups(); err != nil {
 		return EnvGroupView{}, err
 	}
 	name := strings.TrimSpace(req.Name)
@@ -1488,7 +1479,7 @@ func (s *Service) LinkEnvGroup(ctx context.Context, name, service string) error 
 // a name search never matches, and so never reuses or overwrites, another
 // workspace's same-named group. Its callers have already authorized.
 func (s *Service) findGroupByName(ctx context.Context, name string) (store.EnvGroup, bool, error) {
-	if err := s.requireGroups(ctx); err != nil {
+	if err := s.requireGroups(); err != nil {
 		return store.EnvGroup{}, false, err
 	}
 	workspace, ok := s.Tenant(ctx)
@@ -1545,7 +1536,7 @@ func (s *Service) groupOwner(gid string) core.ResourceOwner {
 // TestAuditCoversEveryWriteVerbExactlyOnce guards against).
 func (s *Service) fetchGroup(ctx context.Context, relation, gid string) (store.EnvGroup, error) {
 	if !id.WellFormed(gid) {
-		if err := s.requireGroups(ctx); err != nil {
+		if err := s.requireGroups(); err != nil {
 			return store.EnvGroup{}, err
 		}
 		return store.EnvGroup{}, core.ErrNotFound

@@ -287,9 +287,6 @@ func TestConcurrentRenamesLeaveOneCommittedName(t *testing.T) {
 		}
 	}
 	services := []*Service{newService(kv), newService(kv)}
-	for _, svc := range services {
-		svc.cutoverDone.Store(true)
-	}
 	start := make(chan struct{})
 	errs := make(chan error, 2)
 	names := []string{"alpha", "bravo"}

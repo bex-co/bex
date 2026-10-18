@@ -188,12 +188,6 @@ type Config struct {
 	WebhookSecret       string
 	GitHubWebhookSecret string
 
-	// EnvGroupCutover is `api env-group-cutover <mode>` (w8/m114, transitional):
-	// the one-shot move of environment-group metadata from OpenBao into the
-	// control-plane store. main runs it before any worker or listener starts,
-	// then exits.
-	EnvGroupCutover string
-
 	// Hosted agent sandboxes + sessions (ADR042/ADR047/ADR059/ADR062).
 	AgentModelProxyURL string
 	OpenSandboxURL     string
@@ -463,16 +457,6 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	cfg.WebhookSecret = getenv("BEX_WEBHOOK_SECRET")
 	cfg.GitHubWebhookSecret = getenv("BEX_GITHUB_WEBHOOK_SECRET")
 	p.err(validateWebhookReplayConfig(cfg.WebhookSecret, cfg.GitHubWebhookSecret, cpOn))
-
-	if len(args) > 1 && args[1] == "env-group-cutover" {
-		if len(args) != 3 || (args[2] != "dry-run" && args[2] != "apply" && args[2] != "prune") {
-			p.errorf("usage: api env-group-cutover dry-run|apply|prune")
-		} else if cfg.CPDBURI == "" || cfg.OpenBaoURL == "" {
-			p.errorf("env-group-cutover needs BEX_CP_DB_URI and BEX_OPENBAO_URL")
-		} else {
-			cfg.EnvGroupCutover = args[2]
-		}
-	}
 
 	// Agent-session snapshot store (ADR059 D3/D5): a partial coordinate set is
 	// fatal — a typo'd Secret key must not silently disable hibernation.

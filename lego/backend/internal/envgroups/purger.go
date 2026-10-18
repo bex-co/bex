@@ -42,7 +42,7 @@ func (p *WorkspacePurger) PurgeWorkspace(ctx context.Context, tenantID string) e
 	if p.Store == nil {
 		return nil // no value store: no group can exist
 	}
-	if err := p.requireGroups(ctx); err != nil {
+	if err := p.requireGroups(); err != nil {
 		return err // never report a purge that left the workspace's values behind
 	}
 	rows, err := p.Groups.ListEnvGroups(ctx, tenantID)
@@ -90,15 +90,12 @@ func (p *WorkspacePurger) PurgeWorkspace(ctx context.Context, tenantID string) e
 // (w5/m120). It is a step of a delete the caller was already authorized for,
 // like secrets.WorkspacePurger.PurgeApp, so it checks nothing again. A group
 // already gone, or another workspace's, is skipped; a group listing the
-// service without mounting it is pruned by its next patch, as is every link
-// while the store cutover is pending (w8/m114).
+// service without mounting it is pruned by its next patch.
 func (p *WorkspacePurger) UnlinkApp(ctx context.Context, a *appv1alpha1.App) error {
 	if p.Store == nil {
 		return nil
 	}
-	if err := p.requireGroups(ctx); isCutoverPending(err) {
-		return nil
-	} else if err != nil {
+	if err := p.requireGroups(); err != nil {
 		return err
 	}
 	service := core.AppPublicID(a)

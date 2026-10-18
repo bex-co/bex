@@ -215,9 +215,6 @@ func TestPGBlueprintInitialGroupDeployLifecycle(t *testing.T) {
 	scheme := fakeClient().Scheme()
 	cl := &initialReleaseClient{Client: fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&appv1alpha1.App{}).Build(), observed: map[string][]*appv1alpha1.App{}}
 	base := &core.Base{Client: cl, Namespace: "default", Workspace: fakeWorkspace{"initial-group-owner": workspace.ID}}
-	if err := st.CompleteEnvGroupCutover(ctx, time.Now()); err != nil {
-		t.Fatal(err)
-	}
 	groups := &envgroups.Service{Base: base, Store: initialGroupKV{newMemKV()}, Groups: st}
 	projector := &store.Reconciler{Store: st, Client: cl, DeployGateTimeout: time.Hour, BuildGateTimeout: time.Hour, PreDeployGateTimeout: time.Hour}
 	pendingObservations := 0

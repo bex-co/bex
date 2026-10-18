@@ -181,7 +181,7 @@ func (s *Service) ensureGroupOperableLocked(ctx context.Context, g store.EnvGrou
 // the row, recovering an expired operation, or touching either live map. A row
 // read before the lock can no longer authorize a stale writer or recoverer.
 func (s *Service) withGroupContent(ctx context.Context, gid string, fn func(context.Context, store.EnvGroup) error) error {
-	if err := s.requireGroups(ctx); err != nil {
+	if err := s.requireGroups(); err != nil {
 		return err
 	}
 	err := s.Groups.WithEnvGroupContentLock(ctx, gid, func(ctx context.Context) error {
