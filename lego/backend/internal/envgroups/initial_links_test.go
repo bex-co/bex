@@ -17,7 +17,6 @@ limitations under the License.
 package envgroups
 
 import (
-	"context"
 	"reflect"
 	"testing"
 
@@ -34,7 +33,7 @@ func TestInitialGroupsExistOnFirstAppWrite(t *testing.T) {
 				name += "/auto"
 			}
 			t.Run(name, func(t *testing.T) {
-				ctx := context.Background()
+				ctx := testCtx()
 				svc := newService(newFakeStore())
 				rec := &recordingDeploys{}
 				svc.Rollout = &rollout.Tracker{Store: rec}
@@ -62,9 +61,9 @@ func TestInitialGroupsExistOnFirstAppWrite(t *testing.T) {
 						t.Fatalf("first observable App lacks ordered full refs: %+v", app.Spec)
 					}
 					for _, gid := range ids {
-						m, err := svc.readMeta(ctx, gid)
-						if err != nil || !reflect.DeepEqual(m.links, []string{core.AppPublicID(app)}) {
-							t.Fatalf("membership not reserved before create: %+v err=%v", m, err)
+						row, ok := svc.fakeGroups().Row(gid)
+						if !ok || !reflect.DeepEqual(row.ServiceLinks, []string{core.AppPublicID(app)}) {
+							t.Fatalf("membership not reserved before create: %+v found=%v", row, ok)
 						}
 					}
 					created = true

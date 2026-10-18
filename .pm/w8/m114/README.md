@@ -1,6 +1,6 @@
 # w8 · m114 — Move environment-group metadata from OpenBao to the control-plane store
 
-**Worker:** worker8 **Goal:** OpenBao holds only environment-group secret values (the env and files maps). Every non-secret fact — identity, owning workspace, name uniqueness, environment membership, service links, timestamps, the revision lock and in-flight operation state — lives in Postgres under constraints and transactions. All legacy-tenant, locator, name-claim, tombstone-fence and lazy-migration code is deleted, and so is the one-shot migrator once production has cut over. **Status:** todo
+**Worker:** worker8 **Goal:** OpenBao holds only environment-group secret values (the env and files maps). Every non-secret fact — identity, owning workspace, name uniqueness, environment membership, service links, timestamps, the revision lock and in-flight operation state — lives in Postgres under constraints and transactions. All legacy-tenant, locator, name-claim, tombstone-fence and lazy-migration code is deleted, and so is the one-shot migrator once production has cut over. **Status:** in progress — t001–t006 done (design in [done/t001.md](done/t001.md); store, service rewrite and cutover migrator tested on real OpenBao + Postgres); next: ship, then t007 production cutover; production cutover authorized by the user 2026-10-18
 
 **Principle (user decision 2026-10-18):** the clean end state outranks compatibility. Bex-specific client behavior may break, and no dual-read or dual-write path ships in serving code. Two things are not negotiable: Render's wire contract, and customer data — every live group's values, name, workspace, environment, links and timestamps survive the cutover.
 
@@ -8,12 +8,12 @@
 
 | id   | title                                                                     | est | depends_on                 |
 | ---- | ------------------------------------------------------------------------- | --- | -------------------------- |
-| t001 | Design the end state and the cutover; rewrite ADR013's env-group sections | 45m | —                          |
-| t002 | Schema and store layer for groups, links and operation state              | 60m | w8/m114/t001               |
-| t003 | Serve metadata, names and links from the store                            | 90m | w8/m114/t002               |
-| t004 | Move the revision lock and operation records to the store                 | 60m | w8/m114/t003               |
-| t005 | Rewire consumers: environments, apps, Blueprints, purge                   | 60m | w8/m114/t003               |
-| t006 | One-shot cutover migrator (dry-run / apply / prune), rehearsed on dev-8   | 75m | w8/m114/t004, w8/m114/t005 |
+| t001 | Design the end state and the cutover; rewrite ADR013's env-group sections | 45m | — — **DONE** |
+| t002 | Schema and store layer for groups, links and operation state              | 60m | w8/m114/t001 — **DONE**               |
+| t003 | Serve metadata, names and links from the store                            | 90m | w8/m114/t002 — **DONE**               |
+| t004 | Move the revision lock and operation records to the store                 | 60m | w8/m114/t003 — **DONE**               |
+| t005 | Rewire consumers: environments, apps, Blueprints, purge                   | 60m | w8/m114/t003 — **DONE**               |
+| t006 | One-shot cutover migrator (dry-run / apply / prune), rehearsed on dev-8   | 75m | w8/m114/t004, w8/m114/t005 — **DONE** |
 | t007 | Production cutover in a user-authorized window                            | 30m | w8/m114/t006               |
 | t008 | Delete the compatibility code and the migrator                            | 60m | w8/m114/t007               |
 | t009 | Render parity: env-group surfaces and deliberate breaks                   | 30m | w8/m114/t008               |
@@ -26,8 +26,8 @@ Twelve tasks, 590m.
 ## Definition of done
 
 - **OpenBao end state (production, after prune):** every env-group path is a live group's `env` or `files` map under its workspace tenant, plus transient `op/<opID>/{old,new}-{env,files}` value maps only while a save is in flight. Zero `meta`, `revision`, `op` record, name-claim, locator or tombstone paths remain, and nothing remains under the legacy tenant's `env-groups/`. Postgres env-group row counts per workspace equal the dry-run's live-group counts.
-- **Reads:** listing env groups and computing environment membership make zero OpenBao calls (test-asserted with a counting `core.SecretKV`); reading one group's content reads only its value maps. Live: `GET /v1/env-groups?ownerId=tea-d98210cbbpdc73dcrkvg` < 1s; the pinned CLI's every-project `GET /v1/environments` < 2s; `BEX_WORKSPACE=tea-d98210cbbpdc73dcrkvg bex services -o json` exits 0 in < 10s, twice.
-- **Integrity by constraint:** two concurrent creates or renames to one name in a workspace yield exactly one success and one 409 `ENV_GROUP_NAME_EXISTS`; deleting a service removes its links, deleting an environment clears membership, and deleting a workspace removes its rows and its OpenBao env-group prefix. A deleted group cannot be resurrected under its id, with no tombstone.
+- **Reads:** listing env groups, reading one group's view and computing environment membership make zero OpenBao calls (test-asserted with a counting `core.SecretKV`); only reveals and saves read value maps. Live: `GET /v1/env-groups?ownerId=tea-d98210cbbpdc73dcrkvg` < 1s; the pinned CLI's every-project `GET /v1/environments` < 2s; `BEX_WORKSPACE=tea-d98210cbbpdc73dcrkvg bex services -o json` exits 0 in < 10s, twice.
+- **Integrity by constraint:** two concurrent creates or renames to one name in a workspace yield exactly one success and one 409 `ENV_GROUP_NAME_EXISTS`; deleting a service removes its links (`UnlinkApp`), deleting an environment clears membership (FK `ON DELETE SET NULL`), and deleting a workspace removes its rows and its OpenBao env-group prefix. A deleted group cannot be resurrected under its id, with no tombstone.
 - **Content saves keep their contract:** a stale `expectedRevision` answers 409; an interrupted save is restored or finalized by another instance; projections stay revision-ordered (ADR013 w5/m127). The existing save, clone and recovery behavior tests pass on the new store.
 - **Code end state:** none of these remain anywhere under `lego/`: `legacyCtx`, `isLocator`, `writeMetaLocator`, the legacy union in `listGroupIDs`, `scanGroups`, `plantDeletedMetaFence`, `mutateMetaCAS`, `envGroupNameClaimPath`, `AuditNameClaims`, `MigratePaths`, `needsLinkMigration` / `migrateLinks` / `linksByID`, `ENV_GROUP_NAME_RESERVED`, `BEX_ENV_GROUP_PATH_MIGRATION`, `BEX_ENV_GROUP_NAME_CLAIM_AUDIT`, env-group store-off branches, and the cutover migrator itself. `docs/runbooks/env-group-path-migration.md` is removed. `make lint` (deadcode included) and `cd lego/backend && go test ./...` pass.
 - **Wire contract:** Render-shaped REST/GraphQL/MCP env-group responses and the dashboard are unchanged apart from the deliberate breaks below, each recorded in ADR013 and ADR018.
@@ -35,7 +35,6 @@ Twelve tasks, 590m.
 ## Deliberate breaks
 
 - Env groups require the control-plane store; the store-off mode is gone.
-- Revision tokens issued before the cutover are rejected (new token prefix); clients re-read and retry.
 - `ENV_GROUP_NAME_RESERVED` (the abandoned-reservation 409 with `retryAfterSeconds`) is removed, since a unique index has no abandoned reservations. `ENV_GROUP_NAME_EXISTS` stays.
 - Env-group endpoints, or the whole API, are unavailable during the cutover window.
 - The startup modes `BEX_ENV_GROUP_PATH_MIGRATION` and `BEX_ENV_GROUP_NAME_CLAIM_AUDIT` and their runbook are removed.

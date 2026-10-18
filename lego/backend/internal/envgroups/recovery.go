@@ -21,24 +21,25 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
-	"fmt"
-	"strconv"
+	"maps"
+	"slices"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
-// Operation record phases for an interrupted content save or clone source lock
-// (w4/m98). Values are stored in OpenBao under env-groups/<gid>/op (non-secret)
-// with prior/proposed maps beside them so another API instance can recover.
+// Operation kinds and phases of an interrupted content save or clone source
+// lock (w4/m98). The operation is recorded on the group's row together with
+// its busy claim; the prior and proposed maps it needs to restore or finish
+// are kept in OpenBao beside the group's own maps, since they are values.
 const (
 	opKindPatch = "patch"
 	opKindClone = "clone"
 
-	opPhaseAdmitted     = "admitted"      // recovery written; busy claimed; no live map mutation yet
+	opPhaseAdmitted     = "admitted"      // busy claimed; no live map mutation yet
 	opPhaseEnvWritten   = "env_written"   // live env (+ projection) may be new
 	opPhaseFilesWritten = "files_written" // live files (+ projection) may be new; treat as commit
-	opPhaseCommitted    = "committed"     // maps done; revision release still pending
 )
 
 // Default operation lease. A different instance may reclaim only after this
@@ -46,69 +47,15 @@ const (
 // restoring or finalizing from durable evidence is not recovery.
 const defaultEnvGroupOpLease = 2 * time.Minute
 
-func opRecordPath(gid string) string { return "env-groups/" + gid + "/op" }
-func opOldEnvPath(gid, opID string) string {
-	return "env-groups/" + gid + "/op/" + opID + "/old-env"
-}
-func opOldFilesPath(gid, opID string) string {
-	return "env-groups/" + gid + "/op/" + opID + "/old-files"
-}
-func opNewEnvPath(gid, opID string) string {
-	return "env-groups/" + gid + "/op/" + opID + "/new-env"
-}
-func opNewFilesPath(gid, opID string) string {
-	return "env-groups/" + gid + "/op/" + opID + "/new-files"
-}
+func opDir(gid string) string { return "env-groups/" + gid + "/op" }
 
-type groupOpRecord struct {
-	id           string
-	kind         string
-	phase        string
-	generation   uint64
-	leaseUntil   time.Time
-	envChanged   bool
-	filesChanged bool
-}
+func opOldEnvPath(gid, opID string) string   { return opDir(gid) + "/" + opID + "/old-env" }
+func opOldFilesPath(gid, opID string) string { return opDir(gid) + "/" + opID + "/old-files" }
+func opNewEnvPath(gid, opID string) string   { return opDir(gid) + "/" + opID + "/new-env" }
+func opNewFilesPath(gid, opID string) string { return opDir(gid) + "/" + opID + "/new-files" }
 
-func encodeOpRecord(op groupOpRecord) map[string]string {
-	data := map[string]string{
-		"id":         op.id,
-		"kind":       op.kind,
-		"phase":      op.phase,
-		"generation": strconv.FormatUint(op.generation, 10),
-		"leaseUntil": op.leaseUntil.UTC().Format(time.RFC3339Nano),
-	}
-	if op.envChanged {
-		data["envChanged"] = "1"
-	}
-	if op.filesChanged {
-		data["filesChanged"] = "1"
-	}
-	return data
-}
-
-func decodeOpRecord(raw map[string]string) (groupOpRecord, error) {
-	if raw["id"] == "" || raw["kind"] == "" || raw["phase"] == "" {
-		return groupOpRecord{}, fmt.Errorf("incomplete operation record")
-	}
-	generation, _ := strconv.ParseUint(raw["generation"], 10, 64)
-	leaseUntil, err := time.Parse(time.RFC3339Nano, raw["leaseUntil"])
-	if err != nil {
-		leaseUntil, err = time.Parse(time.RFC3339, raw["leaseUntil"])
-		if err != nil {
-			return groupOpRecord{}, fmt.Errorf("invalid leaseUntil")
-		}
-	}
-	return groupOpRecord{
-		id:           raw["id"],
-		kind:         raw["kind"],
-		phase:        raw["phase"],
-		generation:   generation,
-		leaseUntil:   leaseUntil,
-		envChanged:   raw["envChanged"] == "1",
-		filesChanged: raw["filesChanged"] == "1",
-	}, nil
-}
+// groupContents is a group's two maps.
+type groupContents struct{ env, files map[string]string }
 
 func newGroupOpID() (string, error) {
 	var b [16]byte
@@ -125,250 +72,183 @@ func (s *Service) opLease() time.Duration {
 	return defaultEnvGroupOpLease
 }
 
-func (s *Service) writeOpRecord(ctx context.Context, workspace, gid string, op groupOpRecord) error {
-	return s.putGroupMap(ctx, workspace, opRecordPath(gid), encodeOpRecord(op))
-}
-
-func (s *Service) readOpRecord(ctx context.Context, workspace, gid string) (groupOpRecord, bool, error) {
-	raw, err := s.getGroupMap(ctx, workspace, opRecordPath(gid))
-	if err != nil {
-		return groupOpRecord{}, false, err
-	}
-	if len(raw) == 0 {
-		return groupOpRecord{}, false, nil
-	}
-	op, err := decodeOpRecord(raw)
-	if err != nil {
-		return groupOpRecord{}, false, err
-	}
-	return op, true, nil
-}
-
-func (s *Service) clearOpArtifacts(ctx context.Context, workspace, gid, opID string) error {
+// clearOpMaps removes one operation's recovery maps.
+func (s *Service) clearOpMaps(ctx context.Context, workspace, gid, opID string) error {
 	var errs []error
-	if opID != "" {
-		for _, path := range []string{
-			opOldEnvPath(gid, opID), opOldFilesPath(gid, opID), opNewEnvPath(gid, opID), opNewFilesPath(gid, opID),
-		} {
-			errs = append(errs, s.deleteGroupPath(ctx, workspace, path))
-		}
-	}
-	op, ok, err := s.readOpRecord(ctx, workspace, gid)
-	if err != nil {
-		errs = append(errs, err)
-	} else if ok && (opID == "" || op.id == opID) {
-		errs = append(errs, s.deleteGroupPath(ctx, workspace, opRecordPath(gid)))
+	for _, path := range []string{
+		opOldEnvPath(gid, opID), opOldFilesPath(gid, opID), opNewEnvPath(gid, opID), opNewFilesPath(gid, opID),
+	} {
+		errs = append(errs, s.deleteGroupPath(ctx, workspace, path))
 	}
 	return errors.Join(errs...)
 }
 
-// preparePatchOperation persists recovery evidence before the busy claim so a
-// crash during later writes has enough state for another instance to restore or
-// finalize. Returns the operation id embedded in the revision claim.
-func (s *Service) preparePatchOperation(ctx context.Context, workspace, gid string, generation uint64, oldEnv, oldFiles, newEnv, newFiles map[string]string, envChanged, filesChanged bool) (string, error) {
+// preparePatchOperation persists, before the busy claim, the prior and
+// proposed map of each side the save changes, so a crash during the later
+// writes leaves another instance enough to restore or finish. Returns the
+// operation id the claim records.
+func (s *Service) preparePatchOperation(ctx context.Context, op store.EnvGroupOp, workspace, gid string, prior, next groupContents) (string, error) {
 	opID, err := newGroupOpID()
 	if err != nil {
 		return "", err
 	}
-	_ = generation
-	_ = envChanged
-	_ = filesChanged
-	if err := s.putGroupMap(ctx, workspace, opOldEnvPath(gid, opID), oldEnv); err != nil {
-		return "", err
+	writes := map[string]map[string]string{}
+	if op.EnvChanged {
+		writes[opOldEnvPath(gid, opID)], writes[opNewEnvPath(gid, opID)] = prior.env, next.env
 	}
-	if err := s.putGroupMap(ctx, workspace, opOldFilesPath(gid, opID), oldFiles); err != nil {
-		_ = s.clearOpArtifacts(ctx, workspace, gid, opID)
-		return "", err
+	if op.FilesChanged {
+		writes[opOldFilesPath(gid, opID)], writes[opNewFilesPath(gid, opID)] = prior.files, next.files
 	}
-	if err := s.putGroupMap(ctx, workspace, opNewEnvPath(gid, opID), newEnv); err != nil {
-		_ = s.clearOpArtifacts(ctx, workspace, gid, opID)
-		return "", err
+	for path, data := range writes {
+		if err := s.putGroupMap(ctx, workspace, path, data); err != nil {
+			_ = s.clearOpMaps(context.WithoutCancel(ctx), workspace, gid, opID)
+			return "", err
+		}
 	}
-	if err := s.putGroupMap(ctx, workspace, opNewFilesPath(gid, opID), newFiles); err != nil {
-		_ = s.clearOpArtifacts(ctx, workspace, gid, opID)
-		return "", err
-	}
-	// Defer the shared op record until after the busy claim wins so concurrent
-	// prepares cannot overwrite each other's ownership pointer.
 	return opID, nil
 }
 
-// commitOpRecord publishes the shared operation pointer after the busy claim
-// succeeds. Callers that lose the claim must clear only their opID-scoped paths.
-func (s *Service) commitOpRecord(ctx context.Context, workspace, gid string, op groupOpRecord) error {
-	return s.writeOpRecord(ctx, workspace, gid, op)
-}
-
-func (s *Service) advanceOpPhase(ctx context.Context, workspace, gid, opID, phase string) error {
-	op, ok, err := s.readOpRecord(ctx, workspace, gid)
-	if err != nil {
-		return err
-	}
-	if !ok || op.id != opID {
-		return envGroupMetadataConflict()
-	}
-	op.phase = phase
-	op.leaseUntil = s.Now().UTC().Add(s.opLease())
-	return s.writeOpRecord(ctx, workspace, gid, op)
-}
-
-func (s *Service) prepareCloneOperation(ctx context.Context, workspace, gid string, generation uint64) (string, error) {
-	opID, err := newGroupOpID()
-	if err != nil {
-		return "", err
-	}
-	_ = workspace
-	_ = gid
-	_ = generation
-	return opID, nil
-}
-
-func revisionClaimData(state string, generation uint64, opID string) map[string]string {
-	data := map[string]string{
-		"state": state, "generation": strconv.FormatUint(generation, 10),
-	}
-	if opID != "" {
-		data["op"] = opID
-	}
-	return data
-}
-
-// ensureGroupOperable recovers an expired or orphaned busy/repair_required
-// revision when durable evidence allows, then reports whether the group may
-// accept a new writer. Active leases are left alone.
-func (s *Service) ensureGroupOperable(ctx context.Context, workspace, gid string) error {
-	versioned, ok := s.Store.(core.VersionedSecretKV)
-	if !ok {
-		return core.ErrSecretsUnavailable
-	}
-	snapshot, err := s.getRevisionSnapshot(ctx, versioned, workspace, gid)
-	if err != nil {
-		return core.ErrSecretsUnavailable
-	}
-	state := snapshot.Data["state"]
-	if state == "" || state == "idle" {
+// contentErr maps a content claim, advance or release error: a lost race is
+// ENV_GROUP_REVISION_CONFLICT, a missing group core.ErrNotFound, and anything
+// else fallback.
+func contentErr(err, fallback error) error {
+	switch {
+	case err == nil:
 		return nil
+	case errors.Is(err, store.ErrEnvGroupChanged):
+		return envGroupRevisionConflict()
+	case errors.Is(err, store.ErrNotFound):
+		return core.ErrNotFound
 	}
-	op, hasOp, err := s.readOpRecord(ctx, workspace, gid)
+	return fallback
+}
+
+// claimContent marks the group busy for one operation at the content version
+// the caller read.
+func (s *Service) claimContent(ctx context.Context, g store.EnvGroup, op store.EnvGroupOp) (int64, error) {
+	op.Phase, op.LeaseUntil = opPhaseAdmitted, s.nowTime().Add(s.opLease())
+	version, err := s.Groups.ClaimEnvGroupContent(ctx, g.ID, g.Content.Version, op)
+	return version, contentErr(err, core.ErrSecretsUnavailable)
+}
+
+func (s *Service) advanceOpPhase(ctx context.Context, gid, opID, phase string) error {
+	err := s.Groups.AdvanceEnvGroupOp(ctx, gid, opID, phase, s.nowTime().Add(s.opLease()))
+	return contentErr(err, core.ErrSecretsUnavailable)
+}
+
+// releaseContent ends the claim held at claimVersion, even for a caller that
+// has gone away.
+func (s *Service) releaseContent(ctx context.Context, gid string, claimVersion int64, rel store.EnvGroupRelease) error {
+	return s.Groups.ReleaseEnvGroupContent(context.WithoutCancel(ctx), gid, claimVersion, rel)
+}
+
+// commit is the release of a save that changed content to contents.
+func (s *Service) commit(contents groupContents) store.EnvGroupRelease {
+	return store.EnvGroupRelease{Commit: &store.EnvGroupCommit{
+		EnvKeys: slices.Sorted(maps.Keys(contents.env)), FileNames: slices.Sorted(maps.Keys(contents.files)),
+		UpdatedAt: s.nowTime(),
+	}}
+}
+
+// operableGroup returns a fresh idle row for a writer: g itself when idle,
+// otherwise after offering it to recovery. A group still held, or stranded,
+// answers its conflict.
+func (s *Service) operableGroup(ctx context.Context, g store.EnvGroup) (store.EnvGroup, error) {
+	if g.Content.State == store.EnvGroupIdle {
+		return g, nil
+	}
+	if err := s.ensureGroupOperable(ctx, g); err != nil {
+		return store.EnvGroup{}, err
+	}
+	fresh, err := s.readGroup(ctx, g.ID)
 	if err != nil {
-		return err
+		return store.EnvGroup{}, err
 	}
-	if state == "busy" && hasOp && s.Now().UTC().Before(op.leaseUntil) {
-		return envGroupRevisionConflict()
+	switch fresh.Content.State {
+	case store.EnvGroupIdle:
+		return fresh, nil
+	case store.EnvGroupRepairRequired:
+		return store.EnvGroup{}, envGroupRestorationFailed()
 	}
-	if !hasOp {
-		// Legacy busy/repair without recovery evidence — fail honestly.
-		if state == "repair_required" {
-			return envGroupRestorationFailed()
-		}
-		return envGroupRevisionConflict()
-	}
-	return s.recoverGroupOperation(ctx, workspace, gid, versioned, snapshot, op)
+	return store.EnvGroup{}, envGroupRevisionConflict() // another save claimed it meanwhile
 }
 
-func (s *Service) recoverGroupOperation(ctx context.Context, workspace, gid string, versioned core.VersionedSecretKV, snapshot core.SecretKVSnapshot, op groupOpRecord) error {
-	switch op.kind {
-	case opKindClone:
-		return s.recoverCloneOperation(ctx, workspace, gid, versioned, snapshot, op)
-	case opKindPatch:
-		return s.recoverPatchOperation(ctx, workspace, gid, versioned, snapshot, op)
-	default:
+// ensureGroupOperable recovers an expired busy or a stranded repair_required
+// group when its recorded operation allows, then reports whether the group may
+// accept a new writer. An active lease is left alone.
+func (s *Service) ensureGroupOperable(ctx context.Context, g store.EnvGroup) error {
+	op := g.Content.Op
+	switch {
+	case g.Content.State == store.EnvGroupIdle:
+		return nil
+	case op == nil:
+		// repair_required without recovery evidence — fail honestly.
 		return envGroupRestorationFailed()
+	case g.Content.State == store.EnvGroupBusy && s.nowTime().Before(op.LeaseUntil):
+		return envGroupRevisionConflict()
+	case op.Kind == opKindClone:
+		// Clone never mutates source contents — release the source lock.
+		return s.finishRecovery(ctx, g, store.EnvGroupRelease{})
+	case op.Kind == opKindPatch:
+		return s.recoverPatchOperation(ctx, g)
 	}
+	return envGroupRestorationFailed()
 }
 
-func (s *Service) recoverCloneOperation(ctx context.Context, workspace, gid string, versioned core.VersionedSecretKV, snapshot core.SecretKVSnapshot, op groupOpRecord) error {
-	// Clone never mutates source contents — release the source lock and clear
-	// the operation record.
-	if _, err := versioned.PutCAS(groupCtx(ctx, workspace), revisionPath(gid), revisionClaimData("idle", op.generation, ""), snapshot.Version); err != nil {
-		if errors.Is(err, core.ErrConflict) {
-			return envGroupRevisionConflict()
-		}
-		return envGroupRestorationFailed()
-	}
-	_ = s.clearOpArtifacts(ctx, workspace, gid, op.id)
-	return nil
-}
-
-func (s *Service) recoverPatchOperation(ctx context.Context, workspace, gid string, versioned core.VersionedSecretKV, snapshot core.SecretKVSnapshot, op groupOpRecord) error {
-	switch op.phase {
+// recoverPatchOperation restores or finishes an interrupted save from the
+// phase it reached.
+func (s *Service) recoverPatchOperation(ctx context.Context, g store.EnvGroup) error {
+	op, workspace, gid := g.Content.Op, g.TenantID, g.ID
+	switch op.Phase {
 	case opPhaseAdmitted:
 		// Busy claimed, no live map mutation yet — drop the claim.
-		if _, err := versioned.PutCAS(groupCtx(ctx, workspace), revisionPath(gid), revisionClaimData("idle", op.generation, ""), snapshot.Version); err != nil {
-			if errors.Is(err, core.ErrConflict) {
-				return envGroupRevisionConflict()
-			}
-			return envGroupRestorationFailed()
-		}
-		_ = s.clearOpArtifacts(ctx, workspace, gid, op.id)
-		return nil
+		return s.finishRecovery(ctx, g, store.EnvGroupRelease{})
 	case opPhaseEnvWritten:
 		// Env may be new while files are still old — restore prior env.
-		if op.envChanged {
-			oldEnv, err := s.getGroupMap(ctx, workspace, opOldEnvPath(gid, op.id))
-			if err != nil {
-				return envGroupRestorationFailed()
-			}
-			if err := s.storeMap(ctx, workspace, envPath(gid), oldEnv); err != nil {
-				return envGroupRestorationFailed()
-			}
-			if err := s.upsertSecret(ctx, workspace, envSecretName(gid), oldEnv); err != nil {
+		if op.EnvChanged {
+			prior, err := s.getGroupMap(ctx, workspace, opOldEnvPath(gid, op.ID))
+			if err != nil || s.writeSlot(ctx, workspace, gid, envSlot, prior) != nil {
 				return envGroupRestorationFailed()
 			}
 		}
-		if _, err := versioned.PutCAS(groupCtx(ctx, workspace), revisionPath(gid), revisionClaimData("idle", op.generation, ""), snapshot.Version); err != nil {
-			if errors.Is(err, core.ErrConflict) {
-				return envGroupRevisionConflict()
+		return s.finishRecovery(ctx, g, store.EnvGroupRelease{})
+	case opPhaseFilesWritten:
+		// Maps reflect the acknowledged new configuration — finalize. A side
+		// the save left alone keeps its committed names.
+		if !op.EnvChanged && !op.FilesChanged {
+			return s.finishRecovery(ctx, g, store.EnvGroupRelease{})
+		}
+		release := s.commit(groupContents{})
+		release.Commit.EnvKeys, release.Commit.FileNames = g.EnvKeys, g.FileNames
+		for _, side := range []struct {
+			changed bool
+			slot    contentSlot
+			path    string
+			names   *[]string
+		}{
+			{op.EnvChanged, envSlot, opNewEnvPath(gid, op.ID), &release.Commit.EnvKeys},
+			{op.FilesChanged, filesSlot, opNewFilesPath(gid, op.ID), &release.Commit.FileNames},
+		} {
+			if !side.changed {
+				continue
 			}
-			return envGroupRestorationFailed()
-		}
-		_ = s.clearOpArtifacts(ctx, workspace, gid, op.id)
-		return nil
-	case opPhaseFilesWritten, opPhaseCommitted:
-		// Maps reflect the acknowledged new configuration — finalize.
-		newGeneration := op.generation
-		if op.envChanged || op.filesChanged {
-			newGeneration++
-		}
-		if op.envChanged {
-			newEnv, err := s.getGroupMap(ctx, workspace, opNewEnvPath(gid, op.id))
-			if err != nil {
+			next, err := s.getGroupMap(ctx, workspace, side.path)
+			if err != nil || s.writeSlot(ctx, workspace, gid, side.slot, next) != nil {
 				return envGroupRestorationFailed()
 			}
-			if err := s.storeMap(ctx, workspace, envPath(gid), newEnv); err != nil {
-				return envGroupRestorationFailed()
-			}
-			if err := s.upsertSecret(ctx, workspace, envSecretName(gid), newEnv); err != nil {
-				return envGroupRestorationFailed()
-			}
+			*side.names = slices.Sorted(maps.Keys(next))
 		}
-		if op.filesChanged {
-			newFiles, err := s.getGroupMap(ctx, workspace, opNewFilesPath(gid, op.id))
-			if err != nil {
-				return envGroupRestorationFailed()
-			}
-			if err := s.storeMap(ctx, workspace, filesPath(gid), newFiles); err != nil {
-				return envGroupRestorationFailed()
-			}
-			if err := s.upsertSecret(ctx, workspace, filesSecretName(gid), newFiles); err != nil {
-				return envGroupRestorationFailed()
-			}
-		}
-		if _, err := s.mutateMetaCAS(ctx, gid, workspace, func(cur meta) (meta, error) {
-			cur.updatedAt = s.now()
-			return cur, nil
-		}); err != nil && !errors.Is(err, core.ErrNotFound) {
-			return envGroupRestorationFailed()
-		}
-		if _, err := versioned.PutCAS(groupCtx(ctx, workspace), revisionPath(gid), revisionClaimData("idle", newGeneration, ""), snapshot.Version); err != nil {
-			if errors.Is(err, core.ErrConflict) {
-				return envGroupRevisionConflict()
-			}
-			return envGroupRestorationFailed()
-		}
-		_ = s.clearOpArtifacts(ctx, workspace, gid, op.id)
-		return nil
-	default:
-		return envGroupRestorationFailed()
+		return s.finishRecovery(ctx, g, release)
 	}
+	return envGroupRestorationFailed()
+}
+
+// finishRecovery releases a recovered group at the version the recoverer read,
+// then removes the operation's recovery maps.
+func (s *Service) finishRecovery(ctx context.Context, g store.EnvGroup, rel store.EnvGroupRelease) error {
+	if err := contentErr(s.releaseContent(ctx, g.ID, g.Content.Version, rel), envGroupRestorationFailed()); err != nil {
+		return err
+	}
+	_ = s.clearOpMaps(ctx, g.TenantID, g.ID, g.Content.Op.ID)
+	return nil
 }

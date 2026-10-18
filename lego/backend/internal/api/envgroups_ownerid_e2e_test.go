@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -93,9 +94,12 @@ func TestEnvGroupReadSideOwnerIDTargetingE2E(t *testing.T) {
 		Authz:     checker,
 		Workspace: tenantSvc,
 	}
+	if err := st.CompleteEnvGroupCutover(ctx, time.Now()); err != nil {
+		t.Fatal(err)
+	}
 	srv := NewServer(base, Deps{
 		Store: st, WorkspaceStore: st, WorkspaceGranter: granter,
-		Secrets: newMemSecretStore(),
+		Secrets: newMemSecretStore(), EnvGroupsStore: st,
 	})
 	mux := srv.restHandler()
 	call := func(subject, method, path, body string) *http.Response {

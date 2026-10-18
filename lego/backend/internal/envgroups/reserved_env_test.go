@@ -17,7 +17,6 @@ limitations under the License.
 package envgroups
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"strings"
@@ -44,7 +43,7 @@ func namesTheReservedKey(body string) bool {
 // maps are untouched afterwards. Mirrors the shape of
 // TestEveryEnvGroupMapWriterRefusesAnOverQuotaWrite.
 func TestEveryEnvGroupWriterRefusesAReservedEnvKey(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 
 	writers := map[string]func(*Service, EnvGroupView) error{
 		"CreateEnvGroup": func(s *Service, _ EnvGroupView) error {
@@ -100,7 +99,7 @@ func TestEveryEnvGroupWriterRefusesAReservedEnvKey(t *testing.T) {
 
 func envVarKeysOf(t *testing.T, svc *Service, gid string) []string {
 	t.Helper()
-	group, err := svc.GetEnvGroup(context.Background(), gid)
+	group, err := svc.GetEnvGroup(testCtx(), gid)
 	if err != nil {
 		t.Fatalf("get group: %v", err)
 	}
@@ -113,7 +112,7 @@ func envVarKeysOf(t *testing.T, svc *Service, gid string) []string {
 
 // The same sentence on all three machine surfaces (t004's env-group rows).
 func TestEnvGroupReservedRefusalIsIdenticalAcrossAdapters(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 
 	fixture := func(t *testing.T) (*Service, EnvGroupView) {
 		t.Helper()

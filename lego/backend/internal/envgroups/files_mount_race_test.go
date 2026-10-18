@@ -57,7 +57,7 @@ func (c *appPatchRacer) Patch(ctx context.Context, obj client.Object, patch clie
 func TestALinkThatLosesTheAppRaceKeepsTheServicesFilesMount(t *testing.T) {
 	for name, app := range map[string]*appv1alpha1.App{"rolling": sampleApp("web"), "auto-deploy off": repoApp("web", false)} {
 		t.Run(name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := testCtx()
 			svc := newService(newFakeStore(), app)
 			group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
 			if err != nil {

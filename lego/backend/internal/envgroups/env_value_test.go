@@ -17,7 +17,6 @@ limitations under the License.
 package envgroups
 
 import (
-	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -28,7 +27,7 @@ import (
 // w8/m62: every env-group writer refuses a newly supplied NUL value, which no
 // linked service's process environment could carry, and stores nothing.
 func TestEveryEnvGroupWriterRefusesANULValue(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 	const value = "q\x00a"
 	writers := map[string]func(*Service, EnvGroupView) error{
 		"CreateEnvGroup": func(s *Service, _ EnvGroupView) error {
