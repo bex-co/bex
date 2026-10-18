@@ -32,6 +32,9 @@ EXPECTED_OWNERS = {
 }
 IMAGE = "quay.io/openbao/openbao:2.5.5@sha256:6150c4a6b62067db6141c8da7a6a6b5763f4f47c315343d0c848b40fecdfd452"
 JOB = "openbao-backup-m114-072612"
+# The network-none container, not its resource limits, keeps restored data in.
+ISOLATION = ["--network", "none", "--user", "0:0", "--cap-drop", "ALL"]
+LIMITS = ["--memory", "512m", "--cpus", "1", "--pids-limit", "128"]
 DEADLINE = time.monotonic() + 12 * 60
 # Never forward original restore credentials to kubectl, docker exec or child tools.
 TOOL_ENV = {k: v for k, v in os.environ.items() if not re.search(r"TOKEN|SECRET|PASSWORD|KEY|^AGE_|^AWS_|^TF_STATE_", k)}
@@ -66,7 +69,7 @@ def record(first_only=False, **fields):
 
 STAGES = frozenset({
     "credentials", "resolve", "validate-uri", "head-object", "download", "ciphertext", "decrypt", "gunzip", "verify",
-    "sql-before", "provenance", "restore-pull", "restore-create", "restore-init", "restore-local-unseal",
+    "sql-before", "provenance", "restore-pull", "restore-create", "restore-start", "restore-fallback-create", "restore-fallback-start", "restore-init", "restore-local-unseal",
     "restore-snapshot", "restore-restart", "restore-unseal", "restore-isolation", "source-scan", "apps",
     "live-connect", "compare", "sql-after",
 })
@@ -120,17 +123,21 @@ def cleaning():
             raise AuditTerminated()
 
 
-def remove_container(name):
+def remove_container(name, final=True):
     # Inspect must explicitly report absence. A daemon/transport failure is not
     # evidence that the secret-bearing disposable layer has been destroyed.
     try:
         subprocess.run(["docker", "rm", "-f", "-v", name], capture_output=True, timeout=25, env=TOOL_ENV)
     except subprocess.TimeoutExpired:
         pass
-    inspected = subprocess.run(["docker", "container", "inspect", name], capture_output=True, timeout=8, env=TOOL_ENV)
-    error = inspected.stderr.lower()
-    removed = inspected.returncode != 0 and (b"no such container" in error or b"no such object" in error)
-    record(localContainerRemoved=removed)
+    try:
+        inspected = subprocess.run(["docker", "container", "inspect", name], capture_output=True, timeout=8, env=TOOL_ENV)
+        error = inspected.stderr.lower()
+        removed = inspected.returncode != 0 and (b"no such container" in error or b"no such object" in error)
+    except subprocess.TimeoutExpired:
+        removed = False
+    if final:  # only the last removal speaks for the secret-bearing container
+        record(localContainerRemoved=removed)
     if not removed:
         raise RuntimeError("local container removal unverified")
 
@@ -293,12 +300,30 @@ class LocalBao:
 ''')
         stage("restore-pull")
         run(["docker", "pull", IMAGE], timeout=180)
-        stage("restore-create")
+        if self.start_server(config, LIMITS, "restore", check=False):
+            host = json.loads(run(["docker", "inspect", self.name]).stdout)[0]["HostConfig"]
+            # Docker drops an unsupported memory or pids limit with only a warning.
+            record(resourceLimits="applied" if host["Memory"] and host["NanoCpus"] and host["PidsLimit"] else "partial")
+            return
+        # Docker may accept limits it cannot enforce at create and refuse them at
+        # start; either way the restore runs without them.
+        remove_container(self.name, final=False)
+        self.start_server(config, [], "restore-fallback", check=True)
+        record(resourceLimits="unsupported")
+
+    def start_server(self, config, limits, step, check):
         # All state stays in this disposable writable layer and survives only
         # this container's restart. There are no host mounts or published ports.
-        run(["docker", "create", "--name", self.name, "--label", "bex.co/m114-preservation=" + os.environ.get("GITHUB_RUN_ID", "local"), "--network", "none", "--user", "0:0", "--cap-drop", "ALL", "--memory", "512m", "--cpus", "1", "--pids-limit", "128", "-e", "BAO_ADDR=http://127.0.0.1:8200", "--entrypoint", "sh", IMAGE, "-ec", "umask 077; mkdir -p /tmp/m114-data; exec bao server -config=/tmp/m114-config.hcl"])
+        label = "bex.co/m114-preservation=" + os.environ.get("GITHUB_RUN_ID", "local")
+        stage(step + "-create")
+        created = run(["docker", "create", "--name", self.name, "--label", label, *ISOLATION, *limits,
+                       "-e", "BAO_ADDR=http://127.0.0.1:8200", "--entrypoint", "sh", IMAGE,
+                       "-ec", "umask 077; mkdir -p /tmp/m114-data; exec bao server -config=/tmp/m114-config.hcl"], check=check)
+        if created.returncode:
+            return False
         self.copy_file(config, "m114-config.hcl")
-        run(["docker", "start", self.name])
+        stage(step + "-start")
+        return run(["docker", "start", self.name], check=check).returncode == 0
 
     def start_restore(self):
         self.create_server()
@@ -484,6 +509,30 @@ def verify(scratch, report_path):
         bao.close()
 
 
+def probe_limits():
+    """Prints which limits this runner's Docker enforces. Runs before any
+    credential is in scope and writes nothing to the report."""
+    def docker(*args, timeout=30):
+        try:
+            result = subprocess.run(["docker", *args], capture_output=True, timeout=timeout, env=TOOL_ENV)
+        except subprocess.TimeoutExpired:
+            return False, "timeout"
+        lines = (result.stderr or result.stdout).decode(errors="replace").strip().splitlines()
+        return result.returncode == 0, lines[-1] if lines else ""
+    print(docker("info", "--format", "cgroup={{.CgroupDriver}}/{{.CgroupVersion}} memory={{.MemoryLimit}} cpuCfs={{.CPUCfsQuota}} pids={{.PidsLimit}} security={{json .SecurityOptions}}")[1])
+    docker("pull", "-q", IMAGE, timeout=120)
+    name = "bex-m114-probe-%s-%s" % (os.environ.get("GITHUB_RUN_ID", "local"), os.environ.get("GITHUB_RUN_ATTEMPT", "1"))
+    for limit in [[], *(LIMITS[i:i + 2] for i in range(0, len(LIMITS), 2))]:
+        ok, detail = docker("create", "--pull", "never", "--name", name, *ISOLATION, *limit, "--entrypoint", "true", IMAGE)
+        warning = detail if ok and "WARNING" in detail else ""
+        if ok:
+            ok, detail = docker("inspect", "--format", "memory={{.HostConfig.Memory}} nanoCpus={{.HostConfig.NanoCpus}} pids={{.HostConfig.PidsLimit}}", name)
+            applied = detail
+            ok, detail = docker("start", "-a", name) if ok else (ok, detail)
+        print("limit [%s]: %s" % (" ".join(limit) or "none", ("ok " + applied + (" " + warning if warning else "")) if ok else detail))
+        docker("rm", "-f", name)
+
+
 def main():
     os.umask(0o077)
     if sys.argv[1] == "--validate-uri":
@@ -502,6 +551,9 @@ def main():
         return
     if sys.argv[1] == "--stage":
         stage(sys.argv[2])
+        return
+    if sys.argv[1] == "--probe-limits":
+        probe_limits()
         return
     if sys.argv[1] == "--cleanup-container":
         with cleaning():
