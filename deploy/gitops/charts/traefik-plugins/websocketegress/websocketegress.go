@@ -17,7 +17,10 @@
 // Traefik's router counter while WebSocket frames get their own exact-App
 // counters: server→client bytes (the billable egress meter) and, separately,
 // client→server bytes, which exist so the operator's idle check can see a
-// connection the client alone is feeding (w1/m161, from w1/102).
+// connection the client alone is feeding (w1/m161, from w1/102). It also counts
+// every request it receives, on arrival: Traefik counts a request only once
+// its response ends, so a long first response — a stream — was no activity at
+// all until it finished, and a free service slept under it (w4/m164).
 package bex_websocket_egress
 
 import (
@@ -57,6 +60,9 @@ var processState = struct {
 	// ingress mirrors counters' keys with client→server bytes (w1/m161). Kept in
 	// its own map so the egress counter — which bills — keeps its exact meaning.
 	ingress sync.Map // string app id -> *atomic.Uint64
+	// starts mirrors counters' keys with inbound requests counted on arrival,
+	// before the response, for the operator's idle check (w4/m164).
+	starts sync.Map // string app id -> *atomic.Uint64
 	// handshakeOverflow counts connections whose 101 response header block
 	// exceeded maxHandshakeBytes (codex-security 2026-08 F4). It is a
 	// monotonic per-connection signal: an oversized header is one tenant's
@@ -70,6 +76,7 @@ type middleware struct {
 	appID   string
 	counter *atomic.Uint64
 	ingress *atomic.Uint64
+	starts  *atomic.Uint64
 }
 
 func New(_ context.Context, next http.Handler, config *Config, _ string) (http.Handler, error) {
@@ -97,13 +104,15 @@ func New(_ context.Context, next http.Handler, config *Config, _ string) (http.H
 		processState.count.Add(-1)
 		return nil, fmt.Errorf("websocket egress App counter limit reached")
 	}
-	// Allocated only past the cap check above, so the App cap bounds both maps.
+	// Allocated only past the cap check above, so the App cap bounds every map.
 	inbound, _ := processState.ingress.LoadOrStore(config.AppID, &atomic.Uint64{})
+	starts, _ := processState.starts.LoadOrStore(config.AppID, &atomic.Uint64{})
 	return &middleware{next: next, appID: config.AppID,
-		counter: value.(*atomic.Uint64), ingress: inbound.(*atomic.Uint64)}, nil
+		counter: value.(*atomic.Uint64), ingress: inbound.(*atomic.Uint64), starts: starts.(*atomic.Uint64)}, nil
 }
 
 func (m *middleware) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	m.starts.Add(1)
 	if !strings.EqualFold(strings.TrimSpace(request.Header.Get("Upgrade")), "websocket") {
 		m.next.ServeHTTP(writer, request)
 		return
@@ -313,6 +322,15 @@ func metricsBody() string {
 			read = value.(*atomic.Uint64).Load()
 		}
 		body.WriteString("bex_websocket_ingress_bytes_total{app_id=" + strconv.Quote(appID) + "} " + strconv.FormatUint(read, 10) + "\n")
+	}
+	body.WriteString("# HELP bex_http_request_starts_total Requests an App router received, counted on arrival before the response.\n")
+	body.WriteString("# TYPE bex_http_request_starts_total counter\n")
+	for _, appID := range appIDs {
+		var started uint64
+		if value, ok := processState.starts.Load(appID); ok {
+			started = value.(*atomic.Uint64).Load()
+		}
+		body.WriteString("bex_http_request_starts_total{app_id=" + strconv.Quote(appID) + "} " + strconv.FormatUint(started, 10) + "\n")
 	}
 	body.WriteString("# HELP bex_websocket_meter_healthy 1 when the per-router hijack wrapper and metrics listener are healthy.\n")
 	body.WriteString("# TYPE bex_websocket_meter_healthy gauge\n")

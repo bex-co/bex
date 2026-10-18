@@ -34,9 +34,10 @@ import (
 // it, but the traefik-websocket-meter scrape job's metric_relabel keep-list
 // still named only the egress series, so Prometheus dropped the new counter
 // and a client-only WebSocket service hibernated on schedule in production
-// (2026-09-29). Every bex_websocket_* series the query reads must survive that
-// job's keep regex, anchored the way Prometheus anchors it.
-func TestActivityQueryWebSocketSeriesSurviveTheScrapeKeepList(t *testing.T) {
+// (2026-09-29). Every plugin series the query reads — both WebSocket directions
+// and the request-arrival counter (w4/m164) — must survive that job's keep
+// regex, anchored the way Prometheus anchors it.
+func TestActivityQueryPluginSeriesSurviveTheScrapeKeepList(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "deploy", "gitops", "base", "prometheus.yaml"))
 	if err != nil {
 		t.Fatal(err)
@@ -53,11 +54,14 @@ func TestActivityQueryWebSocketSeriesSurviveTheScrapeKeepList(t *testing.T) {
 	kept := regexp.MustCompile("^(?:" + keep[1] + ")$")
 
 	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-x"}}
-	series := regexp.MustCompile(`bex_websocket_[a-z_]+`).FindAllString(activityQuery(app, 15*time.Minute), -1)
-	if len(series) < 2 {
-		t.Fatalf("expected the query to read both WebSocket directions, found %v", series)
+	series := map[string]bool{}
+	for _, name := range regexp.MustCompile(`bex_[a-z_]+`).FindAllString(activityQuery(app, 15*time.Minute), -1) {
+		series[name] = true
 	}
-	for _, name := range series {
+	if len(series) != 3 {
+		t.Fatalf("expected the query to read request arrivals and both WebSocket directions, found %v", series)
+	}
+	for name := range series {
 		if !kept.MatchString(name) {
 			t.Errorf("the activity query reads %s, but the scrape job's keep regex %q drops it", name, keep[1])
 		}

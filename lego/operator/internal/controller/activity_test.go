@@ -257,6 +257,9 @@ func TestPrometheusAppActivityReaderQueriesEverySignal(t *testing.T) {
 	q := queries[0]
 	for _, want := range []string{
 		`traefik_service_requests_total{service="tea-ws-web-3000@kubernetes"}`,
+		// Arrivals count before their response ends: a first stream used to be
+		// no traffic until it finished (w4/m164, a664).
+		`bex_http_request_starts_total{app_id="srv-activity"}`,
 		`bex_websocket_egress_bytes_total{app_id="srv-activity"}`,
 		// Client→server frames count too: a WebSocket the client alone feeds
 		// used to keep nothing awake (w1/m161, from w1/102).
