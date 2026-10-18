@@ -1,0 +1,7 @@
+# Log windows + datastore variants + generic restart — sweep459
+
+Passing functional coverage, no new issue. Same isolated session as sweeps 454–458, `bex-canary` (+ `tian-personal` for Postgres), HEAD checkout build (`645099f6d`), 2026-10-18T04:13–04:18Z.
+
+Log reads: a planted three-request window returns exactly those lines under `--start/--end --direction forward`, nothing under an `--end` before the window; `--instance <public instance id>` matches the live instance's app lines and an unknown instance id is an honest empty. Datastore variants: Postgres `--version 16 --database-name qa459_db --database-user qa459_user` provisions exactly that identity (verified in-database: `current_database()`, `current_user`, server 16.15); `--commit` on an image service refuses by name (400, no deploy created). `restart <dpg-id>` genuinely restarts the managed Postgres (status cycles `config_restart`; `pg_postmaster_start_time()` is fresh seconds later) — implemented generic-restart behavior, truthfully reported, not a fake success. Key Value `--memory-policy queue` maps to `noeviction` on readback (create and post-rename); rename preserves the `red-` id and resolves by the new name.
+
+Cleanup: exact-owned `srv-dba4emi1lfsc73chdc8g`, `red-dba4en34pcls73bt1s20`, `dpg-dba4emr4pcls73bt1s10` deleted by ID (404 / named not-found verified); baseline byte-identical. No plan mutations. Session remains active; the loop continues from sweep460.
