@@ -347,7 +347,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **119** — [Env-group tombstones accumulate forever and every scan still reads them](119.md) (follow-up from m113: one-read scan, tombstone ageing, process-wide read budget) — **superseded by [m114](m114/README.md)**, which deletes the scan; do not implement separately
+- [x] **119** — [Env-group tombstones accumulate forever and every scan still reads them](done/119.md) — **CLOSED AS ALREADY MET (2026-10-18):** m114 removed the scan and fences; final cutover code removed in `2bd432ac2`, value-only real-store coverage added in `0f456f069`; findings preserved as superseded history
 
 - [ ] **118** — [Forward stdin to noninteractive psql imports](blocked/118.md) (55m, major) — **BLOCKED (2026-10-16: upstream patch + real-child regressions prepared in `blocked/118-upstream.patch` (and a variant stacked on 079 in `blocked/118-upstream-stacked-on-079.patch`): the pinned CLI's non-interactive psql never sets the child's stdin, so `\copy … FROM pstdin` reads EOF and imports 0 rows; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release and the two-client import replay with cleanup; no fork per DO_NOT_DO)**
 
