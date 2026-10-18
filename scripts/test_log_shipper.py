@@ -23,6 +23,16 @@ def run(*args, **kwargs):
     return subprocess.check_output(args, cwd=ROOT, text=True, **kwargs).strip()
 
 
+def scrape_metrics(test, container):
+    # Read inside the container: works with a remote Docker daemon without a
+    # public port or a second helper image.
+    response = run("docker", "exec", container, "bash", "-c",
+                   "exec 3<>/dev/tcp/127.0.0.1/12345; "
+                   "printf 'GET /metrics HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3; cat <&3")
+    test.assertIn("200 OK", response.splitlines()[0])
+    return response
+
+
 def render_alloy(tmp):
     chart = run("bash", "scripts/helm-artifact.sh", "pull", "alloy", str(tmp))
     values = tmp / "values.yaml"
@@ -60,9 +70,12 @@ def run_pipeline(test, pipeline_name, lines, receiver_type, target='database = "
         test.assertIsNotNone(pipeline, f"rendered chart is missing the {pipeline_name} pipeline")
         # Keep every production stage; replace only the input and sink.
         pipeline = pipeline.group().replace("loki.write.default.receiver", "loki.echo.test.receiver")
-        # A final plain line proves a single-file pipeline consumed the entire
+        # A final sentinel proves a single-file pipeline consumed the entire
         # fixture before we assert that earlier noise was dropped.
         barrier = "bex-log-shipper-done-" + uuid.uuid4().hex
+        if pipeline_name == "request_logs":
+            barrier = json.dumps({"ServiceName": "default-barrier-8080@kubernetes",
+                                  "DownstreamStatus": 200, "RequestPath": "/" + barrier})
         body = [*lines, barrier]
         files = {"lines.log": "\n".join(cri_frame(body) if cri else body) + "\n"}
         if relabel:
@@ -134,6 +147,10 @@ loki.echo "test" {}
                 time.sleep(0.25)
             if not relabel:
                 test.assertTrue(completed, f"Alloy did not finish the fixture:\n{output}")
+            if pipeline_name == "request_logs":
+                metrics = scrape_metrics(test, name)
+                output += "\n" + "\n".join(line for line in metrics.splitlines()
+                                            if line.startswith("loki_process_dropped_lines_total{"))
             return actual, output
         finally:
             run("docker", "rm", "-f", name)
@@ -163,6 +180,60 @@ KV_TARGET = 'namespace = "tenant", keyvalue = "red-test", pod = "red-test-0", co
 BUILD_TARGET = 'namespace = "tenant", app = "web", pod = "web-build-1", container = "build"'
 # stage.cri's max_partial_line_size in every tenant pipeline (CRI LINE CAP).
 CRI_LINE_CAP = 200000
+
+
+class RequestLogAttributionTest(unittest.TestCase):
+    def test_ingress_refusals_and_existing_streams_keep_trusted_attribution(self):
+        tenant = "tea-d98210cbbpdc73dcrkvg"
+        victim = "tea-e0123456789012345678"
+        app = tenant + "-web"
+        static = tenant + "-static"
+        base = {"RequestMethod": "GET", "RequestHost": "web.onbex.co"}
+        # Traefik v3.7.5, production field allowlist, real Kubernetes Ingress +
+        # IPAllowList, captured on dev-8 2026-10-18. Refusals carry the selected
+        # ingress but NO ServiceName because the middleware never calls it.
+        blocked = {"DownstreamStatus": 403, "OriginStatus": 0,
+                   "KubernetesIngressNamespace": tenant, "KubernetesIngressName": app}
+        cases = [
+            ("routed", {"ServiceName": f"{tenant}-{app}-8080@kubernetes", "DownstreamStatus": 200}, tenant, app, ""),
+            ("app-404", {"ServiceName": f"{tenant}-{app}-8080@kubernetes", "DownstreamStatus": 404, "OriginStatus": 404}, tenant, app, ""),
+            ("static", {"ServiceName": f"{tenant}-bex-static-{static}-8080@kubernetes", "KubernetesIngressName": static, "DownstreamStatus": 200}, tenant, static, ""),
+            ("blocked-web", blocked, tenant, app, ""),
+            ("blocked-static", dict(blocked, KubernetesIngressName=static), tenant, static, ""),
+            ("blocked-empty-service", dict(blocked, ServiceName=""), tenant, app, ""),
+            ("blocked-default", dict(blocked, KubernetesIngressNamespace="default", KubernetesIngressName="web"), "default", "web", ""),
+            # A Host supplied by the client never selects a tenant stream.
+            ("spoofed-host", dict(blocked, RequestHost=victim + ".onbex.co"), tenant, app, ""),
+            ("spoofed-platform-host", dict(blocked, RequestHost="api.bex.co"), tenant, app, ""),
+            ("unknown-host", {"RequestHost": victim + ".onbex.co", "DownstreamStatus": 404}, "", "", ""),
+            ("unknown-namespace", dict(blocked, KubernetesIngressNamespace=tenant + "-evil"), "", "", ""),
+            ("missing-ingress", {"KubernetesIngressNamespace": tenant, "DownstreamStatus": 403}, "", "", ""),
+            ("platform", {"ServiceName": "bex-system-bex-api-8090@kubernetes", "KubernetesIngressName": "bex-api", "KubernetesIngressNamespace": "bex-system", "RequestHost": "api.bex.co", "DownstreamStatus": 503}, "bex-system", "", "bex-api"),
+        ]
+        expected = {}
+        lines = []
+        for name, fields, namespace, app_name, service in cases:
+            line = json.dumps(dict(base, RequestPath="/" + name, **fields))
+            lines.append(line)
+            if namespace:
+                labels = {"namespace": namespace, "method": "GET", "status": str(fields["DownstreamStatus"]), "type": "request"}
+                if app_name:
+                    labels["app"] = app_name
+                if service:
+                    labels["service"] = service
+                expected[line] = labels
+        lines += ["plain Traefik startup message", '{"level":"info","msg":"configuration loaded"}']
+        actual, output = run_pipeline(self, "request_logs", lines, "request", 'job = "traefik"', expect=len(expected))
+        self.assertEqual(set(actual), set(expected), f"lost or misattributed request lines:\n{output}")
+        for line, labels in actual.items():
+            # filename belongs only to this file input; production uses the
+            # Kubernetes source. Everything else is the exact Loki vocabulary.
+            self.assertEqual({k: v for k, v in labels.items() if k != "filename"}, expected[line], line)
+        for reason, count in [("not_an_access_line", 2), ("not_a_tenant_app", 3)]:
+            values = [float(value) for labels, value in re.findall(
+                r'^loki_process_dropped_lines_total\{([^}]+)\} (\S+)$', output, re.M)
+                if f'reason="{reason}"' in labels]
+            self.assertEqual(sum(values), count, f"wrong drop reason {reason}:\n{output}")
 
 
 class AppLogLevelsTest(unittest.TestCase):
@@ -461,12 +532,7 @@ loki.process "fixture_clock" {
                 run("docker", "start", name)
 
                 def scrape():
-                    # Read inside the container: works with a remote Docker
-                    # daemon, needs no public port and no second helper image.
-                    response = run("docker", "exec", name, "bash", "-c",
-                                   "exec 3<>/dev/tcp/127.0.0.1/12345; "
-                                   "printf 'GET /metrics HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3; cat <&3")
-                    self.assertIn("200 OK", response.splitlines()[0])
+                    response = scrape_metrics(self, name)
                     samples = {}
                     for metric_name, labels, value in re.findall(r'^(bex_zot_\w+)\{([^}]+)\} ([^\s]+)$', response, re.M):
                         label_set = dict(re.findall(r'(\w+)="([^"\\]*)"', labels))

@@ -1,15 +1,15 @@
 # w8 · m115 — Surface edge-blocked requests in request logs
 
-**Worker:** worker8 **Goal:** a request refused by the service's own inbound IP rules (edge 403) appears in that service's request logs, as on Render. **Status:** todo
+**Worker:** worker8 **Goal:** a request refused by the service's own inbound IP rules (edge 403) appears in that service's request logs, as on Render. **Status:** todo (t001–t002, t004 done; hosted replay pending)
 
 ## Tasks (in order)
 
 | id   | title                                                                 | est | depends_on    |
 | ---- | --------------------------------------------------------------------- | --- | ------------- |
-| t001 | Attribute edge-rejected request lines to their App in the log shipper | 50m | —             |
-| t002 | Prove attribution safety across line shapes and tenants               | 30m | t001          |
+| t001 | Attribute edge-rejected request lines to their App in the log shipper — **DONE** | 50m | —             |
+| t002 | Prove attribution safety across line shapes and tenants — **DONE** | 30m | t001          |
 | t003 | Verify Render parity across log surfaces                              | 25m | t002          |
-| t004 | Simplify the request-log pipeline change                              | 15m | t003          |
+| t004 | Simplify the request-log pipeline change — **DONE** | 15m | t003          |
 | t005 | Test real blocked-request visibility end to end                       | 40m | t003          |
 | t006 | Accept the hosted replay and close milestone                          | 20m | t004, t005    |
 
