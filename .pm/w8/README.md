@@ -15,6 +15,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m116** — [Return backward log pages most-recent first](m116/README.md) (6 tasks;170m) ← from `/qa-find-bugs-cli` sweep465 2026-10-18: backward (default) log pages select the newest lines and page correctly, but present them oldest-first at the wire — Render's contract is most-recent first; one unconditional ascending sort at the shared page verb flips every default read
+
 - [x] **m115** — [Surface edge-blocked requests in request logs](done/m115/README.md) (6 tasks;180m) ← from `/qa-find-bugs-cli` sweep458 2026-10-18: an inbound-IP-allowlist 403 is enforced at the edge but never reaches the service's `type=request` history (Render: blocked requests do appear); shipper attribution drops middleware-rejected lines — **DONE (2026-10-18: hosted fail-before/pass-after; native Free allowlist403 visible in 27.3s; all readers + UI agree; fixtures absent)**
 
 - [ ] **m114** — [Move environment-group metadata from OpenBao to the control-plane store](blocked/m114/README.md) (12 tasks;590m) — **BLOCKED (2026-10-18: t001–t006 and t008–t011 done; t007 needs the existing GitHub production-restore reviewer to approve [run39111039281](https://github.com/bex-co/bex/actions/runs/39111039281), then exact pre-cutover snapshot equality and final-image acceptance; t012 needs that proof and temporary audit removal).** Production cutover/prune and full current-wire/UI checks pass; customer-data source preservation is not yet claimed. 119 archived as already met.

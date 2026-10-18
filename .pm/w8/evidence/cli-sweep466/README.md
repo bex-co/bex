@@ -1,0 +1,7 @@
+# SSH refusal paths (free tier) — sweep466
+
+Passing functional coverage, no new issue. Same isolated session as sweeps 454–465, `bex-canary`, HEAD checkout build (`72a8d9ea4` tree), 2026-10-18T06:21–06:29Z. A positive SSH session needs a paid service and stays out of this loop's rules; this sweep proves the free-tier refusal envelope end to end instead.
+
+With an ephemeral ed25519 keypair (generated, registered, and deleted within the sweep; key list byte-identical before/after): the gateway host key at `ssh.bex.co` pins via `ssh-keyscan` (SHA256 `cwBcvu8ou7s…pNE`); raw OpenSSH with the **unregistered** key → `Permission denied (publickey)`; after `POST /v1/ssh-keys` (201), the **registered** key against a free service and its exact instance → same non-enumerating `Permission denied (publickey)` (free plan is SSH-ineligible by design — `sshEligible` in [service.go](../../../lego/backend/internal/apps/service.go), matching Render's paid-only SSH). The free service's REST read carries no `sshAddress`, and `bex ssh --output interactive <instance-id>` (driven under a PTY with the repo's OpenSSH shim) renders a clean "service does not support ssh" TUI error — no OpenSSH invocation, no panic on the nil address.
+
+Cleanup: key `ssk-dba6bkeqhqkc73a9rg50` deleted via API (204; list back to the one pre-existing key), service `srv-dba67cmqhqkc73a9rflg` deleted by ID (404-verified), agent killed, local key material removed. Baseline deltas are the concurrent hunt's churn, observed read-only. Session remains active; the loop continues from sweep467.

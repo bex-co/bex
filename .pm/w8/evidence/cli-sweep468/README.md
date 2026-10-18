@@ -1,0 +1,7 @@
+# Text renderings, error dialect II, deploy supersede — sweep468
+
+Passing functional coverage, no new issue. Same isolated session as sweeps 454–467, `bex-canary` (+ personal for Postgres), HEAD checkout build (`f876458d4`), 2026-10-18T07:00–07:07Z.
+
+`postgres get -o text` renders the full field set truthfully (workspace name+id, plan, version, region, generated database/user, pool/HA/autoscaling states, dashboard URL, allowlist). Error dialect: update of a missing service name and suspend of a missing Key Value refuse exit 1 with the resolver's named not-found (carrying the documented upstream `render workspace set` runtime-copy residual); cancel of a synthetic deploy id → `404 NOT_FOUND deploy not found`; `services --include-previews` accepted. Static blueprint with `routes` (redirect + rewrite) and `headers` validates `valid:true`. Deploy supersede (light recheck of the m46 class): deploy B issued immediately after A ends `live` serving B's image version over HTTP, A reads `canceled`, the original `deactivated` — latest request wins, no interim wrong-version serving observed at read time.
+
+Cleanup: exact-owned `srv-dba6scb6gvbc73encf6g` and `dpg-dba6scmqhqkc73a9rhtg` deleted by ID (404 / named not-found verified); baseline byte-identical. No plan mutations. Session remains active; the loop continues from sweep469; m115/m116 + evidence 465–468 remain uncommitted pending `/ship`.
