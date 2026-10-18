@@ -188,7 +188,7 @@ describe("useCreateKeyValue", () => {
 // (w5/m130).
 describe("useCreateKeyValue at the workspace cap", () => {
   const cap =
-    "workspace is limited to 1 key-value stores; delete an existing key-value store to create another";
+    "workspace is limited to 1 key-value store; delete an existing key-value store to create another";
 
   it("opens the cap dialog with the refusal's message", async () => {
     mockUseMutation.mockReturnValue([

@@ -221,7 +221,7 @@ describe("useCreateDatabase", () => {
 // (w5/m130).
 describe("useCreateDatabase at the workspace cap", () => {
   const cap =
-    "workspace is limited to 1 Postgres databases; delete an existing Postgres database to create another";
+    "workspace is limited to 1 Postgres database; delete an existing Postgres database to create another";
 
   it("opens the cap dialog with the refusal's message", async () => {
     mockUseMutation.mockReturnValue([

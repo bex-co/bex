@@ -82,7 +82,8 @@ func TestQuotaCapError_IgnoresNonForbiddenAndNonQuotaErrors(t *testing.T) {
 // brought to life. They were present in the quota but counted nothing while
 // datastore CRs lived outside the namespace being charged (ADR043 D8), so no
 // caller had ever seen a rejection on them — and an unmapped one surfaces as a
-// raw 403 about a Kubernetes object the caller has no concept of.
+// raw 403 about a Kubernetes object the caller has no concept of. A limit of 1
+// reads in the singular, never "1 Postgres databases" (w4/339).
 func TestQuotaCapError_MapsDatastoreDimensions(t *testing.T) {
 	for _, tc := range []struct {
 		resource string
@@ -94,12 +95,22 @@ func TestQuotaCapError_MapsDatastoreDimensions(t *testing.T) {
 		{
 			resource: "databases", key: "count/databases.app.bex.co",
 			noun: "Postgres database", limit: 1,
-			want: "workspace is limited to 1 Postgres databases; delete an existing Postgres database to create another",
+			want: "workspace is limited to 1 Postgres database; delete an existing Postgres database to create another",
+		},
+		{
+			resource: "databases", key: "count/databases.app.bex.co",
+			noun: "Postgres database", limit: 2,
+			want: "workspace is limited to 2 Postgres databases; delete an existing Postgres database to create another",
 		},
 		{
 			resource: "keyvalues", key: "count/keyvalues.app.bex.co",
 			noun: "key-value store", limit: 1,
-			want: "workspace is limited to 1 key-value stores; delete an existing key-value store to create another",
+			want: "workspace is limited to 1 key-value store; delete an existing key-value store to create another",
+		},
+		{
+			resource: "keyvalues", key: "count/keyvalues.app.bex.co",
+			noun: "key-value store", limit: 2,
+			want: "workspace is limited to 2 key-value stores; delete an existing key-value store to create another",
 		},
 	} {
 		err := quotaExceededErr(tc.resource, "over-cap", "tenant-quota", tc.key, 1, tc.limit, tc.limit)
