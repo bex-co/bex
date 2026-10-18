@@ -138,11 +138,15 @@ func activityQuery(app *appv1alpha1.App, lookback time.Duration) string {
 	// Both WebSocket directions count as traffic: a connection the client alone
 	// feeds (telemetry, a log shipper) kept no service awake while only the
 	// egress counter was read, so a free service slept under real use (w1/m161,
-	// from w1/102). `or` over a series Prometheus does not have yet contributes
+	// from w1/102). So does a request's arrival: Traefik counts a request only
+	// when its response ends, so a first response still streaming was no
+	// traffic and the service slept under it (w4/m164, a664); the plugin counts
+	// arrivals. `or` over a series Prometheus does not have yet contributes
 	// nothing, so an operator ahead of the plugin roll behaves exactly as before.
 	appID := strconv.Quote(appIDOrName(app))
-	traffic := fmt.Sprintf("count(%s or %s or %s)",
+	traffic := fmt.Sprintf("count(%s or %s or %s or %s)",
 		active("traefik_service_requests_total{service="+strconv.Quote(service)+"}"),
+		active("bex_http_request_starts_total{app_id="+appID+"}"),
 		active("bex_websocket_egress_bytes_total{app_id="+appID+"}"),
 		active("bex_websocket_ingress_bytes_total{app_id="+appID+"}"))
 	return fmt.Sprintf("timestamp(%[1]s) or max_over_time(timestamp(%[1]s)[%[2]ds:%[3]ds])",

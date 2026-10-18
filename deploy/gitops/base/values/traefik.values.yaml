@@ -16,7 +16,11 @@ deployment:
   additionalVolumes:
     - name: bex-websocket-egress-plugin
       configMap:
-        name: bex-websocket-egress-plugin
+        # The plugin's content-hashed ConfigMap (charts/traefik-plugins): Traefik
+        # loads the plugin only at startup, so a code change must roll the pods,
+        # and this name changing is what rolls them (w4/m164). gitops-validate
+        # prints the current name when this one is stale.
+        name: bex-websocket-egress-plugin-9745f4t2d6
 experimental:
   abortOnPluginFailure: true
   localPlugins:
