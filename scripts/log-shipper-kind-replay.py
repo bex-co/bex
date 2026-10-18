@@ -4,9 +4,10 @@
 The Docker harness (scripts/test_log_shipper.py) runs each production
 loki.process block against fixed input; it cannot see what pod churn does to
 loki.source.file. This replays the real thing: the GitOps-rendered Loki and
-log-shipper (Alloy) charts on a single-node kind cluster, then the m174 DoD
-command as N Jobs labelled like a tenant App, then every Job pod's CRI file
-compared line by line with what Loki holds for that pod.
+log-shipper (Alloy) charts on a single-node kind cluster, then N Jobs labelled
+like a tenant App running a probe command (--probe: the m174 DoD's fast exit,
+or a321's delayed prefix), then every Job pod's CRI file compared line by line
+with what Loki holds for that pod.
 
 On 2026-10-18 it found Alloy v1.11.2 losing 4 of 800 lines and v1.11.3 none
 (see deploy/log-shipper/Dockerfile). Run it before pinning a new bex-alloy
@@ -36,10 +37,14 @@ from test_log_shipper import render_chart, run  # noqa: E402
 
 NAMESPACE = "tea-m174-replay"
 NODE_IMAGE = "kindest/node:v1.36.1"  # as scripts/verify-egress-meter.sh
-# The milestone DoD command: stdout, stdout, stderr, JSON stdout, stdout.
-DOD = ('echo ALPHA-{tag} one; echo BETA-{tag} two; echo "error: GAMMA-{tag} three" 1>&2; '
-       'echo "{{\\"level\\":\\"warn\\",\\"msg\\":\\"DELTA-{tag}\\"}}"; echo 100%-{tag} under_score-{tag}')
-LINES_PER_RUN = 5
+# Each probe is a command per run and the lines it writes:
+#   fast — the m174 DoD (stdout, stdout, stderr, JSON stdout, stdout), exits at once;
+#   delayed — a321's prefix, a 90-second wait, then a suffix.
+PROBES = {
+    "fast": ('echo ALPHA-{tag} one; echo BETA-{tag} two; echo "error: GAMMA-{tag} three" 1>&2; '
+             'echo "{{\\"level\\":\\"warn\\",\\"msg\\":\\"DELTA-{tag}\\"}}"; echo 100%-{tag} under_score-{tag}', 5),
+    "delayed": ('printf "begin-{tag}\\n"; sleep 90; printf "end-{tag}\\n"', 2),
+}
 # Loki's default max_entries_limit_per_query; one query holds every run.
 MAX_LOKI_ENTRIES = 5000
 
@@ -70,7 +75,7 @@ def bring_up(cluster, tmp, image):
     run("docker", "exec", cluster.node, "crictl", "pull", "docker.io/library/alpine:3")
 
 
-def run_jobs(cluster, jobs, spacing):
+def run_jobs(cluster, command, jobs, spacing):
     cluster.kubectl("create", "namespace", NAMESPACE)
     for i in range(1, jobs + 1):
         tag = f"r{i:04d}"
@@ -80,7 +85,7 @@ def run_jobs(cluster, jobs, spacing):
                    "metadata": {"labels": {"app.bex.co/app": "replay-cron"}},
                    "spec": {"restartPolicy": "Never", "containers": [{
                        "name": "app", "image": "alpine:3", "imagePullPolicy": "IfNotPresent",
-                       "command": ["sh", "-c", DOD.format(tag=tag)]}]}}}}
+                       "command": ["sh", "-c", command.format(tag=tag)]}]}}}}
         cluster.kubectl("apply", "-f", "-", input=json.dumps(job))
         if i < jobs:
             time.sleep(spacing)
@@ -100,7 +105,7 @@ def loki_lines(cluster, since):
     return by_pod
 
 
-def compare(cluster, jobs, since, settle=120):
+def compare(cluster, lines_per_run, jobs, since, settle=120):
     pods = json.loads(cluster.kubectl("-n", NAMESPACE, "get", "pods", "-o", "json"))["items"]
     written = {}
     for pod in pods:
@@ -119,21 +124,23 @@ def compare(cluster, jobs, since, settle=120):
     total = sum(len(lines) for lines in written.values())
     lost = sum(len(lines) for lines in missing.values())
     for name in sorted(written):
-        if missing[name] or len(written[name]) != LINES_PER_RUN:
+        if missing[name] or len(written[name]) != lines_per_run:
             print(f"{name}: wrote {len(written[name])}, Loki holds {len(stored.get(name, []))}, missing {missing[name]}")
     print(f"{len(pods)} runs, {total} lines written, {lost} missing from Loki")
-    return lost == 0 and len(pods) == jobs and total == LINES_PER_RUN * jobs
+    return lost == 0 and len(pods) == jobs and total == lines_per_run * jobs
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument("--probe", choices=PROBES, default="fast")
     parser.add_argument("--jobs", type=int, default=160)
     parser.add_argument("--spacing", type=float, default=5, help="seconds between Job creations")
     parser.add_argument("--name", default="bex-log-replay")
     parser.add_argument("--keep", action="store_true", help="leave the cluster up afterwards")
     args = parser.parse_args()
-    if args.jobs * LINES_PER_RUN > MAX_LOKI_ENTRIES:
-        parser.error(f"--jobs is at most {MAX_LOKI_ENTRIES // LINES_PER_RUN}: one Loki query holds every line")
+    command, lines_per_run = PROBES[args.probe]
+    if args.jobs * lines_per_run > MAX_LOKI_ENTRIES:
+        parser.error(f"--jobs is at most {MAX_LOKI_ENTRIES // lines_per_run}: one Loki query holds every line")
     if args.name in run("kind", "get", "clusters").splitlines():
         parser.error(f"kind cluster {args.name} already exists; pick another --name or delete it")
     with tempfile.TemporaryDirectory() as tmp:
@@ -144,8 +151,8 @@ def main():
         try:
             bring_up(cluster, tmp, os.environ.get("BEX_ALLOY_IMAGE"))
             since = time.time() - 60
-            run_jobs(cluster, args.jobs, args.spacing)
-            ok = compare(cluster, args.jobs, since)
+            run_jobs(cluster, command, args.jobs, args.spacing)
+            ok = compare(cluster, lines_per_run, args.jobs, since)
         finally:
             if args.keep:
                 print(f"kept: kubectl --kubeconfig {kubeconfig} …; remove with "
