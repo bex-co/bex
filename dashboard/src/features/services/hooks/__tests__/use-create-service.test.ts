@@ -269,7 +269,7 @@ describe("useCreateService", () => {
 // (w5/m130).
 describe("useCreateService at the workspace cap", () => {
   const cap =
-    "workspace is limited to 1 services; delete an existing service to create another";
+    "workspace is limited to 1 service; delete an existing service to create another";
 
   it("opens the cap dialog with the refusal's message", async () => {
     mockUseMutation.mockReturnValue([

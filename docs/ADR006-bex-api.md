@@ -721,6 +721,8 @@ Creation caps prevent a single workspace from monopolising the platform. Every c
 - GraphQL: `{"data":null,"errors":[{"message":"workspace is limited to …","extensions":{"code":"BAD_REQUEST"}}]}`
 - MCP: tool result `{isError:true, content:[{type:"text",text:"workspace is limited to …"}]}`
 
+A limit of 1 reads in the singular: "workspace is limited to 1 Postgres database; …" (w4/339).
+
 The cap is per-workspace (tenant-scoped): workspace B can always create even when workspace A is at its limit.
 
 **Closed 2026-08-08 (w7/m77) — Postgres and Key Value are capped by the same mechanism as services.** The app-code `BEX_MAX_POSTGRES`/`BEX_MAX_KEYVALUES` checks were deleted alongside `BEX_MAX_SERVICES` in w3/m34, on the premise that the per-namespace `ResourceQuota`'s `count/databases.app.bex.co`/`count/keyvalues.app.bex.co` dimensions would replace them. That premise held only for services: ADR043 had been implemented for Apps only, so datastore CRs were still created in the shared apps namespace and those two dimensions counted nothing — leaving Postgres/Key Value creation uncapped in the interim (an honest, recorded gap). [ADR043 D8](ADR043-tenant-namespace-isolation.md) moved the CRs into the workspace's own namespace, which is what makes the dimensions bite; `postgres.CreatePostgres` and `keyvalue.CreateKeyValue` map the API server's rejection through the same `core.QuotaCapError` helper the service cap uses, so all three caps now return the identical Render-shaped 400 across REST/GraphQL/MCP.

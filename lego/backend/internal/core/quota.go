@@ -112,8 +112,14 @@ func (c CountCap) Exceeded(limit int64) error {
 // cap, so a client recognizes the cap by code, not by its wording (w5/m130).
 const WorkspaceResourceLimitCode = "WORKSPACE_RESOURCE_LIMIT"
 
+// quotaCapExceeded reads the limit in the singular at 1 ("limited to 1
+// Postgres database", w4/339); every cap's noun pluralizes with a trailing s.
 func quotaCapExceeded(limit int64, noun string) error {
+	limited := noun + "s"
+	if limit == 1 {
+		limited = noun
+	}
 	return NewBadRequestError(WorkspaceResourceLimitCode,
-		fmt.Sprintf("workspace is limited to %d %ss; delete an existing %s to create another", limit, noun, noun),
+		fmt.Sprintf("workspace is limited to %d %s; delete an existing %s to create another", limit, limited, noun),
 		map[string]any{"limit": limit})
 }
