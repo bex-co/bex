@@ -1,0 +1,94 @@
+{
+ "date": "2026-10-18",
+ "workspace": "tea-daif693dqjvc73e7as3g (bex-canary)",
+ "serving": "production deploy of 429d49ccf (includes the fix)",
+ "clients": {
+  "bex": "bex v0.3.3 (compatible with Render CLI v2.27.0)",
+  "render": "pinned Render CLI build (vdev)"
+ },
+ "auth": "temporary QA API key (client_credentials), revoked after the run",
+ "fixtures": [
+  {
+   "item": "m106",
+   "client": "bex",
+   "name": "qa-lx88637d-m106-bex",
+   "id": "srv-dba3t221lfsc73chdbfg",
+   "url": "https://qa-lx88637d-m106-bex.onbex.co",
+   "create_exit": 0,
+   "deploy": {
+    "id": "dep-dba3t221lfsc73chdbg0",
+    "status": "live",
+    "finishedAt": "2026-10-18T03:38:29.065927Z"
+   },
+   "http": {
+    "status": 200,
+    "bytes": 2626,
+    "has": {
+     "Deploy Hugo on Render": true,
+     "content=\"Hugo 0.111.3\"": true
+    }
+   },
+   "build_log_lines": [
+    "2026-10-18 03:35:36  ==> Build queued",
+    "2026-10-18 03:36:39  ==> Using Node 24 (default)",
+    "2026-10-18 03:36:42  ==> Building from https://github.com/render-examples/hugo-quick-start@48eaf95",
+    "2026-10-18 03:37:06  #30 0.228   Pages            | 10",
+    "2026-10-18 03:37:06  #30 0.228   Paginator pages  |  0",
+    "2026-10-18 03:37:06  #30 0.229 Total in 125 ms",
+    "2026-10-18 03:38:29  ==> Your service is live \ud83c\udf89"
+   ],
+   "delete": {
+    "exit": 0,
+    "deleted": true
+   },
+   "listed_after": false,
+   "url_after": 404
+  },
+  {
+   "item": "m106",
+   "client": "render",
+   "name": "qa-lx88637d-m106-render",
+   "id": "srv-dba3tcj4pcls73bt1r00",
+   "url": "https://qa-lx88637d-m106-render.onbex.co",
+   "create_exit": 0,
+   "deploy": {
+    "id": "dep-dba3tcj4pcls73bt1r0g",
+    "status": "live",
+    "finishedAt": "2026-10-18T03:41:29.381849Z"
+   },
+   "http": {
+    "status": 200,
+    "bytes": 2626,
+    "has": {
+     "Deploy Hugo on Render": true,
+     "content=\"Hugo 0.111.3\"": true
+    }
+   },
+   "build_log_lines": [
+    "2026-10-18 03:36:18  ==> Build queued",
+    "2026-10-18 03:39:53  ==> Using Node 24 (default)",
+    "2026-10-18 03:39:59  ==> Building from https://github.com/render-examples/hugo-quick-start@48eaf95",
+    "2026-10-18 03:40:19  #30 0.356   Pages            | 10",
+    "2026-10-18 03:40:19  #30 0.356   Paginator pages  |  0",
+    "2026-10-18 03:40:19  #30 0.356 Total in 188 ms",
+    "2026-10-18 03:41:29  ==> Your service is live \ud83c\udf89"
+   ],
+   "delete": {
+    "exit": 0,
+    "deleted": true
+   },
+   "listed_after": false,
+   "url_after": 404
+  }
+ ],
+ "inventory_after": [
+  "?",
+  "hello-go",
+  "qa-20260922-cd9361-boundary",
+  "qa-20260922-cd9361-longcronxx",
+  "qa-20260922-cd9361-nativecron",
+  "qa-20261003-c63833-zero-head",
+  "qa-20261003-f592c7-zero",
+  "qa-20261018-925358-bad"
+ ]
+}
