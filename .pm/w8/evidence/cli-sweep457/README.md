@@ -1,0 +1,7 @@
+# Static site + deleted-service dialect sweep — sweep457
+
+Passing functional coverage, no new issue. Same isolated session as sweeps 454–456, `bex-canary`, HEAD checkout build (`799f509cb`), 2026-10-18T03:26–03:31Z.
+
+Static site from a public Git repo (`octocat/Hello-World`, publish `.`): `--plan` is refused client-side for `static_site`; without it create → `live`; `/README` serves HTTP 200 with the file body, `/` is an honest 404 (the repo has no index). Deleted-service error dialect re-verified live (regression check for done w8/023): delete a live free web service, then immediately `deploys create`, `restart`, and `services instances` by its ID — all exit 1 with clean 404 (`NOT_FOUND` where the envelope carries a code), no 500 anywhere.
+
+Cleanup: exact-owned `srv-dba3pci1lfsc73chdbbg` and `srv-dba3p9b4pcls73bt1qp0` deleted by ID, both 404-verified. A concurrent foreign hunt remained active in the workspace throughout (its `qa-dup-probe` Key Value and `qa-20261018-925358-bad` service observed read-only in list output; never touched). The loop continues from sweep458 (see the loop checkpoint in the session report); this session's isolated CLI/Kratos logins intentionally remain active for it and must be revoked when the loop is stopped: `bex logout` on the isolated config, `bash scripts/qa-login.sh --logout`, then remove `.playwright-mcp/qa-session.jar` / `qa-storage-state.json`.
