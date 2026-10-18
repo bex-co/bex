@@ -1,6 +1,6 @@
 # w8 · m114 — Move environment-group metadata from OpenBao to the control-plane store
 
-**Worker:** worker8 **Goal:** OpenBao holds only environment-group secret values (the env and files maps). Every non-secret fact — identity, owning workspace, name uniqueness, environment membership, service links, timestamps, the revision lock and in-flight operation state — lives in Postgres under constraints and transactions. All legacy-tenant, locator, name-claim, tombstone-fence and lazy-migration code is deleted, and so is the one-shot migrator once production has cut over. **Status:** blocked — t001–t006 and t008–t011 done; t007 awaits the existing GitHub production-restore reviewer for [run39111039281](https://github.com/bex-co/bex/actions/runs/39111039281), exact snapshot equality and final-image verification; t012 depends on that proof and temporary audit removal
+**Worker:** worker8 **Goal:** OpenBao holds only environment-group secret values (the env and files maps). Every non-secret fact — identity, owning workspace, name uniqueness, environment membership, service links, timestamps, the revision lock and in-flight operation state — lives in Postgres under constraints and transactions. All legacy-tenant, locator, name-claim, tombstone-fence and lazy-migration code is deleted, and so is the one-shot migrator once production has cut over. **Status:** done (2026-10-18) — production cut over, pruned and proven against the pre-cutover snapshot ([t007](done/t007.md)); migrator and cutover gate retired; closeout in [t012](done/t012.md)
 
 **Principle (user decision 2026-10-18):** the clean end state outranks compatibility. Bex-specific client behavior may break, and no dual-read or dual-write path ships in serving code. Two things are not negotiable: Render's wire contract, and customer data — every live group's values, name, workspace, environment, links and timestamps survive the cutover.
 
@@ -14,12 +14,12 @@
 | t004 | Move the revision lock and operation records to the store | 60m | w8/m114/t003 — **DONE** |
 | t005 | Rewire consumers: environments, apps, Blueprints, purge | 60m | w8/m114/t003 — **DONE** |
 | t006 | One-shot cutover migrator (dry-run / apply / prune), rehearsed on dev-8 | 75m | w8/m114/t004, w8/m114/t005 — **DONE** |
-| t007 | Production cutover in a user-authorized window | 30m | w8/m114/t006 |
+| t007 | Production cutover in a user-authorized window | 30m | w8/m114/t006 — **DONE** |
 | t008 | Delete the compatibility code and the migrator — **DONE** | 60m | w8/m114/t007 |
 | t009 | Render parity: env-group surfaces and deliberate breaks — **DONE** | 30m | w8/m114/t008 |
 | t010 | Simplify the changed code — **DONE** | 20m | w8/m114/t009 |
 | t011 | Test coverage: constraints, zero-OpenBao reads, save recovery — **DONE** | 50m | w8/m114/t009 |
-| t012 | Close out the milestone | 10m | w8/m114/t011 |
+| t012 | Close out the milestone | 10m | w8/m114/t011 — **DONE** |
 
 Twelve tasks, 590m.
 
