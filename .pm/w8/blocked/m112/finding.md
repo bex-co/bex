@@ -31,9 +31,9 @@ Two local harness exclusions remain intact: an unnecessary final setting read re
 
 The [producer and pinned-consumer trace](evidence/cli-sweep453/contract-dedupe-and-source-research.json) follows native create → POST /v1/postgres → Database/CNPG, then native psql ID/name → connection-info → real external psql → the server extension loader. The SQL error does not originate in a Bex REST SQL envelope or launcher rewrite.
 
-- [database_exports.go:52–59](../../../lego/operator/internal/controller/database_exports.go) selects six ordinary CNPG operand pins. The serving projection consumes the map at [database_controller.go:486–489](../../../lego/operator/internal/controller/database_controller.go); logical export uses its helper at database_exports.go320.
-- [database_controller.go:531–547](../../../lego/operator/internal/controller/database_controller.go) configures dedicated preload with pg_stat_statements alone.
-- [database_extensions.go:62–70](../../../lego/operator/internal/controller/database_extensions.go) manages vector alone, with one production applicationDatabaseSpec caller at94. No TimescaleDB supplier/configuration exists in current product source or targeted history.
+- [database_exports.go:52–59](../../../../lego/operator/internal/controller/database_exports.go) selects six ordinary CNPG operand pins. The serving projection consumes the map at [database_controller.go:486–489](../../../../lego/operator/internal/controller/database_controller.go); logical export uses its helper at database_exports.go320.
+- [database_controller.go:531–547](../../../../lego/operator/internal/controller/database_controller.go) configures dedicated preload with pg_stat_statements alone.
+- [database_extensions.go:62–70](../../../../lego/operator/internal/controller/database_extensions.go) manages vector alone, with one production applicationDatabaseSpec caller at94. No TimescaleDB supplier/configuration exists in current product source or targeted history.
 
 Observed package absence and these source boundaries locate extension delivery/configuration. The actual deployed operand/config is unobserved. Supply reviewed compatible per-major packages and required Apache-mode loading through existing CNPG configuration, preserving pg_stat_statements and appropriate plan bounds. Prove normal migration and basic hypertable SQL; avoid unnecessary blanket activation, new public selectors, CLI forks, tenant package installation or new PostgreSQL majors.
 
