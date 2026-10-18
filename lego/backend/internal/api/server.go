@@ -760,8 +760,15 @@ func NewServer(base *core.Base, d Deps) *Server {
 	if candidate, ok := d.Store.(core.EnvironmentProtectionStore); ok {
 		protectionStore = candidate
 	}
+	// Datastores have no store row to retire on deletion, so their delete verbs
+	// record it for usage metering (w4/m173).
+	var retirements store.UsageRetirementRecorder
+	if candidate, ok := d.Store.(store.UsageRetirementRecorder); ok {
+		retirements = candidate
+	}
 	pg := &postgres.Service{
 		Base:         base,
+		Retirements:  retirements,
 		Protection:   protectionStore,
 		ExportSigner: exportSigner,
 		Owners:       workspaceSvc,
@@ -769,7 +776,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		PodLogs:      d.PodLogs,
 	}
 	pg.DatabaseLogs = datastoreLogsAdapter(logSvc)
-	kv := &keyvalue.Service{Base: base, Protection: protectionStore, Owners: workspaceSvc, Metadata: resourceMetadata}
+	kv := &keyvalue.Service{Base: base, Retirements: retirements, Protection: protectionStore, Owners: workspaceSvc, Metadata: resourceMetadata}
 	kv.PodLogs = d.PodLogs
 	kv.KeyValueLogs = datastoreLogsAdapter(logSvc)
 	// secrets + env-groups are also the blueprint apply path's seams (w1/m35:

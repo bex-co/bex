@@ -53,6 +53,10 @@ import (
 // read for the store's apps list (workspace attribution) and tenant lookup.
 type UsageStore interface {
 	ListApps(ctx context.Context) ([]store.App, error)
+	// Deleted resources still owed their final hours (w4/m173).
+	ListRetiredUsageResources(ctx context.Context, since time.Time) ([]store.RetiredUsageResource, error)
+	PruneRetiredUsageResources(ctx context.Context, before time.Time) (int64, error)
+	CloseUsageSourceStreams(ctx context.Context, ref store.UsageResourceRef, through time.Time) error
 	UpsertUsageHourly(ctx context.Context, row store.HourlyRow) error
 	RecordUsageSourceHealth(ctx context.Context, records []store.UsageSourceRecord) error
 	ReconcileUsageSourceStreams(ctx context.Context, active []store.UsageResourceRef, through time.Time) error
@@ -562,6 +566,12 @@ func (s *Service) compact(ctx context.Context) {
 	if clamp := now.Add(-catchupLimit); before.After(clamp) {
 		before = clamp
 	}
+	// A deleted resource retired before the catch-up window can no longer be
+	// metered (w4/m173). Pruned here because compaction runs with or without
+	// Prometheus, while the App delete trigger always records.
+	if _, err := s.Store.PruneRetiredUsageResources(ctx, now.Add(-catchupLimit)); err != nil {
+		log.Printf("usage: prune retired resources: %v", err)
+	}
 	res, err := s.Store.CompactUsage(ctx, before)
 	if err != nil {
 		log.Printf("usage: compact before %s: %v", before.Format(time.RFC3339), err)
@@ -584,6 +594,8 @@ type datastoreEntry struct {
 	Kind      string // store.ResourceKindPostgres or store.ResourceKindKeyValue
 	Public    bool   // whether the public proxy source applies
 	CreatedAt time.Time
+	// Through, when set, is a deleted datastore's last owed hour (w4/m173).
+	Through time.Time
 }
 
 // listDatastores returns all tenant-owned Database and KeyValue CRs via the k8s
@@ -734,17 +746,29 @@ func (s *Service) catchUpDatastoreMeterThrough(ctx context.Context, ds datastore
 		return
 	}
 	floor := last.Add(time.Hour - catchupLimit)
+	if created := ds.CreatedAt.UTC().Truncate(time.Hour); !created.IsZero() && created.After(floor) {
+		floor = created
+	}
 	start := latest.UTC().Truncate(time.Hour)
 	if start.IsZero() || start.Before(floor) {
 		start = floor
 	} else {
 		start = start.Add(time.Hour)
 	}
-	for w := start; !w.After(last); w = w.Add(time.Hour) {
+	for w := start; !w.After(ds.meterThrough(last)); w = w.Add(time.Hour) {
 		if !s.processDatastoreMeterWindow(ctx, ds, kind, w) {
 			return
 		}
 	}
+}
+
+// meterThrough is the last hour to meter ds in a pass through last: a deleted
+// datastore owes nothing after its deletion hour.
+func (ds datastoreEntry) meterThrough(last time.Time) time.Time {
+	if !ds.Through.IsZero() && ds.Through.Before(last) {
+		return ds.Through
+	}
+	return last
 }
 
 // catchUp finds the latest recorded window per service and fills any gap since
@@ -770,6 +794,7 @@ func (s *Service) catchUp(ctx context.Context) {
 		return
 	}
 	s.meterDatastoresThrough(ctx, datastores, last)
+	s.meterRetiredThrough(ctx, apps, last)
 	s.reconcileSourceInventory(ctx, apps, datastores, last.Add(time.Hour))
 }
 
@@ -794,6 +819,7 @@ func (s *Service) rollup(ctx context.Context, t time.Time) {
 		return
 	}
 	s.meterDatastoresThrough(ctx, datastores, window)
+	s.meterRetiredThrough(ctx, apps, window)
 	s.reconcileSourceInventory(ctx, apps, datastores, window.Add(time.Hour))
 	log.Printf("usage: rolled up window %s for %d services + %d datastores",
 		window.Format(time.RFC3339), len(apps), len(datastores))
@@ -833,7 +859,7 @@ func (s *Service) meterDatastoresThrough(ctx context.Context, datastores []datas
 				egressSource = store.UsageSourceKeyValue
 			}
 			for kind, source := range map[string]string{store.UsageKindInstanceSeconds: store.UsageSourceInstance, store.UsageKindStorageGBSeconds: store.UsageSourceStorage, store.UsageKindEgressBytes: egressSource} {
-				health = append(health, store.UsageSourceRecord{WorkspaceID: tenant, ResourceKind: ds.Kind, ServiceID: ds.ID, Kind: kind, WindowStart: last, UsageSourceObservation: store.UsageSourceObservation{Source: source, State: store.UsageSourceUnavailable, ExpectedFrom: usageExpectedFrom(ds.CreatedAt)}})
+				health = append(health, store.UsageSourceRecord{WorkspaceID: tenant, ResourceKind: ds.Kind, ServiceID: ds.ID, Kind: kind, WindowStart: ds.meterThrough(last), UsageSourceObservation: store.UsageSourceObservation{Source: source, State: store.UsageSourceUnavailable, ExpectedFrom: usageExpectedFrom(ds.CreatedAt)}})
 			}
 		}
 		if len(health) > 0 {
@@ -842,6 +868,77 @@ func (s *Service) meterDatastoresThrough(ctx context.Context, datastores []datas
 			}
 		}
 	}
+}
+
+// retiredAppMeterKinds are the App meters a deleted App can still be measured
+// by: pods and build Jobs are named from the derived CR identity, but egress
+// is keyed by router names only the live CR can supply, so a deleted App's
+// final-hour egress stays unmetered.
+var retiredAppMeterKinds = [...]string{
+	store.UsageKindInstanceSeconds,
+	store.UsageKindBuildSeconds,
+}
+
+// meterRetiredThrough meters each resource deleted within the catch-up window
+// through the hour it was deleted in (w4/m173): the live passes list only what
+// still exists. Each meter's cursor makes a repeat pass a no-op, and each
+// resource's coverage streams end at its deletion hour.
+func (s *Service) meterRetiredThrough(ctx context.Context, live []store.App, last time.Time) {
+	floor := last.Add(time.Hour - catchupLimit)
+	retired, err := s.Store.ListRetiredUsageResources(ctx, floor)
+	if err != nil {
+		log.Printf("usage: list retired resources: %v", err)
+		return
+	}
+	var datastores []datastoreEntry
+	closeAt := make(map[store.UsageResourceRef]time.Time, len(retired))
+	for _, r := range retired {
+		through := r.RetiredAt.UTC().Truncate(time.Hour)
+		if through.After(last) {
+			through = last
+		}
+		if r.ResourceKind != store.ResourceKindService {
+			datastores = append(datastores, datastoreEntry{
+				ID: r.ResourceID, Name: r.Name, Namespace: r.Namespace, Display: r.Display, Public: r.Public,
+				TenantID: r.WorkspaceID, Plan: r.Tier, Kind: r.ResourceKind, CreatedAt: r.CreatedAt, Through: through,
+			})
+		} else if !podIdentityReused(r, through, live, retired) {
+			app := store.App{ID: r.ResourceID, TenantID: r.WorkspaceID, Name: r.Name, Tier: r.Tier, CreatedAt: r.CreatedAt}
+			for _, kind := range retiredAppMeterKinds {
+				s.catchUpAppMeter(ctx, app, kind, floor, through)
+			}
+		}
+		closeAt[store.UsageResourceRef{ResourceKind: r.ResourceKind, ServiceID: r.ResourceID}] = through.Add(time.Hour)
+	}
+	s.meterDatastoresThrough(ctx, datastores, last)
+	for ref, through := range closeAt {
+		if err := s.Store.CloseUsageSourceStreams(ctx, ref, through); err != nil {
+			log.Printf("usage: close %s %s coverage at its deletion: %v", ref.ResourceKind, ref.ServiceID, err)
+		}
+	}
+}
+
+// podIdentityReused reports whether another App — live, or deleted later —
+// with r's workspace and name existed by r's last owed hour. App pods and
+// build Jobs are named from that pair, so such an App's meters already count
+// everything r's would in that hour, under its own ID; metering r too would
+// bill those pods twice.
+func podIdentityReused(r store.RetiredUsageResource, through time.Time, live []store.App, retired []store.RetiredUsageResource) bool {
+	overlaps := func(tenant, name string, created time.Time) bool {
+		return tenant == r.WorkspaceID && name == r.Name && !created.UTC().Truncate(time.Hour).After(through)
+	}
+	for _, app := range live {
+		if overlaps(app.TenantID, app.Name, app.CreatedAt) {
+			return true
+		}
+	}
+	for _, other := range retired {
+		if other.ResourceKind == store.ResourceKindService && other.ResourceID != r.ResourceID &&
+			other.RetiredAt.After(r.RetiredAt) && overlaps(other.WorkspaceID, other.Name, other.CreatedAt) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Service) reconcileSourceInventory(ctx context.Context, apps []store.App, datastores []datastoreEntry, through time.Time) {
@@ -896,12 +993,17 @@ func (s *Service) catchUpAppThrough(ctx context.Context, app store.App, last tim
 }
 
 func (s *Service) catchUpAppMeterThrough(ctx context.Context, app store.App, kind string, last time.Time) {
+	s.catchUpAppMeter(ctx, app, kind, last.Add(time.Hour-catchupLimit), last)
+}
+
+// catchUpAppMeter meters app's kind from its cursor (no earlier than floor or
+// the App's creation hour) through last.
+func (s *Service) catchUpAppMeter(ctx context.Context, app store.App, kind string, floor, last time.Time) {
 	latest, err := s.Store.LatestUsageWindow(ctx, store.ResourceKindService, app.ID, kind)
 	if err != nil {
 		log.Printf("usage: catch-up: latest %s window for %s: %v", kind, app.ID, err)
 		return
 	}
-	floor := last.Add(time.Hour - catchupLimit)
 	if created := app.CreatedAt.UTC().Truncate(time.Hour); !created.IsZero() && created.After(floor) {
 		floor = created
 	}

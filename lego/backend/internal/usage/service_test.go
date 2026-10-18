@@ -73,6 +73,46 @@ type memUsageStore struct {
 	appsLists       int
 	appsErr         error
 	sandboxErr      error
+	// retired is the w4/m173 retired-resource record; closed captures each
+	// CloseUsageSourceStreams call.
+	retired []store.RetiredUsageResource
+	closed  map[store.UsageResourceRef]time.Time
+}
+
+func (m *memUsageStore) ListRetiredUsageResources(_ context.Context, since time.Time) ([]store.RetiredUsageResource, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var out []store.RetiredUsageResource
+	for _, r := range m.retired {
+		if !r.RetiredAt.Before(since) {
+			out = append(out, r)
+		}
+	}
+	return out, nil
+}
+
+func (m *memUsageStore) PruneRetiredUsageResources(_ context.Context, before time.Time) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	kept := m.retired[:0]
+	for _, r := range m.retired {
+		if !r.RetiredAt.Before(before) {
+			kept = append(kept, r)
+		}
+	}
+	pruned := int64(len(m.retired) - len(kept))
+	m.retired = kept
+	return pruned, nil
+}
+
+func (m *memUsageStore) CloseUsageSourceStreams(_ context.Context, ref store.UsageResourceRef, through time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.closed == nil {
+		m.closed = map[store.UsageResourceRef]time.Time{}
+	}
+	m.closed[ref] = through
+	return nil
 }
 
 func (m *memUsageStore) ResourceDisplayNames(_ context.Context, tenantID string, refs []store.ResourceDisplayName) (map[string]string, error) {
