@@ -279,6 +279,9 @@ type LogQuery struct {
 	Path       []string
 
 	levelFilter *regexp.Regexp // Postgres pod severity matcher, compiled once per query
+	// probe lets a page read one line past the caller's (clamped) Limit, so the
+	// page can tell whether any line lies beyond it (queryLogPage).
+	probe bool
 }
 
 // validate rejects a filter value outside the accepted vocabulary — an unknown
@@ -319,8 +322,12 @@ func (q LogQuery) normalized() LogQuery {
 	if q.Limit <= 0 {
 		q.Limit = defaultLogLimit
 	}
-	if q.Limit > maxLogLimit {
-		q.Limit = maxLogLimit
+	limit := int64(maxLogLimit)
+	if q.probe {
+		limit++ // the one line past the caller's maximum
+	}
+	if q.Limit > limit {
+		q.Limit = limit
 	}
 	if q.Direction != DirectionForward {
 		q.Direction = DirectionBackward

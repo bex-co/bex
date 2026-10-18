@@ -67,11 +67,12 @@ func TestTextFilterUnionAcrossAdaptersAndPodSources(t *testing.T) {
 			name        string
 			terms, want []string
 		}{
-			{"forward", []string{"qa_text_A", "qa_text_B"}, []string{"qa_text_A", "qa_text_B", "qa_text_A qa_text_B"}},
-			{"reverse", []string{"qa_text_B", "qa_text_A"}, []string{"qa_text_A", "qa_text_B", "qa_text_A qa_text_B"}},
-			{"empty_and_duplicate", []string{"", "QA_TEXT_A", "qa_text_a", "qa_text_B", ""}, []string{"qa_text_A", "qa_text_B", "qa_text_A qa_text_B"}},
+			// Default (backward) reads list the most recent line first.
+			{"forward", []string{"qa_text_A", "qa_text_B"}, []string{"qa_text_A qa_text_B", "qa_text_B", "qa_text_A"}},
+			{"reverse", []string{"qa_text_B", "qa_text_A"}, []string{"qa_text_A qa_text_B", "qa_text_B", "qa_text_A"}},
+			{"empty_and_duplicate", []string{"", "QA_TEXT_A", "qa_text_a", "qa_text_B", ""}, []string{"qa_text_A qa_text_B", "qa_text_B", "qa_text_A"}},
 			{"no_match", []string{"absent", "missing"}, nil},
-			{"all_empty", []string{"", ""}, []string{"qa_text_A", "qa_text_B", "unrelated control", "qa_text_A qa_text_B"}},
+			{"all_empty", []string{"", ""}, []string{"qa_text_A qa_text_B", "unrelated control", "qa_text_B", "qa_text_A"}},
 		} {
 			t.Run(resource+"/"+tc.name, func(t *testing.T) {
 				params := url.Values{"resource": {resource}, "text": tc.terms}

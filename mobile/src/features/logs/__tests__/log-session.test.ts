@@ -65,6 +65,42 @@ describe("LogSession", () => {
     ]);
   });
 
+  it("shows a backward history page oldest first, under the live tail (w8/m116)", async () => {
+    const transport = new FakeTransport();
+    const line = (id: string, second: number): LogLine => ({
+      id,
+      message: id,
+      timestamp: `2026-08-02T09:59:5${second}.000Z`,
+      labels: [],
+    });
+    // Backward (the default) lists the most recent line first.
+    transport.page = {
+      ...transport.page,
+      logs: [line("c", 3), line("b", 2), line("a", 1)],
+    };
+    const subject = new LogSession(transport, 5, () => new Date(boundary));
+    await subject.start({ resource: "srv-1", types: ["app"] });
+    transport.callbacks?.onLine({
+      ...historyLine,
+      id: "live",
+      message: "live",
+    });
+    expect(subject.snapshot().lines.map(({ id }) => id)).toEqual([
+      "a",
+      "b",
+      "c",
+      "live",
+    ]);
+
+    transport.page = { ...transport.page, logs: [line("a", 1), line("b", 2)] };
+    await subject.start({
+      resource: "srv-1",
+      types: ["app"],
+      direction: "forward",
+    });
+    expect(subject.snapshot().lines.map(({ id }) => id)).toEqual(["a", "b"]);
+  });
+
   it("keeps a store-only filter as explicit history-only state", async () => {
     const transport = new FakeTransport();
     const subject = new LogSession(transport, 5, () => new Date(boundary));

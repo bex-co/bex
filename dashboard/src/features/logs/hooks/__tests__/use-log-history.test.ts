@@ -152,6 +152,47 @@ describe("useLogHistory paging (w4/m107, w4/m136)", () => {
     expect(mockClientQuery).toHaveBeenCalledTimes(1);
   });
 
+  it("shows newest-first pages oldest-first, to the nanosecond (w8/m116)", async () => {
+    // Backward pages arrive most recent first, including two lines inside one
+    // millisecond; the reader still runs top to bottom in time.
+    firstPage = envelope(
+      [
+        entry("2026-09-26T00:51:00Z", "c"),
+        entry("2026-09-26T00:50:00.000789Z", "b2"),
+        entry("2026-09-26T00:50:00.000123Z", "b1"),
+      ],
+      true,
+      "2026-09-26T00:50:00.000122Z",
+    );
+    mockClientQuery.mockResolvedValueOnce({
+      data: envelope(
+        [
+          entry("2026-09-26T00:10:00.5Z", "a2"),
+          entry("2026-09-26T00:10:00.49Z", "a1"),
+        ],
+        false,
+      ),
+    });
+    const { result } = renderHook(() =>
+      useLogHistory("dpg-x", EMPTY_LOG_FILTERS, WINDOW),
+    );
+    expect(result.current.lines.map((l) => l.message)).toEqual([
+      "b1",
+      "b2",
+      "c",
+    ]);
+
+    await act(async () => result.current.loadOlder());
+
+    expect(result.current.lines.map((l) => l.message)).toEqual([
+      "a1",
+      "a2",
+      "b1",
+      "b2",
+      "c",
+    ]);
+  });
+
   it("drops older pages and discards an in-flight one when the filters change", async () => {
     const pending = deferred<unknown>();
     mockClientQuery.mockReturnValueOnce(pending.promise);

@@ -4,6 +4,7 @@ import {
   dedupeLogLines,
   fromRenderLog,
   logLineKey,
+  compareLogTimestamps,
   mergeLogLines,
   toLogLine,
   toLogLines,
@@ -466,5 +467,36 @@ describe("record identity within one millisecond (w4/m217)", () => {
     expect(identity.admit(fine(3))).toBe(false);
     identity.forget(record);
     expect(identity.admit(fine(3))).toBe(true);
+  });
+});
+
+describe("compareLogTimestamps (w8/m116)", () => {
+  const sorted = (stamps: string[]) => [...stamps].sort(compareLogTimestamps);
+
+  it("orders inside one millisecond by the real nanoseconds", () => {
+    expect(
+      sorted(["2026-10-18T06:02:30.455789Z", "2026-10-18T06:02:30.455123Z"]),
+    ).toEqual(["2026-10-18T06:02:30.455123Z", "2026-10-18T06:02:30.455789Z"]);
+  });
+
+  it("orders trailing-zero-trimmed stamps by value, not by string", () => {
+    // Go's RFC3339Nano trims zeros: .1Z is 100ms, after .09Z and before .12Z.
+    expect(
+      sorted([
+        "2026-10-18T06:02:30.12Z",
+        "2026-10-18T06:02:30.1Z",
+        "2026-10-18T06:02:30.09Z",
+      ]),
+    ).toEqual([
+      "2026-10-18T06:02:30.09Z",
+      "2026-10-18T06:02:30.1Z",
+      "2026-10-18T06:02:30.12Z",
+    ]);
+  });
+
+  it("sorts unparseable stamps first, consistently", () => {
+    expect(
+      sorted(["2026-10-18T06:02:33Z", "", "2026-10-18T06:02:31Z", "nope"]),
+    ).toEqual(["", "nope", "2026-10-18T06:02:31Z", "2026-10-18T06:02:33Z"]);
   });
 });

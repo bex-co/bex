@@ -97,7 +97,11 @@ export class LogSession {
         abort.signal,
       );
       if (generation !== this.generation || abort.signal.aborted) return;
-      this.buffer.replace(page.logs);
+      // The buffer runs oldest to newest, and a backward page (the default)
+      // lists the most recent line first (Render's contract, w8/m116).
+      this.buffer.replace(
+        filters.direction === "forward" ? page.logs : [...page.logs].reverse(),
+      );
       if (hasStoreOnlyTailFilters(filters)) {
         this.tailBlockedByStoreOnlyFilters = true;
         this.phase = "history_only";

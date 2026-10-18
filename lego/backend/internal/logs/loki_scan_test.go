@@ -228,7 +228,7 @@ func TestQueryLogPageTurnsAnIncompleteScanIntoAnHonestPage(t *testing.T) {
 	for _, e := range page.Entries {
 		msgs = append(msgs, e.Message)
 	}
-	if fmt.Sprint(msgs) != "[web newer api]" {
+	if fmt.Sprint(msgs) != "[api web newer]" { // backward: newest first
 		t.Fatalf("entries = %v, want only lines inside the least-covered edge", msgs)
 	}
 	if !page.HasMore || page.NextEndTime != apiEdge.Add(-time.Nanosecond).Format(time.RFC3339Nano) {

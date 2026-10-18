@@ -282,8 +282,9 @@ func TestRESTLogsEnvelopeAndFilters(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &env); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if len(env.Logs) != 3 || env.Logs[0].Message != "first boot ok" {
-		t.Fatalf("want 3 lines sorted oldest-first: %+v", env.Logs)
+	// The default direction is backward: Render lists the most recent first.
+	if len(env.Logs) != 3 || env.Logs[0].Message != "GET / 200" || env.Logs[2].Message != "first boot ok" {
+		t.Fatalf("want 3 lines newest-first: %+v", env.Logs)
 	}
 	if env.Logs[0].ID == "" || env.Logs[0].Labels[0].Name != "type" || env.Logs[0].Labels[0].Value != LogTypeApp {
 		t.Errorf("render log id/type label wrong: %+v", env.Logs[0])
@@ -343,32 +344,15 @@ func TestRESTLogsPageCursorsChain(t *testing.T) {
 	collect := func(direction string) map[string]struct{} {
 		t.Helper()
 		seen := map[string]struct{}{}
-		path := "/v1/logs?resource=web&startTime=" + start + "&endTime=" + end + "&limit=5"
-		if direction != "" {
-			path += "&direction=" + direction
-		}
-		for page := 0; page < 10; page++ {
-			env := decodeLogList(t, serveREST(svc, "GET", path))
+		for page, env := range walkLogPages(t, svc, "resource=web", start, end, 5, direction) {
 			for _, line := range env.Logs {
 				if _, dup := seen[line.ID]; dup {
 					t.Fatalf("%s page %d duplicated id %s (%s)", direction, page, line.ID, line.Message)
 				}
 				seen[line.ID] = struct{}{}
 			}
-			if !env.HasMore {
-				return seen
-			}
-			if env.NextStartTime == "" || env.NextEndTime == "" {
-				t.Fatalf("%s page %d missing cursors: %+v", direction, page, env)
-			}
-			path = "/v1/logs?resource=web&startTime=" + env.NextStartTime +
-				"&endTime=" + env.NextEndTime + "&limit=5"
-			if direction != "" {
-				path += "&direction=" + direction
-			}
 		}
-		t.Fatalf("%s paging did not reach hasMore=false", direction)
-		return nil
+		return seen
 	}
 
 	for _, direction := range []string{"", DirectionForward} {
