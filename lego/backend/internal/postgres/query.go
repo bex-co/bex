@@ -362,6 +362,7 @@ func runSQLQuery(ctx context.Context, connString, sql string, lim queryLimits, r
 		return QueryResult{}, errQueryConnClose
 	}
 	defer func() { _ = conn.Close(ctx) }()
+	registerQueryJSONCodecs(conn.TypeMap())
 
 	txOptions := pgx.TxOptions{}
 	if readOnly {

@@ -20,6 +20,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/graphql-go/graphql"
@@ -384,8 +385,14 @@ func queryCellString(value any) any {
 	case time.Time:
 		return v.Format(time.RFC3339Nano)
 	}
-	if encoded, err := json.Marshal(value); err == nil {
-		return string(encoded)
+	// Arrays and json/jsonb text become compact JSON, unescaped because the
+	// cell is displayed rather than embedded in HTML. A JSON null is therefore
+	// the string "null", distinct from SQL NULL's nil.
+	var encoded strings.Builder
+	enc := json.NewEncoder(&encoded)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(value); err == nil {
+		return strings.TrimSuffix(encoded.String(), "\n")
 	}
 	return fmt.Sprint(value)
 }
