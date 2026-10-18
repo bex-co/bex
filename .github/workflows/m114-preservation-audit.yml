@@ -25,8 +25,12 @@ jobs:
     timeout-minutes: 25
     env:
       M114_CONTAINER: bex-m114-proof-${{ github.run_id }}-${{ github.run_attempt }}
-      M114_REPORT: ${{ runner.temp }}/m114-preservation-${{ github.run_id }}-${{ github.run_attempt }}.json
     steps:
+      # The runner context is not available in job-level env, so the report
+      # path is named here.
+      - name: Name this run's report under runner scratch
+        run: echo "M114_REPORT=$RUNNER_TEMP/m114-preservation-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json" >>"$GITHUB_ENV"
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
         with:
