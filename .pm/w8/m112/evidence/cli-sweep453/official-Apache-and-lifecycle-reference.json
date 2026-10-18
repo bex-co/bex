@@ -1,0 +1,29 @@
+{
+  "at": "2026-10-17T17:35:13.600757+00:00",
+  "scope": "primary documentation research only; no restore operation executed",
+  "pages": [
+    {
+      "url": "https://www.tigerdata.com/docs/deploy/self-hosted/backup-and-restore/logical-backup",
+      "HTTP": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "bytes": 5901,
+      "sha256": "b98d5f46626b94019482e2e79c433046bbbc0ce1f3d466aea2c41b16f8f8f847",
+      "required_symbols_present": {
+        "timescaledb_pre_restore": true,
+        "timescaledb_post_restore": true,
+        "pg_restore": true
+      }
+    },
+    {
+      "url": "https://docs.tigerdata.com/self-hosted/latest/configuration/timescaledb-config",
+      "HTTP": 200,
+      "content_type": "text/markdown; charset=utf-8",
+      "bytes": 2952,
+      "sha256": "fdecacf5081fe28a7ce8ec184c4d472a10e3556585177280e3ca56b697212230",
+      "required_symbols_present": {
+        "timescaledb.license": true,
+        "apache": true
+      }
+    }
+  ]
+}

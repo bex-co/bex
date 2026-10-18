@@ -1,0 +1,34 @@
+import re,json,datetime
+ROWS={1:['1969-12-31T23:59:59.999999+00:00','café:李',1999],2:['1970-01-01T00:00:00+00:00','north',1250],3:['1970-01-01T00:59:59.999999+00:00','north',725],4:['1970-01-01T01:00:00+00:00','north',-499],5:['1970-01-01T02:30:00+00:00','west',0]}
+def snapshots():
+ rows={k:list(v) for k,v in ROWS.items()};out=[]
+ for phase in ['initial','insert','update','delete']:
+  if phase=='insert':rows[6]=['1970-01-01T01:30:00+00:00','north',300]
+  if phase=='update':rows[3][2]=-125
+  if phase=='delete':del rows[1]
+  groups={}
+  for stamp,sensor,cents in rows.values():
+   d=datetime.datetime.fromisoformat(stamp).replace(minute=0,second=0,microsecond=0);bucket=int(d.timestamp());key=(bucket,sensor);n,total=groups.get(key,(0,0));groups[key]=(n+1,total+cents)
+  out.append({'phase':phase,'rows':[[*key,*val] for key,val in sorted(groups.items())]})
+ return out
+def queries(schema):
+ assert re.fullmatch('[a-z][a-z0-9_]+',schema)
+ catalog="SELECT jsonb_build_object('version',current_setting('server_version_num'),'encoding',current_setting('server_encoding'),'available',COALESCE((SELECT jsonb_agg(jsonb_build_object('name',name,'default',default_version,'installed',installed_version) ORDER BY name) FROM pg_available_extensions WHERE name IN ('timescaledb','vector','pg_stat_statements','plpgsql','hstore')),'[]'::jsonb),'own_schema_exists',EXISTS(SELECT FROM pg_namespace WHERE nspname='"+schema+"'))::text;"
+ begin="BEGIN; SET LOCAL statement_timeout='20s'; SET LOCAL timezone='UTC'; CREATE SCHEMA "+schema+"; SET LOCAL search_path="+schema+",public; CREATE TABLE readings(id integer NOT NULL, observed_at timestamptz NOT NULL,sensor text NOT NULL,cents integer NOT NULL,PRIMARY KEY(observed_at,sensor)); INSERT INTO readings VALUES "+','.join("("+str(i)+",'"+stamp+"','"+sensor+"',"+str(cents)+")" for i,(stamp,sensor,cents) in ROWS.items())+"; "
+ out={'catalog':catalog,'enable':'CREATE EXTENSION IF NOT EXISTS timescaledb;'}
+ for case in ['postgres','timescale']:
+  sql=begin
+  if case=='timescale':
+   sql+="SELECT jsonb_build_object('created',created)::text FROM create_hypertable('"+schema+".readings','observed_at',chunk_time_interval=>interval '1 hour',migrate_data=>true); SELECT jsonb_build_object('hypertable_count',(SELECT count(*) FROM timescaledb_information.hypertables WHERE hypertable_schema='"+schema+"' AND hypertable_name='readings'),'chunk_count',(SELECT count(*) FROM show_chunks('"+schema+".readings')),'actual_physical_relations',(SELECT count(DISTINCT tableoid) FROM readings),'license',current_setting('timescaledb.license'))::text; "
+  bucket="time_bucket(interval '1 hour',observed_at)" if case=='timescale' else "date_bin(interval '1 hour',observed_at,timestamptz '1970-01-01 00:00:00+00')"
+  for phase,change in [('initial',''),('insert',"INSERT INTO readings VALUES(6,'1970-01-01T01:30:00+00:00','north',300); "),('update',"UPDATE readings SET cents=-125 WHERE id=3; "),('delete',"DELETE FROM readings WHERE id=1; ")]:
+   sql+=change+"SELECT jsonb_build_object('phase','"+phase+"','rows',jsonb_agg(jsonb_build_array(extract(epoch from bucket)::bigint,sensor,n,total) ORDER BY bucket,sensor COLLATE \"C\"))::text FROM (SELECT "+bucket+" AS bucket,sensor,count(*) AS n,sum(cents) AS total FROM readings GROUP BY 1,2) q; "
+  out[case]=sql+'ROLLBACK;'
+ return out
+def decode(raw,case):
+ values=[];decoder=json.JSONDecoder()
+ while raw.strip():raw=raw.lstrip();v,n=decoder.raw_decode(raw);values.append(v);raw=raw[n:]
+ result={}
+ if case=='timescale':
+  result['create']=values.pop(0);result['physical_partitions']=values.pop(0);assert result['create']=={'created':True} and result['physical_partitions']=={'hypertable_count':1,'chunk_count':4,'actual_physical_relations':4,'license':'apache'}
+ expected=snapshots();result.update(snapshots=values,independent_expected=expected);return result,values==expected

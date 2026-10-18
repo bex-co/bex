@@ -1,0 +1,33 @@
+from pathlib import Path
+import subprocess,json,secrets,time,shutil,sys
+P=Path(__file__).resolve().parent;R=P.parent.parent;ctx=P/'candidate453-local-context';assert not ctx.exists();ctx.mkdir(mode=0o700);image='timescale/timescaledb@sha256:fba60021a224479e174ae1ec577c1a0576d5185b09fe9e622f1d19e4bf5bab0d';name='qa453-timescale-'+secrets.token_hex(4);out={'source_head':subprocess.check_output(['git','rev-parse','HEAD'],cwd=R,text=True).strip(),'image':image,'container':name,'scope':'real local PG17 TimescaleDB Apache-mode consumer only; not production CNPG supplier/version or Community feature acceptance','steps':[],'cases':[],'pass':False};receipt=P/'candidate453-local-prerequisite.json';started=False
+def save():receipt.write_text(json.dumps(out,indent=2,ensure_ascii=False))
+def run(label,args,check=True,bound=40):
+ r=subprocess.run(args,capture_output=True,text=True,timeout=bound);out['steps'].append({'label':label,'command':args,'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr});save()
+ if check:r.check_returncode()
+ return r
+save()
+try:
+ assert run('unique-own-container-absent',['docker','container','inspect',name],False).returncode!=0
+ out['create_intent']={'image':image,'name':name,'network':'none','published_ports':[],'memory':'512m','CPU':1,'settings':['shared_preload_libraries=timescaledb','timescaledb.license=apache','timescaledb.telemetry_level=off','shared_buffers=32MB','max_connections=20']};save()
+ run('start-exact-owned-local-reference',['docker','run','--pull','never','-d','--network','none','--memory','512m','--cpus','1','--name',name,'-e','POSTGRES_HOST_AUTH_METHOD=trust',image,'postgres','-c','shared_preload_libraries=timescaledb','-c','timescaledb.license=apache','-c','timescaledb.telemetry_level=off','-c','shared_buffers=32MB','-c','max_connections=20']);started=True
+ for i in range(35):
+  pid=run('entrypoint-process-'+str(i),['docker','exec',name,'cat','/proc/1/comm'],False,bound=10)
+  r=run('ready-'+str(i),['docker','exec',name,'pg_isready','-U','postgres'],False,bound=10)
+  if r.returncode==0 and pid.returncode==0 and pid.stdout.strip()=='postgres':break
+  time.sleep(.5)
+ else:run('bounded-own-startup-log',['docker','logs',name]);raise RuntimeError('Own local reference readiness bound reached')
+ run('local-only-owner-and-empty-database',['docker','exec',name,'psql','-X','-q','-v','ON_ERROR_STOP=1','-U','postgres','-c','CREATE ROLE qa453_owner LOGIN;','-c','CREATE DATABASE qa453_owner OWNER qa453_owner TEMPLATE template0;'])
+ ns={};f=P/'sweep453-query-factory.py';exec(compile(f.read_text(),str(f),'exec'),ns);queries=ns['queries']('qa453_local')
+ for case in ['catalog','enable','postgres','timescale']:
+  r=run(case,['docker','exec',name,'psql','-X','-q','-t','-A','-v','ON_ERROR_STOP=1','-U','qa453_owner','-d','qa453_owner','-c',queries[case]]);e={'case':case}
+  if case=='catalog':e['value']=json.loads(r.stdout);e['pass']=not e['value']['own_schema_exists']
+  elif case=='enable':e['pass']=not r.stdout.strip()
+  else:e['decoded'],e['pass']=ns['decode'](r.stdout,case)
+  out['cases'].append(e);save();assert e['pass'];print(json.dumps({'local_case':case,'pass':True}),flush=True)
+ query="SELECT jsonb_build_object('own_schema_count',(SELECT count(*) FROM pg_namespace WHERE nspname='qa453_local'),'own_hypertable_count',(SELECT count(*) FROM timescaledb_information.hypertables WHERE hypertable_schema='qa453_local'),'module_version',(SELECT extversion FROM pg_extension WHERE extname='timescaledb'),'server_version',current_setting('server_version'),'license',current_setting('timescaledb.license'))::text;"
+ r=run('final-real-module-and-rollback-proof',['docker','exec',name,'psql','-X','-q','-t','-A','-v','ON_ERROR_STOP=1','-U','qa453_owner','-d','qa453_owner','-c',query]);v=json.loads(r.stdout);out['final_SQL']=v;assert v['own_schema_count']==v['own_hypertable_count']==0 and v['module_version']=='2.22.1' and v['license']=='apache';out['pass']=True;save()
+finally:
+ if started:run('remove-exact-owned-server-and-volume',['docker','rm','-f','-v',name],False)
+ out['own_container_absent']=run('own-container-absence',['docker','container','inspect',name],False).returncode!=0;shutil.rmtree(ctx);out['own_context_removed']=not ctx.exists();out['official_base_cache_preserved']=True;save()
+print(json.dumps({'pass':out['pass'],'own_container_absent':out['own_container_absent'],'own_context_removed':out['own_context_removed']}))

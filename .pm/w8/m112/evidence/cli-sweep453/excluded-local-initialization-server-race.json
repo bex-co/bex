@@ -1,0 +1,263 @@
+{
+  "source_head": "c05648614e7a72b6d827319f06b5ea2aa567a778",
+  "image": "timescale/timescaledb@sha256:fba60021a224479e174ae1ec577c1a0576d5185b09fe9e622f1d19e4bf5bab0d",
+  "container": "qa453-timescale-466985aa",
+  "scope": "real local PG17 TimescaleDB Apache-mode consumer only; not production CNPG supplier/version or Community feature acceptance",
+  "steps": [
+    {
+      "label": "unique-own-container-absent",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa453-timescale-466985aa"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa453-timescale-466985aa\n"
+    },
+    {
+      "label": "start-exact-owned-local-reference",
+      "command": [
+        "docker",
+        "run",
+        "--pull",
+        "never",
+        "-d",
+        "--network",
+        "none",
+        "--memory",
+        "512m",
+        "--cpus",
+        "1",
+        "--name",
+        "qa453-timescale-466985aa",
+        "-e",
+        "POSTGRES_HOST_AUTH_METHOD=trust",
+        "timescale/timescaledb@sha256:fba60021a224479e174ae1ec577c1a0576d5185b09fe9e622f1d19e4bf5bab0d",
+        "postgres",
+        "-c",
+        "shared_preload_libraries=timescaledb",
+        "-c",
+        "timescaledb.license=apache",
+        "-c",
+        "timescaledb.telemetry_level=off",
+        "-c",
+        "shared_buffers=32MB",
+        "-c",
+        "max_connections=20"
+      ],
+      "exit": 0,
+      "stdout": "07c716e2cde536f1ef6d5ba06ffc51186598ff4329db65044d8a4f47edd45f1d\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-0",
+      "command": [
+        "docker",
+        "exec",
+        "qa453-timescale-466985aa",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 2,
+      "stdout": "/var/run/postgresql:5432 - no response\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-1",
+      "command": [
+        "docker",
+        "exec",
+        "qa453-timescale-466985aa",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 0,
+      "stdout": "/var/run/postgresql:5432 - accepting connections\n",
+      "stderr": ""
+    },
+    {
+      "label": "local-only-owner-and-empty-database",
+      "command": [
+        "docker",
+        "exec",
+        "qa453-timescale-466985aa",
+        "psql",
+        "-X",
+        "-q",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "postgres",
+        "-c",
+        "CREATE ROLE qa453_owner LOGIN;",
+        "-c",
+        "CREATE DATABASE qa453_owner OWNER qa453_owner TEMPLATE template0;"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "catalog",
+      "command": [
+        "docker",
+        "exec",
+        "qa453-timescale-466985aa",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa453_owner",
+        "-d",
+        "qa453_owner",
+        "-c",
+        "SELECT jsonb_build_object('version',current_setting('server_version_num'),'encoding',current_setting('server_encoding'),'available',COALESCE((SELECT jsonb_agg(jsonb_build_object('name',name,'default',default_version,'installed',installed_version) ORDER BY name) FROM pg_available_extensions WHERE name IN ('timescaledb','vector','pg_stat_statements','plpgsql','hstore')),'[]'::jsonb),'own_schema_exists',EXISTS(SELECT FROM pg_namespace WHERE nspname='qa453_local'))::text;"
+      ],
+      "exit": 0,
+      "stdout": "{\"version\": \"170006\", \"encoding\": \"UTF8\", \"available\": [{\"name\": \"hstore\", \"default\": \"1.8\", \"installed\": null}, {\"name\": \"pg_stat_statements\", \"default\": \"1.11\", \"installed\": null}, {\"name\": \"plpgsql\", \"default\": \"1.0\", \"installed\": \"1.0\"}, {\"name\": \"timescaledb\", \"default\": \"2.22.1\", \"installed\": null}, {\"name\": \"vector\", \"default\": \"0.7.2\", \"installed\": null}], \"own_schema_exists\": false}\n",
+      "stderr": ""
+    },
+    {
+      "label": "enable",
+      "command": [
+        "docker",
+        "exec",
+        "qa453-timescale-466985aa",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa453_owner",
+        "-d",
+        "qa453_owner",
+        "-c",
+        "CREATE EXTENSION IF NOT EXISTS timescaledb;"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "postgres",
+      "command": [
+        "docker",
+        "exec",
+        "qa453-timescale-466985aa",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa453_owner",
+        "-d",
+        "qa453_owner",
+        "-c",
+        "BEGIN; SET LOCAL statement_timeout='20s'; SET LOCAL timezone='UTC'; CREATE SCHEMA qa453_local; SET LOCAL search_path=qa453_local,public; CREATE TABLE readings(id integer NOT NULL, observed_at timestamptz NOT NULL,sensor text NOT NULL,cents integer NOT NULL,PRIMARY KEY(observed_at,sensor)); INSERT INTO readings VALUES (1,'1969-12-31T23:59:59.999999+00:00','café:李',1999),(2,'1970-01-01T00:00:00+00:00','north',1250),(3,'1970-01-01T00:59:59.999999+00:00','north',725),(4,'1970-01-01T01:00:00+00:00','north',-499),(5,'1970-01-01T02:30:00+00:00','west',0); SELECT jsonb_build_object('phase','initial','rows',jsonb_agg(jsonb_build_array(extract(epoch from bucket)::bigint,sensor,n,total) ORDER BY bucket,sensor COLLATE \"C\"))::text FROM (SELECT date_bin(interval '1 hour',observed_at,timestamptz '1970-01-01 00:00:00+00') AS bucket,sensor,count(*) AS n,sum(cents) AS total FROM readings GROUP BY 1,2) q; INSERT INTO readings VALUES(6,'1970-01-01T01:30:00+00:00','north',300); SELECT jsonb_build_object('phase','insert','rows',jsonb_agg(jsonb_build_array(extract(epoch from bucket)::bigint,sensor,n,total) ORDER BY bucket,sensor COLLATE \"C\"))::text FROM (SELECT date_bin(interval '1 hour',observed_at,timestamptz '1970-01-01 00:00:00+00') AS bucket,sensor,count(*) AS n,sum(cents) AS total FROM readings GROUP BY 1,2) q; UPDATE readings SET cents=-125 WHERE id=3; SELECT jsonb_build_object('phase','update','rows',jsonb_agg(jsonb_build_array(extract(epoch from bucket)::bigint,sensor,n,total) ORDER BY bucket,sensor COLLATE \"C\"))::text FROM (SELECT date_bin(interval '1 hour',observed_at,timestamptz '1970-01-01 00:00:00+00') AS bucket,sensor,count(*) AS n,sum(cents) AS total FROM readings GROUP BY 1,2) q; DELETE FROM readings WHERE id=1; SELECT jsonb_build_object('phase','delete','rows',jsonb_agg(jsonb_build_array(extract(epoch from bucket)::bigint,sensor,n,total) ORDER BY bucket,sensor COLLATE \"C\"))::text FROM (SELECT date_bin(interval '1 hour',observed_at,timestamptz '1970-01-01 00:00:00+00') AS bucket,sensor,count(*) AS n,sum(cents) AS total FROM readings GROUP BY 1,2) q; ROLLBACK;"
+      ],
+      "exit": 2,
+      "stdout": "",
+      "stderr": "psql: error: connection to server on socket \"/var/run/postgresql/.s.PGSQL.5432\" failed: FATAL:  the database system is shutting down\n"
+    },
+    {
+      "label": "remove-exact-owned-server-and-volume",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa453-timescale-466985aa"
+      ],
+      "exit": 0,
+      "stdout": "qa453-timescale-466985aa\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-container-absence",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa453-timescale-466985aa"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa453-timescale-466985aa\n"
+    }
+  ],
+  "cases": [
+    {
+      "case": "catalog",
+      "value": {
+        "version": "170006",
+        "encoding": "UTF8",
+        "available": [
+          {
+            "name": "hstore",
+            "default": "1.8",
+            "installed": null
+          },
+          {
+            "name": "pg_stat_statements",
+            "default": "1.11",
+            "installed": null
+          },
+          {
+            "name": "plpgsql",
+            "default": "1.0",
+            "installed": "1.0"
+          },
+          {
+            "name": "timescaledb",
+            "default": "2.22.1",
+            "installed": null
+          },
+          {
+            "name": "vector",
+            "default": "0.7.2",
+            "installed": null
+          }
+        ],
+        "own_schema_exists": false
+      },
+      "pass": true
+    },
+    {
+      "case": "enable",
+      "pass": true
+    }
+  ],
+  "pass": false,
+  "create_intent": {
+    "image": "timescale/timescaledb@sha256:fba60021a224479e174ae1ec577c1a0576d5185b09fe9e622f1d19e4bf5bab0d",
+    "name": "qa453-timescale-466985aa",
+    "network": "none",
+    "published_ports": [],
+    "memory": "512m",
+    "CPU": 1,
+    "settings": [
+      "shared_preload_libraries=timescaledb",
+      "timescaledb.license=apache",
+      "timescaledb.telemetry_level=off",
+      "shared_buffers=32MB",
+      "max_connections=20"
+    ]
+  },
+  "own_container_absent": true,
+  "own_context_removed": true,
+  "official_base_cache_preserved": true
+}

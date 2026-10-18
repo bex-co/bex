@@ -1,0 +1,794 @@
+{
+  "source_head": "c05648614e7a72b6d827319f06b5ea2aa567a778",
+  "image": "timescale/timescaledb@sha256:fba60021a224479e174ae1ec577c1a0576d5185b09fe9e622f1d19e4bf5bab0d",
+  "container": "qa453-timescale-476f69f7",
+  "scope": "real local PG17 TimescaleDB Apache-mode consumer only; not production CNPG supplier/version or Community feature acceptance",
+  "steps": [
+    {
+      "label": "unique-own-container-absent",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa453-timescale-476f69f7"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa453-timescale-476f69f7\n"
+    },
+    {
+      "label": "start-exact-owned-local-reference",
+      "command": [
+        "docker",
+        "run",
+        "--pull",
+        "never",
+        "-d",
+        "--network",
+        "none",
+        "--memory",
+        "512m",
+        "--cpus",
+        "1",
+        "--name",
+        "qa453-timescale-476f69f7",
+        "-e",
+        "POSTGRES_HOST_AUTH_METHOD=trust",
+        "timescale/timescaledb@sha256:fba60021a224479e174ae1ec577c1a0576d5185b09fe9e622f1d19e4bf5bab0d",
+        "postgres",
+        "-c",
+        "shared_preload_libraries=timescaledb",
+        "-c",
+        "timescaledb.license=apache",
+        "-c",
+        "timescaledb.telemetry_level=off",
+        "-c",
+        "shared_buffers=32MB",
+        "-c",
+        "max_connections=20"
+      ],
+      "exit": 0,
+      "stdout": "9072380a98a4fc4bbe055e67194f099a9ab046effedde118b9ae72db676d4654\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-0",
+      "command": [
+        "docker",
+        "exec",
+        "qa453-timescale-476f69f7",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 2,
+      "stdout": "/var/run/postgresql:5432 - no response\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-1",
+      "command": [
+        "docker",
+        "exec",
+        "qa453-timescale-476f69f7",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 2,
+      "stdout": "/var/run/postgresql:5432 - no response\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-2",
+      "command": [
+        "docker",
+        "exec",
+        "qa453-timescale-476f69f7",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 0,
+      "stdout": "/var/run/postgresql:5432 - accepting connections\n",
+      "stderr": ""
+    },
+    {
+      "label": "local-only-owner-and-empty-database",
+      "command": [
+        "docker",
+        "exec",
+        "qa453-timescale-476f69f7",
+        "psql",
+        "-X",
+        "-q",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "postgres",
+        "-c",
+        "CREATE ROLE qa453_owner LOGIN;",
+        "-c",
+        "CREATE DATABASE qa453_owner OWNER qa453_owner TEMPLATE template0;"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "catalog",
+      "command": [
+        "docker",
+        "exec",
+        "qa453-timescale-476f69f7",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa453_owner",
+        "-d",
+        "qa453_owner",
+        "-c",
+        "SELECT jsonb_build_object('version',current_setting('server_version_num'),'encoding',current_setting('server_encoding'),'available',COALESCE((SELECT jsonb_agg(jsonb_build_object('name',name,'default',default_version,'installed',installed_version) ORDER BY name) FROM pg_available_extensions WHERE name IN ('timescaledb','vector','pg_stat_statements','plpgsql','hstore')),'[]'::jsonb),'own_schema_exists',EXISTS(SELECT FROM pg_namespace WHERE nspname='qa453_local'))::text;"
+      ],
+      "exit": 0,
+      "stdout": "{\"version\": \"170006\", \"encoding\": \"UTF8\", \"available\": [{\"name\": \"hstore\", \"default\": \"1.8\", \"installed\": null}, {\"name\": \"pg_stat_statements\", \"default\": \"1.11\", \"installed\": null}, {\"name\": \"plpgsql\", \"default\": \"1.0\", \"installed\": \"1.0\"}, {\"name\": \"timescaledb\", \"default\": \"2.22.1\", \"installed\": null}, {\"name\": \"vector\", \"default\": \"0.7.2\", \"installed\": null}], \"own_schema_exists\": false}\n",
+      "stderr": ""
+    },
+    {
+      "label": "enable",
+      "command": [
+        "docker",
+        "exec",
+        "qa453-timescale-476f69f7",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa453_owner",
+        "-d",
+        "qa453_owner",
+        "-c",
+        "CREATE EXTENSION IF NOT EXISTS timescaledb;"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "postgres",
+      "command": [
+        "docker",
+        "exec",
+        "qa453-timescale-476f69f7",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa453_owner",
+        "-d",
+        "qa453_owner",
+        "-c",
+        "BEGIN; SET LOCAL statement_timeout='20s'; SET LOCAL timezone='UTC'; CREATE SCHEMA qa453_local; SET LOCAL search_path=qa453_local,public; CREATE TABLE readings(id integer NOT NULL, observed_at timestamptz NOT NULL,sensor text NOT NULL,cents integer NOT NULL,PRIMARY KEY(observed_at,sensor)); INSERT INTO readings VALUES (1,'1969-12-31T23:59:59.999999+00:00','café:李',1999),(2,'1970-01-01T00:00:00+00:00','north',1250),(3,'1970-01-01T00:59:59.999999+00:00','north',725),(4,'1970-01-01T01:00:00+00:00','north',-499),(5,'1970-01-01T02:30:00+00:00','west',0); SELECT jsonb_build_object('phase','initial','rows',jsonb_agg(jsonb_build_array(extract(epoch from bucket)::bigint,sensor,n,total) ORDER BY bucket,sensor COLLATE \"C\"))::text FROM (SELECT date_bin(interval '1 hour',observed_at,timestamptz '1970-01-01 00:00:00+00') AS bucket,sensor,count(*) AS n,sum(cents) AS total FROM readings GROUP BY 1,2) q; INSERT INTO readings VALUES(6,'1970-01-01T01:30:00+00:00','north',300); SELECT jsonb_build_object('phase','insert','rows',jsonb_agg(jsonb_build_array(extract(epoch from bucket)::bigint,sensor,n,total) ORDER BY bucket,sensor COLLATE \"C\"))::text FROM (SELECT date_bin(interval '1 hour',observed_at,timestamptz '1970-01-01 00:00:00+00') AS bucket,sensor,count(*) AS n,sum(cents) AS total FROM readings GROUP BY 1,2) q; UPDATE readings SET cents=-125 WHERE id=3; SELECT jsonb_build_object('phase','update','rows',jsonb_agg(jsonb_build_array(extract(epoch from bucket)::bigint,sensor,n,total) ORDER BY bucket,sensor COLLATE \"C\"))::text FROM (SELECT date_bin(interval '1 hour',observed_at,timestamptz '1970-01-01 00:00:00+00') AS bucket,sensor,count(*) AS n,sum(cents) AS total FROM readings GROUP BY 1,2) q; DELETE FROM readings WHERE id=1; SELECT jsonb_build_object('phase','delete','rows',jsonb_agg(jsonb_build_array(extract(epoch from bucket)::bigint,sensor,n,total) ORDER BY bucket,sensor COLLATE \"C\"))::text FROM (SELECT date_bin(interval '1 hour',observed_at,timestamptz '1970-01-01 00:00:00+00') AS bucket,sensor,count(*) AS n,sum(cents) AS total FROM readings GROUP BY 1,2) q; ROLLBACK;"
+      ],
+      "exit": 0,
+      "stdout": "{\"rows\": [[-3600, \"café:李\", 1, 1999], [0, \"north\", 2, 1975], [3600, \"north\", 1, -499], [7200, \"west\", 1, 0]], \"phase\": \"initial\"}\n{\"rows\": [[-3600, \"café:李\", 1, 1999], [0, \"north\", 2, 1975], [3600, \"north\", 2, -199], [7200, \"west\", 1, 0]], \"phase\": \"insert\"}\n{\"rows\": [[-3600, \"café:李\", 1, 1999], [0, \"north\", 2, 1125], [3600, \"north\", 2, -199], [7200, \"west\", 1, 0]], \"phase\": \"update\"}\n{\"rows\": [[0, \"north\", 2, 1125], [3600, \"north\", 2, -199], [7200, \"west\", 1, 0]], \"phase\": \"delete\"}\n",
+      "stderr": ""
+    },
+    {
+      "label": "timescale",
+      "command": [
+        "docker",
+        "exec",
+        "qa453-timescale-476f69f7",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa453_owner",
+        "-d",
+        "qa453_owner",
+        "-c",
+        "BEGIN; SET LOCAL statement_timeout='20s'; SET LOCAL timezone='UTC'; CREATE SCHEMA qa453_local; SET LOCAL search_path=qa453_local,public; CREATE TABLE readings(id integer NOT NULL, observed_at timestamptz NOT NULL,sensor text NOT NULL,cents integer NOT NULL,PRIMARY KEY(observed_at,sensor)); INSERT INTO readings VALUES (1,'1969-12-31T23:59:59.999999+00:00','café:李',1999),(2,'1970-01-01T00:00:00+00:00','north',1250),(3,'1970-01-01T00:59:59.999999+00:00','north',725),(4,'1970-01-01T01:00:00+00:00','north',-499),(5,'1970-01-01T02:30:00+00:00','west',0); SELECT jsonb_build_object('created',created)::text FROM create_hypertable('qa453_local.readings','observed_at',chunk_time_interval=>interval '1 hour',migrate_data=>true); SELECT jsonb_build_object('hypertable_count',(SELECT count(*) FROM timescaledb_information.hypertables WHERE hypertable_schema='qa453_local' AND hypertable_name='readings'),'chunk_count',(SELECT count(*) FROM show_chunks('qa453_local.readings')),'actual_physical_relations',(SELECT count(DISTINCT tableoid) FROM readings),'license',current_setting('timescaledb.license'))::text; SELECT jsonb_build_object('phase','initial','rows',jsonb_agg(jsonb_build_array(extract(epoch from bucket)::bigint,sensor,n,total) ORDER BY bucket,sensor COLLATE \"C\"))::text FROM (SELECT time_bucket(interval '1 hour',observed_at) AS bucket,sensor,count(*) AS n,sum(cents) AS total FROM readings GROUP BY 1,2) q; INSERT INTO readings VALUES(6,'1970-01-01T01:30:00+00:00','north',300); SELECT jsonb_build_object('phase','insert','rows',jsonb_agg(jsonb_build_array(extract(epoch from bucket)::bigint,sensor,n,total) ORDER BY bucket,sensor COLLATE \"C\"))::text FROM (SELECT time_bucket(interval '1 hour',observed_at) AS bucket,sensor,count(*) AS n,sum(cents) AS total FROM readings GROUP BY 1,2) q; UPDATE readings SET cents=-125 WHERE id=3; SELECT jsonb_build_object('phase','update','rows',jsonb_agg(jsonb_build_array(extract(epoch from bucket)::bigint,sensor,n,total) ORDER BY bucket,sensor COLLATE \"C\"))::text FROM (SELECT time_bucket(interval '1 hour',observed_at) AS bucket,sensor,count(*) AS n,sum(cents) AS total FROM readings GROUP BY 1,2) q; DELETE FROM readings WHERE id=1; SELECT jsonb_build_object('phase','delete','rows',jsonb_agg(jsonb_build_array(extract(epoch from bucket)::bigint,sensor,n,total) ORDER BY bucket,sensor COLLATE \"C\"))::text FROM (SELECT time_bucket(interval '1 hour',observed_at) AS bucket,sensor,count(*) AS n,sum(cents) AS total FROM readings GROUP BY 1,2) q; ROLLBACK;"
+      ],
+      "exit": 0,
+      "stdout": "{\"created\": true}\n{\"license\": \"apache\", \"chunk_count\": 4, \"hypertable_count\": 1, \"actual_physical_relations\": 4}\n{\"rows\": [[-3600, \"café:李\", 1, 1999], [0, \"north\", 2, 1975], [3600, \"north\", 1, -499], [7200, \"west\", 1, 0]], \"phase\": \"initial\"}\n{\"rows\": [[-3600, \"café:李\", 1, 1999], [0, \"north\", 2, 1975], [3600, \"north\", 2, -199], [7200, \"west\", 1, 0]], \"phase\": \"insert\"}\n{\"rows\": [[-3600, \"café:李\", 1, 1999], [0, \"north\", 2, 1125], [3600, \"north\", 2, -199], [7200, \"west\", 1, 0]], \"phase\": \"update\"}\n{\"rows\": [[0, \"north\", 2, 1125], [3600, \"north\", 2, -199], [7200, \"west\", 1, 0]], \"phase\": \"delete\"}\n",
+      "stderr": "NOTICE:  migrating data to chunks\nDETAIL:  Migration might take a while depending on the amount of data.\n"
+    },
+    {
+      "label": "final-real-module-and-rollback-proof",
+      "command": [
+        "docker",
+        "exec",
+        "qa453-timescale-476f69f7",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa453_owner",
+        "-d",
+        "qa453_owner",
+        "-c",
+        "SELECT jsonb_build_object('own_schema_count',(SELECT count(*) FROM pg_namespace WHERE nspname='qa453_local'),'own_hypertable_count',(SELECT count(*) FROM timescaledb_information.hypertables WHERE hypertable_schema='qa453_local'),'module_version',(SELECT extversion FROM pg_extension WHERE extname='timescaledb'),'server_version',current_setting('server_version'),'license',current_setting('timescaledb.license'),'preload',current_setting('shared_preload_libraries'))::text;"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "ERROR:  permission denied to examine \"shared_preload_libraries\"\nDETAIL:  Only roles with privileges of the \"pg_read_all_settings\" role may examine this parameter.\n"
+    },
+    {
+      "label": "remove-exact-owned-server-and-volume",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa453-timescale-476f69f7"
+      ],
+      "exit": 0,
+      "stdout": "qa453-timescale-476f69f7\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-container-absence",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa453-timescale-476f69f7"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa453-timescale-476f69f7\n"
+    }
+  ],
+  "cases": [
+    {
+      "case": "catalog",
+      "value": {
+        "version": "170006",
+        "encoding": "UTF8",
+        "available": [
+          {
+            "name": "hstore",
+            "default": "1.8",
+            "installed": null
+          },
+          {
+            "name": "pg_stat_statements",
+            "default": "1.11",
+            "installed": null
+          },
+          {
+            "name": "plpgsql",
+            "default": "1.0",
+            "installed": "1.0"
+          },
+          {
+            "name": "timescaledb",
+            "default": "2.22.1",
+            "installed": null
+          },
+          {
+            "name": "vector",
+            "default": "0.7.2",
+            "installed": null
+          }
+        ],
+        "own_schema_exists": false
+      },
+      "pass": true
+    },
+    {
+      "case": "enable",
+      "pass": true
+    },
+    {
+      "case": "postgres",
+      "decoded": {
+        "snapshots": [
+          {
+            "rows": [
+              [
+                -3600,
+                "café:李",
+                1,
+                1999
+              ],
+              [
+                0,
+                "north",
+                2,
+                1975
+              ],
+              [
+                3600,
+                "north",
+                1,
+                -499
+              ],
+              [
+                7200,
+                "west",
+                1,
+                0
+              ]
+            ],
+            "phase": "initial"
+          },
+          {
+            "rows": [
+              [
+                -3600,
+                "café:李",
+                1,
+                1999
+              ],
+              [
+                0,
+                "north",
+                2,
+                1975
+              ],
+              [
+                3600,
+                "north",
+                2,
+                -199
+              ],
+              [
+                7200,
+                "west",
+                1,
+                0
+              ]
+            ],
+            "phase": "insert"
+          },
+          {
+            "rows": [
+              [
+                -3600,
+                "café:李",
+                1,
+                1999
+              ],
+              [
+                0,
+                "north",
+                2,
+                1125
+              ],
+              [
+                3600,
+                "north",
+                2,
+                -199
+              ],
+              [
+                7200,
+                "west",
+                1,
+                0
+              ]
+            ],
+            "phase": "update"
+          },
+          {
+            "rows": [
+              [
+                0,
+                "north",
+                2,
+                1125
+              ],
+              [
+                3600,
+                "north",
+                2,
+                -199
+              ],
+              [
+                7200,
+                "west",
+                1,
+                0
+              ]
+            ],
+            "phase": "delete"
+          }
+        ],
+        "independent_expected": [
+          {
+            "phase": "initial",
+            "rows": [
+              [
+                -3600,
+                "café:李",
+                1,
+                1999
+              ],
+              [
+                0,
+                "north",
+                2,
+                1975
+              ],
+              [
+                3600,
+                "north",
+                1,
+                -499
+              ],
+              [
+                7200,
+                "west",
+                1,
+                0
+              ]
+            ]
+          },
+          {
+            "phase": "insert",
+            "rows": [
+              [
+                -3600,
+                "café:李",
+                1,
+                1999
+              ],
+              [
+                0,
+                "north",
+                2,
+                1975
+              ],
+              [
+                3600,
+                "north",
+                2,
+                -199
+              ],
+              [
+                7200,
+                "west",
+                1,
+                0
+              ]
+            ]
+          },
+          {
+            "phase": "update",
+            "rows": [
+              [
+                -3600,
+                "café:李",
+                1,
+                1999
+              ],
+              [
+                0,
+                "north",
+                2,
+                1125
+              ],
+              [
+                3600,
+                "north",
+                2,
+                -199
+              ],
+              [
+                7200,
+                "west",
+                1,
+                0
+              ]
+            ]
+          },
+          {
+            "phase": "delete",
+            "rows": [
+              [
+                0,
+                "north",
+                2,
+                1125
+              ],
+              [
+                3600,
+                "north",
+                2,
+                -199
+              ],
+              [
+                7200,
+                "west",
+                1,
+                0
+              ]
+            ]
+          }
+        ]
+      },
+      "pass": true
+    },
+    {
+      "case": "timescale",
+      "decoded": {
+        "create": {
+          "created": true
+        },
+        "physical_partitions": {
+          "license": "apache",
+          "chunk_count": 4,
+          "hypertable_count": 1,
+          "actual_physical_relations": 4
+        },
+        "snapshots": [
+          {
+            "rows": [
+              [
+                -3600,
+                "café:李",
+                1,
+                1999
+              ],
+              [
+                0,
+                "north",
+                2,
+                1975
+              ],
+              [
+                3600,
+                "north",
+                1,
+                -499
+              ],
+              [
+                7200,
+                "west",
+                1,
+                0
+              ]
+            ],
+            "phase": "initial"
+          },
+          {
+            "rows": [
+              [
+                -3600,
+                "café:李",
+                1,
+                1999
+              ],
+              [
+                0,
+                "north",
+                2,
+                1975
+              ],
+              [
+                3600,
+                "north",
+                2,
+                -199
+              ],
+              [
+                7200,
+                "west",
+                1,
+                0
+              ]
+            ],
+            "phase": "insert"
+          },
+          {
+            "rows": [
+              [
+                -3600,
+                "café:李",
+                1,
+                1999
+              ],
+              [
+                0,
+                "north",
+                2,
+                1125
+              ],
+              [
+                3600,
+                "north",
+                2,
+                -199
+              ],
+              [
+                7200,
+                "west",
+                1,
+                0
+              ]
+            ],
+            "phase": "update"
+          },
+          {
+            "rows": [
+              [
+                0,
+                "north",
+                2,
+                1125
+              ],
+              [
+                3600,
+                "north",
+                2,
+                -199
+              ],
+              [
+                7200,
+                "west",
+                1,
+                0
+              ]
+            ],
+            "phase": "delete"
+          }
+        ],
+        "independent_expected": [
+          {
+            "phase": "initial",
+            "rows": [
+              [
+                -3600,
+                "café:李",
+                1,
+                1999
+              ],
+              [
+                0,
+                "north",
+                2,
+                1975
+              ],
+              [
+                3600,
+                "north",
+                1,
+                -499
+              ],
+              [
+                7200,
+                "west",
+                1,
+                0
+              ]
+            ]
+          },
+          {
+            "phase": "insert",
+            "rows": [
+              [
+                -3600,
+                "café:李",
+                1,
+                1999
+              ],
+              [
+                0,
+                "north",
+                2,
+                1975
+              ],
+              [
+                3600,
+                "north",
+                2,
+                -199
+              ],
+              [
+                7200,
+                "west",
+                1,
+                0
+              ]
+            ]
+          },
+          {
+            "phase": "update",
+            "rows": [
+              [
+                -3600,
+                "café:李",
+                1,
+                1999
+              ],
+              [
+                0,
+                "north",
+                2,
+                1125
+              ],
+              [
+                3600,
+                "north",
+                2,
+                -199
+              ],
+              [
+                7200,
+                "west",
+                1,
+                0
+              ]
+            ]
+          },
+          {
+            "phase": "delete",
+            "rows": [
+              [
+                0,
+                "north",
+                2,
+                1125
+              ],
+              [
+                3600,
+                "north",
+                2,
+                -199
+              ],
+              [
+                7200,
+                "west",
+                1,
+                0
+              ]
+            ]
+          }
+        ]
+      },
+      "pass": true
+    }
+  ],
+  "pass": false,
+  "create_intent": {
+    "image": "timescale/timescaledb@sha256:fba60021a224479e174ae1ec577c1a0576d5185b09fe9e622f1d19e4bf5bab0d",
+    "name": "qa453-timescale-476f69f7",
+    "network": "none",
+    "published_ports": [],
+    "memory": "512m",
+    "CPU": 1,
+    "settings": [
+      "shared_preload_libraries=timescaledb",
+      "timescaledb.license=apache",
+      "timescaledb.telemetry_level=off",
+      "shared_buffers=32MB",
+      "max_connections=20"
+    ]
+  },
+  "own_container_absent": true,
+  "own_context_removed": true,
+  "official_base_cache_preserved": true
+}

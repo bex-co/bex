@@ -1,0 +1,13 @@
+from pathlib import Path
+import sys,json
+P=Path(__file__).resolve().parent;f=P/'sweep453-common.py';sys.argv=[str(f),'final-inventory','bex'];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==453 and v.get('id'));assert x['state'].startswith('deleted:') and x['cached_connection_checks'][-1]['phase']=='after' and x['cached_connection_checks'][-1]['pass'] and all(v for k,v in x['cached_connection_private_files_removed'].items() if k.endswith('_removed'));out={}
+sr,ss=rows(['services']);kr,ks=rows(['keyvalue','list']);pr,ps=rows(['postgres','list']);assert BASE<={z['id'] for z in ss} and x['id'] not in {z['id'] for z in ps}
+for label,path in [('env-groups','/v1/env-groups?ownerId='+WS),('projects','/v1/projects?ownerId='+WS),('blueprints','/v1/blueprints?ownerId='+WS),('quota','/v1/owners/'+WS+'/limits')]:
+ r=api('GET',path);assert r['status']=='200';v=json.loads(r['response'])
+ if label=='blueprints':
+  views=[z.get('blueprint',z) for z in v];passed={z['id'] for z in views}=={'blp-db136288mmqc73d4hpug'};r['response']=json.dumps([{'id':z['id'],'projection':'immutable baseline identity only; configuration omitted'} for z in views])
+ elif label=='quota':passed=v['services']['used']==len([z for z in ss if z['id'].startswith('srv-')]) and v['services']['terminating']==v['postgres']['terminating']==v['keyValues']['terminating']==0 and v['postgres']['used']==len(ps) and v['keyValues']['used']==len(ks)
+ else:passed=v==[]
+ out[label]={'at':now(),'receipt':r,'pass':bool(passed)};c['sweep453_cleanup_inventory']=out;save();print(json.dumps({'kind':label,'pass':bool(passed)}),flush=True);assert passed
+
+c['sweep453_cleanup_inventory']['current_inventory']={'pass':True,'baseline_service_IDs_present':True,'services':{'all_IDs':[z['id'] for z in ss if z['id'].startswith('srv-')],'unrelated_nonbaseline_IDs':[z['id'] for z in ss if z['id'].startswith('srv-') and z['id'] not in BASE]},'postgres_IDs':[z['id'] for z in ps],'keyValue_IDs':[z['id'] for z in ks]};save()
