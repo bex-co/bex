@@ -6,7 +6,7 @@ Published Bex0.3.2/a6350da0 creates one fresh Free PostgreSQL13 fixture with exp
 
 ## Existing w4/308 is still unaccepted live
 
-The single owned database receives fourteen finite API-only dry runs, seven through REST PATCH and seven through MCP update_postgres. Every request explicitly sends dryRun:true. Both surfaces accept13→14 and13→15: REST returns200, and MCP returns200 with a successful tool result, rather than the new named refusal POSTGRES_UPGRADE_TARGET_UNSUPPORTED. These four outcomes retain the existing [w4/308](../../../w4/blocked/308.md) live gate. No real version write is sent and no new issue is created.
+The single owned database receives fourteen finite API-only dry runs, seven through REST PATCH and seven through MCP update_postgres. Every request explicitly sends dryRun:true. Both surfaces accept13→14 and13→15: REST returns200, and MCP returns200 with a successful tool result, rather than the new named refusal POSTGRES_UPGRADE_TARGET_UNSUPPORTED. These four outcomes retain the existing [w4/308](../../../w4/done/308.md) live gate. No real version write is sent and no new issue is created.
 
 The other ten cases pass: each surface accepts a supported16 preview and an omitted-version rename preview; equal13 is refused as POSTGRES_VERSION_NOT_NEWER, while unknown12 and99 are refused as POSTGRES_VERSION_UNKNOWN. MCP's normal HTTP200 error envelope is classified using its tool-error flag and code, not HTTP status alone. The accepted supported-target control establishes validation acceptance only; it does not establish a real upgrade, target SQL version or data retention.
 
