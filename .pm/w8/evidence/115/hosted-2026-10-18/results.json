@@ -1,0 +1,48 @@
+{
+ "date": "2026-10-18",
+ "workspace": "tea-daif693dqjvc73e7as3g (bex-canary)",
+ "auth": "temporary QA API key (client_credentials), revoked after the run",
+ "tools_list": {
+  "count": 189,
+  "update_service.idleTTLSeconds": {
+   "description": "seconds a free-tier web service may go without traffic (HTTP requests it served, or WebSocket frames it received or sent) before it auto-sleeps; omit it to keep the current value, 0 selects the platform default window of 15 minutes, a positive value overrides it",
+   "maximum": 2147483647,
+   "minimum": -2147483648,
+   "type": [
+    "null",
+    "integer"
+   ]
+  }
+ },
+ "fixture": {
+  "id": "srv-dba3tuj4pcls73bt1r90",
+  "name": "qa-lx88637d-115-bex",
+  "type": "web_service",
+  "plan": "free",
+  "image": "docker.io/traefik/whoami:v1.10.3",
+  "created_by": "bex CLI v0.3.3 services create",
+  "deleted": true
+ },
+ "setIdleTimeout_60": {
+  "data": {
+   "setIdleTimeout": {
+    "id": "srv-dba3tuj4pcls73bt1r90",
+    "idleTTLSeconds": 60
+   }
+  }
+ },
+ "mcp_update_service_dryRun_omitted": [
+  "\"idleTTLSeconds\":60"
+ ],
+ "mcp_update_service_dryRun_explicit_0": [
+  "\"idleTTLSeconds\":0"
+ ],
+ "stored_after_previews": {
+  "data": {
+   "service": {
+    "id": "srv-dba3tuj4pcls73bt1r90",
+    "idleTTLSeconds": 60
+   }
+  }
+ }
+}

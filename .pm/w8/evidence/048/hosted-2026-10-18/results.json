@@ -1,0 +1,35 @@
+{
+ "date": "2026-10-18",
+ "workspace": "tea-daif693dqjvc73e7as3g (bex-canary)",
+ "serving": "production deploy 429d49ccf",
+ "auth": "temporary QA API key, revoked after the run",
+ "free_cron_create": {
+  "bex": "Error: received response code 400: bad request: a cron_job requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra",
+  "render": "Error: received response code 400: bad request: a cron_job requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra"
+ },
+ "blueprint_validate_free_cron": {
+  "bex": {
+   "errors": [
+    {
+     "column": 11,
+     "error": "a cron_job requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra",
+     "line": 9,
+     "path": "services[0].plan"
+    }
+   ],
+   "valid": false
+  },
+  "render": {
+   "errors": [
+    {
+     "column": 11,
+     "error": "a cron_job requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra",
+     "line": 9,
+     "path": "services[0].plan"
+    }
+   ],
+   "valid": false
+  }
+ },
+ "resources_created": 0
+}
