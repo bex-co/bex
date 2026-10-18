@@ -36,8 +36,6 @@ type Groups struct {
 	mu           sync.Mutex
 	rows         map[string]store.EnvGroup
 	contentLocks map[string]bool
-	// CutoverPending answers EnvGroupCutoverComplete false while set.
-	CutoverPending bool
 	// InsertErr / UpdateErr fail the next insert / metadata update.
 	InsertErr error
 	UpdateErr func(next store.EnvGroup) error
@@ -300,13 +298,6 @@ func (f *Groups) ReleaseEnvGroupContent(_ context.Context, id string, expectedVe
 	return nil
 }
 
-func (f *Groups) EnvGroupCutoverComplete(context.Context) (bool, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.calls++
-	return !f.CutoverPending, nil
-}
-
 // Seed sets a group row as a test's starting state, idle at generation 1.
 func (f *Groups) Seed(g store.EnvGroup) store.EnvGroup {
 	if g.Content.State == "" {
@@ -359,12 +350,4 @@ func (f *Groups) Calls() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.calls
-}
-
-// CompleteEnvGroupCutover records the cutover marker.
-func (f *Groups) CompleteEnvGroupCutover(context.Context, time.Time) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.CutoverPending = false
-	return nil
 }

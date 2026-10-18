@@ -483,8 +483,8 @@ func TestEnvVarRevisionIsCoherentAndMasked(t *testing.T) {
 func TestVersionedEnvReadRefusesAmbiguousLegacyAndSanitizesStoreFailures(t *testing.T) {
 	path := envPath("web")
 	store := newVersionedTenantFakeSecretStore()
-	legacyCtx := withTenant(context.Background(), baoTenant)
-	if err := store.Put(legacyCtx, path, map[string]string{"TOKEN": "legacy-secret"}); err != nil {
+	legacyTenantCtx := withTenant(context.Background(), baoTenant)
+	if err := store.Put(legacyTenantCtx, path, map[string]string{"TOKEN": "legacy-secret"}); err != nil {
 		t.Fatal(err)
 	}
 	svc := newService(store, tenantApp("web", "tea-a"))

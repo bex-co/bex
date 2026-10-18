@@ -29,7 +29,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -202,14 +201,6 @@ func main() {
 	}
 
 	base := &core.Base{Client: cl, Namespace: cfg.Namespace}
-
-	// `api env-group-cutover <mode>` (w8/m114) runs beside a live bex-api in
-	// the same pod, so it starts no worker and binds no listener: it opens the
-	// two stores, runs, prints its report and exits.
-	if cfg.EnvGroupCutover != "" {
-		runEnvGroupCutover(ctx, cfg, cl)
-		return
-	}
 
 	// One readiness flag for the whole pod (w1/m52): the public server's
 	// /readyz answers 200 until SIGTERM, then 503 while both servers keep
@@ -1502,25 +1493,5 @@ func backfillMachineMemberships(ctx context.Context, st any, keys apikeys.APIKey
 	}
 	if n > 0 {
 		log.Printf("bex-api: machine-membership backfill: reclassified %d API-key binding(s) as machine", n)
-	}
-}
-
-// runEnvGroupCutover is `api env-group-cutover dry-run|apply|prune` (w8/m114,
-// transitional): see envgroups.Cutover.
-func runEnvGroupCutover(ctx context.Context, cfg *Config, cl client.Client) {
-	pool := openControlPlaneDB(ctx, cfg.CPDBURI)
-	defer pool.Close()
-	cutover := envgroups.Cutover{
-		Secrets: secrets.NewOpenBaoStore(cfg.OpenBaoURL, cfg.OpenBaoJWTPath),
-		Store:   store.NewPGStore(pool),
-		Client:  cl,
-		Now:     time.Now,
-	}
-	report, err := cutover.Run(ctx, cfg.EnvGroupCutover)
-	out := json.NewEncoder(os.Stdout)
-	out.SetIndent("", "  ")
-	_ = out.Encode(report)
-	if err != nil {
-		log.Fatalf("bex-api: env-group cutover %s: %v", cfg.EnvGroupCutover, err)
 	}
 }

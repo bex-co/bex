@@ -279,17 +279,3 @@ func (s *PGStore) envGroupLostRace(ctx context.Context, id string) error {
 	}
 	return fmt.Errorf("environment group: %w", ErrNotFound)
 }
-
-// EnvGroupCutoverComplete reports whether the one-shot OpenBao-to-Postgres
-// cutover has run (w8/m114; transitional, removed with the migrator).
-func (s *PGStore) EnvGroupCutoverComplete(ctx context.Context) (bool, error) {
-	var done bool
-	err := s.envGroupQuery(ctx).QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM env_group_cutover)`).Scan(&done)
-	return done, err
-}
-
-// CompleteEnvGroupCutover records that the cutover has run; idempotent.
-func (s *PGStore) CompleteEnvGroupCutover(ctx context.Context, at time.Time) error {
-	_, err := s.envGroupQuery(ctx).Exec(ctx, `INSERT INTO env_group_cutover (completed_at) VALUES ($1) ON CONFLICT (id) DO NOTHING`, at)
-	return err
-}

@@ -35,7 +35,7 @@ func (s *Service) WithInitialEnvGroups(ctx context.Context, names []string, a *a
 	if err := s.AuthorizeAppFresh(ctx, core.RelCanCreate, a); err != nil {
 		return err
 	}
-	if err := s.requireGroups(ctx); err != nil {
+	if err := s.requireGroups(); err != nil {
 		return err
 	}
 	service := core.AppPublicID(a)
