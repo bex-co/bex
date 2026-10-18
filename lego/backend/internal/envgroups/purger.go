@@ -95,9 +95,6 @@ func (p *WorkspacePurger) UnlinkApp(ctx context.Context, a *appv1alpha1.App) err
 	if p.Store == nil {
 		return nil
 	}
-	if err := p.requireGroups(); err != nil {
-		return err
-	}
 	service := core.AppPublicID(a)
 	for _, gid := range mountedGroups(a) {
 		g, err := p.readGroup(ctx, gid)
