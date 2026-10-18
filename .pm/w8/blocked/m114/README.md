@@ -1,25 +1,25 @@
 # w8 · m114 — Move environment-group metadata from OpenBao to the control-plane store
 
-**Worker:** worker8 **Goal:** OpenBao holds only environment-group secret values (the env and files maps). Every non-secret fact — identity, owning workspace, name uniqueness, environment membership, service links, timestamps, the revision lock and in-flight operation state — lives in Postgres under constraints and transactions. All legacy-tenant, locator, name-claim, tombstone-fence and lazy-migration code is deleted, and so is the one-shot migrator once production has cut over. **Status:** in progress — t001–t006 and t008–t011 done; t007 needs protected snapshot comparison (snapshot, apply, prune and live checks recorded in [t007.md](t007.md)); t012 closeout pending
+**Worker:** worker8 **Goal:** OpenBao holds only environment-group secret values (the env and files maps). Every non-secret fact — identity, owning workspace, name uniqueness, environment membership, service links, timestamps, the revision lock and in-flight operation state — lives in Postgres under constraints and transactions. All legacy-tenant, locator, name-claim, tombstone-fence and lazy-migration code is deleted, and so is the one-shot migrator once production has cut over. **Status:** blocked — t001–t006 and t008–t011 done; t007 awaits the existing GitHub production-restore reviewer for [run39111039281](https://github.com/bex-co/bex/actions/runs/39111039281), exact snapshot equality and final-image verification; t012 depends on that proof and temporary audit removal
 
 **Principle (user decision 2026-10-18):** the clean end state outranks compatibility. Bex-specific client behavior may break, and no dual-read or dual-write path ships in serving code. Two things are not negotiable: Render's wire contract, and customer data — every live group's values, name, workspace, environment, links and timestamps survive the cutover.
 
 ## Tasks (in order)
 
-| id   | title                                                                     | est | depends_on                 |
-| ---- | ------------------------------------------------------------------------- | --- | -------------------------- |
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
 | t001 | Design the end state and the cutover; rewrite ADR013's env-group sections | 45m | — — **DONE** |
-| t002 | Schema and store layer for groups, links and operation state              | 60m | w8/m114/t001 — **DONE**               |
-| t003 | Serve metadata, names and links from the store                            | 90m | w8/m114/t002 — **DONE**               |
-| t004 | Move the revision lock and operation records to the store                 | 60m | w8/m114/t003 — **DONE**               |
-| t005 | Rewire consumers: environments, apps, Blueprints, purge                   | 60m | w8/m114/t003 — **DONE**               |
-| t006 | One-shot cutover migrator (dry-run / apply / prune), rehearsed on dev-8   | 75m | w8/m114/t004, w8/m114/t005 — **DONE** |
-| t007 | Production cutover in a user-authorized window                            | 30m | w8/m114/t006               |
-| t008 | Delete the compatibility code and the migrator — **DONE** | 60m | w8/m114/t007               |
-| t009 | Render parity: env-group surfaces and deliberate breaks — **DONE** | 30m | w8/m114/t008               |
-| t010 | Simplify the changed code — **DONE** | 20m | w8/m114/t009               |
-| t011 | Test coverage: constraints, zero-OpenBao reads, save recovery — **DONE** | 50m | w8/m114/t009               |
-| t012 | Close out the milestone                                                   | 10m | w8/m114/t011               |
+| t002 | Schema and store layer for groups, links and operation state | 60m | w8/m114/t001 — **DONE** |
+| t003 | Serve metadata, names and links from the store | 90m | w8/m114/t002 — **DONE** |
+| t004 | Move the revision lock and operation records to the store | 60m | w8/m114/t003 — **DONE** |
+| t005 | Rewire consumers: environments, apps, Blueprints, purge | 60m | w8/m114/t003 — **DONE** |
+| t006 | One-shot cutover migrator (dry-run / apply / prune), rehearsed on dev-8 | 75m | w8/m114/t004, w8/m114/t005 — **DONE** |
+| t007 | Production cutover in a user-authorized window | 30m | w8/m114/t006 |
+| t008 | Delete the compatibility code and the migrator — **DONE** | 60m | w8/m114/t007 |
+| t009 | Render parity: env-group surfaces and deliberate breaks — **DONE** | 30m | w8/m114/t008 |
+| t010 | Simplify the changed code — **DONE** | 20m | w8/m114/t009 |
+| t011 | Test coverage: constraints, zero-OpenBao reads, save recovery — **DONE** | 50m | w8/m114/t009 |
+| t012 | Close out the milestone | 10m | w8/m114/t011 |
 
 Twelve tasks, 590m.
 
@@ -47,11 +47,11 @@ Twelve tasks, 590m.
 
 ## Source + Goal linkage
 
-- **Source:** user decision 2026-10-18, during the w8/m113 diagnosis: non-secret env-group metadata does not belong in OpenBao, and the migration should be as clean as possible — "the clean end-state code matters more than not breaking clients; breaking is acceptable." Origin trace: `7eedb6175` (w1/m16, 2026-07-09) stored everything in OpenBao ("reusing the existing OpenBao store (no new backend)"), even though the plan ([w1/m16 t001](../../w1/done/m16/t001.md)) called a group "a control-plane store object … plus an OpenBao path for its values" and left "store vs OpenBao metadata" open. The Postgres store had existed since `aebbd4342` (w1/m2, 2026-07-06). Later changes kept extending the same choice: `c798a3dee` and `e3145bf95` (2026-07-14, workspace and environment into meta), `cacde0622` (2026-08-17, 15s scan cache), `ffc1cd6bb` (w2/m80, 2026-08-19, prefix sweep and legacy union, cache retired) and `2755efcc4` (2026-09-08, CAS metadata). Symptom: [w8/m113](../done/m113/README.md) — `bex services` timed out in workspace bex because every scan reads about 260 fenced ids at roughly 50ms each ([profile](../done/m113/done/t001.md)).
-- **Supersedes [w8/119](../done/119.md) in full:** fence ageing, the one-read scan and a process-wide read budget all disappear with the scan. It also deletes w8/m113's concurrent scan.
-- **Goal linkage:** dependable hosting ([ADR008](../../../docs/ADR008-vision.md)); OpenBao as the secret store ([ADR013](../../../docs/ADR013-secrets.md)) beside bex-api's Postgres control plane ([ADR006](../../../docs/ADR006-bex-api.md)); Render parity ([ADR018](../../../docs/ADR018-render-parity.md)) for env-group lists and the CLI services journey.
+- **Source:** user decision 2026-10-18, during the w8/m113 diagnosis: non-secret env-group metadata does not belong in OpenBao, and the migration should be as clean as possible — "the clean end-state code matters more than not breaking clients; breaking is acceptable." Origin trace: `7eedb6175` (w1/m16, 2026-07-09) stored everything in OpenBao ("reusing the existing OpenBao store (no new backend)"), even though the plan ([w1/m16 t001](../../../w1/done/m16/t001.md)) called a group "a control-plane store object … plus an OpenBao path for its values" and left "store vs OpenBao metadata" open. The Postgres store had existed since `aebbd4342` (w1/m2, 2026-07-06). Later changes kept extending the same choice: `c798a3dee` and `e3145bf95` (2026-07-14, workspace and environment into meta), `cacde0622` (2026-08-17, 15s scan cache), `ffc1cd6bb` (w2/m80, 2026-08-19, prefix sweep and legacy union, cache retired) and `2755efcc4` (2026-09-08, CAS metadata). Symptom: [w8/m113](../../done/m113/README.md) — `bex services` timed out in workspace bex because every scan reads about 260 fenced ids at roughly 50ms each ([profile](../../done/m113/done/t001.md)).
+- **Supersedes [w8/119](../../done/119.md) in full:** fence ageing, the one-read scan and a process-wide read budget all disappear with the scan. It also deletes w8/m113's concurrent scan.
+- **Goal linkage:** dependable hosting ([ADR008](../../../../docs/ADR008-vision.md)); OpenBao as the secret store ([ADR013](../../../../docs/ADR013-secrets.md)) beside bex-api's Postgres control plane ([ADR006](../../../../docs/ADR006-bex-api.md)); Render parity ([ADR018](../../../../docs/ADR018-render-parity.md)) for env-group lists and the CLI services journey.
 - **Expected outcome:** env-group and environment reads become indexed SQL with no OpenBao calls. Name uniqueness, link cleanup and deletion become constraints and transactions instead of hand-built CAS records. The envgroups package loses its KV workaround layer, and `bex services` in workspace bex answers in under 10s.
 - **Why now:** m113's concurrent scan removed the timeout, but the cost stays linear in groups ever deleted and grows with every QA fixture in that workspace. Every new env-group feature currently extends a KV workaround. The w2/m80 dual-read window has been open since 2026-08-19. The cutover is cheapest while the data is small (17 first-party workspaces, per DO_NOT_DO 2026-08).
 - Render parity closing task applies (t009): env groups are exposed on REST, GraphQL, MCP and the dashboard.
-- **Production writes:** t007 runs only inside a window the user explicitly authorizes, after a fresh OpenBao snapshot ([ADR031](../../../docs/ADR031-platform-data-backup.md)).
+- **Production writes:** t007 runs only inside a window the user explicitly authorizes, after a fresh OpenBao snapshot ([ADR031](../../../../docs/ADR031-platform-data-backup.md)).
 - **Size:** 590m is larger than usual on purpose. The cutover and the deletion of the migrator belong to one end state, and splitting them would ship a milestone that leaves dual-layout code behind.

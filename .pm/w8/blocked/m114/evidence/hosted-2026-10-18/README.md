@@ -21,3 +21,7 @@ Render's [list API](https://api-docs.render.com/reference/list-env-groups) and [
 ## Remaining checks
 
 A small fresh create/save/delete check must run on the deployed final image, after the snapshot comparison so test rows cannot interfere. Exact customer-data preservation remains a separate comparison against the encrypted 07:26 pre-cutover snapshot. [Protected manual run39111039281](https://github.com/bex-co/bex/actions/runs/39111039281), dispatched at main23150581, waits for the existing GitHub `production-restore` required reviewer. No preservation job has executed yet.
+
+[Final read-only rollout checkpoint at08:27:50Z](rollout-checkpoint.json): API remains Ready2/2 on the initial149e5133 image, with the cutover-marker table still present. Argo root/operator are Synced/Healthy atf56654f33; the queued qualifying deployment is [run39111396082](https://github.com/bex-co/bex/actions/runs/39111396082). Final-image acceptance is explicitly pending; these health checks do not claim that the migrator-free image is serving.
+
+[Owned authentication cleanup](owned-auth-cleanup-counts.json) revoked both device grants (204, then401) and logged out both helper sessions. [Root scratch cleanup](root-cleanup-counts.json) removed the private production kubeconfig, isolated CLI config and raw responses; no owned port-forward remains. Existing Chrome sign-in and the separate original-work backup were left untouched. Only four credential-free acceptance scripts remain under the owned scratch directory for a later resume.

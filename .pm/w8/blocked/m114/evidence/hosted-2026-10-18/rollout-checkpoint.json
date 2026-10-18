@@ -1,0 +1,21 @@
+{
+  "recordedAt": "2026-10-18T08:27:50Z",
+  "finalImageAcceptance": false,
+  "api": {
+    "image": "ghcr.io/bex-co/bex-operator@sha256:149e5133bde2b7fb3ec3fe0cfc2db8f6256792c4b6911369676a033dde890eae",
+    "readyReplicas": 2,
+    "updatedReplicas": 2,
+    "desiredReplicas": 2,
+    "generation": 2541,
+    "observedGeneration": 2541
+  },
+  "argoRootSyncedHealthy": true,
+  "argoOperatorSyncedHealthy": true,
+  "argoRevision": "f56654f33dc545ba8f5e2ec489b844e33c4b43c1",
+  "cutoverMarkerTablePresent": true,
+  "latestQualifyingDeployRun": 39111396082,
+  "latestQualifyingDeployStatus": "pending",
+  "snapshotProofRun": 39111039281,
+  "snapshotProofStatus": "waiting-for-production-restore-review",
+  "productionWritesPerformed": false
+}

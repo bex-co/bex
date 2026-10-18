@@ -1,0 +1,16 @@
+{
+  "remainingScratchFiles": [
+    "accept_envgroups_hosted.py",
+    "accept_envgroups_linked.py",
+    "audit_envgroup_cutover.py",
+    "smoke_envgroups_final.py"
+  ],
+  "privateKubeconfigRemoved": true,
+  "isolatedCLIConfigRemoved": true,
+  "rawResponsesRemoved": true,
+  "ownedPortForwardProcessesRemaining": 0,
+  "ownedHelperGrantsAndSessionsRevoked": true,
+  "userChromeSessionUnaffected": true,
+  "oldSeparateUserWorkBackupUntouched": true,
+  "removedScratchEntries": 92
+}
