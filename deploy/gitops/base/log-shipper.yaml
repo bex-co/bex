@@ -170,13 +170,16 @@ spec:
       releaseName: log-shipper
       values: |
         fullnameOverride: log-shipper
-        # w4/m199: Alloy v1.11.2 plus the carried CRI first-chunk-timestamp
-        # patch, built and published from deploy/log-shipper/ (rationale in
-        # its Dockerfile). The chart identity stays the reviewed 1.3.1.
+        # Alloy v1.11.3 plus the carried CRI first-chunk-timestamp patch
+        # (w4/m199), built and published from deploy/log-shipper/ (rationale in
+        # its Dockerfile). v1.11.3, not v1.11.2: v1.11.2's loki.source.file
+        # dropped lines on target churn (w4/m174 t007). Verify a new digest
+        # with scripts/log-shipper-kind-replay.py before pinning it. The chart
+        # identity stays the reviewed 1.3.1.
         image:
           registry: ghcr.io
           repository: bex-co/bex-alloy
-          digest: sha256:d448ad121e332519f3427b4bc0e61241a1c03edd41d60218acb6935ef08b7a0a
+          digest: sha256:4b3ddf00a9782a6ed8f4fff33e10a3a4f080c03bd79ff927f0b1ffe600aa3814
         controller:
           type: daemonset
           # w1/m19 t003: DaemonSet exception — must tail logs on EVERY node

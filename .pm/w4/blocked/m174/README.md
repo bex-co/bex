@@ -1,6 +1,6 @@
 # w4 · m174 — Fast-exiting App containers intermittently lose stderr lines from their logs
 
-**Worker:** worker4 **Goal:** every line a tenant App container writes, on stdout or stderr, reaches `GET /v1/logs` (and GraphQL/MCP/dashboard Logs), including containers that exit within a second: every cron run and every fast crash. **Status:** blocked
+**Worker:** worker4 **Goal:** every line a tenant App container writes, on stdout or stderr, reaches `GET /v1/logs` (and GraphQL/MCP/dashboard Logs), including containers that exit within a second: every cron run and every fast crash. **Status:** blocked — t007 done 2026-10-18: the residual loss was Alloy v1.11.2 `loki.source.file` dropping an entry while re-applying readers on target churn; bex-alloy now builds on v1.11.3 (0 of 1600 lost on the kind replay vs 4 of 800); t008 dev-stack step done (delayed prefix 160/160); live replays remain
 
 ## Tasks (in order)
 
@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | t001 | Pin the mechanism: why the API tailer drops stderr from a fast exit — **DONE** | 30m | — |
 | t002 | Ship tenant App container logs from the node's CRI files | 1h | w4/m174/t001 |
-| t007 | Find the residual one-line loss after the CRI-file switch | 45m | w4/m174/t002 |
+| t007 — **DONE** | Find the residual one-line loss after the CRI-file switch | 45m | w4/m174/t002 |
 | t008 | Verify delayed stdout prefixes at startup and history intake | 35m | w4/m174/t007 |
 | t003 | Render parity | 20m | w4/m174/t002, w4/m174/t008 |
 | t004 | Simplify — **DONE** | 15m | w4/m174/t003 |

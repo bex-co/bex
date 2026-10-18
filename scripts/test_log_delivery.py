@@ -33,10 +33,10 @@ class LogDeliveryTest(unittest.TestCase):
             alloy_config, alloy_image = render_alloy(tmp)
             loki_config, loki_image = render_loki(tmp)
             writer = re.search(r'^loki\.write "default" \{\n.*?^\}', alloy_config, re.M | re.S).group()
-            # Production uses the pinned v1.11.2 defaults: batch 1s/1MiB,
+            # Production uses the pinned v1.11.3 defaults: batch 1s/1MiB,
             # request timeout 10s, backoff 500ms..5m, ten attempts, retry 429,
             # no WAL. Only the isolated fixture shortens batching/backoff.
-            # github.com/grafana/alloy/blob/v1.11.2/internal/component/loki/write/types.go
+            # github.com/grafana/alloy/blob/v1.11.3/internal/component/loki/write/types.go
             self.assertNotRegex(writer, r"backoff|batch_wait|remote_timeout|retry_on_http_429|wal")
             writer = writer.replace("http://loki.monitoring.svc:3100", "http://127.0.0.1:3100")
             writer = writer.replace("endpoint {", '''endpoint {
@@ -158,7 +158,7 @@ loki.source.api "%s" {
                 quiet = metrics(12345)
                 self.assertGreater(value(quiet, "alloy_resources_process_start_time_seconds"), 0)
                 self.assertEqual(value(quiet, "alloy_config_last_load_successful"), 1)
-                self.assertEqual(value(quiet, "alloy_build_info", version="v1.11.2-bex-cri-first-ts"), 1)
+                self.assertEqual(value(quiet, "alloy_build_info", version="v1.11.3-bex-cri-first-ts"), 1)
                 self.assertEqual(value(metrics(3100), "loki_build_info", version="3.6.7"), 1)
                 self.assertGreater(value(metrics(3100), "process_start_time_seconds"), 0)
                 self.assertEqual(value(quiet, "loki_write_dropped_entries_total"), 0)
