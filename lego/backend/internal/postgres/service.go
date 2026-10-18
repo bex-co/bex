@@ -92,6 +92,9 @@ type Service struct {
 	// Production leaves it nil and uses pgx; tests replace it so the REST and
 	// GraphQL adapters can exercise authz + secret resolution without a live DB.
 	queryExecutor queryExecutor
+	// Retirements records a deleted database for usage metering, which lists
+	// only live CRs (w4/m173). nil records nothing.
+	Retirements store.UsageRetirementRecorder
 }
 
 // PostgresView is the Render-shaped "postgres" object.
@@ -803,6 +806,14 @@ func (s *Service) DeletePostgres(ctx context.Context, name string) error {
 	// cannot ride a cached positive to destroy the database.
 	if err := s.AuthorizeDatabaseFresh(ctx, core.RelCanCreate, d); err != nil {
 		return err
+	}
+	// Recorded first, and required: once the CR is gone the meters cannot
+	// find the hours it still ran (w4/m173). A record for a delete that then
+	// fails only re-meters hours the live pass also writes, idempotently.
+	if r, ok := store.RetiredDatastoreFor(d); ok && s.Retirements != nil {
+		if err := s.Retirements.RecordRetiredUsageResource(ctx, r); err != nil {
+			return core.HideCause(fmt.Errorf("%w: could not retain %s's usage before deleting it; retry", core.ErrUnavailable, d.Name), err)
+		}
 	}
 	return s.Client.Delete(ctx, d)
 }

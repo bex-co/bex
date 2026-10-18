@@ -87,6 +87,11 @@ func (s *PGStore) RollbackAppCreation(ctx context.Context, appID string) error {
 		if _, err := tx.Exec(ctx, `DELETE FROM apps WHERE id=$1`, appID); err != nil {
 			return err
 		}
+		// Deleting the row retired it for usage metering; a create that never
+		// completed owes nothing (w4/m173).
+		if _, err := tx.Exec(ctx, `DELETE FROM usage_retired_resources WHERE resource_kind='service' AND resource_id=$1`, appID); err != nil {
+			return err
+		}
 		_, err := tx.Exec(ctx, `DELETE FROM product_activity_events WHERE resource_id=$1 OR parent_id=$1`, appID)
 		if err != nil {
 			return err
