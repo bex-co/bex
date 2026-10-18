@@ -50,10 +50,24 @@ func (p *WorkspacePurger) PurgeWorkspace(ctx context.Context, tenantID string) e
 		return err
 	}
 	for _, g := range rows {
-		if err := p.deleteSecret(ctx, tenantID, envSecretName(g.ID)); err != nil {
+		err := p.Groups.WithEnvGroupContentLock(ctx, g.ID, func(ctx context.Context) error {
+			if err := p.deleteSecret(ctx, tenantID, envSecretName(g.ID)); err != nil {
+				return err
+			}
+			if err := p.deleteSecret(ctx, tenantID, filesSecretName(g.ID)); err != nil {
+				return err
+			}
+			if err := p.deleteGroupValues(ctx, tenantID, g.ID); err != nil {
+				return err
+			}
+			// Keep the row as a retry anchor until external cleanup succeeds.
+			_, err := p.Groups.DeleteEnvGroup(ctx, g.ID)
+			if errors.Is(err, store.ErrNotFound) {
+				return nil
+			}
 			return err
-		}
-		if err := p.deleteSecret(ctx, tenantID, filesSecretName(g.ID)); err != nil {
+		})
+		if err != nil {
 			return err
 		}
 	}
@@ -62,14 +76,10 @@ func (p *WorkspacePurger) PurgeWorkspace(ctx context.Context, tenantID string) e
 		return err
 	}
 	for _, gid := range gids {
-		if err := p.deleteGroupValues(ctx, tenantID, gid); err != nil {
-			return err
-		}
-	}
-	// The rows go with the tenant's own cascade; deleting them here as well
-	// keeps a retried purge from listing groups whose values are gone.
-	for _, g := range rows {
-		if _, err := p.Groups.DeleteEnvGroup(ctx, g.ID); err != nil && !errors.Is(err, store.ErrNotFound) {
+		err := p.Groups.WithEnvGroupContentLock(ctx, gid, func(ctx context.Context) error {
+			return p.deleteGroupValues(ctx, tenantID, gid)
+		})
+		if err != nil {
 			return err
 		}
 	}

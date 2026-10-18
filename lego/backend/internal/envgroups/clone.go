@@ -18,7 +18,6 @@ package envgroups
 
 import (
 	"context"
-	"errors"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -46,31 +45,33 @@ func (s *Service) CloneEnvGroup(ctx context.Context, sourceID string, req CloneE
 	if err := s.Authorize(targetCtx, core.RelCanCreate); err != nil {
 		return EnvGroupView{}, err
 	}
-	if source, err = s.operableGroup(ctx, source); err != nil {
+	var env, files map[string]string
+	err = s.withGroupContent(ctx, sourceID, func(ctx context.Context, source store.EnvGroup) error {
+		opID, err := newGroupOpID()
+		if err != nil {
+			return core.ErrSecretsUnavailable
+		}
+		claimVersion, err := s.claimContent(ctx, source, store.EnvGroupOp{ID: opID, Kind: opKindClone})
+		if err != nil {
+			return err
+		}
+		var readErr error
+		env, readErr = s.getGroupMap(ctx, source.TenantID, envPath(sourceID))
+		if readErr == nil {
+			files, readErr = s.getGroupMap(ctx, source.TenantID, filesPath(sourceID))
+		}
+		cleanupCtx, cancel := groupCleanupContext(ctx)
+		defer cancel()
+		if err := s.releaseContent(cleanupCtx, sourceID, claimVersion, store.EnvGroupRelease{}); err != nil {
+			return envGroupRestorationFailed()
+		}
+		if readErr != nil {
+			return core.ErrSecretsUnavailable
+		}
+		return nil
+	})
+	if err != nil {
 		return EnvGroupView{}, err
-	}
-	opID, err := newGroupOpID()
-	if err != nil {
-		return EnvGroupView{}, core.ErrSecretsUnavailable
-	}
-	// The source lock: a clone claims the source busy so no save changes its
-	// maps mid-copy. It never mutates the source, so recovery only releases it.
-	claimVersion, err := s.claimContent(ctx, source, store.EnvGroupOp{ID: opID, Kind: opKindClone})
-	if err != nil {
-		return EnvGroupView{}, err
-	}
-	release := func() error {
-		return s.releaseContent(ctx, sourceID, claimVersion, store.EnvGroupRelease{})
-	}
-	env, err := s.getGroupMap(ctx, source.TenantID, envPath(sourceID))
-	if err != nil {
-		_ = release()
-		return EnvGroupView{}, core.ErrSecretsUnavailable
-	}
-	files, err := s.getGroupMap(ctx, source.TenantID, filesPath(sourceID))
-	if err != nil {
-		_ = release()
-		return EnvGroupView{}, core.ErrSecretsUnavailable
 	}
 	create := CreateEnvGroupRequest{
 		Name: req.Name, OwnerID: req.OwnerID, EnvironmentID: req.EnvironmentID,
@@ -83,14 +84,5 @@ func (s *Service) CloneEnvGroup(ctx context.Context, sourceID string, req CloneE
 	for _, name := range core.SortedKeys(files) {
 		create.SecretFiles = append(create.SecretFiles, SecretFileView{Name: name, Content: files[name]})
 	}
-	cloned, err := s.createEnvGroupAuthorized(targetCtx, create)
-	if err != nil {
-		_ = release()
-		return EnvGroupView{}, err
-	}
-	if err := release(); err != nil {
-		cleanupErr := s.DeleteEnvGroup(targetCtx, cloned.ID)
-		return EnvGroupView{}, errors.Join(envGroupRestorationFailed(), cleanupErr)
-	}
-	return cloned, nil
+	return s.createEnvGroupAuthorized(targetCtx, create)
 }

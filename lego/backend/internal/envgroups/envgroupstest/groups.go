@@ -33,8 +33,9 @@ import (
 // claim that records its operation in the same write. The store package's
 // Postgres tests pin the real implementation to the same contract.
 type Groups struct {
-	mu   sync.Mutex
-	rows map[string]store.EnvGroup
+	mu           sync.Mutex
+	rows         map[string]store.EnvGroup
+	contentLocks map[string]bool
 	// CutoverPending answers EnvGroupCutoverComplete false while set.
 	CutoverPending bool
 	// InsertErr / UpdateErr fail the next insert / metadata update.
@@ -50,6 +51,35 @@ type Groups struct {
 }
 
 func New() *Groups { return &Groups{rows: map[string]store.EnvGroup{}} }
+
+type contentLockContext struct {
+	groups *Groups
+	id     string
+}
+
+type contentLockKey struct{}
+
+func (f *Groups) WithEnvGroupContentLock(ctx context.Context, id string, fn func(context.Context) error) error {
+	if held, ok := ctx.Value(contentLockKey{}).(contentLockContext); ok && held.groups == f && held.id == id {
+		return fn(ctx)
+	}
+	f.mu.Lock()
+	if f.contentLocks == nil {
+		f.contentLocks = map[string]bool{}
+	}
+	if f.contentLocks[id] {
+		f.mu.Unlock()
+		return store.ErrEnvGroupChanged
+	}
+	f.contentLocks[id] = true
+	f.mu.Unlock()
+	defer func() {
+		f.mu.Lock()
+		delete(f.contentLocks, id)
+		f.mu.Unlock()
+	}()
+	return fn(context.WithValue(ctx, contentLockKey{}, contentLockContext{groups: f, id: id}))
+}
 
 func cloneRow(g store.EnvGroup) store.EnvGroup {
 	g.ServiceLinks = slices.Clone(g.ServiceLinks)
@@ -216,7 +246,7 @@ func (f *Groups) ClaimEnvGroupContent(_ context.Context, id string, expectedVers
 	defer f.mu.Unlock()
 	f.calls++
 	g, ok := f.rows[id]
-	if !ok || g.Content.Version != expectedVersion {
+	if !ok || g.Content.Version != expectedVersion || g.Content.State != store.EnvGroupIdle || g.Content.Op != nil {
 		return 0, f.lostRace(id)
 	}
 	g.Content.State, g.Content.Op = store.EnvGroupBusy, &op
@@ -256,6 +286,8 @@ func (f *Groups) ReleaseEnvGroupContent(_ context.Context, id string, expectedVe
 	}
 	if rel.RepairRequired {
 		g.Content.State = store.EnvGroupRepairRequired
+	} else if rel.RetainOperation {
+		g.Content.State = store.EnvGroupIdle
 	} else {
 		g.Content.State, g.Content.Op = store.EnvGroupIdle, nil
 	}

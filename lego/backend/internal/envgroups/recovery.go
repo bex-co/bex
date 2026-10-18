@@ -47,6 +47,20 @@ const (
 // restoring or finalizing from durable evidence is not recovery.
 const defaultEnvGroupOpLease = 2 * time.Minute
 
+const groupCleanupTimeout = 30 * time.Second
+
+type groupCleanupKey struct{}
+
+// Detached cleanup gets one deadline shared by compensation, row release and
+// value-map deletion. Nested helpers preserve the budget rather than renewing it.
+func groupCleanupContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	if ctx.Value(groupCleanupKey{}) != nil {
+		return ctx, func() {}
+	}
+	cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), groupCleanupTimeout)
+	return context.WithValue(cleanup, groupCleanupKey{}, true), cancel
+}
+
 func opDir(gid string) string { return "env-groups/" + gid + "/op" }
 
 func opOldEnvPath(gid, opID string) string   { return opDir(gid) + "/" + opID + "/old-env" }
@@ -83,15 +97,13 @@ func (s *Service) clearOpMaps(ctx context.Context, workspace, gid, opID string) 
 	return errors.Join(errs...)
 }
 
-// preparePatchOperation persists, before the busy claim, the prior and
+// preparePatchOperation persists, after the busy claim, the prior and
 // proposed map of each side the save changes, so a crash during the later
-// writes leaves another instance enough to restore or finish. Returns the
-// operation id the claim records.
-func (s *Service) preparePatchOperation(ctx context.Context, op store.EnvGroupOp, workspace, gid string, prior, next groupContents) (string, error) {
-	opID, err := newGroupOpID()
-	if err != nil {
-		return "", err
-	}
+// writes leaves another instance enough to restore or finish. A crash while
+// preparing remains admitted and only
+// needs cleanup; no live map can have changed yet.
+func (s *Service) preparePatchOperation(ctx context.Context, op store.EnvGroupOp, workspace, gid string, prior, next groupContents) error {
+	opID := op.ID
 	writes := map[string]map[string]string{}
 	if op.EnvChanged {
 		writes[opOldEnvPath(gid, opID)], writes[opNewEnvPath(gid, opID)] = prior.env, next.env
@@ -101,11 +113,10 @@ func (s *Service) preparePatchOperation(ctx context.Context, op store.EnvGroupOp
 	}
 	for path, data := range writes {
 		if err := s.putGroupMap(ctx, workspace, path, data); err != nil {
-			_ = s.clearOpMaps(context.WithoutCancel(ctx), workspace, gid, opID)
-			return "", err
+			return err
 		}
 	}
-	return opID, nil
+	return nil
 }
 
 // contentErr maps a content claim, advance or release error: a lost race is
@@ -136,10 +147,9 @@ func (s *Service) advanceOpPhase(ctx context.Context, gid, opID, phase string) e
 	return contentErr(err, core.ErrSecretsUnavailable)
 }
 
-// releaseContent ends the claim held at claimVersion, even for a caller that
-// has gone away.
+// releaseContent uses the bounded cleanup context its caller owns.
 func (s *Service) releaseContent(ctx context.Context, gid string, claimVersion int64, rel store.EnvGroupRelease) error {
-	return s.Groups.ReleaseEnvGroupContent(context.WithoutCancel(ctx), gid, claimVersion, rel)
+	return s.Groups.ReleaseEnvGroupContent(ctx, gid, claimVersion, rel)
 }
 
 // commit is the release of a save that changed content to contents.
@@ -150,37 +160,9 @@ func (s *Service) commit(contents groupContents) store.EnvGroupRelease {
 	}}
 }
 
-// operableGroup returns a fresh idle row for a writer: g itself when idle,
-// otherwise after offering it to recovery. A group still held, or stranded,
-// answers its conflict.
-func (s *Service) operableGroup(ctx context.Context, g store.EnvGroup) (store.EnvGroup, error) {
-	if g.Content.State == store.EnvGroupIdle {
-		return g, nil
-	}
-	if err := s.ensureGroupOperable(ctx, g); err != nil {
-		return store.EnvGroup{}, err
-	}
-	fresh, err := s.readGroup(ctx, g.ID)
-	if err != nil {
-		return store.EnvGroup{}, err
-	}
-	switch fresh.Content.State {
-	case store.EnvGroupIdle:
-		return fresh, nil
-	case store.EnvGroupRepairRequired:
-		return store.EnvGroup{}, envGroupRestorationFailed()
-	}
-	return store.EnvGroup{}, envGroupRevisionConflict() // another save claimed it meanwhile
-}
-
-// ensureGroupOperable recovers an expired busy or a stranded repair_required
-// group when its recorded operation allows, then reports whether the group may
-// accept a new writer. An active lease is left alone.
-func (s *Service) ensureGroupOperable(ctx context.Context, g store.EnvGroup) error {
+func (s *Service) ensureGroupOperableLocked(ctx context.Context, g store.EnvGroup) error {
 	op := g.Content.Op
 	switch {
-	case g.Content.State == store.EnvGroupIdle:
-		return nil
 	case op == nil:
 		// repair_required without recovery evidence — fail honestly.
 		return envGroupRestorationFailed()
@@ -193,6 +175,41 @@ func (s *Service) ensureGroupOperable(ctx context.Context, g store.EnvGroup) err
 		return s.recoverPatchOperation(ctx, g)
 	}
 	return envGroupRestorationFailed()
+}
+
+// withGroupContent acquires the cross-instance side-effect lock before reading
+// the row, recovering an expired operation, or touching either live map. A row
+// read before the lock can no longer authorize a stale writer or recoverer.
+func (s *Service) withGroupContent(ctx context.Context, gid string, fn func(context.Context, store.EnvGroup) error) error {
+	if err := s.requireGroups(ctx); err != nil {
+		return err
+	}
+	err := s.Groups.WithEnvGroupContentLock(ctx, gid, func(ctx context.Context) error {
+		g, err := s.readGroup(ctx, gid)
+		if err != nil {
+			return err
+		}
+		if g.Content.State != store.EnvGroupIdle {
+			if err := s.ensureGroupOperableLocked(ctx, g); err != nil {
+				return err
+			}
+			g, err = s.readGroup(ctx, gid)
+			if err != nil {
+				return err
+			}
+		}
+		if g.Content.Op != nil {
+			if err := s.cleanupIdleOperation(ctx, g); err != nil {
+				return err
+			}
+			g, err = s.readGroup(ctx, gid)
+			if err != nil {
+				return err
+			}
+		}
+		return fn(ctx, g)
+	})
+	return contentErr(err, err)
 }
 
 // recoverPatchOperation restores or finishes an interrupted save from the
@@ -246,9 +263,41 @@ func (s *Service) recoverPatchOperation(ctx context.Context, g store.EnvGroup) e
 // finishRecovery releases a recovered group at the version the recoverer read,
 // then removes the operation's recovery maps.
 func (s *Service) finishRecovery(ctx context.Context, g store.EnvGroup, rel store.EnvGroupRelease) error {
+	ctx, cancel := groupCleanupContext(ctx)
+	defer cancel()
+	rel.RetainOperation = true
 	if err := contentErr(s.releaseContent(ctx, g.ID, g.Content.Version, rel), envGroupRestorationFailed()); err != nil {
 		return err
 	}
-	_ = s.clearOpMaps(ctx, g.TenantID, g.ID, g.Content.Op.ID)
+	s.tryOperationCleanup(ctx, g.ID)
 	return nil
+}
+
+// cleanupIdleOperation never changes committed contents or generation. An idle
+// row retaining its op already committed or restored; only its recovery maps
+// remain. Keep that evidence until every delete succeeds so another instance
+// can retry, and no later writer replaces an uncleared operation.
+func (s *Service) cleanupIdleOperation(ctx context.Context, g store.EnvGroup) error {
+	if g.Content.State != store.EnvGroupIdle {
+		return envGroupRevisionConflict()
+	}
+	if g.Content.Op == nil {
+		return nil
+	}
+	ctx, cancel := groupCleanupContext(ctx)
+	defer cancel()
+	if err := s.clearOpMaps(ctx, g.TenantID, g.ID, g.Content.Op.ID); err != nil {
+		return core.ErrSecretsUnavailable
+	}
+	return contentErr(s.releaseContent(ctx, g.ID, g.Content.Version, store.EnvGroupRelease{}), core.ErrSecretsUnavailable)
+}
+
+// Content already committed successfully. Cleanup failure leaves the row's op
+// as its retry anchor, without turning a committed save into a failed save.
+func (s *Service) tryOperationCleanup(ctx context.Context, gid string) {
+	ctx, cancel := groupCleanupContext(ctx)
+	defer cancel()
+	if g, err := s.readGroup(ctx, gid); err == nil {
+		_ = s.cleanupIdleOperation(ctx, g)
+	}
 }

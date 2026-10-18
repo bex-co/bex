@@ -31,6 +31,7 @@ import (
 // its content saves. store.PGStore implements it. The env and files maps stay
 // in Service.Store (OpenBao).
 type GroupStore interface {
+	WithEnvGroupContentLock(ctx context.Context, id string, fn func(context.Context) error) error
 	InsertEnvGroup(ctx context.Context, g store.EnvGroup) (store.EnvGroup, error)
 	GetEnvGroup(ctx context.Context, id string) (store.EnvGroup, error)
 	GetEnvGroupByName(ctx context.Context, tenantID, name string) (store.EnvGroup, error)
