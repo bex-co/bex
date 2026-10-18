@@ -1,6 +1,6 @@
 # w8 · m113 — Services list times out (524/502) for the bex workspace
 
-**Worker:** worker8 **Goal:** `GET /v1/services` answers inside the edge timeout for every workspace, so `bex services` works in the largest production workspace **Status:** in progress — t001–t005 done; t006 is the production replay once the fix is deployed
+**Worker:** worker8 **Goal:** `GET /v1/services` answers inside the edge timeout for every workspace, so `bex services` works in the largest production workspace **Status:** done — production CLI, REST, GraphQL and MCP acceptance passed on 2026-10-18
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 | [Render parity: REST/GraphQL/MCP list latency and shapes agree](done/t003.md) | 30m | w8/m113/t002 — **DONE 2026-10-18** |
 | t004 | [Simplify the changed code](done/t004.md) | 20m | w8/m113/t003 — **DONE 2026-10-18** |
 | t005 | [Add regression coverage for list latency/shape at scale](done/t005.md) | 30m | w8/m113/t003 — **DONE 2026-10-18** |
-| t006 | Close out the milestone                                            | 10m | w8/m113/t005  |
+| t006 | [Close out the milestone](done/t006.md) | 10m | w8/m113/t005 — **DONE 2026-10-18** |
 
 ## Definition of done
 
@@ -27,5 +27,5 @@
 - **Expected outcome:** the largest production workspace lists services through CLI/REST/GraphQL/MCP in seconds; the fix is measured, so the next order-of-magnitude growth is visible before it times out again.
 - **Why now:** it is live in production now and silently worsens as the workspace grows; every other CLI journey in that workspace is blocked behind it.
 - Render parity closing task applies: the list is exposed on REST, GraphQL, and MCP (t003).
-- **Unverified:** the bex workspace's exact service count and which segment dominates (k8s list vs placements vs per-app `view()` vs owner resolution) — t001 measures it; no server-side timing was captured this sweep. Dashboard (GraphQL) latency for the same workspace was not timed this sweep.
-- **Root cause history (onset inferred from code history, not measured):** the slow segment t001 found is the env-group metadata sweep. On 2026-08-17 `cacde0622` (codex-security round 11, ADR066) bounded the then-global sweep with a 15s in-process snapshot (`envGroupMetaCacheTTL`). On 2026-08-19 `ffc1cd6bb` (w2/m80) replaced that global sweep with a workspace-prefix sweep plus a legacy-tenant union and **retired the cache**. From then on every list request paid the full serial OpenBao pass, so each deleted group's resurrection fence (`plantDeletedMetaFence`, w4/m97) cost roughly 50ms on every scan — about 260 listed ids in bex. The CLI's services journey pays that scan once per project, then again for datastores. The concurrent scan shipped here hides the cost but leaves it linear in groups ever deleted. Removing the sweep altogether is [w8/m114](../m114/README.md).
+- **Acceptance:** [t006](done/t006.md) records two checkout-built human-device-login CLI runs plus REST, GraphQL and MCP agreement; the root cause and scale are measured in t001.
+- **Root cause history (onset inferred from code history, not measured):** the slow segment t001 found is the env-group metadata sweep. On 2026-08-17 `cacde0622` (codex-security round 11, ADR066) bounded the then-global sweep with a 15s in-process snapshot (`envGroupMetaCacheTTL`). On 2026-08-19 `ffc1cd6bb` (w2/m80) replaced that global sweep with a workspace-prefix sweep plus a legacy-tenant union and **retired the cache**. From then on every list request paid the full serial OpenBao pass, so each deleted group's resurrection fence (`plantDeletedMetaFence`, w4/m97) cost roughly 50ms on every scan — about 260 listed ids in bex. The CLI's services journey pays that scan once per project, then again for datastores. The concurrent scan shipped here hides the cost but leaves it linear in groups ever deleted. Removing the sweep altogether is [w8/m114](../../m114/README.md).

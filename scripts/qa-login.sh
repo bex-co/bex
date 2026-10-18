@@ -5,11 +5,13 @@
 #   bash scripts/qa-login.sh [OUT]           write a storage-state file
 #   bash scripts/qa-login.sh --serve         serve the state once over loopback
 #   bash scripts/qa-login.sh --logout [PATH] revoke the Kratos session in PATH
+#   bash scripts/qa-login.sh --login-challenge CHALLENGE [--cookie-jar PATH] [OUT]
+#                                           finish a CLI device OAuth login
 #
 # Reads QA_EMAIL/QA_PASSWORD from the environment, .env, or muse.env, completes the
 # Kratos password login against $KRATOS_PUB, and writes OUT: a Playwright
 # storage-state file (cookies only, mode 600) that /qa-find-bugs restores with
-# the browser_set_storage_state MCP tool. Credentials go to curl on stdin, never
+# the browser_set_storage_state MCP tool. Credentials go to curl by file, never
 # in argv (ps leaks argv), and stdout is exactly "ok <path>" — no secret is ever
 # printed. Consumed by .claude/skills/qa-find-bugs/SKILL.md.
 #
@@ -21,33 +23,60 @@
 #
 # OUT defaults to .playwright-mcp/qa-storage-state.json. Delete OUT and the
 # companion jar after --logout: they carried a live session cookie.
+# --cookie-jar seeds a private copy of a jar or storage state. KRATOS_PUB, DASH,
+# and OAUTH_PUB configure the only origins allowed during OAuth continuation.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 KRATOS_PUB="${KRATOS_PUB:-https://auth.bex.co}"
 DASH="${DASH:-https://dashboard.bex.co}"
+OAUTH_PUB="${OAUTH_PUB:-https://oauth.bex.co}"
 DEFAULT_OUT=".playwright-mcp/qa-storage-state.json"
 DEFAULT_JAR=".playwright-mcp/qa-session.jar"
+
+qa_curl() {
+  curl --connect-timeout 10 --max-time 30 "$@"
+}
 
 MODE=login
 SERVE=0
 OUT=""
 LOGOUT_PATH=""
+LOGIN_CHALLENGE=""
+SEED_JAR=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
+    --cookie-jar)
+      if [ -n "$SEED_JAR" ] || [ $# -lt 2 ] || [ -z "$2" ] || [[ "$2" == --* ]]; then
+        echo "error: --cookie-jar requires one session-file path" >&2
+        exit 2
+      fi
+      SEED_JAR="$2"
+      shift 2
+      ;;
+    --login-challenge)
+      if [ -n "$LOGIN_CHALLENGE" ] || [ $# -lt 2 ] || [ -z "$2" ] || [[ "$2" == --* ]]; then
+        echo "error: --login-challenge requires one nonempty challenge" >&2
+        exit 2
+      fi
+      LOGIN_CHALLENGE="$2"
+      shift 2
+      ;;
     --logout)
       MODE=logout
       shift
-      LOGOUT_PATH="${1:-}"
-      [ -n "${1:-}" ] && shift || true
+      if [ $# -gt 0 ] && [[ "$1" != --* ]]; then
+        LOGOUT_PATH="$1"
+        shift
+      fi
       ;;
     --serve)
       SERVE=1
       shift
       ;;
     -h | --help)
-      sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,/^set -euo pipefail/{ /^set -euo pipefail/d; s/^# \{0,1\}//; p; }' "$0"
       exit 0
       ;;
     -*)
@@ -66,6 +95,10 @@ while [ $# -gt 0 ]; do
 done
 
 OUT="${OUT:-$DEFAULT_OUT}"
+if [ "$MODE" = logout ] && { [ -n "$LOGIN_CHALLENGE" ] || [ -n "$SEED_JAR" ]; }; then
+  echo "error: --login-challenge/--cookie-jar cannot be used with --logout" >&2
+  exit 2
+fi
 
 load_qa_env() {
   # Precedence: environment, then .env, then muse.env (both gitignored by *.env).
@@ -138,7 +171,7 @@ logout_jar() {
   trap "rm -rf '$tmp_logout'" RETURN
 
   local code
-  code="$(curl -sS -o /dev/null -w '%{http_code}' -b "$jar" "$KRATOS_PUB/sessions/whoami" || true)"
+  code="$(qa_curl -sS -o /dev/null -w '%{http_code}' -b "$jar" "$KRATOS_PUB/sessions/whoami" || true)"
   if [ "$code" = "401" ] || [ "$code" = "403" ]; then
     echo "ok already-signed-out"
     return 0
@@ -148,7 +181,7 @@ logout_jar() {
     return 1
   fi
 
-  curl -fsS -c "$jar" -b "$jar" -H 'Accept: application/json' \
+  qa_curl -fsS -c "$jar" -b "$jar" -H 'Accept: application/json' \
     "$KRATOS_PUB/self-service/logout/browser?return_to=$DASH/" >"$tmp_logout/flow.json" || {
     echo "error: no logout flow from $KRATOS_PUB" >&2
     return 1
@@ -168,9 +201,9 @@ print(url)
 
   # Kratos may 303 to return_to (dashboard); follow redirects, ignore body.
   # Ground truth is whoami afterwards (see endBrowserSession).
-  curl -sS -o /dev/null -c "$jar" -b "$jar" -L "$logout_url" || true
+  qa_curl -sS -o /dev/null -c "$jar" -b "$jar" -L "$logout_url" || true
 
-  code="$(curl -sS -o /dev/null -w '%{http_code}' -b "$jar" "$KRATOS_PUB/sessions/whoami" || true)"
+  code="$(qa_curl -sS -o /dev/null -w '%{http_code}' -b "$jar" "$KRATOS_PUB/sessions/whoami" || true)"
   if [ "$code" = "401" ] || [ "$code" = "403" ]; then
     echo "ok logged-out"
     return 0
@@ -201,47 +234,229 @@ load_qa_env
 
 tmp="$(mktemp -d)"
 jar="$tmp/jar"
-trap 'rm -rf "$tmp"' EXIT
+seeded_session=0
 
-# 1. Browser-shaped login flow: gives us the form action + the CSRF token, and
-#    seeds the jar with Kratos's CSRF cookie.
-curl -fsS -c "$jar" -b "$jar" -H 'Accept: application/json' \
-  "$KRATOS_PUB/self-service/login/browser?return_to=$DASH/" >"$tmp/flow.json" || {
-  echo "error: no login flow from $KRATOS_PUB — is it reachable?" >&2
-  exit 1
+has_session_cookie() {
+  python3 -c '
+import sys
+try:
+    for line in open(sys.argv[1]):
+        parts = line.rstrip("\n").split("\t")
+        if len(parts) == 7 and parts[5].startswith("ory_kratos_session") and parts[6]:
+            sys.exit(0)
+except OSError:
+    pass
+sys.exit(1)
+' "$1"
 }
-action="$(python3 -c "import sys,json;print(json.load(open(sys.argv[1]))['ui']['action'])" "$tmp/flow.json")"
-csrf="$(python3 -c "
+
+cleanup_login() {
+  local status=$?
+  trap - EXIT
+  # A failed challenge may already have created a session. Revoke that session
+  # before discarding its only logout handle, while leaving seeded sessions alone.
+  if [ "$status" -ne 0 ] && [ -n "$LOGIN_CHALLENGE" ] && [ "$seeded_session" = 0 ] && has_session_cookie "$jar"; then
+    if logout_jar "$jar" >"$tmp/cleanup-result" 2>/dev/null; then
+      echo "error: revoked the temporary QA session after failed OAuth completion" >&2
+    else
+      echo "error: could not revoke the temporary QA session after failed OAuth completion" >&2
+    fi
+  fi
+  rm -rf "$tmp"
+  exit "$status"
+}
+trap cleanup_login EXIT
+if [ -n "$SEED_JAR" ]; then
+  # Keep Hydra's authorization CSRF cookie across the device flow. Work on a
+  # private copy so a failed challenge does not alter the caller's session.
+  resolve_jar "$SEED_JAR" "$jar"
+  if has_session_cookie "$jar"; then
+    seeded_session=1
+  fi
+fi
+
+# Passwords are only ever submitted to Kratos. Provider continuations are GETs
+# on these three configured origins; never use curl -L on the password POST
+# (a 307/308 would resend its body to the redirect target).
+login_url() {
+  python3 -c '
+import sys
+from urllib.parse import urljoin, urlsplit
+candidate, base, kind, *trusted = sys.argv[1:]
+url = urljoin(base, candidate)
+def origin(value):
+    p = urlsplit(value)
+    if (p.scheme not in ("https", "http") or not p.hostname or
+            p.username is not None or p.password is not None or
+            any(c.isspace() or ord(c) < 32 for c in value)):
+        raise ValueError()
+    return p.scheme, p.hostname.lower(), p.port or (443 if p.scheme == "https" else 80)
+try:
+    allowed = [base] if kind == "action" else trusted
+    if origin(url) not in [origin(u) for u in allowed]:
+        raise ValueError()
+except (ValueError, TypeError):
+    sys.exit("error: refusing an untrusted login " + kind + " URL")
+print(url)
+' "$1" "$2" "$3" "$KRATOS_PUB" "$DASH" "$OAUTH_PUB"
+}
+
+# Read either a normal HTTP redirect or Kratos's JSON browser-navigation
+# response. URLs and response bodies stay private, including on refusal.
+login_redirect() {
+  python3 -c '
+import json, sys
+from email.parser import Parser
+headers = open(sys.argv[1]).read().replace("\r\n", "\n")
+for block in reversed(headers.strip().split("\n\n")):
+    if block.startswith("HTTP/"):
+        location = Parser().parsestr(block.partition("\n")[2]).get("Location")
+        if location and sys.argv[3] in ("301", "302", "303", "307", "308"):
+            print(location)
+            sys.exit(0)
+        break
+try:
+    body = json.load(open(sys.argv[2]))
+except (ValueError, OSError):
+    body = None
+if isinstance(body, dict) and sys.argv[3] in ("200", "201", "422"):
+    target = body.get("redirect_browser_to")
+    if not target:
+        target = next((c.get("redirect_browser_to") for c in body.get("continue_with", [])
+                       if isinstance(c, dict) and c.get("action") == "redirect_browser_to"), None)
+    if isinstance(target, str):
+        print(target)
+' "$1" "$2" "$3"
+}
+
+describe_login_endpoint() {
+  python3 -c '
+import sys
+from urllib.parse import parse_qsl, urlsplit
+p = urlsplit(sys.argv[1])
+origins = {urlsplit(value).netloc: label for value, label in zip(sys.argv[2:], ("Kratos", "dashboard", "OAuth"))}
+paths = {"/auth/device/success", "/auth/device", "/auth/consent", "/auth/login",
+         "/oauth2/device/verify", "/oauth2/auth", "/self-service/login/browser", "/self-service/login"}
+names = {"login_challenge", "login_verifier", "consent_challenge", "consent_verifier",
+         "device_challenge", "device_error", "user_code", "flow", "error", "error_description",
+         "state", "code", "scope", "client_id", "redirect_uri", "response_type", "return_to"}
+keys = sorted({key if key in names else "other" for key, _ in parse_qsl(p.query, keep_blank_values=True)})
+print("endpoint " + origins.get(p.netloc, "unexpected origin") + " " +
+      (p.path if p.path in paths else "unexpected path") + "; query keys: " + (", ".join(keys) or "none"))
+' "$1" "$KRATOS_PUB" "$DASH" "$OAUTH_PUB"
+}
+
+complete_device_login() {
+  local current="$1" code="$2" headers="$3" body="$4" target
+  for _ in $(seq 1 20); do
+    target="$(login_redirect "$headers" "$body" "$code")"
+    if [ -z "$target" ]; then
+      # A live Kratos session alone does not prove that OAuth consent finished.
+      # Refuse login/consent/error HTML instead of reporting a false success.
+      if [[ "$code" == 2?? ]] && python3 -c '
+import sys
+from urllib.parse import parse_qsl, urlsplit
+actual, dash = (urlsplit(v) for v in sys.argv[1:])
+query = parse_qsl(actual.query, keep_blank_values=True)
+# Hydra adds client_id to its configured post-device URL after accepting the
+# grant (oauth2/handler.go, DeviceDoneURL). No error or arbitrary query is valid.
+safe_query = not query or query == [("client_id", "429024F5E608930E2A65EF92591A25CC")]
+sys.exit(0 if (actual.scheme, actual.netloc) == (dash.scheme, dash.netloc) and
+         actual.path == dash.path.rstrip("/") + "/auth/device/success" and
+         safe_query and not actual.fragment else 1)
+' "$current" "$DASH"; then
+        return 0
+      fi
+      echo "error: OAuth login did not reach the device success page (HTTP $code; $(describe_login_endpoint "$current"))" >&2
+      return 1
+    fi
+    # Redirecting a credential-bearing POST uses a fresh GET, even for 307/308.
+    current="$(login_url "$target" "$current" redirect)" || return 1
+    code="$(qa_curl -sS -o "$tmp/continue-body" -D "$tmp/continue-headers" \
+      -w '%{http_code}' -c "$jar" -b "$jar" "$current")" || return 1
+    headers="$tmp/continue-headers"
+    body="$tmp/continue-body"
+  done
+  echo "error: OAuth login exceeded the redirect limit" >&2
+  return 1
+}
+
+submit_password_login() {
+  local code="$1" action csrf
+  if [[ "$code" != 2?? ]]; then
+    echo "error: no login flow from $KRATOS_PUB (HTTP $code)" >&2
+    return 1
+  fi
+  action="$(python3 -c '
+import json, sys
+try:
+    print(json.load(open(sys.argv[1]))["ui"]["action"])
+except (ValueError, KeyError, TypeError):
+    sys.exit("error: login flow is missing its form action")
+' "$tmp/flow.json")"
+  action="$(login_url "$action" "$KRATOS_PUB" action)"
+  csrf="$(python3 -c "
 import sys, json
 f = json.load(open(sys.argv[1]))
 print(next(n['attributes']['value'] for n in f['ui']['nodes'] if n['attributes'].get('name') == 'csrf_token'))
 " "$tmp/flow.json")"
 
-# 2. Submit the password. Body is built in a file (mode 700 tmpdir) and fed to
-#    curl with @file, so neither the password nor the token reaches argv.
-QA_CSRF="$csrf" python3 -c "
+  # 2. Submit the password. Body is built in a file (mode 700 tmpdir) and fed to
+  #    curl with @file, so neither the password nor the token reaches argv.
+  QA_CSRF="$csrf" python3 -c "
 import json, os, sys
 json.dump({'method': 'password', 'identifier': os.environ['QA_EMAIL'],
            'password': os.environ['QA_PASSWORD'], 'csrf_token': os.environ['QA_CSRF']},
           open(sys.argv[1], 'w'))
 " "$tmp/body.json"
-curl -sS -o "$tmp/resp.json" -c "$jar" -b "$jar" \
-  -H 'Accept: application/json' -H 'Content-Type: application/json' \
-  --data-binary "@$tmp/body.json" "$action" >/dev/null
+  code="$(qa_curl -sS -o "$tmp/resp.json" -D "$tmp/resp-headers" -w '%{http_code}' -c "$jar" -b "$jar" \
+    -H 'Accept: application/json' -H 'Content-Type: application/json' \
+    --data-binary "@$tmp/body.json" "$action")"
+  if [ -n "$LOGIN_CHALLENGE" ]; then
+    complete_device_login "$action" "$code" "$tmp/resp-headers" "$tmp/resp.json"
+  fi
+}
 
-# 3. The session is real only if Kratos says so.
-if [ "$(curl -sS -o /dev/null -w '%{http_code}' -b "$jar" "$KRATOS_PUB/sessions/whoami")" != "200" ]; then
-  python3 -c "
+# 1. Browser-shaped login flow: gives us the form action + the CSRF token, and
+#    seeds the jar with Kratos's CSRF cookie.
+bootstrap="$KRATOS_PUB/self-service/login/browser?return_to=$DASH/"
+if [ -n "$LOGIN_CHALLENGE" ]; then
+  bootstrap="$(python3 -c '
+import sys
+from urllib.parse import urlencode
+print(sys.argv[1].rstrip("/") + "/self-service/login/browser?" +
+      urlencode({"return_to": sys.argv[2].rstrip("/") + "/", "login_challenge": sys.argv[3]}))
+' "$KRATOS_PUB" "$DASH" "$LOGIN_CHALLENGE")"
+fi
+code="$(qa_curl -sS -c "$jar" -b "$jar" -H 'Accept: application/json' \
+  -D "$tmp/flow-headers" -o "$tmp/flow.json" -w '%{http_code}' "$bootstrap")" || {
+  echo "error: no login flow from $KRATOS_PUB — is it reachable?" >&2
+  exit 1
+}
+
+if [ -n "$LOGIN_CHALLENGE" ] && ! python3 -c '
 import json, sys
 try:
     f = json.load(open(sys.argv[1]))
-except Exception:
-    sys.exit('error: login failed and Kratos returned no JSON')
-msgs = [m.get('text', '') for m in f.get('ui', {}).get('messages', [])]
-for n in f.get('ui', {}).get('nodes', []):
-    msgs += [m.get('text', '') for m in n.get('messages', [])]
-sys.exit('error: login failed — ' + ('; '.join(t for t in msgs if t) or f.get('error', {}).get('reason', 'no session established')))
-" "$tmp/resp.json" >&2
+    sys.exit(0 if isinstance(f, dict) and isinstance(f.get("ui"), dict) else 1)
+except (ValueError, OSError):
+    sys.exit(1)
+' "$tmp/flow.json"; then
+  # Kratos can satisfy a challenge without a form. Its JSON `null` response
+  # requires a browser-shaped request to obtain the provider redirect.
+  if [ "$code" = 200 ] && [ "$(tr -d '[:space:]' <"$tmp/flow.json")" = null ]; then
+    code="$(qa_curl -sS -c "$jar" -b "$jar" -D "$tmp/flow-headers" \
+      -o "$tmp/flow.json" -w '%{http_code}' "$bootstrap")"
+  fi
+  complete_device_login "$bootstrap" "$code" "$tmp/flow-headers" "$tmp/flow.json"
+else
+  submit_password_login "$code"
+fi
+
+# 3. The session is real only if Kratos says so.
+if [ "$(qa_curl -sS -o /dev/null -w '%{http_code}' -b "$jar" "$KRATOS_PUB/sessions/whoami")" != "200" ]; then
+  # A server may echo submitted fields in a failed flow. Never print that body.
+  echo "error: login failed — no session established" >&2
   exit 1
 fi
 
