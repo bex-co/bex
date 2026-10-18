@@ -1,6 +1,6 @@
 # w8 · m112 — Make documented time-series tables usable in managed Postgres
 
-**Worker:** worker8 **Goal:** ordinary applications can use documented Apache-compatible TimescaleDB hypertables and time bucketing. **Status:** todo
+**Worker:** worker8 **Goal:** ordinary applications can use documented Apache-compatible TimescaleDB hypertables and time bucketing. **Status:** blocked — needs the user's managed Postgres extension decision ([decision](../m92/design.md)); no task started
 
 ## Tasks (in order)
 
@@ -24,7 +24,7 @@ On existing supported managed PostgreSQL13–18, with compatible extension relea
 ## Source + Goal linkage
 
 - **Source:** [Functional native CLI sweep453](finding.md), [complete evidence](evidence/cli-sweep453/README.md): both migrations fail1 with package/control-file unavailability while both ordinary SQL controls and a real Apache-mode hypertable reference pass.
-- **Goal linkage:** [ADR008 usable hosting](../../../docs/ADR008-vision.md), [ADR009 managed PostgreSQL](../../../docs/ADR009-postgresql-management.md), [ADR018 Render compatibility](../../../docs/ADR018-render-parity.md).
+- **Goal linkage:** [ADR008 usable hosting](../../../../docs/ADR008-vision.md), [ADR009 managed PostgreSQL](../../../../docs/ADR009-postgresql-management.md), [ADR018 Render compatibility](../../../../docs/ADR018-render-parity.md).
 - **Expected outcome:** Applications can use documented basic time-series tables and hourly analytics through their existing managed database and unchanged clients.
 - **Why now:** A documented module is absent at the normal application boundary. Packaging, loading, plan bounds and metadata-aware lifecycle procedures need coordinated repair rather than a presence-only supplier patch.
 - **Render parity:** Included because the capability is tenant-visible across REST/GraphQL/MCP/dashboard/Blueprint database authoring. Preserve current fields/errors/selectors, the closed13–18 set and the Community-feature exclusion. Coordinate common suppliers with m92/m104/m109/m110/m111 without duplicating their distinct consumers.

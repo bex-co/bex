@@ -15,7 +15,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m112** — [Make documented time-series tables usable in managed Postgres](m112/README.md) (8 tasks;300m) ← major functional CLI sweep453:both TimescaleDB migrations unavailable on PG17; ordinary SQL and real local Apache-mode hypertable/chunk controls pass; exact cleanup.
+- [ ] **m112** — [Make documented time-series tables usable in managed Postgres](blocked/m112/README.md) (8 tasks;300m) — **BLOCKED (2026-10-17: needs the user to decide how managed Postgres supplies Render's extensions — [decision](blocked/m92/design.md): operand image (CNPG PostGIS-only vs a bex-built image per major; no CNPG image carries TimescaleDB), activation (pre-install like vector vs on-demand allowlist) and a rolling restart of every managed Postgres pod, possibly with m65 — TimescaleDB also needs shared_preload_libraries, Apache mode only; no task started)**
 
 - [ ] **m111** — [Make documented text similarity usable in managed Postgres](blocked/m111/README.md) (7 tasks;220m) — **BLOCKED (2026-10-17: needs the user to decide how managed Postgres supplies Render's extensions — [decision](blocked/m92/design.md): operand image (CNPG PostGIS-only vs a bex-built image per major), activation (pre-install like vector vs on-demand allowlist) and a rolling restart of every managed Postgres pod, possibly with m65; no task started)**
 
