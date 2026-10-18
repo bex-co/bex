@@ -874,104 +874,50 @@ spec:
 
               loki.process "request_logs" {
                 // Traefik's stdout mixes its own operational logs (plain text) with
-                // the JSON access log; only access lines carry ServiceName. Drop the
-                // rest — bex serves App logs, not the edge proxy's. This is a LINE
-                // filter (LogQL `!=` — "does not contain"), deliberately NOT a drop
+                // the JSON access log. DownstreamStatus also exists when middleware
+                // refuses a request before a service runs (no ServiceName). A LINE
+                // filter (LogQL `!=` — "does not contain") is needed instead of a drop
                 // on an extracted field: a stage keyed on extracted data is skipped
                 // entirely for a line the JSON stage could not parse, so Traefik's
                 // plaintext operational lines would sail straight through it.
                 stage.match {
-                  selector            = "{job=\"traefik\"} != \"ServiceName\""
+                  selector            = "{job=\"traefik\"} != \"DownstreamStatus\""
                   action              = "drop"
                   drop_counter_reason = "not_an_access_line"
                 }
 
                 stage.json {
                   expressions = {
-                    service      = "ServiceName",
-                    ingress_name = "KubernetesIngressName",
-                    method       = "RequestMethod",
-                    status       = "DownstreamStatus",
-                    host         = "RequestHost",
+                    service           = "ServiceName",
+                    ingress_name      = "KubernetesIngressName",
+                    ingress_namespace = "KubernetesIngressNamespace",
+                    method            = "RequestMethod",
+                    status            = "DownstreamStatus",
+                    host              = "RequestHost",
                   }
                 }
 
-                // App attribution: Traefik names an Ingress-backed service
-                // `<namespace>-<service>-<port>@kubernetes`, and the operator names
-                // the k8s Service after the App CR (app_controller.go), so the
-                // middle segment IS the App name bex-api selects on.
-                //
-                // ADR043 (w6/m131): tenant Apps do NOT live in `default` — each
-                // workspace has its own namespace named for its workspace id
-                // (`tea-` + a 20-char xid), and the App CR name is itself tenant-
-                // prefixed, so a real ServiceName is
-                // `tea-<xid>-tea-<xid>-<app>-<port>@kubernetes`. The original regex
-                // anchored the namespace to the literal `default`, so every tenant
-                // access line missed, `app` stayed empty, and the line was dropped
-                // as not_a_tenant_app — which is why type=request was empty for
-                // every service in production. Match a tenant namespace (fixed
-                // `tea-` + 20 xid chars, unambiguous) OR the shared/storeless
-                // `default`; the greedy `.+` then claims the CR name up to the
-                // trailing `-<port>`, so both the namespace and app labels equal
-                // the values bex-api's LogQL selector resolves (namespace =
-                // app.Namespace, app = app.Name). Misattribution cannot leak across
-                // tenants: the query pins namespace AND app to the caller's own
-                // resolved values, so a wrong label only hides a line, never
-                // surfaces another tenant's.
+                // The operator names each App's Ingress after its CR. Traefik
+                // records that trusted routing identity even on IPAllowList 403s,
+                // when no service ran and ServiceName is absent (OriginStatus=0).
+                // Only ADR043 tenant namespaces or the storeless default qualify;
+                // RequestHost is client input and never selects a tenant stream.
+                // Keep ServiceName as a fallback for older lines, preferring the
+                // ingress name for static sites whose service is an ExternalName
+                // alias (`bex-static-<app>`, not an App CR name).
                 stage.regex {
                   source     = "service"
                   expression = "^(?P<namespace>tea-[a-z0-9]{20}|default)-(?P<app>.+)-\\d+@kubernetes$"
                 }
-                // A service that doesn't match (a non-App Ingress at the edge —
-                // bex-api itself, etc.) has no App to attribute to. The regex
-                // leaves `app` NIL on a miss, and a nil renders as the literal
-                // "<no value>" — so normalize to the empty string first.
-                // w4/m88: keep RequestHost=dashboard.bex.co under a BOUNDED
-                // `service=dashboard` label (host stays line-only per the
-                // cardinality budget above); other non-App hosts still drop.
-                // w5/053 (ADR088 §6 review triage item 2): the allowlist now
-                // also keeps the platform edge hosts, each under a FIXED
-                // bounded namespace/service pair — api.bex.co (bex-system/
-                // bex-api), oauth.bex.co (auth/hydra), auth.bex.co (auth/
-                // kratos), obs.bex.co (monitoring/grafana) — so Loki retains
-                // their 5xx request lines and the obs availability dashboard's
-                // log panel can explain a platform-API outage instead of
-                // sitting empty while the 5xx ratio climbs. The discipline is
-                // unchanged: only hosts named here are kept, every value the
-                // templates below can emit is a closed vocabulary, `host`
-                // itself never becomes a label, and any unlisted host is still
-                // dropped — never guessed.
-                // w4/m113: a STATIC site's ServiceName names the per-App
-                // ExternalName alias the operator points at the shared static
-                // server, `<ns>-bex-static-<app>-<port>@kubernetes` (ground
-                // truth, production Traefik 2026-09-19:
-                // "ServiceName":"default-bex-static-hello-static-8080@kubernetes").
-                // The regex above therefore extracts app="bex-static-hello-static"
-                // — a name no App has — so the line shipped with a label
-                // bex-api's selector (app = the App CR name) can never match,
-                // and type=request was empty for every static site while
-                // bandwidth for the same traffic was fine.
-                //
-                // Traefik already puts the answer on the line:
-                // KubernetesIngressName IS the App CR name, and the operator
-                // names each App's Ingress after the App — for compute too
-                // (production 2026-09-19: ServiceName
-                // "tea-…-tea-…-eden-cms-v2-3000@kubernetes" alongside
-                // KubernetesIngressName "tea-…-eden-cms-v2", identical). So
-                // prefer it, and keep the ServiceName regex as the fallback.
-                //
-                // Gated on .Value (the regex-derived app) being non-empty on
-                // purpose: a platform edge line (api.bex.co et al.) has a
-                // KubernetesIngressName too, and letting it set `app` would
-                // route it down the tenant branch of the namespace/service
-                // templates below and lose its fixed platform pair. The regex
-                // misses those (their namespace is neither tea-<xid> nor
-                // default), so this override cannot reach them.
+                stage.regex {
+                  source     = "ingress_namespace"
+                  expression = "^(?P<ingress_app_namespace>tea-[a-z0-9]{20}|default)$"
+                }
                 stage.template {
                   source   = "app"
                   // Escaped for Helm's tpl pass — see the HELM TPL ESCAPING
                   // note at the top of this file for why.
-                  template = "{{ "{{" }} if and .Value .ingress_name {{ "}}" }}{{ "{{" }} .ingress_name {{ "}}" }}{{ "{{" }} else if .Value {{ "}}" }}{{ "{{" }} .Value {{ "}}" }}{{ "{{" }} end {{ "}}" }}"
+                  template = "{{ "{{" }} if and .ingress_name (or .Value .ingress_app_namespace) {{ "}}" }}{{ "{{" }} .ingress_name {{ "}}" }}{{ "{{" }} else if .Value {{ "}}" }}{{ "{{" }} .Value {{ "}}" }}{{ "{{" }} end {{ "}}" }}"
                 }
                 stage.template {
                   source   = "should_drop"
@@ -982,13 +928,12 @@ spec:
                   expression          = "^yes$"
                   drop_counter_reason = "not_a_tenant_app"
                 }
-                // Platform host allowlist → fixed bounded namespace/service
-                // pair per host (the pods actually serving it). Tenant lines
-                // keep regex namespace/app; empty label values are omitted by
-                // Alloy's stage.labels.
+                // Platform hosts retain fixed bounded namespace/service pairs.
+                // Tenant ingress attribution takes priority over this allowlist;
+                // empty label values are omitted by Alloy's stage.labels.
                 stage.template {
                   source   = "namespace"
-                  template = "{{ "{{" }} if .app {{ "}}" }}{{ "{{" }} .Value {{ "}}" }}{{ "{{" }} else if eq .host \"api.bex.co\" {{ "}}" }}bex-system{{ "{{" }} else if or (eq .host \"oauth.bex.co\") (eq .host \"auth.bex.co\") {{ "}}" }}auth{{ "{{" }} else if eq .host \"obs.bex.co\" {{ "}}" }}monitoring{{ "{{" }} else {{ "}}" }}dashboard{{ "{{" }} end {{ "}}" }}"
+                  template = "{{ "{{" }} if and .ingress_app_namespace .ingress_name {{ "}}" }}{{ "{{" }} .ingress_app_namespace {{ "}}" }}{{ "{{" }} else if .app {{ "}}" }}{{ "{{" }} .Value {{ "}}" }}{{ "{{" }} else if eq .host \"api.bex.co\" {{ "}}" }}bex-system{{ "{{" }} else if or (eq .host \"oauth.bex.co\") (eq .host \"auth.bex.co\") {{ "}}" }}auth{{ "{{" }} else if eq .host \"obs.bex.co\" {{ "}}" }}monitoring{{ "{{" }} else {{ "}}" }}dashboard{{ "{{" }} end {{ "}}" }}"
                 }
                 stage.template {
                   source   = "platform_service"
