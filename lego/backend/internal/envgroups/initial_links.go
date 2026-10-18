@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -34,21 +35,17 @@ func (s *Service) WithInitialEnvGroups(ctx context.Context, names []string, a *a
 	if err := s.AuthorizeAppFresh(ctx, core.RelCanCreate, a); err != nil {
 		return err
 	}
-	if s.Store == nil {
-		return core.ErrSecretsUnavailable
-	}
-	if _, ok := s.Store.(core.VersionedSecretKV); !ok {
-		return core.ErrSecretsUnavailable
+	if err := s.requireGroups(ctx); err != nil {
+		return err
 	}
 	service := core.AppPublicID(a)
 	type initialGroup struct {
 		gid   string
-		meta  meta
 		added bool
 	}
 	groups := make([]initialGroup, 0, len(names))
 	for _, name := range names {
-		gid, m, found, findErr := s.findGroupByName(ctx, name)
+		g, found, findErr := s.findGroupByName(ctx, name)
 		if findErr != nil {
 			return findErr
 		}
@@ -57,14 +54,14 @@ func (s *Service) WithInitialEnvGroups(ctx context.Context, names []string, a *a
 		}
 		// Reuse the normal group's scoped authorization, with a fresh sensitive
 		// check before even an already-linked membership can be accepted.
-		m, findErr = s.fetchGroup(ctx, core.RelCanCreate, gid)
+		g, findErr = s.fetchGroup(ctx, core.RelCanCreate, g.ID)
 		if findErr != nil {
 			return findErr
 		}
-		if findErr = s.validateInitialGroup(ctx, m, service, a); findErr != nil {
+		if findErr = s.validateInitialGroup(ctx, g, service, a); findErr != nil {
 			return findErr
 		}
-		groups = append(groups, initialGroup{gid: gid, meta: m})
+		groups = append(groups, initialGroup{gid: g.ID})
 	}
 	defer func() {
 		if err == nil {
@@ -77,7 +74,7 @@ func (s *Service) WithInitialEnvGroups(ctx context.Context, names []string, a *a
 			if !group.added {
 				continue
 			}
-			rollbackErr := s.dropLinks(rollbackCtx, group.gid, group.meta.workspace, service)
+			rollbackErr := s.dropLinks(rollbackCtx, group.gid, service)
 			if rollbackErr != nil && !errors.Is(rollbackErr, core.ErrNotFound) {
 				err = errors.Join(err, fmt.Errorf("rollback initial group membership: %w", rollbackErr))
 			}
@@ -86,23 +83,23 @@ func (s *Service) WithInitialEnvGroups(ctx context.Context, names []string, a *a
 	for i := range groups {
 		group := &groups[i]
 		addedThisAttempt := false
-		var committed meta
-		committed, err = s.mutateMetaCAS(ctx, group.gid, group.meta.workspace, func(cur meta) (meta, error) {
-			if checkErr := s.validateInitialGroup(ctx, cur, service, a); checkErr != nil {
-				return meta{}, checkErr
+		_, err = s.mutateGroup(ctx, group.gid, func(cur *store.EnvGroup) error {
+			if checkErr := s.validateInitialGroup(ctx, *cur, service, a); checkErr != nil {
+				return checkErr
 			}
-			addedThisAttempt = !slices.Contains(cur.links, service)
-			cur.linksByID = cur.linksByID || len(cur.links) == 0
-			cur.links = addString(cur.links, service)
-			cur.updatedAt = s.now()
-			return cur, nil
+			if slices.Contains(cur.ServiceLinks, service) {
+				addedThisAttempt = false
+				return errMetaUnchanged
+			}
+			addedThisAttempt = true
+			cur.ServiceLinks = addString(cur.ServiceLinks, service)
+			cur.UpdatedAt = s.nowTime()
+			return nil
 		})
-		// A conflicting/failed PutCAS owns nothing. A locator failure still
-		// returns its committed snapshot and must compensate that addition.
-		group.added = addedThisAttempt && slices.Contains(committed.links, service)
 		if err != nil {
 			return err
 		}
+		group.added = addedThisAttempt
 		a.Spec.EnvFromSecrets = addString(a.Spec.EnvFromSecrets, envSecretName(group.gid))
 		a.Spec.FilesFromSecrets = addString(a.Spec.FilesFromSecrets, filesSecretName(group.gid))
 	}
@@ -115,14 +112,16 @@ func (s *Service) WithInitialEnvGroups(ctx context.Context, names []string, a *a
 	for _, group := range groups {
 		// A deletion/scope change while creating must not turn a prepared link
 		// into success. Recommit also restores a membership pruned while no App
-		// existed yet, preserving unrelated concurrent links through CAS.
-		_, err = s.mutateMetaCAS(ctx, group.gid, group.meta.workspace, func(cur meta) (meta, error) {
-			if checkErr := s.validateInitialGroup(ctx, cur, service, a); checkErr != nil {
-				return meta{}, checkErr
+		// existed yet, preserving unrelated concurrent links.
+		_, err = s.mutateGroup(ctx, group.gid, func(cur *store.EnvGroup) error {
+			if checkErr := s.validateInitialGroup(ctx, *cur, service, a); checkErr != nil {
+				return checkErr
 			}
-			cur.linksByID = cur.linksByID || len(cur.links) == 0
-			cur.links = addString(cur.links, service)
-			return cur, nil
+			if slices.Contains(cur.ServiceLinks, service) {
+				return errMetaUnchanged
+			}
+			cur.ServiceLinks = addString(cur.ServiceLinks, service)
+			return nil
 		})
 		if err != nil {
 			return err
@@ -141,12 +140,12 @@ func (s *Service) WithInitialEnvGroups(ctx context.Context, names []string, a *a
 	return nil
 }
 
-func (s *Service) validateInitialGroup(ctx context.Context, m meta, service string, a *appv1alpha1.App) error {
-	if a.Labels[core.LabelTenant] != m.workspace {
+func (s *Service) validateInitialGroup(ctx context.Context, g store.EnvGroup, service string, a *appv1alpha1.App) error {
+	if a.Labels[core.LabelTenant] != g.TenantID {
 		return core.ErrForbidden
 	}
-	if err := s.authorizeGroupSensitiveFresh(ctx, m); err != nil {
+	if err := s.authorizeGroupSensitiveFresh(ctx, g); err != nil {
 		return err
 	}
-	return validateGroupServiceEnvironment(m.environment, service, a.Labels)
+	return validateGroupServiceEnvironment(g.EnvironmentID, service, a.Labels)
 }

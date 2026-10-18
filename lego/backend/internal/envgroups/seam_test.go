@@ -22,7 +22,6 @@ package envgroups
 // envVarGroups/fromGroup through.
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -32,15 +31,16 @@ import (
 func TestApplyEnvGroupCreatesAndIsIdempotent(t *testing.T) {
 	st := newFakeStore()
 	svc := newService(st)
-	ctx := context.Background()
+	ctx := testCtx()
 
 	if err := svc.ApplyEnvGroup(ctx, "shared", map[string]string{"LOG_LEVEL": "info"}, []string{"SESSION_SECRET"}); err != nil {
 		t.Fatalf("ApplyEnvGroup create: %v", err)
 	}
-	gid, _, found, err := svc.findGroupByName(ctx, "shared")
+	gidRow, found, err := svc.findGroupByName(ctx, "shared")
 	if err != nil || !found {
 		t.Fatalf("group not created: found=%v err=%v", found, err)
 	}
+	gid := gidRow.ID
 	env := st.m[st.key(ctx, envPath(gid))]
 	if env["LOG_LEVEL"] != "info" {
 		t.Errorf("literal not set: %q", env["LOG_LEVEL"])
@@ -55,7 +55,7 @@ func TestApplyEnvGroupCreatesAndIsIdempotent(t *testing.T) {
 	if err := svc.ApplyEnvGroup(ctx, "shared", map[string]string{"LOG_LEVEL": "info"}, []string{"SESSION_SECRET"}); err != nil {
 		t.Fatalf("ApplyEnvGroup re-apply: %v", err)
 	}
-	gid2, _, _, _ := svc.findGroupByName(ctx, "shared")
+	gid2 := idNamed(ctx, svc, "shared")
 	if gid2 != gid {
 		t.Errorf("re-apply created a second group %q != %q", gid2, gid)
 	}
@@ -78,7 +78,7 @@ func TestApplyEnvGroupCreatesAndIsIdempotent(t *testing.T) {
 
 func TestGroupNamesListsEveryGroup(t *testing.T) {
 	svc := newService(newFakeStore())
-	ctx := context.Background()
+	ctx := testCtx()
 	for _, n := range []string{"beta", "alpha"} {
 		if err := svc.ApplyEnvGroup(ctx, n, map[string]string{"K": "v"}, nil); err != nil {
 			t.Fatalf("ApplyEnvGroup %s: %v", n, err)
@@ -103,7 +103,7 @@ func TestGroupNamesListsEveryGroup(t *testing.T) {
 func TestLinkEnvGroupIsIdempotent(t *testing.T) {
 	st := newFakeStore()
 	svc := newService(st, sampleApp("web"))
-	ctx := context.Background()
+	ctx := testCtx()
 
 	if err := svc.ApplyEnvGroup(ctx, "shared", map[string]string{"K": "v"}, nil); err != nil {
 		t.Fatalf("ApplyEnvGroup: %v", err)
@@ -113,7 +113,7 @@ func TestLinkEnvGroupIsIdempotent(t *testing.T) {
 	}
 	cl := svc.Client
 	firstRA := getApp(t, cl, "web").Spec.RestartedAt
-	gid, _, _, _ := svc.findGroupByName(ctx, "shared")
+	gid := idNamed(ctx, svc, "shared")
 	a := getApp(t, cl, "web")
 	if len(a.Spec.EnvFromSecrets) != 1 || a.Spec.EnvFromSecrets[0] != envSecretName(gid) {
 		t.Errorf("link did not add the group's env secret: %+v", a.Spec.EnvFromSecrets)
@@ -130,7 +130,7 @@ func TestLinkEnvGroupIsIdempotent(t *testing.T) {
 
 func TestLinkEnvGroupUnknownGroupErrors(t *testing.T) {
 	svc := newService(newFakeStore(), sampleApp("web"))
-	err := svc.LinkEnvGroup(context.Background(), "ghost", "web")
+	err := svc.LinkEnvGroup(testCtx(), "ghost", "web")
 	if !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("LinkEnvGroup unknown group => ErrBadRequest, got %v", err)
 	}
@@ -140,7 +140,7 @@ func TestLinkEnvGroupUnknownGroupErrors(t *testing.T) {
 // already existed silently skipped a newly declared empty variable. Presence
 // decides now; a present empty value is still a no-op.
 func TestApplyEnvGroupAddsAnEmptyVariableToAnExistingGroup(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 	for _, tc := range []struct {
 		name     string
 		existing map[string]string
@@ -159,11 +159,11 @@ func TestApplyEnvGroupAddsAnEmptyVariableToAnExistingGroup(t *testing.T) {
 			if err := svc.ApplyEnvGroup(ctx, "shared", tc.existing, nil); err != nil {
 				t.Fatalf("fixture: %v", err)
 			}
-			gid, _, _, _ := svc.findGroupByName(ctx, "shared")
+			gid := idNamed(ctx, svc, "shared")
 			if err := svc.ApplyEnvGroup(ctx, "shared", tc.declared, nil); err != nil {
 				t.Fatalf("reapply: %v", err)
 			}
-			if gid2, _, _, _ := svc.findGroupByName(ctx, "shared"); gid2 != gid {
+			if gid2 := idNamed(ctx, svc, "shared"); gid2 != gid {
 				t.Fatalf("reapply changed the group id %q -> %q", gid, gid2)
 			}
 			got := st.m[st.key(ctx, envPath(gid))]
@@ -195,9 +195,10 @@ func TestApplyEnvGroupAddsAnEmptyVariableToAnExistingGroup(t *testing.T) {
 
 func mustGroupID(t *testing.T, svc *Service, name string) string {
 	t.Helper()
-	gid, _, found, err := svc.findGroupByName(context.Background(), name)
+	gidRow, found, err := svc.findGroupByName(testCtx(), name)
 	if err != nil || !found {
 		t.Fatalf("group %q: found=%v err=%v", name, found, err)
 	}
+	gid := gidRow.ID
 	return gid
 }

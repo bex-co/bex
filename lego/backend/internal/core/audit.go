@@ -128,11 +128,6 @@ const (
 	// both may be emitted by one atomic ConfigureMaintenanceMode write.
 	AuditVerbMaintenanceModeEnabled    = "apps.SetMaintenanceMode"
 	AuditVerbMaintenanceModeURIUpdated = "apps.SetMaintenanceModeURI"
-	// AuditVerbEnvGroupOwnershipMigrated is the one-time system event emitted
-	// when a pre-attribution environment group is assigned to the bootstrap
-	// workspace. It is fixed vocabulary so migration code cannot inject an
-	// arbitrary action into the audit trail.
-	AuditVerbEnvGroupOwnershipMigrated = "envgroups.MigrateOwnership"
 	// AuditVerbSetPlan, AuditVerbScale, AuditVerbSetAutoscaling,
 	// AuditVerbDeleteAutoscaling, AuditVerbSetAutoDeploy are spelled exactly as
 	// callerVerb() would derive them — duplicated here as constants so the
@@ -378,11 +373,6 @@ func DatabaseTarget(name string) string { return "database:" + name }
 // (AuthorizeKeyValue).
 func KeyValueTarget(name string) string { return "keyvalue:" + name }
 
-// EnvGroupTarget is the audit target of the one-time environment-group
-// ownership migration. Group ids are opaque resource identifiers, never
-// secret values.
-func EnvGroupTarget(groupID string) string { return "envgroup:" + groupID }
-
 // MemberTarget is the audit target of a verb acting on one workspace MEMBER
 // (role change, removal). The subject is the member's identity id — an opaque
 // identifier, never a value; the events feed never reads this kind (members
@@ -413,21 +403,6 @@ func SplitTarget(target string) (kind, name string, ok bool) {
 		return "", "", false
 	}
 	return kind, name, true
-}
-
-// RecordEnvGroupOwnershipMigration records the lazy ownership migration as a
-// system action. This deliberately bypasses caller identity: the read merely
-// discovers the legacy row, while the platform performs the migration.
-func (b *Base) RecordEnvGroupOwnershipMigration(ctx context.Context, groupID, workspaceID string) {
-	b.recordAudit(ctx, AuditEvent{
-		Caller:       "system",
-		CallerMethod: "system",
-		Verb:         AuditVerbEnvGroupOwnershipMigrated,
-		Resource:     WorkspaceObject(workspaceID),
-		Target:       EnvGroupTarget(groupID),
-		Outcome:      AuditAllowed,
-		At:           b.Now(),
-	})
 }
 
 // RecordPlanChanged records the typed from/to detail for a successful SetPlan.

@@ -42,6 +42,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/audit"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/envgroups/envgroupstest"
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -236,6 +237,7 @@ func emptyListFixture(t *testing.T, withApp bool) (http.Handler, *Server) {
 	}
 	h, srv := serverWith(t, base, Deps{
 		Secrets:            &fakeAuditKV{m: map[string]map[string]string{}},
+		EnvGroupsStore:     envgroupstest.New(),
 		APIKeys:            newFakeKeyStore(),
 		DeployStore:        &conformDeployStore{byApp: map[string][]store.Deploy{}},
 		EventStore:         &fakeEventStore{},

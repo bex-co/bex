@@ -51,6 +51,7 @@ func managedApp(name string) *appv1alpha1.App {
 		store.LabelManagedBy:  store.ManagedByValue,
 		store.LabelAppID:      "srv-" + name,
 		core.LabelServiceName: name,
+		core.LabelTenant:      core.DefaultTenant,
 	}
 	return a
 }
@@ -68,7 +69,7 @@ func trackedService(kv core.SecretKV, rec *recordingDeploys, name string) *Servi
 // qa-20260824-envprec: phase went Running -> Building -> Running and the
 // revision bumped rev-1 -> rev-2 with no second deploy row.
 func TestEnvGroupWritesOpenDeployHistory(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 	prior := store.CommitInfo{Hash: "5ef5e18799fa7edbc6477ca3128c78686833b06b", Message: "update"}
 	rec := &recordingDeploys{prior: prior}
 	svc := trackedService(newFakeStore(), rec, "web")
@@ -128,7 +129,7 @@ func TestEnvGroupWritesOpenDeployHistory(t *testing.T) {
 // TestEnvGroupWritesWithoutTrackerStillApply: no control-plane store wired
 // (CR-only mode) must degrade to the pre-w6/m51 behavior, never panic.
 func TestEnvGroupWritesWithoutTrackerStillApply(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 	svc := newService(newFakeStore(), managedApp("web"))
 	g, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
 	if err != nil {

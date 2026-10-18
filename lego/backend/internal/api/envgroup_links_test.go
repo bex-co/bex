@@ -24,6 +24,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
+	"github.com/bex-co/bex/lego/backend/internal/envgroups/envgroupstest"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
@@ -35,7 +36,7 @@ func TestEnvGroups_DeletingAServiceUnlinksIt(t *testing.T) {
 	web.Labels = map[string]string{core.LabelAppID: webID, core.LabelServiceName: "web", core.LabelTenant: "tea-cli"}
 	base := &core.Base{Client: fakeClient(web), Namespace: "default", Workspace: fakeWorkspace{"client-1": "tea-cli"},
 		Clock: func() time.Time { return time.Unix(1_000_000, 0).UTC() }}
-	h, _ := serverWith(t, base, Deps{Secrets: newMemSecretStore()})
+	h, _ := serverWith(t, base, Deps{Secrets: newMemSecretStore(), EnvGroupsStore: envgroupstest.New()})
 
 	created := do(t, h, "POST", "/v1/env-groups", testToken, `{"name":"shared"}`)
 	if created.Code != http.StatusCreated {
