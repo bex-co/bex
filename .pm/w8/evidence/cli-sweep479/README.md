@@ -1,0 +1,7 @@
+# Cross-workspace context guard + per-kind namespaces — sweep479
+
+Passing functional coverage, no new product issue; ship state unchanged (`f62d6740e` still held — gates again report `main` red at `e6457568b`, run 39120931451, no newer main commit). Same isolated session as sweeps 454–478, HEAD checkout build, 2026-10-18.
+
+Findings of record (all upstream/contract behavior): `services create`/`delete` with `BEX_WORKSPACE` set to a workspace other than the saved config workspace refuses in the pinned client's own validator (`pkg/validate/workspace.go`: "resource in workspace does not match the workspace in the current workspace context"), while the datastore create/delete paths accept the same env selection — an upstream asymmetry identical against Render; the supported flow (`workspace set` → operate → set back, all inside the isolated config) completed the journey. Per-kind name namespaces hold for Postgres too: renaming a database onto a web service's exact name in the same workspace succeeds and both kind-scoped resolvers still find their own resource by that name. `--type build` against a managed Postgres returns the same datastore filter-guard 400 as `--type app` (sweep463 dialect).
+
+Cleanup: exact-owned `srv-dbai8i1n2qrc73fmlns0` and `dpg-dbai8c9n2qrc73fmlnlg` deleted by ID in their own workspace context (404 / named not-found verified); isolated config restored to `bex-canary`; baseline deltas are concurrent foreign churn. No plan mutations. Session remains active; next inline sweep is 480; `f62d6740e` + evidence 477–479 await a green main.
