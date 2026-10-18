@@ -1,6 +1,6 @@
 # w4 · m157 — Preserve typed Postgres query values
 
-**Worker:** worker4 **Goal:** SQL results preserve special numeric and temporal values, UUIDs, array shape and exact JSON values across query surfaces **Status:** blocked — t001/t002/t004/t005/t007/t008/t009 done 2026-10-03; t010–t013 JSON follow-up, t014 finite-year follow-up and t003 live result verification/t006 closeout remain; earlier completed tasks retain their original scope
+**Worker:** worker4 **Goal:** SQL results preserve special numeric and temporal values, UUIDs, array shape and exact JSON values across query surfaces **Status:** blocked — t001/t002/t004/t005/t007/t008/t009 done 2026-10-03; t010–t014 (lossless JSON and expanded finite years, simplify and coverage) done 2026-10-18; t003 live result verification after the backend deploys and t006 closeout remain; earlier completed tasks retain their original scope
 
 ## Tasks (in order)
 
@@ -11,14 +11,14 @@
 | t007 — **DONE** | Preserve temporal infinity markers without changing integer values | 30m | t001, t002 |
 | t008 — **DONE** | Render decoded UUIDs as canonical strings | 25m | t001, t002 |
 | t009 — **DONE** | Preserve native array dimensions before value normalization | 45m | t001, t002 |
-| t010 | Audit JSON query consumers and bound codec registration | 30m | t001 |
-| t011 | Preserve exact JSON values before query result decoding | 45m | t010 |
-| t014 | Preserve finite temporal values outside JSON year bounds | 50m | t001, t002 |
+| t010 — **DONE** | Audit JSON query consumers and bound codec registration | 30m | t001 |
+| t011 — **DONE** | Preserve exact JSON values before query result decoding | 45m | t010 |
+| t014 — **DONE** | Preserve finite temporal values outside JSON year bounds | 50m | t001, t002 |
 | t003 | Render parity and live result verification | 25m | t002, t007, t008, t009, t011, t014, w4/m158/t002 |
 | t004 — **DONE** | Simplify | 15m | t003 |
 | t005 — **DONE** | Test coverage | 40m | t003 |
-| t012 | Simplify the JSON and finite-temporal follow-ups | 15m | t003 |
-| t013 | Test JSON, finite temporal values and existing query consumers | 35m | t003 |
+| t012 — **DONE** | Simplify the JSON and finite-temporal follow-ups | 15m | t003 |
+| t013 — **DONE** | Test JSON, finite temporal values and existing query consumers | 35m | t003 |
 | t006 | Closeout | 15m | t004, t005, t012, t013 |
 
 ## Definition of done

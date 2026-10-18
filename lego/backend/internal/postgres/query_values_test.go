@@ -17,9 +17,11 @@ limitations under the License.
 package postgres
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"net/http"
 	"net/http/httptest"
@@ -59,6 +61,17 @@ func TestNormalizeQueryValue(t *testing.T) {
 		{"bytea stays base64", []byte{0x00, 0x01, 0xff}, `"AAH/"`},
 		{"nil", nil, `null`},
 		{"nested leaves", []any{[]any{math.Inf(1), int32(1)}, []any{uuid, nil}}, `[["Infinity",1],["550e8400-e29b-41d4-a716-446655440000",null]]`},
+		// Years RFC 3339 cannot carry use ISO 8601's expanded form; 0–9999 keep
+		// time.Time's own encoding, boundaries included.
+		{"year 10000", time.Date(10000, 1, 1, 0, 0, 0, 0, time.UTC), `"+010000-01-01T00:00:00Z"`},
+		{"2 BC keeps its fraction", time.Date(-1, 1, 1, 12, 34, 56, 123456000, time.UTC), `"-000001-01-01T12:34:56.123456Z"`},
+		{"expanded keeps the offset", time.Date(10000, 1, 1, 12, 0, 0, 0, time.FixedZone("", 5*3600+1800)), `"+010000-01-01T12:00:00+05:30"`},
+		{"seven-digit year", time.Date(5874897, 12, 31, 0, 0, 0, 0, time.UTC), `"+5874897-12-31T00:00:00Z"`},
+		{"4713 BC", time.Date(-4712, 1, 1, 0, 0, 0, 0, time.UTC), `"-004712-01-01T00:00:00Z"`},
+		{"year 0 stays RFC 3339", time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), `"0000-01-01T00:00:00Z"`},
+		{"year 9999 stays RFC 3339", time.Date(9999, 12, 31, 23, 59, 59, 999999000, time.UTC), `"9999-12-31T23:59:59.999999Z"`},
+		{"expanded inside arrays", []any{[]any{time.Date(10000, 1, 1, 0, 0, 0, 0, time.UTC), nil}}, `[["+010000-01-01T00:00:00Z",null]]`},
+		{"json text passes through", json.RawMessage(`{"n":9007199254740993}`), `{"n":9007199254740993}`},
 	}
 	for _, c := range cases {
 		got, err := normalizeQueryValue(c.in)
@@ -89,6 +102,95 @@ func TestNormalizeQueryValue(t *testing.T) {
 	} {
 		if _, err := normalizeQueryValue(bad); !errors.Is(err, errQueryFailed) {
 			t.Errorf("normalize(%#v) => %v, want errQueryFailed", bad, err)
+		}
+	}
+}
+
+// TestQueryJSONCodecs decodes json/jsonb through the query-local codecs in
+// both wire formats, scalar and array element, without a server.
+func TestQueryJSONCodecs(t *testing.T) {
+	m := pgtype.NewMap()
+	registerQueryJSONCodecs(m)
+	const object = `{"n": 9007199254740993, "amount": 12345678901234567890.123456789}`
+	decode := func(oid uint32, format int16, src []byte) any {
+		t.Helper()
+		typ, ok := m.TypeForOID(oid)
+		if !ok {
+			t.Fatalf("oid %d not registered", oid)
+		}
+		v, err := typ.Codec.DecodeValue(m, oid, format, src)
+		if err != nil {
+			t.Fatalf("decode oid %d format %d: %v", oid, format, err)
+		}
+		return v
+	}
+	for _, c := range []struct {
+		name   string
+		oid    uint32
+		format int16
+		src    []byte
+		want   string
+	}{
+		{"jsonb text", pgtype.JSONBOID, pgtype.TextFormatCode, []byte(object), object},
+		{"jsonb binary drops its version byte", pgtype.JSONBOID, pgtype.BinaryFormatCode, append([]byte{1}, object...), object},
+		{"json text", pgtype.JSONOID, pgtype.TextFormatCode, []byte(`1.10`), `1.10`},
+		{"json binary", pgtype.JSONOID, pgtype.BinaryFormatCode, []byte(`"qa 雪"`), `"qa 雪"`},
+		{"jsonb null is JSON", pgtype.JSONBOID, pgtype.TextFormatCode, []byte(`null`), `null`},
+	} {
+		src := bytes.Clone(c.src)
+		got, ok := decode(c.oid, c.format, src).(json.RawMessage)
+		if !ok || string(got) != c.want {
+			t.Errorf("%s => %#v, want RawMessage %s", c.name, got, c.want)
+		}
+		// pgx reuses the row buffer: the decoded value must not alias it.
+		for i := range src {
+			src[i] = 'x'
+		}
+		if string(got) != c.want {
+			t.Errorf("%s aliases the row buffer: %s", c.name, got)
+		}
+	}
+	if v := decode(pgtype.JSONBOID, pgtype.TextFormatCode, nil); v != nil {
+		t.Errorf("SQL NULL jsonb => %#v, want nil", v)
+	}
+	typ, _ := m.TypeForOID(pgtype.JSONBOID)
+	if _, err := typ.Codec.DecodeValue(m, pgtype.JSONBOID, pgtype.BinaryFormatCode, []byte{2, '1'}); err == nil {
+		t.Error("unknown jsonb version byte decoded; want pgx's refusal")
+	}
+
+	// Array elements scan through the array codec's own ElementType, so the
+	// re-registered _json/_jsonb types are what keep their digits.
+	for _, oid := range []uint32{pgtype.JSONArrayOID, pgtype.JSONBArrayOID} {
+		var arr pgtype.Array[any]
+		// PostgreSQL spells an SQL NULL element as bare NULL; "null" is JSON.
+		src := []byte(`{"{\"n\": 9007199254740993}",NULL,"null","\"s\""}`)
+		if err := m.Scan(oid, pgtype.TextFormatCode, src, &arr); err != nil {
+			t.Fatalf("scan array oid %d: %v", oid, err)
+		}
+		if encoded, _ := json.Marshal(arr.Elements); string(encoded) != `[{"n":9007199254740993},null,null,"s"]` {
+			t.Errorf("array oid %d elements => %s", oid, encoded)
+		}
+		if _, ok := arr.Elements[2].(json.RawMessage); !ok || arr.Elements[1] != nil {
+			t.Errorf("array oid %d: JSON null %#v must stay JSON, SQL NULL %#v nil", oid, arr.Elements[2], arr.Elements[1])
+		}
+	}
+}
+
+// TestQueryCellStringJSON pins GraphQL's string cells for JSON values: compact
+// JSON text without HTML escapes, scalar or in an array, never SQL NULL.
+func TestQueryCellStringJSON(t *testing.T) {
+	for _, c := range []struct {
+		in   any
+		want any
+	}{
+		{json.RawMessage(`{"n": 9007199254740993, "a": [1.10, "<&>"]}`), `{"n":9007199254740993,"a":[1.10,"<&>"]}`},
+		{json.RawMessage(`null`), "null"},
+		{json.RawMessage(`"qa 雪"`), `"qa 雪"`},
+		{nil, nil},
+		{[]any{json.RawMessage(`"<&>"`), nil}, `["<&>",null]`},
+	} {
+		if got := queryCellString(c.in); got != c.want {
+			t.Errorf("queryCellString(%#v) = %#v, want %#v", c.in, got, c.want)
 		}
 	}
 }
@@ -199,6 +301,30 @@ var typedValuesCases = []typedValuesCase{
 			`[],null,[1,null,3],["AA=="],[[1,2],[3,4]],[["NaN",1],[2,"Infinity"]],[[1,2,3],[4,5,6]]]]`,
 	},
 	{
+		// jsonb text output reorders keys (shorter first) and json keeps the
+		// literal text; both keep every digit. JSON null and SQL NULL both
+		// encode as null on REST/MCP — GraphQL is where they differ.
+		name: "json values",
+		sql: `SELECT '{"n":9007199254740993,"amount":12345678901234567890.123456789}'::jsonb, 'null'::jsonb, '"qa 雪"'::jsonb,
+			NULL::jsonb, '{"n":9007199254740993}'::json, '1.10'::json,
+			ARRAY['{"n":9007199254740993}'::jsonb,'null'::jsonb,'"qa 雪"'::jsonb,NULL::jsonb], ARRAY[['1.10'::json],['[2]'::json]],
+			9007199254740993::bigint, 12345678901234567890.123456789::numeric, 1.5::float8, false, '{"n":9007199254740993}'::jsonb::text`,
+		want: `[[{"n":9007199254740993,"amount":12345678901234567890.123456789},null,"qa 雪",null,{"n":9007199254740993},1.10,` +
+			`[{"n":9007199254740993},null,"qa 雪",null],[[1.10],[[2]]],` +
+			`9007199254740993,12345678901234567890.123456789,1.5,false,"{\"n\": 9007199254740993}"]]`,
+	},
+	{
+		// Finite years outside 0–9999 as expanded strings; the boundaries keep
+		// their RFC 3339 form.
+		name: "expanded years",
+		sql: `SELECT DATE '10000-01-01', DATE '0002-01-01 BC', TIMESTAMP '10000-01-01 12:34:56.123456',
+			ARRAY[DATE '9999-12-31', DATE '10000-01-01', NULL], ARRAY[[TIMESTAMP '0002-01-01 00:00:00.5 BC'],[TIMESTAMP '9999-12-31 23:59:59.999999']],
+			DATE '0001-01-01 BC', DATE '0001-01-01', DATE '5874897-12-31', DATE '4713-01-01 BC', 'infinity'::date, NULL::date`,
+		want: `[["+010000-01-01T00:00:00Z","-000001-01-01T00:00:00Z","+010000-01-01T12:34:56.123456Z",` +
+			`["9999-12-31T00:00:00Z","+010000-01-01T00:00:00Z",null],[["-000001-01-01T00:00:00.5Z"],["9999-12-31T23:59:59.999999Z"]],` +
+			`"0000-01-01T00:00:00Z","0001-01-01T00:00:00Z","+5874897-12-31T00:00:00Z","-004712-01-01T00:00:00Z","infinity",null]]`,
+	},
+	{
 		// PostgreSQL's own to_json is the shape oracle for native arrays.
 		name: "to_json controls",
 		sql:  `SELECT to_json(ARRAY[[1,2],[3,4]]), to_json(ARRAY[[[1,2],[3,4]],[[5,6],[7,8]]]), to_json(ARRAY[['a',NULL],['NULL','b']])`,
@@ -234,6 +360,28 @@ func TestQueryTypedValuesIntegration(t *testing.T) {
 			t.Errorf("finite time cell %d = %#v, want %v", i, res.Rows[0][i], want)
 		}
 	}
+
+	// timestamptz decodes in the process's zone, as year 0–9999 values always
+	// have. TestNormalizeQueryValue pins the formatter's strings; this checks
+	// the decoded instant and zone reach it.
+	res, err = runReadOnlyQuery(ctx, uri, `SELECT TIMESTAMPTZ '10000-01-01 12:34:56.123456+00'`, lim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := expandedYearTime(time.Date(10000, 1, 1, 12, 34, 56, 123456000, time.UTC).Local())
+	if res.Rows[0][0] != want {
+		t.Errorf("far timestamptz = %#v, want %q", res.Rows[0][0], want)
+	}
+
+	// JSON cells are budgeted as encoded, not as received: twenty ~200 KB
+	// jsonb strings fit every raw cap, but each '<' encodes as the six bytes
+	// \u003c, so that result passes the encoded cap; the same bytes of 'x' do not.
+	for ch, wantErr := range map[string]bool{"<": true, "x": false} {
+		_, err := runReadOnlyQuery(ctx, uri, fmt.Sprintf(`SELECT to_jsonb(repeat('%s', 200000)) FROM generate_series(1, 20)`, ch), lim)
+		if gotErr := errors.Is(err, errQueryResultTooLarge); gotErr != wantErr || (!wantErr && err != nil) {
+			t.Errorf("jsonb of %q => %v, want too-large %v", ch, err, wantErr)
+		}
+	}
 }
 
 // TestQueryTypedValuesWritableReturning covers the confirmed write path's
@@ -246,18 +394,20 @@ func TestQueryTypedValuesWritableReturning(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer admin.Close(ctx)
-	if _, err := admin.Exec(ctx, `DROP TABLE IF EXISTS q_typed; CREATE TABLE q_typed(f float8, n numeric, d date, u uuid, m int[])`); err != nil {
+	if _, err := admin.Exec(ctx, `DROP TABLE IF EXISTS q_typed; CREATE TABLE q_typed(f float8, n numeric, d date, u uuid, m int[], j jsonb, y date)`); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _, _ = admin.Exec(context.Background(), `DROP TABLE IF EXISTS q_typed`) })
 
 	res, err := runSQLQuery(ctx, uri,
-		`INSERT INTO q_typed VALUES ('-Infinity', 'NaN', 'infinity', '550e8400-e29b-41d4-a716-446655440000', '{{1,2},{3,4}}') RETURNING *`,
+		`INSERT INTO q_typed VALUES ('-Infinity', 'NaN', 'infinity', '550e8400-e29b-41d4-a716-446655440000', '{{1,2},{3,4}}',
+			'{"n":9007199254740993}', '10000-01-01') RETURNING *`,
 		queryLimits{statementTimeout: queryStatementTimeout, rowCap: queryRowCap}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if encoded, _ := json.Marshal(res.Rows); string(encoded) != `[["-Infinity","NaN","infinity","550e8400-e29b-41d4-a716-446655440000",[[1,2],[3,4]]]]` {
+	if encoded, _ := json.Marshal(res.Rows); string(encoded) != `[["-Infinity","NaN","infinity","550e8400-e29b-41d4-a716-446655440000",[[1,2],[3,4]],`+
+		`{"n":9007199254740993},"+010000-01-01T00:00:00Z"]]` {
 		t.Fatalf("RETURNING rows = %s", encoded)
 	}
 	if res.RowCount != 1 {
@@ -265,27 +415,46 @@ func TestQueryTypedValuesWritableReturning(t *testing.T) {
 	}
 }
 
-// TestQueryTypedValuesAcrossSurfaces runs one mixed SELECT through REST,
-// GraphQL and MCP on a real database: REST/MCP carry the JSON values, GraphQL
-// the bare tokens as string cells and nested arrays as JSON text.
+// TestQueryTypedValuesAcrossSurfaces runs mixed SELECTs through REST, GraphQL
+// and MCP on a real database: REST/MCP carry the JSON values, GraphQL the bare
+// tokens as string cells and nested arrays and JSON as JSON text.
 func TestQueryTypedValuesAcrossSurfaces(t *testing.T) {
 	uri := testDBURI(t)
 	svc, _ := newService()
 	seedDatabaseAt(t, svc, "typed-db", uri)
-	const sql = `SELECT 'NaN'::float8 AS f, '-Infinity'::numeric AS n, 'infinity'::date AS d, ` +
-		`'550e8400-e29b-41d4-a716-446655440000'::uuid AS u, ARRAY[[1,2],[3,4]] AS m, 12345678901234567890.123456789::numeric AS x, NULL::int AS z`
-	const wantRows = `[["NaN","-Infinity","infinity","550e8400-e29b-41d4-a716-446655440000",[[1,2],[3,4]],12345678901234567890.123456789,null]]`
+	assertQueryAcrossSurfaces(t, svc, "typed-db",
+		`SELECT 'NaN'::float8 AS f, '-Infinity'::numeric AS n, 'infinity'::date AS d, `+
+			`'550e8400-e29b-41d4-a716-446655440000'::uuid AS u, ARRAY[[1,2],[3,4]] AS m, 12345678901234567890.123456789::numeric AS x, NULL::int AS z`,
+		`[["NaN","-Infinity","infinity","550e8400-e29b-41d4-a716-446655440000",[[1,2],[3,4]],12345678901234567890.123456789,null]]`,
+		`[{"values":["NaN","-Infinity","infinity","550e8400-e29b-41d4-a716-446655440000","[[1,2],[3,4]]","12345678901234567890.123456789",null]}]`)
 
+	// JSON keeps every digit; on GraphQL a JSON null and string stay JSON text,
+	// distinct from SQL NULL. Far years are plain strings everywhere.
+	assertQueryAcrossSurfaces(t, svc, "typed-db",
+		`SELECT '{"n":9007199254740993,"amount":12345678901234567890.123456789}'::jsonb AS o, 'null'::jsonb AS jn, `+
+			`'"qa 雪"'::jsonb AS js, NULL::jsonb AS sn, ARRAY['{"n":9007199254740993}'::jsonb, NULL] AS ja, `+
+			`DATE '10000-01-01' AS fd, ARRAY[DATE '0002-01-01 BC'] AS bc`,
+		`[[{"n":9007199254740993,"amount":12345678901234567890.123456789},null,"qa 雪",null,`+
+			`[{"n":9007199254740993},null],"+010000-01-01T00:00:00Z",["-000001-01-01T00:00:00Z"]]]`,
+		`[{"values":["{\"n\":9007199254740993,\"amount\":12345678901234567890.123456789}","null","\"qa 雪\"",null,`+
+			`"[{\"n\":9007199254740993},null]","+010000-01-01T00:00:00Z","[\"-000001-01-01T00:00:00Z\"]"]}]`)
+}
+
+// assertQueryAcrossSurfaces runs sql against the seeded database id through
+// REST and MCP (whose rows must contain wantRows) and GraphQL (whose rows must
+// encode as wantCells).
+func assertQueryAcrossSurfaces(t *testing.T, svc *Service, id, sql, wantRows, wantCells string) {
+	t.Helper()
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	body, _ := json.Marshal(map[string]string{"sql": sql})
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/postgres/typed-db/query", strings.NewReader(string(body))))
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/postgres/"+id+"/query", strings.NewReader(string(body))))
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"rows":`+wantRows) {
 		t.Fatalf("REST => %d %s", rec.Code, rec.Body)
 	}
 
-	args, _ := json.Marshal(map[string]string{"postgresId": "typed-db", "sql": sql})
+	args, _ := json.Marshal(map[string]string{"postgresId": id, "sql": sql})
 	res := mcpQueryWire(t, svc, string(args))
 	if got := mcpQueryText(t, res); !strings.Contains(got, `"rows":`+wantRows) {
 		t.Fatalf("MCP => %s", got)
@@ -296,13 +465,13 @@ func TestQueryTypedValuesAcrossSurfaces(t *testing.T) {
 		t.Fatal(err)
 	}
 	gql := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
-		RequestString:  `mutation($sql: String!) { executeDatabaseQuery(id:"typed-db", sql:$sql) { rows { values } } }`,
-		VariableValues: map[string]any{"sql": sql}})
+		RequestString:  `mutation($id: String!, $sql: String!) { executeDatabaseQuery(id:$id, sql:$sql) { rows { values } } }`,
+		VariableValues: map[string]any{"id": id, "sql": sql}})
 	if len(gql.Errors) > 0 {
 		t.Fatalf("GraphQL: %v", gql.Errors)
 	}
 	cells, _ := json.Marshal(gql.Data.(map[string]any)["executeDatabaseQuery"].(map[string]any)["rows"])
-	if want := `[{"values":["NaN","-Infinity","infinity","550e8400-e29b-41d4-a716-446655440000","[[1,2],[3,4]]","12345678901234567890.123456789",null]}]`; string(cells) != want {
-		t.Fatalf("GraphQL cells\n got %s\nwant %s", cells, want)
+	if string(cells) != wantCells {
+		t.Fatalf("GraphQL cells\n got %s\nwant %s", cells, wantCells)
 	}
 }

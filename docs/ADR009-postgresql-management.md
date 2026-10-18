@@ -320,6 +320,19 @@ Shipped 2026-07-12. All three Render fields verified against the live API ([rend
 
 The dashboard SQL console, REST `POST /v1/postgres/{id}/query`, and MCP `query_render_postgres` share `mapPGError`. Schema and syntax SQLSTATEs (`42601`, `42703`, `42P01`, `42883`, `42P02`, `3D000`, `3F000`) return the Postgres `Message` (and `Position` when set) to the authenticated caller — those strings only quote the caller's own SQL or catalog identifiers. Multi-statement input (still `42601`, but with Postgres's "multiple commands" message) returns the product sentence `only one statement per query`, matching the console's single-statement copy. Write/DDL refusals and statement timeouts keep their fixed prose. Integrity and cast failures (`23505`, `23503`, `22P02`, …) stay collapsed to `bad request (SQLSTATE …)` so stored/literal values never leave the DB response. Neither class is written to logs, metrics, or audit events.
 
+## SQL result values (w4/m157)
+
+The same three surfaces share one conversion from pgx's decoded cells (`lego/backend/internal/postgres/query_values.go`), applied before the encoded-result budget so the cap measures what is emitted. REST and MCP carry JSON values; GraphQL carries each cell as a nullable string. Where pgx's default decoding is not truthful, the cell becomes:
+
+- **float/numeric NaN and ±Infinity** — the strings `NaN`, `Infinity`, `-Infinity`.
+- **date/timestamp/timestamptz ±infinity** — `infinity` / `-infinity`.
+- **uuid** — the canonical lowercase hyphenated string.
+- **arrays** — nested to their dimensions, matching PostgreSQL's `to_json`.
+- **json/jsonb** — the server's JSON text, kept by codecs registered only on the query's own connection. Numbers keep every digit. On GraphQL a JSON `null` is the string `"null"` and a JSON string keeps its quotes, both distinct from SQL NULL's null cell. On REST/MCP, JSON null and SQL NULL both encode as `null`, and object key order and whitespace follow PostgreSQL's output, compacted.
+- **finite dates/timestamps outside years 0–9999** — Bex's ISO 8601 expanded-year string: a sign and at least six astronomical-year digits, then the usual RFC 3339 remainder with its fraction and offset. Examples: `+010000-01-01T00:00:00Z`, and `-000001-01-01T00:00:00Z` for PostgreSQL's `0002-01-01 BC`. RFC 3339 cannot carry those years, and before this conversion one such value failed the whole result. Years 0–9999 keep their RFC 3339 form.
+
+Every other value — finite numbers including exact numeric digits, integers, text, bytea (base64), year 0–9999 times and NULL — keeps its existing encoding.
+
 ## Consequences
 
 - Deferred: the Accelerated tier and payment collection. Backups + PITR + lifecycle + access shipped in **w1/m17**; HA/replicas/failover in **w1/m22**; disk autoscaling in **w8/m14**.

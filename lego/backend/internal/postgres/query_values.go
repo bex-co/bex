@@ -30,17 +30,57 @@ limitations under the License.
 //     lowercase hyphenated string.
 //   - an array decodes to one flat []any, dropping its dimensions → re-decoded
 //     through pgtype.Array[any], which keeps them, and nested to match to_json.
+//   - json/jsonb unmarshal into any, rounding every number through float64 and
+//     turning a JSON null or string into a Go nil or bare string → the
+//     server's JSON text, kept by query-local codecs (registerQueryJSONCodecs).
+//   - a finite date/timestamp/timestamptz outside years 0–9999 decodes to a
+//     time.Time encoding/json refuses, failing the whole query → an ISO 8601
+//     expanded-year string (expandedYearTime).
 //
 // Everything else — finite numbers (including exact Numeric digits), integers,
-// text, bytea, finite times, NULL — keeps pgx's value and its existing encoding.
+// text, bytea, year 0–9999 times, NULL — keeps pgx's value and its existing
+// encoding.
 package postgres
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"math"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+// registerQueryJSONCodecs swaps the query connection's json and jsonb codecs
+// for ones that decode a value bound for any as its own JSON text. The array
+// types are registered again too: an ArrayCodec scans elements through the
+// ElementType it was built with, not through the map, so json[] and jsonb[]
+// would otherwise keep rounding. The connection serves one statement, so no
+// other reader sees the change.
+func registerQueryJSONCodecs(m *pgtype.Map) {
+	jsonType := &pgtype.Type{Name: "json", OID: pgtype.JSONOID,
+		Codec: &pgtype.JSONCodec{Marshal: json.Marshal, Unmarshal: unmarshalQueryJSON}}
+	jsonbType := &pgtype.Type{Name: "jsonb", OID: pgtype.JSONBOID,
+		Codec: &pgtype.JSONBCodec{Marshal: json.Marshal, Unmarshal: unmarshalQueryJSON}}
+	m.RegisterType(jsonType)
+	m.RegisterType(jsonbType)
+	m.RegisterType(&pgtype.Type{Name: "_json", OID: pgtype.JSONArrayOID, Codec: &pgtype.ArrayCodec{ElementType: jsonType}})
+	m.RegisterType(&pgtype.Type{Name: "_jsonb", OID: pgtype.JSONBArrayOID, Codec: &pgtype.ArrayCodec{ElementType: jsonbType}})
+}
+
+// unmarshalQueryJSON keeps JSON text bound for an any (a cell or an array
+// element) as a json.RawMessage, so its numbers keep every digit and a JSON
+// null or string stays JSON rather than becoming SQL NULL or bare text. The
+// bytes are copied because pgx reuses the row buffer they point into.
+func unmarshalQueryJSON(data []byte, v any) error {
+	if p, ok := v.(*any); ok {
+		*p = json.RawMessage(bytes.Clone(data))
+		return nil
+	}
+	return json.Unmarshal(data, v)
+}
 
 // queryArrayColumns marks the result columns whose registered codec is pgx's
 // ArrayCodec, decided by the field's type OID through the connection's own type
@@ -148,6 +188,10 @@ func normalizeQueryValue(v any) (any, error) {
 		return nil, errQueryFailed
 	case [16]byte:
 		return pgtype.UUID{Bytes: v, Valid: true}.String(), nil
+	case time.Time:
+		if y := v.Year(); y < 0 || y > 9999 {
+			return expandedYearTime(v), nil
+		}
 	case []any:
 		for i, elem := range v {
 			n, err := normalizeQueryValue(elem)
@@ -159,6 +203,18 @@ func normalizeQueryValue(v any) (any, error) {
 		return v, nil
 	}
 	return v, nil
+}
+
+// expandedYearTime spells a finite time whose year RFC 3339 cannot carry
+// with ISO 8601's expanded year: a sign and at least six astronomical-year
+// digits, so PostgreSQL's 0002 BC is -000001. The rest is the RFC3339Nano form
+// year 0–9999 times already encode as — same fraction, same offset.
+func expandedYearTime(t time.Time) string {
+	sign, year := '+', t.Year()
+	if year < 0 {
+		sign, year = '-', -year
+	}
+	return fmt.Sprintf("%c%06d%s", sign, year, t.Format("-01-02T15:04:05.999999999Z07:00"))
 }
 
 // floatToken spells a non-finite float the way PostgreSQL does; a finite one
