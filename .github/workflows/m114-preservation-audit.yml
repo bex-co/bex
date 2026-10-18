@@ -36,6 +36,12 @@ jobs:
         with:
           version: v1.36.1
 
+      # Before any credential is in scope: which Docker limits this runner
+      # enforces (the restore drops the ones it cannot apply).
+      - name: Probe local Docker limits (no credentials)
+        timeout-minutes: 4
+        run: python3 scripts/audits/m114-preservation-audit.py --probe-limits
+
       - name: Install checksum-pinned age under runner scratch
         env:
           AGE_VERSION: "1.3.1"
