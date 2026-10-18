@@ -17,6 +17,7 @@ limitations under the License.
 package envgroups
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -36,13 +37,16 @@ func strand(t *testing.T, svc *Service, gid, kind, phase string, oldEnv, newEnv 
 		t.Fatal(err)
 	}
 	op := store.EnvGroupOp{Kind: kind, EnvChanged: !mapsEqual(oldEnv, newEnv)}
-	opID, err := svc.preparePatchOperation(ctx, op, g.TenantID, gid,
-		groupContents{env: oldEnv, files: map[string]string{}}, groupContents{env: newEnv, files: map[string]string{}})
+	opID, err := newGroupOpID()
 	if err != nil {
 		t.Fatal(err)
 	}
 	op.ID = opID
 	if _, err := svc.claimContent(ctx, g, op); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.preparePatchOperation(ctx, op, g.TenantID, gid,
+		groupContents{env: oldEnv, files: map[string]string{}}, groupContents{env: newEnv, files: map[string]string{}}); err != nil {
 		t.Fatal(err)
 	}
 	if phase != opPhaseAdmitted {
@@ -68,11 +72,7 @@ func mapsEqual(a, b map[string]string) bool {
 // recover runs recovery on the group's current row.
 func recoverGroup(t *testing.T, svc *Service, gid string) error {
 	t.Helper()
-	g, err := svc.readGroup(testCtx(), gid)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return svc.ensureGroupOperable(testCtx(), g)
+	return svc.withGroupContent(testCtx(), gid, func(context.Context, store.EnvGroup) error { return nil })
 }
 
 // opMapsLeft counts the recovery maps still stored for opID.

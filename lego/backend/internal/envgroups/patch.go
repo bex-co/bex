@@ -131,6 +131,21 @@ func (s *Service) PatchEnvironment(ctx context.Context, gid string, patch Enviro
 }
 
 func (s *Service) patchEnvironmentAuthorized(ctx context.Context, g store.EnvGroup, patch EnvironmentPatch) (EnvironmentPatchResult, error) {
+	var result EnvironmentPatchResult
+	err := s.withGroupContent(ctx, g.ID, func(ctx context.Context, fresh store.EnvGroup) error {
+		var err error
+		result, err = s.patchContents(ctx, fresh, patch)
+		return err
+	})
+	if err != nil {
+		return EnvironmentPatchResult{}, err
+	}
+	return s.rollGroupPatch(ctx, g.ID, patch.SaveMode, result)
+}
+
+// patchContents runs with the group's session lock held; unrelated rollout SQL
+// happens after releasing it, so a one-connection pool cannot deadlock.
+func (s *Service) patchContents(ctx context.Context, g store.EnvGroup, patch EnvironmentPatch) (EnvironmentPatchResult, error) {
 	if patch.SaveMode != SaveModeOnly && patch.SaveMode != SaveModeDeploy && patch.SaveMode != SaveModeRebuild {
 		return EnvironmentPatchResult{}, core.NewBadRequestError(
 			"ENV_GROUP_SAVE_MODE_INVALID",
@@ -138,30 +153,28 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, g store.EnvGro
 			nil,
 		)
 	}
-	g, err := s.operableGroup(ctx, g)
-	if err != nil {
-		return EnvironmentPatchResult{}, err
-	}
-	gid, workspace, generation := g.ID, g.TenantID, g.Content.Generation
 	if patch.ExpectedRevision != nil {
 		expected, decodeErr := decodeEnvGroupRevision(*patch.ExpectedRevision)
 		if decodeErr != nil {
 			return EnvironmentPatchResult{}, envGroupRevisionInvalid()
 		}
-		if expected != generation {
+		if expected != g.Content.Generation {
 			return EnvironmentPatchResult{}, envGroupRevisionConflict()
 		}
 	}
 	// Preflight the complete merged maps before claiming the revision, so quota
 	// failures never leave a busy group behind and are independent of which
 	// patch form was used.
-	var prior groupContents
-	if prior.env, err = s.getGroupMap(ctx, workspace, envPath(gid)); err != nil {
+	prior, err := s.readGroupContents(ctx, g)
+	if err != nil {
 		return EnvironmentPatchResult{}, err
 	}
-	if prior.files, err = s.getGroupMap(ctx, workspace, filesPath(gid)); err != nil {
-		return EnvironmentPatchResult{}, err
-	}
+	return s.patchContentsFromSnapshot(ctx, g, prior, patch)
+}
+
+// All content decisions use the one snapshot loaded under the session lock.
+func (s *Service) patchContentsFromSnapshot(ctx context.Context, g store.EnvGroup, prior groupContents, patch EnvironmentPatch) (EnvironmentPatchResult, error) {
+	gid, generation := g.ID, g.Content.Generation
 	next := groupContents{env: core.CloneStringMap(prior.env), files: core.CloneStringMap(prior.files)}
 	if err := core.ApplyEnvVarPatch(next.env, patch.EnvVars); err != nil {
 		return EnvironmentPatchResult{}, err
@@ -182,6 +195,7 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, g store.EnvGro
 	if op.EnvChanged || op.FilesChanged {
 		// A save that changes nothing (the empty patch that retries a rollout
 		// included) has nothing to serialize and goes straight to the rollout.
+		var err error
 		if generation, err = s.saveContents(ctx, g, op, prior, next); err != nil {
 			return EnvironmentPatchResult{}, err
 		}
@@ -197,7 +211,11 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, g store.EnvGro
 		Revision:           encodeEnvGroupRevision(generation),
 		AffectedServiceIDs: slices.Clone(g.ServiceLinks),
 	}
-	if patch.SaveMode == SaveModeOnly || len(g.ServiceLinks) == 0 {
+	return result, nil
+}
+
+func (s *Service) rollGroupPatch(ctx context.Context, gid string, mode SaveMode, result EnvironmentPatchResult) (EnvironmentPatchResult, error) {
+	if mode == SaveModeOnly || len(result.AffectedServiceIDs) == 0 {
 		return result, nil
 	}
 	// Roll (or rebuild) every currently-linked service. A service that no longer
@@ -209,14 +227,14 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, g store.EnvGro
 	// dropped from both the reported affected set and the group's persisted links
 	// (self-heal below), leaving only real, still-existing services — a genuine
 	// failure on one of those stays in FailedServiceIDs and retryable, unchanged.
-	affected := make([]string, 0, len(g.ServiceLinks))
+	affected := make([]string, 0, len(result.AffectedServiceIDs))
 	var stale []string
-	for _, serviceID := range g.ServiceLinks {
-		skipped, actionErr := s.rollLink(ctx, gid, serviceID, patch.SaveMode)
+	for _, serviceID := range result.AffectedServiceIDs {
+		skipped, actionErr := s.rollLink(ctx, gid, serviceID, mode)
 		if errors.Is(actionErr, core.ErrServiceReplaced) || apierrors.IsNotFound(actionErr) {
 			// Deleted, or deleted and recreated, since its read: judge the
 			// link again against the App now at serviceID (w5/158).
-			skipped, actionErr = s.rollLink(ctx, gid, serviceID, patch.SaveMode)
+			skipped, actionErr = s.rollLink(ctx, gid, serviceID, mode)
 		}
 		if errors.Is(actionErr, core.ErrNotFound) {
 			stale = append(stale, serviceID)
@@ -241,17 +259,19 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, g store.EnvGro
 // release at the next generation. It returns that generation.
 func (s *Service) saveContents(ctx context.Context, g store.EnvGroup, op store.EnvGroupOp, prior, next groupContents) (uint64, error) {
 	gid, workspace := g.ID, g.TenantID
-	opID, err := s.preparePatchOperation(ctx, op, workspace, gid, prior, next)
+	opID, err := newGroupOpID()
 	if err != nil {
 		return 0, core.ErrSecretsUnavailable
 	}
 	op.ID = opID
 	claimVersion, err := s.claimContent(ctx, g, op)
 	if err != nil {
-		_ = s.clearOpMaps(context.WithoutCancel(ctx), workspace, gid, opID)
 		return 0, err
 	}
 	txn := groupPatchTxn{g: g, op: op, claimVersion: claimVersion, prior: prior}
+	if err := s.preparePatchOperation(ctx, op, workspace, gid, prior, next); err != nil {
+		return 0, s.abortGroupPatch(ctx, txn, false)
+	}
 	sides := []struct {
 		changed bool
 		slot    contentSlot
@@ -275,10 +295,10 @@ func (s *Service) saveContents(ctx context.Context, g store.EnvGroup, op store.E
 		if !side.changed {
 			continue
 		}
-		if err := s.writeSlot(ctx, workspace, gid, side.slot, side.data); err != nil {
+		if err := s.advanceOpPhase(ctx, gid, opID, side.phase); err != nil {
 			return 0, s.abortGroupPatch(ctx, txn, true)
 		}
-		if err := s.advanceOpPhase(ctx, gid, opID, side.phase); err != nil {
+		if err := s.writeSlot(ctx, workspace, gid, side.slot, side.data); err != nil {
 			return 0, s.abortGroupPatch(ctx, txn, true)
 		}
 	}
@@ -288,10 +308,14 @@ func (s *Service) saveContents(ctx context.Context, g store.EnvGroup, op store.E
 			return 0, s.abortGroupPatch(ctx, txn, true)
 		}
 	}
-	if err := s.releaseContent(ctx, gid, claimVersion, s.commit(next)); err != nil {
+	release := s.commit(next)
+	release.RetainOperation = true
+	ctx, cancel := groupCleanupContext(ctx)
+	defer cancel()
+	if err := s.releaseContent(ctx, gid, claimVersion, release); err != nil {
 		return 0, envGroupRestorationFailed()
 	}
-	_ = s.clearOpMaps(context.WithoutCancel(ctx), workspace, gid, opID)
+	s.tryOperationCleanup(ctx, gid)
 	return g.Content.Generation + 1, nil
 }
 
@@ -367,7 +391,8 @@ func (s *Service) restoreGroupSecret(ctx context.Context, workspace, name string
 // or move committed on the row meanwhile survives (w4/m97). A failed restore
 // leaves the group repair_required with its operation, which recovery retries.
 func (s *Service) abortGroupPatch(ctx context.Context, txn groupPatchTxn, restore bool) error {
-	ctx = context.WithoutCancel(ctx)
+	ctx, cancel := groupCleanupContext(ctx)
+	defer cancel()
 	workspace, gid := txn.g.TenantID, txn.g.ID
 	var restoreErr error
 	if restore {
@@ -388,10 +413,10 @@ func (s *Service) abortGroupPatch(ctx context.Context, txn groupPatchTxn, restor
 		}
 		restoreErr = errors.Join(restoreErrors...)
 	}
-	releaseErr := s.releaseContent(ctx, gid, txn.claimVersion, store.EnvGroupRelease{RepairRequired: restoreErr != nil})
+	releaseErr := s.releaseContent(ctx, gid, txn.claimVersion, store.EnvGroupRelease{RepairRequired: restoreErr != nil, RetainOperation: restoreErr == nil})
 	if restoreErr != nil || releaseErr != nil {
 		return envGroupRestorationFailed()
 	}
-	_ = s.clearOpMaps(ctx, workspace, gid, txn.op.ID)
+	s.tryOperationCleanup(ctx, gid)
 	return envGroupUpdateRestored()
 }

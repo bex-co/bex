@@ -21,6 +21,7 @@ import (
 	"errors"
 
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // A group's values live in OpenBao under its workspace's own tenant
@@ -35,6 +36,15 @@ func groupCtx(ctx context.Context, workspace string) context.Context {
 
 func (s *Service) getGroupMap(ctx context.Context, workspace, path string) (map[string]string, error) {
 	return s.Store.Get(groupCtx(ctx, workspace), path)
+}
+
+func (s *Service) readGroupContents(ctx context.Context, g store.EnvGroup) (groupContents, error) {
+	env, err := s.getGroupMap(ctx, g.TenantID, envPath(g.ID))
+	if err != nil {
+		return groupContents{}, err
+	}
+	files, err := s.getGroupMap(ctx, g.TenantID, filesPath(g.ID))
+	return groupContents{env: env, files: files}, err
 }
 
 func (s *Service) putGroupMap(ctx context.Context, workspace, path string, data map[string]string) error {

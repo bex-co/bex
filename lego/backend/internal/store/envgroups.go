@@ -80,11 +80,13 @@ type EnvGroupOp struct {
 
 // EnvGroupRelease ends a claim. By default it releases the group idle and
 // clears the operation, with the committed content unchanged. RepairRequired
-// keeps the operation as the evidence recovery needs instead. Commit records
-// that the save changed content: the next generation, with these names.
+// keeps the operation as the evidence recovery needs instead. RetainOperation
+// leaves it on an idle row until recovery value-map cleanup succeeds. Commit
+// records that the save changed content: the next generation, with these names.
 type EnvGroupRelease struct {
-	RepairRequired bool
-	Commit         *EnvGroupCommit
+	RepairRequired  bool
+	RetainOperation bool // idle operation is durable evidence of pending value-map cleanup
+	Commit          *EnvGroupCommit
 }
 
 // EnvGroupCommit is what a content-changing save leaves on the row.
@@ -142,7 +144,7 @@ func nonNil(list []string) []string {
 // unset), and returns it.
 func (s *PGStore) InsertEnvGroup(ctx context.Context, g EnvGroup) (EnvGroup, error) {
 	generation := max(g.Content.Generation, 1)
-	return scanEnvGroup(s.Pool.QueryRow(ctx, `INSERT INTO env_groups
+	return scanEnvGroup(s.envGroupQuery(ctx).QueryRow(ctx, `INSERT INTO env_groups
 		(id, tenant_id, name, environment_id, service_links, env_keys, file_names, created_at, updated_at, content_generation)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING `+envGroupColumns,
@@ -152,18 +154,18 @@ func (s *PGStore) InsertEnvGroup(ctx context.Context, g EnvGroup) (EnvGroup, err
 
 // GetEnvGroup returns one group, or ErrNotFound.
 func (s *PGStore) GetEnvGroup(ctx context.Context, id string) (EnvGroup, error) {
-	return scanEnvGroup(s.Pool.QueryRow(ctx, `SELECT `+envGroupColumns+` FROM env_groups WHERE id = $1`, id))
+	return scanEnvGroup(s.envGroupQuery(ctx).QueryRow(ctx, `SELECT `+envGroupColumns+` FROM env_groups WHERE id = $1`, id))
 }
 
 // GetEnvGroupByName returns the workspace's group named name, or ErrNotFound.
 func (s *PGStore) GetEnvGroupByName(ctx context.Context, tenantID, name string) (EnvGroup, error) {
-	return scanEnvGroup(s.Pool.QueryRow(ctx,
+	return scanEnvGroup(s.envGroupQuery(ctx).QueryRow(ctx,
 		`SELECT `+envGroupColumns+` FROM env_groups WHERE tenant_id = $1 AND name = $2`, tenantID, name))
 }
 
 // ListEnvGroups returns one workspace's groups in id order.
 func (s *PGStore) ListEnvGroups(ctx context.Context, tenantID string) ([]EnvGroup, error) {
-	rows, err := s.Pool.Query(ctx, `SELECT `+envGroupColumns+` FROM env_groups WHERE tenant_id = $1 ORDER BY id`, tenantID)
+	rows, err := s.envGroupQuery(ctx).Query(ctx, `SELECT `+envGroupColumns+` FROM env_groups WHERE tenant_id = $1 ORDER BY id`, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +175,7 @@ func (s *PGStore) ListEnvGroups(ctx context.Context, tenantID string) ([]EnvGrou
 // CountEnvGroups is the workspace's group count, for the create quota.
 func (s *PGStore) CountEnvGroups(ctx context.Context, tenantID string) (int, error) {
 	var n int
-	err := s.Pool.QueryRow(ctx, `SELECT count(*) FROM env_groups WHERE tenant_id = $1`, tenantID).Scan(&n)
+	err := s.envGroupQuery(ctx).QueryRow(ctx, `SELECT count(*) FROM env_groups WHERE tenant_id = $1`, tenantID).Scan(&n)
 	return n, err
 }
 
@@ -182,7 +184,7 @@ func (s *PGStore) CountEnvGroups(ctx context.Context, tenantID string) (int, err
 // decides a race.
 func (s *PGStore) EnvGroupNameTaken(ctx context.Context, tenantID, name string) (bool, error) {
 	var taken bool
-	err := s.Pool.QueryRow(ctx,
+	err := s.envGroupQuery(ctx).QueryRow(ctx,
 		`SELECT EXISTS (SELECT 1 FROM env_groups WHERE tenant_id = $1 AND name = $2)`, tenantID, name).Scan(&taken)
 	return taken, err
 }
@@ -192,7 +194,7 @@ func (s *PGStore) EnvGroupNameTaken(ctx context.Context, tenantID, name string) 
 // ErrEnvGroupChanged, a missing row ErrNotFound, a taken name
 // ErrEnvGroupNameTaken.
 func (s *PGStore) UpdateEnvGroupMeta(ctx context.Context, g EnvGroup) (EnvGroup, error) {
-	updated, err := scanEnvGroup(s.Pool.QueryRow(ctx, `UPDATE env_groups
+	updated, err := scanEnvGroup(s.envGroupQuery(ctx).QueryRow(ctx, `UPDATE env_groups
 		SET name = $3, environment_id = $4, service_links = $5, updated_at = $6, meta_version = meta_version + 1
 		WHERE id = $1 AND meta_version = $2
 		RETURNING `+envGroupColumns,
@@ -203,7 +205,7 @@ func (s *PGStore) UpdateEnvGroupMeta(ctx context.Context, g EnvGroup) (EnvGroup,
 // DeleteEnvGroup removes the row and returns it as it was, so the caller can
 // detach its links and remove its Secrets and OpenBao maps.
 func (s *PGStore) DeleteEnvGroup(ctx context.Context, id string) (EnvGroup, error) {
-	return scanEnvGroup(s.Pool.QueryRow(ctx, `DELETE FROM env_groups WHERE id = $1 RETURNING `+envGroupColumns, id))
+	return scanEnvGroup(s.envGroupQuery(ctx).QueryRow(ctx, `DELETE FROM env_groups WHERE id = $1 RETURNING `+envGroupColumns, id))
 }
 
 // ClaimEnvGroupContent marks the group busy for op if its content version is
@@ -211,10 +213,10 @@ func (s *PGStore) DeleteEnvGroup(ctx context.Context, id string) (EnvGroup, erro
 // Returns the claim's content version.
 func (s *PGStore) ClaimEnvGroupContent(ctx context.Context, id string, expectedVersion int64, op EnvGroupOp) (int64, error) {
 	var version int64
-	err := s.Pool.QueryRow(ctx, `UPDATE env_groups
+	err := s.envGroupQuery(ctx).QueryRow(ctx, `UPDATE env_groups
 		SET content_state = 'busy', op_id = $3, op_kind = $4, op_phase = $5, op_lease_until = $6,
 			op_env_changed = $7, op_files_changed = $8, content_version = content_version + 1
-		WHERE id = $1 AND content_version = $2
+		WHERE id = $1 AND content_version = $2 AND content_state = 'idle' AND op_id IS NULL
 		RETURNING content_version`,
 		id, expectedVersion, op.ID, op.Kind, op.Phase, op.LeaseUntil, op.EnvChanged, op.FilesChanged).Scan(&version)
 	return version, s.envGroupCAS(ctx, id, err)
@@ -223,7 +225,7 @@ func (s *PGStore) ClaimEnvGroupContent(ctx context.Context, id string, expectedV
 // AdvanceEnvGroupOp records a later phase (and a renewed lease) for opID. It
 // does not move the content version, so the claim's release still matches.
 func (s *PGStore) AdvanceEnvGroupOp(ctx context.Context, id, opID, phase string, leaseUntil time.Time) error {
-	tag, err := s.Pool.Exec(ctx, `UPDATE env_groups SET op_phase = $3, op_lease_until = $4
+	tag, err := s.envGroupQuery(ctx).Exec(ctx, `UPDATE env_groups SET op_phase = $3, op_lease_until = $4
 		WHERE id = $1 AND op_id = $2`, id, opID, phase, leaseUntil)
 	if err == nil && tag.RowsAffected() == 0 {
 		err = pgx.ErrNoRows
@@ -234,6 +236,9 @@ func (s *PGStore) AdvanceEnvGroupOp(ctx context.Context, id, opID, phase string,
 // ReleaseEnvGroupContent ends the claim held at expectedVersion.
 func (s *PGStore) ReleaseEnvGroupContent(ctx context.Context, id string, expectedVersion int64, rel EnvGroupRelease) error {
 	set := "content_state = 'idle', op_id = NULL, op_kind = NULL, op_phase = NULL, op_lease_until = NULL, op_env_changed = false, op_files_changed = false"
+	if rel.RetainOperation {
+		set = "content_state = 'idle'"
+	}
 	if rel.RepairRequired {
 		set = "content_state = 'repair_required'"
 	}
@@ -242,7 +247,7 @@ func (s *PGStore) ReleaseEnvGroupContent(ctx context.Context, id string, expecte
 		set += ", content_generation = content_generation + 1, env_keys = $3, file_names = $4, updated_at = $5"
 		args = append(args, nonNil(c.EnvKeys), nonNil(c.FileNames), c.UpdatedAt)
 	}
-	tag, err := s.Pool.Exec(ctx, `UPDATE env_groups SET `+set+`, content_version = content_version + 1
+	tag, err := s.envGroupQuery(ctx).Exec(ctx, `UPDATE env_groups SET `+set+`, content_version = content_version + 1
 		WHERE id = $1 AND content_version = $2`, args...)
 	if err == nil && tag.RowsAffected() == 0 {
 		err = pgx.ErrNoRows
@@ -266,7 +271,7 @@ func (s *PGStore) envGroupCAS(ctx context.Context, id string, err error) error {
 // group is gone (ErrNotFound) or another writer moved it (ErrEnvGroupChanged).
 func (s *PGStore) envGroupLostRace(ctx context.Context, id string) error {
 	var exists bool
-	if err := s.Pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM env_groups WHERE id = $1)`, id).Scan(&exists); err != nil {
+	if err := s.envGroupQuery(ctx).QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM env_groups WHERE id = $1)`, id).Scan(&exists); err != nil {
 		return err
 	}
 	if exists {
@@ -279,12 +284,12 @@ func (s *PGStore) envGroupLostRace(ctx context.Context, id string) error {
 // cutover has run (w8/m114; transitional, removed with the migrator).
 func (s *PGStore) EnvGroupCutoverComplete(ctx context.Context) (bool, error) {
 	var done bool
-	err := s.Pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM env_group_cutover)`).Scan(&done)
+	err := s.envGroupQuery(ctx).QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM env_group_cutover)`).Scan(&done)
 	return done, err
 }
 
 // CompleteEnvGroupCutover records that the cutover has run; idempotent.
 func (s *PGStore) CompleteEnvGroupCutover(ctx context.Context, at time.Time) error {
-	_, err := s.Pool.Exec(ctx, `INSERT INTO env_group_cutover (completed_at) VALUES ($1) ON CONFLICT (id) DO NOTHING`, at)
+	_, err := s.envGroupQuery(ctx).Exec(ctx, `INSERT INTO env_group_cutover (completed_at) VALUES ($1) ON CONFLICT (id) DO NOTHING`, at)
 	return err
 }
