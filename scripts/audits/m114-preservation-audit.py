@@ -16,6 +16,7 @@ import re
 import socket
 import signal
 import tarfile
+import threading
 import subprocess
 import sys
 import time
@@ -49,13 +50,47 @@ def private_json(path, value):
         temporary.unlink(missing_ok=True)
 
 
-def record(**fields):
+# inspect_source's worker threads can fail together; one read-merge-write at a time.
+REPORT_LOCK = threading.Lock()
+
+
+def record(first_only=False, **fields):
     if globals().get("TERMINATED"):
         fields["terminated"] = True
     path = os.environ.get("M114_REPORT")
     if path:
-        current = json.loads(Path(path).read_text()) if Path(path).exists() else {}
-        private_json(path, {**current, **fields})
+        with REPORT_LOCK:
+            current = json.loads(Path(path).read_text()) if Path(path).exists() else {}
+            private_json(path, {**fields, **current} if first_only else {**current, **fields})
+
+
+STAGES = frozenset({
+    "credentials", "resolve", "validate-uri", "head-object", "download", "ciphertext", "decrypt", "gunzip", "verify",
+    "sql-before", "provenance", "restore-pull", "restore-create", "restore-init", "restore-local-unseal",
+    "restore-snapshot", "restore-restart", "restore-unseal", "restore-isolation", "source-scan", "apps",
+    "live-connect", "compare", "sql-after",
+})
+
+
+def stage(name):
+    """Records the step the audit reached: a fixed label, never data. A report
+    write that fails never stops the audit; termination still does."""
+    if name not in STAGES:
+        raise RuntimeError("unknown stage label")
+    with contextlib.suppress(OSError, ValueError):
+        record(stage=name)
+
+
+def root_cause(error):
+    """The exception class that started a chain, not the cleanup that followed."""
+    while error.__context__ is not None:
+        error = error.__context__
+    return type(error).__name__
+
+
+def record_failure(**fields):
+    """Keeps the first failure's tool, exit code or exception class only."""
+    record(first_only=True, **fields)
 
 
 class AuditTerminated(Exception):
@@ -103,8 +138,13 @@ def remove_container(name):
 def run(args, data=None, timeout=35, check=True):
     if time.monotonic() > DEADLINE:
         raise RuntimeError("audit time budget exceeded")
-    result = subprocess.run(args, input=data, capture_output=True, env=TOOL_ENV, timeout=timeout)
+    try:
+        result = subprocess.run(args, input=data, capture_output=True, env=TOOL_ENV, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        record_failure(failedTool=Path(args[0]).name)
+        raise
     if check and result.returncode:
+        record_failure(failedTool=Path(args[0]).name, failedReturnCode=result.returncode)
         raise RuntimeError("private subprocess failed")
     return result
 
@@ -238,6 +278,7 @@ class LocalBao:
         if allow_absent and result.returncode and (b"No value found at" in result.stderr or (result.returncode == 2 and not result.stderr and result.stdout.strip() in (b"{}", b"null"))):
             return {}
         if result.returncode:
+            record_failure(failedTool="bao", failedReturnCode=result.returncode)
             raise RuntimeError("isolated OpenBao command failed")
         return json.loads(result.stdout) if result.stdout and "-format=json" in args else {}
 
@@ -250,7 +291,9 @@ class LocalBao:
  listener "tcp" { address="127.0.0.1:8200" cluster_address="127.0.0.1:8201" tls_disable=1 }
  storage "raft" { path="/tmp/m114-data" node_id="local-m114-proof" }
 ''')
+        stage("restore-pull")
         run(["docker", "pull", IMAGE], timeout=180)
+        stage("restore-create")
         # All state stays in this disposable writable layer and survives only
         # this container's restart. There are no host mounts or published ports.
         run(["docker", "create", "--name", self.name, "--label", "bex.co/m114-preservation=" + os.environ.get("GITHUB_RUN_ID", "local"), "--network", "none", "--user", "0:0", "--cap-drop", "ALL", "--memory", "512m", "--cpus", "1", "--pids-limit", "128", "-e", "BAO_ADDR=http://127.0.0.1:8200", "--entrypoint", "sh", IMAGE, "-ec", "umask 077; mkdir -p /tmp/m114-data; exec bao server -config=/tmp/m114-config.hcl"])
@@ -260,6 +303,7 @@ class LocalBao:
     def start_restore(self):
         self.create_server()
         self.copy_file(self.scratch / "snapshot.snap", "m114-snapshot.snap")
+        stage("restore-init")
         initialized = None
         for _ in range(40):
             result = run(["docker", "exec", self.name, "bao", "operator", "init", "-key-shares=1", "-key-threshold=1", "-format=json"], check=False)
@@ -270,11 +314,15 @@ class LocalBao:
         if initialized is None:
             raise RuntimeError("local initialization failed")
         self.set_root(initialized["root_token"])
+        stage("restore-local-unseal")
         self.cli("write", "-format=json", "sys/unseal", "key=-", data=initialized["unseal_keys_b64"][0].encode())
         del initialized
+        stage("restore-snapshot")
         self.cli("operator", "raft", "snapshot", "restore", "-force", "/tmp/m114-snapshot.snap")
+        stage("restore-restart")
         run(["docker", "restart", self.name])
         self.set_root(os.environ["BAO_ROOT_TOKEN"])
+        stage("restore-unseal")
         for _ in range(40):
             status = run(["docker", "exec", self.name, "bao", "status", "-format=json"], check=False)
             if status.stdout:
@@ -284,6 +332,7 @@ class LocalBao:
             status = self.cli("write", "-format=json", "sys/unseal", "key=-", data=os.environ["BAO_UNSEAL_KEY_%d" % number].encode())
         if status.get("data", {}).get("sealed", True):
             raise RuntimeError("restored snapshot did not unseal")
+        stage("restore-isolation")
         ins = json.loads(run(["docker", "inspect", self.name]).stdout)[0]
         if ins["HostConfig"]["NetworkMode"] != "none" or ins["HostConfig"].get("PortBindings") or ins["HostConfig"].get("Binds") or ins["Config"]["User"] != "0:0":
             raise RuntimeError("local isolation check failed")
@@ -405,7 +454,9 @@ def compare_groups(source, rows, apps, live):
 def verify(scratch, report_path):
     if report_path != Path(os.environ["M114_REPORT"]):
         raise RuntimeError("report path differs from this run")
+    stage("sql-before")
     before = database()
+    stage("provenance")
     job = json.loads(kube("-n", "secrets", "get", "job", JOB, "-o", "json"))
     obj = json.loads((scratch / "object.json").read_text())
     provenance = job["status"].get("succeeded") == 1 and timestamp(job["status"]["startTime"]) <= timestamp(obj["LastModified"]) <= timestamp(job["status"]["completionTime"]) and obj["ContentLength"] > 0
@@ -413,13 +464,18 @@ def verify(scratch, report_path):
     try:
         bao.start_restore()
         record(snapshotRestored=True)
+        stage("source-scan")
         source, prefixes, listed, ambiguous = inspect_source(bao, before["tenants"])
         record(sourceScanned=True, snapshotLiveGroups=len(source), snapshotListedIDs=listed)
         rows = {group["id"]: group for group in before["groups"]}
         needs_apps = any(group["meta"].get("links") and group["meta"].get("linksByID") != "1" for group in source.values())
+        stage("apps")
         apps = json.loads(kube("get", "apps.app.bex.co", "-A", "-o", "json"))["items"] if needs_apps else []
+        stage("live-connect")
         with LiveBao() as live:
+            stage("compare")
             comparison = compare_groups(source, rows, apps, live)
+        stage("sql-after")
         unchanged = before == database()
         report = {**comparison, "metadataEqual": bool(comparison["metadataEqual"] and unchanged and provenance and ambiguous == 0), "valuesEqual": bool(comparison["valuesEqual"] and unchanged), "comparisonCompleted": True, "completed": False, "backupProvenanceEqual": provenance, "sqlStable": unchanged, "snapshotPrefixes": prefixes, "snapshotListedIDs": listed, "snapshotLiveGroups": len(source), "sqlGroups": len(rows), "ambiguousOwnerCount": ambiguous, "groups": [{"id": gid, "owner": group["owner"]} for gid, group in sorted(source.items())]}
         record(**report)
@@ -444,6 +500,9 @@ def main():
             raise RuntimeError("snapshot ciphertext changed")
         record(snapshotCiphertextEqual=True)
         return
+    if sys.argv[1] == "--stage":
+        stage(sys.argv[2])
+        return
     if sys.argv[1] == "--cleanup-container":
         with cleaning():
             remove_container(sys.argv[2])
@@ -453,13 +512,21 @@ def main():
         path = Path(os.environ["M114_REPORT"])
         report = json.loads(path.read_text())
         report["plaintextCleanupComplete"] = removed
+        if status:
+            report.setdefault("failedExitStatus", status)
         report["completed"] = status == 0 and not report.get("terminated") and all(report.get(key) for key in ("comparisonCompleted", "liveTokenRevoked", "liveForwardStopped", "localContainerRemoved", "plaintextCleanupComplete"))
         private_json(path, report)
         if not (report["completed"] and report["metadataEqual"] and report["valuesEqual"]):
             raise RuntimeError("audit did not finish successfully")
         return
     scratch, report_path = map(Path, sys.argv[1:])
-    if not verify(scratch, report_path):
+    try:
+        equal = verify(scratch, report_path)
+    except Exception as error:
+        with contextlib.suppress(OSError, ValueError):
+            record_failure(failedError=root_cause(error))
+        raise
+    if not equal:
         raise RuntimeError("preservation comparison failed")
 
 
