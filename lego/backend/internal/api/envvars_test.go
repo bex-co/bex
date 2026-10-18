@@ -56,7 +56,7 @@ func (s *memSecretStore) key(ctx context.Context, path string) string {
 
 // legacyKey addresses the untenanted (legacy shared) home of path — where
 // every non-env-group caller in this package writes.
-func legacyKey(path string) string { return secrets.LegacyTenant + "/" + path }
+func legacyKey(path string) string { return core.DefaultTenant + "/" + path }
 
 // data returns the stored map at path's legacy-tenant home, for assertions
 // that index the store directly instead of going through Get.
