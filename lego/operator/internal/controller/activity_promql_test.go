@@ -323,6 +323,37 @@ func TestActivityQueryUnderPrometheus(t *testing.T) {
 			want: "01:09:20.000",
 		},
 		{
+			// a664 B: the first request, an SSE stream, arrived at
+			// 03:19:30.455 and was still open when the service slept at
+			// 03:20:16; Traefik's own counter had nothing until it ended.
+			name:   "a664: an open first stream's arrival counts before its response ends",
+			series: []counter{{activitySeries(app, "bex_http_request_starts_total"), scrapes(at(t, "03:19:44.727"), 1, 1, 1)}},
+			since:  "03:18:16.000", now: "03:20:16.000", ttl: 2 * time.Minute,
+			want: "03:19:45.000",
+		},
+		{
+			name:   "arrivals after the last aligned step count",
+			series: []counter{{activitySeries(app, "bex_http_request_starts_total"), then(flat(at(t, "01:09:00.738"), 4), scrapes(at(t, "01:09:15.738"), 5))}},
+			since:  "01:08:20.000", now: "01:09:20.000", ttl: time.Minute,
+			want: "01:09:20.000",
+		},
+		{
+			// A stream that never ends must not keep the service awake forever.
+			name:   "a flat arrival counter is not traffic",
+			series: []counter{{activitySeries(app, "bex_http_request_starts_total"), flat(at(t, "01:20:29.727"), 5)}},
+			since:  "01:05:35.000", now: "01:20:35.000", ttl: 15 * time.Minute,
+		},
+		{
+			name:   "an arrival counter reset to zero is not traffic",
+			series: []counter{{activitySeries(app, "bex_http_request_starts_total"), then(flat(at(t, "01:04:44.727"), 7), scrapes(at(t, "01:04:59.727"), 0, 0, 0))}},
+			since:  "01:04:35.000", now: "01:05:35.000", ttl: time.Minute,
+		},
+		{
+			name:   "another App's arrivals are not this App's traffic",
+			series: []counter{{activitySeries(app, "bex_http_request_starts_total", "app_id", "srv-other"), scrapes(at(t, "01:05:14.727"), 1, 2, 3)}},
+			since:  "01:04:35.000", now: "01:05:35.000", ttl: time.Minute,
+		},
+		{
 			name:   "no series at all (no traffic, plugin counters absent)",
 			series: nil,
 			since:  "01:04:35.000", now: "01:05:35.000", ttl: time.Minute,
@@ -479,6 +510,26 @@ func TestIdleDecisionUnderPrometheus(t *testing.T) {
 		})
 		within(t, p.sleepAt(5*time.Minute, at(t, "00:53:19.000")), at(t, "00:53:49.180"), 5*time.Minute)
 	})
+
+	// a664: each service's first request is an SSE stream still open when the
+	// idle decision runs; only the plugin's arrival counter has seen it. Each
+	// stays awake its full window after the request arrived, then sleeps — a
+	// stream that outlasts the window is not renewed by its own heartbeats.
+	for _, c := range []struct {
+		name           string
+		ttl            time.Duration
+		stamp, arrived string
+		firstScrape    string
+	}{
+		{"a664 A: native 5-minute timeout", 5 * time.Minute, "03:09:48.000", "03:12:13.873", "03:12:14.727"},
+		{"a664 B: API 120-second timeout", 2 * time.Minute, "03:18:16.000", "03:19:30.455", "03:19:44.727"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			starts := activitySeries(app, "bex_http_request_starts_total")
+			p := newSweepProm(t, []counter{{starts, between(at(t, c.firstScrape), at(t, c.firstScrape).Add(time.Hour), 1)}})
+			within(t, p.sleepAt(c.ttl, at(t, c.stamp)), at(t, c.arrived), c.ttl)
+		})
+	}
 
 	// Steady traffic on a woken service, on a fresh series as after sweep 71's
 	// wake: no sleep while it lasts, a sleep once it stops. m151's control at

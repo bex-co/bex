@@ -1,6 +1,6 @@
 # w4 · m164 — Count initial and newly scraped traffic before free web auto-sleep
 
-**Worker:** worker4 **Goal:** a free web service's idle clock includes its first served request and activity scraped after the most recent subquery step. **Status:** blocked on remaining live acceptance; t001/t002 done 2026-10-03; a664 adds actionable t008 request-start work and reopens t005/t006 for the changed producer/query; t003/t004/t007 remain pending
+**Worker:** worker4 **Goal:** a free web service's idle clock includes its first served request and activity scraped after the most recent subquery step. **Status:** blocked on live acceptance — t001/t002 done 2026-10-03; t008 (request-arrival counter, keep filter, query, content-hashed plugin rollout) and the reopened t005/t006 done 2026-10-18; t003/t004 live replays after the operator, plugin and Prometheus changes deploy, then t007
 
 ## Tasks (in order)
 
@@ -8,11 +8,11 @@
 | --- | --- | --- | --- |
 | t001 — **DONE** | Audit the activity reader's callers, aliases and timing boundaries | 30m | — |
 | t002 — **DONE** | Preserve initial positive samples and current-step activity in sleep decisions | 60m | t001 |
-| t008 | Observe incoming HTTP starts before responses finish | 60m | t002 |
+| t008 — **DONE** | Observe incoming HTTP starts before responses finish | 60m | t002 |
 | t003 | Repeat sparse traffic, steady traffic, idle and wake journeys live | 45m | t002, t008 |
 | t004 | Render parity | 20m | t003 |
-| t005 | Simplify | 15m | t004, t008 |
-| t006 | Test coverage with an actual PromQL evaluator | 45m | t004, t008 |
+| t005 — **DONE** | Simplify | 15m | t004, t008 |
+| t006 — **DONE** | Test coverage with an actual PromQL evaluator | 45m | t004, t008 |
 | t007 | Closeout | 10m | t003, t004, t005, t006, t008 |
 
 Total: **285m / 8 tasks**. Ships the filing only; implementation remains scheduled.

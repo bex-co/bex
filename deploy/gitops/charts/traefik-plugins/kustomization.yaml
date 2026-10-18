@@ -1,8 +1,17 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: traefik
+# The generated name carries a hash of the plugin's files, and Traefik's volume
+# names that exact ConfigMap (base/values/traefik.values.yaml; gitops-validate
+# checks they agree). Traefik loads a local plugin only at startup, so new code
+# must arrive as a new pod template; with a fixed name it never did (w4/m164).
+# Superseded ConfigMaps are kept, not pruned, so a pod still on the previous
+# template can restart while this Application and traefik's converge, in
+# either order; they do not count against the sync status.
 generatorOptions:
-  disableNameSuffixHash: true
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+    argocd.argoproj.io/compare-options: IgnoreExtraneous
 configMapGenerator:
   - name: bex-websocket-egress-plugin
     files:

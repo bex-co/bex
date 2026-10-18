@@ -1064,10 +1064,29 @@ helm template openfga "${chart_archives[openfga]}" -n auth \
   -f deploy/gitops/base/values/openfga.values.yaml \
   -f deploy/gitops/overlays/prod/values/openfga.values.yaml >"$tmp/openfga-prod.yaml"
 helm template traefik "${chart_archives[traefik]}" -n traefik \
+  -f deploy/gitops/base/values/traefik.values.yaml >"$tmp/traefik-base.yaml"
+helm template traefik "${chart_archives[traefik]}" -n traefik \
   -f deploy/gitops/base/values/traefik.values.yaml \
   -f deploy/gitops/overlays/prod/values/traefik.values.yaml >"$tmp/traefik-prod.yaml"
 kubectl kustomize deploy/gitops/overlays/prod >"$tmp/prod-apps.yaml"
 kubectl kustomize lego/operator/config/prod >"$tmp/bex-operator-prod.yaml"
+
+# Traefik loads its local plugin only at startup, so plugin code reaches the
+# edge only when the pods roll. The plugin ConfigMap's name carries a hash of
+# its files and Traefik mounts it by that exact name, so a code change rolls
+# the pods — unless the mounted name is stale, which would keep serving the
+# superseded (unpruned) ConfigMap's code forever (w4/m164).
+echo "==> Traefik mounts the current WebSocket/arrival plugin ConfigMap"
+plugin_cm="$(kubectl kustomize deploy/gitops/charts/traefik-plugins | yq -N 'select(.kind == "ConfigMap") | .metadata.name')"
+scalar plugin_cm "$plugin_cm" || fail=1
+for render in base prod; do
+  mounted="$(yq -N 'select(.kind == "Deployment") | .spec.template.spec.volumes[] | select(.name == "bex-websocket-egress-plugin") | .configMap.name' "$tmp/traefik-$render.yaml")"
+  scalar mounted "$mounted" || fail=1
+  if [ "$mounted" != "$plugin_cm" ]; then
+    echo "FAIL: $render Traefik mounts ConfigMap '$mounted' but charts/traefik-plugins generates '$plugin_cm' — set that name in deploy/gitops/base/values/traefik.values.yaml so the edge loads the new plugin code" >&2
+    fail=1
+  fi
+done
 
 check_fixed_edge_nodeport() {
   local label="$1" manifest="$2" service="$3" port_name="$4" expected="$5"

@@ -377,8 +377,10 @@ spec:
                   - source_labels: [__meta_kubernetes_pod_name]
                     target_label: pod
                 metric_relabel_configs:
+                  # Keep only what the plugin's readers use; the operator's idle
+                  # check reads the request-arrival counter (w4/m164).
                   - source_labels: [__name__]
-                    regex: bex_websocket_(egress_bytes_total|ingress_bytes_total|meter_healthy|meter_process_start_time_seconds)
+                    regex: bex_websocket_(egress_bytes_total|ingress_bytes_total|meter_healthy|meter_process_start_time_seconds)|bex_http_request_starts_total
                     action: keep
               # cAdvisor: the raw series behind bex-api's cpu/memory/instance-count
               # history. Node SD, scraped THROUGH the apiserver proxy

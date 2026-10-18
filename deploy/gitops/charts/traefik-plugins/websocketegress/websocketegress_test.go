@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -130,18 +131,93 @@ func TestDownstreamCountsOnlySuccessfullyWrittenBytes(t *testing.T) {
 	}
 }
 
-func TestMiddlewareDoesNotCountOrdinaryHTTP(t *testing.T) {
+func TestMiddlewareDoesNotCountOrdinaryHTTPAsWebSocketBytes(t *testing.T) {
 	counter := &atomic.Uint64{}
 	handler := &middleware{
 		next: http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 			_, _ = writer.Write([]byte("ordinary HTTP"))
 		}),
 		counter: counter,
+		starts:  &atomic.Uint64{},
 	}
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/", nil))
 	if counter.Load() != 0 {
 		t.Fatalf("ordinary HTTP counter = %d, want 0", counter.Load())
+	}
+}
+
+// A request counts as it arrives, before the response it is waiting on: a
+// stream that has not finished is still traffic (w4/m164). The response
+// writer passes through unwrapped, so streaming interfaces are untouched.
+func TestMiddlewareCountsRequestStartBeforeResponse(t *testing.T) {
+	starts := &atomic.Uint64{}
+	release := make(chan struct{})
+	seen := make(chan uint64, 1)
+	var unwrapped bool
+	handler := &middleware{
+		next: http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+			_, unwrapped = writer.(*httptest.ResponseRecorder)
+			seen <- starts.Load()
+			<-release
+		}),
+		counter: &atomic.Uint64{},
+		starts:  starts,
+	}
+	done := make(chan struct{})
+	go func() {
+		handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "https://example.test/events", nil))
+		close(done)
+	}()
+	if got := <-seen; got != 1 {
+		t.Fatalf("starts while the response is open = %d, want 1", got)
+	}
+	close(release)
+	<-done
+	if starts.Load() != 1 || !unwrapped {
+		t.Fatalf("starts = %d, unwrapped writer = %v; want one count and the original writer", starts.Load(), unwrapped)
+	}
+
+	// Plain HTTP and a WebSocket upgrade are inbound requests too.
+	handler.next = http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})
+	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodHead, "http://example.test/", nil))
+	upgrade := httptest.NewRequest(http.MethodGet, "/", nil)
+	upgrade.Header.Set("Upgrade", "websocket")
+	handler.ServeHTTP(httptest.NewRecorder(), upgrade)
+	if starts.Load() != 3 {
+		t.Fatalf("starts = %d after HTTP and an upgrade, want 3", starts.Load())
+	}
+}
+
+// Each App router counts into its own series, exported per app_id.
+func TestRequestStartsArePerApp(t *testing.T) {
+	next := http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})
+	handlers := map[string]http.Handler{}
+	for _, appID := range []string{"srv-starts-a", "srv-starts-b"} {
+		handler, err := New(t.Context(), next, &Config{AppID: appID, MetricsAddr: "127.0.0.1:0"}, appID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		handlers[appID] = handler
+	}
+	// Process-wide counters outlive a test run (-count=N): compare deltas.
+	a, b := handlers["srv-starts-a"].(*middleware).starts, handlers["srv-starts-b"].(*middleware).starts
+	beforeA, beforeB := a.Load(), b.Load()
+	for range 2 {
+		handlers["srv-starts-a"].ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
+	}
+	if a.Load() != beforeA+2 || b.Load() != beforeB {
+		t.Fatalf("starts a=%d b=%d, want a=%d b=%d", a.Load(), b.Load(), beforeA+2, beforeB)
+	}
+	body := metricsBody()
+	for _, want := range []string{
+		"# TYPE bex_http_request_starts_total counter",
+		fmt.Sprintf("bex_http_request_starts_total{app_id=%q} %d\n", "srv-starts-a", a.Load()),
+		fmt.Sprintf("bex_http_request_starts_total{app_id=%q} %d\n", "srv-starts-b", b.Load()),
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("metrics body missing %q:\n%s", want, body)
+		}
 	}
 }
 
@@ -159,6 +235,7 @@ func TestMiddlewareWrapsOnlyWebSocketUpgrades(t *testing.T) {
 			_, wrapped = writer.(*hijackWriter)
 		}),
 		counter: &atomic.Uint64{},
+		starts:  &atomic.Uint64{},
 	}
 	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodConnect, "/", nil))
 	if wrapped {
