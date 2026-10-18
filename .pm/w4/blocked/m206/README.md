@@ -1,6 +1,6 @@
 # w4 · m206 — Make environment-group creation and moves recoverable
 
-**Worker:** worker4 **Goal:** ordinary scoped group creation, cloning and a two-group move complete within the existing API budget, and an interrupted write has a discoverable, recoverable outcome. **Status:** blocked for final live closeout — t001–t007 done; t009 is actionable follow-up on the remaining create/clone admission cost, then release + t008 replay and name-residue confirmation remain.
+**Worker:** worker4 **Goal:** ordinary scoped group creation, cloning and a two-group move complete within the existing API budget, and an interrupted write has a discoverable, recoverable outcome. **Status:** blocked for final live closeout — t001–t007 done; t009 done 2026-10-18 as already fixed by `6407a506d` (w8/m114 moved group metadata to Postgres: quota and name admission are single SQL reads, and reservations/`ENV_GROUP_NAME_RESERVED` no longer exist); release + t008 replay remain
 
 ## Tasks (in order)
 
@@ -10,7 +10,7 @@
 | t002 | Recover failed creation and its owned name reservation — **DONE** | 50m | t001 |
 | t003 | Reconcile interrupted membership moves and source selection — **DONE** | 45m | t001, t002 |
 | t004 | Audit shared callers, aliases and passing controls — **DONE** | 30m | t003 |
-| t009 | Keep small native group clones within the existing response budget | 60m | t001, t002 |
+| t009 — **DONE** | Keep small native group clones within the existing response budget | 60m | t001, t002 |
 | t005 | Render parity — **DONE** | 15m | t004 |
 | t006 | Simplify — **DONE** | 15m | t005 |
 | t007 | Test coverage — **DONE** | 40m | t005, t006 |
