@@ -1,0 +1,14 @@
+bex services create --name qa-20261018-m115-2a3ae0 --type web_service --image traefik/whoami:v1.11.0 --plan free --num-instances 1 --env-var WHOAMI_PORT_NUMBER=3000 --ip-allow-list cidr=203.0.113.7/32 --health-check-path / -o json --confirm
+CREATED owned FREE fixture srv-dba7bnr3ar5s73d9rd80
+bex logs -r srv-dba7bnr3ar5s73d9rd80 --type request --limit 100 -o json --confirm --status-code 403 --path /blocked-native-qa-20261018-m115-2a3ae0
+bex logs -r srv-dba7bnr3ar5s73d9rd80 --type request --limit 100 -o json --confirm --status-code 403 --path /blocked-native-qa-20261018-m115-2a3ae0
+bex logs -r srv-dba7bnr3ar5s73d9rd80 --type request --limit 100 -o json --confirm --path /blocked-native-qa-20261018-m115-2a3ae0
+bex logs -r srv-dba7bnr3ar5s73d9rd80 --type request --limit 100 -o json --confirm --status-code 200 --path /blocked-native-qa-20261018-m115-2a3ae0
+bex logs -r srv-dba7bnr3ar5s73d9rd80 --type request --limit 100 -o json --confirm
+PASS native create + two 403s: status/path/history, 200 exclusion, discovery, raw REST identities agree; 27.3s
+bex services update srv-dba7bnr3ar5s73d9rd80 --ip-allow-list cidr=0.0.0.0/0 -o json --confirm
+bex logs -r srv-dba7bnr3ar5s73d9rd80 --type request --limit 100 -o json --confirm --status-code 200 --path /restored-native-qa-20261018-m115-2a3ae0
+bex logs -r srv-dba7bnr3ar5s73d9rd80 --type request --limit 100 -o json --confirm --status-code 200 --path /restored-native-qa-20261018-m115-2a3ae0
+PASS native CLI restore open access: fresh 200 appears in request logs
+Fixture retained briefly for UI status-filter acceptance; owned ID srv-dba7bnr3ar5s73d9rd80
+CLEANUP DELETE owned FREE fixture srv-dba7bnr3ar5s73d9rd80; GET = 404; owner-scoped inventory excludes fixture and preserves baseline IDs srv-daif6dsmg29s73d1umvg, srv-dap3v694dm7c7390q930, srv-dap3umrbdpcs73f5eeug
