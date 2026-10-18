@@ -1,16 +1,16 @@
 # w8 · m113 — Services list times out (524/502) for the bex workspace
 
-**Worker:** worker8 **Goal:** `GET /v1/services` answers inside the edge timeout for every workspace, so `bex services` works in the largest production workspace **Status:** todo
+**Worker:** worker8 **Goal:** `GET /v1/services` answers inside the edge timeout for every workspace, so `bex services` works in the largest production workspace **Status:** in progress — t001–t005 done; t006 is the production replay once the fix is deployed
 
 ## Tasks (in order)
 
 | id   | title                                                              | est | depends_on    |
 | ---- | ------------------------------------------------------------------ | --- | ------------- |
-| t001 | Profile the slow segment of the services list for workspace bex   | 40m | —             |
-| t002 | Fix the root cause so the list answers well under the edge limit  | 60m | w8/m113/t001  |
-| t003 | Render parity: REST/GraphQL/MCP list latency and shapes agree     | 30m | w8/m113/t002  |
-| t004 | Simplify the changed code                                          | 20m | w8/m113/t003  |
-| t005 | Add regression coverage for list latency/shape at scale            | 30m | w8/m113/t003  |
+| t001 | [Profile the slow segment of the services list for workspace bex](done/t001.md) | 40m | — — **DONE 2026-10-18** |
+| t002 | [Fix the root cause so the list answers well under the edge limit](done/t002.md) | 60m | w8/m113/t001 — **DONE 2026-10-18** |
+| t003 | [Render parity: REST/GraphQL/MCP list latency and shapes agree](done/t003.md) | 30m | w8/m113/t002 — **DONE 2026-10-18** |
+| t004 | [Simplify the changed code](done/t004.md) | 20m | w8/m113/t003 — **DONE 2026-10-18** |
+| t005 | [Add regression coverage for list latency/shape at scale](done/t005.md) | 30m | w8/m113/t003 — **DONE 2026-10-18** |
 | t006 | Close out the milestone                                            | 10m | w8/m113/t005  |
 
 ## Definition of done

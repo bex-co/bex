@@ -50,19 +50,12 @@ func (p *WorkspacePurger) PurgeWorkspace(ctx context.Context, tenantID string) e
 	if p.Store == nil {
 		return nil
 	}
-	ids, err := p.listGroupIDs(ctx, tenantID, true)
+	groups, err := p.scanGroups(ctx, tenantID)
 	if err != nil {
 		return err
 	}
-	for _, gid := range ids {
-		m, err := p.readMeta(ctx, gid)
-		if errors.Is(err, core.ErrNotFound) {
-			continue // create publishes metadata last; ignore an in-flight id
-		}
-		if err != nil {
-			return err
-		}
-		owner := m.workspace
+	for _, g := range groups {
+		gid, owner := g.id, g.workspace
 		if owner == "" {
 			owner = core.DefaultTenant
 		}
