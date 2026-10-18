@@ -15,6 +15,9 @@ cd "$(dirname "$0")/.."
 
 fail=0
 
+# Feed captured text to early-exiting checks with here-strings. Under pipefail,
+# piping a large value through grep -q or awk ... exit can fail with SIGPIPE.
+
 # scalar NAME VALUE — a yq capture compared as a scalar must BE one, or the
 # comparison it feeds is meaningless.
 #
@@ -272,7 +275,7 @@ if ! grep -qF -- 'kubectl apply -k deploy/gitops/charts/onbex-default-tls' .gith
   echo "FAIL: deploy must bootstrap and publicly verify the Git-owned fallback TLSStore" >&2
   fail=1
 fi
-if rg -q 'onbex-default-tls' deploy/gitops/base/kustomization.yaml deploy/gitops/overlays/local/kustomization.yaml; then
+if grep -qF 'onbex-default-tls' deploy/gitops/base/kustomization.yaml deploy/gitops/overlays/local/kustomization.yaml; then
   echo "FAIL: local overlay must not require production onbex certificate material" >&2
   fail=1
 fi
@@ -319,7 +322,7 @@ if [ "$(yq -N 'select(.kind == "ClusterIssuer") | .spec.acme.solvers[0].http01.i
   echo "FAIL: existing staging/prod HTTP-01 ClusterIssuers drifted while adding fallback TLS" >&2
   fail=1
 fi
-if rg -qi 'cloudflare|dns-?01|BEX_ONBEX_DNS' \
+if grep -Eirq 'cloudflare|dns-?01|BEX_ONBEX_DNS' \
   .env.example scripts/lib/onbex-default-tls.sh \
   scripts/onbex-default-tls-secret.sh scripts/onbex-default-tls-verify.sh \
   deploy/gitops/charts/onbex-default-tls deploy/gitops/overlays/prod/onbex-default-tls.yaml; then
@@ -989,9 +992,9 @@ if [ -f "$ZOT" ]; then
   echo "$vals" | yq -e '.mountConfig == false' >/dev/null \
     || { echo "FAIL: zot mountConfig must be false (operator manages config via zot-config Secret, w7/m36)" >&2; fail=1; }
   # Both externalSecrets (zot-config and zot-htpasswd) must be present.
-  echo "$vals" | grep -q 'zot-config' \
+  grep -q 'zot-config' <<<"$vals" \
     || { echo "FAIL: zot externalSecrets must reference zot-config Secret (operator-managed config, w7/m36)" >&2; fail=1; }
-  echo "$vals" | grep -q 'zot-htpasswd' \
+  grep -q 'zot-htpasswd' <<<"$vals" \
     || { echo "FAIL: zot externalSecrets must reference zot-htpasswd Secret" >&2; fail=1; }
   # Production sizing contract: enough disk for concurrent large uploads and
   # explicit compute requests so the registry is not admitted as BestEffort.
@@ -1003,7 +1006,7 @@ if [ -f "$ZOT" ]; then
     || { echo "FAIL: zot resource limits must be cpu=2 memory=4Gi" >&2; fail=1; }
   # The bex-puller shared credential must NOT appear in the Zot chart values —
   # it is absent from the operator-managed per-App scheme (ADR022:204 closed).
-  if echo "$vals" | grep -q 'bex-puller'; then
+  if grep -q 'bex-puller' <<<"$vals"; then
     echo "FAIL: zot values must not reference bex-puller (shared credential removed in w7/m36)" >&2; fail=1
   fi
   # Kubernetes defaults apiVersion/kind on StatefulSet PVC templates. Once Argo
@@ -1014,7 +1017,7 @@ if [ -f "$ZOT" ]; then
     /spec/volumeClaimTemplates/0/apiVersion \
     /spec/volumeClaimTemplates/0/kind \
     /spec/volumeClaimTemplates/0/spec/resources/requests; do
-    printf '%s\n' "$zot_ignores" | grep -qxF "$pointer" \
+    grep -qxF "$pointer" <<<"$zot_ignores" \
       || { echo "FAIL: zot ignoreDifferences is missing $pointer (prevents StatefulSet PVC normalization drift)" >&2; fail=1; }
   done
 fi
@@ -1297,13 +1300,13 @@ for backup_chart in deploy/gitops/charts/etcd-backup/cronjob.yaml \
   # explaining why it was removed, and that must not trip the guard.
   backup_args="$(yq -N '.spec.jobTemplate.spec.template.spec | [(.initContainers // [])[], (.containers // [])[]] | .[] | (.args // [])[]' \
     "$backup_chart")"
-  if echo "$backup_args" | grep -qE '(apk[[:space:]]+add|apt-get[[:space:]]+install|yum[[:space:]]+install|pip[[:space:]]+install)'; then
+  if grep -qE '(apk[[:space:]]+add|apt-get[[:space:]]+install|yum[[:space:]]+install|pip[[:space:]]+install)' <<<"$backup_args"; then
     echo "FAIL: $backup_chart installs packages at run time next to snapshot data + upload credentials (w1/m66 F16)" >&2
     fail=1
   fi
   # The pinned age artifact must be checksum-verified before it executes.
-  if echo "$backup_args" | grep -q 'FiloSottile/age/releases' \
-    && ! echo "$backup_args" | grep -q 'sha256sum -c'; then
+  if grep -q 'FiloSottile/age/releases' <<<"$backup_args" \
+    && ! grep -q 'sha256sum -c' <<<"$backup_args"; then
     echo "FAIL: $backup_chart downloads the age binary without verifying it against the pinned SHA-256 (w1/m66 F16)" >&2
     fail=1
   fi
@@ -1374,7 +1377,7 @@ LOGSHIP="deploy/gitops/base/log-shipper.yaml"
 if [ -f "$LOGSHIP" ]; then
   echo "==> $LOGSHIP node-scoped pod discovery"
   vals="$(yq '.spec.source.helm.values' "$LOGSHIP")"
-  echo "$vals" | grep -qF 'field = "spec.nodeName=" + sys.env("K8S_NODE_NAME")' \
+  grep -qF 'field = "spec.nodeName=" + sys.env("K8S_NODE_NAME")' <<<"$vals" \
     || { echo "FAIL: log-shipper.yaml's discovery.kubernetes \"pods\" block lost its node-scope field selector — every replica would discover every pod cluster-wide again (N× log duplication)" >&2; fail=1; }
 
   # Tenant pipelines tail CRI files (w4/m174 apps, w5/m122 Postgres and Key
@@ -1382,15 +1385,15 @@ if [ -f "$LOGSHIP" ]; then
   # scripts/test_log_shipper.py.
   echo "==> $LOGSHIP tenant pods tail CRI files (w4/m174, w5/m122)"
   for pods in app_pods database_pods keyvalue_pods; do
-    echo "$vals" | grep -q "loki.source.kubernetes \"$pods\"" \
+    grep -q "loki.source.kubernetes \"$pods\"" <<<"$vals" \
       && { echo "FAIL: log-shipper.yaml tails $pods through loki.source.kubernetes again — it drops out-of-order CRI lines and ships the kubelet's own answers as tenant lines" >&2; fail=1; }
-    echo "$vals" | grep -qF "loki.source.file \"$pods\"" \
+    grep -qF "loki.source.file \"$pods\"" <<<"$vals" \
       || { echo "FAIL: log-shipper.yaml lost loki.source.file \"$pods\"" >&2; fail=1; }
   done
   for logs in app_logs database_logs keyvalue_logs; do
-    block="$(echo "$vals" | awk -v name="$logs" '$0 ~ "loki.process \"" name "\" \\{" {on=1; match($0, /^ */); end=substr($0, 1, RLENGTH) "}"} on{print} on&&$0==end{exit}')"
+    block="$(awk -v name="$logs" '$0 ~ "loki.process \"" name "\" \\{" {on=1; match($0, /^ */); end=substr($0, 1, RLENGTH) "}"} on{print} on&&$0==end{exit}' <<<"$vals")"
     for required in 'stage.cri {' 'max_partial_line_size_truncate = true' 'values = ["filename", "stream"]'; do
-      echo "$block" | grep -qF "$required" \
+      grep -qF "$required" <<<"$block" \
         || { echo "FAIL: log-shipper.yaml $logs lost required stage: $required" >&2; fail=1; }
     done
   done
@@ -1412,7 +1415,7 @@ if [ -f "$LOGSHIP" ]; then
     'target_label  = "database"' \
     'regex         = "postgres"' \
     'values = { type = "postgres" }'; do
-    echo "$vals" | grep -qF "$required" \
+    grep -qF "$required" <<<"$vals" \
       || { echo "FAIL: log-shipper.yaml managed-Postgres pipeline lost required attribution rule: $required" >&2; fail=1; }
   done
 
@@ -1427,7 +1430,7 @@ if [ -f "$LOGSHIP" ]; then
     'eq .host \"dashboard.bex.co\"' \
     'platform_service' \
     'drop_counter_reason = "not_a_tenant_app"'; do
-    echo "$vals" | grep -qF "$required" \
+    grep -qF "$required" <<<"$vals" \
       || { echo "FAIL: log-shipper.yaml platform dashboard retention lost required rule: $required" >&2; fail=1; }
   done
 
@@ -1444,7 +1447,7 @@ if [ -f "$LOGSHIP" ]; then
     'regex         = "bex-system;static-server"' \
     'replacement   = "static-server"' \
     'type  = "platform"'; do
-    echo "$vals" | grep -qF "$required" \
+    grep -qF "$required" <<<"$vals" \
       || { echo "FAIL: log-shipper.yaml migration evidence pipeline lost required rule: $required" >&2; fail=1; }
   done
 
@@ -1457,7 +1460,7 @@ if [ -f "$LOGSHIP" ]; then
     'replacement   = "bex-api"' \
     'regex         = "bex-system;controller-manager"' \
     'replacement   = "operator"'; do
-    echo "$vals" | grep -qF "$required" \
+    grep -qF "$required" <<<"$vals" \
       || { echo "FAIL: log-shipper.yaml core-service platform retention lost required rule: $required" >&2; fail=1; }
   done
 
@@ -1483,12 +1486,12 @@ if [ -f "$LOGSHIP" ]; then
     '}}grafana{{' \
     '}}yes{{' \
     'expression          = "^yes$"'; do
-    echo "$vals" | grep -qF "$required" \
+    grep -qF "$required" <<<"$vals" \
       || { echo "FAIL: log-shipper.yaml platform edge-host retention lost required rule: $required" >&2; fail=1; }
   done
   # Cardinality tripwire: RequestHost may be extracted for the allowlist
   # decision, but must never appear as a stage.labels value (Loki stream key).
-  if echo "$vals" | grep -A30 'stage.labels {' | grep -qE '^\s*host\s*='; then
+  if grep -A30 'stage.labels {' <<<"$vals" | grep -E '^[[:space:]]*host[[:space:]]*=' >/dev/null; then
     echo "FAIL: log-shipper.yaml must not promote request host to a Loki label (cardinality budget, docs/ADR010)" >&2
     fail=1
   fi
@@ -1501,9 +1504,9 @@ LOKI_APP="deploy/gitops/base/loki.yaml"
 if [ -f "$LOKI_APP" ]; then
   echo "==> $LOKI_APP migration clean-window retention (w2/m93)"
   loki_vals="$(yq '.spec.source.helm.values' "$LOKI_APP")"
-  echo "$loki_vals" | grep -qF 'retention_period: 504h' \
+  grep -qF 'retention_period: 504h' <<<"$loki_vals" \
     || { echo "FAIL: loki.yaml must retain >=21d (504h) for the ADR055 Phase-4 clean window" >&2; fail=1; }
-  echo "$loki_vals" | grep -qE 'size: 60Gi' \
+  grep -qE 'size: 60Gi' <<<"$loki_vals" \
     || { echo "FAIL: loki.yaml PVC must be sized for 21d + zot/static-server evidence (60Gi)" >&2; fail=1; }
 fi
 
