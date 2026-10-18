@@ -15,6 +15,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m117** — [Canceling the newer of two open deploys strands the older](m117/README.md) (6 tasks;245m) ← from `/qa-find-bugs-cli` sweeps 52–53 2026-10-18: trigger a second deploy, cancel it, and the first deploy sits in `created`/`queued` forever (13m+ untouched vs ~80s control build) — the canceled-release stamp settles the App and the older row's generation can never be adopted
+
 - [ ] **m116** — [Return backward log pages most-recent first](m116/README.md) (6 tasks;170m) ← from `/qa-find-bugs-cli` sweep465 2026-10-18: backward (default) log pages select the newest lines and page correctly, but present them oldest-first at the wire — Render's contract is most-recent first; one unconditional ascending sort at the shared page verb flips every default read
 
 - [x] **m115** — [Surface edge-blocked requests in request logs](done/m115/README.md) (6 tasks;180m) ← from `/qa-find-bugs-cli` sweep458 2026-10-18: an inbound-IP-allowlist 403 is enforced at the edge but never reaches the service's `type=request` history (Render: blocked requests do appear); shipper attribution drops middleware-rejected lines — **DONE (2026-10-18: hosted fail-before/pass-after; native Free allowlist403 visible in 27.3s; all readers + UI agree; fixtures absent)**
