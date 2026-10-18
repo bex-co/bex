@@ -24,7 +24,7 @@ Preserve npm/Yarn/pnpm/Bun behavior, root/nested publication, publishes-root pro
 
 ## Dedupe, verification and limits
 
-No scheduled Jekyll/static-Ruby/Gemfile automatic-install repair was found. [m86](../../done/m86/README.md) covers npm installation and [m90](../m90/README.md) Yarn; their scopes remain distinct. [m85](../../done/m85/README.md) covers primary Ruby version precedence and [117](../../done/117.md) its Bundler defaults, not Ruby supply in omitted-runtime static builds. Coordinate shared changes without reopening those accepted scopes or adding duplicate fixes. Targeted static-Bundler/Ruby-companion history found no intervening repair.
+No scheduled Jekyll/static-Ruby/Gemfile automatic-install repair was found. [m86](../m86/README.md) covers npm installation and [m90](../m90/README.md) Yarn; their scopes remain distinct. [m85](../m85/README.md) covers primary Ruby version precedence and [117](../117.md) its Bundler defaults, not Ruby supply in omitted-runtime static builds. Coordinate shared changes without reopening those accepted scopes or adding duplicate fixes. Targeted static-Bundler/Ruby-companion history found no intervening repair.
 
 The real local three-stage project run returns127/127/0 on the pinned ARM64 Node base, retaining exact source files and generated HTML/proof. An earlier local trial built Jekyll successfully but its diagnostic used the wrong expected title; that assertion was corrected from immutable \_config.yml and the excluded trial/cleanup are retained. All own local cases and Go/source export contexts are removed. These are base-image controls/source exports, not full generated-image or other architecture/version acceptance.
 

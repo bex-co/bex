@@ -1,0 +1,9 @@
+services:
+  - type: cron
+    name: qa-lx88637d-048-bp
+    runtime: image
+    image:
+      url: docker.io/library/busybox:1.37.0
+    schedule: "*/30 * * * *"
+    startCommand: echo hi
+    plan: free
