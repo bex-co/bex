@@ -1031,7 +1031,7 @@ func TestRawUnicodeHistoryAgreesAcrossAdapters(t *testing.T) {
 	defer loki.Close()
 	svc := newService(nil, sampleApp("web"), podFor("web", "web-1"))
 	svc.History = NewLokiSource(loki.URL, loki.Client())
-	want := []string{"CAFÉ Ελληνικά", "café ελληνικά"}
+	want := []string{"café ελληνικά", "CAFÉ Ελληνικά"} // backward (default): newest first
 
 	rec := serveREST(svc, http.MethodGet, "/v1/logs?resource=web&text=%CE%B9&limit=100")
 	var env renderLogList

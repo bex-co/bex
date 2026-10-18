@@ -2,7 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@apollo/client/react";
 import { skipPollWhenHidden } from "@/common/lib/polling";
 import { LogsDocument } from "@/graphql/definitions";
-import { toLogLines, dedupeLogLines } from "@/features/logs/lib/map";
+import {
+  compareLogTimestamps,
+  mergeLogLines,
+  toLogLines,
+} from "@/features/logs/lib/map";
 import {
   useLiveLogs,
   type EventSourceFactory,
@@ -198,7 +202,7 @@ export function useDeployLogs(
         toLogLines(d?.logs?.logs),
       ),
     ].flat();
-    merged.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    merged.sort((a, b) => compareLogTimestamps(a.timestamp, b.timestamp));
     // Keep one copy of a record two legs returned (a pre-deploy line the
     // durable build leg also carries), in the bucket of every type it came as.
     const lines: LogLine[] = [];
@@ -249,7 +253,7 @@ export function useDeployLogs(
     // streams the same build pod the windowed query reads behind ingest lag),
     // so merging is an append plus a key filter for the poll/stream straddle
     // — O(live) per flush, no re-sort of history per streamed line.
-    if (!last || live[0].timestamp >= last.timestamp) {
+    if (!last || compareLogTimestamps(live[0].timestamp, last.timestamp) >= 0) {
       return [
         ...history,
         ...live.filter((line) => !bucketsByKey.has(line.key)),
@@ -257,9 +261,7 @@ export function useDeployLogs(
     }
     // Correctness fallback: a live line predates the tail of history (the
     // query won the race against the stream) — full chronological merge.
-    const merged = [...history, ...live];
-    merged.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-    return dedupeLogLines(merged);
+    return mergeLogLines(history, live);
   }, [history, bucketsByKey, liveBuild.lines]);
 
   return {

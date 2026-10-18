@@ -221,6 +221,25 @@ function subMillis(timestamp: string): string {
   return digits.slice(3, 9).padEnd(6, "0");
 }
 
+function compareSubMillis(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+// compareLogTimestamps orders two RFC 3339 stamps by instant, to the
+// nanosecond, for sorting lines chronologically. Unparseable stamps sort first
+// (where the empty string sorted), so the order stays consistent. History
+// pages arrive in either order — backward pages list the most recent first
+// (w8/m116) — so merges sort rather than trust arrival within a millisecond.
+// mergeLogLines is the merge for lines with no other per-copy bookkeeping.
+export function compareLogTimestamps(a: string, b: string): number {
+  const am = Date.parse(a);
+  const bm = Date.parse(b);
+  const aBad = Number.isNaN(am);
+  const bBad = Number.isNaN(bm);
+  if (aBad || bBad) return aBad === bBad ? 0 : aBad ? -1 : 1;
+  return am - bm || compareSubMillis(subMillis(a), subMillis(b));
+}
+
 // mergeLogLines combines the historical page with the live tail into one
 // chronological reader (w4/m192): deduped first-copy-wins (a line straddling
 // the last historical page and the first streamed frames is drawn once, as
@@ -249,8 +268,6 @@ export function mergeLogLines(
     }
     ranked.push({ line, ms, sub });
   }
-  ranked.sort(
-    (a, b) => a.ms - b.ms || (a.sub < b.sub ? -1 : a.sub > b.sub ? 1 : 0),
-  );
+  ranked.sort((a, b) => a.ms - b.ms || compareSubMillis(a.sub, b.sub));
   return ranked.map((r) => r.line);
 }

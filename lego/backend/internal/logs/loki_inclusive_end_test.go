@@ -116,10 +116,10 @@ func TestLokiEndIsInclusiveAndPagesStayGapFree(t *testing.T) {
 					}
 					seen[e.Timestamp] = true
 				}
-				hasMore, nextStart, nextEnd := pageCursors(page, 50, from, to, direction)
-				if !hasMore {
+				if len(page) < 50 {
 					break
 				}
+				nextStart, nextEnd := pageCursors(page, from, to, direction)
 				from, _ = time.Parse(time.RFC3339Nano, nextStart)
 				to, _ = time.Parse(time.RFC3339Nano, nextEnd)
 			}
