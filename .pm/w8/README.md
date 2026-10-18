@@ -15,6 +15,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m114** — [Move environment-group metadata from OpenBao to the control-plane store](m114/README.md) (12 tasks;590m) ← user decision 2026-10-18 after the m113 diagnosis: name, workspace, environment, links, timestamps, revision and operation state move to Postgres; OpenBao keeps only env/files values; legacy-tenant, locator, name-claim, tombstone-fence and lazy-migration code and the one-shot migrator are deleted; clean end state over compatibility (deliberate breaks listed); supersedes 119; t007 production cutover needs a user-authorized window
+
 - [ ] **m113** — [Services list times out (524/502) for the bex workspace](m113/README.md) (6 tasks) ← from `/qa-find-bugs-cli` sweep 2026-10-18: `bex services` in workspace bex exceeds the edge timeout (110s→502, 125s→524) while small workspaces and sibling lists answer in ~1s — **IN PROGRESS (2026-10-18: t001–t005 done — the slow segment is the per-project `GET /v1/environments` (12–15 s each for 3 projects), whose env-group scan read every listed group id, deleted groups' fences included, one at a time (`/v1/env-groups` 14–16 s for 1 live group); scans now read concurrently through one helper, and an empty project skips them; t006 = production replay after deploy)**
 
 - [ ] **m112** — [Make documented time-series tables usable in managed Postgres](blocked/m112/README.md) (8 tasks;300m) — **BLOCKED (2026-10-17: needs the user to decide how managed Postgres supplies Render's extensions — [decision](blocked/m92/design.md): operand image (CNPG PostGIS-only vs a bex-built image per major; no CNPG image carries TimescaleDB), activation (pre-install like vector vs on-demand allowlist) and a rolling restart of every managed Postgres pod, possibly with m65 — TimescaleDB also needs shared_preload_libraries, Apache mode only; no task started)**
@@ -343,7 +345,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **119** — [Env-group tombstones accumulate forever and every scan still reads them](119.md) (follow-up from m113: one-read scan, tombstone ageing, process-wide read budget)
+- [ ] **119** — [Env-group tombstones accumulate forever and every scan still reads them](119.md) (follow-up from m113: one-read scan, tombstone ageing, process-wide read budget) — **superseded by [m114](m114/README.md)**, which deletes the scan; do not implement separately
 
 - [ ] **118** — [Forward stdin to noninteractive psql imports](blocked/118.md) (55m, major) — **BLOCKED (2026-10-16: upstream patch + real-child regressions prepared in `blocked/118-upstream.patch` (and a variant stacked on 079 in `blocked/118-upstream-stacked-on-079.patch`): the pinned CLI's non-interactive psql never sets the child's stdin, so `\copy … FROM pstdin` reads EOF and imports 0 rows; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release and the two-client import replay with cleanup; no fork per DO_NOT_DO)**
 
