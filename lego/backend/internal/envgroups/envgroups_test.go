@@ -124,7 +124,7 @@ func getApp(t *testing.T, cl client.Client, name string) *appv1alpha1.App {
 // prefix (secrets.TenantFromContext) so tenant isolation (a workspace
 // tenant's List/Get never sees another tenant's entries) is exercised by
 // tests, not just assumed. A ctx with no tenant set resolves to
-// secrets.LegacyTenant ("default").
+// core.DefaultTenant ("default").
 type fakeStore struct {
 	mu sync.Mutex
 	m  map[string]map[string]string
