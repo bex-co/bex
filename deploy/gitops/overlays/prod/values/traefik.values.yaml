@@ -15,6 +15,11 @@ hostNetwork: false # LB -> NodePort -> pod; no host-port binding
 deployment:
   replicas: 2 # one edge remains behind the stable LB during a node drain
   dnsPolicy: ClusterFirst # back to normal cluster DNS (not the host netns)
+# Behind the LB the edge rolls (chart default 0 unavailable / 1 surge, which
+# needs a spare platform node under the anti-affinity below); base's Recreate
+# is only for the single hostNetwork edge (w4/338).
+updateStrategy:
+  type: RollingUpdate
 affinity:
   podAntiAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
