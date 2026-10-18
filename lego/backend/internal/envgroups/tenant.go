@@ -19,6 +19,8 @@ package envgroups
 import (
 	"context"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 )
@@ -139,17 +141,31 @@ func (s *Service) listGroupIDs(ctx context.Context, workspace string, includeLeg
 	for _, gid := range ids {
 		seen[gid] = struct{}{}
 	}
-	out := append([]string{}, ids...)
-	for _, gid := range legacyIDs {
+	// Every other workspace's live group keeps a locator here, so this loop
+	// grows with the whole platform's groups; read them with the same bounded
+	// fan-out as the metadata scan (w8/m113).
+	unmigrated := make([]bool, len(legacyIDs))
+	var reads errgroup.Group
+	reads.SetLimit(listMetaReadConcurrency)
+	for i, gid := range legacyIDs {
 		if _, ok := seen[gid]; ok {
 			continue
 		}
-		raw, err := s.Store.Get(legacyCtx(ctx), metaPath(gid))
-		if err != nil {
-			return nil, err
-		}
-		if len(raw) == 0 || isLocator(raw) {
-			continue // already migrated elsewhere — its own tenant's List covers it
+		reads.Go(func() error {
+			raw, err := s.Store.Get(legacyCtx(ctx), metaPath(gid))
+			// Empty or a locator: already migrated elsewhere — its own tenant's
+			// List covers it.
+			unmigrated[i] = err == nil && len(raw) > 0 && !isLocator(raw)
+			return err
+		})
+	}
+	if err := reads.Wait(); err != nil {
+		return nil, err
+	}
+	out := append([]string{}, ids...)
+	for i, gid := range legacyIDs {
+		if _, ok := seen[gid]; ok || !unmigrated[i] {
+			continue
 		}
 		seen[gid] = struct{}{}
 		out = append(out, gid)

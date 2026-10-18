@@ -1464,6 +1464,7 @@ type storeCall struct {
 // OpenBao tenant rather than only counting totals.
 type countingStore struct {
 	*fakeStore
+	mu        sync.Mutex // a list reads group metadata concurrently
 	lists     int
 	metaGets  int // fan-out: one metadata read per group the walk visits
 	listCalls []storeCall
@@ -1471,16 +1472,20 @@ type countingStore struct {
 }
 
 func (c *countingStore) List(ctx context.Context, path string) ([]string, error) {
+	c.mu.Lock()
 	c.lists++
 	c.listCalls = append(c.listCalls, storeCall{tenant: secrets.TenantFromContext(ctx), path: path})
+	c.mu.Unlock()
 	return c.fakeStore.List(ctx, path)
 }
 
 func (c *countingStore) Get(ctx context.Context, path string) (map[string]string, error) {
+	c.mu.Lock()
 	if strings.HasSuffix(path, "/meta") {
 		c.metaGets++
 	}
 	c.getCalls = append(c.getCalls, storeCall{tenant: secrets.TenantFromContext(ctx), path: path})
+	c.mu.Unlock()
 	return c.fakeStore.Get(ctx, path)
 }
 

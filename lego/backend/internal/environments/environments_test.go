@@ -396,6 +396,29 @@ func TestListEnvironments_ScopedToProject(t *testing.T) {
 	}
 }
 
+// A project with no environment lists as empty without scanning the
+// workspace's groups: the CLI lists every project's environments, and each
+// scan cost the bex workspace 14 s (w8/m113). A project with environments
+// still gets their group membership.
+func TestListEnvironments_EmptyProjectSkipsMemberScans(t *testing.T) {
+	st := newFakeStore()
+	st.addProject(store.Project{ID: "prj-empty", TenantID: "tea-a", Name: "empty"})
+	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+	groups := &countingEnvGroupIndex{}
+	svc := newService(st)
+	svc.EnvGroups = groups
+	svc.Create(ctxAs("user-a"), "prj-1", "staging")
+	groups.lists = 0
+
+	list, err := svc.List(ctxAs("user-a"), "prj-empty")
+	if err != nil || list == nil || len(list) != 0 || groups.lists != 0 {
+		t.Fatalf("List(empty) = %#v (err %v) after %d group scans, want an empty list and none", list, err, groups.lists)
+	}
+	if list, err := svc.List(ctxAs("user-a"), "prj-1"); err != nil || len(list) != 1 || groups.lists != 1 {
+		t.Fatalf("List(prj-1) = %+v (err %v) after %d group scans, want one environment and one scan", list, err, groups.lists)
+	}
+}
+
 func TestListWorkspaceEnvironments_BatchesAcrossProjectsAndScopesOwner(t *testing.T) {
 	st := newFakeStore()
 	st.envs["env-web"] = store.Environment{ID: "env-web", ProjectID: "prj-web", TenantID: "tea-a", Name: "web"}

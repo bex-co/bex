@@ -460,6 +460,11 @@ func (s *Service) List(ctx context.Context, projectID string) ([]EnvironmentView
 	if err != nil {
 		return nil, store.MapError(err)
 	}
+	if len(rows) == 0 {
+		// Nothing to enrich: skip the workspace-wide member scans, which the
+		// CLI otherwise pays once per project it lists (w8/m113).
+		return []EnvironmentView{}, nil
+	}
 	// Fetch each tenant-wide membership scan once and index by environment,
 	// rather than re-issuing ListPostgres/ListKeyValues per row below — every
 	// environment in this project shares the same underlying Database/KeyValue
