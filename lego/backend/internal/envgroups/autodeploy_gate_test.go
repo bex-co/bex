@@ -17,7 +17,6 @@ limitations under the License.
 package envgroups
 
 import (
-	"context"
 	"slices"
 	"testing"
 
@@ -53,7 +52,7 @@ func restartedAt(t *testing.T, svc *Service, name string) string {
 // saw a config_change deploy open one second after a PUT to a group variable on
 // a service whose autoDeploy had just been set to "no", and go live.
 func TestGroupWriteSkipsTheDeployOnAnAutoDeployOffService(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 	svc := newService(newFakeStore(), repoApp("on", true), repoApp("off", false))
 	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{
 		Name: "shared", ServiceIDs: []string{"on", "off"},
@@ -124,7 +123,7 @@ func TestGroupWriteSkipsTheDeployOnAnAutoDeployOffService(t *testing.T) {
 // Treating that default as an opt-out would strand every image-backed service
 // on stale group values forever — a worse bug than the one the gate fixes.
 func TestGroupWriteStillDeploysAnImageBackedService(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 	svc := newService(newFakeStore(), sampleApp("image"))
 	if svc.Client != nil && getApp(t, svc.Client, "image").Spec.AutoDeploy {
 		t.Fatal("fixture should be an image-backed service with autoDeploy false")
@@ -153,7 +152,7 @@ func TestGroupWriteStillDeploysAnImageBackedService(t *testing.T) {
 // Linking is still honored for a gated service — the refs land, so the group's
 // values are there for its next deploy — but it does not force a release.
 func TestLinkAndUnlinkSkipTheDeployOnAnAutoDeployOffService(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 	svc := newService(newFakeStore(), repoApp("off", false))
 	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
 	if err != nil {
@@ -190,7 +189,7 @@ func TestLinkAndUnlinkSkipTheDeployOnAnAutoDeployOffService(t *testing.T) {
 // Create-with-services links at create time, so it needs the same gate, and its
 // result is the group view rather than a patch result.
 func TestCreateWithServicesNamesTheAutoDeployOffServices(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 	svc := newService(newFakeStore(), repoApp("on", true), repoApp("off", false))
 	before := restartedAt(t, svc, "off")
 
@@ -223,7 +222,7 @@ func TestCreateWithServicesNamesTheAutoDeployOffServices(t *testing.T) {
 // editor) are a caller's deliberate choice and stay ungated — the control that
 // proves the gate is scoped to Render's implicit fan-out.
 func TestExplicitSaveModeIsNotGated(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 	svc := newService(newFakeStore(), repoApp("off", false))
 	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{
 		Name: "shared", ServiceIDs: []string{"off"},
@@ -251,7 +250,7 @@ func TestExplicitSaveModeIsNotGated(t *testing.T) {
 // deployment. A Go JSON tag does not declare a GraphQL field, so this executes
 // the actual composed schema rather than the resolver.
 func TestGraphQLPatchResultExposesPendingServiceIDs(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 	svc := newService(newFakeStore(), repoApp("on", true), repoApp("off", false))
 	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{
 		Name: "shared", ServiceIDs: []string{"on", "off"},

@@ -117,8 +117,6 @@ func TestLoadConfigFatalKnobs(t *testing.T) {
 		{"device rate limit", map[string]string{"BEX_DEVICE_RATE_LIMIT": "abc"}, "bad BEX_DEVICE_RATE_LIMIT"},
 		{"auth max inflight", map[string]string{"BEX_AUTH_MAX_INFLIGHT": "many"}, "bad BEX_AUTH_MAX_INFLIGHT"},
 		{"auth max inflight per credential", map[string]string{"BEX_AUTH_MAX_INFLIGHT_PER_CREDENTIAL": "many"}, "bad BEX_AUTH_MAX_INFLIGHT_PER_CREDENTIAL"},
-		{"env-group audit mode", map[string]string{"BEX_ENV_GROUP_NAME_CLAIM_AUDIT": "verify"}, "BEX_ENV_GROUP_NAME_CLAIM_AUDIT must be dry-run or apply"},
-		{"env-group migration mode", map[string]string{"BEX_ENV_GROUP_PATH_MIGRATION": "yes"}, "BEX_ENV_GROUP_PATH_MIGRATION must be dry-run or apply"},
 		{"webhook secret without store", map[string]string{"BEX_WEBHOOK_SECRET": "s"}, "Git webhooks require BEX_CP_DB_URI"},
 		{"github webhook secret without store", map[string]string{"BEX_GITHUB_WEBHOOK_SECRET": "s"}, "Git webhooks require BEX_CP_DB_URI"},
 		{"partial snapshot config", map[string]string{"BEX_AGENT_SNAPSHOT_S3_BUCKET": "b"}, "agent-session hibernation config"},
@@ -151,6 +149,39 @@ func TestLoadConfigFatalKnobs(t *testing.T) {
 				t.Fatalf("err = %v, want it to contain %q", err, tc.wantErr)
 			}
 		})
+	}
+}
+
+// `api env-group-cutover <mode>` (w8/m114) takes exactly one known mode and
+// needs both stores; anything else is refused before a store is opened.
+func TestLoadConfigEnvGroupCutover(t *testing.T) {
+	stores := cpEnv(map[string]string{"BEX_OPENBAO_URL": "http://openbao:8200"})
+	for _, tc := range []struct {
+		name    string
+		env     map[string]string
+		args    []string
+		wantErr string
+	}{
+		{"no mode", stores, []string{"api", "env-group-cutover"}, "usage: api env-group-cutover"},
+		{"unknown mode", stores, []string{"api", "env-group-cutover", "migrate"}, "usage: api env-group-cutover"},
+		{"no OpenBao", cpEnv(nil), []string{"api", "env-group-cutover", "apply"}, "needs BEX_CP_DB_URI and BEX_OPENBAO_URL"},
+		{"no store", map[string]string{"BEX_OPENBAO_URL": "http://openbao:8200"}, []string{"api", "env-group-cutover", "apply"}, "needs BEX_CP_DB_URI and BEX_OPENBAO_URL"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, _, err := loadConfig(func(k string) string { return tc.env[k] }, time.Now(), tc.args)
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("err = %v, want it to contain %q", err, tc.wantErr)
+			}
+		})
+	}
+	for _, mode := range []string{"dry-run", "apply", "prune"} {
+		cfg, _, err := loadConfig(func(k string) string { return stores[k] }, time.Now(), []string{"api", "env-group-cutover", mode})
+		if err != nil || cfg.EnvGroupCutover != mode {
+			t.Fatalf("mode %s: cfg=%q err=%v", mode, cfg.EnvGroupCutover, err)
+		}
+	}
+	if cfg, _, err := loadFor(t, stores); err != nil || cfg.EnvGroupCutover != "" {
+		t.Fatalf("plain start: cutover=%q err=%v, want serving mode", cfg.EnvGroupCutover, err)
 	}
 }
 

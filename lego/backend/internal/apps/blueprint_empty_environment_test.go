@@ -24,7 +24,10 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
+	"github.com/bex-co/bex/lego/backend/internal/envgroups/envgroupstest"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -88,10 +91,11 @@ func TestBlueprintEmptyInlineEnvironmentKeepsGroupAndSeedOwnership(t *testing.T)
 			svc, raw := newService(nil)
 			svc.Client = blueprintSerializedClient{Client: raw}
 			kv := newMemKV()
-			groups := &envgroups.Service{Base: svc.Base, Store: kv}
+			svc.Workspace = coretest.Workspaces{core.DefaultTenant}
+			groups := &envgroups.Service{Base: svc.Base, Store: kv, Groups: envgroupstest.New()}
 			sec := &secrets.Service{Base: svc.Base, Store: kv}
 			svc.EnvGroups, svc.EnvSeeder = groups, sec
-			ctx := context.Background()
+			ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "owner", Method: "session"})
 			if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: tc.manifest}); err != nil {
 				t.Fatal(err)
 			}
@@ -106,7 +110,7 @@ func TestBlueprintEmptyInlineEnvironmentKeepsGroupAndSeedOwnership(t *testing.T)
 					t.Fatal(err)
 				}
 			}
-			before := getApp(t, svc.Client, "web")
+			before := getApp(t, svc.Client, core.CRName(core.DefaultTenant, "web"))
 			if before.Spec.Env != nil || (tc.group && len(before.Spec.EnvFromSecrets) != 1) || (!tc.group && before.Spec.EnvFromSecret == "") {
 				t.Fatalf("inline environment/source ownership = %+v", before.Spec)
 			}
@@ -133,7 +137,7 @@ func TestBlueprintEmptyInlineEnvironmentKeepsGroupAndSeedOwnership(t *testing.T)
 				if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: tc.manifest}); err != nil {
 					t.Fatal(err)
 				}
-				assertBlueprintAppUnchanged(t, before, getApp(t, svc.Client, "web"))
+				assertBlueprintAppUnchanged(t, before, getApp(t, svc.Client, core.CRName(core.DefaultTenant, "web")))
 			}
 			if !tc.group {
 				seeded, err := sec.GetEnvVar(ctx, "web", "SEEDED")

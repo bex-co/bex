@@ -48,7 +48,7 @@ func envGroupSchema(t *testing.T, svc *Service) *graphql.Schema {
 
 func TestGraphQL_EnvironmentIDNullsWhenUnset(t *testing.T) {
 	svc := newService(newFakeStore())
-	workspaceScoped, err := svc.CreateEnvGroup(context.Background(), CreateEnvGroupRequest{Name: "workspace-scoped"})
+	workspaceScoped, err := svc.CreateEnvGroup(testCtx(), CreateEnvGroupRequest{Name: "workspace-scoped"})
 	if err != nil {
 		t.Fatalf("create workspace-scoped group: %v", err)
 	}
@@ -60,9 +60,9 @@ func TestGraphQL_EnvironmentIDNullsWhenUnset(t *testing.T) {
 		if environmentID != "env-alpha" {
 			return "", core.ErrNotFound
 		}
-		return "", nil
+		return core.DefaultTenant, nil
 	}
-	environmentScoped, err := scoped.CreateEnvGroup(context.Background(),
+	environmentScoped, err := scoped.CreateEnvGroup(testCtx(),
 		CreateEnvGroupRequest{Name: "environment-scoped", EnvironmentID: "env-alpha"})
 	if err != nil {
 		t.Fatalf("create environment-scoped group: %v", err)
@@ -70,7 +70,7 @@ func TestGraphQL_EnvironmentIDNullsWhenUnset(t *testing.T) {
 
 	t.Run("unset environmentId resolves to null, not empty string", func(t *testing.T) {
 		schema := envGroupSchema(t, svc)
-		res := graphql.Do(graphql.Params{Schema: *schema, Context: context.Background(),
+		res := graphql.Do(graphql.Params{Schema: *schema, Context: testCtx(),
 			RequestString: `{ envGroup(id: "` + workspaceScoped.ID + `") { environmentId } }`})
 		if len(res.Errors) > 0 {
 			t.Fatalf("query: %v", res.Errors)
@@ -84,7 +84,7 @@ func TestGraphQL_EnvironmentIDNullsWhenUnset(t *testing.T) {
 
 	t.Run("set environmentId still resolves to its real value", func(t *testing.T) {
 		schema := envGroupSchema(t, scoped)
-		res := graphql.Do(graphql.Params{Schema: *schema, Context: context.Background(),
+		res := graphql.Do(graphql.Params{Schema: *schema, Context: testCtx(),
 			RequestString: `{ envGroup(id: "` + environmentScoped.ID + `") { environmentId } }`})
 		if len(res.Errors) > 0 {
 			t.Fatalf("query: %v", res.Errors)
@@ -118,7 +118,7 @@ func TestGraphQL_ExplicitNullEnvironmentIDIsWorkspaceScope(t *testing.T) {
 			Schema:         *envGroupSchema(t, svc),
 			RequestString:  query,
 			VariableValues: vars,
-			Context:        context.Background(),
+			Context:        testCtx(),
 		})
 		if len(result.Errors) > 0 {
 			t.Fatalf("createEnvGroup: %v", result.Errors)

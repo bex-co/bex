@@ -29,6 +29,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -201,6 +202,14 @@ func main() {
 	}
 
 	base := &core.Base{Client: cl, Namespace: cfg.Namespace}
+
+	// `api env-group-cutover <mode>` (w8/m114) runs beside a live bex-api in
+	// the same pod, so it starts no worker and binds no listener: it opens the
+	// two stores, runs, prints its report and exits.
+	if cfg.EnvGroupCutover != "" {
+		runEnvGroupCutover(ctx, cfg, cl)
+		return
+	}
 
 	// One readiness flag for the whole pod (w1/m52): the public server's
 	// /readyz answers 200 until SIGTERM, then 503 while both servers keep
@@ -378,26 +387,6 @@ func main() {
 	srv := api.NewServer(base, deps)
 	srv.OriginMetrics = originMetrics
 	srv.CLITelemetry.Metrics = originMetrics
-	if mode := cfg.EnvGroupNameClaimAudit; mode != "" {
-		report, auditErr := envgroups.AuditNameClaims(ctx, deps.Secrets, mode == "dry-run")
-		if auditErr != nil {
-			log.Fatalf("bex-api: environment-group name-claim audit: %v", auditErr)
-		}
-		log.Printf("bex-api: environment-group name-claim audit mode=%s scanned=%d missing=%d created=%d existing=%d conflicts=%d duplicates=%v",
-			mode, report.Scanned, report.Missing, report.Created, report.Existing, report.Conflicts, report.Duplicates)
-	}
-	// w2/m80: the explicit, opt-in move of env-groups off the shared legacy
-	// OpenBao tenant onto their own workspace-prefixed tenants. See
-	// docs/runbooks/env-group-path-migration.md before ever running apply
-	// mode against a production store.
-	if mode := cfg.EnvGroupPathMigration; mode != "" {
-		report, migrateErr := envgroups.MigratePaths(ctx, deps.Secrets, mode == "dry-run")
-		if migrateErr != nil {
-			log.Fatalf("bex-api: environment-group path migration: %v", migrateErr)
-		}
-		log.Printf("bex-api: environment-group path migration mode=%s scanned=%d migrated=%d alreadyMigrated=%d skippedNoWorkspace=%d failed=%v",
-			mode, report.Scanned, report.Migrated, report.AlreadyMigrated, report.SkippedNoWorkspace, report.Failed)
-	}
 	// One CompletionMetrics registration shared by the Completer (turn duration,
 	// convergence) and the Service (provisioning latency) so the agent-session
 	// lifecycle timing lives under one set of series (w5/m81). Created above with
@@ -739,6 +728,7 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	deps.ProjectsStore = st      // project groupings (w1/m31): project CRUD + service-assignment
 	deps.EnvironmentsStore = st  // environment groupings (layered on w1/m31): environment CRUD + service-assignment
 	deps.RegistryCredsStore = st // registry credentials (w2/m14): CRUD metadata rows; secrets live in OpenBao (deps.Secrets)
+	deps.EnvGroupsStore = st     // environment-group metadata (w8/m114); values stay in OpenBao
 	deps.CLITelemetryStore = st  // CLI telemetry ingest (w5/m92): one row per cli-telemetry-events delivery (nil-safe: *store.PGStore stays a comparable nil when the store is off)
 	deps.BlueprintsStore = st    // blueprint registry (w2/m15): auto-upserted on deploy, list+sync read it
 	deps.WebhookStore = st       // outbound webhooks (w3/m11): endpoint CRUD + delivery history; the worker below delivers
@@ -779,7 +769,7 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	// the App CRs are torn down: it enumerates them to find their OpenBao paths.
 	deps.WorkspacePreCascadePurgers = []workspaces.WorkspacePurger{
 		&secrets.WorkspacePurger{Service: &secrets.Service{Base: base, Store: deps.Secrets}},
-		&envgroups.WorkspacePurger{Service: &envgroups.Service{Base: base, Store: deps.Secrets}},
+		&envgroups.WorkspacePurger{Service: &envgroups.Service{Base: base, Store: deps.Secrets, Groups: st}},
 		&registrycreds.WorkspacePurger{Service: &registrycreds.Service{Base: base, Store: st, Secret: deps.Secrets}},
 		&postgres.WorkspacePurger{Service: &postgres.Service{Base: base}},
 		&keyvalue.WorkspacePurger{Service: &keyvalue.Service{Base: base}},
@@ -1512,5 +1502,25 @@ func backfillMachineMemberships(ctx context.Context, st any, keys apikeys.APIKey
 	}
 	if n > 0 {
 		log.Printf("bex-api: machine-membership backfill: reclassified %d API-key binding(s) as machine", n)
+	}
+}
+
+// runEnvGroupCutover is `api env-group-cutover dry-run|apply|prune` (w8/m114,
+// transitional): see envgroups.Cutover.
+func runEnvGroupCutover(ctx context.Context, cfg *Config, cl client.Client) {
+	pool := openControlPlaneDB(ctx, cfg.CPDBURI)
+	defer pool.Close()
+	cutover := envgroups.Cutover{
+		Secrets: secrets.NewOpenBaoStore(cfg.OpenBaoURL, cfg.OpenBaoJWTPath),
+		Store:   store.NewPGStore(pool),
+		Client:  cl,
+		Now:     time.Now,
+	}
+	report, err := cutover.Run(ctx, cfg.EnvGroupCutover)
+	out := json.NewEncoder(os.Stdout)
+	out.SetIndent("", "  ")
+	_ = out.Encode(report)
+	if err != nil {
+		log.Fatalf("bex-api: env-group cutover %s: %v", cfg.EnvGroupCutover, err)
 	}
 }

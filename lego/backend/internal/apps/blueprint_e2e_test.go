@@ -28,7 +28,9 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
+	"github.com/bex-co/bex/lego/backend/internal/envgroups/envgroupstest"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 )
 
@@ -125,12 +127,13 @@ func (k *memKV) PutCAS(_ context.Context, path string, data map[string]string, e
 
 func TestBlueprintFiveFieldEndToEnd(t *testing.T) {
 	cl := fakeClient()
-	base := &core.Base{Client: cl, Namespace: "default", Clock: func() time.Time { return time.Unix(1_000_000, 0).UTC() }}
+	base := &core.Base{Client: cl, Namespace: "default", Clock: func() time.Time { return time.Unix(1_000_000, 0).UTC() },
+		Workspace: coretest.Workspaces{core.DefaultTenant}}
 	kv := newMemKV()
-	eg := &envgroups.Service{Base: base, Store: kv}
+	eg := &envgroups.Service{Base: base, Store: kv, Groups: envgroupstest.New()}
 	sec := &secrets.Service{Base: base, Store: kv}
 	svc := &Service{Base: base, EnvGroups: eg, EnvSeeder: sec}
-	ctx := context.Background()
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "owner", Method: "session"})
 
 	// --- apply ---
 	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: fiveFieldManifest}); err != nil {
@@ -155,7 +158,7 @@ func TestBlueprintFiveFieldEndToEnd(t *testing.T) {
 	}
 
 	// fromGroup linked the group onto web (its env secret is on the spec).
-	web := getApp(t, cl, "web")
+	web := getApp(t, cl, core.CRName(core.DefaultTenant, "web"))
 	linked := false
 	for _, s := range web.Spec.EnvFromSecrets {
 		if s == gid+"-env" {
@@ -175,12 +178,12 @@ func TestBlueprintFiveFieldEndToEnd(t *testing.T) {
 	if seeded, _ := sec.GetEnvVar(ctx, "web", "SEEDED"); seeded.Value != "once" {
 		t.Errorf("SEEDED = %q, want once", seeded.Value)
 	}
-	if dp := findEnv(t, getApp(t, cl, "web").Spec.Env, "DB_PASS"); dp.Value != "supersecret" {
+	if dp := findEnv(t, getApp(t, cl, core.CRName(core.DefaultTenant, "web")).Spec.Env, "DB_PASS"); dp.Value != "supersecret" {
 		t.Errorf("fromService.envVarKey copy DB_PASS = %q, want supersecret", dp.Value)
 	}
 
 	// --- re-sync: idempotent (no re-mint, no roll) ---
-	firstRA := getApp(t, cl, "web").Spec.RestartedAt
+	firstRA := getApp(t, cl, core.CRName(core.DefaultTenant, "web")).Spec.RestartedAt
 	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: fiveFieldManifest}); err != nil {
 		t.Fatalf("re-DeployStack: %v", err)
 	}
@@ -190,7 +193,7 @@ func TestBlueprintFiveFieldEndToEnd(t *testing.T) {
 	if got, _ := sec.GetEnvVar(ctx, "web", "SESSION_SECRET"); got.Value != sessionSecret.Value {
 		t.Errorf("service generated value re-minted on sync: %q -> %q", sessionSecret.Value, got.Value)
 	}
-	if got := getApp(t, cl, "web").Spec.RestartedAt; got != firstRA {
+	if got := getApp(t, cl, core.CRName(core.DefaultTenant, "web")).Spec.RestartedAt; got != firstRA {
 		t.Errorf("idempotent re-sync rolled web: RestartedAt %q -> %q", firstRA, got)
 	}
 

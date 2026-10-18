@@ -21,7 +21,6 @@ import (
 	"errors"
 	"maps"
 	"slices"
-	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -29,6 +28,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 type SaveMode string
@@ -70,13 +70,6 @@ type EnvironmentPatchResult struct {
 	RolledOut         bool     `json:"rolledOut"`
 }
 
-func revisionPath(gid string) string { return "env-groups/" + gid + "/revision" }
-
-func revisionGeneration(data map[string]string) uint64 {
-	generation, _ := strconv.ParseUint(data["generation"], 10, 64)
-	return generation
-}
-
 func envGroupRevisionConflict() error {
 	return core.NewConflictError(
 		"ENV_GROUP_REVISION_CONFLICT",
@@ -101,46 +94,43 @@ func envGroupUpdateRestored() error {
 	)
 }
 
+const codeRestorationFailed = "ENV_GROUP_RESTORATION_FAILED"
+
 func envGroupRestorationFailed() error {
 	return core.NewConflictError(
-		"ENV_GROUP_RESTORATION_FAILED",
+		codeRestorationFailed,
 		"the environment group update failed and could not be safely restored; an operator must repair it",
 		nil,
 	)
 }
 
+// groupPatchTxn is one claimed save: the group as claimed, its operation and
+// claim version, and what compensation needs to restore.
 type groupPatchTxn struct {
-	gid                string
-	versioned          core.VersionedSecretKV
-	claimVersion       uint64
-	generation         uint64
-	opID               string
-	oldEnv             map[string]string
-	oldFiles           map[string]string
-	oldMeta            meta
-	envChanged         bool
-	filesChanged       bool
-	oldEnvProjection   *coreSecret
-	oldFilesProjection *coreSecret
+	g            store.EnvGroup
+	op           store.EnvGroupOp
+	claimVersion int64
+	prior        groupContents
+	projections  [2]*coreSecret // indexed by contentSlot
 }
 
 // coreSecret is the minimal projection snapshot compensation needs. Keeping a
 // copy of the Kubernetes object also preserves metadata set outside this feature.
 type coreSecret struct{ object *corev1.Secret }
 
-// PatchEnvironment applies one group draft. A dedicated versioned lock path
-// serializes the two OpenBao maps and their two Kubernetes projections across
-// API replicas; unlike using either content path as a lock, a file-only update
-// participates in the same revision protocol.
+// PatchEnvironment applies one group draft. The group's row serializes the two
+// OpenBao maps and their two Kubernetes projections across API replicas: a save
+// claims the row's content version busy, writes, and releases it with the next
+// generation, so a file-only update takes part in the same revision protocol.
 func (s *Service) PatchEnvironment(ctx context.Context, gid string, patch EnvironmentPatch) (EnvironmentPatchResult, error) {
-	m, err := s.authorizeGroup(ctx, core.RelCanCreate, gid)
+	g, err := s.authorizeGroup(ctx, core.RelCanCreate, gid)
 	if err != nil {
 		return EnvironmentPatchResult{}, err
 	}
-	return s.patchEnvironmentAuthorized(ctx, gid, m, patch)
+	return s.patchEnvironmentAuthorized(ctx, g, patch)
 }
 
-func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m meta, patch EnvironmentPatch) (EnvironmentPatchResult, error) {
+func (s *Service) patchEnvironmentAuthorized(ctx context.Context, g store.EnvGroup, patch EnvironmentPatch) (EnvironmentPatchResult, error) {
 	if patch.SaveMode != SaveModeOnly && patch.SaveMode != SaveModeDeploy && patch.SaveMode != SaveModeRebuild {
 		return EnvironmentPatchResult{}, core.NewBadRequestError(
 			"ENV_GROUP_SAVE_MODE_INVALID",
@@ -148,21 +138,11 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 			nil,
 		)
 	}
-	versioned, ok := s.Store.(core.VersionedSecretKV)
-	if !ok {
-		return EnvironmentPatchResult{}, core.ErrSecretsUnavailable
-	}
-	if err := s.ensureGroupOperable(ctx, m.workspace, gid); err != nil {
+	g, err := s.operableGroup(ctx, g)
+	if err != nil {
 		return EnvironmentPatchResult{}, err
 	}
-	revision, err := s.getRevisionSnapshot(ctx, versioned, m.workspace, gid)
-	if err != nil || revision.Data["state"] == "repair_required" {
-		return EnvironmentPatchResult{}, envGroupRestorationFailed()
-	}
-	if revision.Data["state"] == "busy" {
-		return EnvironmentPatchResult{}, envGroupRevisionConflict()
-	}
-	generation := revisionGeneration(revision.Data)
+	gid, workspace, generation := g.ID, g.TenantID, g.Content.Generation
 	if patch.ExpectedRevision != nil {
 		expected, decodeErr := decodeEnvGroupRevision(*patch.ExpectedRevision)
 		if decodeErr != nil {
@@ -172,124 +152,52 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 			return EnvironmentPatchResult{}, envGroupRevisionConflict()
 		}
 	}
-	// Preflight the complete merged maps before claiming the revision. The
-	// claim itself is an OpenBao mutation, so quota failures must not leave a
-	// busy group behind and must be independent of which patch form was used.
-	oldEnv, err := s.getGroupMap(ctx, m.workspace, envPath(gid))
-	if err != nil {
+	// Preflight the complete merged maps before claiming the revision, so quota
+	// failures never leave a busy group behind and are independent of which
+	// patch form was used.
+	var prior groupContents
+	if prior.env, err = s.getGroupMap(ctx, workspace, envPath(gid)); err != nil {
 		return EnvironmentPatchResult{}, err
 	}
-	oldFiles, err := s.getGroupMap(ctx, m.workspace, filesPath(gid))
-	if err != nil {
+	if prior.files, err = s.getGroupMap(ctx, workspace, filesPath(gid)); err != nil {
 		return EnvironmentPatchResult{}, err
 	}
-	env, files := core.CloneStringMap(oldEnv), core.CloneStringMap(oldFiles)
-	if err := core.ApplyEnvVarPatch(env, patch.EnvVars); err != nil {
+	next := groupContents{env: core.CloneStringMap(prior.env), files: core.CloneStringMap(prior.files)}
+	if err := core.ApplyEnvVarPatch(next.env, patch.EnvVars); err != nil {
 		return EnvironmentPatchResult{}, err
 	}
-	if err := core.ApplySecretFilePatch(files, patch.SecretFiles); err != nil {
+	if err := core.ApplySecretFilePatch(next.files, patch.SecretFiles); err != nil {
 		return EnvironmentPatchResult{}, err
 	}
 	// Same rule the service batch patch got in w1/m147: a group already over the
 	// cap can shrink but not grow. Checking the patched map alone refused the
 	// delete-only patch that is the only way back under the cap.
-	if err := secrets.ValidatePatchEnvMapQuota(oldEnv, env); err != nil {
+	if err := secrets.ValidatePatchEnvMapQuota(prior.env, next.env); err != nil {
 		return EnvironmentPatchResult{}, err
 	}
-	if err := secrets.ValidatePatchFilesMapQuota(oldFiles, files); err != nil {
+	if err := secrets.ValidatePatchFilesMapQuota(prior.files, next.files); err != nil {
 		return EnvironmentPatchResult{}, err
 	}
-	changedEnv := !maps.Equal(oldEnv, env)
-	changedFiles := !maps.Equal(oldFiles, files)
-
-	// Persist recovery evidence before the busy claim (w4/m98).
-	opID, err := s.preparePatchOperation(ctx, m.workspace, gid, generation, oldEnv, oldFiles, env, files, changedEnv, changedFiles)
-	if err != nil {
-		return EnvironmentPatchResult{}, core.ErrSecretsUnavailable
-	}
-	claimVersion, err := versioned.PutCAS(groupCtx(ctx, m.workspace), revisionPath(gid), revisionClaimData("busy", generation, opID), revision.Version)
-	if err != nil {
-		_ = s.clearOpArtifacts(ctx, m.workspace, gid, opID)
-		if errors.Is(err, core.ErrConflict) {
-			return EnvironmentPatchResult{}, envGroupRevisionConflict()
-		}
-		return EnvironmentPatchResult{}, core.ErrSecretsUnavailable
-	}
-	if err := s.commitOpRecord(ctx, m.workspace, gid, groupOpRecord{
-		id: opID, kind: opKindPatch, phase: opPhaseAdmitted, generation: generation,
-		leaseUntil: s.Now().UTC().Add(s.opLease()),
-		envChanged: changedEnv, filesChanged: changedFiles,
-	}); err != nil {
-		_, _ = s.releaseGroupPatch(ctx, m.workspace, gid, versioned, claimVersion, generation, "idle")
-		_ = s.clearOpArtifacts(ctx, m.workspace, gid, opID)
-		return EnvironmentPatchResult{}, core.ErrSecretsUnavailable
-	}
-
-	txn := groupPatchTxn{
-		gid: gid, versioned: versioned, claimVersion: claimVersion, generation: generation,
-		oldEnv: core.CloneStringMap(oldEnv), oldFiles: core.CloneStringMap(oldFiles), oldMeta: m,
-		envChanged: changedEnv, filesChanged: changedFiles, opID: opID,
-	}
-	if changedEnv {
-		txn.oldEnvProjection, err = s.snapshotGroupSecret(ctx, m.workspace, envSecretName(gid))
-		if err != nil {
-			return EnvironmentPatchResult{}, s.abortGroupPatch(ctx, txn, false)
-		}
-	}
-	if changedFiles {
-		txn.oldFilesProjection, err = s.snapshotGroupSecret(ctx, m.workspace, filesSecretName(gid))
-		if err != nil {
-			return EnvironmentPatchResult{}, s.abortGroupPatch(ctx, txn, false)
+	op := store.EnvGroupOp{Kind: opKindPatch, EnvChanged: !maps.Equal(prior.env, next.env), FilesChanged: !maps.Equal(prior.files, next.files)}
+	if op.EnvChanged || op.FilesChanged {
+		// A save that changes nothing (the empty patch that retries a rollout
+		// included) has nothing to serialize and goes straight to the rollout.
+		if generation, err = s.saveContents(ctx, g, op, prior, next); err != nil {
+			return EnvironmentPatchResult{}, err
 		}
 	}
 
-	if changedEnv {
-		if err := s.storeMap(ctx, m.workspace, envPath(gid), env); err != nil {
-			return EnvironmentPatchResult{}, s.abortGroupPatch(ctx, txn, true)
-		}
-		if err := s.upsertSecret(ctx, m.workspace, envSecretName(gid), env); err != nil {
-			return EnvironmentPatchResult{}, s.abortGroupPatch(ctx, txn, true)
-		}
-		if err := s.advanceOpPhase(ctx, m.workspace, gid, opID, opPhaseEnvWritten); err != nil {
-			return EnvironmentPatchResult{}, s.abortGroupPatch(ctx, txn, true)
-		}
+	// The links to roll are the ones the group holds now.
+	if current, err := s.readGroup(ctx, gid); err == nil {
+		g = current
 	}
-	if changedFiles {
-		if err := s.storeMap(ctx, m.workspace, filesPath(gid), files); err != nil {
-			return EnvironmentPatchResult{}, s.abortGroupPatch(ctx, txn, true)
-		}
-		if err := s.upsertSecret(ctx, m.workspace, filesSecretName(gid), files); err != nil {
-			return EnvironmentPatchResult{}, s.abortGroupPatch(ctx, txn, true)
-		}
-	}
-	if changedEnv || changedFiles {
-		if err := s.advanceOpPhase(ctx, m.workspace, gid, opID, opPhaseFilesWritten); err != nil {
-			return EnvironmentPatchResult{}, s.abortGroupPatch(ctx, txn, true)
-		}
-		touched, err := s.touch(ctx, gid, m)
-		if err != nil {
-			return EnvironmentPatchResult{}, s.abortGroupPatch(ctx, txn, true)
-		}
-		m = touched
-		_ = s.advanceOpPhase(ctx, m.workspace, gid, opID, opPhaseCommitted)
-	}
-	newGeneration := generation
-	if changedEnv || changedFiles {
-		newGeneration++
-	}
-	_, err = s.releaseGroupPatch(ctx, m.workspace, gid, versioned, claimVersion, newGeneration, "idle")
-	if err != nil {
-		return EnvironmentPatchResult{}, envGroupRestorationFailed()
-	}
-	_ = s.clearOpArtifacts(ctx, m.workspace, gid, opID)
-
 	result := EnvironmentPatchResult{
-		EnvVarKeys:         slices.Sorted(maps.Keys(env)),
-		SecretFileNames:    slices.Sorted(maps.Keys(files)),
-		Revision:           encodeEnvGroupRevision(newGeneration),
-		AffectedServiceIDs: slices.Clone(m.links),
+		EnvVarKeys:         slices.Sorted(maps.Keys(next.env)),
+		SecretFileNames:    slices.Sorted(maps.Keys(next.files)),
+		Revision:           encodeEnvGroupRevision(generation),
+		AffectedServiceIDs: slices.Clone(g.ServiceLinks),
 	}
-	if patch.SaveMode == SaveModeOnly || len(m.links) == 0 {
+	if patch.SaveMode == SaveModeOnly || len(g.ServiceLinks) == 0 {
 		return result, nil
 	}
 	// Roll (or rebuild) every currently-linked service. A service that no longer
@@ -301,9 +209,9 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 	// dropped from both the reported affected set and the group's persisted links
 	// (self-heal below), leaving only real, still-existing services — a genuine
 	// failure on one of those stays in FailedServiceIDs and retryable, unchanged.
-	affected := make([]string, 0, len(m.links))
+	affected := make([]string, 0, len(g.ServiceLinks))
 	var stale []string
-	for _, serviceID := range m.links {
+	for _, serviceID := range g.ServiceLinks {
 		skipped, actionErr := s.rollLink(ctx, gid, serviceID, patch.SaveMode)
 		if errors.Is(actionErr, core.ErrServiceReplaced) || apierrors.IsNotFound(actionErr) {
 			// Deleted, or deleted and recreated, since its read: judge the
@@ -324,8 +232,67 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 	}
 	result.AffectedServiceIDs = affected
 	result.RolledOut = len(result.FailedServiceIDs) == 0
-	s.pruneStaleLinks(ctx, gid, m, stale)
+	s.pruneStaleLinks(ctx, gid, stale)
 	return result, nil
+}
+
+// saveContents is the claimed part of a save that changes content: record the
+// operation, claim the group, write each changed map and its projection, and
+// release at the next generation. It returns that generation.
+func (s *Service) saveContents(ctx context.Context, g store.EnvGroup, op store.EnvGroupOp, prior, next groupContents) (uint64, error) {
+	gid, workspace := g.ID, g.TenantID
+	opID, err := s.preparePatchOperation(ctx, op, workspace, gid, prior, next)
+	if err != nil {
+		return 0, core.ErrSecretsUnavailable
+	}
+	op.ID = opID
+	claimVersion, err := s.claimContent(ctx, g, op)
+	if err != nil {
+		_ = s.clearOpMaps(context.WithoutCancel(ctx), workspace, gid, opID)
+		return 0, err
+	}
+	txn := groupPatchTxn{g: g, op: op, claimVersion: claimVersion, prior: prior}
+	sides := []struct {
+		changed bool
+		slot    contentSlot
+		data    map[string]string
+		phase   string
+	}{
+		{op.EnvChanged, envSlot, next.env, opPhaseEnvWritten},
+		{op.FilesChanged, filesSlot, next.files, opPhaseFilesWritten},
+	}
+	// Snapshot every projection this save replaces before writing any, so a
+	// failure at any later step can restore all of them.
+	for _, side := range sides {
+		if !side.changed {
+			continue
+		}
+		if txn.projections[side.slot], err = s.snapshotGroupSecret(ctx, workspace, side.slot.secret(gid)); err != nil {
+			return 0, s.abortGroupPatch(ctx, txn, false)
+		}
+	}
+	for _, side := range sides {
+		if !side.changed {
+			continue
+		}
+		if err := s.writeSlot(ctx, workspace, gid, side.slot, side.data); err != nil {
+			return 0, s.abortGroupPatch(ctx, txn, true)
+		}
+		if err := s.advanceOpPhase(ctx, gid, opID, side.phase); err != nil {
+			return 0, s.abortGroupPatch(ctx, txn, true)
+		}
+	}
+	if !op.FilesChanged {
+		// Past env, files_written is the phase recovery finalizes from.
+		if err := s.advanceOpPhase(ctx, gid, opID, opPhaseFilesWritten); err != nil {
+			return 0, s.abortGroupPatch(ctx, txn, true)
+		}
+	}
+	if err := s.releaseContent(ctx, gid, claimVersion, s.commit(next)); err != nil {
+		return 0, envGroupRestorationFailed()
+	}
+	_ = s.clearOpMaps(context.WithoutCancel(ctx), workspace, gid, opID)
+	return g.Content.Generation + 1, nil
 }
 
 // rollLink rolls (or rebuilds) the service one link names. A service that is
@@ -336,8 +303,6 @@ func (s *Service) rollLink(ctx context.Context, gid, serviceID string, saveMode 
 		return false, err
 	}
 	if !mountsGroup(a, gid) {
-		// Not the service this link named: a name stored before links were
-		// ids can answer for an unrelated, newer service (w5/m120).
 		return false, core.ErrNotFound
 	}
 	if saveMode == SaveModeRebuild {
@@ -356,20 +321,15 @@ func (s *Service) rollLink(ctx context.Context, gid, serviceID string, saveMode 
 // mount the group (both surfaced as core.ErrNotFound while rolling). It runs
 // after the content commit has already succeeded and the revision was
 // released, so it is best-effort self-heal: a failure to persist the pruned
-// set must never turn a successful rollout into an error response (the exact
-// false-failure this milestone removes) — the write error is swallowed and the
-// next patch re-discovers and re-prunes. Removals apply to the *current* link
-// set so a concurrently added valid link is preserved (w4/m97).
-func (s *Service) pruneStaleLinks(ctx context.Context, gid string, m meta, stale []string) {
+// set must never turn a successful rollout into an error response — the write
+// error is swallowed and the next patch re-discovers and re-prunes. Removals
+// apply to the *current* link set so a concurrently added valid link is
+// preserved (w4/m97).
+func (s *Service) pruneStaleLinks(ctx context.Context, gid string, stale []string) {
 	if len(stale) == 0 {
 		return
 	}
-	_ = s.dropLinks(context.WithoutCancel(ctx), gid, m.workspace, stale...)
-}
-
-func (s *Service) releaseGroupPatch(ctx context.Context, workspace, gid string, versioned core.VersionedSecretKV, claimVersion, generation uint64, state string) (uint64, error) {
-	version, err := versioned.PutCAS(groupCtx(context.WithoutCancel(ctx), workspace), revisionPath(gid), revisionClaimData(state, generation, ""), claimVersion)
-	return version, err
+	_ = s.dropLinks(context.WithoutCancel(ctx), gid, stale...)
 }
 
 func (s *Service) snapshotGroupSecret(ctx context.Context, workspace, name string) (*coreSecret, error) {
@@ -402,35 +362,36 @@ func (s *Service) restoreGroupSecret(ctx context.Context, workspace, name string
 	return s.Client.Update(ctx, secret)
 }
 
+// abortGroupPatch undoes a save that failed after its claim. Only the content
+// maps and projections are this save's to restore: a concurrent rename, link
+// or move committed on the row meanwhile survives (w4/m97). A failed restore
+// leaves the group repair_required with its operation, which recovery retries.
 func (s *Service) abortGroupPatch(ctx context.Context, txn groupPatchTxn, restore bool) error {
+	ctx = context.WithoutCancel(ctx)
+	workspace, gid := txn.g.TenantID, txn.g.ID
 	var restoreErr error
 	if restore {
 		var restoreErrors []error
-		if txn.envChanged {
+		for slot, changed := range [2]bool{txn.op.EnvChanged, txn.op.FilesChanged} {
+			if !changed {
+				continue
+			}
+			slot := contentSlot(slot)
+			prior := txn.prior.env
+			if slot == filesSlot {
+				prior = txn.prior.files
+			}
 			restoreErrors = append(restoreErrors,
-				s.storeMap(ctx, txn.oldMeta.workspace, envPath(txn.gid), txn.oldEnv),
-				s.restoreGroupSecret(ctx, txn.oldMeta.workspace, envSecretName(txn.gid), txn.oldEnvProjection),
+				s.storeMap(ctx, workspace, slot.path(gid), prior),
+				s.restoreGroupSecret(ctx, workspace, slot.secret(gid), txn.projections[slot]),
 			)
 		}
-		if txn.filesChanged {
-			restoreErrors = append(restoreErrors,
-				s.storeMap(ctx, txn.oldMeta.workspace, filesPath(txn.gid), txn.oldFiles),
-				s.restoreGroupSecret(ctx, txn.oldMeta.workspace, filesSecretName(txn.gid), txn.oldFilesProjection),
-			)
-		}
-		// Do not restore txn.oldMeta: a concurrent rename/link/move that
-		// committed after this patch read must survive compensation (w4/m97).
-		// Content maps/projections above are the only fields this txn owns.
 		restoreErr = errors.Join(restoreErrors...)
 	}
-	state := "idle"
-	if restoreErr != nil {
-		state = "repair_required"
-	}
-	_, releaseErr := s.releaseGroupPatch(ctx, txn.oldMeta.workspace, txn.gid, txn.versioned, txn.claimVersion, txn.generation, state)
+	releaseErr := s.releaseContent(ctx, gid, txn.claimVersion, store.EnvGroupRelease{RepairRequired: restoreErr != nil})
 	if restoreErr != nil || releaseErr != nil {
 		return envGroupRestorationFailed()
 	}
-	_ = s.clearOpArtifacts(ctx, txn.oldMeta.workspace, txn.gid, txn.opID)
+	_ = s.clearOpMaps(ctx, workspace, gid, txn.op.ID)
 	return envGroupUpdateRestored()
 }

@@ -17,7 +17,6 @@ limitations under the License.
 package envgroups
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -36,7 +35,7 @@ import (
 // ENV_GROUP_REVISION_CONFLICT meaning with no write: the winner's value and
 // revision survive every attempt.
 func TestStaleRevisionIsRefusedIdenticallyAcrossAdapters(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 
 	// fixture returns a group whose original revision is already stale: tab B
 	// saved "winner" over it.

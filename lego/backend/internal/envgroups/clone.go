@@ -21,6 +21,7 @@ import (
 	"errors"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 type CloneEnvGroupRequest struct {
@@ -38,63 +39,35 @@ func (s *Service) CloneEnvGroup(ctx context.Context, sourceID string, req CloneE
 	if err != nil {
 		return EnvGroupView{}, err
 	}
-	if source.workspace != "" {
-		if err := s.AuthorizeFreshOn(ctx, core.RelCanViewSensitive, core.WorkspaceObject(source.workspace)); err != nil {
-			return EnvGroupView{}, err
-		}
-	} else if err := s.AuthorizeFresh(ctx, core.RelCanViewSensitive); err != nil {
+	if err := s.authorizeGroupSensitiveFresh(ctx, source); err != nil {
 		return EnvGroupView{}, err
 	}
 	targetCtx := core.WithWorkspace(ctx, req.OwnerID)
 	if err := s.Authorize(targetCtx, core.RelCanCreate); err != nil {
 		return EnvGroupView{}, err
 	}
-	versioned, ok := s.Store.(core.VersionedSecretKV)
-	if !ok {
-		return EnvGroupView{}, core.ErrSecretsUnavailable
-	}
-	if err := s.ensureGroupOperable(ctx, source.workspace, sourceID); err != nil {
+	if source, err = s.operableGroup(ctx, source); err != nil {
 		return EnvGroupView{}, err
 	}
-	revision, err := s.getRevisionSnapshot(ctx, versioned, source.workspace, sourceID)
-	if err != nil || revision.Data["state"] == "repair_required" {
-		return EnvGroupView{}, envGroupRestorationFailed()
-	}
-	if revision.Data["state"] == "busy" {
-		return EnvGroupView{}, envGroupRevisionConflict()
-	}
-	generation := revisionGeneration(revision.Data)
-	opID, err := s.prepareCloneOperation(ctx, source.workspace, sourceID, generation)
+	opID, err := newGroupOpID()
 	if err != nil {
 		return EnvGroupView{}, core.ErrSecretsUnavailable
 	}
-	claimVersion, err := versioned.PutCAS(groupCtx(ctx, source.workspace), revisionPath(sourceID), revisionClaimData("busy", generation, opID), revision.Version)
+	// The source lock: a clone claims the source busy so no save changes its
+	// maps mid-copy. It never mutates the source, so recovery only releases it.
+	claimVersion, err := s.claimContent(ctx, source, store.EnvGroupOp{ID: opID, Kind: opKindClone})
 	if err != nil {
-		_ = s.clearOpArtifacts(ctx, source.workspace, sourceID, opID)
-		if errors.Is(err, core.ErrConflict) {
-			return EnvGroupView{}, envGroupRevisionConflict()
-		}
-		return EnvGroupView{}, core.ErrSecretsUnavailable
-	}
-	if err := s.commitOpRecord(ctx, source.workspace, sourceID, groupOpRecord{
-		id: opID, kind: opKindClone, phase: opPhaseAdmitted, generation: generation,
-		leaseUntil: s.Now().UTC().Add(s.opLease()),
-	}); err != nil {
-		_, _ = s.releaseGroupPatch(ctx, source.workspace, sourceID, versioned, claimVersion, generation, "idle")
-		_ = s.clearOpArtifacts(ctx, source.workspace, sourceID, opID)
-		return EnvGroupView{}, core.ErrSecretsUnavailable
+		return EnvGroupView{}, err
 	}
 	release := func() error {
-		_, releaseErr := s.releaseGroupPatch(ctx, source.workspace, sourceID, versioned, claimVersion, generation, "idle")
-		_ = s.clearOpArtifacts(ctx, source.workspace, sourceID, opID)
-		return releaseErr
+		return s.releaseContent(ctx, sourceID, claimVersion, store.EnvGroupRelease{})
 	}
-	env, err := s.getGroupMap(ctx, source.workspace, envPath(sourceID))
+	env, err := s.getGroupMap(ctx, source.TenantID, envPath(sourceID))
 	if err != nil {
 		_ = release()
 		return EnvGroupView{}, core.ErrSecretsUnavailable
 	}
-	files, err := s.getGroupMap(ctx, source.workspace, filesPath(sourceID))
+	files, err := s.getGroupMap(ctx, source.TenantID, filesPath(sourceID))
 	if err != nil {
 		_ = release()
 		return EnvGroupView{}, core.ErrSecretsUnavailable

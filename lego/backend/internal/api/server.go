@@ -579,6 +579,10 @@ type Deps struct {
 	// environment grouping verbs layered on top of Projects. nil => those
 	// verbs report environments.ErrEnvironmentsUnavailable (503).
 	EnvironmentsStore environments.EnvironmentStore
+	// EnvGroupsStore, when set (the control-plane store is wired), holds every
+	// non-secret fact about an environment group (w8/m114). nil => the env-group
+	// verbs report core.ErrSecretsUnavailable (503), as with OpenBao unset.
+	EnvGroupsStore envgroups.GroupStore
 	// BlueprintsStore, when set (the control-plane store is wired), backs the
 	// blueprint list/sync verbs (w2/m15). nil => list/sync report
 	// ErrBlueprintsUnavailable (503); validate is always available (stateless).
@@ -779,7 +783,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// same deploy-history row an explicit deploy does.
 	rollouts := &rollout.Tracker{Store: d.DeployStore}
 	secretsSvc := &secrets.Service{Base: base, Store: d.Secrets, Rollout: rollouts}
-	envGroupsSvc := &envgroups.Service{Base: base, Store: d.Secrets, Rollout: rollouts, MaxEnvGroups: d.MaxEnvGroupsPerWorkspace}
+	envGroupsSvc := &envgroups.Service{Base: base, Store: d.Secrets, Groups: d.EnvGroupsStore, Rollout: rollouts, MaxEnvGroups: d.MaxEnvGroupsPerWorkspace}
 	var envSeeder apps.EnvSeeder
 	var envCopier apps.EnvCopier
 	var envNames apps.EnvNameSource

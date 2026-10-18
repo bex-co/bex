@@ -44,11 +44,11 @@ func (staleAllowChecker) CheckFresh(context.Context, string, string, string) (bo
 // uncached against the group's owning workspace — a revoked member riding a
 // stale positive must not reveal one last value.
 func TestGetEnvGroupVarFailsClosedOnFreshRevocation(t *testing.T) {
-	svc := &Service{
+	svc := withGroups(&Service{
 		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: coretest.Members{"dana": {"tea-a"}}},
 		Store: newFakeStore(),
-	}
-	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
+	})
+	ctx := core.WithIdentity(testCtx(), core.Identity{Subject: "dana", Method: "session"})
 
 	// Seed a workspace-attributed group holding one secret value (authz nil
 	// allows the writes), then revoke: Check keeps answering the warm positive
@@ -74,11 +74,11 @@ func TestGetEnvGroupVarFailsClosedOnFreshRevocation(t *testing.T) {
 // codex round-9 #7: a group secret FILE is the same reveal sink as a var — a
 // revoked member riding a stale positive must not read one last file either.
 func TestGetEnvGroupFileFailsClosedOnFreshRevocation(t *testing.T) {
-	svc := &Service{
+	svc := withGroups(&Service{
 		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: coretest.Members{"dana": {"tea-a"}}},
 		Store: newFakeStore(),
-	}
-	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
+	})
+	ctx := core.WithIdentity(testCtx(), core.Identity{Subject: "dana", Method: "session"})
 
 	g, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
 	if err != nil {
@@ -122,11 +122,11 @@ func TestEnvGroupLinksRequireSensitiveCapability(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			resolver := coretest.Members{"seed": {"tea-a"}, "writer": {"tea-a"}, "developer": {"tea-a"}}
-			svc := &Service{
+			svc := withGroups(&Service{
 				Base:  &core.Base{Client: fakeClient(ownedApp("web", "tea-a")), Namespace: "default", Workspace: resolver},
 				Store: newFakeStore(),
-			}
-			seed := core.WithIdentity(context.Background(), core.Identity{Subject: "seed", Method: "session"})
+			})
+			seed := core.WithIdentity(testCtx(), core.Identity{Subject: "seed", Method: "session"})
 			group, err := svc.CreateEnvGroup(seed, CreateEnvGroupRequest{Name: "shared"})
 			if err != nil {
 				t.Fatalf("seed group: %v", err)
@@ -135,7 +135,7 @@ func TestEnvGroupLinksRequireSensitiveCapability(t *testing.T) {
 				t.Fatalf("seed vars: %v", err)
 			}
 
-			writeOnly := core.WithIdentity(context.Background(), core.Identity{
+			writeOnly := core.WithIdentity(testCtx(), core.Identity{
 				Subject: "writer", Method: "oauth2", Human: true, CanonicalScopes: core.ScopeWrite,
 			})
 			if err := tc.link(svc, writeOnly, group.ID); !errors.Is(err, core.ErrForbidden) {
@@ -144,11 +144,11 @@ func TestEnvGroupLinksRequireSensitiveCapability(t *testing.T) {
 			if app := getApp(t, svc.Client, "web"); len(app.Spec.EnvFromSecrets) != 0 || len(app.Spec.FilesFromSecrets) != 0 {
 				t.Fatalf("denied link materialized secrets: env=%v files=%v", app.Spec.EnvFromSecrets, app.Spec.FilesFromSecrets)
 			}
-			if view, err := svc.GetEnvGroup(context.Background(), group.ID); err != nil || len(view.ServiceLinks) != 0 {
+			if view, err := svc.GetEnvGroup(seed, group.ID); err != nil || len(view.ServiceLinks) != 0 {
 				t.Fatalf("denied link changed group metadata: links=%v err=%v", view.ServiceLinks, err)
 			}
 
-			allowed := core.WithIdentity(context.Background(), core.Identity{
+			allowed := core.WithIdentity(testCtx(), core.Identity{
 				Subject: "developer", Method: "oauth2", Human: true,
 				CanonicalScopes: core.ScopeWrite + " " + core.ScopeSensitive,
 			})
@@ -179,12 +179,12 @@ func TestEnvGroupLinksFailClosedOnFreshSensitiveRevocation(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := newService(newFakeStore(), sampleApp("web"))
-			group, err := svc.CreateEnvGroup(context.Background(), CreateEnvGroupRequest{Name: "shared"})
+			group, err := svc.CreateEnvGroup(testCtx(), CreateEnvGroupRequest{Name: "shared"})
 			if err != nil {
 				t.Fatalf("seed group: %v", err)
 			}
 			svc.Authz = sensitiveRevokedChecker{}
-			ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "revoked", Method: "session"})
+			ctx := core.WithIdentity(testCtx(), core.Identity{Subject: "revoked", Method: "session"})
 
 			if err := tc.link(svc, ctx, group.ID); !errors.Is(err, core.ErrForbidden) {
 				t.Fatalf("fresh-sensitive denial: %v, want ErrForbidden", err)

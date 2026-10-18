@@ -38,7 +38,7 @@ import (
 // mcpSession connects an in-memory MCP client to svc's tools.
 func mcpSession(t *testing.T, svc *Service) *mcp.ClientSession {
 	t.Helper()
-	ctx := context.Background()
+	ctx := testCtx()
 	srv := mcp.NewServer(&mcp.Implementation{Name: "bex", Version: "0"}, nil)
 	svc.RegisterMCP(srv)
 	serverTransport, clientTransport := mcp.NewInMemoryTransports()
@@ -57,7 +57,7 @@ func mcpSession(t *testing.T, svc *Service) *mcp.ClientSession {
 // into out.
 func callTool(t *testing.T, cs *mcp.ClientSession, name string, args map[string]any, out any) {
 	t.Helper()
-	res, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: name, Arguments: args})
+	res, err := cs.CallTool(testCtx(), &mcp.CallToolParams{Name: name, Arguments: args})
 	if err != nil || res.IsError {
 		t.Fatalf("call %s: err=%v isErr=%v", name, err, res != nil && res.IsError)
 	}
@@ -96,7 +96,7 @@ type linkedFixture struct {
 
 func newLinkedFixture(t *testing.T) linkedFixture {
 	t.Helper()
-	ctx := context.Background()
+	ctx := testCtx()
 	services := []struct{ name, displayName, specType, short string }{
 		{"site", "", appv1alpha1.TypeStaticSite, "static"},
 		{"api", "Public API", appv1alpha1.TypeWebService, "web"},
@@ -235,7 +235,7 @@ func TestServiceLinksAreRenderEnvGroupLinks(t *testing.T) {
 	})
 
 	t.Run("GraphQL keeps the stored ids", func(t *testing.T) {
-		res := graphql.Do(graphql.Params{Schema: *envGroupSchema(t, f.svc), Context: context.Background(),
+		res := graphql.Do(graphql.Params{Schema: *envGroupSchema(t, f.svc), Context: testCtx(),
 			RequestString:  `query($id: String!) { envGroup(id: $id) { serviceLinks } }`,
 			VariableValues: map[string]any{"id": f.group.ID}})
 		if len(res.Errors) > 0 {
@@ -277,7 +277,7 @@ func TestNamingServiceLinksFailsOnlyAReadAfterAFailedList(t *testing.T) {
 		t.Fatal(err)
 	}
 	expectRenderLinks(t, group["serviceLinks"], []serviceLink{})
-	if got, err := f.svc.GetEnvGroup(context.Background(), f.group.ID); err != nil || got.Name != "renamed" {
+	if got, err := f.svc.GetEnvGroup(testCtx(), f.group.ID); err != nil || got.Name != "renamed" {
 		t.Fatalf("the rename did not commit: %+v, %v", got, err)
 	}
 }
@@ -289,7 +289,7 @@ func TestAnUnlinkedGroupRendersWithoutListingServices(t *testing.T) {
 	cl := &failingAppLists{Client: fakeClient()}
 	svc := newService(newFakeStore())
 	svc.Client = cl
-	group, err := svc.CreateEnvGroup(context.Background(), CreateEnvGroupRequest{Name: "alone"})
+	group, err := svc.CreateEnvGroup(testCtx(), CreateEnvGroupRequest{Name: "alone"})
 	if err != nil {
 		t.Fatal(err)
 	}

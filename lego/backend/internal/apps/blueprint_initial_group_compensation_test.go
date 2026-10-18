@@ -28,7 +28,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
+	"github.com/bex-co/bex/lego/backend/internal/envgroups/envgroupstest"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -54,12 +56,13 @@ func (c *initialAppCaptureClient) Create(ctx context.Context, obj client.Object,
 }
 
 func TestInitialGroupCompletionFailureCompensatesAppAndOwnSecrets(t *testing.T) {
-	ctx := context.Background()
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "owner", Method: "session"})
 	svc, cl := newService(nil)
 	capture := &initialAppCaptureClient{Client: cl}
 	svc.Client = capture
 	kv := newMemKV()
-	groups := &envgroups.Service{Base: svc.Base, Store: kv}
+	svc.Workspace = coretest.Workspaces{core.DefaultTenant}
+	groups := &envgroups.Service{Base: svc.Base, Store: kv, Groups: envgroupstest.New()}
 	group, err := groups.CreateEnvGroup(ctx, envgroups.CreateEnvGroupRequest{Name: "shared"})
 	if err != nil {
 		t.Fatal(err)
@@ -67,6 +70,7 @@ func TestInitialGroupCompletionFailureCompensatesAppAndOwnSecrets(t *testing.T) 
 	svc.EnvGroups = failingInitialGroups{Service: groups}
 	svc.CreateSecrets = secrets.NewCreateSecretsSeeder(&secrets.Service{Base: svc.Base, Store: kv})
 	a := sampleApp("new-service")
+	a.Labels = map[string]string{core.LabelTenant: core.DefaultTenant}
 	req := CreateRequest{Name: a.Name, initialEnvGroups: []string{"shared"}}
 	err = svc.writeInitialApp(ctx, req, a, createSeed{files: []core.SecretFile{{Name: "token", Content: "fixture"}}, env: map[string]string{"OWNED": "fixture"}}, "", func(cause error) (error, bool) {
 		// This callback releases the reserved service name. Seed cleanup must
@@ -111,14 +115,16 @@ func TestInitialGroupCompletionFailureCompensatesAppAndOwnSecrets(t *testing.T) 
 }
 
 func TestInitialGroupFailureRetainsCompleteAppWhenRowRollbackFails(t *testing.T) {
-	ctx := context.Background()
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "owner", Method: "session"})
 	svc, cl := newService(nil)
-	groups := &envgroups.Service{Base: svc.Base, Store: newMemKV()}
+	svc.Workspace = coretest.Workspaces{core.DefaultTenant}
+	groups := &envgroups.Service{Base: svc.Base, Store: newMemKV(), Groups: envgroupstest.New()}
 	if _, err := groups.CreateEnvGroup(ctx, envgroups.CreateEnvGroupRequest{Name: "shared"}); err != nil {
 		t.Fatal(err)
 	}
 	svc.EnvGroups = failingInitialGroups{Service: groups}
 	a := sampleApp("new-service")
+	a.Labels = map[string]string{core.LabelTenant: core.DefaultTenant}
 	req := CreateRequest{Name: a.Name, initialEnvGroups: []string{"shared"}}
 	rollbackCalled := false
 	err := svc.writeInitialApp(ctx, req, a, createSeed{}, "", func(cause error) (error, bool) {
@@ -137,15 +143,18 @@ func TestInitialGroupFailureRetainsCompleteAppWhenRowRollbackFails(t *testing.T)
 func TestInitialGroupFailureCompensatesGeneratedOperationalSecrets(t *testing.T) {
 	for _, tc := range []struct{ afterCreate, replacement bool }{{false, false}, {true, false}, {false, true}, {true, true}} {
 		t.Run(fmt.Sprintf("after-create-%t/replacement-%t", tc.afterCreate, tc.replacement), func(t *testing.T) {
-			ctx := context.Background()
+			ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "owner", Method: "session"})
 			svc, cl := newService(nil)
-			groups := &envgroups.Service{Base: svc.Base, Store: newMemKV()}
+			svc.Workspace = coretest.Workspaces{core.DefaultTenant}
+			groups := &envgroups.Service{Base: svc.Base, Store: newMemKV(), Groups: envgroupstest.New()}
 			if _, err := groups.CreateEnvGroup(ctx, envgroups.CreateEnvGroupRequest{Name: "shared"}); err != nil {
 				t.Fatal(err)
 			}
 			svc.EnvGroups = failingInitialGroups{Service: groups}
 			svc.Store = &recordingStore{}
 			a := sampleApp("new-service")
+			a.Labels = map[string]string{core.LabelTenant: core.DefaultTenant}
+			a.Labels = map[string]string{core.LabelTenant: core.DefaultTenant}
 			a.Spec.Repo = "https://github.com/example/private"
 			svc.GitHub = &fakeCloneTokens{token: "fixture", ok: true}
 			var err error

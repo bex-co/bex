@@ -188,10 +188,11 @@ type Config struct {
 	WebhookSecret       string
 	GitHubWebhookSecret string
 
-	// One-shot env-group operations (w2/m80 + name-claim audit); modes are
-	// validated here, executed in main after the server is built.
-	EnvGroupNameClaimAudit string
-	EnvGroupPathMigration  string
+	// EnvGroupCutover is `api env-group-cutover <mode>` (w8/m114, transitional):
+	// the one-shot move of environment-group metadata from OpenBao into the
+	// control-plane store. main runs it before any worker or listener starts,
+	// then exits.
+	EnvGroupCutover string
 
 	// Hosted agent sandboxes + sessions (ADR042/ADR047/ADR059/ADR062).
 	AgentModelProxyURL string
@@ -463,15 +464,14 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	cfg.GitHubWebhookSecret = getenv("BEX_GITHUB_WEBHOOK_SECRET")
 	p.err(validateWebhookReplayConfig(cfg.WebhookSecret, cfg.GitHubWebhookSecret, cpOn))
 
-	// One-shot env-group operation modes (values checked here; execution stays
-	// in main, deliberately after the server is built).
-	cfg.EnvGroupNameClaimAudit = strings.TrimSpace(getenv("BEX_ENV_GROUP_NAME_CLAIM_AUDIT"))
-	if m := cfg.EnvGroupNameClaimAudit; m != "" && m != "dry-run" && m != "apply" {
-		p.errorf("BEX_ENV_GROUP_NAME_CLAIM_AUDIT must be dry-run or apply")
-	}
-	cfg.EnvGroupPathMigration = strings.TrimSpace(getenv("BEX_ENV_GROUP_PATH_MIGRATION"))
-	if m := cfg.EnvGroupPathMigration; m != "" && m != "dry-run" && m != "apply" {
-		p.errorf("BEX_ENV_GROUP_PATH_MIGRATION must be dry-run or apply")
+	if len(args) > 1 && args[1] == "env-group-cutover" {
+		if len(args) != 3 || (args[2] != "dry-run" && args[2] != "apply" && args[2] != "prune") {
+			p.errorf("usage: api env-group-cutover dry-run|apply|prune")
+		} else if cfg.CPDBURI == "" || cfg.OpenBaoURL == "" {
+			p.errorf("env-group-cutover needs BEX_CP_DB_URI and BEX_OPENBAO_URL")
+		} else {
+			cfg.EnvGroupCutover = args[2]
+		}
 	}
 
 	// Agent-session snapshot store (ADR059 D3/D5): a partial coordinate set is

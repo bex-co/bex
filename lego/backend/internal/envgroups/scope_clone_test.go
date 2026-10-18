@@ -36,12 +36,12 @@ func environmentResolver(ids ...string) func(context.Context, string) (string, e
 		if !allowed[id] {
 			return "", core.ErrNotFound
 		}
-		return "", nil
+		return core.DefaultTenant, nil
 	}
 }
 
 func TestEnvGroupScopeConstrainsLinksAndMoveIsAtomic(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 	web := sampleApp("web")
 	web.Labels = map[string]string{core.LabelEnvironment: "env-a"}
 	standalone := sampleApp("standalone")
@@ -79,7 +79,7 @@ func TestEnvGroupScopeConstrainsLinksAndMoveIsAtomic(t *testing.T) {
 }
 
 func TestCloneEnvGroupCopiesContentsWithoutLinksOrValues(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 	svc := newService(newFakeStore(), sampleApp("web"))
 	source, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{
 		Name: "source", EnvVars: []CreateEnvVarInput{{Key: "TOKEN", Value: "secret"}},
@@ -116,13 +116,13 @@ func TestCreateEnvGroupRejectsEnvironmentMismatchedInitialServiceWithoutOrphan(t
 	store := newFakeStore()
 	svc := newService(store, web)
 	svc.EnvironmentWorkspace = environmentResolver("env-a", "env-b")
-	_, err := svc.CreateEnvGroup(context.Background(), CreateEnvGroupRequest{
+	_, err := svc.CreateEnvGroup(testCtx(), CreateEnvGroupRequest{
 		Name: "scoped", EnvironmentID: "env-a", ServiceIDs: []string{"web"},
 	})
 	if !errors.Is(err, core.ErrConflict) {
 		t.Fatalf("create mismatch = %v", err)
 	}
-	ids, _ := store.List(context.Background(), "env-groups")
+	ids, _ := store.List(testCtx(), "env-groups")
 	if len(ids) != 0 {
 		t.Fatalf("orphan group paths: %v", ids)
 	}
@@ -143,30 +143,30 @@ func TestEnvironmentAliasesPreserveGroupMetadataLinksAndWorkspace(t *testing.T) 
 			svc.EnvironmentWorkspace = func(_ context.Context, environmentID string) (string, error) {
 				switch environmentID {
 				case stored, otherStored:
-					return "", nil
+					return core.DefaultTenant, nil
 				case "env-c185th5c2rvvnhbfilt1":
 					return "tea-foreign", nil
 				default:
 					return "", core.ErrNotFound
 				}
 			}
-			group, err := svc.CreateEnvGroup(t.Context(), CreateEnvGroupRequest{
+			group, err := svc.CreateEnvGroup(tctx(t), CreateEnvGroupRequest{
 				Name: "shared", EnvironmentID: input, ServiceIDs: []string{"web"},
 			})
 			if err != nil || group.EnvironmentID != public || len(group.ServiceLinks) != 1 {
 				t.Fatalf("create with %s: %+v, %v", input, group, err)
 			}
-			storedGroup, err := svc.requireGroup(t.Context(), group.ID)
-			if err != nil || storedGroup.environment != stored {
-				t.Fatalf("stored group environment=%q, err=%v", storedGroup.environment, err)
+			storedGroup, ok := svc.fakeGroups().Row(group.ID)
+			if !ok || storedGroup.EnvironmentID != stored {
+				t.Fatalf("stored group environment=%q, found=%v", storedGroup.EnvironmentID, ok)
 			}
-			memberships, err := svc.ListEnvironmentMemberships(t.Context(), "")
+			memberships, err := svc.ListEnvironmentMemberships(tctx(t), "")
 			if err != nil || len(memberships) != 1 || memberships[0].EnvironmentID != stored {
 				t.Fatalf("internal membership = %+v, err=%v", memberships, err)
 			}
 			for _, selector := range []string{stored, public} {
 				filter := EnvGroupListFilter{EnvironmentIDs: []string{selector}}
-				groups, err := svc.ListEnvGroupsFiltered(t.Context(), filter)
+				groups, err := svc.ListEnvGroupsFiltered(tctx(t), filter)
 				if filter.EnvironmentIDs[0] != selector {
 					t.Fatal("list mutated the caller's environment selector")
 				}
@@ -174,10 +174,10 @@ func TestEnvironmentAliasesPreserveGroupMetadataLinksAndWorkspace(t *testing.T) 
 					t.Fatalf("filter with %s: %+v, %v", selector, groups, err)
 				}
 			}
-			if moved, err := svc.MoveEnvGroup(t.Context(), group.ID, public); err != nil || moved.EnvironmentID != public {
+			if moved, err := svc.MoveEnvGroup(tctx(t), group.ID, public); err != nil || moved.EnvironmentID != public {
 				t.Fatalf("move to same environment via alias: %+v, %v", moved, err)
 			}
-			if _, err := svc.MoveEnvGroup(t.Context(), group.ID, otherPublic); !errors.Is(err, core.ErrConflict) {
+			if _, err := svc.MoveEnvGroup(tctx(t), group.ID, otherPublic); !errors.Is(err, core.ErrConflict) {
 				t.Fatalf("alias bypassed linked-service placement: %v", err)
 			} else {
 				var coded *core.CodedError
@@ -185,24 +185,24 @@ func TestEnvironmentAliasesPreserveGroupMetadataLinksAndWorkspace(t *testing.T) 
 					t.Fatalf("move conflict did not expose canonical target: %v", err)
 				}
 			}
-			if _, err := svc.MoveEnvGroup(t.Context(), group.ID, foreignPublic); !errors.Is(err, core.ErrForbidden) {
+			if _, err := svc.MoveEnvGroup(tctx(t), group.ID, foreignPublic); !errors.Is(err, core.ErrForbidden) {
 				t.Fatalf("alias bypassed workspace binding: %v", err)
 			}
-			storedGroup, err = svc.requireGroup(t.Context(), group.ID)
-			if err != nil || storedGroup.environment != stored || getApp(t, svc.Client, "web").Labels[core.LabelEnvironment] != stored {
-				t.Fatalf("alias or refused move changed durable placement: group=%q, err=%v", storedGroup.environment, err)
+			storedGroup, ok = svc.fakeGroups().Row(group.ID)
+			if !ok || storedGroup.EnvironmentID != stored || getApp(t, svc.Client, "web").Labels[core.LabelEnvironment] != stored {
+				t.Fatalf("alias or refused move changed durable placement: group=%q, found=%v", storedGroup.EnvironmentID, ok)
 			}
-			clone, err := svc.CloneEnvGroup(t.Context(), group.ID, CloneEnvGroupRequest{Name: "copy", EnvironmentID: public})
+			clone, err := svc.CloneEnvGroup(tctx(t), group.ID, CloneEnvGroupRequest{Name: "copy", EnvironmentID: public})
 			if err != nil || clone.EnvironmentID != public || len(clone.ServiceLinks) != 0 {
 				t.Fatalf("clone into canonical environment: %+v, %v", clone, err)
 			}
-			moved, err := svc.MoveEnvGroup(t.Context(), clone.ID, otherPublic)
+			moved, err := svc.MoveEnvGroup(tctx(t), clone.ID, otherPublic)
 			if err != nil || moved.EnvironmentID != otherPublic {
 				t.Fatalf("move unlinked clone: %+v, %v", moved, err)
 			}
-			storedClone, err := svc.requireGroup(t.Context(), clone.ID)
-			if err != nil || storedClone.environment != otherStored {
-				t.Fatalf("move persisted public alias: environment=%q, err=%v", storedClone.environment, err)
+			storedClone, ok := svc.fakeGroups().Row(clone.ID)
+			if !ok || storedClone.EnvironmentID != otherStored {
+				t.Fatalf("move persisted public alias: environment=%q, found=%v", storedClone.EnvironmentID, ok)
 			}
 		})
 	}
@@ -213,7 +213,7 @@ func TestEnvironmentAliasesPreserveGroupMetadataLinksAndWorkspace(t *testing.T) 
 // scope still refuses. A link into another environment still refuses the
 // detach, and a group a concurrent writer already moved is left alone.
 func TestDetachEnvironmentKeepsContentAndOnlyAcceptsDepartingLinks(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 	web := sampleApp("web")
 	web.Labels = map[string]string{core.LabelEnvironment: "env-a"}
 	other := sampleApp("other")

@@ -39,6 +39,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
+	"github.com/bex-co/bex/lego/backend/internal/envgroups/envgroupstest"
 	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -55,13 +56,23 @@ func testScheme() *runtime.Scheme {
 	return s
 }
 
+// fakeClient seeds a fake cluster. An App given without a workspace label is
+// the default workspace's, as every App bex-api manages carries one.
 func fakeClient(objs ...client.Object) client.Client {
+	for _, obj := range objs {
+		if a, ok := obj.(*appv1alpha1.App); ok && a.Labels[core.LabelTenant] == "" {
+			if a.Labels == nil {
+				a.Labels = map[string]string{}
+			}
+			a.Labels[core.LabelTenant] = core.DefaultTenant
+		}
+	}
 	return fake.NewClientBuilder().WithScheme(testScheme()).WithObjects(objs...).Build()
 }
 
 func sampleApp(name string) *appv1alpha1.App {
 	return &appv1alpha1.App{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default", Labels: map[string]string{core.LabelTenant: core.DefaultTenant}},
 		Spec:       appv1alpha1.AppSpec{Image: name + ":v1", Replicas: 1},
 	}
 }
@@ -76,10 +87,10 @@ func ownedApp(name, tenantID string) *appv1alpha1.App {
 }
 
 func newService(store core.SecretKV, objs ...client.Object) *Service {
-	return &Service{
+	return withGroups(&Service{
 		Base:  &core.Base{Client: fakeClient(objs...), Namespace: "default", Clock: func() time.Time { return time.Unix(1_000_000, 0).UTC() }},
 		Store: store,
-	}
+	})
 }
 
 // rebuildStub emulates the composition root's RebuildService wiring
@@ -102,7 +113,7 @@ func rebuildStub(cl client.Client) func(context.Context, string) error {
 func getApp(t *testing.T, cl client.Client, name string) *appv1alpha1.App {
 	t.Helper()
 	var a appv1alpha1.App
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: name}, &a); err != nil {
+	if err := cl.Get(testCtx(), client.ObjectKey{Namespace: "default", Name: name}, &a); err != nil {
 		t.Fatalf("get app %s: %v", name, err)
 	}
 	return &a
@@ -110,24 +121,19 @@ func getApp(t *testing.T, cl client.Client, name string) *appv1alpha1.App {
 
 // fakeStore is an in-memory core.SecretKV keyed by tenant-prefixed logical
 // path — "<tenant>/<path>", mirroring the real OpenBao store's own tenant
-// prefix (secrets.TenantFromContext) so w2/m80's isolation guarantees (a
-// workspace tenant's List/Get never sees another tenant's — or the legacy
-// tenant's — entries) are actually exercised by tests, not just assumed. A
-// ctx with no tenant set (every store-off / unscoped test in this package)
-// resolves to secrets.LegacyTenant, so those tests' keys are unchanged in
-// shape modulo the added "default/" prefix.
+// prefix (secrets.TenantFromContext) so tenant isolation (a workspace
+// tenant's List/Get never sees another tenant's entries) is exercised by
+// tests, not just assumed. A ctx with no tenant set resolves to
+// secrets.LegacyTenant ("default").
 type fakeStore struct {
-	mu       sync.Mutex
-	m        map[string]map[string]string
-	versions map[string]uint64
-	// Optional hooks for deterministic concurrency tests (w4/m97). They run
-	// while the store lock is held; the hook must not re-enter the store.
-	afterGetVersioned func(path string, snap core.SecretKVSnapshot)
-	afterPutCAS       func(path string, version uint64)
+	mu sync.Mutex
+	m  map[string]map[string]string
+	// groups is the metadata store that travels with this fake (groupsOf).
+	groups *envgroupstest.Groups
 }
 
 func newFakeStore() *fakeStore {
-	return &fakeStore{m: map[string]map[string]string{}, versions: map[string]uint64{}}
+	return &fakeStore{m: map[string]map[string]string{}}
 }
 
 // key returns the tenant-prefixed map key for a logical path — the same
@@ -164,7 +170,6 @@ func (f *fakeStore) put(key string, data map[string]string) {
 		cp[k] = v
 	}
 	f.m[key] = cp
-	f.versions[key]++
 }
 
 func (f *fakeStore) Delete(ctx context.Context, path string) error {
@@ -172,7 +177,6 @@ func (f *fakeStore) Delete(ctx context.Context, path string) error {
 	defer f.mu.Unlock()
 	key := f.key(ctx, path)
 	delete(f.m, key)
-	delete(f.versions, key)
 	return nil
 }
 
@@ -198,65 +202,9 @@ func (f *fakeStore) List(ctx context.Context, path string) ([]string, error) {
 	return out, nil
 }
 
-func (f *fakeStore) GetVersioned(ctx context.Context, path string) (core.SecretKVSnapshot, error) {
-	f.mu.Lock()
-	key := f.key(ctx, path)
-	snap := core.SecretKVSnapshot{Data: f.get(key), Version: f.versions[key]}
-	hook := f.afterGetVersioned
-	f.mu.Unlock()
-	// Hook runs unlocked so a concurrent writer can commit between snapshot and
-	// return — the race mutateMetaCAS / content CAS must tolerate.
-	if hook != nil {
-		hook(path, snap)
-	}
-	return snap, nil
-}
-
-func (f *fakeStore) PutCAS(ctx context.Context, path string, data map[string]string, expectedVersion uint64) (uint64, error) {
-	f.mu.Lock()
-	key := f.key(ctx, path)
-	if f.versions[key] != expectedVersion {
-		f.mu.Unlock()
-		return 0, core.ErrConflict
-	}
-	f.put(key, data)
-	version := f.versions[key]
-	hook := f.afterPutCAS
-	f.mu.Unlock()
-	if hook != nil {
-		hook(path, version)
-	}
-	return version, nil
-}
-
-type failMetaStore struct{ *fakeStore }
-
-func (f *failMetaStore) Put(ctx context.Context, path string, data map[string]string) error {
-	if strings.HasSuffix(path, "/meta") {
-		return errors.New("meta write failed")
-	}
-	return f.fakeStore.Put(ctx, path, data)
-}
-
-func (f *failMetaStore) PutCAS(ctx context.Context, path string, data map[string]string, expectedVersion uint64) (uint64, error) {
-	if strings.HasSuffix(path, "/meta") {
-		return 0, errors.New("meta write failed")
-	}
-	return f.fakeStore.PutCAS(ctx, path, data, expectedVersion)
-}
-
 type fakeChecker struct {
 	allow        bool
 	lastRelation string
-}
-
-type recordingAuditSink struct {
-	events []core.AuditEvent
-}
-
-func (s *recordingAuditSink) Record(_ context.Context, event core.AuditEvent) error {
-	s.events = append(s.events, event)
-	return nil
 }
 
 func (c *fakeChecker) Check(_ context.Context, _, relation, _ string) (bool, error) {
@@ -267,7 +215,7 @@ func (c *fakeChecker) Check(_ context.Context, _, relation, _ string) (bool, err
 func secret(t *testing.T, cl client.Client, name string) *corev1.Secret {
 	t.Helper()
 	var s corev1.Secret
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: name}, &s); err != nil {
+	if err := cl.Get(testCtx(), client.ObjectKey{Namespace: "default", Name: name}, &s); err != nil {
 		t.Fatalf("get secret %s: %v", name, err)
 	}
 	return &s
@@ -277,7 +225,7 @@ func secret(t *testing.T, cl client.Client, name string) *corev1.Secret {
 
 func TestEnvGroup_CreateVarsAndView(t *testing.T) {
 	svc := newService(newFakeStore())
-	ctx := context.Background()
+	ctx := testCtx()
 
 	g, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
 	if err != nil {
@@ -321,7 +269,7 @@ func TestEnvGroup_CreateVarsAndView(t *testing.T) {
 func TestCreateEnvGroupPopulatesAndLinksInOneVerb(t *testing.T) {
 	store := newFakeStore()
 	svc := newService(store, sampleApp("web"), sampleApp("worker"))
-	ctx := context.Background()
+	ctx := testCtx()
 
 	g, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{
 		Name: "shared",
@@ -373,7 +321,7 @@ func TestCreateEnvGroupInvalidServiceLeavesZeroSideEffects(t *testing.T) {
 	store := newFakeStore()
 	svc := newService(store, sampleApp("web"))
 
-	_, err := svc.CreateEnvGroup(context.Background(), CreateEnvGroupRequest{
+	_, err := svc.CreateEnvGroup(testCtx(), CreateEnvGroupRequest{
 		Name:        "shared",
 		EnvVars:     []CreateEnvVarInput{{Key: "TOKEN", Value: "secret"}},
 		SecretFiles: []SecretFileView{{Name: "ca.pem", Content: "CERT"}},
@@ -382,7 +330,7 @@ func TestCreateEnvGroupInvalidServiceLeavesZeroSideEffects(t *testing.T) {
 	if !errors.Is(err, core.ErrNotFound) || !strings.Contains(err.Error(), `serviceId "missing-service"`) {
 		t.Fatalf("invalid serviceId error = %v, want named ErrNotFound", err)
 	}
-	if ids, listErr := store.List(context.Background(), "env-groups"); listErr != nil || len(ids) != 0 {
+	if ids, listErr := store.List(testCtx(), "env-groups"); listErr != nil || len(ids) != 0 {
 		t.Fatalf("validation failure left groups: ids=%v err=%v store=%v", ids, listErr, store.m)
 	}
 	web := getApp(t, svc.Client, "web")
@@ -390,7 +338,7 @@ func TestCreateEnvGroupInvalidServiceLeavesZeroSideEffects(t *testing.T) {
 		t.Fatalf("validation failure mutated service: %+v", web.Spec)
 	}
 	var secrets corev1.SecretList
-	if err := svc.Client.List(context.Background(), &secrets, client.InNamespace("default")); err != nil {
+	if err := svc.Client.List(testCtx(), &secrets, client.InNamespace("default")); err != nil {
 		t.Fatal(err)
 	}
 	if len(secrets.Items) != 0 {
@@ -428,14 +376,14 @@ func TestCreateEnvGroupInvalidContentsLeaveZeroSideEffects(t *testing.T) {
 			store := newFakeStore()
 			svc := newService(store)
 
-			if _, err := svc.CreateEnvGroup(context.Background(), tt.req); !errors.Is(err, core.ErrBadRequest) {
+			if _, err := svc.CreateEnvGroup(testCtx(), tt.req); !errors.Is(err, core.ErrBadRequest) {
 				t.Fatalf("invalid contents error = %v, want ErrBadRequest", err)
 			}
-			if ids, err := store.List(context.Background(), "env-groups"); err != nil || len(ids) != 0 || len(store.m) != 0 {
+			if ids, err := store.List(testCtx(), "env-groups"); err != nil || len(ids) != 0 || len(store.m) != 0 {
 				t.Fatalf("invalid contents left state: ids=%v err=%v store=%v", ids, err, store.m)
 			}
 			var secrets corev1.SecretList
-			if err := svc.Client.List(context.Background(), &secrets, client.InNamespace("default")); err != nil {
+			if err := svc.Client.List(testCtx(), &secrets, client.InNamespace("default")); err != nil {
 				t.Fatal(err)
 			}
 			if len(secrets.Items) != 0 {
@@ -448,11 +396,11 @@ func TestCreateEnvGroupInvalidContentsLeaveZeroSideEffects(t *testing.T) {
 func TestCreateEnvGroupRefusesCrossWorkspaceServiceWithoutOrphan(t *testing.T) {
 	store := newFakeStore()
 	resolver := coretest.Members{"dana": {"tea-a", "tea-b"}}
-	svc := &Service{
+	svc := withGroups(&Service{
 		Base:  &core.Base{Client: fakeClient(ownedApp("bravo-web", "tea-b")), Namespace: "default", Workspace: resolver},
 		Store: store,
-	}
-	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
+	})
+	ctx := core.WithIdentity(testCtx(), core.Identity{Subject: "dana", Method: "session"})
 
 	_, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{
 		Name: "alpha-shared", OwnerID: "tea-a", ServiceIDs: []string{"bravo-web"},
@@ -471,17 +419,18 @@ func TestCreateEnvGroupRefusesCrossWorkspaceServiceWithoutOrphan(t *testing.T) {
 }
 
 func TestCreateEnvGroupWriteFailureCompensatesEverySurface(t *testing.T) {
-	store := &failMetaStore{fakeStore: newFakeStore()}
+	store := newFakeStore()
 	svc := newService(store, sampleApp("web"))
+	svc.fakeGroups().InsertErr = errors.New("row insert failed")
 
-	_, err := svc.CreateEnvGroup(context.Background(), CreateEnvGroupRequest{
+	_, err := svc.CreateEnvGroup(testCtx(), CreateEnvGroupRequest{
 		Name: "shared", EnvVars: []CreateEnvVarInput{{Key: "TOKEN", Value: "secret"}},
 		SecretFiles: []SecretFileView{{Name: "ca.pem", Content: "CERT"}}, ServiceIDs: []string{"web"},
 	})
-	if err == nil || !strings.Contains(err.Error(), "meta write failed") {
+	if err == nil || !strings.Contains(err.Error(), "row insert failed") {
 		t.Fatalf("CreateEnvGroup write failure = %v", err)
 	}
-	if ids, _ := store.List(context.Background(), "env-groups"); len(ids) != 0 {
+	if ids, _ := store.List(testCtx(), "env-groups"); len(ids) != 0 {
 		t.Fatalf("compensation left group state: ids=%v store=%v", ids, store.m)
 	}
 	for path, data := range store.m {
@@ -494,7 +443,7 @@ func TestCreateEnvGroupWriteFailureCompensatesEverySurface(t *testing.T) {
 		t.Fatalf("compensation did not restore service: %+v", web.Spec)
 	}
 	var secrets corev1.SecretList
-	if err := svc.Client.List(context.Background(), &secrets, client.InNamespace("default")); err != nil {
+	if err := svc.Client.List(testCtx(), &secrets, client.InNamespace("default")); err != nil {
 		t.Fatal(err)
 	}
 	if len(secrets.Items) != 0 {
@@ -505,7 +454,7 @@ func TestCreateEnvGroupWriteFailureCompensatesEverySurface(t *testing.T) {
 func TestEnvGroup_RenamePreservesIdentityContentsAndLinks(t *testing.T) {
 	store := newFakeStore()
 	svc := newService(store, sampleApp("web"))
-	ctx := context.Background()
+	ctx := testCtx()
 
 	g, _ := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
 	_, _ = svc.SetEnvGroupVar(ctx, g.ID, "TOKEN", "secret")
@@ -532,7 +481,7 @@ func TestEnvGroup_RenamePreservesIdentityContentsAndLinks(t *testing.T) {
 
 func TestEnvGroup_SetAndDeleteOneVarPreservesSiblings(t *testing.T) {
 	svc := newService(newFakeStore(), sampleApp("web"))
-	ctx := context.Background()
+	ctx := testCtx()
 	g, _ := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
 	_, _ = svc.SetEnvGroupVars(ctx, g.ID, []EnvVarView{{Key: "A", Value: "one"}, {Key: "B", Value: "two"}})
 	_ = svc.LinkService(ctx, g.ID, "web")
@@ -559,7 +508,7 @@ func TestEnvGroup_SetAndDeleteOneVarPreservesSiblings(t *testing.T) {
 
 func TestEnvGroup_GeneratedWritesStoreNonEmptyValuesWithoutEchoingThem(t *testing.T) {
 	svc := newService(newFakeStore())
-	ctx := context.Background()
+	ctx := testCtx()
 	g, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
 	if err != nil {
 		t.Fatal(err)
@@ -590,7 +539,7 @@ func TestEnvGroup_GeneratedWritesStoreNonEmptyValuesWithoutEchoingThem(t *testin
 
 func TestEnvGroup_NameUniqueWithinWorkspaceOnCreateAndRename(t *testing.T) {
 	svc := newService(newFakeStore())
-	ctx := context.Background()
+	ctx := testCtx()
 	first, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: " shared "})
 	if err != nil {
 		t.Fatal(err)
@@ -614,7 +563,7 @@ func TestEnvGroup_NameUniqueWithinWorkspaceOnCreateAndRename(t *testing.T) {
 
 func TestEnvGroup_RenameAndDeleteReleaseNameClaimsForReuse(t *testing.T) {
 	svc := newService(newFakeStore())
-	ctx := context.Background()
+	ctx := testCtx()
 	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
 	if err != nil {
 		t.Fatal(err)
@@ -642,7 +591,7 @@ func TestEnvGroup_ConcurrentCreateHasExactlyOneNameWinner(t *testing.T) {
 	for _, svc := range services {
 		go func() {
 			<-start
-			_, err := svc.CreateEnvGroup(context.Background(), CreateEnvGroupRequest{Name: "shared"})
+			_, err := svc.CreateEnvGroup(testCtx(), CreateEnvGroupRequest{Name: "shared"})
 			errs <- err
 		}()
 	}
@@ -662,27 +611,9 @@ func TestEnvGroup_ConcurrentCreateHasExactlyOneNameWinner(t *testing.T) {
 	if successes != 1 || conflicts != 1 {
 		t.Fatalf("successes=%d conflicts=%d, want 1/1", successes, conflicts)
 	}
-	ids, _ := store.List(context.Background(), "env-groups")
-	if len(ids) != 1 {
-		t.Fatalf("stored group ids = %v, want one", ids)
-	}
-}
-
-func TestEnvGroup_LegacyDuplicateNameResolutionFailsClosed(t *testing.T) {
-	store := newFakeStore()
-	svc := newService(store)
-	for _, gid := range []string{"evg-d7a1g900000000000001", "evg-d7a1g900000000000002"} {
-		if err := svc.writeMeta(context.Background(), gid, meta{name: "shared"}); err != nil {
-			t.Fatal(err)
-		}
-	}
-	_, _, found, err := svc.findGroupByName(context.Background(), "shared")
-	var coded *core.CodedError
-	if found || !errors.As(err, &coded) || coded.Code != "ENV_GROUP_NAME_AMBIGUOUS" || !errors.Is(err, core.ErrConflict) {
-		t.Fatalf("legacy duplicate lookup: found=%v err=%v", found, err)
-	}
-	if got, ok := coded.Params["ids"].([]string); !ok || len(got) != 2 {
-		t.Fatalf("ambiguity ids = %#v", coded.Params["ids"])
+	rows, _ := groupsOf(store).ListEnvGroups(testCtx(), core.DefaultTenant)
+	if len(rows) != 1 {
+		t.Fatalf("stored groups = %v, want one", rows)
 	}
 }
 
@@ -694,9 +625,9 @@ func TestMCP_EnvGroupEditingRoundTrip(t *testing.T) {
 		if environmentID != "env-alpha" {
 			return "", core.ErrNotFound
 		}
-		return "", nil
+		return core.DefaultTenant, nil
 	}
-	ctx := context.Background()
+	ctx := testCtx()
 	srv := mcp.NewServer(&mcp.Implementation{Name: "bex", Version: "0"}, nil)
 	svc.RegisterMCP(srv)
 	serverTransport, clientTransport := mcp.NewInMemoryTransports()
@@ -818,12 +749,12 @@ func TestMCP_EnvGroupEditingRoundTrip(t *testing.T) {
 func TestGraphQL_EnvGroupsPagination(t *testing.T) {
 	svc := newService(newFakeStore())
 	for _, name := range []string{"one", "two", "three"} {
-		if _, err := svc.CreateEnvGroup(context.Background(), CreateEnvGroupRequest{Name: name}); err != nil {
+		if _, err := svc.CreateEnvGroup(testCtx(), CreateEnvGroupRequest{Name: name}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	field := svc.GraphQLQuery()["envGroups"]
-	firstRaw, err := field.Resolve(graphql.ResolveParams{Context: context.Background(), Args: map[string]any{"limit": 2}})
+	firstRaw, err := field.Resolve(graphql.ResolveParams{Context: testCtx(), Args: map[string]any{"limit": 2}})
 	if err != nil {
 		t.Fatalf("first page: %v", err)
 	}
@@ -831,7 +762,7 @@ func TestGraphQL_EnvGroupsPagination(t *testing.T) {
 	if len(first) != 2 {
 		t.Fatalf("first page length = %d, want 2", len(first))
 	}
-	secondRaw, err := field.Resolve(graphql.ResolveParams{Context: context.Background(), Args: map[string]any{"limit": 2, "cursor": first[1].ID}})
+	secondRaw, err := field.Resolve(graphql.ResolveParams{Context: testCtx(), Args: map[string]any{"limit": 2, "cursor": first[1].ID}})
 	if err != nil {
 		t.Fatalf("second page: %v", err)
 	}
@@ -849,11 +780,11 @@ func TestGraphQL_CreateEnvGroupAcceptsInitialContents(t *testing.T) {
 		if environmentID != "env-alpha" {
 			return "", core.ErrNotFound
 		}
-		return "", nil
+		return core.DefaultTenant, nil
 	}
 	field := svc.GraphQLMutation()["createEnvGroup"]
 	out, err := field.Resolve(graphql.ResolveParams{
-		Context: context.Background(),
+		Context: testCtx(),
 		Args: map[string]any{
 			"name": "shared", "environmentId": "env-alpha",
 			"envVars":     []any{map[string]any{"key": "INITIAL", "value": "graphql"}},
@@ -873,14 +804,14 @@ func TestGraphQL_CreateEnvGroupAcceptsInitialContents(t *testing.T) {
 		!slices.Equal(group.SecretFiles, []SecretFileView{{Name: "graphql.txt"}}) {
 		t.Fatalf("createEnvGroup initial contents: %+v", group)
 	}
-	if variable, err := svc.GetEnvGroupVar(context.Background(), group.ID, "INITIAL"); err != nil || variable.Value != "graphql" {
+	if variable, err := svc.GetEnvGroupVar(testCtx(), group.ID, "INITIAL"); err != nil || variable.Value != "graphql" {
 		t.Fatalf("createEnvGroup initial var: %+v err=%v", variable, err)
 	}
 }
 
 func TestEnvGroup_LinkProjectsAndUnlink(t *testing.T) {
 	svc := newService(newFakeStore(), sampleApp("web"), sampleApp("api"))
-	ctx := context.Background()
+	ctx := testCtx()
 
 	g, _ := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
 	if _, err := svc.SetEnvGroupVars(ctx, g.ID, []EnvVarView{{Key: "DB_URL", Value: "postgres://x"}}); err != nil {
@@ -944,7 +875,7 @@ func TestEnvGroup_LinkProjectsAndUnlink(t *testing.T) {
 func TestEnvGroup_DeleteUnlinksAndCleansUp(t *testing.T) {
 	store := newFakeStore()
 	svc := newService(store, sampleApp("web"))
-	ctx := context.Background()
+	ctx := testCtx()
 
 	g, _ := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
 	if err := svc.LinkService(ctx, g.ID, "web"); err != nil {
@@ -964,10 +895,10 @@ func TestEnvGroup_DeleteUnlinksAndCleansUp(t *testing.T) {
 	if err := svc.Client.Get(ctx, client.ObjectKey{Namespace: "default", Name: envSecretName(g.ID)}, &s); !apierrors.IsNotFound(err) {
 		t.Errorf("group env Secret should be deleted, got %v", err)
 	}
-	// Store content/revision gone; meta retains a non-editable tombstone fence
-	// so a delayed writer cannot resurrect the group (w4/m97).
-	if raw, ok := store.m[store.key(ctx, metaPath(g.ID))]; !ok || raw["tombstoned"] != "1" {
-		t.Errorf("deleted group should leave a tombstone meta fence, got %v ok=%v", raw, ok)
+	// The row goes, and with it any way to write the id again; no tombstone
+	// is left behind (w8/m114).
+	if _, ok := svc.fakeGroups().Row(g.ID); ok {
+		t.Error("deleted group's row should be gone")
 	}
 	if _, ok := store.m[store.key(ctx, envPath(g.ID))]; ok {
 		t.Error("group env should be deleted from the store")
@@ -980,7 +911,7 @@ func TestEnvGroup_DeleteUnlinksAndCleansUp(t *testing.T) {
 
 func TestEnvGroup_Validation(t *testing.T) {
 	svc := newService(newFakeStore())
-	ctx := context.Background()
+	ctx := testCtx()
 	if _, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "  "}); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("blank name => ErrBadRequest, got %v", err)
 	}
@@ -992,9 +923,9 @@ func TestEnvGroup_Validation(t *testing.T) {
 }
 
 func TestEnvGroup_Authorization(t *testing.T) {
-	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "c1", Method: "oauth2"})
+	ctx := core.WithIdentity(testCtx(), core.Identity{Subject: "c1", Method: "oauth2"})
 	chk := &fakeChecker{allow: false}
-	svc := &Service{Base: &core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default", Authz: chk}, Store: newFakeStore()}
+	svc := withGroups(&Service{Base: &core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default", Authz: chk}, Store: newFakeStore()})
 
 	if _, err := svc.ListEnvGroups(ctx, ""); !errors.Is(err, core.ErrForbidden) {
 		t.Errorf("list deny: %v", err)
@@ -1018,7 +949,7 @@ func TestEnvGroup_Authorization(t *testing.T) {
 
 func TestEnvGroup_Unconfigured503(t *testing.T) {
 	svc := newService(nil)
-	if _, err := svc.ListEnvGroups(context.Background(), ""); !errors.Is(err, core.ErrSecretsUnavailable) {
+	if _, err := svc.ListEnvGroups(testCtx(), ""); !errors.Is(err, core.ErrSecretsUnavailable) {
 		t.Errorf("nil store => ErrSecretsUnavailable, got %v", err)
 	}
 }
@@ -1030,11 +961,11 @@ func TestEnvGroup_CreateStampsOwnerAndListScopesToTargetWorkspace(t *testing.T) 
 	// milestone ListEnvGroups had no workspace filter at all and returned
 	// every group in the shared store to any caller who could can_view their
 	// own workspace.
-	svc := &Service{
+	svc := withGroups(&Service{
 		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: coretest.Members{"dana": {"tea-a", "tea-b"}}},
 		Store: newFakeStore(),
-	}
-	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
+	})
+	ctx := core.WithIdentity(testCtx(), core.Identity{Subject: "dana", Method: "session"})
 
 	groupA, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared-a"}) // no ownerId => default, tea-a
 	if err != nil {
@@ -1063,7 +994,7 @@ func TestEnvGroup_CreateStampsOwnerAndListScopesToTargetWorkspace(t *testing.T) 
 
 func TestEnvGroup_EnvironmentMembershipValidatesWorkspaceAndPersists(t *testing.T) {
 	resolver := coretest.Members{"dana": {"tea-a", "tea-b"}}
-	svc := &Service{
+	svc := withGroups(&Service{
 		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: resolver},
 		Store: newFakeStore(),
 		EnvironmentWorkspace: func(_ context.Context, environmentID string) (string, error) {
@@ -1076,8 +1007,8 @@ func TestEnvGroup_EnvironmentMembershipValidatesWorkspaceAndPersists(t *testing.
 				return "", core.ErrNotFound
 			}
 		},
-	}
-	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
+	})
+	ctx := core.WithIdentity(testCtx(), core.Identity{Subject: "dana", Method: "session"})
 
 	g, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared", OwnerID: "tea-a", EnvironmentID: "env-alpha"})
 	if err != nil {
@@ -1122,7 +1053,7 @@ func TestEnvGroup_EnvironmentMembershipValidatesWorkspaceAndPersists(t *testing.
 
 func TestEnvGroup_CreateWithEnvironmentRequiresEnvironmentService(t *testing.T) {
 	svc := newService(newFakeStore())
-	if _, err := svc.CreateEnvGroup(context.Background(), CreateEnvGroupRequest{Name: "shared", EnvironmentID: "env-alpha"}); !errors.Is(err, core.ErrWorkspacesUnavailable) {
+	if _, err := svc.CreateEnvGroup(testCtx(), CreateEnvGroupRequest{Name: "shared", EnvironmentID: "env-alpha"}); !errors.Is(err, core.ErrWorkspacesUnavailable) {
 		t.Fatalf("create with environmentId and no environment service: want ErrWorkspacesUnavailable, got %v", err)
 	}
 }
@@ -1131,8 +1062,8 @@ func TestEnvGroup_GetAndRevealRefuseCrossWorkspace(t *testing.T) {
 	store := newFakeStore()
 	resolver := coretest.Members{"dana": {"tea-a"}, "erin": {"tea-b"}}
 	svcAs := func(subject string) (*Service, context.Context) {
-		s := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: resolver}, Store: store}
-		return s, core.WithIdentity(context.Background(), core.Identity{Subject: subject, Method: "session"})
+		s := withGroups(&Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: resolver}, Store: store})
+		return s, core.WithIdentity(testCtx(), core.Identity{Subject: subject, Method: "session"})
 	}
 
 	erinSvc, erinCtx := svcAs("erin")
@@ -1163,11 +1094,11 @@ func TestEnvGroup_LinkRefusesForeignWorkspaceGroupEvenForDualMember(t *testing.T
 	// must still be refused: membership+relation in both workspaces does not
 	// license moving a workspace's secret values into another's Secrets.
 	resolver := coretest.Members{"dana": {"tea-a", "tea-b"}}
-	svc := &Service{
+	svc := withGroups(&Service{
 		Base:  &core.Base{Client: fakeClient(ownedApp("web", "tea-a")), Namespace: "default", Workspace: resolver},
 		Store: newFakeStore(),
-	}
-	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
+	})
+	ctx := core.WithIdentity(testCtx(), core.Identity{Subject: "dana", Method: "session"})
 
 	groupB, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "bravo-secrets", OwnerID: "tea-b"})
 	if err != nil {
@@ -1193,27 +1124,19 @@ func TestEnvGroup_UnlinkRefusesForeignWorkspaceGroupEvenForDualMember(t *testing
 	resolver := coretest.Members{"dana": {"tea-a", "tea-b"}}
 	app := ownedApp("web", "tea-a")
 	store := newFakeStore()
-	svc := &Service{
+	svc := withGroups(&Service{
 		Base:  &core.Base{Client: fakeClient(app), Namespace: "default", Workspace: resolver},
 		Store: store,
-	}
-	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
+	})
+	ctx := core.WithIdentity(testCtx(), core.Identity{Subject: "dana", Method: "session"})
 
 	groupB, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "bravo-secrets", OwnerID: "tea-b"})
 	if err != nil {
 		t.Fatalf("create bravo group: %v", err)
 	}
-	m, err := svc.readMeta(ctx, groupB.ID)
-	if err != nil {
-		t.Fatalf("read group meta: %v", err)
-	}
-	m.links = []string{"web"} // legacy bare-name link in tea-b
-	if _, err := svc.mutateMetaCAS(ctx, groupB.ID, m.workspace, func(cur meta) (meta, error) {
-		cur.links = []string{"web"}
-		return cur, nil
-	}); err != nil {
-		t.Fatalf("seed group link: %v", err)
-	}
+	row, _ := svc.fakeGroups().Row(groupB.ID)
+	row.ServiceLinks = []string{"web"} // a link keyed by the object name, in tea-b
+	svc.fakeGroups().Set(row)
 
 	if err := svc.UnlinkService(ctx, groupB.ID, "web"); !errors.Is(err, core.ErrForbidden) {
 		t.Fatalf("unlink tea-b's group via tea-a's same-named service = %v, want ErrForbidden", err)
@@ -1233,11 +1156,11 @@ func TestEnvGroup_MutationProjectsIntoOwningWorkspaceNotCallers(t *testing.T) {
 	// the OWNING workspace — and the projection Secret must land there too,
 	// never in the caller's resolved (tea-a/default) namespace.
 	resolver := coretest.Members{"dana": {"tea-a", "tea-b"}}
-	svc := &Service{
+	svc := withGroups(&Service{
 		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: resolver},
 		Store: newFakeStore(),
-	}
-	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
+	})
+	ctx := core.WithIdentity(testCtx(), core.Identity{Subject: "dana", Method: "session"})
 
 	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "bravo-secrets", OwnerID: "tea-b"})
 	if err != nil {
@@ -1266,11 +1189,11 @@ func TestEnvGroup_DeleteRemovesOwningWorkspaceProjectionOnly(t *testing.T) {
 	// tea-b's projection Secrets; a same-named Secret in the caller's own
 	// workspace must survive untouched.
 	resolver := coretest.Members{"dana": {"tea-a", "tea-b"}}
-	svc := &Service{
+	svc := withGroups(&Service{
 		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: resolver},
 		Store: newFakeStore(),
-	}
-	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
+	})
+	ctx := core.WithIdentity(testCtx(), core.Identity{Subject: "dana", Method: "session"})
 
 	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "bravo-secrets", OwnerID: "tea-b"})
 	if err != nil {
@@ -1295,98 +1218,12 @@ func TestEnvGroup_DeleteRemovesOwningWorkspaceProjectionOnly(t *testing.T) {
 	}
 }
 
-func TestEnvGroup_MigratesLegacyOwnerlessGroupOnceStoreIsLive(t *testing.T) {
-	store := newFakeStore()
-	audit := &recordingAuditSink{}
-	legacy := id.New(id.EnvGroup)
-	// A group created before workspace attribution existed: meta with no
-	// "workspace" key at all, written directly to bypass CreateEnvGroup.
-	if err := store.Put(context.Background(), metaPath(legacy), map[string]string{
-		"name": "legacy", "links": "",
-	}); err != nil {
-		t.Fatalf("seed legacy meta: %v", err)
-	}
-
-	// A caller in the platform's default (bootstrap) workspace can reach it —
-	// the deterministic migration target — and the store now records it.
-	defaultSvc := &Service{
-		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: coretest.Members{"boot": {core.DefaultTenant}}, Audit: audit},
-		Store: store,
-	}
-	defaultCtx := core.WithIdentity(context.Background(), core.Identity{Subject: "boot", Method: "session"})
-	got, err := defaultSvc.GetEnvGroup(defaultCtx, legacy)
-	if err != nil {
-		t.Fatalf("default-workspace caller should reach the migrated legacy group: %v", err)
-	}
-	if got.OwnerID != core.DefaultTenant {
-		t.Errorf("legacy group ownerId = %q, want the migrated default tenant %q", got.OwnerID, core.DefaultTenant)
-	}
-	raw, _ := store.Get(context.Background(), metaPath(legacy))
-	if raw["workspace"] != core.DefaultTenant {
-		t.Errorf("migration should persist the assigned owner, got meta %+v", raw)
-	}
-	if len(audit.events) != 1 {
-		t.Fatalf("migration audit events = %d, want exactly 1: %+v", len(audit.events), audit.events)
-	}
-	event := audit.events[0]
-	if event.Caller != "system" || event.CallerMethod != "system" ||
-		event.Verb != core.AuditVerbEnvGroupOwnershipMigrated ||
-		event.Resource != core.WorkspaceObject(core.DefaultTenant) ||
-		event.Target != core.EnvGroupTarget(legacy) || event.Outcome != core.AuditAllowed {
-		t.Fatalf("migration audit event = %+v", event)
-	}
-	if _, err := defaultSvc.GetEnvGroup(defaultCtx, legacy); err != nil {
-		t.Fatalf("second read: %v", err)
-	}
-	if len(audit.events) != 1 {
-		t.Fatalf("second read emitted another migration event: %+v", audit.events)
-	}
-
-	// A caller in an unrelated real workspace still can't reach it — the
-	// migration assigns a real owner, it doesn't strand it open to everyone.
-	otherSvc := &Service{
-		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: coretest.Members{"outsider": {"tea-z"}}},
-		Store: store,
-	}
-	otherCtx := core.WithIdentity(context.Background(), core.Identity{Subject: "outsider", Method: "session"})
-	if _, err := otherSvc.GetEnvGroup(otherCtx, legacy); !errors.Is(err, core.ErrForbidden) {
-		t.Errorf("unrelated workspace caller: want ErrForbidden, got %v", err)
-	}
-}
-
-func TestEnvGroup_StoreOffOmitsOwnerID(t *testing.T) {
-	// No control-plane store (Workspace nil, the single-tenant/dev default):
-	// groups aren't attributed to a distinct real workspace, so ownerId stays
-	// unset — never faked — matching AppView.OwnerID's own convention.
-	svc := newService(newFakeStore())
-	g, err := svc.CreateEnvGroup(context.Background(), CreateEnvGroupRequest{Name: "shared"})
-	if err != nil {
-		t.Fatalf("create: %v", err)
-	}
-	if g.OwnerID != "" {
-		t.Errorf("store-off ownerId = %q, want empty (never faked)", g.OwnerID)
-	}
-	all, err := svc.ListEnvGroups(context.Background(), "")
-	if err != nil || len(all) != 1 {
-		t.Fatalf("store-off list stays unfiltered: %+v err=%v", all, err)
-	}
-}
-
-// TestEnvGroup_BlueprintSeamScopesToActingWorkspace locks in a real cross-tenant
-// WRITE bug found while merging w6/m24 with the concurrently-landed w1/m35
-// blueprint-apply seam (GroupNames/ApplyEnvGroup/LinkEnvGroup/findGroupByName):
-// as first written, findGroupByName searched every workspace's groups for a
-// NAME match with no scoping at all, so a workspace A blueprint apply naming a
-// group "shared" would find, reuse, and silently overwrite workspace B's
-// same-named group's secret values — and GroupNames' pre-flight would leak
-// another workspace's group names into A's validation. All four now scope
-// through boundWorkspace, matching ListEnvGroups.
 func TestEnvGroup_BlueprintSeamScopesToActingWorkspace(t *testing.T) {
 	resolver := coretest.Members{"dana": {"tea-a"}, "erin": {"tea-b"}}
 	store := newFakeStore()
 	svcAs := func(subject string) (*Service, context.Context) {
-		s := &Service{Base: &core.Base{Client: fakeClient(ownedApp("web-a", "tea-a")), Namespace: "default", Workspace: resolver}, Store: store}
-		return s, core.WithIdentity(context.Background(), core.Identity{Subject: subject, Method: "session"})
+		s := withGroups(&Service{Base: &core.Base{Client: fakeClient(ownedApp("web-a", "tea-a")), Namespace: "default", Workspace: resolver}, Store: store})
+		return s, core.WithIdentity(testCtx(), core.Identity{Subject: subject, Method: "session"})
 	}
 
 	// erin (tea-b) pre-creates a group named "shared" with a secret value.
@@ -1414,10 +1251,11 @@ func TestEnvGroup_BlueprintSeamScopesToActingWorkspace(t *testing.T) {
 	if err := danaSvc.ApplyEnvGroup(danaCtx, "shared", map[string]string{"DB_URL": "postgres://alpha"}, nil); err != nil {
 		t.Fatalf("dana apply shared: %v", err)
 	}
-	alphaGID, _, found, err := danaSvc.findGroupByName(danaCtx, "shared")
+	alphaGIDRow, found, err := danaSvc.findGroupByName(danaCtx, "shared")
 	if err != nil || !found {
 		t.Fatalf("dana findGroupByName(shared): found=%v err=%v", found, err)
 	}
+	alphaGID := alphaGIDRow.ID
 	if alphaGID == bravoGroup.ID {
 		t.Fatal("dana's apply reused tea-b's group id — cross-tenant collision")
 	}
@@ -1500,38 +1338,39 @@ func callsUnderTenant(calls []storeCall, tenant string) int {
 	return n
 }
 
-// TestListEnvGroupsWalkIsPerCallNotCached documents the round-11 #3 cache's
-// retirement (w2/m80): now that a scoped list is itself a prefix-scoped
-// OpenBao List bounded to one workspace's own groups (listGroupIDs), the
-// extra snapshot-cache layer no longer earns its correctness cost against
-// the new dual-read/locator semantics, so every call freshly walks the
-// tenant — proportionally to that tenant's own group count, never more.
-func TestListEnvGroupsWalkIsPerCallNotCached(t *testing.T) {
+// A list is a query of the group store, never an OpenBao walk: it reads no
+// map, lists no prefix, and reads the store afresh on every call, so a write
+// is visible at once (w8/m114).
+func TestListEnvGroupsReadsNoOpenBao(t *testing.T) {
 	inner := newFakeStore()
 	store := &countingStore{fakeStore: inner}
 	svc := newService(store, sampleApp("web"))
-	ctx := context.Background()
+	ctx := testCtx()
 
 	for i := 0; i < 3; i++ {
-		if _, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "g" + strconv.Itoa(i)}); err != nil {
+		if _, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{
+			Name: "g" + strconv.Itoa(i), EnvVars: []CreateEnvVarInput{{Key: "K", Value: "v"}},
+		}); err != nil {
 			t.Fatalf("create g%d: %v", i, err)
 		}
 	}
-	store.lists, store.metaGets = 0, 0
+	store.lists, store.listCalls, store.getCalls = 0, nil, nil
+	before := svc.fakeGroups().Calls()
 
 	for i := 0; i < 5; i++ {
 		groups, err := svc.ListEnvGroups(ctx, "")
 		if err != nil {
 			t.Fatalf("list %d: %v", i, err)
 		}
-		if len(groups) != 3 {
-			t.Fatalf("list %d saw %d groups, want 3", i, len(groups))
+		if len(groups) != 3 || len(groups[0].EnvVars) != 1 {
+			t.Fatalf("list %d = %+v, want 3 groups with their key names", i, groups)
 		}
 	}
-	// No cache: each of the 5 calls performs its own List + one Get per group
-	// (3), so totals scale linearly with call count, never staying flat.
-	if store.lists != 5 || store.metaGets != 15 {
-		t.Fatalf("5 uncached lists caused %d List / %d Get calls, want 5/15 (no cache, bounded per call)", store.lists, store.metaGets)
+	if len(store.listCalls) != 0 || len(store.getCalls) != 0 {
+		t.Fatalf("5 lists made %d OpenBao List and %d Get calls, want none", len(store.listCalls), len(store.getCalls))
+	}
+	if reads := svc.fakeGroups().Calls() - before; reads != 5 {
+		t.Fatalf("5 lists read the group store %d times, want once each", reads)
 	}
 
 	if _, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "g-new"}); err != nil {
@@ -1552,12 +1391,12 @@ func TestListEnvGroupsScopedListNeverTouchesAnotherWorkspaceTenant(t *testing.T)
 	inner := newFakeStore()
 	store := &countingStore{fakeStore: inner}
 	resolver := coretest.Members{"dana": {"tea-a"}, "erin": {"tea-b"}}
-	svc := &Service{
+	svc := withGroups(&Service{
 		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: resolver},
 		Store: store,
-	}
-	danaCtx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
-	erinCtx := core.WithIdentity(context.Background(), core.Identity{Subject: "erin", Method: "session"})
+	})
+	danaCtx := core.WithIdentity(testCtx(), core.Identity{Subject: "dana", Method: "session"})
+	erinCtx := core.WithIdentity(testCtx(), core.Identity{Subject: "erin", Method: "session"})
 
 	if _, err := svc.CreateEnvGroup(danaCtx, CreateEnvGroupRequest{Name: "alpha-shared"}); err != nil {
 		t.Fatalf("create tea-a group: %v", err)
@@ -1582,11 +1421,9 @@ func TestListEnvGroupsScopedListNeverTouchesAnotherWorkspaceTenant(t *testing.T)
 // TestCreateEnvGroupPerWorkspaceQuota (round-11 #3): the per-workspace cap
 // refuses with ENV_GROUP_LIMIT before writing any state; deletion frees room.
 func TestCreateEnvGroupPerWorkspaceQuota(t *testing.T) {
-	inner := newFakeStore()
-	store := &countingStore{fakeStore: inner}
-	svc := newService(store, sampleApp("web"))
+	svc := newService(newFakeStore(), sampleApp("web"))
 	svc.MaxEnvGroups = 2
-	ctx := context.Background()
+	ctx := testCtx()
 
 	for i := 0; i < 2; i++ {
 		if _, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "g" + strconv.Itoa(i)}); err != nil {
@@ -1601,25 +1438,18 @@ func TestCreateEnvGroupPerWorkspaceQuota(t *testing.T) {
 	if !errors.Is(err, core.ErrConflict) {
 		t.Fatalf("quota refusal must be conflict-class, got %v", err)
 	}
-	if len(inner.m) == 0 {
-		t.Fatal("impossible: no state at all")
+	rows, _ := svc.Groups.ListEnvGroups(ctx, core.DefaultTenant)
+	if len(rows) != 2 {
+		t.Fatalf("rows after the refusal = %d, want the 2 within the cap", len(rows))
 	}
-	for path, m := range inner.m {
-		if m["name"] == "over" {
-			t.Fatalf("refused group reached the store at %s", path)
+	for _, row := range rows {
+		if row.Name == "over" {
+			t.Fatal("refused group reached the store")
 		}
 	}
 
 	// Delete one group: the next create fits again.
-	var firstID string
-	for path := range inner.m {
-		if strings.Contains(path, "/meta") {
-			parts := strings.Split(path, "/")
-			firstID = parts[len(parts)-2]
-			break
-		}
-	}
-	if err := svc.DeleteEnvGroup(ctx, firstID); err != nil {
+	if err := svc.DeleteEnvGroup(ctx, rows[0].ID); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
 	if _, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "fits"}); err != nil {
@@ -1633,7 +1463,7 @@ func TestCreateEnvGroupPerWorkspaceQuota(t *testing.T) {
 func TestEnvGroup_UnlinkDropsALinkWhoseServiceWasDeleted(t *testing.T) {
 	appID := id.New(id.Service)
 	svc := newService(newFakeStore(), apiApp("web", appID))
-	ctx := context.Background()
+	ctx := testCtx()
 	g, _ := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
 	if err := svc.LinkService(ctx, g.ID, "web"); err != nil {
 		t.Fatalf("LinkService: %v", err)
@@ -1664,7 +1494,7 @@ func TestEnvGroup_UnlinkDropsALinkWhoseServiceWasDeleted(t *testing.T) {
 // such a link survives a not-found.
 func TestEnvGroup_StaleUnlinkKeepsALinkWhoseServiceStillExists(t *testing.T) {
 	svc := newService(newFakeStore(), sampleApp("web"))
-	ctx := context.Background()
+	ctx := testCtx()
 	g, _ := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
 	if err := svc.LinkService(ctx, g.ID, "web"); err != nil {
 		t.Fatalf("LinkService: %v", err)
@@ -1684,7 +1514,7 @@ func TestEnvGroup_StaleUnlinkKeepsALinkWhoseServiceStillExists(t *testing.T) {
 // answered 409 ENV_GROUP_UPDATE_RESTORED.
 func TestEnvGroup_OverLongNamesAreBadRequests(t *testing.T) {
 	svc := newService(newFakeStore())
-	ctx := context.Background()
+	ctx := testCtx()
 	g, _ := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
 	long := strings.Repeat("f", validation.DNS1123SubdomainMaxLength+1)
 	if _, err := svc.SetEnvGroupFile(ctx, g.ID, long, "c"); !errors.Is(err, core.ErrBadRequest) {
@@ -1711,14 +1541,14 @@ func (c onlyWorkspaceChecker) Check(_ context.Context, _, _, object string) (boo
 func TestEnvGroup_ByIDVerbAuthorizesInTheGroupsWorkspace(t *testing.T) {
 	store := newFakeStore()
 	resolver := coretest.Members{"dana": {"tea-a", "tea-b"}}
-	creator := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: coretest.Members{"dana": {"tea-b"}}}, Store: store}
-	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
+	creator := withGroups(&Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: coretest.Members{"dana": {"tea-b"}}}, Store: store})
+	ctx := core.WithIdentity(testCtx(), core.Identity{Subject: "dana", Method: "session"})
 	group, err := creator.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "bravo"})
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: resolver,
-		Authz: onlyWorkspaceChecker{core.WorkspaceObject("tea-b")}}, Store: store}
+	svc := withGroups(&Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: resolver,
+		Authz: onlyWorkspaceChecker{core.WorkspaceObject("tea-b")}}, Store: store})
 	if got, err := svc.GetEnvGroup(ctx, group.ID); err != nil || got.ID != group.ID {
 		t.Fatalf("GetEnvGroup with a role only in the group's workspace = %+v, %v", got, err)
 	}
@@ -1758,7 +1588,7 @@ func recreateBeforeFirstAppPatch(t *testing.T, svc *Service, gid string, mounts 
 // name: the delete detaches the namesake that mounts the group, and the save
 // rolls it.
 func TestAGroupWriteJudgesARecreatedLinkedServiceAgain(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 	t.Run("a delete", func(t *testing.T) {
 		svc := newService(newFakeStore(), sampleApp("web"))
 		g, _ := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})

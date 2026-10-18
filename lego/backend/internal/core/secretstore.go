@@ -22,7 +22,8 @@ import "context"
 // production (secrets.NewOpenBaoStore), a fake in tests. Both config features read
 // and write string maps at tenant-scoped logical paths through it: the env-vars +
 // secret-files feature (internal/secrets) at "services/<service>/{env,files}" and
-// the env-groups feature (internal/envgroups) at "env-groups/<id>/{meta,env,files}".
+// the env-groups feature (internal/envgroups) at "env-groups/<id>/{env,files}" (its
+// metadata is a control-plane row, w8/m114).
 // The concrete store prepends the tenant prefix (docs/ADR013-secrets.md §4) and translates
 // each verb to KV v2. Keeping the interface here (not in a feature) lets both
 // features share ONE store instance with no feature-to-feature import. nil => the

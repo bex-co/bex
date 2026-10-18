@@ -21,6 +21,7 @@ import (
 	"errors"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -32,43 +33,43 @@ type WorkspacePurger struct {
 	*Service
 }
 
-// PurgeWorkspace deletes groups attributed to tenantID. A legacy ownerless
-// group is treated exactly as readMeta's deterministic migration would treat
-// it: it belongs to core.DefaultTenant, so deleting that workspace removes it
-// and deleting any other workspace leaves it alone. Group links are constrained
-// to same-workspace Apps; the Apps purger runs in the same delete sweep, so the
-// group purger removes the projection Secrets and source paths directly.
-//
-// w2/m80: the candidate id set is prefix-scoped (listGroupIDs) — tenantID's own
-// workspace tenant (every migrated group it owns) unioned with the shared
-// legacy tenant for the dual-read window (which may hold other workspaces'
-// unmigrated groups too, so ownership is still confirmed via readMeta's own
-// dual-read before anything is deleted). deleteGroupArtifacts removes both a
-// migrated group's workspace-tenant copy and any legacy-tenant leftover
-// (locator or still-unmigrated content) in one call.
+// PurgeWorkspace deletes tenantID's groups: their projection Secrets, every
+// OpenBao path under the workspace's env-group prefix (a crashed create's
+// unreferenced maps included), and their rows. Group links are constrained to
+// same-workspace Apps; the Apps purger runs in the same delete sweep, so the
+// group purger removes the projection Secrets and maps directly.
 func (p *WorkspacePurger) PurgeWorkspace(ctx context.Context, tenantID string) error {
 	if p.Store == nil {
-		return nil
+		return nil // no value store: no group can exist
 	}
-	groups, err := p.scanGroups(ctx, tenantID)
+	if err := p.requireGroups(ctx); err != nil {
+		return err // never report a purge that left the workspace's values behind
+	}
+	rows, err := p.Groups.ListEnvGroups(ctx, tenantID)
 	if err != nil {
 		return err
 	}
-	for _, g := range groups {
-		gid, owner := g.id, g.workspace
-		if owner == "" {
-			owner = core.DefaultTenant
-		}
-		if owner != tenantID {
-			continue
-		}
-		if err := p.deleteSecret(ctx, tenantID, envSecretName(gid)); err != nil {
+	for _, g := range rows {
+		if err := p.deleteSecret(ctx, tenantID, envSecretName(g.ID)); err != nil {
 			return err
 		}
-		if err := p.deleteSecret(ctx, tenantID, filesSecretName(gid)); err != nil {
+		if err := p.deleteSecret(ctx, tenantID, filesSecretName(g.ID)); err != nil {
 			return err
 		}
-		if err := p.deleteGroupArtifacts(ctx, tenantID, gid); err != nil {
+	}
+	gids, err := p.Store.List(groupCtx(ctx, tenantID), "env-groups")
+	if err != nil {
+		return err
+	}
+	for _, gid := range gids {
+		if err := p.deleteGroupValues(ctx, tenantID, gid); err != nil {
+			return err
+		}
+	}
+	// The rows go with the tenant's own cascade; deleting them here as well
+	// keeps a retried purge from listing groups whose values are gone.
+	for _, g := range rows {
+		if _, err := p.Groups.DeleteEnvGroup(ctx, g.ID); err != nil && !errors.Is(err, store.ErrNotFound) {
 			return err
 		}
 	}
@@ -79,23 +80,30 @@ func (p *WorkspacePurger) PurgeWorkspace(ctx context.Context, tenantID string) e
 // (w5/m120). It is a step of a delete the caller was already authorized for,
 // like secrets.WorkspacePurger.PurgeApp, so it checks nothing again. A group
 // already gone, or another workspace's, is skipped; a group listing the
-// service without mounting it is pruned by its next patch.
+// service without mounting it is pruned by its next patch, as is every link
+// while the store cutover is pending (w8/m114).
 func (p *WorkspacePurger) UnlinkApp(ctx context.Context, a *appv1alpha1.App) error {
 	if p.Store == nil {
 		return nil
 	}
+	if err := p.requireGroups(ctx); isCutoverPending(err) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	service := core.AppPublicID(a)
 	for _, gid := range mountedGroups(a) {
-		m, err := p.readMeta(ctx, gid)
+		g, err := p.readGroup(ctx, gid)
 		if errors.Is(err, core.ErrNotFound) {
 			continue
 		}
 		if err != nil {
 			return err
 		}
-		if m.workspace != a.Labels[core.LabelTenant] {
+		if g.TenantID != a.Labels[core.LabelTenant] {
 			continue
 		}
-		if err := p.dropLinks(ctx, gid, m.workspace, linkAliases(a)...); err != nil && !errors.Is(err, core.ErrNotFound) {
+		if err := p.dropLinks(ctx, gid, service); err != nil && !errors.Is(err, core.ErrNotFound) {
 			return err
 		}
 	}

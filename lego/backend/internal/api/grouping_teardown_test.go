@@ -24,6 +24,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
+	"github.com/bex-co/bex/lego/backend/internal/envgroups/envgroupstest"
 	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -57,7 +58,7 @@ func TestLinkedEnvGroupDoesNotBlockGroupingDeletion(t *testing.T) {
 				web.Labels[core.LabelEnvironment] = id.EnvironmentStorageID(envID)
 				base := serverBase(t, ws)
 				base.Client = fakeClient(web)
-				h, srv := serverWith(t, base, Deps{WorkspaceStore: ws, ProjectsStore: groupings, EnvironmentsStore: groupings, Secrets: newMemSecretStore()})
+				h, srv := serverWith(t, base, Deps{WorkspaceStore: ws, ProjectsStore: groupings, EnvironmentsStore: groupings, Secrets: newMemSecretStore(), EnvGroupsStore: envgroupstest.New()})
 				request := func(method, path, body string, status int) []byte {
 					t.Helper()
 					rec := do(t, h, method, path, testToken, body)

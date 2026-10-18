@@ -29,7 +29,7 @@ import (
 )
 
 func TestPatchEnvironmentStagesMixedOpaqueChangesAndDeploysOnce(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 	web, worker := sampleApp("web"), sampleApp("worker")
 	svc := newService(newFakeStore(), web, worker)
 	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{
@@ -96,7 +96,7 @@ func TestPatchEnvironmentStagesMixedOpaqueChangesAndDeploysOnce(t *testing.T) {
 // DEST and renaming SOURCE into it is one revision-checked save that advances
 // the revision once and carries SOURCE's exact bytes.
 func TestPatchEnvironmentRenameRefillsAnExplicitlyDeletedName(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 	svc := newService(newFakeStore())
 	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{
 		Name:        "refill",
@@ -143,7 +143,7 @@ func TestPatchEnvironmentRenameRefillsAnExplicitlyDeletedName(t *testing.T) {
 // advances the revision once and leaves exactly the named final map. A true
 // conflict in the same shape is refused without a new revision.
 func TestPatchEnvironmentWriteRefillsARenamedAwayName(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 	svc := newService(newFakeStore())
 	original := "qa-a49 initial file\nopaque original snow 雪\n"
 	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{
@@ -202,7 +202,7 @@ func TestPatchEnvironmentWriteRefillsARenamedAwayName(t *testing.T) {
 }
 
 func TestPatchEnvironmentRejectsStaleRevisionWithoutLostUpdate(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 	svc := newService(newFakeStore())
 	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{
 		Name: "shared", EnvVars: []CreateEnvVarInput{{Key: "TOKEN", Value: "before"}},
@@ -234,7 +234,7 @@ func TestPatchEnvironmentRejectsStaleRevisionWithoutLostUpdate(t *testing.T) {
 }
 
 func TestPatchEnvironmentConcurrentExpectedRevisionHasOneWinner(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 	store := newFakeStore()
 	creator := newService(store)
 	group, err := creator.CreateEnvGroup(ctx, CreateEnvGroupRequest{
@@ -292,7 +292,7 @@ func TestPatchEnvironmentConcurrentExpectedRevisionHasOneWinner(t *testing.T) {
 // Groups expose a logical content revision, unlike the service map's physical
 // CAS revision: a save-only no-op retains its token and does not roll services.
 func TestPatchEnvironmentSaveOnlyNoopPreservesLogicalRevision(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 	store := newFakeStore()
 	svc := newService(store, sampleApp("web"))
 	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{
@@ -350,7 +350,7 @@ func (s *failOneFilesPutStore) Put(ctx context.Context, path string, data map[st
 }
 
 func TestPatchEnvironmentCompensatesMixedWriteFailure(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 	store := &failOneFilesPutStore{fakeStore: newFakeStore()}
 	svc := newService(store)
 	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{
@@ -383,7 +383,7 @@ func TestPatchEnvironmentCompensatesMixedWriteFailure(t *testing.T) {
 }
 
 func TestPatchEnvironmentReportsPartialRebuildForRolloutOnlyRetry(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 	svc := newService(newFakeStore(), sampleApp("web"), sampleApp("worker"))
 	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared", ServiceIDs: []string{"web", "worker"}})
 	if err != nil {
@@ -423,7 +423,7 @@ func TestPatchEnvironmentReportsPartialRebuildForRolloutOnlyRetry(t *testing.T) 
 // (w6/m108): the deleted service is neither failed nor affected, the surviving
 // services roll out clean, and the group self-heals its stale link.
 func TestPatchEnvironmentTolerantOfSinceDeletedLinkedService(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 	for _, mode := range []SaveMode{SaveModeDeploy, SaveModeRebuild} {
 		t.Run(string(mode), func(t *testing.T) {
 			svc := newService(newFakeStore(), sampleApp("web"), sampleApp("worker"))
@@ -466,7 +466,7 @@ func TestPatchEnvironmentTolerantOfSinceDeletedLinkedService(t *testing.T) {
 // that still exists: a deleted service is pruned, while a real failure on a
 // standing service stays in FailedServiceIDs and retryable (w6/m108).
 func TestPatchEnvironmentDistinguishesDeletedServiceFromGenuineFailure(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 	svc := newService(newFakeStore(), sampleApp("web"), sampleApp("worker"))
 	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared", ServiceIDs: []string{"web", "worker"}})
 	if err != nil {
@@ -499,5 +499,34 @@ func TestPatchEnvironmentDistinguishesDeletedServiceFromGenuineFailure(t *testin
 	got, _ := svc.GetEnvGroup(ctx, group.ID)
 	if !slices.Equal(got.ServiceLinks, []string{"web"}) {
 		t.Fatalf("serviceLinks = %+v, want [web] (worker pruned, web retained)", got.ServiceLinks)
+	}
+}
+
+// A save that changes nothing claims nothing — no operation, no busy window, no
+// new revision — and still rolls the linked services, which is what an empty
+// "retry the rollout" patch is for.
+func TestNoOpSaveSkipsTheClaimAndStillRolls(t *testing.T) {
+	ctx := testCtx()
+	svc := newService(newFakeStore(), sampleApp("web"))
+	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{
+		Name: "shared", EnvVars: []CreateEnvVarInput{{Key: "A", Value: "1"}}, ServiceIDs: []string{"web"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := getApp(t, svc.Client, "web").Spec.RestartedAt
+	svc.fakeGroups().OnRelease = func(string) { t.Error("a no-op save claimed and released the group") }
+	svc.Base.Clock = func() time.Time { return time.Unix(2_000_000, 0).UTC() }
+	result, err := svc.PatchEnvironment(ctx, group.ID, EnvironmentPatch{
+		EnvVars: []EnvVarPatch{{Key: "A", Value: "1", ValueSet: true}}, SaveMode: SaveModeDeploy, ExpectedRevision: &group.Revision,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Revision != group.Revision || !result.RolledOut || len(result.AffectedServiceIDs) != 1 {
+		t.Fatalf("no-op save = %+v; want the same revision and one rolled service", result)
+	}
+	if after := getApp(t, svc.Client, "web").Spec.RestartedAt; after == before {
+		t.Fatal("a no-op save did not roll the linked service")
 	}
 }

@@ -17,7 +17,6 @@ limitations under the License.
 package envgroups
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"reflect"
@@ -39,7 +38,7 @@ import (
 func TestEnvGroupPatchQuotaRefusalIsIdenticalAcrossAdapters(t *testing.T) {
 	const want = "total secret file size limit of 524288 bytes exceeded"
 	big := strings.Repeat("x", 614_400)
-	ctx := context.Background()
+	ctx := testCtx()
 
 	fixture := func(t *testing.T) (*Service, EnvGroupView) {
 		t.Helper()
@@ -118,7 +117,7 @@ func TestEnvGroupPatchQuotaRefusalIsIdenticalAcrossAdapters(t *testing.T) {
 // case nor a reasoned exemption.
 func TestEveryEnvGroupMapWriterRefusesAnOverQuotaWrite(t *testing.T) {
 	big := strings.Repeat("x", 512*1024+1)
-	ctx := context.Background()
+	ctx := testCtx()
 
 	writers := map[string]func(*Service, EnvGroupView) error{
 		"CreateEnvGroup": func(s *Service, _ EnvGroupView) error {
@@ -194,7 +193,7 @@ func TestEveryEnvGroupMapWriterRefusesAnOverQuotaWrite(t *testing.T) {
 
 	writerName := regexp.MustCompile(`^(Set|Seed|Patch|Replace|Create|Clone|Import|Apply|Add|Upsert|Put|Store|Write|Copy|Move|Merge)`)
 	base := reflect.TypeOf(&core.Base{})
-	svcType := reflect.TypeOf(&Service{})
+	svcType := reflect.TypeOf(withGroups(&Service{}))
 	for i := 0; i < svcType.NumMethod(); i++ {
 		method := svcType.Method(i).Name
 		if _, promoted := base.MethodByName(method); promoted || !writerName.MatchString(method) {
@@ -215,7 +214,7 @@ func TestEveryEnvGroupMapWriterRefusesAnOverQuotaWrite(t *testing.T) {
 // patched map refused the delete-only patch that is the sole way down, so an
 // over-quota group was permanently unfixable through the batch patch.
 func TestEnvGroupPatchLetsAnOverQuotaMapShrinkButNotGrow(t *testing.T) {
-	ctx := context.Background()
+	ctx := testCtx()
 	// Three of these total ~900 KiB. Deleting one still leaves ~600 KiB, over
 	// the 512 KiB cap — so only the before/after comparison can admit it. A
 	// seed that fell UNDER the cap after the delete would pass either way and

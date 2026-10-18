@@ -18,11 +18,13 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/graphql-go/graphql"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -372,20 +374,25 @@ func TestWorkspaceLifecycleE2E(t *testing.T) {
 	if _, err := secretsSvc.SetEnvVar(aliceCtx, "worker", "FOO", secrets.EnvVarWrite{Value: "bar"}); err != nil {
 		t.Fatalf("seed secret: %v", err)
 	}
-	group, err := (&envgroups.Service{Base: base, Store: secretsStore}).CreateEnvGroup(aliceCtx, envgroups.CreateEnvGroupRequest{Name: "workspace-delete"})
+	if err := st.CompleteEnvGroupCutover(ctx, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	group, err := (&envgroups.Service{Base: base, Store: secretsStore, Groups: st}).CreateEnvGroup(aliceCtx, envgroups.CreateEnvGroupRequest{
+		Name: "workspace-delete", EnvVars: []envgroups.CreateEnvVarInput{{Key: "K", Value: "v"}},
+	})
 	if err != nil {
 		t.Fatalf("seed env group: %v", err)
 	}
 	envGroupID := group.ID
-	// A service's secrets live under its own workspace's prefix (w7/m70), env
-	// group metadata under the legacy root. Both seeds must read back at the
+	// A service's secrets and an env group's values both live under their own
+	// workspace's prefix (w7/m70, w8/m114). Both seeds must read back at the
 	// paths checked below, so a purge check can never pass on an empty path.
 	tenantCtx := secrets.WithTenant(ctx, dsID)
 	if env, err := secretsStore.Get(tenantCtx, "services/worker/env"); err != nil || len(env) == 0 {
 		t.Fatalf("seeded secret not at its path before delete: %v, %v", env, err)
 	}
-	if meta, err := secretsStore.Get(ctx, "env-groups/"+envGroupID+"/meta"); err != nil || len(meta) == 0 {
-		t.Fatalf("seeded env group not at its path before delete: %v, %v", meta, err)
+	if values, err := secretsStore.Get(tenantCtx, "env-groups/"+envGroupID+"/env"); err != nil || len(values) == 0 {
+		t.Fatalf("seeded env group not at its path before delete: %v, %v", values, err)
 	}
 
 	// Wire the pre-cascade purgers exactly as cmd/api/main.go does (t005) —
@@ -395,7 +402,7 @@ func TestWorkspaceLifecycleE2E(t *testing.T) {
 	// isn't exercised here — envtest has no projector to resurrect against).
 	srv.Workspaces.PreCascadePurgers = []workspaces.WorkspacePurger{
 		&secrets.WorkspacePurger{Service: &secrets.Service{Base: base, Store: secretsStore}},
-		&envgroups.WorkspacePurger{Service: &envgroups.Service{Base: base, Store: secretsStore}},
+		&envgroups.WorkspacePurger{Service: &envgroups.Service{Base: base, Store: secretsStore, Groups: st}},
 		&postgres.WorkspacePurger{Service: &postgres.Service{Base: base}},
 		&keyvalue.WorkspacePurger{Service: &keyvalue.Service{Base: base}},
 	}
@@ -422,12 +429,15 @@ func TestWorkspaceLifecycleE2E(t *testing.T) {
 	if len(env) != 0 {
 		t.Fatalf("secret not purged on workspace delete: %+v", env)
 	}
-	meta, err := secretsStore.Get(ctx, "env-groups/"+envGroupID+"/meta")
+	values, err := secretsStore.Get(tenantCtx, "env-groups/"+envGroupID+"/env")
 	if err != nil {
-		t.Fatalf("read purged env-group meta: %v", err)
+		t.Fatalf("read purged env-group values: %v", err)
 	}
-	if len(meta) != 0 {
-		t.Fatalf("env group not purged on workspace delete: %+v", meta)
+	if len(values) != 0 {
+		t.Fatalf("env group not purged on workspace delete: %+v", values)
+	}
+	if _, err := st.GetEnvGroup(ctx, envGroupID); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("env group row after workspace delete = %v, want gone", err)
 	}
 }
 

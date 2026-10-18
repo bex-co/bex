@@ -31,10 +31,11 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 func serveREST(svc *Service, method, path, body string) *httptest.ResponseRecorder {
-	return serveRESTContext(context.Background(), svc, method, path, body)
+	return serveRESTContext(testCtx(), svc, method, path, body)
 }
 
 func serveRESTContext(ctx context.Context, svc *Service, method, path, body string) *httptest.ResponseRecorder {
@@ -135,7 +136,7 @@ func TestREST_EnvGroupsLifecycle(t *testing.T) {
 func TestREST_EnvGroupsPaginationWalkUsesRenderEnvelope(t *testing.T) {
 	svc := newService(newFakeStore())
 	for _, name := range []string{"echo", "alpha", "delta", "bravo", "charlie"} {
-		if _, err := svc.CreateEnvGroup(context.Background(), CreateEnvGroupRequest{Name: name}); err != nil {
+		if _, err := svc.CreateEnvGroup(testCtx(), CreateEnvGroupRequest{Name: name}); err != nil {
 			t.Fatalf("create %s: %v", name, err)
 		}
 	}
@@ -180,7 +181,7 @@ func TestREST_EnvGroupsPaginationWalkUsesRenderEnvelope(t *testing.T) {
 func TestREST_EnvGroupsAbsentLimitUsesRenderDefault(t *testing.T) {
 	svc := newService(newFakeStore())
 	for i := 0; i < core.DefaultPageLimit+1; i++ {
-		if _, err := svc.CreateEnvGroup(context.Background(), CreateEnvGroupRequest{Name: fmt.Sprintf("group-%02d", i)}); err != nil {
+		if _, err := svc.CreateEnvGroup(testCtx(), CreateEnvGroupRequest{Name: fmt.Sprintf("group-%02d", i)}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -204,21 +205,23 @@ func filterTestService(t *testing.T) *Service {
 		{"evg-02", "bravo", "tea-a", "env-two", "2026-07-15T12:00:00Z", "2026-07-15T13:00:00Z"},
 		{"evg-03", "charlie", "tea-b", "env-one", "2026-07-15T14:00:00Z", "2026-07-15T15:00:00Z"},
 	} {
-		if err := store.Put(context.Background(), metaPath(group.id), map[string]string{
-			"name": group.name, "workspace": group.owner, "environment": group.environment,
-			"createdAt": group.created, "updatedAt": group.updated,
-		}); err != nil {
-			t.Fatal(err)
-		}
+		groupsOf(store).Seed(storeRow(group.id, group.name, group.owner, group.environment, group.created, group.updated))
 	}
-	return &Service{
+	return withGroups(&Service{
 		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: coretest.Members{"filter-user": {"tea-a", "tea-b"}}},
 		Store: store,
+	})
+}
+
+func storeRow(gid, name, owner, environment, created, updated string) store.EnvGroup {
+	return store.EnvGroup{
+		ID: gid, Name: name, TenantID: owner, EnvironmentID: environment,
+		CreatedAt: mustTime(created), UpdatedAt: mustTime(updated),
 	}
 }
 
 func serveFilterREST(svc *Service, path string) *httptest.ResponseRecorder {
-	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "filter-user", Method: "session"})
+	ctx := core.WithIdentity(testCtx(), core.Identity{Subject: "filter-user", Method: "session"})
 	return serveRESTContext(ctx, svc, http.MethodGet, path, "")
 }
 
@@ -284,45 +287,11 @@ func TestREST_EnvGroupFiltersBeforePagination(t *testing.T) {
 	store := svc.Store.(*fakeStore)
 	for i, name := range []string{"delta", "echo", "foxtrot"} {
 		id := fmt.Sprintf("evg-%02d", i+4)
-		if err := store.Put(context.Background(), metaPath(id), map[string]string{
-			"name": name, "workspace": "tea-a", "createdAt": "2026-07-15T16:00:00Z", "updatedAt": "2026-07-15T16:00:00Z",
-		}); err != nil {
-			t.Fatal(err)
-		}
+		groupsOf(store).Seed(storeRow(id, name, "tea-a", "", "2026-07-15T16:00:00Z", "2026-07-15T16:00:00Z"))
 	}
 	got := envGroupListNames(t, serveFilterREST(svc, "/v1/env-groups?name=delta,echo,foxtrot&limit=2"))
 	if !slices.Equal(got, []string{"delta", "echo"}) {
 		t.Fatalf("filtered page = %v, want a full two-item page", got)
-	}
-}
-
-func TestREST_EnvGroupLegacyEmptyTimestampPassesTimeFilter(t *testing.T) {
-	// Legacy env groups pre-dating w6/m24's timestamp stamping have empty
-	// createdAt/updatedAt. Before w2/m51 matchesTimeWindow returned false on a
-	// parse error, silently excluding them from any time-filtered list.
-	// After the fix: an empty timestamp passes any time window (it can't be
-	// placed in one, so it is not excluded — omitted data ≠ excluded).
-	store := newFakeStore()
-	// Legacy group: no timestamps at all.
-	if err := store.Put(context.Background(), metaPath("evg-legacy"), map[string]string{
-		"name": "legacy", "workspace": "tea-a",
-	}); err != nil {
-		t.Fatal(err)
-	}
-	svc := &Service{
-		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: coretest.Members{"filter-user": {"tea-a"}}},
-		Store: store,
-	}
-	// A createdBefore filter that excludes all known-created groups must still
-	// return the legacy group (empty timestamp → pass).
-	got := envGroupListNames(t, serveFilterREST(svc, "/v1/env-groups?createdBefore=2020-01-01T00:00:00Z"))
-	if !slices.Equal(got, []string{"legacy"}) {
-		t.Fatalf("legacy group with empty createdAt should pass time filter, got %v", got)
-	}
-	// Same for updatedBefore.
-	got = envGroupListNames(t, serveFilterREST(svc, "/v1/env-groups?updatedBefore=2020-01-01T00:00:00Z"))
-	if !slices.Equal(got, []string{"legacy"}) {
-		t.Fatalf("legacy group with empty updatedAt should pass time filter, got %v", got)
 	}
 }
 
@@ -339,7 +308,7 @@ func TestREST_CreateEnvGroupAcceptsEnvironmentID(t *testing.T) {
 		if environmentID != "env-alpha" {
 			return "", core.ErrNotFound
 		}
-		return "", nil // store-off group owner is also empty
+		return core.DefaultTenant, nil
 	}
 	w := serveREST(svc, "POST", "/v1/env-groups", `{"name":"shared","environmentId":"env-alpha"}`)
 	if w.Code != http.StatusCreated {
@@ -374,17 +343,17 @@ func TestREST_CreateEnvGroupAcceptsInitialContentsAndLinks(t *testing.T) {
 		!slices.Equal(g.SecretFiles, []SecretFileView{{Name: "rest.txt"}}) {
 		t.Fatalf("populated create response: %+v", g)
 	}
-	if got, err := svc.GetEnvGroupVar(context.Background(), g.ID, "LITERAL"); err != nil || got.Value != "rest" {
+	if got, err := svc.GetEnvGroupVar(testCtx(), g.ID, "LITERAL"); err != nil || got.Value != "rest" {
 		t.Fatalf("literal round-trip: %+v err=%v", got, err)
 	}
-	if got, err := svc.GetEnvGroupVar(context.Background(), g.ID, "GENERATED"); err != nil || len(got.Value) != 44 {
+	if got, err := svc.GetEnvGroupVar(testCtx(), g.ID, "GENERATED"); err != nil || len(got.Value) != 44 {
 		t.Fatalf("generated round-trip: len=%d err=%v", len(got.Value), err)
 	}
 }
 
 func TestREST_SetEnvGroupVarAcceptsGenerateValue(t *testing.T) {
 	svc := newService(newFakeStore())
-	g, err := svc.CreateEnvGroup(context.Background(), CreateEnvGroupRequest{Name: "shared"})
+	g, err := svc.CreateEnvGroup(testCtx(), CreateEnvGroupRequest{Name: "shared"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -395,7 +364,7 @@ func TestREST_SetEnvGroupVarAcceptsGenerateValue(t *testing.T) {
 	if strings.Contains(w.Body.String(), `"value":`) {
 		t.Fatalf("generated PUT leaked a value: %s", w.Body.String())
 	}
-	got, err := svc.GetEnvGroupVar(context.Background(), g.ID, "TOKEN")
+	got, err := svc.GetEnvGroupVar(testCtx(), g.ID, "TOKEN")
 	if err != nil || len(got.Value) != 44 {
 		t.Fatalf("generated reveal: len=%d err=%v", len(got.Value), err)
 	}
@@ -418,7 +387,7 @@ func TestREST_SetEnvGroupVarAcceptsGenerateValue(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("empty literal PUT: got %d: %s", w.Code, w.Body.String())
 	}
-	if got, err := svc.GetEnvGroupVar(context.Background(), g.ID, "EMPTY"); err != nil || got.Value != "" {
+	if got, err := svc.GetEnvGroupVar(testCtx(), g.ID, "EMPTY"); err != nil || got.Value != "" {
 		t.Fatalf("empty literal reveal: %+v err=%v", got, err)
 	}
 	revealed := serveREST(svc, http.MethodGet, "/v1/env-groups/"+g.ID+"/env-vars/EMPTY", "")
@@ -472,7 +441,7 @@ func TestREST_CreateEnvGroupInvalidServiceIsNamed404WithNoOrphan(t *testing.T) {
 	if body["id"] != "not_found" || !strings.Contains(message, `serviceId "srv-missing"`) {
 		t.Fatalf("named Render error envelope: %v", body)
 	}
-	if ids, _ := store.List(context.Background(), "env-groups"); len(ids) != 0 {
+	if ids, _ := store.List(testCtx(), "env-groups"); len(ids) != 0 {
 		t.Fatalf("invalid serviceId left orphan groups: %v", ids)
 	}
 }
