@@ -1,5 +1,16 @@
-# Grafana Alloy v1.11.2 (the log-shipper's chart-default version) with one
-# carried patch, w4/m199.
+# Grafana Alloy v1.11.3 with one carried patch, w4/m199.
+#
+# v1.11.3, not the chart-default v1.11.2 (w4/m174): v1.11.2's loki.source.file
+# re-applies its readers on every target change through a temporary drain
+# goroutine that it then cancels, and an entry that goroutine had taken from a
+# reader but not yet forwarded is dropped. Every short-lived pod churns the
+# targets: scripts/log-shipper-kind-replay.py lost 4 of 800 lines from fast
+# cron runs, a different line each time, each one read from its file
+# (loki_source_file_read_lines_total counts it) and never sent
+# (loki_write_sent_entries_total doesn't). v1.11.3 forwards from one
+# dedicated consumer and applies tasks separately, so nothing is cancelled
+# mid-handoff; it lost 0 of 800. Upstream lists the change only as "Schedule
+# new path targets faster in loki.source.file".
 #
 # Upstream stage.cri stamps a record reassembled from CRI partial ("P") chunks
 # with its LAST chunk's time; the kubelet's pod-log API (bex's live tail) uses
@@ -12,7 +23,7 @@
 # scripts/test_log_shipper.py replay passes on it.
 #
 # Mirrors upstream's Dockerfile (same build image, UI build, GO_TAGS and
-# release flags) and swaps only /bin/alloy inside the official v1.11.2 image,
+# release flags) and swaps only /bin/alloy inside the official v1.11.3 image,
 # so the runtime filesystem, user and entrypoint are unchanged.
 #
 # Build (CI: log-shipper-image.yml):
@@ -20,9 +31,9 @@
 #     -t ghcr.io/bex-co/bex-alloy:<tag> deploy/log-shipper
 
 FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.21@sha256:36b1e621f32f46aa1de58843b885f0885faabe7b29468462d36a60bea1245e33 AS source
-# Pin the exact upstream commit the patch was authored against (tag v1.11.2);
-# bump the two together.
-ARG ALLOY_COMMIT=4a8f93cd1755dd8205c3a9d6c35b136c476cff92
+# Pin the exact upstream commit the patch applies to (tag v1.11.3; authored
+# against v1.11.2, applies unchanged); bump the two together.
+ARG ALLOY_COMMIT=091a20eb3eb50a968f129d6094455962e9dd328e
 WORKDIR /src
 RUN git init -q alloy \
     && cd alloy \
@@ -50,9 +61,9 @@ ARG TARGETARCH
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
     GOOS="$TARGETOS" GOARCH="$TARGETARCH" \
-    RELEASE_BUILD=1 VERSION=v1.11.2-bex-cri-first-ts \
+    RELEASE_BUILD=1 VERSION=v1.11.3-bex-cri-first-ts \
     GO_TAGS="netgo builtinassets promtail_journal_enabled" \
     make alloy
 
-FROM grafana/alloy:v1.11.2@sha256:6ab34b8201f0e8b0c4346be4934c9965723af3f7f21dd9a65fd73f270f69b451
+FROM grafana/alloy:v1.11.3@sha256:8c7256f412feb9f5f48f9f6f9394dc97ca887f63dea9304f347970ecc1787669
 COPY --from=build --chown=473:473 /src/alloy/build/alloy /bin/alloy
