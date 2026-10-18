@@ -31,12 +31,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"maps"
 	"slices"
 	"sort"
 	"strings"
 	"time"
 
+	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -56,6 +58,14 @@ import (
 // OpenBao reads per group on every list, unbounded by the requested page size
 // (codex #10). 200 is well above any reasonable page limit.
 const maxHydratedEnvGroups = 200
+
+// listMetaReadConcurrency bounds the metadata reads one group list runs at
+// once; slowGroupScan is the scan time past which the list says how many ids
+// it read, so growth shows up in the logs before it reaches the edge timeout.
+const (
+	listMetaReadConcurrency = 8
+	slowGroupScan           = 2 * time.Second
+)
 
 // Service manages environment groups over the shared core.SecretKV store and
 // projects them into linked services. Embeds *core.Base for the client, clock, and
@@ -450,24 +460,60 @@ func (s *Service) listScopedMeta(ctx context.Context, ownerID string) ([]scopedM
 	if scoped && scopeTo == "" {
 		return []scopedMeta{}, nil
 	}
-	ids, err := s.listGroupIDs(ctx, scopeTo, true)
+	groups, err := s.scanGroups(ctx, scopeTo)
+	if err != nil {
+		return nil, err
+	}
+	if scoped {
+		// Drop legacy-union entries that turned out to belong elsewhere.
+		groups = slices.DeleteFunc(groups, func(g scopedMeta) bool { return g.workspace != scopeTo })
+	}
+	return groups, nil
+}
+
+// scanGroups lists workspace's group ids, unioned with the legacy tenant for
+// the dual-read window (listGroupIDs), and reads their metadata in id order,
+// dropping ids whose metadata is gone (a create publishes it last). Every id
+// costs one or two OpenBao reads, and a deleted group's id stays listed behind
+// its resurrection fence (plantDeletedMetaFence), so the scan grows with every
+// group the workspace ever deleted. Sequential reads made the bex workspace's
+// list outgrow the edge timeout through the CLI's per-project environment
+// lists (w8/m113); a bounded fan-out keeps it to a few round trips, and a slow
+// scan says how many ids it read.
+func (s *Service) scanGroups(ctx context.Context, workspace string) ([]scopedMeta, error) {
+	started := time.Now()
+	ids, err := s.listGroupIDs(ctx, workspace, true)
 	if err != nil {
 		return nil, err
 	}
 	sort.Strings(ids)
+	metas := make([]meta, len(ids))
+	found := make([]bool, len(ids))
+	// A plain group, not WithContext: a failed sibling must not cancel
+	// readMeta's lazy ownership migration and its audit record midway.
+	var reads errgroup.Group
+	reads.SetLimit(listMetaReadConcurrency)
+	for i, gid := range ids {
+		reads.Go(func() error {
+			m, err := s.readMeta(ctx, gid)
+			if errors.Is(err, core.ErrNotFound) {
+				return nil
+			}
+			metas[i], found[i] = m, err == nil
+			return err
+		})
+	}
+	if err := reads.Wait(); err != nil {
+		return nil, err
+	}
 	out := make([]scopedMeta, 0, len(ids))
-	for _, gid := range ids {
-		m, err := s.readMeta(ctx, gid)
-		if errors.Is(err, core.ErrNotFound) {
-			continue // create publishes metadata last; ignore an in-flight id
+	for i, gid := range ids {
+		if found[i] {
+			out = append(out, scopedMeta{id: gid, meta: metas[i]})
 		}
-		if err != nil {
-			return nil, err
-		}
-		if scoped && m.workspace != scopeTo {
-			continue // a legacy-union entry that turned out to belong elsewhere
-		}
-		out = append(out, scopedMeta{id: gid, meta: m})
+	}
+	if took := time.Since(started); took > slowGroupScan {
+		log.Printf("envgroups: scanning workspace %q took %s: %d group ids listed, %d with metadata", workspace, took.Round(time.Millisecond), len(ids), len(out))
 	}
 	return out, nil
 }
@@ -1519,26 +1565,19 @@ func (s *Service) GroupIDsByName(ctx context.Context) (map[string]string, error)
 	if scoped && scopeTo == "" {
 		return map[string]string{}, nil
 	}
-	ids, err := s.listGroupIDs(ctx, scopeTo, true)
+	groups, err := s.scanGroups(ctx, scopeTo)
 	if err != nil {
 		return nil, err
 	}
-	out := make(map[string]string, len(ids))
-	for _, gid := range ids {
-		m, err := s.readMeta(ctx, gid)
-		if errors.Is(err, core.ErrNotFound) {
-			continue
-		}
-		if err != nil {
-			return nil, err
-		}
-		if scoped && m.workspace != scopeTo {
+	out := make(map[string]string, len(groups))
+	for _, g := range groups {
+		if scoped && g.workspace != scopeTo {
 			continue // another workspace's group — not this deploy's to see
 		}
-		if prior, duplicate := out[m.name]; duplicate {
-			return nil, envGroupNameAmbiguous(m.name, scopeTo, []string{prior, gid})
+		if prior, duplicate := out[g.name]; duplicate {
+			return nil, envGroupNameAmbiguous(g.name, scopeTo, []string{prior, g.id})
 		}
-		out[m.name] = gid
+		out[g.name] = g.id
 	}
 	return out, nil
 }
@@ -1673,25 +1712,15 @@ func (s *Service) findGroupByName(ctx context.Context, name string) (string, met
 	if scoped && scopeTo == "" {
 		return "", meta{}, false, nil
 	}
-	ids, err := s.listGroupIDs(ctx, scopeTo, true)
+	groups, err := s.scanGroups(ctx, scopeTo)
 	if err != nil {
 		return "", meta{}, false, err
 	}
-	sort.Strings(ids)
 	var matches []scopedMeta
-	for _, gid := range ids {
-		m, err := s.readMeta(ctx, gid)
-		if errors.Is(err, core.ErrNotFound) {
-			continue
-		}
-		if err != nil {
-			return "", meta{}, false, err
-		}
-		if scoped && m.workspace != scopeTo {
-			continue // another workspace's group — never matched by name search
-		}
-		if m.name == name {
-			matches = append(matches, scopedMeta{id: gid, meta: m})
+	for _, g := range groups {
+		// Another workspace's group is never matched by name search.
+		if g.name == name && (!scoped || g.workspace == scopeTo) {
+			matches = append(matches, g)
 		}
 	}
 	if len(matches) == 0 {
@@ -1863,25 +1892,14 @@ func (s *Service) releaseGroupName(ctx context.Context, workspace, name, gid str
 // index above: the sweep catches pre-index groups; CAS makes concurrent
 // creates and renames across bex-api replicas resolve to exactly one winner.
 func (s *Service) groupsNamed(ctx context.Context, workspace, name, excludeID string) ([]string, error) {
-	ids, err := s.listGroupIDs(ctx, workspace, true)
+	groups, err := s.scanGroups(ctx, workspace)
 	if err != nil {
 		return nil, err
 	}
-	sort.Strings(ids)
 	matches := make([]string, 0, 1)
-	for _, gid := range ids {
-		if gid == excludeID {
-			continue
-		}
-		m, err := s.readMeta(ctx, gid)
-		if errors.Is(err, core.ErrNotFound) {
-			continue
-		}
-		if err != nil {
-			return nil, err
-		}
-		if m.name == name && (s.Workspace == nil || m.workspace == workspace) {
-			matches = append(matches, gid)
+	for _, g := range groups {
+		if g.id != excludeID && g.name == name && (s.Workspace == nil || g.workspace == workspace) {
+			matches = append(matches, g.id)
 		}
 	}
 	return matches, nil
@@ -2149,20 +2167,13 @@ func (s *Service) envGroupQuota(ctx context.Context, workspace string) error {
 	if s.MaxEnvGroups <= 0 {
 		return nil
 	}
-	ids, err := s.listGroupIDs(ctx, workspace, true)
+	groups, err := s.scanGroups(ctx, workspace)
 	if err != nil {
 		return err
 	}
 	count := 0
-	for _, gid := range ids {
-		m, err := s.readMeta(ctx, gid)
-		if errors.Is(err, core.ErrNotFound) {
-			continue
-		}
-		if err != nil {
-			return err
-		}
-		if m.workspace == workspace {
+	for _, g := range groups {
+		if g.workspace == workspace {
 			count++
 		}
 	}
