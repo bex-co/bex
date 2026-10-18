@@ -15,6 +15,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m113** — [Services list times out (524/502) for the bex workspace](m113/README.md) (6 tasks) ← from `/qa-find-bugs-cli` sweep 2026-10-18: `bex services` in workspace bex exceeds the edge timeout (110s→502, 125s→524) while small workspaces and sibling lists answer in ~1s
+
 - [ ] **m112** — [Make documented time-series tables usable in managed Postgres](blocked/m112/README.md) (8 tasks;300m) — **BLOCKED (2026-10-17: needs the user to decide how managed Postgres supplies Render's extensions — [decision](blocked/m92/design.md): operand image (CNPG PostGIS-only vs a bex-built image per major; no CNPG image carries TimescaleDB), activation (pre-install like vector vs on-demand allowlist) and a rolling restart of every managed Postgres pod, possibly with m65 — TimescaleDB also needs shared_preload_libraries, Apache mode only; no task started)**
 
 - [ ] **m111** — [Make documented text similarity usable in managed Postgres](blocked/m111/README.md) (7 tasks;220m) — **BLOCKED (2026-10-17: needs the user to decide how managed Postgres supplies Render's extensions — [decision](blocked/m92/design.md): operand image (CNPG PostGIS-only vs a bex-built image per major), activation (pre-install like vector vs on-demand allowlist) and a rolling restart of every managed Postgres pod, possibly with m65; no task started)**
