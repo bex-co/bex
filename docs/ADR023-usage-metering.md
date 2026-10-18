@@ -126,6 +126,18 @@ Successful zero egress/build rows are coverage anchors in `usage_hourly`; the pe
 
 The loop iterates `ListApps` (App services) and then all `Database` and `KeyValue` CRs in the operator's namespace — both using the `bex.co/tenant` label to identify the owning workspace. Database/KeyValue CRs use their immutable typed CR metadata name (`dpg-…` / `red-…`) as `service_id`; the former name-keyed fleet shapes were normalized and retired by w1/m56 ([docs/ADR020-identifiers.md](ADR020-identifiers.md)). For each closed datastore window, the collector averages the kubelet used-byte gauge across the hour, sums all matching PVCs (including CNPG replicas), converts bytes to decimal GB, and multiplies by elapsed seconds. Public datastore egress is collected from the exact proxy counter in the same window; private datastore egress is successful zero. Per-meter catch-up cursors let storage and egress backfill independently for up to 48 hours and idempotent upserts prevent double-counting when a window is retried.
 
+**Deleted resources keep their final hours (w4/m173 t007).** Those lists hold only what still exists, so a resource deleted before its hour was rolled up was never metered: every short-lived service or datastore read as no row at all, and every deleted resource lost its final partial hour. Migration `0151_usage_retired_resources` keeps `usage_retired_resources` for this.
+
+- **What fills it.** An `AFTER DELETE` trigger on `apps` writes a row on every App deletion path: the delete verb or a workspace cascade. The table has no foreign key, so that cascade cannot fail. `RollbackAppCreation` discards the row, because a create that never completed owes nothing. `DeletePostgres` and `DeleteKeyValue` record the CR's identity, namespace, display name, public flag, plan and creation time **before** deleting it. If the record cannot be written they refuse the delete as unavailable.
+- **How it is metered.** Each rollup and catch-up meters these rows through the hour of deletion, using the same per-meter cursors and the same 48-hour floor from the current window.
+  - **Apps** are metered for `instance_seconds` and `build_seconds` by their derived pod identity. Their final-hour `egress_bytes` stays unmetered, because the Traefik router names it needs exist only on the live CR.
+  - **A same-name App** created by the deletion hour (one that is live, or deleted later) is already billing those same pods under its own ID, so the deleted App is skipped.
+  - **Datastores** go through the live datastore pass, so their display names are retained and all three meters run.
+- **Coverage.** Each retired resource's coverage streams close at the end of its deletion hour.
+- **Creation floor.** Datastore catch-up now also starts no earlier than the creation hour, like Apps, so a new or short-lived datastore no longer back-fills pre-creation zero rows.
+- **When rows go.** Retention compaction drops a row once it is past the catch-up window or its workspace is gone. Compaction runs with or without Prometheus.
+- **Limit.** Workspace purges delete datastores without a record. Their usage rows go with the workspace anyway.
+
 With `BEX_CP_DB_URI` set but `BEX_PROM_URL` absent the service is wired (the month-to-date read still works) but the metering side of the loop is skipped — only the retention compaction below runs.
 
 ## Retention: hourly detail compacts into monthly aggregates

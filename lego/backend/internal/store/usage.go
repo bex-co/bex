@@ -283,6 +283,17 @@ func (s *PGStore) ReconcileUsageSourceStreams(ctx context.Context, active []Usag
 	return err
 }
 
+// CloseUsageSourceStreams ends one resource's coverage streams at through. A
+// deleted resource's last health write reopens its streams, and the inventory
+// reconcile would close them at the current boundary rather than its deletion
+// hour, leaving phantom gaps after a catch-up (w4/m173).
+func (s *PGStore) CloseUsageSourceStreams(ctx context.Context, ref UsageResourceRef, through time.Time) error {
+	_, err := s.Pool.Exec(ctx,
+		`UPDATE usage_source_streams SET expected_through = $3 WHERE resource_kind = $1 AND service_id = $2`,
+		NormalizeResourceKind(ref.ResourceKind), ref.ServiceID, through.UTC().Truncate(time.Hour))
+	return err
+}
+
 type usageCoverageStream struct {
 	ResourceKind    string
 	ServiceID       string

@@ -66,6 +66,9 @@ type Service struct {
 	// delegates here; the logs feature wires it via api/server.go. nil with no
 	// PodLogs source => ErrLogsUnavailable.
 	KeyValueLogs KeyValueLogQuerySource
+	// Retirements records a deleted store for usage metering, which lists only
+	// live CRs (w4/m173). nil records nothing.
+	Retirements store.UsageRetirementRecorder
 	// PodLogs backs the direct-pod fallback when KeyValueLogs is nil (no durable
 	// store). nil with no KeyValueLogs source => ErrLogsUnavailable.
 	PodLogs core.PodLogSource
@@ -544,6 +547,14 @@ func (s *Service) DeleteKeyValue(ctx context.Context, name string) error {
 	// cannot ride a cached positive to destroy the store and its data.
 	if err := s.AuthorizeKeyValueFresh(ctx, core.RelCanCreate, kv); err != nil {
 		return err
+	}
+	// Recorded first, and required: once the CR is gone the meters cannot
+	// find the hours it still ran (w4/m173). A record for a delete that then
+	// fails only re-meters hours the live pass also writes, idempotently.
+	if r, ok := store.RetiredDatastoreFor(kv); ok && s.Retirements != nil {
+		if err := s.Retirements.RecordRetiredUsageResource(ctx, r); err != nil {
+			return core.HideCause(fmt.Errorf("%w: could not retain %s's usage before deleting it; retry", core.ErrUnavailable, kv.Name), err)
+		}
 	}
 	return s.Client.Delete(ctx, kv)
 }
