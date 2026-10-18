@@ -1,0 +1,7 @@
+# Sandbox copy + source swap + build tail — sweep467
+
+Passing functional coverage, no new issue. Same isolated session as sweeps 454–466, `bex-canary`, HEAD checkout build (`f876458d4`), 2026-10-18T06:47–06:57Z.
+
+Sandbox file transfer (bounded implementation): `ea sandboxes copy` uploads a file, `exec cat` reads the exact marker back, download is byte-identical (`diff` clean); a `../` destination refuses client-side ("sandbox path must not escape the home directory"); sandbox stopped explicitly, list empty. Source swap: `services update --repo <express repo>` on an image service clears `imagePath`, records the repo, opens **no** deploy, and the prior release keeps serving HTTP 200 — the m76 save-without-deploy contract. The follow-on deploy then fails fast and honestly (`build_failed` in seconds: the retained `docker` runtime finds no Dockerfile in the repo; the CLI cannot switch runtimes by upstream design, so the correction path is the documented API/dashboard one — composition of two recorded behaviors, not a new defect). Bounded `--type build --tail` streamed the clone and failure lines live and **self-exited 0** at terminal state with the named "no running build is available to follow" line — no hang, no kill needed.
+
+Cleanup: sandbox stopped; exact-owned `srv-dba6q76qhqkc73a9rhb0` deleted by ID (404-verified); baseline deltas are the concurrent hunt's churn, observed read-only. No plan mutations. Session remains active; the loop continues from sweep468; m115/m116 remain uncommitted pending `/ship`.

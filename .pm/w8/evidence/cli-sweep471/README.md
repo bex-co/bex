@@ -1,0 +1,7 @@
+# Build-filter one-sided update (m54 live recheck) — sweep471
+
+Passing functional coverage, no new issue; the loop now runs inline (cron job `3fde7866` deleted at the user's request). Same isolated session as sweeps 454–470, `bex-canary`, HEAD checkout build (`9cc884ebb`), 2026-10-18T07:26–07:34Z.
+
+A native service created with `--build-filter-path 'src/**' --build-filter-ignored-path 'docs/**'` reads back the exact object at top level (`buildFilter:{paths,ignoredPaths}`) and builds to `live`. A one-sided `--build-filter-ignored-path 'tests/**'` update replaces the filter wholesale (`paths:[]`, `ignoredPaths:[tests/**]`) — initially read as a possible m54 regression, but the [m54 record](../../done/m54/finding.md) is explicit that whole-filter replacement with the unused list as `[]` **is** the Render-faithful contract (an omitted top-level filter is what preserves state), and an unrelated rename update here preserved the filter byte-identically, closing the question with no filing. Free-tier Key Value limit refuses a second store by name (`WORKSPACE_RESOURCE_LIMIT`, no resource created).
+
+Cleanup: exact-owned `srv-dba77tp30icc73bsrs3g` and `red-dba77tuhn6pc73d5b1hg` deleted by ID (404 / named not-found verified); baseline byte-identical. No plan mutations. Session remains active; the loop continues inline from sweep472; m116 + evidence 465–471 remain uncommitted pending `/ship`.
