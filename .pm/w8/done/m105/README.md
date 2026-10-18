@@ -1,6 +1,6 @@
 # w8 · m105 — Make the Jekyll static quickstart build normally
 
-**Worker:** worker8 **Goal:** the documented Jekyll source builds and publishes without authored tool/dependency installers. **Status:** blocked — t001–t006 done; t007 needs the operator published and the hosted both-client unchanged quickstart acceptance
+**Worker:** worker8 **Goal:** the documented Jekyll source builds and publishes without authored tool/dependency installers. **Status:** done 2026-10-18 — hosted both-client acceptance passed ([evidence](evidence/hosted-2026-10-18/README.md))
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | [Verify documented Jekyll and static dependency parity](done/t004.md) | 20m | t003 — **DONE 2026-10-17** |
 | t005 | [Simplify the changed static tool and dependency paths](done/t005.md) | 15m | t004 — **DONE 2026-10-17** |
 | t006 | [Test actual generated Ruby static builds and neighbors](done/t006.md) | 50m | t004 — **DONE 2026-10-17** |
-| t007 | [Accept unchanged native quickstart and close the milestone](t007.md) | 20m | t005, t006 |
+| t007 | [Accept unchanged native quickstart and close the milestone](done/t007.md) | 20m | t005, t006 — **DONE 2026-10-18** |
 
 **Total:**7 tasks/260m. [Finding](finding.md) · [complete evidence](evidence/cli-sweep430/README.md).
 
