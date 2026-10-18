@@ -1,0 +1,99 @@
+{
+  "env-groups": {
+    "at": "2026-10-17T17:33:45.158100+00:00",
+    "receipt": {
+      "at": "2026-10-17T17:33:45.157956+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups?ownerId=tea-daif693dqjvc73e7as3g",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 1.077,
+      "response": "[]",
+      "stderr": ""
+    },
+    "pass": true
+  },
+  "projects": {
+    "at": "2026-10-17T17:33:46.144972+00:00",
+    "receipt": {
+      "at": "2026-10-17T17:33:46.144777+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/projects?ownerId=tea-daif693dqjvc73e7as3g",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.568,
+      "response": "[]",
+      "stderr": ""
+    },
+    "pass": true
+  },
+  "blueprints": {
+    "at": "2026-10-17T17:33:46.916685+00:00",
+    "receipt": {
+      "at": "2026-10-17T17:33:46.916489+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/blueprints?ownerId=tea-daif693dqjvc73e7as3g",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.354,
+      "response": "[{\"id\": \"blp-db136288mmqc73d4hpug\", \"projection\": \"baseline/unrelated identity only; configuration omitted\"}]",
+      "stderr": ""
+    },
+    "pass": true
+  },
+  "quota": {
+    "at": "2026-10-17T17:33:47.943704+00:00",
+    "receipt": {
+      "at": "2026-10-17T17:33:47.943540+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.608,
+      "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+      "stderr": ""
+    },
+    "pass": true
+  },
+  "current_inventory": {
+    "pass": true,
+    "baseline_service_IDs_present": true,
+    "services": {
+      "all_IDs": [
+        "srv-dap3v694dm7c7390q930",
+        "srv-dap3umrbdpcs73f5eeug",
+        "srv-dap3r714dm7c7390q91g",
+        "srv-daif6dsmg29s73d1umvg",
+        "srv-db09vbgehcmc739j12i0",
+        "srv-db09u90ehcmc739j12cg"
+      ],
+      "unrelated_nonbaseline_IDs": []
+    },
+    "postgres_IDs": [],
+    "keyValue_IDs": []
+  }
+}

@@ -1,0 +1,11 @@
+from pathlib import Path
+import json,subprocess,time,sys
+P=Path(__file__).resolve().parent;CP=P.parent/'cli-qa-w8-checkpoint.json';c=json.loads(CP.read_text());x=next(v for v in c['resources'] if v.get('sweep')==453 and v.get('id'));assert len(x['sql_events'])==8 and all(v['pass'] for v in x['sql_events']);catalogs=[v['decoded']['catalog'] for v in x['sql_events'] if v['label'].endswith('-catalog')];assert len(catalogs)==4 and all(v==catalogs[0] for v in catalogs);assert all(len([v for v in x['sql_events'] if v['label'].endswith('-'+label)])==2 for label in ['enable','postgres'])
+for args in [['delete','bex']]:subprocess.run(['python3',str(P/'sweep453-pg.py'),*args],check=True,timeout=100)
+for attempt in range(5):
+ r=subprocess.run(['python3',str(P/'sweep453-pg.py'),'reconcile','bex'],capture_output=True,text=True,check=True,timeout=100);print(r.stdout,flush=True)
+ if json.loads(r.stdout)['cleanup_pass']:break
+ if attempt<4:time.sleep(12)
+else:raise RuntimeError('Exact deletion convergence pending; ledger preserved')
+for phase in ['after','remove']:subprocess.run(['python3',str(P/'sweep453-cached-connection.py'),phase],check=True,timeout=60)
+subprocess.run(['python3',str(P/'sweep453-final-inventory.py')],check=True,timeout=100)
