@@ -1,6 +1,6 @@
 # w8 · m106 — Supply Hugo for the documented static quickstart
 
-**Worker:** worker8 **Goal:** the documented Hugo command builds and publishes without an authored Hugo installer. **Status:** blocked — t001–t005 done; t006 needs the operator published and the hosted both-client unchanged quickstart acceptance
+**Worker:** worker8 **Goal:** the documented Hugo command builds and publishes without an authored Hugo installer. **Status:** done 2026-10-18 — hosted both-client acceptance passed ([evidence](evidence/hosted-2026-10-18/README.md))
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 | [Verify the documented static Hugo contract across consumers](done/t003.md) | 20m | t002 — **DONE 2026-10-17** |
 | t004 | [Simplify the static Hugo supplier change](done/t004.md) | 15m | t003 — **DONE 2026-10-17** |
 | t005 | [Test actual generated Hugo builds and publication neighbors](done/t005.md) | 55m | t003 — **DONE 2026-10-17** |
-| t006 | [Accept original native Hugo quickstarts and close the milestone](t006.md) | 20m | t004, t005 |
+| t006 | [Accept original native Hugo quickstarts and close the milestone](done/t006.md) | 20m | t004, t005 — **DONE 2026-10-18** |
 
 **Total:**6 tasks/195m. [Finding](finding.md) · [complete evidence](evidence/cli-sweep431/README.md).
 

@@ -1,6 +1,6 @@
 # w8 · m90 — Install Yarn dependencies before static builds
 
-**Worker:** worker8 **Goal:** A supported locked Yarn static project builds with its normal dependency-using command. **Status:** blocked — t001–t005 done; t006 needs the operator published and the hosted both-client fresh static acceptance
+**Worker:** worker8 **Goal:** A supported locked Yarn static project builds with its normal dependency-using command. **Status:** done 2026-10-18 — hosted both-client acceptance passed ([evidence](evidence/hosted-2026-10-18/README.md))
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 | [Verify Render parity across static authoring surfaces](done/t003.md) | 15m | t002 — **DONE 2026-10-17** |
 | t004 | [Simplify the changed installation path](done/t004.md) | 10m | t003 — **DONE 2026-10-17** |
 | t005 | [Test real dependency use, skip and manager neighbors](done/t005.md) | 30m | t003 — **DONE 2026-10-17** |
-| t006 | [Accept fresh default deployments and close the milestone](t006.md) | 20m | t004, t005 |
+| t006 | [Accept fresh default deployments and close the milestone](done/t006.md) | 20m | t004, t005 — **DONE 2026-10-18** |
 
 **Total:**6 tasks/140m. [Finding](finding.md) · [complete evidence](evidence/cli-sweep401/README.md).
 

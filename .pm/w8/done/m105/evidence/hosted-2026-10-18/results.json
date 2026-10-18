@@ -1,0 +1,106 @@
+{
+ "date": "2026-10-18",
+ "workspace": "tea-daif693dqjvc73e7as3g (bex-canary)",
+ "serving": "production deploy of 429d49ccf (includes the fix)",
+ "clients": {
+  "bex": "bex v0.3.3 (compatible with Render CLI v2.27.0)",
+  "render": "pinned Render CLI build (vdev)"
+ },
+ "auth": "temporary QA API key (client_credentials), revoked after the run",
+ "fixtures": [
+  {
+   "item": "m105",
+   "client": "bex",
+   "name": "qa-lx88637d-m105-bex",
+   "id": "srv-dba3td21lfsc73chdbhg",
+   "url": "https://qa-lx88637d-m105-bex.onbex.co",
+   "create_exit": 0,
+   "deploy": {
+    "id": "dep-dba3td21lfsc73chdbi0",
+    "status": "live",
+    "finishedAt": "2026-10-18T03:40:42.139151Z"
+   },
+   "http": {
+    "status": 200,
+    "bytes": 4769,
+    "has": {
+     "Jekyll on Render": true,
+     "content=\"Jekyll v4.3.3\"": true
+    }
+   },
+   "build_log_lines": [
+    "2026-10-18 03:36:20  ==> Build queued",
+    "2026-10-18 03:38:35  ==> Using Node 24 (default)",
+    "2026-10-18 03:38:35  ==> Using Ruby 3.3 (from .ruby-version)",
+    "2026-10-18 03:38:42  ==> Building from https://github.com/render-examples/jekyll@3b8ab7b",
+    "2026-10-18 03:39:02  #33 0.083 ==> Installing dependencies with Bundler (Gemfile.lock)",
+    "2026-10-18 03:39:11  #33 9.533 Installing jekyll-watch 2.2.1",
+    "2026-10-18 03:39:26  #33 23.86 Installing jekyll-sass-converter 3.0.0",
+    "2026-10-18 03:39:32  #33 30.62 Installing jekyll 4.3.3",
+    "2026-10-18 03:39:32  #33 30.70 Installing jekyll-feed 0.17.0",
+    "2026-10-18 03:39:32  #33 30.71 Installing jekyll-seo-tag 2.8.0",
+    "2026-10-18 03:39:33  #33 30.77 Bundle complete! 4 Gemfile dependencies, 35 gems now installed.",
+    "2026-10-18 03:39:34  #33 32.11                     done in 0.509 seconds.",
+    "2026-10-18 03:40:42  ==> Your service is live \ud83c\udf89"
+   ],
+   "delete": {
+    "exit": 0,
+    "deleted": true
+   },
+   "listed_after": false,
+   "url_after": 404
+  },
+  {
+   "item": "m105",
+   "client": "render",
+   "name": "qa-lx88637d-m105-render",
+   "id": "srv-dba3tdq1lfsc73chdbjg",
+   "url": "https://qa-lx88637d-m105-render.onbex.co",
+   "create_exit": 0,
+   "deploy": {
+    "id": "dep-dba3tdq1lfsc73chdbk0",
+    "status": "live",
+    "finishedAt": "2026-10-18T03:42:59.108769Z"
+   },
+   "http": {
+    "status": 200,
+    "bytes": 4769,
+    "has": {
+     "Jekyll on Render": true,
+     "content=\"Jekyll v4.3.3\"": true
+    }
+   },
+   "build_log_lines": [
+    "2026-10-18 03:36:23  ==> Build queued",
+    "2026-10-18 03:40:42  ==> Building from https://github.com/render-examples/jekyll@3b8ab7b",
+    "2026-10-18 03:40:44  ==> Using Node 24 (default)",
+    "2026-10-18 03:40:44  ==> Using Ruby 3.3 (from .ruby-version)",
+    "2026-10-18 03:41:12  #33 0.086 ==> Installing dependencies with Bundler (Gemfile.lock)",
+    "2026-10-18 03:41:22  #33 9.891 Installing jekyll-watch 2.2.1",
+    "2026-10-18 03:41:36  #33 23.39 Installing jekyll-sass-converter 3.0.0",
+    "2026-10-18 03:41:42  #33 29.48 Installing jekyll 4.3.3",
+    "2026-10-18 03:41:42  #33 29.52 Installing jekyll-feed 0.17.0",
+    "2026-10-18 03:41:42  #33 29.54 Installing jekyll-seo-tag 2.8.0",
+    "2026-10-18 03:41:42  #33 29.58 Bundle complete! 4 Gemfile dependencies, 35 gems now installed.",
+    "2026-10-18 03:41:43  #33 30.82                     done in 0.469 seconds.",
+    "2026-10-18 03:42:59  ==> Your service is live \ud83c\udf89"
+   ],
+   "delete": {
+    "exit": 0,
+    "deleted": true
+   },
+   "listed_after": false,
+   "url_after": 404
+  }
+ ],
+ "inventory_after": [
+  "?",
+  "hello-go",
+  "qa-20260922-cd9361-boundary",
+  "qa-20260922-cd9361-longcronxx",
+  "qa-20260922-cd9361-nativecron",
+  "qa-20261003-c63833-zero-head",
+  "qa-20261003-f592c7-zero",
+  "qa-20261018-925358-bad"
+ ]
+}

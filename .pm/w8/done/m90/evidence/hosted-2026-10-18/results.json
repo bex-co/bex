@@ -1,0 +1,132 @@
+{
+ "date": "2026-10-18",
+ "workspace": "tea-daif693dqjvc73e7as3g (bex-canary)",
+ "serving": "production deploy of 429d49ccf (includes the fix)",
+ "clients": {
+  "bex": "bex v0.3.3 (compatible with Render CLI v2.27.0)",
+  "render": "pinned Render CLI build (vdev)"
+ },
+ "auth": "temporary QA API key (client_credentials), revoked after the run",
+ "fixtures": [
+  {
+   "item": "m90",
+   "client": "bex",
+   "name": "qa-lx88637d-m90-bex",
+   "id": "srv-dba3tdb4pcls73bt1r20",
+   "url": "https://qa-lx88637d-m90-bex.onbex.co",
+   "create_exit": 0,
+   "deploy": {
+    "id": "dep-dba3tdb4pcls73bt1r2g",
+    "status": "live",
+    "finishedAt": "2026-10-18T03:40:12.386917Z"
+   },
+   "http": {
+    "status": 200,
+    "bytes": 24,
+    "has": {
+     "<p>lx express 4.18.2</p>": true
+    }
+   },
+   "build_log_lines": [
+    "2026-10-18 03:36:21  ==> Build queued",
+    "2026-10-18 03:38:37  ==> Using Node 24 (from NODE_VERSION=24)",
+    "2026-10-18 03:38:42  ==> Building from https://github.com/render-examples/express-hello-world@e7a5c56",
+    "2026-10-18 03:39:00  #30 0.092 ==> Installing dependencies with Yarn (yarn.lock)",
+    "2026-10-18 03:39:00  #30 0.373 yarn install v1.22.22",
+    "2026-10-18 03:39:01  #30 1.438 Done in 1.07s.",
+    "2026-10-18 03:40:12  ==> Your service is live \ud83c\udf89"
+   ],
+   "delete": {
+    "exit": 0,
+    "deleted": true
+   },
+   "listed_after": false,
+   "url_after": 404
+  },
+  {
+   "item": "m90",
+   "client": "render",
+   "name": "qa-lx88637d-m90-render",
+   "id": "srv-dba3te34pcls73bt1r40",
+   "url": "https://qa-lx88637d-m90-render.onbex.co",
+   "create_exit": 0,
+   "deploy": {
+    "id": "dep-dba3te34pcls73bt1r4g",
+    "status": "live",
+    "finishedAt": "2026-10-18T03:42:59.131079Z"
+   },
+   "http": {
+    "status": 200,
+    "bytes": 24,
+    "has": {
+     "<p>lx express 4.18.2</p>": true
+    }
+   },
+   "build_log_lines": [
+    "2026-10-18 03:36:24  ==> Build queued",
+    "2026-10-18 03:41:16  ==> Using Node 24 (from NODE_VERSION=24)",
+    "2026-10-18 03:41:29  ==> Building from https://github.com/render-examples/express-hello-world@e7a5c56",
+    "2026-10-18 03:41:41  #30 0.110 ==> Installing dependencies with Yarn (yarn.lock)",
+    "2026-10-18 03:41:41  #30 0.407 yarn install v1.22.22",
+    "2026-10-18 03:41:42  #30 1.389 Done in 0.99s.",
+    "2026-10-18 03:42:59  ==> Your service is live \ud83c\udf89"
+   ],
+   "delete": {
+    "exit": 0,
+    "deleted": true
+   },
+   "listed_after": false,
+   "url_after": 404
+  },
+  {
+   "item": "m90skip",
+   "client": "render",
+   "name": "qa-lx88637d-m90skip-render",
+   "id": "srv-dba3tej4pcls73bt1r60",
+   "url": "https://qa-lx88637d-m90skip-render.onbex.co",
+   "create_exit": 0,
+   "deploy": {
+    "id": "dep-dba3tej4pcls73bt1r6g",
+    "status": "build_failed",
+    "finishedAt": "2026-10-18T03:43:29.401843Z"
+   },
+   "http": {
+    "error": "HTTP Error 404: Not Found"
+   },
+   "build_log_lines": [
+    "2026-10-18 03:36:26  ==> Build queued",
+    "2026-10-18 03:42:48  ==> Using Node 24 (from NODE_VERSION=24)",
+    "2026-10-18 03:42:59  ==> Building from https://github.com/render-examples/express-hello-world@e7a5c56",
+    "2026-10-18 03:43:15  #30 0.100 ==> Skipping dependency installation (SKIP_INSTALL_DEPS=true)",
+    "2026-10-18 03:43:15  #30 0.139 Error: Cannot find module 'express'",
+    "2026-10-18 03:43:29  ==> Build failed: build failed in the docker build step:",
+    "2026-10-18 03:43:29  ==> 0.139     at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)",
+    "2026-10-18 03:43:29  ==> 0.139     at Module.require (node:internal/modules/cjs/loader:1674:12)",
+    "2026-10-18 03:43:29  ==> 0.139     at require (node:internal/modules/helpers:157:16)",
+    "2026-10-18 03:43:29  ==> 0.139     at [eval]:1:32",
+    "2026-10-18 03:43:29  ==> 0.139     at runScriptInThisContext (node:internal/vm:219:10) {",
+    "2026-10-18 03:43:29  ==> 0.139   code: 'MODULE_NOT_FOUND',",
+    "2026-10-18 03:43:29  ==> 0.139   requireStack: [ '/opt/render/project/src/[eval]' ]",
+    "2026-10-18 03:43:29  ==> 0.139 }",
+    "2026-10-18 03:43:29  ==> 0.139",
+    "2026-10-18 03:43:29  ==> 0.139 Node.js v24.22.0"
+   ],
+   "delete": {
+    "exit": 0,
+    "deleted": true
+   },
+   "listed_after": false,
+   "url_after": 404
+  }
+ ],
+ "inventory_after": [
+  "?",
+  "hello-go",
+  "qa-20260922-cd9361-boundary",
+  "qa-20260922-cd9361-longcronxx",
+  "qa-20260922-cd9361-nativecron",
+  "qa-20261003-c63833-zero-head",
+  "qa-20261003-f592c7-zero",
+  "qa-20261018-925358-bad"
+ ]
+}
