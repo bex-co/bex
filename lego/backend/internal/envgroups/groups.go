@@ -43,7 +43,6 @@ type GroupStore interface {
 	ClaimEnvGroupContent(ctx context.Context, id string, expectedVersion int64, op store.EnvGroupOp) (int64, error)
 	AdvanceEnvGroupOp(ctx context.Context, id, opID, phase string, leaseUntil time.Time) error
 	ReleaseEnvGroupContent(ctx context.Context, id string, expectedVersion int64, rel store.EnvGroupRelease) error
-	EnvGroupCutoverComplete(ctx context.Context) (bool, error)
 }
 
 // metaCASRetries bounds how often a metadata write re-reads after losing a
@@ -70,38 +69,11 @@ func envGroupNameExists(name, workspace string) error {
 	)
 }
 
-const codeCutoverPending = "ENV_GROUPS_CUTOVER_PENDING"
-
-// envGroupsCutoverPending answers every environment-group verb on a revision
-// that serves groups from Postgres before the one-shot cutover copied them
-// there (w8/m114; transitional).
-func envGroupsCutoverPending() error {
-	return core.NewUnavailableError(codeCutoverPending,
-		"environment groups are being moved to a new store; retry in a few minutes", nil)
-}
-
-func isCutoverPending(err error) bool {
-	var coded *core.CodedError
-	return errors.As(err, &coded) && coded.Code == codeCutoverPending
-}
-
-// requireGroups fails closed while either store is unwired, and while the
-// cutover has not run. Every verb passes it before touching s.Groups.
-func (s *Service) requireGroups(ctx context.Context) error {
+// requireGroups fails closed while either store is unwired.
+func (s *Service) requireGroups() error {
 	if s.Groups == nil || s.Store == nil {
 		return core.ErrSecretsUnavailable
 	}
-	if s.cutoverDone.Load() {
-		return nil
-	}
-	done, err := s.Groups.EnvGroupCutoverComplete(ctx)
-	if err != nil {
-		return core.ErrSecretsUnavailable
-	}
-	if !done {
-		return envGroupsCutoverPending()
-	}
-	s.cutoverDone.Store(true)
 	return nil
 }
 
@@ -120,7 +92,7 @@ func groupErr(err error) error {
 
 // readGroup returns one group's row, or core.ErrNotFound.
 func (s *Service) readGroup(ctx context.Context, gid string) (store.EnvGroup, error) {
-	if err := s.requireGroups(ctx); err != nil {
+	if err := s.requireGroups(); err != nil {
 		return store.EnvGroup{}, err
 	}
 	g, err := s.Groups.GetEnvGroup(ctx, gid)
@@ -133,7 +105,7 @@ func (s *Service) readGroup(ctx context.Context, gid string) (store.EnvGroup, er
 // refusal. A missing group is core.ErrNotFound; a taken name is
 // ENV_GROUP_NAME_EXISTS.
 func (s *Service) mutateGroup(ctx context.Context, gid string, mutate func(cur *store.EnvGroup) error) (store.EnvGroup, error) {
-	if err := s.requireGroups(ctx); err != nil {
+	if err := s.requireGroups(); err != nil {
 		return store.EnvGroup{}, err
 	}
 	for range metaCASRetries + 1 {

@@ -268,23 +268,3 @@ func TestEnvGroupCascadesFromTenantAndEnvironment(t *testing.T) {
 		t.Fatalf("group after tenant delete = %v, want ErrNotFound", err)
 	}
 }
-
-func TestEnvGroupCutoverMarker(t *testing.T) {
-	st := newReplayTestStore(t)
-	ctx := context.Background()
-	if _, err := st.Pool.Exec(ctx, `DELETE FROM env_group_cutover`); err != nil {
-		t.Fatal(err)
-	}
-	if done, err := st.EnvGroupCutoverComplete(ctx); err != nil || done {
-		t.Fatalf("fresh marker = %v, %v; want false", done, err)
-	}
-	at := time.Now().UTC()
-	for range 2 {
-		if err := st.CompleteEnvGroupCutover(ctx, at); err != nil {
-			t.Fatalf("complete: %v", err)
-		}
-	}
-	if done, err := st.EnvGroupCutoverComplete(ctx); err != nil || !done {
-		t.Fatalf("after complete = %v, %v; want true", done, err)
-	}
-}

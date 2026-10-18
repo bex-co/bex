@@ -49,7 +49,7 @@ The product's base `SecretKV` seam keeps its original unversioned read/write/del
 
 Environment groups therefore need the control-plane store; with it unwired they answer `SECRETS_UNAVAILABLE`, as with OpenBao unset.
 
-Before w8/m114 all of this was OpenBao records: metadata maps, name-claim records, revision and operation records, legacy-tenant locators and tombstone fences, read through a dual-read of the pre-w2/m80 shared tenant. Every list was an OpenBao sweep of one or two reads per group id the workspace had ever had, which made `bex services` time out in a large workspace (w8/m113). The one-shot `api env-group-cutover dry-run|apply|prune` (run from a bex-api pod; `apply` refuses on duplicate names, non-idle groups or missing tenants and deletes nothing, `prune` then deletes every non-value path) moved production; until its `apply` writes the `env_group_cutover` marker, env-group verbs answer `ENV_GROUPS_CUTOVER_PENDING` (503). The subcommand, the marker and this gate are removed by w8/m114 t008.
+The w8/m114 cutover moved environment-group metadata out of OpenBao into Postgres and removed the legacy layouts, migration command and temporary serving gate.
 
 ### 5. Kubernetes auth method — bex-api authenticates as itself
 

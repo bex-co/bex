@@ -111,8 +111,8 @@ func TestReadMap_DoesNotClaimAmbiguousLegacyData(t *testing.T) {
 	svc := newService(store)
 
 	// Pre-w7/m70 data lives under the legacy default tenant (no ctx tenant set).
-	legacyCtx := withTenant(context.Background(), baoTenant)
-	if err := store.Put(legacyCtx, "services/web/env", map[string]string{"TOKEN": "legacy"}); err != nil {
+	legacyTenantCtx := withTenant(context.Background(), baoTenant)
+	if err := store.Put(legacyTenantCtx, "services/web/env", map[string]string{"TOKEN": "legacy"}); err != nil {
 		t.Fatalf("seed legacy: %v", err)
 	}
 	ctx := withTenant(context.Background(), "tea-a")
@@ -197,8 +197,8 @@ func TestWorkspacePurger_PurgeApp_PreservesAmbiguousLegacyPath(t *testing.T) {
 	svc := newService(store, a)
 
 	// Legacy data still under the default tenant (not yet migrated).
-	legacyCtx := withTenant(context.Background(), baoTenant)
-	if err := store.Put(legacyCtx, "services/web/env", map[string]string{"TOKEN": "legacy"}); err != nil {
+	legacyTenantCtx := withTenant(context.Background(), baoTenant)
+	if err := store.Put(legacyTenantCtx, "services/web/env", map[string]string{"TOKEN": "legacy"}); err != nil {
 		t.Fatalf("seed legacy: %v", err)
 	}
 
