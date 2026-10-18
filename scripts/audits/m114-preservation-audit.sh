@@ -42,24 +42,36 @@ trap 'exit 130' INT
 # equality/cleanup booleans, group IDs/owners and counts; never names or digests.
 exec >"$scratch/private.log" 2>&1
 printf '%s\n' '{"metadataEqual":false,"valuesEqual":false,"completed":false}' >"$M114_REPORT"
+# Each step leaves a fixed label in the report, so a failed run says where;
+# a marker that fails never stops the audit.
+stage() { python3 "$audit" --stage "$1" || true; }
+stage credentials
 for variable in BAO_UNSEAL_KEY_1 BAO_UNSEAL_KEY_2 BAO_UNSEAL_KEY_3 BAO_ROOT_TOKEN AGE_BACKUP_PRIVATE_KEY; do
   [ -n "${!variable:-}" ] || exit 1
 done
 bucket="${RESTORE_S3_BUCKET_NAME:-${TF_STATE_BUCKET:-}}"
 [ -n "$bucket" ]
+stage resolve
 restore_resolve_snapshot "$M114_SNAPSHOT_URI" "s3://$bucket/openbao-snapshots/" .snap.gz
 # Exact reviewed key, not latest; the ciphertext digest also pins object contents.
+stage validate-uri
 python3 "$audit" --validate-uri "$M114_SNAPSHOT_URI" "$bucket"
 restore_parse_s3_uri "$M114_SNAPSHOT_URI"
 restore_s3_args
+stage head-object
 restore_aws "${RESTORE_S3_ARGS[@]}" s3api head-object --bucket "$RESTORE_S3_BUCKET" --key "$RESTORE_S3_KEY" >"$scratch/object.json"
 # Keep the shared restore credential/decryption helpers, but stream this download:
 # the optional AWS Docker fallback must not assume a shared runner filesystem.
 restore_aws_download() {
   restore_aws "${RESTORE_S3_ARGS[@]}" s3 cp --only-show-errors "$1" - >"$2"
 }
+stage download
 restore_fetch_snapshot "$M114_SNAPSHOT_URI" "$scratch/download.age"
+stage ciphertext
 python3 "$audit" --validate-ciphertext "$scratch/download.age"
+stage decrypt
 restore_decrypt_if_age "$M114_SNAPSHOT_URI" "$scratch/download.age" "$scratch/snapshot.gz"
+stage gunzip
 restore_gunzip_checked "$scratch/snapshot.gz" "$scratch/snapshot.snap"
+stage verify
 python3 "$audit" "$scratch" "$M114_REPORT"
