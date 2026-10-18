@@ -1,0 +1,118 @@
+{
+  "date": "2026-10-18",
+  "revision": "d4eb27ba2",
+  "auth": "QA human RFC8628 device login, reauthentication via qa-login.sh",
+  "cli_version": "bex vdev",
+  "requests": [
+    {
+      "surface": "CLI",
+      "run": 1,
+      "seconds": 0.811,
+      "exit": 0,
+      "rows": 12,
+      "serviceIds": [
+        "srv-d9bj8s3eg85c7390eb9g",
+        "srv-d9bkcspg9s7c73d0n8ug",
+        "srv-d9e40ei9086p3l1jri30",
+        "srv-d9ndt8hmcglc739fkp50",
+        "srv-d9nqg9dcavls73fp8m2g"
+      ],
+      "kinds": {
+        "service": 5,
+        "postgres": 4,
+        "keyValue": 3
+      }
+    },
+    {
+      "surface": "REST",
+      "run": 1,
+      "seconds": 0.349,
+      "serviceIds": [
+        "srv-d9bj8s3eg85c7390eb9g",
+        "srv-d9bkcspg9s7c73d0n8ug",
+        "srv-d9e40ei9086p3l1jri30",
+        "srv-d9ndt8hmcglc739fkp50",
+        "srv-d9nqg9dcavls73fp8m2g"
+      ]
+    },
+    {
+      "surface": "GraphQL",
+      "run": 1,
+      "seconds": 0.325,
+      "serviceIds": [
+        "srv-d9bj8s3eg85c7390eb9g",
+        "srv-d9bkcspg9s7c73d0n8ug",
+        "srv-d9e40ei9086p3l1jri30",
+        "srv-d9ndt8hmcglc739fkp50",
+        "srv-d9nqg9dcavls73fp8m2g"
+      ]
+    },
+    {
+      "surface": "MCP",
+      "run": 1,
+      "seconds": 0.479,
+      "serviceIds": [
+        "srv-d9bj8s3eg85c7390eb9g",
+        "srv-d9bkcspg9s7c73d0n8ug",
+        "srv-d9e40ei9086p3l1jri30",
+        "srv-d9ndt8hmcglc739fkp50",
+        "srv-d9nqg9dcavls73fp8m2g"
+      ]
+    },
+    {
+      "surface": "CLI",
+      "run": 2,
+      "seconds": 0.875,
+      "exit": 0,
+      "rows": 12,
+      "serviceIds": [
+        "srv-d9bj8s3eg85c7390eb9g",
+        "srv-d9bkcspg9s7c73d0n8ug",
+        "srv-d9e40ei9086p3l1jri30",
+        "srv-d9ndt8hmcglc739fkp50",
+        "srv-d9nqg9dcavls73fp8m2g"
+      ],
+      "kinds": {
+        "service": 5,
+        "postgres": 4,
+        "keyValue": 3
+      }
+    },
+    {
+      "surface": "REST",
+      "run": 2,
+      "seconds": 0.314,
+      "serviceIds": [
+        "srv-d9bj8s3eg85c7390eb9g",
+        "srv-d9bkcspg9s7c73d0n8ug",
+        "srv-d9e40ei9086p3l1jri30",
+        "srv-d9ndt8hmcglc739fkp50",
+        "srv-d9nqg9dcavls73fp8m2g"
+      ]
+    },
+    {
+      "surface": "GraphQL",
+      "run": 2,
+      "seconds": 0.284,
+      "serviceIds": [
+        "srv-d9bj8s3eg85c7390eb9g",
+        "srv-d9bkcspg9s7c73d0n8ug",
+        "srv-d9e40ei9086p3l1jri30",
+        "srv-d9ndt8hmcglc739fkp50",
+        "srv-d9nqg9dcavls73fp8m2g"
+      ]
+    },
+    {
+      "surface": "MCP",
+      "run": 2,
+      "seconds": 0.467,
+      "serviceIds": [
+        "srv-d9bj8s3eg85c7390eb9g",
+        "srv-d9bkcspg9s7c73d0n8ug",
+        "srv-d9e40ei9086p3l1jri30",
+        "srv-d9ndt8hmcglc739fkp50",
+        "srv-d9nqg9dcavls73fp8m2g"
+      ]
+    }
+  ]
+}
