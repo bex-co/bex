@@ -7,11 +7,6 @@
 # order, later wins.
 deployment:
   replicas: 1 # one edge pod — it owns the hostNetwork node's public IP
-  # A second pod cannot bind the same host ports on the pinned edge node, so a
-  # rolling update deadlocks with the new pod Pending. Recreate gives restarts
-  # a deterministic counter reset and a brief, explicit edge interruption.
-  strategy:
-    type: Recreate
   dnsPolicy: ClusterFirstWithHostNet # reach in-cluster API/DNS under hostNetwork
   additionalVolumes:
     - name: bex-websocket-egress-plugin
@@ -21,6 +16,13 @@ deployment:
         # and this name changing is what rolls them (w4/m164). gitops-validate
         # prints the current name when this one is stale.
         name: bex-websocket-egress-plugin-9745f4t2d6
+# A second pod cannot bind the same host ports on the pinned edge node, so a
+# rolling update deadlocks with the new pod Pending. Recreate gives restarts
+# a deterministic metering-counter reset and a brief, explicit edge
+# interruption. The chart reads only this top-level key; `deployment.strategy`
+# is silently ignored (w4/338).
+updateStrategy:
+  type: Recreate
 experimental:
   abortOnPluginFailure: true
   localPlugins:
