@@ -15,15 +15,11 @@ import unittest
 from urllib.parse import urlencode
 import uuid
 
-from scripts.test_log_shipper import render_alloy, run
+from scripts.test_log_shipper import render_alloy, render_chart, run
 
 
 def render_loki(tmp):
-    chart = run("bash", "scripts/helm-artifact.sh", "pull", "loki", str(tmp))
-    values = tmp / "loki-values.yaml"
-    values.write_text(run("yq", "-r", ".spec.source.helm.values", "deploy/gitops/base/loki.yaml"))
-    rendered = tmp / "loki-rendered.yaml"
-    rendered.write_text(run("helm", "template", "loki", chart, "-n", "monitoring", "-f", str(values)))
+    rendered = render_chart(tmp, "loki", "loki.yaml", "loki")
     config = run("yq", "-r", 'select(.kind == "ConfigMap" and .metadata.name == "loki") | .data["config.yaml"]', str(rendered))
     config = json.loads(run("yq", "-o=json", "-I=0", input=config))
     image = run("yq", "-r", 'select(.kind == "StatefulSet") | .spec.template.spec.containers[] | select(.name == "loki") | .image', str(rendered))

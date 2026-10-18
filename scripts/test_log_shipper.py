@@ -33,14 +33,18 @@ def scrape_metrics(test, container):
     return response
 
 
+def render_chart(tmp, chart, application, release, *extra):
+    """Render a locked chart with its GitOps Application's values into tmp."""
+    archive = run("bash", "scripts/helm-artifact.sh", "pull", chart, str(tmp))
+    values = tmp / f"{chart}-values.yaml"
+    values.write_text(run("yq", "-r", ".spec.source.helm.values", f"deploy/gitops/base/{application}"))
+    rendered = tmp / f"{chart}-rendered.yaml"
+    rendered.write_text(run("helm", "template", release, archive, "-n", "monitoring", "-f", str(values), *extra))
+    return rendered
+
+
 def render_alloy(tmp):
-    chart = run("bash", "scripts/helm-artifact.sh", "pull", "alloy", str(tmp))
-    values = tmp / "values.yaml"
-    values.write_text(run("yq", "-r", ".spec.source.helm.values",
-                          "deploy/gitops/base/log-shipper.yaml"))
-    rendered = tmp / "rendered.yaml"
-    rendered.write_text(run("helm", "template", "log-shipper", chart,
-                            "-n", "monitoring", "-f", str(values)))
+    rendered = render_chart(tmp, "alloy", "log-shipper.yaml", "log-shipper")
     config = run("yq", "-r", 'select(.kind == "ConfigMap") | .data["config.alloy"]', str(rendered))
     image = run("yq", "-r", 'select(.kind == "DaemonSet") | .spec.template.spec.containers[] | select(.name == "alloy") | .image', str(rendered))
     # BEX_ALLOY_IMAGE replays a candidate collector (e.g. a local
