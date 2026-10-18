@@ -1,0 +1,28 @@
+{
+  "observedAt": "2026-10-18T07:39:09.379296+00:00",
+  "implementationRevision": "1d963dc5506fefe33649d9f380494f6f064658a4",
+  "applications": [
+    {
+      "name": "bex-platform-prod",
+      "sync": "Synced",
+      "revision": "4a5d27ff5c1adf4a284f5769add2efe6f2c700a0",
+      "health": "Healthy"
+    },
+    {
+      "name": "log-shipper",
+      "sync": "Synced",
+      "revision": "sha256:66b76f583ddbe6f63aa10d8542131b0463a9a3d5cc0aa6128b1b215755e0e702",
+      "health": "Healthy"
+    }
+  ],
+  "liveConfigChecks": {
+    "DownstreamStatus access gate": true,
+    "trusted ingress namespace attribution": true
+  },
+  "daemonset": {
+    "observedGeneration": 11,
+    "desiredNumberScheduled": 11,
+    "updatedNumberScheduled": 11,
+    "numberReady": 11
+  }
+}

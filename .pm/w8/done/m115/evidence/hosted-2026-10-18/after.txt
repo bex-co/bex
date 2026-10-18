@@ -1,0 +1,8 @@
+unmodified Render CLI: bex vdev -> https://api.bex.co
+created disposable fixture service id=srv-dba7a633ar5s73d9rcl0 name=qa-20261018-1792308503-84390
+fixture Running and serving at https://qa-20261018-1792308503-84390.onbex.co
+generated edge traffic: GET / (200), GET /missing-qa-20261018-1792308503-84390 (404)
+PASS edge IPAllowList: two truthful 403s in CLI + raw REST; exact/class/path filters, exclusion, history, discovery agree
+PASS GraphQL + MCP: the same two refused records; dashboard GraphQL status discovery offers 403
+PASS disposable fixture deleted; GET absence verified
+PASS CLI durable-logs acceptance completed (bex vdev against https://api.bex.co)

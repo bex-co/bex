@@ -1,0 +1,14 @@
+Hosted dashboard acceptance — 2026-10-18 UTC
+Implementation: 1d963dc5506fefe33649d9f380494f6f064658a4
+Workspace during check: bex-canary (tea-daif693dqjvc73e7as3g)
+Owned Free service: srv-dba7bnr3ar5s73d9rd80
+URL path: /services/srv-dba7bnr3ar5s73d9rd80/logs
+Log type: Request
+Filters popover status options included: All statuses, 2xx, 3xx, 4xx, 5xx, 200, 403
+Selected status: 403
+Selected request path: /blocked-native-qa-20261018-m115-2a3ae0
+PASS offered 403 was matchable: exactly 2 rows, both GET /blocked-native-qa-20261018-m115-2a3ae0, DownstreamStatus=403, RequestHost=qa-20261018-m115-2a3ae0.onbex.co; no 200 row.
+Observed source timestamps: 2026-10-18T07:31:59.483480633Z and 2026-10-18T07:32:00.160648416Z.
+Only method/status/host/path/count are retained here; raw request client addresses are omitted.
+PASS browser workspace restored to tian-personal; own QA tab closed; existing signed-in user/root tabs left open; no logout.
+PASS fixture subsequently deleted; GET404, owner-scoped list absence and preserved baseline verified (native.txt).
