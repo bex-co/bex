@@ -1088,6 +1088,19 @@ for render in base prod; do
   fi
 done
 
+# The single hostNetwork edge (base) owns its node's :80/:443, so a surge pod
+# could never bind them and a rolling update would stall with the old pod
+# still serving; it must Recreate. Behind the prod LB the edge rolls one pod at
+# a time. The chart reads only the top-level updateStrategy (w4/338).
+echo "==> Traefik update strategy: Recreate on the hostNetwork edge, rolling behind the LB"
+for render in base=Recreate:: prod=RollingUpdate:0:1; do
+  strategy="$(yq -N 'select(.kind == "Deployment") | [.spec.strategy.type, .spec.strategy.rollingUpdate.maxUnavailable, .spec.strategy.rollingUpdate.maxSurge] | join(":")' "$tmp/traefik-${render%%=*}.yaml" | tr -d '\n')"
+  if [ "$strategy" != "${render#*=}" ]; then
+    echo "FAIL: ${render%%=*} Traefik Deployment strategy is '$strategy', want '${render#*=}' (set updateStrategy, not deployment.strategy)" >&2
+    fail=1
+  fi
+done
+
 check_fixed_edge_nodeport() {
   local label="$1" manifest="$2" service="$3" port_name="$4" expected="$5"
   local service_type traffic_policy node_port lb_name
