@@ -81,7 +81,7 @@ func TestPreDeployInstanceFiltersAcrossSurfaces(t *testing.T) {
 		name                  string
 		selectors, want, pods []string
 	}{
-		{"omitted", nil, []string{"keep A", "keep B"}, []string{a, b}},
+		{"omitted", nil, []string{"keep B", "keep A"}, []string{a, b}}, // backward: newest first
 		{"raw-a", []string{a}, []string{"keep A"}, []string{a}},
 		{"raw-b", []string{b}, []string{"keep B"}, []string{b}},
 		{"public-a", []string{ids.ServiceInstanceID(resource, a)}, []string{"keep A"}, []string{a}},
@@ -94,7 +94,7 @@ func TestPreDeployInstanceFiltersAcrossSurfaces(t *testing.T) {
 		{"foreign-resource", []string{ids.ServiceInstanceID(ids.New(ids.Service), a)}, nil, nil},
 		{"foreign-namespace-uid", []string{ids.LegacyServiceInstanceID(resource, string(foreignNamespace.UID))}, nil, nil},
 		{"mixed", []string{"does-not-exist", a, a}, []string{"keep A"}, []string{a}},
-		{"mixed-two", []string{ids.ServiceInstanceID(resource, b), "does-not-exist", a, ids.LegacyServiceInstanceID(resource, string(podA.UID))}, []string{"keep A", "keep B"}, []string{a, b}},
+		{"mixed-two", []string{ids.ServiceInstanceID(resource, b), "does-not-exist", a, ids.LegacyServiceInstanceID(resource, string(podA.UID))}, []string{"keep B", "keep A"}, []string{a, b}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, surface := range []string{"REST", "GraphQL", "MCP"} {

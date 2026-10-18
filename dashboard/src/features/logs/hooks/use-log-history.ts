@@ -3,7 +3,7 @@ import { useQuery } from "@apollo/client/react";
 import { LogsDocument } from "@/graphql/definitions";
 import { hasGraphQLErrorCode } from "@/common/lib/graphql-error";
 import { isLogStoreUnavailable } from "../lib/log-store";
-import { dedupeLogLines, toLogLines } from "../lib/map";
+import { dedupeLogLines, mergeLogLines, toLogLines } from "../lib/map";
 import { logReadAccessDenied, useOlderLogPages } from "./use-older-log-pages";
 import {
   LOG_PAGE_SIZE,
@@ -165,12 +165,7 @@ export function useLogHistory(
     });
   }
   const lines = useMemo(
-    () =>
-      blocked
-        ? []
-        : dedupeLogLines([...pages.older, ...head.lines]).sort(
-            (a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp),
-          ),
+    () => (blocked ? [] : mergeLogLines(pages.older, head.lines)),
     [blocked, pages.older, head.lines],
   );
 

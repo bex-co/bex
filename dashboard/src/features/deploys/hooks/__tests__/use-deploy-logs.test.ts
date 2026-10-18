@@ -251,6 +251,37 @@ describe("useDeployLogs", () => {
     ]);
   });
 
+  it("orders newest-first legs by time, not by string (w8/m116)", () => {
+    // Backward pages list the most recent first, and Go trims trailing
+    // fractional zeros (.1Z is after .09Z and before .12Z).
+    stubByType(
+      {
+        build: {
+          logs: [
+            entry("2026-07-14T00:00:00.12Z", "==> build step 3", "build"),
+            entry("2026-07-14T00:00:00.1Z", "==> build step 2", "build"),
+            entry("2026-07-14T00:00:00.09Z", "==> build step 1", "build"),
+          ],
+        },
+        app: {
+          logs: [entry("2026-07-14T00:00:00.11Z", "app started", "app")],
+        },
+      },
+      [],
+    );
+
+    const { result } = renderHook(() =>
+      useDeployLogs("web", "2026-07-14T00:00:00Z", undefined, true, false),
+    );
+
+    expect(result.current.lines.map((l) => l.message)).toEqual([
+      "==> build step 1",
+      "==> build step 2",
+      "app started",
+      "==> build step 3",
+    ]);
+  });
+
   it("surfaces buildStoreUnavailable without erroring the whole panel", () => {
     mockUseQuery.mockImplementation(
       (_doc: unknown, opts: Record<string, unknown>) => {

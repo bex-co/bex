@@ -116,8 +116,34 @@ func toRenderLogList(page logPage) renderLogList {
 	return out
 }
 
-// logPage is one resolved page of a logs query: the lines, oldest-first, and
-// Render's paging fields. REST, GraphQL, and MCP all build it with
+// lineBeyond reports whether any resource holds a line in the window
+// [start, end] that a page's cursors name, reading at most one line each. An
+// unscanned remainder counts as a line: the walk must go on to see it.
+func (s *Service) lineBeyond(ctx context.Context, resources []string, q LogQuery, start, end string) (bool, error) {
+	since, errSince := time.Parse(time.RFC3339Nano, start)
+	until, errUntil := time.Parse(time.RFC3339Nano, end)
+	if errSince != nil || errUntil != nil || until.Before(since) {
+		return false, nil
+	}
+	next := q
+	next.Since, next.End, next.Limit = since, until, 1
+	for _, id := range resources {
+		next.App = id
+		entries, err := s.QueryLogs(ctx, next)
+		var partial *ScanIncompleteError
+		if errors.As(err, &partial) || len(entries) > 0 {
+			return true, nil
+		}
+		if err != nil {
+			return false, err
+		}
+	}
+	return false, nil
+}
+
+// logPage is one resolved page of a logs query: the lines in the query's
+// direction (backward, the default, most recent first) and Render's paging
+// fields. REST, GraphQL, and MCP all build it with
 // Service.queryLogPage, so the three surfaces page identically.
 type logPage struct {
 	Entries       []LogEntry
@@ -138,11 +164,17 @@ type logPage struct {
 func (s *Service) queryLogPage(ctx context.Context, resources []string, q LogQuery) (logPage, error) {
 	n := q.normalized()
 	forward := n.Direction == DirectionForward
+	// Each resource is read one line past the page, so the page can say
+	// whether anything lies beyond it rather than guessing from a full page —
+	// a guess that sent clients to an empty next page (w8/m116).
+	probe := q
+	probe.Limit, probe.probe = n.Limit+1, true
 	var all []LogEntry
 	var edge *time.Time
+	filled := false
 	for _, id := range resources {
-		q.App = id
-		entries, err := s.QueryLogs(ctx, q)
+		probe.App = id
+		entries, err := s.QueryLogs(ctx, probe)
 		var partial *ScanIncompleteError
 		if errors.As(err, &partial) {
 			entries, err = partial.Entries, nil
@@ -153,6 +185,7 @@ func (s *Service) queryLogPage(ctx context.Context, resources []string, q LogQue
 		if err != nil {
 			return logPage{}, err
 		}
+		filled = filled || int64(len(entries)) > n.Limit
 		all = append(all, entries...)
 	}
 	if edge != nil {
@@ -168,10 +201,22 @@ func (s *Service) queryLogPage(ctx context.Context, resources []string, q LogQue
 		})
 	}
 	sort.SliceStable(all, func(i, j int) bool { return core.TimestampLess(all[i].Timestamp, all[j].Timestamp) })
-	all = n.capToLimit(all) // the limit is a total across resources, not per resource
-	page := logPage{Entries: all}
-	page.HasMore, page.NextStartTime, page.NextEndTime = pageCursors(all, n.Limit, n.Since, n.End, n.Direction)
-	if edge != nil && !page.HasMore {
+	entries := n.capToLimit(all) // the limit is a total across resources, not per resource
+	dropped := len(entries) < len(all)
+	page := logPage{Entries: entries, HasMore: dropped || filled}
+	page.NextStartTime, page.NextEndTime = pageCursors(entries, n.Since, n.End, n.Direction)
+	if !dropped && filled && edge == nil {
+		// A shared-timestamp group kept whole absorbed the probe line, so only a
+		// read past this page can say whether anything is left.
+		more, err := s.lineBeyond(ctx, resources, q, page.NextStartTime, page.NextEndTime)
+		if err != nil {
+			return logPage{}, err
+		}
+		page.HasMore = more
+	}
+	// An unscanned remainder resumes at the scan's edge — including when the
+	// edge cut every line from this page, whose own cursors would repeat it.
+	if edge != nil && (!page.HasMore || len(entries) == 0) {
 		since, end := resolveCursorWindow(n.Since, n.End)
 		page.HasMore = true
 		if forward {
@@ -181,6 +226,11 @@ func (s *Service) queryLogPage(ctx context.Context, resources []string, q LogQue
 			page.NextStartTime = since.UTC().Format(time.RFC3339Nano)
 			page.NextEndTime = edge.Add(-time.Nanosecond).UTC().Format(time.RFC3339Nano)
 		}
+	}
+	// Selection, cursors and grouping are computed oldest-first; Render's
+	// contract presents a backward page most recent first.
+	if !forward {
+		slices.Reverse(page.Entries)
 	}
 	return page, nil
 }
@@ -201,19 +251,18 @@ func (s *Service) queryLogPage(ctx context.Context, resources []string, q LogQue
 //   - forward: nextStartTime = one nanosecond past the page's newest
 //     timestamp, nextEndTime = query end — so an inclusive start does not
 //     repeat the newest line (same whole-group guarantee from capToLimit).
-func pageCursors(entries []LogEntry, limit int64, since, end time.Time, direction string) (hasMore bool, nextStart, nextEnd string) {
+func pageCursors(entries []LogEntry, since, end time.Time, direction string) (nextStart, nextEnd string) {
 	since, end = resolveCursorWindow(since, end)
-	hasMore = limit > 0 && int64(len(entries)) >= limit
 	if len(entries) == 0 {
 		// Second precision matches Render's empty-page cursors and keeps two
 		// identical empty reads byte-identical within the same second.
-		return hasMore, since.UTC().Format(time.RFC3339), end.UTC().Format(time.RFC3339)
+		return since.UTC().Format(time.RFC3339), end.UTC().Format(time.RFC3339)
 	}
 	oldest, newest := entries[0].Timestamp, entries[len(entries)-1].Timestamp
 	if direction == DirectionForward {
-		return hasMore, advancePast(newest), end.UTC().Format(time.RFC3339Nano)
+		return advancePast(newest), end.UTC().Format(time.RFC3339Nano)
 	}
-	return hasMore, since.UTC().Format(time.RFC3339Nano), retreatBefore(oldest)
+	return since.UTC().Format(time.RFC3339Nano), retreatBefore(oldest)
 }
 
 // resolveCursorWindow fills Render's documented defaults so REQUIRED cursors
