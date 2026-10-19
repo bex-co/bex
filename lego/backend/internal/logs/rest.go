@@ -179,6 +179,13 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 		core.WriteErr(w, err)
 		return
 	}
+	// The request producer polls the log store: with none wired, a
+	// request-only subscription fails closed here too, before a slot or a
+	// header. Mixed streams still serve their pod lines without it.
+	if q.onlyRequest() && s.History == nil {
+		core.WriteErr(w, core.ErrLogStoreUnavailable)
+		return
+	}
 
 	// Admission retains a final process ceiling and adds caller/workspace shares
 	// after resource authorization, leaving capacity for unrelated tenants —

@@ -121,21 +121,22 @@ const STORE_ONLY_STRUCTURED_KEYS = STRUCTURED_FILTER_KEYS.filter(
   (key) => key !== "instance",
 );
 
-// The structured filters only the durable store can honor. The live tail reads
-// pod stdout, so it structurally cannot serve request logs or these
-// label/request filters (bex-api answers them 400, not silently) — the viewer
-// disables live tail while any is active (docs/ADR010-observability.md § The tail
-// reads pod logs).
-export function usesStoreOnlyFilters(f: LogFilters): boolean {
-  return (
-    f.type === LOG_TYPE_REQUEST ||
-    STORE_ONLY_STRUCTURED_KEYS.some((key) => f[key] !== "")
-  );
+// Whether the live stream has no producer for this filter set, mirroring
+// bex-api's subscribe acceptance exactly (w4/m237). Request logs stream from
+// the log store's poll producer, which honors the structured filters — so a
+// request view is live with any of them active. What still has no producer
+// is a store-only filter over pod lines: the labels those filters select on
+// are attached by the shipper into the store, never present on stdout read
+// straight off the kubelet — those keep the tail paused (ADR010).
+export function liveTailUnsupported(f: LogFilters): boolean {
+  if (f.type === LOG_TYPE_REQUEST) return false;
+  return STORE_ONLY_STRUCTURED_KEYS.some((key) => f[key] !== "");
 }
 
 // The store-only filter values as one identity string — the live tail's
-// readerKey: these disable the tail rather than narrow it, so a change must
-// clear lines streamed for the previous query (w4/m192).
+// readerKey: on app lines these pause the tail rather than narrow it, and on
+// request lines they ride the subscription as parameters; either way a
+// change must clear lines streamed for the previous query (w4/m192).
 export function storeOnlyFilterKey(f: LogFilters): string {
   return STORE_ONLY_STRUCTURED_KEYS.map((key) => f[key]).join("|");
 }

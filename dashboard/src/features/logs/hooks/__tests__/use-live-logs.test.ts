@@ -416,6 +416,32 @@ describe("useLiveLogs", () => {
     expect(params(last!.url).has("startTime")).toBe(false);
   });
 
+  // w4/m237: the structured request filters ride the subscription so the
+  // store poll narrows streamed request lines exactly like history; empty
+  // values are omitted, never sent as blank params.
+  it("sends the structured request filters on the subscribe URL", () => {
+    renderHook(() =>
+      useLiveLogs(
+        baseOpts({
+          type: "request",
+          requestFilters: {
+            level: "",
+            method: "GET",
+            statusCode: "500",
+            path: "/api",
+          },
+        }),
+      ),
+    );
+    expect(params(last!.url).get("type")).toBe("request");
+    expect(params(last!.url).get("method")).toBe("GET");
+    expect(params(last!.url).get("statusCode")).toBe("500");
+    expect(params(last!.url).get("path")).toBe("/api");
+    expect(params(last!.url).has("level")).toBe(false);
+    renderHook(() => useLiveLogs(baseOpts({ type: "request" })));
+    expect(params(last!.url).has("statusCode")).toBe(false);
+  });
+
   // The window slides forward every resolution tick — a new startTime value on
   // every render. Rebinding the stream on each would reopen the SSE connection
   // constantly, so a bare slide must leave the established tail untouched.

@@ -983,17 +983,28 @@ func TestFallbackRefusesStoreOnlyFilters(t *testing.T) {
 		"method":     {App: "web", Method: []string{"GET"}},
 		"path":       {App: "web", Path: []string{"/x"}},
 		"host":       {App: "web", Host: []string{"web.onbex.co"}},
-		"request":    {App: "web", Types: []string{LogTypeRequest}},
 	} {
 		if _, err := svc.QueryLogs(context.Background(), q); !errors.Is(err, core.ErrLogStoreUnavailable) {
 			t.Errorf("%s without the store => ErrLogStoreUnavailable, got %v", name, err)
 		}
-		// The live tail refuses the same set — but as a BAD REQUEST, not "the store
-		// is missing": the tail reads pod logs even on a cluster that has Loki, so
-		// blaming the store would be a lie there. The refusal is the transport's.
+		// The live tail refuses the same filters — but as a BAD REQUEST, not "the
+		// store is missing": the pod producer reads stdout even on a cluster that
+		// has Loki, so blaming the store would be a lie there. The refusal is
+		// the producers' (w4/m237 keeps it for store-only filters over app lines).
 		if err := svc.FollowLogs(context.Background(), q, func(LogEntry) error { return nil }); !errors.Is(err, core.ErrBadRequest) {
 			t.Errorf("%s on the tail => ErrBadRequest, got %v", name, err)
 		}
+	}
+
+	// Request logs differ from the filters above since w4/m237: the stream
+	// has a store producer for them, so without a store the honest refusal is
+	// ErrLogStoreUnavailable — on the query AND the tail.
+	requestOnly := LogQuery{App: "web", Types: []string{LogTypeRequest}}
+	if _, err := svc.QueryLogs(context.Background(), requestOnly); !errors.Is(err, core.ErrLogStoreUnavailable) {
+		t.Errorf("request without the store => ErrLogStoreUnavailable, got %v", err)
+	}
+	if err := svc.FollowLogs(context.Background(), requestOnly, func(LogEntry) error { return nil }); !errors.Is(err, core.ErrLogStoreUnavailable) {
+		t.Errorf("request on the tail without the store => ErrLogStoreUnavailable, got %v", err)
 	}
 
 	// …and that holds with the store wired, where ErrLogStoreUnavailable would be

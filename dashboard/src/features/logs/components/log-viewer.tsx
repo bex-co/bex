@@ -26,7 +26,7 @@ import {
   STRUCTURED_FILTER_KEYS,
   hasActiveLogFilters,
   storeOnlyFilterKey,
-  usesStoreOnlyFilters,
+  liveTailUnsupported,
   type LogFilters,
 } from "../types";
 import { LogFilterBar } from "./log-filter-bar";
@@ -150,10 +150,10 @@ export function LogViewer({
     onFiltersChangeRef.current?.(queryFilters, live);
   }, [queryFilters, live, urlKey]);
 
-  // The live tail reads pod stdout, so it can't serve request logs or the
-  // store-only filters — offer live only when none is active (instance is fine,
-  // it's a pod name). A store-only filter with live on just pauses the tail.
-  const liveSupported = !usesStoreOnlyFilters(queryFilters);
+  // Request views stream from the store poll producer (instance is fine too,
+  // it's a pod name); a store-only filter over app lines still has no
+  // producer and just pauses the tail (w4/m237).
+  const liveSupported = !liveTailUnsupported(queryFilters);
 
   // Stable identity so LogLineList's memoized rows actually skip re-rendering
   // when a live line appends (an inline arrow would defeat the memo).
@@ -192,7 +192,15 @@ export function LogViewer({
     text: committedText,
     textMode: LOG_TEXT_MODE_DISPLAY,
     instance: queryFilters.instance,
-    // The store-only filters disable the tail instead of narrowing it, so they
+    // The structured filters the store poll honors for request lines ride
+    // the subscription so streamed lines match the history beside them.
+    requestFilters: {
+      level: queryFilters.level,
+      method: queryFilters.method,
+      statusCode: queryFilters.statusCode,
+      path: queryFilters.path,
+    },
+    // The store-only filters pause the app tail instead of narrowing it, so they
     // join its reader identity: toggling one clears lines streamed for the old
     // query, while a plain Live pause keeps them on screen (w4/m192).
     readerKey: storeOnlyFilterKey(queryFilters),
