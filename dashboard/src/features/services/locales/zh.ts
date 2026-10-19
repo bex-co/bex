@@ -1395,37 +1395,37 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.planPickerLegacyFreeWorker": {
     message:
-      "此后台工作进程正在使用免费套餐，但后台工作进程已不能再使用免费套餐。它会继续运行。选择付费实例类型后会离开免费套餐，且无法再切换回来。",
+      "此后台工作进程仍在使用免费套餐，后台工作进程现已不再提供该套餐。它会继续运行。改选付费实例类型后将无法切回免费套餐。",
     description:
       "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerUntieredWorker": {
     message:
-      "此后台工作进程没有实例类型，且后台工作进程已不能再使用免费套餐。它会继续运行。选择付费实例类型后会为它设定实例类型，且无法再切换回免费套餐。",
+      "此后台工作进程没有实例类型，后台工作进程现已不再提供免费套餐。它会继续运行。选择付费实例类型即可为它设定实例类型。",
     description:
       "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerLegacyFreePrivateService": {
     message:
-      "此私有服务正在使用免费套餐，但私有服务已不能再使用免费套餐。它会继续运行。选择付费实例类型后会离开免费套餐，且无法再切换回来。",
+      "此私有服务仍在使用免费套餐，私有服务现已不再提供该套餐。它会继续运行。改选付费实例类型后将无法切回免费套餐。",
     description:
       "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerUntieredPrivateService": {
     message:
-      "此私有服务没有实例类型，且私有服务已不能再使用免费套餐。它会继续运行。选择付费实例类型后会为它设定实例类型，且无法再切换回免费套餐。",
+      "此私有服务没有实例类型，私有服务现已不再提供免费套餐。它会继续运行。选择付费实例类型即可为它设定实例类型。",
     description:
       "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerLegacyFreeCronJob": {
     message:
-      "此定时任务正在使用免费套餐，但定时任务已不能再使用免费套餐。它会继续运行。选择付费实例类型后会离开免费套餐，且无法再切换回来。",
+      "此定时任务仍在使用免费套餐，定时任务现已不再提供该套餐。它会继续运行。改选付费实例类型后将无法切回免费套餐。",
     description:
       "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerUntieredCronJob": {
     message:
-      "此定时任务没有实例类型，且定时任务已不能再使用免费套餐。它会继续运行。选择付费实例类型后会为它设定实例类型，且无法再切换回免费套餐。",
+      "此定时任务没有实例类型，定时任务现已不再提供免费套餐。它会继续运行。选择付费实例类型即可为它设定实例类型。",
     description:
       "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
   },

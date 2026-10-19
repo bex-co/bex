@@ -165,8 +165,11 @@ describe("InstanceTypePicker", () => {
   it("says a legacy Free cron job is on Free, and pre-selects nothing", async () => {
     renderPicker("free", "cron_job");
 
-    expect(await screen.findByRole("note")).toHaveTextContent(
-      "This cron job is on Free, which cron jobs can no longer use. It keeps running. Choosing a paid instance type moves it off Free, and it cannot return.",
+    const note = await screen.findByRole("note");
+    expect(note).toHaveTextContent("This cron job is on Free");
+    // Read before the cards: the radio group is described by it.
+    expect(screen.getByRole("radiogroup")).toHaveAccessibleDescription(
+      note.textContent!,
     );
     expect(screen.queryByText("Free", { exact: true })).not.toBeInTheDocument();
     for (const radio of screen.getAllByRole("radio")) {
@@ -186,6 +189,15 @@ describe("InstanceTypePicker", () => {
       expect(await screen.findByRole("note")).toHaveTextContent(opening);
     },
   );
+
+  it("shows the notice while the catalog is still loading", async () => {
+    instanceTypesState.instanceTypes = [];
+    instanceTypesState.loading = true;
+    renderPicker("free", "cron_job");
+    expect(await screen.findByRole("note")).toHaveTextContent(
+      "This cron job is on Free",
+    );
+  });
 
   it.each([
     ["free", "web_service", /^Free/],

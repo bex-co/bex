@@ -5,6 +5,8 @@ import {
   servicePlanSlotCount,
   formatInstanceCPU,
   formatInstanceMemory,
+  legacyFreeNotice,
+  offersFreeTier,
 } from "@/features/services/lib/instance-type";
 
 describe("formatInstanceCPU", () => {
@@ -49,5 +51,33 @@ describe("COMPUTE_TIER_COUNT (w4/329)", () => {
     expect(servicePlanSlotCount("private_service")).toBe(
       COMPUTE_TIER_COUNT - 1,
     );
+  });
+});
+
+// w4/351: the Plan-page notice covers exactly the types Free was withdrawn
+// from, while they are on Free or untiered.
+describe("legacyFreeNotice", () => {
+  it.each([
+    "web_service",
+    "private_service",
+    "background_worker",
+    "cron_job",
+    "static_site",
+  ])("is given to %s exactly when it cannot be offered Free", (type) => {
+    const paidOnly = !offersFreeTier(type);
+    expect(legacyFreeNotice(type, "free") !== null).toBe(paidOnly);
+    expect(legacyFreeNotice(type, null) !== null).toBe(paidOnly);
+  });
+
+  it("names Free or untiered, and stays silent for a paid or unknown plan", () => {
+    expect(legacyFreeNotice("cron_job", "free")).toBe(
+      "services.planPickerLegacyFreeCronJob",
+    );
+    expect(legacyFreeNotice("cron_job", null)).toBe(
+      "services.planPickerUntieredCronJob",
+    );
+    expect(legacyFreeNotice("cron_job", "starter")).toBeNull();
+    expect(legacyFreeNotice("cron_job", undefined)).toBeNull();
+    expect(legacyFreeNotice(null, "free")).toBeNull();
   });
 });

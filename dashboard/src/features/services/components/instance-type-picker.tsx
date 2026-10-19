@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Card,
@@ -21,6 +21,7 @@ import { useUpdatePlan } from "@/features/services/hooks/use-update-plan";
 import {
   formatInstanceCPU,
   formatInstanceMemory,
+  legacyFreeNotice,
   offeredInstanceTypes,
 } from "@/features/services/lib/instance-type";
 import {
@@ -28,26 +29,9 @@ import {
   InstanceTypeCardBody,
   InstanceTypeGroup,
   InstanceTypeGroupsSkeleton,
+  LegacyFreeNotice,
 } from "@/features/services/components/instance-type-groups";
 import { cn } from "@/common/lib/utils/utils.ts";
-
-// The paid-only service types that could be created on Free before Free was
-// withdrawn from them (ADR030 §7), and the notice each gets while still on Free
-// or untiered.
-const LEGACY_FREE_NOTICE: Record<string, { free: string; untiered: string }> = {
-  background_worker: {
-    free: "services.planPickerLegacyFreeWorker",
-    untiered: "services.planPickerUntieredWorker",
-  },
-  private_service: {
-    free: "services.planPickerLegacyFreePrivateService",
-    untiered: "services.planPickerUntieredPrivateService",
-  },
-  cron_job: {
-    free: "services.planPickerLegacyFreeCronJob",
-    untiered: "services.planPickerUntieredCronJob",
-  },
-};
 
 export interface InstanceTypePickerProps {
   serviceId: string;
@@ -76,6 +60,7 @@ export function InstanceTypePicker({
   const { updatePlan, busy } = useUpdatePlan();
   const [selected, setSelected] = useState<string | null>(currentPlan);
   const [confirming, setConfirming] = useState(false);
+  const noticeId = useId();
   const offered = offeredInstanceTypes(serviceType, instanceTypes);
   const free = offered.filter((it) => it.id === "free");
   const paid = offered.filter((it) => it.id !== "free");
@@ -101,19 +86,7 @@ export function InstanceTypePicker({
     );
   }
 
-  // A paid-only service still on Free (or untiered) matches no offered card.
-  // Say what it is on, rather than an unexplained empty selection; nothing is
-  // pre-selected, so Save stays disabled until a paid card is picked (w4/351).
-  const legacy = serviceType ? LEGACY_FREE_NOTICE[serviceType] : undefined;
-  const legacyNotice =
-    legacy &&
-    instanceTypes.length > 0 &&
-    (currentPlan === "free" || currentPlan == null) &&
-    !offered.some((it) => it.id === currentPlan)
-      ? currentPlan === "free"
-        ? legacy.free
-        : legacy.untiered
-      : null;
+  const hasNotice = legacyFreeNotice(serviceType, currentPlan) !== null;
   const selectedType = offered.find((it) => it.id === selected);
   const canSave = selected != null && selected !== currentPlan;
 
@@ -135,20 +108,18 @@ export function InstanceTypePicker({
         <CardTitle>{t("services.planPickerTitle")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {legacyNotice && (
-          <p
-            role="note"
-            className="rounded-md border bg-muted/50 px-3 py-2 text-sm"
-          >
-            {t(legacyNotice)}
-          </p>
-        )}
+        <LegacyFreeNotice
+          id={noticeId}
+          serviceType={serviceType}
+          currentPlan={currentPlan}
+        />
         {loading && instanceTypes.length === 0 ? (
           <InstanceTypeGroupsSkeleton serviceType={serviceType} />
         ) : (
           <div
             role="radiogroup"
             aria-label={t("services.planPickerTitle")}
+            aria-describedby={hasNotice ? noticeId : undefined}
             className="space-y-4"
           >
             {free.length > 0 && (

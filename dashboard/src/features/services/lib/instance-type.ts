@@ -1,3 +1,4 @@
+import type { en } from "@/i18n";
 // Display helpers for lego/types/tiers' CPU/Memory quantity strings (the same
 // k8s resource.Quantity spellings the operator parses), matching Render's own
 // instance-type card labels captured live: "0.5 CPU", "512 MB", "2 GB".
@@ -52,6 +53,42 @@ export function offeredInstanceTypes<T extends { id: string }>(
 /** Whether a service of this (known) type may be offered the Free tier. */
 export function offersFreeTier(serviceType: string): boolean {
   return !PAID_ONLY_SERVICE_TYPES.has(serviceType);
+}
+
+// Each paid-only type's Plan-page notice, while still on Free or untiered.
+const LEGACY_FREE_NOTICE: Record<
+  string,
+  { free: keyof typeof en; untiered: keyof typeof en }
+> = {
+  background_worker: {
+    free: "services.planPickerLegacyFreeWorker",
+    untiered: "services.planPickerUntieredWorker",
+  },
+  private_service: {
+    free: "services.planPickerLegacyFreePrivateService",
+    untiered: "services.planPickerUntieredPrivateService",
+  },
+  cron_job: {
+    free: "services.planPickerLegacyFreeCronJob",
+    untiered: "services.planPickerUntieredCronJob",
+  },
+};
+
+/**
+ * The notice a paid-only service still on Free, or untiered, gets on its Plan
+ * page: Free is no longer offered to its type, so no card matches its current
+ * plan and nothing is pre-selected (ADR030 §7, w4/351). Null for any other
+ * service, and while the plan is unknown (undefined).
+ */
+export function legacyFreeNotice(
+  serviceType: string | null,
+  currentPlan: string | null | undefined,
+): keyof typeof en | null {
+  const notice = serviceType ? LEGACY_FREE_NOTICE[serviceType] : undefined;
+  if (!notice) return null;
+  if (currentPlan === "free") return notice.free;
+  if (currentPlan === null) return notice.untiered;
+  return null;
 }
 
 /** The compute ladder's tier count (lego/types/tiers/tiers.yaml, free through

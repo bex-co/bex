@@ -1433,7 +1433,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.planPickerUntieredWorker": {
     message:
-      "This background worker has no instance type, and background workers can no longer use Free. It keeps running. Choosing a paid instance type gives it one, and it cannot return to Free.",
+      "This background worker has no instance type, and background workers can no longer use Free. It keeps running. Choose a paid instance type to give it one.",
     description:
       "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
   },
@@ -1445,7 +1445,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.planPickerUntieredPrivateService": {
     message:
-      "This private service has no instance type, and private services can no longer use Free. It keeps running. Choosing a paid instance type gives it one, and it cannot return to Free.",
+      "This private service has no instance type, and private services can no longer use Free. It keeps running. Choose a paid instance type to give it one.",
     description:
       "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
   },
@@ -1457,7 +1457,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.planPickerUntieredCronJob": {
     message:
-      "This cron job has no instance type, and cron jobs can no longer use Free. It keeps running. Choosing a paid instance type gives it one, and it cannot return to Free.",
+      "This cron job has no instance type, and cron jobs can no longer use Free. It keeps running. Choose a paid instance type to give it one.",
     description:
       "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
   },
