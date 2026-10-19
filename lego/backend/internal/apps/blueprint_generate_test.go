@@ -505,3 +505,24 @@ func TestGenerateBlueprintSelfCheckFailureNamesTheService(t *testing.T) {
 		t.Fatalf("the refusal must reach the caller and name the service: %v", err)
 	}
 }
+
+// A malformed generate body is the caller's error, a 400 like every sibling
+// Blueprint route's, never the bare 500 a raw decode error became (w8/133).
+func TestGenerateBlueprintRefusesAMalformedBodyAs400(t *testing.T) {
+	svc := generateFixtureService()
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	for _, body := range []string{``, `{`, `"x"`, `[]`, `{"serviceIds":"x"}`} {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/blueprints/generate", strings.NewReader(body)))
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("generate %q = %d %s, want 400", body, rec.Code, rec.Body.String())
+		}
+	}
+	// null decodes, and reaches the named empty-selection refusal as before.
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/blueprints/generate", strings.NewReader(`null`)))
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "select at least one") {
+		t.Errorf("generate null = %d %s, want the empty-selection 400", rec.Code, rec.Body.String())
+	}
+}
