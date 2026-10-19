@@ -1000,3 +1000,62 @@ func TestRecoverStaysInsideTheSourcesBoundary(t *testing.T) {
 		}
 	})
 }
+
+// TestRecoverCarriesTheSourcesDiskAndParameters is w4/360: a recovery took the
+// plan's default disk and no parameter overrides, so a source whose disk had
+// grown restored into a volume too small for its archive. It now floors the
+// disk at the source's high-water mark and copies its parameters; a plan that
+// cannot hold the data is refused before anything is created.
+func TestRecoverCarriesTheSourcesDiskAndParameters(t *testing.T) {
+	ctx := context.Background()
+	svc, cl := newServicePostgresResources()
+	src := seedDatabaseSpec(t, cl, "src-db", appv1alpha1.DatabaseSpec{
+		Plan: "basic-1gb", StorageGB: 50, Parameters: map[string]string{"work_mem": "64MB", "recovery_target_time": "2026-01-01"},
+	}, true)
+	src.Status.AllocatedStorageGB = 50
+	if err := cl.Update(ctx, src); err != nil {
+		t.Fatal(err)
+	}
+	seedBarmanRecoveryWindow(t, cl, "src-db", "2026-07-01T00:00:00Z", "2026-07-10T00:00:00Z")
+
+	v, err := svc.Recover(ctx, "src-db", RecoverRequest{Name: "restored-db", TargetTime: "2026-07-09T10:00:00Z"})
+	if err != nil {
+		t.Fatalf("Recover: %v", err)
+	}
+	var made appv1alpha1.Database
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: v.ID}, &made); err != nil {
+		t.Fatal(err)
+	}
+	if made.Spec.StorageGB != 50 || made.Spec.Parameters["work_mem"] != "64MB" {
+		t.Fatalf("recovered disk %d GB, parameters %v; want the source's 50 GB and work_mem", made.Spec.StorageGB, made.Spec.Parameters)
+	}
+	if _, kept := made.Spec.Parameters["recovery_target_time"]; kept {
+		t.Errorf("a platform-managed parameter travelled with the recovery: %v", made.Spec.Parameters)
+	}
+
+	var list appv1alpha1.DatabaseList
+	if err := cl.List(ctx, &list); err != nil {
+		t.Fatal(err)
+	}
+	before := len(list.Items)
+	_, err = svc.Recover(ctx, "src-db", RecoverRequest{Name: "too-small", TargetTime: "2026-07-09T10:00:00Z", Plan: "free"})
+	if !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("Recover into a plan that cannot hold 50 GB = %v, want a bad request", err)
+	}
+	if err := cl.List(ctx, &list); err != nil || len(list.Items) != before {
+		t.Fatalf("a refused recovery created a database (%d → %d, %v)", before, len(list.Items), err)
+	}
+}
+
+// TestRecoverKeepsARetiredInheritedPlan: an inherited plan since retired from
+// the catalog is not re-validated, as Recover promises; only a caller-supplied
+// plan is (w4/360 review).
+func TestRecoverKeepsARetiredInheritedPlan(t *testing.T) {
+	ctx := context.Background()
+	svc, cl := newServicePostgresResources()
+	seedDatabaseSpec(t, cl, "src-db", appv1alpha1.DatabaseSpec{Plan: "retired-plan-x"}, true)
+	seedBarmanRecoveryWindow(t, cl, "src-db", "2026-07-01T00:00:00Z", "2026-07-10T00:00:00Z")
+	if _, err := svc.Recover(ctx, "src-db", RecoverRequest{Name: "restored-db", TargetTime: "2026-07-09T10:00:00Z"}); err != nil {
+		t.Fatalf("Recover of a source on a retired plan = %v, want it recovered on that plan", err)
+	}
+}

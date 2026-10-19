@@ -26,6 +26,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"time"
@@ -297,9 +298,6 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 	if req.Version != "" && !postgresVersionKnown(req.Version) {
 		return PostgresView{}, fmt.Errorf("%w: version must be one of %s", core.ErrBadRequest, supportedPostgresVersionText())
 	}
-	if err := s.RequirePlanBilling(ctx, tenantID, plan); err != nil {
-		return PostgresView{}, err
-	}
 	sourceBackupServerName := effectiveBackupServerName(src)
 	newDB := &appv1alpha1.Database{
 		// A recovered database belongs to the same workspace as its source, so it
@@ -311,6 +309,11 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 			DatabaseUser: src.Spec.EffectiveDatabaseUser(src.Name),
 			Plan:         plan,
 			Version:      version,
+			// The restore must fit: the archive holds as much data as the
+			// source's disk grew to, and a setting its data needs to load
+			// travels with it (w4/360).
+			StorageGB:  DatabaseStorageHighWater(src),
+			Parameters: tenantParameters(src.Spec.Parameters),
 			Recovery: &appv1alpha1.DatabaseRecovery{
 				SourceDatabase:         src.Name,
 				SourceBackupServerName: sourceBackupServerName,
@@ -322,6 +325,18 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 		newDB.Labels = core.TenantLabels(tenantID)
 	}
 	inheritBoundary(src, newDB, environment)
+	// The shared create invariants, before the billing gate as on create, so a
+	// plan too small for the source's data is refused here instead of failing
+	// mid-restore (w4/360). An inherited plan since retired from the catalog
+	// is not re-validated (see above): its storage already fit it.
+	if _, known := tiers.Postgres.ByID(tiers.Postgres.CanonicalID(plan)); known {
+		if err := CheckDatabaseAdmission(nil, newDB.Spec); err != nil {
+			return PostgresView{}, err
+		}
+	}
+	if err := s.RequirePlanBilling(ctx, tenantID, plan); err != nil {
+		return PostgresView{}, err
+	}
 	resourcemeta.Touch(newDB, s.Now())
 	if err := s.Client.Create(ctx, newDB); err != nil {
 		if apierrors.IsAlreadyExists(err) {
@@ -330,6 +345,18 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 		return PostgresView{}, err
 	}
 	return pgView(newDB), nil
+}
+
+// tenantParameters is the source's parameter overrides a recovery carries:
+// every one but the platform-managed names, which the platform sets for the
+// restore itself (recovery_target*, WAL archival, …) and admission refuses, so
+// a legacy source holding one cannot wedge the restore (w4/360).
+func tenantParameters(params map[string]string) map[string]string {
+	out := maps.Clone(params)
+	for _, name := range operatorManagedParameterNames(params) {
+		delete(out, name)
+	}
+	return out
 }
 
 // sourceEnvironment resolves the environment a recovery joins: the source's,
