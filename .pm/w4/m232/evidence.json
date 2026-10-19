@@ -1,0 +1,84 @@
+{
+  "hunt": "qa-find-bugs w4, muse.env, workspace bex-canary (tea-daif693dqjvc73e7as3g, Hobby: single admin member), pass 9d7581, 2026-10-19 UTC",
+  "servingPlatform": "production pinned to f3871ba9fd44; research main e572e7977",
+  "caller": "the QA user's browser session (admin; its PATCH of the environment ACL, which requires can_manage, succeeded)",
+  "fixtures": {
+    "project": "qa-20261019-9d7581-proj (prj-dbaokv8u2drc73bm0q7g)",
+    "environments": {
+      "production": "evm-dbaol2ou2drc73bm0q8g",
+      "staging": "evm-dbaol3n4o0uc73fuih80"
+    },
+    "service": "qa-20261019-9d7581-web (srv-dbaolb0u2drc73bm0qag), Free web service, image python:3.13-alpine, created from the project's New Service link with production preselected; deploy dep-dbaolb0u2drc73bm0qb0 live 03:12:58Z",
+    "cleanup": "DELETE service 204 -> GET 404; DELETE project 204 -> GET 404; both environments GET 404; workspace projects list empty"
+  },
+  "probes": [
+    {
+      "step": "arm production",
+      "request": "PATCH /v1/environments/evm-dbaol2ou2drc73bm0q8g {\"protectedStatus\":\"protected\",\"networkIsolationEnabled\":true}",
+      "response": "200"
+    },
+    {
+      "step": "service into production",
+      "request": "GraphQL setEnvironmentServices(id:\"evm-dbaol2ou2drc73bm0q8g\", serviceIds:[\"srv-dbaolb0u2drc73bm0qag\"]){ protectedStatus networkIsolationEnabled serviceIds }",
+      "response": {
+        "protectedStatus": "protected",
+        "networkIsolationEnabled": true,
+        "serviceIds": [
+          "srv-dbaolb0u2drc73bm0qag"
+        ]
+      }
+    },
+    {
+      "step": "control: guard armed",
+      "request": "POST /v1/services/srv-dbaolb0u2drc73bm0qag/suspend (no confirm)",
+      "response": "400 {\"code\":\"PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED\",\"error\":\"\\\"qa-20261019-9d7581-web\\\" is a member of a protected environment; retry with confirm=\\\"sudo suspend service qa-20261019-9d7581-web\\\" to suspend it\",\"id\":\"bad_request\",...}; suspended stays not_suspended"
+    },
+    {
+      "step": "dashboard move",
+      "ui": "project page, env=staging -> Manage resources -> Services tab row 'qa-20261019-9d7581-web Running' (dialog text mentions neither production nor protection) -> check -> Save",
+      "toast": "success: Services for \"staging\" updated.",
+      "readBack": {
+        "production": {
+          "protectedStatus": "protected",
+          "networkIsolationEnabled": true,
+          "serviceIds": []
+        },
+        "staging": {
+          "protectedStatus": "unprotected",
+          "networkIsolationEnabled": false,
+          "serviceIds": [
+            "srv-dbaolb0u2drc73bm0qag"
+          ]
+        }
+      }
+    },
+    {
+      "step": "guard gone after move",
+      "request": "POST /v1/services/srv-dbaolb0u2drc73bm0qag/suspend (no confirm)",
+      "response": "202, suspended; POST .../resume 202",
+      "at": "2026-10-19T03:17:35Z"
+    },
+    {
+      "step": "back into production",
+      "request": "setEnvironmentServices(production, [service]); POST .../suspend (no confirm)",
+      "response": "serviceIds [service], protectedStatus protected; suspend 400 (guard armed again)"
+    },
+    {
+      "step": "project service-links replace",
+      "request": "GraphQL setProjectServices(id:\"prj-dbaokv8u2drc73bm0q7g\", serviceIds:[]){ id }",
+      "response": "ok; GET /v1/services/<id> has no projectId and no environmentId; both environments list serviceIds []"
+    },
+    {
+      "step": "guard gone after project replace",
+      "request": "POST /v1/services/srv-dbaolb0u2drc73bm0qag/suspend (no confirm)",
+      "response": "202; resume 202",
+      "at": "2026-10-19T03:17:52Z"
+    }
+  ],
+  "notProbed": [
+    "a developer-role caller (Hobby allows only one admin member; API keys inherit their owner's role)",
+    "MCP adapters",
+    "Postgres, Key Value and env-group moves",
+    "MoveEnvGroup"
+  ]
+}
