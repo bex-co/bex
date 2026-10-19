@@ -151,7 +151,7 @@ func TestImageBackedCancelSettlesToCanceled(t *testing.T) {
 		Spec:   appv1alpha1.AppSpec{Image: "docker.io/library/nginx:alpine"},
 		Status: appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseDeploying, ObservedGeneration: 1},
 	}
-	if decision := prepareAppReleaseDecision(app); !decision.canceled {
+	if decision := prepareAppReleaseDecision(app, nil); !decision.canceled {
 		t.Fatal("image-backed App with a canceled-release stamp must yield a canceled decision — the operator half of the m104 fix")
 	}
 	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).
@@ -184,7 +184,7 @@ func TestImageBackedCancelWithPriorReleaseKeepsServing(t *testing.T) {
 			ActiveRevision: "rev-2", ObservedGeneration: 2,
 		},
 	}
-	if decision := prepareAppReleaseDecision(app); !decision.canceled {
+	if decision := prepareAppReleaseDecision(app, nil); !decision.canceled {
 		t.Fatal("image-backed App with a canceled-release stamp must yield a canceled decision")
 	}
 	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).

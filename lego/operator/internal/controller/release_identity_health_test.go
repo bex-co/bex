@@ -97,7 +97,7 @@ func TestHealthModeSwitchAdvancesToTheOwedGeneration(t *testing.T) {
 			}
 			app.Spec.HealthCheckPath = tc.to
 
-			decision := prepareAppReleaseDecision(app)
+			decision := prepareAppReleaseDecision(app, nil)
 			if !decision.releaseChanged || decision.artifactChanged {
 				t.Fatalf("decision = %+v, want a release change on the same artifact", decision)
 			}
@@ -108,7 +108,7 @@ func TestHealthModeSwitchAdvancesToTheOwedGeneration(t *testing.T) {
 				t.Fatalf("reusable artifact = %q (%v), want the served image", image, ok)
 			}
 			// The next pass is a no-op: the generation is now adopted.
-			if again := prepareAppReleaseDecision(app); again.releaseChanged || app.Status.ReleaseGeneration != 4 {
+			if again := prepareAppReleaseDecision(app, nil); again.releaseChanged || app.Status.ReleaseGeneration != 4 {
 				t.Fatalf("second pass = %+v gen %d, want a settled release", again, app.Status.ReleaseGeneration)
 			}
 		})
@@ -227,7 +227,7 @@ func TestLegacyReleaseIdentityAdoption(t *testing.T) {
 			if err := r.adoptLegacyReleaseIdentity(t.Context(), app); err != nil {
 				t.Fatal(err)
 			}
-			decision := prepareAppReleaseDecision(app)
+			decision := prepareAppReleaseDecision(app, nil)
 			if decision.releaseChanged != tc.wantRelease || app.Status.ReleaseGeneration != tc.wantGeneration {
 				t.Fatalf("decision = %+v gen %d, want release=%v gen %d",
 					decision, app.Status.ReleaseGeneration, tc.wantRelease, tc.wantGeneration)
@@ -250,7 +250,7 @@ func TestLegacyAdoptionKeepsAnActiveRollback(t *testing.T) {
 	if err := r.adoptLegacyReleaseIdentity(t.Context(), app); err != nil {
 		t.Fatal(err)
 	}
-	if decision := prepareAppReleaseDecision(app); decision.releaseChanged || app.Status.ReleaseGeneration != 2 {
+	if decision := prepareAppReleaseDecision(app, nil); decision.releaseChanged || app.Status.ReleaseGeneration != 2 {
 		t.Fatalf("decision = %+v gen %d, want the rollback kept at generation 2", decision, app.Status.ReleaseGeneration)
 	}
 }

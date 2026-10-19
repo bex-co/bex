@@ -241,6 +241,16 @@ func TestStagedSourceSwitchKeepsTheServedLaunch(t *testing.T) {
 		}
 	})
 
+	t.Run("a held release on its own view launches its own artifact", func(t *testing.T) {
+		app := staged(gitStaged)
+		app.Status.ReleaseGeneration = 5
+		r := m202Reconciler(t, app, 4, m202Record(m202Command, m202Busybox, m202Shell))
+		ctx := withViewedRelease(context.Background(), app, app.Spec)
+		if _, launch, err := r.selectedRuntime(ctx, app); err != nil || launch != launchUnknown {
+			t.Fatalf("launch = %q, %v; want the held release's own source to decide, not the served artifact's", launch, err)
+		}
+	})
+
 	t.Run("served release without a record", func(t *testing.T) {
 		app := staged(gitStaged)
 		r := m202Reconciler(t, app, 0, nil)

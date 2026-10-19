@@ -268,7 +268,7 @@ func TestImageNetworkCancelRestoresServingRelease(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			if !prepareAppReleaseDecision(app).canceled {
+			if !prepareAppReleaseDecision(app, nil).canceled {
 				t.Fatal("fixture did not select the canceled release path")
 			}
 			if _, err := r.settleCanceledRelease(ctx, app, 9000); err != nil {
@@ -292,7 +292,7 @@ func TestImageNetworkCancelRestoresServingRelease(t *testing.T) {
 			if err := cl.Get(ctx, client.ObjectKeyFromObject(app), app); err != nil {
 				t.Fatal(err)
 			}
-			prepareAppReleaseDecision(app)
+			prepareAppReleaseDecision(app, nil)
 			if _, err := r.settleCanceledRelease(ctx, app, 9000); err != nil {
 				t.Fatalf("restored release could not settle ready: %v", err)
 			}
