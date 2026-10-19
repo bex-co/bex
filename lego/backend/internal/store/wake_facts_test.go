@@ -216,3 +216,33 @@ func TestObservedStateMarksConcreteFailures(t *testing.T) {
 		}
 	}
 }
+
+// TestAServiceThatNeverServedRecordsNoRecovery is w4/350: a first instance
+// that never became healthy has no availability to lose, so neither its
+// unready start nor a crash loop latches a failure, and its first healthy pass
+// is no "Service recovered". Once it has served, an outage pairs as before.
+func TestAServiceThatNeverServedRecordsNoRecovery(t *testing.T) {
+	deploying := ObservedServiceState{At: wakeEpoch, ServicePhase: "Deploying"}
+	for name, first := range map[string]ObservedServiceState{
+		"first deploy crash-looping after its row closed": deploying,
+		"checkpoint first written mid-outage":             startingUp(0, false),
+	} {
+		t.Run(name, func(t *testing.T) {
+			r := newWakeRecorder(t)
+			var got []ServiceEventFactType
+			got = append(got, factTypes(r.record(first))...)
+			got = append(got, factTypes(r.record(startingUp(10*time.Second, true)))...)
+			got = append(got, factTypes(r.record(startingUp(20*time.Second, true)))...)
+			got = append(got, factTypes(r.record(readyAt(25*time.Second, 30*time.Second)))...)
+			if len(got) != 0 {
+				t.Fatalf("a service that never served recorded %v", got)
+			}
+			got = append(got, factTypes(r.record(startingUp(40*time.Second, true)))...)
+			got = append(got, factTypes(r.record(readyAt(45*time.Second, 50*time.Second)))...)
+			want := []ServiceEventFactType{EventFactServerFailed, EventFactServerAvailable}
+			if fmt.Sprint(got) != fmt.Sprint(want) {
+				t.Fatalf("outage after serving = %v, want %v", got, want)
+			}
+		})
+	}
+}
