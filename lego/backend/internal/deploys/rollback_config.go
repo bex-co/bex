@@ -138,7 +138,7 @@ func (s *Service) openSelectedRelease(ctx context.Context, a *appv1alpha1.App, s
 		if rollback {
 			return s.Store.CreateRollbackDeploy(ctx, appID, selected.Image, target.ID, release, commit, core.SubjectFrom(ctx))
 		}
-		return s.Store.CreateDeploy(ctx, appID, store.TriggerAPI, selected.Image, release, commit, core.SubjectFrom(ctx))
+		return s.Store.CreateRestartDeploy(ctx, appID, selected.Image, release, commit, core.SubjectFrom(ctx))
 	})
 }
 

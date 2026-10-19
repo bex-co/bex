@@ -655,6 +655,14 @@ func (m *memStore) CompactUsage(_ context.Context, before time.Time) (UsageCompa
 }
 
 func (m *memStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, commit CommitInfo, triggeredBy string) (Deploy, error) {
+	return m.createDeploy(appID, trigger, image, generation, commit, triggeredBy, supersededByReason)
+}
+
+func (m *memStore) CreateRestartDeploy(_ context.Context, appID, image string, generation int64, commit CommitInfo, triggeredBy string) (Deploy, error) {
+	return m.createDeploy(appID, TriggerAPI, image, generation, commit, triggeredBy, restartCanceledReason)
+}
+
+func (m *memStore) createDeploy(appID, trigger, image string, generation int64, commit CommitInfo, triggeredBy string, replaced func(string) string) (Deploy, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, ok := m.apps[appID]; !ok {
@@ -662,7 +670,7 @@ func (m *memStore) CreateDeploy(_ context.Context, appID, trigger, image string,
 	}
 	now := time.Now()
 	id := ids.New(ids.Deploy)
-	status, cancelReason := m.prepareDeployCreate(appID, generation, id, now)
+	status, cancelReason := m.prepareDeployCreate(appID, generation, replaced(id), now)
 	d := Deploy{ID: id, AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, TriggeredBy: triggeredBy, Status: status, CancelReason: cancelReason, OverlapPending: status == DeployQueued, CreatedAt: now, UpdatedAt: now}
 	if status == DeployCanceled {
 		d.FinishedAt = &now
@@ -701,7 +709,7 @@ func (m *memStore) CreateRollbackDeploy(_ context.Context, appID, image, rollbac
 	}
 	now := time.Now()
 	id := ids.New(ids.Deploy)
-	status, cancelReason := m.prepareDeployCreate(appID, generation, id, now)
+	status, cancelReason := m.prepareDeployCreate(appID, generation, supersededByReason(id), now)
 	d := Deploy{
 		ID: id, AppID: appID, Trigger: "rollback", Image: image, ResolvedImage: image,
 		RollbackOf: rollbackOf, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, TriggeredBy: triggeredBy, Status: status, CancelReason: cancelReason, OverlapPending: status == DeployQueued, CreatedAt: now, UpdatedAt: now,
@@ -713,7 +721,7 @@ func (m *memStore) CreateRollbackDeploy(_ context.Context, appID, image, rollbac
 	return d, nil
 }
 
-func (m *memStore) prepareDeployCreate(appID string, generation int64, id string, now time.Time) (status, cancelReason string) {
+func (m *memStore) prepareDeployCreate(appID string, generation int64, replacedReason string, now time.Time) (status, cancelReason string) {
 	var newer *Deploy
 	for _, d := range m.deploys {
 		if d.AppID == appID && IsOpenDeployStatus(d.Status) && d.Generation >= generation &&
@@ -724,7 +732,7 @@ func (m *memStore) prepareDeployCreate(appID string, generation int64, id string
 	if newer != nil {
 		return DeployCanceled, supersededByReason(newer.ID)
 	}
-	m.cancelPendingDeploys(appID, supersededByReason(id), now)
+	m.cancelPendingDeploys(appID, replacedReason, now)
 	for _, d := range m.deploys {
 		if d.AppID == appID && IsOpenDeployStatus(d.Status) && !d.OverlapPending {
 			return DeployQueued, ""

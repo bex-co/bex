@@ -88,6 +88,9 @@ const (
 	ReleaseRecordPodTemplateKey = "podTemplate"
 	// ReleaseRecordSpecKey holds the JSON-encoded ReleaseRecordSpec.
 	ReleaseRecordSpecKey = "releaseSpec"
+	// ReleaseRecordAppContainer names the pod template's container that runs the
+	// release's image.
+	ReleaseRecordAppContainer = "app"
 )
 
 // ReleaseRecordSpec is the part of a release's spec that Render restores on a

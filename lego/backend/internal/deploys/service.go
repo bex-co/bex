@@ -57,6 +57,9 @@ type DeployStore interface {
 	// restoring image, provenance-tagged with the source deploy id and the
 	// target's own commit metadata (w9/001).
 	CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string, generation int64, commit store.CommitInfo, triggeredBy string) (store.Deploy, error)
+	// CreateRestartDeploy opens a Restart's deploy row; a latest-pending row it
+	// replaces is canceled naming the restart and its undeployed change (w8/m119).
+	CreateRestartDeploy(ctx context.Context, appID, image string, generation int64, commit store.CommitInfo, triggeredBy string) (store.Deploy, error)
 	ListDeploys(ctx context.Context, appID string, filter store.DeployFilter) ([]store.Deploy, error)
 	GetDeploy(ctx context.Context, appID, deployID string) (store.Deploy, error)
 	// DeployIDByGeneration returns appID's deploy id at generation, or "" when
