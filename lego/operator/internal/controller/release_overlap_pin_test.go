@@ -125,3 +125,53 @@ func TestAdoptingASelectedReleaseRecordsIt(t *testing.T) {
 		t.Fatalf("a source release recorded selected=%d", plain.Status.SelectedReleaseGeneration)
 	}
 }
+
+// A source update saved while a release is still in flight is not a deploy:
+// the release keeps resolving and rolling its own artifact, never the
+// previous release's image under its own revision (w8/124).
+func TestSourceUpdateDuringAReleaseInFlightKeepsItsOwnArtifact(t *testing.T) {
+	prior := appv1alpha1.AppSpec{Repo: "https://github.com/acme/app", Branch: "main", Builder: "dockerfile", Port: 3000, StartCommand: "serve 1"}
+	inFlight := prior
+	inFlight.StartCommand, inFlight.BuildCommand = "serve 2", "make"
+	priorID, inFlightID := desiredAppReleaseIdentity(prior), desiredAppReleaseIdentity(inFlight)
+	saved := inFlight
+	saved.Repo = "https://github.com/acme/fork"
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Generation: 3, Annotations: map[string]string{
+			appv1alpha1.AnnotationReleaseGeneration:       "2",
+			appv1alpha1.AnnotationPendingSourceGeneration: "3",
+		}},
+		Spec: saved,
+		Status: appv1alpha1.AppStatus{
+			Phase:                      appv1alpha1.PhaseBuilding,
+			ArtifactFingerprint:        priorID.artifact,
+			ReleaseArtifactFingerprint: inFlightID.artifact,
+			ReleaseFingerprint:         inFlightID.release,
+			ReleaseGeneration:          2,
+			ActiveRevision:             "rev-1",
+			ArtifactImage:              "registry.example/app:gen-1",
+			Image:                      "registry.example/app:gen-1",
+		},
+	}
+	// Not dispatched yet: a build would read the saved source, so the pending
+	// source keeps deciding (w8/126).
+	if decision := prepareAppReleaseDecision(app); !decision.sourcePending {
+		t.Fatalf("undispatched build: decision = %+v, want the pending source to decide", decision)
+	}
+
+	app.Status.BuildRun = &appv1alpha1.BuildRunStatus{Generation: 2, StartedAt: "2026-10-19T06:00:00Z"}
+	decision := prepareAppReleaseDecision(app)
+	if decision.sourcePending || !decision.artifactChanged || decision.desired.artifact != inFlightID.artifact {
+		t.Fatalf("building: decision = %+v, want release 2's own artifact still to build", decision)
+	}
+	if image, resolved := reusableArtifactImage(app, decision); resolved {
+		t.Fatalf("building: reused %q, want release 2's artifact built, not the prior image", image)
+	}
+
+	app.Status.Phase = appv1alpha1.PhaseDeploying
+	app.Status.ArtifactFingerprint, app.Status.ArtifactImage = inFlightID.artifact, "registry.example/app:gen-2"
+	decision = prepareAppReleaseDecision(app)
+	if image, _ := reusableArtifactImage(app, decision); decision.sourcePending || image != "registry.example/app:gen-2" {
+		t.Fatalf("rolling out: decision = %+v image %q, want release 2's own image", decision, image)
+	}
+}
