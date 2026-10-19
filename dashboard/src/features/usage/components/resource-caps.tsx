@@ -34,11 +34,32 @@ interface ResourceCapsProps {
 
 const NEAR_LIMIT_RATIO = 0.8;
 
+// At or over the cap a create is refused ("… limit reached"), so the tile says
+// so rather than "Near limit" (w4/344). Over the cap happens after a downgrade
+// or while resources finish deletion; the count is shown as it is.
+const CAP_STATES = {
+  reached: {
+    label: "usage.resourceCapsLimitReached",
+    text: "text-destructive",
+    bar: "bg-destructive",
+  },
+  near: {
+    label: "usage.resourceCapsNearLimit",
+    text: "text-amber-700 dark:text-amber-400",
+    bar: "bg-amber-500",
+  },
+} as const;
+
 function CapTile({ label, cap }: { label: string; cap: ResourceCap }) {
   const { t } = useTranslations();
   const ratio = cap.limit > 0 ? cap.used / cap.limit : 0;
   const percent = Math.min(100, Math.max(0, ratio * 100));
-  const nearLimit = ratio >= NEAR_LIMIT_RATIO;
+  const state =
+    ratio >= 1
+      ? CAP_STATES.reached
+      : ratio >= NEAR_LIMIT_RATIO
+        ? CAP_STATES.near
+        : null;
   // `used` counts resources still finishing deletion, which keep holding quota
   // but are dropped from the resource list. Naming that count here is what lets
   // a tenant reconcile "used" with the shorter list and see what is consuming
@@ -54,10 +75,15 @@ function CapTile({ label, cap }: { label: string; cap: ResourceCap }) {
           <span className="text-sm text-muted-foreground tabular-nums">
             / {cap.limit}
           </span>
-          {nearLimit && (
-            <span className="ml-auto flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+          {state && (
+            <span
+              className={cn(
+                "ml-auto flex items-center gap-1 text-xs font-medium",
+                state.text,
+              )}
+            >
               <AlertTriangle aria-hidden="true" className="size-3.5" />
-              {t("usage.resourceCapsNearLimit")}
+              {t(state.label)}
             </span>
           )}
         </p>
@@ -84,7 +110,7 @@ function CapTile({ label, cap }: { label: string; cap: ResourceCap }) {
         <div
           className={cn(
             "h-full transition-[width]",
-            nearLimit ? "bg-amber-500" : "bg-primary",
+            state?.bar ?? "bg-primary",
           )}
           style={{ width: `${percent}%` }}
         />
