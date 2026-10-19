@@ -122,6 +122,8 @@ var pushEventUrgencyGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Fields: graphql.Fields{
 		"event":   gqlutil.Typed(graphql.NewNonNull(pushDeliveryEventGQLEnum), func(v PushEventUrgencyView) any { return string(v.Event) }),
 		"urgency": gqlutil.Typed(graphql.NewNonNull(pushUrgencyGQLEnum), func(v PushEventUrgencyView) any { return string(v.Urgency) }),
+		// sent is false for an event no producer emits yet (w4/349).
+		"sent": gqlutil.Typed(graphql.NewNonNull(graphql.Boolean), func(v PushEventUrgencyView) any { return v.Sent }),
 	},
 })
 

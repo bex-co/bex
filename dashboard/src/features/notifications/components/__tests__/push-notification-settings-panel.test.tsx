@@ -7,31 +7,43 @@ import {
   type PushNotificationSettingsInput,
 } from "@/graphql/definitions";
 import { PushNotificationSettingsPanel } from "@/features/notifications/components/push-notification-settings-panel";
-import type { PushEventUrgencies } from "@/features/notifications/lib/push-policy";
+import {
+  publishedPushEvents,
+  type PushEventUrgencies,
+} from "@/features/notifications/lib/push-policy";
 
 // bex-api's published table (notifications.pushEventUrgency, w4/m231): four
-// Routine events; everything else Important or Critical.
+// Routine events; everything else Important or Critical. Nothing sends
+// agent_needs_decision yet (w4/349).
 const { Routine, Important, Critical } = PushNotificationUrgency;
-const publishedUrgencies: PushEventUrgencies = new Map([
-  [PushNotificationEvent.DeployStarted, Routine],
-  [PushNotificationEvent.DeploySucceeded, Routine],
-  [PushNotificationEvent.DeployFailed, Important],
-  [PushNotificationEvent.ServerFailed, Critical],
-  [PushNotificationEvent.ServerAvailable, Important],
-  [PushNotificationEvent.ServiceSuspended, Routine],
-  [PushNotificationEvent.ServiceResumed, Routine],
-  [PushNotificationEvent.CronFailed, Important],
-  [PushNotificationEvent.AgentNeedsDecision, Important],
-  [PushNotificationEvent.AgentPrReady, Important],
-  [PushNotificationEvent.AgentFailed, Important],
-  [PushNotificationEvent.PostgresUnavailable, Critical],
-  [PushNotificationEvent.PostgresAvailable, Important],
-  [PushNotificationEvent.KeyValueUnhealthy, Critical],
-  [PushNotificationEvent.KeyValueAvailable, Important],
-  [PushNotificationEvent.PostgresBackupFailed, Important],
-  [PushNotificationEvent.PostgresRestoreFailed, Important],
-  [PushNotificationEvent.PostgresUpgradeFailed, Important],
-]);
+const publishedUrgencies: PushEventUrgencies = publishedPushEvents(
+  (
+    [
+      [PushNotificationEvent.DeployStarted, Routine],
+      [PushNotificationEvent.DeploySucceeded, Routine],
+      [PushNotificationEvent.DeployFailed, Important],
+      [PushNotificationEvent.ServerFailed, Critical],
+      [PushNotificationEvent.ServerAvailable, Important],
+      [PushNotificationEvent.ServiceSuspended, Routine],
+      [PushNotificationEvent.ServiceResumed, Routine],
+      [PushNotificationEvent.CronFailed, Important],
+      [PushNotificationEvent.AgentNeedsDecision, Important],
+      [PushNotificationEvent.AgentPrReady, Important],
+      [PushNotificationEvent.AgentFailed, Important],
+      [PushNotificationEvent.PostgresUnavailable, Critical],
+      [PushNotificationEvent.PostgresAvailable, Important],
+      [PushNotificationEvent.KeyValueUnhealthy, Critical],
+      [PushNotificationEvent.KeyValueAvailable, Important],
+      [PushNotificationEvent.PostgresBackupFailed, Important],
+      [PushNotificationEvent.PostgresRestoreFailed, Important],
+      [PushNotificationEvent.PostgresUpgradeFailed, Important],
+    ] as const
+  ).map(([event, urgency]) => ({
+    event,
+    urgency,
+    sent: event !== PushNotificationEvent.AgentNeedsDecision,
+  })),
+);
 const SERVICE_ID = "srv-c185th5c2rvvnhbfiltg";
 
 const state: {
@@ -200,6 +212,33 @@ describe("PushNotificationSettingsPanel", () => {
       expect(eventRow("Deploy succeeded")).toHaveTextContent("Routine");
       expect(eventRow("Deploy failed")).toHaveTextContent("Important");
       expect(eventRow("Service crashed")).toHaveTextContent("Critical");
+    });
+
+    // w4/349: an event nothing sends yet is labeled, not hidden, and a
+    // selection of it is kept.
+    it("labels an event nothing sends yet and keeps a selection of it", async () => {
+      const user = userEvent.setup();
+      render(<PushNotificationSettingsPanel />);
+
+      expect(eventRow("Agent needs a decision")).toHaveTextContent(
+        "Not sent yet: nothing sends this event today.",
+      );
+      expect(eventRow("Deploy failed")).not.toHaveTextContent("Not sent yet");
+      const checkbox = within(eventRow("Agent needs a decision")).getByRole(
+        "checkbox",
+      );
+      expect(checkbox).toHaveAccessibleName("Agent needs a decision Important");
+      expect(checkbox).toHaveAccessibleDescription(
+        "Not sent yet: nothing sends this event today.",
+      );
+
+      await user.click(eventRow("Agent needs a decision"));
+      await user.click(
+        screen.getByRole("button", { name: "Save push settings" }),
+      );
+      expect(update.mock.lastCall?.[0].events).toContain(
+        PushNotificationEvent.AgentNeedsDecision,
+      );
     });
 
     it("flags a Routine selection under Important, saves it as chosen, and clears at Routine", async () => {

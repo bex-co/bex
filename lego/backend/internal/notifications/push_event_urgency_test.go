@@ -44,8 +44,8 @@ func TestPushEventUrgencyCoversEverySelectableEvent(t *testing.T) {
 		if !ok || !validDeliveryUrgency(urgency) {
 			t.Fatalf("%s has urgency %q, want a valid one", event, urgency)
 		}
-		if got := pushEventUrgencies[i]; got != (PushEventUrgencyView{Event: event, Urgency: urgency}) {
-			t.Fatalf("pushEventUrgencies[%d] = %+v, want %s=%s", i, got, event, urgency)
+		if got := pushEventUrgencies[i]; got != (PushEventUrgencyView{Event: event, Urgency: urgency, Sent: !unsentPushEvents[event]}) {
+			t.Fatalf("pushEventUrgencies[%d] = %+v, want %s=%s sent=%v", i, got, event, urgency, !unsentPushEvents[event])
 		}
 		if urgency == DeliveryUrgencyRoutine {
 			routine = append(routine, event)
@@ -60,8 +60,8 @@ func TestPushEventUrgencyCoversEverySelectableEvent(t *testing.T) {
 // TestProjectedPushUrgencyIsPublished drives every projection and checks it
 // pushes at the urgency the settings read publishes, so the panel's "won't be
 // pushed" notice and the worker's drop decision cannot disagree. Every
-// selectable event must be projected except agent_needs_decision, which has no
-// producer yet; a new event without a projection fails here.
+// selectable event must be projected exactly when the settings read publishes
+// it as sent; a new event without a projection fails here (w4/349).
 func TestProjectedPushUrgencyIsPublished(t *testing.T) {
 	fact := func(factType string) store.WebhookEventRow {
 		return store.WebhookEventRow{Source: store.EventSourceFact, FactType: factType, ServiceName: "api"}
@@ -112,9 +112,9 @@ func TestProjectedPushUrgencyIsPublished(t *testing.T) {
 		}
 		projected[event] = true
 	}
-	for _, event := range orderedDeliveryEvents {
-		if projected[event] == (event == DeliveryEventAgentNeedsDecision) {
-			t.Errorf("%s: projected=%v; every selectable event but agent_needs_decision must project", event, projected[event])
+	for _, view := range pushEventUrgencies {
+		if projected[view.Event] != view.Sent {
+			t.Errorf("%s: projected=%v but published sent=%v", view.Event, projected[view.Event], view.Sent)
 		}
 	}
 }
@@ -146,13 +146,16 @@ func TestPushEventUrgenciesSurfaceParity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GraphQL schema: %v", err)
 	}
-	result := graphql.Do(graphql.Params{Schema: schema, RequestString: `{ pushEventUrgencies { event urgency } }`, Context: ctx})
+	result := graphql.Do(graphql.Params{Schema: schema, RequestString: `{ pushEventUrgencies { event urgency sent } }`, Context: ctx})
 	if len(result.Errors) > 0 {
 		t.Fatalf("GraphQL errors: %v", result.Errors)
 	}
 	raw, _ := json.Marshal(result.Data)
 	var gql struct {
-		Rows []struct{ Event, Urgency string } `json:"pushEventUrgencies"`
+		Rows []struct {
+			Event, Urgency string
+			Sent           bool
+		} `json:"pushEventUrgencies"`
 	}
 	if err := json.Unmarshal(raw, &gql); err != nil {
 		t.Fatalf("GraphQL decode: %v", err)
@@ -172,9 +175,10 @@ func TestPushEventUrgenciesSurfaceParity(t *testing.T) {
 		got := PushEventUrgencyView{
 			Event:   DeliveryEvent(enumValue(pushDeliveryEventGQLEnum, row.Event)),
 			Urgency: DeliveryUrgency(enumValue(pushUrgencyGQLEnum, row.Urgency)),
+			Sent:    row.Sent,
 		}
 		if got != rest[i] {
-			t.Fatalf("GraphQL row %d = %s/%s, REST %+v", i, row.Event, row.Urgency, rest[i])
+			t.Fatalf("GraphQL row %d = %+v, REST %+v", i, got, rest[i])
 		}
 	}
 }

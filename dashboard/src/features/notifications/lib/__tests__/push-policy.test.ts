@@ -8,6 +8,7 @@ import {
 import {
   droppedSelections,
   eventsBelowMinimum,
+  publishedPushEvents,
   pushEvents,
   validatePushSettings,
 } from "@/features/notifications/lib/push-policy";
@@ -193,10 +194,11 @@ describe("eventsBelowMinimum (w4/m231)", () => {
   const { DeploySucceeded, DeployFailed, ServerFailed, AgentNeedsDecision } =
     PushNotificationEvent;
   const { Routine, Important, Critical } = PushNotificationUrgency;
-  const urgencies = new Map([
-    [DeploySucceeded, Routine],
-    [DeployFailed, Important],
-    [ServerFailed, Critical],
+  const urgencies = publishedPushEvents([
+    { event: DeploySucceeded, urgency: Routine, sent: true },
+    { event: DeployFailed, urgency: Important, sent: true },
+    { event: ServerFailed, urgency: Critical, sent: true },
+    { event: AgentNeedsDecision, urgency: Important, sent: false },
   ]);
   const selected = [ServerFailed, DeploySucceeded, DeployFailed];
 
@@ -211,10 +213,12 @@ describe("eventsBelowMinimum (w4/m231)", () => {
     ]);
   });
 
-  it("never flags an unselected event or one with no published urgency", () => {
+  it("never flags an unselected event, one with no published urgency, or one nothing sends yet", () => {
     expect(eventsBelowMinimum([DeployFailed], Critical, urgencies)).toEqual([
       DeployFailed,
     ]);
+    // Important under a Critical minimum, but the minimum is not what stops it
+    // (w4/349).
     expect(
       eventsBelowMinimum([AgentNeedsDecision], Critical, urgencies),
     ).toEqual([]);
@@ -225,9 +229,9 @@ describe("eventsBelowMinimum (w4/m231)", () => {
 describe("droppedSelections (w4/m231)", () => {
   const { DeploySucceeded, DeployFailed } = PushNotificationEvent;
   const { Routine, Important, Critical } = PushNotificationUrgency;
-  const urgencies = new Map([
-    [DeploySucceeded, Routine],
-    [DeployFailed, Important],
+  const urgencies = publishedPushEvents([
+    { event: DeploySucceeded, urgency: Routine, sent: true },
+    { event: DeployFailed, urgency: Important, sent: true },
   ]);
   const serviceId = "srv-c185th5c2rvvnhbfiltg";
   const workspace = (
