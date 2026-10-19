@@ -386,6 +386,18 @@ func releaseInFlight(app *appv1alpha1.App) bool {
 	return false
 }
 
+// heldRelease reports a release the latest-pending slot (releaseInFlight) or a
+// cancel's survivor (survivorInFlight) holds through its rollout after the saved
+// spec moved on to another release. It must keep rendering and recording its
+// own settings, captured when it was adopted (recordAdoptedRelease), not the
+// newer saved ones (w8/m120).
+func heldRelease(app *appv1alpha1.App) bool {
+	if app.Status.ReleaseFingerprint == "" || (!releaseInFlight(app) && !survivorInFlight(app)) {
+		return false
+	}
+	return app.Status.ReleaseFingerprint != desiredAppReleaseIdentity(app.Spec).release
+}
+
 // releaseSourceFixed reports that the release in flight no longer reads the
 // saved source: its build has started (the Job checked out its own source) or
 // its artifact is built and it is rolling out.
