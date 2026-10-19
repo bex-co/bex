@@ -29,6 +29,10 @@ const COMMAND_COPY = {
     placeholder: "services.startCommandPlaceholder",
     edit: "services.startCommandEdit",
     confirmTitle: "services.startCommandConfirmTitle",
+    toasts: {
+      success: "services.startCommandSuccess",
+      error: "services.startCommandError",
+    },
   },
   docker: {
     label: "services.dockerCommandLabel",
@@ -36,6 +40,10 @@ const COMMAND_COPY = {
     placeholder: "services.dockerCommandPlaceholder",
     edit: "services.dockerCommandEdit",
     confirmTitle: "services.dockerCommandConfirmTitle",
+    toasts: {
+      success: "services.dockerCommandSuccess",
+      error: "services.dockerCommandError",
+    },
   },
   image: {
     label: "services.dockerCommandLabel",
@@ -43,6 +51,10 @@ const COMMAND_COPY = {
     placeholder: "services.imageCommandPlaceholder",
     edit: "services.dockerCommandEdit",
     confirmTitle: "services.dockerCommandConfirmTitle",
+    toasts: {
+      success: "services.dockerCommandSuccess",
+      error: "services.dockerCommandError",
+    },
   },
 } as const;
 
@@ -85,9 +97,9 @@ export function DeployCard({
   const createDisabled = !capabilities.canCreate;
   const createReasonKey = capabilities.reasonKey("can_create");
   const createReason = createReasonKey ? t(createReasonKey) : undefined;
-  const { setStartCommand, busy: commandBusy } = useStartCommand();
-  const { setPreDeployCommand, busy: preDeployBusy } = usePreDeployCommand();
   const copy = COMMAND_COPY[commandKind];
+  const { setStartCommand, busy: commandBusy } = useStartCommand(copy.toasts);
+  const { setPreDeployCommand, busy: preDeployBusy } = usePreDeployCommand();
   const startCommand = commandKind === "start";
 
   return (

@@ -2201,6 +2201,16 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法更新启动命令，请重试。",
     description: "Toast after setStartCommand fails",
   },
+  "services.dockerCommandSuccess": {
+    message: "Docker 命令已更新。",
+    description:
+      "Toast after a Dockerfile or Existing Image service's Docker Command is saved",
+  },
+  "services.dockerCommandError": {
+    message: "无法更新 Docker 命令，请重试。",
+    description:
+      "Toast when saving a Dockerfile or Existing Image service's Docker Command fails",
+  },
   "services.buildCommandLabel": {
     message: "构建命令",
     description:

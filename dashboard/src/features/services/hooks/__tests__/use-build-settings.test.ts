@@ -59,6 +59,31 @@ describe("Build & Deploy setting hooks", () => {
     );
   });
 
+  it("toasts the Docker Command when its caller names it (w4/357)", async () => {
+    const mutate = vi.fn().mockResolvedValue({});
+    mockUseMutation.mockReturnValue([mutate]);
+    const docker = {
+      success: "services.dockerCommandSuccess",
+      error: "services.dockerCommandError",
+    };
+    const { result } = renderHook(() => useStartCommand(docker));
+    await act(async () => {
+      await result.current.setStartCommand("srv-1", "bin/run");
+    });
+    expect(toastSuccess).toHaveBeenCalledWith("Docker Command updated.");
+
+    mockUseMutation.mockReturnValue([
+      vi.fn().mockRejectedValue(new Error("forbidden")),
+    ]);
+    const failing = renderHook(() => useStartCommand(docker));
+    await act(async () => {
+      await failing.result.current.setStartCommand("srv-1", "bin/run");
+    });
+    expect(toastError).toHaveBeenCalledWith(
+      "Couldn't update the Docker Command. Please try again.",
+    );
+  });
+
   it("persists a Dockerfile path and allows clearing it", async () => {
     const mutate = vi.fn().mockResolvedValue({});
     mockUseMutation.mockReturnValue([mutate]);
