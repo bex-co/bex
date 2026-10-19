@@ -906,7 +906,7 @@ func assertProjectsAndEnvironments(ctx context.Context, t *testing.T, s *PGStore
 	// Assigning by the public stable id also joins the service to its project.
 	// The placement diff (w6/m134) reports the assign: no prior placement, new
 	// environment + project.
-	moves, err := s.SetEnvironmentServices(ctx, env.ID, proj.ID, ten.ID, []string{app.ID})
+	moves, err := s.SetEnvironmentServices(ctx, env.ID, proj.ID, ten.ID, []string{app.ID}, nil)
 	if err != nil {
 		t.Fatalf("set environment services: %v", err)
 	}
@@ -918,7 +918,7 @@ func assertProjectsAndEnvironments(ctx context.Context, t *testing.T, s *PGStore
 	}
 	// Replaying the same membership is a no-op and reports no placement change
 	// — the diff is what keeps the service layer from recording a false move.
-	if moves, err := s.SetEnvironmentServices(ctx, env.ID, proj.ID, ten.ID, []string{app.ID}); err != nil || len(moves) != 0 {
+	if moves, err := s.SetEnvironmentServices(ctx, env.ID, proj.ID, ten.ID, []string{app.ID}, nil); err != nil || len(moves) != 0 {
 		t.Fatalf("no-op environment replacement diff = %+v (err %v), want empty", moves, err)
 	}
 	var gotProjectID *string
@@ -937,7 +937,7 @@ func assertProjectsAndEnvironments(ctx context.Context, t *testing.T, s *PGStore
 
 	// Legacy name input remains accepted during the stable-id transition. The
 	// move between environments reports the before/after pair, project intact.
-	moves, err = s.SetEnvironmentServices(ctx, prod.ID, proj.ID, ten.ID, []string{app.Name})
+	moves, err = s.SetEnvironmentServices(ctx, prod.ID, proj.ID, ten.ID, []string{app.Name}, nil)
 	if err != nil {
 		t.Fatalf("reassign: %v", err)
 	}
@@ -991,7 +991,7 @@ func assertProjectsAndEnvironments(ctx context.Context, t *testing.T, s *PGStore
 	// project must not strand a stale apps.environment_id (and the App CR's
 	// frozen spec.environmentIPAllowList it implies) behind. app is currently
 	// a member of prod (both project_id and environment_id set).
-	moves, err = s.SetProjectServices(ctx, proj.ID, ten.ID, nil)
+	moves, err = s.SetProjectServices(ctx, proj.ID, ten.ID, nil, nil)
 	if err != nil {
 		t.Fatalf("SetProjectServices(remove all): %v", err)
 	}
@@ -1013,7 +1013,7 @@ func assertProjectsAndEnvironments(ctx context.Context, t *testing.T, s *PGStore
 	}
 	// Rejoin so the DeleteEnvironment/DeleteProject assertions below (which
 	// assume app is a prod member) still hold.
-	if _, err := s.SetEnvironmentServices(ctx, prod.ID, proj.ID, ten.ID, []string{app.ID}); err != nil {
+	if _, err := s.SetEnvironmentServices(ctx, prod.ID, proj.ID, ten.ID, []string{app.ID}, nil); err != nil {
 		t.Fatalf("rejoin prod: %v", err)
 	}
 	assertIncomingProjectMoveClearsForeignEnvironment(ctx, t, s, pool, ten, app, proj.ID, prod.ID)
@@ -1077,7 +1077,7 @@ func assertIncomingProjectMoveClearsForeignEnvironment(ctx context.Context, t *t
 		return projectID, environmentID
 	}
 
-	moves, err := s.SetProjectServices(ctx, target.ID, ten.ID, []string{app.ID})
+	moves, err := s.SetProjectServices(ctx, target.ID, ten.ID, []string{app.ID}, nil)
 	if err != nil {
 		t.Fatalf("SetProjectServices(incoming): %v", err)
 	}
@@ -1096,10 +1096,10 @@ func assertIncomingProjectMoveClearsForeignEnvironment(ctx context.Context, t *t
 
 	// A retained member already in a target environment is compatible: the
 	// same membership replacement keeps it there and reports no move.
-	if _, err := s.SetEnvironmentServices(ctx, targetEnv.ID, target.ID, ten.ID, []string{app.ID}); err != nil {
+	if _, err := s.SetEnvironmentServices(ctx, targetEnv.ID, target.ID, ten.ID, []string{app.ID}, nil); err != nil {
 		t.Fatalf("assign target environment: %v", err)
 	}
-	if moves, err := s.SetProjectServices(ctx, target.ID, ten.ID, []string{app.Name}); err != nil || len(moves) != 0 {
+	if moves, err := s.SetProjectServices(ctx, target.ID, ten.ID, []string{app.Name}, nil); err != nil || len(moves) != 0 {
 		t.Fatalf("retained member replacement diff = %+v (err %v), want empty", moves, err)
 	}
 	if projectID, environmentID := placement(); projectID == nil || *projectID != target.ID || environmentID == nil || *environmentID != targetEnv.ID {
@@ -1113,7 +1113,7 @@ func assertIncomingProjectMoveClearsForeignEnvironment(ctx context.Context, t *t
 	if _, err := pool.Exec(ctx, `UPDATE apps SET project_id = $1, environment_id = $2 WHERE id = $3`, target.ID, sourceEnv, app.ID); err != nil {
 		t.Fatal(err)
 	}
-	moves, err = s.SetProjectServices(ctx, target.ID, ten.ID, []string{app.ID})
+	moves, err = s.SetProjectServices(ctx, target.ID, ten.ID, []string{app.ID}, nil)
 	if err != nil || len(moves) != 1 ||
 		moves[0].ProjectFrom == nil || *moves[0].ProjectFrom != target.ID || moves[0].ProjectTo == nil || *moves[0].ProjectTo != target.ID ||
 		moves[0].EnvironmentFrom == nil || *moves[0].EnvironmentFrom != sourceEnv || moves[0].EnvironmentTo != nil {
@@ -1122,11 +1122,11 @@ func assertIncomingProjectMoveClearsForeignEnvironment(ctx context.Context, t *t
 	if projectID, environmentID := placement(); projectID == nil || *projectID != target.ID || environmentID != nil {
 		t.Fatalf("after drift repair project=%v environment=%v, want %s and NULL", projectID, environmentID, target.ID)
 	}
-	if moves, err := s.SetProjectServices(ctx, target.ID, ten.ID, []string{app.ID}); err != nil || len(moves) != 0 {
+	if moves, err := s.SetProjectServices(ctx, target.ID, ten.ID, []string{app.ID}, nil); err != nil || len(moves) != 0 {
 		t.Fatalf("second repair pass diff = %+v (err %v), want empty", moves, err)
 	}
 
-	if _, err := s.SetEnvironmentServices(ctx, sourceEnv, sourceProject, ten.ID, []string{app.ID}); err != nil {
+	if _, err := s.SetEnvironmentServices(ctx, sourceEnv, sourceProject, ten.ID, []string{app.ID}, nil); err != nil {
 		t.Fatalf("restore source placement: %v", err)
 	}
 }
@@ -3899,8 +3899,9 @@ func TestPGGroupingTxRollsBackPartialSets(t *testing.T) {
 
 // TestPGReclaimEmptyBlueprintGroupings proves the disconnect sweep deletes
 // only empty, unreferenced groupings (w8/m20 t004): a populated environment
-// (apps member) and a CR-referenced one survive; the reclaimed project goes
-// only once it is empty of environments and members.
+// (an apps member, or an env group, w4/m232) and a CR-referenced one survive;
+// the reclaimed project goes only once it is empty of environments and
+// members.
 func TestPGReclaimEmptyBlueprintGroupings(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
@@ -3941,7 +3942,7 @@ func TestPGReclaimEmptyBlueprintGroupings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.SetEnvironmentServices(ctx, popEnv.ID, populated.ID, tenant, []string{app.ID}); err != nil {
+	if _, err := s.SetEnvironmentServices(ctx, popEnv.ID, populated.ID, tenant, []string{app.ID}, nil); err != nil {
 		t.Fatal(err)
 	}
 	referenced, err := s.CreateProject(ctx, tenant, "rc-referenced")
@@ -3952,11 +3953,25 @@ func TestPGReclaimEmptyBlueprintGroupings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	grouped, err := s.CreateProject(ctx, tenant, "rc-grouped")
+	if err != nil {
+		t.Fatal(err)
+	}
+	groupEnv, err := s.CreateEnvironment(ctx, grouped.ID, tenant, "production")
+	if err != nil {
+		t.Fatal(err)
+	}
+	group := newEnvGroupRow(tenant, "rc-shared")
+	group.EnvironmentID = groupEnv.ID
+	if _, err := s.InsertEnvGroup(ctx, group); err != nil {
+		t.Fatal(err)
+	}
 
 	pairs := []GroupingPair{
 		{Project: "rc-empty", Environment: "staging"},
 		{Project: "rc-populated", Environment: "production"},
 		{Project: "rc-referenced", Environment: "production"},
+		{Project: "rc-grouped", Environment: "production"},
 		{Project: "rc-missing", Environment: "gone"},
 	}
 	removedEnvs, removedProjects, err := s.ReclaimEmptyBlueprintGroupings(ctx, tenant, pairs,
@@ -3979,6 +3994,9 @@ func TestPGReclaimEmptyBlueprintGroupings(t *testing.T) {
 	}
 	if _, err := s.GetProject(ctx, populated.ID); err != nil {
 		t.Fatalf("populated project must survive: %v", err)
+	}
+	if g, err := s.GetEnvGroup(ctx, group.ID); err != nil || g.EnvironmentID != groupEnv.ID {
+		t.Fatalf("an env group's environment must survive with the group in it: %+v, %v", g, err)
 	}
 }
 

@@ -140,31 +140,44 @@ func placementChanges(before, after []servicePlacement) []core.ServicePlacementC
 // every row the caller named — is the correctness-critical predicate, so it
 // lives once here for both funnels. pivotColumn is a compile-time literal
 // ("project_id" / "environment_id"), never caller input.
-func placementDiffAround(ctx context.Context, tx pgx.Tx, pivotColumn, pivotID, tenantID string, serviceIDs []string, mutate func() error) ([]core.ServicePlacementChange, error) {
+//
+// The candidates are locked FOR UPDATE (in name order, so two funnels never
+// deadlock each other) and mutate must touch only the locked ids it is given:
+// the diff is then exactly what commits, with no concurrent move able to stale
+// a source or slip in a row the diff misses. exit, when set, vets the
+// environments the diff leaves before commit; a refusal rolls it all back
+// (w4/m232).
+func placementDiffAround(ctx context.Context, tx pgx.Tx, pivotColumn, pivotID, tenantID string, serviceIDs []string, mutate func(locked []string) error, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
 	before, err := queryServicePlacements(ctx, tx,
 		`SELECT id, name, project_id, environment_id FROM apps
 		 WHERE tenant_id = $1 AND (`+pivotColumn+` = $2 OR id = ANY($3) OR name = ANY($3))
-		 ORDER BY name`,
+		 ORDER BY name FOR UPDATE`,
 		tenantID, pivotID, serviceIDs)
 	if err != nil {
 		return nil, err
 	}
-	if err := mutate(); err != nil {
+	locked := make([]string, len(before))
+	for i, p := range before {
+		locked[i] = p.id
+	}
+	if err := mutate(locked); err != nil {
 		return nil, err
 	}
 	if len(before) == 0 {
 		return nil, nil
 	}
-	beforeIDs := make([]string, len(before))
-	for i, p := range before {
-		beforeIDs[i] = p.id
-	}
 	after, err := queryServicePlacements(ctx, tx,
-		`SELECT id, name, project_id, environment_id FROM apps WHERE id = ANY($1)`, beforeIDs)
+		`SELECT id, name, project_id, environment_id FROM apps WHERE id = ANY($1)`, locked)
 	if err != nil {
 		return nil, err
 	}
-	return placementChanges(before, after), nil
+	changes := placementChanges(before, after)
+	if exit != nil {
+		if err := exit(core.LeftEnvironments(changes)...); err != nil {
+			return nil, err
+		}
+	}
+	return changes, nil
 }
 
 // SetProjectServices replaces the full list of services in a project
@@ -184,18 +197,18 @@ func placementDiffAround(ctx context.Context, tx pgx.Tx, pivotColumn, pivotID, t
 // EnvironmentTo nil, since nothing here ever sets environment_id). Service
 // ids/names not found in tenantID are silently skipped (the UPDATE affects 0
 // rows for them).
-func (s *PGStore) SetProjectServices(ctx context.Context, projectID, tenantID string, serviceIDs []string) ([]core.ServicePlacementChange, error) {
+func (s *PGStore) SetProjectServices(ctx context.Context, projectID, tenantID string, serviceIDs []string, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
 	if serviceIDs == nil {
 		serviceIDs = []string{}
 	}
 	var changes []core.ServicePlacementChange
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		var err error
-		changes, err = placementDiffAround(ctx, tx, "project_id", projectID, tenantID, serviceIDs, func() error {
+		changes, err = placementDiffAround(ctx, tx, "project_id", projectID, tenantID, serviceIDs, func(locked []string) error {
 			if _, err := tx.Exec(ctx,
 				`UPDATE apps SET project_id = NULL, environment_id = NULL, updated_at = now()
-				 WHERE project_id = $1 AND tenant_id = $2 AND NOT (id = ANY($3) OR name = ANY($3))`,
-				projectID, tenantID, serviceIDs); err != nil {
+				 WHERE project_id = $1 AND tenant_id = $2 AND NOT (id = ANY($3) OR name = ANY($3)) AND id = ANY($4)`,
+				projectID, tenantID, serviceIDs, locked); err != nil {
 				return err
 			}
 			// Every named row lands in the project, keeping its environment only
@@ -209,9 +222,9 @@ func (s *PGStore) SetProjectServices(ctx context.Context, projectID, tenantID st
 					        environment_id = CASE WHEN environment_id IN (SELECT id FROM environments WHERE project_id = $1)
 					                              THEN environment_id END,
 					        updated_at = now()
-					 WHERE (id = ANY($2) OR name = ANY($2)) AND tenant_id = $3
+					 WHERE (id = ANY($2) OR name = ANY($2)) AND tenant_id = $3 AND id = ANY($4)
 					   AND (project_id IS DISTINCT FROM $1 OR environment_id NOT IN (SELECT id FROM environments WHERE project_id = $1))`,
-					projectID, serviceIDs, tenantID); err != nil {
+					projectID, serviceIDs, tenantID, locked); err != nil {
 					return err
 				}
 			}
@@ -225,7 +238,7 @@ func (s *PGStore) SetProjectServices(ctx context.Context, projectID, tenantID st
 				return fmt.Errorf("project: %w", ErrNotFound)
 			}
 			return nil
-		})
+		}, exit)
 		return err
 	})
 	return changes, err

@@ -58,7 +58,7 @@ type EnvironmentStore interface {
 	ListWorkspaceEnvironments(ctx context.Context, tenantID string) ([]store.Environment, error)
 	RenameEnvironment(ctx context.Context, id, name string) error
 	DeleteEnvironment(ctx context.Context, id string) error
-	SetEnvironmentServices(ctx context.Context, environmentID, projectID, tenantID string, serviceNames []string) ([]core.ServicePlacementChange, error)
+	SetEnvironmentServices(ctx context.Context, environmentID, projectID, tenantID string, serviceNames []string, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error)
 	ListEnvironmentServices(ctx context.Context, environmentID, projectID string) ([]string, error)
 	ListWorkspaceEnvironmentServices(ctx context.Context, tenantID string) (map[string][]string, error)
 	// SetEnvironmentACL replaces the protected-environment ACL triple (w6/m19).
@@ -76,12 +76,12 @@ type EnvironmentStore interface {
 // retired). *postgres.Service satisfies this structurally.
 type DatabaseIndex interface {
 	ListPostgres(ctx context.Context, ownerID string) ([]postgres.PostgresView, error)
-	SetEnvironmentID(ctx context.Context, name, environmentID string) error
+	SetEnvironmentID(ctx context.Context, name, expectedEnvironmentID, environmentID string) error
 	ClearEnvironmentID(ctx context.Context, name, expectedEnvironmentID string) error
 	// SetProjectID joins a newly-assigned Database to the environment's
 	// project (mirroring SetEnvironmentServices' apps.project_id stamp — see
 	// SetDatabases).
-	SetProjectID(ctx context.Context, name, projectID string) error
+	SetProjectID(ctx context.Context, name, expectedEnvironmentID, projectID string) error
 	SetEnvironmentIPAllowList(ctx context.Context, name, expectedEnvironmentID string, cidrs []string) error
 }
 
@@ -89,9 +89,9 @@ type DatabaseIndex interface {
 // satisfies this structurally.
 type KeyValueIndex interface {
 	ListKeyValues(ctx context.Context, ownerID string) ([]keyvalue.KeyValueView, error)
-	SetEnvironmentID(ctx context.Context, name, environmentID string) error
+	SetEnvironmentID(ctx context.Context, name, expectedEnvironmentID, environmentID string) error
 	ClearEnvironmentID(ctx context.Context, name, expectedEnvironmentID string) error
-	SetProjectID(ctx context.Context, name, projectID string) error
+	SetProjectID(ctx context.Context, name, expectedEnvironmentID, projectID string) error
 	SetEnvironmentIPAllowList(ctx context.Context, name, expectedEnvironmentID string, cidrs []string) error
 }
 
@@ -274,8 +274,9 @@ type environmentResource struct {
 type resourceIndex interface {
 	list(ctx context.Context, workspaceID string) ([]environmentResource, error)
 	// join adds id to e — and applies whatever else membership implies for
-	// this kind.
-	join(ctx context.Context, e store.Environment, id string) error
+	// this kind. observedEnvironmentID is where the caller saw it, and
+	// authorized leaving: a resource that has since moved is refused.
+	join(ctx context.Context, e store.Environment, id, observedEnvironmentID string) error
 	// leave removes membership; datastores compare the observed environment
 	// before clearing its inherited rules.
 	leave(ctx context.Context, id, expectedEnvironmentID string) error
@@ -309,11 +310,11 @@ func (d databaseResources) list(ctx context.Context, workspaceID string) ([]envi
 // store.SetEnvironmentServices' apps.project_id stamp — Render's model treats
 // "in an environment" as "in that project"), and the environment's inbound-IP
 // layer, which joiners inherit (w4/m28).
-func (d databaseResources) join(ctx context.Context, e store.Environment, id string) error {
-	if err := d.SetProjectID(ctx, id, e.ProjectID); err != nil {
+func (d databaseResources) join(ctx context.Context, e store.Environment, id, observedEnvironmentID string) error {
+	if err := d.SetProjectID(ctx, id, observedEnvironmentID, e.ProjectID); err != nil {
 		return err
 	}
-	if err := d.SetEnvironmentID(ctx, id, e.ID); err != nil {
+	if err := d.SetEnvironmentID(ctx, id, observedEnvironmentID, e.ID); err != nil {
 		return err
 	}
 	return d.SetEnvironmentIPAllowList(ctx, id, e.ID, core.EnvironmentLayerCIDRs(e.IPAllowList))
@@ -345,11 +346,11 @@ func (k keyValueResources) list(ctx context.Context, workspaceID string) ([]envi
 	return out, nil
 }
 
-func (k keyValueResources) join(ctx context.Context, e store.Environment, id string) error {
-	if err := k.SetProjectID(ctx, id, e.ProjectID); err != nil {
+func (k keyValueResources) join(ctx context.Context, e store.Environment, id, observedEnvironmentID string) error {
+	if err := k.SetProjectID(ctx, id, observedEnvironmentID, e.ProjectID); err != nil {
 		return err
 	}
-	if err := k.SetEnvironmentID(ctx, id, e.ID); err != nil {
+	if err := k.SetEnvironmentID(ctx, id, observedEnvironmentID, e.ID); err != nil {
 		return err
 	}
 	return k.SetEnvironmentIPAllowList(ctx, id, e.ID, core.EnvironmentLayerCIDRs(e.IPAllowList))
@@ -380,7 +381,9 @@ func (g envGroupResources) list(ctx context.Context, workspaceID string) ([]envi
 	return out, nil
 }
 
-func (g envGroupResources) join(ctx context.Context, e store.Environment, id string) error {
+// join moves the group through MoveEnvGroup, which authorizes the
+// environment it leaves against the group's current row itself.
+func (g envGroupResources) join(ctx context.Context, e store.Environment, id, _ string) error {
 	return g.SetEnvironmentID(ctx, id, e.ID)
 }
 
@@ -970,7 +973,15 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceIDs []strin
 	if err := s.authorizeACLBearingMutation(ctx, e); err != nil {
 		return EnvironmentView{}, err
 	}
-	moves, err := s.Store.SetEnvironmentServices(ctx, e.ID, e.ProjectID, e.TenantID, serviceIDs)
+	// Services pulled in from another environment leave it: each ACL-bearing
+	// one needs its own fresh can_manage, checked on the diff the store holds
+	// locked, so a concurrent move cannot slip an unchecked source past
+	// (w4/m232).
+	exit, err := s.loadExitGuard(ctx, e.TenantID)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	moves, err := s.Store.SetEnvironmentServices(ctx, e.ID, e.ProjectID, e.TenantID, serviceIDs, exit)
 	if err != nil {
 		return EnvironmentView{}, store.MapError(err)
 	}
@@ -1083,6 +1094,22 @@ func (s *Service) setResourceMembers(ctx context.Context, idx resourceIndex, id 
 		}
 		want[wid] = true
 	}
+	// A member pulled in from another environment leaves it. Authorize every
+	// such source before the first change, so a refusal changes nothing; each
+	// join then refuses a resource that moved since it was listed (w4/m232).
+	var sources []string
+	for _, r := range existing {
+		if want[r.id] && r.environmentID != "" && r.environmentID != e.ID {
+			sources = append(sources, r.environmentID)
+		}
+	}
+	exit, err := s.loadExitGuard(ctx, e.TenantID)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	if err := exit(sources...); err != nil {
+		return EnvironmentView{}, err
+	}
 	// Members change one at a time and an earlier change is not undone when a
 	// later one fails, so a failure after the first change says exactly how far
 	// the replacement got (w4/m206).
@@ -1093,7 +1120,7 @@ func (s *Service) setResourceMembers(ctx context.Context, idx resourceIndex, id 
 		case r.environmentID == e.ID && !want[r.id]:
 			err = idx.leave(ctx, r.id, e.ID)
 		case r.environmentID != e.ID && want[r.id]:
-			err = idx.join(ctx, e, r.id)
+			err = idx.join(ctx, e, r.id, r.environmentID)
 		default:
 			continue
 		}
@@ -1121,6 +1148,44 @@ func membershipInterrupted(environmentID string, changed []string, failed string
 		"Only part of this change was applied before it failed. Reload to see the current placement before trying again.",
 		map[string]any{"environmentId": ids.EnvironmentPublicID(environmentID), "changedIds": changed, "failedId": failed},
 	)
+}
+
+// loadExitGuard builds the check every placement writer runs for the
+// environments its write takes resources out of (w4/m232). Leaving an
+// ACL-bearing environment strips its protected status, isolation and inbound-IP
+// layer from the resource — that environment's administrator action on every
+// call path (round 9 #5, round 22 #3), whichever verb, resource or destination
+// names the move. The workspace's environments and the caller's fresh
+// can_manage are read here, before the write, so the guard needs neither the
+// database nor OpenFGA while the write holds its row locks. An environment the
+// load did not see counts as ACL-bearing, failing closed.
+func (s *Service) loadExitGuard(ctx context.Context, workspaceID string) (core.EnvironmentExitGuard, error) {
+	if s.Store == nil {
+		return core.ExitGuardLoader(nil).Load(ctx, workspaceID) // CR-only mode has no environments to leave
+	}
+	environments, err := s.Store.ListWorkspaceEnvironments(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	bare := make(map[string]bool, len(environments))
+	for _, e := range environments {
+		bare[e.ID] = !aclBearing(e)
+	}
+	admin := s.AuthorizeFreshOn(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID))
+	return func(environmentIDs ...string) error {
+		for _, raw := range environmentIDs {
+			if eid := ids.EnvironmentStorageID(raw); eid != "" && !bare[eid] {
+				return admin
+			}
+		}
+		return nil
+	}, nil
+}
+
+// ExitGuards is s's exit check as the loader the projects, env groups and
+// Blueprint writers are wired with (w4/m232).
+func ExitGuards(s *Service) core.ExitGuardLoader {
+	return s.loadExitGuard
 }
 
 // authorizeACLBearingMutation protects the administrator-owned ACL boundary at

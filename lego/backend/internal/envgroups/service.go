@@ -72,6 +72,11 @@ type Service struct {
 	// configuration change (w4/347); nil makes only the explicit
 	// rebuild save mode unavailable while save_only/deploy continue to work.
 	RebuildService func(ctx context.Context, serviceID string) error
+	// ExitGuards authorizes a move out of the group's current environment: an
+	// ACL-bearing one needs a fresh can_manage (w4/m232). The composition root
+	// wires environments.ExitGuards; nil (environments unwired) has no
+	// environment to protect.
+	ExitGuards core.ExitGuardLoader
 
 	// Rollout records the deploy-history row every linked-service patch below
 	// owes the user: linking, unlinking, and changing a group's values all roll
@@ -663,9 +668,18 @@ func (s *Service) MoveEnvGroup(ctx context.Context, gid, environmentID string) (
 	if g.EnvironmentID == environmentID {
 		return viewOf(g), nil
 	}
+	exit, err := s.ExitGuards.Load(ctx, g.TenantID)
+	if err != nil {
+		return EnvGroupView{}, err
+	}
 	g, err = s.mutateGroup(ctx, gid, func(cur *store.EnvGroup) error {
 		if cur.EnvironmentID == environmentID {
 			return errMetaUnchanged
+		}
+		// Checked against the row this write replaces, so a concurrent move
+		// cannot hand it an unchecked source (w4/m232).
+		if err := exit(cur.EnvironmentID); err != nil {
+			return err
 		}
 		if err := s.validateLinkedServiceEnvironments(ctx, cur.ServiceLinks, environmentID); err != nil {
 			return err

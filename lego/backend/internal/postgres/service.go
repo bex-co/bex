@@ -1660,9 +1660,14 @@ func (s *Service) patchDatabase(ctx context.Context, relation, name string, muta
 
 // SetProjectID assigns the project and atomically drops the former
 // environment and its inherited rules when the project changes.
-func (s *Service) SetProjectID(ctx context.Context, name, projectID string) error {
+// expectedEnvironmentID is the environment the caller observed and authorized
+// leaving (w4/m232); one the resource has since moved to is refused.
+func (s *Service) SetProjectID(ctx context.Context, name, expectedEnvironmentID, projectID string) error {
 	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
 	if err != nil {
+		return err
+	}
+	if err := core.PlacementChanged(d.Labels[core.LabelEnvironment], expectedEnvironmentID); err != nil {
 		return err
 	}
 	return s.setProjectID(ctx, d, projectID)
@@ -1722,10 +1727,18 @@ func (s *Service) SetEnvironmentIPAllowList(ctx context.Context, name, expectedE
 
 // SetEnvironmentID changes the environment without retaining rules inherited
 // from its predecessor. The parent project and resource-owned rules stay intact.
-func (s *Service) SetEnvironmentID(ctx context.Context, name, environmentID string) error {
+// expectedEnvironmentID is the environment the caller observed and authorized
+// leaving (w4/m232); one the resource has since moved to is refused. No
+// environment also passes: the caller's own SetProjectID just dropped it.
+func (s *Service) SetEnvironmentID(ctx context.Context, name, expectedEnvironmentID, environmentID string) error {
 	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return err
+	}
+	if current := d.Labels[core.LabelEnvironment]; current != "" {
+		if err := core.PlacementChanged(current, expectedEnvironmentID); err != nil {
+			return err
+		}
 	}
 	return s.setEnvironmentID(ctx, d, environmentID)
 }

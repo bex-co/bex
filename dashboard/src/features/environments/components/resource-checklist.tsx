@@ -11,6 +11,12 @@ export interface ResourceChecklistItem {
   id: string;
   name: string;
   badge: ReactNode;
+  /** Where the resource is now, when that is another environment (w4/m232). */
+  location?: string;
+  /** What leaving that environment removes: Protected, Isolated, … */
+  markers?: string[];
+  /** Set when this viewer cannot move it here; the row says why. */
+  disabledReason?: string;
 }
 
 export interface ResourceChecklistProps {
@@ -22,6 +28,8 @@ export interface ResourceChecklistProps {
   emptyLabel: string;
   onSave: (ids: string[]) => Promise<boolean>;
   onClose: () => void;
+  /** Before Save: one line per environment the selection moves resources out of. */
+  moveSummary?: string[];
 }
 
 /**
@@ -47,6 +55,7 @@ export function ResourceChecklist({
   emptyLabel,
   onSave,
   onClose,
+  moveSummary = [],
 }: ResourceChecklistProps) {
   const { t } = useTranslations();
 
@@ -65,26 +74,76 @@ export function ResourceChecklist({
         // footer buttons (the w1/m49 webhook-modal bug).
         <ScrollArea className="pr-3" viewportClassName="max-h-72">
           <div className="space-y-1">
-            {items.map((item) => (
-              <Label
-                key={item.id}
-                htmlFor={`assign-${item.id}`}
-                className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 hover:bg-muted/50"
-              >
-                <Checkbox
-                  id={`assign-${item.id}`}
-                  checked={checked.has(item.id)}
-                  onCheckedChange={(v) => onToggle(item.id, v === true)}
-                  disabled={busy}
-                />
-                <span className="flex-1 font-medium">{item.name}</span>
-                {item.badge}
-              </Label>
-            ))}
+            {items.map((item) => {
+              const detail = Boolean(item.location || item.disabledReason);
+              return (
+                <Label
+                  key={item.id}
+                  htmlFor={`assign-${item.id}`}
+                  className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 hover:bg-muted/50"
+                >
+                  {/* Named by the resource alone, with where it is and why it
+                      is locked as its description, not one run-on label. */}
+                  <Checkbox
+                    id={`assign-${item.id}`}
+                    aria-labelledby={`assign-${item.id}-name`}
+                    aria-describedby={
+                      detail ? `assign-${item.id}-detail` : undefined
+                    }
+                    checked={checked.has(item.id)}
+                    onCheckedChange={(v) => onToggle(item.id, v === true)}
+                    disabled={busy || Boolean(item.disabledReason)}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span
+                      id={`assign-${item.id}-name`}
+                      className="block font-medium"
+                    >
+                      {item.name}
+                    </span>
+                    {detail && (
+                      <span
+                        id={`assign-${item.id}-detail`}
+                        className="block text-xs font-normal text-muted-foreground"
+                      >
+                        {item.location && (
+                          <span className="block">
+                            {item.location}
+                            {item.markers?.map((marker) => (
+                              <span
+                                key={marker}
+                                className="ml-1.5 rounded bg-amber-500/15 px-1 py-0.5 text-amber-700 dark:text-amber-400"
+                              >
+                                {marker}
+                              </span>
+                            ))}
+                          </span>
+                        )}
+                        {item.disabledReason && (
+                          <span className="block">{item.disabledReason}</span>
+                        )}
+                      </span>
+                    )}
+                  </span>
+                  {item.badge}
+                </Label>
+              );
+            })}
           </div>
         </ScrollArea>
       )}
 
+      {/* Mounted while empty: a live region announces only changes to one
+          that already exists. */}
+      <div role="status">
+        {moveSummary.length > 0 && (
+          <ul className="space-y-0.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
+            {moveSummary.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        )}
+      </div>
       <DialogFooter>
         <Button variant="outline" onClick={onClose} disabled={busy}>
           {t("environments.cancel")}

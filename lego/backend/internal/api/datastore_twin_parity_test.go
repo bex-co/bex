@@ -76,18 +76,18 @@ func TestDatastoreTwinsShareWriteMechanics(t *testing.T) {
 	}{
 		{
 			verb: "SetProjectID",
-			pg:   func(s *postgres.Service) error { return s.SetProjectID(t.Context(), name, "prj-1") },
-			kv:   func(s *keyvalue.Service) error { return s.SetProjectID(t.Context(), name, "prj-1") },
+			pg:   func(s *postgres.Service) error { return s.SetProjectID(t.Context(), name, "evm-existing", "prj-1") },
+			kv:   func(s *keyvalue.Service) error { return s.SetProjectID(t.Context(), name, "evm-existing", "prj-1") },
 		},
 		{
 			verb: "SetProjectID (clearing)",
-			pg:   func(s *postgres.Service) error { return s.SetProjectID(t.Context(), name, "") },
-			kv:   func(s *keyvalue.Service) error { return s.SetProjectID(t.Context(), name, "") },
+			pg:   func(s *postgres.Service) error { return s.SetProjectID(t.Context(), name, "evm-existing", "") },
+			kv:   func(s *keyvalue.Service) error { return s.SetProjectID(t.Context(), name, "evm-existing", "") },
 		},
 		{
 			verb: "SetEnvironmentID",
-			pg:   func(s *postgres.Service) error { return s.SetEnvironmentID(t.Context(), name, "evm-1") },
-			kv:   func(s *keyvalue.Service) error { return s.SetEnvironmentID(t.Context(), name, "evm-1") },
+			pg:   func(s *postgres.Service) error { return s.SetEnvironmentID(t.Context(), name, "evm-existing", "evm-1") },
+			kv:   func(s *keyvalue.Service) error { return s.SetEnvironmentID(t.Context(), name, "evm-existing", "evm-1") },
 		},
 		{
 			verb: "SetEnvironmentIPAllowList",

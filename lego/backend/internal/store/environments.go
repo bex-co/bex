@@ -184,18 +184,18 @@ func (s *PGStore) DeleteEnvironment(ctx context.Context, id string) error {
 // affects 0 rows for them, the same convention SetProjectServices uses).
 // Returns the per-service placement diff (w6/m134) the service layer records
 // move events from — empty for a no-op replacement.
-func (s *PGStore) SetEnvironmentServices(ctx context.Context, environmentID, projectID, tenantID string, serviceIDs []string) ([]core.ServicePlacementChange, error) {
+func (s *PGStore) SetEnvironmentServices(ctx context.Context, environmentID, projectID, tenantID string, serviceIDs []string, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
 	if serviceIDs == nil {
 		serviceIDs = []string{}
 	}
 	var changes []core.ServicePlacementChange
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		var err error
-		changes, err = placementDiffAround(ctx, tx, "environment_id", environmentID, tenantID, serviceIDs, func() error {
+		changes, err = placementDiffAround(ctx, tx, "environment_id", environmentID, tenantID, serviceIDs, func(locked []string) error {
 			if _, err := tx.Exec(ctx,
 				`UPDATE apps SET environment_id = NULL, updated_at = now()
-				 WHERE environment_id = $1 AND tenant_id = $2`,
-				environmentID, tenantID); err != nil {
+				 WHERE environment_id = $1 AND tenant_id = $2 AND id = ANY($3)`,
+				environmentID, tenantID, locked); err != nil {
 				return err
 			}
 			if len(serviceIDs) == 0 {
@@ -203,10 +203,10 @@ func (s *PGStore) SetEnvironmentServices(ctx context.Context, environmentID, pro
 			}
 			_, err := tx.Exec(ctx,
 				`UPDATE apps SET environment_id = $1, project_id = $2, updated_at = now()
-				 WHERE (id = ANY($3) OR name = ANY($3)) AND tenant_id = $4`,
-				environmentID, projectID, serviceIDs, tenantID)
+				 WHERE (id = ANY($3) OR name = ANY($3)) AND tenant_id = $4 AND id = ANY($5)`,
+				environmentID, projectID, serviceIDs, tenantID, locked)
 			return err
-		})
+		}, exit)
 		return err
 	})
 	return changes, err
