@@ -273,7 +273,7 @@ func TestBrotliVariantCachedOncePerKey(t *testing.T) {
 		t.Fatal("encoded variant was not cached")
 	}
 	h.cache.mu.Lock()
-	charged, used := h.cache.siteUsed[appID], entryCharge(key("app.js"), Object{Body: body, ContentType: "text/javascript"})+entryCharge(vkey, v)
+	charged, used := h.cache.siteUsed[appID], entryCharge(key("app.js"), Object{Body: body, ContentType: "text/javascript", etag: contentETag(body)})+entryCharge(vkey, v)
 	h.cache.mu.Unlock()
 	if charged != used {
 		t.Fatalf("site cache charge = %d, want identity + variant = %d", charged, used)

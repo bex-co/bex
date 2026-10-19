@@ -50,7 +50,7 @@ const entryOverhead = 256
 // io.ReadAll, whose final slice can carry up to ~2x its length in spare
 // capacity that stays allocated while the entry lives.
 func entryCharge(key string, obj Object) int64 {
-	return int64(cap(obj.Body)) + int64(len(key)) + int64(len(obj.ContentType)) + entryOverhead
+	return int64(cap(obj.Body)) + int64(len(key)) + int64(len(obj.ContentType)) + int64(len(obj.etag)) + entryOverhead
 }
 
 func newCache(budget int64) *cache {
