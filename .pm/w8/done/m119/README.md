@@ -1,6 +1,6 @@
 # w8 · m119 — An overlapping deploy serves while recorded canceled; Restart then reverts to an older release
 
-**Worker:** worker8 **Goal:** When deploys overlap, the release that actually serves is the one deploy history and `status.activeRevision` report, following Render's Wait policy. A Restart in that window keeps what is serving and never silently drops the saved change. **Status:** blocked — t001–t008 done; shipped `69e925197` and verified live (12/13 DoD checks). The open Restart/undeployedChanges bullet needs w8/m120: a release held through rollout keeps its own settings in its record
+**Worker:** worker8 **Goal:** When deploys overlap, the release that actually serves is the one deploy history and `status.activeRevision` report, following Render's Wait policy. A Restart in that window keeps what is serving and never silently drops the saved change. **Status:** done — shipped `69e925197`, verified live 2026-10-19 (12/13 DoD checks; the Restart bullet passed after w8/m120)
 
 ## Tasks (in order)
 
@@ -14,7 +14,7 @@
 | t006 | Render parity: deploy history, Restart and current revision across REST, GraphQL, MCP, UI  | 30m | w8/m119/t004, t005 — **DONE** |
 | t007 | Simplify the changed code                                                                  | 20m | w8/m119/t006 — **DONE** |
 | t008 | Test coverage: overlap live/deactivated progression and Restart in the window              | 60m | w8/m119/t006 — **DONE** |
-| t009 | Close out the milestone                                                                    | 10m | w8/m119/t007, t008 |
+| t009 | Close out the milestone                                                                    | 10m | w8/m119/t007, t008 — **DONE** |
 
 Nine tasks, 400m.
 
