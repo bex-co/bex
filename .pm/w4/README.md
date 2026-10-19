@@ -333,6 +333,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **359** — [A blank service name over REST is refused as "already in use" while GraphQL and the dashboard clear it](359.md) ← live `/qa-find-bugs w4` pass 7094cb, 2026-10-19 UTC. The patch-table preflight's `ServiceNameTaken` treats `""` as taken (every default-named service has `display_name = ''`), while the write itself treats empty as clear.
+
 - [ ] **358** — [A Blueprint `ipAllowList` can restart and empty a Persistence Off Key Value without the confirmation](358.md) ← `w4/m233` t001 writer audit, 2026-10-19. Blueprint datastore writes flip `spec.public` outside `updateKeyValue`, so a sync's first enable restarts and empties a memory-only store with no confirmation (and the auto-sync worker does it unattended). Needs a decision: refuse with a named error, gate behind an explicit apply flag, or accept.
 
 - [ ] **357** — [The Docker Command editor's toasts say "Start Command"](357.md) ← live `/qa-find-bugs w4` pass 2fe734, 2026-10-19 UTC. `COMMAND_COPY` names the field per kind, but `useStartCommand`'s success and error toasts are fixed to Start Command.
