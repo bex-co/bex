@@ -144,23 +144,25 @@ func (s *Service) openSelectedRelease(ctx context.Context, a *appv1alpha1.App, s
 
 // restartSelectedRelease restarts the artifact and configuration serving now.
 // Old records without a resolved image retain the established commit-pinned
-// fallback (nil, nil).
-func (s *Service) restartSelectedRelease(ctx context.Context, a *appv1alpha1.App) (*DeployView, error) {
+// fallback (nil, nil). Refusals and the started notification name service, the
+// caller's selector, as Trigger's do; a.Name is the internal tenant-prefixed CR
+// name (w8/128).
+func (s *Service) restartSelectedRelease(ctx context.Context, service string, a *appv1alpha1.App) (*DeployView, error) {
 	if s.Store == nil || appStoreID(a) == "" || a.Spec.Type == appv1alpha1.TypeStaticSite {
 		return nil, nil
 	}
-	if err := s.validateTrigger(a.Name, a, TriggerParams{restart: true}); err != nil {
+	if err := s.validateTrigger(service, a, TriggerParams{restart: true}); err != nil {
 		return nil, err
 	}
 	// This unlocked read only picks snapshot Restart over the legacy fallback;
 	// the release actually restarted is selected again under the lock.
-	if target, err := s.servingDeploy(ctx, a); err != nil || target.ResolvedImage == "" {
+	if target, err := s.servingDeploy(ctx, service, a); err != nil || target.ResolvedImage == "" {
 		return nil, err
 	}
 	d, err := s.openSelectedRelease(ctx, a, func(a *appv1alpha1.App) (store.Deploy, *appv1alpha1.ReleaseConfigReference, error) {
-		target, selected, err := s.restartSelection(ctx, a)
+		target, selected, err := s.restartSelection(ctx, service, a)
 		if err == nil && selected == nil {
-			err = fmt.Errorf("%w: service %q changed its running release during the restart; retry", core.ErrConflict, a.Name)
+			err = fmt.Errorf("%w: service %q changed its running release during the restart; retry", core.ErrConflict, service)
 		}
 		return target, selected, err
 	}, false, false)
@@ -168,7 +170,7 @@ func (s *Service) restartSelectedRelease(ctx context.Context, a *appv1alpha1.App
 		return nil, err
 	}
 	if store.IsOpenDeployStatus(d.Status) {
-		s.notifyDeployStarted(ctx, a, a.Name)
+		s.notifyDeployStarted(ctx, a, service)
 	}
 	result := view(d)
 	return &result, nil
@@ -176,15 +178,15 @@ func (s *Service) restartSelectedRelease(ctx context.Context, a *appv1alpha1.App
 
 // restartSelection selects the serving release's row and immutable runtime
 // inputs, or a nil selection for the legacy commit-pinned fallback.
-func (s *Service) restartSelection(ctx context.Context, a *appv1alpha1.App) (store.Deploy, *appv1alpha1.ReleaseConfigReference, error) {
-	target, err := s.servingDeploy(ctx, a)
+func (s *Service) restartSelection(ctx context.Context, service string, a *appv1alpha1.App) (store.Deploy, *appv1alpha1.ReleaseConfigReference, error) {
+	target, err := s.servingDeploy(ctx, service, a)
 	if err != nil || target.ResolvedImage == "" {
 		return target, nil, err
 	}
 	selected, err := s.targetReleaseConfig(ctx, a, target, true)
 	if err == nil && selected.SourceGeneration == 0 && target.Status != store.DeployLive {
 		// Image-only would run the saved configuration, not the serving one.
-		err = unresolvedServing(a, "its configuration record is unavailable", retryShortly)
+		err = unresolvedServing(service, a, "its configuration record is unavailable", retryShortly)
 	}
 	return target, selected, err
 }
@@ -199,7 +201,7 @@ func (s *Service) restartSelection(ctx context.Context, a *appv1alpha1.App) (sto
 // restart is refused retryably rather than falling back to an older Live row.
 // Without a release generation or a parseable active revision (legacy status),
 // the newest Live row is the only serving evidence there is.
-func (s *Service) servingDeploy(ctx context.Context, a *appv1alpha1.App) (store.Deploy, error) {
+func (s *Service) servingDeploy(ctx context.Context, service string, a *appv1alpha1.App) (store.Deploy, error) {
 	appID := appStoreID(a)
 	generation, ok := appv1alpha1.RevisionGeneration(a.Status.ActiveRevision)
 	if !ok || a.Status.ReleaseGeneration <= 0 {
@@ -217,7 +219,7 @@ func (s *Service) servingDeploy(ctx context.Context, a *appv1alpha1.App) (store.
 		// Not necessarily transient: a gated env-group link/unlink converges a
 		// new revision without opening a deploy row (w2/m94), so waiting alone
 		// may never resolve it (w4/264).
-		return store.Deploy{}, unresolvedServing(a, "no deploy records that release, so Restart cannot preserve it", untrackedRelease)
+		return store.Deploy{}, unresolvedServing(service, a, "no deploy records that release, so Restart cannot preserve it", untrackedRelease)
 	}
 	d, err := s.Store.GetDeploy(ctx, appID, id)
 	if err != nil {
@@ -227,7 +229,7 @@ func (s *Service) servingDeploy(ctx context.Context, a *appv1alpha1.App) (store.
 		return d, nil
 	}
 	if a.Status.ReleaseGeneration != generation || a.Status.Image == "" {
-		return store.Deploy{}, unresolvedServing(a, "its image is not recorded yet", retryShortly)
+		return store.Deploy{}, unresolvedServing(service, a, "its image is not recorded yet", retryShortly)
 	}
 	d.ResolvedImage = a.Status.Image
 	return d, nil
@@ -239,6 +241,6 @@ const (
 	untrackedRelease = "if this persists, run a standard deploy to establish a tracked release (it applies the saved configuration and current source)"
 )
 
-func unresolvedServing(a *appv1alpha1.App, why, next string) error {
-	return fmt.Errorf("%w: service %q is serving %s but %s; %s", core.ErrConflict, a.Name, a.Status.ActiveRevision, why, next)
+func unresolvedServing(service string, a *appv1alpha1.App, why, next string) error {
+	return fmt.Errorf("%w: service %q is serving %s but %s; %s", core.ErrConflict, service, a.Status.ActiveRevision, why, next)
 }

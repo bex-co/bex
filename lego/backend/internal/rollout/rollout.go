@@ -227,7 +227,7 @@ func PatchAppLocked(ctx context.Context, cl client.Client, a *appv1alpha1.App, m
 			return err
 		}
 		if attempt == lockedPatchAttempts {
-			return fmt.Errorf("%w: too many concurrent updates to service %q; retry", core.ErrConflict, a.Name)
+			return fmt.Errorf("%w: too many concurrent updates to service %q; retry", core.ErrConflict, core.AppPublicName(a))
 		}
 		if err := core.RereadApp(ctx, cl, a); err != nil {
 			return err
