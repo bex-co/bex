@@ -241,6 +241,22 @@ class QALoginTest(unittest.TestCase):
             {"url": SUCCESS}, whoami(),
         ], "--login-challenge", "test")
 
+    def test_session_already_available_reasks_as_browser(self):
+        # A seeded session that needs no refresh refuses the JSON flow; asked as
+        # a browser, Kratos accepts the challenge against it (w8/124).
+        bootstrap = challenge_url()
+        seed = self.root / "seeded.jar"
+        seed.write_text(COOKIE)
+        for body in ({"id": "session_already_available"},
+                     {"error": {"id": "session_already_available", "code": 400}}):
+            with self.subTest(body=body):
+                (self.root / "calls.json").unlink(missing_ok=True)
+                self.run_login([
+                    flow(bootstrap, status=400, body=body),
+                    {"url": bootstrap, "status": 303, "location": SUCCESS, "required_cookie": "test-session"},
+                    {"url": SUCCESS}, whoami(),
+                ], "--login-challenge", "test", "--cookie-jar", str(seed))
+
     def test_seed_jar_preserves_hydra_cookies_without_modifying_input(self):
         bootstrap = challenge_url()
         seed = self.root / "device.jar"

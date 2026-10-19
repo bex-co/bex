@@ -442,9 +442,21 @@ try:
 except (ValueError, OSError):
     sys.exit(1)
 ' "$tmp/flow.json"; then
-  # Kratos can satisfy a challenge without a form. Its JSON `null` response
-  # requires a browser-shaped request to obtain the provider redirect.
-  if [ "$code" = 200 ] && [ "$(tr -d '[:space:]' <"$tmp/flow.json")" = null ]; then
+  # Kratos can satisfy a challenge without a form. Its JSON answer is `null`,
+  # or `400 session_already_available` for a live session Hydra remembers (the
+  # id may be top-level or under `error`). Either way a browser-shaped request
+  # obtains the provider redirect, as the dashboard hands the challenge back
+  # (use-ory-flow.ts, w8/124).
+  if python3 -c '
+import json, sys
+try:
+    f = json.load(open(sys.argv[1]))
+except (ValueError, OSError):
+    sys.exit(1)
+error = f.get("error") if isinstance(f, dict) and isinstance(f.get("error"), dict) else f
+sys.exit(0 if (sys.argv[2] == "200" and f is None) or (sys.argv[2] == "400" and
+         isinstance(error, dict) and error.get("id") == "session_already_available") else 1)
+' "$tmp/flow.json" "$code"; then
     code="$(qa_curl -sS -c "$jar" -b "$jar" -D "$tmp/flow-headers" \
       -o "$tmp/flow.json" -w '%{http_code}' "$bootstrap")"
   fi
