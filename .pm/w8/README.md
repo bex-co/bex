@@ -367,7 +367,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **127** — [An Update Source during a release in flight rolls that release on the previous image](done/127.md) (filed as `124`, renumbered 2026-10-19 after a number collision) ← w8/m119 code review 2026-10-19: `sourceUpdatePending` is decided before `releaseInFlight`, so a source update saved mid-build/pre-deploy reuses the prior image under the new revision — **DONE (2026-10-19)**
 
-- [ ] **124** — [qa-login.sh --login-challenge fails when the seeded session needs no refresh](124.md) ← `/qa-find-bugs-cli` solo loop 2026-10-19; reopened the same day (board repair: it had been closed with another item's fix)
+- [x] **124** — [qa-login.sh --login-challenge fails when the seeded session needs no refresh](done/124.md) ← `/qa-find-bugs-cli` solo loop 2026-10-19; reopened the same day (board repair: it had been closed with another item's fix) — **DONE (2026-10-19)**
 
 - [x] **123** — [A far-future log endTime with no startTime still returns 500 (or times out)](done/123.md) ← from `/qa-find-bugs-cli` solo loop run 2 sweep r1, 2026-10-19 — **DONE (2026-10-19:** a far-future `endTime` with no `startTime` reads up to now plus a 10-minute clock grace on every surface; the query-hours cap measures that window)
 
