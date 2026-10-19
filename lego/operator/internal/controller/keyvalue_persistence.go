@@ -28,7 +28,7 @@ import (
 
 const keyValueContainerName = "valkey"
 const keyValueSnapshotMode = "snapshot"
-const keyValueOffMode = "off"
+const keyValueOffMode = appv1alpha1.KeyValuePersistenceOff
 
 const keyValuePersistenceSourceAnnotation = "app.bex.co/persistence-source"
 const keyValuePersistenceTokenAnnotation = "app.bex.co/persistence-handoff"

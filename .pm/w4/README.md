@@ -15,7 +15,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m233** — [Stop Key Value allowlist saves from silently restarting (and wiping) the store](m233/README.md) (7 tasks, 3h40m) ← live `/qa-find-bugs w4` pass 8be45a, 2026-10-19 UTC. An allowlist save that turns external access on or off rolls the Valkey pod (the operator adds/removes the TLS listener and cert), so on a Persistence Off store two ordinary saves left `DBSIZE` 0, while the Networking card says "Internal access is unchanged."
+- [ ] **m233** — [Stop Key Value allowlist saves from silently restarting (and wiping) the store](m233/README.md) (7 tasks, 3h40m) — **t001–t006 done 2026-10-19 (loopx w4); t007 live closeout pending the deploy.** ← live `/qa-find-bugs w4` pass 8be45a, 2026-10-19 UTC. An allowlist save that turns external access on or off rolls the Valkey pod (the operator adds/removes the TLS listener and cert), so on a Persistence Off store two ordinary saves left `DBSIZE` 0, while the Networking card says "Internal access is unchanged."
 
 - [ ] **m232** — [Keep a protected environment's members behind its admin gate on every move](m232/README.md) (7 tasks, 3h40m) — **t001–t006 done 2026-10-19 (loopx w4); t007 live closeout pending the deploy.** ← live `/qa-find-bugs w4` pass 9d7581, 2026-10-19 UTC. Env `SetServices`/`setResourceMembers`, project `SetServices` and `MoveEnvGroup` check only their own target, so a member leaves a protected or isolated environment without its fresh `can_manage`. Live: a staging Manage resources save and `setProjectServices([])` each lifted the protected guard (unconfirmed suspend 400 → 202).
 
@@ -332,6 +332,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 - [x] **m107** — [Log history past the newest 100 lines is unreachable on GraphQL and MCP](done/m107/README.md) (8 tasks) ← from live `/qa-find-bugs` 2026-09-14 pass 37; done 2026-09-16 (REST next-page cursors followable; GraphQL/MCP return the Render envelope; dashboard pages on scroll-up + truncation notice; `get_postgres_logs`/`get_key_value_logs` stay bare by design — use `list_logs`)
 
 ## Inbox
+
+- [ ] **358** — [A Blueprint `ipAllowList` can restart and empty a Persistence Off Key Value without the confirmation](358.md) ← `w4/m233` t001 writer audit, 2026-10-19. Blueprint datastore writes flip `spec.public` outside `updateKeyValue`, so a sync's first enable restarts and empties a memory-only store with no confirmation (and the auto-sync worker does it unattended). Needs a decision: refuse with a named error, gate behind an explicit apply flag, or accept.
 
 - [ ] **357** — [The Docker Command editor's toasts say "Start Command"](357.md) ← live `/qa-find-bugs w4` pass 2fe734, 2026-10-19 UTC. `COMMAND_COPY` names the field per kind, but `useStartCommand`'s success and error toasts are fixed to Start Command.
 

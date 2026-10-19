@@ -7,18 +7,55 @@ import {
 } from "@/common/components/ui/card";
 import { IPAllowListEditor } from "@/common/components/ip-allow-list-editor";
 import { ipAllowListEntryKey } from "@/common/lib/ip-allow-list";
+import { useRef, useState } from "react";
+import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
+import type { IPAllowListEntryDraft } from "@/common/lib/ip-allow-list";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { useKeyValueNetworking } from "@/features/keyvalue/hooks/use-key-value-networking";
+import {
+  useKeyValueNetworking,
+  type RestartRefusal,
+} from "@/features/keyvalue/hooks/use-key-value-networking";
 
 /**
  * The Key Value detail's Networking section: the external-endpoint IP
  * allowlist (editable CIDR list) — Render's Networking control, mirroring the
  * allowlist section of databases' AccessControlPanel. Saving rules enables
- * external access; saving an empty list disables it. Internal access is unchanged.
+ * external access; saving an empty list disables it. Only a store's first
+ * enable restarts it (w4/m233): the hint says so before Save, and when bex-api
+ * refuses that save because the restart would empty a Persistence Off store,
+ * the panel asks for the phrase the refusal names and saves once more with it.
  */
 export function KeyValueNetworkingPanel({ id }: { id: string }) {
   const { t } = useTranslations();
   const networking = useKeyValueNetworking(id);
+  const [pending, setPending] = useState<{
+    entries: IPAllowListEntryDraft[];
+    refusal: RestartRefusal;
+  } | null>(null);
+  const confirming = useRef(false);
+
+  async function requestSave(entries: IPAllowListEntryDraft[]) {
+    const result = await networking.saveAllowList(entries);
+    if (typeof result !== "object") return result;
+    setPending({ entries, refusal: result });
+    return false;
+  }
+
+  async function confirmSave(confirmation: string) {
+    if (!pending || confirming.current) return;
+    confirming.current = true;
+    try {
+      const result = await networking.saveAllowList(
+        pending.entries,
+        confirmation,
+      );
+      if (result === true) setPending(null);
+      else if (typeof result === "object")
+        setPending({ ...pending, refusal: result });
+    } finally {
+      confirming.current = false;
+    }
+  }
 
   return (
     <Card>
@@ -38,13 +75,17 @@ export function KeyValueNetworkingPanel({ id }: { id: string }) {
           key={ipAllowListEntryKey(networking.allowList)}
           entries={networking.allowList}
           saving={networking.savingAllowList}
-          onSave={networking.saveAllowList}
+          onSave={requestSave}
           allowUnchangedSave={
             networking.isPublic != null &&
             networking.isPublic !== Boolean(networking.allowList.length)
           }
           labels={{
-            hint: t("keyvalue.networkingHint"),
+            hint: t(
+              networking.externalAccessRestarts
+                ? "keyvalue.networkingHintRestart"
+                : "keyvalue.networkingHint",
+            ),
             empty: t(
               networking.isPublic && networking.allowList.length === 0
                 ? "keyvalue.networkingPublicEmpty"
@@ -65,6 +106,26 @@ export function KeyValueNetworkingPanel({ id }: { id: string }) {
           }}
         />
       </CardContent>
+      {/* Mounted per refusal, so a reopened dialog never starts with a phrase
+          typed for an earlier one. */}
+      {pending ? (
+        <ProtectedConfirmationDialog
+          key={pending.refusal.confirm}
+          open
+          resourceName={pending.refusal.name}
+          requiredConfirmation={pending.refusal.confirm}
+          title={t("keyvalue.networkingRestartConfirmTitle")}
+          description={t("keyvalue.networkingRestartConfirmDescription", {
+            name: pending.refusal.name,
+          })}
+          actionLabel={t("keyvalue.networkingRestartConfirmAction")}
+          busy={networking.savingAllowList}
+          onOpenChange={(open) => {
+            if (!open && !networking.savingAllowList) setPending(null);
+          }}
+          onConfirm={confirmSave}
+        />
+      ) : null}
     </Card>
   );
 }

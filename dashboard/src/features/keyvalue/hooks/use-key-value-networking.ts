@@ -11,6 +11,20 @@ import {
   skipPollWhenHidden,
 } from "@/common/lib/polling";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { graphQLErrorExtensions } from "@/common/lib/graphql-error";
+
+/**
+ * bex-api refused the save until the user confirms the restart it causes: a
+ * Persistence Off store's first external-access enable, which empties it
+ * (w4/m233). confirm is the server's retry phrase; the dashboard never builds
+ * it.
+ */
+export interface RestartRefusal {
+  confirm: string;
+  name: string;
+}
+
+const RESTART_REFUSAL = "KEY_VALUE_RESTART_CONFIRMATION_REQUIRED";
 
 /**
  * Reads + edits a Key Value store's external-endpoint IP allowlist — the
@@ -41,13 +55,24 @@ export function useKeyValueNetworking(id: string) {
     .map((e) => ({ cidrBlock: e.cidrBlock, description: e.description ?? "" }));
 
   const saveAllowList = useCallback(
-    async (entries: IPAllowListEntryDraft[]): Promise<boolean> => {
+    async (
+      entries: IPAllowListEntryDraft[],
+      confirm?: string,
+    ): Promise<boolean | RestartRefusal> => {
       try {
-        await setAllowListMut({ variables: { id, entries } });
+        await setAllowListMut({ variables: { id, entries, confirm } });
         toast.success(t("keyvalue.networkingSaved"));
         void allowListQuery.refetch();
         return true;
       } catch (e) {
+        const refusal = graphQLErrorExtensions(e, RESTART_REFUSAL);
+        if (typeof refusal?.["confirm"] === "string") {
+          const name = refusal["name"];
+          return {
+            confirm: refusal["confirm"],
+            name: typeof name === "string" ? name : "",
+          };
+        }
         toast.error(
           t("keyvalue.networkingError", { error: (e as Error).message }),
         );
@@ -57,9 +82,12 @@ export function useKeyValueNetworking(id: string) {
     [setAllowListMut, allowListQuery, id, t],
   );
 
+  const keyValue = allowListQuery.data?.keyValue;
   return {
     allowList,
-    isPublic: allowListQuery.data?.keyValue?.public,
+    isPublic: keyValue?.public,
+    // Enabling external access restarts the store (its first enable, w4/m233).
+    externalAccessRestarts: keyValue?.externalAccessRestarts === true,
     loading: allowListQuery.loading,
     savingAllowList,
     saveAllowList,

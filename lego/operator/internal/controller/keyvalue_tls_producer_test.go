@@ -94,7 +94,7 @@ func TestKeyValueTLSProvenanceAndHistoricalPublicObligation(t *testing.T) {
 	if kv.ResourceVersion != version {
 		t.Fatal("unchanged TLS obligation rewrote the KeyValue")
 	}
-	if _, err := r.reconcileKeyValueTLS(ctx, kv, true, keyValueTLSName(kv)); err != nil {
+	if _, err := r.reconcileKeyValueTLS(ctx, kv, true, true, keyValueTLSName(kv)); err != nil {
 		t.Fatal(err)
 	}
 	cert := &unstructured.Unstructured{}
@@ -123,7 +123,7 @@ func TestKeyValueTLSProvenanceAndHistoricalPublicObligation(t *testing.T) {
 	if !controllerutil.ContainsFinalizer(kv, kvTLSFinalizer) || kv.Annotations[annotKVTLSIdentity] != history {
 		t.Fatal("public withdrawal lost cleanup identity")
 	}
-	if _, err := r.reconcileKeyValueTLS(ctx, kv, false, keyValueTLSName(kv)); err != nil {
+	if _, err := r.reconcileKeyValueTLS(ctx, kv, false, false, keyValueTLSName(kv)); err != nil {
 		t.Fatal(err)
 	}
 	identity, err := r.keyValueTLSIdentity(kv)

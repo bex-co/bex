@@ -236,7 +236,8 @@ func TestGraphQLDryRunUpdateKeyValuePlan(t *testing.T) {
 
 // ---- MCP -----------------------------------------------------------------
 
-func kvMCPClient(t *testing.T, svc *Service) (func(string, map[string]any) map[string]any, func()) {
+// kvMCPSession connects an in-memory MCP client to svc's tools.
+func kvMCPSession(t *testing.T, svc *Service) *mcp.ClientSession {
 	t.Helper()
 	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
 	svc.RegisterMCP(srv)
@@ -249,6 +250,13 @@ func kvMCPClient(t *testing.T, svc *Service) (func(string, map[string]any) map[s
 	if err != nil {
 		t.Fatalf("client connect: %v", err)
 	}
+	return cs
+}
+
+func kvMCPClient(t *testing.T, svc *Service) (func(string, map[string]any) map[string]any, func()) {
+	t.Helper()
+	ctx := context.Background()
+	cs := kvMCPSession(t, svc)
 	call := func(name string, args map[string]any) map[string]any {
 		res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: args})
 		if err != nil || res.IsError {

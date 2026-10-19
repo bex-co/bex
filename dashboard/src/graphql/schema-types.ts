@@ -902,6 +902,7 @@ export type KeyValue = {
   createdAt: Maybe<Scalars['String']['output']>;
   dashboardUrl: Maybe<Scalars['String']['output']>;
   environmentId: Maybe<Scalars['String']['output']>;
+  externalAccessRestarts: Maybe<Scalars['Boolean']['output']>;
   externalHost: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
   ipAllowList: Maybe<Array<Maybe<Scalars['String']['output']>>>;
@@ -2107,6 +2108,7 @@ export type MutationSetImageArgs = {
 
 export type MutationSetKeyValueIpAllowListArgs = {
   cidrs?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  confirm?: InputMaybe<Scalars['String']['input']>;
   entries?: InputMaybe<Array<IpAllowListEntryInput>>;
   id: Scalars['String']['input'];
 };
@@ -2129,6 +2131,7 @@ export type MutationSetKeyValuePersistenceModeArgs = {
 
 
 export type MutationSetKeyValuePublicArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   public: Scalars['Boolean']['input'];
 };

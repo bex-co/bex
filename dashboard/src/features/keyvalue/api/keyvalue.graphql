@@ -88,6 +88,8 @@ query KeyValueIpAllowList($id: String!) {
   keyValue(id: $id) {
     id
     public
+    # A first enable restarts the store (w4/m233); the hint says so first.
+    externalAccessRestarts
     ipAllowListEntries {
       cidrBlock
       description
@@ -150,10 +152,12 @@ mutation CreateKeyValue(
 mutation SetKeyValueIpAllowList(
   $id: String!
   $entries: [IPAllowListEntryInput!]
+  $confirm: String
 ) {
-  setKeyValueIpAllowList(id: $id, entries: $entries) {
+  setKeyValueIpAllowList(id: $id, entries: $entries, confirm: $confirm) {
     id
     public
+    externalAccessRestarts
     ipAllowListEntries {
       cidrBlock
       description

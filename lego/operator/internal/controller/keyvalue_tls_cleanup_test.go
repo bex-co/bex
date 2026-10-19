@@ -183,7 +183,7 @@ func TestKeyValueTLSProducerRejectsExistingForeignSecret(t *testing.T) {
 			cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv).Build()
 			secrets := fake.NewClientBuilder().WithScheme(scheme).WithObjects(secret).Build()
 			r := &KeyValueReconciler{Client: cl, SecretClient: secrets, Scheme: scheme, KvDomain: "kv.example.test", ClusterIssuer: "issuer"}
-			if _, err := r.reconcileKeyValueTLS(ctx, kv, true, secret.Name); err == nil {
+			if _, err := r.reconcileKeyValueTLS(ctx, kv, true, true, secret.Name); err == nil {
 				t.Fatal("issuance allowed relabeling a foreign TLS Secret as current lifetime")
 			}
 			cert := &unstructured.Unstructured{}

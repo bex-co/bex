@@ -201,6 +201,10 @@ var KeyValueFailedReasons = []string{
 	ReasonPersistenceTransitionFailed, ReasonPersistenceSourceUnknown,
 }
 
+// KeyValuePersistenceOff is spec.persistenceMode's no-persistence value: the
+// store lives in memory only, so any restart empties it.
+const KeyValuePersistenceOff = "off"
+
 // KeyValueStatus is the observed state of a KeyValue.
 type KeyValueStatus struct {
 	// Phase is the high-level lifecycle state.
@@ -255,6 +259,13 @@ type KeyValueStatus struct {
 	// from SecretName). DNS for the host must point at the edge.
 	// +optional
 	ExternalHost string `json:"externalHost,omitempty"`
+
+	// TLSListener is true once the Valkey pod runs the TLS listener external
+	// access is served on. It stays on after external access is turned off,
+	// so turning access on again does not restart the store; only the first
+	// enable does (w4/m233).
+	// +optional
+	TLSListener bool `json:"tlsListener,omitempty"`
 
 	// ObservedGeneration is the .metadata.generation the controller last reconciled.
 	// +optional

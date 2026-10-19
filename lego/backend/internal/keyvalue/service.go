@@ -110,6 +110,9 @@ type KeyValueView struct {
 	// bex-native extras (Render clients ignore unknown keys).
 	ExternalHost string `json:"externalHost,omitempty"`
 	Public       bool   `json:"public"`
+	// ExternalAccessRestarts is true while turning external access on would
+	// restart the store (externalAccessRestarts).
+	ExternalAccessRestarts bool `json:"externalAccessRestarts,omitempty"`
 
 	// OwnerID is Render's workspace-scoping field (w6/m4/t002), read from the
 	// KeyValue CR's core.LabelTenant label — mirroring apps.AppView.OwnerID and
@@ -259,25 +262,26 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 	// ipAllowList is required in Render's schema — an unrestricted instance
 	// serializes as [], never as an absent key (core.AllowListOrEmpty, w6/m109).
 	return KeyValueView{
-		ID:               kv.Name,
-		Name:             kv.Spec.Name,
-		Plan:             kv.Spec.Plan,
-		Version:          kv.Spec.EffectiveVersion(),
-		Status:           status,
-		StatusReason:     reason,
-		StatusReasonCode: reasonCode,
-		Suspended:        core.SuspendedEnum(kv.Spec.Suspended),
-		CreatedAt:        created,
-		UpdatedAt:        resourcemeta.UpdatedAt(kv),
-		IPAllowList:      core.AllowListOrEmpty(core.AllowListFromSpec(kv.Spec.IPAllowList)),
-		MaxmemoryPolicy:  crdToRender(kv.Spec.MaxmemoryPolicy),
-		PersistenceMode:  crdToRender(kv.Spec.PersistenceMode),
-		ExternalHost:     kv.Status.ExternalHost,
-		Public:           kv.Spec.Public,
-		OwnerID:          kv.Labels[core.LabelTenant],
-		ProjectID:        kv.Labels[core.LabelProject],
-		EnvironmentID:    id.EnvironmentPublicID(kv.Labels[core.LabelEnvironment]),
-		BlueprintID:      kv.Labels[core.LabelBlueprint],
+		ID:                     kv.Name,
+		Name:                   kv.Spec.Name,
+		Plan:                   kv.Spec.Plan,
+		Version:                kv.Spec.EffectiveVersion(),
+		Status:                 status,
+		StatusReason:           reason,
+		StatusReasonCode:       reasonCode,
+		Suspended:              core.SuspendedEnum(kv.Spec.Suspended),
+		CreatedAt:              created,
+		UpdatedAt:              resourcemeta.UpdatedAt(kv),
+		IPAllowList:            core.AllowListOrEmpty(core.AllowListFromSpec(kv.Spec.IPAllowList)),
+		MaxmemoryPolicy:        crdToRender(kv.Spec.MaxmemoryPolicy),
+		PersistenceMode:        crdToRender(kv.Spec.PersistenceMode),
+		ExternalHost:           kv.Status.ExternalHost,
+		Public:                 kv.Spec.Public,
+		ExternalAccessRestarts: externalAccessRestarts(kv),
+		OwnerID:                kv.Labels[core.LabelTenant],
+		ProjectID:              kv.Labels[core.LabelProject],
+		EnvironmentID:          id.EnvironmentPublicID(kv.Labels[core.LabelEnvironment]),
+		BlueprintID:            kv.Labels[core.LabelBlueprint],
 	}
 }
 
@@ -725,7 +729,7 @@ func (s *Service) GetIPAllowList(ctx context.Context, name string) ([]core.IPAll
 // entries written without descriptions clear any stored ones. Every entry's
 // CIDR must be valid (a bad one is a 400 before any write). A nonempty list
 // enables external access for its sources; an empty list disables external
-// access. The internal path is unaffected.
+// access. Only a store's first enable restarts it (requireRestartConfirmation).
 func (s *Service) SetIPAllowList(ctx context.Context, name string, entries []core.IPAllowListEntry) (KeyValueView, error) {
 	// Routed through the shared patch so this dedicated route cannot drift from
 	// PATCH /v1/key-value/{id}: before w4/m116 it wrote Spec.IPAllowList itself
@@ -891,6 +895,34 @@ func (patch KeyValuePatch) apply(kv *appv1alpha1.KeyValue) {
 	}
 }
 
+// externalAccessRestarts reports whether turning external access on would
+// restart the running store: it has never run the TLS listener external access
+// is served on. Once it has, the operator keeps the listener and toggling
+// access restarts nothing; a suspended store has no process to restart
+// (w4/m233). Where BEX_KV_DOMAIN is unset no listener is ever added, so this
+// over-reports on such clusters.
+func externalAccessRestarts(kv *appv1alpha1.KeyValue) bool {
+	return !kv.Spec.Public && !kv.Status.TLSListener && !kv.Spec.Suspended
+}
+
+// requireRestartConfirmation refuses the first enable of external access on a
+// running Persistence Off store, whose restart empties it, unless the caller
+// sends the phrase the dashboard's persistence change uses for the same loss.
+func requireRestartConfirmation(ctx context.Context, kv *appv1alpha1.KeyValue, patch KeyValuePatch) error {
+	if kv.Spec.PersistenceMode != appv1alpha1.KeyValuePersistenceOff || !externalAccessRestarts(kv) {
+		return nil
+	}
+	next := kv.DeepCopy()
+	patch.apply(next)
+	if !next.Spec.Public {
+		return nil
+	}
+	confirm := ProtectedConfirmation("clear", kv.Spec.Name)
+	return core.RequireConfirmation(ctx, confirm, "KEY_VALUE_RESTART_CONFIRMATION_REQUIRED",
+		fmt.Sprintf("turning on external access for %q restarts it, and with persistence off that deletes every key; retry with confirm=%q", kv.Spec.Name, confirm),
+		map[string]any{"name": kv.Spec.Name})
+}
+
 // UpdateKeyValue applies a partial update (Render's PATCH /key-value/{id}
 // semantics — only fields set in patch change). SetPlan above stays the
 // plan-only entry point GraphQL/MCP use; this is the general handler REST's
@@ -920,6 +952,9 @@ func (s *Service) updateKeyValue(ctx context.Context, name string, patch KeyValu
 		if err := s.requireUnprotected(ctx, kv, verb); err != nil {
 			return KeyValueView{}, err
 		}
+	}
+	if err := requireRestartConfirmation(ctx, kv, patch); err != nil {
+		return KeyValueView{}, err
 	}
 	if patch.Plan != nil {
 		if err := s.RequirePlanBilling(ctx, kv.Labels[core.LabelTenant], tiers.Valkey.CanonicalID(*patch.Plan)); err != nil {

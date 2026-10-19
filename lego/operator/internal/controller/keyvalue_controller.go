@@ -23,6 +23,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -79,6 +80,9 @@ const (
 	// kvPort preserves existing in-cluster redis:// clients while external
 	// rediss:// clients terminate end-to-end TLS inside Valkey.
 	kvTLSPort = 6380
+	// kvTLSVolume mounts the listener's certificate. Its presence in the pod
+	// template is how a reconcile knows the listener already runs.
+	kvTLSVolume = "public-tls"
 	// kvReadinessPeriodSeconds / kvReadinessTimeoutSeconds bound how long a
 	// restarted store waits in config_restart after it can serve: the exec probe
 	// forks valkey-cli, so 5s rather than 1s, and 2s headroom over the default
@@ -416,12 +420,19 @@ func (r *KeyValueReconciler) keyValueStorageIntent(
 	return sts, effectiveGB, ctrl.Result{}, false, nil
 }
 
-// reconcileKeyValueTLS manages the public front door's Certificate. The
-// Certificate and the Secret it writes share one name — tlsSecretName is both.
+// keyValueTemplateListens reports whether sts's pod template already runs the
+// TLS listener.
+func keyValueTemplateListens(sts *appsv1.StatefulSet) bool {
+	return slices.ContainsFunc(sts.Spec.Template.Spec.Volumes, func(v corev1.Volume) bool { return v.Name == kvTLSVolume })
+}
+
+// reconcileKeyValueTLS manages the TLS listener's Certificate, kept for as long
+// as the listener runs (public or not, w4/m233). The Certificate and the Secret
+// it writes share one name — tlsSecretName is both.
 func (r *KeyValueReconciler) reconcileKeyValueTLS(
 	ctx context.Context,
 	kv *appv1alpha1.KeyValue,
-	public bool,
+	public, listener bool,
 	tlsSecretName string,
 ) (string, error) {
 	if public && r.ClusterIssuer == "" {
@@ -432,7 +443,7 @@ func (r *KeyValueReconciler) reconcileKeyValueTLS(
 	certificate.SetGroupVersionKind(certManagerCertificateGVK)
 	certificate.SetName(tlsSecretName)
 	certificate.SetNamespace(kv.Namespace)
-	if !public {
+	if !listener {
 		if err := cmp.Or(r.APIReader, client.Reader(r.Client)).Get(ctx, client.ObjectKeyFromObject(certificate), certificate); err != nil {
 			return appv1alpha1.ReasonCertificateCleanupFailed, client.IgnoreNotFound(err)
 		}
@@ -440,6 +451,12 @@ func (r *KeyValueReconciler) reconcileKeyValueTLS(
 			return appv1alpha1.ReasonCertificateCleanupFailed, err
 		}
 		return appv1alpha1.ReasonCertificateCleanupFailed, deleteKeyValueTLSObject(ctx, r.Client, certificate)
+	}
+	if !public {
+		// A private store's kept listener stays on the Certificate as issued
+		// (cert-manager still renews it). Not reconciling it here means a TLS
+		// fault cannot stall the store's other reconciles.
+		return "", nil
 	}
 	// Do not let secretTemplate provenance relabel an unrelated or previous
 	// lifetime's private key into this lifetime's cleanup authority.
@@ -667,10 +684,17 @@ func (r *KeyValueReconciler) reconcileKeyValueBackupNetworkPolicy(ctx context.Co
 // both need, resolved once instead of threaded as loose locals. Mirrors
 // clusterParams/databaseBackupIntent in database_controller.go.
 type keyValueIntent struct {
-	plan          tiers.ValkeyTier
-	storageGB     int32
-	internalHost  string
-	public        bool
+	plan         tiers.ValkeyTier
+	storageGB    int32
+	internalHost string
+	public       bool
+	// tlsListener keeps the TLS listener (and its certificate) once the pod
+	// runs it, public or not: adding or dropping it changes the pod template
+	// and restarts the store, so only the first enable may (w4/m233). It is
+	// dropped while suspended, when no process runs to restart. External
+	// access stays gated by public, at the Service's TLS port and the
+	// kv-sni-proxy's route.
+	tlsListener   bool
 	tlsSecretName string
 	// replicas is 0 while suspended — the PVC, Secret, Service and route are
 	// kept, so resume restores the same data, password and endpoint (Render's
@@ -690,7 +714,7 @@ type keyValueIntent struct {
 	skipPersistenceInit  bool
 }
 
-func keyValueIntentFor(kv *appv1alpha1.KeyValue, plan tiers.ValkeyTier, storageGB int32, kvDomain string) keyValueIntent {
+func keyValueIntentFor(kv *appv1alpha1.KeyValue, plan tiers.ValkeyTier, storageGB int32, kvDomain string, listening bool) keyValueIntent {
 	replicas := plan.Instances
 	if kv.Spec.Suspended {
 		replicas = 0
@@ -704,11 +728,13 @@ func keyValueIntentFor(kv *appv1alpha1.KeyValue, plan tiers.ValkeyTier, storageG
 	if env := kv.Labels[labelEnvironment]; env != "" {
 		podLabels[labelEnvironment] = env
 	}
+	public := kv.Spec.Public && kvDomain != ""
 	return keyValueIntent{
 		plan:          plan,
 		storageGB:     storageGB,
 		internalHost:  fmt.Sprintf("%s.%s.svc", kv.Name, kv.Namespace),
-		public:        kv.Spec.Public && kvDomain != "",
+		public:        public,
+		tlsListener:   public || (listening && kvDomain != "" && !kv.Spec.Suspended),
 		tlsSecretName: keyValueTLSName(kv),
 		replicas:      replicas,
 		labels:        map[string]string{labelKeyValue: kv.Name},
@@ -866,7 +892,7 @@ func applyValkeyPodSpec(spec *corev1.PodSpec, kv *appv1alpha1.KeyValue, intent k
 	serverPorts := []corev1.ContainerPort{{ContainerPort: kvPort, Name: "valkey"}}
 	var serverMounts []corev1.VolumeMount
 	var volumes []corev1.Volume
-	if intent.public {
+	if intent.tlsListener {
 		serverArgs = append(serverArgs,
 			"--tls-port", strconv.Itoa(kvTLSPort),
 			"--tls-cert-file", "/tls/tls.crt",
@@ -875,8 +901,8 @@ func applyValkeyPodSpec(spec *corev1.PodSpec, kv *appv1alpha1.KeyValue, intent k
 			"--tls-auth-clients", "no",
 		)
 		serverPorts = append(serverPorts, corev1.ContainerPort{ContainerPort: kvTLSPort, Name: "valkey-tls"})
-		serverMounts = append(serverMounts, corev1.VolumeMount{Name: "public-tls", MountPath: "/tls", ReadOnly: true})
-		volumes = []corev1.Volume{{Name: "public-tls", VolumeSource: corev1.VolumeSource{
+		serverMounts = append(serverMounts, corev1.VolumeMount{Name: kvTLSVolume, MountPath: "/tls", ReadOnly: true})
+		volumes = []corev1.Volume{{Name: kvTLSVolume, VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{SecretName: intent.tlsSecretName},
 		}}}
 	}
@@ -970,10 +996,12 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if done || err != nil {
 		return result, err
 	}
-	intent := keyValueIntentFor(&kv, plan, storageGB, r.KvDomain)
+	// The status counts too: a cached StatefulSet read can lag a first enable,
+	// and dropping a running listener would restart the store unconfirmed.
+	intent := keyValueIntentFor(&kv, plan, storageGB, r.KvDomain, keyValueTemplateListens(sts) || kv.Status.TLSListener)
 	// Validate public TLS before updating the workload. A missing issuer must
 	// fail closed without publishing a public host.
-	if reason, err := r.reconcileKeyValueTLS(ctx, &kv, intent.public, intent.tlsSecretName); err != nil {
+	if reason, err := r.reconcileKeyValueTLS(ctx, &kv, intent.public, intent.tlsListener, intent.tlsSecretName); err != nil {
 		return r.kvFail(ctx, &kv, reason, err)
 	}
 
@@ -1022,6 +1050,7 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	} else {
 		kv.Status.ExternalHost = ""
 	}
+	kv.Status.TLSListener = intent.tlsListener
 
 	// Surface the connection coordinates (the password stays in the Secret).
 	kv.Status.Host = intent.internalHost
