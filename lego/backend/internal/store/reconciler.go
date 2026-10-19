@@ -822,7 +822,7 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	// pass while the suspension lasts.
 	suspendEnded := status == DeployCanceled && cur.Status.ReleaseGeneration <= open.Generation && suspendEndsRollout(open, cur)
 	if suspendEnded {
-		if err := CancelRelease(ctx, r.Client, cur, open.Generation, r.BuildNamespace); err != nil {
+		if err := CancelRelease(ctx, r.Client, cur, open.Generation, nil, r.BuildNamespace); err != nil {
 			log.Printf("controlplane: cancel suspended release %s: %v", open.ID, err)
 			return
 		}
@@ -911,6 +911,8 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	case releaseCanceledFor(open, cur):
 		// A cancel whose stamp landed but whose row did not close (deploys.Cancel
 		// failing after CancelRelease): a user cancel carries no reason.
+	case endedWithNewerCancel(open, cur):
+		cancelReason = r.canceledAlongReason(ctx, open, cur)
 	default:
 		cancelReason = r.supersededCancelReason(ctx, open, cur)
 	}
@@ -1472,6 +1474,26 @@ func (r *Reconciler) supersededCancelReason(ctx context.Context, open Deploy, ap
 	return supersededByReason(id)
 }
 
+// endedWithNewerCancel reports that a cancel of a newer release settled below
+// this open row's own, which the operator never reached: a cancel that left no
+// older deploy running (CancelRelease's survivor), such as one of a
+// configuration change. The deploy a cancel leaves running stays the reported
+// release until it settles, so it never reads as ended here.
+func endedWithNewerCancel(open Deploy, app *appv1alpha1.App) bool {
+	canceled, ok := canceledReleaseGeneration(app)
+	return ok && open.Generation != 0 && canceled > open.Generation && app.Status.ReleaseGeneration < open.Generation
+}
+
+// canceledAlongReason names the deploy whose cancel ended this row's release
+// with it (endedWithNewerCancel).
+func (r *Reconciler) canceledAlongReason(ctx context.Context, open Deploy, app *appv1alpha1.App) string {
+	canceled, _ := canceledReleaseGeneration(app)
+	if id, err := r.Store.DeployIDByGeneration(ctx, open.AppID, canceled); err == nil && id != "" {
+		return "Canceled along with " + id
+	}
+	return "Canceled along with a newer deploy"
+}
+
 // supersededDeployStatus decides the open row's fate when the CR's release
 // generation no longer matches it. settled=false means the generations agree and
 // the caller should read live phase evidence instead.
@@ -1489,6 +1511,11 @@ func supersededDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) (s
 		if _, ok := recordedBuildFailure(app, open.Generation); ok {
 			return DeployBuildFailed, true
 		}
+	}
+	// Nothing will adopt this row's release once a newer cancel settled below
+	// it, and only the gate timeout below would close the row (w8/m117).
+	if endedWithNewerCancel(open, app) {
+		return DeployCanceled, true
 	}
 	// A reported release generation PAST the open row's means this row's release
 	// was superseded before it could finish — a git-push redeploy, env-var

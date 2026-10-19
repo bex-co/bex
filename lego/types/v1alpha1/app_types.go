@@ -62,6 +62,14 @@ const AnnotationPendingSourceGeneration = "app.bex.co/pending-source-generation"
 // AnnotationReleaseGeneration and supersedes this marker.
 const AnnotationCanceledReleaseGeneration = "app.bex.co/canceled-release-generation"
 
+// AnnotationSurvivingReleaseGeneration names the older release a cancel left
+// running (w8/m117). The release AnnotationCanceledReleaseGeneration names was
+// only waiting in the latest-pending slot behind it (ADR060 §D1a), so the
+// cancel ends that deploy alone: the operator carries this release through its
+// build and rollout and settles the cancel once it has served. Every cancel
+// restates it, and one that leaves nothing running removes it.
+const AnnotationSurvivingReleaseGeneration = "app.bex.co/surviving-release-generation"
+
 // AnnotationClearCacheReleaseGeneration records a repo-backed release that must
 // rebuild without importing the App's prior registry build cache (Render's
 // clearCache=clear / "Clear build cache & deploy"). The value is the release

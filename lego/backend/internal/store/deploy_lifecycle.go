@@ -49,6 +49,9 @@ var openDeployStatuses = []string{
 // store's transition model.
 func DeployStatuses() []string { return slices.Clone(deployStatusVocabulary) }
 
+// OpenDeployStatuses returns a copy of the statuses IsOpenDeployStatus accepts.
+func OpenDeployStatuses() []string { return slices.Clone(openDeployStatuses) }
+
 // IsOpenDeployStatus reports whether status may still advance or be canceled.
 func IsOpenDeployStatus(status string) bool { return slices.Contains(openDeployStatuses, status) }
 

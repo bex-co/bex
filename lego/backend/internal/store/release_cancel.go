@@ -60,8 +60,16 @@ var kpackImageGVK = schema.GroupVersionKind{Group: "kpack.io", Version: "v1alpha
 // that failed then would strand its row open (releaseCanceledFor closes it on
 // the next pass regardless). The build deletes are best effort: a build left
 // running can no longer promote.
-func CancelRelease(ctx context.Context, c client.Client, a *appv1alpha1.App, generation int64, buildNamespace string) error {
-	if err := markReleaseCanceled(ctx, c, a, generation); err != nil {
+//
+// survivor, when not nil, is the older deploy still in flight ahead of a deploy
+// that was only waiting in the latest-pending slot (ADR060 §D1a): canceling the
+// pending one ends it alone (w8/m117). The stamp names survivor's release
+// (AnnotationSurvivingReleaseGeneration), so the operator carries it to the end
+// instead of settling the cancel below both, and the saved commit goes back to
+// the one survivor's row records — the commit its build checks out if it has
+// not started (w5/138).
+func CancelRelease(ctx context.Context, c client.Client, a *appv1alpha1.App, generation int64, survivor *Deploy, buildNamespace string) error {
+	if err := markReleaseCanceled(ctx, c, a, generation, survivor); err != nil {
 		return err
 	}
 	if err := deleteReleaseBuild(ctx, c, a, generation, buildNamespace); err != nil {
@@ -76,20 +84,36 @@ func CancelRelease(ctx context.Context, c client.Client, a *appv1alpha1.App, gen
 // overwrite a newer release's cancel that landed since. A namesake recreated
 // since is never stamped (w5/157).
 //
+// A stamp that moves restates the survivor: survivor's release while the
+// canceled one is still the newest requested, else none — a deploy opened
+// since is newer than both, and the saved commit is its own. A cancel that
+// cannot move the stamp still ends the survivor if it names it: the suspend
+// that ends its rollout, or a Cancel of its own deploy.
+//
 // The operator writes the App's status throughout a rollout, which is exactly
 // when a cancel arrives, so losing the optimistic lock is ordinary. Each lost
 // attempt re-reads and decides again; one that still loses after the bounded
 // retries is a conflict the caller can retry, not an internal error (w4/287).
-func markReleaseCanceled(ctx context.Context, c client.Client, a *appv1alpha1.App, generation int64) error {
+func markReleaseCanceled(ctx context.Context, c client.Client, a *appv1alpha1.App, generation int64, survivor *Deploy) error {
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		if err := core.RereadApp(ctx, c, a); err != nil {
 			return err
 		}
-		if marked, ok := canceledReleaseGeneration(a); ok && marked >= generation {
+		marked, _ := canceledReleaseGeneration(a)
+		kept, keeps := generationAnnotation(a, appv1alpha1.AnnotationSurvivingReleaseGeneration)
+		moves := generation > marked
+		if !moves && !(keeps && kept == generation) {
 			return nil
 		}
 		base := a.DeepCopy()
-		metav1.SetMetaDataAnnotation(&a.ObjectMeta, appv1alpha1.AnnotationCanceledReleaseGeneration, strconv.FormatInt(generation, 10))
+		delete(a.Annotations, appv1alpha1.AnnotationSurvivingReleaseGeneration)
+		if moves {
+			metav1.SetMetaDataAnnotation(&a.ObjectMeta, appv1alpha1.AnnotationCanceledReleaseGeneration, strconv.FormatInt(generation, 10))
+			if requested, _ := generationAnnotation(a, appv1alpha1.AnnotationReleaseGeneration); survivor != nil && requested == generation {
+				metav1.SetMetaDataAnnotation(&a.ObjectMeta, appv1alpha1.AnnotationSurvivingReleaseGeneration, strconv.FormatInt(survivor.Generation, 10))
+				a.Spec.BuildCommit = survivor.Commit
+			}
+		}
 		return c.Patch(ctx, a, client.MergeFromWithOptions(base, client.MergeFromWithOptimisticLock{}))
 	})
 	if apierrors.IsConflict(err) {
@@ -104,7 +128,13 @@ func markReleaseCanceled(ctx context.Context, c client.Client, a *appv1alpha1.Ap
 // canceledReleaseGeneration is the release generation the App's cancel stamp
 // names; ok is false when there is none.
 func canceledReleaseGeneration(a *appv1alpha1.App) (int64, bool) {
-	generation, err := strconv.ParseInt(a.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration], 10, 64)
+	return generationAnnotation(a, appv1alpha1.AnnotationCanceledReleaseGeneration)
+}
+
+// generationAnnotation is the release generation one of the App's annotations
+// names; ok is false when it is absent or not a positive integer.
+func generationAnnotation(a *appv1alpha1.App, key string) (int64, bool) {
+	generation, err := strconv.ParseInt(a.Annotations[key], 10, 64)
 	return generation, err == nil && generation > 0
 }
 

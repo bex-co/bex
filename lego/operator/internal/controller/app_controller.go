@@ -627,6 +627,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	// Operational mutations such as manual scale therefore keep using the active
 	// artifact and release.
 	if releaseDecision.canceled {
+		r.stopAbandonedBuild(ctx, &app, releaseDecision.abandoned)
 		return r.settleCanceledRelease(ctx, &app, port)
 	}
 
@@ -673,6 +674,22 @@ func (r *AppReconciler) convergeRegistryCredentials(ctx context.Context, app *ap
 		return res, true, err
 	}
 	return ctrl.Result{}, false, nil
+}
+
+// stopAbandonedBuild stops the build of a release in flight that a cancel
+// settled below without naming it: the release a cancel left running and then
+// ended too (survivorInFlight), or one a canceled configuration change took
+// with it. It can no more promote than the canceled release, and its build
+// would hold a build-cap slot to the end. Best effort, like bex-api's own stop:
+// only the pass that settles knows the generation.
+func (r *AppReconciler) stopAbandonedBuild(ctx context.Context, app *appv1alpha1.App, generation int64) {
+	if generation == 0 || app.Spec.Repo == "" {
+		return
+	}
+	owner := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID)}
+	if err := build.StopRevision(ctx, r.buildPlaneClient(), r.buildNamespace(app.Namespace), owner, appv1alpha1.BuildRevision(generation)); err != nil {
+		logf.FromContext(ctx).Error(err, "stop the build of a release the cancel settled below", "app", app.Name, "generation", generation)
+	}
 }
 
 // canceledBuildStopped reports that a canceled pass already stopped the build
