@@ -42,11 +42,21 @@ import (
 type runtimeConfigRecord struct {
 	spec     appv1alpha1.ReleaseRecordSpec
 	template corev1.PodTemplateSpec
+	// adopted, when set, is written as the release's adopted spec
+	// (releaseRecordAdoptedSpecKey). Reads leave it nil; writes without it keep
+	// the stored one.
+	adopted *appv1alpha1.AppSpec
+}
+
+func (r *AppReconciler) readReleaseRecordSecret(ctx context.Context, app *appv1alpha1.App, generation int64) (*corev1.Secret, error) {
+	rec := &corev1.Secret{}
+	err := r.uncachedSecretClient().Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.ReleaseRecordName(app.Name, generation)}, rec)
+	return rec, err
 }
 
 func (r *AppReconciler) readRuntimeConfigRecord(ctx context.Context, app *appv1alpha1.App, generation int64) (*runtimeConfigRecord, error) {
-	rec := &corev1.Secret{}
-	if err := r.uncachedSecretClient().Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.ReleaseRecordName(app.Name, generation)}, rec); err != nil {
+	rec, err := r.readReleaseRecordSecret(ctx, app, generation)
+	if err != nil {
 		return nil, err
 	}
 	result := &runtimeConfigRecord{}
@@ -356,8 +366,10 @@ func (r *AppReconciler) selectedRuntime(ctx context.Context, app *appv1alpha1.Ap
 		}
 		return rec.projectRuntimeApp(app, gen), rec.launch(app), nil
 	}
+	// A held release on its view runs its own new artifact, not the served one
+	// a staged source switch keeps (w8/m121).
 	runtime, err := r.retainReleaseSources(ctx, app)
-	if err != nil || !sourceUpdatePending(app) || canceledOverServed(app) {
+	if err != nil || !sourceUpdatePending(app) || canceledOverServed(app) || viewedRelease(ctx, app) {
 		return runtime, launchUnknown, err
 	}
 	served := successfulReleaseGeneration(app)
@@ -437,6 +449,12 @@ func (r *AppReconciler) persistRuntimeConfigRecord(ctx context.Context, app *app
 	if err != nil {
 		return err
 	}
+	var adopted []byte
+	if record.adopted != nil {
+		if adopted, err = json.Marshal(record.adopted); err != nil {
+			return err
+		}
+	}
 	rec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.ReleaseRecordName(app.Name, generation), Namespace: app.Namespace}}
 	_, err = controllerutil.CreateOrUpdate(ctx, r.uncachedSecretClient(), rec, func() error {
 		if rec.Labels == nil {
@@ -444,7 +462,14 @@ func (r *AppReconciler) persistRuntimeConfigRecord(ctx context.Context, app *app
 		}
 		rec.Labels[snapshotOfLabel] = k8sname.Fit(app.Name + "-podtemplate")
 		rec.Labels[snapshotGenerationLabel] = strconv.FormatInt(generation, 10)
-		rec.Data = map[string][]byte{appv1alpha1.ReleaseRecordPodTemplateKey: raw, appv1alpha1.ReleaseRecordSpecKey: spec}
+		data := map[string][]byte{appv1alpha1.ReleaseRecordPodTemplateKey: raw, appv1alpha1.ReleaseRecordSpecKey: spec}
+		if adopted == nil {
+			adopted = rec.Data[releaseRecordAdoptedSpecKey]
+		}
+		if adopted != nil {
+			data[releaseRecordAdoptedSpecKey] = adopted
+		}
+		rec.Data = data
 		return controllerutil.SetControllerReference(app, rec, r.Scheme)
 	})
 	return err

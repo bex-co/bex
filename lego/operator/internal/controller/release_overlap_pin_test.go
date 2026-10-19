@@ -93,7 +93,7 @@ func TestPendingReleaseWaitsUntilTheReleaseInFlightServes(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			app := tc.app()
-			decision := prepareAppReleaseDecision(app)
+			decision := prepareAppReleaseDecision(app, nil)
 			if tc.pinned {
 				if app.Status.ReleaseGeneration != 2 || app.Status.PendingReleaseGeneration != 3 || decision.releaseChanged {
 					t.Fatalf("release=%d pending=%d changed=%v, want release 2 pinned with 3 pending",
@@ -114,13 +114,13 @@ func TestPendingReleaseWaitsUntilTheReleaseInFlightServes(t *testing.T) {
 func TestAdoptingASelectedReleaseRecordsIt(t *testing.T) {
 	app := overlapApp(appv1alpha1.PhaseRunning, "rev-2")
 	app.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: 3, SourceGeneration: 1, Image: "registry.example/app:gen-1"}
-	prepareAppReleaseDecision(app)
+	prepareAppReleaseDecision(app, nil)
 	if app.Status.ReleaseGeneration != 3 || app.Status.SelectedReleaseGeneration != 3 {
 		t.Fatalf("release=%d selected=%d, want rollback release 3 recorded as selected",
 			app.Status.ReleaseGeneration, app.Status.SelectedReleaseGeneration)
 	}
 	plain := overlapApp(appv1alpha1.PhaseRunning, "rev-2")
-	prepareAppReleaseDecision(plain)
+	prepareAppReleaseDecision(plain, nil)
 	if plain.Status.SelectedReleaseGeneration != 0 {
 		t.Fatalf("a source release recorded selected=%d", plain.Status.SelectedReleaseGeneration)
 	}
@@ -155,12 +155,12 @@ func TestSourceUpdateDuringAReleaseInFlightKeepsItsOwnArtifact(t *testing.T) {
 	}
 	// Not dispatched yet: a build would read the saved source, so the pending
 	// source keeps deciding (w8/126).
-	if decision := prepareAppReleaseDecision(app); !decision.sourcePending {
+	if decision := prepareAppReleaseDecision(app, nil); !decision.sourcePending {
 		t.Fatalf("undispatched build: decision = %+v, want the pending source to decide", decision)
 	}
 
 	app.Status.BuildRun = &appv1alpha1.BuildRunStatus{Generation: 2, StartedAt: "2026-10-19T06:00:00Z"}
-	decision := prepareAppReleaseDecision(app)
+	decision := prepareAppReleaseDecision(app, nil)
 	if decision.sourcePending || !decision.artifactChanged || decision.desired.artifact != inFlightID.artifact {
 		t.Fatalf("building: decision = %+v, want release 2's own artifact still to build", decision)
 	}
@@ -170,7 +170,7 @@ func TestSourceUpdateDuringAReleaseInFlightKeepsItsOwnArtifact(t *testing.T) {
 
 	app.Status.Phase = appv1alpha1.PhaseDeploying
 	app.Status.ArtifactFingerprint, app.Status.ArtifactImage = inFlightID.artifact, "registry.example/app:gen-2"
-	decision = prepareAppReleaseDecision(app)
+	decision = prepareAppReleaseDecision(app, nil)
 	if image, _ := reusableArtifactImage(app, decision); decision.sourcePending || image != "registry.example/app:gen-2" {
 		t.Fatalf("rolling out: decision = %+v image %q, want release 2's own image", decision, image)
 	}

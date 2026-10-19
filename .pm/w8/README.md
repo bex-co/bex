@@ -15,6 +15,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m121** — [A release in flight builds its own source after a later save](m121/README.md) (8 tasks;370m) ← promoted from `126` on 2026-10-19: an undispatched build, or a repo-to-image switch, reads the saved source; the latest-pending pin builds a newer commit under a queued release's name
+
 - [ ] **m119** — [An overlapping deploy serves while recorded canceled; Restart then reverts to an older release](blocked/m119/README.md) (9 tasks;400m) — **BLOCKED (2026-10-19: needs w8/m120 shipped, then a live re-run of the Restart bullet: with G serving and H building, a Restart must leave `undeployedChanges` true)**. t001–t008 done: shipped `69e925197` and verified live, 12/13 DoD checks. The release held through rollout is recorded live while it serves; `activeRevision`, Restart and history agree; controls are unchanged; REST/GraphQL/MCP/CLI agree.
 
 - [ ] **m120** — [A release held through rollout keeps its own settings](m120/README.md) (8 tasks;350m) ← w8/m119 live DoD 2026-10-19: held releases' records carry the newer saved settings, so Restart and Rollback act on the wrong record and `undeployedChanges` misreads; blocks m119
@@ -357,7 +359,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **126** — [A source update before a release's build starts still rolls the previous image as that release](126.md) ← w8/124 review 2026-10-19: an undispatched build, or a repo-to-image switch, still takes the pending-source path
+- [x] **126** — [A source update before a release's build starts still rolls the previous image as that release](done/126.md) — **PROMOTED (2026-10-19)** to `m121`.
 
 - [x] **125** — [Backward log pages without a startTime hand out inverted cursors past the first hour](done/125.md) ← w8/123 code review 2026-10-19: the cursor start defaults to 1h while the read looks back 7 days — **DONE (2026-10-19)**
 

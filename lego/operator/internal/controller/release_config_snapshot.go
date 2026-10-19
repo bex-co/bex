@@ -121,9 +121,16 @@ func snapshotName(app *appv1alpha1.App, source string, gen int64) string {
 // projection still points at the SERVED generation's copies, so projecting the App
 // itself handed release N+1's migration release N's DATABASE_URL (w1/m152 t004).
 // Reading the mutable sources is exactly what these steps did before snapshots.
-func inFlightRelease(app *appv1alpha1.App) *appv1alpha1.App {
+//
+// A held release running on its adopted view (withViewedRelease) reads its own
+// adoption snapshots instead: the mutable sources already hold a newer save's
+// values (w8/m121).
+func inFlightRelease(ctx context.Context, app *appv1alpha1.App) *appv1alpha1.App {
 	release := app.DeepCopy()
 	release.Status.ConfigSnapshotGeneration = 0
+	if viewedRelease(ctx, app) {
+		release.Status.ConfigSnapshotGeneration = app.Status.ReleaseGeneration
+	}
 	return release
 }
 
@@ -450,7 +457,7 @@ func (r *AppReconciler) recordAdoptedRelease(ctx context.Context, app *appv1alph
 	if err := r.snapshotReleaseConfig(ctx, app, gen); err != nil {
 		return err
 	}
-	return r.writeRuntimeConfigRecord(ctx, app, gen, &runtimeConfigRecord{spec: releaseRecordSpec(app)})
+	return r.writeRuntimeConfigRecord(ctx, app, gen, &runtimeConfigRecord{spec: releaseRecordSpec(app), adopted: &app.Spec})
 }
 
 // snapshotReleaseConfig copies each of the release's configuration sources to
