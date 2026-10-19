@@ -1001,6 +1001,7 @@ func (m *memStore) RecordObservedServiceState(_ context.Context, obs ObservedSer
 		m.eventChangedAt[obs.AppID] = obs.At
 		return nil, nil
 	}
+	obs = heldAvailability(previous.ServicePhase, previous.Availability, obs)
 	if !obs.AvailabilityObserved {
 		obs.Availability = previous.Availability
 	}
