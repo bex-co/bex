@@ -74,12 +74,14 @@ vi.mock("@/features/services/hooks/use-trigger-deploy", () => ({
 
 import { ServiceEnvironmentEditor } from "../service-environment-editor";
 
-function renderEditor() {
+function renderEditor({ suspended = false } = {}) {
   const root = createRootRoute();
   const route = createRoute({
     getParentRoute: () => root,
     path: "/",
-    component: () => <ServiceEnvironmentEditor serviceId="web" />,
+    component: () => (
+      <ServiceEnvironmentEditor serviceId="web" suspended={suspended} />
+    ),
   });
   const router = createRouter({
     routeTree: root.addChildren([route]),
@@ -308,6 +310,47 @@ describe("ServiceEnvironmentEditor", () => {
     );
     expect(save).toHaveBeenCalledTimes(1);
     expect(trigger).not.toHaveBeenCalled();
+  });
+
+  // w4/m234: on a suspended service Save and deploy claimed a deployment and
+  // filed one the reconciler canceled. Save only is the primary action, and
+  // the deploying items say why they are unavailable.
+  it("offers only Save only on a suspended service and says why", async () => {
+    const user = userEvent.setup();
+    renderEditor({ suspended: true });
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    const valueInputs = screen.getAllByRole("textbox", { name: /Value for / });
+    await user.type(valueInputs[0], "replacement");
+    expect(
+      screen.queryByRole("button", { name: "Save and deploy" }),
+    ).toBeNull();
+    await user.click(
+      screen.getByRole("button", { name: "Environment save options" }),
+    );
+    for (const name of ["Save, rebuild, and deploy", "Save and deploy"]) {
+      expect(screen.getByRole("menuitem", { name })).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
+    }
+    await user.hover(screen.getByRole("menuitem", { name: "Save and deploy" }));
+    expect(
+      (
+        await screen.findAllByText(
+          "Unavailable while the service is suspended. Resume it first.",
+        )
+      ).length,
+    ).toBeGreaterThan(0);
+    // The first Escape closes the reason's tooltip, the second the menu.
+    await user.keyboard("{Escape}{Escape}");
+    await user.click(screen.getByRole("button", { name: "Save only" }));
+    await waitFor(() =>
+      expect(save).toHaveBeenCalledWith(
+        "web",
+        { envVars: [{ key: "ALPHA", value: "replacement" }], secretFiles: [] },
+        "save_only",
+      ),
+    );
   });
 
   // w4/216: a deploying save that changed nothing returns rolledOut: false

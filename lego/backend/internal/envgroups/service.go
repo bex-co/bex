@@ -1259,14 +1259,20 @@ func (s *Service) detachFetched(ctx context.Context, gid string, a *appv1alpha1.
 // A service with Auto-Deploy off is left entirely alone: the group's Secret
 // already holds the new values, and not touching spec.restartedAt is exactly
 // what keeps the running pod on its current release until the owner deploys.
-// It reports whether it skipped for that reason.
+// It reports whether the change waits for the next deploy: skipped for that
+// reason, or held because the service was suspended when written.
 func (s *Service) rollOne(ctx context.Context, a *appv1alpha1.App, stamp string) (bool, error) {
 	if autoDeployGated(a) {
 		return true, nil
 	}
-	return false, s.rollLinkedService(ctx, a, func(a *appv1alpha1.App) {
+	if err := s.rollLinkedService(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.RestartedAt = stamp
-	})
+	}); err != nil {
+		return false, err
+	}
+	// a is the App written: a suspend that landed after the read held the
+	// change for the next deploy (rollout.Snapshot.Stamp), so it is pending.
+	return a.Spec.Suspended, nil
 }
 
 func validateGroupServiceEnvironment(groupEnvironment, serviceID string, labels map[string]string) error {

@@ -105,6 +105,14 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 	if patch.SaveMode != SaveModeOnly && patch.SaveMode != SaveModeDeploy && !rebuild {
 		return EnvironmentPatchResult{}, fmt.Errorf("%w: saveMode must be %q, %q or %q", core.ErrBadRequest, SaveModeOnly, SaveModeDeploy, SaveModeRebuild)
 	}
+	// A suspended service cannot deploy (Trigger and Rollback refuse it), so a
+	// deploying save stages like Save only and says why instead of claiming a
+	// deploy the reconciler would only cancel; the locked write re-checks the
+	// App it actually writes (w4/m234).
+	suspended := a.Spec.Suspended && patch.SaveMode != SaveModeOnly
+	if suspended {
+		patch.SaveMode, rebuild = SaveModeOnly, false
+	}
 	if rebuild {
 		if s.RebuildService == nil {
 			return EnvironmentPatchResult{}, core.ErrDeploysUnavailable
@@ -120,11 +128,9 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 			return EnvironmentPatchResult{}, err
 		}
 	}
-	var result EnvironmentPatchResult
-	if patch.ExpectedEnvRevision != nil {
-		result, err = s.patchEnvironmentCAS(ctx, service, a, patch)
-	} else {
-		result, err = s.patchEnvironmentSparse(ctx, service, a, patch)
+	result, err := s.patchEnvironment(ctx, service, a, patch)
+	if err == nil && suspended {
+		result.RolloutError = suspendedSaveMessage
 	}
 	if err != nil || !rebuild {
 		return result, err
@@ -134,8 +140,11 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 	if err := s.RebuildService(callerCtx, core.AppPublicID(a)); err != nil {
 		// Redacted like any API error (core.IsPublicError): a public refusal
 		// keeps its message; an internal failure is logged and left blank for
-		// the client's own generic copy.
-		if core.IsPublicError(err) {
+		// the client's own generic copy. A suspend that landed after the read
+		// answers the suspended sentence, not the trigger's raw refusal.
+		if errors.Is(err, core.ErrConflict) && s.suspendedNow(ctx, a) {
+			result.RolloutError = suspendedSaveMessage
+		} else if core.IsPublicError(err) {
 			result.RolloutError = err.Error()
 		} else {
 			log.Printf("secrets: rebuild after the environment save for %s: %v", service, err)
@@ -144,6 +153,24 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 	}
 	result.RolledOut = true
 	return result, nil
+}
+
+// suspendedSaveMessage answers a deploying environment save on a suspended
+// service: the save stands, nothing was deployed, and what to do next (w4/m234).
+const suspendedSaveMessage = "Saved. This service is suspended, so nothing was deployed. Resume it, then deploy to apply the changes."
+
+func (s *Service) patchEnvironment(ctx context.Context, service string, a *appv1alpha1.App, patch EnvironmentPatch) (EnvironmentPatchResult, error) {
+	if patch.ExpectedEnvRevision != nil {
+		return s.patchEnvironmentCAS(ctx, service, a, patch)
+	}
+	return s.patchEnvironmentSparse(ctx, service, a, patch)
+}
+
+// suspendedNow re-reads whether a is suspended, for a refusal that may have
+// raced a suspend. A service replaced since the read is not a.
+func (s *Service) suspendedNow(ctx context.Context, a *appv1alpha1.App) bool {
+	live := a.DeepCopy()
+	return core.RereadApp(ctx, s.Client, live) == nil && live.Spec.Suspended
 }
 
 // servedArtifact is the image an environment "Save and deploy" reruns: deploy
@@ -358,6 +385,7 @@ func (s *Service) finalizeEnvironmentPatch(ctx context.Context, a *appv1alpha1.A
 			return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, txn, err)
 		}
 	}
+	suspendedAtWrite := false
 	err := s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
 		read := a.DeepCopy()
 		if txn.env.changed {
@@ -368,7 +396,9 @@ func (s *Service) finalizeEnvironmentPatch(ctx context.Context, a *appv1alpha1.A
 				return err
 			}
 		}
-		if saveMode == SaveModeDeploy {
+		// A suspend that landed after PatchEnvironment's read stages too.
+		suspendedAtWrite = saveMode == SaveModeDeploy && a.Spec.Suspended
+		if saveMode == SaveModeDeploy && !suspendedAtWrite {
 			activatePendingProjectionReferences(a)
 			s.bumpRestart(a)
 			image, err := s.servedArtifact(ctx, a)
@@ -401,7 +431,10 @@ func (s *Service) finalizeEnvironmentPatch(ctx context.Context, a *appv1alpha1.A
 	// identity, so only the deploying mode rolls out (and rollApp opens its
 	// deploy row) — exactly the rollout the user just asked for, and nothing for
 	// the save they explicitly deferred.
-	result.RolledOut = saveMode == SaveModeDeploy
+	result.RolledOut = saveMode == SaveModeDeploy && !suspendedAtWrite
+	if suspendedAtWrite {
+		result.RolloutError = suspendedSaveMessage
+	}
 	return result, nil
 }
 

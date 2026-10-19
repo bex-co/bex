@@ -275,13 +275,15 @@ func (s *Stage) rebase(live *appv1alpha1.App) (*appv1alpha1.App, error) {
 		next.Annotations[appv1alpha1.AnnotationPendingSourceGeneration] = following
 	}
 	if s.staged.Annotations[appv1alpha1.AnnotationReleaseGeneration] != s.original.Annotations[appv1alpha1.AnnotationReleaseGeneration] {
-		if appv1alpha1.SpecRollsRelease(live.Spec, next.Spec) {
-			next.Annotations[appv1alpha1.AnnotationReleaseGeneration] = following
-		} else if prior, ok := live.Annotations[appv1alpha1.AnnotationReleaseGeneration]; ok {
+		// Stamp decides against live, so a suspend that landed after the
+		// staged steps holds the change instead of stamping a release.
+		if prior, ok := live.Annotations[appv1alpha1.AnnotationReleaseGeneration]; ok {
 			next.Annotations[appv1alpha1.AnnotationReleaseGeneration] = prior
 		} else {
 			delete(next.Annotations, appv1alpha1.AnnotationReleaseGeneration)
 		}
+		before := Before(live)
+		before.Stamp(next)
 	}
 	return next, nil
 }

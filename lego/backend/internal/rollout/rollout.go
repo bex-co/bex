@@ -105,7 +105,9 @@ type Snapshot struct {
 	appID      string
 	generation int64
 	spec       appv1alpha1.AppSpec
-	rolls      bool
+	// rolls is Stamp's verdict: the write stamped a release, so Open files
+	// its row. A change held on a suspended App does not roll.
+	rolls bool
 }
 
 // Before captures a. Callers take it before mutating, exactly where they take
@@ -129,7 +131,9 @@ func Before(a *appv1alpha1.App) Snapshot {
 //
 // It must be called after the mutation and before the Patch, so the annotation
 // rides the same write. A hand-applied App (no control-plane row) has no deploy
-// history to keep, so it is left alone.
+// history to keep, so it is left alone. On a suspended App a rolling change is
+// held for the next deploy instead (the pending-source annotation), and Stamp
+// reports false: nothing deploys while the service is suspended.
 func (s *Snapshot) Stamp(a *appv1alpha1.App) bool {
 	if s == nil || a == nil || s.appID == "" {
 		return false
@@ -140,6 +144,17 @@ func (s *Snapshot) Stamp(a *appv1alpha1.App) bool {
 	}
 	if a.Annotations == nil {
 		a.Annotations = map[string]string{}
+	}
+	if a.Spec.Suspended {
+		// A suspended service deploys nothing (Trigger and Rollback refuse it),
+		// so a write that would roll a release is held for the next deploy
+		// instead: no release stamp and no deploy row, which the reconciler
+		// would only close as canceled. The operator keeps the prior release
+		// serving through Resume, and the next deploy rolls the saved change —
+		// the annotation the source-update hold (apps.markSourcePending) writes.
+		a.Annotations[appv1alpha1.AnnotationPendingSourceGeneration] = strconv.FormatInt(s.generation+1, 10)
+		s.rolls = false
+		return false
 	}
 	a.Annotations[appv1alpha1.AnnotationReleaseGeneration] = strconv.FormatInt(s.generation+1, 10)
 	return true
