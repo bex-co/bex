@@ -1005,6 +1005,7 @@ func (m *memStore) RecordObservedServiceState(_ context.Context, obs ObservedSer
 	}
 	previous, ok := m.eventCheckpoints[obs.AppID]
 	if !ok {
+		obs.Availability = heldAvailability("", "", obs).Availability
 		m.eventCheckpoints[obs.AppID] = obs
 		m.eventChangedAt[obs.AppID] = obs.At
 		return nil, nil
