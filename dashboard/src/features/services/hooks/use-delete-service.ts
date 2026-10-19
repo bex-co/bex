@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { DeleteServiceDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import { useMarkServiceDeleting } from "@/features/services/lib/service-deleting";
 import {
   protectedConfirmationFromError,
   type ProtectedActionResult,
@@ -26,16 +27,19 @@ export interface UseDeleteServiceResult {
  * w2/m4). Destructive and irreversible, so callers gate it behind a typed-name
  * confirm. On success the deleted `Service` is evicted from the normalized cache
  * so the services list drops the row immediately — no stale row flashes before
- * the list's own refetch lands.
+ * the list's own refetch lands. It marks the delete on the surrounding detail
+ * layout, clearing the mark on refusal (see service-deleting.ts, w4/340).
  */
 export function useDeleteService(): UseDeleteServiceResult {
   const { t } = useTranslations();
   const [mutate] = useMutation(DeleteServiceDocument);
   const [deleting, setDeleting] = useState(false);
+  const markServiceDeleting = useMarkServiceDeleting();
 
   const remove = useCallback(
     async (id: string, name: string, confirmation?: string) => {
       setDeleting(true);
+      markServiceDeleting(true);
       try {
         await mutate({
           variables: { id, confirm: confirmation },
@@ -47,6 +51,7 @@ export function useDeleteService(): UseDeleteServiceResult {
         toast.success(t("services.deleteSuccess", { name }));
         return { status: "success" } as const;
       } catch (err) {
+        markServiceDeleting(false);
         const requiredConfirmation = protectedConfirmationFromError(err);
         if (requiredConfirmation) {
           return {
@@ -62,7 +67,7 @@ export function useDeleteService(): UseDeleteServiceResult {
         setDeleting(false);
       }
     },
-    [mutate, t],
+    [mutate, t, markServiceDeleting],
   );
 
   return { remove, deleting };
