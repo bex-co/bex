@@ -40,3 +40,31 @@ func TestImageRepositoryNormalizesDockerHubAndDropsVersion(t *testing.T) {
 		t.Error("malformed reference accepted")
 	}
 }
+
+func TestPublicImageRefStripsOnlyClusterInternalHosts(t *testing.T) {
+	digest := "sha256:" + strings.Repeat("a", 64)
+	for in, want := range map[string]string{
+		// Cluster-internal build registry: host dropped, tag+digest kept.
+		"zot.bex-registry.svc:5000/ws/ws-svc:gen-2@" + digest:  "ws/ws-svc:gen-2@" + digest,
+		"zot.bex-registry.svc.cluster.local:5000/ws/app:gen-1": "ws/app:gen-1",
+		"registry.bex-system.svc/ws/app:gen-3":                 "ws/app:gen-3",
+		"mirror.corp.cluster.local/app:1":                      "app:1",
+		"ZOT.BEX-REGISTRY.SVC:5000/ws/app:gen-1":               "ws/app:gen-1",
+		"zot.bex-registry.svc.:5000/ws/app:gen-1":              "ws/app:gen-1",
+		// User-supplied images pass through byte-identical.
+		"docker.io/traefik/whoami:v1.10":    "docker.io/traefik/whoami:v1.10",
+		"ghcr.io/acme/web:v1@" + digest:     "ghcr.io/acme/web:v1@" + digest,
+		"myreg.example.com:5000/team/app:2": "myreg.example.com:5000/team/app:2",
+		"traefik/whoami:v1.10":              "traefik/whoami:v1.10",
+		"nginx":                             "nginx",
+		"":                                  "",
+		// A look-alike public host merely containing the suffix text in a
+		// non-final label is not internal.
+		"svc.example.com/app:1":           "svc.example.com/app:1",
+		"cluster.local.example.com/app:1": "cluster.local.example.com/app:1",
+	} {
+		if got := PublicImageRef(in); got != want {
+			t.Errorf("PublicImageRef(%q) = %q; want %q", in, got, want)
+		}
+	}
+}
