@@ -3251,8 +3251,9 @@ func applyOptionalCreateSpec(spec *appv1alpha1.AppSpec, svcType string, req Crea
 }
 
 // canonicalHosts canonicalizes every requested custom hostname (trimmed,
-// terminal dot dropped, lowercased, DNS-1123 validated, not a public suffix:
-// claimableHostname) so the cross-App
+// terminal dot dropped, lowercased, DNS-1123 validated with labels of at most
+// 63 octets and a non-numeric TLD, not a public suffix: claimableHostname) so
+// the cross-App
 // uniqueness sweep and every downstream consumer compare like with like — a
 // case/trailing-dot variant of another tenant's host must collapse to the
 // same value here instead of slipping past as a distinct string.

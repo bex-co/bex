@@ -239,12 +239,24 @@ func canonicalHostname(raw string) (string, error) {
 // claimableHostname is canonicalHostname for a host being claimed, which must
 // also be registered under a public suffix: a bare suffix ("co.uk",
 // "github.io") has no zone its owner could prove or point at the platform
-// (w5/m121). Lookups of an existing claim stay on canonicalHostname, so one
-// stored before this rule can still be read and deleted.
+// (w5/m121). It must also be a name DNS can hold (w4/353): no label over 63
+// octets (RFC 1035 §2.3.4; the DNS-1123 subdomain check caps only the total)
+// and an alphabetic top-level label (RFC 1123 §2.1). Lookups of an existing
+// claim stay on canonicalHostname, so one stored before these rules can still
+// be read and deleted.
 func claimableHostname(raw string) (string, error) {
 	host, err := canonicalHostname(raw)
 	if err != nil {
 		return "", err
+	}
+	labels := strings.Split(host, ".")
+	for _, label := range labels {
+		if len(label) > validation.DNS1123LabelMaxLength {
+			return "", errInvalidHostname(raw, fmt.Sprintf("invalid hostname %q: each label must be at most %d characters", raw, validation.DNS1123LabelMaxLength))
+		}
+	}
+	if strings.Trim(labels[len(labels)-1], "0123456789") == "" {
+		return "", errInvalidHostname(raw, fmt.Sprintf("invalid hostname %q: the top-level domain cannot be numeric", raw))
 	}
 	if registrableDomain(host) == "" {
 		return "", errInvalidHostname(raw, fmt.Sprintf("invalid hostname %q: it is a public suffix; use a domain registered under it", raw))
