@@ -54,11 +54,27 @@ var muxRegistration = regexp.MustCompile(`\.Handle(?:Func)?\(\s*"((?:[A-Z]+ )?/v
 
 func registeredBexRoutes(t *testing.T) []string {
 	t.Helper()
+	seen := map[string]struct{}{}
+	walkInternalSources(t, func(source string) {
+		for _, match := range muxRegistration.FindAllStringSubmatch(source, -1) {
+			seen[match[1]] = struct{}{}
+		}
+	})
+	out := make([]string, 0, len(seen))
+	for pattern := range seen {
+		out = append(out, pattern)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// walkInternalSources calls visit with every non-test Go file under internal/.
+func walkInternalSources(t *testing.T, visit func(source string)) {
+	t.Helper()
 	root, err := filepath.Abs("..")
 	if err != nil {
 		t.Fatalf("resolve internal/: %v", err)
 	}
-	seen := map[string]struct{}{}
 	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -70,20 +86,12 @@ func registeredBexRoutes(t *testing.T) []string {
 		if err != nil {
 			return err
 		}
-		for _, match := range muxRegistration.FindAllStringSubmatch(string(source), -1) {
-			seen[match[1]] = struct{}{}
-		}
+		visit(string(source))
 		return nil
 	})
 	if err != nil {
 		t.Fatalf("walk internal/: %v", err)
 	}
-	out := make([]string, 0, len(seen))
-	for pattern := range seen {
-		out = append(out, pattern)
-	}
-	sort.Strings(out)
-	return out
 }
 
 func TestRegisteredRoutesAreNotShadowedByRenderParameters(t *testing.T) {

@@ -152,8 +152,11 @@ var renderQueryExtensions = map[string]map[string]struct{}{
 	"resume-service":  {"confirm": {}},
 	"restart-service": {"confirm": {}},
 
-	"create-key-value":  {"dryRun": {}},
-	"update-key-value":  {"dryRun": {}},
+	"create-key-value": {"dryRun": {}},
+	// confirm arms a protected rename, eviction or durability change
+	// (w4/m127) and the first enable of external access on a Persistence
+	// Off store (w4/m233).
+	"update-key-value":  {"dryRun": {}, "confirm": {}},
 	"delete-key-value":  {"confirm": {}},
 	"suspend-key-value": {"confirm": {}},
 	"resume-key-value":  {"confirm": {}},
@@ -162,12 +165,15 @@ var renderQueryExtensions = map[string]map[string]struct{}{
 	// w2/m53 list shape (w5/060).
 	"list-key-value": {"suspended": {}},
 
-	"create-postgres":  {"dryRun": {}},
-	"update-postgres":  {"dryRun": {}},
-	"delete-postgres":  {"confirm": {}},
-	"suspend-postgres": {"confirm": {}},
-	"resume-postgres":  {"confirm": {}},
-	"restart-postgres": {"confirm": {}},
+	"create-postgres": {"dryRun": {}},
+	// confirm arms a protected rename or major-version upgrade, and a
+	// protected failover (w4/m127).
+	"update-postgres":   {"dryRun": {}, "confirm": {}},
+	"failover-postgres": {"confirm": {}},
+	"delete-postgres":   {"confirm": {}},
+	"suspend-postgres":  {"confirm": {}},
+	"resume-postgres":   {"confirm": {}},
+	"restart-postgres":  {"confirm": {}},
 
 	// Render's endpoint-id operations do not carry a workspace selector. Bex
 	// accepts one consistently so a caller can address a non-default workspace

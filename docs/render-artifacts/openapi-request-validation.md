@@ -88,7 +88,7 @@ Render leaves its object schemas open, so the existing Go request structs remain
 | Key Value create | `version`, `storageGB`, `public`, body `dryRun` |
 | Key Value update | body `dryRun` |
 | service, Postgres, Key Value create/update query | `dryRun` |
-| protected service/Postgres/Key Value delete and lifecycle query | `confirm` on the operation IDs listed in `renderQueryExtensions` |
+| protected service/Postgres/Key Value update, delete, lifecycle and failover query | `confirm` on the operation IDs listed in `renderQueryExtensions`, including `update-key-value`, `update-postgres` and `failover-postgres` (w4/362). `TestRenderValidatorAdmitsProtectedConfirm` routes every handler that reads `confirm` through the validator and cross-checks the allowlist; `TestEveryConfirmReaderIsListed` counts the call sites that read it, so a new one must join that table |
 
 Declared Render fields that bex cannot honor are rejected by the existing Go/domain layer rather than silently accepted. Adding an extension requires all three: an accepting Go request field, this table, and a positive boundary test. Adding a query extension additionally requires an operation-ID entry in `renderQueryExtensions`.
 
