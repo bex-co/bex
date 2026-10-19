@@ -347,7 +347,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **364** — [A Postgres save that restarts nothing may still read `config_restart`](364.md) (45m) ← split from w4/m233/t008, loopx w4, 2026-10-19 (unverified live)
 
-- [ ] **363** — [The deploy-cancel toast and the Checkout notice spell "cancelled"; every other English string says "canceled"](363.md) (10m) ← live `/qa-find-bugs w4` pass d3c46d, 2026-10-19. The toast "Deploy cancelled." (`services.cancelDeploySuccess`) sits beside the "Canceled" badge. 36 en strings say canceled, and the API enum and Render agree.
+- [x] **363** — [The deploy-cancel toast and the Checkout notice spell "cancelled"; every other English string says "canceled"](done/363.md) (10m) — **DONE 2026-10-19 (loopx w4).** ← live `/qa-find-bugs w4` pass d3c46d, 2026-10-19. The toast "Deploy cancelled." (`services.cancelDeploySuccess`) sits beside the "Canceled" badge. 36 en strings say canceled, and the API enum and Render agree.
 
 - [x] **362** — [REST refuses `?confirm=` on the three datastore routes whose own refusal asks for it](done/362.md) — **DONE 2026-10-19 (loopx w4):** live acceptance with w4/m233/t007 on pin `d98d07f62c13` — the confirmed REST first enable returned `200` and enabled access; wrong/missing phrases kept the coded refusal. Implementation done 2026-10-19: `confirm` allowed on `update-key-value`, `update-postgres` and `failover-postgres`; a route table plus call-site count guard every `?confirm=` reader.
 

@@ -29,8 +29,8 @@ const en: Record<string, TranslationEntry> = {
       "Status after returning from Stripe Checkout while the webhook commit is awaited",
   },
   "onboarding.paymentSetupCancelled": {
-    message: "Checkout was cancelled. No payment method was added.",
-    description: "Notice after returning from a cancelled Stripe Checkout",
+    message: "Checkout was canceled. No payment method was added.",
+    description: "Notice after returning from a canceled Stripe Checkout",
   },
   "onboarding.paymentSetupSelfHostHint": {
     message:
