@@ -24,10 +24,10 @@ import {
 export const Route = createFileRoute("/static/$serviceId")({
   staticData: { chrome: true },
   component: RouteComponent,
-  // The page doubles as its own pending state at 0ms — same rationale as
-  // /services/$serviceId: ServiceDetailLayout's own skeleton chrome replaces
-  // the router-level blank for the whole title-loader wait.
-  pendingComponent: RouteComponent,
+  // A dedicated pending frame at 0ms — same rationale as
+  // /services/$serviceId: skeleton chrome without the live <Outlet/>
+  // (w4/m236).
+  pendingComponent: PendingRouteComponent,
   pendingMs: 0,
   beforeLoad: requireAuth(),
   loader: ({ context, params, location, cause }) =>
@@ -50,6 +50,13 @@ export const Route = createFileRoute("/static/$serviceId")({
       match,
     ),
 });
+
+function PendingRouteComponent() {
+  const { serviceId } = Route.useParams();
+  return (
+    <ServiceDetailLayout serviceId={serviceId} base="/static" routePending />
+  );
+}
 
 function RouteComponent() {
   const { serviceId } = Route.useParams();
