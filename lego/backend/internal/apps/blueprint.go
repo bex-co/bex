@@ -441,6 +441,21 @@ func blueprintFetchFailure(err error, requestedPath, branch string) error {
 	return fmt.Errorf("%s: %s", reason, message)
 }
 
+// blueprintCreateFetchError is classifyBlueprintFetchError for the create
+// path's HTTP answer (w8/134). blueprintFetchFailure's plain error is right for
+// sync history but carried no status, so a create answered every fetch failure
+// as a bare 500 and threw the classified sentence away. The caller's repo,
+// branch, path or GitHub access is a 400; GitHub being rate-limited or
+// unreachable a 503. The reason is the error code, the same token the preview
+// and sync history carry.
+func blueprintCreateFetchError(err error, requestedPath, branch string) error {
+	reason, message := classifyBlueprintFetchError(err, requestedPath, branch)
+	if reason == BlueprintFetchRateLimited || reason == BlueprintFetchUnavailable {
+		return core.NewUnavailableError(string(reason), message, nil)
+	}
+	return core.NewBadRequestError(string(reason), message, nil)
+}
+
 // approvedBlueprintPath keeps Blueprint discovery from becoming an arbitrary
 // private-repository file reader. Since Render's 2026-02-09 custom Blueprint
 // paths (w8/m19 t006), an explicit path may use any YAML filename in any
@@ -1082,7 +1097,7 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	}
 	contents, commitSHA, discoveredPath, err := discoverBlueprintFile(ctx, s.GitFetcher, tenantID, req.Repo, req.Branch, req.Path)
 	if err != nil {
-		return BlueprintView{}, blueprintFetchFailure(err, req.Path, req.Branch)
+		return BlueprintView{}, blueprintCreateFetchError(err, req.Path, req.Branch)
 	}
 	req.Path = discoveredPath
 
