@@ -1,0 +1,245 @@
+{
+ "replay": "w4/m230 t007, loopx w4, 2026-10-19 UTC, bex-canary (tea-daif693dqjvc73e7as3g), QA user; production at 98721ad37 (deploy run 39195110160 success)",
+ "fixtureA": {
+  "service": {
+   "id": "srv-dbaqf9qd108c73fuqvlg",
+   "slug": "qa-20261019-m230-wake",
+   "created": "2026-10-19T05:16:23.647Z",
+   "live": "2026-10-19T05:16:40.087Z",
+   "idleTimeoutSet": "2026-10-19T05:16:40.421Z"
+  },
+  "image": "python:3.13-alpine, python3 -m http.server $PORT, idle 300s",
+  "cycles": [
+   {
+    "cycle": 1,
+    "hibernated": "2026-10-19T05:22:24Z",
+    "first503": {
+     "at": "2026-10-19T05:22:35.443Z",
+     "status": 503
+    },
+    "first200": "2026-10-19T05:23:06.552Z",
+    "wakeSeconds": 31.109,
+    "woken": "2026-10-19T05:23:06Z",
+    "wokenMinusFirst200": -0.552
+   },
+   {
+    "cycle": 2,
+    "hibernated": "2026-10-19T05:29:11Z",
+    "first503": {
+     "at": "2026-10-19T05:29:20.303Z",
+     "status": 503
+    },
+    "first200": "2026-10-19T05:29:31.992Z",
+    "wakeSeconds": 11.689,
+    "woken": "2026-10-19T05:29:31Z",
+    "wokenMinusFirst200": -0.992
+   },
+   {
+    "cycle": 3,
+    "hibernated": "2026-10-19T05:35:24Z",
+    "first503": {
+     "at": "2026-10-19T05:35:31.188Z",
+     "status": 503
+    },
+    "first200": "2026-10-19T05:35:42.790Z",
+    "wakeSeconds": 11.602,
+    "woken": "2026-10-19T05:35:42Z",
+    "wokenMinusFirst200": -0.79
+   },
+   {
+    "cycle": 4,
+    "hibernated": "2026-10-19T05:41:24Z",
+    "first503": {
+     "at": "2026-10-19T05:41:41.365Z",
+     "status": 503
+    },
+    "first200": "2026-10-19T05:41:52.865Z",
+    "wakeSeconds": 11.5,
+    "woken": "2026-10-19T05:41:52Z",
+    "wokenMinusFirst200": -0.865
+   },
+   {
+    "cycle": 5,
+    "hibernated": "2026-10-19T05:47:54Z",
+    "first503": {
+     "at": "2026-10-19T05:48:06.205Z",
+     "status": 503
+    },
+    "first200": "2026-10-19T05:48:19.018Z",
+    "wakeSeconds": 12.813,
+    "woken": "2026-10-19T05:48:18Z",
+    "wokenMinusFirst200": -1.018
+   },
+   {
+    "cycle": 6,
+    "hibernated": "2026-10-19T05:54:05Z",
+    "first503": {
+     "at": "2026-10-19T05:54:16.631Z",
+     "status": 503
+    },
+    "first200": "2026-10-19T05:54:27.990Z",
+    "wakeSeconds": 11.359,
+    "woken": "2026-10-19T05:54:27Z",
+    "wokenMinusFirst200": -0.99
+   }
+  ],
+  "cleanup": {
+   "delete": 204,
+   "getAfter": 404
+  },
+  "note": "fixture A: per-cycle timings only (the run crashed parsing MCP output after cycle 6; its guarded cleanup deleted the fixture)"
+ },
+ "fixtureB": {
+  "service": {
+   "id": "srv-dbaqqm2d108c73fur060",
+   "slug": "qa-20261019-m230-slow"
+  },
+  "image": "python:3.13-alpine, sh -c \"sleep 20; exec python3 -m http.server $PORT\" (forces >=15s wakes), idle 300s",
+  "cycles": [
+   {
+    "cycle": 1,
+    "hibernated": "2026-10-19T05:46:54Z",
+    "first503": {
+     "at": "2026-10-19T05:47:05.692Z",
+     "status": 503
+    },
+    "first200": "2026-10-19T05:47:37.145Z",
+    "wakeSeconds": 31.453,
+    "woken": "2026-10-19T05:47:36Z",
+    "wokenMinusFirst200": -1.145
+   },
+   {
+    "cycle": 2,
+    "hibernated": "2026-10-19T05:53:25Z",
+    "first503": {
+     "at": "2026-10-19T05:53:34.744Z",
+     "status": 503
+    },
+    "first200": "2026-10-19T05:54:05.742Z",
+    "wakeSeconds": 30.998,
+    "woken": "2026-10-19T05:54:05Z",
+    "wokenMinusFirst200": -0.742
+   },
+   {
+    "cycle": 3,
+    "hibernated": "2026-10-19T06:00:11Z",
+    "first503": {
+     "at": "2026-10-19T06:00:24.212Z",
+     "status": 503
+    },
+    "first200": "2026-10-19T06:00:55.325Z",
+    "wakeSeconds": 31.113,
+    "woken": "2026-10-19T06:00:55Z",
+    "wokenMinusFirst200": -0.325
+   }
+  ],
+  "counts": {
+   "rest": {
+    "service_woken": 3,
+    "service_hibernated": 3,
+    "idle_timeout_changed": 1,
+    "deploy_ended": 1,
+    "deploy_started": 1
+   },
+   "graphql": {
+    "service_woken": 3,
+    "service_hibernated": 3,
+    "idle_timeout_changed": 1,
+    "deploy_ended": 1,
+    "deploy_started": 1
+   },
+   "mcp": {}
+  },
+  "activity": {
+   "recoveredRows": 0,
+   "wokeRows": 3,
+   "sleptRows": 3,
+   "order": [
+    "Service woke up",
+    "Service went to sleep",
+    "Service woke up",
+    "Service went to sleep",
+    "Service woke up",
+    "Service went to sleep"
+   ]
+  },
+  "resume": {
+   "suspend": 202,
+   "suspendedAt": "2026-10-19T06:01:24.273Z",
+   "resume": 202,
+   "resumedAt": "2026-10-19T06:01:30.685Z",
+   "first200": "2026-10-19T06:02:11.488Z",
+   "eventsSinceSuspend": [
+    "service_resumed",
+    "suspender_removed",
+    "service_suspended"
+   ],
+   "serverAvailableAfterResume": false
+  },
+  "finalCounts": {
+   "service_resumed": 1,
+   "suspender_removed": 1,
+   "service_suspended": 1,
+   "suspender_added": 1,
+   "service_woken": 3,
+   "service_hibernated": 3,
+   "idle_timeout_changed": 1,
+   "deploy_ended": 1,
+   "deploy_started": 1
+  },
+  "cleanup": {
+   "delete": 204,
+   "getAfter": 404
+  },
+  "note": "cycles 1-2 by m230b (stopped before its MCP step), cycle 3 and collection by m230c; MCP output not parsed here (see fixtureC)"
+ },
+ "fixtureC": {
+  "service": {
+   "id": "srv-dbar57ad108c73fur0d0",
+   "slug": "qa-20261019-m230-mcp"
+  },
+  "cycles": [
+   {
+    "cycle": 1,
+    "hibernated": "2026-10-19T06:09:41Z",
+    "first503": {
+     "at": "2026-10-19T06:09:50.828Z",
+     "status": 503
+    },
+    "first200": "2026-10-19T06:10:21.925Z",
+    "wakeSeconds": 31.097,
+    "woken": "2026-10-19T06:10:21Z",
+    "wokenMinusFirst200": -0.925
+   }
+  ],
+  "counts": {
+   "rest": {
+    "service_woken": 1,
+    "service_hibernated": 1,
+    "idle_timeout_changed": 1,
+    "deploy_ended": 1,
+    "deploy_started": 1
+   },
+   "graphql": {
+    "service_woken": 1,
+    "service_hibernated": 1,
+    "idle_timeout_changed": 1,
+    "deploy_ended": 1,
+    "deploy_started": 1
+   },
+   "mcp": {}
+  },
+  "mcpListEventsTypes": [
+   "service_woken",
+   "service_hibernated",
+   "idle_timeout_changed",
+   "deploy_ended",
+   "deploy_started"
+  ],
+  "cleanup": {
+   "delete": 204,
+   "getAfter": 404
+  }
+ },
+ "outageControl": "TestPGObservedCrashEdgeEmitsExactlyOnePair passes against real Postgres (ship gate 2026-10-19), as the DoD allows"
+}
