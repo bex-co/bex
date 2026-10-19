@@ -1,17 +1,17 @@
 # w4 · m235 — A new service's URL says its first deploy is in progress, not `404 page not found`
 
-**Worker:** worker4 **Goal:** from creation until its first release serves, a public web service or static site answers bex's own "first deploy in progress" response, never Traefik's or the static-server's raw not-found text. **Status:** todo
+**Worker:** worker4 **Goal:** from creation until its first release serves, a public web service or static site answers bex's own "first deploy in progress" response, never Traefik's or the static-server's raw not-found text. **Status:** blocked (t001–t006 done 2026-10-19; t007 live closeout waits on the operator deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Capture Render's pre-first-deploy response and fix the response contract | 20m | — |
-| [t002](t002.md) | Web services: route a never-served public App to the activator from its first reconcile, and answer the first-deploy response | 60m | w4/m235/t001 |
-| [t003](t003.md) | Static sites: route at creation and answer the first-publish response | 40m | w4/m235/t001 |
-| [t004](t004.md) | Render parity | 15m | w4/m235/t002, w4/m235/t003 |
-| [t005](t005.md) | Simplify | 10m | w4/m235/t004 |
-| [t006](t006.md) | Test coverage | 40m | w4/m235/t004 |
+| [t001](done/t001.md) | Capture Render's pre-first-deploy response and fix the response contract — **DONE** | 20m | — |
+| [t002](done/t002.md) | Web services: route a never-served public App to the activator from its first reconcile, and answer the first-deploy response — **DONE** | 60m | w4/m235/t001 |
+| [t003](done/t003.md) | Static sites: route at creation and answer the first-publish response — **DONE** | 40m | w4/m235/t001 |
+| [t004](done/t004.md) | Render parity — **DONE** | 15m | w4/m235/t002, w4/m235/t003 |
+| [t005](done/t005.md) | Simplify — **DONE** | 10m | w4/m235/t004 |
+| [t006](done/t006.md) | Test coverage — **DONE** | 40m | w4/m235/t004 |
 | [t007](t007.md) | Closeout | 20m | w4/m235/t005, w4/m235/t006 |
 
 Seven tasks, 205m (3h25m). One **minor** finding. This milestone schedules the work only.

@@ -37,6 +37,9 @@ func suspendedWebApp() *appv1alpha1.App {
 	app.Spec.Tier = "starter"
 	app.Spec.IdleTTLSeconds = 0
 	app.Spec.Suspended = true
+	// It served before its owner suspended it; a service that never served
+	// waits on the activator for its first release (w4/m235).
+	app.Status.ActiveRevision = "rev-1"
 	return app
 }
 

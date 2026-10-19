@@ -37,6 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/bex-co/bex/lego/operator/internal/appwatch"
 	"github.com/bex-co/bex/lego/types/netutil"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -125,7 +126,7 @@ func TestWakeHandlerNegotiatesContentAndAlwaysWakes(t *testing.T) {
 			zero := int32(0)
 			app := &appv1alpha1.App{
 				ObjectMeta: metav1.ObjectMeta{Name: "sleeping", Namespace: "bex-system"},
-				Status:     appv1alpha1.AppStatus{URL: "https://sleeping.onbex.co"},
+				Status:     appv1alpha1.AppStatus{URL: "https://sleeping.onbex.co", ActiveRevision: "rev-1"},
 			}
 			dep := &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{Name: "sleeping", Namespace: "bex-system"},
@@ -341,7 +342,7 @@ func TestMaintenanceURLRejectsOtherAppHosts(t *testing.T) {
 	appB := &appv1alpha1.App{ // another workspace's namespace
 		ObjectMeta: metav1.ObjectMeta{Name: "other", Namespace: "tenant-b"},
 		Spec:       appv1alpha1.AppSpec{Hosts: []string{"b.example.com"}},
-		Status:     appv1alpha1.AppStatus{URL: "https://other.onbex.co"},
+		Status:     appv1alpha1.AppStatus{URL: "https://other.onbex.co", ActiveRevision: "rev-1"},
 	}
 	cache, _ := primedHostCache(t, appA, appB)
 
@@ -397,8 +398,9 @@ func sleepingApp() (*appv1alpha1.App, *appsv1.Deployment) {
 		ObjectMeta: metav1.ObjectMeta{Name: "sleeping", Namespace: "bex-system"},
 		Spec:       appv1alpha1.AppSpec{Hosts: []string{"a.onbex.co", "b.onbex.co"}},
 		Status: appv1alpha1.AppStatus{
-			URL:  "https://sleeping.onbex.co",
-			URLs: []string{"https://sleeping.onbex.co", "https://a.onbex.co", "https://b.onbex.co"},
+			URL:            "https://sleeping.onbex.co",
+			URLs:           []string{"https://sleeping.onbex.co", "https://a.onbex.co", "https://b.onbex.co"},
+			ActiveRevision: "rev-1",
 		},
 	}
 	dep := &appsv1.Deployment{
@@ -517,7 +519,7 @@ func TestWakeCoalescesConcurrentRequestsIntoOnePatch(t *testing.T) {
 func primedHostCache(t *testing.T, objs ...client.Object) (*hostCache, client.Client) {
 	t.Helper()
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
-	cache := newHostCache(cl, logr.Discard())
+	cache := newHostCache(cl, logr.Discard(), "")
 	cache.refreshOnce(context.Background())
 	return cache, cl
 }
@@ -982,7 +984,9 @@ func TestAwakeUnreadyServiceIsNotReportedAsHibernated(t *testing.T) {
 	one := int32(1)
 	app := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{Name: "sleeping", Namespace: "bex-system"},
-		Status:     appv1alpha1.AppStatus{URL: "https://sleeping.onbex.co", Phase: appv1alpha1.PhaseDeploying},
+		Status: appv1alpha1.AppStatus{
+			URL: "https://sleeping.onbex.co", Phase: appv1alpha1.PhaseDeploying, ActiveRevision: "rev-1",
+		},
 	}
 	dep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{Name: "sleeping", Namespace: "bex-system"},
@@ -1059,5 +1063,143 @@ func TestFailedFirstReleaseIsNeverWoken(t *testing.T) {
 				t.Errorf("a stopped release must not invite a retry: Retry-After %q", rr.Header().Get("Retry-After"))
 			}
 		})
+	}
+}
+
+// firstDeployApp is a public web service created moments ago: no status yet
+// but its phase, so its platform host is known only from its spec (w4/m235).
+func firstDeployApp() *appv1alpha1.App {
+	return &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "srv-new", Namespace: "bex-system"},
+		Spec:       appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Expose: true, Subdomain: "first"},
+		Status:     appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseBuilding},
+	}
+}
+
+func firstDeployRequest() *http.Request {
+	return httptest.NewRequest(http.MethodGet, "https://first.onbex.co/", nil)
+}
+
+// TestFirstDeployAnswersRetryableAndNeverWakes is w4/m235: a public host whose
+// first release has not served answers bex's first-deploy 503 with Retry-After,
+// negotiated like the suspended response, and wakes nothing. Its platform host
+// resolves from the spec, so the handover never meets the bare unrouted text.
+func TestFirstDeployAnswersRetryableAndNeverWakes(t *testing.T) {
+	cl := &countingClient{Client: fake.NewClientBuilder().WithScheme(scheme).WithObjects(firstDeployApp()).Build()}
+	cache := newHostCache(cl, logr.Discard(), "onbex.co")
+	cache.refreshOnce(context.Background())
+	for _, tc := range []struct{ accept, contentType, body string }{
+		{"text/html,application/xhtml+xml", "text/html; charset=utf-8", "This service's first deploy is in progress."},
+		{"application/json", "application/json", firstDeployJSON},
+		{"*/*", "text/plain; charset=utf-8", firstDeployText},
+		{"", "text/plain; charset=utf-8", firstDeployText},
+	} {
+		req := httptest.NewRequest(http.MethodGet, "https://first.onbex.co/", nil)
+		if tc.accept != "" {
+			req.Header.Set("Accept", tc.accept)
+		}
+		rr := httptest.NewRecorder()
+		newHandler(cl, cache, logr.Discard()).ServeHTTP(rr, req)
+		if rr.Code != http.StatusServiceUnavailable || rr.Header().Get("Retry-After") != "10" ||
+			rr.Header().Get("Content-Type") != tc.contentType || !strings.Contains(rr.Body.String(), tc.body) {
+			t.Errorf("Accept %q = %d Retry-After %q %q: %q", tc.accept, rr.Code, rr.Header().Get("Retry-After"),
+				rr.Header().Get("Content-Type"), rr.Body.String())
+		}
+	}
+	if cl.patches.Load() != 0 {
+		t.Fatalf("a first deploy was woken: %d patches", cl.patches.Load())
+	}
+}
+
+// TestFirstDeployYieldsToEveryOwnerChoice: maintenance, suspension and a
+// failed or canceled first release keep their own answers; only an App still
+// on its way to its first release gets the first-deploy one.
+func TestFirstDeployYieldsToEveryOwnerChoice(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		mutate     func(*appv1alpha1.App)
+		retryAfter string
+		body       string
+	}{
+		{"building", func(*appv1alpha1.App) {}, "10", firstDeployText},
+		{"first pod starting", func(a *appv1alpha1.App) {
+			a.Status.Phase = appv1alpha1.PhaseDeploying
+		}, "10", firstDeployText},
+		{"static handover", func(a *appv1alpha1.App) {
+			a.Spec.Type, a.Status.ActiveRevision = appv1alpha1.TypeStaticSite, "rev-1"
+		}, "5", "service not ready"},
+		{"suspended", func(a *appv1alpha1.App) { a.Spec.Suspended = true }, suspendedRetryAfter, suspendedText},
+		{"failed first release", func(a *appv1alpha1.App) {
+			a.Status.Phase = appv1alpha1.PhaseFailed
+		}, "", "service unavailable"},
+		{"canceled first release", func(a *appv1alpha1.App) {
+			a.Status.Phase = appv1alpha1.PhaseCanceled
+		}, "", "service unavailable"},
+		{"maintenance", func(a *appv1alpha1.App) {
+			a.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{Enabled: true}
+		}, "", "under maintenance"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := firstDeployApp()
+			tc.mutate(app)
+			cl := &countingClient{Client: fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).Build()}
+			cache := newHostCache(cl, logr.Discard(), "onbex.co")
+			cache.refreshOnce(context.Background())
+			rr := httptest.NewRecorder()
+			newHandler(cl, cache, logr.Discard()).ServeHTTP(rr, firstDeployRequest())
+			if rr.Code != http.StatusServiceUnavailable || rr.Header().Get("Retry-After") != tc.retryAfter ||
+				!strings.Contains(rr.Body.String(), tc.body) {
+				t.Fatalf("= %d Retry-After %q: %q", rr.Code, rr.Header().Get("Retry-After"), rr.Body.String())
+			}
+			if cl.patches.Load() != 0 {
+				t.Fatalf("woke the App: %d patches", cl.patches.Load())
+			}
+		})
+	}
+}
+
+// TestHostCacheRebuildsOnAnAppChange: the index rebuilds when the App cache
+// signals a change, not only on the backstop tick, so a service created after
+// the activator started resolves at once.
+func TestHostCacheRebuildsOnAnAppChange(t *testing.T) {
+	cl := fake.NewClientBuilder().WithScheme(scheme).Build()
+	cache := newHostCache(cl, logr.Discard(), "onbex.co")
+	cache.refreshOnce(context.Background())
+	ctx := t.Context()
+	changed := make(chan struct{}, 1)
+	go appwatch.Loop(ctx, hostCacheRefresh, changed, func() { cache.refreshOnce(ctx) })
+	if err := cl.Create(ctx, firstDeployApp()); err != nil {
+		t.Fatal(err)
+	}
+	changed <- struct{}{}
+	deadline := time.Now().Add(5 * time.Second)
+	for !cache.claims("first.onbex.co") {
+		if time.Now().After(deadline) {
+			t.Fatal("the new host did not resolve before the backstop tick")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+// TestAHibernatedAppWithoutARevisionStillWakes: auto-hibernation needs a
+// served release, so a hibernated App whose status lost its revision (a
+// restore, a recreated CR) is woken, never told its first deploy is running.
+func TestAHibernatedAppWithoutARevisionStillWakes(t *testing.T) {
+	zero := int32(0)
+	app := firstDeployApp()
+	app.Status.Phase = appv1alpha1.PhaseHibernated
+	dep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace},
+		Spec:       appsv1.DeploymentSpec{Replicas: &zero},
+	}
+	base := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app, dep).Build()
+	cl := &countingClient{Client: base}
+	cache := newHostCache(cl, logr.Discard(), "onbex.co")
+	cache.refreshOnce(context.Background())
+	rr := httptest.NewRecorder()
+	newHandler(cl, cache, logr.Discard()).ServeHTTP(rr, firstDeployRequest())
+	if rr.Header().Get("Retry-After") != "5" || cl.patches.Load() == 0 {
+		t.Fatalf("= %d Retry-After %q, patches %d; want the wake path",
+			rr.Code, rr.Header().Get("Retry-After"), cl.patches.Load())
 	}
 }

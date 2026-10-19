@@ -33,9 +33,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	"github.com/bex-co/bex/lego/operator/internal/appwatch"
 	"github.com/bex-co/bex/lego/operator/internal/hostingdomain"
 	"github.com/bex-co/bex/lego/operator/internal/staticserver"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -108,7 +108,8 @@ func main() {
 	region := os.Getenv("BEX_STATIC_S3_REGION")
 	configured := endpoint != "" && bucket != ""
 
-	resync := 10 * time.Second
+	// A backstop only: the resolver rebuilds on every static-site watch event.
+	resync := time.Minute
 	if v := os.Getenv("BEX_STATIC_RESYNC"); v != "" {
 		if d, err := time.ParseDuration(v); err == nil {
 			resync = d
@@ -147,9 +148,11 @@ func main() {
 			setupLog.Error(err, "load kube config")
 			os.Exit(1)
 		}
-		cl, err := client.New(cfg, client.Options{Scheme: scheme})
+		apps, changed, err := appwatch.Start(ctx, cfg, scheme, namespace, func(app *appv1alpha1.App) bool {
+			return app.Spec.Type == appv1alpha1.TypeStaticSite
+		})
 		if err != nil {
-			setupLog.Error(err, "build kube client")
+			setupLog.Error(err, "watch apps")
 			os.Exit(1)
 		}
 		origin, err := staticserver.NewS3Origin(ctx, endpoint, region, bucket)
@@ -161,8 +164,8 @@ func main() {
 			setupLog.Error(err, "verify static origin credential")
 			os.Exit(1)
 		}
-		resolver := staticserver.NewCachedResolver(cl, namespace, baseDomain)
-		go resolver.Run(ctx, resync, func(err error) {
+		resolver := staticserver.NewCachedResolver(apps, namespace, baseDomain)
+		go resolver.Run(ctx, resync, changed, func(err error) {
 			setupLog.Error(err, "refresh static-site snapshot")
 		})
 		site = staticserver.New(resolver, origin, cacheBytes)

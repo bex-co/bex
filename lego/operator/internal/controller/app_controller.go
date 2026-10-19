@@ -896,6 +896,7 @@ func (r *AppReconciler) resolveDeployImage(ctx context.Context, app *appv1alpha1
 		}
 	}
 	if image == "" {
+		r.routeFirstDeploy(ctx, app)
 		built, res, buildHalted, err := r.buildFromSource(ctx, app, decision.desired.artifact)
 		if buildHalted {
 			if err == nil {
@@ -2450,6 +2451,7 @@ func maintenanceEnabled(app *appv1alpha1.App) bool {
 // reconcileKubernetes runs the revision as a Deployment (+ ClusterIP k8s Service)
 // owned by the App — pods are scheduled onto the cluster's nodes (machines).
 func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha1.App, image string, port int) (ctrl.Result, error) {
+	r.routeFirstDeploy(ctx, app)
 	if res, halted := r.deployRegistryGate(ctx, app, image); halted {
 		return res, nil
 	}
@@ -2940,7 +2942,12 @@ func (r *AppReconciler) ingressBackend(ctx context.Context, app *appv1alpha1.App
 	// (w6/m94). Holding the route until a pod is actually ready means that
 	// retry gets the interstitial again, and the swap back happens when it can
 	// actually be served.
-	if autoHibernating || (!serving && r.ActivatorService != "" && autoSleepEligible(app)) {
+	//
+	// A public App whose first release has never served routes there on every
+	// plan, not only a sleep-eligible one: there is no endpoint and nothing to
+	// wake, and the activator answers its first-deploy response instead of
+	// Traefik's raw "no available server" (w4/m235).
+	if autoHibernating || (!serving && r.ActivatorService != "" && (autoSleepEligible(app) || awaitingFirstServe(app))) {
 		activatorSvc, err := r.reconcileActivatorAlias(ctx, app)
 		if err != nil {
 			return "", 0, err
@@ -2948,6 +2955,73 @@ func (r *AppReconciler) ingressBackend(ctx context.Context, app *appv1alpha1.App
 		return activatorSvc, int32(r.ActivatorPort), nil
 	}
 	return app.Name, int32(port), nil
+}
+
+// awaitingFirstServe reports a public App whose first release has never
+// served: its host belongs to the activator's first-deploy response (w4/m235).
+func awaitingFirstServe(app *appv1alpha1.App) bool {
+	return app.Status.ActiveRevision == "" && app.Spec.PubliclyRoutable()
+}
+
+// routeFirstDeploy keeps a public App's host answered while its release halts
+// before the release's own routing runs: a build, a publish, or the registry
+// or pre-deploy gate. Those paths stop the reconcile before the Ingress is
+// written, so the host the dashboard shows from creation answered Traefik's
+// raw 404 for the whole first build (w4/m235). A never-served App routes to
+// the activator's first-deploy response. A static site that has served but is
+// still on the activator (a newer deploy arrived right after its first-publish
+// handover) moves to the static-server, which serves its active revision. A
+// failed write is logged and retried by the next pass; it never holds a build.
+func (r *AppReconciler) routeFirstDeploy(ctx context.Context, app *appv1alpha1.App) {
+	if err := r.writeFirstRoute(ctx, app); err != nil {
+		logf.FromContext(ctx).Error(err, "routing a public host before its release", "app", app.Name)
+	}
+}
+
+func (r *AppReconciler) writeFirstRoute(ctx context.Context, app *appv1alpha1.App) error {
+	if r.ActivatorService == "" || r.Mode != ModeKubernetes || !app.Spec.PubliclyRoutable() {
+		return nil
+	}
+	hosts := effectiveHosts(app, r.BaseDomain)
+	if len(hosts) == 0 {
+		return nil
+	}
+	static := app.Spec.Type == appv1alpha1.TypeStaticSite
+	if !awaitingFirstServe(app) {
+		if !static || app.Spec.Suspended {
+			return nil
+		}
+		if onActivator, err := r.ingressRoutesToActivator(ctx, app); err != nil || !onActivator {
+			return err
+		}
+		mwNames, err := r.reconcileIPAllowListMiddleware(ctx, app)
+		if err != nil {
+			return err
+		}
+		_, err = r.reconcileStaticIngress(ctx, app, hosts, mwNames)
+		return err
+	}
+	// Only the first route: once the Ingress exists, the release path owns its
+	// backend with the Deployment's real readiness, so a pass that halts here
+	// never flips a ready first release back to the activator.
+	if err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: app.Name}, &networkingv1.Ingress{}); !apierrors.IsNotFound(err) {
+		return err
+	}
+	svc, port, err := r.ingressBackend(ctx, app, 0, false, false)
+	if err != nil {
+		return err
+	}
+	if static {
+		// A static site's own middleware set, so the handover to the
+		// static-server removes no middleware the Ingress still names.
+		mwNames, err := r.reconcileIPAllowListMiddleware(ctx, app)
+		if err != nil {
+			return err
+		}
+		return r.reconcileIngress(ctx, app, hosts, svc, port, mwNames)
+	}
+	_, err = r.reconcileIngressWithMiddlewares(ctx, app, hosts, svc, port)
+	return err
 }
 
 // reconcileIngressWithMiddlewares assembles the App's Traefik middlewares (IP
@@ -3907,6 +3981,22 @@ func (r *AppReconciler) failPublish(ctx context.Context, app *appv1alpha1.App, e
 	return ctrl.Result{}, err
 }
 
+// recordStaticRevision makes rev the served revision. Only a pass that just
+// published it may write status.staticPrefix: an already-active App with an
+// empty prefix still serves the legacy prefix (ADR074 dual-read).
+func recordStaticRevision(app *appv1alpha1.App, rev string, published bool) {
+	app.Status.ActiveRevision = rev
+	if published {
+		app.Status.StaticPrefix = appIdentity(app).StaticPrefix(rev)
+		clearPublishVerdict(app)
+	}
+}
+
+// staticHandoverDelay is how long a first publish keeps its host on the
+// activator after recording the active revision. The static-server reloads its
+// sites on every App change (internal/appwatch), well within it.
+const staticHandoverDelay = 2 * time.Second
+
 // clearPublishVerdict drops a publication verdict for the release that just
 // published, e.g. after a retried publish Job succeeded for the same
 // generation; left behind it would read as this live release's failure.
@@ -3952,7 +4042,7 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 	// active labeled App whose prefix is empty still serves from the legacy
 	// A/<rev>/ (ADR074 dual-read). Stamping W/A/<rev>/ here without a publish
 	// or migration would point the static-server at an empty prefix.
-	published := false
+	published, firstPublish := false, app.Status.ActiveRevision == ""
 	if app.Status.ActiveRevision != rev {
 		res, err := r.publishStaticRevision(ctx, app, image, rev)
 		if err != nil || res.RequeueAfter > 0 {
@@ -4002,13 +4092,23 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 		} else if reason, err := r.reconcileStaticIngress(ctx, app, hosts, nil); err != nil {
 			return r.fail(ctx, app, reason, err)
 		}
-		app.Status.ActiveRevision = rev
-		if published {
-			app.Status.StaticPrefix = appIdentity(app).StaticPrefix(rev)
-			clearPublishVerdict(app)
-		}
+		recordStaticRevision(app, rev, published)
 		return r.hibernated(ctx, app, image, hosts, reasonSuspended,
 			"static site suspended (published content kept; host and certificate retained)")
+	}
+
+	// The static-server serves a site from its active revision, so the first
+	// publish records that revision while the host still answers the
+	// activator's first-deploy response, and hands the host over on the next
+	// pass: the route never reaches the static-server before it can serve the
+	// site, where it would answer "no static site for host" (w4/m235).
+	if published && firstPublish && r.ActivatorService != "" {
+		recordStaticRevision(app, rev, published)
+		setStatusURLs(app, hosts)
+		if err := updateStatusIfChanged(ctx, r.Client, app); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{RequeueAfter: staticHandoverDelay}, nil
 	}
 
 	staticMWNames, err := r.reconcileIPAllowListMiddleware(ctx, app)
@@ -4024,11 +4124,7 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 
 	app.Status.Phase = appv1alpha1.PhaseRunning
 	app.Status.Image = image
-	app.Status.ActiveRevision = rev
-	if published {
-		app.Status.StaticPrefix = appIdentity(app).StaticPrefix(rev)
-		clearPublishVerdict(app)
-	}
+	recordStaticRevision(app, rev, published)
 	app.Status.ObservedGeneration = app.Generation
 	setStatusURLs(app, hosts)
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{

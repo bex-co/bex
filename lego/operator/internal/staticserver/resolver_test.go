@@ -17,16 +17,20 @@ limitations under the License.
 package staticserver
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
 // A newer release does not own the serving prefix. Suspension must withhold even
@@ -218,5 +222,46 @@ func TestHeaderSnapshotRefreshPreservesPublicationAcrossHosts(t *testing.T) {
 	}
 	if app.Status.ActiveRevision != rev || app.Status.StaticPrefix != appID+"/"+rev+"/" {
 		t.Fatal("header save changed publication identity")
+	}
+}
+
+// TestRunReloadsOnAnAppChange is w4/m235: a first publish's site must be
+// servable as soon as its active revision is recorded, before the operator
+// hands it the host, not one resync later.
+func TestRunReloadsOnAnAppChange(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := appv1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: appID, Namespace: "apps"},
+		Spec:       appv1alpha1.AppSpec{Type: appv1alpha1.TypeStaticSite, Host: testHost},
+	}
+	var lists atomic.Int64
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).WithStatusSubresource(app).
+		WithInterceptorFuncs(interceptor.Funcs{List: func(ctx context.Context, c client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
+			defer lists.Add(1)
+			return c.List(ctx, list, opts...)
+		}}).Build()
+	resolver := NewCachedResolver(cl, app.Namespace, "onbex.co")
+	changed := make(chan struct{}, 1)
+	go resolver.Run(t.Context(), time.Hour, changed, nil)
+	for lists.Load() == 0 {
+		time.Sleep(time.Millisecond)
+	}
+	app.Status.ActiveRevision = rev
+	if err := cl.Status().Update(t.Context(), app); err != nil {
+		t.Fatal(err)
+	}
+	changed <- struct{}{}
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if _, ok := resolver.Resolve(testHost); ok {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the published site never resolved after the change signal")
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }

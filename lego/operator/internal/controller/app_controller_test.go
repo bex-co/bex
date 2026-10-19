@@ -691,6 +691,10 @@ var _ = Describe("App Controller", func() {
 				},
 			}
 			Expect(k8sClient.Create(ctx, app)).To(Succeed())
+			// It has served: a never-served App waits on the activator for its
+			// first release (w4/m235), and envtest has no kubelet to serve one.
+			app.Status.ActiveRevision = "rev-1"
+			Expect(k8sClient.Status().Update(ctx, app)).To(Succeed())
 			reconcileN()
 			ing := getIngress()
 			Expect(ing.Spec.Rules).To(HaveLen(2))

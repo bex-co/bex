@@ -47,6 +47,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	"github.com/bex-co/bex/lego/operator/internal/appwatch"
 	"github.com/bex-co/bex/lego/types/netutil"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -79,10 +80,11 @@ const (
 	idleTimeout       = 60 * time.Second
 	maxHeaderBytes    = 1 << 20 // 1 MiB
 
-	// hostCacheRefresh is how often the host→App index is rebuilt. Steady-state
-	// requests then resolve from the cache (O(1)) instead of a cluster-wide App
-	// List + linear scan per request (codex-security #7).
-	hostCacheRefresh = 5 * time.Second
+	// hostCacheRefresh is the backstop rebuild of the host→App index, which
+	// otherwise rebuilds on every App change (internal/appwatch). Requests
+	// resolve from the index (O(1)) instead of a cluster-wide App List + linear
+	// scan per request (codex-security #7).
+	hostCacheRefresh = time.Minute
 )
 
 var scheme = runtime.NewScheme()
@@ -96,9 +98,15 @@ func main() {
 	ctrl.SetLogger(zap.New())
 	log := ctrl.Log.WithName("activator")
 
-	c, err := client.New(ctrl.GetConfigOrDie(), client.Options{Scheme: scheme})
+	cfg := ctrl.GetConfigOrDie()
+	c, err := client.New(cfg, client.Options{Scheme: scheme})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "activator: k8s client: %v\n", err)
+		os.Exit(1)
+	}
+	apps, changed, err := appwatch.Start(context.Background(), cfg, scheme, "", nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "activator: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -110,9 +118,9 @@ func main() {
 	// Build + prime the host→App index once (background-refreshed) so a request
 	// flood resolves from memory instead of a cluster-wide App List + linear scan
 	// per request (codex-security #7).
-	cache := newHostCache(c, log)
+	cache := newHostCache(apps, log, os.Getenv("BEX_BASE_DOMAIN"))
 	cache.refreshOnce(context.Background())
-	go cache.run(context.Background())
+	go appwatch.Loop(context.Background(), hostCacheRefresh, changed, func() { cache.refreshOnce(context.Background()) })
 
 	http.Handle("/", newHandler(c, cache, log))
 
@@ -175,6 +183,23 @@ func newHandler(c client.Client, cache *hostCache, log logr.Logger) http.Handler
 		if app.Status.ActiveRevision == "" &&
 			(app.Status.Phase == appv1alpha1.PhaseFailed || app.Status.Phase == appv1alpha1.PhaseCanceled) {
 			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		// A first release still building, publishing or starting its first pod
+		// has nothing to wake: the operator routes a never-served public App
+		// here from its first reconcile and moves the route once that release
+		// serves (w4/m235). A hibernated App always served once, so it wakes
+		// even if its status lost the revision.
+		if app.Status.ActiveRevision == "" && app.Status.Phase != appv1alpha1.PhaseHibernated {
+			writeFirstDeployResponse(w, r)
+			return
+		}
+		// An unsuspended static site has no workload to wake. It reaches here
+		// only while its route moves to the static-server (after its first
+		// publish, or on resume), so it gets the neutral not-ready answer.
+		if app.Spec.Type == appv1alpha1.TypeStaticSite {
+			writeWakeResponse(w, r)
 			return
 		}
 
@@ -245,15 +270,22 @@ func writeWakeResponse(w http.ResponseWriter, r *http.Request) {
 // comes back when a human resumes it, so telling a monitor to retry every five
 // seconds would turn a deliberate suspension into a self-inflicted flood.
 func writeSuspendedResponse(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Retry-After", suspendedRetryAfter)
+	writeNotServing(w, r, suspendedRetryAfter, suspendedPage, suspendedJSON, suspendedText)
+}
+
+// writeNotServing answers a host bex is deliberately not serving: 503 with
+// retryAfter, a page for an explicit text/html, JSON for an explicit
+// application/json, and plain text for everything else.
+func writeNotServing(w http.ResponseWriter, r *http.Request, retryAfter, page, json, text string) {
+	w.Header().Set("Retry-After", retryAfter)
 	w.Header().Set("Cache-Control", "no-store")
 	switch {
 	case acceptsMedia(r.Header.Values("Accept"), "text/html"):
-		writeHTMLPage(w, r, http.StatusServiceUnavailable, suspendedPage)
+		writeHTMLPage(w, r, http.StatusServiceUnavailable, page)
 	case acceptsMedia(r.Header.Values("Accept"), "application/json"):
-		writeBody(w, r, http.StatusServiceUnavailable, "application/json", suspendedJSON)
+		writeBody(w, r, http.StatusServiceUnavailable, "application/json", json)
 	default:
-		writeBody(w, r, http.StatusServiceUnavailable, "text/plain; charset=utf-8", suspendedText)
+		writeBody(w, r, http.StatusServiceUnavailable, "text/plain; charset=utf-8", text)
 	}
 }
 
@@ -261,6 +293,23 @@ const (
 	suspendedRetryAfter = "3600"
 	suspendedJSON       = `{"error":"service suspended"}`
 	suspendedText       = "This service is suspended.\n"
+)
+
+// writeFirstDeployResponse answers a public host whose first release has not
+// served yet (w4/m235): 503 with a Retry-After, negotiated like the suspended
+// response. The page checks back on the same cadence and replaces itself once
+// the host answers anything but this retryable 503 (a failed first release's
+// 503 has no Retry-After). A first deploy usually serves within a
+// couple of minutes, so ten seconds neither floods the host nor keeps a
+// visitor waiting long after it is live.
+func writeFirstDeployResponse(w http.ResponseWriter, r *http.Request) {
+	writeNotServing(w, r, firstDeployRetryAfter, firstDeployPage, firstDeployJSON, firstDeployText)
+}
+
+const (
+	firstDeployRetryAfter = "10"
+	firstDeployJSON       = `{"error":"first deploy in progress","retryAfter":10}`
+	firstDeployText       = "This service's first deploy is in progress. Try again in a few seconds.\n"
 )
 
 // writeBody is writeHTMLPage's non-document sibling: the same no-store,
@@ -612,28 +661,32 @@ func requestHost(value string) string {
 	return strings.ToLower(strings.TrimSuffix(value, "."))
 }
 
-// hostCache is a periodically-refreshed host→App index that lets the public
-// handler route a request with an O(1) map lookup instead of a cluster-wide App
-// List + linear scan per request (codex-security #7). A background refresher
-// rebuilds the map every hostCacheRefresh; a failed refresh keeps serving the
-// last good map rather than emptying it. New/changed hosts are visible within one
-// refresh interval of when the activator started.
+// hostCache is a host→App index that lets the public handler route a request
+// with an O(1) map lookup instead of a cluster-wide App List + linear scan per
+// request (codex-security #7). It rebuilds from a watch-backed App cache on
+// every App change, so a new service's host is known before its first route
+// reaches here (w4/m235); a failed refresh keeps serving the last good map
+// rather than emptying it.
 type hostCache struct {
-	client client.Client
+	client client.Reader
 	log    logr.Logger
-	mu     sync.RWMutex
-	byHost map[string]*appv1alpha1.App
+	// baseDomain lets the index name an App's platform host from its spec,
+	// before the operator has written any status (w4/m235).
+	baseDomain string
+	mu         sync.RWMutex
+	byHost     map[string]*appv1alpha1.App
 }
 
-func newHostCache(c client.Client, log logr.Logger) *hostCache {
-	return &hostCache{client: c, log: log, byHost: map[string]*appv1alpha1.App{}}
+func newHostCache(c client.Reader, log logr.Logger, baseDomain string) *hostCache {
+	return &hostCache{client: c, log: log, baseDomain: baseDomain, byHost: map[string]*appv1alpha1.App{}}
 }
 
 // refreshOnce rebuilds the host→App map from one cluster-wide List. On error it
 // leaves the existing map in place (stale-but-useful) and logs.
 func (h *hostCache) refreshOnce(ctx context.Context) {
 	var list appv1alpha1.AppList
-	if err := h.client.List(ctx, &list); err != nil {
+	// Shared with the watch cache, never mutated: lookup hands out a DeepCopy.
+	if err := h.client.List(ctx, &list, client.UnsafeDisableDeepCopy); err != nil {
 		h.log.Error(err, "refreshing app host cache")
 		return
 	}
@@ -643,24 +696,15 @@ func (h *hostCache) refreshOnce(ctx context.Context) {
 		for host := range appHosts(app) {
 			next[host] = app
 		}
+		if h.baseDomain != "" {
+			for _, host := range app.Spec.EffectiveHosts(app.Name, h.baseDomain) {
+				next[requestHost(host)] = app
+			}
+		}
 	}
 	h.mu.Lock()
 	h.byHost = next
 	h.mu.Unlock()
-}
-
-// run refreshes the index on a ticker until ctx is cancelled.
-func (h *hostCache) run(ctx context.Context) {
-	t := time.NewTicker(hostCacheRefresh)
-	defer t.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-t.C:
-			h.refreshOnce(ctx)
-		}
-	}
 }
 
 // claims reports whether host (canonicalized) is routed to ANY App in the
@@ -725,6 +769,44 @@ const suspendedPage = `<!DOCTYPE html>
 <body><main><h1>This service is suspended.</h1>
 <p>Its owner suspended this service, so it is not currently serving traffic.
 It will be available again once the owner resumes it.</p></main></body>
+</html>`
+
+const firstDeployPage = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>bex &mdash; First deploy in progress</title>
+  <style>
+    body{font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;
+      background:#111827;color:#f9fafb}
+    main{max-width:36rem;padding:2rem;text-align:center}h1{font-size:1.75rem;margin-bottom:.75rem}
+    p{color:#d1d5db;line-height:1.6}.s{display:inline-block;width:24px;height:24px;
+      border:3px solid #4b5563;border-top-color:#f9fafb;border-radius:50%;animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body><main><div class="s" aria-hidden="true"></div><h1>This service's first deploy is in progress.</h1>
+<p>It starts serving here as soon as its first deploy is live.</p>
+<p><small>Checking again every 10 seconds&hellip;</small></p></main>
+<script>
+  async function testIfServerIsUp() {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    try {
+      const response = await fetch(window.location.href, {
+        method: "HEAD", cache: "no-store", signal: controller.signal
+      });
+      const retryable = response.status === 503 && response.headers.get("Retry-After");
+      if (!retryable) window.location.replace(window.location.href);
+    } catch (_) {
+      // The route can move between probes.
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+  setInterval(testIfServerIsUp, 10000);
+</script></body>
 </html>`
 
 const wakePage = `<!DOCTYPE html>

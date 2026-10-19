@@ -35,6 +35,12 @@ spec:
           env:
             - name: BEX_ACTIVATOR_ADDR
               value: ":8888"
+            # Shared platform hosting suffix — must match the operator/bex-api.
+            # The activator names a new service's platform host from its spec,
+            # so the host answers the first-deploy response before the operator
+            # has written any status (w4/m235).
+            - name: BEX_BASE_DOMAIN
+              value: onbex.co
           # TCP, not an HTTP path: every path on this listener belongs to a
           # tenant host (w4/m162), so a platform /healthz would shadow theirs.
           readinessProbe:
