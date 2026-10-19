@@ -3474,6 +3474,13 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 		currentMaintenance = existing.Spec.MaintenanceMode.DeepCopy()
 	}
 	deploySpecChanged := actualSpecChanged && !maintenanceOnly
+	// A suspended service deploys nothing (w4/m234): a sync that changes it
+	// persists the intent and spec and writes the pending-source hold, like
+	// every other release-rolling writer since m234, instead of stamping a
+	// release and filing a deploy row the reconciler would only close as
+	// canceled ("Canceled: the service was suspended"). Resume keeps the
+	// prior release serving; the next deploy rolls the saved change (w4/366).
+	suspendedHold := deploySpecChanged && existing.Spec.Suspended
 	if deploySpecChanged {
 		if err := s.persistBlueprintIntent(ctx, existing, final.Spec); err != nil {
 			return AppView{}, fmt.Errorf("update source of truth: %w", err)
@@ -3481,7 +3488,11 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 	}
 	base := client.MergeFrom(existing.DeepCopy())
 	if deploySpecChanged {
-		metav1.SetMetaDataAnnotation(&existing.ObjectMeta, appv1alpha1.AnnotationReleaseGeneration, strconv.FormatInt(existing.Generation+1, 10))
+		if suspendedHold {
+			metav1.SetMetaDataAnnotation(&existing.ObjectMeta, appv1alpha1.AnnotationPendingSourceGeneration, strconv.FormatInt(existing.Generation+1, 10))
+		} else {
+			metav1.SetMetaDataAnnotation(&existing.ObjectMeta, appv1alpha1.AnnotationReleaseGeneration, strconv.FormatInt(existing.Generation+1, 10))
+		}
 		// final already holds desired applied over existing (the change probe
 		// above), so adopt it instead of running a second apply pass.
 		existing.Spec = final.Spec
@@ -3500,7 +3511,7 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 			return AppView{}, err
 		}
 	}
-	if deploySpecChanged {
+	if deploySpecChanged && !suspendedHold {
 		// The redeploy builds the branch tip its deploy row records, as a
 		// deploy trigger does, never a commit an earlier deploy pinned; an
 		// unresolved tip builds the branch (w5/138).
