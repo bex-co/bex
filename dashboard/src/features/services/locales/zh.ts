@@ -3018,7 +3018,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Create-wizard Public Git URL tab input placeholder",
   },
   "services.createPublicUrlError": {
-    message: "请输入有效的 https://、git@ 或 git:// URL。",
+    message: "请输入 https:// URL，或 GitHub SSH URL（git@github.com:owner/repo.git）。",
     description: "Create-wizard Public Git URL tab validation message",
   },
   "services.createImageLabel": {

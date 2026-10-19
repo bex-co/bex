@@ -38,7 +38,7 @@ export function repoBrowseUrl(
 function repoHost(repo: string): string | null {
   const http = httpRepo(repo);
   if (http) return http.host;
-  const ssh = /^(?:ssh:\/\/)?git@([^:/]+)[:/]/i.exec(repo);
+  const ssh = /^(?:ssh:\/\/(?:git@)?|git@)([^:/]+)[:/]/i.exec(repo);
   return ssh ? ssh[1] : null;
 }
 
@@ -47,7 +47,7 @@ function repoPath(repo: string): string | null {
   const http = httpRepo(repo);
   if (http)
     return http.pathname.replace(/^\//, "").replace(/(?:\.git)?\/?$/, "");
-  const ssh = /^(?:ssh:\/\/)?git@[^:/]+[:/](.+?)(?:\.git)?\/?$/i.exec(repo);
+  const ssh = /^(?:ssh:\/\/(?:git@)?|git@)[^:/]+[:/](.+?)(?:\.git)?\/?$/i.exec(repo);
   return ssh ? ssh[1] : null;
 }
 

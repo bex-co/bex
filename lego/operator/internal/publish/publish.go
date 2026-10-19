@@ -583,7 +583,7 @@ fail() { printf '%s\n' "$2" > /dev/termination-log; exit "$1"; }
 mkdir -p /work && cd /work
 git init -q .
 git remote add origin "$REPO"
-set -- -c ` + execution.GitHubCredentialHelper + `
+set -- ` + execution.GitHTTPSTransport + ` -c ` + execution.GitHubCredentialHelper + `
 git "$@" fetch -q --depth 1 origin -- "$REF" || fail $? "could not fetch \"$REF\" from this service's repository — check that the branch or commit exists and that bex still has access to the repo"
 git checkout -q FETCH_HEAD || fail $? "fetched \"$REF\" but could not check it out"
 ` + directSubmodules + `cd "/work/$SRC_DIR" || fail $? "the publish directory \"$SRC_DIR\" does not exist in the repository at \"$REF\""

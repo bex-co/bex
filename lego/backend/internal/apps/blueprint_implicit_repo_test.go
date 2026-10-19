@@ -84,7 +84,7 @@ func TestValidateBlueprintAcceptsAnImplicitRepository(t *testing.T) {
 		{name: "explicit node", kind: "node", extra: repo},
 		{name: "explicit static", kind: "static", extra: repo},
 		{name: "prebuilt image", kind: "image", extra: "  image:\n    url: nginx:1.27\n"},
-		{name: "invalid repo", kind: "node", extra: "  repo: not-a-repository\n", want: "repo must be an https/ssh/git URL"},
+		{name: "invalid repo", kind: "node", extra: "  repo: not-a-repository\n", want: "repo must be an https URL"},
 		{name: "invalid branch", kind: "node", extra: "  branch: \"main;rm -rf\"\n", want: "branch must be a git ref"},
 		{name: "missing image", kind: "image", want: "one of repo or image is required"},
 	} {

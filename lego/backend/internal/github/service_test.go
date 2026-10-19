@@ -559,7 +559,8 @@ func TestGithubOwnerRepo(t *testing.T) {
 		{"https://user@github.com/acme/app", "", "", false},              // userinfo rejected outright
 		{"https://github.com.evil.example/acme/app", "", "", false},      // github.com as a subdomain label
 		{"https://github.com:8443/acme/app", "", "", false},              // non-default port
-		{"ssh://git@github.com/acme/app", "", "", false},                 // ssh never mints an http token
+		{"ssh://git@github.com/acme/app", "acme", "app", true},           // fetched over HTTPS through the helper (w8/130)
+		{"ssh://git@evil.example/acme/app", "", "", false},               // another host's ssh never mints
 	} {
 		owner, repo, ok := githubOwnerRepo(c.url)
 		if ok != c.ok || owner != c.owner || repo != c.repo {
@@ -722,6 +723,11 @@ func TestCloneTokenRequiresGitHubOrigin(t *testing.T) {
 		"https://github.com@evil.example/octo/app", // userinfo trick
 		"git@evil.example:octo/app.git",            // scp form, attacker host
 		"https://github.com:8443/octo/app",         // non-default port
+		"ssh://git@evil.example/octo/app.git",      // ssh form, attacker host
+		"ssh://git@github.com.evil.example/octo/app",
+		"ssh://git@github.com:22/octo/app", // a port the HTTPS rewrite does not cover
+		"ssh://git@github.com/octo/app?x",  // a query the HTTPS form refuses too
+		"git@github.com:octo/app#frag",
 	} {
 		tok, ok, err := svc.cloneToken(ctx, "default", url)
 		if ok || tok != "" || err != nil {
@@ -733,6 +739,13 @@ func TestCloneTokenRequiresGitHubOrigin(t *testing.T) {
 	// the real path).
 	if tok, ok, err := svc.cloneToken(ctx, "default", "https://github.com/octo/app"); !ok || tok != "ghs_leak" || err != nil {
 		t.Errorf("github.com clone token = %q,%v,%v; want the minted token", tok, ok, err)
+	}
+	// GitHub's SSH spellings are fetched over HTTPS through the same host-bound
+	// helper (w8/130), so they mint like the HTTPS URL.
+	for _, url := range []string{"git@github.com:octo/app.git", "ssh://git@github.com/octo/app.git", "ssh://github.com/octo/app"} {
+		if tok, ok, err := svc.cloneToken(ctx, "default", url); !ok || tok != "ghs_leak" || err != nil {
+			t.Errorf("cloneToken(%q) = %q,%v,%v; want the minted token", url, tok, ok, err)
+		}
 	}
 }
 

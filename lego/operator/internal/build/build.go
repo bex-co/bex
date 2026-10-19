@@ -1493,8 +1493,8 @@ func buildCloneContainer(o Options, image string) corev1.Container {
 		Args: []string{classifyPrelude + `cd /source
 git init -q .
 git remote add origin "$REPO"
-set --
-if [ -n "${GIT_AUTH_TOKEN:-}" ]; then set -- -c ` + execution.GitHubCredentialHelper + `; fi
+set -- ` + execution.GitHTTPSTransport + `
+if [ -n "${GIT_AUTH_TOKEN:-}" ]; then set -- "$@" -c ` + execution.GitHubCredentialHelper + `; fi
 bex_run git "$@" fetch --depth 1 origin -- "$REF"
 git checkout -q FETCH_HEAD
 if [ -n "${EXPECTED_COMMIT:-}" ]; then
