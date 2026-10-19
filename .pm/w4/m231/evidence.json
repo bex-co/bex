@@ -1,0 +1,63 @@
+{
+  "hunt": "qa-find-bugs w4, muse.env, workspace bex-canary (tea-daif693dqjvc73e7as3g), pass e4a77c, 2026-10-19 UTC",
+  "servingPlatform": "production pinned to 5e75de920 (b5294c499); research main 2d55820d2",
+  "baselineSettings": {
+    "request": "GraphQL { pushNotificationSettings{ enabled events minimumUrgency timeZone maxDeferralSeconds workingHours{__typename} quietHours{__typename} serviceOverrides{serviceId} } }",
+    "response": {
+      "enabled": true,
+      "events": [
+        "DEPLOY_FAILED",
+        "SERVER_FAILED",
+        "CRON_FAILED"
+      ],
+      "maxDeferralSeconds": 28800,
+      "minimumUrgency": "IMPORTANT",
+      "quietHours": [],
+      "serviceOverrides": [],
+      "timeZone": "UTC",
+      "workingHours": []
+    }
+  },
+  "uiSave": {
+    "at": "2026-10-19T01:02:01.130Z",
+    "steps": "dashboard /notifications \u2192 Mobile push \u2192 Event filters \u2192 check 'Deploy succeeded' \u2192 Save push settings",
+    "eventFiltersCopy": "Only selected event types can produce a push notification.",
+    "toast": "Push settings saved",
+    "inlineWarnings": [],
+    "readBack": {
+      "enabled": true,
+      "events": [
+        "DEPLOY_SUCCEEDED",
+        "DEPLOY_FAILED",
+        "SERVER_FAILED",
+        "CRON_FAILED"
+      ],
+      "minimumUrgency": "IMPORTANT"
+    },
+    "screenshot": ".playwright-mcp/qa-push-urgency-e4a77c.png (gitignored, local)"
+  },
+  "restore": {
+    "steps": "uncheck 'Deploy succeeded' \u2192 Save push settings",
+    "readBack": {
+      "enabled": true,
+      "events": [
+        "DEPLOY_FAILED",
+        "SERVER_FAILED",
+        "CRON_FAILED"
+      ],
+      "maxDeferralSeconds": 28800,
+      "minimumUrgency": "IMPORTANT",
+      "quietHours": [],
+      "serviceOverrides": [],
+      "timeZone": "UTC",
+      "workingHours": []
+    }
+  },
+  "deliveryNotObserved": "No device or browser subscription is registered for the QA user; push_worker builds recipients only from active subscriptions (push_worker.go:198, :249-285), so the inbox is empty either way (notificationInbox \u2192 []). The drop is shown from code.",
+  "code": {
+    "routineEvents": "lego/backend/internal/notifications/push_worker.go projects deploy_started, deploy_succeeded, service_suspended and service_resumed at DeliveryUrgencyRoutine (4 of the 18 selectable events); all others are Important or Critical",
+    "drop": "lego/backend/internal/notifications/delivery_policy.go:288-289 returns DeliveryDrop / DeliveryReasonBelowUrgency when urgencyRank(event) < urgencyRank(channel.MinimumUrgency), after the event filter passes",
+    "default": "lego/backend/internal/notifications/service.go:398-412 defaultPushSettings.MinimumUrgency = Important",
+    "uiList": "dashboard/src/features/notifications/lib/push-policy.ts:9-28 lists the events with no urgency; push-notification-settings-panel.tsx renders them as plain checkboxes"
+  }
+}
