@@ -1768,7 +1768,7 @@ func (s *Service) upsertBlueprint(ctx context.Context, req DeployRequest) {
 	if branch == "" {
 		branch = appv1alpha1.DefaultBranch
 	}
-	_, _ = s.Blueprints.UpsertBlueprint(ctx, store.Blueprint{
+	b, err := s.Blueprints.UpsertBlueprint(ctx, store.Blueprint{
 		TenantID: tenantID,
 		Name:     repoName(req.Repo),
 		Repo:     req.Repo,
@@ -1778,6 +1778,25 @@ func (s *Service) upsertBlueprint(ctx context.Context, req DeployRequest) {
 		Manifest: req.Manifest,
 		Status:   store.BlueprintStatusInSync,
 	})
+	if err != nil || b.ID == "" || b.Status == "disconnected" {
+		return
+	}
+	// The deploy that reached here just applied this manifest, so the row's
+	// in_sync claim has exactly one justification — record it (w4/368):
+	// a terminal success run plus last_sync_at, through the same seams the
+	// git-connected lifecycle uses (InsertBlueprintSync as failSync writes
+	// its terminal row; UpdateBlueprint for the stamp). Without them the
+	// detail page said In Sync over "No syncs yet" / "Last synced —"
+	// forever, and later deploys never repaired the history.
+	now := s.Now().UTC()
+	if _, err := s.Blueprints.InsertBlueprintSync(ctx, store.BlueprintSync{
+		BlueprintID: b.ID,
+		State:       store.BlueprintSyncStateSuccess,
+		StartedAt:   now,
+		CompletedAt: &now,
+	}); err == nil {
+		_, _ = s.Blueprints.UpdateBlueprint(ctx, b.ID, tenantID, nil, nil, nil, nil, &now)
+	}
 }
 
 // blueprintScope scopes ctx to the workspace that owns Blueprint bpID and
@@ -2052,6 +2071,16 @@ func toBlueprintView(b store.Blueprint) BlueprintView {
 	status := b.Status
 	if status == "active" {
 		status = store.BlueprintStatusInSync
+	}
+	// in_sync claims a recorded apply converged the manifest. Every path
+	// that legitimately lands there also stamps last_sync_at — a completed
+	// sync (CompleteBlueprintSync settles success and error alike), a
+	// git-connected create's first completion, deploy auto-registration
+	// since w4/368 — so an in_sync row with no stamp has genuinely never
+	// applied (deploy-auto-registered before w4/368, pre-m62 'active'
+	// rows) and reads created, agreeing with its empty sync history.
+	if status == store.BlueprintStatusInSync && b.LastSyncAt == nil {
+		status = store.BlueprintStatusCreated
 	}
 	v := BlueprintView{
 		ID:        b.ID,

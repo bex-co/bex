@@ -2966,6 +2966,18 @@ func TestUpsertBlueprintAutoRegistersOnDeploy(t *testing.T) {
 		if b.TenantID != "tea-a" {
 			t.Errorf("upsertBlueprint: tenantID = %q, want tea-a", b.TenantID)
 		}
+		// w4/368: the registering deploy applied the manifest, so its apply
+		// is recorded — the success run and the last-sync stamp the header
+		// reads, instead of "In Sync" over an empty history forever.
+		if b.LastSyncAt == nil {
+			t.Errorf("upsertBlueprint: LastSyncAt not stamped by the registering deploy")
+		}
+	}
+	if len(fs.insertedSyncs) != 1 {
+		t.Fatalf("upsertBlueprint: want 1 recorded sync, got %d", len(fs.insertedSyncs))
+	}
+	if run := fs.insertedSyncs[0]; run.State != store.BlueprintSyncStateSuccess || run.CompletedAt == nil {
+		t.Errorf("recorded sync = %+v, want a completed success run", run)
 	}
 }
 
