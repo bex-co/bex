@@ -37,3 +37,31 @@ Live delivery to a device or browser is not part of this DoD (none is registered
 - **Why now:** the default minimum (Important) makes exactly the obvious opt-ins inert: "Deploy started", "Deploy succeeded", "Service suspended" and "Service resumed". The panel promises "Only selected event types can produce a push notification" and confirms "Push settings saved". Browser push (w2/m76) means any dashboard user can now hit this, not only mobile users.
 - **Render parity included:** push is a bex extension with no Render counterpart. The task checks REST/GraphQL/dashboard consistency of the new urgency field; MCP has no push-settings tool, and that absence is recorded rather than added.
 - **Unverified:** actual device and browser delivery, and the mobile app (which edits no push events today).
+
+## Hosted probe — qa pass 69310f (2026-10-19, not the t007 closeout)
+
+A `/qa-find-bugs w4` pass replayed the Definition of done on production, pinned to `94a76a923136`, which contains `94a162d20`. It ran as the QA user in bex-canary. The push settings were recorded first and restored afterwards.
+
+- **Baseline** (REST `GET /v1/notification-settings/push`):
+
+  ```
+  {"enabled":true,"events":["deploy_failed","server_failed","cron_failed"],"minimumUrgency":"important","timeZone":"UTC","workingHours":[],"quietHours":[],"maxDeferralSeconds":28800,"serviceOverrides":[]}
+  ```
+
+- **Urgency on the read ✅:** `GET /v1/notification-settings/push/event-urgencies` and GraphQL `pushEventUrgencies` return the same 18 rows.
+  - `deploy_started`, `deploy_succeeded`, `service_suspended` and `service_resumed` are `routine`.
+  - `server_failed`, `postgres_unavailable` and `key_value_unhealthy` are `critical`, and the other 11 are `important`.
+- **Global filter, 1440 ✅:** every Event filters checkbox is named with its urgency (for example `Deploy failed Important`, `Deploy started Routine`), and the group copy reads "Only selected event types at or above the Minimum urgency can produce a push notification."
+  - Checking **Deploy succeeded** under Important adds "Not pushed while Minimum urgency is Important." to that checkbox. The save area adds a `status`: "Some selected events won't be pushed — Deploy succeeded is Routine and won't be pushed while Minimum urgency is Important."
+  - Save → toast "Push settings saved". REST read-back: events `deploy_succeeded, deploy_failed, server_failed, cron_failed`, `minimumUrgency: important`. GraphQL read-back is the same, so nothing was silently changed.
+  - The notice survives a reload. Selecting Minimum urgency **Routine** (unsaved) clears both the event notice and the save-area status.
+- **Per-service override ✅:** adding an override for the owned `qa-20261019-69310f-st` with "Override with an exact event list" and **Service suspended** under an inherited Important:
+  - shows "Not pushed while Minimum urgency is Important." at that event, and "1 selected event won't be pushed for this service while its Minimum urgency is Important." in the override
+  - adds the save-area item "qa-20261019-69310f-st: Service suspended is Routine and won't be pushed while this service's Minimum urgency is Important."
+  - Setting that override's minimum to Routine clears only its notice; the global Deploy succeeded item stays. The override was not saved.
+  - The explicit-Important variant was not probed.
+- **Control ✅:** "Deploy failed Important", checked under Important, carries no notice.
+- **Validation ✅:** saving with IANA timezone `Mars/Phobos` shows the `alert` "Enter a valid IANA timezone such as America/Los_Angeles.". No toast appears and nothing is saved (REST unchanged).
+- **390 ✅:** on a fresh load at 390×844, the saved Deploy succeeded shows its notice (x 70, width 274, inside the viewport) and the save-area status, with no horizontal overflow. Screenshots `.playwright-mcp/qa-push-urgency-notice-69310f.png` (1440) and `qa-push-urgency-390-69310f.png` (local, gitignored).
+- **Cleanup ✅:** REST `PATCH` with the baseline body, and the next `GET` was **byte-identical** to it; GraphQL agrees. The static fixture was deleted (404), and only that run's session was revoked.
+- **Not observed:** the "Checks pass" bullet (CI), and live device or browser delivery (outside this DoD).
