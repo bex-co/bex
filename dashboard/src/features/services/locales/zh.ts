@@ -564,6 +564,12 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "自动伸缩仅适用于付费套餐。升级后即可启用。",
     description: "Autoscaling card explanation for a free service",
   },
+  "services.scalingPaidOnlyInactive": {
+    message:
+      "自动伸缩设置已保存，但在免费套餐下未生效。服务升级到付费套餐后将自动生效。关闭自动伸缩可删除已保存的设置。",
+    description:
+      "Autoscaling card explanation for a free service carrying a stored autoscaling config (w4/365)",
+  },
   "services.scalingOff": {
     message: "自动伸缩已关闭",
     description: "Autoscaling main toggle label when disabled",

@@ -98,23 +98,38 @@ func TestCreateFreePlanCappedAtOne(t *testing.T) {
 	}
 }
 
-// TestAutoscalingFreePlanCappedAtOne: the autoscaler drives replicas up to
-// maxInstances, so an uncapped max would reintroduce the outcome by another
-// door — both bounds are held to the plan cap.
-func TestAutoscalingFreePlanCappedAtOne(t *testing.T) {
+// TestAutoscalingRefusedOnFreePlan (w4/365, superseding the w6/m118
+// cap-only rule for autoscaling): autoscaling is paid-only, so a free
+// service is refused on the plan at every range — 1..1 used to slip under
+// the free plan's 1-instance cap and store a live config the dashboard
+// then showed as Off with no way to remove it. Create takes the same gate
+// through autoscalingSpec.
+func TestAutoscalingRefusedOnFreePlan(t *testing.T) {
 	cpu := int32(70)
-	svc, _ := newService(nil, freeWebApp("web"))
+	svc, cl := newService(nil, freeWebApp("web"))
 
-	over := SetAutoscalingRequest{MinInstances: 1, MaxInstances: 2, TargetCPUPercent: &cpu}
-	_, err := svc.SetAutoscaling(context.Background(), "web", over)
-	if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "free") {
-		t.Fatalf("autoscaling free maxInstances 2 should be refused naming the plan, got %v", err)
+	for name, req := range map[string]SetAutoscalingRequest{
+		"at the old cap": {MinInstances: 1, MaxInstances: 1, TargetCPUPercent: &cpu},
+		"zero min":       {MinInstances: 0, MaxInstances: 1, TargetCPUPercent: &cpu},
+		"over the cap":   {MinInstances: 1, MaxInstances: 3, TargetCPUPercent: &cpu},
+	} {
+		_, err := svc.SetAutoscaling(context.Background(), "web", req)
+		if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "paid") {
+			t.Fatalf("%s: autoscaling on free should be refused naming the paid plan, got %v", name, err)
+		}
+	}
+	if got := getApp(t, cl, "web").Spec.Autoscaling; got != nil {
+		t.Fatalf("a refused enable must store nothing, got %+v", got)
 	}
 
-	// max == cap is the degenerate but valid free autoscaling config.
-	at := SetAutoscalingRequest{MinInstances: 1, MaxInstances: 1, TargetCPUPercent: &cpu}
-	if _, err := svc.SetAutoscaling(context.Background(), "web", at); err != nil {
-		t.Fatalf("autoscaling free maxInstances 1 (at the cap) must be allowed, got %v", err)
+	create := CreateRequest{Name: "web2", Type: appv1alpha1.TypeWebService, Image: "nginx:1", Plan: "free", Replicas: 1}
+	create.Autoscaling = &SetAutoscalingRequest{MinInstances: 1, MaxInstances: 1, TargetCPUPercent: &cpu}
+	if _, err := specFromCreate(create); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "paid") {
+		t.Fatalf("create free with autoscaling should be refused naming the paid plan, got %v", err)
+	}
+	create.Plan = "standard"
+	if _, err := specFromCreate(create); err != nil {
+		t.Fatalf("create paid with autoscaling must be allowed, got %v", err)
 	}
 }
 

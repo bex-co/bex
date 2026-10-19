@@ -41,6 +41,7 @@ func int32p(v int32) *int32 { return &v }
 // mkAutoscaledApp creates an App with autoscaling already configured.
 func mkAutoscaledApp() *appv1alpha1.App {
 	a := sampleApp("web")
+	a.Spec.Tier = "starter"
 	a.Spec.Autoscaling = &appv1alpha1.AutoscalingSpec{
 		Enabled:          true,
 		MinReplicas:      1,
@@ -73,7 +74,7 @@ func TestGetAutoscalingNotFound(t *testing.T) {
 }
 
 func TestSetAutoscalingWritesToCR(t *testing.T) {
-	svc, cl := newService(nil, sampleApp("web"))
+	svc, cl := newService(nil, paidWebApp("web"))
 	req := SetAutoscalingRequest{
 		MinInstances:     1,
 		MaxInstances:     4,
@@ -101,7 +102,7 @@ func TestSetAutoscalingWritesToCR(t *testing.T) {
 }
 
 func TestSetAutoscalingValidatesMinLeMax(t *testing.T) {
-	svc, _ := newService(nil, sampleApp("web"))
+	svc, _ := newService(nil, paidWebApp("web"))
 	req := SetAutoscalingRequest{
 		MinInstances:     5,
 		MaxInstances:     3, // min > max
@@ -114,7 +115,7 @@ func TestSetAutoscalingValidatesMinLeMax(t *testing.T) {
 }
 
 func TestSetAutoscalingRequiresAtLeastOneTarget(t *testing.T) {
-	svc, _ := newService(nil, sampleApp("web"))
+	svc, _ := newService(nil, paidWebApp("web"))
 	req := SetAutoscalingRequest{
 		MinInstances: 1,
 		MaxInstances: 3,
@@ -127,7 +128,7 @@ func TestSetAutoscalingRequiresAtLeastOneTarget(t *testing.T) {
 }
 
 func TestSetAutoscalingValidatesPercentRange(t *testing.T) {
-	svc, _ := newService(nil, sampleApp("web"))
+	svc, _ := newService(nil, paidWebApp("web"))
 	req := SetAutoscalingRequest{
 		MinInstances:     1,
 		MaxInstances:     3,
@@ -143,7 +144,7 @@ func TestSetAutoscalingRejectsAbovePlatformCeiling(t *testing.T) {
 	// codex round-15 #1: autoscaling min/max must share the explicit-scale
 	// ceiling; without it a can_operate caller could persist int32-max bounds
 	// the operator would then project into Deployment.spec.replicas.
-	svc, _ := newService(nil, sampleApp("web"))
+	svc, _ := newService(nil, paidWebApp("web"))
 	over := store.MaxReplicas + 1
 	cpu := int32p(80)
 	for _, req := range []SetAutoscalingRequest{
@@ -202,7 +203,7 @@ func TestRESTGetAutoscaling(t *testing.T) {
 }
 
 func TestRESTPutAutoscaling(t *testing.T) {
-	svc, cl := newService(nil, sampleApp("web"))
+	svc, cl := newService(nil, paidWebApp("web"))
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
@@ -272,7 +273,7 @@ func TestGraphQLAutoscalingConfigQuery(t *testing.T) {
 }
 
 func TestGraphQLSetAutoscalingMutation(t *testing.T) {
-	svc, cl := newService(nil, sampleApp("web"))
+	svc, cl := newService(nil, paidWebApp("web"))
 	schema, err := graphql.NewSchema(graphql.SchemaConfig{
 		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
 		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
@@ -356,9 +357,7 @@ func TestSetAutoscalingAllowsWorkerAndPrivate(t *testing.T) {
 	} {
 		t.Run(svcType, func(t *testing.T) {
 			app := typedApp("svc", svcType)
-			if svcType == appv1alpha1.TypeBackgroundWorker {
-				app.Spec.Tier = "starter"
-			}
+			app.Spec.Tier = "starter"
 			svc, cl := newService(nil, app)
 			v, err := svc.SetAutoscaling(context.Background(), "svc", validAutoscalingReq())
 			if err != nil {
