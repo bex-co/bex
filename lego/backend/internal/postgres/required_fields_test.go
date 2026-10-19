@@ -250,3 +250,57 @@ func TestPostgresConnectionInfoExternalStringAlwaysPresent(t *testing.T) {
 		})
 	}
 }
+
+// TestPostgresSuspendersAndRolePresent: Render's postgres and postgresDetail
+// schemas also require suspenders and role (w8/129). bex's only suspend path is
+// user-driven, so suspenders is ["user"] while suspended and [] otherwise, as
+// for services (w4/014); every database this endpoint returns is a primary.
+func TestPostgresSuspendersAndRolePresent(t *testing.T) {
+	svc, _ := newService()
+	w := serveREST(svc, http.MethodPost, "/v1/postgres", `{"name":"req-susp-pg","plan":"free"}`)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create => %d: %s", w.Code, w.Body.String())
+	}
+	id, _ := decodeMap(t, w.Body.Bytes())["id"].(string)
+	call, cleanup := pgMCPClient(t, svc)
+	defer cleanup()
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	expect := func(step string, body map[string]any, want []string) {
+		t.Helper()
+		got, ok := body["suspenders"].([]any)
+		if !ok || len(got) != len(want) || (len(want) == 1 && got[0] != want[0]) {
+			t.Errorf("%s: suspenders = %#v, want %v (never absent or null)", step, body["suspenders"], want)
+		}
+		if body["role"] != "primary" {
+			t.Errorf("%s: role = %#v, want \"primary\"", step, body["role"])
+		}
+	}
+	surfaces := func(state string, want []string) {
+		t.Helper()
+		expect(state+" get", decodeMap(t, serveREST(svc, http.MethodGet, "/v1/postgres/"+id, "").Body.Bytes()), want)
+		var list []map[string]any
+		if err := json.Unmarshal(serveREST(svc, http.MethodGet, "/v1/postgres", "").Body.Bytes(), &list); err != nil || len(list) == 0 {
+			t.Fatalf("%s list: %v %d", state, err, len(list))
+		}
+		item, _ := list[0]["postgres"].(map[string]any)
+		expect(state+" list", item, want)
+		expect(state+" mcp get_postgres", call("get_postgres", map[string]any{"postgresId": id}), want)
+		res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+			RequestString: fmt.Sprintf(`{ database(id: %q) { suspenders role } }`, id)})
+		if len(res.Errors) > 0 {
+			t.Fatalf("%s GraphQL: %v", state, res.Errors)
+		}
+		gql, _ := res.Data.(map[string]any)["database"].(map[string]any)
+		expect(state+" GraphQL", gql, want)
+	}
+	surfaces("running", []string{})
+	if s := serveREST(svc, http.MethodPost, "/v1/postgres/"+id+"/suspend", ""); s.Code != http.StatusAccepted {
+		t.Fatalf("suspend => %d: %s", s.Code, s.Body.String())
+	}
+	surfaces("suspended", []string{"user"})
+}

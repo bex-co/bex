@@ -71,14 +71,13 @@ var conformanceAllowlist = map[string][]conformanceDivergence{
 	// these lists by w6/m109: the views now nil-coalesce and serialize the
 	// Render-required arrays as [] instead of omitting the key; the guard test
 	// fails an allowlist entry that no longer matches a real divergence.
+	// `role` and `suspenders` (postgres) followed in w8/129.
 	"list-postgres": knownConformanceDivergences(
 		"ADR018 §Managed Postgres / §Resource metadata contract: omitted unknown metadata and unsupported advanced provider fields",
 		`updatedAt: property "updatedAt" is missing`,
 		`owner: property "owner" is missing`,
 		`region: property "region" is missing`,
-		`role: property "role" is missing`,
 		`version: property "version" is missing`,
-		`suspenders: property "suspenders" is missing`,
 		`dashboardUrl: property "dashboardUrl" is missing`,
 	),
 	"retrieve-postgres": knownConformanceDivergences(
@@ -88,9 +87,7 @@ var conformanceAllowlist = map[string][]conformanceDivergence{
 		`/owner: property "owner" is missing`,
 		`/project: property "project" is missing`,
 		`/region: property "region" is missing`,
-		`/role: property "role" is missing`,
 		`/version: property "version" is missing`,
-		`/suspenders: property "suspenders" is missing`,
 	),
 	"retrieve-redis": knownConformanceDivergences(
 		// `version` was dropped from this list once the Key Value read began

@@ -298,6 +298,17 @@ func SuspendedEnum(suspended bool) string {
 	return RenderNotSuspended
 }
 
+// Suspenders is Render's required suspenders array: who suspended a resource.
+// bex's only suspend path is the user's, so it is ["user"] while suspended and
+// [] (never null) otherwise (w4/014, w8/129). Enum values bex has no source for
+// (admin, billing, parent_service, …) are omitted, never faked.
+func Suspenders(suspended bool) []string {
+	if suspended {
+		return []string{"user"}
+	}
+	return []string{}
+}
+
 // Base is the shared kernel every feature service embeds: the apiserver-thin
 // client, the watched namespace, an injectable clock, and the authorization
 // gate. Feature services embed *Base and call Authorize / Now / GetApp / AppPods.

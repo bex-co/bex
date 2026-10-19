@@ -132,8 +132,13 @@ type PostgresView struct {
 	ReadReplicas []ReadReplicaView `json:"readReplicas"`
 
 	Suspended string `json:"suspended"` // string enum, like services
-	CreatedAt string `json:"createdAt,omitempty"`
-	UpdatedAt string `json:"updatedAt,omitempty"`
+	// Suspenders and Role are required in Render's postgres and postgresDetail
+	// schemas (w8/129). Every database this view describes is a primary; read
+	// replicas are nested ReadReplicaViews.
+	Suspenders []string `json:"suspenders"`
+	Role       string   `json:"role"`
+	CreatedAt  string   `json:"createdAt,omitempty"`
+	UpdatedAt  string   `json:"updatedAt,omitempty"`
 
 	// Region / DashboardURL mirror the Render fields on services; populated by
 	// the Service.view wrapper (not pgView) so they flow through GraphQL/MCP.
@@ -519,6 +524,8 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		HighAvailabilityEnabled: d.Status.HighAvailabilityEnabled,
 		ReadReplicas:            replicas,
 		Suspended:               core.SuspendedEnum(d.Spec.Suspended),
+		Suspenders:              core.Suspenders(d.Spec.Suspended),
+		Role:                    "primary",
 		CreatedAt:               created,
 		UpdatedAt:               resourcemeta.UpdatedAt(d),
 		ExternalHost:            d.Status.ExternalHost,
