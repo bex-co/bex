@@ -1,0 +1,190 @@
+{
+  "hunt": "qa-find-bugs w4, muse.env, workspace bex-canary (tea-daif693dqjvc73e7as3g), pass 7d3e19, 2026-10-18/19 UTC",
+  "servingPlatform": "production pinned to d5c3373ed (chore(deploy) d1c180db3); research main 5e75de920",
+  "fixture": {
+    "service": "srv-dbalnfu804hs73aaebm0",
+    "name": "qa-20261018-7d3e19-egress",
+    "created": "2026-10-18T23:52:31Z via dashboard New Web Service \u2192 Existing Image, Free plan",
+    "image": "docker.io/library/python:3.13-alpine",
+    "dockerCommand": "sh -c 'while true; do python3 -c \"import urllib.request as u; print(\\\"QA_EGRESS_V4\\\", u.urlopen(\\\"https://api.ipify.org\\\", timeout=10).read().decode(), flush=True)\" || echo QA_EGRESS_FAIL; sleep 60; done & exec python3 -m http.server $PORT'",
+    "idleTimeout": "Settings \u2192 Idle timeout \u2192 5 min (event idle_timeout_changed 2026-10-18T23:59:18Z)",
+    "cleanup": "deleted at the end of the pass (see report)"
+  },
+  "cycles": [
+    {
+      "cycle": "wake 1",
+      "hibernated": "2026-10-18T23:59:25Z evt-lt3t7j38eipptam8qcoh",
+      "request": "curl -sS -i https://qa-20261018-7d3e19-egress.onbex.co/ at 00:01:04Z",
+      "response": "HTTP/2 503, retry-after: 5, cache-control: no-store, body {\"error\":\"service not ready\",\"retryAfter\":5}",
+      "polling": "5 s curl: 503 at 00:01:04, :05, :10, :14, :20; first 200 at 00:01:25",
+      "instance": "srv-dbalnfu804hs73aaebm0-53nlki1n14cb113h2ci5 createdAt 00:01:05Z",
+      "events": [
+        "server_available evt-5vdpjtesam68fbismh35 00:01:25Z",
+        "service_woken evt-6o5oco1ubp651o2d26r6 00:01:40Z"
+      ],
+      "serverAvailable": true
+    },
+    {
+      "cycle": "wake 2",
+      "hibernated": "2026-10-19T00:08:10Z evt-scn4ro2jcvk11ibv410c",
+      "request": "browser tab to https://qa-20261018-7d3e19-egress.onbex.co/ at 00:08:13Z \u2192 HTML interstitial 'Application loading', HTTP 503",
+      "instance": "srv-dbalnfu804hs73aaebm0-jc72v7h22mkp8qkijokh createdAt 00:08:14Z",
+      "events": [
+        "service_woken evt-rfd186vlrcglhfoq6qlq 00:08:36Z"
+      ],
+      "serverAvailable": false
+    },
+    {
+      "cycle": "wake 3",
+      "hibernated": "2026-10-19T00:14:40Z evt-941s9g3cg2mvcjl7qj2t",
+      "polling": "1 s curl: first 503 00:15:01, first 200 00:15:22",
+      "instance": "srv-dbalnfu804hs73aaebm0-rigj07hhft7ukaebh72h createdAt 00:15:02Z",
+      "events": [
+        "service_woken evt-me911epdqtk5959hvd73 00:15:25Z"
+      ],
+      "serverAvailable": false
+    },
+    {
+      "cycle": "resume control",
+      "requests": "POST /v1/services/srv-dbalnfu804hs73aaebm0/suspend \u2192 202; POST \u2026/resume at 00:17:57Z \u2192 202",
+      "polling": "1 s curl: 503 00:18:03, 200 00:18:09",
+      "events": [
+        "suspender_added evt-e7ta74pr6dmnkhn9rcn8 00:17:33Z",
+        "service_suspended evt-6td16h1mdi3ne5nqdtgs 00:17:40Z",
+        "suspender_removed evt-8t6gqbmf6kehbpt4j260 00:17:57Z",
+        "service_resumed evt-ebg87k12rnmsc47ubo2q 00:18:10Z"
+      ],
+      "serverAvailable": false
+    }
+  ],
+  "serverFailedInWholeHistory": false,
+  "restProbe": {
+    "request": "GET https://api.bex.co/v1/services/srv-dbalnfu804hs73aaebm0/events?limit=30",
+    "capturedAt": "2026-10-19T00:16:32.866Z",
+    "response": [
+      {
+        "id": "evt-me911epdqtk5959hvd73",
+        "type": "service_woken",
+        "timestamp": "2026-10-19T00:15:25Z"
+      },
+      {
+        "id": "evt-941s9g3cg2mvcjl7qj2t",
+        "type": "service_hibernated",
+        "timestamp": "2026-10-19T00:14:40Z"
+      },
+      {
+        "id": "evt-rfd186vlrcglhfoq6qlq",
+        "type": "service_woken",
+        "timestamp": "2026-10-19T00:08:36Z"
+      },
+      {
+        "id": "evt-scn4ro2jcvk11ibv410c",
+        "type": "service_hibernated",
+        "timestamp": "2026-10-19T00:08:10Z"
+      },
+      {
+        "id": "evt-6o5oco1ubp651o2d26r6",
+        "type": "service_woken",
+        "timestamp": "2026-10-19T00:01:40Z"
+      },
+      {
+        "id": "evt-5vdpjtesam68fbismh35",
+        "type": "server_available",
+        "timestamp": "2026-10-19T00:01:25Z"
+      },
+      {
+        "id": "evt-lt3t7j38eipptam8qcoh",
+        "type": "service_hibernated",
+        "timestamp": "2026-10-18T23:59:25Z"
+      },
+      {
+        "id": "evt-rb9jiaubcq69adrb0468",
+        "type": "idle_timeout_changed",
+        "timestamp": "2026-10-18T23:59:18Z"
+      },
+      {
+        "id": "evt-4gb9dg8nnlutup51pdok",
+        "type": "deploy_ended",
+        "timestamp": "2026-10-18T23:52:56Z"
+      },
+      {
+        "id": "evt-4veovhptm3lqitit2hg3",
+        "type": "deploy_started",
+        "timestamp": "2026-10-18T23:52:31Z"
+      }
+    ]
+  },
+  "graphqlProbe": {
+    "request": {
+      "query": "query QAEvents($id:String!){ serviceEvents(serviceId:$id, limit:30){ id type timestamp } }",
+      "variables": {
+        "id": "srv-dbalnfu804hs73aaebm0"
+      }
+    },
+    "response": {
+      "data": {
+        "serviceEvents": [
+          {
+            "id": "evt-me911epdqtk5959hvd73",
+            "timestamp": "2026-10-19T00:15:25Z",
+            "type": "service_woken"
+          },
+          {
+            "id": "evt-941s9g3cg2mvcjl7qj2t",
+            "timestamp": "2026-10-19T00:14:40Z",
+            "type": "service_hibernated"
+          },
+          {
+            "id": "evt-rfd186vlrcglhfoq6qlq",
+            "timestamp": "2026-10-19T00:08:36Z",
+            "type": "service_woken"
+          },
+          {
+            "id": "evt-scn4ro2jcvk11ibv410c",
+            "timestamp": "2026-10-19T00:08:10Z",
+            "type": "service_hibernated"
+          },
+          {
+            "id": "evt-6o5oco1ubp651o2d26r6",
+            "timestamp": "2026-10-19T00:01:40Z",
+            "type": "service_woken"
+          },
+          {
+            "id": "evt-5vdpjtesam68fbismh35",
+            "timestamp": "2026-10-19T00:01:25Z",
+            "type": "server_available"
+          },
+          {
+            "id": "evt-lt3t7j38eipptam8qcoh",
+            "timestamp": "2026-10-18T23:59:25Z",
+            "type": "service_hibernated"
+          },
+          {
+            "id": "evt-rb9jiaubcq69adrb0468",
+            "timestamp": "2026-10-18T23:59:18Z",
+            "type": "idle_timeout_changed"
+          },
+          {
+            "id": "evt-4gb9dg8nnlutup51pdok",
+            "timestamp": "2026-10-18T23:52:56Z",
+            "type": "deploy_ended"
+          },
+          {
+            "id": "evt-4veovhptm3lqitit2hg3",
+            "timestamp": "2026-10-18T23:52:31Z",
+            "type": "deploy_started"
+          }
+        ]
+      }
+    }
+  },
+  "webhookEventTypesIncludesServerAvailable": true,
+  "activityUi": {
+    "url": "https://dashboard.bex.co/services/srv-dbalnfu804hs73aaebm0/events",
+    "capturedAt": "2026-10-19T00:16:52.598Z (fresh load, 1440 px)",
+    "aria": "Activity 10 \u00b7 Service woke up 1m \u00b7 Service went to sleep 2m \u00b7 Service woke up 8m \u00b7 Service went to sleep 8m \u00b7 Service woke up 15m \u00b7 Service recovered 15m \u00b7 Service went to sleep 17m \u00b7 Idle timeout updated 17m \u00b7 Deploy ended 23m \u00b7 Deploy started 23m",
+    "screenshot": ".playwright-mcp/qa-wake-activity-7d3e19.png (gitignored, local to this session)"
+  },
+  "priorIndependentSighting": "w4/done/m147/README.md:52 (2026-10-02): wake 07:02:40 \u2192 200 07:03:15; service_woken 07:03:27 'plus server_available'",
+  "render": "render.com/docs/webhooks fetched 2026-10-19: server_failed 'A service became unavailable, usually due to a runtime error.'; server_available 'A previously unavailable service became available.'; no spin-up/spin-down webhook events."
+}
