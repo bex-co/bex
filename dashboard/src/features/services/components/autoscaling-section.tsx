@@ -231,13 +231,15 @@ export function AutoscalingSection({
     ],
   );
 
-  // Autoscaling is paid-only: tiers.yaml gives compute `free` maxInstances: 1
-  // and setAutoscaling refuses a free service server-side, so offering the
-  // editor only to fail the save is a promise the plan cannot keep (w7/048).
-  // Gated the way maintenance-mode-section.tsx gates its toggle. A free
-  // service carrying a stored config still reads Off — showing its range
-  // would advertise an autoscaler that cannot run.
+  // Autoscaling is paid-only: setAutoscaling refuses a free service
+  // server-side at every range (w4/365), so offering the editor only to fail
+  // the save is a promise the plan cannot keep (w7/048). Gated the way
+  // maintenance-mode-section.tsx gates its toggle. A free service can still
+  // carry a stored config (written before the gate, or left by a downgrade):
+  // it reads as saved-but-inactive below with a working turn-off, never as
+  // a plain Off that hides settings nobody can remove.
   const eligible = plan !== "free";
+  const storedInactive = !eligible && as.enabled;
   const enabled = eligible && (draft != null || as.enabled);
   const form = draft ?? serverForm;
 
@@ -247,6 +249,11 @@ export function AutoscalingSection({
   }
 
   function handleMainToggle(checked: boolean) {
+    if (!eligible) {
+      // On free the switch can only turn a stored config off.
+      if (!checked && as.enabled) setConfirmDisable(true);
+      return;
+    }
     if (checked) {
       setDraft(form);
     } else if (as.enabled) {
@@ -311,12 +318,14 @@ export function AutoscalingSection({
           <div className="flex items-center gap-2 shrink-0">
             <Switch
               id="autoscaling-enabled"
-              checked={enabled}
-              disabled={as.saving || !eligible}
+              checked={enabled || storedInactive}
+              disabled={as.saving || (!eligible && !as.enabled)}
               onCheckedChange={handleMainToggle}
             />
             <Label htmlFor="autoscaling-enabled" className="text-sm">
-              {enabled ? t("services.scalingOn") : t("services.scalingOff")}
+              {enabled || storedInactive
+                ? t("services.scalingOn")
+                : t("services.scalingOff")}
             </Label>
           </div>
         </div>
@@ -324,9 +333,25 @@ export function AutoscalingSection({
 
       {!eligible && (
         <CardContent>
-          <p className="text-sm text-muted-foreground">
-            {t("services.scalingPaidOnly")}
-          </p>
+          {storedInactive ? (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                {t("services.scalingPaidOnlyInactive")}
+              </p>
+              <p className="text-sm">
+                {t("services.scalingInstancesTitle")}: {as.minInstances}–
+                {as.maxInstances}
+                {as.targetCPUPercent != null &&
+                  ` · ${t("services.scalingCPUTitle")}: ${as.targetCPUPercent}%`}
+                {as.targetMemoryPercent != null &&
+                  ` · ${t("services.scalingMemoryTitle")}: ${as.targetMemoryPercent}%`}
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {t("services.scalingPaidOnly")}
+            </p>
+          )}
         </CardContent>
       )}
 
