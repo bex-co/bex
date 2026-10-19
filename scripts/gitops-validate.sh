@@ -689,24 +689,26 @@ fi
 # w7/026: BEX_BASE_DOMAIN is one conceptual setting read by three separately
 # configured Deployments — the operator decides whether a platform-host Ingress
 # exists at all, bex-api decides whether the API advertises/pre-reports the URL,
-# and the static-server resolves host → site. Nothing else ties them together,
+# the static-server resolves host → site, and the activator names a new
+# service's host before its first release (w4/m235). Nothing else ties them together,
 # and divergence fails silently in both directions (an advertised URL nothing
 # serves, or a served host the API reports as null). Assert each render keeps
 # the three effective values identical; an absent env entry and an explicit ""
 # are equivalent (both disable platform hosts — the w7/m54 security posture).
-echo "==> BEX_BASE_DOMAIN agrees across operator + bex-api + static-server"
+echo "==> BEX_BASE_DOMAIN agrees across operator + bex-api + static-server + activator"
 check_base_domain_agreement() {
   local render_name="$1" render="$2" triples
   triples="$(yq -N '
     select(.kind == "Deployment" and
            (.metadata.name == "bex-controller-manager" or
             .metadata.name == "bex-api" or
-            .metadata.name == "bex-static-server")) |
+            .metadata.name == "bex-static-server" or
+            .metadata.name == "bex-activator")) |
     .metadata.name + "=" +
     ([.spec.template.spec.containers[].env[]? | select(.name == "BEX_BASE_DOMAIN") | .value] | .[0] // "")' \
     - <<<"$render")"
-  if [ "$(wc -l <<<"$triples" | tr -d ' ')" != 3 ]; then
-    echo "FAIL: $render_name render must contain the three BEX_BASE_DOMAIN consumers, got: $(tr '\n' ' ' <<<"$triples")" >&2
+  if [ "$(wc -l <<<"$triples" | tr -d ' ')" != 4 ]; then
+    echo "FAIL: $render_name render must contain the four BEX_BASE_DOMAIN consumers, got: $(tr '\n' ' ' <<<"$triples")" >&2
     fail=1
     return
   fi
