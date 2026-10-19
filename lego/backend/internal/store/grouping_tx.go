@@ -161,8 +161,9 @@ type GroupingPair struct {
 
 // ReclaimEmptyBlueprintGroupings deletes, in ONE transaction, the named
 // grouping rows a disconnected Blueprint minted that nothing still references
-// (w8/m20 t004): an environment goes when no apps row is assigned to it and
-// its id is not in referencedEnvironments (CR-side datastore members); a
+// (w8/m20 t004): an environment goes when no apps row or env group is assigned
+// to it and its id is not in referencedEnvironments (CR-side datastore
+// members); a
 // candidate project goes when it has no environments left, no apps members,
 // and is not in referencedProjects. Deployed resources are never touched —
 // a populated grouping survives (Render disconnect semantics). Returns the
@@ -181,9 +182,11 @@ func (s *PGStore) ReclaimEmptyBlueprintGroupings(ctx context.Context, tenantID s
 				return err
 			}
 			candidateProjects[projectID] = pair.Project
+			// Locked so nothing joins between the count and the delete: a
+			// joining row's foreign-key check waits on this lock.
 			var envID string
 			if err := tx.QueryRow(ctx,
-				`SELECT id FROM environments WHERE project_id = $1 AND tenant_id = $2 AND name = $3`,
+				`SELECT id FROM environments WHERE project_id = $1 AND tenant_id = $2 AND name = $3 FOR UPDATE`,
 				projectID, tenantID, pair.Environment,
 			).Scan(&envID); err != nil {
 				if errors.Is(err, pgx.ErrNoRows) {
@@ -194,9 +197,13 @@ func (s *PGStore) ReclaimEmptyBlueprintGroupings(ctx context.Context, tenantID s
 			if referencedEnvironments[envID] {
 				continue
 			}
+			// Env groups are members too: their environment_id is ON DELETE
+			// SET NULL, so deleting the environment would move them out of it
+			// with no exit check (w4/m232).
 			var members int
 			if err := tx.QueryRow(ctx,
-				`SELECT count(*) FROM apps WHERE environment_id = $1`, envID,
+				`SELECT (SELECT count(*) FROM apps WHERE environment_id = $1)
+				      + (SELECT count(*) FROM env_groups WHERE environment_id = $1)`, envID,
 			).Scan(&members); err != nil {
 				return err
 			}

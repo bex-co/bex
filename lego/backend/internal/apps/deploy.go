@@ -216,7 +216,9 @@ type BlueprintGroupingTxRunner interface {
 // record a service's project/environment assignment on its store row; a Store
 // without it makes an environment-changing apply ErrWorkspacesUnavailable.
 type EnvironmentAssigner interface {
-	SetAppEnvironment(context.Context, string, string, string) error
+	// SetAppEnvironment assigns the row; authorizeExit vets the environment
+	// it leaves under the row lock (w4/m232).
+	SetAppEnvironment(ctx context.Context, appID, projectID, environmentID string, exit core.EnvironmentExitGuard) error
 }
 
 // StackResult is the set of resources one stack deploy created (or converged):
@@ -3651,6 +3653,11 @@ func initialDeployHookState(req CreateRequest, existing *appv1alpha1.App, desire
 // applyEnvironmentChange applies the environment half of a Blueprint re-apply
 // onto the App's labels/spec and records the assignment on its store row.
 func (s *Service) applyEnvironmentChange(ctx context.Context, existing *appv1alpha1.App, assignment core.EnvironmentAssignment) error {
+	left := leftEnvironment(existing.Labels[core.LabelEnvironment], assignment.ID)
+	exit, err := s.ExitGuards.Load(ctx, s.resolveTenantID(ctx))
+	if err != nil {
+		return err
+	}
 	if assignment.ID == "" {
 		delete(existing.Labels, core.LabelProject)
 		delete(existing.Labels, core.LabelEnvironment)
@@ -3669,11 +3676,42 @@ func (s *Service) applyEnvironmentChange(ctx context.Context, existing *appv1alp
 		if !ok {
 			return core.ErrWorkspacesUnavailable
 		}
-		if err := environmentStore.SetAppEnvironment(ctx, appID, assignment.ProjectID, assignment.ID); err != nil {
+		// The store vets the environment the row leaves (w4/m232).
+		if err := environmentStore.SetAppEnvironment(ctx, appID, assignment.ProjectID, assignment.ID, exit); err != nil {
 			return fmt.Errorf("assigning Blueprint environment: %w", err)
 		}
+		return nil
 	}
-	return nil
+	// No store row: the CR label (read before the regroup above) is the only
+	// placement there is.
+	return exit(left...)
+}
+
+// regroupPatchBase is the patch base for a Blueprint re-apply of an existing
+// datastore. A regroup that leaves an environment is authorized first, and its
+// patch is optimistically locked to the snapshot that check read, so a
+// concurrent move cannot hand it an unchecked source (w4/m232).
+func (s *Service) regroupPatchBase(ctx context.Context, existing client.Object, groupingChanged bool, nextEnvironmentID string) (client.Patch, error) {
+	if !groupingChanged {
+		return client.MergeFrom(existing.DeepCopyObject().(client.Object)), nil
+	}
+	exit, err := s.ExitGuards.Load(ctx, s.resolveTenantID(ctx))
+	if err != nil {
+		return nil, err
+	}
+	if err := exit(leftEnvironment(existing.GetLabels()[core.LabelEnvironment], nextEnvironmentID)...); err != nil {
+		return nil, err
+	}
+	return client.MergeFromWithOptions(existing.DeepCopyObject().(client.Object), client.MergeFromWithOptimisticLock{}), nil
+}
+
+// leftEnvironment is the environment a regroup from current to next leaves,
+// if any.
+func leftEnvironment(current, next string) []string {
+	if current == "" || current == next {
+		return nil
+	}
+	return []string{current}
 }
 
 func serviceSpecChangedOnlyByMaintenance(cur, want appv1alpha1.AppSpec) bool {
@@ -3739,7 +3777,10 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 		if !specChanged && !groupingChanged {
 			return stackDatabaseView(existing), nil
 		}
-		base := client.MergeFrom(existing.DeepCopy())
+		base, err := s.regroupPatchBase(ctx, existing, groupingChanged, assignment.ID)
+		if err != nil {
+			return StackDatabaseView{}, err
+		}
 		if specChanged {
 			if _, err := ApplyBlueprintDatabaseSpec(existing, db.spec, db.fields); err != nil {
 				return StackDatabaseView{}, fmt.Errorf("%w: database %q %v", core.ErrBadRequest, db.name, err)
@@ -3789,7 +3830,10 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 		if !specChanged && !groupingChanged {
 			return stackKeyValueView(existing), nil
 		}
-		base := client.MergeFrom(existing.DeepCopy())
+		base, err := s.regroupPatchBase(ctx, existing, groupingChanged, assignment.ID)
+		if err != nil {
+			return StackKeyValueView{}, err
+		}
 		if specChanged {
 			ApplyBlueprintKeyValueSpec(&existing.Spec, kv.spec, kv.fields)
 		}

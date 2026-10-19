@@ -2004,17 +2004,31 @@ func (s *PGStore) BackfillAppType(ctx context.Context, id, serviceType string) (
 
 // SetAppEnvironment atomically assigns an App row to an Environment and its
 // owning Project. Empty ids clear both memberships (Blueprint ungrouped:).
-func (s *PGStore) SetAppEnvironment(ctx context.Context, id, projectID, environmentID string) error {
-	tag, err := s.Pool.Exec(ctx,
-		`UPDATE apps SET project_id = NULLIF($2, ''), environment_id = NULLIF($3, ''), updated_at = now() WHERE id = $1`,
-		id, projectID, environmentID)
-	if err != nil {
-		return classify("app", err)
-	}
-	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("app: %w", ErrNotFound)
-	}
-	return nil
+// exit, when set, vets the environment the row leaves, read under the row
+// lock so a concurrent move cannot hand it an unchecked source; a refusal
+// writes nothing (w4/m232).
+func (s *PGStore) SetAppEnvironment(ctx context.Context, id, projectID, environmentID string, exit core.EnvironmentExitGuard) error {
+	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		var current *string
+		err := tx.QueryRow(ctx, `SELECT environment_id FROM apps WHERE id = $1 FOR UPDATE`, id).Scan(&current)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("app: %w", ErrNotFound)
+		}
+		if err != nil {
+			return classify("app", err)
+		}
+		if current != nil && *current != environmentID && exit != nil {
+			if err := exit(*current); err != nil {
+				return err
+			}
+		}
+		if _, err := tx.Exec(ctx,
+			`UPDATE apps SET project_id = NULLIF($2, ''), environment_id = NULLIF($3, ''), updated_at = now() WHERE id = $1`,
+			id, projectID, environmentID); err != nil {
+			return classify("app", err)
+		}
+		return nil
+	})
 }
 
 // SetAppImage updates the row's image (the deploys feature's Rollback verb,

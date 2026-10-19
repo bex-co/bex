@@ -77,7 +77,7 @@ func (f *fakeResourceIndex) ListPostgres(_ context.Context, ownerID string) ([]p
 	}
 	out := make([]postgres.PostgresView, len(rs))
 	for i, r := range rs {
-		out[i] = postgres.PostgresView{ID: r.id, ProjectID: r.projectID}
+		out[i] = postgres.PostgresView{ID: r.id, ProjectID: r.projectID, EnvironmentID: r.environmentID}
 	}
 	if f.afterList != nil {
 		f.afterList()
@@ -92,7 +92,7 @@ func (f *fakeResourceIndex) ListKeyValues(_ context.Context, ownerID string) ([]
 	}
 	out := make([]keyvalue.KeyValueView, len(rs))
 	for i, r := range rs {
-		out[i] = keyvalue.KeyValueView{ID: r.id, ProjectID: r.projectID}
+		out[i] = keyvalue.KeyValueView{ID: r.id, ProjectID: r.projectID, EnvironmentID: r.environmentID}
 	}
 	if f.afterList != nil {
 		f.afterList()
@@ -100,15 +100,24 @@ func (f *fakeResourceIndex) ListKeyValues(_ context.Context, ownerID string) ([]
 	return out, nil
 }
 
-func (f *fakeResourceIndex) SetProjectID(_ context.Context, name, projectID string) error {
-	f.relabels = append(f.relabels, relabel{id: name, projectID: projectID})
+func (f *fakeResourceIndex) SetProjectID(_ context.Context, name, expectedEnvironmentID, projectID string) error {
 	for ws := range f.byWorkspace {
 		for i := range f.byWorkspace[ws] {
-			if f.byWorkspace[ws][i].id == name {
-				f.byWorkspace[ws][i].projectID = projectID
+			r := &f.byWorkspace[ws][i]
+			if r.id != name {
+				continue
 			}
+			// Mirrors the real compare against the observed source (w4/m232).
+			if err := core.PlacementChanged(r.environmentID, expectedEnvironmentID); err != nil {
+				return err
+			}
+			if r.projectID != projectID {
+				r.environmentID = "" // a project change drops the environment
+			}
+			r.projectID = projectID
 		}
 	}
+	f.relabels = append(f.relabels, relabel{id: name, projectID: projectID})
 	return nil
 }
 
@@ -119,7 +128,7 @@ func (f *fakeResourceIndex) ClearProjectID(ctx context.Context, name, expectedPr
 	for _, members := range f.byWorkspace {
 		for _, member := range members {
 			if member.id == name && member.projectID == expectedProjectID {
-				return f.SetProjectID(ctx, name, "")
+				return f.SetProjectID(ctx, name, member.environmentID, "")
 			}
 		}
 	}

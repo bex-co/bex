@@ -951,7 +951,9 @@ func (sweepProjectResources) ListKeyValues(context.Context, string) ([]keyvalue.
 	return nil, nil
 }
 
-func (sweepProjectResources) SetProjectID(context.Context, string, string) error { return nil }
+func (sweepProjectResources) SetProjectID(context.Context, string, string, string) error {
+	return nil
+}
 
 func (sweepProjectResources) ClearProjectID(context.Context, string, string) error { return nil }
 
@@ -970,7 +972,7 @@ func (sweepProjectStore) ListProjects(context.Context, string) ([]store.Project,
 func (sweepProjectStore) RenameProject(context.Context, string, string) error { return nil }
 func (sweepProjectStore) DeleteProject(context.Context, string) error         { return nil }
 func (sweepProjectStore) TouchProject(context.Context, string) error          { return nil }
-func (sweepProjectStore) SetProjectServices(context.Context, string, string, []string) ([]core.ServicePlacementChange, error) {
+func (sweepProjectStore) SetProjectServices(context.Context, string, string, []string, core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
 	return nil, nil
 }
 func (sweepProjectStore) ListServicesForProjects(context.Context, []string) (map[string][]string, error) {

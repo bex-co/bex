@@ -79,3 +79,15 @@ func RetryPlacementClear[T client.Object](ctx context.Context, fetch func() (T, 
 	}
 	return err
 }
+
+// PlacementChanged refuses a move whose resource is no longer in the
+// environment the caller observed — and authorized leaving (w4/m232). The
+// caller's optimistic-lock patch makes the compare and the write one step, so
+// a concurrent move into an ACL-bearing environment is refused, not undone.
+func PlacementChanged(current, expected string) error {
+	if current == expected {
+		return nil
+	}
+	return NewConflictError("RESOURCE_PLACEMENT_CHANGED",
+		"this resource moved to another environment while the change was being made; reload and try again", nil)
+}

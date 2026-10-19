@@ -1253,7 +1253,13 @@ type movingEnvironmentStore struct {
 	appEnv map[string]string
 }
 
-func (s *movingEnvironmentStore) SetAppEnvironment(_ context.Context, appID, _ string, environmentID string) error {
+func (s *movingEnvironmentStore) SetAppEnvironment(_ context.Context, appID, _ string, environmentID string, exit core.EnvironmentExitGuard) error {
+	// Like the PG store: the environment the row leaves is vetted first.
+	if current := s.appEnv[appID]; current != "" && current != environmentID && exit != nil {
+		if err := exit(current); err != nil {
+			return err
+		}
+	}
 	s.appEnv[appID] = environmentID
 	return nil
 }

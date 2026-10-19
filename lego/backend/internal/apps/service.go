@@ -241,6 +241,10 @@ type Service struct {
 	// unknown-versus-foreign classification and project lookup for all resource
 	// kinds, so service/Postgres/Key Value creates cannot drift.
 	Environments core.EnvironmentResolver
+	// ExitGuards authorizes a Blueprint regroup that takes a service or
+	// datastore out of an environment: an ACL-bearing one needs a fresh
+	// can_manage (w4/m232). Nil (environments unwired) has nothing to protect.
+	ExitGuards core.ExitGuardLoader
 	// pushDelivery memoizes the per-repo GitHub-grant answer behind
 	// AppView.PushDeliveryMethod (w6/m99) so projecting a whole workspace's
 	// services doesn't cost a GitHub round-trip per service. Unexported and
