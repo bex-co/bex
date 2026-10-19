@@ -28,6 +28,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -189,6 +190,183 @@ func TestKeyValuePublicFrontDoor(t *testing.T) {
 	}
 	if sts.Spec.Replicas == nil || *sts.Spec.Replicas != 1 {
 		t.Fatal("external disable stopped the internal datastore")
+	}
+}
+
+// TestKeyValueExternalToggleKeepsThePodTemplate is w4/m233: the listener and
+// its certificate stay once the store has run them, so turning external access
+// off and on again leaves the pod template alone and the store keeps running
+// with its data. Access is withdrawn at the Service and the proxy route.
+func TestKeyValueExternalToggleKeepsThePodTemplate(t *testing.T) {
+	kv := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{Name: "toggle-kv", Namespace: "default", UID: "kv-toggle-test"},
+		Spec:       appv1alpha1.KeyValueSpec{Plan: "free", Public: true, IPAllowList: []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.0/24"}}},
+	}
+	cl := fake.NewClientBuilder().WithScheme(keyValueBackupTestScheme(t)).WithObjects(kv).
+		WithStatusSubresource(&appv1alpha1.KeyValue{}).Build()
+	r := &KeyValueReconciler{Client: cl, Scheme: cl.Scheme(), KvDomain: "kv.example.test", ClusterIssuer: "letsencrypt-prod"}
+	ctx := context.Background()
+	nn := types.NamespacedName{Name: "toggle-kv", Namespace: "default"}
+	var sts appsv1.StatefulSet
+	setPublic := func(public bool) {
+		t.Helper()
+		if err := cl.Get(ctx, nn, kv); err != nil {
+			t.Fatal(err)
+		}
+		kv.Spec.Public = public
+		if err := cl.Update(ctx, kv); err != nil {
+			t.Fatal(err)
+		}
+		// The immutable connection Secret's rebuild takes one extra pass.
+		for range 2 {
+			if _, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}); err != nil {
+				t.Fatalf("reconcile public=%v: %v", public, err)
+			}
+		}
+		if err := cl.Get(ctx, nn, kv); err != nil {
+			t.Fatal(err)
+		}
+		if err := cl.Get(ctx, nn, &sts); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	setPublic(true)
+	if !kv.Status.TLSListener {
+		t.Fatal("status does not report the running TLS listener")
+	}
+	listening := sts.Spec.Template.DeepCopy()
+
+	setPublic(false)
+	if !equality.Semantic.DeepEqual(sts.Spec.Template, *listening) {
+		t.Fatalf("external disable changed the pod template, which restarts the store:\nbefore %+v\nafter  %+v", listening.Spec, sts.Spec.Template.Spec)
+	}
+	if !kv.Status.TLSListener || kv.Status.ExternalHost != "" {
+		t.Fatalf("disabled store: listener %v, external host %q", kv.Status.TLSListener, kv.Status.ExternalHost)
+	}
+	certificate := &unstructured.Unstructured{}
+	certificate.SetGroupVersionKind(certManagerCertificateGVK)
+	if err := cl.Get(ctx, types.NamespacedName{Name: keyValueTLSName(kv), Namespace: "default"}, certificate); err != nil {
+		t.Fatalf("the retained listener's Certificate was deleted: %v", err)
+	}
+
+	setPublic(true)
+	if kv.Status.ExternalHost != "toggle-kv.kv.example.test" {
+		t.Fatalf("re-enabled external host = %q", kv.Status.ExternalHost)
+	}
+	if !equality.Semantic.DeepEqual(sts.Spec.Template, *listening) {
+		t.Fatal("external re-enable changed the pod template, which restarts the store")
+	}
+}
+
+// TestKeyValueFirstExternalEnableAddsTheListener: a store created private has
+// no listener, so its first enable must add one (the one toggle that restarts,
+// which bex-api announces), and the status says so before and after.
+func TestKeyValueFirstExternalEnableAddsTheListener(t *testing.T) {
+	scheme := keyValueBackupTestScheme(t)
+	kv := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{Name: "private-kv", Namespace: "default", UID: "kv-private-test"},
+		Spec:       appv1alpha1.KeyValueSpec{Plan: "free"},
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv).
+		WithStatusSubresource(&appv1alpha1.KeyValue{}).Build()
+	r := &KeyValueReconciler{Client: cl, Scheme: scheme, KvDomain: "kv.example.test", ClusterIssuer: "letsencrypt-prod"}
+	ctx := context.Background()
+	nn := types.NamespacedName{Name: "private-kv", Namespace: "default"}
+	reconcileTwice := func() {
+		t.Helper()
+		for range 2 {
+			if _, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}); err != nil {
+				t.Fatalf("reconcile: %v", err)
+			}
+		}
+		if err := cl.Get(ctx, nn, kv); err != nil {
+			t.Fatal(err)
+		}
+	}
+	reconcileTwice()
+	var sts appsv1.StatefulSet
+	if err := cl.Get(ctx, nn, &sts); err != nil {
+		t.Fatal(err)
+	}
+	if kv.Status.TLSListener || keyValueTemplateListens(&sts) {
+		t.Fatalf("a private store runs a TLS listener: status %v", kv.Status.TLSListener)
+	}
+
+	kv.Spec.Public = true
+	if err := cl.Update(ctx, kv); err != nil {
+		t.Fatal(err)
+	}
+	reconcileTwice()
+	if err := cl.Get(ctx, nn, &sts); err != nil {
+		t.Fatal(err)
+	}
+	if !kv.Status.TLSListener || !keyValueTemplateListens(&sts) {
+		t.Fatalf("the first enable did not add the listener: status %v", kv.Status.TLSListener)
+	}
+
+	// Private again, the kept listener needs no issuer: a TLS fault on a
+	// private store must not stall its other reconciles.
+	kv.Spec.Public = false
+	if err := cl.Update(ctx, kv); err != nil {
+		t.Fatal(err)
+	}
+	r.ClusterIssuer = ""
+	reconcileTwice()
+	if err := cl.Get(ctx, nn, &sts); err != nil {
+		t.Fatal(err)
+	}
+	if !kv.Status.TLSListener || !keyValueTemplateListens(&sts) || kv.Status.Phase == appv1alpha1.KVPhaseFailed {
+		t.Fatalf("a private store with a kept listener: status %+v", kv.Status)
+	}
+
+	// Suspended, no process runs to restart, so the listener goes. (The fake
+	// client assigns no UIDs; withdrawal records the Certificate's first.)
+	certificate := &unstructured.Unstructured{}
+	certificate.SetGroupVersionKind(certManagerCertificateGVK)
+	if err := cl.Get(ctx, types.NamespacedName{Name: keyValueTLSName(kv), Namespace: "default"}, certificate); err != nil {
+		t.Fatalf("the kept listener's Certificate: %v", err)
+	}
+	certificate.SetUID("certificate-private-test")
+	if err := cl.Update(ctx, certificate); err != nil {
+		t.Fatal(err)
+	}
+	kv.Spec.Suspended = true
+	if err := cl.Update(ctx, kv); err != nil {
+		t.Fatal(err)
+	}
+	reconcileTwice()
+	if err := cl.Get(ctx, nn, &sts); err != nil {
+		t.Fatal(err)
+	}
+	if kv.Status.TLSListener || keyValueTemplateListens(&sts) {
+		t.Fatalf("a suspended private store kept its listener: status %v", kv.Status.TLSListener)
+	}
+}
+
+// TestKeyValueKeepsAListenerItsStatusReports: a cached StatefulSet read can lag
+// a first enable, so the status alone keeps the listener; nothing short of
+// suspension or a store that was never public drops it.
+func TestKeyValueKeepsAListenerItsStatusReports(t *testing.T) {
+	plan, storage := resolveKVPlan(appv1alpha1.KeyValueSpec{Plan: "free"})
+	for name, tc := range map[string]struct {
+		spec      appv1alpha1.KeyValueSpec
+		listening bool
+		domain    string
+		want      bool
+	}{
+		"public":                  {appv1alpha1.KeyValueSpec{Public: true}, false, "kv.example.test", true},
+		"private, listening":      {appv1alpha1.KeyValueSpec{}, true, "kv.example.test", true},
+		"private, never listened": {appv1alpha1.KeyValueSpec{}, false, "kv.example.test", false},
+		"suspended":               {appv1alpha1.KeyValueSpec{Suspended: true}, true, "kv.example.test", false},
+		"no external domain":      {appv1alpha1.KeyValueSpec{}, true, "", false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			kv := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "kv"}, Spec: tc.spec}
+			if got := keyValueIntentFor(kv, plan, storage, tc.domain, tc.listening).tlsListener; got != tc.want {
+				t.Fatalf("tlsListener = %v, want %v", got, tc.want)
+			}
+		})
 	}
 }
 
