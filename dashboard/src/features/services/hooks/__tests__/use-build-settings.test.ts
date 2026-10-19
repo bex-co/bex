@@ -19,6 +19,11 @@ import { useStartCommand } from "@/features/services/hooks/use-start-command";
 import { useBuildCommand } from "@/features/services/hooks/use-build-command";
 import { useDockerfilePath } from "@/features/services/hooks/use-dockerfile-path";
 
+const START = {
+  success: "services.startCommandSuccess",
+  error: "services.startCommandError",
+};
+
 beforeEach(() => {
   mockUseMutation.mockReset();
   toastSuccess.mockReset();
@@ -29,7 +34,7 @@ describe("Build & Deploy setting hooks", () => {
   it("persists a start command through setStartCommand", async () => {
     const mutate = vi.fn().mockResolvedValue({});
     mockUseMutation.mockReturnValue([mutate]);
-    const { result } = renderHook(() => useStartCommand());
+    const { result } = renderHook(() => useStartCommand(START));
 
     await act(async () => {
       expect(await result.current.setStartCommand("srv-1", "npm start")).toBe(
@@ -47,7 +52,7 @@ describe("Build & Deploy setting hooks", () => {
     mockUseMutation.mockReturnValue([
       vi.fn().mockRejectedValue(new Error("forbidden")),
     ]);
-    const { result } = renderHook(() => useStartCommand());
+    const { result } = renderHook(() => useStartCommand(START));
 
     await act(async () => {
       expect(await result.current.setStartCommand("srv-1", "npm start")).toBe(
