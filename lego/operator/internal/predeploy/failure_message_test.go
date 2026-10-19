@@ -175,6 +175,9 @@ func TestPermanentPullFailureClassification(t *testing.T) {
 		{"failed to resolve reference: 404 Not Found", true},
 		{"MANIFEST_UNKNOWN: manifest unknown", true},
 		{"unauthorized: authentication required", true},
+		// Docker Hub's answer for a repository that does not exist, as captured
+		// on production (w8/131).
+		{"Back-off pulling image \"docker.io/library/qa532-no-such-image-zzz:latest\": ErrImagePull: failed to pull and unpack image \"docker.io/library/qa532-no-such-image-zzz:latest\": failed to resolve reference \"docker.io/library/qa532-no-such-image-zzz:latest\": pull access denied, repository does not exist or may require authorization: server message: insufficient_scope: authorization failed", true},
 		{"Back-off pulling image example.org/web:missing", false},
 		{"429 Too Many Requests", false},
 		{"503 Service Unavailable", false},
