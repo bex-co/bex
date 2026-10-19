@@ -154,7 +154,7 @@ func (r *AppReconciler) ensureSelectedReleaseConfig(ctx context.Context, app *ap
 	// The persisted record is the commit point. On retry its copies are reused;
 	// changed saved/group values cannot rewrite an already selected release.
 	app.Status.ConfigSnapshotGeneration = ref.Generation
-	effectiveApp := rec.projectRuntimeApp(app, ref)
+	effectiveApp := rec.projectRuntimeApp(app, ref.Generation)
 	for _, source := range releaseConfigSources(effectiveApp) {
 		if _, err := r.readMaterializedConfiguration(ctx, effectiveApp, source); err != nil {
 			return err
@@ -279,18 +279,53 @@ func selectedSourceName(app *appv1alpha1.App, ref *appv1alpha1.ReleaseConfigRefe
 }
 
 func (r *AppReconciler) selectedRuntimeApp(ctx context.Context, app *appv1alpha1.App) (*appv1alpha1.App, error) {
+	rec, gen, err := r.runtimeRecord(ctx, app)
+	if err != nil || rec == nil {
+		if err != nil {
+			return nil, err
+		}
+		return r.retainReleaseSources(ctx, app)
+	}
+	return rec.projectRuntimeApp(app, gen), nil
+}
+
+// runtimeRecord is the record this pass renders the release from, and its
+// generation: a held release's adoption record, or a selected release's
+// (Restart, rollback, environment reuse). nil renders the saved spec.
+func (r *AppReconciler) runtimeRecord(ctx context.Context, app *appv1alpha1.App) (*runtimeConfigRecord, int64, error) {
+	if rec, err := r.heldReleaseRecord(ctx, app); err != nil || rec != nil {
+		return rec, app.Status.ReleaseGeneration, err
+	}
 	ref := app.ActiveReleaseConfig()
 	if ref == nil || ref.SourceGeneration == 0 || canceledOverServed(app) {
-		return r.retainReleaseSources(ctx, app)
+		return nil, 0, nil
 	}
 	rec, err := r.readRuntimeConfigRecord(ctx, app, ref.Generation)
 	if err != nil {
-		return nil, fmt.Errorf("read materialized release %d: %w", ref.Generation, err)
+		return nil, 0, fmt.Errorf("read materialized release %d: %w", ref.Generation, err)
 	}
-	return rec.projectRuntimeApp(app, ref), nil
+	return rec, ref.Generation, nil
 }
 
-func (rec *runtimeConfigRecord) projectRuntimeApp(app *appv1alpha1.App, ref *appv1alpha1.ReleaseConfigReference) *appv1alpha1.App {
+// heldReleaseRecord is the record a held release (heldRelease) renders from:
+// the settings captured when it was adopted. It is nil for any other release,
+// and for a held one adopted before those records existed, which keeps
+// projecting the saved spec.
+func (r *AppReconciler) heldReleaseRecord(ctx context.Context, app *appv1alpha1.App) (*runtimeConfigRecord, error) {
+	if !heldRelease(app) {
+		return nil, nil
+	}
+	rec, err := r.readRuntimeConfigRecord(ctx, app, app.Status.ReleaseGeneration)
+	if apierrors.IsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read held release %d: %w", app.Status.ReleaseGeneration, err)
+	}
+	return rec, nil
+}
+
+func (rec *runtimeConfigRecord) projectRuntimeApp(app *appv1alpha1.App, generation int64) *appv1alpha1.App {
 	effectiveApp := app.DeepCopy()
 	effectiveApp.Spec.StartCommand = rec.spec.StartCommand
 	if rec.spec.Command != nil {
@@ -299,7 +334,7 @@ func (rec *runtimeConfigRecord) projectRuntimeApp(app *appv1alpha1.App, ref *app
 	if rec.spec.HealthCheckPath != nil {
 		effectiveApp.Spec.HealthCheckPath = *rec.spec.HealthCheckPath
 	}
-	explicitScale := app.Annotations[appv1alpha1.AnnotationReleaseConfigScaled] == strconv.FormatInt(ref.Generation, 10)
+	explicitScale := app.Annotations[appv1alpha1.AnnotationReleaseConfigScaled] == strconv.FormatInt(generation, 10)
 	if rec.spec.Replicas != nil && !explicitScale && (rec.spec.SavedReplicas == nil || *rec.spec.SavedReplicas == app.Spec.Replicas) {
 		effectiveApp.Spec.Replicas = *rec.spec.Replicas
 	}
@@ -315,12 +350,11 @@ func (rec *runtimeConfigRecord) projectRuntimeApp(app *appv1alpha1.App, ref *app
 // artifact rolled back after a switch to an image keeps its baked launch, and an
 // image one after a switch back to Git its shell launch (w4/m202).
 func (r *AppReconciler) selectedRuntime(ctx context.Context, app *appv1alpha1.App) (*appv1alpha1.App, launchMode, error) {
-	if ref := app.ActiveReleaseConfig(); ref != nil && ref.SourceGeneration != 0 && !canceledOverServed(app) {
-		rec, err := r.readRuntimeConfigRecord(ctx, app, ref.Generation)
+	if rec, gen, err := r.runtimeRecord(ctx, app); err != nil || rec != nil {
 		if err != nil {
-			return nil, launchUnknown, fmt.Errorf("read materialized release %d: %w", ref.Generation, err)
+			return nil, launchUnknown, err
 		}
-		return rec.projectRuntimeApp(app, ref), rec.launch(app), nil
+		return rec.projectRuntimeApp(app, gen), rec.launch(app), nil
 	}
 	runtime, err := r.retainReleaseSources(ctx, app)
 	if err != nil || !sourceUpdatePending(app) || canceledOverServed(app) {
@@ -389,6 +423,12 @@ func releaseRecordSpec(app *appv1alpha1.App) appv1alpha1.ReleaseRecordSpec {
 func (r *AppReconciler) writeRuntimeConfigRecord(ctx context.Context, app *appv1alpha1.App, generation int64, record *runtimeConfigRecord) error {
 	record.spec.SavedReplicas = new(app.Spec.Replicas)
 	record.spec.SettingsFingerprint = releaseSettingsFingerprint(app.Spec)
+	return r.persistRuntimeConfigRecord(ctx, app, generation, record)
+}
+
+// persistRuntimeConfigRecord stores record for generation with the stamps it
+// already carries.
+func (r *AppReconciler) persistRuntimeConfigRecord(ctx context.Context, app *appv1alpha1.App, generation int64, record *runtimeConfigRecord) error {
 	raw, err := json.Marshal(record.template)
 	if err != nil {
 		return err

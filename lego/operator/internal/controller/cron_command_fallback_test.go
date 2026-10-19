@@ -53,7 +53,7 @@ func TestCronCommandFallbackThroughTheCarryingRelease(t *testing.T) {
 
 	cleared := cron(func(a *appv1alpha1.App) { a.Spec.StartCommand = "" })
 	rec := &runtimeConfigRecord{spec: releaseRecordSpec(cleared)}
-	selected := rec.projectRuntimeApp(cron(nil), &appv1alpha1.ReleaseConfigReference{Generation: 2})
+	selected := rec.projectRuntimeApp(cron(nil), 2)
 	if selected.Spec.Command != "" || selected.Spec.StartCommand != "" {
 		t.Errorf("carrying release spec command=%q startCommand=%q, want no override", selected.Spec.Command, selected.Spec.StartCommand)
 	}
