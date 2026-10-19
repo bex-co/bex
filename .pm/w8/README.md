@@ -355,6 +355,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **123** — [A far-future log endTime with no startTime still returns 500 (or times out)](123.md) ← from `/qa-find-bugs-cli` solo loop run 2 sweep r1, 2026-10-19
+
 - [x] **122** — [Production CI runner's Docker cannot apply memory or CPU limits](done/122.md) — **DONE (2026-10-18: cgroup v2 nesting shipped in block-eden-mono `8abb38b0d5` + `d62abafdde`; all 10 runners rolled onto the new image while idle; a `--memory 512m --cpus 1 --pids-limit 128` container runs in a bex-production runner)**
 
 - [x] **121** — [Platform-subdomain services answer plain HTTP instead of redirecting to HTTPS](done/121.md) — **PROMOTED (2026-10-18)** to `m118`.
