@@ -272,6 +272,11 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Services status badge: a free-tier App auto-hibernated after idle (bex extension)",
   },
+  "services.undeployedChangesSuspendedHint": {
+    message: "已保存的更改尚未生效。请先恢复服务，再部署以应用这些更改。",
+    description:
+      "Notice when a suspended service has saved settings that differ from the release it serves: no deploy can run until it resumes",
+  },
   "services.undeployedChangesHint": {
     message: "已保存的更改尚未生效。请通过常规部署应用这些更改。",
     description:

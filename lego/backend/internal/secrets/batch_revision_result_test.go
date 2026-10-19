@@ -105,7 +105,7 @@ func environmentPatchSurfaceCall(t *testing.T, svc *Service, surface string) fun
 		call = func(args map[string]any) map[string]any {
 			variable := args["envVars"].([]map[string]any)[0]
 			result := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
-				RequestString:  `mutation($mode:String!,$revision:String,$value:String!) { patchServiceEnvironment(serviceId:"web", saveMode:$mode, expectedEnvRevision:$revision, envVars:[{key:"TOKEN",value:$value}]) { revision rolledOut } }`,
+				RequestString:  `mutation($mode:String!,$revision:String,$value:String!) { patchServiceEnvironment(serviceId:"web", saveMode:$mode, expectedEnvRevision:$revision, envVars:[{key:"TOKEN",value:$value}]) { revision rolledOut rolloutError } }`,
 				VariableValues: map[string]any{"mode": args["saveMode"], "revision": args["expectedEnvRevision"], "value": variable["value"]},
 			})
 			if len(result.Errors) != 0 {

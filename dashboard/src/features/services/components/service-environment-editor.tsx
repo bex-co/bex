@@ -99,6 +99,7 @@ import { useSensitiveReveals } from "@/features/services/hooks/use-sensitive-rev
 import { EnvImportDialog } from "./env-import-dialog";
 import { ReservedEnvKeyNotice } from "./reserved-env-key-notice";
 import { SecretFileContentDialog } from "./secret-file-content-dialog";
+import { PermissionMenuItem } from "@/features/capabilities/components/permission-menu-item";
 
 type SaveChoice = "only" | "deploy" | "rebuild";
 
@@ -116,7 +117,14 @@ const ENV_ERROR_COPY: Record<RefusalKind, { title: string; body: string }> = {
   },
 };
 
-export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
+export function ServiceEnvironmentEditor({
+  serviceId,
+  suspended = false,
+}: {
+  serviceId: string;
+  /** From the page's cached service read, so no second deploy-actions query. */
+  suspended?: boolean;
+}) {
   const env = useEnvVarKeys(serviceId);
   const files = useSecretFileNames(serviceId);
   const revealEnv = useRevealEnvVar(serviceId);
@@ -139,6 +147,11 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
       resourceId={serviceId}
       // The reserved-PORT refusal links to THIS service's port control.
       portSettingsServiceId={serviceId}
+      // A suspended service deploys nothing: the deploying save modes wait for
+      // Resume, as Manual Deploy does (w4/m234).
+      deployBlockedReason={
+        suspended ? t("capabilities.blockedSuspended") : undefined
+      }
       envKeys={env.keys}
       // While the keys read is in flight the manifest flag may not have
       // arrived yet; the editor fails closed on any row missing it rather than
@@ -253,6 +266,12 @@ export interface EnvironmentEditorProps {
    * its notice links to the services list instead.
    */
   portSettingsServiceId?: string;
+  /**
+   * Why the deploying save modes cannot run now — a suspended service
+   * (w4/m234). Save only becomes the primary action, and the two deploying
+   * items stay disabled with this reason.
+   */
+  deployBlockedReason?: string;
 }
 
 /**
@@ -277,6 +296,7 @@ export function EnvironmentEditor({
   generateOnServer = false,
   copy,
   portSettingsServiceId,
+  deployBlockedReason,
 }: EnvironmentEditorProps) {
   const { t } = useTranslations();
   const envTitle = copy?.envTitle ?? t("services.envTitle");
@@ -973,10 +993,16 @@ export function EnvironmentEditor({
                     <Button
                       className="flex-1 rounded-r-none sm:flex-none"
                       disabled={saveDisabled}
-                      onClick={() => void commit("deploy")}
+                      onClick={() =>
+                        void commit(deployBlockedReason ? "only" : "deploy")
+                      }
                     >
                       {busy ? <Loader2 className="animate-spin" /> : <Check />}
-                      {t("services.environmentSaveDeploy")}
+                      {t(
+                        deployBlockedReason
+                          ? "services.environmentSaveOnly"
+                          : "services.environmentSaveDeploy",
+                      )}
                     </Button>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -990,18 +1016,20 @@ export function EnvironmentEditor({
                   </div>
                 </PermissionTooltip>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem
+                  <PermissionMenuItem
                     disabled={saveDisabled}
+                    permissionReason={deployBlockedReason}
                     onSelect={() => void commit("rebuild")}
                   >
                     {t("services.environmentSaveRebuild")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
+                  </PermissionMenuItem>
+                  <PermissionMenuItem
                     disabled={saveDisabled}
+                    permissionReason={deployBlockedReason}
                     onSelect={() => void commit("deploy")}
                   >
                     {t("services.environmentSaveDeploy")}
-                  </DropdownMenuItem>
+                  </PermissionMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     disabled={saveDisabled}

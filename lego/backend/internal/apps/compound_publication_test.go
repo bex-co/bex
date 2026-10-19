@@ -245,6 +245,51 @@ func TestCompoundPatchRebasesOnALostRace(t *testing.T) {
 	}
 }
 
+// TestCompoundPatchRacedBySuspendIsHeld: a suspend that lands between the
+// staged setters and the publish must hold the change for the next deploy.
+// Stamping the release with no row would let Resume roll it unrecorded
+// (w4/m234, w5/m114).
+func TestCompoundPatchRacedBySuspendIsHeld(t *testing.T) {
+	st := &recordingStore{}
+	app := preDeployApp()
+	svc, cl := newService(st, app)
+	writes := observeAppWrites(svc, cl)
+	raced := false
+	writes.beforePatch = func(ctx context.Context, inner client.WithWatch) error {
+		if raced {
+			return nil
+		}
+		raced = true
+		var live appv1alpha1.App
+		if err := inner.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web"}, &live); err != nil {
+			return err
+		}
+		base := client.MergeFrom(live.DeepCopy())
+		live.Spec.Suspended = true
+		live.Generation = 7
+		return inner.Patch(ctx, &live, base)
+	}
+	empty := ""
+	if _, err := svc.ApplyServicePatch(context.Background(), "web", ServicePatch{
+		HealthCheckPath: &empty, PreDeployCommand: &empty,
+	}); err != nil {
+		t.Fatalf("ApplyServicePatch: %v", err)
+	}
+	final := getApp(t, cl, "web")
+	if !final.Spec.Suspended || final.Spec.HealthCheckPath != "" || final.Spec.PreDeployCommand != "" {
+		t.Fatalf("final spec = %+v, want suspended with both settings cleared", final.Spec)
+	}
+	if got, want := final.Annotations[appv1alpha1.AnnotationReleaseGeneration], app.Annotations[appv1alpha1.AnnotationReleaseGeneration]; got != want {
+		t.Errorf("release generation = %q, want the prior %q: nothing deploys while suspended", got, want)
+	}
+	if got := final.Annotations[appv1alpha1.AnnotationPendingSourceGeneration]; got != "8" {
+		t.Errorf("pending generation = %q, want 8: the change waits for the next deploy", got)
+	}
+	if len(st.deployCalls) != 0 {
+		t.Fatalf("deploy rows = %+v, want none for a suspended service", st.deployCalls)
+	}
+}
+
 // TestCompoundPatchStopsAfterRepeatedConflicts: a publish that keeps losing
 // answers a retryable conflict rather than overwriting the winner.
 func TestCompoundPatchStopsAfterRepeatedConflicts(t *testing.T) {

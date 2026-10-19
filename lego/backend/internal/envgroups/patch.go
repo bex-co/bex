@@ -329,6 +329,12 @@ func (s *Service) rollLink(ctx context.Context, gid, serviceID string, saveMode 
 	if !mountsGroup(a, gid) {
 		return false, core.ErrNotFound
 	}
+	// A suspended service deploys nothing, so a deploying group save leaves it
+	// pending for its next deploy, like an Auto-Deploy-off service, instead of
+	// filing a deploy the reconciler would cancel (w4/m234).
+	if a.Spec.Suspended {
+		return true, nil
+	}
 	if saveMode == SaveModeRebuild {
 		// An explicit rebuild is the caller's deliberate choice, not the
 		// implicit fan-out Render gates on Auto-Deploy, so it is ungated.

@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 
 vi.mock("@/features/services/components/service-environment-editor", () => ({
-  ServiceEnvironmentEditor: () => <div>environment editor</div>,
+  ServiceEnvironmentEditor: ({ suspended }: { suspended?: boolean }) => (
+    <div>environment editor{suspended ? " (suspended)" : ""}</div>
+  ),
 }));
 const createGroup = vi.fn();
 const refetch = vi.fn().mockResolvedValue([]);
@@ -218,5 +220,29 @@ describe("ServiceEnvPage undeployed-changes notice", () => {
     useServer.mockReturnValue({ service: { undeployedChanges: false } });
     rerender(<ServiceEnvPage serviceId="srv-1" />);
     expect(screen.queryByText(NOTICE)).not.toBeInTheDocument();
+  });
+});
+
+// w4/m234: the page hands the editor the service's suspension from its cached
+// read, so the deploying save modes are gated without a second query, and the
+// pending notice says to resume first.
+describe("ServiceEnvPage on a suspended service", () => {
+  it("gates the editor and says to resume before deploying", () => {
+    useServer.mockReturnValue({
+      service: {
+        id: "srv-1",
+        name: "qa-service",
+        environmentId: "env-qa",
+        suspended: true,
+        undeployedChanges: true,
+      },
+      loading: false,
+      refetch,
+    });
+    render(<ServiceEnvPage serviceId="srv-1" />);
+    expect(
+      screen.getByText("environment editor (suspended)"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(/Resume/);
   });
 });

@@ -224,3 +224,39 @@ func TestPatchLockedLeavesARecreatedNamesakeAlone(t *testing.T) {
 		t.Fatalf("the namesake = %s restarted at %q, want it untouched", live.UID, live.Spec.RestartedAt)
 	}
 }
+
+// TestARollingWriteOnASuspendedServiceIsHeldForTheNextDeploy is w4/m234: a
+// release-rolling write on a suspended service stamped a release and opened a
+// config-change row the reconciler then closed as canceled. It now opens no
+// row and marks the change pending, so the operator keeps the prior release
+// serving through Resume and the next deploy rolls it; a running service's
+// write still opens exactly one row.
+func TestARollingWriteOnASuspendedServiceIsHeldForTheNextDeploy(t *testing.T) {
+	for _, suspended := range []bool{true, false} {
+		t.Run(fmt.Sprintf("suspended=%v", suspended), func(t *testing.T) {
+			cl, a := lockedPatchFixture(t, interceptor.Funcs{})
+			if suspended {
+				a.Spec.Suspended = true
+				if err := cl.Update(context.Background(), a); err != nil {
+					t.Fatal(err)
+				}
+			}
+			ds := &fakeDeployStore{}
+			tr := &Tracker{Store: ds}
+			if err := tr.PatchLocked(context.Background(), cl, a, store.TriggerConfigChange, func(a *appv1alpha1.App) error {
+				a.Spec.HealthCheckPath = "/healthz"
+				return nil
+			}); err != nil {
+				t.Fatal(err)
+			}
+			_, stamped := a.Annotations[appv1alpha1.AnnotationReleaseGeneration]
+			_, pending := a.Annotations[appv1alpha1.AnnotationPendingSourceGeneration]
+			switch {
+			case suspended && (len(ds.created) != 0 || stamped || !pending):
+				t.Fatalf("suspended write: rows %d, stamped %v, pending %v; want no row, no stamp, pending", len(ds.created), stamped, pending)
+			case !suspended && (len(ds.created) != 1 || !stamped || pending):
+				t.Fatalf("running write: rows %d, stamped %v, pending %v; want one row, a stamp, nothing pending", len(ds.created), stamped, pending)
+			}
+		})
+	}
+}

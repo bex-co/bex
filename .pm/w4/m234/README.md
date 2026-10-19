@@ -1,18 +1,18 @@
 # w4 · m234 — A save on a suspended service is a save, never a deploy that cannot run
 
-**Worker:** worker4 **Goal:** saving configuration on a suspended service never claims a deployment and never files a deploy that can only be canceled. The save stands, every surface says it waits for resume and a deploy, and the dashboard offers only the modes that can work. **Status:** todo
+**Worker:** worker4 **Goal:** saving configuration on a suspended service never claims a deployment and never files a deploy that can only be canceled. The save stands, every surface says it waits for resume and a deploy, and the dashboard offers only the modes that can work. **Status:** in progress (t001–t007 done 2026-10-19; t008 live closeout waits on the deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Backend: a deploying environment save on a suspended service stages like Save only and says why | 45m | — |
-| [t002](t002.md) | Environment groups: report a suspended linked service as pending, not rolled | 40m | w4/m234/t001 |
-| [t003](t003.md) | Dashboard: gate the deploying save modes and the pending notice on suspension | 45m | w4/m234/t001 |
-| [t004](t004.md) | Shared rollout tracker: no deploy row for a rolling write on a suspended service (blast radius) | 60m | w4/m234/t001 |
-| [t005](t005.md) | Render parity | 20m | w4/m234/t002, w4/m234/t003, w4/m234/t004 |
-| [t006](t006.md) | Simplify | 15m | w4/m234/t005 |
-| [t007](t007.md) | Test coverage | 45m | w4/m234/t005 |
+| [t001](done/t001.md) | Backend: a deploying environment save on a suspended service stages like Save only and says why — **DONE** | 45m | — |
+| [t002](done/t002.md) | Environment groups: report a suspended linked service as pending, not rolled — **DONE** | 40m | w4/m234/t001 |
+| [t003](done/t003.md) | Dashboard: gate the deploying save modes and the pending notice on suspension — **DONE** | 45m | w4/m234/t001 |
+| [t004](done/t004.md) | Shared rollout tracker: no deploy row for a rolling write on a suspended service (blast radius) — **DONE** | 60m | w4/m234/t001 |
+| [t005](done/t005.md) | Render parity — **DONE** | 20m | w4/m234/t002, w4/m234/t003, w4/m234/t004 |
+| [t006](done/t006.md) | Simplify — **DONE** | 15m | w4/m234/t005 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 45m | w4/m234/t005 |
 | [t008](t008.md) | Closeout | 25m | w4/m234/t006, w4/m234/t007 |
 
 Eight tasks, 295m (4h55m). One **major** finding. This milestone schedules the work only.
