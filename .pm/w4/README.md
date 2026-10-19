@@ -332,11 +332,9 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 - [x] **339** — [Workspace quota error says "limited to 1 Postgres databases"](done/339.md) — **DONE 2026-10-19, `5e75de920`.** The cap refusal reads the singular at limit 1 for all three caps. Live: a second free Postgres in `bex-canary` gets 400 `WORKSPACE_RESOURCE_LIMIT` "workspace is limited to 1 Postgres database; …".
 
 - [x] **338** — [Local Traefik ignores its Recreate strategy, so an edge roll stalls](done/338.md) — **DONE 2026-10-18.** Base sets the chart's real `updateStrategy: Recreate`; prod renders byte-identical (`RollingUpdate 0/1`); gitops-validate asserts both. The live local roll was not exercised because the mock cluster was down.
-<<<<<<< ours
-- [x] **345** — [Coverage record: HTTP request metrics count known traffic exactly; filters and grouping narrow correctly](done/345.md) ← live `/qa-find-bugs w4` pass a3d50e, 2026-10-19 UTC; a record, not work to do. 30×200 + 20×404 (+1 liveness) read back as 51 / 31 / 20 on REST `aggregateBy=statusCode` and the dashboard, with exact status and path filters. Bandwidth pre-creation zeros (`IncreaseOrZero`) and the platform-wide `degraded_sources=direct` (m139) were observed, not filed.
-=======
 - [x] **346** — [Coverage record: deployed w8/m116 backward log paging holds on REST, GraphQL and the dashboard for a 500-line burst](done/346.md) ← live `/qa-find-bugs w4` pass 5c2e91, 2026-10-19 UTC; a record, not work to do. Backward and forward REST cursor walks each visit 500/500 lines once, newest-first and oldest-first respectively, with exact `hasMore`. GraphQL agrees and the dashboard shows all 500 oldest at the top. Wire evidence for `w8/blocked/m116` t006 (its CLI step remains).
->>>>>>> theirs
+
+- [x] **345** — [Coverage record: HTTP request metrics count known traffic exactly; filters and grouping narrow correctly](done/345.md) ← live `/qa-find-bugs w4` pass a3d50e, 2026-10-19 UTC; a record, not work to do. 30×200 + 20×404 (+1 liveness) read back as 51 / 31 / 20 on REST `aggregateBy=statusCode` and the dashboard, with exact status and path filters. Bandwidth pre-creation zeros (`IncreaseOrZero`) and the platform-wide `degraded_sources=direct` (m139) were observed, not filed.
 
 - [ ] **344** — [Billing's resource-cap tile says "Near limit" for a cap that is full](344.md) ← live `/qa-find-bugs w4` pass 7b1f38, 2026-10-19 UTC. `resource-caps.tsx:35-41` has only an 80 % "Near limit" state, so `Postgres 1 / 1` reads "Near limit" while New Postgres refuses with "Postgres limit reached" (nothing was created). Minor, 25m.
 
