@@ -1,6 +1,6 @@
 # w4 · m230 — Record a free-tier wake as a wake, not a recovery
 
-**Worker:** worker4 **Goal:** an idle wake or a user Resume records only its own lifecycle event, at the time it happened. `server_available` ("Service recovered") stays the partner of a recorded `server_failed`, as Render and ADR052 define it. **Status:** in progress (t001–t006 done 2026-10-19; t007 live closeout waits on the deploy)
+**Worker:** worker4 **Goal:** an idle wake or a user Resume records only its own lifecycle event, at the time it happened. `server_available` ("Service recovered") stays the partner of a recorded `server_failed`, as Render and ADR052 define it. **Status:** done (2026-10-19, loopx w4)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | [t004](done/t004.md) | Render parity — **DONE** | 15m | w4/m230/t003 |
 | [t005](done/t005.md) | Simplify — **DONE** | 10m | w4/m230/t004 |
 | [t006](done/t006.md) | Test coverage — **DONE** | 45m | w4/m230/t004 |
-| [t007](t007.md) | Closeout | 60m | w4/m230/t005, w4/m230/t006 |
+| [t007](done/t007.md) | Closeout — **DONE** | 60m | w4/m230/t005, w4/m230/t006 |
 
 Seven tasks, 250m total (4h10m). One **major** finding (an unpaired recovery event on a cold wake) and one **minor** finding (the wake event is stamped late). Both come from the same observed-state projector. This milestone schedules the work only.
 
