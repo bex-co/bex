@@ -312,6 +312,7 @@ type AppReconciler struct {
 	Runtime            *bexruntime.OpenSandbox // OpenSandbox client (ModeOpenSandbox)
 	BaseDomain         string                  // optional: "<name>.<BaseDomain>" when Expose && Host=="" (e.g. bex.co)
 	ClusterIssuer      string                  // cert-manager ClusterIssuer for App Ingresses (letsencrypt-staging|-prod)
+	HTTPSRedirect      bool                    // redirect every tenant host's plain HTTP to HTTPS (httpsRedirectSpec); BEX_HTTPS_REDIRECT=false turns it off
 	ActivatorService   string                  // k8s Service name of the wake activator; empty => auto-sleep disabled
 	ActivatorNamespace string                  // namespace of the wake activator Service (default bex-system)
 	ActivatorPort      int                     // activator listen port (default 8888)
@@ -3605,12 +3606,34 @@ func (r *AppReconciler) reconcileWebsocketMeterMiddleware(ctx context.Context, a
 // when non-empty, wire Traefik HTTP Middlewares (the ipAllowList layers and
 // WebSocket egress meter) via
 // the router.middlewares Ingress annotation — comma-joined, which Traefik
-// applies as an AND chain.
+// applies as an AND chain. The HTTPS redirect (httpsRedirectSpec) leads the
+// chain.
 func (r *AppReconciler) reconcileIngress(ctx context.Context, app *appv1alpha1.App, hosts []string, svc string, port int32, middlewareNames []string) error {
 	redirectSources, err := r.reconcileHostRedirects(ctx, app, hosts, svc, port)
 	if err != nil {
 		return err
 	}
+	httpsRedirect := len(hosts) > 0 && r.HTTPSRedirect
+	if httpsRedirect {
+		if err := upsertOwned(ctx, r.Client, r.Scheme, app, traefikHTTPMiddlewareGVK, httpsRedirectName(app), httpsRedirectSpec); err != nil {
+			return err
+		}
+		middlewareNames = append([]string{httpsRedirectName(app)}, middlewareNames...)
+	}
+	if err := r.applyAppIngress(ctx, app, hosts, svc, port, middlewareNames, redirectSources); err != nil {
+		return err
+	}
+	if !httpsRedirect {
+		// Only once the Ingress no longer names it: Traefik disables a router
+		// whose middleware is missing.
+		return deleteOwned(ctx, r.Client, app, traefikHTTPMiddlewareGVK, httpsRedirectName(app))
+	}
+	return nil
+}
+
+// applyAppIngress writes the App's serving Ingress for hosts, or deletes it
+// when there are none.
+func (r *AppReconciler) applyAppIngress(ctx context.Context, app *appv1alpha1.App, hosts []string, svc string, port int32, middlewareNames []string, redirectSources map[string]bool) error {
 	if len(hosts) == 0 {
 		return r.deleteStaleChildren(ctx, &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}})
 	}
@@ -3619,7 +3642,7 @@ func (r *AppReconciler) reconcileIngress(ctx context.Context, app *appv1alpha1.A
 		refs[i] = traefikMiddlewareRef(app.Namespace, name)
 	}
 	ing := &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
-	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, ing, func() error {
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, ing, func() error {
 		r.applyIngressRouting(ing, refs)
 		for i, host := range hosts {
 			if redirectSources[host] {
@@ -3631,6 +3654,18 @@ func (r *AppReconciler) reconcileIngress(ctx context.Context, app *appv1alpha1.A
 	})
 	return err
 }
+
+// httpsRedirectSpec is the Traefik RedirectScheme every tenant host's Ingress
+// leads its middleware chain with (BEX_HTTPS_REDIRECT, w8/m118): Render
+// redirects every HTTP request to HTTPS, permanently. Traefik mints a
+// plain-HTTP router and a TLS sibling from each Ingress rule and applies the
+// chain to both; a request already on https passes through. The `web`
+// entrypoint deliberately has no global redirect, so cert-manager's HTTP-01
+// solver — its own Ingress, without the App's middlewares — still answers on
+// :80.
+var httpsRedirectSpec = map[string]any{"redirectScheme": map[string]any{"scheme": "https", "permanent": true}}
+
+func httpsRedirectName(app *appv1alpha1.App) string { return app.Name + "-https" }
 
 // effectiveHostRedirects returns only well-formed source->target entries whose
 // hosts both exist in the effective host set. Invalid or stale intent degrades

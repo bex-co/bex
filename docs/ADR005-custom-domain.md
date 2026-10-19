@@ -49,6 +49,15 @@ The operator remains mechanism-only. It does not resolve DNS or transition domai
 
 When a safe shared-hosting suffix is configured, the traffic target is the App's platform host. Apex domains use provider ALIAS/ANAME/CNAME-flattening because bex has no stable tenant-facing load-balancer IP. Production must not enable an ordinary registrable `BEX_BASE_DOMAIN`; ADR029's Public Suffix/browser-isolation gate still applies.
 
+**HTTP redirects to HTTPS (w8/m118).** Render redirects every HTTP request to HTTPS, and bex now does the same for every tenant host: platform subdomains, verified custom domains, static sites, and a hibernated service behind the activator. The auto-paired sibling's own redirect already targets `https://`. The App's Ingress leads its Traefik middleware chain with an owned `<app>-https` RedirectScheme to `https`. It is permanent: 301, or 308 for a request other than GET or HEAD. Path and query are kept. Traefik builds a plain-HTTP router and a `websecure-` TLS sibling from each rule and applies the chain to both. A request already on https passes through, so serving and the bytes the TLS sibling carries (w1/m51) are unchanged. An untrusted client's `X-Forwarded-Proto` cannot skip the redirect. The `web` entrypoint still has no global redirect, so cert-manager's HTTP-01 solver keeps answering on :80, through its own Ingress that carries none of the App's middlewares. A throwaway kind cluster running the pinned Traefik v3.7.5 with the production values confirmed each of these behaviors (2026-10-18). Some things follow, as on Render:
+
+- `ws://` clients and `http://` webhook senders must use `wss://` and `https://`.
+- A custom domain whose certificate is still pending redirects to an https endpoint that serves the platform wildcard certificate until issuance completes.
+- A Cloudflare-proxied domain must use Full (strict) SSL mode; Flexible mode reaches the origin over HTTP and loops.
+- HTTPS on a port other than 443 is redirected to 443.
+
+`BEX_HTTPS_REDIRECT=false` turns the redirect off for a cluster whose hosts get no certificates. HSTS is deliberately not sent yet. A tenant that wants it can set the header itself; a platform-wide policy on the shared suffix would bind every tenant at once, and it would need a decision on preload and subdomains first.
+
 Cloudflare-for-SaaS registration, when used at the edge, remains an operational step outside this ownership state machine. The database claim gates Bex routing; edge custom-hostname registration and edge/origin certificate issuance are separate convergence mechanisms.
 
 ## www ↔ apex pairing
