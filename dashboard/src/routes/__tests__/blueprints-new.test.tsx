@@ -643,7 +643,9 @@ describe("NewBlueprintPage", () => {
     await user.click(await screen.findByRole("tab", { name: /public git/i }));
     await user.type(screen.getByLabelText("Repository URL"), "not-a-url");
 
-    expect(screen.getByText(/enter a valid/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/enter an https:\/\/ url, or a github ssh url/i),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /deploy blueprint/i }),
     ).toBeDisabled();
