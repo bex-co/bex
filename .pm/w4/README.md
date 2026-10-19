@@ -329,6 +329,10 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **351** — [A legacy Free cron job's Plan page pre-selects nothing and never says it runs on Free](351.md) ← live `/qa-find-bugs w4` pass 65314e, 2026-10-19 UTC. The picker hides Free for a paid-only type, but seeds its selection with the current `free`, so no card is checked and nothing explains the ADR030 §7 transition.
+
+- [ ] **352** — [A mistyped plan on a cron job, worker or private service is told `free` is a valid choice](352.md) ← live `/qa-find-bugs w4` pass 65314e, 2026-10-19 UTC. `normalizeTierOrPlan` and `checkPlan` list the whole ladder before the paid-only check runs.
+
 - [ ] **350** — [A never-healthy service can still record "Service recovered" with no failure](350.md) ← `w4/m230` t003 adjacent-class audit, 2026-10-19. An empty availability baseline outside hibernation lets a first unhealthy conclusion latch silently; the datastore arming rule is the precedent.
 
 - [x] **348** — [Coverage record: API keys are workspace-scoped and revocation kills already-issued tokens within seconds](done/348.md) ← live `/qa-find-bugs w4` pass 6e19ab, 2026-10-19 UTC; a record, not work to do. A bex-canary key's bearer sees only bex-canary (other workspaces 403), and its pre-revocation access token got 401 two seconds after Revoke. Notes one self-inflicted secret exposure, revoked within about a minute.
