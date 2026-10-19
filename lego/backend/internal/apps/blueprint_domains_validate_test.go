@@ -38,15 +38,17 @@ func TestBlueprintValidateRefusesUnclaimableDomains(t *testing.T) {
 	svc, _ := newBaseDomainService("onbex.co", "dashboard.bex.co", other)
 
 	refused := map[string]string{
-		"dashboard.bex.co":  "reserved platform hostname",
-		"foo.onbex.co":      "reserved platform hostname",
-		"onbex.co":          "reserved platform hostname",
-		"10.0.0.1":          `invalid hostname "10.0.0.1"`,
-		"localhost":         `invalid hostname "localhost"`,
-		"co.uk":             "it is a public suffix",
-		"github.io":         "it is a public suffix",
-		"'*.example.com'":   "wildcard hostnames are not allowed",
-		"taken.example.com": "this domain already exists on another site",
+		"dashboard.bex.co":                       "reserved platform hostname",
+		"foo.onbex.co":                           "reserved platform hostname",
+		"onbex.co":                               "reserved platform hostname",
+		"10.0.0.1":                               `invalid hostname "10.0.0.1"`,
+		"localhost":                              `invalid hostname "localhost"`,
+		"co.uk":                                  "it is a public suffix",
+		"github.io":                              "it is a public suffix",
+		strings.Repeat("a", 64) + ".example.com": "each label must be at most 63 characters",
+		"qa.example.123":                         "the top-level domain cannot be numeric",
+		"'*.example.com'":                        "wildcard hostnames are not allowed",
+		"taken.example.com":                      "this domain already exists on another site",
 	}
 	for host, want := range refused {
 		v, err := svc.ValidateBlueprint(context.Background(), "", domainsManifest(host), "")
