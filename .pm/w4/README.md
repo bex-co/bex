@@ -333,6 +333,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **357** — [The Docker Command editor's toasts say "Start Command"](357.md) ← live `/qa-find-bugs w4` pass 2fe734, 2026-10-19 UTC. `COMMAND_COPY` names the field per kind, but `useStartCommand`'s success and error toasts are fixed to Start Command.
+
 - [ ] **356** — [Postgres Recover copies a protected environment's data out of its environment and allow-lists](356.md) ← `w4/m232` security review, 2026-10-19. `Recover` needs only `can_create` and builds the new instance with tenant labels alone, so a point-in-time copy of an ACL-bearing environment's database lands outside its environment, inbound-IP layer and allow-list. Check Render, then gate or inherit.
 
 - [ ] **355** — [`aclBearing` treats the default allow-all as admin-managed and deny-all as not](355.md) ← `w4/m232` audit, 2026-10-19. Every environment is seeded with the allow-all pair, so every move out of (or edit of) one needs an admin, while an emptied deny-all list counts as unmanaged. Needs a decision on the definition, together with Render's admin-only moves _into_ a protected environment.
