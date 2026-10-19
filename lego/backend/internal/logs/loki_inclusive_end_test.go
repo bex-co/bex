@@ -143,3 +143,43 @@ func TestLokiEndParamNudgesOnlyTheCallersEnd(t *testing.T) {
 		t.Errorf("defaulted end=now = %s, want unchanged", got)
 	}
 }
+
+// w8/125: with startTime omitted the read looks back lokiLookback, so the page
+// cursors must name that same window. They defaulted to one hour, and a
+// backward page whose oldest line was older than that handed out a start
+// after its end, which the next request refused with a 400.
+func TestBackwardPagesWithoutAStartFollowTheirCursorsToTheEnd(t *testing.T) {
+	now := time.Now().UTC()
+	stamps := make([]time.Time, 6)
+	for i := range stamps {
+		stamps[i] = now.Add(-time.Duration(5-i)*time.Hour - 30*time.Minute) // 5h30m .. 30m ago
+	}
+	srv := exclusiveEndLoki(t, stamps)
+	defer srv.Close()
+	svc := newService(nil, sampleApp("web"))
+	svc.History = NewLokiSource(srv.URL, srv.Client())
+
+	seen := map[string]bool{}
+	path := "/v1/logs?resource=web&limit=2"
+	for range 10 {
+		env := decodeLogList(t, serveREST(svc, "GET", path))
+		for _, l := range env.Logs {
+			if seen[l.Timestamp] {
+				t.Fatalf("line %s repeated", l.Timestamp)
+			}
+			seen[l.Timestamp] = true
+		}
+		start, _ := time.Parse(time.RFC3339Nano, env.NextStartTime)
+		end, _ := time.Parse(time.RFC3339Nano, env.NextEndTime)
+		if start.After(end) {
+			t.Fatalf("cursors start %s after their end %s", env.NextStartTime, env.NextEndTime)
+		}
+		if !env.HasMore {
+			break
+		}
+		path = "/v1/logs?resource=web&limit=2&startTime=" + env.NextStartTime + "&endTime=" + env.NextEndTime
+	}
+	if len(seen) != len(stamps) {
+		t.Fatalf("paged %d of %d lines", len(seen), len(stamps))
+	}
+}

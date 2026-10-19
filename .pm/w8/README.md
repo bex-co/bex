@@ -355,9 +355,11 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **125** — [Backward log pages without a startTime hand out inverted cursors past the first hour](125.md) ← w8/123 code review 2026-10-19: the cursor start defaults to 1h while the read looks back 7 days
+- [ ] **126** — [A source update before a release's build starts still rolls the previous image as that release](126.md) ← w8/124 review 2026-10-19: an undispatched build, or a repo-to-image switch, still takes the pending-source path
 
-- [ ] **124** — [An Update Source during a release in flight rolls that release on the previous image](124.md) ← w8/m119 code review 2026-10-19: `sourceUpdatePending` is decided before `releaseInFlight`, so a source update saved mid-build/pre-deploy reuses the prior image under the new revision
+- [x] **125** — [Backward log pages without a startTime hand out inverted cursors past the first hour](done/125.md) ← w8/123 code review 2026-10-19: the cursor start defaults to 1h while the read looks back 7 days — **DONE (2026-10-19)**
+
+- [x] **124** — [An Update Source during a release in flight rolls that release on the previous image](done/124.md) ← w8/m119 code review 2026-10-19: `sourceUpdatePending` is decided before `releaseInFlight`, so a source update saved mid-build/pre-deploy reuses the prior image under the new revision — **DONE (2026-10-19)**
 
 - [x] **123** — [A far-future log endTime with no startTime still returns 500 (or times out)](done/123.md) ← from `/qa-find-bugs-cli` solo loop run 2 sweep r1, 2026-10-19 — **DONE (2026-10-19:** a far-future `endTime` with no `startTime` reads up to now plus a 10-minute clock grace on every surface; the query-hours cap measures that window)
 
