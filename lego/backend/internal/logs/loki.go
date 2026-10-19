@@ -219,7 +219,7 @@ func scanLokiWindow(
 		// Adjacent slices share a boundary instant; a line exactly on it may come
 		// back from both, and must count once.
 		for _, e := range page {
-			key := e.Timestamp + "\x00" + e.Labels[LabelInstance] + "\x00" + e.Message
+			key := logEntryKey(e)
 			if _, dup := seen[key]; dup {
 				continue
 			}

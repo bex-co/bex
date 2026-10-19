@@ -140,25 +140,29 @@ func TestNormalizeTypesAcceptsPreDeploy(t *testing.T) {
 	}
 }
 
-// TestLiveSubscribableRejectsProducerlessTypes pins codex #3: the live tail has
-// exactly two producers (app pod stdout, build Job stdout). A subscription that
-// wants neither — predeploy (a Job-pod read, not a tail), request logs, or a
-// store-only filter — must be refused with a bounded bad request rather than
-// parking on ctx.Done() and holding one of the process-global SSE slots.
+// TestLiveSubscribableRejectsProducerlessTypes pins codex #3: a subscription
+// with no live producer for some part of what it asks — predeploy (a Job-pod
+// read, not a tail), or a store-only filter over app lines — must be refused
+// with a bounded bad request rather than parking on ctx.Done() and holding
+// one of the process-global SSE slots. Request logs have a producer since
+// w4/m237 (the store poll), alone or with their structured filters.
 func TestLiveSubscribableRejectsProducerlessTypes(t *testing.T) {
 	for _, q := range []LogQuery{
 		{Types: []string{LogTypePreDeploy}},
-		{Types: []string{LogTypeRequest}},
 		{Level: []string{"error"}},
+		{Types: []string{LogTypeApp}, StatusCode: []string{"500"}},
 	} {
 		if err := q.liveSubscribable(); !errors.Is(err, core.ErrBadRequest) {
 			t.Errorf("liveSubscribable(%+v) = %v, want ErrBadRequest", q, err)
 		}
 	}
-	// app, build, and the empty "all types" query DO have a live producer.
+	// app, build, request (plain or structured-filtered), and the empty "all
+	// types" query DO have a live producer.
 	for _, q := range []LogQuery{
 		{Types: []string{LogTypeApp}},
 		{Types: []string{LogTypeBuild}},
+		{Types: []string{LogTypeRequest}},
+		{Types: []string{LogTypeRequest}, StatusCode: []string{"500"}},
 		{},
 	} {
 		if err := q.liveSubscribable(); err != nil {

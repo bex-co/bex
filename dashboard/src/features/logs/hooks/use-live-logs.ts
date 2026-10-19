@@ -3,6 +3,7 @@ import { config } from "@/config/config";
 import { fromRenderLog, LogIdentity, type RenderLog } from "../lib/map";
 import {
   LOG_TYPE_ALL,
+  type LogFilters,
   type LogLine,
   type LogTextMode,
   type LogTypeFilter,
@@ -44,23 +45,31 @@ const defaultCreateEventSource: EventSourceFactory = (url) =>
   new EventSource(url, { withCredentials: true }) as unknown as EventSourceLike;
 
 // bex-api's REST/SSE base lives in config (config.apiBaseUrl) — the same origin
-// as GraphQL, minus `/graphql`. Only the tail-honorable filters (type app/all,
-// standalone build, text, instance) reach the stream — the store-only ones can't
-// be tailed, so the viewer keeps live tail off while any is active
+// as GraphQL, minus `/graphql`. The structured request filters reach the
+// stream because the store poll producer honors them for request lines
+// (w4/m237); over app lines they keep live tail off in the viewer
 // (docs/ADR010-observability.md).
-function subscribeUrl(
-  resource: string,
-  type: LogTypeFilter,
-  text: string,
-  textMode: LogTextMode | undefined,
-  instance: string,
-  startTime: string,
-): string {
+function subscribeUrl(opts: {
+  resource: string;
+  type: LogTypeFilter;
+  text: string;
+  textMode: LogTextMode | undefined;
+  instance: string;
+  startTime: string;
+  requestFilters: RequestLogFilters;
+}): string {
+  const { resource, type, text, textMode, instance, startTime, requestFilters } =
+    opts;
   const params = new URLSearchParams({ resource });
   if (type !== LOG_TYPE_ALL) params.set("type", type);
   if (text) params.set("text", text);
   if (text && textMode) params.set("textMode", textMode);
   if (instance) params.set("instance", instance);
+  if (requestFilters.level) params.set("level", requestFilters.level);
+  if (requestFilters.method) params.set("method", requestFilters.method);
+  if (requestFilters.statusCode)
+    params.set("statusCode", requestFilters.statusCode);
+  if (requestFilters.path) params.set("path", requestFilters.path);
   // The tail's lower bound: the selected history window's start (w6/m111). The
   // FIRST connect then follows the pod from the window edge instead of replaying
   // its whole log from kubelet's offset 0 — which is what made a "Last hour"
@@ -71,6 +80,20 @@ function subscribeUrl(
   if (startTime) params.set("startTime", startTime);
   return `${config.apiBaseUrl}/v1/logs/subscribe?${params.toString()}`;
 }
+
+/** The structured filters the store poll honors for request lines (w4/m237):
+ *  a slice of the viewer's one filter state, not a parallel vocabulary. */
+export type RequestLogFilters = Pick<
+  LogFilters,
+  "level" | "method" | "statusCode" | "path"
+>;
+
+const NO_REQUEST_FILTERS: RequestLogFilters = {
+  level: "",
+  method: "",
+  statusCode: "",
+  path: "",
+};
 
 export interface UseLiveLogsOptions {
   resource: string;
@@ -87,6 +110,9 @@ export interface UseLiveLogsOptions {
   textMode?: LogTextMode;
   /** Replica filter — the one structured filter the tail honors (a pod name). */
   instance: string;
+  /** Structured request filters, sent on the subscription for the store poll
+   *  producer to honor (w4/m237). Omitted sends none (build tail). */
+  requestFilters?: RequestLogFilters;
   /**
    * Extra reader identity beyond the stream's own filters — e.g. the viewer's
    * store-only filters, which disable the tail rather than narrow it. A change
@@ -146,6 +172,7 @@ export function useLiveLogs({
   text,
   textMode,
   instance,
+  requestFilters = NO_REQUEST_FILTERS,
   readerKey = "",
   startTime = "",
   maxLines = DEFAULT_MAX_LINES,
@@ -168,7 +195,10 @@ export function useLiveLogs({
   // no longer owns the buffer and drop its batch. `enabled` is deliberately
   // NOT part of the identity: a user pause keeps the rows already received
   // (w4/m192) — only the status resets, below.
-  const subKey = `${resource}|${type}|${text}|${textMode}|${instance}|${readerKey}`;
+  // The request filters join the identity in the hook (not only via the
+  // caller's readerKey): they parameterize the stream itself, so a change
+  // must reopen it even for a caller that passes no readerKey (w4/m237).
+  const subKey = `${resource}|${type}|${text}|${textMode}|${instance}|${readerKey}|${requestFilters.level}|${requestFilters.method}|${requestFilters.statusCode}|${requestFilters.path}`;
   const [buffer, setBuffer] = useState<{ key: string; lines: LogLine[] }>({
     key: subKey,
     lines: [],
@@ -221,14 +251,15 @@ export function useLiveLogs({
     let pending: LogLine[] = [];
     let flushTimer: ReturnType<typeof setTimeout> | undefined;
     const es = createEventSource(
-      subscribeUrl(
+      subscribeUrl({
         resource,
         type,
         text,
         textMode,
         instance,
-        startTimeRef.current,
-      ),
+        startTime: startTimeRef.current,
+        requestFilters,
+      }),
     );
 
     // Flush the pending batch into the ring buffer: dedupe against the key
