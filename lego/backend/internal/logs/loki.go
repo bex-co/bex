@@ -57,6 +57,11 @@ func NewLokiSource(base string, hc *http.Client) LogHistorySource {
 	return func(ctx context.Context, namespace string, q LogQuery) ([]LogEntry, error) {
 		q.Search = normalizeLogText(q.Search)
 		start, end := lokiRange(q, time.Now())
+		// A start after now with no end names a window that has not begun: it
+		// holds no lines yet, and Loki would refuse the inverted range (w8/120).
+		if start.After(end) {
+			return nil, nil
+		}
 		query := lokiQueryFor(namespace, q)
 		// A local text search reads raw pages and matches in Go, so each request
 		// asks for a scan page of raw lines rather than the caller's page of matches.
@@ -298,6 +303,9 @@ func NewLokiLabelValuesSource(base string, hc *http.Client) LogLabelValuesSource
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, namespace, label string, q LogQuery) ([]string, error) {
 		start, end := lokiRange(q, time.Now())
+		if start.After(end) {
+			return nil, nil
+		}
 		// Selector only: Loki's label-values API takes a stream selector, not a
 		// line pipeline, so the line filters (text/path/host) don't apply here.
 		u := fmt.Sprintf("%s/loki/api/v1/label/%s/values?%s", base, url.PathEscape(lokiLabelFor(label)), url.Values{
@@ -357,8 +365,8 @@ func lokiLabelFor(label string) string {
 }
 
 // lokiRange resolves the [start, end] window for a query: an explicit bound wins,
-// an absent one defaults (end=now, start=end-lokiLookback). now is passed in so
-// the source stays testable.
+// an absent one defaults (end=now, start=lokiLookback before the earlier of end
+// and now). now is passed in so the source stays testable.
 func lokiRange(q LogQuery, now time.Time) (start, end time.Time) {
 	end = q.End
 	if end.IsZero() {
@@ -366,9 +374,19 @@ func lokiRange(q LogQuery, now time.Time) (start, end time.Time) {
 	}
 	start = q.Since
 	if start.IsZero() {
-		start = end.Add(-lokiLookback)
+		start = earlier(end, now).Add(-lokiLookback)
 	}
 	return start, end
+}
+
+// earlier is the earlier of two instants. A default window counts back from
+// the earlier of a caller's end and now, so a future end cannot move it past
+// now, where it would hold no line yet (w8/120).
+func earlier(a, b time.Time) time.Time {
+	if b.Before(a) {
+		return b
+	}
+	return a
 }
 
 // lokiEndParam is the `end` sent to Loki for a request whose upper bound is to.
