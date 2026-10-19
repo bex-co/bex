@@ -55,3 +55,13 @@ Read-only, `/billing` in workspace `bex`, `muse.env` QA credentials.
 - **The tree and the headline agree, or the card says why — PASS (disclosed).** Directly under the headline: "**Breakdown above: September to date** $303.63 USD" (`estimatedCost.totalUsd` `303.68`). Each figure now names its own window, so the roughly 3.5× gap explains itself.
 - **Coverage advances, or its stall is named — still FAILING.** On 2026-09-27T15:31Z, `usage.coverage` = `{state: "partial", through: "2026-09-01T00:00:00Z", degradedSources: [direct, http, instance, key_value, postgres, sandbox, storage, other]}`. The watermark is still at the month start, and two more sources (`storage`, `other`) are now degraded than at filing. The card shows "Partial data". This is t002's open question, and it still needs a production read of the usage health tables, which a tenant session cannot do.
 
+
+## Hosted probe — qa pass 788bf3 (2026-10-19, pin `108cdb3acca8`)
+
+Read-only, as the QA user in workspace `bex-canary` (`tea-daif693dqjvc73e7as3g`), `GET /v1/usage?ownerId=tea-daif693dqjvc73e7as3g` from inside the signed-in page:
+
+- `coverage` = `{state: "partial", through: "2026-10-01T00:00:00Z", degradedSources: ["direct", "http", "instance", "key_value", "postgres", "sandbox", "websocket"]}`.
+- This is the same seven-source set as at filing. The cap of 7 (`maxDegradedSources`, `store/usage.go`) means more streams may be degraded.
+- The watermark reset to the new month start and is again stuck there 19 days in. So the stall is not a September-only gap or a one-off backfill: no active stream has had a contiguous healthy prefix from the 1st in either month.
+- The Billing page (`/usage` redirects to `/billing`) shows "Partial data" on the Charges card. Its per-resource tree is otherwise sound: 1,748 usage rows this month, and deleted resources keep their names ("qa-20261019-0a57a8-kv1 (deleted)"). "Included usage: Services 7 / 25" matches the 7 live services.
+- t002 (the production DB read of `usage_source_streams` / `usage_source_health`) remains the blocker. The bullet **"Coverage advances, or its stall is named" still FAILS.**
