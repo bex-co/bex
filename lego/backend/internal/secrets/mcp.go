@@ -97,7 +97,7 @@ type patchEnvironmentArgs struct {
 	ServiceID           string            `json:"serviceId" jsonschema:"the service id (bex App name)"`
 	EnvVars             []EnvVarPatch     `json:"envVars,omitempty" jsonschema:"sparse environment-variable set, generate, or delete operations"`
 	SecretFiles         []SecretFilePatch `json:"secretFiles,omitempty" jsonschema:"sparse secret-file set or delete operations"`
-	SaveMode            SaveMode          `json:"saveMode" jsonschema:"save_only projects configuration without a rollout; deploy rolls exactly once"`
+	SaveMode            SaveMode          `json:"saveMode" jsonschema:"save_only projects configuration without a rollout; deploy rolls exactly once; rebuild rebuilds from source once, recorded as a configuration change"`
 	ExpectedEnvRevision *string           `json:"expectedEnvRevision,omitempty" jsonschema:"optional opaque revision from list_env_vars, get_env_var, or patch_service_environment; when set, exactly one ordinary env value update is allowed"`
 }
 

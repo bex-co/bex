@@ -68,7 +68,8 @@ type Service struct {
 	// validate.
 	EnvironmentWorkspace func(ctx context.Context, environmentID string) (string, error)
 	// RebuildService starts one full rebuild for a linked service. The API
-	// composition root wires deploys.Service.Trigger; nil makes only the explicit
+	// composition root wires deploys.Service.Rebuild, recorded as a
+	// configuration change (w4/347); nil makes only the explicit
 	// rebuild save mode unavailable while save_only/deploy continue to work.
 	RebuildService func(ctx context.Context, serviceID string) error
 
