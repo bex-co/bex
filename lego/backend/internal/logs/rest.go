@@ -511,14 +511,27 @@ func (s *Service) subscribeStream(w http.ResponseWriter, r *http.Request, querie
 	}
 }
 
+// unsupportedLogFilters are list-logs filters Render declares that select
+// streams bex has none of: Render Workflows task runs (an ADR018 omission) and
+// sandboxes (DO_NOT_DO #18). Honoring one could only answer an empty page, and
+// ignoring it silently widened the read to every log (w8/132), so each is
+// refused by name.
+var unsupportedLogFilters = []string{"task", "taskRun", "sandbox"}
+
 // parseLogParams maps Render's logs query string onto resources + a LogQuery.
 // Every filter Render documents (level/instance/host/statusCode/method/path,
 // repeatable) is parsed into the query and honored downstream; a value the
 // vocabulary doesn't contain — an unknown `type` or `direction` — is a 400 naming
-// it, never a silently widened query. Shared by /v1/logs, /v1/logs/values and
+// it, and so is a filter bex has no streams for (unsupportedLogFilters), never a
+// silently widened query. Shared by /v1/logs, /v1/logs/values and
 // /v1/logs/subscribe so the three agree on what a filter means.
 func parseLogParams(r *http.Request) ([]string, LogQuery, error) {
 	v := r.URL.Query()
+	for _, name := range unsupportedLogFilters {
+		if v.Has(name) {
+			return nil, LogQuery{}, fmt.Errorf("%w: log filter %q is not supported: bex runs no Render Workflows or sandboxes, so no log belongs to one", core.ErrBadRequest, name)
+		}
+	}
 
 	resources, err := boundedResources(v["resource"])
 	if err != nil {
