@@ -334,3 +334,33 @@ func TestLifecycleWritesOnADeletingServiceAre404(t *testing.T) {
 		t.Errorf("row written for a deleting service: %v", rec.displayNameCalls)
 	}
 }
+
+// TestRESTBlankRenameClearsLikeGraphQL is w4/359: the REST/MCP patch table's
+// preflight probed ServiceNameTaken with "", which the store's query matches
+// for every service with no display name, so a blank rename answered "409 name
+// \"\" is already in use" while GraphQL cleared. The preflight now skips what
+// the write skips: a blank name and the service's own creation name. A real
+// collision still conflicts.
+func TestRESTBlankRenameClearsLikeGraphQL(t *testing.T) {
+	// Mirrors the store's probe: "" matches every default-named service.
+	rec := &recordingStore{takenDisplayNames: map[string]bool{"": true, "hello-go": true}}
+	svc, _ := newService(rec, manage(displayNameApp("immutable-id"), "srv-1"))
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	patch := func(body string) (int, map[string]any) {
+		t.Helper()
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, httptest.NewRequest(http.MethodPatch, "/v1/services/immutable-id", strings.NewReader(body)))
+		var out map[string]any
+		_ = json.Unmarshal(w.Body.Bytes(), &out)
+		return w.Code, out
+	}
+	for _, body := range []string{`{"name":""}`, `{"name":"   "}`, `{"name":"immutable-id"}`} {
+		if code, out := patch(body); code != http.StatusOK || out["name"] != "immutable-id" {
+			t.Errorf("PATCH %s = %d %v, want 200 with the creation name", body, code, out)
+		}
+	}
+	if code, out := patch(`{"name":"hello-go"}`); code != http.StatusConflict || out["code"] != "CONFLICT" {
+		t.Errorf("PATCH to a taken name = %d %v, want 409 CONFLICT", code, out)
+	}
+}

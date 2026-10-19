@@ -162,8 +162,12 @@ var servicePatchTable = []servicePatchOp{
 			}
 			// The store refuses a name another service in the workspace was
 			// created as or is displayed as (w8/m47) only as it writes, so the
-			// preflight reads that refusal ahead of it.
-			if id := managedAppID(probe); id != "" && s.Store != nil {
+			// preflight reads that refusal ahead of it. Like the write, it
+			// skips a blank name (which clears the display name) and the
+			// service's own creation name: probing "" matched every service
+			// with no display name, refusing a clear as "already in use"
+			// (w4/359).
+			if id := managedAppID(probe); id != "" && s.Store != nil && trimmed != "" && trimmed != core.AppPublicName(probe) {
 				taken, err := s.Store.ServiceNameTaken(ctx, probe.Labels[core.LabelTenant], id, trimmed)
 				if err != nil {
 					return err
