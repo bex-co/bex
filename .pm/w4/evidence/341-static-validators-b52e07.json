@@ -1,0 +1,52 @@
+{
+  "hunt": "qa-find-bugs w4, muse.env, workspace bex-canary (tea-daif693dqjvc73e7as3g), pass b52e07, 2026-10-19 UTC",
+  "servingPlatform": "production pinned to d5c3373ed (platform images incl. static-server); research main 7d60da3a3",
+  "fixture": {
+    "service": "srv-dbamedm804hs73aaefbg",
+    "name": "qa-20261019-b52e07-static",
+    "create": "dashboard New Static Site \u2192 Public Git URL https://github.com/bex-co/bex, Root Directory examples/static-site, Publish Directory '.', no build command, auto-deploy on, no header rules",
+    "live": "2026-10-19T00:42:21Z",
+    "cleanup": "deleted at the end of the pass"
+  },
+  "curlProbes": "### 2026-10-19T00:45:22Z bex GET https://qa-20261019-b52e07-static.onbex.co/\nHTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/html\ndate: Mon, 19 Oct 2026 00:45:22 GMT\nvary: Accept-Encoding\ncontent-length: 1548\n\n### bex GET with If-Modified-Since: now\nstatus=200 bytes=1548\n### bex HEAD\nHTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/html\ndate: Mon, 19 Oct 2026 00:45:24 GMT\nvary: Accept-Encoding\ncontent-length: 1548\n\n### render GET https://hugo.onrender.com/\nHTTP/2 200 \ncontent-type: text/html; charset=utf-8\ncache-control: public, max-age=0, s-maxage=300\netag: W/\"d0e099822eea52b375613a7746bfbefc\"\nlast-modified: Fri, 26 Jul 2024 00:46:17 UTC\n### render GET https://hugo.onrender.com/ If-None-Match: W/\"d0e099822eea52b375613a7746bfbefc\"\nstatus=304 bytes=0\n### render GET https://cra.onrender.com/\nHTTP/2 200 \ncontent-type: text/html; charset=utf-8\ncache-control: public, max-age=0, s-maxage=300\netag: W/\"e741268f223549a269594dfc3bd6b4f4\"\nlast-modified: Mon, 29 Jul 2024 23:13:29 UTC\n### render GET https://cra.onrender.com/ If-None-Match: W/\"e741268f223549a269594dfc3bd6b4f4\"\nstatus=304 bytes=0\n",
+  "browserProbe": {
+    "method": "Playwright Chromium new page: goto \u2192 reload \u2192 goto of the site root, then performance.getEntriesByType('navigation') for the last navigation",
+    "bex": {
+      "responses": [
+        {
+          "status": 200,
+          "bytes": 1548
+        },
+        {
+          "status": 200,
+          "bytes": 1548
+        },
+        {
+          "status": 200,
+          "bytes": 1548
+        }
+      ],
+      "lastNavigation": {
+        "transferSize": 889,
+        "encodedBodySize": 589,
+        "status": 200
+      },
+      "reading": "transferSize > encodedBodySize: the full brotli body crossed the network again"
+    },
+    "renderControl": {
+      "url": "https://hugo.onrender.com/",
+      "lastNavigation": {
+        "transferSize": 300,
+        "encodedBodySize": 985,
+        "status": 200
+      },
+      "reading": "transferSize < encodedBodySize: a header-only 304 revalidation; body reused from cache"
+    }
+  },
+  "renderDocs": "render.com/docs/static-sites (fetched 2026-10-19) documents CDN invalidation on deploy and Brotli but no header policy; six live *.onrender.com static demos (hugo, jekyll, gatsby, cra, vue, svelte) all return cache-control 'public, max-age=0, s-maxage=300' with a weak ETag and Last-Modified.",
+  "code": {
+    "serveObject": "lego/operator/internal/staticserver/staticserver.go:348-404 sets Content-Type and defaultCacheControl (:366-368, :733) and calls http.ServeContent with time.Time{} (:400-404); no ETag unless an owner header rule supplies one",
+    "testEncodingNoValidator": "lego/operator/internal/staticserver/conditional_test.go:110-127 TestNoSavedETagOnlyWildcardMatches asserts 'generated ETag ..., want none'",
+    "meter": "lego/backend/internal/usage/service.go:1340-1360 meters static-site router response bytes as egress_bytes (billed bandwidth, docs/ADR030-pricing.md:36)"
+  }
+}
