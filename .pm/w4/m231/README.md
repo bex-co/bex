@@ -1,17 +1,17 @@
 # w4 · m231 — Make push event choices honest about the urgency filter
 
-**Worker:** worker4 **Goal:** a push event a member selects is either deliverable under the urgency that applies to it, or visibly marked as filtered before and after saving. Each event's urgency comes from the backend's single projection, not a client copy. **Status:** todo
+**Worker:** worker4 **Goal:** a push event a member selects is either deliverable under the urgency that applies to it, or visibly marked as filtered before and after saving. Each event's urgency comes from the backend's single projection, not a client copy. **Status:** in progress (t001–t006 done 2026-10-19; t007 closeout waits on the deploy and live replay)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Publish each push event's urgency on the settings contract | 40m | — |
-| [t002](t002.md) | Show urgency per event and flag selections the effective minimum drops | 50m | w4/m231/t001 |
-| [t003](t003.md) | Audit policy consumers and place the adjacent classes | 20m | w4/m231/t001, w4/m231/t002 |
-| [t004](t004.md) | Render parity | 10m | w4/m231/t003 |
-| [t005](t005.md) | Simplify | 10m | w4/m231/t004 |
-| [t006](t006.md) | Test coverage | 40m | w4/m231/t004 |
+| [t001](done/t001.md) | Publish each push event's urgency on the settings contract — **DONE** | 40m | — |
+| [t002](done/t002.md) | Show urgency per event and flag selections the effective minimum drops — **DONE** | 50m | w4/m231/t001 |
+| [t003](done/t003.md) | Audit policy consumers and place the adjacent classes — **DONE** | 20m | w4/m231/t001, w4/m231/t002 |
+| [t004](done/t004.md) | Render parity — **DONE** | 10m | w4/m231/t003 |
+| [t005](done/t005.md) | Simplify — **DONE** | 10m | w4/m231/t004 |
+| [t006](done/t006.md) | Test coverage — **DONE** | 40m | w4/m231/t004 |
 | [t007](t007.md) | Closeout | 20m | w4/m231/t005, w4/m231/t006 |
 
 Seven tasks, 190m total (3h10m). One **major** finding: a saved selection silently never delivers. This milestone schedules the work only.

@@ -1,6 +1,11 @@
 import { useMemo, useState } from "react";
 import { AlertTriangle, Plus, Trash2 } from "lucide-react";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/common/components/ui/alert";
+import {
   PushNotificationEvent,
   PushNotificationUrgency,
   PushNotificationWeekday,
@@ -31,11 +36,14 @@ import {
 } from "@/features/notifications/hooks/use-push-notification-settings";
 import { useUpdatePushNotificationSettings } from "@/features/notifications/hooks/use-update-push-notification-settings";
 import {
+  droppedSelections,
   pushEvents,
   pushUrgencies,
   pushWeekdays,
   toggleListValue,
   validatePushSettings,
+  type DroppedSelections,
+  type PushEventUrgencies,
 } from "@/features/notifications/lib/push-policy";
 
 const eventKeys: Record<PushNotificationEvent, string> = {
@@ -106,7 +114,8 @@ function NativeSelect({ className, ...props }: React.ComponentProps<"select">) {
 
 export function PushNotificationSettingsPanel() {
   const { t } = useTranslations();
-  const { settings, available, loading, error } = usePushNotificationSettings();
+  const { settings, eventUrgencies, available, loading, error } =
+    usePushNotificationSettings();
 
   if (error) {
     return (
@@ -141,6 +150,7 @@ export function PushNotificationSettingsPanel() {
     <PushSettingsForm
       key={JSON.stringify(settings)}
       initialSettings={settings}
+      eventUrgencies={eventUrgencies}
       available={available}
     />
   );
@@ -148,9 +158,11 @@ export function PushNotificationSettingsPanel() {
 
 function PushSettingsForm({
   initialSettings,
+  eventUrgencies,
   available,
 }: {
   initialSettings: PushNotificationSettingsInput;
+  eventUrgencies: PushEventUrgencies;
   available: boolean;
 }) {
   const { t } = useTranslations();
@@ -169,6 +181,10 @@ function PushSettingsForm({
         (override) => override.serviceId === service.id,
       ),
   );
+
+  // Selections the minimum urgency drops (w4/m231): bex-api filters by event,
+  // then by urgency, so a checked event alone does not make it push.
+  const dropped = droppedSelections(draft, eventUrgencies);
 
   async function save() {
     const candidate = {
@@ -228,6 +244,9 @@ function PushSettingsForm({
 
         <EventFilter
           events={draft.events}
+          minimum={draft.minimumUrgency}
+          urgencies={eventUrgencies}
+          dropped={dropped.workspace}
           disabled={busy || !draft.enabled}
           onChange={(events) => setDraft({ ...draft, events })}
         />
@@ -309,6 +328,8 @@ function PushSettingsForm({
         />
 
         <ServiceOverridesEditor
+          urgencies={eventUrgencies}
+          dropped={dropped.services}
           overrides={draft.serviceOverrides}
           availableServices={availableServices}
           serviceNames={serviceNames}
@@ -318,6 +339,12 @@ function PushSettingsForm({
           }
         />
 
+        <DroppedSummary
+          dropped={dropped}
+          minimum={draft.minimumUrgency}
+          urgencies={eventUrgencies}
+          serviceNames={serviceNames}
+        />
         {validationKey && (
           <p role="alert" className="text-sm text-destructive">
             {t(validationKey)}
@@ -333,12 +360,135 @@ function PushSettingsForm({
   );
 }
 
+/**
+ * The save-area summary of what will not be pushed, workspace-wide first, then
+ * per service (w4/m231). Renders nothing when every selection delivers.
+ */
+function DroppedSummary({
+  dropped,
+  minimum,
+  urgencies,
+  serviceNames,
+}: {
+  dropped: DroppedSelections;
+  minimum: PushNotificationUrgency;
+  urgencies: PushEventUrgencies;
+  serviceNames: Map<string, string>;
+}) {
+  const { t } = useTranslations();
+  const line = (
+    key: string,
+    event: PushNotificationEvent,
+    floor: PushNotificationUrgency,
+    service?: string,
+  ) =>
+    t(key, {
+      event: t(eventKeys[event]),
+      urgency: t(urgencyKeys[urgencies.get(event)!]),
+      minimum: t(urgencyKeys[floor]),
+      ...(service ? { service } : {}),
+    });
+  const lines = [
+    ...dropped.workspace.map((event) => ({
+      key: `workspace:${event}`,
+      text: line("notifications.pushFilteredEvent", event, minimum),
+    })),
+    ...[...dropped.services].flatMap(([serviceId, service]) =>
+      service.events.map((event) => ({
+        key: `${serviceId}:${event}`,
+        text: line(
+          "notifications.pushFilteredServiceEvent",
+          event,
+          service.minimum,
+          serviceNames.get(serviceId) ?? serviceId,
+        ),
+      })),
+    ),
+  ];
+  if (lines.length === 0) return null;
+  return (
+    <Alert role="status">
+      <AlertTriangle className="text-amber-500" />
+      <AlertTitle className="line-clamp-none">
+        {t("notifications.pushFilteredTitle")}
+      </AlertTitle>
+      <AlertDescription>
+        <ul className="list-disc pl-4">
+          {lines.map(({ key, text }) => (
+            <li key={key}>{text}</li>
+          ))}
+        </ul>
+      </AlertDescription>
+    </Alert>
+  );
+}
+
+/**
+ * An event checkbox with the urgency it is delivered at. `droppedBelow` is the
+ * minimum that drops this selection, when one does.
+ */
+function EventOption({
+  event,
+  checked,
+  urgency,
+  droppedBelow,
+  compact = false,
+  onToggle,
+}: {
+  event: PushNotificationEvent;
+  checked: boolean;
+  urgency: PushNotificationUrgency | undefined;
+  droppedBelow: PushNotificationUrgency | undefined;
+  compact?: boolean;
+  onToggle: () => void;
+}) {
+  const { t } = useTranslations();
+  return (
+    <label
+      className={cn(
+        "flex items-start gap-2",
+        compact ? "text-xs" : "rounded-md border p-2 text-sm",
+        droppedBelow && !compact && "border-amber-500/50 bg-amber-500/5",
+      )}
+    >
+      <Checkbox
+        className="mt-0.5"
+        checked={checked}
+        onCheckedChange={onToggle}
+      />
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-baseline justify-between gap-x-2">
+          <span>{t(eventKeys[event])}</span>
+          {urgency && (
+            <span className="text-xs text-muted-foreground">
+              {t(urgencyKeys[urgency])}
+            </span>
+          )}
+        </span>
+        {droppedBelow && (
+          <span className="block text-xs text-amber-700 dark:text-amber-400">
+            {t("notifications.pushEventFiltered", {
+              minimum: t(urgencyKeys[droppedBelow]),
+            })}
+          </span>
+        )}
+      </span>
+    </label>
+  );
+}
+
 function EventFilter({
   events,
+  minimum,
+  urgencies,
+  dropped,
   disabled,
   onChange,
 }: {
   events: PushNotificationEvent[];
+  minimum: PushNotificationUrgency;
+  urgencies: PushEventUrgencies;
+  dropped: PushNotificationEvent[];
   disabled: boolean;
   onChange: (events: PushNotificationEvent[]) => void;
 }) {
@@ -353,16 +503,14 @@ function EventFilter({
       </p>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {pushEvents.map((event) => (
-          <label
+          <EventOption
             key={event}
-            className="flex items-center gap-2 rounded-md border p-2 text-sm"
-          >
-            <Checkbox
-              checked={events.includes(event)}
-              onCheckedChange={() => onChange(toggleListValue(events, event))}
-            />
-            {t(eventKeys[event])}
-          </label>
+            event={event}
+            checked={events.includes(event)}
+            urgency={urgencies.get(event)}
+            droppedBelow={dropped.includes(event) ? minimum : undefined}
+            onToggle={() => onChange(toggleListValue(events, event))}
+          />
         ))}
       </div>
     </fieldset>
@@ -472,12 +620,16 @@ function ScheduleEditor({
 }
 
 function ServiceOverridesEditor({
+  urgencies,
+  dropped,
   overrides,
   availableServices,
   serviceNames,
   disabled,
   onChange,
 }: {
+  urgencies: PushEventUrgencies;
+  dropped: DroppedSelections["services"];
   overrides: PushNotificationServiceOverrideInput[];
   availableServices: Array<{ id: string; name: string }>;
   serviceNames: Map<string, string>;
@@ -500,117 +652,136 @@ function ServiceOverridesEditor({
           {t("notifications.pushOverridesHint")}
         </p>
       </div>
-      {overrides.map((override, index) => (
-        <div
-          key={override.serviceId}
-          className="space-y-3 rounded-md border p-3"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <p className="text-sm font-medium">
-                {serviceNames.get(override.serviceId) ?? override.serviceId}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {override.serviceId}
-              </p>
+      {overrides.map((override, index) => {
+        const serviceName =
+          serviceNames.get(override.serviceId) ?? override.serviceId;
+        const drop = dropped.get(override.serviceId);
+        return (
+          <div
+            key={override.serviceId}
+            role="group"
+            aria-label={serviceName}
+            className="space-y-3 rounded-md border p-3"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-medium">{serviceName}</p>
+                <p className="text-xs text-muted-foreground">
+                  {override.serviceId}
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                aria-label={t("notifications.pushRemoveOverride")}
+                onClick={() =>
+                  onChange(
+                    overrides.filter((_, position) => position !== index),
+                  )
+                }
+              >
+                <Trash2 />
+              </Button>
             </div>
-            <Button
-              type="button"
-              size="icon-sm"
-              variant="ghost"
-              aria-label={t("notifications.pushRemoveOverride")}
-              onClick={() =>
-                onChange(overrides.filter((_, position) => position !== index))
-              }
-            >
-              <Trash2 />
-            </Button>
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="space-y-1 text-xs">
-              {t("notifications.pushOverrideEnabled")}
-              <NativeSelect
-                value={
-                  override.enabled == null
-                    ? "inherit"
-                    : override.enabled
-                      ? "on"
-                      : "off"
-                }
-                onChange={(event) =>
-                  update(index, {
-                    ...override,
-                    enabled:
-                      event.target.value === "inherit"
-                        ? undefined
-                        : event.target.value === "on",
-                  })
-                }
-              >
-                <option value="inherit">
-                  {t("notifications.pushInherit")}
-                </option>
-                <option value="on">{t("notifications.pushOn")}</option>
-                <option value="off">{t("notifications.pushOff")}</option>
-              </NativeSelect>
-            </label>
-            <label className="space-y-1 text-xs">
-              {t("notifications.pushMinimumUrgency")}
-              <NativeSelect
-                value={override.minimumUrgency ?? "inherit"}
-                onChange={(event) =>
-                  update(index, {
-                    ...override,
-                    minimumUrgency:
-                      event.target.value === "inherit"
-                        ? undefined
-                        : (event.target.value as PushNotificationUrgency),
-                  })
-                }
-              >
-                <option value="inherit">
-                  {t("notifications.pushInherit")}
-                </option>
-                {pushUrgencies.map((urgency) => (
-                  <option key={urgency} value={urgency}>
-                    {t(urgencyKeys[urgency])}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="space-y-1 text-xs">
+                {t("notifications.pushOverrideEnabled")}
+                <NativeSelect
+                  value={
+                    override.enabled == null
+                      ? "inherit"
+                      : override.enabled
+                        ? "on"
+                        : "off"
+                  }
+                  onChange={(event) =>
+                    update(index, {
+                      ...override,
+                      enabled:
+                        event.target.value === "inherit"
+                          ? undefined
+                          : event.target.value === "on",
+                    })
+                  }
+                >
+                  <option value="inherit">
+                    {t("notifications.pushInherit")}
                   </option>
-                ))}
-              </NativeSelect>
+                  <option value="on">{t("notifications.pushOn")}</option>
+                  <option value="off">{t("notifications.pushOff")}</option>
+                </NativeSelect>
+              </label>
+              <label className="space-y-1 text-xs">
+                {t("notifications.pushMinimumUrgency")}
+                <NativeSelect
+                  value={override.minimumUrgency ?? "inherit"}
+                  onChange={(event) =>
+                    update(index, {
+                      ...override,
+                      minimumUrgency:
+                        event.target.value === "inherit"
+                          ? undefined
+                          : (event.target.value as PushNotificationUrgency),
+                    })
+                  }
+                >
+                  <option value="inherit">
+                    {t("notifications.pushInherit")}
+                  </option>
+                  {pushUrgencies.map((urgency) => (
+                    <option key={urgency} value={urgency}>
+                      {t(urgencyKeys[urgency])}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </label>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={override.events != null}
+                onCheckedChange={(checked) =>
+                  update(index, {
+                    ...override,
+                    events: checked ? [...(override.events ?? [])] : undefined,
+                  })
+                }
+              />
+              {t("notifications.pushExactEvents")}
             </label>
-          </div>
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox
-              checked={override.events != null}
-              onCheckedChange={(checked) =>
-                update(index, {
-                  ...override,
-                  events: checked ? [...(override.events ?? [])] : undefined,
-                })
-              }
-            />
-            {t("notifications.pushExactEvents")}
-          </label>
-          {override.events != null && (
-            <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-              {pushEvents.map((event) => (
-                <label key={event} className="flex items-center gap-2 text-xs">
-                  <Checkbox
-                    checked={override.events?.includes(event)}
-                    onCheckedChange={() =>
+            {override.events != null && (
+              <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                {pushEvents.map((event) => (
+                  <EventOption
+                    key={event}
+                    compact
+                    event={event}
+                    checked={override.events?.includes(event) ?? false}
+                    urgency={urgencies.get(event)}
+                    droppedBelow={
+                      drop?.events.includes(event) ? drop.minimum : undefined
+                    }
+                    onToggle={() =>
                       update(index, {
                         ...override,
                         events: toggleListValue(override.events ?? [], event),
                       })
                     }
                   />
-                  {t(eventKeys[event])}
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
+                ))}
+              </div>
+            )}
+            {drop && (
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                {t("notifications.pushOverrideFiltered", {
+                  count: drop.events.length,
+                  minimum: t(urgencyKeys[drop.minimum]),
+                })}
+              </p>
+            )}
+          </div>
+        );
+      })}
       {availableServices.length > 0 && (
         <NativeSelect
           aria-label={t("notifications.pushAddOverride")}

@@ -135,6 +135,78 @@ function validateServiceOverrides(
   return null;
 }
 
+/** The urgency each event is delivered at, as bex-api publishes it. */
+export type PushEventUrgencies = ReadonlyMap<
+  PushNotificationEvent,
+  PushNotificationUrgency
+>;
+
+/**
+ * The selected events a minimum urgency drops: those whose published urgency
+ * ranks below it (w4/m231). bex-api filters by event and then by urgency, so a
+ * selection alone does not make an event push. An event with no published
+ * urgency is never flagged. Ordered as the panel lists events.
+ */
+export function eventsBelowMinimum(
+  events: readonly PushNotificationEvent[],
+  minimum: PushNotificationUrgency,
+  urgencies: PushEventUrgencies,
+): PushNotificationEvent[] {
+  const floor = pushUrgencies.indexOf(minimum);
+  return pushEvents.filter((event) => {
+    const urgency = urgencies.get(event);
+    return (
+      events.includes(event) &&
+      urgency !== undefined &&
+      pushUrgencies.indexOf(urgency) < floor
+    );
+  });
+}
+
+/** The selections bex-api will not push, workspace-wide and per service. */
+export interface DroppedSelections {
+  workspace: PushNotificationEvent[];
+  /** By overridden service id: the minimum that applies there and its drops. */
+  services: Map<
+    string,
+    { minimum: PushNotificationUrgency; events: PushNotificationEvent[] }
+  >;
+}
+
+/**
+ * Everything the urgency filter drops under `settings`, in bex-api's own
+ * precedence: push off workspace-wide sends nothing (overrides cannot re-enable
+ * it), an override that turns push off sends nothing for its service, and an
+ * override resolves each unset field from the workspace. An override that sets
+ * neither its own events nor its own minimum adds nothing — the workspace line
+ * already covers it.
+ */
+export function droppedSelections(
+  settings: PushNotificationSettingsInput,
+  urgencies: PushEventUrgencies,
+): DroppedSelections {
+  const dropped: DroppedSelections = { workspace: [], services: new Map() };
+  if (!settings.enabled) return dropped;
+  dropped.workspace = eventsBelowMinimum(
+    settings.events,
+    settings.minimumUrgency,
+    urgencies,
+  );
+  for (const override of settings.serviceOverrides) {
+    if (override.enabled === false) continue;
+    if (override.events == null && override.minimumUrgency == null) continue;
+    const minimum = override.minimumUrgency ?? settings.minimumUrgency;
+    const events = eventsBelowMinimum(
+      override.events ?? settings.events,
+      minimum,
+      urgencies,
+    );
+    if (events.length > 0)
+      dropped.services.set(override.serviceId, { minimum, events });
+  }
+  return dropped;
+}
+
 export function toggleListValue<T>(values: T[], value: T): T[] {
   return values.includes(value)
     ? values.filter((item) => item !== value)

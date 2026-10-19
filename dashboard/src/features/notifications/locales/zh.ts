@@ -122,8 +122,34 @@ const zhNotifications: Record<string, TranslationEntry> = {
     description: "Push event section",
   },
   "notifications.pushEventsHint": {
-    message: "只有选中的事件类型会生成推送通知。",
+    message: "只有选中、且不低于最低紧急程度的事件类型会生成推送通知。",
     description: "Push event hint",
+  },
+  "notifications.pushEventFiltered": {
+    message: "最低紧急程度为{minimum}时不会推送。",
+    description:
+      "Under a selected push event whose urgency is below the minimum ({minimum} = urgency name)",
+  },
+  "notifications.pushFilteredTitle": {
+    message: "部分选中的事件不会推送",
+    description:
+      "Heading of the save-area summary listing selected push events the minimum urgency drops",
+  },
+  "notifications.pushFilteredEvent": {
+    message: "{event}为{urgency}级，最低紧急程度为{minimum}时不会推送。",
+    description:
+      "One summary line ({event} = event name, {urgency} = its urgency, {minimum} = the minimum urgency)",
+  },
+  "notifications.pushFilteredServiceEvent": {
+    message:
+      "{service}：{event}为{urgency}级，该服务的最低紧急程度为{minimum}时不会推送。",
+    description:
+      "One summary line for a service override ({service} = service name; others as pushFilteredEvent)",
+  },
+  "notifications.pushOverrideFiltered_other": {
+    message: "该服务最低紧急程度为{minimum}时，{count} 个选中的事件不会推送。",
+    description:
+      "Under a service override whose own policy drops selected events ({minimum} = urgency name)",
   },
   "notifications.pushEventDeployFailed": {
     message: "部署失败",

@@ -150,6 +150,7 @@ var callerScopedGQLFields = map[string]bool{
 	"Query.webhookEventTypes":                            true, // the webhook event-type vocabulary
 	"Query.metricsPathFilterSuggestions":                 true, // bex stub: always an empty path list
 	"Query.pushNotificationsAvailable":                   true, // caller-scoped transport capability, no resource argument
+	"Query.pushEventUrgencies":                           true, // the push event → urgency vocabulary
 	"Query.webPushAvailable":                             true, // caller-scoped VAPID capability, no resource argument
 	"Query.webPushVapidPublicKey":                        true, // public applicationServerKey; still membership-gated, no resource argument
 	"Query.notificationInbox":                            true, // caller's own tenant + subject are derived from auth context

@@ -305,6 +305,56 @@ type projectedPush struct {
 	urgency string
 }
 
+// newProjectedPush is the only way a projection names its push, so its urgency
+// is always pushEventUrgency's — the value the settings read publishes.
+func newProjectedPush(event DeliveryEvent, title, body string) projectedPush {
+	return projectedPush{event: string(event), title: title, body: body, urgency: string(pushEventUrgency[event])}
+}
+
+// pushEventUrgency is the urgency each selectable push event is delivered at.
+// The projections read it through newProjectedPush and pushEventUrgencies
+// publishes it, so the settings panel can mark a selection that the effective
+// minimum urgency drops (w4/m231). agent_needs_decision has no producer yet
+// (ADR048 needs-decision steering); its row is the agent family's.
+var pushEventUrgency = map[DeliveryEvent]DeliveryUrgency{
+	DeliveryEventDeployStarted:         DeliveryUrgencyRoutine,
+	DeliveryEventDeploySucceeded:       DeliveryUrgencyRoutine,
+	DeliveryEventDeployFailed:          DeliveryUrgencyImportant,
+	DeliveryEventServerFailed:          DeliveryUrgencyCritical,
+	DeliveryEventServerAvailable:       DeliveryUrgencyImportant,
+	DeliveryEventServiceSuspended:      DeliveryUrgencyRoutine,
+	DeliveryEventServiceResumed:        DeliveryUrgencyRoutine,
+	DeliveryEventCronFailed:            DeliveryUrgencyImportant,
+	DeliveryEventAgentNeedsDecision:    DeliveryUrgencyImportant,
+	DeliveryEventAgentPRReady:          DeliveryUrgencyImportant,
+	DeliveryEventAgentFailed:           DeliveryUrgencyImportant,
+	DeliveryEventPostgresUnavailable:   DeliveryUrgencyCritical,
+	DeliveryEventPostgresAvailable:     DeliveryUrgencyImportant,
+	DeliveryEventKeyValueUnhealthy:     DeliveryUrgencyCritical,
+	DeliveryEventKeyValueAvailable:     DeliveryUrgencyImportant,
+	DeliveryEventPostgresBackupFailed:  DeliveryUrgencyImportant,
+	DeliveryEventPostgresRestoreFailed: DeliveryUrgencyImportant,
+	DeliveryEventPostgresUpgradeFailed: DeliveryUrgencyImportant,
+}
+
+// PushEventUrgencyView is one selectable push event and the urgency it is
+// delivered at.
+type PushEventUrgencyView struct {
+	Event   DeliveryEvent   `json:"event"`
+	Urgency DeliveryUrgency `json:"urgency"`
+}
+
+// pushEventUrgencies is pushEventUrgency in the settings' event order, the
+// list REST GET /v1/notification-settings/push/event-urgencies and GraphQL
+// pushEventUrgencies serve.
+var pushEventUrgencies = func() []PushEventUrgencyView {
+	out := make([]PushEventUrgencyView, 0, len(orderedDeliveryEvents))
+	for _, event := range orderedDeliveryEvents {
+		out = append(out, PushEventUrgencyView{Event: event, Urgency: pushEventUrgency[event]})
+	}
+	return out
+}()
+
 // pushTarget is the per-event half of a fan-out: everything that differs
 // between the app-keyed feed dispatch and the workspace-keyed agent-session
 // projection. The recipient evaluation and device filtering around it are
@@ -398,21 +448,11 @@ func projectAgentSessionPush(s store.AgentSession) (projectedPush, bool) {
 	switch s.Phase {
 	case "completed":
 		if s.PRURL != "" {
-			return projectedPush{
-				event: string(DeliveryEventAgentPRReady), title: "Draft PR ready",
-				body: "An agent session opened a draft pull request.", urgency: string(DeliveryUrgencyImportant),
-			}, true
+			return newProjectedPush(DeliveryEventAgentPRReady, "Draft PR ready", "An agent session opened a draft pull request."), true
 		}
-		return projectedPush{
-			event: string(DeliveryEventAgentFailed), title: "Agent session ended",
-			body:    "An agent session ended without a pull request.",
-			urgency: string(DeliveryUrgencyImportant),
-		}, true
+		return newProjectedPush(DeliveryEventAgentFailed, "Agent session ended", "An agent session ended without a pull request."), true
 	case "failed":
-		return projectedPush{
-			event: string(DeliveryEventAgentFailed), title: "Agent session failed",
-			body: "An agent session failed.", urgency: string(DeliveryUrgencyImportant),
-		}, true
+		return newProjectedPush(DeliveryEventAgentFailed, "Agent session failed", "An agent session failed."), true
 	default:
 		return projectedPush{}, false
 	}
@@ -615,50 +655,29 @@ func projectPushEvent(row store.WebhookEventRow, serviceID, factStatus string) (
 	switch row.Source {
 	case store.EventSourceDeploy:
 		if row.Phase == store.EventPhaseStarted {
-			return projectedPush{
-				event: string(DeliveryEventDeployStarted), title: "Deploy started",
-				body: serviceName + " deploy started.", urgency: string(DeliveryUrgencyRoutine),
-			}, true
+			return newProjectedPush(DeliveryEventDeployStarted, "Deploy started", serviceName+" deploy started."), true
 		}
 		if row.Phase != store.EventPhaseEnded {
 			return projectedPush{}, false
 		}
 		switch row.Status {
 		case store.DeployLive:
-			return projectedPush{
-				event: string(DeliveryEventDeploySucceeded), title: "Deploy succeeded",
-				body: serviceName + " is live.", urgency: string(DeliveryUrgencyRoutine),
-			}, true
+			return newProjectedPush(DeliveryEventDeploySucceeded, "Deploy succeeded", serviceName+" is live."), true
 		case store.DeployBuildFailed, store.DeployPreDeployFailed, store.DeployUpdateFailed:
-			return projectedPush{
-				event: string(DeliveryEventDeployFailed), title: "Deploy failed",
-				body: serviceName + " deploy failed.", urgency: string(DeliveryUrgencyImportant),
-			}, true
+			return newProjectedPush(DeliveryEventDeployFailed, "Deploy failed", serviceName+" deploy failed."), true
 		default:
 			return projectedPush{}, false
 		}
 	case store.EventSourceFact:
 		switch row.FactType {
 		case string(store.EventFactServerFailed):
-			return projectedPush{
-				event: string(DeliveryEventServerFailed), title: "Service unavailable",
-				body: serviceName + " is unavailable.", urgency: string(DeliveryUrgencyCritical),
-			}, true
+			return newProjectedPush(DeliveryEventServerFailed, "Service unavailable", serviceName+" is unavailable."), true
 		case string(store.EventFactServerAvailable):
-			return projectedPush{
-				event: string(DeliveryEventServerAvailable), title: "Service recovered",
-				body: serviceName + " recovered.", urgency: string(DeliveryUrgencyImportant),
-			}, true
+			return newProjectedPush(DeliveryEventServerAvailable, "Service recovered", serviceName+" recovered."), true
 		case string(store.EventFactServiceSuspended):
-			return projectedPush{
-				event: string(DeliveryEventServiceSuspended), title: "Service suspended",
-				body: serviceName + " was suspended.", urgency: string(DeliveryUrgencyRoutine),
-			}, true
+			return newProjectedPush(DeliveryEventServiceSuspended, "Service suspended", serviceName+" was suspended."), true
 		case string(store.EventFactServiceResumed):
-			return projectedPush{
-				event: string(DeliveryEventServiceResumed), title: "Service resumed",
-				body: serviceName + " resumed.", urgency: string(DeliveryUrgencyRoutine),
-			}, true
+			return newProjectedPush(DeliveryEventServiceResumed, "Service resumed", serviceName+" resumed."), true
 		// service_hibernated / service_woken are deliberately absent (w6/m47):
 		// a free-tier service sleeping and waking on its idle timeout is the
 		// designed behavior, not news, and pushing it would page the owner on
@@ -671,10 +690,7 @@ func projectPushEvent(row store.WebhookEventRow, serviceID, factStatus string) (
 			if factStatus != store.EventStatusFailed {
 				return projectedPush{}, false
 			}
-			return projectedPush{
-				event: string(DeliveryEventCronFailed), title: "Cron job failed",
-				body: serviceName + " cron job failed.", urgency: string(DeliveryUrgencyImportant),
-			}, true
+			return newProjectedPush(DeliveryEventCronFailed, "Cron job failed", serviceName+" cron job failed."), true
 
 		// Managed datastores (w3/m82 t005). serviceName is the datastore's own
 		// dpg-/red- id here — the feed's datastore arm has no App to join a
@@ -687,40 +703,19 @@ func projectPushEvent(row store.WebhookEventRow, serviceID, factStatus string) (
 		// service_hibernated/service_woken, though, the facts below are never
 		// excluded — an unreachable datastore is real downtime.
 		case string(store.DatastoreFactPostgresUnavailable):
-			return projectedPush{
-				event: string(DeliveryEventPostgresUnavailable), title: "Database unavailable",
-				body: serviceName + " is unavailable.", urgency: string(DeliveryUrgencyCritical),
-			}, true
+			return newProjectedPush(DeliveryEventPostgresUnavailable, "Database unavailable", serviceName+" is unavailable."), true
 		case string(store.DatastoreFactPostgresAvailable):
-			return projectedPush{
-				event: string(DeliveryEventPostgresAvailable), title: "Database recovered",
-				body: serviceName + " recovered.", urgency: string(DeliveryUrgencyImportant),
-			}, true
+			return newProjectedPush(DeliveryEventPostgresAvailable, "Database recovered", serviceName+" recovered."), true
 		case string(store.DatastoreFactKeyValueUnhealthy):
-			return projectedPush{
-				event: string(DeliveryEventKeyValueUnhealthy), title: "Key Value unhealthy",
-				body: serviceName + " is unhealthy.", urgency: string(DeliveryUrgencyCritical),
-			}, true
+			return newProjectedPush(DeliveryEventKeyValueUnhealthy, "Key Value unhealthy", serviceName+" is unhealthy."), true
 		case string(store.DatastoreFactKeyValueAvailable):
-			return projectedPush{
-				event: string(DeliveryEventKeyValueAvailable), title: "Key Value recovered",
-				body: serviceName + " recovered.", urgency: string(DeliveryUrgencyImportant),
-			}, true
+			return newProjectedPush(DeliveryEventKeyValueAvailable, "Key Value recovered", serviceName+" recovered."), true
 		case string(store.DatastoreFactPostgresBackupFailed):
-			return projectedPush{
-				event: string(DeliveryEventPostgresBackupFailed), title: "Backup failed",
-				body: serviceName + " backup failed.", urgency: string(DeliveryUrgencyImportant),
-			}, true
+			return newProjectedPush(DeliveryEventPostgresBackupFailed, "Backup failed", serviceName+" backup failed."), true
 		case string(store.DatastoreFactPostgresRestoreFailed):
-			return projectedPush{
-				event: string(DeliveryEventPostgresRestoreFailed), title: "Restore failed",
-				body: serviceName + " restore failed.", urgency: string(DeliveryUrgencyImportant),
-			}, true
+			return newProjectedPush(DeliveryEventPostgresRestoreFailed, "Restore failed", serviceName+" restore failed."), true
 		case string(store.DatastoreFactPostgresUpgradeFailed):
-			return projectedPush{
-				event: string(DeliveryEventPostgresUpgradeFailed), title: "Upgrade failed",
-				body: serviceName + " major version upgrade failed.", urgency: string(DeliveryUrgencyImportant),
-			}, true
+			return newProjectedPush(DeliveryEventPostgresUpgradeFailed, "Upgrade failed", serviceName+" major version upgrade failed."), true
 		}
 	}
 	return projectedPush{}, false
