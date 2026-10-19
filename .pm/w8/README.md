@@ -353,7 +353,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **122** — [Production CI runner's Docker cannot apply memory or CPU limits](blocked/122.md) — **BLOCKED (2026-10-18: the fix is a patch to another repo plus a rebuild of the shared runner fleet on the operator's Mac. Apply `blocked/122-upstream.patch` in bex-co/block-eden-mono, which adds docker:dind's cgroup-v2 nesting to `projects/github-runner/dind-entrypoint.sh` together with its test. Then, with no jobs running, run `docker compose up -d --build runner-bex-production runner-bex-ci` and confirm that a `--memory 512m --cpus 1` container starts in a bex-production job)**. Diagnosed and validated locally: the unpatched runner image fails `--memory`/`--cpus` with the same runc cgroup error; the patched entrypoint starts all of them.
+- [x] **122** — [Production CI runner's Docker cannot apply memory or CPU limits](done/122.md) — **DONE (2026-10-18: cgroup v2 nesting shipped in block-eden-mono `8abb38b0d5` + `d62abafdde`; all 10 runners rolled onto the new image while idle; a `--memory 512m --cpus 1 --pids-limit 128` container runs in a bex-production runner)**
 
 - [x] **121** — [Platform-subdomain services answer plain HTTP instead of redirecting to HTTPS](done/121.md) — **PROMOTED (2026-10-18)** to `m118`.
 
