@@ -337,6 +337,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **365** — [The API enables autoscaling on a Free service while the Scaling page says "Autoscaling off… available on paid plans"](365.md) (45m) ← live `/qa-find-bugs w4` pass 305022, 2026-10-19. `PUT …/autoscaling {min:1,max:1}` and GraphQL `setAutoscaling(0..1)` on a Free service answer `enabled:true`, and Events records it, while the dashboard shows Off with no way to clear it. `autoscalingSpec` (`apps/service.go:5413`) checks only the instance cap, and w7/048's dashboard rests on a server refusal that does not exist for `max ≤ 1`.
+
 - [ ] **364** — [A Postgres save that restarts nothing may still read `config_restart`](364.md) (45m) ← split from w4/m233/t008, loopx w4, 2026-10-19 (unverified live)
 
 - [ ] **363** — [The deploy-cancel toast and the Checkout notice spell "cancelled"; every other English string says "canceled"](363.md) (10m) ← live `/qa-find-bugs w4` pass d3c46d, 2026-10-19. The toast "Deploy cancelled." (`services.cancelDeploySuccess`) sits beside the "Canceled" badge. 36 en strings say canceled, and the API enum and Render agree.
