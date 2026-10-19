@@ -41,3 +41,10 @@ Safety: every runtime pod template has carried `bex.co/app-id` since 2026-07-16 
 Tests: `TestServingSelectorExcludesJobPods` checks that the selector admits the runtime pod and the previous revision's pod, with and without a public id, and refuses pre-deploy, build and disk-backup Job pods. It fails on the old app-only selector. `TestImageNetworkLeavesLegacyServicesUnchanged` now pins the absence of a revision constraint, not the selector size. Operator `make test` and `make lint` pass. ADR004 records the rule.
 
 Not verified until the live replay: EndpointSlice membership of both Service names while a step runs, public 200s through failed and canceled steps, and the deploy-surface and log controls.
+
+## Hosted probe — qa pass c5e2b8 (2026-10-19, not the closeout)
+
+A `/qa-find-bugs w4` pass ran this on production, pinned to `456090929`, which contains the fix. bex-canary; the owned Free web service `qa-20261019-c5e2b8-predeploy` (`srv-dbansjq5p3cc73ad8lj0`, image `python:3.13-alpine`, `python3 -m http.server $PORT`) was deleted (204 → 404), and only that run's session was revoked.
+
+- **Observable half only.** During the same failing 90 s pre-deploy (`dep-dbant5i5p3cc73ad8ll0`, 02:21:10–02:22:55Z, exit 23 → `pre_deploy_failed`), a 1 s probe of the public URL returned **160/160 `200`** from the previous release (02:20:26–02:24:49Z).
+- The EndpointSlice membership check (Job pod excluded from both Services) needs cluster access and was **not** run. The canceled-successful-step control was not run either.
