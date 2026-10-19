@@ -185,7 +185,7 @@ func TestSelectedReleaseKeepsItsRecordedLaunch(t *testing.T) {
 		rec := m202Record(m202Command, m202Native, shellCommand(m202Explicit))
 		rec.spec.Command = new(m202Explicit)
 		app := projectionApp(func(a *appv1alpha1.App) { a.Spec = gitSaved; a.Spec.Type = appv1alpha1.TypeCronJob })
-		got := (&AppReconciler{}).cronPodSpec(rec.projectRuntimeApp(app, &appv1alpha1.ReleaseConfigReference{Generation: 9}), m202Native, 0, nil, rec.launch(app)).Spec.Containers[0].Command
+		got := (&AppReconciler{}).cronPodSpec(rec.projectRuntimeApp(app, 9), m202Native, 0, nil, rec.launch(app)).Spec.Containers[0].Command
 		if want := shellCommand(m202Explicit); !slices.Equal(got, want) {
 			t.Errorf("cron command = %q, want %q", got, want)
 		}

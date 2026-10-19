@@ -597,6 +597,11 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return ctrl.Result{}, err
 	}
 	releaseDecision := prepareAppReleaseDecision(&app)
+	if releaseDecision.releaseChanged && pinnableSourceRelease(&app) {
+		if err := r.recordAdoptedRelease(ctx, &app); err != nil {
+			return r.fail(ctx, &app, "DeployFailed", err)
+		}
+	}
 
 	// codex F1: refuse to build any workload for an App that references an
 	// operator-managed Secret marked protected-from-tenant-mount (the shared S3

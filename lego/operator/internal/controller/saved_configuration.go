@@ -130,7 +130,7 @@ func (r *AppReconciler) inFlightCarriesSavedConfiguration(ctx context.Context, a
 	if err != nil {
 		return false, err
 	}
-	runtime := rec.projectRuntimeApp(app, &appv1alpha1.ReleaseConfigReference{Generation: pending})
+	runtime := rec.projectRuntimeApp(app, pending)
 	runtime.Status.ConfigSnapshotGeneration = pending
 	differs, err := r.savedConfigurationDiffers(ctx, app, runtime)
 	return !differs && err == nil, err
@@ -154,7 +154,7 @@ func (r *AppReconciler) servingConfigurationDiffers(ctx context.Context, app *ap
 	if app.Status.ConfigSnapshotGeneration == 0 && len(releaseConfigSources(app)) > 0 {
 		return app.Status.UndeployedChanges || app.Annotations[appv1alpha1.AnnotationSavedConfigRevision] != "", nil
 	}
-	runtime := rec.projectRuntimeApp(app, &appv1alpha1.ReleaseConfigReference{Generation: gen})
+	runtime := rec.projectRuntimeApp(app, gen)
 	runtime.Status.ConfigSnapshotGeneration = gen
 	different, err := r.savedConfigurationDiffers(ctx, app, runtime)
 	if err != nil {

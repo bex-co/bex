@@ -1,18 +1,18 @@
 # w8 · m120 — A release held through rollout keeps its own settings
 
-**Worker:** worker8 **Goal:** A release the latest-pending slot holds through its rollout (ADR060 §D1a, Render's Wait policy) rolls out with its own settings: start command, environment, files, health path and replicas. Its release record says so too, so Restart, Rollback and `undeployedChanges` describe what actually ran. **Status:** todo
+**Worker:** worker8 **Goal:** A release the latest-pending slot holds through its rollout (ADR060 §D1a, Render's Wait policy) rolls out with its own settings: start command, environment, files, health path and replicas. Its release record says so too, so Restart, Rollback and `undeployedChanges` describe what actually ran. **Status:** in progress — t001–t004, t006, t007 done (held releases render and record their own settings; Restart and undeployedChanges follow); next: deploy, t005 live parity, t008 closeout
 
 ## Tasks (in order)
 
 | id   | title                                                                                  | est | depends_on         |
 | ---- | -------------------------------------------------------------------------------------- | --- | ------------------ |
-| t001 | Design: capture a release's own settings at adoption and use them through its rollout | 45m | —                  |
-| t002 | Operator: record a release's settings and configuration snapshot when it is adopted   | 60m | w8/m120/t001       |
-| t003 | Operator: render and record a held release from its own settings                      | 90m | w8/m120/t002       |
-| t004 | Restart, Rollback and undeployedChanges read the corrected records; m119's bullet     | 45m | w8/m120/t003       |
+| t001 | Design: capture a release's own settings at adoption and use them through its rollout | 45m | — — **DONE** |
+| t002 | Operator: record a release's settings and configuration snapshot when it is adopted   | 60m | w8/m120/t001 — **DONE** |
+| t003 | Operator: render and record a held release from its own settings                      | 90m | w8/m120/t002 — **DONE** |
+| t004 | Restart, Rollback and undeployedChanges read the corrected records; m119's bullet     | 45m | w8/m120/t003 — **DONE** |
 | t005 | Render parity: Restart, Rollback, current configuration across REST, GraphQL, MCP, UI | 30m | w8/m120/t004       |
-| t006 | Simplify the changed code                                                              | 20m | w8/m120/t005       |
-| t007 | Test coverage: held release settings, records, Restart and Rollback after an overlap   | 50m | w8/m120/t005       |
+| t006 | Simplify the changed code                                                              | 20m | w8/m120/t005 — **DONE** |
+| t007 | Test coverage: held release settings, records, Restart and Rollback after an overlap   | 50m | w8/m120/t005 — **DONE** |
 | t008 | Close out the milestone and w8/m119                                                    | 10m | w8/m120/t006, t007 |
 
 Eight tasks, 350m.

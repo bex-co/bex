@@ -228,10 +228,8 @@ func (r *AppReconciler) ensureSavedReleaseConfigSnapshot(ctx context.Context, ap
 	if gen <= 0 || app.Status.ConfigSnapshotGeneration == gen || servingWithoutSnapshots(app) {
 		return nil
 	}
-	for _, source := range releaseConfigSources(app) {
-		if err := r.copyConfigSecret(ctx, app, source, gen); err != nil {
-			return fmt.Errorf("snapshot %s for generation %d: %w", source, gen, err)
-		}
+	if err := r.snapshotReleaseConfig(ctx, app, gen); err != nil {
+		return err
 	}
 	prior := app.Status.ConfigSnapshotGeneration
 	app.Status.ConfigSnapshotGeneration = gen
@@ -437,6 +435,35 @@ func canceledOverServed(app *appv1alpha1.App) bool {
 	return canceledReleaseIsLatest(app) && releaseHasServed(app)
 }
 
+// recordAdoptedRelease captures the release just adopted as it was saved: its
+// configuration snapshots (copy-once, so the deploy-stage snapshot keeps them)
+// and its record's settings. A later save can move the spec on while this
+// release is still held through its rollout (heldRelease), and it must keep
+// running and recording these (w8/m120). The snapshot generation is not flipped
+// here: a prior release still serving re-projects through it until this
+// release's template is applied.
+func (r *AppReconciler) recordAdoptedRelease(ctx context.Context, app *appv1alpha1.App) error {
+	gen := app.Status.ReleaseGeneration
+	if r.Mode != ModeKubernetes || gen <= 0 {
+		return nil
+	}
+	if err := r.snapshotReleaseConfig(ctx, app, gen); err != nil {
+		return err
+	}
+	return r.writeRuntimeConfigRecord(ctx, app, gen, &runtimeConfigRecord{spec: releaseRecordSpec(app)})
+}
+
+// snapshotReleaseConfig copies each of the release's configuration sources to
+// its generation snapshot, copy-once.
+func (r *AppReconciler) snapshotReleaseConfig(ctx context.Context, app *appv1alpha1.App, gen int64) error {
+	for _, source := range releaseConfigSources(app) {
+		if err := r.copyConfigSecret(ctx, app, source, gen); err != nil {
+			return fmt.Errorf("snapshot %s for generation %d: %w", source, gen, err)
+		}
+	}
+	return nil
+}
+
 // recordReleasePodTemplate stores the pod template just applied for the current
 // release generation, overwriting any earlier record for that generation so it is
 // always the LAST template that generation ran with.
@@ -455,6 +482,17 @@ func (r *AppReconciler) recordReleasePodTemplate(ctx context.Context, app *appv1
 	gen := app.Status.ReleaseGeneration
 	if gen <= 0 {
 		return nil
+	}
+	adopted, err := r.heldReleaseRecord(ctx, app)
+	if err != nil {
+		return err
+	}
+	if adopted != nil {
+		// The saved spec is a newer release's; keep the stamps this release was
+		// adopted with.
+		spec := releaseRecordSpec(adopted.projectRuntimeApp(app, gen))
+		spec.SavedReplicas, spec.SettingsFingerprint = adopted.spec.SavedReplicas, adopted.spec.SettingsFingerprint
+		return r.persistRuntimeConfigRecord(ctx, app, gen, &runtimeConfigRecord{spec: spec, template: tmpl})
 	}
 	runtime, err := r.selectedRuntimeApp(ctx, app)
 	if err != nil {
