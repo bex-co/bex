@@ -132,6 +132,10 @@ func (deployHookStore) LatestDeployCommit(context.Context, string) (store.Commit
 	return store.CommitInfo{}, nil
 }
 
+func (deployHookStore) CreateRestartDeploy(context.Context, string, string, int64, store.CommitInfo, string) (store.Deploy, error) {
+	return store.Deploy{}, errors.New("unexpected CreateRestartDeploy")
+}
+
 func (deployHookStore) CreateRollbackDeploy(context.Context, string, string, string, int64, store.CommitInfo, string) (store.Deploy, error) {
 	return store.Deploy{}, errors.New("unexpected CreateRollbackDeploy")
 }

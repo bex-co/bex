@@ -148,6 +148,10 @@ func (f *fakeStore) LatestDeployCommit(_ context.Context, appID string) (store.C
 	return store.CommitInfo{}, nil
 }
 
+func (f *fakeStore) CreateRestartDeploy(ctx context.Context, appID, image string, generation int64, commit store.CommitInfo, triggeredBy string) (store.Deploy, error) {
+	return f.CreateDeploy(ctx, appID, store.TriggerAPI, image, generation, commit, triggeredBy)
+}
+
 func (f *fakeStore) CreateRollbackDeploy(_ context.Context, appID, image, rollbackOf string, generation int64, commit store.CommitInfo, triggeredBy string) (store.Deploy, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
