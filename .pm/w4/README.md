@@ -346,7 +346,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **344** — [Billing's resource-cap tile says "Near limit" for a cap that is full](344.md) ← live `/qa-find-bugs w4` pass 7b1f38, 2026-10-19 UTC. `resource-caps.tsx:35-41` has only an 80 % "Near limit" state, so `Postgres 1 / 1` reads "Near limit" while New Postgres refuses with "Postgres limit reached" (nothing was created). Minor, 25m.
 
-- [ ] **343** — [qa-login.sh's shared session jar lets one hunt revoke another's session](343.md) ← `/qa-find-bugs w4` pass e4a77c, 2026-10-19 UTC. A fixed `DEFAULT_JAR` (`scripts/qa-login.sh:35`) plus a path-less `--logout` (`:215-222`) mean concurrent hunts in one checkout sign each other out. This pass's session went 401 within a minute and its jar vanished (cause inferred). Tooling, minor, 30m.
+- [x] **343** — [qa-login.sh's shared session jar lets one hunt revoke another's session](done/343.md) — **DONE 2026-10-19.** Each login prints its own per-run logout jar, `--logout` requires it, and `--serve` no longer orphans a live jar; QA skills updated; 19 script tests pass. The observed revocation was this loopx run's w4/339 logout.
 
 - [ ] **342** — [Search can't find services by kind ("Cron Job" says no matches while three are listed)](blocked/342.md) — **BLOCKED (release pipeline deploys the dashboard; QA replays c91d4a read-only in `bex-canary`: header Search (⌘K), typing "Cron Job" lists all three cron jobs, including `qa-20260922-cd9361-boundary`, typing "cron" lists the same three, and "Web Service" lists the web services; then sign out)**. Implementation done 2026-10-19: the service filter matches the displayed kind label through one shared haystack, with tests for every kind and zh.
 

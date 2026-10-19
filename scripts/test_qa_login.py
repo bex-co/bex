@@ -160,26 +160,55 @@ class QALoginTest(unittest.TestCase):
         self.assertEqual(len(json.loads(log.read_text())) if log.exists() else 0, len(steps), result.stderr)
         if not ok:
             self.assertEqual(result.stdout, "")
-            self.assertFalse((self.root / ".playwright-mcp/qa-session.jar").exists())
+            self.assertEqual(list(self.root.glob(".playwright-mcp/qa-session-*.jar")), [])
         return result
 
-    def assert_state(self, name=".playwright-mcp/qa-storage-state.json"):
-        state = self.root / name
+    def handles(self, result):
+        """The (state, jar) paths a successful login printed on its two lines."""
+        ok, logout = result.stdout.splitlines()
+        self.assertTrue(ok.startswith("ok ") and logout.startswith("logout "), result.stdout)
+        return Path(ok[3:]), Path(logout[len("logout "):])
+
+    def assert_state(self, result, session="test-session"):
+        state, jar = self.handles(result)
         cookies = json.loads(state.read_text())["cookies"]
-        self.assertEqual(next(c["value"] for c in cookies if c["name"] == "ory_kratos_session"), "test-session")
-        for path in (state, self.root / ".playwright-mcp/qa-session.jar"):
+        self.assertEqual(next(c["value"] for c in cookies if c["name"] == "ory_kratos_session"), session)
+        self.assertRegex(jar.name, r"^qa-session-[0-9a-f]{12}\.jar$")
+        for path in (state, jar):
             self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
+        return state, jar
 
     def test_ordinary_login_preserves_state_and_jar(self):
         result = self.run_login([flow(), submit(), whoami()], "custom/state.json")
-        self.assertEqual(result.stdout, "ok " + str(self.root / "custom/state.json") + "\n")
-        self.assert_state("custom/state.json")
+        state, _ = self.assert_state(result)
+        self.assertEqual(state, self.root / "custom/state.json")
+
+    def test_concurrent_logins_keep_separate_logout_handles(self):
+        # w4/343: two hunts in one checkout shared one jar, so one run's
+        # --logout revoked the other's session. Each login now gets its own.
+        first = self.assert_state(self.run_login([flow(), submit(), whoami()]))
+        snapshot = [path.read_bytes() for path in first]
+        (self.root / "calls.json").unlink()  # the mock replays steps by call count
+        other = submit(cookie=COOKIE.replace("test-session", "other-session"))
+        second = self.assert_state(self.run_login([flow(), other, whoami()]), session="other-session")
+        self.assertTrue(set(first).isdisjoint(second), (first, second))
+        self.assertEqual([path.read_bytes() for path in first], snapshot)
+
+    def test_logout_requires_the_printed_handle(self):
+        # A jar at the old shared path is someone else's session: a bare
+        # --logout must refuse, not revoke whatever it finds there.
+        shared = self.root / ".playwright-mcp/qa-session.jar"
+        shared.parent.mkdir(parents=True, exist_ok=True)
+        shared.write_text("# Netscape HTTP Cookie File\n" + COOKIE)
+        result = self.run_login([], "--logout", ok=False)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("requires the path", result.stderr)
 
     def test_challenge_is_encoded_and_json_redirects_finish_consent(self):
         challenge = "opaque/+&? #=%challenge"
         bootstrap = challenge_url(challenge)
         success = SUCCESS + "?client_id=429024F5E608930E2A65EF92591A25CC"
-        self.run_login([
+        result = self.run_login([
             flow(bootstrap),
             submit(status=422, body={"redirect_browser_to": OAUTH + "/oauth2/auth?login_verifier=v"}),
             {"url": OAUTH + "/oauth2/auth?login_verifier=v", "status": 302,
@@ -192,7 +221,7 @@ class QALoginTest(unittest.TestCase):
              "location": success},
             {"url": success, "body": "<html>Authorized</html>"}, whoami(),
         ], "--login-challenge", challenge)
-        self.assert_state()
+        self.assert_state(result)
 
     def test_post_307_becomes_get_without_forwarding_credentials(self):
         bootstrap = challenge_url()
@@ -218,14 +247,14 @@ class QALoginTest(unittest.TestCase):
         original = "# Netscape HTTP Cookie File\n" + (
             "oauth.example.test\tFALSE\t/\tTRUE\t0\toauth_csrf\ttest-hydra-csrf\n")
         seed.write_text(original)
-        self.run_login([
+        result = self.run_login([
             flow(bootstrap, required_cookie="test-hydra-csrf"),
             submit(status=422, body={"redirect_browser_to": SUCCESS}),
             {"url": SUCCESS, "required_cookie": "test-hydra-csrf"}, whoami(),
         ], "--login-challenge", "test", "--cookie-jar", str(seed))
         self.assertEqual(seed.read_text(), original)
-        self.assert_state()
-        self.assertIn("test-hydra-csrf", (self.root / ".playwright-mcp/qa-session.jar").read_text())
+        _, jar = self.assert_state(result)
+        self.assertIn("test-hydra-csrf", jar.read_text())
 
     def test_continue_with_redirect(self):
         bootstrap = challenge_url()

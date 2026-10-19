@@ -29,9 +29,10 @@ Parse `$ARGUMENTS`:
 
    ```bash
    bash scripts/qa-login.sh --serve   # prints: ok http://127.0.0.1:<port>/<token>.json
+                                      #         logout /abs/.playwright-mcp/qa-session-<run>.jar
    ```
 
-   It keeps the session state in memory and serves it **once**, on loopback, at an unguessable path, then exits. Nothing lands on disk.
+   It keeps the session state in memory and serves it **once**, on loopback, at an unguessable path, then exits. The only file it leaves is this run's logout jar, named on the second line.
 
 2. Inject it into the browser with `browser_run_code_unsafe`, naming only the loopback URL:
 
@@ -54,7 +55,7 @@ Parse `$ARGUMENTS`:
 
 5. Note which workspace and plan you landed in, and its pre-existing resources. Everything you create in Phase 2 lives in **this** workspace only.
 
-Both login modes also install a 0600 Netscape cookie jar at `.playwright-mcp/qa-session.jar` (gitignored). That jar is the Phase 8 logout handle — do not put its contents in the transcript. The login script's EXIT trap only removes its temp dir; it does **not** revoke the Kratos session (the browser still needs it).
+Both login modes also install this run's own 0600 Netscape cookie jar at `.playwright-mcp/qa-session-<run>.jar` (gitignored) and print its absolute path on the second stdout line, `logout <path>`. Keep that path: it is the Phase 8 logout handle, and a path is not a secret, but never put the jar's contents in the transcript. The paths are per run because other sessions may be hunting in the same checkout. A shared jar let one run's logout revoke another run's session (w4/343). So never logout, delete or reuse a jar or state file another run created. The login script's EXIT trap only removes its temp dir; it does **not** revoke the Kratos session (the browser still needs it).
 
 ## Phase 2 — Sweep the hosting features like a real user
 
@@ -188,8 +189,8 @@ Invoke `/ship` so the newly scheduled work lands on `main` and is visible to who
 Before writing the report, **revoke this run's Kratos session** (and only this run's). The Active Sessions card is useless when hunts leave dozens of `curl/…` rows behind (`w4/085`).
 
 ```bash
-bash scripts/qa-login.sh --logout   # uses .playwright-mcp/qa-storage-state.json or qa-session.jar
-rm -f .playwright-mcp/qa-storage-state.json .playwright-mcp/qa-session.jar
+bash scripts/qa-login.sh --logout <the path from your login's logout line>
+rm -f <that jar> <your state file, if you wrote one>
 ```
 
 `--logout` completes Kratos's self-service browser logout against the same `$KRATOS_PUB` the login used. Do **not** use the dashboard's bulk "Sign out other sessions" control — that would also drop the operator's real browser sessions. Do not bulk-revoke historical `curl/…` rows from prior hunts; that is the operator's call. If `--logout` fails, say so loudly in the cleanup section (the session stays a live credential until Kratos's 168h idle window expires).
