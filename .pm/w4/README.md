@@ -333,6 +333,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [x] **354** — [Coverage record: environment-group values reach the process and leave it on unlink or delete](done/354.md) ← live `/qa-find-bugs w4` pass 17af14, 2026-10-19 UTC; a record, not work to do. Create+link, Save only (no deploy, pending notice on Deploys and Environment), Save and deploy (`envUpdated` deploy), unlink and delete-while-linked each matched what the running process served.
+
 - [ ] **353** — [Custom domains accept hostnames DNS cannot hold (a 64+ character label, an all-numeric TLD)](353.md) ← live `/qa-find-bugs w4` pass b68857, 2026-10-19 UTC. `canonicalHostname`'s `IsDNS1123Subdomain` never applies the 63-octet label cap, so the claim shows CNAME instructions no provider accepts and Re-check says "DNS may still be propagating" forever.
 
 - [ ] **351** — [A legacy Free cron job's Plan page pre-selects nothing and never says it runs on Free](351.md) ← live `/qa-find-bugs w4` pass 65314e, 2026-10-19 UTC. The picker hides Free for a paid-only type, but seeds its selection with the current `free`, so no card is checked and nothing explains the ADR030 §7 transition.
