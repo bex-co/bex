@@ -89,11 +89,64 @@ func TestLogsUpToAFutureEndLookBackFromNow(t *testing.T) {
 		t.Fatalf("a future endTime alone = %d lines, want the one before now", len(env.Logs))
 	}
 	start, err := strconv.ParseInt(f.lastValues.Get("start"), 10, 64)
-	if err != nil || time.Unix(0, start).After(time.Now().Add(-lokiLookback)) {
+	if err != nil || time.Unix(0, start).After(time.Now().Add(lokiFutureGrace-lokiLookback)) {
 		t.Errorf("Loki window starts at %s, want the lookback from now", time.Unix(0, start).UTC())
 	}
 
 	if since, _ := resolveCursorWindow(time.Time{}, time.Now().AddDate(4, 0, 0)); since.After(time.Now()) {
 		t.Errorf("the page cursors start at %s, in the future", since)
+	}
+}
+
+// w8/123: no line is stamped after now, so a far-future endTime reads the
+// window up to now. Loki was sent the caller's end, and once that lay more
+// than its 720-hour maximum past the defaulted start it refused the query (a
+// 500); just under it, the scan walked weeks of empty future and timed out.
+func TestLogsUpToAFarFutureEndQueryLokiOnlyUpToNow(t *testing.T) {
+	f := newFakeLoki(lokiResp(map[string]any{
+		"stream": `{"app":"web","pod":"web-9","container":"app"}`,
+		"values": `[["1751673601000000000","a line from before now"]]`,
+	}))
+	defer f.srv.Close()
+	svc := newService(nil, sampleApp("web"))
+	svc.History = NewLokiSource(f.srv.URL, f.srv.Client())
+
+	for _, path := range []string{
+		"/v1/logs?resource=web&endTime=2030-01-01T00:00:00Z",
+		"/v1/logs?resource=web&endTime=2030-01-01T00:00:00Z&direction=forward",
+	} {
+		before := time.Now()
+		if env := decodeLogList(t, serveREST(svc, "GET", path)); len(env.Logs) != 1 {
+			t.Fatalf("%s = %d lines, want the one before now", path, len(env.Logs))
+		}
+		start, _ := strconv.ParseInt(f.lastValues.Get("start"), 10, 64)
+		end, err := strconv.ParseInt(f.lastValues.Get("end"), 10, 64)
+		if err != nil || time.Unix(0, end).After(time.Now().Add(lokiFutureGrace)) || time.Unix(0, end).Before(before) {
+			t.Errorf("%s: Loki end = %s, want now plus at most the clock grace", path, time.Unix(0, end).UTC())
+		}
+		if span := time.Duration(end - start); span > lokiLookback+time.Second {
+			t.Errorf("%s: Loki window spans %s, want at most the %s lookback", path, span, lokiLookback)
+		}
+	}
+}
+
+// The query-hours cap measures the window that can hold lines: up to now,
+// not up to a future end (w8/123). A start past the cap is still refused.
+func TestLogQueryCapMeasuresTheWindowUpToNow(t *testing.T) {
+	svc := newService(nil, sampleApp("web"))
+	svc.MaxQueryHours = 720
+	now := time.Now()
+	for _, tc := range []struct {
+		start, end time.Time
+		ok         bool
+	}{
+		{now.Add(-24 * time.Hour), now.Add(40 * 24 * time.Hour), true},
+		{now.Add(-31 * 24 * time.Hour), now.Add(24 * time.Hour), false},
+		{now.Add(24 * time.Hour), now.Add(40 * 24 * time.Hour), true},
+	} {
+		err := svc.checkWindow(LogQuery{Since: tc.start, End: tc.end})
+		if (err == nil) != tc.ok {
+			t.Errorf("window %s .. %s: err = %v, want ok=%v", tc.start.UTC(), tc.end.UTC(), err, tc.ok)
+		}
 	}
 }
