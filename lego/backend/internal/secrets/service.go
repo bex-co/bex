@@ -90,6 +90,10 @@ type Service struct {
 	// tab and Events feed (w6/m51). The composition root wires the control-plane
 	// store; nil leaves the patch untracked (CR-only mode).
 	Rollout *rollout.Tracker
+	// RebuildService opens the rebuild a "rebuild" environment save asks for,
+	// recorded as a configuration change (deploys.Service.Rebuild, w4/347).
+	// Nil makes that save mode unavailable while save_only/deploy still work.
+	RebuildService func(ctx context.Context, serviceID string) error
 }
 
 // rollApp applies mutate to an already-fetched App and merge-patches it,

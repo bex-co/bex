@@ -573,10 +573,10 @@ describe("ServiceEnvironmentEditor", () => {
     expect(screen.queryByDisplayValue("keystore.p12")).not.toBeInTheDocument();
   });
 
-  it("retries only deploy after configuration was already saved", async () => {
-    trigger.mockResolvedValueOnce(null).mockResolvedValueOnce("dep-2");
-    const user = userEvent.setup();
-    renderEditor();
+  // w4/347: "Save, rebuild, and deploy" used to save with save_only and then
+  // open a Manual Deploy from the client, so the rebuild read as Manual Deploy.
+  // One rebuild save now does both, recorded as a configuration change.
+  async function rebuildSave(user: ReturnType<typeof userEvent.setup>) {
     await user.click(await screen.findByRole("button", { name: "Edit" }));
     await user.type(
       screen.getAllByRole("textbox", { name: /Value for / })[0],
@@ -590,15 +590,88 @@ describe("ServiceEnvironmentEditor", () => {
         name: "Save, rebuild, and deploy",
       }),
     );
+  }
+
+  it("rebuilds in the one save call, never through a Manual Deploy", async () => {
+    save.mockResolvedValueOnce({
+      envVarKeys: [],
+      secretFileNames: [],
+      rolledOut: true,
+    });
+    const user = userEvent.setup();
+    renderEditor();
+    await rebuildSave(user);
+
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    expect(save.mock.calls[0][2]).toBe("rebuild");
+    expect(trigger).not.toHaveBeenCalled();
+    expect(toastSuccess).toHaveBeenCalledWith("Deploy triggered.");
+    expect(
+      screen.queryByText("Configuration saved; rollout incomplete"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says a rebuild did not start in its own words when the server gives none, and survives a failing retry", async () => {
+    save
+      .mockResolvedValueOnce({
+        envVarKeys: [],
+        secretFileNames: [],
+        rolledOut: false,
+        rolloutError: null,
+      })
+      .mockRejectedValueOnce(new Error("Failed to fetch"));
+    const user = userEvent.setup();
+    renderEditor();
+    await rebuildSave(user);
 
     expect(
       await screen.findByText("Configuration saved; rollout incomplete"),
     ).toBeInTheDocument();
-    expect(save).toHaveBeenCalledTimes(1);
-    expect(save.mock.calls[0][2]).toBe("save_only");
+    expect(toastError).toHaveBeenCalledWith("Couldn't trigger deploy.");
+    toastError.mockClear();
     await user.click(screen.getByRole("button", { name: "Retry rollout" }));
-    await waitFor(() => expect(trigger).toHaveBeenCalledTimes(2));
-    expect(save).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(toastError).toHaveBeenCalled());
+    expect(
+      screen.getByText("Configuration saved; rollout incomplete"),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps a saved rebuild whose rollout did not start, says why, and retries the rebuild", async () => {
+    save
+      .mockResolvedValueOnce({
+        envVarKeys: [],
+        secretFileNames: [],
+        rolledOut: false,
+        rolloutError: "billing is suspended for this workspace",
+      })
+      .mockResolvedValueOnce({
+        envVarKeys: [],
+        secretFileNames: [],
+        rolledOut: true,
+      });
+    const user = userEvent.setup();
+    renderEditor();
+    await rebuildSave(user);
+
+    expect(
+      await screen.findByText("Configuration saved; rollout incomplete"),
+    ).toBeInTheDocument();
+    expect(toastError).toHaveBeenCalledWith(
+      "billing is suspended for this workspace",
+    );
+    await user.click(screen.getByRole("button", { name: "Retry rollout" }));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
+    // The retry writes nothing new and rebuilds with the same cause.
+    expect(save.mock.calls[1].slice(1)).toEqual([
+      { envVars: [], secretFiles: [] },
+      "rebuild",
+    ]);
+    expect(trigger).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(
+        screen.queryByText("Configuration saved; rollout incomplete"),
+      ).not.toBeInTheDocument(),
+    );
   });
 
   it("disables Edit with a role reason for a contributor without can_create", async () => {

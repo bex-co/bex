@@ -69,5 +69,7 @@ mutation PatchServiceEnvironment(
     envVarKeys
     secretFileNames
     rolledOut
+    # Why a "rebuild" save's rebuild did not start; the save itself stands.
+    rolloutError
   }
 }

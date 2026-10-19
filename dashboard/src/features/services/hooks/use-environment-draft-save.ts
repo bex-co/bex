@@ -2,7 +2,11 @@ import { useMutation } from "@apollo/client/react";
 import type { EnvironmentPatchInput } from "@/features/services/lib/environment-draft";
 import { PatchServiceEnvironmentDocument } from "@/graphql/definitions";
 
-export type EnvironmentSaveMode = "save_only" | "deploy";
+// "rebuild" saves and rebuilds from source in one call, recorded as the
+// configuration change it is rather than a Manual Deploy (w4/347).
+export type EnvironmentSaveMode = "save_only" | "deploy" | "rebuild";
+
+const SAVE_REFETCH_QUERIES = ["Server", "EnvVarKeys", "SecretFileNames"];
 
 export function useEnvironmentDraftSave() {
   // Refetch only the queries that display the patch's result — the env-var and
@@ -14,7 +18,7 @@ export function useEnvironmentDraftSave() {
   // (a no-op or revert may have no difference); the save toast explains that
   // this action did not deploy while the layout's poll picks up the result.
   const [mutate, { loading }] = useMutation(PatchServiceEnvironmentDocument, {
-    refetchQueries: ["Server", "EnvVarKeys", "SecretFileNames"],
+    refetchQueries: SAVE_REFETCH_QUERIES,
     awaitRefetchQueries: true,
   });
 
@@ -26,6 +30,17 @@ export function useEnvironmentDraftSave() {
     let refreshFailed = false;
     const { data } = await mutate({
       variables: { serviceId, ...patch, saveMode },
+      // A rebuild opens a deploy, so its history and events refresh too, as a
+      // Manual Deploy's did (w4/347).
+      ...(saveMode === "rebuild"
+        ? {
+            refetchQueries: [
+              ...SAVE_REFETCH_QUERIES,
+              "Deploys",
+              "ServiceEvents",
+            ],
+          }
+        : {}),
       onQueryUpdated: async (query) => {
         // The mutation has already committed. A failed follow-up read must
         // never keep the draft open as though replaying the patch were safe.

@@ -21,6 +21,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"log"
 	"maps"
 	"slices"
 	"strings"
@@ -35,13 +36,16 @@ import (
 )
 
 // SaveMode controls whether a coherent environment patch only updates stored
-// and projected configuration or also rolls the service once. Rebuilding source
-// is intentionally composed by the deploys feature after a successful save.
+// and projected configuration, also rolls the service once, or also rebuilds
+// it from source. The rebuild is composed by the deploys feature after a
+// successful save (Service.RebuildService), so it is recorded as the
+// configuration change that caused it rather than a Manual Deploy (w4/347).
 type SaveMode string
 
 const (
-	SaveModeOnly   SaveMode = "save_only"
-	SaveModeDeploy SaveMode = "deploy"
+	SaveModeOnly    SaveMode = "save_only"
+	SaveModeDeploy  SaveMode = "deploy"
+	SaveModeRebuild SaveMode = "rebuild"
 )
 
 // EnvVarPatch is one explicit mutation in a service environment draft. Omitted
@@ -65,6 +69,10 @@ type EnvironmentPatchResult struct {
 	EnvVarKeys      []string `json:"envVarKeys"`
 	SecretFileNames []string `json:"secretFileNames"`
 	RolledOut       bool     `json:"rolledOut"`
+	// RolloutError says why a rebuild save's rebuild did not start (billing,
+	// a deleting service, …). The save itself stands and RolledOut is false;
+	// the caller retries with an empty rebuild patch.
+	RolloutError string `json:"rolloutError,omitempty"`
 	// Revision is null for sparse patches, which make no caller-visible CAS promise.
 	Revision *string `json:"revision"`
 }
@@ -77,6 +85,9 @@ type EnvironmentPatchResult struct {
 // write a newer one superseded is left to it instead, and the call answers
 // ENVIRONMENT_RESTORATION_FAILED, since its change may survive in that write.
 func (s *Service) PatchEnvironment(ctx context.Context, service string, patch EnvironmentPatch) (EnvironmentPatchResult, error) {
+	// The rebuild runs with the caller's context: the scoped one defers
+	// allowed-write audits, which would drop the rebuild's own audit row.
+	callerCtx := ctx
 	a, ctx, service, err := s.scopeForWrite(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return EnvironmentPatchResult{}, err
@@ -90,8 +101,17 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 	if err := refuseManifestKeys(a, keys...); err != nil {
 		return EnvironmentPatchResult{}, err
 	}
-	if patch.SaveMode != SaveModeOnly && patch.SaveMode != SaveModeDeploy {
-		return EnvironmentPatchResult{}, fmt.Errorf("%w: saveMode must be %q or %q", core.ErrBadRequest, SaveModeOnly, SaveModeDeploy)
+	rebuild := patch.SaveMode == SaveModeRebuild
+	if patch.SaveMode != SaveModeOnly && patch.SaveMode != SaveModeDeploy && !rebuild {
+		return EnvironmentPatchResult{}, fmt.Errorf("%w: saveMode must be %q, %q or %q", core.ErrBadRequest, SaveModeOnly, SaveModeDeploy, SaveModeRebuild)
+	}
+	if rebuild {
+		if s.RebuildService == nil {
+			return EnvironmentPatchResult{}, core.ErrDeploysUnavailable
+		}
+		// The save itself stages like save_only; the rebuild that follows is
+		// the one rollout, and it activates what was staged.
+		patch.SaveMode = SaveModeOnly
 	}
 	// Refuse a deploy with nothing to redeploy before anything is written; the
 	// locked patch checks again against the App it actually writes.
@@ -100,10 +120,30 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 			return EnvironmentPatchResult{}, err
 		}
 	}
+	var result EnvironmentPatchResult
 	if patch.ExpectedEnvRevision != nil {
-		return s.patchEnvironmentCAS(ctx, service, a, patch)
+		result, err = s.patchEnvironmentCAS(ctx, service, a, patch)
+	} else {
+		result, err = s.patchEnvironmentSparse(ctx, service, a, patch)
 	}
-	return s.patchEnvironmentSparse(ctx, service, a, patch)
+	if err != nil || !rebuild {
+		return result, err
+	}
+	// By id: service is now the name label, which a rename can hand to
+	// another App.
+	if err := s.RebuildService(callerCtx, core.AppPublicID(a)); err != nil {
+		// Redacted like any API error (core.IsPublicError): a public refusal
+		// keeps its message; an internal failure is logged and left blank for
+		// the client's own generic copy.
+		if core.IsPublicError(err) {
+			result.RolloutError = err.Error()
+		} else {
+			log.Printf("secrets: rebuild after the environment save for %s: %v", service, err)
+		}
+		return result, nil
+	}
+	result.RolledOut = true
+	return result, nil
 }
 
 // servedArtifact is the image an environment "Save and deploy" reruns: deploy

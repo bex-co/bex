@@ -813,6 +813,7 @@ export type EnvironmentPatchResult = {
   envVarKeys: Array<Scalars['String']['output']>;
   revision: Maybe<Scalars['String']['output']>;
   rolledOut: Scalars['Boolean']['output'];
+  rolloutError: Maybe<Scalars['String']['output']>;
   secretFileNames: Array<Scalars['String']['output']>;
 };
 

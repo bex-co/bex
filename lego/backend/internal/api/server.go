@@ -878,10 +878,14 @@ func NewServer(base *core.Base, d Deps) *Server {
 		DeployHookBaseURL: d.DeployHookBaseURL,
 		DeployHookLimiter: deploys.NewDeployHookRateLimiter(deploys.DefaultDeployHookRPM, deploys.DefaultDeployHookBurst),
 	}
-	envGroupsSvc.RebuildService = func(ctx context.Context, serviceID string) error {
-		_, err := deploysSvc.Trigger(ctx, serviceID, deploys.TriggerParams{})
+	// An environment save's rebuild is a configuration change, not a Manual
+	// Deploy, for a group and a service alike (w4/347).
+	rebuildForConfig := func(ctx context.Context, serviceID string) error {
+		_, err := deploysSvc.Rebuild(ctx, serviceID)
 		return err
 	}
+	envGroupsSvc.RebuildService = rebuildForConfig
+	secretsSvc.RebuildService = rebuildForConfig
 	// REST and MCP restart (in apps) run the same deploys verb as GraphQL
 	// restartServer, so every surface keeps the running commit (w1/m148).
 	// Without a deploy store there is no live commit, so apps keeps its CR-only

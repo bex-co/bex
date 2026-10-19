@@ -64,7 +64,6 @@ import {
 } from "@/features/services/hooks/use-secret-files";
 import { useEnvironmentDraftSave } from "@/features/services/hooks/use-environment-draft-save";
 import { classifySecretStoreError } from "@/features/services/lib/secret-store";
-import { useTriggerDeploy } from "@/features/services/hooks/use-trigger-deploy";
 import {
   MAX_SECRET_FILE_BYTES,
   NO_ENVIRONMENT_EDIT,
@@ -123,7 +122,15 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
   const revealEnv = useRevealEnvVar(serviceId);
   const revealFile = useRevealSecretFile(serviceId);
   const { save, saving } = useEnvironmentDraftSave();
-  const { trigger, deploying } = useTriggerDeploy();
+  const { t } = useTranslations();
+  // The rebuild's outcome toasts as a Manual Deploy's did: a rebuild that did
+  // not start keeps the save and says why (w4/347).
+  const rebuild = async (patch: EnvironmentPatchInput) => {
+    const result = await save(serviceId, patch, "rebuild");
+    if (result.rolledOut) toast.success(t("services.triggerDeploySuccess"));
+    else toast.error(result.rolloutError ?? t("services.triggerDeployError"));
+    return result;
+  };
 
   return (
     <EnvironmentEditor
@@ -148,30 +155,43 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
       }
       revealEnv={revealEnv}
       revealFile={revealFile}
-      saving={saving || deploying}
+      saving={saving}
       save={async (patch, choice) => {
+        if (choice === "rebuild") {
+          // One call saves and rebuilds, so the deploy reads as a
+          // configuration change (w4/347). It always rebuilds once.
+          const { refreshFailed, rolledOut } = await rebuild(patch);
+          return {
+            affectedServiceIds: [serviceId],
+            rolloutFailed: !rolledOut,
+            refreshFailed,
+          };
+        }
         const { refreshFailed, rolledOut } = await save(
           serviceId,
           patch,
           choice === "deploy" ? "deploy" : "save_only",
         );
-        if (choice !== "rebuild") {
-          // A deploying save that changed nothing rolls nothing out; saying a
-          // deployment started would be false (w4/216).
-          return {
-            affectedServiceIds:
-              choice === "deploy" && rolledOut ? [serviceId] : [],
-            refreshFailed,
-          };
-        }
-        // Rebuild always triggers once: its preliminary save is save_only.
+        // A deploying save that changed nothing rolls nothing out; saying a
+        // deployment started would be false (w4/216).
         return {
-          affectedServiceIds: [serviceId],
-          rolloutFailed: (await trigger(serviceId)) == null,
+          affectedServiceIds:
+            choice === "deploy" && rolledOut ? [serviceId] : [],
           refreshFailed,
         };
       }}
-      retryRollout={async () => (await trigger(serviceId)) != null}
+      // Only a rebuild reports a failed rollout. Its retry re-sends an empty
+      // rebuild patch, as an environment group's does, keeping the cause.
+      retryRollout={async () => {
+        try {
+          return (await rebuild({ envVars: [], secretFiles: [] })).rolledOut;
+        } catch (err) {
+          toast.error(
+            mutationErrorMessage(err, t("services.triggerDeployError")),
+          );
+          return false;
+        }
+      }}
     />
   );
 }
