@@ -353,6 +353,12 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **122** — [Production CI runner's Docker cannot apply memory or CPU limits](blocked/122.md) — **BLOCKED (2026-10-18: the fix is a patch to another repo plus a rebuild of the shared runner fleet on the operator's Mac. Apply `blocked/122-upstream.patch` in bex-co/block-eden-mono, which adds docker:dind's cgroup-v2 nesting to `projects/github-runner/dind-entrypoint.sh` together with its test. Then, with no jobs running, run `docker compose up -d --build runner-bex-production runner-bex-ci` and confirm that a `--memory 512m --cpus 1` container starts in a bex-production job)**. Diagnosed and validated locally: the unpatched runner image fails `--memory`/`--cpus` with the same runc cgroup error; the patched entrypoint starts all of them.
+
+- [x] **121** — [Platform-subdomain services answer plain HTTP instead of redirecting to HTTPS](done/121.md) — **PROMOTED (2026-10-18)** to `m118`.
+
+- [x] **120** — [Logs query with a future start and open end returns 500](done/120.md) — **DONE 2026-10-18:** a `startTime` after now with no `endTime` returns an empty last page on every surface, where Loki used to be sent an inverted range and the read failed with a 500. An `endTime` alone, even a future one, now counts its lookback and cursors back from the earlier of the end and now (`456090929`).
+
 - [x] **119** — [Env-group tombstones accumulate forever and every scan still reads them](done/119.md) — **CLOSED AS ALREADY MET (2026-10-18):** m114 removed the scan and fences; final cutover code removed in `2bd432ac2`, value-only real-store coverage added in `0f456f069`; findings preserved as superseded history
 
 - [ ] **118** — [Forward stdin to noninteractive psql imports](blocked/118.md) (55m, major) — **BLOCKED (2026-10-16: upstream patch + real-child regressions prepared in `blocked/118-upstream.patch` (and a variant stacked on 079 in `blocked/118-upstream-stacked-on-079.patch`): the pinned CLI's non-interactive psql never sets the child's stdin, so `\copy … FROM pstdin` reads EOF and imports 0 rows; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release and the two-client import replay with cleanup; no fork per DO_NOT_DO)**
