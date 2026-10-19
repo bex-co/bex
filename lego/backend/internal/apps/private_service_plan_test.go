@@ -155,3 +155,46 @@ func TestCronJobIsPaidOnly(t *testing.T) {
 		t.Errorf("a refused downgrade changed spec.tier to %q", got)
 	}
 }
+
+// TestAMistypedPlanOnAPaidOnlyTypeIsNeverToldFree is w4/352: "FREE" or " free "
+// on a paid-only type was answered with the whole ladder, free included, and
+// following that hint met the paid-only refusal. A mistyped free is now that
+// refusal, and any other unknown plan names itself and lists only the type's
+// paid plans, on create and on plan change; a web service keeps the full list.
+func TestAMistypedPlanOnAPaidOnlyTypeIsNeverToldFree(t *testing.T) {
+	ctx := context.Background()
+	for _, svcType := range []string{appv1alpha1.TypeCronJob, appv1alpha1.TypeBackgroundWorker, appv1alpha1.TypePrivateService} {
+		for _, plan := range []string{"FREE", " free ", "nope"} {
+			t.Run(svcType+"/"+plan, func(t *testing.T) {
+				want := "a " + svcType + " requires a paid plan; plan must be one of starter|"
+				if plan == "nope" {
+					want = `plan "nope" is not a ` + svcType + " plan; plan must be one of starter|"
+				}
+				if _, err := normalizeTierForType(svcType, plan); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), want) || strings.Contains(err.Error(), "free|") {
+					t.Errorf("create with plan %q = %v, want %q and no free", plan, err, want)
+				}
+				svc, _ := newService(nil)
+				req := CreateRequest{Name: "svc", Type: svcType, Image: "job:1"}
+				if svcType == appv1alpha1.TypeCronJob {
+					req.Schedule = "0 0 * * *"
+				}
+				if _, err := svc.Create(ctx, req); err != nil {
+					t.Fatalf("Create %s: %v", svcType, err)
+				}
+				if _, err := svc.SetPlan(ctx, "svc", plan); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), want) || strings.Contains(err.Error(), "free|") {
+					t.Errorf("SetPlan %q = %v, want %q and no free", plan, err, want)
+				}
+			})
+		}
+	}
+	if _, err := normalizeTierForType(appv1alpha1.TypeWebService, "nope"); err == nil || !strings.Contains(err.Error(), "plan must be one of free|") {
+		t.Errorf("web service with plan nope = %v, want the full ladder including free", err)
+	}
+	svc, _ := newService(nil)
+	if _, err := svc.Create(ctx, CreateRequest{Name: "web", Type: appv1alpha1.TypeWebService, Image: "nginx:1"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.SetPlan(ctx, "web", "nope"); err == nil || !strings.Contains(err.Error(), "plan must be one of free|") {
+		t.Errorf("web service SetPlan nope = %v, want the full ladder including free", err)
+	}
+}
