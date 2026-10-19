@@ -39,3 +39,13 @@ Each check is a probe you can repeat from the dashboard origin (page `fetch` wit
 - **Why now:** any tenant can reach this from the dashboard editor by typing a long file name. Two such attempts permanently break single-file REST/MCP management of that service, and its listings then misreport what is mounted. Render parity task INCLUDED (t006): REST/GraphQL/MCP/UI environment write surfaces change and must agree.
 - **Severity:** major.
 - **Unverified (carried from the hunt):** MCP tools (same service functions, not probed). Create-time `secretFiles`/`envVars` on `createService` and blueprint env keys over 253 (not probed). The exact cause of the empty-prior restore failure (t003 must confirm it from logs).
+
+## Hosted probe — qa pass c5e2b8 (2026-10-19, not the closeout)
+
+A `/qa-find-bugs w4` pass ran this on production, pinned to `456090929`, which contains the fix. bex-canary; the owned Free web service `qa-20261019-c5e2b8-predeploy` (`srv-dbansjq5p3cc73ad8lj0`, image `python:3.13-alpine`, `python3 -m http.server $PORT`) was deleted (204 → 404), and only that run's session was revoked.
+
+- REST `PUT /v1/services/{id}/env-vars/<254-char key>` → **400** "environment variable name is longer than 253 characters"; a 253-character key → **200**.
+- `PUT …/secret-files/<254-char name>` → **400** "secret file name is longer than 253 characters".
+- Listing afterwards: env-var key lengths `[253]`, secret files `[]`, so nothing was half-written.
+- GraphQL `patchServiceEnvironment(saveMode:"save_only")` with a 254-character key → error `ENVIRONMENT_VARIABLE_INVALID` (same message), listing `[]`.
+- The env-group (dashboard pre-submit refusal, REST 400, 253 kept) probes were not run.
