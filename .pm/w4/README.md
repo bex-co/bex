@@ -333,7 +333,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
-- [ ] **361** — [A manual deploy queued behind a build-command change stays "queued" after it goes live](361.md) ← `w4/341` live replay, 2026-10-19. A static site's manual deploy, triggered right after a build-command update, read `queued` for 25+ minutes after the deploy ahead of it went live. Check overlap with w8's deploy-queue items (m117, 124, 126) before fixing.
+- [ ] **361** — [A manual deploy queued behind a build-command change stays "queued" after it goes live](blocked/361.md) — **BLOCKED (w8 owner: check this repro against w8/m119 (deployed) and w8/m120 (in flight), which rework overlapping deploys; fold it in there or hand it back with the expected outcome)**. Found in the w4/341 replay 2026-10-19.
 
 - [ ] **360** — [A Postgres recovery takes the plan's default disk and default parameters, not the source's](360.md) ← `w4/356` simplify review, 2026-10-19. `Recover` leaves `StorageGB` and `Parameters` unset, so a source whose disk grew past the plan default can fail to restore into the smaller volume.
 
