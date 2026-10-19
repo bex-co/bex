@@ -834,29 +834,83 @@ func TestRenderRequestValidatorNamesUnsupportedQuery(t *testing.T) {
 	}
 }
 
+// protectedConfirmRoutes is every Render-shaped route whose handler reads
+// ?confirm= (a protected-environment guard or a data-loss phrase), with its
+// Render operation. Kept by hand from the handlers, not derived from
+// renderQueryExtensions, so a missing allowlist entry fails (w4/362).
+var protectedConfirmRoutes = []struct{ operationID, pattern, path, body string }{
+	{"update-service", "PATCH /v1/services/{id}", "/v1/services/srv-c185th5c2rvvnhbfiltg", `{"name":"web"}`},
+	{"delete-service", "DELETE /v1/services/{id}", "/v1/services/srv-c185th5c2rvvnhbfiltg", ""},
+	{"create-deploy", "POST /v1/services/{id}/deploys", "/v1/services/srv-c185th5c2rvvnhbfiltg/deploys", `{"imageUrl":"docker.io/traefik/whoami:v1.10.1"}`},
+	{"rollback-deploy", "POST /v1/services/{id}/rollback", "/v1/services/srv-c185th5c2rvvnhbfiltg/rollback", `{"deployId":"dep-c185th5c2rvvnhbfiltg"}`},
+	{"suspend-service", "POST /v1/services/{id}/suspend", "/v1/services/srv-c185th5c2rvvnhbfiltg/suspend", ""},
+	{"resume-service", "POST /v1/services/{id}/resume", "/v1/services/srv-c185th5c2rvvnhbfiltg/resume", ""},
+	{"restart-service", "POST /v1/services/{id}/restart", "/v1/services/srv-c185th5c2rvvnhbfiltg/restart", ""},
+	{"update-key-value", "PATCH /v1/key-value/{id}", "/v1/key-value/red-c185th5c2rvvnhbfiltg", `{"name":"cache"}`},
+	{"delete-key-value", "DELETE /v1/key-value/{id}", "/v1/key-value/red-c185th5c2rvvnhbfiltg", ""},
+	{"suspend-key-value", "POST /v1/key-value/{id}/suspend", "/v1/key-value/red-c185th5c2rvvnhbfiltg/suspend", ""},
+	{"resume-key-value", "POST /v1/key-value/{id}/resume", "/v1/key-value/red-c185th5c2rvvnhbfiltg/resume", ""},
+	{"update-postgres", "PATCH /v1/postgres/{id}", "/v1/postgres/dpg-c185th5c2rvvnhbfiltg", `{"name":"db"}`},
+	{"delete-postgres", "DELETE /v1/postgres/{id}", "/v1/postgres/dpg-c185th5c2rvvnhbfiltg", ""},
+	{"suspend-postgres", "POST /v1/postgres/{id}/suspend", "/v1/postgres/dpg-c185th5c2rvvnhbfiltg/suspend", ""},
+	{"resume-postgres", "POST /v1/postgres/{id}/resume", "/v1/postgres/dpg-c185th5c2rvvnhbfiltg/resume", ""},
+	{"restart-postgres", "POST /v1/postgres/{id}/restart", "/v1/postgres/dpg-c185th5c2rvvnhbfiltg/restart", ""},
+	{"failover-postgres", "POST /v1/postgres/{id}/failover", "/v1/postgres/dpg-c185th5c2rvvnhbfiltg/failover", ""},
+}
+
 // TestRenderValidatorAdmitsProtectedConfirm: every guarded Render route's
 // refusal says "retry with confirm=…", so the validator must let ?confirm=
-// reach the handler — including PATCH /services/{id}, whose refusal predates
-// w4/m176 but whose confirm was rejected as an unsupported query parameter.
+// reach the handler. PATCH /services/{id} (w4/m176) and the Key Value and
+// Postgres update and failover routes (w4/362) were each rejected as an
+// unsupported query parameter before.
 func TestRenderValidatorAdmitsProtectedConfirm(t *testing.T) {
 	mux := http.NewServeMux()
-	for _, pattern := range []string{"PATCH /v1/services/{id}", "POST /v1/services/{id}/deploys", "POST /v1/services/{id}/rollback"} {
-		mux.HandleFunc(pattern, func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
+	for _, route := range protectedConfirmRoutes {
+		mux.HandleFunc(route.pattern, func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
 	}
 	h, err := newRenderRequestValidator(mux)
 	if err != nil {
 		t.Fatal(err)
 	}
-	const id = "srv-c185th5c2rvvnhbfiltg"
-	for _, tc := range []struct{ method, path, body string }{
-		{http.MethodPatch, "/v1/services/" + id, `{"name":"web"}`},
-		{http.MethodPost, "/v1/services/" + id + "/deploys", `{"imageUrl":"docker.io/traefik/whoami:v1.10.1"}`},
-		{http.MethodPost, "/v1/services/" + id + "/rollback", `{"deployId":"dep-c185th5c2rvvnhbfiltg"}`},
-	} {
-		w := requestOpenAPITest(t, h, tc.method, tc.path+"?confirm=sudo+repoint+service+web", "", tc.body)
+	listed := map[string]bool{}
+	for _, route := range protectedConfirmRoutes {
+		listed[route.operationID] = true
+		method, _, _ := strings.Cut(route.pattern, " ")
+		w := requestOpenAPITest(t, h, method, route.path+"?confirm=sudo+repoint+service+web", "", route.body)
 		if w.Code != http.StatusNoContent {
-			t.Errorf("%s %s?confirm= = %d %s, want it to reach the handler", tc.method, tc.path, w.Code, w.Body.String())
+			t.Errorf("%s ?confirm= = %d %s, want it to reach the handler", route.pattern, w.Code, w.Body.String())
 		}
+	}
+	// The allowlist and the table name the same operations: confirm allowed
+	// where no handler reads it is an undocumented extension.
+	for operationID, extensions := range renderQueryExtensions {
+		if _, ok := extensions["confirm"]; ok && !listed[operationID] {
+			t.Errorf("%s allows confirm but no route in protectedConfirmRoutes reads it", operationID)
+		}
+	}
+}
+
+// TestEveryConfirmReaderIsListed counts the call sites in REST handlers that
+// read ?confirm=. A new one must add its route to protectedConfirmRoutes (and
+// confirm to its Render operation in renderQueryExtensions), then this count.
+// Its limit: a new route served by an existing call site (one more verb on
+// restVerb, the Postgres verb or the Key Value lifecycle helper) adds none, so
+// a route like that must be listed by whoever adds it. Two bex-only routes
+// read confirm and are never validated: PUT /v1/key-value/{id}/ip-allow-list
+// and POST /v1/postgres/{id}/query.
+func TestEveryConfirmReaderIsListed(t *testing.T) {
+	const callSites = 14
+	reader := regexp.MustCompile(`(?:\.Get|FormValue)\("confirm"\)`)
+	got := 0
+	walkInternalSources(t, func(source string) {
+		for _, line := range strings.Split(source, "\n") {
+			if !strings.HasPrefix(strings.TrimSpace(line), "//") {
+				got += len(reader.FindAllString(line, -1))
+			}
+		}
+	})
+	if got != callSites {
+		t.Fatalf("%d call sites read ?confirm=, want %d: list the new route in protectedConfirmRoutes, allow confirm on its Render operation in renderQueryExtensions, then update this count", got, callSites)
 	}
 }
 
