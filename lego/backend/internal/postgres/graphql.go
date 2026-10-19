@@ -51,6 +51,8 @@ var postgresGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"highAvailabilityEnabled": gqlutil.BoolField(func(v PostgresView) any { return v.HighAvailabilityEnabled }),
 		"readReplicas":            gqlutil.Typed(graphql.NewList(readReplicaViewGQLType), func(v PostgresView) any { return v.ReadReplicas }),
 		"suspended":               gqlutil.StrField(func(v PostgresView) any { return v.Suspended }),
+		"suspenders":              gqlutil.StrsField(func(v PostgresView) any { return v.Suspenders }),
+		"role":                    gqlutil.StrField(func(v PostgresView) any { return v.Role }),
 		"createdAt":               gqlutil.StrField(func(v PostgresView) any { return v.CreatedAt }),
 		"updatedAt":               gqlutil.StrField(func(v PostgresView) any { return v.UpdatedAt }),
 		"region":                  gqlutil.StrField(func(v PostgresView) any { return v.Region }),
