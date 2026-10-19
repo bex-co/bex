@@ -55,7 +55,10 @@ export function ServiceEnvPage({ serviceId }: { serviceId: string }) {
           {t(undeployedChangesHintKey(service))}
         </p>
       ) : null}
-      <ServiceEnvironmentEditor serviceId={serviceId} />
+      <ServiceEnvironmentEditor
+        serviceId={serviceId}
+        suspended={service?.suspended ?? false}
+      />
       <EnvGroupsPanel
         serviceId={serviceId}
         createOpen={createGroupOpen}

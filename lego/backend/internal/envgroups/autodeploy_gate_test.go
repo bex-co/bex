@@ -17,10 +17,13 @@ limitations under the License.
 package envgroups
 
 import (
+	"context"
 	"slices"
 	"testing"
 
 	"github.com/graphql-go/graphql"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -277,5 +280,70 @@ func TestGraphQLPatchResultExposesPendingServiceIDs(t *testing.T) {
 	}
 	if got["rolledOut"] != true {
 		t.Fatalf("rolledOut = %#v, want true: a deliberate skip is not a rollout failure", got["rolledOut"])
+	}
+}
+
+// TestADeployingGroupSaveLeavesASuspendedServicePending is w4/m234: a deploy
+// mode group save rolled a suspended linked service, filing a deploy the
+// reconciler then canceled. A suspended service is now left pending like an
+// Auto-Deploy-off one, and only the running service rolls.
+func TestADeployingGroupSaveLeavesASuspendedServicePending(t *testing.T) {
+	ctx := testCtx()
+	asleep := repoApp("asleep", true)
+	asleep.Spec.Suspended = true
+	svc := newService(newFakeStore(), repoApp("awake", true), asleep)
+	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared", ServiceIDs: []string{"awake", "asleep"}})
+	if err != nil {
+		t.Fatalf("create group: %v", err)
+	}
+	beforeAsleep := restartedAt(t, svc, "asleep")
+	result, err := svc.PatchEnvironment(ctx, group.ID, EnvironmentPatch{
+		EnvVars: []EnvVarPatch{{Key: "MESSAGE", Value: "v2", ValueSet: true}}, SaveMode: SaveModeDeploy,
+	})
+	if err != nil {
+		t.Fatalf("group write: %v", err)
+	}
+	if !slices.Equal(result.PendingServiceIDs, []string{"asleep"}) || len(result.FailedServiceIDs) != 0 {
+		t.Fatalf("pending %v, failed %v; want only the suspended service pending", result.PendingServiceIDs, result.FailedServiceIDs)
+	}
+	if got := restartedAt(t, svc, "asleep"); got != beforeAsleep {
+		t.Fatalf("the suspended service rolled: restartedAt %q -> %q", beforeAsleep, got)
+	}
+	if restartedAt(t, svc, "awake") == "" {
+		t.Fatal("the running service should still have rolled")
+	}
+}
+
+// A suspend that lands between the group save's read and its write is held by
+// the rollout tracker, so the service is reported pending, not rolled.
+func TestAGroupSaveRacedBySuspendReportsThePendingService(t *testing.T) {
+	ctx := testCtx()
+	svc := newService(newFakeStore(), repoApp("racer", true))
+	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared", ServiceIDs: []string{"racer"}})
+	if err != nil {
+		t.Fatalf("create group: %v", err)
+	}
+	raced := false
+	svc.Client = interceptor.NewClient(svc.Client.(client.WithWatch), interceptor.Funcs{
+		Patch: func(ctx context.Context, c client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+			if a, ok := obj.(*appv1alpha1.App); ok && a.Name == "racer" && !raced {
+				raced = true
+				live := getApp(t, c, "racer")
+				live.Spec.Suspended = true
+				if err := c.Update(ctx, live); err != nil {
+					return err
+				}
+			}
+			return c.Patch(ctx, obj, patch, opts...)
+		},
+	})
+	result, err := svc.PatchEnvironment(ctx, group.ID, EnvironmentPatch{
+		EnvVars: []EnvVarPatch{{Key: "MESSAGE", Value: "v2", ValueSet: true}}, SaveMode: SaveModeDeploy,
+	})
+	if err != nil {
+		t.Fatalf("group write: %v", err)
+	}
+	if !raced || !slices.Equal(result.PendingServiceIDs, []string{"racer"}) || len(result.FailedServiceIDs) != 0 {
+		t.Fatalf("raced %v, pending %v, failed %v; want the suspended service pending", raced, result.PendingServiceIDs, result.FailedServiceIDs)
 	}
 }

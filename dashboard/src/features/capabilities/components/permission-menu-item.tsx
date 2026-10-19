@@ -6,18 +6,19 @@ import { PermissionTooltip } from "@/features/capabilities/components/permission
 type DropdownItemProps = ComponentProps<typeof DropdownMenuItem>;
 
 export interface PermissionMenuItemProps extends DropdownItemProps {
-  /** A definitive authorization denial. The item stays focusable so keyboard
-   *  users can discover this explanation, but selection is suppressed. */
+  /** A definitive reason the action cannot run: an authorization denial or a
+   *  blocked precondition such as a suspended service (`gateAction`). The item
+   *  stays focusable so keyboard users can discover this explanation, but
+   *  selection is suppressed. */
   permissionReason?: string;
 }
 
 /**
  * A role-aware Radix menu item. Radix's native `disabled` items are removed
  * from roving focus and disable pointer events, making a permission reason
- * unreachable. Permission-denied items instead use `aria-disabled`, remain a
+ * unreachable. Items with a reason instead use `aria-disabled`, remain a
  * tooltip trigger, and guard `onSelect` for both pointer and keyboard input.
- * Ordinary state-based disabling (busy, suspended, etc.) still uses Radix's
- * real `disabled` behavior.
+ * Transient disabling (busy) still uses Radix's real `disabled` behavior.
  */
 export function PermissionMenuItem({
   permissionReason,

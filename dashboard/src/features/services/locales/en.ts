@@ -277,6 +277,12 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Services status badge: a free-tier App auto-hibernated after idle (bex extension)",
   },
+  "services.undeployedChangesSuspendedHint": {
+    message:
+      "Saved changes aren't live yet. Resume the service, then deploy to apply them.",
+    description:
+      "Notice when a suspended service has saved settings that differ from the release it serves: no deploy can run until it resumes",
+  },
   "services.undeployedChangesHint": {
     message:
       "Saved changes aren't live yet. Use a standard deploy to apply them.",

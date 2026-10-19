@@ -325,11 +325,16 @@ export function computeStats(services: ServiceView[]): ServiceStats {
 
 /** Which undeployed-changes notice to show: while a rolling deploy already
  *  carries the saved settings, telling the user to deploy again invites a
- *  redundant second deploy (w4/m184). */
+ *  redundant second deploy (w4/m184); a suspended service must resume before
+ *  any deploy can run (w4/m234). */
 export function undeployedChangesHintKey(
-  s: Pick<ServiceView, "undeployedChangesApplying">,
-): "services.undeployedChangesApplyingHint" | "services.undeployedChangesHint" {
-  return s.undeployedChangesApplying
-    ? "services.undeployedChangesApplyingHint"
-    : "services.undeployedChangesHint";
+  s: Pick<ServiceView, "undeployedChangesApplying" | "suspended">,
+):
+  | "services.undeployedChangesApplyingHint"
+  | "services.undeployedChangesSuspendedHint"
+  | "services.undeployedChangesHint" {
+  if (s.undeployedChangesApplying)
+    return "services.undeployedChangesApplyingHint";
+  if (s.suspended) return "services.undeployedChangesSuspendedHint";
+  return "services.undeployedChangesHint";
 }
