@@ -363,6 +363,12 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **125** — [Backward log pages without a startTime hand out inverted cursors past the first hour](done/125.md) ← w8/123 code review 2026-10-19: the cursor start defaults to 1h while the read looks back 7 days — **DONE (2026-10-19)**
 
+- [ ] **134** — [`POST /blueprints` answers every fetch failure with a bare 500, hiding its own classified reason](134.md) ← `/qa-find-bugs-cli` loop 2026-10-19
+
+- [ ] **133** — [`POST /blueprints/generate` answers malformed JSON with a bare 500](133.md) ← `/qa-find-bugs-cli` loop 2026-10-19
+
+- [ ] **132** — [Log filters `task`, `taskRun`, and `sandbox` are accepted but silently ignored](132.md) ← `/qa-find-bugs-cli` loop 2026-10-19
+
 - [x] **131** — [A nonexistent Docker Hub image burns the full 15-minute rollout budget instead of the 90-second pull-failure settle](done/131.md) ← `/qa-find-bugs-cli` sweep 532 2026-10-19 — **DONE (2026-10-19)**
 
 - [x] **130** — [An SSH-form repo URL is accepted at create but every build dies on SSH host-key verification](done/130.md) ← `/qa-find-bugs-cli` loop 2026-10-19 — **DONE (2026-10-19)**
