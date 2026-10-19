@@ -271,7 +271,7 @@ func checkAutoscaling(a *appv1alpha1.App, req SetAutoscalingRequest) (appv1alpha
 func (s *Service) checkPlan(ctx context.Context, a *appv1alpha1.App, plan string) (string, error) {
 	t, ok := tiers.Compute.ByRenderPlan(plan)
 	if !ok {
-		return "", fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Compute.RenderPlans(), "|"))
+		return "", errUnknownPlanForType(a.Spec.Type, plan)
 	}
 	tier := t.ID
 	// Paid-only types refuse a downgrade to free here, which is the SetPlan

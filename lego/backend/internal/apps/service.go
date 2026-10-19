@@ -3437,7 +3437,7 @@ func normalizeTierOrPlan(v string) (string, error) {
 	if _, ok := tiers.Compute.ByID(v); ok {
 		return v, nil
 	}
-	return "", fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Compute.RenderPlans(), "|"))
+	return "", errUnknownPlanForType("", v)
 }
 
 // normalizeTierForType resolves a create's plan for its (already normalized)
@@ -3445,14 +3445,15 @@ func normalizeTierOrPlan(v string) (string, error) {
 // service the 0.5c-512mb compute plan, which is bex's cheapest paid rung, and
 // bex does the same for every type that runs an instance (w1/122, user
 // decision 2026-10-15); a static site runs none and keeps the catalog default.
-// A paid-only type (w6/025, w1/111, w8/048) also refuses an explicit free plan.
+// A paid-only type (w6/025, w1/111, w8/048) also refuses an explicit free plan,
+// and its hint for an unrecognized one never offers free (w4/352).
 func normalizeTierForType(svcType, plan string) (string, error) {
 	if plan == "" && svcType != appv1alpha1.TypeStaticSite {
 		return defaultPaidTierID(), nil
 	}
 	tier, err := normalizeTierOrPlan(plan)
 	if err != nil {
-		return "", err
+		return "", errUnknownPlanForType(svcType, plan)
 	}
 	if paidOnlyServiceType(svcType) && !core.PaidPlan(tier) {
 		return "", errFreePlanForType(svcType)
@@ -3508,13 +3509,32 @@ func errFreePlanForType(svcType string) error {
 // fixed noun: a message naming the wrong paid-only type sends the reader to
 // the wrong docs (w1/111).
 func freePlanForTypeMessage(svcType string) string {
+	return fmt.Sprintf("a %s requires a paid plan; plan must be one of %s", svcType, strings.Join(paidRenderPlans(), "|"))
+}
+
+// paidRenderPlans is the compute ladder without free.
+func paidRenderPlans() []string {
 	paid := make([]string, 0, len(tiers.Compute.RenderPlans()))
 	for _, plan := range tiers.Compute.RenderPlans() {
 		if core.PaidPlan(plan) {
 			paid = append(paid, plan)
 		}
 	}
-	return fmt.Sprintf("a %s requires a paid plan; plan must be one of %s", svcType, strings.Join(paid, "|"))
+	return paid
+}
+
+// errUnknownPlanForType refuses a plan the ladder does not carry. A paid-only
+// type's hint lists only its own plans, so following it never meets the free
+// refusal; a mistyped free ("FREE", " free ") is that refusal (w4/352). Every
+// other type, and a create whose type is not known yet, gets the full ladder.
+func errUnknownPlanForType(svcType, plan string) error {
+	if !paidOnlyServiceType(svcType) {
+		return fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Compute.RenderPlans(), "|"))
+	}
+	if strings.EqualFold(strings.TrimSpace(plan), "free") {
+		return errFreePlanForType(svcType)
+	}
+	return fmt.Errorf("%w: plan %q is not a %s plan; plan must be one of %s", core.ErrBadRequest, plan, svcType, strings.Join(paidRenderPlans(), "|"))
 }
 
 // redeploy bumps spec.restartedAt to force the operator to roll a new revision
