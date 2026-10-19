@@ -333,6 +333,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **361** — [A manual deploy queued behind a build-command change stays "queued" after it goes live](361.md) ← `w4/341` live replay, 2026-10-19. A static site's manual deploy, triggered right after a build-command update, read `queued` for 25+ minutes after the deploy ahead of it went live. Check overlap with w8's deploy-queue items (m117, 124, 126) before fixing.
+
 - [ ] **360** — [A Postgres recovery takes the plan's default disk and default parameters, not the source's](360.md) ← `w4/356` simplify review, 2026-10-19. `Recover` leaves `StorageGB` and `Parameters` unset, so a source whose disk grew past the plan default can fail to restore into the smaller volume.
 
 - [ ] **359** — [A blank service name over REST is refused as "already in use" while GraphQL and the dashboard clear it](blocked/359.md) — **BLOCKED (release pipeline deploys bex-api; QA sends `PATCH /v1/services/<id> {"name":"   "}` to an owned Free service in `bex-canary` and gets 200 with the creation name; a taken name still 409; then cleans up)**. Implementation done 2026-10-19: the preflight skips a blank name and the own creation name, as the write does.
@@ -374,7 +376,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [x] **342** — [Search can't find services by kind ("Cron Job" says no matches while three are listed)](done/342.md) — **DONE 2026-10-19, `94a76a923`.** Live at 1440/390: "Cron Job" and "cron" list all three bex-canary cron jobs (including `-boundary`); "Web Service" lists the web services.
 
-- [ ] **341** — [Static sites send no validator, so every revalidation re-downloads the whole file](blocked/341.md) — **BLOCKED (release pipeline deploys the static server; QA replays the b52e07 probes on a fresh owned Free static site from `examples/static-site`: the default response carries an `etag`; `If-None-Match` with it returns 304 and 0 bytes for GET and HEAD; a Chromium reload shows `transferSize < encodedBodySize`; after a republish with changed bytes the old tag returns 200 with the new bytes; then clean up)**. Implementation done 2026-10-19: a strong content ETag is generated once per fetched object, owner `ETag` rules still win, Brotli weakens it, and 416/shed responses carry none.
+- [x] **341** — [Static sites send no validator, so every revalidation re-downloads the whole file](done/341.md) — **DONE 2026-10-19 (loopx w4):** live, a fresh static site sends an ETag, revalidates to 304 (GET and HEAD) and header-only in Chromium, and a republish answers the old tag with 200 and the new bytes.
 
 - [x] **340** — [Deleting a service from its own Settings also toasts "That resource doesn't exist or was deleted."](done/340.md) — **DONE 2026-10-19, `f3871ba9f`.** Live: 3 of 3 detail-page deletes of fresh Free services record only the success toast and land on `/`, and a direct dead-id visit still toasts.
 
