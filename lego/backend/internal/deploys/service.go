@@ -29,6 +29,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"slices"
 	"strconv"
 	"sync"
 	"time"
@@ -920,7 +921,11 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 	if d.FinishedAt != nil {
 		return DeployView{}, fmt.Errorf("%w: deploy %q is already %s", core.ErrConflict, deployID, d.Status)
 	}
-	if err := store.CancelRelease(ctx, s.Client, a, d.Generation, s.BuildNamespace); err != nil {
+	survivor, err := s.cancelSurvivor(ctx, a, appID, d)
+	if err != nil {
+		return DeployView{}, err
+	}
+	if err := store.CancelRelease(ctx, s.Client, a, d.Generation, survivor, s.BuildNamespace); err != nil {
 		return DeployView{}, err
 	}
 	won, err := s.Store.CloseDeploy(ctx, deployID, store.DeployCanceled, "")
@@ -951,6 +956,38 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 	}
 	return view(d), nil
 }
+
+// cancelSurvivor is the older open deploy a cancel of d leaves running, or nil.
+// A deploy waiting in the latest-pending slot has nothing of its own in flight
+// (ADR060 §D1a), so canceling it ends it alone and the deploy ahead of it
+// carries on (w8/m117). That holds only when the pending deploy brought no
+// more than a source to build: the release ahead rolls out with the saved
+// settings, so a canceled configuration change or blueprint sync must not ride
+// along with it. The deploy ahead must be a source build too — one selecting a
+// recorded image (a rollback or restart) runs a release configuration the
+// pending deploy has since replaced.
+func (s *Service) cancelSurvivor(ctx context.Context, a *appv1alpha1.App, appID string, d store.Deploy) (*store.Deploy, error) {
+	if a.Spec.Repo == "" || !d.OverlapPending || d.Image != "" || !slices.Contains(sourceOnlyTriggers, d.Trigger) {
+		return nil, nil
+	}
+	open, err := s.Store.ListDeploys(ctx, appID, store.DeployFilter{Statuses: store.OpenDeployStatuses()})
+	if err != nil {
+		return nil, err
+	}
+	// One deploy executes at a time, ahead of the pending one (prepareDeployCreate).
+	for i, o := range open {
+		if !o.OverlapPending && o.Generation > 0 && o.Generation < d.Generation {
+			if o.Image != "" {
+				return nil, nil
+			}
+			return &open[i], nil
+		}
+	}
+	return nil, nil
+}
+
+// sourceOnlyTriggers open deploys that change nothing but the source to build.
+var sourceOnlyTriggers = []string{store.TriggerAPI, store.TriggerDeployHook, store.TriggerNewCommit}
 
 // Rollback creates a fresh deploy restoring a previously-live deploy's exact
 // image (Render's POST .../rollback {deployId}, w2/m10) — never a history

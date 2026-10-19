@@ -111,7 +111,7 @@ func TestSuspendCloseSurvivesAFailedBuildDelete(t *testing.T) {
 	if stored.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration] != "7" || patches != 1 {
 		t.Fatalf("stamp = %q after %d patches, want 7 after one", stored.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration], patches)
 	}
-	if err := markReleaseCanceled(ctx, cl, &stored, 7); err != nil || patches != 1 {
+	if err := markReleaseCanceled(ctx, cl, &stored, 7, nil); err != nil || patches != 1 {
 		t.Fatalf("restamp = %v after %d patches, want a no-op", err, patches)
 	}
 }
@@ -168,7 +168,7 @@ func TestCancelReleaseStopsItsBuild(t *testing.T) {
 			return c.List(ctx, list, opts...)
 		},
 	}, append(kept, job, canceled)...)
-	if err := CancelRelease(ctx, cl, app.DeepCopy(), 7, "bex-build"); err != nil {
+	if err := CancelRelease(ctx, cl, app.DeepCopy(), 7, nil, "bex-build"); err != nil {
 		t.Fatal(err)
 	}
 	for _, obj := range []client.Object{job, canceled} {
@@ -216,7 +216,7 @@ func TestCancelReleaseLeavesARecreatedNamesakeAlone(t *testing.T) {
 	cl := cancelTestClient(t, namesake, interceptor.Funcs{}, job)
 	deleted := namesake.DeepCopy()
 	deleted.UID = "uid-deleted"
-	if err := CancelRelease(ctx, cl, deleted, 7, ""); !errors.Is(err, core.ErrServiceReplaced) {
+	if err := CancelRelease(ctx, cl, deleted, 7, nil, ""); !errors.Is(err, core.ErrServiceReplaced) {
 		t.Fatalf("a cancel for the deleted service = %v, want the conflict that the service changed", err)
 	}
 	var stored appv1alpha1.App
@@ -240,7 +240,7 @@ func TestCancelReleaseNeverOverwritesANewerCancel(t *testing.T) {
 	stale := app.DeepCopy()
 	stale.Annotations = nil // the copy a pass listed before the newer cancel landed
 	cl := cancelTestClient(t, app, interceptor.Funcs{})
-	if err := CancelRelease(ctx, cl, stale, 7, ""); err != nil {
+	if err := CancelRelease(ctx, cl, stale, 7, nil, ""); err != nil {
 		t.Fatal(err)
 	}
 	var stored appv1alpha1.App
@@ -267,7 +267,7 @@ func TestCancelReleaseSucceedsOnceStamped(t *testing.T) {
 			cl := cancelTestClient(t, app.DeepCopy(), interceptor.Funcs{
 				Delete: func(context.Context, client.WithWatch, client.Object, ...client.DeleteOption) error { return deleteErr },
 			})
-			if err := CancelRelease(ctx, cl, app, 7, ""); err != nil {
+			if err := CancelRelease(ctx, cl, app, 7, nil, ""); err != nil {
 				t.Fatalf("CancelRelease = %v, want success once the stamp landed", err)
 			}
 			if got := app.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration]; got != "7" {
@@ -366,7 +366,7 @@ func TestCancelReleaseRetriesALostStamp(t *testing.T) {
 	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a", UID: "uid-web"}}
 	attempts := 0
 	cl := cancelTestClient(t, app.DeepCopy(), conflictingWrites(1, &attempts, rolloutProgress))
-	if err := CancelRelease(ctx, cl, app.DeepCopy(), 7, ""); err != nil {
+	if err := CancelRelease(ctx, cl, app.DeepCopy(), 7, nil, ""); err != nil {
 		t.Fatalf("CancelRelease = %v, want the stamp to land on its second attempt", err)
 	}
 	var stored appv1alpha1.App
@@ -388,7 +388,7 @@ func TestCancelReleaseGivesUpAsAConflict(t *testing.T) {
 	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a", UID: "uid-web"}}
 	attempts := 0
 	cl := cancelTestClient(t, app.DeepCopy(), conflictingWrites(1000, &attempts, rolloutProgress))
-	err := CancelRelease(ctx, cl, app.DeepCopy(), 7, "")
+	err := CancelRelease(ctx, cl, app.DeepCopy(), 7, nil, "")
 	if !errors.Is(err, core.ErrConflict) || errors.Is(err, core.ErrServiceReplaced) {
 		t.Fatalf("CancelRelease = %v, want a retryable conflict", err)
 	}
@@ -426,7 +426,7 @@ func TestCancelReleaseDoesNotRetryOtherFailures(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			calls := 0
-			err := CancelRelease(ctx, cancelTestClient(t, app.DeepCopy(), funcs(&calls)), app.DeepCopy(), 7, "")
+			err := CancelRelease(ctx, cancelTestClient(t, app.DeepCopy(), funcs(&calls)), app.DeepCopy(), 7, nil, "")
 			if !errors.Is(err, down) || errors.Is(err, core.ErrConflict) || calls != 1 {
 				t.Fatalf("CancelRelease = %v after %d calls, want the failure itself after one", err, calls)
 			}
@@ -443,7 +443,7 @@ func TestCancelReleaseRetryKeepsANewerCancelThatLandedMeanwhile(t *testing.T) {
 	cl := cancelTestClient(t, app.DeepCopy(), conflictingWrites(1, &attempts, func(a *appv1alpha1.App) {
 		metav1.SetMetaDataAnnotation(&a.ObjectMeta, appv1alpha1.AnnotationCanceledReleaseGeneration, "9")
 	}))
-	if err := CancelRelease(ctx, cl, app.DeepCopy(), 7, ""); err != nil {
+	if err := CancelRelease(ctx, cl, app.DeepCopy(), 7, nil, ""); err != nil {
 		t.Fatal(err)
 	}
 	var stored appv1alpha1.App
@@ -475,7 +475,7 @@ func TestCancelReleaseRetryLeavesANamesakeRecreatedMeanwhileAlone(t *testing.T) 
 			return apierrors.NewConflict(schema.GroupResource{Group: "app.bex.co", Resource: "apps"}, obj.GetName(), errors.New("the object has been modified"))
 		},
 	})
-	if err := CancelRelease(ctx, cl, app.DeepCopy(), 7, ""); !errors.Is(err, core.ErrServiceReplaced) {
+	if err := CancelRelease(ctx, cl, app.DeepCopy(), 7, nil, ""); !errors.Is(err, core.ErrServiceReplaced) {
 		t.Fatalf("CancelRelease = %v, want the conflict that the service changed", err)
 	}
 	var stored appv1alpha1.App

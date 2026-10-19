@@ -59,7 +59,7 @@ func canceledStepFixture(t *testing.T, stepRan bool, pd *appv1alpha1.PreDeploySt
 	if err := cl.Create(ctx, app); err != nil {
 		t.Fatal(err)
 	}
-	if err := CancelRelease(ctx, cl, app, 7, ""); err != nil {
+	if err := CancelRelease(ctx, cl, app, 7, nil, ""); err != nil {
 		t.Fatal(err)
 	}
 	if won, err := st.CloseDeploy(ctx, open.ID, DeployCanceled, ""); err != nil || !won {

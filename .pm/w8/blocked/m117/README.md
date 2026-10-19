@@ -1,16 +1,16 @@
 # w8 · m117 — Canceling the newer of two open deploys strands the older
 
-**Worker:** worker8 **Goal:** Canceling one deploy never strands another: when two deploys are open for a service and the newer (latest-pending) one is canceled, the older open deploy is dispatched and reaches a terminal state on its own merits. **Status:** todo
+**Worker:** worker8 **Goal:** Canceling one deploy never strands another: when two deploys are open for a service and the newer (latest-pending) one is canceled, the older open deploy is dispatched and reaches a terminal state on its own merits. **Status:** blocked — t001–t005 done 2026-10-18; t006 live repro on production after the release pipeline deploys bex-api and the operator
 
 ## Tasks (in order)
 
 | id   | title                                                                | est | depends_on     |
 | ---- | -------------------------------------------------------------------- | --- | -------------- |
-| t001 | Diagnose the stranded-row mechanism and choose the fix             | 45m | —              |
-| t002 | Fix cancel/adoption so the surviving open deploy proceeds          | 90m | w8/m117/t001   |
-| t003 | Render parity: cancel semantics across REST, GraphQL, MCP, and UI  | 30m | w8/m117/t002   |
-| t004 | Simplify the changed code                                          | 20m | w8/m117/t003   |
-| t005 | Test coverage: cancel-newer, cancel-older, and supersede interplay | 50m | w8/m117/t003   |
+| t001 — **DONE** | Diagnose the stranded-row mechanism and choose the fix             | 45m | —              |
+| t002 — **DONE** | Fix cancel/adoption so the surviving open deploy proceeds          | 90m | w8/m117/t001   |
+| t003 — **DONE** | Render parity: cancel semantics across REST, GraphQL, MCP, and UI  | 30m | w8/m117/t002   |
+| t004 — **DONE** | Simplify the changed code                                          | 20m | w8/m117/t003   |
+| t005 — **DONE** | Test coverage: cancel-newer, cancel-older, and supersede interplay | 50m | w8/m117/t003   |
 | t006 | Close out the milestone                                            | 10m | w8/m117/t005   |
 
 Six tasks, 245m.

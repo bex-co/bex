@@ -63,7 +63,8 @@ func (savedConfigurationPredicate) Update(e event.UpdateEvent) bool {
 	}
 	for _, key := range []string{appv1alpha1.AnnotationSavedConfigRevision,
 		appv1alpha1.PendingEnvSecretAnnotation, appv1alpha1.PendingFilesSecretAnnotation,
-		appv1alpha1.AnnotationCanceledReleaseGeneration, appv1alpha1.AnnotationReleaseConfigScaled} {
+		appv1alpha1.AnnotationCanceledReleaseGeneration, appv1alpha1.AnnotationSurvivingReleaseGeneration,
+		appv1alpha1.AnnotationReleaseConfigScaled} {
 		if old.Annotations[key] != next.Annotations[key] {
 			return true
 		}
