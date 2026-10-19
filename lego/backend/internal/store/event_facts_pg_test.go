@@ -483,6 +483,12 @@ func TestPGWakeRecordsOnlyItsLifecycleFact(t *testing.T) {
 			[]ServiceEventFactType{EventFactServerFailed, EventFactServerAvailable}},
 		{"failure spanning a sleep", []*appv1alpha1.App{running, crashing, asleep, starting, running},
 			[]ServiceEventFactType{EventFactServerFailed, EventFactServiceHibernated, EventFactServiceWoken, EventFactServerAvailable}},
+		// w4/350: a service that never served has no availability to lose, so
+		// its first healthy pass is no recovery.
+		{"first deploy crash-looping, then fixed", []*appv1alpha1.App{starting, crashing, crashing, running}, nil},
+		{"crash-looping from the first pass", []*appv1alpha1.App{crashing, starting, starting, running}, nil},
+		{"never served, then a real outage", []*appv1alpha1.App{starting, crashing, running, crashing, running},
+			[]ServiceEventFactType{EventFactServerFailed, EventFactServerAvailable}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			app, err := st.CreateApp(ctx, App{
@@ -567,5 +573,32 @@ func TestPGWokenCarriesTheReadyTransition(t *testing.T) {
 	facts := record(readyCR(appv1alpha1.PhaseRunning, metav1.ConditionTrue, "Deployed", readyAt))
 	if len(facts) != 1 || facts[0].Type != EventFactServiceWoken || !facts[0].At.Equal(readyAt) {
 		t.Fatalf("facts = %+v, want one service_woken at the Ready transition %s", facts, readyAt)
+	}
+}
+
+// TestPGFirstUnhealthyObservationIsNoBaselineToRecoverFrom is w4/350 through
+// the checkpoint row's insert: a service whose very first observation is
+// unhealthy has lost nothing, so its first healthy pass records no recovery.
+func TestPGFirstUnhealthyObservationIsNoBaselineToRecoverFrom(t *testing.T) {
+	st, _, tenant := openDatastoreTestStore(t)
+	ctx := context.Background()
+	app, err := st.CreateApp(ctx, App{TenantID: tenant.ID, Name: fmt.Sprintf("web-%d", time.Now().UnixNano()), Image: "traefik/whoami", Branch: "main", Port: 80, Replicas: 1, Tier: "starter"})
+	if err != nil {
+		t.Fatalf("create app: %v", err)
+	}
+	var got []ServiceEventFactType
+	for _, obs := range []ObservedServiceState{
+		{At: wakeEpoch, ServicePhase: "Deploying", Availability: "unhealthy", AvailabilityObserved: true, ReasonCode: EventReasonReadinessFailed, ConcreteFailure: true},
+		{At: wakeEpoch.Add(30 * time.Second), ServicePhase: "Running", Availability: "healthy", AvailabilityObserved: true},
+	} {
+		obs.AppID = app.ID
+		facts, err := st.RecordObservedServiceState(ctx, obs)
+		if err != nil {
+			t.Fatalf("record observed state: %v", err)
+		}
+		got = append(got, factTypes(facts)...)
+	}
+	if len(got) != 0 {
+		t.Fatalf("a service whose first observation was unhealthy recorded %v", got)
 	}
 }

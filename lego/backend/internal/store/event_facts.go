@@ -373,10 +373,13 @@ func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedSe
 			`SELECT service_phase, availability, suspended, updated_at FROM service_event_checkpoints WHERE app_id = $1 FOR UPDATE`,
 			obs.AppID).Scan(&previousPhase, &previousAvailability, &previousSuspended, &previousChangedAt)
 		if errors.Is(err, pgx.ErrNoRows) {
+			// The first observation is held like any other from an empty
+			// baseline, so an unhealthy one latches nothing (w4/350).
+			baseline := heldAvailability("", "", obs).Availability
 			tag, insertErr := tx.Exec(ctx,
 				`INSERT INTO service_event_checkpoints (app_id, service_phase, availability, suspended, updated_at, healthy_transition_at)
 				 VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (app_id) DO NOTHING`,
-				obs.AppID, obs.ServicePhase, obs.Availability, obs.Suspended, obs.At, healthyTransition)
+				obs.AppID, obs.ServicePhase, baseline, obs.Suspended, obs.At, healthyTransition)
 			if insertErr != nil {
 				return insertErr
 			}
@@ -478,9 +481,9 @@ func checkpointServicePhase(previous, observed string) string {
 	return observed
 }
 
-// heldAvailability leaves availability unobserved where a pass says nothing
-// about it across a hibernation, so server_available stays the partner of a
-// recorded server_failed (w4/m230):
+// heldAvailability leaves availability unobserved where a pass's conclusion is
+// no availability edge, so server_available stays the partner of a recorded
+// server_failed (w4/m230, w4/350):
 //
 //   - Waking. An idle wake or a user Resume reads Deploying with
 //     Ready=False/RolloutProgressing until its instance is ready, and no deploy
@@ -495,12 +498,21 @@ func checkpointServicePhase(previous, observed string) string {
 //   - Sleeping while failed. A recorded failure stays open through the
 //     hibernation, so the wake that brings the service back healthy records the
 //     recovery that closes it.
+//   - Never seen healthy (w4/350). An empty baseline outside a wake has no
+//     recorded availability to lose, so an unhealthy conclusion there records
+//     no failure, and latching it turned the first healthy pass into an
+//     unpaired server_available. That is a first deploy crash-looping after
+//     its row closed, or a checkpoint first written mid-outage. The datastore
+//     projector refuses the same (nextDatastoreAvailability). The cost: a
+//     service whose only healthy window fell between two passes now records
+//     neither edge, where it used to record a lone recovery.
 func heldAvailability(previousPhase, previousAvailability string, obs ObservedServiceState) ObservedServiceState {
 	hibernated := string(appv1alpha1.PhaseHibernated)
-	waking := previousPhase == hibernated && obs.ServicePhase != hibernated &&
-		obs.AvailabilityObserved && obs.Availability == "unhealthy" && !obs.ConcreteFailure
+	unhealthy := obs.AvailabilityObserved && obs.Availability == "unhealthy"
+	waking := previousPhase == hibernated && obs.ServicePhase != hibernated && unhealthy && !obs.ConcreteFailure
 	sleepingFailed := obs.ServicePhase == hibernated && previousAvailability == "unhealthy"
-	if waking || sleepingFailed {
+	neverHealthy := previousAvailability == "" && previousPhase != hibernated && unhealthy
+	if waking || sleepingFailed || neverHealthy {
 		obs.AvailabilityObserved = false
 		obs.Availability = ""
 		obs.ReasonCode = ""
