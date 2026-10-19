@@ -1872,6 +1872,14 @@ func (s *PGStore) SetAppIdleTTL(ctx context.Context, id string, seconds int32) e
 	return nil
 }
 
+// DisplayNameNeedsUniqueness reports whether writing displayName over a
+// service created as name must clear the workspace's name uniqueness: a blank
+// value clears the display name and the creation name is the service's own,
+// so neither can collide (w8/m47, w4/359). The patch preflight asks the same.
+func DisplayNameNeedsUniqueness(displayName, name string) bool {
+	return displayName != "" && displayName != name
+}
+
 // SetAppDisplayName mirrors spec.displayName onto the row. Empty means never
 // renamed, and readers fall back to apps.name.
 //
@@ -1889,7 +1897,7 @@ func (s *PGStore) SetAppDisplayName(ctx context.Context, id string, displayName 
 		// against every other service's creation AND displayed name, checked
 		// and written under the same lock CreateApp takes, so two concurrent
 		// renames (or a rename racing a create) cannot both land.
-		if displayName != "" && displayName != name {
+		if DisplayNameNeedsUniqueness(displayName, name) {
 			if err := lockServiceNames(ctx, tx, tenantID); err != nil {
 				return err
 			}

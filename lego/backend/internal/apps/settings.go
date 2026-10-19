@@ -26,6 +26,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/rollout"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -167,7 +168,7 @@ var servicePatchTable = []servicePatchOp{
 			// service's own creation name: probing "" matched every service
 			// with no display name, refusing a clear as "already in use"
 			// (w4/359).
-			if id := managedAppID(probe); id != "" && s.Store != nil && trimmed != "" && trimmed != core.AppPublicName(probe) {
+			if id := managedAppID(probe); id != "" && s.Store != nil && store.DisplayNameNeedsUniqueness(trimmed, core.AppPublicName(probe)) {
 				taken, err := s.Store.ServiceNameTaken(ctx, probe.Labels[core.LabelTenant], id, trimmed)
 				if err != nil {
 					return err
