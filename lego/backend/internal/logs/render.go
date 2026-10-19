@@ -223,8 +223,7 @@ func (s *Service) queryLogPage(ctx context.Context, resources []string, q LogQue
 			page.NextStartTime = edge.UTC().Format(time.RFC3339Nano)
 			page.NextEndTime = end.UTC().Format(time.RFC3339Nano)
 		} else {
-			page.NextStartTime = since.UTC().Format(time.RFC3339Nano)
-			page.NextEndTime = edge.Add(-time.Nanosecond).UTC().Format(time.RFC3339Nano)
+			page.NextStartTime, page.NextEndTime = backwardCursors(since, edge.Add(-time.Nanosecond))
 		}
 	}
 	// Selection, cursors and grouping are computed oldest-first; Render's
@@ -262,18 +261,33 @@ func pageCursors(entries []LogEntry, since, end time.Time, direction string) (ne
 	if direction == DirectionForward {
 		return advancePast(newest), end.UTC().Format(time.RFC3339Nano)
 	}
-	return since.UTC().Format(time.RFC3339Nano), retreatBefore(oldest)
+	t, err := time.Parse(time.RFC3339Nano, oldest)
+	if err != nil {
+		return since.UTC().Format(time.RFC3339Nano), retreatBefore(oldest)
+	}
+	return backwardCursors(since, t.Add(-time.Nanosecond))
 }
 
-// resolveCursorWindow fills Render's documented defaults so REQUIRED cursors
-// are never empty when the caller omitted a bound.
+// backwardCursors is the next backward window [since, before]. A source that
+// ignores an omitted start (pod logs) can return lines older than the
+// defaulted one; that window then holds nothing, but must not be inverted,
+// which the next request would refuse (w8/125).
+func backwardCursors(since, before time.Time) (string, string) {
+	return earlier(since, before).UTC().Format(time.RFC3339Nano), before.UTC().Format(time.RFC3339Nano)
+}
+
+// resolveCursorWindow fills the read's defaults so REQUIRED cursors are never
+// empty when the caller omitted a bound. An omitted start reads back
+// lokiLookback, not Render's documented hour, so the cursors name that same
+// window; a one-hour start put a backward page's next start after its next end
+// once its lines were older than an hour (w8/125).
 func resolveCursorWindow(since, end time.Time) (time.Time, time.Time) {
 	now := time.Now().UTC()
 	if end.IsZero() {
 		end = now
 	}
 	if since.IsZero() {
-		since = earlier(end, now).Add(-time.Hour)
+		since = earlier(end, now).Add(-lokiLookback)
 	}
 	return since, end
 }
