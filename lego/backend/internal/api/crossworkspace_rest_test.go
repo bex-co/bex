@@ -172,14 +172,15 @@ var callerScopedRoutes = map[string]bool{
 	// The workspace-wide notification-override list (w2/m100 t002): a
 	// collection scoped by the same s.List call as GET /v1/services, so a
 	// foreign ownerId resolves to nothing rather than another workspace.
-	"GET /v1/notification-settings/overrides":         true,
-	"GET /v1/notification-settings/push":              true,
-	"GET /v1/notification-settings/push/availability": true, // caller-scoped feature capability; no resource id
-	"GET /v1/notifications":                           true, // caller's own tenant + subject are derived from auth context
-	"GET /v1/notification-device-subscriptions":       true, // caller's own workspace + subject; no owner path arg
-	"GET /v1/notification-webpush-subscriptions":      true, // caller's own browser subscriptions; no owner path arg
-	"GET /v1/git/connection":                          true,
-	"DELETE /v1/users":                                true, // self-delete derives the subject exclusively from auth context
+	"GET /v1/notification-settings/overrides":            true,
+	"GET /v1/notification-settings/push":                 true,
+	"GET /v1/notification-settings/push/availability":    true, // caller-scoped feature capability; no resource id
+	"GET /v1/notification-settings/push/event-urgencies": true, // the push event → urgency vocabulary; no resource id
+	"GET /v1/notifications":                              true, // caller's own tenant + subject are derived from auth context
+	"GET /v1/notification-device-subscriptions":          true, // caller's own workspace + subject; no owner path arg
+	"GET /v1/notification-webpush-subscriptions":         true, // caller's own browser subscriptions; no owner path arg
+	"GET /v1/git/connection":                             true,
+	"DELETE /v1/users":                                   true, // self-delete derives the subject exclusively from auth context
 	// The caller's own workspace git connection(s) — no resource in the path
 	// (ADR075). DELETE /v1/git/connections/{installationId} carries a GitHub
 	// installation id (not a bex resource id) so it rides the wildcard deny matrix.

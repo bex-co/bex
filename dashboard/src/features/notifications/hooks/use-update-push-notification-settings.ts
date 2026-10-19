@@ -25,6 +25,7 @@ export function useUpdatePushNotificationSettings() {
             current?.pushNotificationsAvailable ?? false,
           webPushAvailable: current?.webPushAvailable ?? false,
           webPushVapidPublicKey: current?.webPushVapidPublicKey ?? null,
+          pushEventUrgencies: current?.pushEventUrgencies ?? [],
           pushNotificationSettings: data.updatePushNotificationSettings,
         },
       });
