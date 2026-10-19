@@ -327,6 +327,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [x] **339** — [Workspace quota error says "limited to 1 Postgres databases"](done/339.md) — **DONE 2026-10-19, `5e75de920`.** The cap refusal reads the singular at limit 1 for all three caps. Live: a second free Postgres in `bex-canary` gets 400 `WORKSPACE_RESOURCE_LIMIT` "workspace is limited to 1 Postgres database; …".
+
 - [x] **338** — [Local Traefik ignores its Recreate strategy, so an edge roll stalls](done/338.md) — **DONE 2026-10-18.** Base sets the chart's real `updateStrategy: Recreate`; prod renders byte-identical (`RollingUpdate 0/1`); gitops-validate asserts both. The live local roll was not exercised because the mock cluster was down.
 - [ ] **342** — [Search can't find services by kind ("Cron Job" says no matches while three are listed)](342.md) ← live `/qa-find-bugs w4` pass c91d4a, 2026-10-19 UTC (read-only). The Cmd-K service filter haystack (`global-search-dialog.tsx:203-207`) omits the kind label that w4/049 added only to the cmdk `value`, which `shouldFilter={false}` never reads. "cron" misses a cron job whose name lacks "cron", while "Database" matches databases. Minor, 30m.
 
