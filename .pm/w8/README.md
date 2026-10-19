@@ -367,7 +367,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **129** — [Postgres reads omit the Render-required `suspenders` and `role` fields](129.md) ← `/qa-find-bugs-cli` loop 2026-10-19
 
-- [ ] **128** — [Restart/Rollback refusals name the internal App name instead of the service the caller asked for](128.md) ← `/qa-find-bugs-cli` sweep 503 2026-10-19: Restart/Rollback refusals name the internal App CR name
+- [x] **128** — [Restart/Rollback refusals name the internal App name instead of the service the caller asked for](done/128.md) ← `/qa-find-bugs-cli` sweep 503 2026-10-19: Restart/Rollback refusals name the internal App CR name — **DONE (2026-10-19)**
 
 - [x] **127** — [An Update Source during a release in flight rolls that release on the previous image](done/127.md) (filed as `124`, renumbered 2026-10-19 after a number collision) ← w8/m119 code review 2026-10-19: `sourceUpdatePending` is decided before `releaseInFlight`, so a source update saved mid-build/pre-deploy reuses the prior image under the new revision — **DONE (2026-10-19)**
 
