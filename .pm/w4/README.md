@@ -329,6 +329,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [x] **348** — [Coverage record: API keys are workspace-scoped and revocation kills already-issued tokens within seconds](done/348.md) ← live `/qa-find-bugs w4` pass 6e19ab, 2026-10-19 UTC; a record, not work to do. A bex-canary key's bearer sees only bex-canary (other workspaces 403), and its pre-revocation access token got 401 two seconds after Revoke. Notes one self-inflicted secret exposure, revoked within about a minute.
+
 - [ ] **347** — ["Save, rebuild, and deploy" of environment changes is recorded as a Manual Deploy, not a configuration change](347.md) ← live `/qa-find-bugs w4` pass d2b8f4, 2026-10-19 UTC. Both the service editor (`save_only` + client `trigger`, `service-environment-editor.tsx:152-171`) and env groups (`RebuildService` → `deploysSvc.Trigger`, `api/server.go:881-884`) open `api` deploys: "Manual Deploy", `envUpdated:false`, against w6/m51's `config_change` rule (`events/service.go:913-917`). Minor, 45m. Also records the w1/m178 build-input precedence passing live.
 
 - [x] **339** — [Workspace quota error says "limited to 1 Postgres databases"](done/339.md) — **DONE 2026-10-19, `5e75de920`.** The cap refusal reads the singular at limit 1 for all three caps. Live: a second free Postgres in `bex-canary` gets 400 `WORKSPACE_RESOURCE_LIMIT` "workspace is limited to 1 Postgres database; …".
