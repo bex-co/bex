@@ -565,6 +565,43 @@ func TestAddDomainRejectsWildcard(t *testing.T) {
 	}
 }
 
+// TestAddDomainRefusesNamesDNSCannotHold is w4/353: a 64+ octet label or an
+// all-numeric top-level label passed the DNS-1123 subdomain check, so the
+// claim was created with a CNAME no DNS provider accepts and could never
+// verify. Both are refused as invalid; a 63-octet label and a 253-character
+// name of 63-octet labels are still claimable, and a stored host stays
+// deletable through the permissive lookup.
+func TestAddDomainRefusesNamesDNSCannotHold(t *testing.T) {
+	svc, cl := newService(nil, sampleApp("web"))
+	label := func(n int) string { return strings.Repeat("a", n) }
+	for host, want := range map[string]string{
+		label(64) + ".example.com":  "each label must be at most 63 characters",
+		label(200) + ".example.com": "each label must be at most 63 characters",
+		"qa.example.123":            "the top-level domain cannot be numeric",
+	} {
+		_, err := svc.AddDomain(context.Background(), "web", host)
+		var coded *core.CodedError
+		if !errors.As(err, &coded) || coded.Code != "CUSTOM_DOMAIN_INVALID" || !strings.Contains(err.Error(), want) {
+			t.Errorf("AddDomain(%.20s…) = %v, want CUSTOM_DOMAIN_INVALID %q", host, err, want)
+		}
+	}
+	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 0 {
+		t.Fatalf("refused names reached spec.hosts: %v", got)
+	}
+	longest := strings.Join([]string{label(63), label(63), label(63), label(57), "com"}, ".")
+	for _, host := range []string{label(63) + ".example.com", longest} {
+		if len(host) > 253 {
+			t.Fatalf("control host is %d characters", len(host))
+		}
+		if _, err := svc.AddDomain(context.Background(), "web", host); err != nil {
+			t.Errorf("AddDomain(%d-character control) = %v, want accepted", len(host), err)
+		}
+	}
+	if _, err := canonicalHostname(label(64) + ".example.com"); err != nil {
+		t.Errorf("lookups must stay permissive for a stored host: %v", err)
+	}
+}
+
 // --- w7/m6: cross-app collision + reserved-host guards ---
 
 // TestAddDomainRejectsHostOnAnotherApp: a host registered on a different App
