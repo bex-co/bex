@@ -159,10 +159,11 @@ func varyAcceptEncoding(hdr http.Header) {
 	hdr.Add("Vary", "Accept-Encoding")
 }
 
-// weakenETag marks an authored strong ETag weak on the br representation: the
-// encoded bytes differ from the identity bytes, so one strong validator must
-// not describe both (RFC 9110 §8.8.1). Revalidation (weak comparison) keeps
-// working; If-Match/If-Range, which demand strong equality, fail closed.
+// weakenETag marks a strong ETag, generated or authored, weak on the br
+// representation: the encoded bytes differ from the identity bytes, so one
+// strong validator must not describe both (RFC 9110 §8.8.1). Revalidation
+// (weak comparison) keeps working; If-Match/If-Range, which demand strong
+// equality, fail closed.
 func weakenETag(hdr http.Header) {
 	if tag := hdr.Get("Etag"); strings.HasPrefix(tag, `"`) {
 		hdr.Set("Etag", "W/"+tag)

@@ -33,6 +33,8 @@ package staticserver
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"io"
 	"mime"
@@ -103,6 +105,10 @@ const defaultMaxLiveBodyBytes = 256 << 20 // 256 MiB
 type Object struct {
 	Body        []byte
 	ContentType string // from the origin; may be empty (then inferred from extension)
+	// etag is the strong validator over Body, set by Handler.get when the
+	// object is fetched (w4/341); a cached object is hashed once for all its
+	// revalidations.
+	etag string
 	// negative marks a cached confirmed miss. A revision prefix is immutable,
 	// so "this key does not exist" is as permanent as any object within the
 	// revision — caching it keeps the lookup-before-rules order (w4/m94) from
@@ -352,8 +358,9 @@ func (h *Handler) serveObject(w http.ResponseWriter, r *http.Request, site Site,
 	// its reservation. HEAD responses carry no body and need no lease. On
 	// exhaustion shed with 503 (before any success header is written) rather
 	// than buffering past the budget. The lease is taken before ServeContent
-	// evaluates preconditions, so a bodyless 304/412 briefly holds it too —
-	// cheaper than re-parsing entity tags here.
+	// evaluates preconditions, so a bodyless 304/412 briefly holds it too and
+	// is shed with the rest under exhaustion, as the 200 it replaces would
+	// be; matching entity tags here would duplicate ServeContent's parser.
 	if r.Method != http.MethodHead {
 		lease := int64(len(obj.Body))
 		if !h.liveBodies.TryAcquire(lease) {
@@ -366,7 +373,11 @@ func (h *Handler) serveObject(w http.ResponseWriter, r *http.Request, site Site,
 	hdr := w.Header()
 	hdr.Set("Content-Type", contentType(servedPath, obj.ContentType))
 	hdr.Set("Cache-Control", defaultCacheControl)
-	// Custom headers win over the defaults above (last-write for a given key).
+	if obj.etag != "" {
+		hdr.Set("Etag", obj.etag)
+	}
+	// Custom headers win over the defaults above (last-write for a given key),
+	// so a saved ETag rule replaces the generated one (w4/272).
 	applyHeaders(hdr, site.Headers, requestPath)
 
 	// Automatic Brotli (w8/m79). The representation is chosen before
@@ -397,10 +408,10 @@ func (h *Handler) serveObject(w http.ResponseWriter, r *http.Request, site Site,
 		}
 	}
 
-	// ServeContent evaluates the request against a saved ETag rule (304 for a
-	// matching If-None-Match, 412 for a failed If-Match — RFC 9110 §13) and
-	// serves byte ranges; HEAD gets headers only. The zero modtime keeps it
-	// from inventing a Last-Modified validator (w4/272).
+	// ServeContent evaluates the request against the ETag (304 for a matching
+	// If-None-Match, 412 for a failed If-Match — RFC 9110 §13) and serves byte
+	// ranges; HEAD gets headers only. The zero modtime keeps it from inventing
+	// a Last-Modified validator (w4/272).
 	http.ServeContent(w, r, servedPath, time.Time{}, bytes.NewReader(body))
 }
 
@@ -484,6 +495,7 @@ func (h *Handler) get(ctx context.Context, site Site, reqPath string) (Object, e
 		if gerr != nil {
 			return Object{}, gerr
 		}
+		obj.etag = contentETag(obj.Body)
 		h.cache.put(site.AppID, key, obj)
 		return obj, nil
 	})
@@ -492,6 +504,13 @@ func (h *Handler) get(ctx context.Context, site Site, reqPath string) (Object, e
 	}
 	obj := v.(Object)
 	return obj, negativeErr(obj)
+}
+
+// contentETag is the strong entity tag for an object's bytes: changed bytes
+// after a republish get a new tag, so revalidation returns them (w4/m160).
+func contentETag(body []byte) string {
+	sum := sha256.Sum256(body)
+	return `"` + base64.RawURLEncoding.EncodeToString(sum[:16]) + `"`
 }
 
 // negativeErr maps a cached confirmed miss back onto the ErrNotFound contract.
