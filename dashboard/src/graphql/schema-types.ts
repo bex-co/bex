@@ -470,10 +470,12 @@ export type Database = {
   public: Maybe<Scalars['Boolean']['output']>;
   readReplicas: Maybe<Array<Maybe<ReadReplicaView>>>;
   region: Maybe<Scalars['String']['output']>;
+  role: Maybe<Scalars['String']['output']>;
   status: Maybe<Scalars['String']['output']>;
   statusReason: Maybe<Scalars['String']['output']>;
   statusReasonCode: Maybe<Scalars['String']['output']>;
   suspended: Maybe<Scalars['String']['output']>;
+  suspenders: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   updatedAt: Maybe<Scalars['String']['output']>;
   version: Maybe<Scalars['String']['output']>;
 };

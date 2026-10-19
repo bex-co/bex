@@ -95,8 +95,15 @@ type renderService struct {
 	// RegistryCredentialID is a bex convenience extension. Render reports the
 	// canonical {id,name} summary above; retaining the id keeps GraphQL/MCP and
 	// existing bex clients symmetric.
-	RegistryCredentialID string   `json:"registryCredentialId,omitempty"`
-	Suspenders           []string `json:"suspenders"` // who suspended it: ["user"] while suspended (bex's only suspend path), [] otherwise (w4/014)
+	RegistryCredentialID string `json:"registryCredentialId,omitempty"`
+	// Suspenders is who suspended it: ["user"] while suspended (bex's only
+	// suspend path), [] otherwise (w4/014, core.Suspenders). Free-tier idle
+	// auto-hibernation is NOT suspension: it scales the Deployment to 0 and
+	// observes phase Hibernated without touching spec.suspended, so an
+	// auto-slept service reports no suspenders. The event vocabulary keeps the
+	// same split — service_hibernated/service_woken for the idle cycle,
+	// service_suspended/service_resumed for this verb (w6/m47).
+	Suspenders []string `json:"suspenders"`
 
 	// OwnerID is Render's workspace-scoping field (w6/m2/t004) — omitted for
 	// Apps the control-plane projector never labeled (see AppView.OwnerID).
@@ -362,7 +369,7 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		ServiceDetails:            renderServiceDetails(a, svcType, region),
 		ImagePath:                 a.SourceImage,
 		RegistryCredentialID:      registryCredentialID,
-		Suspenders:                suspenders(a.Suspended),
+		Suspenders:                core.Suspenders(a.Suspended),
 		OwnerID:                   a.OwnerID,
 		ProjectID:                 a.ProjectID,
 		EnvironmentID:             a.EnvironmentID,
