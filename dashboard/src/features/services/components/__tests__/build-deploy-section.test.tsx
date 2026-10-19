@@ -30,8 +30,12 @@ vi.mock("@/features/services/hooks/use-build-command", () => ({
   useBuildCommand: () => ({ setBuildCommand, busy: false }),
 }));
 
+const startCommandToasts = vi.hoisted(() => [] as unknown[]);
 vi.mock("@/features/services/hooks/use-start-command", () => ({
-  useStartCommand: () => ({ setStartCommand, busy: false }),
+  useStartCommand: (toasts?: unknown) => {
+    startCommandToasts.push(toasts);
+    return { setStartCommand, busy: false };
+  },
 }));
 
 vi.mock("@/features/services/hooks/use-dockerfile-path", () => ({
@@ -541,7 +545,9 @@ describe("BuildDeploySection", () => {
     expect(
       screen.getAllByRole("option").map((option) => option.textContent),
     ).toEqual(["On Commit", "After CI Checks Pass", "Off"]);
-    await user.click(screen.getByRole("option", { name: "After CI Checks Pass" }));
+    await user.click(
+      screen.getByRole("option", { name: "After CI Checks Pass" }),
+    );
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
     expect(setAutoDeployTrigger).toHaveBeenCalledWith("app", "checksPass");
@@ -1044,6 +1050,33 @@ describe("BuildDeploySection", () => {
     // Build + Start both show the bare prompt; none show a rootDir prefix.
     expect(screen.getAllByText("$")).toHaveLength(2);
   });
+
+  // w4/357: a Docker Command save toasted "Start Command updated.", naming a
+  // field the card never showed. Each kind passes the toasts for its own label.
+  it.each([
+    ["node", "services.startCommandSuccess", "services.startCommandError"],
+    ["docker", "services.dockerCommandSuccess", "services.dockerCommandError"],
+  ])(
+    "a %s service's command save toasts its own field",
+    (runtime, success, error) => {
+      startCommandToasts.length = 0;
+      render(
+        <BuildDeploySection
+          serviceId="app"
+          repo="https://github.com/x/mono"
+          branch="main"
+          rootDir={null}
+          runtime={runtime}
+          startCommand="bin/run"
+          preDeployCommand={null}
+          autoDeploy={false}
+          showPreDeployCommand={false}
+          showStartCommand
+        />,
+      );
+      expect(startCommandToasts.at(-1)).toEqual({ success, error });
+    },
+  );
 
   it("shows no prompt on the Docker Command (a container CMD, not a rootDir shell command)", () => {
     render(

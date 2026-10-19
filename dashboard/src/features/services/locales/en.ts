@@ -2251,6 +2251,16 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Couldn't update the Start Command. Please try again.",
     description: "Toast after setStartCommand fails",
   },
+  "services.dockerCommandSuccess": {
+    message: "Docker Command updated.",
+    description:
+      "Toast after a Dockerfile or Existing Image service's Docker Command is saved",
+  },
+  "services.dockerCommandError": {
+    message: "Couldn't update the Docker Command. Please try again.",
+    description:
+      "Toast when saving a Dockerfile or Existing Image service's Docker Command fails",
+  },
   "services.buildCommandLabel": {
     message: "Build Command",
     description:
