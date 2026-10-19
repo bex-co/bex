@@ -1,6 +1,6 @@
 # w8 · m121 — A release in flight builds its own source after a later save
 
-**Worker:** worker8 **Goal:** A release in flight builds and runs what it was requested with, even when a later save arrives before its build starts. That later save is an Update Source (repo, branch, or a switch to a prebuilt image) or a newer deploy. Render's contract is that Update Source saves now and the next deploy consumes it, so release N never builds the saved source under its own name, and never rolls N−1's image as `rev-N`. **Status:** in progress — t001–t004, t006, t007 done (a held release runs on its adopted view: own build ref, image, pre-deploy, snapshots, launch); next: deploy, t005 live parity, t008 closeout
+**Worker:** worker8 **Goal:** A release in flight builds and runs what it was requested with, even when a later save arrives before its build starts. That later save is an Update Source (repo, branch, or a switch to a prebuilt image) or a newer deploy. Render's contract is that Update Source saves now and the next deploy consumes it, so release N never builds the saved source under its own name, and never rolls N−1's image as `rev-N`. **Status:** done — shipped `00a00c9d6` and verified live on production 2026-10-19, 13/13 (t005)
 
 ## Tasks (in order)
 
@@ -10,10 +10,10 @@
 | t002 | Operator: capture a release's build inputs when it is adopted                             | 60m | w8/m121/t001 — **DONE** |
 | t003 | Operator: a held release builds, and resolves its image, from its own inputs              | 90m | w8/m121/t002 — **DONE** |
 | t004 | Envtests: an undispatched build, a repo-to-image switch, and a newer commit while queued  | 60m | w8/m121/t003 — **DONE** |
-| t005 | Render parity: deploy history and served commit across REST, GraphQL, MCP, UI             | 45m | w8/m121/t004               |
+| t005 | Render parity: deploy history and served commit across REST, GraphQL, MCP, UI             | 45m | w8/m121/t004 — **DONE** |
 | t006 | Simplify the changed code                                                                 | 20m | w8/m121/t005 — **DONE** |
 | t007 | Test coverage: own-source builds and image selection for held releases                    | 40m | w8/m121/t005 — **DONE** |
-| t008 | Close out the milestone                                                                   | 10m | w8/m121/t006, w8/m121/t007 |
+| t008 | Close out the milestone                                                                   | 10m | w8/m121/t006, w8/m121/t007 — **DONE** |
 
 ## Definition of done
 
