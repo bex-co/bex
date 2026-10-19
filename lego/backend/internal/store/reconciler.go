@@ -315,6 +315,7 @@ func suppressAvailability(obs ObservedServiceState) ObservedServiceState {
 	obs.AvailabilitySuppressed = true
 	obs.Availability = ""
 	obs.ReasonCode = ""
+	obs.ConcreteFailure = false
 	obs.ReadyTransitionAt = time.Time{}
 	return obs
 }
@@ -1903,6 +1904,7 @@ func observedServiceStateFor(appID string, app *appv1alpha1.App, hasOpenDeploy b
 				obs.Availability = "unhealthy"
 				obs.AvailabilityObserved = true
 				obs.ReasonCode = EventReasonReadinessFailed
+				obs.ConcreteFailure = concreteContainerFailure(condition.Reason)
 				obs.ReadyTransitionAt = condition.LastTransitionTime.Time
 				if hasOpenDeploy {
 					// Ready went False when the rollout began, which dates a crash

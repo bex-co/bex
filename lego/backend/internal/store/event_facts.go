@@ -304,7 +304,13 @@ type ObservedServiceState struct {
 	// the observed empty state used while a service is hibernated.
 	AvailabilityObserved bool
 	ReasonCode           string
-	InstanceID           string
+	// ConcreteFailure marks an unhealthy conclusion backed by a concrete
+	// container failure (concreteContainerFailure: CrashLoopBackOff,
+	// ImagePullBackOff, CreateContainerConfigError) rather than an instance
+	// that is still starting. Only a concrete failure is an availability
+	// conclusion while a service comes up from Hibernated (heldAvailability).
+	ConcreteFailure bool
+	InstanceID      string
 	// ReadyTransitionAt is the Ready condition's LastTransitionTime backing
 	// this availability conclusion (w6/m41) — the operator-side timestamp the
 	// reconciler's stale-conclusion guard orders an unhealthy edge against the
@@ -385,6 +391,7 @@ func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedSe
 			return err
 		}
 
+		obs = heldAvailability(previousPhase, previousAvailability, obs)
 		availability := previousAvailability
 		if obs.AvailabilityObserved {
 			availability = obs.Availability
@@ -471,6 +478,38 @@ func checkpointServicePhase(previous, observed string) string {
 	return observed
 }
 
+// heldAvailability leaves availability unobserved where a pass says nothing
+// about it across a hibernation, so server_available stays the partner of a
+// recorded server_failed (w4/m230):
+//
+//   - Waking. An idle wake or a user Resume reads Deploying with
+//     Ready=False/RolloutProgressing until its instance is ready, and no deploy
+//     row is open to exempt it, so the reconciler concludes readiness_failed.
+//     Recorded, that sighting turned the wake's healthy pass into an unpaired
+//     server_available ("Service recovered"). The rule keys on the Hibernated
+//     baseline, never on the reason alone: a running service whose only
+//     instance goes unready without a deploy still records server_failed. A
+//     concrete container failure is a real conclusion even here — a service
+//     that cannot wake is down — so it is kept, and observedStateFacts records
+//     it.
+//   - Sleeping while failed. A recorded failure stays open through the
+//     hibernation, so the wake that brings the service back healthy records the
+//     recovery that closes it.
+func heldAvailability(previousPhase, previousAvailability string, obs ObservedServiceState) ObservedServiceState {
+	hibernated := string(appv1alpha1.PhaseHibernated)
+	waking := previousPhase == hibernated && obs.ServicePhase != hibernated &&
+		obs.AvailabilityObserved && obs.Availability == "unhealthy" && !obs.ConcreteFailure
+	sleepingFailed := obs.ServicePhase == hibernated && previousAvailability == "unhealthy"
+	if waking || sleepingFailed {
+		obs.AvailabilityObserved = false
+		obs.Availability = ""
+		obs.ReasonCode = ""
+		obs.ConcreteFailure = false
+		obs.ReadyTransitionAt = time.Time{}
+	}
+	return obs
+}
+
 // checkpointServiceSuspended pins the recorded suspend reason to whatever phase
 // checkpointServicePhase kept. When a Hibernated baseline is held through the
 // transient startup phases, the reason it hibernated must be held with it —
@@ -528,11 +567,15 @@ func observedStateFacts(obs ObservedServiceState, previousPhase, previousAvailab
 				// Symmetric with the sleep side: how it went down decides how
 				// coming back up reads. spec.suspended is false in BOTH cases by
 				// the time Running is observed, so only the checkpoint knows.
+				fact := makeFact("woken", EventFactServiceWoken)
 				if previousSuspended {
-					facts = append(facts, makeFact("resumed", EventFactServiceResumed))
-				} else {
-					facts = append(facts, makeFact("woken", EventFactServiceWoken))
+					fact = makeFact("resumed", EventFactServiceResumed)
 				}
+				// The service came back when its instance went Ready, not
+				// when this pass noticed — 3–15 s later live (w4/m230). The
+				// source key keeps obs.At, so a replay stays a no-op.
+				fact.At = availabilityEdgeAt(obs.ReadyTransitionAt, previousChangedAt, obs.At)
+				facts = append(facts, fact)
 			}
 		}
 	}
@@ -545,6 +588,15 @@ func observedStateFacts(obs ObservedServiceState, previousPhase, previousAvailab
 		switch {
 		case previousAvailability == "healthy" && obs.Availability == "unhealthy":
 			facts = append(facts, edge("failed", EventFactServerFailed))
+		case previousAvailability == "" && obs.Availability == "unhealthy" && previousPhase == string(appv1alpha1.PhaseHibernated):
+			// A wake or resume whose instance fails concretely
+			// (heldAvailability keeps only those): the service is down to
+			// every caller, and the recovery that follows needs a failure to
+			// pair with (w4/m230). Ready has been False since the service
+			// slept, so its transition dates the sleep, not this failure: the
+			// observation is the edge's time.
+			fact := makeFact("failed", EventFactServerFailed)
+			facts = append(facts, fact)
 		case previousAvailability == "unhealthy" && obs.Availability == "healthy":
 			facts = append(facts, edge("available", EventFactServerAvailable))
 		}
