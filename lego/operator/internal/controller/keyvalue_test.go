@@ -259,6 +259,60 @@ func TestKeyValueExternalToggleKeepsThePodTemplate(t *testing.T) {
 	}
 }
 
+// TestKeyValueConnectionSecretRebuildKeepsAServingStoreReady: an access flip
+// rewrites the immutable connection Secret, which touches no pod. A serving
+// store stays Ready through that pass, so bex-api can read the flip as
+// restart-free; a store not yet serving still reports the rebuild.
+func TestKeyValueConnectionSecretRebuildKeepsAServingStoreReady(t *testing.T) {
+	for _, serving := range []bool{true, false} {
+		t.Run(fmt.Sprintf("serving=%v", serving), func(t *testing.T) {
+			kv := &appv1alpha1.KeyValue{
+				ObjectMeta: metav1.ObjectMeta{Name: "flip-kv", Namespace: "default", UID: "kv-flip-test"},
+				Spec:       appv1alpha1.KeyValueSpec{Plan: "free", Public: true},
+			}
+			cl := fake.NewClientBuilder().WithScheme(keyValueBackupTestScheme(t)).WithObjects(kv).
+				WithStatusSubresource(&appv1alpha1.KeyValue{}).Build()
+			r := &KeyValueReconciler{Client: cl, Scheme: cl.Scheme(), KvDomain: "kv.example.test", ClusterIssuer: "letsencrypt-prod"}
+			ctx := context.Background()
+			nn := types.NamespacedName{Name: "flip-kv", Namespace: "default"}
+			for range 2 {
+				if _, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := cl.Get(ctx, nn, kv); err != nil {
+				t.Fatal(err)
+			}
+			if serving {
+				kv.Status.Phase = appv1alpha1.KVPhaseReady
+				meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{Type: appv1alpha1.ConditionReady,
+					Status: metav1.ConditionTrue, Reason: "Ready", ObservedGeneration: kv.Generation})
+				if err := cl.Status().Update(ctx, kv); err != nil {
+					t.Fatal(err)
+				}
+			}
+			kv.Spec.Public = false
+			if err := cl.Update(ctx, kv); err != nil {
+				t.Fatal(err)
+			}
+			res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+			if err != nil || res.RequeueAfter == 0 {
+				t.Fatalf("rebuild pass: %+v, %v", res, err)
+			}
+			if err := cl.Get(ctx, nn, kv); err != nil {
+				t.Fatal(err)
+			}
+			ready := meta.FindStatusCondition(kv.Status.Conditions, appv1alpha1.ConditionReady)
+			if serving && (kv.Status.Phase != appv1alpha1.KVPhaseReady || ready.Status != metav1.ConditionTrue) {
+				t.Fatalf("a serving store left Ready during the Secret rebuild: phase %s, %+v", kv.Status.Phase, ready)
+			}
+			if !serving && (kv.Status.Phase != appv1alpha1.KVPhaseProvisioning || ready.Reason != appv1alpha1.ReasonConnectionSecretRebuilding) {
+				t.Fatalf("a store not yet serving hid the rebuild: phase %s, %+v", kv.Status.Phase, ready)
+			}
+		})
+	}
+}
+
 // TestKeyValueFirstExternalEnableAddsTheListener: a store created private has
 // no listener, so its first enable must add one (the one toggle that restarts,
 // which bex-api announces), and the status says so before and after.
