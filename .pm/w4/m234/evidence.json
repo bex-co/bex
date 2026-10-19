@@ -1,0 +1,146 @@
+{
+  "pass": "9d0542",
+  "date": "2026-10-19",
+  "host": "https://dashboard.bex.co (api https://api.bex.co)",
+  "pin": "69e925197b39",
+  "workspace": "tea-daif693dqjvc73e7as3g (bex-canary, Hobby)",
+  "fixture": {
+    "name": "qa-20261019-9d0542-susp",
+    "id": "srv-dbas8cf51eac73b158eg",
+    "create": "POST /v1/services {type:web_service, plan:free, runtime:image, image:{imagePath:'docker.io/traefik/whoami:v1.10'}, envVars:[{key:'WHOAMI_PORT_NUMBER', value:'3000' (after fix-up)}]} -> 201",
+    "cleanup": "DELETE /v1/services/srv-dbas8cf51eac73b158eg -> 204; GET -> 404; no 9d0542 resource left"
+  },
+  "suspendedUi": {
+    "url": "curl -sSI https://qa-20261019-9d0542-susp.onbex.co/ -> 503, retry-after: 3600, body 'This service is suspended.'",
+    "manualDeployMenu": ["Deploy latest image [disabled]", "Restart service [disabled]"],
+    "manualDeployTooltip": "Unavailable while the service is suspended. Resume it first.",
+    "deployActions": [
+      { "action": "deploy", "outcome": "allowed", "precondition": "suspended" },
+      { "action": "rollback", "outcome": "allowed", "precondition": "suspended" }
+    ],
+    "envSaveMenu": ["Save, rebuild, and deploy", "Save and deploy", "Save only"],
+    "envSaveMenuDisabled": []
+  },
+  "dashboardSaveAndDeploy": {
+    "at": "2026-10-19T07:25:33Z",
+    "request": {
+      "operationName": "PatchServiceEnvironment",
+      "variables": {
+        "serviceId": "srv-dbas8cf51eac73b158eg",
+        "envVars": [{ "key": "QA_9D0542_FLAG", "value": "on" }],
+        "saveMode": "deploy"
+      }
+    },
+    "response": {
+      "data": {
+        "patchServiceEnvironment": {
+          "envVarKeys": ["QA_9D0542_FLAG", "WHOAMI_PORT_NUMBER"],
+          "rolledOut": true,
+          "rolloutError": "",
+          "secretFileNames": []
+        }
+      }
+    },
+    "toast": "Environment saved and deployment started",
+    "deployRow": {
+      "id": "dep-dbasbrf51eac73b158hg",
+      "status": "canceled",
+      "trigger": "service_updated",
+      "cancelReason": "Canceled: the service was suspended",
+      "createdAt": "2026-10-19T07:25:33.109069Z",
+      "finishedAt": "2026-10-19T07:25:40.566192Z"
+    },
+    "headerAfter": "Service Suspended · Latest deploy Canceled · Revision rev-2 · 'Saved changes aren't live yet. Use a standard deploy to apply them.'"
+  },
+  "resume": {
+    "dashboardResume": "Settings -> Resume -> toast 'Resuming qa-20261019-9d0542-susp…' -> URL 200",
+    "graphql": "{ service(id) { suspended undeployedChanges } } -> {suspended:'not_suspended', undeployedChanges:true}",
+    "header": "Service Running · Latest deploy Canceled · Revision rev-2",
+    "deployRowsOpenedByResume": 0
+  },
+  "suspendedWrites": {
+    "suspend": "POST /v1/services/srv-dbas8cf51eac73b158eg/suspend -> 202 (suspended:'suspended')",
+    "rebuildControl": {
+      "request": "mutation patchServiceEnvironment(serviceId, envVars:[{key:'QA_9D0542_REBUILD', value:'1'}], saveMode:'rebuild') { envVarKeys rolledOut rolloutError }",
+      "response": "200 {\"data\":{\"patchServiceEnvironment\":{\"envVarKeys\":[\"QA_9D0542_FLAG\",\"QA_9D0542_REBUILD\",\"WHOAMI_PORT_NUMBER\"],\"rolledOut\":false,\"rolloutError\":\"conflict: service \\\"srv-dbas8cf51eac73b158eg\\\" is suspended\"}}}",
+      "newDeployRows": 0
+    },
+    "deployMode": {
+      "request": "mutation patchServiceEnvironment(serviceId, envVars:[{key:'QA_9D0542_DEPLOY', value:'1'}], saveMode:'deploy') { envVarKeys rolledOut rolloutError }",
+      "response": "200 {\"data\":{\"patchServiceEnvironment\":{\"envVarKeys\":[\"QA_9D0542_DEPLOY\",\"QA_9D0542_FLAG\",\"QA_9D0542_REBUILD\",\"WHOAMI_PORT_NUMBER\"],\"rolledOut\":true,\"rolloutError\":\"\"}}}",
+      "newDeployRow": "dep-dbaseg751eac73b158kg created 07:31:12Z -> canceled 07:31:26Z 'Superseded by dep-dbasein51eac73b158lg'"
+    },
+    "restEnvVarPut": {
+      "request": "PUT /v1/services/srv-dbas8cf51eac73b158eg/env-vars/QA_9D0542_REST {\"value\":\"1\"}",
+      "response": "200 {\"key\":\"QA_9D0542_REST\",\"value\":\"1\"}",
+      "newDeployRow": "dep-dbasein51eac73b158lg created 07:31:22Z -> canceled 07:31:26Z 'Canceled: the service was suspended'"
+    },
+    "restSettingsPatch": {
+      "request": "PATCH /v1/services/srv-dbas8cf51eac73b158eg {\"serviceDetails\":{\"healthCheckPath\":\"/health-qa\"}}",
+      "response": "200 (service view, suspended:'suspended')",
+      "newDeployRow": "dep-dbasel74b8ns73ae2e80 created 07:31:32Z -> canceled 07:31:40Z 'Canceled: the service was suspended'"
+    }
+  },
+  "recovery": {
+    "resume": "POST /v1/services/{id}/resume -> 202; undeployedChanges:true; Revision rev-2",
+    "manualDeploy": "Manual Deploy -> Deploy latest image -> toast 'Deploy triggered.' -> dep-dbasftn51eac73b158og live (trigger api)",
+    "after": "undeployedChanges:false; header Latest deploy Live"
+  },
+  "deploysFinal": [
+    { "id": "dep-dbasftn51eac73b158og", "status": "live", "trigger": "api" },
+    {
+      "id": "dep-dbasel74b8ns73ae2e80",
+      "status": "canceled",
+      "trigger": "service_updated",
+      "cancelReason": "Canceled: the service was suspended"
+    },
+    {
+      "id": "dep-dbasein51eac73b158lg",
+      "status": "canceled",
+      "trigger": "service_updated",
+      "cancelReason": "Canceled: the service was suspended"
+    },
+    {
+      "id": "dep-dbaseg751eac73b158kg",
+      "status": "canceled",
+      "trigger": "service_updated",
+      "cancelReason": "Superseded by dep-dbasein51eac73b158lg"
+    },
+    {
+      "id": "dep-dbasbrf51eac73b158hg",
+      "status": "canceled",
+      "trigger": "service_updated",
+      "cancelReason": "Canceled: the service was suspended"
+    },
+    { "id": "dep-dbasahv51eac73b158fg", "status": "deactivated", "trigger": "service_updated" },
+    {
+      "id": "dep-dbas8cf51eac73b158f0",
+      "status": "canceled",
+      "trigger": "other",
+      "cancelReason": "Superseded by dep-dbasahv51eac73b158fg"
+    }
+  ],
+  "eventsWhileSuspended": [
+    "07:23:48 suspender_added",
+    "07:23:56 service_suspended",
+    "07:25:33 deploy_started dep-…158hg envUpdated:true",
+    "07:25:33 service_environment_changed",
+    "07:25:40 deploy_ended dep-…158hg canceled 'Canceled: the service was suspended'",
+    "07:28:28 suspender_removed",
+    "07:28:39 service_resumed",
+    "07:30:53 suspender_added",
+    "07:30:56 service_suspended",
+    "07:31:02 service_environment_changed (rebuild control: no deploy_started)",
+    "07:31:12 deploy_started dep-…158kg envUpdated:true",
+    "07:31:12 service_environment_changed",
+    "07:31:22 deploy_started dep-…158lg envUpdated:true",
+    "07:31:22 env_vars_changed",
+    "07:31:26 deploy_ended dep-…158kg canceled 'Superseded by dep-dbasein51eac73b158lg'",
+    "07:31:26 deploy_ended dep-…158lg canceled 'Canceled: the service was suspended'",
+    "07:31:32 deploy_started dep-…2e80 envUpdated:true",
+    "07:31:40 deploy_ended dep-…2e80 canceled 'Canceled: the service was suspended'",
+    "07:33:36 suspender_removed",
+    "07:33:47 service_resumed"
+  ],
+  "screenshots (gitignored, this session only)": [".playwright-mcp/qa-env-1.png", ".playwright-mcp/qa-env-2.png"]
+}
