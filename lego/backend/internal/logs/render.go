@@ -268,11 +268,12 @@ func pageCursors(entries []LogEntry, since, end time.Time, direction string) (ne
 // resolveCursorWindow fills Render's documented defaults so REQUIRED cursors
 // are never empty when the caller omitted a bound.
 func resolveCursorWindow(since, end time.Time) (time.Time, time.Time) {
+	now := time.Now().UTC()
 	if end.IsZero() {
-		end = time.Now().UTC()
+		end = now
 	}
 	if since.IsZero() {
-		since = end.Add(-time.Hour)
+		since = earlier(end, now).Add(-time.Hour)
 	}
 	return since, end
 }
