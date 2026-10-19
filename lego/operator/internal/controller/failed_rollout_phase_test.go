@@ -332,6 +332,7 @@ func TestPermanentPullFailureSettlesBeforeRolloutDeadline(t *testing.T) {
 		{"missing tag", "ErrImagePull", "rpc error: code = NotFound desc = manifest missing", "rev-1", 91 * time.Second, true},
 		{"manifest unknown", "ImagePullBackOff", "manifest unknown", "rev-1", 91 * time.Second, true},
 		{"unauthorized", "ErrImagePull", "unauthorized: authentication required", "rev-1", 91 * time.Second, true},
+		{"docker hub missing repository", "ImagePullBackOff", "Back-off pulling image \"docker.io/library/qa532-no-such-image-zzz:latest\": ErrImagePull: failed to pull and unpack image \"docker.io/library/qa532-no-such-image-zzz:latest\": failed to resolve reference \"docker.io/library/qa532-no-such-image-zzz:latest\": pull access denied, repository does not exist or may require authorization: server message: insufficient_scope: authorization failed", "rev-1", 91 * time.Second, true}, // w8/131
 		{"invalid image name", "InvalidImageName", "invalid reference format: repository name must be lowercase", "rev-1", 0, true},
 		{"grace", "ErrImagePull", "rpc error: code = NotFound", "rev-1", 60 * time.Second, false}, // well inside the grace: a loaded runner adds seconds
 		{"timeout", "ErrImagePull", "dial tcp: i/o timeout", "rev-1", 10 * time.Minute, false},

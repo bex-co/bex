@@ -282,7 +282,10 @@ func PullFailure(ctx context.Context, cl client.Reader, j *batchv1.Job, now time
 // PermanentPullFailure is shared by pre-deploy Jobs and rollout pods. Malformed
 // references cannot recover through retries. Missing-image and denied-auth
 // answers wait through imagePullGrace; network errors and plain backoff cannot
-// shorten the deadline.
+// shorten the deadline. Docker Hub answers a missing repository with "pull
+// access denied, repository does not exist … insufficient_scope" rather than a
+// 404, so that vocabulary counts too (w8/131): a fixed tag or credential
+// arrives with a new deploy.
 func PermanentPullFailure(w *corev1.ContainerStateWaiting, created, now time.Time) bool {
 	if w == nil {
 		return false
@@ -295,7 +298,8 @@ func PermanentPullFailure(w *corev1.ContainerStateWaiting, created, now time.Tim
 		return false
 	}
 	message := strings.ToLower(w.Message)
-	for _, answer := range []string{"code = notfound", "manifest unknown", "manifest_unknown", ": not found", "404 not found", "unauthorized", "authentication required"} {
+	for _, answer := range []string{"code = notfound", "manifest unknown", "manifest_unknown", ": not found", "404 not found", "unauthorized",
+		"authentication required", "pull access denied", "repository does not exist", "insufficient_scope"} {
 		if strings.Contains(message, answer) {
 			return true
 		}
