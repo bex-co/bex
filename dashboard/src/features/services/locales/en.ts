@@ -4431,7 +4431,7 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Toast after triggerDeploy fails",
   },
   "services.cancelDeploySuccess": {
-    message: "Deploy cancelled.",
+    message: "Deploy canceled.",
     description: "Toast after cancelDeploy succeeds",
   },
   "services.cancelDeployError": {

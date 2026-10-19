@@ -205,12 +205,12 @@ describe("PaymentSetupPage", () => {
     expect(screen.queryByText("Stripe Test Mode")).not.toBeInTheDocument();
   });
 
-  it("explains a cancelled Checkout without leaving the wall", async () => {
+  it("explains a canceled Checkout without leaving the wall", async () => {
     billing.readiness = readiness();
     renderWall("/setup/payment?billing=cancelled");
     expect(
       await screen.findByText(
-        "Checkout was cancelled. No payment method was added.",
+        "Checkout was canceled. No payment method was added.",
       ),
     ).toBeInTheDocument();
     expect(
