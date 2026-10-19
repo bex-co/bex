@@ -39,3 +39,30 @@ Push and webhook delivery are not live-asserted here: no device or endpoint is r
 - **Render parity included:** the change alters what REST/GraphQL/MCP events, webhooks, push and the dashboard Activity feed report. Render's documented `server_failed`/`server_available` pair (render.com/docs/webhooks, fetched 2026-10-19) is the target. `service_hibernated`/`service_woken` are bex extensions.
 - **Anti-goals:** `DO_NOT_DO.md:34` (do not file self-waking without traffic) does not apply. Every wake here followed this pass's own request, and the defect is the extra fact, not the wake.
 - **Unverified:** push and webhook delivery, MCP, failed-wake behavior, datastore analogs, and the true hibernation time. See finding.md.
+
+## Hosted probe — qa pass 3cddce (2026-10-19, not the closeout)
+
+A `/qa-find-bugs w4` pass replayed the live DoD on production, pinned to `98721ad37ea9`, which contains `a6a482ab0`.
+
+- **Fixture:** bex-canary, an owned Free web service `qa-20261019-3cddce-wake` (`srv-dbaqlntvjvcc73a4gp40`), `python:3.13-alpine` running `python3 -m http.server $PORT`. `setIdleTimeout(idleTTLSeconds: 300)`. Created 05:30Z, Live 05:30:41Z.
+- **Cleanup:** deleted (REST 404), and only that run's session was revoked.
+- **Six cold wakes:** a runner waited for each new `service_hibernated` (it polled only the events API, never the public host), then requested `https://qa-20261019-3cddce-wake.onbex.co/` every 1 s until it returned 200.
+
+| Cycle | `service_hibernated` | First non-200 (503) | First 200 | `service_woken` |
+| --- | --- | --- | --- | --- |
+| 1 | 05:36:24 | 05:36:29.05 | 05:36:41.13 | 05:36:39 |
+| 2 | 05:42:41 | 05:42:50.05 | 05:43:01.83 | 05:43:00 |
+| 3 | 05:48:54 | 05:49:00.53 | 05:49:12.30 | 05:49:11 |
+| 4 | 05:55:11 | 05:55:18.27 | 05:55:29.78 | 05:55:29 |
+| 5 | 06:01:24 | 06:01:28.41 | 06:01:40.86 | 06:01:39 |
+| 6 | 06:07:41 | 06:07:48.56 | 06:08:00.41 | 06:07:59 |
+
+- **Counts ✅:** `GET /v1/services/<id>/events?limit=100` and GraphQL `serviceEvents(serviceId:, limit:100)` agree: `service_hibernated: 6`, `service_woken: 6`, **`server_available: 0`, `server_failed: 0`**.
+- **Activity ✅:** a fresh load of the service's Events page shows 6 "Service woke up" and 6 "Service went to sleep", alternating, each "woke up" above its cycle's "went to sleep", and **0 "Service recovered"**.
+- **Woken timestamps:** every `service_woken` lies after its cycle's `service_hibernated`, and 0.3–2.8 s before the first 200 this runner observed. The runner sampled every 1 s and the event timestamps are whole seconds, so the true gap is within the DoD's 2 s. It is no longer stamped late, after a "recovery".
+- **Resume control ✅:** `POST …/suspend` 202, then 40 s later `POST …/resume` 202. Events read `suspender_added` 06:10:46, `service_suspended` 06:10:54, `suspender_removed` 06:11:27, `service_resumed` 06:11:38, and still no `server_available` or `server_failed`.
+- **Not met or not probed here:**
+  - The ≥15 s wake bullet. All six wakes took 11.8–12.4 s from first 503 to first 200, so none reached 15 s. The timing is not controllable from outside; a slower-start fixture would be needed.
+  - MCP `list_events` (not driven).
+  - The outage control (crash edge on an awake service).
+  - The adjacent-decision and checks bullets (code and CI).
