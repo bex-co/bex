@@ -333,13 +333,15 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **360** — [A Postgres recovery takes the plan's default disk and default parameters, not the source's](360.md) ← `w4/356` simplify review, 2026-10-19. `Recover` leaves `StorageGB` and `Parameters` unset, so a source whose disk grew past the plan default can fail to restore into the smaller volume.
+
 - [ ] **359** — [A blank service name over REST is refused as "already in use" while GraphQL and the dashboard clear it](blocked/359.md) — **BLOCKED (release pipeline deploys bex-api; QA sends `PATCH /v1/services/<id> {"name":"   "}` to an owned Free service in `bex-canary` and gets 200 with the creation name; a taken name still 409; then cleans up)**. Implementation done 2026-10-19: the preflight skips a blank name and the own creation name, as the write does.
 
 - [ ] **358** — [A Blueprint `ipAllowList` can restart and empty a Persistence Off Key Value without the confirmation](blocked/358.md) — **BLOCKED (product decision from the user: a Blueprint has no `confirm` channel, so should a sync that would first-enable external access on a running Persistence Off Key Value be refused with a named error, gated behind an explicit apply flag, or accepted and documented? The auto-sync worker must not take it unattended either way)**. Filed by w4/m233; 45m once decided.
 
 - [ ] **357** — [The Docker Command editor's toasts say "Start Command"](blocked/357.md) — **BLOCKED (release pipeline deploys the dashboard; QA saves an owned image service's Docker Command in `bex-canary` and sees "Docker Command updated.")**. Implementation done 2026-10-19: per-kind toasts on the Deploy card; en/zh; tested.
 
-- [ ] **356** — [Postgres Recover copies a protected environment's data out of its environment and allow-lists](356.md) ← `w4/m232` security review, 2026-10-19. `Recover` needs only `can_create` and builds the new instance with tenant labels alone, so a point-in-time copy of an ACL-bearing environment's database lands outside its environment, inbound-IP layer and allow-list. Check Render, then gate or inherit.
+- [x] **356** — [Postgres Recover copies a protected environment's data out of its environment and allow-lists](done/356.md) — **DONE 2026-10-19 (loopx w4):** a recovery joins the source's environment (or project) and copies its allow-list and external access, as Render does.
 
 - [ ] **355** — [`aclBearing` treats the default allow-all as admin-managed and deny-all as not](blocked/355.md) — **BLOCKED (product decision from the user: should "ACL-bearing" mean protected, isolated, or an allow-list that restricts anything (excluding the seeded allow-all pair, including the explicit deny-all)? And should moves *into* a protected environment become admin-only, as on Render? This changes an administrator boundary, so it is not a drive-by fix)**. Filed by w4/m232; 45m once decided.
 

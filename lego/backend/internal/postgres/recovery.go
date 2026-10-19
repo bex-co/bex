@@ -26,6 +26,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -246,6 +247,11 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 	if err := s.ensureDatabaseNameAvailable(ctx, tenantID, req.Name, ""); err != nil {
 		return PostgresView{}, err
 	}
+	// Resolved before the billing gates, as a create resolves its environment.
+	environment, err := s.sourceEnvironment(ctx, src, tenantID)
+	if err != nil {
+		return PostgresView{}, err
+	}
 	if _, err := core.ParseTime("targetTime", req.TargetTime); err != nil {
 		return PostgresView{}, err
 	}
@@ -315,6 +321,7 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 	if tenantID != "" {
 		newDB.Labels = core.TenantLabels(tenantID)
 	}
+	inheritBoundary(src, newDB, environment)
 	resourcemeta.Touch(newDB, s.Now())
 	if err := s.Client.Create(ctx, newDB); err != nil {
 		if apierrors.IsAlreadyExists(err) {
@@ -323,6 +330,40 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 		return PostgresView{}, err
 	}
 	return pgView(newDB), nil
+}
+
+// sourceEnvironment resolves the environment a recovery joins: the source's,
+// through the same resolver a create uses. A source in no environment yields
+// none; one that cannot be resolved refuses the recovery (w4/356).
+func (s *Service) sourceEnvironment(ctx context.Context, src *appv1alpha1.Database, tenantID string) (core.EnvironmentAssignment, error) {
+	environmentID := src.Labels[core.LabelEnvironment]
+	if environmentID == "" {
+		return core.EnvironmentAssignment{}, nil
+	}
+	return core.ResolveEnvironmentForCreate(ctx, s.Environments, id.EnvironmentPublicID(environmentID), tenantID)
+}
+
+// inheritBoundary keeps a recovery inside its source's boundary: it is the
+// source's data, so it must not land outside the protected, isolated or
+// allow-listed environment that guards it (w4/356). The new instance joins the
+// source's environment (and so its project and inbound-IP layer) or, failing
+// one, its project, and always copies the source's own external access and IP
+// allow-list. Render does the same: "the recovery instance always copies the
+// IP address allow list from the original instance" (render.com/docs/
+// postgresql-backups, 2026-10-19).
+func inheritBoundary(src, dst *appv1alpha1.Database, environment core.EnvironmentAssignment) {
+	dst.Spec.Public = src.Spec.Public
+	dst.Spec.IPAllowList = slices.Clone(src.Spec.IPAllowList)
+	if environment.ID != "" {
+		dst.Spec.EnvironmentIPAllowList = core.ApplyGrouping(dst, environment)
+		return
+	}
+	if projectID := src.Labels[core.LabelProject]; projectID != "" {
+		if dst.Labels == nil {
+			dst.Labels = map[string]string{}
+		}
+		dst.Labels[core.LabelProject] = projectID
+	}
 }
 
 // ListExports lists logical pg_dump exports newest first. A dump is the entire

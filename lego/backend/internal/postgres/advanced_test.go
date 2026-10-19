@@ -930,3 +930,73 @@ func TestRESTRecoveryAndAccessShapes(t *testing.T) {
 		t.Error("delete user => want 204")
 	}
 }
+
+// TestRecoverStaysInsideTheSourcesBoundary is w4/356: a recovery copied a
+// protected environment's data into a workspace-scoped instance with none of
+// the source's environment, inbound-IP layer or allow-list. It now joins the
+// source's environment (or project) and copies its external access, as Render
+// copies the allow-list; a source environment that cannot be resolved refuses
+// the recovery rather than landing it outside.
+func TestRecoverStaysInsideTheSourcesBoundary(t *testing.T) {
+	ctx := context.Background()
+	recover := func(t *testing.T, labels map[string]string, resolver *fixedCreateEnvironment) (appv1alpha1.Database, error) {
+		t.Helper()
+		svc, cl := newServicePostgresResources()
+		svc.Environments = resolver
+		src := seedDatabaseSpec(t, cl, "src-db", appv1alpha1.DatabaseSpec{
+			Plan: "basic-1gb", Public: true,
+			IPAllowList: []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.0/24", Description: "office"}},
+		}, true)
+		src.Labels = labels
+		if err := cl.Update(ctx, src); err != nil {
+			t.Fatal(err)
+		}
+		seedBarmanRecoveryWindow(t, cl, "src-db", "2026-07-01T00:00:00Z", "2026-07-10T00:00:00Z")
+		v, err := svc.Recover(ctx, "src-db", RecoverRequest{Name: "restored-db", TargetTime: "2026-07-09T10:00:00Z"})
+		if err != nil {
+			return appv1alpha1.Database{}, err
+		}
+		var made appv1alpha1.Database
+		if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: v.ID}, &made); err != nil {
+			t.Fatal(err)
+		}
+		return made, nil
+	}
+
+	t.Run("environment", func(t *testing.T) {
+		made, err := recover(t,
+			map[string]string{core.LabelTenant: "tea-a", core.LabelProject: "prj-1", core.LabelEnvironment: "env-prod"},
+			&fixedCreateEnvironment{assignment: core.EnvironmentAssignment{
+				ID: "env-prod", ProjectID: "prj-1",
+				IPAllowList: []core.IPAllowListEntry{{CIDRBlock: "198.51.100.0/24"}},
+			}})
+		if err != nil {
+			t.Fatalf("Recover: %v", err)
+		}
+		if made.Labels[core.LabelEnvironment] != "env-prod" || made.Labels[core.LabelProject] != "prj-1" {
+			t.Errorf("recovered labels = %v, want the source's project and environment", made.Labels)
+		}
+		if len(made.Spec.EnvironmentIPAllowList) == 0 {
+			t.Error("the recovery dropped the environment's inbound-IP layer")
+		}
+		if !made.Spec.Public || len(made.Spec.IPAllowList) != 1 || made.Spec.IPAllowList[0].CIDR != "203.0.113.0/24" {
+			t.Errorf("recovered access = public %v %v, want the source's", made.Spec.Public, made.Spec.IPAllowList)
+		}
+	})
+	t.Run("project only", func(t *testing.T) {
+		made, err := recover(t, map[string]string{core.LabelTenant: "tea-a", core.LabelProject: "prj-1"}, &fixedCreateEnvironment{})
+		if err != nil {
+			t.Fatalf("Recover: %v", err)
+		}
+		if made.Labels[core.LabelProject] != "prj-1" || made.Labels[core.LabelEnvironment] != "" {
+			t.Errorf("recovered labels = %v, want the source's project and no environment", made.Labels)
+		}
+	})
+	t.Run("unresolvable environment", func(t *testing.T) {
+		if _, err := recover(t,
+			map[string]string{core.LabelTenant: "tea-a", core.LabelProject: "prj-1", core.LabelEnvironment: "env-gone"},
+			&fixedCreateEnvironment{err: core.ErrNotFound}); !errors.Is(err, core.ErrNotFound) {
+			t.Fatalf("Recover = %v, want the resolver's refusal: a recovery whose source environment cannot be resolved must not land outside it", err)
+		}
+	})
+}
