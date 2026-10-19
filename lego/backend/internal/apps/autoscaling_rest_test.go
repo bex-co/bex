@@ -27,6 +27,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 func putAutoscaling(t *testing.T, svc *Service, body string) *httptest.ResponseRecorder {
@@ -46,7 +47,7 @@ func putAutoscaling(t *testing.T, svc *Service, body string) *httptest.ResponseR
 // TestPUTAutoscalingAcceptsRenderBody pins w4/m104: the handler decodes
 // Render's pinned schema and stores the same config GraphQL would.
 func TestPUTAutoscalingAcceptsRenderBody(t *testing.T) {
-	svc, _ := newService(nil, freeWebApp("web"))
+	svc, _ := newService(nil, paidWebApp("web"))
 
 	body := `{
 		"enabled": true,
@@ -108,13 +109,15 @@ func TestPUTAutoscalingRejectsBexDialectWithNamedError(t *testing.T) {
 }
 
 func TestPUTAutoscalingEnabledFalseDisables(t *testing.T) {
-	svc, _ := newService(nil, freeWebApp("web"))
+	// Stored enabled config on a free service (written before the paid-plan
+	// gate, w4/365): enabling is refused on free, disabling must stay
+	// reachable on every plan or the config could never be removed.
+	app := freeWebApp("web")
 	cpu := int32(50)
-	if _, err := svc.SetAutoscaling(context.Background(), "web", SetAutoscalingRequest{
-		MinInstances: 1, MaxInstances: 1, TargetCPUPercent: &cpu,
-	}); err != nil {
-		t.Fatal(err)
+	app.Spec.Autoscaling = &appv1alpha1.AutoscalingSpec{
+		Enabled: true, MinReplicas: 1, MaxReplicas: 1, TargetCPUPercent: &cpu,
 	}
+	svc, _ := newService(nil, app)
 	body := `{"enabled":false,"min":0,"max":1,"criteria":{"cpu":{"enabled":false,"percentage":0},"memory":{"enabled":false,"percentage":0}}}`
 	w := putAutoscaling(t, svc, body)
 	if w.Code != http.StatusOK {

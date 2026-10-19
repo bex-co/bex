@@ -5397,6 +5397,14 @@ func autoscalingSpec(req SetAutoscalingRequest, serviceType, tier string) (appv1
 	if !autoscalingEligible(serviceType) {
 		return appv1alpha1.AutoscalingSpec{}, refuseAutoscalingType(serviceType)
 	}
+	// Autoscaling is paid-only (Render offers none on free instance types,
+	// and the dashboard says so): refuse on the plan before the range, so a
+	// free service gets this reason at 1..1 as at 1..3 instead of passing
+	// under the free plan's 1-instance cap (w4/365). Empty tier reads as
+	// free, the validateMaintenanceEligibility/validateDisk convention.
+	if tier == "" || tier == "free" {
+		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: autoscaling requires a paid instance type", core.ErrBadRequest)
+	}
 	if req.MinInstances < 0 {
 		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: minInstances must be ≥ 0", core.ErrBadRequest)
 	}

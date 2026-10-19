@@ -576,6 +576,12 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Autoscaling is available on paid plans. Upgrade to enable it.",
     description: "Autoscaling card explanation for a free service",
   },
+  "services.scalingPaidOnlyInactive": {
+    message:
+      "Autoscaling settings are saved but inactive on the Free plan. They take effect when this service moves to a paid plan. Turn autoscaling off to remove the saved settings.",
+    description:
+      "Autoscaling card explanation for a free service carrying a stored autoscaling config (w4/365)",
+  },
   "services.scalingOff": {
     message: "Autoscaling off",
     description: "Autoscaling main toggle label when disabled",
