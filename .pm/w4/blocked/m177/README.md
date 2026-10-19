@@ -40,3 +40,18 @@ t001–t005 done. `stuckPodMessage` (`app_controller.go`) now checks a crash loo
 Tests: `TestStuckPodMessage` adds the production-captured missing-shell status verbatim (it fails on the old copy, which contained "exited shortly after start"), plus not-on-PATH, permission-denied and unrecognized-message cases. Operator `make test` and `make lint` pass.
 
 Not verified: a Waiting `RunContainerError` before the first back-off still yields ordinary progress; the terminal timeout, Events/email and private/worker variants are pending the live replay. No backend or dashboard change was needed.
+
+## Hosted probe — qa pass d3c46d (2026-10-19, pin `108cdb3acca8`)
+
+Fixture: owned Free image web service `qa-20261019-d3c46d-rep` (`srv-dbat7kl212nc73a1i7i0`, `docker.io/traefik/whoami:v1.10`, `WHOAMI_PORT_NUMBER=3000`) in `bex-canary`, deleted afterwards (`DELETE` 204, then `GET` 404). Only this run's session was revoked. Every API probe ran from inside the signed-in page. The first probe set, about 2 minutes after the pin, still showed the old behavior. Everything below is from after the rollout. It ran the DoD's shape: the DoD names `whoami:v1.11.0` and `/whoami -port 3000`; this used `v1.10` and `/whoami --port 3000`, also without `/bin/sh`. The Docker Command was set through Settings → Deploy (w4/357's replay).
+
+- **Deploy page, before and after a reload** (`dep-dbatab5ktjtc738k3dgg`, In Progress): "container could not start: the startup program \"/bin/sh\" does not exist in this image. The program never ran, so there is no application output in the logs. A Docker Command runs through /bin/sh -c, so clear the Docker Command to use the image's default program, or use an image that includes /bin/sh." There is no crash, log or port-bind copy. **PASS.**
+- **GraphQL** `{server(id){id phase plan startCommand} deploys(serviceId){id status stallReason failureReason}}`: the open deploy has `status:"update_in_progress"` and the same sentence in `stallReason`, `failureReason:""`, server `phase:"Deploying"`, `startCommand:"/whoami --port 3000"`. **PASS.**
+- **Recovery.** Cancel deploy → "Cancel this deploy?" → Proceed → `canceled` within seconds (toast "Deploy cancelled.").
+  - `WHOAMI_PORT_NUMBER=3000` was already set at creation, so the Save only step was a no-op.
+  - Settings → clear the Docker Command → Save changes → `dep-dbatcrvbcrps73dmo9hg` `live`, server `phase:"Running"`, `startCommand:""`, `undeployedChanges:false`. Every deploy's `stallReason` is `""`, and `curl -sSI https://qa-20261019-d3c46d-rep.onbex.co` → `HTTP/2 200`. **PASS.**
+- **Still not exercised:**
+  - The terminal timeout (the deploy was canceled at about 4 min).
+  - REST (the open deploy was not read over REST).
+  - MCP.
+  - Events/email, and the private/worker variants.
