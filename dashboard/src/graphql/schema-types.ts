@@ -2543,6 +2543,7 @@ export type Project = {
 export type PushEventUrgency = {
   __typename: 'PushEventUrgency';
   event: PushNotificationEvent;
+  sent: Scalars['Boolean']['output'];
   urgency: PushNotificationUrgency;
 };
 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { AlertTriangle, Plus, Trash2 } from "lucide-react";
 import {
   Alert,
@@ -43,6 +43,7 @@ import {
   toggleListValue,
   validatePushSettings,
   type DroppedSelections,
+  type PublishedPushEvent,
   type PushEventUrgencies,
 } from "@/features/notifications/lib/push-policy";
 
@@ -384,7 +385,7 @@ function DroppedSummary({
   ) =>
     t(key, {
       event: t(eventKeys[event]),
-      urgency: t(urgencyKeys[urgencies.get(event)!]),
+      urgency: t(urgencyKeys[urgencies.get(event)!.urgency]),
       minimum: t(urgencyKeys[floor]),
       ...(service ? { service } : {}),
     });
@@ -430,19 +431,26 @@ function DroppedSummary({
 function EventOption({
   event,
   checked,
-  urgency,
+  published,
   droppedBelow,
   compact = false,
   onToggle,
 }: {
   event: PushNotificationEvent;
   checked: boolean;
-  urgency: PushNotificationUrgency | undefined;
+  published: PublishedPushEvent | undefined;
   droppedBelow: PushNotificationUrgency | undefined;
   compact?: boolean;
   onToggle: () => void;
 }) {
   const { t } = useTranslations();
+  const id = useId();
+  const urgency = published?.urgency;
+  const unsent = published?.sent === false;
+  // Named by the event and its urgency; the notes under it describe it.
+  const notes = [unsent && `${id}-unsent`, droppedBelow && `${id}-dropped`]
+    .filter(Boolean)
+    .join(" ");
   return (
     <label
       className={cn(
@@ -455,18 +463,38 @@ function EventOption({
         className="mt-0.5"
         checked={checked}
         onCheckedChange={onToggle}
+        aria-labelledby={urgency ? `${id}-name ${id}-urgency` : `${id}-name`}
+        aria-describedby={notes || undefined}
       />
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-baseline justify-between gap-x-2">
-          <span>{t(eventKeys[event])}</span>
+          <span id={`${id}-name`}>{t(eventKeys[event])}</span>
           {urgency && (
-            <span className="text-xs text-muted-foreground">
+            <span
+              id={`${id}-urgency`}
+              className="text-xs text-muted-foreground"
+            >
               {t(urgencyKeys[urgency])}
             </span>
           )}
         </span>
+        {unsent && (
+          <span
+            id={`${id}-unsent`}
+            className="block text-xs text-muted-foreground"
+          >
+            {t(
+              compact
+                ? "notifications.pushEventNotSentYetShort"
+                : "notifications.pushEventNotSentYet",
+            )}
+          </span>
+        )}
         {droppedBelow && (
-          <span className="block text-xs text-amber-700 dark:text-amber-400">
+          <span
+            id={`${id}-dropped`}
+            className="block text-xs text-amber-700 dark:text-amber-400"
+          >
             {t("notifications.pushEventFiltered", {
               minimum: t(urgencyKeys[droppedBelow]),
             })}
@@ -507,7 +535,7 @@ function EventFilter({
             key={event}
             event={event}
             checked={events.includes(event)}
-            urgency={urgencies.get(event)}
+            published={urgencies.get(event)}
             droppedBelow={dropped.includes(event) ? minimum : undefined}
             onToggle={() => onChange(toggleListValue(events, event))}
           />
@@ -757,7 +785,7 @@ function ServiceOverridesEditor({
                     compact
                     event={event}
                     checked={override.events?.includes(event) ?? false}
-                    urgency={urgencies.get(event)}
+                    published={urgencies.get(event)}
                     droppedBelow={
                       drop?.events.includes(event) ? drop.minimum : undefined
                     }

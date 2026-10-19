@@ -135,17 +135,36 @@ function validateServiceOverrides(
   return null;
 }
 
-/** The urgency each event is delivered at, as bex-api publishes it. */
+/**
+ * One selectable event as bex-api publishes it: the urgency it is delivered
+ * at (w4/m231), and whether anything sends it yet (w4/349).
+ */
+export interface PublishedPushEvent {
+  urgency: PushNotificationUrgency;
+  sent: boolean;
+}
+
+/** Each selectable event as bex-api publishes it. */
 export type PushEventUrgencies = ReadonlyMap<
   PushNotificationEvent,
-  PushNotificationUrgency
+  PublishedPushEvent
 >;
+
+/** bex-api's published rows, keyed by event. */
+export function publishedPushEvents(
+  rows: readonly ({ event: PushNotificationEvent } & PublishedPushEvent)[],
+): PushEventUrgencies {
+  return new Map(
+    rows.map(({ event, urgency, sent }) => [event, { urgency, sent }]),
+  );
+}
 
 /**
  * The selected events a minimum urgency drops: those whose published urgency
  * ranks below it (w4/m231). bex-api filters by event and then by urgency, so a
  * selection alone does not make an event push. An event with no published
- * urgency is never flagged. Ordered as the panel lists events.
+ * urgency, or one nothing sends yet, is never flagged: the minimum is not what
+ * keeps it from pushing. Ordered as the panel lists events.
  */
 export function eventsBelowMinimum(
   events: readonly PushNotificationEvent[],
@@ -154,11 +173,11 @@ export function eventsBelowMinimum(
 ): PushNotificationEvent[] {
   const floor = pushUrgencies.indexOf(minimum);
   return pushEvents.filter((event) => {
-    const urgency = urgencies.get(event);
+    const published = urgencies.get(event);
     return (
       events.includes(event) &&
-      urgency !== undefined &&
-      pushUrgencies.indexOf(urgency) < floor
+      published?.sent === true &&
+      pushUrgencies.indexOf(published.urgency) < floor
     );
   });
 }
