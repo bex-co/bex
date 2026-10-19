@@ -53,3 +53,19 @@ The developer path stays a test assertion until a Pro-plan QA workspace with a d
   - MCP adapters.
   - Datastore and env-group moves live.
   - Whether project datastore setters clear environment labels (t001).
+
+## Hosted probe — qa pass c41d0e (2026-10-19, not the t007 closeout)
+
+A `/qa-find-bugs w4` pass replayed the live DoD bullets on production, pinned to `69e925197b39`, which contains `b53ea9326`. It ran as the QA user (admin), in bex-canary.
+
+- **Fixture:** project `qa-20261019-c41d0e-proj` (`prj-dbarb7vt1qrc73bh4chg`) with `production` (`evm-dbarb7vt1qrc73bh4ci0`, set `protectedStatus: protected` and `networkIsolationEnabled: true`) and `staging` (`evm-dbarb7vt1qrc73bh4cig`), plus a Free web service `qa-20261019-c41d0e-web` (`srv-dbarb84mgkts73db5h5g`) created into production.
+- **Cleanup:** all deleted (404; the workspace lists 0 projects), and only that run's session was revoked.
+- **Guard control ✅:** with the service in protected production, `POST /v1/services/<id>/suspend` without `confirm` → `400 PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED`.
+- **Admin move, explained ✅:** staging → Manage resources. The Services row reads `qa-20261019-c41d0e-web` / "In production" with separate **Protected** and **Isolated** badges and "Running".
+  - Checking it shows "Moves out of production: qa-20261019-c41d0e-web" above Save.
+  - Save toasts `Services for "staging" updated.`
+  - Then REST `environmentId` = staging, and production's `serviceIds` is `[]`.
+  - Screenshot `.playwright-mcp/qa-m232-dialog-c41d0e.png` (local).
+- **Guard after the move ✅:** an unconfirmed suspend → `202` (resumed `202`).
+- **Not live:** the developer-refusal bullets (Hobby has a single admin member; they are test-proven), datastore and env-group moves, and MCP.
+- **Aside, not filed:** the accessibility tree joins the row's metadata as "In productionProtectedIsolated" (adjacent inline badges with no separator text). The visual layout is correct.
