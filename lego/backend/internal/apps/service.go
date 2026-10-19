@@ -3628,7 +3628,7 @@ func (s *Service) redeployFetched(ctx context.Context, a *appv1alpha1.App, commi
 			}
 		}
 	}
-	s.notifyDeployStarted(ctx, a, a.Name)
+	s.notifyDeployStarted(ctx, a, core.AppPublicName(a))
 	return v, nil
 }
 

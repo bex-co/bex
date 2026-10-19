@@ -350,12 +350,13 @@ func TestRestartRefusesAnUnresolvableServingRelease(t *testing.T) {
 				t.Fatal(err)
 			}
 			before := getApp(t, cl, "web")
-			_, err := svc.Restart(context.Background(), "web")
+			_, err := svc.Restart(context.Background(), "srv-1")
 			if !errors.Is(err, core.ErrConflict) {
 				t.Fatalf("Restart = %v, want a conflict", err)
 			}
-			if msg := err.Error(); !strings.HasSuffix(msg, "; "+tc.want) {
-				t.Fatalf("Restart refusal = %q, want recovery %q", msg, tc.want)
+			// It names the service the caller asked for, not the App name (w8/128).
+			if msg := err.Error(); !strings.HasSuffix(msg, "; "+tc.want) || !strings.Contains(msg, `service "srv-1"`) {
+				t.Fatalf("Restart refusal = %q, want recovery %q naming srv-1", msg, tc.want)
 			}
 			after := getApp(t, cl, "web")
 			if after.Spec.RestartedAt != before.Spec.RestartedAt || after.Spec.ReleaseConfig != nil || len(ds.byApp["srv-1"]) != 2 {
@@ -458,4 +459,47 @@ func TestRestartReselectsOnOptimisticConflict(t *testing.T) {
 		t.Fatalf("patch attempts = %d, want a conflict retry", patches)
 	}
 	assertRestartedGeneration(t, cl, d, 2, "b")
+}
+
+// A suspended service's Restart refusal names the service the caller asked
+// for, as a deploy's does, never the internal App name (w8/128).
+func TestRestartRefusalNamesTheCallersService(t *testing.T) {
+	svc, cl, _ := servingFixture(t, store.TriggerRollback, nil)
+	a := getApp(t, cl, "web")
+	a.Spec.Suspended = true
+	if err := cl.Update(context.Background(), a); err != nil {
+		t.Fatal(err)
+	}
+	_, err := svc.Restart(context.Background(), "srv-1")
+	if !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("Restart = %v, want a conflict", err)
+	}
+	if msg := err.Error(); !strings.Contains(msg, `"srv-1"`) || strings.Contains(msg, `"web"`) {
+		t.Fatalf("Restart refusal = %q, want it to name srv-1, not the App name", msg)
+	}
+}
+
+// The deploy-started email a Restart sends names the caller's service too
+// (w8/128): a.Name is the internal App name.
+func TestRestartStartedNotificationNamesTheCallersService(t *testing.T) {
+	svc, cl, _ := servingFixture(t, store.TriggerRollback, nil)
+	a := getApp(t, cl, "web")
+	a.Labels[core.LabelTenant] = "tea-a"
+	if err := cl.Update(context.Background(), a); err != nil {
+		t.Fatal(err)
+	}
+	notifier := newBlockingStartedNotifier()
+	defer close(notifier.release)
+	svc.StartedNotifier = notifier
+	if _, err := svc.Restart(context.Background(), "srv-1"); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case got := <-notifier.calls:
+		if got != (startedCall{tenantID: "tea-a", appName: "srv-1"}) {
+			t.Errorf("started notification = %+v, want it to name srv-1", got)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Restart issued no deploy-start notification")
+	}
 }
