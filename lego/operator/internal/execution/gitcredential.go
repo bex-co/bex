@@ -16,6 +16,12 @@ limitations under the License.
 
 package execution
 
+import (
+	"strings"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+)
+
 // GitHubCredentialHelper is the inline `git -c` credential-helper expression
 // both tenant clone phases — the build plane's clone initContainer
 // (internal/build) and the static publish plane's direct-clone container
@@ -31,3 +37,21 @@ package execution
 // crafted REPO caused git to connect elsewhere, the helper returns nothing
 // and the token never leaves for a non-GitHub host.
 const GitHubCredentialHelper = `credential.helper='!f() { [ "$1" = get ] || exit 0; h=; while IFS= read -r l; do [ -z "$l" ] && break; case "$l" in host=*) h=${l#host=};; esac; done; [ "$h" = github.com ] || exit 0; echo "username=x-access-token"; echo "password=$GIT_AUTH_TOKEN"; }; f'`
+
+// GitHTTPSTransport is the `git -c` option set every tenant fetch carries — the
+// build plane's and the publish plane's parent fetches and the submodule phase
+// (GitSubmoduleUpdate): no transport but HTTPS is allowed, and each GitHub SSH
+// spelling bex-api admits (appv1alpha1.GitHubSSHRepoPrefixes) is fetched as
+// https://github.com/…, so GitHubCredentialHelper applies and the clone needs
+// no SSH host trust (w8/130). Before it, only submodules were rewritten, and an
+// accepted git@github.com: repo failed every build on host-key verification.
+var GitHTTPSTransport = gitHTTPSTransport()
+
+func gitHTTPSTransport() string {
+	opts := make([]string, 0, 2+len(appv1alpha1.GitHubSSHRepoPrefixes))
+	opts = append(opts, "-c protocol.allow=never", "-c protocol.https.allow=always")
+	for _, prefix := range appv1alpha1.GitHubSSHRepoPrefixes {
+		opts = append(opts, "-c url.https://github.com/.insteadOf="+prefix)
+	}
+	return strings.Join(opts, " ")
+}

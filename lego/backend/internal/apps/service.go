@@ -2987,7 +2987,7 @@ func validateCreateSource(req CreateRequest) error {
 		}
 	}
 	if req.Repo != "" && !store.ValidRepo(req.Repo) {
-		return fmt.Errorf("%w: repo must be an https/ssh/git URL", core.ErrBadRequest)
+		return fmt.Errorf("%w: %s", core.ErrBadRequest, store.RepoRule)
 	}
 	if req.Branch != "" && !store.ValidGitRef(req.Branch) {
 		return fmt.Errorf("%w: branch must be a git ref (no shell metacharacters)", core.ErrBadRequest)
@@ -4323,7 +4323,7 @@ func resolveSourcePatch(a *appv1alpha1.App, patch sourcePatch) (sourceFields, er
 	if patch.Repo != nil {
 		next.repo = strings.TrimSpace(*patch.Repo)
 		if next.repo == "" || !store.ValidRepo(next.repo) {
-			return sourceFields{}, fmt.Errorf("%w: invalid repository URL", core.ErrBadRequest)
+			return sourceFields{}, fmt.Errorf("%w: %s", core.ErrBadRequest, store.RepoRule)
 		}
 		next.image = ""
 	}

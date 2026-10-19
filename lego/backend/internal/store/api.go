@@ -402,7 +402,7 @@ func appFromRequest(req CreateAppRequest) (App, error) {
 		return App{}, fmt.Errorf("%w: one of repo or image is required", ErrInvalid)
 	}
 	if req.Repo != "" && !ValidRepo(req.Repo) {
-		return App{}, fmt.Errorf("%w: repo must be an https/ssh/git URL", ErrInvalid)
+		return App{}, fmt.Errorf("%w: %s", ErrInvalid, RepoRule)
 	}
 	if req.Branch != "" && !ValidGitRef(req.Branch) {
 		return App{}, fmt.Errorf("%w: branch must be a git ref (no shell metacharacters)", ErrInvalid)
@@ -618,18 +618,21 @@ func validateName(field, v string) error {
 	return nil
 }
 
+// RepoRule is the refusal text for a repo URL ValidRepo rejects.
+const RepoRule = "repo must be an https URL, or a GitHub SSH URL (git@github.com:owner/repo.git or ssh://git@github.com/owner/repo.git)"
+
 // ValidRepo reports whether v is an acceptable git repo URL for a build-from-git
-// App (https/ssh/git@, no whitespace or control chars, ≤2048 bytes). Exported so
-// bex-api and the internal create API enforce one rule (w6/m6 t003).
+// App (https, or GitHub's SSH spellings in appv1alpha1.GitHubSSHRepoPrefixes; no
+// whitespace or control chars, ≤2048 bytes). Exported so bex-api and the
+// internal create API enforce one rule (w6/m6 t003).
 //
 // URL userinfo is refused (codex-security round-6 #13): the repo string is
 // stored on the App and echoed verbatim to every workspace viewer, so
 // https://user:token@host/… (or a PAT in the username position) would turn a
 // non-secret resource identifier into a credential leak. Credentials belong in
-// the GitHub App integration / clone Secret, never the URL. The one exception
-// is a password-less ssh:// username (ssh://git@host/…): the SSH user selects
-// the account server-side and is not a bearer secret; the SCP form (git@host:…)
-// has no password syntax at all.
+// the GitHub App integration / clone Secret, never the URL. The only userinfo
+// admitted is the fixed "git@" of GitHub's SSH spellings
+// (appv1alpha1.GitHubSSHRepoPrefixes): an SSH user name, not a bearer secret.
 //
 // A colon-less git@ value is refused (codex-security 2026-08 F5): git treats a
 // URL with no scheme AND no colon as a LOCAL path, which selects the local
@@ -642,20 +645,15 @@ func ValidRepo(v string) bool {
 		return false
 	}
 	scheme, _, hasScheme := strings.Cut(v, "://")
-	if !hasScheme {
-		// SCP form (git@host:path): the colon is mandatory. Without one git
-		// classifies the value as a local path (see godoc).
-		return strings.Contains(v, ":")
+	// An SSH spelling, SCP form or ssh://, is fetched over HTTPS, which the
+	// operator can do only for GitHub's (w8/130). Each admitted prefix fixes the
+	// host, carries the SCP form's mandatory colon (without one git classifies
+	// the value as a local path, see godoc) and allows no userinfo but "git@".
+	if !hasScheme || scheme == "ssh" {
+		return appv1alpha1.IsGitHubSSHRepo(v)
 	}
 	u, err := url.Parse(v)
-	if err != nil {
-		return false
-	}
-	if u.User == nil {
-		return true
-	}
-	_, hasPassword := u.User.Password()
-	return scheme == "ssh" && !hasPassword
+	return err == nil && u.User == nil
 }
 
 // RedactRepoURL strips embedded userinfo from a repo URL before it is shown to

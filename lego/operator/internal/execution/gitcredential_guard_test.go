@@ -94,3 +94,36 @@ func TestGitHubCredentialHelperStaysHostBound(t *testing.T) {
 		}
 	}
 }
+
+// TestParentFetchesUseTheHTTPSTransport: both planes' parent fetch carries the
+// shared transport set before it runs (w8/130), so a GitHub SSH repo URL is
+// fetched over HTTPS with the credential helper instead of dying on SSH
+// host-key verification, and no other transport is allowed.
+func TestParentFetchesUseTheHTTPSTransport(t *testing.T) {
+	jobs := map[string]*batchv1.Job{
+		"build": build.BuildJob(build.Options{
+			Repo: "git@github.com:acme/web.git", Name: "web", AppUID: "uid-build", Registry: "zot.bex-registry.svc:5000",
+			Revision: "gen-1", Namespace: "bex-build", CloneSecret: "clone-web",
+		}, "zot.bex-registry.svc:5000/web:gen-1"),
+		"publish": publish.PublishJob(publish.Options{
+			Repo: "git@github.com:acme/site.git", PublishPath: "dist", AppID: "site", AppUID: "uid-publish", Revision: "rev-1",
+			Store: publish.Store{Bucket: "bex-static", Endpoint: "https://s3.example", Secret: "s3-creds"}, Namespace: "bex-build",
+			CloneSecret: "clone-site",
+		}),
+	}
+	for plane, job := range jobs {
+		script := cloneScript(t, job)
+		set, fetch := strings.Index(script, "set -- "+execution.GitHTTPSTransport), strings.Index(script, `"$@" fetch`)
+		if set < 0 || fetch < 0 || set > fetch {
+			t.Errorf("%s: the parent fetch does not carry execution.GitHTTPSTransport", plane)
+		}
+	}
+	for _, prefix := range []string{"git@github.com:", "ssh://git@github.com/", "ssh://github.com/"} {
+		if !strings.Contains(execution.GitHTTPSTransport, ".insteadOf="+prefix) {
+			t.Errorf("GitHTTPSTransport does not rewrite %s to HTTPS", prefix)
+		}
+	}
+	if !strings.Contains(execution.GitHTTPSTransport, "-c protocol.allow=never -c protocol.https.allow=always") {
+		t.Error("GitHTTPSTransport must allow no transport but HTTPS")
+	}
+}

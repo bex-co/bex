@@ -62,6 +62,14 @@ func TestValidRepo(t *testing.T) {
 		// SCP form a remote.
 		{"colonless-git-host-rejected", "git@x", false},
 		{"colonless-git-host-path-rejected", "git@x/y", false},
+		// An SSH spelling is fetched over HTTPS, which the operator can do only
+		// for GitHub (w8/130): another host's, or a form the rewrite does not
+		// cover, would be accepted and then fail every build.
+		{"https-any-host", "https://gitlab.com/x/y.git", true},
+		{"ssh-without-user", "ssh://github.com/bex-co/bex.git", true},
+		{"scp-form-other-host-rejected", "git@gitlab.com:x/y.git", false},
+		{"ssh-other-host-rejected", "ssh://git@gitlab.com/x/y.git", false},
+		{"ssh-port-rejected", "ssh://git@github.com:22/x/y.git", false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

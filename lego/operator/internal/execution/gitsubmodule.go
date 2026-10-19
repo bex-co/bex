@@ -24,11 +24,13 @@ package execution
 // is removed. Only entries naming a real gitlink are initialized, so a stale
 // entry or a stray gitlink builds as it did. GitHub SSH URLs go over HTTPS so
 // the caller's credential applies, and no transport but HTTPS is allowed —
-// the same rule the App's own repo URL follows.
+// GitHTTPSTransport, the same rule the App's own repo fetch follows.
 //
-// The caller sets "$@" to its git options (the credential helper) first. run
-// wraps the fetch for the caller's failure handling; refuse is a statement
-// that fails the phase with the message given.
+// The caller sets "$@" to its git options (the transport and the credential
+// helper) first. The transport is appended again on purpose: .gitmodules is
+// tenant-controlled, so this phase does not rely on its caller to pin it. run
+// wraps the fetch for the caller's failure handling; refuse is a statement that
+// fails the phase with the message given.
 //
 // SECURITY: a path with a control character is refused outright. Git before
 // 2.50.1 mis-writes a submodule path ending in CR, letting a crafted
@@ -38,8 +40,7 @@ package execution
 func GitSubmoduleUpdate(run, refuse func(string) string) string {
 	return `if [ -f .gitmodules ]; then
   export GIT_LITERAL_PATHSPECS=1
-  set -- "$@" -c protocol.allow=never -c protocol.https.allow=always \
-    -c url.https://github.com/.insteadOf=git@github.com: -c url.https://github.com/.insteadOf=ssh://git@github.com/
+  set -- "$@" ` + GitHTTPSTransport + `
   git config --file .gitmodules --name-only --get-regexp '^submodule\..*\.path$' > .git/bex-modules 2>/dev/null || true
   while IFS= read -r key; do
     module="$(git config --file .gitmodules --get "$key" 2>/dev/null)" || continue
