@@ -7,6 +7,7 @@ import {
   type PushNotificationSettingsInput,
 } from "@/graphql/definitions";
 import { PRIMED_FETCH_POLICY } from "@/common/lib/fetch-policy";
+import type { PushEventUrgencies } from "@/features/notifications/lib/push-policy";
 
 export const defaultPushNotificationSettings: PushNotificationSettingsInput = {
   enabled: true,
@@ -78,8 +79,17 @@ export function usePushNotificationSettings() {
     };
   }, [data?.pushNotificationSettings]);
 
+  const eventUrgencies = useMemo<PushEventUrgencies>(
+    () =>
+      new Map(
+        (data?.pushEventUrgencies ?? []).map((row) => [row.event, row.urgency]),
+      ),
+    [data?.pushEventUrgencies],
+  );
+
   return {
     settings,
+    eventUrgencies,
     available: data?.pushNotificationsAvailable ?? false,
     webPushAvailable: data?.webPushAvailable ?? false,
     vapidPublicKey: data?.webPushVapidPublicKey ?? "",

@@ -69,6 +69,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/notification-settings/push", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		return s.GetPushSettings(r.Context())
 	}))
+	// The urgency each selectable push event is delivered at (w4/m231), the
+	// same table GraphQL pushEventUrgencies serves. A bex extension.
+	mux.HandleFunc("GET /v1/notification-settings/push/event-urgencies", core.HandleJSON(http.StatusOK, func(*http.Request) (any, error) {
+		return pushEventUrgencies, nil
+	}))
 	mux.HandleFunc("GET /v1/notification-settings/push/availability", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		available, err := s.IsPushAvailable(core.WithWorkspace(r.Context(), r.URL.Query().Get("ownerId")))
 		if err != nil {

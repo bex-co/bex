@@ -117,6 +117,14 @@ var pushServiceOverrideGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var pushEventUrgencyGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "PushEventUrgency",
+	Fields: graphql.Fields{
+		"event":   gqlutil.Typed(graphql.NewNonNull(pushDeliveryEventGQLEnum), func(v PushEventUrgencyView) any { return string(v.Event) }),
+		"urgency": gqlutil.Typed(graphql.NewNonNull(pushUrgencyGQLEnum), func(v PushEventUrgencyView) any { return string(v.Urgency) }),
+	},
+})
+
 var pushSettingsGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "PushNotificationSettings",
 	Fields: graphql.Fields{
@@ -227,6 +235,12 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"pushNotificationSettings": &graphql.Field{
 			Type:    pushSettingsGQLType,
 			Resolve: func(p graphql.ResolveParams) (any, error) { return s.GetPushSettings(p.Context) },
+		},
+		// The urgency each selectable event is delivered at (w4/m231), so the
+		// panel can mark a selection the minimum urgency drops.
+		"pushEventUrgencies": &graphql.Field{
+			Type:    graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(pushEventUrgencyGQLType))),
+			Resolve: func(graphql.ResolveParams) (any, error) { return pushEventUrgencies, nil },
 		},
 		"pushNotificationsAvailable": &graphql.Field{
 			Type: graphql.NewNonNull(graphql.Boolean),

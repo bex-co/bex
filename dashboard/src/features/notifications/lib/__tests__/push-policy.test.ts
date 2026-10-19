@@ -6,6 +6,8 @@ import {
   type PushNotificationSettingsInput,
 } from "@/graphql/definitions";
 import {
+  droppedSelections,
+  eventsBelowMinimum,
   pushEvents,
   validatePushSettings,
 } from "@/features/notifications/lib/push-policy";
@@ -184,5 +186,99 @@ describe("validatePushSettings", () => {
     expect(validatePushSettings(settings)).toBe(
       "notifications.pushInvalidService",
     );
+  });
+});
+
+describe("eventsBelowMinimum (w4/m231)", () => {
+  const { DeploySucceeded, DeployFailed, ServerFailed, AgentNeedsDecision } =
+    PushNotificationEvent;
+  const { Routine, Important, Critical } = PushNotificationUrgency;
+  const urgencies = new Map([
+    [DeploySucceeded, Routine],
+    [DeployFailed, Important],
+    [ServerFailed, Critical],
+  ]);
+  const selected = [ServerFailed, DeploySucceeded, DeployFailed];
+
+  it("returns the selected events ranked below the minimum, in panel order", () => {
+    expect(eventsBelowMinimum(selected, Routine, urgencies)).toEqual([]);
+    expect(eventsBelowMinimum(selected, Important, urgencies)).toEqual([
+      DeploySucceeded,
+    ]);
+    expect(eventsBelowMinimum(selected, Critical, urgencies)).toEqual([
+      DeployFailed,
+      DeploySucceeded,
+    ]);
+  });
+
+  it("never flags an unselected event or one with no published urgency", () => {
+    expect(eventsBelowMinimum([DeployFailed], Critical, urgencies)).toEqual([
+      DeployFailed,
+    ]);
+    expect(
+      eventsBelowMinimum([AgentNeedsDecision], Critical, urgencies),
+    ).toEqual([]);
+    expect(eventsBelowMinimum(selected, Critical, new Map())).toEqual([]);
+  });
+});
+
+describe("droppedSelections (w4/m231)", () => {
+  const { DeploySucceeded, DeployFailed } = PushNotificationEvent;
+  const { Routine, Important, Critical } = PushNotificationUrgency;
+  const urgencies = new Map([
+    [DeploySucceeded, Routine],
+    [DeployFailed, Important],
+  ]);
+  const serviceId = "srv-c185th5c2rvvnhbfiltg";
+  const workspace = (
+    overrides: PushNotificationSettingsInput["serviceOverrides"] = [],
+  ): PushNotificationSettingsInput => ({
+    ...validSettings(),
+    events: [DeployFailed, DeploySucceeded],
+    minimumUrgency: Important,
+    serviceOverrides: overrides,
+  });
+
+  it("drops workspace selections below the workspace minimum", () => {
+    expect(droppedSelections(workspace(), urgencies).workspace).toEqual([
+      DeploySucceeded,
+    ]);
+  });
+
+  it("resolves an override's unset fields from the workspace", () => {
+    const services = (override: object) =>
+      droppedSelections(workspace([{ serviceId, ...override }]), urgencies)
+        .services;
+    expect(services({ events: [DeploySucceeded] }).get(serviceId)).toEqual({
+      minimum: Important,
+      events: [DeploySucceeded],
+    });
+    expect(services({ minimumUrgency: Critical }).get(serviceId)).toEqual({
+      minimum: Critical,
+      events: [DeployFailed, DeploySucceeded],
+    });
+    expect(
+      services({ events: [DeploySucceeded], minimumUrgency: Routine }).size,
+    ).toBe(0);
+    // Changing neither field leaves the workspace line to cover it.
+    expect(services({ enabled: true }).size).toBe(0);
+  });
+
+  it("drops nothing where push is off, and an override cannot re-enable it", () => {
+    expect(
+      droppedSelections(
+        workspace([{ serviceId, enabled: false, events: [DeploySucceeded] }]),
+        urgencies,
+      ).services.size,
+    ).toBe(0);
+    const off = droppedSelections(
+      {
+        ...workspace([{ serviceId, enabled: true, events: [DeploySucceeded] }]),
+        enabled: false,
+      },
+      urgencies,
+    );
+    expect(off.workspace).toEqual([]);
+    expect(off.services.size).toBe(0);
   });
 });

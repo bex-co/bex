@@ -123,8 +123,43 @@ const enNotifications: Record<string, TranslationEntry> = {
     description: "Push event section",
   },
   "notifications.pushEventsHint": {
-    message: "Only selected event types can produce a push notification.",
+    message:
+      "Only selected event types at or above the Minimum urgency can produce a push notification.",
     description: "Push events hint",
+  },
+  "notifications.pushEventFiltered": {
+    message: "Not pushed while Minimum urgency is {minimum}.",
+    description:
+      "Under a selected push event whose urgency is below the minimum ({minimum} = urgency name, e.g. 'Important')",
+  },
+  "notifications.pushFilteredTitle": {
+    message: "Some selected events won't be pushed",
+    description:
+      "Heading of the save-area summary listing selected push events the minimum urgency drops",
+  },
+  "notifications.pushFilteredEvent": {
+    message:
+      "{event} is {urgency} and won't be pushed while Minimum urgency is {minimum}.",
+    description:
+      "One summary line ({event} = event name, {urgency} = its urgency, {minimum} = the minimum urgency)",
+  },
+  "notifications.pushFilteredServiceEvent": {
+    message:
+      "{service}: {event} is {urgency} and won't be pushed while this service's Minimum urgency is {minimum}.",
+    description:
+      "One summary line for a service override ({service} = service name; others as pushFilteredEvent)",
+  },
+  "notifications.pushOverrideFiltered_one": {
+    message:
+      "{count} selected event won't be pushed for this service while its Minimum urgency is {minimum}.",
+    description:
+      "Under a service override whose own policy drops selected events ({minimum} = urgency name)",
+  },
+  "notifications.pushOverrideFiltered_other": {
+    message:
+      "{count} selected events won't be pushed for this service while its Minimum urgency is {minimum}.",
+    description:
+      "Under a service override whose own policy drops selected events ({minimum} = urgency name)",
   },
   "notifications.pushEventDeployFailed": {
     message: "Deploy failed",

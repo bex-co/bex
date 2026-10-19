@@ -2536,6 +2536,12 @@ export type Project = {
   updatedAt: Maybe<Scalars['String']['output']>;
 };
 
+export type PushEventUrgency = {
+  __typename: 'PushEventUrgency';
+  event: PushNotificationEvent;
+  urgency: PushNotificationUrgency;
+};
+
 export type PushNotification = {
   __typename: 'PushNotification';
   body: Scalars['String']['output'];
@@ -2715,6 +2721,7 @@ export type Query = {
   notificationWebPushSubscriptions: Maybe<Array<Maybe<NotificationWebPushSubscription>>>;
   project: Maybe<Project>;
   projects: Maybe<Array<Maybe<Project>>>;
+  pushEventUrgencies: Array<PushEventUrgency>;
   pushNotificationSettings: Maybe<PushNotificationSettings>;
   pushNotificationsAvailable: Scalars['Boolean']['output'];
   registryCredential: Maybe<RegistryCredential>;
