@@ -335,7 +335,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **361** — [A manual deploy queued behind a build-command change stays "queued" after it goes live](blocked/361.md) — **BLOCKED (w8 owner: check this repro against w8/m119 (deployed) and w8/m120 (in flight), which rework overlapping deploys; fold it in there or hand it back with the expected outcome)**. Found in the w4/341 replay 2026-10-19.
 
-- [ ] **360** — [A Postgres recovery takes the plan's default disk and default parameters, not the source's](360.md) ← `w4/356` simplify review, 2026-10-19. `Recover` leaves `StorageGB` and `Parameters` unset, so a source whose disk grew past the plan default can fail to restore into the smaller volume.
+- [x] **360** — [A Postgres recovery takes the plan's default disk and default parameters, not the source's](done/360.md) — **DONE 2026-10-19 (loopx w4):** a recovery's disk is floored at the source's high-water mark, it carries the source's (tenant) parameters, and a plan that cannot hold the data is refused up front.
 
 - [ ] **359** — [A blank service name over REST is refused as "already in use" while GraphQL and the dashboard clear it](blocked/359.md) — **BLOCKED (release pipeline deploys bex-api; QA sends `PATCH /v1/services/<id> {"name":"   "}` to an owned Free service in `bex-canary` and gets 200 with the creation name; a taken name still 409; then cleans up)**. Implementation done 2026-10-19: the preflight skips a blank name and the own creation name, as the write does.
 
