@@ -45,3 +45,24 @@ One Free web instance was live exercised. Static, worker, private and cron route
 - **t003:** ADR018's core-metrics row records the live discovery refresh.
 - **t004:** three /simplify passes (shared `useLastAnswer` extracted from the logs and metrics hooks; card keyed by service; stronger tests).
 - **t005:** `use-metrics-filter-values.test.tsx` uses real Apollo with the app's cache and defaults plus fake timers. A newly returned code (and instance) reaches both cards on the next poll from one read; the observer alone never polls; a failed poll keeps the last answer; another resource's answer is never current; hidden tabs skip polls and resume when visible. The two refresh cases fail against the old hook. `network-metrics-card.test.tsx` asserts the card owns the poll and keeps a chosen code a later answer omits. Logs discovery tests pass unchanged on the shared hook. Dashboard suite (5161 tests), lint and typecheck pass.
+
+## Hosted probe — qa pass 91f0c7 (2026-10-19, not the t006 closeout)
+
+A `/qa-find-bugs w4` pass replayed the milestone's core promise on production, pinned to `456090929`, which includes `4df47e1f7`. It used a fresh owned Free web service, `qa-20261019-91f0c7-status` (`srv-dbangea5p3cc73ad8l30`, image `python:3.13-alpine` running `python3 -m http.server $PORT`). The service was deleted afterwards (204 → 404), and only that run's session was revoked.
+
+- **Desktop 1440×1000.**
+  - Before the new status: 4×`GET /` (200) and 3×`GET /nope-91f0c7-n` (404). Metrics mounted at 01:54:55Z with Status Code options `All, 2xx, 4xx, 5xx, 200, 404`.
+  - 3×`POST /` (501) at 01:55:02Z. `GET /v1/metrics/filters/http` listed `501` by 01:55:05Z.
+  - The **still-mounted** picker offered `501` at 01:55:21Z, with no reload.
+- **Mobile 390×844.**
+  - Fresh mount at 01:55:40Z, options `…, 200, 404, 501`.
+  - 2×`GET /etc` (301) at 01:55:41Z. The API listed `301` by 01:55:58Z.
+  - The mounted picker offered `301`, sorted in, at 01:56:14Z.
+- **Not replayed:**
+  - the recorded eight-request Node sequence;
+  - path-scoped totals;
+  - preservation of an existing selection, focus and inputs;
+  - single-owner polling;
+  - hidden-tab behavior.
+
+t006 remains the closeout.
