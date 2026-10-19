@@ -86,6 +86,11 @@ const DefaultRevalidateInterval = core.DefaultStreamRevalidateInterval
 // behind.
 const DefaultTailRelistInterval = 2 * time.Second
 
+// DefaultRequestPollInterval is how often the subscribe stream's store poll
+// looks for new request lines (w4/m237): a request line is at most ~2 s of
+// poll cadence (plus shipper ingest) behind the request it records.
+const DefaultRequestPollInterval = 2 * time.Second
+
 // DefaultTailHeartbeatInterval keeps a quiet tail well inside the shortest idle
 // cutoff between bex-api and a client: Cloudflare, in front of api.bex.co, ends
 // a proxied response that sends nothing for 100 seconds.
@@ -171,8 +176,9 @@ type Service struct {
 	// is unset. nil AND History nil => ErrLogsUnavailable.
 	PodLogs PodLogSource
 	// PodLogsFollow streams live pod logs for FollowLogs (the SSE tail); nil =>
-	// FollowLogs reports ErrLogsUnavailable. The tail always reads pod logs, never
-	// History — real-time, zero ingest lag, and it survives Loki being down.
+	// FollowLogs reports ErrLogsUnavailable. The app/build producers always read
+	// pod logs — real-time, zero ingest lag, and they survive Loki being down;
+	// request lines poll History instead (w4/m237).
 	PodLogsFollow PodLogStream
 	// History, when wired (BEX_LOKI_URL), backs QueryLogs/Logs with durable
 	// history that survives pod restarts; nil => those verbs read live pod logs.
@@ -218,6 +224,10 @@ type Service struct {
 	// keepalive, so a quiet stream is not cut by a proxy on the way to the
 	// client (w1/m146). 0 = DefaultTailHeartbeatInterval; tests shrink it.
 	TailHeartbeatInterval time.Duration
+	// RequestPollInterval is how often the subscribe stream's store poll
+	// looks for new request lines (w4/m237). 0 = DefaultRequestPollInterval;
+	// tests shrink it.
+	RequestPollInterval time.Duration
 	// DeployProgress, when wired (the control-plane store is configured), backs
 	// platform progress-line synthesis (w1/m48) — Render-style `==>` narration
 	// derived from deploy rows, merged into explicit type=build reads and the
@@ -369,40 +379,40 @@ func (q LogQuery) wants(t string) bool {
 func (q LogQuery) needsStore() bool {
 	return slices.Contains(q.Types, LogTypeRequest) || // asked for request logs explicitly
 		slices.Contains(q.Types, LogTypeBuild) || // build logs live only in the store
-		len(q.Level) > 0 || len(q.Host) > 0 || len(q.StatusCode) > 0 ||
+		q.hasStoreOnlyFilters()
+}
+
+// hasStoreOnlyFilters reports whether the query carries a structured filter
+// only the log store can honor: the labels those filters select on are
+// attached by the shipper on the way into the store, and are simply not
+// present on a stream read straight off the kubelet.
+func (q LogQuery) hasStoreOnlyFilters() bool {
+	return len(q.Level) > 0 || len(q.Host) > 0 || len(q.StatusCode) > 0 ||
 		len(q.Method) > 0 || len(q.Path) > 0
 }
 
-// tailSupports rejects the filters the live tail cannot honor. The tail follows
-// pod stdout by design (docs/ADR010-observability.md § The tail reads pod logs) —
-// the labels those filters select on are attached by the shipper on the way into
-// the store, and are simply not present on a stream read straight off the kubelet.
-// So this is a permanent property of the transport, not a missing dependency: the
-// query API answers these, the tail says so, and neither silently ignores them.
-// Note: build logs CAN be tailed live (the build Job's pod stdout, w3/m14) — so
-// this check is more targeted than needsStore(), which still gates the QueryLogs
-// historical path (Job pods are ephemeral; history requires the store).
-func (q LogQuery) tailSupports() error {
-	if slices.Contains(q.Types, LogTypeRequest) ||
-		len(q.Level) > 0 || len(q.Host) > 0 || len(q.StatusCode) > 0 ||
-		len(q.Method) > 0 || len(q.Path) > 0 {
-		return fmt.Errorf("%w: the live tail reads pod logs, so it cannot stream request logs or filter by level/statusCode/method/path/host — query the logs API for those", core.ErrBadRequest)
-	}
-	return nil
+// onlyRequest reports whether the query asks for request logs and nothing a
+// pod producer would also have to answer for.
+func (q LogQuery) onlyRequest() bool {
+	return len(q.Types) == 1 && q.Types[0] == LogTypeRequest
 }
 
-// liveSubscribable reports (as an error) when a subscription has no live producer
-// to stream. The live tail has exactly two producers — app pod stdout and build
-// Job stdout — so a query the tail cannot honor (request logs, store-only
-// filters) or one that wants neither app nor build (e.g. type=predeploy) must be
-// refused up front rather than accepted into an idle stream that holds a
-// process-global SSE slot until the client disconnects (codex #3).
+// liveSubscribable reports (as an error) when a subscription has no live
+// producer for some part of what it asks. The stream has three producers —
+// app pod stdout, build Job stdout, and a short-interval store poll for
+// request logs (w4/m237) — so what stays refused is: a producerless type
+// (e.g. type=predeploy), and store-only filters over anything the pod tail
+// must also answer (the poll honors those filters only for request lines).
+// Refusing up front keeps such a subscription from being accepted into an
+// idle stream that holds a process-global SSE slot until the client
+// disconnects (codex #3). Note: build logs CAN be tailed live (the build
+// Job's pod stdout, w3/m14).
 func (q LogQuery) liveSubscribable() error {
-	if err := q.tailSupports(); err != nil {
-		return err
+	if q.hasStoreOnlyFilters() && !q.onlyRequest() {
+		return fmt.Errorf("%w: the live tail reads pod logs, so it cannot filter app or build lines by level/statusCode/method/path/host — query the logs API for those, or subscribe to request logs alone", core.ErrBadRequest)
 	}
-	if len(q.Types) > 0 && !q.wants(LogTypeApp) && !q.wants(LogTypeBuild) {
-		return fmt.Errorf("%w: the live tail streams only app and build logs; type=%v has no live producer — use the historical logs query", core.ErrBadRequest, q.Types)
+	if len(q.Types) > 0 && !q.wants(LogTypeApp) && !q.wants(LogTypeBuild) && !q.wants(LogTypeRequest) {
+		return fmt.Errorf("%w: the live tail streams only app, build and request logs; type=%v has no live producer — use the historical logs query", core.ErrBadRequest, q.Types)
 	}
 	return nil
 }
@@ -952,7 +962,15 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	if err := q.validate(); err != nil {
 		return err
 	}
-	if s.PodLogsFollow == nil {
+	// Each producer needs its own source: pod lines (and the build tail) read
+	// pod stdout, request lines poll the log store. A request-only stream on
+	// a store-less deployment fails closed here, before any streaming header;
+	// a mixed or all-types stream without a store still serves its pod lines
+	// (the pre-poll behavior), just with no request producer.
+	if q.onlyRequest() && s.History == nil {
+		return core.ErrLogStoreUnavailable
+	}
+	if (q.wants(LogTypeApp) || q.wants(LogTypeBuild)) && s.PodLogsFollow == nil {
 		return core.ErrLogsUnavailable
 	}
 	q = q.normalized()
@@ -965,11 +983,11 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	// resolved from the pods present now.
 	selectors := slices.Clone(q.Instance)
 	s.translateInstanceFilter(ctx, resource, app.Namespace, &q, candidatesFromPods(podsLive))
-	// The tail's refusal is about the TRANSPORT, not the deployment: it reads pod
-	// logs even when Loki is wired, so a store-only filter is something this stream
-	// structurally cannot do — a bad request (400), not "the store is missing"
-	// (503), which would be an outright lie on a cluster that has one.
-	if err := q.tailSupports(); err != nil {
+	// The refusal is about the PRODUCERS, not the deployment: store-only
+	// filters over pod lines are something this stream structurally cannot
+	// do — a bad request (400), not "the store is missing" (503), which
+	// would be an outright lie on a cluster that has one.
+	if err := q.liveSubscribable(); err != nil {
 		return err
 	}
 	// Authorization lifetime (w4/034): admission authorized once above, but an
@@ -985,14 +1003,14 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	if len(q.Types) == 1 && q.Types[0] == LogTypeBuild {
 		return s.followBuildLogs(ctx, q, resource, newProgressContext(app), emit)
 	}
-	if !q.wants(LogTypeApp) {
-		// SECURITY (codex #3): the live tail has exactly two producers — app pod
-		// stdout and build Job stdout. A query wanting neither (e.g. type=predeploy)
-		// has nothing to stream; it must NOT park on ctx.Done() holding one of the
-		// process-global SSE slots until the client disconnects. Refuse immediately
-		// so the slot is released. (logsSubscribe also rejects this pre-slot via
-		// liveSubscribable; this guards any other FollowLogs caller.)
-		return fmt.Errorf("%w: the live tail streams only app and build logs; type=%v has no live producer — use the historical logs query", core.ErrBadRequest, q.Types)
+	if !q.wants(LogTypeApp) && !q.wants(LogTypeRequest) {
+		// SECURITY (codex #3): a query wanting no produced type (e.g.
+		// type=predeploy) has nothing to stream; it must NOT park on
+		// ctx.Done() holding one of the process-global SSE slots until the
+		// client disconnects. Refuse immediately so the slot is released.
+		// (logsSubscribe also rejects this pre-slot via liveSubscribable;
+		// this guards any other FollowLogs caller.)
+		return fmt.Errorf("%w: the live tail streams only app, build and request logs; type=%v has no live producer — use the historical logs query", core.ErrBadRequest, q.Types)
 	}
 
 	// app.Namespace: the pods stream from their `<ws>` namespace under ADR043,
@@ -1057,7 +1075,15 @@ func (s *Service) followAppPods(ctx context.Context, q LogQuery, selectors []str
 			}(pod.Name)
 		}
 	}
-	attach(pods)
+	// A request-only subscription follows no pods: its only producer is the
+	// store poll below.
+	followPods := q.wants(LogTypeApp)
+	if followPods {
+		attach(pods)
+	}
+	if q.wants(LogTypeRequest) && s.History != nil {
+		go s.pollRequestLogs(ctx, q, namespace, ch)
+	}
 
 	relist := time.NewTicker(s.tailRelistInterval())
 	defer relist.Stop()
@@ -1073,6 +1099,9 @@ func (s *Service) followAppPods(ctx context.Context, q LogQuery, selectors []str
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-relist.C:
+			if !followPods {
+				continue
+			}
 			current, err := s.AppPodsIn(ctx, namespace, q.App)
 			if err != nil {
 				continue // a failed list is retried next tick; the tail stays up
@@ -1104,6 +1133,115 @@ func (s *Service) followAppPods(ctx context.Context, q LogQuery, selectors []str
 			}
 		}
 	}
+}
+
+// requestCursor is the store poll's exactly-once cursor: the newest emitted
+// instant plus the identities emitted at that instant. The store query's
+// start is inclusive, so the boundary instant is re-read every poll; the
+// seen set is what keeps its siblings from re-emitting (w4/m107's
+// group-whole rule, from the emitting side). A same-instant group larger
+// than one poll page can still lose its tail past the page — the store
+// stamps at nanosecond precision, so a page-sized group at one instant is
+// not a shape real traffic produces.
+type requestCursor struct {
+	at   time.Time
+	seen map[string]struct{}
+}
+
+// logEntryKey is one log line's identity for exactly-once bookkeeping —
+// shared with the store scan's boundary dedupe in loki.go.
+func logEntryKey(e LogEntry) string {
+	return e.Timestamp + "\x00" + e.Labels[LabelInstance] + "\x00" + e.Message
+}
+
+func (c *requestCursor) admit(e LogEntry) bool {
+	ts, err := time.Parse(time.RFC3339Nano, e.Timestamp)
+	if err != nil {
+		return false
+	}
+	if ts.Before(c.at) {
+		return false
+	}
+	key := logEntryKey(e)
+	if ts.After(c.at) {
+		c.at = ts
+		c.seen = map[string]struct{}{key: {}}
+		return true
+	}
+	if _, dup := c.seen[key]; dup {
+		return false
+	}
+	c.seen[key] = struct{}{}
+	return true
+}
+
+// pollRequestLogs is the subscribe stream's store producer (w4/m237): every
+// RequestPollInterval it reads the request lines that have reached the log
+// store since the cursor and feeds the same merge channel the pod follows
+// feed, so app and request lines interleave on one stream. It runs on the
+// tail's revalidated ctx, so a revoked grant ends it with the pods. A store
+// error retries next tick — a Loki blip must not tear down an established
+// tail, exactly like a failed pod re-list.
+func (s *Service) pollRequestLogs(ctx context.Context, q LogQuery, namespace string, ch chan<- LogEntry) {
+	pq := q
+	pq.Types = []string{LogTypeRequest}
+	pq.Direction = DirectionForward
+	pq.Limit = maxLogLimit
+	pq.End = time.Time{}
+	cursor := &requestCursor{at: q.Since, seen: map[string]struct{}{}}
+	tick := func() {
+		// Drain a burst within the tick: a full page with fresh lines means
+		// the next page is already in the store.
+		for range 10 {
+			// Bound the scan window on a quiet subscription: the emitted
+			// cursor barely moves while the store query's end is now, so an
+			// unfloored Since would re-scan the subscription's whole life
+			// every tick (and a path/host/text filter takes the sliced scan
+			// path). One minute of overlap is far beyond shipper ingest lag;
+			// the dedupe cursor still guarantees exactly-once inside it.
+			pq.Since = cursor.at
+			if floor := time.Now().Add(-time.Minute); pq.Since.Before(floor) {
+				pq.Since = floor
+			}
+			entries, err := s.History(ctx, namespace, pq)
+			if err != nil {
+				return
+			}
+			fresh := 0
+			for _, e := range entries {
+				if !cursor.admit(e) {
+					continue
+				}
+				fresh++
+				select {
+				case ch <- e:
+				case <-ctx.Done():
+					return
+				}
+			}
+			if len(entries) < int(pq.Limit) || fresh == 0 {
+				return
+			}
+		}
+	}
+	tick()
+	ticker := time.NewTicker(s.requestPollInterval())
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			tick()
+		}
+	}
+}
+
+func (s *Service) requestPollInterval() time.Duration {
+	if s.RequestPollInterval > 0 {
+		return s.RequestPollInterval
+	}
+	return DefaultRequestPollInterval
 }
 
 // appContainerStarted reports whether a pod's app container has a log to
