@@ -1,6 +1,6 @@
 # w4 · m234 — A save on a suspended service is a save, never a deploy that cannot run
 
-**Worker:** worker4 **Goal:** saving configuration on a suspended service never claims a deployment and never files a deploy that can only be canceled. The save stands, every surface says it waits for resume and a deploy, and the dashboard offers only the modes that can work. **Status:** blocked (t001–t007 done 2026-10-19; t008 live replay 2026-10-19 passed every bullet except the dashboard save-menu sub-bullet, which waits on a free Playwright browser — see [t008](t008.md))
+**Worker:** worker4 **Goal:** saving configuration on a suspended service never claims a deployment and never files a deploy that can only be canceled. The save stands, every surface says it waits for resume and a deploy, and the dashboard offers only the modes that can work. **Status:** done 2026-10-19 (loopx w4) — live closeout on pin `d98d07f62c13` recorded in [t008](done/t008.md)
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | [t005](done/t005.md) | Render parity — **DONE** | 20m | w4/m234/t002, w4/m234/t003, w4/m234/t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 15m | w4/m234/t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 45m | w4/m234/t005 |
-| [t008](t008.md) | Closeout | 25m | w4/m234/t006, w4/m234/t007 |
+| [t008](done/t008.md) | Closeout — **DONE** | 25m | w4/m234/t006, w4/m234/t007 |
 
 Eight tasks, 295m (4h55m). One **major** finding. This milestone schedules the work only.
 
