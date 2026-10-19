@@ -67,7 +67,8 @@ func NewLokiSource(base string, hc *http.Client) LogHistorySource {
 		// asks for a scan page of raw lines rather than the caller's page of matches.
 		pageQ := q
 		pageQ.Limit = lokiFetchLimit(q)
-		if q.localTextSearch() && !q.End.IsZero() {
+		// A clamped end is not the caller's, so it stays exclusive (lokiEndParam).
+		if q.localTextSearch() && !q.End.IsZero() && end.Equal(q.End) {
 			// Its coverage edges are Loki-exclusive ends, so the caller's inclusive
 			// End is applied once, here, rather than re-bumped whenever an edge
 			// lands on it (which could re-read the same full page forever).
@@ -364,24 +365,31 @@ func lokiLabelFor(label string) string {
 	}
 }
 
-// lokiRange resolves the [start, end] window for a query: an explicit bound wins,
-// an absent one defaults (end=now, start=lokiLookback before the earlier of end
-// and now). now is passed in so the source stays testable.
+// lokiRange resolves the [start, end] window for a query: an absent bound
+// defaults (end=now, start=lokiLookback before end). A caller's end later than
+// lokiFutureGrace past now reads only that far: no line is stamped later, and
+// sending a far-future end made Loki refuse the window as too long or walk
+// weeks of empty future (w8/123). now is passed in so the source stays
+// testable.
 func lokiRange(q LogQuery, now time.Time) (start, end time.Time) {
-	end = q.End
-	if end.IsZero() {
-		end = now
+	end = now
+	if !q.End.IsZero() {
+		end = earlier(q.End, now.Add(lokiFutureGrace))
 	}
 	start = q.Since
 	if start.IsZero() {
-		start = earlier(end, now).Add(-lokiLookback)
+		start = end.Add(-lokiLookback)
 	}
 	return start, end
 }
 
-// earlier is the earlier of two instants. A default window counts back from
-// the earlier of a caller's end and now, so a future end cannot move it past
-// now, where it would hold no line yet (w8/120).
+// lokiFutureGrace is how far past the API's clock a read still reaches: a
+// node whose clock runs ahead stamps lines that far in the future, and Loki
+// accepts them up to its default 10-minute creation grace period.
+const lokiFutureGrace = 10 * time.Minute
+
+// earlier is the earlier of two instants: a read never reaches past the
+// instants that can hold a line (w8/120, w8/123).
 func earlier(a, b time.Time) time.Time {
 	if b.Before(a) {
 		return b

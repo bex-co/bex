@@ -219,6 +219,20 @@ func TestLokiRange(t *testing.T) {
 	if !s.Equal(end.Add(-lokiLookback)) {
 		t.Errorf("end-only start: got %s, want %s", s, end.Add(-lokiLookback))
 	}
+	// A far-future End reads only as far as a line can be stamped (w8/123).
+	limit := now.Add(lokiFutureGrace)
+	s, e = lokiRange(LogQuery{End: now.AddDate(4, 0, 0)}, now)
+	if !e.Equal(limit) || !s.Equal(limit.Add(-lokiLookback)) {
+		t.Errorf("future end: got [%s, %s], want [%s, %s]", s, e, limit.Add(-lokiLookback), limit)
+	}
+	if got := lokiEndParam(LogQuery{End: now.AddDate(4, 0, 0)}, e); got != strconv.FormatInt(limit.UnixNano(), 10) {
+		t.Errorf("future end param = %s, want the clamp itself (exclusive)", got)
+	}
+	// An End a node with a fast clock can stamp stays the caller's, inclusive.
+	skewed := now.Add(time.Second)
+	if _, e = lokiRange(LogQuery{End: skewed}, now); !e.Equal(skewed) {
+		t.Errorf("skewed end = %s, want the caller's %s", e, skewed)
+	}
 }
 
 func TestLokiLimit(t *testing.T) {

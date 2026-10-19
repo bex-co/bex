@@ -56,8 +56,19 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 // do GraphQL's `logs`/`logLabelValues` (graphql.go, w9/m1/t002) and MCP's
 // `list_logs`/`list_log_label_values` (mcp.go, w9/004) — all accept the same
 // startTime/endTime and would otherwise let a caller scan the store unbounded.
+//
+// The cap measures the part of the window that can hold lines, up to now: no
+// line is stamped after it (w8/123), and a window that has not begun holds
+// none (w8/120).
 func (s *Service) checkWindow(q LogQuery) error {
-	return core.CheckInclusiveQueryWindow(s.MaxQueryHours, time.Now, q.Since, q.End)
+	if err := core.ValidateInclusiveQueryRange(q.Since, q.End); err != nil {
+		return err
+	}
+	now := time.Now()
+	if q.Since.After(now) {
+		return nil
+	}
+	return core.CheckInclusiveQueryWindow(s.MaxQueryHours, func() time.Time { return now }, q.Since, earlier(q.End, now))
 }
 
 // logsValues serves GET /v1/logs/values — Render's filter-value discovery: the
