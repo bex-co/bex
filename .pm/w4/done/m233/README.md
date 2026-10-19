@@ -1,6 +1,6 @@
 # w4 · m233 — Stop Key Value allowlist saves from silently restarting (and wiping) the store
 
-**Worker:** worker4 **Goal:** changing who can reach a Key Value from outside never restarts it unannounced. A save that must restart says so before it happens and, for a Persistence Off store, asks for the data-loss confirmation. **Status:** in progress (t001–t006 and t008 done 2026-10-19; t007 live closeout waits on the t008 deploy and on w4/362)
+**Worker:** worker4 **Goal:** changing who can reach a Key Value from outside never restarts it unannounced. A save that must restart says so before it happens and, for a Persistence Off store, asks for the data-loss confirmation. **Status:** done 2026-10-19 (loopx w4) — live closeout on pin `d98d07f62c13` recorded in [t007](done/t007.md)
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | [t005](done/t005.md) | Simplify — **DONE** | 10m | w4/m233/t004 |
 | [t006](done/t006.md) | Test coverage — **DONE** | 45m | w4/m233/t004 |
 | [t008](done/t008.md) | Report `available` through a save that does not restart the store — **DONE** | 40m | w4/m233/t006 |
-| [t007](t007.md) | Closeout | 20m | w4/m233/t005, w4/m233/t006, w4/m233/t008 |
+| [t007](done/t007.md) | Closeout — **DONE** | 20m | w4/m233/t005, w4/m233/t006, w4/m233/t008 |
 
 Eight tasks, 260m (4h20m). One **major** finding. This milestone schedules the work only.
 
