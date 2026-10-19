@@ -68,7 +68,9 @@ export function useFieldMutation<
         setBusy(false);
       }
     },
-    // toVariables and keys are call-site literals, stable per hook instance.
+    // toVariables and keys must stay stable for the life of the mount: they are
+    // call-site literals, or (the Deploy card's command toasts) fixed by a
+    // command kind that cannot change while the card is mounted.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [mutate, t, askForConfirmation],
   );

@@ -8,15 +8,12 @@ export interface UseStartCommandResult {
 
 /**
  * Wires the Build & Deploy Start/Docker Command editor to bex-api. The toasts
- * name the field the card shows, so a Docker Command caller passes its own
- * keys (w4/357).
+ * name the field the card shows (w4/357).
  */
-export function useStartCommand(
-  toasts: { success: string; error: string } = {
-    success: "services.startCommandSuccess",
-    error: "services.startCommandError",
-  },
-): UseStartCommandResult {
+export function useStartCommand(toasts: {
+  success: string;
+  error: string;
+}): UseStartCommandResult {
   const { run, busy } = useFieldMutation(
     SetStartCommandDocument,
     (id: string, command: string) => ({ id, command }),
