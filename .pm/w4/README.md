@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m233** — [Stop Key Value allowlist saves from silently restarting (and wiping) the store](m233/README.md) (7 tasks, 3h40m) ← live `/qa-find-bugs w4` pass 8be45a, 2026-10-19 UTC. An allowlist save that turns external access on or off rolls the Valkey pod (the operator adds/removes the TLS listener and cert), so on a Persistence Off store two ordinary saves left `DBSIZE` 0, while the Networking card says "Internal access is unchanged."
+
 - [ ] **m232** — [Keep a protected environment's members behind its admin gate on every move](m232/README.md) (7 tasks, 3h40m) ← live `/qa-find-bugs w4` pass 9d7581, 2026-10-19 UTC. Env `SetServices`/`setResourceMembers`, project `SetServices` and `MoveEnvGroup` check only their own target, so a member leaves a protected or isolated environment without its fresh `can_manage`. Live: a staging Manage resources save and `setProjectServices([])` each lifted the protected guard (unconfirmed suspend 400 → 202).
 
 - [x] **m231** — [Make push event choices honest about the urgency filter](done/m231/README.md) (7 tasks) — **DONE 2026-10-19, `94a162d20`.** Push events publish their urgency (REST/GraphQL, one table with the projection); the panel labels each event and flags selections the effective minimum drops, globally and per override. Live at 1440/390, settings restored byte-identical. Adjacent inert `agent_needs_decision` filed as w4/349.

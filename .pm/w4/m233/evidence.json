@@ -1,0 +1,79 @@
+{
+  "hunt": "qa-find-bugs w4, muse.env, workspace bex-canary (tea-daif693dqjvc73e7as3g), pass 8be45a, 2026-10-19 UTC",
+  "servingPlatform": "production pinned to 94a76a923136; research main fe734f586",
+  "fixture": "qa-20261019-8be45a-kv (red-dbaovp4pht2s73er28k0), Free Key Value, Valkey 8.1.9, created from the dashboard with Public access on; deleted via Danger Zone (GET 404, list 0)",
+  "secretsHandling": "the copied external URL went from the page to a one-shot loopback sink (0600 file) and was never printed; the runner IP was never printed; both files deleted",
+  "connectionChecks": {
+    "copiedValuesEqualApi": "Copy External/Internal Key Value URL and Copy Valkey CLI command clipboard text === GET /v1/key-value/<id>/connection-info fields (true, true, true)",
+    "cliCommandShape": "redis-cli --sni <id>.kv.bex.co -u rediss://default:<pw>@<id>.kv.bex.co:6379",
+    "results": [
+      "redis-cli --sni <host> -u <copied URL> PING -> PONG; SET/GET round trip ok; INFO server: server_name valkey, valkey_version 8.1.9",
+      "redis-cli -u <copied URL> PING (no --sni) -> SSL_connect failed: unexpected eof (documented in ADR021: redis-cli does not derive SNI)",
+      "python ssl with server_hostname -> +OK | +PONG over TLSv1.3, certificate verified; without SNI -> EOF",
+      "wrong password -> WRONGPASS; plaintext to :6379 -> closed"
+    ]
+  },
+  "allowlistChecks": [
+    {
+      "at": "03:38:01Z",
+      "ui": "Networking: add 203.0.113.0/24 -> Save allowlist",
+      "toast": "success: Allowlist updated.",
+      "effect": "own IPv4 refused by 03:38:08Z"
+    },
+    {
+      "at": "03:38:5xZ",
+      "api": "PATCH ipAllowList [TEST-NET, runner /32]",
+      "effect": "IPv4 +OK | +PONG; IPv6 (not listed) EOF"
+    },
+    {
+      "at": "03:39:24Z",
+      "ui": "remove both rules -> Save allowlist",
+      "toast": "success: Allowlist updated.",
+      "effect": "Details 'Public access No', API public false, card 'External connections are disabled.'; status Restarting (config_restart); connection-info 409 'conflict: key value credentials are still converging' until available again"
+    }
+  ],
+  "restartSequence": {
+    "setup": "Persistence mode -> Off through the dashboard (dialog 'Delete all data and change persistence?' with sudo phrase); status config_restart -> available; then",
+    "steps": [
+      {
+        "step": "enable external: PATCH ipAllowList [] -> [runner /32]",
+        "patchAt": "03:42:56Z",
+        "status": [
+          "03:42:57 config_restart public=True",
+          "03:43:09 available"
+        ],
+        "data": "SET qa:8be45a survived -> OK; GET -> survived"
+      },
+      {
+        "step": "control: add a second rule (external stays on)",
+        "patchAt": "03:43:21Z",
+        "status": [
+          "03:43:22 available (no restart)"
+        ],
+        "data": "GET -> survived"
+      },
+      {
+        "step": "disable external: PATCH ipAllowList []",
+        "patchAt": "03:43:37Z",
+        "status": [
+          "03:43:37 config_restart public=False",
+          "03:44:19 available"
+        ]
+      },
+      {
+        "step": "re-enable external: PATCH ipAllowList [runner /32]",
+        "patchAt": "03:44:20Z",
+        "status": [
+          "03:44:21 config_restart public=True",
+          "03:44:41 available"
+        ],
+        "data": "GET qa:8be45a -> $-1 (nil); DBSIZE -> 0"
+      }
+    ]
+  },
+  "notProbed": [
+    "internal client interruption (no in-cluster client)",
+    "Postgres sibling (workspace Postgres quota used by another pass's fixture)",
+    "Render's allowlist-change behavior"
+  ]
+}
