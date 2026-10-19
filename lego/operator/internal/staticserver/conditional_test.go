@@ -20,6 +20,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -107,24 +108,36 @@ func TestSavedETagPreconditions(t *testing.T) {
 	}
 }
 
-// Without a saved ETag there is no validator to match, except the wildcard,
-// which any existing object satisfies; no ETag is generated.
-func TestNoSavedETagOnlyWildcardMatches(t *testing.T) {
+// Without a saved ETag the server generates a strong one over the object's
+// bytes (w4/341), so a browser's revalidation can be a bodyless 304. A tag the
+// object does not carry still gets the full 200, and the wildcard still
+// matches any existing object and no miss.
+func TestGeneratedETagValidatesWithoutASavedRule(t *testing.T) {
 	h, _ := newTestHandler(t, Site{}, map[string]Object{
 		key("version.txt"): {Body: []byte(versionBytes), ContentType: "text/plain"},
 	})
-	if rec := doWith(h, http.MethodGet, "/version.txt", http.Header{"If-None-Match": {`"qa-v1"`}}); rec.Code != http.StatusOK || rec.Body.String() != versionBytes {
-		t.Errorf("tagless If-None-Match => %d %q, want 200 body", rec.Code, rec.Body)
+	first := do(h, http.MethodGet, "/version.txt")
+	tag := first.Header().Get("ETag")
+	if first.Code != http.StatusOK || tag != contentETag([]byte(versionBytes)) || strings.HasPrefix(tag, "W/") {
+		t.Fatalf("GET => %d ETag %q, want 200 with the strong content tag", first.Code, tag)
 	}
-	rec := doWith(h, http.MethodGet, "/version.txt", http.Header{"If-None-Match": {"*"}})
-	if rec.Code != http.StatusNotModified {
+	for _, method := range []string{http.MethodGet, http.MethodHead} {
+		rec := doWith(h, method, "/version.txt", http.Header{"If-None-Match": {tag}})
+		if rec.Code != http.StatusNotModified || rec.Body.Len() != 0 || rec.Header().Get("ETag") != tag {
+			t.Errorf("%s If-None-Match <tag> => %d (%d bytes, ETag %q), want bodyless 304 with the tag", method, rec.Code, rec.Body.Len(), rec.Header().Get("ETag"))
+		}
+	}
+	if rec := doWith(h, http.MethodGet, "/version.txt", http.Header{"If-None-Match": {`"qa-v1"`}}); rec.Code != http.StatusOK || rec.Body.String() != versionBytes {
+		t.Errorf("foreign If-None-Match => %d %q, want 200 body", rec.Code, rec.Body)
+	}
+	if rec := doWith(h, http.MethodGet, "/version.txt", http.Header{"If-Match": {tag}}); rec.Code != http.StatusOK || rec.Body.String() != versionBytes {
+		t.Errorf("matching If-Match => %d %q, want 200 body", rec.Code, rec.Body)
+	}
+	if rec := doWith(h, http.MethodGet, "/version.txt", http.Header{"If-None-Match": {"*"}}); rec.Code != http.StatusNotModified {
 		t.Errorf("If-None-Match * on existing object => %d, want 304", rec.Code)
 	}
-	if got := rec.Header().Get("ETag"); got != "" {
-		t.Errorf("generated ETag %q, want none", got)
-	}
-	if rec := doWith(h, http.MethodGet, "/missing.txt", http.Header{"If-None-Match": {"*"}}); rec.Code != http.StatusNotFound {
-		t.Errorf("If-None-Match * on a miss => %d, want 404", rec.Code)
+	if rec := doWith(h, http.MethodGet, "/missing.txt", http.Header{"If-None-Match": {"*"}}); rec.Code != http.StatusNotFound || rec.Header().Get("ETag") != "" {
+		t.Errorf("If-None-Match * on a miss => %d ETag %q, want 404 with no tag", rec.Code, rec.Header().Get("ETag"))
 	}
 }
 
