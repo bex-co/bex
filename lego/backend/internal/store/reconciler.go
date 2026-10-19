@@ -18,6 +18,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -27,6 +28,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -893,8 +895,13 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	// straight from spec.image. Left "" on a failed/timed-out close: a deploy
 	// that never went live is correctly never a valid rollback target.
 	resolvedImage := ""
-	if matchesObservedRelease && status == DeployLive {
-		resolvedImage = cur.Status.Image
+	if status == DeployLive {
+		switch {
+		case matchesObservedRelease:
+			resolvedImage = cur.Status.Image
+		case servesGeneration(cur, open.Generation):
+			resolvedImage = r.servedReleaseImage(ctx, cur, open.Generation)
+		}
 	}
 	// w9/011: a failing close carries its actionable cause rather than an opaque
 	// terminal state; deployCloseFailureReason owns the sourcing order.
@@ -1472,7 +1479,18 @@ func (r *Reconciler) supersededCancelReason(ctx context.Context, open Deploy, ap
 	if err != nil || id == "" {
 		return fallback
 	}
+	if restartRelease(app) {
+		return restartCanceledReason(id)
+	}
 	return supersededByReason(id)
+}
+
+// restartRelease reports that the App's current release is a Restart's: the
+// running configuration re-released with its exact group values
+// (ReleaseConfigReference.PreserveGroupValues, which only Restart sets).
+func restartRelease(app *appv1alpha1.App) bool {
+	ref := app.Spec.ReleaseConfig
+	return ref != nil && ref.PreserveGroupValues && ref.Generation == app.Status.ReleaseGeneration
 }
 
 // endedWithNewerCancel reports that a cancel of a newer release settled below
@@ -1493,6 +1511,40 @@ func (r *Reconciler) canceledAlongReason(ctx context.Context, open Deploy, app *
 		return "Canceled along with " + id
 	}
 	return "Canceled along with a newer deploy"
+}
+
+// servedReleaseImage is the image a release that served ran, read after a newer
+// release was adopted, when status.image may already be the newer release's
+// (w8/m119). The operator records each release's applied pod template under its
+// generation; a release with none (a static site, a cron job) is read from
+// status.image only while the newer release still builds, before it can take
+// status.image over. "" when neither is evidence.
+func (r *Reconciler) servedReleaseImage(ctx context.Context, app *appv1alpha1.App, generation int64) string {
+	rec := &corev1.Secret{}
+	key := client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.ReleaseRecordName(app.Name, generation)}
+	if err := r.Client.Get(ctx, key, rec); err == nil {
+		var tmpl corev1.PodTemplateSpec
+		if json.Unmarshal(rec.Data[appv1alpha1.ReleaseRecordPodTemplateKey], &tmpl) == nil {
+			for _, c := range tmpl.Spec.Containers {
+				if c.Name == appv1alpha1.ReleaseRecordAppContainer {
+					return c.Image
+				}
+			}
+		}
+	} else if !apierrors.IsNotFound(err) {
+		log.Printf("controlplane: read release record %s/%s: %v", key.Namespace, key.Name, err)
+	}
+	if app.Status.Phase == appv1alpha1.PhaseBuilding {
+		return app.Status.Image
+	}
+	return ""
+}
+
+// servesGeneration reports that status.activeRevision names generation: the
+// operator records a release there only once it serves.
+func servesGeneration(app *appv1alpha1.App, generation int64) bool {
+	served, ok := appv1alpha1.RevisionGeneration(app.Status.ActiveRevision)
+	return ok && generation != 0 && served == generation
 }
 
 // supersededDeployStatus decides the open row's fate when the CR's release
@@ -1518,16 +1570,28 @@ func supersededDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) (s
 	if endedWithNewerCancel(open, app) {
 		return DeployCanceled, true
 	}
-	// A reported release generation PAST the open row's means this row's release
-	// was superseded before it could finish — a git-push redeploy, env-var
-	// change, or restart minted a newer release identity without adopting the
-	// row. Generations are monotonic, so the row can never advance again; close
-	// it canceled. Under normal overlap handling the active row is observed live
-	// before the queued row is adopted; this is the missed-observation fallback.
-	// Only status.releaseGeneration is trusted here: the legacy metadata-
-	// generation fallback below also moves for operational churn (manual
-	// scale), which must keep waiting, not cancel a live rollout's row.
+	// A reported release generation PAST the open row's means the row's release
+	// can never advance again: generations are monotonic. The operator holds a
+	// newer release until the one in flight settles (releaseInFlight, w8/m119),
+	// so the row's own settled verdict outlives the adoption and decides first:
+	// a release that served (status.activeRevision still names it until the
+	// newer one serves) is live, and a failed rollout or pre-deploy step keeps
+	// its failure. Only a release that never settled closes canceled: one a
+	// Restart, Rollback or user Cancel ended, or one the operator abandoned
+	// unpinned (a prebuilt image superseded mid-rollout). Only
+	// status.releaseGeneration is trusted here: the legacy metadata-generation
+	// fallback below also moves for operational churn (manual scale), which must
+	// keep waiting, not cancel a live rollout's row.
 	if app.Status.ReleaseGeneration > 0 && open.Generation != 0 && app.Status.ReleaseGeneration > open.Generation {
+		switch {
+		case servesGeneration(app, open.Generation):
+			return DeployLive, true
+		case preDeployStatusAt(app, open.Generation) == PreDeployFailed:
+			return DeployPreDeployFailed, true
+		}
+		if _, _, ok := recordedRolloutFailure(app, open.Generation); ok {
+			return DeployUpdateFailed, true
+		}
 		return DeployCanceled, true
 	}
 	generation := appReleaseGeneration(app)
@@ -1650,8 +1714,7 @@ func appReleaseGeneration(app *appv1alpha1.App) int64 {
 
 func releaseIsActive(open Deploy, app *appv1alpha1.App) bool {
 	if app.Status.ReleaseGeneration > 0 {
-		return app.Status.ReleaseGeneration == open.Generation &&
-			app.Status.ActiveRevision == fmt.Sprintf("rev-%d", open.Generation)
+		return app.Status.ReleaseGeneration == open.Generation && servesGeneration(app, open.Generation)
 	}
 	return app.Status.ObservedGeneration == app.Generation
 }

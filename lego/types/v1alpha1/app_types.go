@@ -1605,12 +1605,20 @@ type AppStatus struct {
 	UndeployedChangesApplying bool `json:"undeployedChangesApplying,omitempty"`
 
 	// PendingReleaseGeneration is the newest requested release generation coalesced
-	// while a build is in flight (0 = none). It is observability + SLI bookkeeping:
-	// the pending spec itself remains the source of truth and is picked up once the
-	// in-flight build completes and the release advances (ADR060 §D1a latest-pending
-	// slot).
+	// while a release is in flight (0 = none). It is observability + SLI
+	// bookkeeping: the pending spec itself remains the source of truth and is
+	// picked up once the in-flight release serves or settles and the release
+	// advances (ADR060 §D1a latest-pending slot).
 	// +optional
 	PendingReleaseGeneration int64 `json:"pendingReleaseGeneration,omitempty"`
+
+	// SelectedReleaseGeneration is the release generation last adopted from
+	// spec.releaseConfig (a Rollback or Restart), or 0. A later deploy clears
+	// that selection while the release may still be rolling out; this keeps it
+	// from reading as a source build the latest-pending slot would carry on the
+	// saved configuration (w8/m119).
+	// +optional
+	SelectedReleaseGeneration int64 `json:"selectedReleaseGeneration,omitempty"`
 
 	// SandboxID is the runtime handle of the active revision (OpenSandbox sandbox id).
 	// +optional

@@ -361,14 +361,29 @@ type appReleaseDecision struct {
 	sourcePending bool
 }
 
-// buildRunning reports whether a repo-backed source build for the pinned release
-// generation is actively running (ADR060 §D1a). While true, prepareAppReleaseDecision
-// pins the release identity so a newer push cannot abandon the running build:
-// the build finishes and rolls out, and the newer spec waits in the implicit
-// pending slot. Prebuilt-image, suspended, and direct-static-publish Apps have no
-// build Job to protect and never pin.
-func buildRunning(app *appv1alpha1.App) bool {
-	return pinnableSourceRelease(app) && app.Status.Phase == appv1alpha1.PhaseBuilding
+// releaseInFlight reports whether a repo-backed source release is still on its
+// way to serving (ADR060 §D1a, Render's Wait overlap policy): it builds, or runs
+// its pre-deploy step and rollout without having served yet. While true,
+// prepareAppReleaseDecision pins the release identity so a newer push cannot
+// abandon it, and its rollout is recorded in status.activeRevision before the
+// newer release counts (w8/m119). A release that settles failed, parks asleep,
+// or whose own deploy is canceled leaves this state. Prebuilt-image, suspended,
+// direct-static-publish and selected (Rollback, Restart) releases have no build
+// to protect and never pin.
+func releaseInFlight(app *appv1alpha1.App) bool {
+	if selected := app.Status.SelectedReleaseGeneration; !pinnableSourceRelease(app) || (selected != 0 && selected == app.Status.ReleaseGeneration) {
+		return false
+	}
+	if canceled, ok := canceledReleaseGeneration(app); ok && canceled == app.Status.ReleaseGeneration {
+		return false
+	}
+	switch app.Status.Phase {
+	case appv1alpha1.PhaseBuilding:
+		return true
+	case appv1alpha1.PhaseDeploying:
+		return app.Status.ReleaseGeneration > successfulReleaseGeneration(app)
+	}
+	return false
 }
 
 // pinnableSourceRelease reports whether the App's release is a source build a
@@ -424,17 +439,18 @@ func prepareAppReleaseDecision(app *appv1alpha1.App) appReleaseDecision {
 	}
 	desired := desiredAppReleaseIdentity(app.Spec)
 
-	// ADR060 §D1a run-to-completion + latest-pending slot: while a source build is
-	// actively running and the spec has since moved to a newer release, do NOT
-	// advance. Pin the release identity to the running build so releaseBuildRevision
-	// stays on its revision (EnsureBuild observes it, never starts a second Job) and
-	// so the completing build records its artifact under its OWN fingerprint — not
-	// the coalesced newer spec's, which would make the next generation falsely reuse
-	// this image. The newer spec is the implicit pending slot, picked up on the next
-	// reconcile once this build resolves (phase leaves Building) and the release
-	// advances. This replaces ADR034's cancel-the-running-build newest-wins, which
-	// livelocked under sustained pushes.
-	if buildRunning(app) && app.Status.ReleaseFingerprint != desired.release {
+	// ADR060 §D1a run-to-completion + latest-pending slot: while a source release
+	// is in flight and the spec has since moved to a newer release, do NOT
+	// advance. Pin the release identity to it so releaseBuildRevision stays on its
+	// revision (EnsureBuild observes it, never starts a second Job), so the
+	// completing build records its artifact under its OWN fingerprint — not the
+	// coalesced newer spec's, which would make the next generation falsely reuse
+	// this image — and so its rollout is recorded served. The newer spec is the
+	// implicit pending slot, picked up on the next reconcile once this release
+	// serves or settles (releaseInFlight). This replaces ADR034's
+	// cancel-the-running-build newest-wins, which livelocked under sustained
+	// pushes.
+	if app.Status.ReleaseFingerprint != desired.release && releaseInFlight(app) {
 		if pending := requestedReleaseGeneration(app); pending > app.Status.PendingReleaseGeneration {
 			// A genuinely newer generation coalesced into the pending slot. Meter it
 			// once per new pending generation — the tripwire that separates a
@@ -455,6 +471,9 @@ func prepareAppReleaseDecision(app *appv1alpha1.App) appReleaseDecision {
 		// artifact correctly (ADR060 §D1a).
 		app.Status.ReleaseArtifactFingerprint = desired.artifact
 		app.Status.ReleaseGeneration = requestedReleaseGeneration(app)
+		if app.ActiveReleaseConfig() != nil {
+			app.Status.SelectedReleaseGeneration = app.Status.ReleaseGeneration
+		}
 	}
 	if app.Status.ReleaseGeneration == 0 {
 		app.Status.ReleaseGeneration = app.Generation

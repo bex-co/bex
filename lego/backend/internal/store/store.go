@@ -596,6 +596,10 @@ type Store interface {
 	// copied rather than re-resolved against a branch that has since moved.
 	// triggeredBy is core.Identity.Subject for the rollback caller (w4/072).
 	CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string, generation int64, commit CommitInfo, triggeredBy string) (Deploy, error)
+	// CreateRestartDeploy opens a Restart's deploy row: CreateDeploy with
+	// trigger "api", except that a latest-pending row it replaces is canceled
+	// naming the restart and its undeployed change (w8/m119).
+	CreateRestartDeploy(ctx context.Context, appID, image string, generation int64, commit CommitInfo, triggeredBy string) (Deploy, error)
 	// ListDeploys returns an app's deploy history, newest first, narrowed by
 	// filter (w2/m31) — a zero DeployFilter returns the full history, the
 	// pre-m31 contract.
@@ -2049,9 +2053,24 @@ func (s *PGStore) SetAppImage(ctx context.Context, id string, image string) erro
 }
 
 func (s *PGStore) CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit CommitInfo, triggeredBy string) (Deploy, error) {
+	return s.createDeploy(ctx, appID, trigger, image, generation, commit, triggeredBy, supersededByReason)
+}
+
+// CreateRestartDeploy opens a Restart's deploy row (trigger "api"). Unlike
+// CreateDeploy, a latest-pending row it replaces closes naming the restart and
+// the change it leaves undeployed (restartCanceledReason): a Restart
+// re-releases what is running and never carries that row's saved change
+// (w8/m119).
+func (s *PGStore) CreateRestartDeploy(ctx context.Context, appID, image string, generation int64, commit CommitInfo, triggeredBy string) (Deploy, error) {
+	return s.createDeploy(ctx, appID, TriggerAPI, image, generation, commit, triggeredBy, restartCanceledReason)
+}
+
+// createDeploy inserts a deploy row; replaced names the cause stamped on a
+// latest-pending row the new one replaces, given the new row's id.
+func (s *PGStore) createDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit CommitInfo, triggeredBy string, replaced func(id string) string) (Deploy, error) {
 	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, TriggeredBy: triggeredBy, Status: DeployCreated}
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
-		status, cancelReason, err := prepareDeployCreate(ctx, tx, appID, generation, d.ID)
+		status, cancelReason, err := prepareDeployCreate(ctx, tx, appID, generation, replaced(d.ID))
 		if err != nil {
 			return err
 		}
@@ -2096,10 +2115,11 @@ func (s *PGStore) LatestDeployCommit(ctx context.Context, appID string) (CommitI
 // generations before choosing the visible initial status. A delayed request
 // for an older generation records itself canceled, naming the
 // higher-generation open row, without disturbing it. Otherwise the new generation replaces only the
-// previous overlap-pending row: it starts queued while an active deploy is
-// running, or created when the active slot is free. Partial unique indexes are
-// the final one-active-plus-one-pending guard.
-func prepareDeployCreate(ctx context.Context, tx pgx.Tx, appID string, generation int64, id string) (status, cancelReason string, err error) {
+// previous overlap-pending row, which closes canceled with replacedReason. The
+// new row starts queued while an active deploy is running, or created when the
+// active slot is free. Partial unique indexes are the final
+// one-active-plus-one-pending guard.
+func prepareDeployCreate(ctx context.Context, tx pgx.Tx, appID string, generation int64, replacedReason string) (status, cancelReason string, err error) {
 	var lockedID string
 	if err := tx.QueryRow(ctx, `SELECT id FROM apps WHERE id = $1 FOR UPDATE`, appID).Scan(&lockedID); err != nil {
 		return "", "", err
@@ -2117,7 +2137,7 @@ func prepareDeployCreate(ctx context.Context, tx pgx.Tx, appID string, generatio
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return "", "", err
 	}
-	if err := cancelPendingDeploys(ctx, tx, appID, supersededByReason(id)); err != nil {
+	if err := cancelPendingDeploys(ctx, tx, appID, replacedReason); err != nil {
 		return "", "", err
 	}
 	var active bool
@@ -2163,6 +2183,14 @@ func supersededByReason(id string) string {
 	return "Superseded by " + id
 }
 
+// restartCanceledReason is the cancel_reason of a deploy a Restart ended, in
+// flight or pending. A Restart re-releases what is running, so it never carries
+// what the ended deploy was applying — saved changes, or a rollback's target;
+// "Superseded" would imply it did (w8/m119).
+func restartCanceledReason(id string) string {
+	return "Canceled by restart " + id + ", which kept the running release: what this deploy was applying was not deployed"
+}
+
 // CreateRollbackDeploy opens a "rollback"-triggered deploy row (w2/m10):
 // unlike a normal trigger, the restored image is already fully known (it ran
 // live before), so resolved_image is set immediately rather than waiting for
@@ -2173,7 +2201,7 @@ func supersededByReason(id string) string {
 func (s *PGStore) CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string, generation int64, commit CommitInfo, triggeredBy string) (Deploy, error) {
 	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: TriggerRollback, Image: image, ResolvedImage: image, RollbackOf: rollbackOf, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, TriggeredBy: triggeredBy, Status: DeployCreated}
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
-		status, cancelReason, err := prepareDeployCreate(ctx, tx, appID, generation, d.ID)
+		status, cancelReason, err := prepareDeployCreate(ctx, tx, appID, generation, supersededByReason(d.ID))
 		if err != nil {
 			return err
 		}

@@ -68,6 +68,9 @@ func (s *conformDeployStore) CreateDeploy(_ context.Context, _, _, _ string, _ i
 func (s *conformDeployStore) LatestDeployCommit(_ context.Context, _ string) (store.CommitInfo, error) {
 	return store.CommitInfo{}, errors.New("conformDeployStore: LatestDeployCommit not expected")
 }
+func (s *conformDeployStore) CreateRestartDeploy(_ context.Context, _, _ string, _ int64, _ store.CommitInfo, _ string) (store.Deploy, error) {
+	return store.Deploy{}, errors.New("conformDeployStore: CreateRestartDeploy not expected")
+}
 func (s *conformDeployStore) CreateRollbackDeploy(_ context.Context, _, _, _ string, _ int64, _ store.CommitInfo, _ string) (store.Deploy, error) {
 	return store.Deploy{}, errors.New("conformDeployStore: CreateRollbackDeploy not expected")
 }

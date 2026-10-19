@@ -198,7 +198,7 @@ func appPodLabels(app *appv1alpha1.App, verifyImage bool) map[string]string {
 	return appPolicyLabels(app, labels)
 }
 
-const appContainerName = "app"
+const appContainerName = appv1alpha1.ReleaseRecordAppContainer
 
 // servingPortName names a configured-port App's listener on its pods and on
 // both stable Services.

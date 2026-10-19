@@ -5684,7 +5684,7 @@ func (r *AppReconciler) fail(ctx context.Context, app *appv1alpha1.App, reason s
 // stepFailure is a reconcile step's error with the reason r.fail records it
 // under. Returning it lets the caller choose: record the failure (failStep), or
 // return the error alone where a Failed phase would be wrong, as on a pass that
-// observes a build, whose Building phase pins the release to it (buildRunning).
+// observes a build, whose Building phase pins the release to it (releaseInFlight).
 type stepFailure struct {
 	reason string
 	err    error
@@ -6023,7 +6023,7 @@ func scalableRuntime(app *appv1alpha1.App) bool {
 //
 // buildHalt is the result buildFromSource halted with, zero for a suspended
 // pass; its requeue is this pass's cadence. A pass that leaves the phase
-// Building keeps it: that phase pins the release to its build (buildRunning), so
+// Building keeps it: that phase pins the release to its build (releaseInFlight), so
 // the hold neither parks over it nor records a failure in its place.
 //
 // held=false keeps the pass on its halt: a static site, the
