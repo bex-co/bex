@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Outlet } from "@tanstack/react-router";
 import { LogIn, TriangleAlert } from "lucide-react";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
@@ -19,6 +19,7 @@ import {
   ServiceBaseProvider,
   type ServiceBase,
 } from "@/features/services/lib/service-base";
+import { ServiceDeletingProvider } from "@/features/services/lib/service-deleting";
 import {
   ServiceDetailHeader,
   ServiceDetailHeaderSkeleton,
@@ -46,11 +47,14 @@ export function ServiceDetailLayout({
   const { pending } = useServiceLifecycle({ refetch });
   const { t } = useTranslations();
   const signInAgain = useSignInAgain();
+  const [deletingSelf, setDeletingSelf] = useState(false);
 
   // Unknown service id: redirect home with a toast (w9/m55) — covering every
   // child tab at once. A genuine query error is excluded; it keeps the inline
-  // retry state below.
-  useNotFoundRedirect(resourceNotFound(service, loading, error));
+  // retry state below, and so is this service's own delete (w4/340).
+  useNotFoundRedirect(
+    !deletingSelf && resourceNotFound(service, loading, error),
+  );
 
   // `base` (the route tree this layout renders under) rides context so the
   // sidebar + every tab's intra-detail link stays within /services or /static
@@ -161,7 +165,13 @@ export function ServiceDetailLayout({
     );
   }
 
-  return <ServiceBaseProvider value={base}>{content}</ServiceBaseProvider>;
+  return (
+    <ServiceBaseProvider value={base}>
+      <ServiceDeletingProvider value={setDeletingSelf}>
+        {content}
+      </ServiceDeletingProvider>
+    </ServiceBaseProvider>
+  );
 }
 
 /** Before the server read lands, the list cache may already know the type. */
