@@ -358,6 +358,7 @@ func setupAppReconciler(
 		Runtime:              bexruntime.New(envOr("BEX_OPENSANDBOX_URL", "http://127.0.0.1:8077")),
 		BaseDomain:           baseDomain,
 		ClusterIssuer:        envOr("BEX_CLUSTER_ISSUER", "letsencrypt-staging"),
+		HTTPSRedirect:        os.Getenv("BEX_HTTPS_REDIRECT") != "false",
 		ActivatorService:     envOr("BEX_ACTIVATOR_SERVICE", ""),
 		ActivatorNamespace:   envOr("POD_NAMESPACE", "bex-system"),
 		ActivatorPort:        activatorPort,

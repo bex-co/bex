@@ -62,7 +62,7 @@ HOST=logs-verify.local
 NONCE="m8-$(date -u +%s)" # unique per run: the exact request path / planted line
 
 LOKI=127.0.0.1:23100
-EDGE=127.0.0.1:18080
+EDGE_PORT=18443 # the Traefik websecure entrypoint: plain HTTP to a tenant host is redirected (w8/m118)
 API=127.0.0.1:18090
 HYDRA_PUBLIC=127.0.0.1:23444
 HYDRA_ADMIN=127.0.0.1:23445
@@ -230,12 +230,14 @@ start_api "http://$LOKI"
 
 # 4. REQUEST: drive one request through the real Traefik edge on a unique path, then
 #    read it back as a request log with a truthful method/status.
-kubectl -n "$TRAEFIK_NS" port-forward svc/traefik 18080:80 >/dev/null 2>&1 &
+kubectl -n "$TRAEFIK_NS" port-forward svc/traefik "$EDGE_PORT:443" >/dev/null 2>&1 &
 PIDS+=($!)
 sleep 2
-curl -sf -H "Host: $HOST" "http://$EDGE/$NONCE" >/dev/null \
+# -k: the fixture host has no issued certificate, so Traefik serves its default.
+# --connect-to keeps the URL on :443 — the redirect sends any other port there.
+curl -sfk --connect-to "$HOST:443:127.0.0.1:$EDGE_PORT" "https://$HOST/$NONCE" >/dev/null \
   || fail "could not reach App/$SVC through the Traefik edge (Host: $HOST) — no access line to verify"
-info "requested http://$HOST/$NONCE through the edge; waiting for the access line to ship"
+info "requested https://$HOST/$NONCE through the edge; waiting for the access line to ship"
 
 req=""
 for i in $(seq 1 30); do
