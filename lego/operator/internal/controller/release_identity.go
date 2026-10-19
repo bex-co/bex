@@ -359,6 +359,9 @@ type appReleaseDecision struct {
 	// below when it is not the canceled release itself, or 0.
 	abandoned     int64
 	sourcePending bool
+	// pinned keeps the release in flight on its own identity; with a view
+	// (heldReleaseView) the rest of the pass runs on it.
+	pinned bool
 }
 
 // releaseInFlight reports whether a repo-backed source release is still on its
@@ -390,7 +393,9 @@ func releaseInFlight(app *appv1alpha1.App) bool {
 // cancel's survivor (survivorInFlight) holds through its rollout after the saved
 // spec moved on to another release. It must keep rendering and recording its
 // own settings, captured when it was adopted (recordAdoptedRelease), not the
-// newer saved ones (w8/m120).
+// newer saved ones (w8/m120). A pass on the release's view (w8/m121) already
+// renders them, so this is the fallback for a held release without one: adopted
+// before its spec was recorded, or with a disk remounted since.
 func heldRelease(app *appv1alpha1.App) bool {
 	if app.Status.ReleaseFingerprint == "" || (!releaseInFlight(app) && !survivorInFlight(app)) {
 		return false
@@ -429,14 +434,26 @@ func pinnedReleaseDecision(app *appv1alpha1.App) appReleaseDecision {
 		artifact: app.Status.ReleaseArtifactFingerprint,
 		release:  app.Status.ReleaseFingerprint,
 	}
-	return appReleaseDecision{desired: pinned, artifactChanged: app.Status.ArtifactFingerprint != pinned.artifact}
+	return appReleaseDecision{desired: pinned, artifactChanged: app.Status.ArtifactFingerprint != pinned.artifact, pinned: true}
 }
 
 // prepareAppReleaseDecision mutates only operator-owned status. Missing or
 // changed fingerprints always request normal artifact/release reconciliation;
 // every retained App has been normalized to the canonical status shape.
-func prepareAppReleaseDecision(app *appv1alpha1.App) appReleaseDecision {
-	if survivorInFlight(app) {
+//
+// view is the release in flight's adopted view (heldReleaseView), or nil. Its
+// pinnability is judged on what it was adopted with, so a later switch of the
+// saved source to a prebuilt image still lets a repo-backed release finish.
+func prepareAppReleaseDecision(app *appv1alpha1.App, view *appv1alpha1.AppSpec) appReleaseDecision {
+	// held judges only the release in flight's own spec; status and annotations
+	// are app's.
+	held := app
+	if view != nil {
+		viewed := *app
+		viewed.Spec = *view
+		held = &viewed
+	}
+	if survivorInFlight(held) {
 		app.Status.PendingReleaseGeneration = 0
 		return pinnedReleaseDecision(app)
 	}
@@ -454,12 +471,13 @@ func prepareAppReleaseDecision(app *appv1alpha1.App) appReleaseDecision {
 		return decision
 	}
 	if sourceUpdatePending(app) {
-		// A release in flight whose source is already fixed — its build has
-		// started, or its artifact is built — keeps resolving and rolling its own
-		// artifact; the saved source waits for a deploy behind it (w8/124). A
-		// build not yet dispatched would read the saved source instead, so it
-		// keeps the prior behavior (w8/126).
-		if releaseInFlight(app) && releaseSourceFixed(app) {
+		// A release in flight keeps building and rolling its own source; the
+		// saved source waits for a deploy behind it (w8/124). It reads that
+		// source from its adopted view (w8/m121), or, adopted before views were
+		// recorded, only once it is fixed — its build has started, or its
+		// artifact is built — since an undispatched build would read the saved
+		// source.
+		if releaseInFlight(held) && (view != nil || releaseSourceFixed(app)) {
 			return pinnedReleaseDecision(app)
 		}
 		pinned := appReleaseIdentity{
@@ -481,7 +499,7 @@ func prepareAppReleaseDecision(app *appv1alpha1.App) appReleaseDecision {
 	// serves or settles (releaseInFlight). This replaces ADR034's
 	// cancel-the-running-build newest-wins, which livelocked under sustained
 	// pushes.
-	if app.Status.ReleaseFingerprint != desired.release && releaseInFlight(app) {
+	if app.Status.ReleaseFingerprint != desired.release && releaseInFlight(held) {
 		if pending := requestedReleaseGeneration(app); pending > app.Status.PendingReleaseGeneration {
 			// A genuinely newer generation coalesced into the pending slot. Meter it
 			// once per new pending generation — the tripwire that separates a

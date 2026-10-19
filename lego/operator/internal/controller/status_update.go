@@ -33,6 +33,7 @@ func updateStatusIfChanged(ctx context.Context, c client.Client, obj client.Obje
 	if statusUnchanged(ctx, c, obj) {
 		return nil
 	}
+	defer keepReleaseView(ctx, obj)
 	return c.Status().Update(ctx, obj)
 }
 

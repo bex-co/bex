@@ -105,7 +105,7 @@ func TestMissingReleaseIdentityForcesCanonicalRelease(t *testing.T) {
 	app.Status.ActiveRevision = "rev-1"
 	app.Status.ObservedGeneration = 1
 
-	decision := prepareAppReleaseDecision(app)
+	decision := prepareAppReleaseDecision(app, nil)
 	if !decision.artifactChanged || !decision.releaseChanged {
 		t.Fatalf("decision = %+v, want normal artifact and release reconciliation", decision)
 	}
@@ -141,7 +141,7 @@ func TestResolvedArtifactSurvivesPreDeployReconcile(t *testing.T) {
 	}
 	app.Generation = 2
 
-	decision := prepareAppReleaseDecision(app)
+	decision := prepareAppReleaseDecision(app, nil)
 	image, resolved := reusableArtifactImage(app, decision)
 	if !resolved || image != "registry.example/app:gen-2" {
 		t.Fatalf("reusable artifact = %q resolved=%v, want candidate gen-2", image, resolved)
@@ -168,7 +168,7 @@ func TestReleaseGenerationSurvivesOperationalMutationBeforeReconcile(t *testing.
 		},
 	}
 
-	decision := prepareAppReleaseDecision(app)
+	decision := prepareAppReleaseDecision(app, nil)
 	if !decision.releaseChanged || app.Status.ReleaseGeneration != 2 {
 		t.Fatalf("decision=%+v releaseGeneration=%d, want changed release 2", decision, app.Status.ReleaseGeneration)
 	}
@@ -180,7 +180,7 @@ func TestReleaseGenerationSurvivesOperationalMutationBeforeReconcile(t *testing.
 	app.Status.ReleaseGeneration = 2
 	app.Generation = 4
 	app.Spec.Image = "example:v3"
-	decision = prepareAppReleaseDecision(app)
+	decision = prepareAppReleaseDecision(app, nil)
 	if !decision.releaseChanged || app.Status.ReleaseGeneration != 4 {
 		t.Fatalf("stale annotation decision=%+v releaseGeneration=%d, want direct generation 4", decision, app.Status.ReleaseGeneration)
 	}
@@ -208,7 +208,7 @@ func TestPendingSourceWaitsForADeployGeneration(t *testing.T) {
 		},
 	}
 
-	decision := prepareAppReleaseDecision(app)
+	decision := prepareAppReleaseDecision(app, nil)
 	image, resolved := reusableArtifactImage(app, decision)
 	if !decision.sourcePending || decision.artifactChanged || decision.releaseChanged {
 		t.Fatalf("pending source decision = %+v, want no release", decision)
@@ -220,14 +220,14 @@ func TestPendingSourceWaitsForADeployGeneration(t *testing.T) {
 	// A later operational spec generation must not accidentally consume the
 	// pending source; only a deploy-generation annotation does.
 	app.Generation = 3
-	decision = prepareAppReleaseDecision(app)
+	decision = prepareAppReleaseDecision(app, nil)
 	if !decision.sourcePending {
 		t.Fatalf("operational generation consumed pending source: %+v", decision)
 	}
 
 	app.Generation = 4
 	app.Annotations[appv1alpha1.AnnotationReleaseGeneration] = "4"
-	decision = prepareAppReleaseDecision(app)
+	decision = prepareAppReleaseDecision(app, nil)
 	if decision.sourcePending || !decision.artifactChanged || !decision.releaseChanged {
 		t.Fatalf("deploy generation did not consume source: %+v", decision)
 	}
@@ -272,7 +272,7 @@ func TestCanceledReleaseKeepsLastSuccessfulGeneration(t *testing.T) {
 		},
 	}
 
-	decision := prepareAppReleaseDecision(app)
+	decision := prepareAppReleaseDecision(app, nil)
 	if !decision.canceled {
 		t.Fatalf("decision = %+v, want canceled", decision)
 	}
@@ -312,7 +312,7 @@ func TestSuspendedCanceledReleaseStaysCanceledThroughResume(t *testing.T) {
 			app.Spec.Suspended = false
 			app.Generation++
 		}
-		decision := prepareAppReleaseDecision(app)
+		decision := prepareAppReleaseDecision(app, nil)
 		if !decision.canceled || app.Status.ReleaseGeneration != 6 {
 			t.Fatalf("%s: decision = %+v releaseGeneration = %d, want canceled on the served generation 6", pass, decision, app.Status.ReleaseGeneration)
 		}
@@ -345,7 +345,7 @@ func TestReleaseAdoptedPastTheCancelIsNotCanceled(t *testing.T) {
 			ObservedGeneration:  8,
 		},
 	}
-	if decision := prepareAppReleaseDecision(app); decision.canceled || app.Status.ReleaseGeneration != 8 {
+	if decision := prepareAppReleaseDecision(app, nil); decision.canceled || app.Status.ReleaseGeneration != 8 {
 		t.Fatalf("decision = %+v releaseGeneration = %d, want release 8 kept", decision, app.Status.ReleaseGeneration)
 	}
 }
@@ -370,7 +370,7 @@ func TestNewReleaseSupersedesCanceledGeneration(t *testing.T) {
 		},
 	}
 
-	decision := prepareAppReleaseDecision(app)
+	decision := prepareAppReleaseDecision(app, nil)
 	if decision.canceled || !decision.releaseChanged || app.Status.ReleaseGeneration != 3 {
 		t.Fatalf("decision=%+v releaseGeneration=%d, want normal release 3", decision, app.Status.ReleaseGeneration)
 	}
@@ -569,7 +569,7 @@ func TestSettingsCommandEditsDemandAFreshArtifact(t *testing.T) {
 			app.Status.Phase = appv1alpha1.PhaseRunning
 			tc.edit(&app.Spec)
 
-			decision := prepareAppReleaseDecision(app)
+			decision := prepareAppReleaseDecision(app, nil)
 			if !decision.artifactChanged {
 				t.Fatalf("%s edit left the artifact unchanged — the deploy would roll the stale image", tc.name)
 			}

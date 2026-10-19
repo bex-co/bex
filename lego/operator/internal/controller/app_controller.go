@@ -596,7 +596,17 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	if err := r.adoptLegacyReleaseIdentity(ctx, &app); err != nil {
 		return ctrl.Result{}, err
 	}
-	releaseDecision := prepareAppReleaseDecision(&app)
+	view, err := r.heldReleaseView(ctx, &app)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	releaseDecision := prepareAppReleaseDecision(&app, view)
+	if view != nil && releaseDecision.pinned {
+		// The pinned release builds and runs as it was adopted; the saved spec
+		// waits behind it (w8/m121). In memory only: no App spec write follows
+		// the release decision.
+		ctx = withViewedRelease(ctx, &app, *view)
+	}
 	if releaseDecision.releaseChanged && pinnableSourceRelease(&app) {
 		if err := r.recordAdoptedRelease(ctx, &app); err != nil {
 			return r.fail(ctx, &app, "DeployFailed", err)
@@ -1186,7 +1196,7 @@ func (r *AppReconciler) storeBuiltArtifact(ctx context.Context, app *appv1alpha1
 	// App before an earlier pass stored this artifact must conflict here. Its
 	// cache may have caught up since, and a skipped write would let it meter
 	// the build again.
-	if err := r.Status().Update(ctx, app); err != nil {
+	if err := r.writeAppStatus(ctx, app); err != nil {
 		return "", ctrl.Result{}, true, err
 	}
 	// Earlier releases' kpack artifacts are spent once this one is stored. A
@@ -1619,7 +1629,7 @@ const (
 func (r *AppReconciler) projectNativeBuildEnv(ctx context.Context, app *appv1alpha1.App, buildNs string, literals []corev1.EnvVar, files map[string][]byte) (string, string, error) {
 	// envFromSources owns the source list, order, and optionality — iterating
 	// its output keeps build-time and runtime environments single-sourced.
-	sources := envFromSources(inFlightRelease(app))
+	sources := envFromSources(inFlightRelease(ctx, app))
 	// The preparer's own literal set, so the revision covers exactly what the
 	// native RUN exports.
 	literals = build.BuildLiterals(literals)
@@ -1730,7 +1740,7 @@ func nativeFilesSecretName(app string) string { return build.JobName(app, "nativ
 // nil) and any earlier projection this App owns is deleted, so removed file
 // bytes do not linger in the build namespace.
 func (r *AppReconciler) projectNativeBuildFiles(ctx context.Context, app *appv1alpha1.App, buildNs string) (string, map[string][]byte, error) {
-	names := secretFileSources(inFlightRelease(app))
+	names := secretFileSources(inFlightRelease(ctx, app))
 	sources := make([]buildSecretSource, 0, len(names))
 	for _, name := range names {
 		sources = append(sources, buildSecretSource{name: name, optional: true})
@@ -1776,7 +1786,7 @@ func (r *AppReconciler) projectNativeBuildFiles(ctx context.Context, app *appv1a
 // spec field. Every other service variable stays out of the kpack build rather
 // than landing in a CR in clear.
 func (r *AppReconciler) projectBuildpackBuildEnv(ctx context.Context, app *appv1alpha1.App, literals []corev1.EnvVar) ([]corev1.EnvVar, error) {
-	sources := envFromSources(inFlightRelease(app))
+	sources := envFromSources(inFlightRelease(ctx, app))
 	if len(sources) == 0 {
 		return literals, nil
 	}
@@ -3057,7 +3067,7 @@ func (r *AppReconciler) markRunning(ctx context.Context, app *appv1alpha1.App, d
 	// A settled Running app re-stamps identical status on every steady-state
 	// pass (childHealthRequeue): skip the no-op PUT and its log line.
 	if !statusUnchanged(ctx, r.Client, app) {
-		if err := r.Status().Update(ctx, app); err != nil {
+		if err := r.writeAppStatus(ctx, app); err != nil {
 			return err
 		}
 		logf.FromContext(ctx).Info(logMsg, logKVs...)
@@ -4031,7 +4041,7 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 	if statusUnchanged(ctx, r.Client, app) {
 		return ctrl.Result{}, nil
 	}
-	if err := r.Status().Update(ctx, app); err != nil {
+	if err := r.writeAppStatus(ctx, app); err != nil {
 		return ctrl.Result{}, err
 	}
 	logf.FromContext(ctx).Info("static site running", "name", app.Name, "revision", rev, "image", image)
@@ -5553,6 +5563,13 @@ func (r *AppReconciler) setPhase(ctx context.Context, app *appv1alpha1.App, p ap
 	r.updateStatusRetrying(ctx, app, "setPhase")
 }
 
+// writeAppStatus writes app's status unconditionally, keeping a viewed pass's
+// spec (keepReleaseView).
+func (r *AppReconciler) writeAppStatus(ctx context.Context, app *appv1alpha1.App) error {
+	defer keepReleaseView(ctx, app)
+	return r.Status().Update(ctx, app)
+}
+
 // updateStatusRetrying persists app.Status with conflict retries (w2/m82 t007).
 // The bex-api control-plane projector rewrites App CRs on resync, racing the
 // operator's cache read; a plain status Update loses the write to a 409 that
@@ -5584,6 +5601,7 @@ func (r *AppReconciler) updateStatusRetrying(ctx context.Context, app *appv1alph
 		app.Status.UndeployedChangesApplying = fresh.Status.UndeployedChangesApplying
 		fresh.Status = app.Status
 		*app = *fresh
+		keepReleaseView(ctx, app)
 	}
 	logf.FromContext(ctx).Error(nil, "app status write still conflicting after retries; durable markers may be stale",
 		"app", app.Name, "site", site)
@@ -5629,6 +5647,7 @@ func setNotReadyCondition(ctx context.Context, r client.Client, obj client.Objec
 			local.Status.UndeployedChanges = typed.Status.UndeployedChanges
 			local.Status.UndeployedChangesApplying = typed.Status.UndeployedChangesApplying
 			typed.Status = local.Status // …over the fresh resourceVersion
+			keepReleaseView(ctx, typed)
 		case *appv1alpha1.Database:
 			local := *typed
 			*typed = *fresh.(*appv1alpha1.Database)
@@ -5845,7 +5864,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	// security context, tier resources, and secret-file volume. Co-located with
 	// the App, the Job resolves every one of those references in-namespace — no
 	// secret mirroring, no build-namespace pull credential.
-	release := inFlightRelease(app)
+	release := inFlightRelease(ctx, app)
 	var vols []corev1.Volume
 	var mounts []corev1.VolumeMount
 	if vol, mount := secretFileMounts(release); vol != nil {
