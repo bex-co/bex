@@ -1,6 +1,6 @@
 # w4 · m232 — Keep a protected environment's members behind its admin gate on every move
 
-**Worker:** worker4 **Goal:** no placement write can take a service, datastore or env group out of a protected, isolated or allow-listed environment without that environment's fresh administrator check, and the dashboard says so before a move happens. **Status:** in progress (t001–t006 done 2026-10-19; t007 live closeout waits on the deploy)
+**Worker:** worker4 **Goal:** no placement write can take a service, datastore or env group out of a protected, isolated or allow-listed environment without that environment's fresh administrator check, and the dashboard says so before a move happens. **Status:** done (2026-10-19, loopx w4)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | [t004](done/t004.md) | Render parity — **DONE** | 15m | w4/m232/t003 |
 | [t005](done/t005.md) | Simplify — **DONE** | 10m | w4/m232/t004 |
 | [t006](done/t006.md) | Test coverage — **DONE** | 45m | w4/m232/t004 |
-| [t007](t007.md) | Closeout | 20m | w4/m232/t005, w4/m232/t006 |
+| [t007](done/t007.md) | Closeout — **DONE** | 20m | w4/m232/t005, w4/m232/t006 |
 
 Seven tasks, 220m (3h40m). One **major** finding: an administrator-only boundary can be left through verbs that check only their own target. This milestone schedules the work only.
 

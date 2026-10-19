@@ -112,7 +112,7 @@ export function ResourceChecklist({
                             {item.markers?.map((marker) => (
                               <span
                                 key={marker}
-                                className="ml-1.5 rounded bg-amber-500/15 px-1 py-0.5 text-amber-700 dark:text-amber-400"
+                                className="ml-1.5 inline-block rounded bg-amber-500/15 px-1 py-0.5 whitespace-nowrap text-amber-700 dark:text-amber-400"
                               >
                                 {marker}
                               </span>
