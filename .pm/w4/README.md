@@ -329,6 +329,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **347** — ["Save, rebuild, and deploy" of environment changes is recorded as a Manual Deploy, not a configuration change](347.md) ← live `/qa-find-bugs w4` pass d2b8f4, 2026-10-19 UTC. Both the service editor (`save_only` + client `trigger`, `service-environment-editor.tsx:152-171`) and env groups (`RebuildService` → `deploysSvc.Trigger`, `api/server.go:881-884`) open `api` deploys: "Manual Deploy", `envUpdated:false`, against w6/m51's `config_change` rule (`events/service.go:913-917`). Minor, 45m. Also records the w1/m178 build-input precedence passing live.
+
 - [x] **339** — [Workspace quota error says "limited to 1 Postgres databases"](done/339.md) — **DONE 2026-10-19, `5e75de920`.** The cap refusal reads the singular at limit 1 for all three caps. Live: a second free Postgres in `bex-canary` gets 400 `WORKSPACE_RESOURCE_LIMIT` "workspace is limited to 1 Postgres database; …".
 
 - [x] **338** — [Local Traefik ignores its Recreate strategy, so an edge roll stalls](done/338.md) — **DONE 2026-10-18.** Base sets the chart's real `updateStrategy: Recreate`; prod renders byte-identical (`RollingUpdate 0/1`); gitops-validate asserts both. The live local roll was not exercised because the mock cluster was down.
