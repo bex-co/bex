@@ -178,11 +178,19 @@ describe("ServiceScalingPage (w7/m43)", () => {
     autoscalingState.targetCPUPercent = 60;
     renderScaling();
 
-    expect(await screen.findByRole("switch", { name: "Autoscaling off" })).toBeDisabled();
+    // w4/365: the stored config reads as saved-but-inactive (not a plain
+    // "Autoscaling off" hiding it), and its turn-off is reachable…
+    const toggle = await screen.findByRole("switch", { name: "Autoscaling on" });
+    expect(toggle).not.toBeDisabled();
+    expect(screen.getByText(/saved but inactive on the Free plan/)).toBeInTheDocument();
+    // …while the fixed count that actually runs stays visible beside it.
     expect(screen.getByRole("spinbutton", { name: "Instances" })).toHaveValue(1);
     expect(screen.queryByRole("spinbutton", { name: "Maximum instances" })).not.toBeInTheDocument();
     expect(autoscalingState.save).not.toHaveBeenCalled();
-    expect(autoscalingState.disable).not.toHaveBeenCalled();
+
+    fireEvent.click(toggle);
+    fireEvent.click(await screen.findByRole("button", { name: "Disable" }));
+    expect(autoscalingState.disable).toHaveBeenCalledOnce();
   });
 
   it.each(["web_service", "private_service", "background_worker"] as const)(
