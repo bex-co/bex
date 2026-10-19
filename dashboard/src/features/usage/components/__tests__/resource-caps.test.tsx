@@ -39,6 +39,33 @@ describe("ResourceCaps", () => {
     expect(screen.queryByText(/finishing deletion/)).not.toBeInTheDocument();
   });
 
+  // w4/344: at 1 / 1 the create dialog refuses ("Postgres limit reached")
+  // while the tile said "Near limit".
+  it.each([
+    [0, 1, null],
+    [4, 5, "Near limit"],
+    [1, 1, "Limit reached"],
+    [2, 1, "Limit reached"],
+  ])("%i / %i reads %s", (used, limit, badge) => {
+    render(
+      <ResourceCaps
+        limits={{
+          services: { used: 0, terminating: 0, limit: 0 },
+          postgres: { used, terminating: 0, limit },
+          keyValues: { used: 0, terminating: 0, limit: 0 },
+        }}
+      />,
+    );
+
+    // The visible count is never clamped to the cap.
+    expect(screen.getByText(String(used))).toBeInTheDocument();
+    expect(screen.getByText(`/ ${limit}`)).toBeInTheDocument();
+    for (const label of ["Near limit", "Limit reached"]) {
+      if (label === badge) expect(screen.getByText(label)).toBeInTheDocument();
+      else expect(screen.queryByText(label)).not.toBeInTheDocument();
+    }
+  });
+
   it("names the resources finishing deletion so used reconciles with the list", () => {
     // The m129 case: used=11 counts every service that still holds quota, but
     // the resource list shows only the 6 that are not mid-deletion. Surfacing

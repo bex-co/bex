@@ -28,7 +28,13 @@ const zhUsage: Record<string, TranslationEntry> = {
   },
   "usage.resourceCapsNearLimit": {
     message: "接近上限",
-    description: "Warning shown once a resource count reaches 80 percent",
+    description:
+      "Warning shown once a resource count reaches 80 percent of its cap, below the cap itself",
+  },
+  "usage.resourceCapsLimitReached": {
+    message: "已达上限",
+    description:
+      "Shown when a resource count is at or over its cap, so creating another is refused",
   },
   "usage.resourceCapsFinishingDeletion": {
     message: "{count} 个正在删除",

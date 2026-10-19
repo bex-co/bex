@@ -28,7 +28,13 @@ const enUsage: Record<string, TranslationEntry> = {
   },
   "usage.resourceCapsNearLimit": {
     message: "Near limit",
-    description: "Warning shown once a resource count reaches 80 percent",
+    description:
+      "Warning shown once a resource count reaches 80 percent of its cap, below the cap itself",
+  },
+  "usage.resourceCapsLimitReached": {
+    message: "Limit reached",
+    description:
+      "Shown when a resource count is at or over its cap, so creating another is refused",
   },
   "usage.resourceCapsFinishingDeletion": {
     message: "{count} finishing deletion",
