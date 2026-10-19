@@ -386,6 +386,17 @@ func releaseInFlight(app *appv1alpha1.App) bool {
 	return false
 }
 
+// releaseSourceFixed reports that the release in flight no longer reads the
+// saved source: its build has started (the Job checked out its own source) or
+// its artifact is built and it is rolling out.
+func releaseSourceFixed(app *appv1alpha1.App) bool {
+	if app.Status.Phase == appv1alpha1.PhaseDeploying {
+		return true
+	}
+	run := app.Status.BuildRun
+	return run != nil && run.Generation == app.Status.ReleaseGeneration && run.StartedAt != ""
+}
+
 // pinnableSourceRelease reports whether the App's release is a source build a
 // pin can carry through: what it builds and runs comes from the saved spec and
 // the pinned fingerprints alone.
@@ -431,6 +442,14 @@ func prepareAppReleaseDecision(app *appv1alpha1.App) appReleaseDecision {
 		return decision
 	}
 	if sourceUpdatePending(app) {
+		// A release in flight whose source is already fixed — its build has
+		// started, or its artifact is built — keeps resolving and rolling its own
+		// artifact; the saved source waits for a deploy behind it (w8/124). A
+		// build not yet dispatched would read the saved source instead, so it
+		// keeps the prior behavior (w8/126).
+		if releaseInFlight(app) && releaseSourceFixed(app) {
+			return pinnedReleaseDecision(app)
+		}
 		pinned := appReleaseIdentity{
 			artifact: app.Status.ArtifactFingerprint,
 			release:  app.Status.ReleaseFingerprint,
