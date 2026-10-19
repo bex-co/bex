@@ -2060,13 +2060,19 @@ export function ServiceScalingSkeleton() {
 /** `serviceType` shapes the Free/Paid groups; null/omitted = still undecided. */
 export function ServicePlanSkeleton({
   serviceType = null,
+  currentPlan,
 }: {
   serviceType?: string | null;
+  /** Undefined while unknown. */
+  currentPlan?: string | null;
 }) {
   return (
     <PendingFrame route="service-plan">
       <Region name="plan-picker">
-        <InstanceTypePickerCardSkeleton serviceType={serviceType} />
+        <InstanceTypePickerCardSkeleton
+          serviceType={serviceType}
+          currentPlan={currentPlan}
+        />
       </Region>
     </PendingFrame>
   );

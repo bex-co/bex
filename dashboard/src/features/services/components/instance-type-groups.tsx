@@ -1,7 +1,12 @@
 import type { ReactNode } from "react";
+import { Alert, AlertDescription } from "@/common/components/ui/alert";
 import { Card, CardContent, CardHeader } from "@/common/components/ui/card";
 import { Skeleton } from "@/common/components/ui/skeleton";
-import { offersFreeTier } from "@/features/services/lib/instance-type";
+import { useTranslations } from "@/common/hooks/use-translations";
+import {
+  legacyFreeNotice,
+  offersFreeTier,
+} from "@/features/services/lib/instance-type";
 import { cn } from "@/common/lib/utils/utils.ts";
 
 // The picker's group/card layout, shared by its ready state and its loading
@@ -105,11 +110,38 @@ export function InstanceTypeGroupsSkeleton({
   );
 }
 
-/** The whole picker card — title, groups and Cancel/Save slot. */
-export function InstanceTypePickerCardSkeleton({
+/**
+ * The notice above the cards for a paid-only service still on Free, or
+ * untiered (legacyFreeNotice). Its copy needs no data, so the loading skeleton
+ * renders it too and keeps the cards where the ready page puts them.
+ */
+export function LegacyFreeNotice({
   serviceType,
+  currentPlan,
+  id,
 }: {
   serviceType: string | null;
+  currentPlan: string | null | undefined;
+  id?: string;
+}) {
+  const { t } = useTranslations();
+  const notice = legacyFreeNotice(serviceType, currentPlan);
+  if (!notice) return null;
+  return (
+    <Alert id={id} role="note">
+      <AlertDescription>{t(notice)}</AlertDescription>
+    </Alert>
+  );
+}
+
+/** The whole picker card — title, notice, groups and Cancel/Save slot. */
+export function InstanceTypePickerCardSkeleton({
+  serviceType,
+  currentPlan,
+}: {
+  serviceType: string | null;
+  /** Undefined while unknown: no notice is drawn. */
+  currentPlan?: string | null;
 }) {
   return (
     <Card>
@@ -117,6 +149,7 @@ export function InstanceTypePickerCardSkeleton({
         <Skeleton className="h-4 w-48" />
       </CardHeader>
       <CardContent className="space-y-6">
+        <LegacyFreeNotice serviceType={serviceType} currentPlan={currentPlan} />
         <InstanceTypeGroupsSkeleton serviceType={serviceType} />
         <div className="flex justify-end gap-2 border-t pt-4">
           <Skeleton className="h-9 w-20" />

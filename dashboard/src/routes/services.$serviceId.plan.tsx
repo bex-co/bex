@@ -12,9 +12,11 @@ export const Route = createFileRoute("/services/$serviceId/plan")({
 
 function ServicePlanPending() {
   const parent = getRouteApi("/services/$serviceId").useLoaderData();
+  const ready = parent?.state === "ready" ? parent.resource : null;
   return (
     <ServicePlanSkeleton
-      serviceType={parent?.state === "ready" ? parent.resource.type : null}
+      serviceType={ready ? ready.type : null}
+      currentPlan={ready ? (ready.plan ?? null) : undefined}
     />
   );
 }
