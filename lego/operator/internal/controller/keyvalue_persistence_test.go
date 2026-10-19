@@ -41,7 +41,7 @@ func TestPersistenceLegacyAuthoritySurvivesSuspendedEdits(t *testing.T) {
 			sts.Spec.Template.Spec.Containers = []corev1.Container{{Name: "valkey", Args: valkeyArgs(kv.Spec, plan)}}
 			for _, target := range []string{"off", "snapshot", "journal-snapshot", "snapshot"} {
 				kv.Spec.PersistenceMode = target
-				intent := keyValueIntentFor(kv, plan, storage, "")
+				intent := keyValueIntentFor(kv, plan, storage, "", false)
 				applyKeyValueStatefulSet(sts, kv, intent)
 				if got := sts.Spec.Template.Annotations[keyValuePersistenceSourceAnnotation]; got != keyValuePersistenceMode(source) {
 					t.Fatalf("after %s: source=%s want %s", target, got, keyValuePersistenceMode(source))
@@ -63,7 +63,7 @@ func TestPersistenceTemplateRetainsConsumedToken(t *testing.T) {
 	kv := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "fixture", Namespace: "default"}, Spec: appv1alpha1.KeyValueSpec{PersistenceMode: "journal-snapshot"}}
 	plan, storage := resolveKVPlan(kv.Spec)
 	sts := &appsv1.StatefulSet{}
-	intent := keyValueIntentFor(kv, plan, storage, "")
+	intent := keyValueIntentFor(kv, plan, storage, "", false)
 	intent.persistenceToken = "process-generation"
 	applyKeyValueStatefulSet(sts, kv, intent)
 	intent.persistenceToken = ""

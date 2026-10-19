@@ -619,6 +619,28 @@ const enKeyValue: Record<string, TranslationEntry> = {
       "Saving CIDR rules enables external access for matching source IPs. Saving an empty list blocks external connections. Internal access is unchanged.",
     description: "Networking IP allowlist helper text",
   },
+  "keyvalue.networkingHintRestart": {
+    message:
+      "Saving CIDR rules enables external access for matching source IPs. This store has never had external access, so the first save restarts it and connections drop for up to a minute. Saving an empty list blocks external connections.",
+    description:
+      "Networking IP allowlist helper text when enabling external access restarts the store (its first enable)",
+  },
+  "keyvalue.networkingRestartConfirmTitle": {
+    message: "Delete all data and enable external access?",
+    description:
+      "Confirmation title when a first external-access enable restarts a persistence-Off store",
+  },
+  "keyvalue.networkingRestartConfirmDescription": {
+    message:
+      "Enabling external access restarts {name} for the first time. Its persistence mode is Off, so the restart deletes all data. This cannot be undone.",
+    description:
+      "Confirmation description when a first external-access enable restarts a persistence-Off store",
+  },
+  "keyvalue.networkingRestartConfirmAction": {
+    message: "Delete data and save rules",
+    description:
+      "Confirmation action when a first external-access enable restarts a persistence-Off store",
+  },
   "keyvalue.networkingInternalOnly": {
     message:
       "External connections are disabled. Save one or more IP rules to enable access.",

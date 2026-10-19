@@ -31,27 +31,30 @@ import (
 var keyValueGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "KeyValue",
 	Fields: graphql.Fields{
-		"id":                 gqlutil.StrField(func(v KeyValueView) any { return v.ID }),
-		"name":               gqlutil.StrField(func(v KeyValueView) any { return v.Name }),
-		"plan":               gqlutil.StrField(func(v KeyValueView) any { return v.Plan }),
-		"version":            gqlutil.StrField(func(v KeyValueView) any { return v.Version }),
-		"status":             gqlutil.StrField(func(v KeyValueView) any { return v.Status }),
-		"suspended":          gqlutil.StrField(func(v KeyValueView) any { return v.Suspended }),
-		"statusReason":       gqlutil.OptionalStrField(func(v KeyValueView) any { return v.StatusReason }),
-		"statusReasonCode":   gqlutil.OptionalStrField(func(v KeyValueView) any { return v.StatusReasonCode }),
-		"createdAt":          gqlutil.StrField(func(v KeyValueView) any { return v.CreatedAt }),
-		"updatedAt":          gqlutil.StrField(func(v KeyValueView) any { return v.UpdatedAt }),
-		"region":             gqlutil.StrField(func(v KeyValueView) any { return v.Region }),
-		"dashboardUrl":       gqlutil.StrField(func(v KeyValueView) any { return v.DashboardURL }),
-		"externalHost":       gqlutil.StrField(func(v KeyValueView) any { return v.ExternalHost }),
-		"public":             gqlutil.BoolField(func(v KeyValueView) any { return v.Public }),
-		"ipAllowList":        gqlutil.StrsField(func(v KeyValueView) any { return core.AllowListCIDRs(v.IPAllowList) }),
-		"ipAllowListEntries": gqlutil.Typed(graphql.NewList(gqlutil.IPAllowEntryType), func(v KeyValueView) any { return v.IPAllowList }),
-		"maxmemoryPolicy":    gqlutil.StrField(func(v KeyValueView) any { return v.MaxmemoryPolicy }),
-		"persistenceMode":    gqlutil.StrField(func(v KeyValueView) any { return v.PersistenceMode }),
-		"ownerId":            gqlutil.StrField(func(v KeyValueView) any { return v.OwnerID }),
-		"projectId":          gqlutil.OptionalStrField(func(v KeyValueView) any { return v.ProjectID }),
-		"environmentId":      gqlutil.OptionalStrField(func(v KeyValueView) any { return v.EnvironmentID }),
+		"id":               gqlutil.StrField(func(v KeyValueView) any { return v.ID }),
+		"name":             gqlutil.StrField(func(v KeyValueView) any { return v.Name }),
+		"plan":             gqlutil.StrField(func(v KeyValueView) any { return v.Plan }),
+		"version":          gqlutil.StrField(func(v KeyValueView) any { return v.Version }),
+		"status":           gqlutil.StrField(func(v KeyValueView) any { return v.Status }),
+		"suspended":        gqlutil.StrField(func(v KeyValueView) any { return v.Suspended }),
+		"statusReason":     gqlutil.OptionalStrField(func(v KeyValueView) any { return v.StatusReason }),
+		"statusReasonCode": gqlutil.OptionalStrField(func(v KeyValueView) any { return v.StatusReasonCode }),
+		"createdAt":        gqlutil.StrField(func(v KeyValueView) any { return v.CreatedAt }),
+		"updatedAt":        gqlutil.StrField(func(v KeyValueView) any { return v.UpdatedAt }),
+		"region":           gqlutil.StrField(func(v KeyValueView) any { return v.Region }),
+		"dashboardUrl":     gqlutil.StrField(func(v KeyValueView) any { return v.DashboardURL }),
+		"externalHost":     gqlutil.StrField(func(v KeyValueView) any { return v.ExternalHost }),
+		"public":           gqlutil.BoolField(func(v KeyValueView) any { return v.Public }),
+		// externalAccessRestarts: turning external access on would restart the
+		// store (its first enable, w4/m233). bex extension.
+		"externalAccessRestarts": gqlutil.BoolField(func(v KeyValueView) any { return v.ExternalAccessRestarts }),
+		"ipAllowList":            gqlutil.StrsField(func(v KeyValueView) any { return core.AllowListCIDRs(v.IPAllowList) }),
+		"ipAllowListEntries":     gqlutil.Typed(graphql.NewList(gqlutil.IPAllowEntryType), func(v KeyValueView) any { return v.IPAllowList }),
+		"maxmemoryPolicy":        gqlutil.StrField(func(v KeyValueView) any { return v.MaxmemoryPolicy }),
+		"persistenceMode":        gqlutil.StrField(func(v KeyValueView) any { return v.PersistenceMode }),
+		"ownerId":                gqlutil.StrField(func(v KeyValueView) any { return v.OwnerID }),
+		"projectId":              gqlutil.OptionalStrField(func(v KeyValueView) any { return v.ProjectID }),
+		"environmentId":          gqlutil.OptionalStrField(func(v KeyValueView) any { return v.EnvironmentID }),
 		// blueprintId: the Blueprint managing this instance, null when nothing
 		// does (w4/m125, bex extension).
 		"blueprintId": gqlutil.OptionalStrField(func(v KeyValueView) any { return v.BlueprintID }),
@@ -251,19 +254,20 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 		},
 		"resumeKeyValue": gqlutil.IDVerb(keyValueGQLType, s.Resume),
-		// setKeyValuePublic is the explicit external-endpoint control (w4/m116).
-		// Adding a nonempty allowlist below already publishes a private store —
-		// Render's enabling event — but clearing it deliberately does not
-		// withdraw the endpoint, so taking it down is always a named act.
+		// setKeyValuePublic is the explicit external-endpoint control (w4/m116),
+		// overriding the publication a nonempty or empty allowlist infers.
+		// confirm carries the restart phrase a first enable needs on a
+		// Persistence Off store (w4/m233).
 		"setKeyValuePublic": &graphql.Field{
 			Type: keyValueGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":     gqlutil.ReqArg(graphql.String),
-				"public": gqlutil.ReqArg(graphql.Boolean),
+				"id":      gqlutil.ReqArg(graphql.String),
+				"public":  gqlutil.ReqArg(graphql.Boolean),
+				"confirm": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				public := p.Args["public"].(bool)
-				return s.UpdateKeyValue(p.Context, p.Args["id"].(string), KeyValuePatch{Public: &public})
+				return s.UpdateKeyValue(core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm")), p.Args["id"].(string), KeyValuePatch{Public: &public})
 			},
 		},
 		"setKeyValueIpAllowList": &graphql.Field{
@@ -274,10 +278,11 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				// entries is the description-carrying form; precedence over cidrs
 				// lives in core.AllowListOrCIDRs.
 				"entries": gqlutil.Arg(graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))),
+				"confirm": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				entries := core.AllowListOrCIDRs(gqlutil.AllowList(p.Args["entries"]), gqlutil.StringList(p.Args["cidrs"]))
-				return s.SetIPAllowList(p.Context, p.Args["id"].(string), entries)
+				return s.SetIPAllowList(core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm")), p.Args["id"].(string), entries)
 			},
 		},
 	}

@@ -305,6 +305,13 @@ spec:
                   StorageReady condition explains the in-progress filesystem resize.
                 format: int32
                 type: integer
+              tlsListener:
+                description: |-
+                  TLSListener is true once the Valkey pod runs the TLS listener external
+                  access is served on. It stays on after external access is turned off,
+                  so turning access on again does not restart the store; only the first
+                  enable does (w4/m233).
+                type: boolean
             type: object
         required:
         - spec

@@ -321,7 +321,9 @@ func (s *Service) handleSetIPAllowList(w http.ResponseWriter, r *http.Request) {
 		writeBadRequestBody(w, err)
 		return
 	}
-	kv, err := s.SetIPAllowList(r.Context(), r.PathValue("id"), core.AllowListFromCIDRs(req.CIDRs))
+	// The restart phrase a first enable needs on a Persistence Off store.
+	ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))
+	kv, err := s.SetIPAllowList(ctx, r.PathValue("id"), core.AllowListFromCIDRs(req.CIDRs))
 	s.respondKeyValue(w, r, http.StatusOK, kv, err)
 }
 
@@ -384,7 +386,8 @@ func (s *Service) handleUpdateKeyValue(w http.ResponseWriter, r *http.Request) {
 		apply = s.UpdateKeyValueDryRun
 	}
 	// The protected-environment phrase for a rename or an eviction or
-	// durability change (w4/m127), as the Postgres route reads it.
+	// durability change (w4/m127), as the Postgres route reads it, and the
+	// restart phrase a first enable needs on a Persistence Off store (w4/m233).
 	ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))
 	kv, err := apply(ctx, id, patch)
 	s.respondKeyValue(w, r, http.StatusOK, kv, err)

@@ -608,6 +608,28 @@ const zhKeyValue: Record<string, TranslationEntry> = {
       "保存 CIDR 规则后，匹配的来源 IP 可从外部连接。保存空列表将禁止外部连接。内部访问不受影响。",
     description: "Networking IP allowlist helper text",
   },
+  "keyvalue.networkingHintRestart": {
+    message:
+      "保存 CIDR 规则后，匹配的来源 IP 可从外部连接。此存储从未开启过外部访问，首次保存会重启它，连接最多中断一分钟。保存空列表将禁止外部连接。",
+    description:
+      "Networking IP allowlist helper text when enabling external access restarts the store (its first enable)",
+  },
+  "keyvalue.networkingRestartConfirmTitle": {
+    message: "删除所有数据并开启外部访问？",
+    description:
+      "Confirmation title when a first external-access enable restarts a persistence-Off store",
+  },
+  "keyvalue.networkingRestartConfirmDescription": {
+    message:
+      "开启外部访问会首次重启 {name}。它的持久化模式为关闭，重启将删除所有数据。此操作无法撤销。",
+    description:
+      "Confirmation description when a first external-access enable restarts a persistence-Off store",
+  },
+  "keyvalue.networkingRestartConfirmAction": {
+    message: "删除数据并保存规则",
+    description:
+      "Confirmation action when a first external-access enable restarts a persistence-Off store",
+  },
   "keyvalue.networkingInternalOnly": {
     message: "外部连接已禁用。保存一条或多条 IP 规则可启用外部访问。",
     description: "External access is disabled; saving rules enables it",
