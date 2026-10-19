@@ -85,7 +85,7 @@ func (*datastorePlacementStore) SetEnvironmentACL(context.Context, string, strin
 	return errors.New("unexpected SetEnvironmentACL")
 }
 
-func (*datastorePlacementStore) SetEnvironmentServices(context.Context, string, string, string, []string) ([]core.ServicePlacementChange, error) {
+func (*datastorePlacementStore) SetEnvironmentServices(context.Context, string, string, string, []string, core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
 	return nil, errors.New("unexpected SetEnvironmentServices")
 }
 

@@ -17,7 +17,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 - [ ] **m233** — [Stop Key Value allowlist saves from silently restarting (and wiping) the store](m233/README.md) (7 tasks, 3h40m) ← live `/qa-find-bugs w4` pass 8be45a, 2026-10-19 UTC. An allowlist save that turns external access on or off rolls the Valkey pod (the operator adds/removes the TLS listener and cert), so on a Persistence Off store two ordinary saves left `DBSIZE` 0, while the Networking card says "Internal access is unchanged."
 
-- [ ] **m232** — [Keep a protected environment's members behind its admin gate on every move](m232/README.md) (7 tasks, 3h40m) ← live `/qa-find-bugs w4` pass 9d7581, 2026-10-19 UTC. Env `SetServices`/`setResourceMembers`, project `SetServices` and `MoveEnvGroup` check only their own target, so a member leaves a protected or isolated environment without its fresh `can_manage`. Live: a staging Manage resources save and `setProjectServices([])` each lifted the protected guard (unconfirmed suspend 400 → 202).
+- [ ] **m232** — [Keep a protected environment's members behind its admin gate on every move](m232/README.md) (7 tasks, 3h40m) — **t001–t006 done 2026-10-19 (loopx w4); t007 live closeout pending the deploy.** ← live `/qa-find-bugs w4` pass 9d7581, 2026-10-19 UTC. Env `SetServices`/`setResourceMembers`, project `SetServices` and `MoveEnvGroup` check only their own target, so a member leaves a protected or isolated environment without its fresh `can_manage`. Live: a staging Manage resources save and `setProjectServices([])` each lifted the protected guard (unconfirmed suspend 400 → 202).
 
 - [x] **m231** — [Make push event choices honest about the urgency filter](done/m231/README.md) (7 tasks) — **DONE 2026-10-19, `94a162d20`.** Push events publish their urgency (REST/GraphQL, one table with the projection); the panel labels each event and flags selections the effective minimum drops, globally and per override. Live at 1440/390, settings restored byte-identical. Adjacent inert `agent_needs_decision` filed as w4/349.
 
@@ -332,6 +332,10 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 - [x] **m107** — [Log history past the newest 100 lines is unreachable on GraphQL and MCP](done/m107/README.md) (8 tasks) ← from live `/qa-find-bugs` 2026-09-14 pass 37; done 2026-09-16 (REST next-page cursors followable; GraphQL/MCP return the Render envelope; dashboard pages on scroll-up + truncation notice; `get_postgres_logs`/`get_key_value_logs` stay bare by design — use `list_logs`)
 
 ## Inbox
+
+- [ ] **356** — [Postgres Recover copies a protected environment's data out of its environment and allow-lists](356.md) ← `w4/m232` security review, 2026-10-19. `Recover` needs only `can_create` and builds the new instance with tenant labels alone, so a point-in-time copy of an ACL-bearing environment's database lands outside its environment, inbound-IP layer and allow-list. Check Render, then gate or inherit.
+
+- [ ] **355** — [`aclBearing` treats the default allow-all as admin-managed and deny-all as not](355.md) ← `w4/m232` audit, 2026-10-19. Every environment is seeded with the allow-all pair, so every move out of (or edit of) one needs an admin, while an emptied deny-all list counts as unmanaged. Needs a decision on the definition, together with Render's admin-only moves _into_ a protected environment.
 
 - [x] **354** — [Coverage record: environment-group values reach the process and leave it on unlink or delete](done/354.md) ← live `/qa-find-bugs w4` pass 17af14, 2026-10-19 UTC; a record, not work to do. Create+link, Save only (no deploy, pending notice on Deploys and Environment), Save and deploy (`envUpdated` deploy), unlink and delete-while-linked each matched what the running process served.
 

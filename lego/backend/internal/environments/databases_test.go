@@ -22,6 +22,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
@@ -71,11 +72,17 @@ func (f *fakeDatabaseIndex) ListPostgres(_ context.Context, ownerID string) ([]p
 	return out, nil
 }
 
-func (f *fakeDatabaseIndex) SetEnvironmentID(_ context.Context, name, environmentID string) error {
+func (f *fakeDatabaseIndex) SetEnvironmentID(_ context.Context, name, expectedEnvironmentID, environmentID string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.setEnvCalls++
 	d := f.dbs[name]
+	// Mirrors the real compare: the observed source, or none (w4/m232).
+	if cur := id.EnvironmentStorageID(d.EnvironmentID); cur != "" {
+		if err := core.PlacementChanged(cur, expectedEnvironmentID); err != nil {
+			return err
+		}
+	}
 	d.EnvironmentID = environmentID
 	f.dbs[name] = d
 	return nil
@@ -95,10 +102,16 @@ func (f *fakeDatabaseIndex) ClearEnvironmentID(_ context.Context, name, expected
 	return nil
 }
 
-func (f *fakeDatabaseIndex) SetProjectID(_ context.Context, name, projectID string) error {
+func (f *fakeDatabaseIndex) SetProjectID(_ context.Context, name, expectedEnvironmentID, projectID string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	d := f.dbs[name]
+	if err := core.PlacementChanged(id.EnvironmentStorageID(d.EnvironmentID), expectedEnvironmentID); err != nil {
+		return err
+	}
+	if d.ProjectID != projectID {
+		d.EnvironmentID = "" // a project change drops the environment
+	}
 	d.ProjectID = projectID
 	f.dbs[name] = d
 	return nil
@@ -153,11 +166,17 @@ func (f *fakeKeyValueIndex) ListKeyValues(_ context.Context, ownerID string) ([]
 	return out, nil
 }
 
-func (f *fakeKeyValueIndex) SetEnvironmentID(_ context.Context, name, environmentID string) error {
+func (f *fakeKeyValueIndex) SetEnvironmentID(_ context.Context, name, expectedEnvironmentID, environmentID string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.setEnvCalls++
 	kv := f.kvs[name]
+	// Mirrors the real compare: the observed source, or none (w4/m232).
+	if cur := id.EnvironmentStorageID(kv.EnvironmentID); cur != "" {
+		if err := core.PlacementChanged(cur, expectedEnvironmentID); err != nil {
+			return err
+		}
+	}
 	kv.EnvironmentID = environmentID
 	f.kvs[name] = kv
 	return nil
@@ -177,10 +196,16 @@ func (f *fakeKeyValueIndex) ClearEnvironmentID(_ context.Context, name, expected
 	return nil
 }
 
-func (f *fakeKeyValueIndex) SetProjectID(_ context.Context, name, projectID string) error {
+func (f *fakeKeyValueIndex) SetProjectID(_ context.Context, name, expectedEnvironmentID, projectID string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	kv := f.kvs[name]
+	if err := core.PlacementChanged(id.EnvironmentStorageID(kv.EnvironmentID), expectedEnvironmentID); err != nil {
+		return err
+	}
+	if kv.ProjectID != projectID {
+		kv.EnvironmentID = "" // a project change drops the environment
+	}
 	kv.ProjectID = projectID
 	f.kvs[name] = kv
 	return nil

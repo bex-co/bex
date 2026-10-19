@@ -52,7 +52,7 @@ type ProjectStore interface {
 	// environment-layer clear list: a change with EnvironmentFrom set and
 	// EnvironmentTo nil is exactly a row whose environment_id the replacement
 	// NULLed.
-	SetProjectServices(ctx context.Context, projectID, tenantID string, serviceNames []string) ([]core.ServicePlacementChange, error)
+	SetProjectServices(ctx context.Context, projectID, tenantID string, serviceNames []string, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error)
 	// ListServicesForProjects returns the service ids of every project asked
 	// about, keyed by project id, in one query for the whole page (w5/155).
 	ListServicesForProjects(ctx context.Context, projectIDs []string) (map[string][]string, error)
@@ -65,7 +65,7 @@ type ProjectStore interface {
 // *postgres.Service satisfies this structurally.
 type DatabaseIndex interface {
 	ListPostgres(ctx context.Context, ownerID string) ([]postgres.PostgresView, error)
-	SetProjectID(ctx context.Context, name, projectID string) error
+	SetProjectID(ctx context.Context, name, expectedEnvironmentID, projectID string) error
 	ClearProjectID(ctx context.Context, name, expectedProjectID string) error
 }
 
@@ -73,7 +73,7 @@ type DatabaseIndex interface {
 // satisfies this structurally.
 type KeyValueIndex interface {
 	ListKeyValues(ctx context.Context, ownerID string) ([]keyvalue.KeyValueView, error)
-	SetProjectID(ctx context.Context, name, projectID string) error
+	SetProjectID(ctx context.Context, name, expectedEnvironmentID, projectID string) error
 	ClearProjectID(ctx context.Context, name, expectedProjectID string) error
 }
 
@@ -112,6 +112,11 @@ type Service struct {
 	Databases    DatabaseIndex
 	KeyValues    KeyValueIndex
 	Environments EnvironmentIndex
+	// ExitGuards authorizes taking resources out of the environments a write
+	// leaves: each ACL-bearing one needs a fresh can_manage (w4/m232). The
+	// composition root wires environments.ExitGuards; nil (environments
+	// unwired) has no environment to protect.
+	ExitGuards core.ExitGuardLoader
 	// Owners resolves workspace identity for the REST owner object — the same
 	// resourcemeta.OwnerResolver apps/postgres/keyvalue already use (w4/m109).
 	// Nil => owner is omitted (never an id-as-name placeholder).
@@ -188,8 +193,9 @@ type ProjectView struct {
 // Reducing PostgresView/KeyValueView to this pair is what lets one grouping and
 // one membership-diff serve both kinds.
 type projectResource struct {
-	id        string
-	projectID string
+	id            string
+	projectID     string
+	environmentID string
 }
 
 // resourceIndex is the shared shape of DatabaseIndex and KeyValueIndex — a CR
@@ -199,7 +205,7 @@ type projectResource struct {
 // SetProjectID; only the listing needs flattening.
 type resourceIndex interface {
 	list(ctx context.Context, workspaceID string) ([]projectResource, error)
-	SetProjectID(ctx context.Context, name, projectID string) error
+	SetProjectID(ctx context.Context, name, expectedEnvironmentID, projectID string) error
 	ClearProjectID(ctx context.Context, name, expectedProjectID string) error
 }
 
@@ -212,7 +218,7 @@ func (d databaseResources) list(ctx context.Context, workspaceID string) ([]proj
 	}
 	out := make([]projectResource, len(dbs))
 	for i, db := range dbs {
-		out[i] = projectResource{id: db.ID, projectID: db.ProjectID}
+		out[i] = projectResource{id: db.ID, projectID: db.ProjectID, environmentID: ids.EnvironmentStorageID(db.EnvironmentID)}
 	}
 	return out, nil
 }
@@ -226,7 +232,7 @@ func (k keyValueResources) list(ctx context.Context, workspaceID string) ([]proj
 	}
 	out := make([]projectResource, len(kvs))
 	for i, kv := range kvs {
-		out[i] = projectResource{id: kv.ID, projectID: kv.ProjectID}
+		out[i] = projectResource{id: kv.ID, projectID: kv.ProjectID, environmentID: ids.EnvironmentStorageID(kv.EnvironmentID)}
 	}
 	return out, nil
 }
@@ -572,7 +578,14 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceIDs []strin
 	if err != nil {
 		return ProjectView{}, err
 	}
-	moves, err := s.Store.SetProjectServices(ctx, id, p.TenantID, serviceIDs)
+	// Omitted members and members arriving from another project both lose
+	// their environment; each ACL-bearing one needs its own fresh can_manage,
+	// checked on the diff the store holds locked (w4/m232).
+	exit, err := s.ExitGuards.Load(ctx, p.TenantID)
+	if err != nil {
+		return ProjectView{}, err
+	}
+	moves, err := s.Store.SetProjectServices(ctx, id, p.TenantID, serviceIDs, exit)
 	if err != nil {
 		return ProjectView{}, err
 	}
@@ -645,14 +658,31 @@ func (s *Service) setResourceMembers(ctx context.Context, idx resourceIndex, id 
 		}
 		want[wid] = true
 	}
+	// Any project change drops the resource's environment. Authorize every
+	// environment that leaves before the first write, so a refusal changes
+	// nothing; each write then refuses a resource that moved since it was
+	// listed (w4/m232).
+	var sources []string
+	for _, r := range existing {
+		if (r.projectID == p.ID) != want[r.id] && r.environmentID != "" {
+			sources = append(sources, r.environmentID)
+		}
+	}
+	exit, err := s.ExitGuards.Load(ctx, p.TenantID)
+	if err != nil {
+		return ProjectView{}, err
+	}
+	if err := exit(sources...); err != nil {
+		return ProjectView{}, err
+	}
 	for _, r := range existing {
 		switch {
 		case r.projectID == p.ID && !want[r.id]:
-			if err := idx.SetProjectID(ctx, r.id, ""); err != nil {
+			if err := idx.SetProjectID(ctx, r.id, r.environmentID, ""); err != nil {
 				return ProjectView{}, err
 			}
 		case r.projectID != p.ID && want[r.id]:
-			if err := idx.SetProjectID(ctx, r.id, p.ID); err != nil {
+			if err := idx.SetProjectID(ctx, r.id, r.environmentID, p.ID); err != nil {
 				return ProjectView{}, err
 			}
 		}

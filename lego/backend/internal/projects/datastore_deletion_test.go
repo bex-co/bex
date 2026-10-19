@@ -28,8 +28,8 @@ func TestDeleteUnassignsDatastoresInProjectWorkspace(t *testing.T) {
 	for _, kind := range setKinds {
 		t.Run(kind.name, func(t *testing.T) {
 			st := newFakeProjectStore(store.Project{ID: "prj-1", TenantID: "tea-a"})
-			idx := newFakeResourceIndex("tea-a", projectResource{"member", "prj-1"}, projectResource{"other", "prj-2"}).
-				in("tea-b", projectResource{"foreign", "prj-1"})
+			idx := newFakeResourceIndex("tea-a", projectResource{"member", "prj-1", ""}, projectResource{"other", "prj-2", ""}).
+				in("tea-b", projectResource{"foreign", "prj-1", ""})
 			svc := projectServiceWith(st, allowChecker{})
 			kind.wire(svc, idx)
 			if err := svc.Delete(ctxAs("user-a"), "prj-1"); err != nil {
@@ -48,8 +48,8 @@ func TestDeleteUnassignsDatastoresInProjectWorkspace(t *testing.T) {
 func TestDeleteDatastoreCleanupFailureKeepsProjectForRetry(t *testing.T) {
 	boom := errors.New("injected key-value cleanup failure")
 	st := newFakeProjectStore(store.Project{ID: "prj-1", TenantID: "tea-a"})
-	dbs := newFakeResourceIndex("tea-a", projectResource{"database", "prj-1"})
-	kvs := newFakeResourceIndex("tea-a", projectResource{"key-value", "prj-1"})
+	dbs := newFakeResourceIndex("tea-a", projectResource{"database", "prj-1", ""})
+	kvs := newFakeResourceIndex("tea-a", projectResource{"key-value", "prj-1", ""})
 	kvs.clearErr = boom
 	svc := &Service{Base: &core.Base{Authz: allowChecker{}}, Store: st, Databases: dbs, KeyValues: kvs}
 	if err := svc.Delete(ctxAs("user-a"), "prj-1"); !errors.Is(err, boom) {
@@ -63,7 +63,7 @@ func TestDeleteDatastoreCleanupFailureKeepsProjectForRetry(t *testing.T) {
 	}
 	// A completed member can join another project before the interrupted
 	// deletion resumes. The retry must leave that new membership alone.
-	if err := dbs.SetProjectID(t.Context(), "database", "prj-new"); err != nil {
+	if err := dbs.SetProjectID(t.Context(), "database", "", "prj-new"); err != nil {
 		t.Fatal(err)
 	}
 	kvs.clearErr = nil
@@ -82,7 +82,7 @@ func TestDeleteDatastoreCleanupPreservesReassignmentAfterList(t *testing.T) {
 	for _, kind := range setKinds {
 		t.Run(kind.name, func(t *testing.T) {
 			st := newFakeProjectStore(store.Project{ID: "prj-1", TenantID: "tea-a"})
-			idx := newFakeResourceIndex("tea-a", projectResource{"member", "prj-1"})
+			idx := newFakeResourceIndex("tea-a", projectResource{"member", "prj-1", ""})
 			idx.afterList = func() { idx.byWorkspace["tea-a"][0].projectID = "prj-new" }
 			svc := projectServiceWith(st, allowChecker{})
 			kind.wire(svc, idx)

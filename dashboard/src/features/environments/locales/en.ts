@@ -187,6 +187,36 @@ const enEnvironments: Record<string, TranslationEntry> = {
     description:
       "Manage-resources dialog empty state when the workspace has no key-value instances",
   },
+  "environments.manageResourceIn": {
+    message: "In {environment}",
+    description:
+      "Under a Manage resources row: the other environment the resource is in now ({environment} = its name)",
+  },
+  "environments.markerProtected": {
+    message: "Protected",
+    description:
+      "Marker: the environment the resource would leave is protected",
+  },
+  "environments.markerIsolated": {
+    message: "Isolated",
+    description:
+      "Marker: the environment the resource would leave has network isolation",
+  },
+  "environments.markerAllowList": {
+    message: "IP allow-list",
+    description:
+      "Marker: the environment the resource would leave restricts inbound IPs",
+  },
+  "environments.manageMovesOut": {
+    message: "Moves out of {environment}: {resources}",
+    description:
+      "Before Save: the selected resources this save moves out of another environment ({resources} = comma-separated names)",
+  },
+  "environments.manageNeedsAdminToMove": {
+    message: "Only an admin can move it out of {environment}.",
+    description:
+      "Why a Manage resources row is disabled: its current environment is admin-managed",
+  },
   "environments.manageSubmit": {
     message: "Save",
     description: "Manage-resources dialog submit button",

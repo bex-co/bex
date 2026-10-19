@@ -36,6 +36,22 @@ Two real risks remain explicitly accepted: the standing `onbex.co` Public Suffix
 
 `environments.Service.authorizeACLBearingMutation` now performs a fresh workspace `can_manage` check at the shared mutation seams. `clearEnvironmentMembers` covers direct environment deletion and project-delete cascades; `SetServices` and `setResourceMembers` authorize before changing service, database, key-value, or env-group membership. Tests prove a developer refusal leaves both store membership and projected resource state unchanged.
 
+**Follow-up (w4/m232, 2026-10-19): the source side of a move.** The fix above authorized the environment being edited, but a write on another environment, project or resource could still take a member out of an ACL-bearing environment with no check on that source. Examples: staging's Manage resources, `setProjectServices`, `MoveEnvGroup`, or a Blueprint regroup. Every placement writer now loads one exit guard (`core.ExitGuardLoader`, implemented by `environments.Service.loadExitGuard`) and runs it on every environment its write leaves.
+
+- **What the guard checks.** It reads the workspace's environments and the caller's fresh `can_manage` once, before the write opens anything. The store can then call it inside its transaction without a second pool connection or an OpenFGA call under row locks. An environment the load did not see counts as ACL-bearing, so the guard fails closed.
+- **Where it runs:**
+  - Env and project service setters: inside the store transaction, on the diff. The candidate rows are locked `FOR UPDATE` in name order, and the UPDATEs touch only locked ids. So a concurrent move can neither stale the source the guard checks nor slip in a row the diff misses.
+  - Env and project datastore setters: before the first write. The label write refuses a resource that moved since it was listed (`core.PlacementChanged` under the optimistic lock).
+  - `MoveEnvGroup`: under its metadata compare-and-swap.
+  - Blueprint service regroups (`SetAppEnvironment`, under the row lock) and datastore regroups (an optimistically locked patch).
+- **Blueprint disconnect's grouping reclaim** used to delete an environment with no apps member even when it still held env groups. Their `ON DELETE SET NULL` foreign key moved them out unchecked. Env groups now count as members, and the environment row is locked across the count and the delete.
+- **Accepted residuals:**
+  - The ACL state is read when the guard loads. A concurrent `SetACL` that lands before the write commits orders after the move.
+  - A refused Blueprint regroup stops the apply, but writes the apply already made stay. Nothing moves out unvetted.
+  - Reclaim can still delete an empty ACL-bearing environment with `can_create`. No resource sheds a restriction that way.
+
+Adding into an ACL-bearing environment stays `can_create`, except env `SetServices` on an ACL-bearing target, which was already admin-only.
+
 ### Findings 4, 8, 11, 12, and 13 — boundary hardening
 
 - Every driver Git invocation forces `core.hooksPath=/dev/null`, disables fsmonitor/external diff helpers, ignores system/global config, disables terminal prompts, and uses `--no-verify` for commit/push. A real executable pre-commit hook proves delivery does not run it.

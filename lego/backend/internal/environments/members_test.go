@@ -317,11 +317,11 @@ func (f failingDatabaseIndex) ListPostgres(ctx context.Context, ownerID string) 
 	return f.fakeDatabaseIndex.ListPostgres(ctx, ownerID)
 }
 
-func (f failingDatabaseIndex) SetEnvironmentID(ctx context.Context, name, environmentID string) error {
+func (f failingDatabaseIndex) SetEnvironmentID(ctx context.Context, name, expectedEnvironmentID, environmentID string) error {
 	if f.setErr != nil {
 		return f.setErr
 	}
-	return f.fakeDatabaseIndex.SetEnvironmentID(ctx, name, environmentID)
+	return f.fakeDatabaseIndex.SetEnvironmentID(ctx, name, expectedEnvironmentID, environmentID)
 }
 
 // TestMemberIndexErrors_SurfaceRatherThanDegradeToEmpty pins the line between

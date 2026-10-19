@@ -100,7 +100,7 @@ func (s *blueprintGroupingTestStore) CountWorkspaceGroupings(_ context.Context, 
 	return projects, environments, nil
 }
 
-func (*blueprintGroupingTestStore) SetAppEnvironment(context.Context, string, string, string) error {
+func (*blueprintGroupingTestStore) SetAppEnvironment(context.Context, string, string, string, core.EnvironmentExitGuard) error {
 	return nil
 }
 

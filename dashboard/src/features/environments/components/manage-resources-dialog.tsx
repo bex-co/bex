@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +32,14 @@ import type { ServiceView } from "@/features/services/types";
 import type { DatabaseView } from "@/features/databases/types";
 import type { KeyValueView } from "@/features/keyvalue/types";
 import { useEnvGroups } from "@/features/env-groups/hooks/use-env-groups";
+import { useEnvGroupScopeIndex } from "@/features/env-groups/hooks/use-env-group-scope-index";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import {
+  aclBearing,
+  placementIndex,
+  restrictionMarkers,
+} from "@/features/environments/lib/placement";
+import type { ResourceChecklistItem } from "@/features/environments/components/resource-checklist";
 
 /** The dialog's four tabs, which are also its four independent draft keys. */
 type ResourceKind = ProjectResourceFamily;
@@ -143,6 +151,64 @@ function ManageResourcesForm({
     [],
   );
 
+  // Each candidate's current environment, when it is another one: checking it
+  // moves it out of there, which the row and the footer say before Save. An
+  // ACL-bearing source needs an admin (w4/m232), so a confirmed non-admin
+  // cannot check it, and the row says why rather than Save meeting a 403.
+  const { environments: workspaceEnvironments } = useEnvGroupScopeIndex();
+  const environmentOf = useMemo(
+    () => placementIndex(workspaceEnvironments),
+    [workspaceEnvironments],
+  );
+  const { loaded: capsLoaded, canManage } = useCapabilities();
+  const placed = (
+    kind: ResourceKind,
+    item: ResourceChecklistItem,
+  ): ResourceChecklistItem => {
+    const source = environmentOf(kind, item.id);
+    if (!source || source.id === environment.id) return item;
+    const guarded =
+      capsLoaded &&
+      !canManage &&
+      aclBearing(source) &&
+      !drafts[kind].has(item.id);
+    return {
+      ...item,
+      location: t("environments.manageResourceIn", {
+        environment: source.name,
+      }),
+      markers: restrictionMarkers(source).map((key) => t(key)),
+      disabledReason: guarded
+        ? t("environments.manageNeedsAdminToMove", { environment: source.name })
+        : undefined,
+    };
+  };
+  const moveSummary = (kind: ResourceKind, items: ResourceChecklistItem[]) => {
+    // Keyed by id: environments in different projects may share a name.
+    const bySource = new Map<string, { name: string; resources: string[] }>();
+    for (const item of items) {
+      const source = environmentOf(kind, item.id);
+      if (!source || source.id === environment.id || !drafts[kind].has(item.id))
+        continue;
+      const entry = bySource.get(source.id) ?? {
+        name: source.name,
+        resources: [],
+      };
+      entry.resources.push(item.name);
+      bySource.set(source.id, entry);
+    }
+    return [...bySource.values()].map(({ name, resources }) =>
+      t("environments.manageMovesOut", {
+        environment: name,
+        resources: resources.join(", "),
+      }),
+    );
+  };
+  const checklist = (kind: ResourceKind, items: ResourceChecklistItem[]) => {
+    const shown = items.map((item) => placed(kind, item));
+    return { items: shown, moveSummary: moveSummary(kind, shown) };
+  };
+
   // A tab whose list has not answered shows why instead of an empty
   // checklist, and offers no Save over an unread list (w4/m227).
   const unreadKind = (kind: ResourceKind) =>
@@ -179,11 +245,14 @@ function ManageResourcesForm({
             <UnreadResourcesNotice unread={unread!} families={["services"]} />
           ) : (
             <ResourceChecklist
-              items={services.map((s) => ({
-                id: s.id,
-                name: s.name,
-                badge: <ServiceStatusBadge service={s} />,
-              }))}
+              {...checklist(
+                "services",
+                services.map((s) => ({
+                  id: s.id,
+                  name: s.name,
+                  badge: <ServiceStatusBadge service={s} />,
+                })),
+              )}
               checked={drafts.services}
               onToggle={(id, next) => toggle("services", id, next)}
               busy={servicesBusyId === environment.id}
@@ -200,11 +269,14 @@ function ManageResourcesForm({
             <UnreadResourcesNotice unread={unread!} families={["databases"]} />
           ) : (
             <ResourceChecklist
-              items={databases.map((d) => ({
-                id: d.id,
-                name: d.name,
-                badge: <DatabaseStatusBadge database={d} />,
-              }))}
+              {...checklist(
+                "databases",
+                databases.map((d) => ({
+                  id: d.id,
+                  name: d.name,
+                  badge: <DatabaseStatusBadge database={d} />,
+                })),
+              )}
               checked={drafts.databases}
               onToggle={(id, next) => toggle("databases", id, next)}
               busy={databasesBusyId === environment.id}
@@ -221,11 +293,14 @@ function ManageResourcesForm({
             <UnreadResourcesNotice unread={unread!} families={["keyvalues"]} />
           ) : (
             <ResourceChecklist
-              items={keyValues.map((k) => ({
-                id: k.id,
-                name: k.name,
-                badge: <KeyValueStatusBadge keyValue={k} />,
-              }))}
+              {...checklist(
+                "keyvalues",
+                keyValues.map((k) => ({
+                  id: k.id,
+                  name: k.name,
+                  badge: <KeyValueStatusBadge keyValue={k} />,
+                })),
+              )}
               checked={drafts.keyvalues}
               onToggle={(id, next) => toggle("keyvalues", id, next)}
               busy={keyValuesBusyId === environment.id}
@@ -242,11 +317,14 @@ function ManageResourcesForm({
             <UnreadResourcesNotice unread={unread!} families={["envgroups"]} />
           ) : (
             <ResourceChecklist
-              items={envGroups.map((group) => ({
-                id: group.id,
-                name: group.name,
-                badge: null,
-              }))}
+              {...checklist(
+                "envgroups",
+                envGroups.map((group) => ({
+                  id: group.id,
+                  name: group.name,
+                  badge: null,
+                })),
+              )}
               checked={drafts.envgroups}
               onToggle={(id, next) => toggle("envgroups", id, next)}
               busy={envGroupsBusyId === environment.id}

@@ -79,14 +79,14 @@ func TestPGAppPlacementsFollowCommittedMembership(t *testing.T) {
 	}
 	assign := func(environment Environment) {
 		t.Helper()
-		if _, err := st.SetEnvironmentServices(ctx, environment.ID, project.ID, app.TenantID, []string{app.ID}); err != nil {
+		if _, err := st.SetEnvironmentServices(ctx, environment.ID, project.ID, app.TenantID, []string{app.ID}, nil); err != nil {
 			t.Fatal(err)
 		}
 		assertPlacement(AppPlacement{TenantID: app.TenantID, ProjectID: project.ID, EnvironmentID: environment.ID})
 	}
 	assign(first)
 	assign(second)
-	if _, err := st.SetEnvironmentServices(ctx, second.ID, project.ID, app.TenantID, nil); err != nil {
+	if _, err := st.SetEnvironmentServices(ctx, second.ID, project.ID, app.TenantID, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	assertPlacement(AppPlacement{TenantID: app.TenantID, ProjectID: project.ID})

@@ -142,7 +142,7 @@ func (f *fakeProjectStore) DeleteProject(_ context.Context, projectID string) er
 	return nil
 }
 
-func (f *fakeProjectStore) SetProjectServices(_ context.Context, projectID, _ string, serviceNames []string) ([]core.ServicePlacementChange, error) {
+func (f *fakeProjectStore) SetProjectServices(_ context.Context, projectID, _ string, serviceNames []string, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
 	want := make(map[string]bool, len(serviceNames))
 	for _, n := range serviceNames {
 		want[n] = true
@@ -156,7 +156,6 @@ func (f *fakeProjectStore) SetProjectServices(_ context.Context, projectID, _ st
 		if f.envAttached[n] {
 			env := "env-" + n
 			mv.EnvironmentFrom = &env
-			delete(f.envAttached, n) // simulates environment_id NULLed in the same transaction
 		}
 		changes = append(changes, core.ServicePlacementChange{ServiceID: n, ServiceName: n, ServiceMove: mv})
 	}
@@ -169,13 +168,23 @@ func (f *fakeProjectStore) SetProjectServices(_ context.Context, projectID, _ st
 				// (w4/m187); a retained member's environment is compatible.
 				env := "env-" + n
 				mv.EnvironmentFrom = &env
-				delete(f.envAttached, n)
 			}
 			changes = append(changes, core.ServicePlacementChange{
 				ServiceID:   n,
 				ServiceName: n,
 				ServiceMove: mv,
 			})
+		}
+	}
+	// Like the PG store: the guard sees the diff before anything commits.
+	if exit != nil {
+		if err := exit(core.LeftEnvironments(changes)...); err != nil {
+			return nil, err
+		}
+	}
+	for _, c := range changes {
+		if c.EnvironmentFrom != nil {
+			delete(f.envAttached, c.ServiceID) // environment_id NULLed in the same transaction
 		}
 	}
 	f.services[projectID] = append([]string(nil), serviceNames...)

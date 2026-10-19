@@ -821,6 +821,10 @@ func NewServer(base *core.Base, d Deps) *Server {
 		MaxGroupings: d.MaxBlueprintGroupings,
 		ProxiedHosts: d.ProxiedHosts,
 	}
+	// Placement writers outside environments check the environments their
+	// write leaves through its one seam (w4/m232); projects reach it through
+	// ProjectMemberClearer.
+	envGroupsSvc.ExitGuards = environments.ExitGuards(environmentsSvc)
 	environmentCreateResolver := environments.NewCreateResolver(environmentsSvc)
 	pg.Environments = environmentCreateResolver
 	kv.Environments = environmentCreateResolver
@@ -928,7 +932,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		APIKeys:    accountKeys,
 		OAuth:      d.AccountOAuth, Kratos: d.AccountKratos,
 	}
-	appsSvc := &apps.Service{Base: base, ProxiedHosts: d.ProxiedHosts, ImageCompatibilityWorkspaces: d.ImageCompatibilityWorkspaces, Store: d.Store, Placements: d.AppPlacements, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), PlatformHosts: []string{hostOf(d.DeployHookBaseURL), sshHost}, ReservedDomains: d.ReservedDomains, MaxCustomDomainsPerService: d.MaxCustomDomainsPerService, MaxCustomDomainsPerWorkspace: d.MaxCustomDomainsPerWorkspace, SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, DiskSnapshots: d.DiskSnapshots, SnapshotSecret: d.DiskSnapshotSecret, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), Checks: gh.DeployChecksSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, BlueprintGroupsTx: blueprintGroupsTx, MaxGroupings: d.MaxBlueprintGroupings, GroupingReclaim: groupingReclaim, EnvGroups: envGroupApplier, EnvGroupLinks: &envgroups.WorkspacePurger{Service: envGroupsSvc}, EnvSeeder: envSeeder, EnvCopier: envCopier, EnvNames: envNames, EnvGroupExport: envGroupExport, CreateSecrets: createSecrets, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata, RestartDeploy: restartDeploy}
+	appsSvc := &apps.Service{Base: base, ProxiedHosts: d.ProxiedHosts, ImageCompatibilityWorkspaces: d.ImageCompatibilityWorkspaces, Store: d.Store, Placements: d.AppPlacements, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), PlatformHosts: []string{hostOf(d.DeployHookBaseURL), sshHost}, ReservedDomains: d.ReservedDomains, MaxCustomDomainsPerService: d.MaxCustomDomainsPerService, MaxCustomDomainsPerWorkspace: d.MaxCustomDomainsPerWorkspace, SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, DiskSnapshots: d.DiskSnapshots, SnapshotSecret: d.DiskSnapshotSecret, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), Checks: gh.DeployChecksSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, BlueprintGroupsTx: blueprintGroupsTx, MaxGroupings: d.MaxBlueprintGroupings, GroupingReclaim: groupingReclaim, EnvGroups: envGroupApplier, EnvGroupLinks: &envgroups.WorkspacePurger{Service: envGroupsSvc}, EnvSeeder: envSeeder, EnvCopier: envCopier, EnvNames: envNames, EnvGroupExport: envGroupExport, CreateSecrets: createSecrets, Environments: environmentCreateResolver, ExitGuards: environments.ExitGuards(environmentsSvc), Owners: workspaceSvc, Metadata: resourceMetadata, RestartDeploy: restartDeploy}
 	srv := &Server{
 		Apps: appsSvc,
 		Logs: logSvc,
@@ -991,6 +995,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Databases:    pg,
 			KeyValues:    kv,
 			Environments: &environments.ProjectMemberClearer{Service: environmentsSvc},
+			ExitGuards:   environments.ExitGuards(environmentsSvc),
 			Owners:       workspaceSvc,
 			// The direct-create grouping quota shares the Blueprint bound
 			// (codex-security round 12, finding 5).

@@ -1,17 +1,17 @@
 # w4 · m232 — Keep a protected environment's members behind its admin gate on every move
 
-**Worker:** worker4 **Goal:** no placement write can take a service, datastore or env group out of a protected, isolated or allow-listed environment without that environment's fresh administrator check, and the dashboard says so before a move happens. **Status:** todo
+**Worker:** worker4 **Goal:** no placement write can take a service, datastore or env group out of a protected, isolated or allow-listed environment without that environment's fresh administrator check, and the dashboard says so before a move happens. **Status:** in progress (t001–t006 done 2026-10-19; t007 live closeout waits on the deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Enumerate every writer that can end an environment membership | 30m | — |
-| [t002](t002.md) | Require fresh `can_manage` on the ACL-bearing environment a resource leaves | 60m | w4/m232/t001 |
-| [t003](t003.md) | Show each candidate's current environment and protection in Manage resources | 40m | w4/m232/t002 |
-| [t004](t004.md) | Render parity | 15m | w4/m232/t003 |
-| [t005](t005.md) | Simplify | 10m | w4/m232/t004 |
-| [t006](t006.md) | Test coverage | 45m | w4/m232/t004 |
+| [t001](done/t001.md) | Enumerate every writer that can end an environment membership — **DONE** | 30m | — |
+| [t002](done/t002.md) | Require fresh `can_manage` on the ACL-bearing environment a resource leaves — **DONE** | 60m | w4/m232/t001 |
+| [t003](done/t003.md) | Show each candidate's current environment and protection in Manage resources — **DONE** | 40m | w4/m232/t002 |
+| [t004](done/t004.md) | Render parity — **DONE** | 15m | w4/m232/t003 |
+| [t005](done/t005.md) | Simplify — **DONE** | 10m | w4/m232/t004 |
+| [t006](done/t006.md) | Test coverage — **DONE** | 45m | w4/m232/t004 |
 | [t007](t007.md) | Closeout | 20m | w4/m232/t005, w4/m232/t006 |
 
 Seven tasks, 220m (3h40m). One **major** finding: an administrator-only boundary can be left through verbs that check only their own target. This milestone schedules the work only.

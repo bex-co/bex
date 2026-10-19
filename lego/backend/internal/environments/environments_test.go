@@ -141,19 +141,23 @@ func (f *fakeStore) DeleteEnvironment(_ context.Context, id string) error {
 	return nil
 }
 
-func (f *fakeStore) SetEnvironmentServices(_ context.Context, environmentID, projectID, _ string, serviceNames []string) ([]core.ServicePlacementChange, error) {
+func (f *fakeStore) SetEnvironmentServices(_ context.Context, environmentID, projectID, _ string, serviceNames []string, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	m := map[string]bool{}
 	var changes []core.ServicePlacementChange
+	var pulled []string // environments incoming services leave
 	for _, n := range serviceNames {
 		m[n] = true
 		if !f.assign[environmentID][n] {
-			changes = append(changes, core.ServicePlacementChange{
-				ServiceID:   n,
-				ServiceName: n,
-				ServiceMove: core.ServiceMove{ProjectTo: &projectID, EnvironmentTo: &environmentID},
-			})
+			mv := core.ServiceMove{ProjectTo: &projectID, EnvironmentTo: &environmentID}
+			for from, members := range f.assign {
+				if from != environmentID && members[n] {
+					mv.EnvironmentFrom = &from
+					pulled = append(pulled, from)
+				}
+			}
+			changes = append(changes, core.ServicePlacementChange{ServiceID: n, ServiceName: n, ServiceMove: mv})
 		}
 	}
 	for n := range f.assign[environmentID] {
@@ -163,6 +167,17 @@ func (f *fakeStore) SetEnvironmentServices(_ context.Context, environmentID, pro
 				ServiceName: n,
 				ServiceMove: core.ServiceMove{ProjectFrom: &projectID, EnvironmentFrom: &environmentID},
 			})
+		}
+	}
+	// Like the PG store: the guard sees the diff before anything commits.
+	if exit != nil {
+		if err := exit(core.LeftEnvironments(changes)...); err != nil {
+			return nil, err
+		}
+	}
+	for _, from := range pulled {
+		for n := range m {
+			delete(f.assign[from], n)
 		}
 	}
 	f.assign[environmentID] = m

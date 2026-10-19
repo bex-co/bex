@@ -95,7 +95,7 @@ func TestSetEnvironmentID_WritesAndClearsLabel(t *testing.T) {
 	svc, cl := newService(sampleDatabase("db1"))
 	svc.Authz = &fakeChecker{allow: true}
 
-	if err := svc.SetEnvironmentID(ctxAs("user-a"), "db1", "env-1"); err != nil {
+	if err := svc.SetEnvironmentID(ctxAs("user-a"), "db1", "", "env-1"); err != nil {
 		t.Fatalf("SetEnvironmentID: %v", err)
 	}
 	var d appv1alpha1.Database
@@ -106,7 +106,7 @@ func TestSetEnvironmentID_WritesAndClearsLabel(t *testing.T) {
 		t.Fatalf("Database labels = %+v, want LabelEnvironment=env-1", d.Labels)
 	}
 
-	if err := svc.SetEnvironmentID(ctxAs("user-a"), "db1", ""); err != nil {
+	if err := svc.SetEnvironmentID(ctxAs("user-a"), "db1", "env-1", ""); err != nil {
 		t.Fatalf("SetEnvironmentID (clear): %v", err)
 	}
 	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "db1"}, &d); err != nil {

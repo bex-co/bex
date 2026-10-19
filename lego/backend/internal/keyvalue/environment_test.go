@@ -98,7 +98,7 @@ func TestSetEnvironmentID_WritesAndClearsLabel(t *testing.T) {
 	svc, cl := newService(sampleKeyValue("kv1"))
 	svc.Authz = &fakeChecker{allow: true}
 
-	if err := svc.SetEnvironmentID(ctxAs("user-a"), "kv1", "env-1"); err != nil {
+	if err := svc.SetEnvironmentID(ctxAs("user-a"), "kv1", "", "env-1"); err != nil {
 		t.Fatalf("SetEnvironmentID: %v", err)
 	}
 	var kv appv1alpha1.KeyValue
@@ -109,7 +109,7 @@ func TestSetEnvironmentID_WritesAndClearsLabel(t *testing.T) {
 		t.Fatalf("KeyValue labels = %+v, want LabelEnvironment=env-1", kv.Labels)
 	}
 
-	if err := svc.SetEnvironmentID(ctxAs("user-a"), "kv1", ""); err != nil {
+	if err := svc.SetEnvironmentID(ctxAs("user-a"), "kv1", "env-1", ""); err != nil {
 		t.Fatalf("SetEnvironmentID (clear): %v", err)
 	}
 	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "kv1"}, &kv); err != nil {

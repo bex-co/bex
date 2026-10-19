@@ -115,7 +115,7 @@ func TestSetServices_RecordsOneMoveEventPerChangedService(t *testing.T) {
 // case that must leave the feed untouched.
 type failingMembershipStore struct{ EnvironmentStore }
 
-func (failingMembershipStore) SetEnvironmentServices(context.Context, string, string, string, []string) ([]core.ServicePlacementChange, error) {
+func (failingMembershipStore) SetEnvironmentServices(context.Context, string, string, string, []string, core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
 	return nil, errors.New("boom")
 }
 

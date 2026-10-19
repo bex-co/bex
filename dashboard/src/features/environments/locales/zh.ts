@@ -177,6 +177,36 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     description:
       "Manage-resources dialog empty state when the workspace has no key-value instances",
   },
+  "environments.manageResourceIn": {
+    message: "位于 {environment}",
+    description:
+      "Under a Manage resources row: the other environment the resource is in now ({environment} = its name)",
+  },
+  "environments.markerProtected": {
+    message: "受保护",
+    description:
+      "Marker: the environment the resource would leave is protected",
+  },
+  "environments.markerIsolated": {
+    message: "已隔离",
+    description:
+      "Marker: the environment the resource would leave has network isolation",
+  },
+  "environments.markerAllowList": {
+    message: "IP 允许列表",
+    description:
+      "Marker: the environment the resource would leave restricts inbound IPs",
+  },
+  "environments.manageMovesOut": {
+    message: "将移出 {environment}：{resources}",
+    description:
+      "Before Save: the selected resources this save moves out of another environment ({resources} = comma-separated names)",
+  },
+  "environments.manageNeedsAdminToMove": {
+    message: "只有管理员可以将其移出 {environment}。",
+    description:
+      "Why a Manage resources row is disabled: its current environment is admin-managed",
+  },
   "environments.manageSubmit": {
     message: "保存",
     description: "Manage-resources dialog submit button",

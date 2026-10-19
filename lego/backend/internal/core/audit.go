@@ -574,6 +574,47 @@ type ServicePlacementChange struct {
 	ServiceMove
 }
 
+// EnvironmentExitGuard authorizes taking resources out of the named
+// environments: each one that is ACL-bearing (protected, isolated or
+// allow-listed) needs its workspace's fresh can_manage (w4/m232). An
+// ExitGuardLoader builds it with every read already done, so a writer may call
+// it inside its own transaction, after its rows are locked and before commit,
+// with no second connection or network call; an error rolls the write back.
+type EnvironmentExitGuard func(environmentIDs ...string) error
+
+// ExitGuardLoader builds workspaceID's EnvironmentExitGuard. The environments
+// feature implements it; every placement writer loads a guard before its write
+// and calls it with the environments the write leaves, whichever verb or
+// resource names the move (w4/m232).
+type ExitGuardLoader func(ctx context.Context, workspaceID string) (EnvironmentExitGuard, error)
+
+// Load is l's guard for workspaceID, or one that allows every exit when no
+// loader is wired: without the environments feature there is no environment to
+// leave.
+func (l ExitGuardLoader) Load(ctx context.Context, workspaceID string) (EnvironmentExitGuard, error) {
+	if l == nil {
+		return func(...string) error { return nil }, nil
+	}
+	return l(ctx, workspaceID)
+}
+
+// LeftEnvironments is every environment a placement diff takes a service out
+// of: an EnvironmentFrom whose service ends anywhere else (another
+// environment, or none).
+func LeftEnvironments(changes []ServicePlacementChange) []string {
+	var left []string
+	for _, c := range changes {
+		if c.EnvironmentFrom == nil || *c.EnvironmentFrom == "" {
+			continue
+		}
+		if c.EnvironmentTo != nil && *c.EnvironmentTo == *c.EnvironmentFrom {
+			continue
+		}
+		left = append(left, *c.EnvironmentFrom)
+	}
+	return left
+}
+
 // RecordServiceMoves records one typed move row per placement change from a
 // successful bulk membership replacement (w6/m134). Each service's App CR is
 // resolved read-only (recording no extra audit rows) so the audit target is

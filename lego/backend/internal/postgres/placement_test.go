@@ -53,7 +53,7 @@ func TestPlacementProjectDepartureClearsEnvironment(t *testing.T) {
 			original := placementResource()
 			svc, cl := newService(original)
 			before := readPlacement(t, cl)
-			if err := svc.SetProjectID(ctxAs("user-a"), original.Name, project); err != nil {
+			if err := svc.SetProjectID(ctxAs("user-a"), original.Name, original.Labels[core.LabelEnvironment], project); err != nil {
 				t.Fatal(err)
 			}
 			got := readPlacement(t, cl)
@@ -71,7 +71,7 @@ func TestPlacementProjectDepartureClearsEnvironment(t *testing.T) {
 				t.Errorf("owned rules changed: %v", got.Spec.IPAllowList)
 			}
 			stable := got.DeepCopy()
-			if err := svc.SetProjectID(ctxAs("user-a"), original.Name, project); err != nil {
+			if err := svc.SetProjectID(ctxAs("user-a"), original.Name, stable.Labels[core.LabelEnvironment], project); err != nil {
 				t.Fatal(err)
 			}
 			if got := readPlacement(t, cl); !reflect.DeepEqual(got, stable) {
@@ -87,7 +87,7 @@ func TestPlacementEnvironmentChangeClearsOnlyInheritedRules(t *testing.T) {
 			original := placementResource()
 			svc, cl := newService(original)
 			before := readPlacement(t, cl)
-			if err := svc.SetEnvironmentID(ctxAs("user-a"), original.Name, environment); err != nil {
+			if err := svc.SetEnvironmentID(ctxAs("user-a"), original.Name, original.Labels[core.LabelEnvironment], environment); err != nil {
 				t.Fatal(err)
 			}
 			got := readPlacement(t, cl)
@@ -113,10 +113,10 @@ func TestPlacementAssignmentAuthorizesBeforeNoOp(t *testing.T) {
 		name   string
 		change func(*Service) error
 	}{
-		{"same project", func(s *Service) error { return s.SetProjectID(ctxAs("user-a"), "placement", "prj-a") }},
-		{"depart project", func(s *Service) error { return s.SetProjectID(ctxAs("user-a"), "placement", "prj-b") }},
-		{"same environment", func(s *Service) error { return s.SetEnvironmentID(ctxAs("user-a"), "placement", "env-a") }},
-		{"depart environment", func(s *Service) error { return s.SetEnvironmentID(ctxAs("user-a"), "placement", "") }},
+		{"same project", func(s *Service) error { return s.SetProjectID(ctxAs("user-a"), "placement", "env-a", "prj-a") }},
+		{"depart project", func(s *Service) error { return s.SetProjectID(ctxAs("user-a"), "placement", "env-a", "prj-b") }},
+		{"same environment", func(s *Service) error { return s.SetEnvironmentID(ctxAs("user-a"), "placement", "env-a", "env-a") }},
+		{"depart environment", func(s *Service) error { return s.SetEnvironmentID(ctxAs("user-a"), "placement", "env-a", "") }},
 		{"clear project", func(s *Service) error { return s.ClearProjectID(ctxAs("user-a"), "placement", "prj-a") }},
 		{"stale project clear", func(s *Service) error { return s.ClearProjectID(ctxAs("user-a"), "placement", "prj-old") }},
 		{"clear environment", func(s *Service) error { return s.ClearEnvironmentID(ctxAs("user-a"), "placement", "env-a") }},
@@ -395,15 +395,15 @@ func TestPlacementInheritedRulesRequireExpectedEnvironment(t *testing.T) {
 			case "unchanged":
 				cidrs = []string{"198.51.100.0/24"}
 			case "project departure":
-				if err := svc.SetProjectID(ctxAs("user-a"), "placement", "prj-b"); err != nil {
+				if err := svc.SetProjectID(ctxAs("user-a"), "placement", "env-a", "prj-b"); err != nil {
 					t.Fatal(err)
 				}
 			case "environment departure":
-				if err := svc.SetEnvironmentID(ctxAs("user-a"), "placement", ""); err != nil {
+				if err := svc.SetEnvironmentID(ctxAs("user-a"), "placement", "env-a", ""); err != nil {
 					t.Fatal(err)
 				}
 			case "new environment":
-				if err := svc.SetEnvironmentID(ctxAs("user-a"), "placement", "env-b"); err != nil {
+				if err := svc.SetEnvironmentID(ctxAs("user-a"), "placement", "env-a", "env-b"); err != nil {
 					t.Fatal(err)
 				}
 				if err := svc.SetEnvironmentIPAllowList(ctxAs("user-a"), "placement", "env-b", []string{"203.0.113.1/32"}); err != nil {

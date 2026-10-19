@@ -117,7 +117,7 @@ func TestSetServices_RecordsOneMoveEventPerChangedService(t *testing.T) {
 // case that must leave the feed untouched.
 type failingProjectMembershipStore struct{ ProjectStore }
 
-func (failingProjectMembershipStore) SetProjectServices(context.Context, string, string, []string) ([]core.ServicePlacementChange, error) {
+func (failingProjectMembershipStore) SetProjectServices(context.Context, string, string, []string, core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
 	return nil, store.ErrConflict
 }
 

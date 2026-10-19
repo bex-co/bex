@@ -121,7 +121,7 @@ func (s *conformProjectStore) DeleteProject(_ context.Context, id string) error 
 	return nil
 }
 
-func (s *conformProjectStore) SetProjectServices(_ context.Context, id, _ string, _ []string) ([]core.ServicePlacementChange, error) {
+func (s *conformProjectStore) SetProjectServices(_ context.Context, id, _ string, _ []string, _ core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
 	if err := s.TouchProject(context.Background(), id); err != nil {
 		return nil, err
 	}

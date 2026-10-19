@@ -49,6 +49,19 @@ vi.mock("@/features/env-groups/hooks/use-env-groups", () => ({
   }),
 }));
 
+// The workspace's environments and the viewer's role, per test (w4/m232).
+const scope = vi.hoisted(() => ({ environments: [] as unknown[] }));
+vi.mock("@/features/env-groups/hooks/use-env-group-scope-index", () => ({
+  useEnvGroupScopeIndex: () => ({
+    environments: scope.environments,
+    ready: true,
+  }),
+}));
+const caps = vi.hoisted(() => ({ loaded: true, canManage: true }));
+vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
+  useCapabilities: () => caps,
+}));
+
 function svc(id: string): ServiceView {
   return {
     id,
@@ -111,6 +124,9 @@ const env: EnvironmentView = {
 };
 
 beforeEach(() => {
+  scope.environments = [];
+  caps.loaded = true;
+  caps.canManage = true;
   setServices.mockReset();
   setServices.mockResolvedValue(true);
   setDatabases.mockReset();
@@ -475,5 +491,98 @@ describe("ManageResourcesDialog draft retention across tabs", () => {
     // was originally right about, and which lifting the drafts must preserve.
     expect(screen.getByRole("checkbox", { name: /api/ })).toBeChecked();
     expect(setServices).not.toHaveBeenCalled();
+  });
+
+  // w4/m232: checking a service that sits in another, protected environment
+  // moved it out of there with no word about it — the row read only
+  // "web Running" while the service was in protected production.
+  describe("resources in another environment", () => {
+    const production: EnvironmentView = {
+      ...env,
+      id: "env-2",
+      name: "production",
+      serviceIds: ["web"],
+      databaseIds: [],
+      keyValueIds: [],
+      envGroupIds: [],
+      protectedStatus: "protected",
+      networkIsolationEnabled: true,
+      ipAllowListEntries: [
+        { cidrBlock: "0.0.0.0/0", description: "" },
+        { cidrBlock: "::/0", description: "" },
+      ],
+    };
+    const webRow = () =>
+      screen.getByRole("checkbox", { name: /web/ }).closest("label")!;
+
+    beforeEach(() => {
+      scope.environments = [env, production];
+    });
+
+    it("names the environment and its protection, and says what Save will move out", async () => {
+      const user = userEvent.setup();
+      renderDialog();
+
+      expect(webRow()).toHaveTextContent("In production");
+      expect(webRow()).toHaveTextContent("Protected");
+      expect(webRow()).toHaveTextContent("Isolated");
+      // The seeded allow-all pair restricts nothing, so it is not a marker.
+      expect(webRow()).not.toHaveTextContent("IP allow-list");
+      expect(screen.queryByText(/Moves out of/)).toBeNull();
+
+      await user.click(screen.getByRole("checkbox", { name: /web/ }));
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "Moves out of production: web",
+      );
+      // A resource already here, or in no environment, carries no location.
+      expect(
+        screen.getByRole("checkbox", { name: /worker/ }).closest("label"),
+      ).not.toHaveTextContent("In ");
+    });
+
+    it("names each checkbox by its resource, with where it is as the description", () => {
+      caps.canManage = false;
+      renderDialog();
+
+      const web = screen.getByRole("checkbox", { name: "web" });
+      expect(web).toHaveAccessibleDescription(
+        /In production.*Only an admin can move it out of production\./,
+      );
+      expect(
+        screen.getByRole("checkbox", { name: "worker" }),
+      ).not.toHaveAccessibleDescription();
+    });
+
+    it("keeps environments that share a name apart in the move summary", async () => {
+      const otherProduction: EnvironmentView = {
+        ...production,
+        id: "env-3",
+        projectId: "prj-2",
+        serviceIds: ["worker"],
+      };
+      scope.environments = [env, production, otherProduction];
+      const user = userEvent.setup();
+      renderDialog();
+
+      await user.click(screen.getByRole("checkbox", { name: "web" }));
+      await user.click(screen.getByRole("checkbox", { name: "worker" }));
+      const lines = within(screen.getByRole("status")).getAllByRole("listitem");
+      expect(lines.map((line) => line.textContent)).toEqual([
+        "Moves out of production: web",
+        "Moves out of production: worker",
+      ]);
+    });
+
+    it("tells a non-admin why it cannot move a resource out of an admin-managed environment", () => {
+      caps.canManage = false;
+      renderDialog();
+
+      expect(screen.getByRole("checkbox", { name: /web/ })).toBeDisabled();
+      expect(webRow()).toHaveTextContent(
+        "Only an admin can move it out of production.",
+      );
+      // Other candidates stay available.
+      expect(screen.getByRole("checkbox", { name: /worker/ })).toBeEnabled();
+    });
   });
 });
