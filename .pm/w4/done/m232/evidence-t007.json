@@ -1,0 +1,46 @@
+{
+ "started": "2026-10-19T06:39:47.188Z",
+ "fixtures": {
+  "project": "prj-dbarmdsic9ks73e7hj7g",
+  "production": "evm-dbarmdpf54nc73e01m10",
+  "staging": "evm-dbarme4ic9ks73e7hj8g",
+  "service": {
+   "id": "srv-dbarme1f54nc73e01m2g",
+   "name": "qa-20261019-m232-web"
+  }
+ },
+ "serviceBefore": {
+  "environmentId": "evm-dbarmdpf54nc73e01m10"
+ },
+ "guardBefore": {
+  "status": 400,
+  "code": "PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED"
+ },
+ "dialog390": {
+  "row": "qa-20261019-m232-web In productionProtectedIsolated Deploying",
+  "description": "In productionProtectedIsolated",
+  "enabled": true,
+  "summary": "Moves out of production: qa-20261019-m232-web"
+ },
+ "dialog1440": {
+  "row": "qa-20261019-m232-web In productionProtectedIsolated Deploying",
+  "description": "In productionProtectedIsolated",
+  "enabled": true,
+  "summary": "Moves out of production: qa-20261019-m232-web",
+  "environmentAfterSave": "evm-dbarme4ic9ks73e7hj8g"
+ },
+ "guardAfter": {
+  "status": 202
+ },
+ "resume": {
+  "status": 202
+ },
+ "cleanup": {
+  "service": 204,
+  "serviceAfter": 404,
+  "project": "deleted",
+  "projectAfter": 404
+ },
+ "finished": "2026-10-19T06:40:13.866Z",
+ "replay": "w4/m232 t007, loopx w4, 2026-10-19 UTC, bex-canary (tea-daif693dqjvc73e7as3g), QA user (admin); production at 69e925197 (deploy run 39204091474 success, includes b53ea9326)"
+}
