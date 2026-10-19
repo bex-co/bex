@@ -355,7 +355,10 @@ type appReleaseDecision struct {
 	artifactChanged bool
 	releaseChanged  bool
 	canceled        bool
-	sourcePending   bool
+	// abandoned is the release in flight that a canceled decision settled
+	// below when it is not the canceled release itself, or 0.
+	abandoned     int64
+	sourcePending bool
 }
 
 // buildRunning reports whether a repo-backed source build for the pinned release
@@ -365,29 +368,52 @@ type appReleaseDecision struct {
 // pending slot. Prebuilt-image, suspended, and direct-static-publish Apps have no
 // build Job to protect and never pin.
 func buildRunning(app *appv1alpha1.App) bool {
+	return pinnableSourceRelease(app) && app.Status.Phase == appv1alpha1.PhaseBuilding
+}
+
+// pinnableSourceRelease reports whether the App's release is a source build a
+// pin can carry through: what it builds and runs comes from the saved spec and
+// the pinned fingerprints alone.
+func pinnableSourceRelease(app *appv1alpha1.App) bool {
 	if app.ActiveReleaseConfig() != nil {
 		return false
 	}
 	if app.Spec.Repo == "" || app.Spec.Image != "" || app.Spec.Suspended {
 		return false
 	}
-	if directStaticPublish(app) {
-		return false
+	return !directStaticPublish(app)
+}
+
+// pinnedReleaseDecision keeps the release in flight on its own identity, with
+// its artifact still to resolve when it has not built yet.
+func pinnedReleaseDecision(app *appv1alpha1.App) appReleaseDecision {
+	pinned := appReleaseIdentity{
+		artifact: app.Status.ReleaseArtifactFingerprint,
+		release:  app.Status.ReleaseFingerprint,
 	}
-	return app.Status.Phase == appv1alpha1.PhaseBuilding
+	return appReleaseDecision{desired: pinned, artifactChanged: app.Status.ArtifactFingerprint != pinned.artifact}
 }
 
 // prepareAppReleaseDecision mutates only operator-owned status. Missing or
 // changed fingerprints always request normal artifact/release reconciliation;
 // every retained App has been normalized to the canonical status shape.
 func prepareAppReleaseDecision(app *appv1alpha1.App) appReleaseDecision {
-	if canceledReleaseIsLatest(app) {
+	if survivorInFlight(app) {
+		app.Status.PendingReleaseGeneration = 0
+		return pinnedReleaseDecision(app)
+	}
+	if latestRequestCanceled(app) {
 		// Cancel deletes the deterministic build artifact, but reconciliation is
 		// level-triggered. Keep the last successful generation active so this
 		// pass cannot recreate the canceled build or falsely promote its release.
+		inFlight := app.Status.ReleaseGeneration
 		app.Status.ReleaseGeneration = successfulReleaseGeneration(app)
 		app.Status.PendingReleaseGeneration = 0
-		return appReleaseDecision{canceled: true}
+		decision := appReleaseDecision{canceled: true}
+		if canceled, _ := canceledReleaseGeneration(app); inFlight > app.Status.ReleaseGeneration && inFlight != canceled {
+			decision.abandoned = inFlight
+		}
+		return decision
 	}
 	if sourceUpdatePending(app) {
 		pinned := appReleaseIdentity{
@@ -416,15 +442,7 @@ func prepareAppReleaseDecision(app *appv1alpha1.App) appReleaseDecision {
 			recordBuildOutcome(buildOutcomeSuperseded)
 			app.Status.PendingReleaseGeneration = pending
 		}
-		pinned := appReleaseIdentity{
-			artifact: app.Status.ReleaseArtifactFingerprint,
-			release:  app.Status.ReleaseFingerprint,
-		}
-		return appReleaseDecision{
-			desired:         pinned,
-			artifactChanged: app.Status.ArtifactFingerprint != pinned.artifact,
-			releaseChanged:  false,
-		}
+		return pinnedReleaseDecision(app)
 	}
 	app.Status.PendingReleaseGeneration = 0
 
@@ -474,7 +492,14 @@ func canceledReleaseGeneration(app *appv1alpha1.App) (int64, bool) {
 // deploy restamps the release generation, and a release adopted past the
 // marker through a write that does not restamp it (a direct CR edit) is newer
 // too: neither is canceled.
+//
+// While the release a cancel left running is still in flight
+// (survivorInFlight), the cancel is not settling yet and this is false.
 func canceledReleaseIsLatest(app *appv1alpha1.App) bool {
+	return latestRequestCanceled(app) && !survivorInFlight(app)
+}
+
+func latestRequestCanceled(app *appv1alpha1.App) bool {
 	generation, ok := canceledReleaseGeneration(app)
 	if !ok {
 		return false
@@ -482,6 +507,31 @@ func canceledReleaseIsLatest(app *appv1alpha1.App) bool {
 	stamped, ok := stampedReleaseGeneration(app)
 	return (ok && generation == stamped && app.Status.ReleaseGeneration <= generation) ||
 		generation == requestedReleaseGeneration(app)
+}
+
+// survivorInFlight reports that the canceled latest release was only the
+// pending slot behind an older release still in flight, the one bex-api named
+// when it stamped the cancel (w8/m117). A cancel ends one deploy, so that
+// release keeps its pinned identity and runs to completion (ADR060 §D1a), or
+// stays settled as a failed generation; once it serves, the cancel settles on
+// it. bex-api removes the name when that release is ended too (a suspend, or a
+// cancel of its own deploy), and a release the pin could not carry ends with
+// the cancel as before.
+func survivorInFlight(app *appv1alpha1.App) bool {
+	survivor, ok := survivingReleaseGeneration(app)
+	if !ok || survivor != app.Status.ReleaseGeneration || !latestRequestCanceled(app) {
+		return false
+	}
+	canceled, _ := canceledReleaseGeneration(app)
+	return survivor < canceled && survivor > successfulReleaseGeneration(app) &&
+		app.Status.ReleaseFingerprint != "" && pinnableSourceRelease(app)
+}
+
+// survivingReleaseGeneration is the release a cancel left running
+// (AnnotationSurvivingReleaseGeneration); ok is false when there is none.
+func survivingReleaseGeneration(app *appv1alpha1.App) (int64, bool) {
+	generation, err := strconv.ParseInt(app.Annotations[appv1alpha1.AnnotationSurvivingReleaseGeneration], 10, 64)
+	return generation, err == nil && generation > 0
 }
 
 // stampedReleaseGeneration is the release generation the backend's deploy
