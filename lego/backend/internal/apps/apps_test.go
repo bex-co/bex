@@ -893,8 +893,8 @@ func (r *recordingStore) SetAppDisplayName(_ context.Context, id string, display
 		return r.err
 	}
 	// takenDisplayNames reproduces w8/m47's uniqueness refusal, which the store
-	// (not the verb) raises during the write.
-	if r.takenDisplayNames[displayName] {
+	// (not the verb) raises during the write — never for a clear (w4/359).
+	if displayName != "" && r.takenDisplayNames[displayName] {
 		return store.ErrConflict
 	}
 	r.displayNameCalls = append(r.displayNameCalls, struct {
