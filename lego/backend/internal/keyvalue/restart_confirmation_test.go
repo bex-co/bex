@@ -28,6 +28,8 @@ import (
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -178,5 +180,110 @@ func TestExternalAccessRestartsOnlyBeforeTheListenerRuns(t *testing.T) {
 	var coded *core.CodedError
 	if !errors.As(err, &coded) || coded.Code != "KEY_VALUE_RESTART_CONFIRMATION_REQUIRED" || coded.Params["confirm"] != restartPhrase || !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("refusal = %#v", err)
+	}
+}
+
+// TestARestartFreeChangeReadsAvailable: an access flip with the TLS listener
+// already running restarts nothing, so the status must not read config_restart
+// while the operator catches up to it.
+func TestARestartFreeChangeReadsAvailable(t *testing.T) {
+	ready := func(observed int64) []metav1.Condition {
+		return []metav1.Condition{{Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Ready", ObservedGeneration: observed}}
+	}
+	store := func(generation, observed int64, marked string) *appv1alpha1.KeyValue {
+		kv := memoryOnlyStore(func(kv *appv1alpha1.KeyValue) { kv.Status.TLSListener = true })
+		kv.Generation = generation
+		kv.Status.Phase = appv1alpha1.KVPhaseReady
+		kv.Status.Conditions = ready(observed)
+		if marked != "" {
+			kv.Annotations = map[string]string{annotationRestartFreeGeneration: marked}
+		}
+		return kv
+	}
+	for name, tc := range map[string]struct {
+		kv   *appv1alpha1.KeyValue
+		want string
+	}{
+		"marked, one generation pending":   {store(5, 4, "5"), core.DatastoreAvailable},
+		"unmarked, one generation pending": {store(5, 4, ""), core.DatastoreConfigRestart},
+		"marked, two generations pending":  {store(5, 3, "5"), core.DatastoreConfigRestart},
+		"marked for an older generation":   {store(5, 4, "4"), core.DatastoreConfigRestart},
+		"observed":                         {store(5, 5, ""), core.DatastoreAvailable},
+	} {
+		if got := kvStatus(tc.kv); got != tc.want {
+			t.Errorf("%s: status %q, want %q", name, got, tc.want)
+		}
+	}
+
+	// The write decides: allow-list and access changes with the listener
+	// running are marked; a first enable or a persistence change is not.
+	for name, tc := range map[string]struct {
+		before *appv1alpha1.KeyValue
+		patch  KeyValuePatch
+		marked bool
+	}{
+		"empty the allow-list":     {memoryOnlyStore(func(kv *appv1alpha1.KeyValue) { kv.Spec.Public = true; kv.Status.TLSListener = true }), KeyValuePatch{IPAllowList: &[]core.IPAllowListEntry{}}, true},
+		"re-enable, listener kept": {memoryOnlyStore(func(kv *appv1alpha1.KeyValue) { kv.Status.TLSListener = true }), KeyValuePatch{IPAllowList: &[]core.IPAllowListEntry{{CIDRBlock: "203.0.113.7/32"}}}, true},
+		"first enable":             {memoryOnlyStore(nil), KeyValuePatch{IPAllowList: &[]core.IPAllowListEntry{{CIDRBlock: "203.0.113.7/32"}}}, false},
+		"persistence change":       {memoryOnlyStore(func(kv *appv1alpha1.KeyValue) { kv.Status.TLSListener = true }), KeyValuePatch{PersistenceMode: new("journal_snapshot")}, false},
+	} {
+		tc.before.Generation = 7
+		after := tc.before.DeepCopy()
+		tc.patch.apply(after)
+		markRestartFree(tc.before, after)
+		if got := after.Annotations[annotationRestartFreeGeneration] == "8"; got != tc.marked {
+			t.Errorf("%s: marked %v, want %v (%v)", name, got, tc.marked, after.Annotations)
+		}
+	}
+
+	// Saving the same rules bumps no generation: marking it would let the next
+	// write that does restart the store read available.
+	same := memoryOnlyStore(func(kv *appv1alpha1.KeyValue) {
+		kv.Spec.Public = true
+		kv.Status.TLSListener = true
+		kv.Spec.IPAllowList = []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.7/32"}}
+	})
+	same.Generation = 7
+	after := same.DeepCopy()
+	KeyValuePatch{IPAllowList: &[]core.IPAllowListEntry{{CIDRBlock: "203.0.113.7/32"}}}.apply(after)
+	markRestartFree(same, after)
+	if marked, ok := after.Annotations[annotationRestartFreeGeneration]; ok {
+		t.Errorf("an unchanged save marked generation %s restart-free", marked)
+	}
+}
+
+// TestARestartFreeMarkNeverLandsOnARacingWrite: the mark names the generation
+// after the save's read. Another writer that lands first with the same rules
+// and a plan change takes that generation and restarts the store, so the save
+// must re-read rather than mark it.
+func TestARestartFreeMarkNeverLandsOnARacingWrite(t *testing.T) {
+	kv := memoryOnlyStore(func(kv *appv1alpha1.KeyValue) {
+		kv.Spec.Public = true
+		kv.Status.TLSListener = true
+	})
+	kv.Generation = 7
+	svc, cl := newService(kv)
+	raced := false
+	svc.Client = interceptor.NewClient(cl.(client.WithWatch), interceptor.Funcs{
+		Patch: func(ctx context.Context, c client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+			if !raced {
+				raced = true
+				current := getKeyValueCR(t, c, obj.GetName())
+				current.Spec.IPAllowList = []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.7/32"}}
+				current.Spec.Plan = "starter"
+				current.Generation = 8
+				if err := c.Update(ctx, current); err != nil {
+					return err
+				}
+			}
+			return c.Patch(ctx, obj, patch, opts...)
+		},
+	})
+	rule := []core.IPAllowListEntry{{CIDRBlock: "203.0.113.7/32"}}
+	if _, err := svc.UpdateKeyValue(context.Background(), "red-cache", KeyValuePatch{IPAllowList: &rule}); err != nil {
+		t.Fatal(err)
+	}
+	if marked, ok := getKeyValueCR(t, cl, "red-cache").Annotations[annotationRestartFreeGeneration]; ok {
+		t.Fatalf("the save marked generation %s restart-free after a racing plan change", marked)
 	}
 }

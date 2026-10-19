@@ -38,6 +38,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -230,6 +231,9 @@ func persistenceModeKnown(render string) bool {
 // only when the operator declares it Ready) reads `config_restart`, never
 // `creating` (w4/m137).
 func kvStatus(kv *appv1alpha1.KeyValue) string {
+	if restartFreePending(kv) {
+		return core.DatastoreAvailable
+	}
 	switch kv.Status.Phase {
 	case appv1alpha1.KVPhaseReady:
 		return core.DatastoreReadyStatus(kv.Status.Conditions, kv.Generation)
@@ -238,6 +242,41 @@ func kvStatus(kv *appv1alpha1.KeyValue) string {
 	default:
 		return core.DatastoreNotReadyStatus(kv.Status.CredentialRevision != "")
 	}
+}
+
+// annotationRestartFreeGeneration names the generation a restart-free write
+// (a rename, or an external-access change with the TLS listener already
+// running) lands at, so the status does not read config_restart while the
+// operator catches up to a change that restarts nothing (w4/m233).
+const annotationRestartFreeGeneration = "app.bex.co/restart-free-generation"
+
+// restartFreePending reports a Ready store whose only unobserved generation is
+// one bex-api wrote as restart-free. The operator keeps a serving store Ready
+// while it rewrites the connection Secret for an access flip, so that pass
+// reads available too.
+func restartFreePending(kv *appv1alpha1.KeyValue) bool {
+	marked, ok := kv.Annotations[annotationRestartFreeGeneration]
+	return ok && marked == strconv.FormatInt(kv.Generation, 10) && kv.Status.Phase == appv1alpha1.KVPhaseReady &&
+		core.DatastoreReadyStatus(kv.Status.Conditions, kv.Generation-1) == core.DatastoreAvailable
+}
+
+// markRestartFree records, on the write itself, whether the generation it
+// lands at restarts nothing: only the name, the allow-list or external access
+// change, and turning access on does not add the listener. A write that leaves
+// the spec alone bumps no generation, so it marks nothing.
+func markRestartFree(before, after *appv1alpha1.KeyValue) {
+	if apiequality.Semantic.DeepEqual(after.Spec, before.Spec) {
+		return
+	}
+	spec, prior := after.Spec, before.Spec
+	spec.Name, prior.Name = "", ""
+	spec.IPAllowList, prior.IPAllowList = nil, nil
+	spec.Public, prior.Public = false, false
+	if !apiequality.Semantic.DeepEqual(spec, prior) || (after.Spec.Public && externalAccessRestarts(before)) {
+		delete(after.Annotations, annotationRestartFreeGeneration)
+		return
+	}
+	metav1.SetMetaDataAnnotation(&after.ObjectMeta, annotationRestartFreeGeneration, strconv.FormatInt(before.Generation+1, 10))
 }
 
 func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
@@ -966,14 +1005,46 @@ func (s *Service) updateKeyValue(ctx context.Context, name string, patch KeyValu
 			return KeyValueView{}, err
 		}
 	}
-	before := kv.Spec
-	view, err := s.patchKeyValueObj(ctx, kv, patch.apply, dryRun)
+	var before appv1alpha1.KeyValueSpec
+	view, err := s.patchKeyValueLocked(ctx, kv, func(kv *appv1alpha1.KeyValue) {
+		read := kv.DeepCopy()
+		patch.apply(kv)
+		markRestartFree(read, kv)
+		before = read.Spec
+	}, dryRun)
 	if err != nil || dryRun {
 		return view, err
 	}
 	s.recordUpdateEffects(ctx, kv, before)
 	return view, nil
 }
+
+// patchKeyValueLocked is patchKeyValueObj against the resourceVersion kv was
+// read at. The restart-free mark names the generation after that read, so a
+// write that raced in between must not take it: on a conflict kv is re-read
+// and mutate runs again.
+func (s *Service) patchKeyValueLocked(ctx context.Context, kv *appv1alpha1.KeyValue, mutate func(kv *appv1alpha1.KeyValue), dryRun bool) (KeyValueView, error) {
+	for attempt := 1; ; attempt++ {
+		patch := client.MergeFromWithOptions(kv.DeepCopy(), client.MergeFromWithOptimisticLock{})
+		mutate(kv)
+		resourcemeta.Touch(kv, s.Now())
+		err := s.PatchObject(ctx, kv, patch, dryRun)
+		if err == nil {
+			return s.view(kv), nil
+		}
+		if !apierrors.IsConflict(err) {
+			return KeyValueView{}, err
+		}
+		if attempt == lockedPatchAttempts {
+			return KeyValueView{}, fmt.Errorf("%w: too many concurrent updates to key value %q; retry", core.ErrConflict, kv.Name)
+		}
+		if err := s.Client.Get(ctx, client.ObjectKeyFromObject(kv), kv); err != nil {
+			return KeyValueView{}, err
+		}
+	}
+}
+
+const lockedPatchAttempts = 3
 
 // recordUpdateEffects records what a successful PATCH actually changed — the
 // postgres.recordUpdateEffects mirror. A plan change is Render's plan_changed;
@@ -1034,7 +1105,8 @@ func (s *Service) KeyValueConnectionInfo(ctx context.Context, name string) (KeyV
 			return KeyValueConnectionInfo{}, errors.New("key value internal host is missing or invalid")
 		}
 		internal = keyValueURI("redis", string(password), kv.Status.Host, port)
-		if kv.Status.ExternalHost != "" {
+		// The operator clears externalHost a pass after access is turned off.
+		if kv.Spec.Public && kv.Status.ExternalHost != "" {
 			external = keyValueURI("rediss", string(password), kv.Status.ExternalHost, port)
 		}
 	}
