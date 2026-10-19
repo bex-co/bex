@@ -31,6 +31,24 @@ import {
 } from "@/features/services/components/instance-type-groups";
 import { cn } from "@/common/lib/utils/utils.ts";
 
+// The paid-only service types that could be created on Free before Free was
+// withdrawn from them (ADR030 §7), and the notice each gets while still on Free
+// or untiered.
+const LEGACY_FREE_NOTICE: Record<string, { free: string; untiered: string }> = {
+  background_worker: {
+    free: "services.planPickerLegacyFreeWorker",
+    untiered: "services.planPickerUntieredWorker",
+  },
+  private_service: {
+    free: "services.planPickerLegacyFreePrivateService",
+    untiered: "services.planPickerUntieredPrivateService",
+  },
+  cron_job: {
+    free: "services.planPickerLegacyFreeCronJob",
+    untiered: "services.planPickerUntieredCronJob",
+  },
+};
+
 export interface InstanceTypePickerProps {
   serviceId: string;
   /** The App's current plan (Render spelling), or null if untiered. */
@@ -83,6 +101,19 @@ export function InstanceTypePicker({
     );
   }
 
+  // A paid-only service still on Free (or untiered) matches no offered card.
+  // Say what it is on, rather than an unexplained empty selection; nothing is
+  // pre-selected, so Save stays disabled until a paid card is picked (w4/351).
+  const legacy = serviceType ? LEGACY_FREE_NOTICE[serviceType] : undefined;
+  const legacyNotice =
+    legacy &&
+    instanceTypes.length > 0 &&
+    (currentPlan === "free" || currentPlan == null) &&
+    !offered.some((it) => it.id === currentPlan)
+      ? currentPlan === "free"
+        ? legacy.free
+        : legacy.untiered
+      : null;
   const selectedType = offered.find((it) => it.id === selected);
   const canSave = selected != null && selected !== currentPlan;
 
@@ -104,6 +135,14 @@ export function InstanceTypePicker({
         <CardTitle>{t("services.planPickerTitle")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {legacyNotice && (
+          <p
+            role="note"
+            className="rounded-md border bg-muted/50 px-3 py-2 text-sm"
+          >
+            {t(legacyNotice)}
+          </p>
+        )}
         {loading && instanceTypes.length === 0 ? (
           <InstanceTypeGroupsSkeleton serviceType={serviceType} />
         ) : (

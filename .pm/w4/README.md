@@ -347,7 +347,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **353** — [Custom domains accept hostnames DNS cannot hold (a 64+ character label, an all-numeric TLD)](353.md) ← live `/qa-find-bugs w4` pass b68857, 2026-10-19 UTC. `canonicalHostname`'s `IsDNS1123Subdomain` never applies the 63-octet label cap, so the claim shows CNAME instructions no provider accepts and Re-check says "DNS may still be propagating" forever.
 
-- [ ] **351** — [A legacy Free cron job's Plan page pre-selects nothing and never says it runs on Free](351.md) ← live `/qa-find-bugs w4` pass 65314e, 2026-10-19 UTC. The picker hides Free for a paid-only type, but seeds its selection with the current `free`, so no card is checked and nothing explains the ADR030 §7 transition.
+- [ ] **351** — [A legacy Free cron job's Plan page pre-selects nothing and never says it runs on Free](blocked/351.md) — **BLOCKED (release pipeline deploys the dashboard; QA opens `/services/srv-dap3r714dm7c7390q91g/plan` in `bex-canary` at 1440 and 390 and confirms the "This cron job is on Free…" notice with no card checked and Save disabled)**. Implementation done 2026-10-19: the picker names a paid-only type's legacy Free (or untiered) plan; en/zh; tested with controls.
 
 - [ ] **352** — [A mistyped plan on a cron job, worker or private service is told `free` is a valid choice](352.md) ← live `/qa-find-bugs w4` pass 65314e, 2026-10-19 UTC. `normalizeTierOrPlan` and `checkPlan` list the whole ladder before the paid-only check runs.
 

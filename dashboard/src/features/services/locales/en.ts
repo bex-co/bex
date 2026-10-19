@@ -1425,6 +1425,42 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Plan-picker section label separating the Free tier from paid tiers",
   },
+  "services.planPickerLegacyFreeWorker": {
+    message:
+      "This background worker is on Free, which background workers can no longer use. It keeps running. Choosing a paid instance type moves it off Free, and it cannot return.",
+    description:
+      "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
+  },
+  "services.planPickerUntieredWorker": {
+    message:
+      "This background worker has no instance type, and background workers can no longer use Free. It keeps running. Choosing a paid instance type gives it one, and it cannot return to Free.",
+    description:
+      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+  },
+  "services.planPickerLegacyFreePrivateService": {
+    message:
+      "This private service is on Free, which private services can no longer use. It keeps running. Choosing a paid instance type moves it off Free, and it cannot return.",
+    description:
+      "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
+  },
+  "services.planPickerUntieredPrivateService": {
+    message:
+      "This private service has no instance type, and private services can no longer use Free. It keeps running. Choosing a paid instance type gives it one, and it cannot return to Free.",
+    description:
+      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+  },
+  "services.planPickerLegacyFreeCronJob": {
+    message:
+      "This cron job is on Free, which cron jobs can no longer use. It keeps running. Choosing a paid instance type moves it off Free, and it cannot return.",
+    description:
+      "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
+  },
+  "services.planPickerUntieredCronJob": {
+    message:
+      "This cron job has no instance type, and cron jobs can no longer use Free. It keeps running. Choosing a paid instance type gives it one, and it cannot return to Free.",
+    description:
+      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+  },
   "services.planPickerPaidGroup": {
     message: "Paid",
     description: "Plan-picker section label for the paid tier ladder",

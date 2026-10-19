@@ -160,6 +160,48 @@ describe("InstanceTypePicker", () => {
     expect(screen.getAllByRole("radio")).toHaveLength(2);
   });
 
+  // w4/351: a cron job created on Free before w8/048 matched no offered card,
+  // so the page showed an empty selection and never said it runs on Free.
+  it("says a legacy Free cron job is on Free, and pre-selects nothing", async () => {
+    renderPicker("free", "cron_job");
+
+    expect(await screen.findByRole("note")).toHaveTextContent(
+      "This cron job is on Free, which cron jobs can no longer use. It keeps running. Choosing a paid instance type moves it off Free, and it cannot return.",
+    );
+    expect(screen.queryByText("Free", { exact: true })).not.toBeInTheDocument();
+    for (const radio of screen.getAllByRole("radio")) {
+      expect(radio).toHaveAttribute("aria-checked", "false");
+    }
+    expect(screen.getByRole("button", { name: "Save Changes" })).toBeDisabled();
+  });
+
+  it.each([
+    ["background_worker", "free", "This background worker is on Free"],
+    ["private_service", "free", "This private service is on Free"],
+    ["cron_job", null, "This cron job has no instance type"],
+  ])(
+    "words the notice for a %s on %s",
+    async (serviceType, currentPlan, opening) => {
+      renderPicker(currentPlan, serviceType);
+      expect(await screen.findByRole("note")).toHaveTextContent(opening);
+    },
+  );
+
+  it.each([
+    ["free", "web_service", /^Free/],
+    ["standard", "cron_job", /Standard/],
+  ])(
+    "adds no notice where the current plan %s is offered to a %s",
+    async (currentPlan, serviceType, card) => {
+      renderPicker(currentPlan, serviceType);
+      expect(await screen.findByRole("radio", { name: card })).toHaveAttribute(
+        "aria-checked",
+        "true",
+      );
+      expect(screen.queryByRole("note")).toBeNull();
+    },
+  );
+
   it("confirms and fires updateServicePlan with the picked Render-spelled id, then navigates to Settings on success", async () => {
     const user = userEvent.setup();
     renderPicker("standard");

@@ -1393,6 +1393,42 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Plan-picker section label separating the Free tier from paid tiers",
   },
+  "services.planPickerLegacyFreeWorker": {
+    message:
+      "此后台工作进程正在使用免费套餐，但后台工作进程已不能再使用免费套餐。它会继续运行。选择付费实例类型后会离开免费套餐，且无法再切换回来。",
+    description:
+      "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
+  },
+  "services.planPickerUntieredWorker": {
+    message:
+      "此后台工作进程没有实例类型，且后台工作进程已不能再使用免费套餐。它会继续运行。选择付费实例类型后会为它设定实例类型，且无法再切换回免费套餐。",
+    description:
+      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+  },
+  "services.planPickerLegacyFreePrivateService": {
+    message:
+      "此私有服务正在使用免费套餐，但私有服务已不能再使用免费套餐。它会继续运行。选择付费实例类型后会离开免费套餐，且无法再切换回来。",
+    description:
+      "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
+  },
+  "services.planPickerUntieredPrivateService": {
+    message:
+      "此私有服务没有实例类型，且私有服务已不能再使用免费套餐。它会继续运行。选择付费实例类型后会为它设定实例类型，且无法再切换回免费套餐。",
+    description:
+      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+  },
+  "services.planPickerLegacyFreeCronJob": {
+    message:
+      "此定时任务正在使用免费套餐，但定时任务已不能再使用免费套餐。它会继续运行。选择付费实例类型后会离开免费套餐，且无法再切换回来。",
+    description:
+      "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
+  },
+  "services.planPickerUntieredCronJob": {
+    message:
+      "此定时任务没有实例类型，且定时任务已不能再使用免费套餐。它会继续运行。选择付费实例类型后会为它设定实例类型，且无法再切换回免费套餐。",
+    description:
+      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+  },
   "services.planPickerPaidGroup": {
     message: "付费",
     description: "Plan-picker section label for the paid tier ladder",
