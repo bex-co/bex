@@ -784,6 +784,12 @@ func TestConnectionInfoGatesImmutableCredentialRevision(t *testing.T) {
 	if err != nil || !strings.Contains(info.InternalConnectionString, "controller-owned-secret") {
 		t.Fatalf("converged connection info = %+v, %v", info, err)
 	}
+	// Access is off but the operator has not cleared externalHost yet (it stays
+	// Ready through that pass): the retired endpoint is not handed out.
+	if info.ExternalConnectionString != "" || strings.Contains(info.CLICommand, "--sni") {
+		t.Fatalf("a private store got an external endpoint: external %v, cli via SNI %v",
+			info.ExternalConnectionString != "", strings.Contains(info.CLICommand, "--sni"))
+	}
 	kv.Status.CredentialRevision = appv1alpha1.KeyValueCredentialRevision([]byte("different"))
 	if err := cl.Update(context.Background(), kv); err != nil {
 		t.Fatal(err)

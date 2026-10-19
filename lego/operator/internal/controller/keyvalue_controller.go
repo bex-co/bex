@@ -559,11 +559,16 @@ func (r *KeyValueReconciler) reconcileKeyValueCredentials(
 			result, failErr := r.kvFail(ctx, kv, appv1alpha1.ReasonSecretRecreateFailed, err)
 			return nil, result, true, failErr
 		}
-		kv.Status.Phase = appv1alpha1.KVPhaseProvisioning
-		meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse,
-			Reason: appv1alpha1.ReasonConnectionSecretRebuilding, Message: "rebuilding immutable connection information", ObservedGeneration: kv.Generation})
-		if err := updateStatusIfChanged(ctx, r.Client, kv); err != nil {
-			return nil, ctrl.Result{}, true, err
+		// Rewriting the Secret touches no pod, so a serving store stays Ready:
+		// an access flip with the listener kept restarts nothing, and bex-api
+		// reads that write as restart-free only while Ready holds (w4/m233).
+		if kv.Status.Phase != appv1alpha1.KVPhaseReady || !meta.IsStatusConditionTrue(kv.Status.Conditions, appv1alpha1.ConditionReady) {
+			kv.Status.Phase = appv1alpha1.KVPhaseProvisioning
+			meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse,
+				Reason: appv1alpha1.ReasonConnectionSecretRebuilding, Message: "rebuilding immutable connection information", ObservedGeneration: kv.Generation})
+			if err := updateStatusIfChanged(ctx, r.Client, kv); err != nil {
+				return nil, ctrl.Result{}, true, err
+			}
 		}
 		return nil, ctrl.Result{RequeueAfter: time.Second}, true, nil
 	}
