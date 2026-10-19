@@ -200,11 +200,15 @@ function SearchResults({
       query,
     ),
   );
+  // What a service query matches: the generic "Service" token plus the kind
+  // label the row displays, so "cron" or "Cron Job" finds every cron job and a
+  // zh user's kind word matches too (w4/342). cmdk never filters on an item's
+  // value here (shouldFilter={false}), so only this filter decides; the value
+  // reuses the same text as the item's identity.
+  const serviceHaystack = (service: (typeof services)[number]) =>
+    `${serviceSearchText(service)} ${t("common.topbarServiceResource")} ${t(SERVICE_TYPE_LABEL[deriveServiceType(service.type)])}`;
   const filteredServices = services.filter((r) =>
-    matchesQuery(
-      `${serviceSearchText(r)} ${t("common.topbarServiceResource")}`,
-      query,
-    ),
+    matchesQuery(serviceHaystack(r), query),
   );
   const filteredDatabases = databases.filter((r) =>
     matchesQuery(`${r.name} ${r.id} ${t("databases.resourceType")}`, query),
@@ -296,9 +300,7 @@ function SearchResults({
             return (
               <CommandItem
                 key={`service:${service.id}`}
-                // Keep the generic token so typing "service" still matches every
-                // service, and add the specific words so "cron"/"private" match too.
-                value={`${serviceSearchText(service)} ${t("common.topbarServiceResource")} ${typeLabel}`}
+                value={serviceHaystack(service)}
                 onSelect={() =>
                   select(() => {
                     // Canonical base per type — routing a static_site through

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import i18n from "@/i18n/init";
+import { SERVICE_TYPE_LABEL } from "@/features/services/lib/service-type";
 import { GlobalSearchDialog } from "../global-search-dialog";
 
 // The dialog resolves resources through six feature hooks + the router; mock
@@ -170,5 +171,49 @@ describe("GlobalSearchDialog", () => {
     await act(() => i18n.changeLanguage("zh"));
     expect(screen.getByRole("listbox", { name: "建议" })).toBeInTheDocument();
     await act(() => i18n.changeLanguage("en"));
+  });
+
+  // w4/342: every service row shows its kind, so typing that kind must find
+  // it. The filter read only names and ids: "Cron Job" said "No matching pages
+  // or resources." beside three listed cron jobs, and "cron" missed the one
+  // whose name lacks it.
+  describe("finds services by their displayed kind", () => {
+    // Neutral ids, so only the kind label can produce a match.
+    const KINDS = [
+      { id: "srv-k1", name: "web-app", type: "web_service" },
+      { id: "srv-k2", name: "nightly", type: "cron_job" },
+      { id: "srv-k3", name: "backup-cron", type: "cron_job" },
+      { id: "srv-k4", name: "internal-api", type: "private_service" },
+      { id: "srv-k5", name: "queue", type: "background_worker" },
+      { id: "srv-k6", name: "docs", type: "static_site" },
+    ];
+    const shown = () =>
+      KINDS.map((s) => s.name).filter((name) => screen.queryByText(name));
+
+    beforeEach(() => {
+      lists.services.rows = KINDS;
+    });
+
+    it.each([
+      ["Web Service", ["web-app"]],
+      ["Cron Job", ["nightly", "backup-cron"]],
+      ["cron", ["nightly", "backup-cron"]],
+      ["Private Service", ["internal-api"]],
+      ["Background Worker", ["queue"]],
+      ["Static Site", ["docs"]],
+    ])("%s returns exactly its services", (query, names) => {
+      render(<GlobalSearchDialog open onOpenChange={vi.fn()} />);
+      typeQuery(query);
+      expect(shown()).toEqual(names);
+      expect(screen.queryByText(EMPTY)).toBeNull();
+    });
+
+    it("matches the kind word in the selected language", async () => {
+      await act(() => i18n.changeLanguage("zh"));
+      render(<GlobalSearchDialog open onOpenChange={vi.fn()} />);
+      typeQuery(i18n.t(SERVICE_TYPE_LABEL.cron));
+      expect(shown()).toEqual(["nightly", "backup-cron"]);
+      await act(() => i18n.changeLanguage("en"));
+    });
   });
 });
