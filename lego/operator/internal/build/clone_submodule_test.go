@@ -61,8 +61,9 @@ func runClone(t *testing.T, o Options, dest string) (string, int) {
 		t.Fatalf("clone script no longer keeps its status at /tmp/bex-rc:\n%s", script)
 	}
 	hostScript := strings.ReplaceAll(script, "/tmp/bex-", filepath.Join(t.TempDir(), "bex-"))
-	// Submodules over file:// need the opt-in Git gives every local transport;
-	// production fetches over HTTPS.
+	// The local fixtures (parent and submodules over file://) need the opt-in
+	// Git gives every local transport; production allows HTTPS only
+	// (execution.GitHTTPSTransport), and a per-protocol key beats protocol.allow.
 	env := []string{"BEX_TEST_DEST=" + dest, "GIT_CONFIG_GLOBAL=/dev/null",
 		"GIT_CONFIG_COUNT=1", "GIT_CONFIG_KEY_0=protocol.file.allow", "GIT_CONFIG_VALUE_0=always"}
 	for _, e := range c.Env {
@@ -245,8 +246,9 @@ func TestCloneRefusesAControlCharacterInASubmodulePath(t *testing.T) {
 // TestCloneSubmodulesInPinnedGitImage runs the clone step in the pinned
 // production Git image over HTTPS against the public fixture QA reproduced
 // w8/m89 with — git-fixtures/submodule, which pins basic behind its branch
-// tip — and against a local parent naming the same child by its GitHub SSH
-// URL, which must go over HTTPS. Opt-in: needs Docker and network.
+// tip — against the same parent given by its GitHub SSH URL (w8/130), and
+// against a local parent naming the same child by its GitHub SSH URL. Each SSH
+// spelling must go over HTTPS. Opt-in: needs Docker and network.
 func TestCloneSubmodulesInPinnedGitImage(t *testing.T) {
 	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
 		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to clone in the pinned Git image")
@@ -259,13 +261,17 @@ func TestCloneSubmodulesInPinnedGitImage(t *testing.T) {
 	for name, o := range map[string]Options{
 		"public HTTPS fixture": {Builder: BuilderNative, Repo: "https://github.com/git-fixtures/submodule", Ref: "master",
 			ExpectedCommit: "b685400c1f9316f350965a5993d350bc746b0bf4"},
+		"parent by its GitHub SSH URL": {Builder: BuilderNative, Repo: "git@github.com:git-fixtures/submodule.git", Ref: "master",
+			ExpectedCommit: "b685400c1f9316f350965a5993d350bc746b0bf4"},
 		"GitHub SSH URL": {Builder: BuilderNative, Repo: "file://" + sshParent, Ref: "main"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			c := buildCloneContainer(o, defaultGitImage)
 			dest := t.TempDir()
 			args := []string{"run", "--rm", "--user", fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()), "--entrypoint", "sh",
-				"-e", "HOME=/tmp", "-v", dest + ":" + sourceMount, "-v", sshParent + ":" + sshParent + ":ro"}
+				"-e", "HOME=/tmp", "-v", dest + ":" + sourceMount, "-v", sshParent + ":" + sshParent + ":ro",
+				// The local parent is fetched over file://; see runClone.
+				"-e", "GIT_CONFIG_COUNT=1", "-e", "GIT_CONFIG_KEY_0=protocol.file.allow", "-e", "GIT_CONFIG_VALUE_0=always"}
 			for _, e := range c.Env {
 				if e.ValueFrom == nil {
 					args = append(args, "-e", e.Name+"="+e.Value)

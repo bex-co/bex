@@ -3084,7 +3084,7 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Create-wizard Public Git URL tab input placeholder",
   },
   "services.createPublicUrlError": {
-    message: "Enter a valid https://, git@, or git:// URL.",
+    message: "Enter an https:// URL, or a GitHub SSH URL (git@github.com:owner/repo.git).",
     description: "Create-wizard Public Git URL tab validation message",
   },
   "services.createImageLabel": {

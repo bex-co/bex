@@ -31,6 +31,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -1015,20 +1016,23 @@ func (s *Service) probeRepoTree(ctx context.Context, target repoTreeTarget) (Rep
 // a crafted path like `https://evil.example/@github.com/owner/repo` abuses to
 // masquerade as github.com and mint a token the build's credential helper would
 // then send to evil.example. Instead parse the URL structurally: an HTTPS URL
-// must have Hostname exactly github.com, no userinfo, and the default port; the
-// scp form is matched against a fixed `git@github.com:` prefix. Non-HTTPS
-// schemes (ssh/git) never mint a token — those clones authenticate with keys,
-// not the x-access-token password, so an HTTP installation token is both useless
-// and a leak risk on the wrong host.
+// must have Hostname exactly github.com, no userinfo, and the default port; a
+// GitHub SSH spelling is matched against its fixed prefix
+// (appv1alpha1.GitHubSSHRepoPrefixes). The operator fetches those as
+// https://github.com/… through the host-bound credential helper (w8/130), so they
+// mint exactly like HTTPS. Any other non-HTTPS URL never mints.
 func githubOwnerRepo(repoURL string) (owner, repo string, ok bool) {
 	s := strings.TrimSpace(repoURL)
-	// scp-like syntax has no scheme: git@github.com:owner/repo(.git).
-	if !strings.Contains(s, "://") {
-		rest, found := strings.CutPrefix(s, "git@github.com:")
-		if !found {
-			return "", "", false
+	for _, prefix := range appv1alpha1.GitHubSSHRepoPrefixes {
+		if rest, found := strings.CutPrefix(s, prefix); found {
+			// The URL git fetches (url.https://github.com/.insteadOf), checked
+			// by the same structural rules as an HTTPS URL below.
+			s = "https://github.com/" + rest
+			break
 		}
-		return splitOwnerRepo(rest)
+	}
+	if !strings.Contains(s, "://") {
+		return "", "", false
 	}
 	u, err := url.Parse(s)
 	if err != nil {
