@@ -125,6 +125,16 @@ const zhNotifications: Record<string, TranslationEntry> = {
     message: "只有选中、且不低于最低紧急程度的事件类型会生成推送通知。",
     description: "Push event hint",
   },
+  "notifications.pushEventNotSentYet": {
+    message: "暂未发送：目前没有任何功能会发送此事件。",
+    description:
+      "Under a push event that no part of bex emits yet (it is reserved for an upcoming feature); selecting it is kept but has no effect",
+  },
+  "notifications.pushEventNotSentYetShort": {
+    message: "暂未发送",
+    description:
+      "Compact form of the not-sent-yet note, under a push event in a per-service override's event grid",
+  },
   "notifications.pushEventFiltered": {
     message: "最低紧急程度为{minimum}时不会推送。",
     description:

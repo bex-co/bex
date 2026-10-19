@@ -127,6 +127,16 @@ const enNotifications: Record<string, TranslationEntry> = {
       "Only selected event types at or above the Minimum urgency can produce a push notification.",
     description: "Push events hint",
   },
+  "notifications.pushEventNotSentYet": {
+    message: "Not sent yet: nothing sends this event today.",
+    description:
+      "Under a push event that no part of bex emits yet (it is reserved for an upcoming feature); selecting it is kept but has no effect",
+  },
+  "notifications.pushEventNotSentYetShort": {
+    message: "Not sent yet",
+    description:
+      "Compact form of the not-sent-yet note, under a push event in a per-service override's event grid",
+  },
   "notifications.pushEventFiltered": {
     message: "Not pushed while Minimum urgency is {minimum}.",
     description:

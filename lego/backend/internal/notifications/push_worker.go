@@ -315,7 +315,7 @@ func newProjectedPush(event DeliveryEvent, title, body string) projectedPush {
 // The projections read it through newProjectedPush and pushEventUrgencies
 // publishes it, so the settings panel can mark a selection that the effective
 // minimum urgency drops (w4/m231). agent_needs_decision has no producer yet
-// (ADR048 needs-decision steering); its row is the agent family's.
+// (unsentPushEvents); its row is the agent family's.
 var pushEventUrgency = map[DeliveryEvent]DeliveryUrgency{
 	DeliveryEventDeployStarted:         DeliveryUrgencyRoutine,
 	DeliveryEventDeploySucceeded:       DeliveryUrgencyRoutine,
@@ -337,11 +337,18 @@ var pushEventUrgency = map[DeliveryEvent]DeliveryUrgency{
 	DeliveryEventPostgresUpgradeFailed: DeliveryUrgencyImportant,
 }
 
-// PushEventUrgencyView is one selectable push event and the urgency it is
-// delivered at.
+// unsentPushEvents are the selectable events no producer emits yet:
+// agent_needs_decision waits on ADR048's needs-decision steering. The panel
+// labels them rather than hiding them, so a saved selection survives until
+// the producer ships (w4/349).
+var unsentPushEvents = map[DeliveryEvent]bool{DeliveryEventAgentNeedsDecision: true}
+
+// PushEventUrgencyView is one selectable push event, the urgency it is
+// delivered at, and whether anything sends it yet.
 type PushEventUrgencyView struct {
 	Event   DeliveryEvent   `json:"event"`
 	Urgency DeliveryUrgency `json:"urgency"`
+	Sent    bool            `json:"sent"`
 }
 
 // pushEventUrgencies is pushEventUrgency in the settings' event order, the
@@ -350,7 +357,7 @@ type PushEventUrgencyView struct {
 var pushEventUrgencies = func() []PushEventUrgencyView {
 	out := make([]PushEventUrgencyView, 0, len(orderedDeliveryEvents))
 	for _, event := range orderedDeliveryEvents {
-		out = append(out, PushEventUrgencyView{Event: event, Urgency: pushEventUrgency[event]})
+		out = append(out, PushEventUrgencyView{Event: event, Urgency: pushEventUrgency[event], Sent: !unsentPushEvents[event]})
 	}
 	return out
 }()

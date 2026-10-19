@@ -36,7 +36,8 @@ mutation UpdateNotificationSettings(
 # email fields remain byte-compatible. Browser web push reuses the same policy
 # picker; availability is a distinct field so native Expo stays byte-identical.
 # pushEventUrgencies is the urgency each event is delivered at (w4/m231), so the
-# panel can mark a selection the minimum urgency drops.
+# panel can mark a selection the minimum urgency drops, and whether anything
+# sends it yet (w4/349).
 query PushNotificationSettings {
   pushNotificationsAvailable
   webPushAvailable
@@ -44,6 +45,7 @@ query PushNotificationSettings {
   pushEventUrgencies {
     event
     urgency
+    sent
   }
   pushNotificationSettings {
     enabled
