@@ -25,15 +25,16 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/operator/internal/appwatch"
 	"github.com/bex-co/bex/lego/operator/internal/identity"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// CachedResolver serves the host→Site map by periodically listing static_site
-// Apps and atomically swapping an immutable snapshot. Polling (rather than an
-// informer) keeps the standalone binary simple; static-site config changes are
-// infrequent and a few seconds of edit propagation is acceptable (Render is not
-// instant either). Only Apps that are static_site and already published
+// CachedResolver serves the host→Site map by listing static_site Apps and
+// atomically swapping an immutable snapshot. It rebuilds on every App change
+// signalled by a watch-backed cache (internal/appwatch), with a periodic
+// backstop, so a first publish is servable before the operator hands it the
+// host (w4/m235). Only Apps that are static_site and already published
 // (Status.ActiveRevision set) are kept; a suspended one is kept Unavailable, so
 // its host answers a retryable 503 rather than 404 until a Refresh sees it
 // resumed (w4/307).
@@ -74,6 +75,9 @@ func (c *CachedResolver) Refresh(ctx context.Context) error {
 	if c.namespace != "" {
 		opts = append(opts, client.InNamespace(c.namespace))
 	}
+	// Shared with the watch cache, never mutated: a Site keeps only scalars and
+	// the read-only route and header slices.
+	opts = append(opts, client.UnsafeDisableDeepCopy)
 	if err := c.reader.List(ctx, &list, opts...); err != nil {
 		return fmt.Errorf("staticserver: list apps: %w", err)
 	}
@@ -104,25 +108,15 @@ func (c *CachedResolver) Refresh(ctx context.Context) error {
 	return nil
 }
 
-// Run refreshes the snapshot every interval until ctx is cancelled, after an
-// immediate first refresh. A refresh error is non-fatal: the previous snapshot
-// keeps serving until the next successful poll.
-func (c *CachedResolver) Run(ctx context.Context, interval time.Duration, onErr func(error)) {
-	if err := c.Refresh(ctx); err != nil && onErr != nil {
-		onErr(err)
-	}
-	t := time.NewTicker(interval)
-	defer t.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-t.C:
-			if err := c.Refresh(ctx); err != nil && onErr != nil {
-				onErr(err)
-			}
+// Run refreshes the snapshot now, then on every changed signal and every
+// backstop interval until ctx is cancelled (appwatch.Loop). A refresh error is
+// non-fatal: the previous snapshot keeps serving until the next success.
+func (c *CachedResolver) Run(ctx context.Context, interval time.Duration, changed <-chan struct{}, onErr func(error)) {
+	appwatch.Loop(ctx, interval, changed, func() {
+		if err := c.Refresh(ctx); err != nil && onErr != nil {
+			onErr(err)
 		}
-	}
+	})
 }
 
 // effectiveHosts mirrors the controller's host resolution for static sites so
