@@ -363,11 +363,11 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **125** — [Backward log pages without a startTime hand out inverted cursors past the first hour](done/125.md) ← w8/123 code review 2026-10-19: the cursor start defaults to 1h while the read looks back 7 days — **DONE (2026-10-19)**
 
-- [ ] **131** — [A nonexistent Docker Hub image burns the full 15-minute rollout budget instead of the 90-second pull-failure settle](131.md) ← `/qa-find-bugs-cli` sweep 532 2026-10-19
+- [x] **131** — [A nonexistent Docker Hub image burns the full 15-minute rollout budget instead of the 90-second pull-failure settle](done/131.md) ← `/qa-find-bugs-cli` sweep 532 2026-10-19 — **DONE (2026-10-19)**
 
-- [ ] **130** — [An SSH-form repo URL is accepted at create but every build dies on SSH host-key verification](130.md) ← `/qa-find-bugs-cli` loop 2026-10-19
+- [x] **130** — [An SSH-form repo URL is accepted at create but every build dies on SSH host-key verification](done/130.md) ← `/qa-find-bugs-cli` loop 2026-10-19 — **DONE (2026-10-19)**
 
-- [ ] **129** — [Postgres reads omit the Render-required `suspenders` and `role` fields](129.md) ← `/qa-find-bugs-cli` loop 2026-10-19
+- [x] **129** — [Postgres reads omit the Render-required `suspenders` and `role` fields](done/129.md) ← `/qa-find-bugs-cli` loop 2026-10-19 — **DONE (2026-10-19)**
 
 - [x] **128** — [Restart/Rollback refusals name the internal App name instead of the service the caller asked for](done/128.md) ← `/qa-find-bugs-cli` sweep 503 2026-10-19: Restart/Rollback refusals name the internal App CR name — **DONE (2026-10-19)**
 
