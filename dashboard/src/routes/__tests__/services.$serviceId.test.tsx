@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { useEffect } from "react";
 import {
   RouterProvider,
   createRouter,
@@ -232,6 +233,54 @@ beforeEach(() => {
   run.mockReset();
 });
 
+// w4/m236: the parent route's pending frame must never mount the live tab
+// page. The probe child stands in for a tab page (Metrics in production): it
+// records mounts and renders the heading whose duplication was the symptom.
+const probeMounts: string[] = [];
+function ProbeTab() {
+  useEffect(() => {
+    probeMounts.push("mount");
+    return () => {
+      probeMounts.push("unmount");
+    };
+  }, []);
+  return <h2>Application Metrics</h2>;
+}
+
+function renderPendingAt(initialPath: string) {
+  let resolveLoader: (value: unknown) => void = () => {};
+  const loaderPending = new Promise((resolve) => {
+    resolveLoader = resolve;
+  });
+  const rootRoute = createRootRoute();
+  const layoutRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/services/$serviceId",
+    component: () => <ServiceDetailLayout serviceId="app" />,
+    // The routes' real shape: a dedicated pending frame (layout with
+    // routePending) at 0ms while the title loader runs.
+    pendingComponent: () => (
+      <ServiceDetailLayout serviceId="app" routePending />
+    ),
+    pendingMs: 0,
+    loader: () => loaderPending,
+  });
+  const metricsRoute = createRoute({
+    getParentRoute: () => layoutRoute,
+    path: "metrics",
+    component: ProbeTab,
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      layoutRoute.addChildren([metricsRoute]),
+    ]),
+    history: createMemoryHistory({ initialEntries: [initialPath] }),
+    context: { client: {} as never, session: null },
+  });
+  render(<RouterProvider router={router} />);
+  return { router, resolveLoader };
+}
+
 describe("service-detail layout routing", () => {
   it("renders the Logs viewer tab at /services/$serviceId/logs under the shared chrome", async () => {
     renderAt("/services/app/logs");
@@ -301,6 +350,30 @@ describe("service-detail layout routing", () => {
     expect(
       screen.queryByPlaceholderText("Search logs"),
     ).not.toBeInTheDocument();
+  });
+
+  it("never mounts the tab page inside the pending frame (w4/m236)", async () => {
+    probeMounts.length = 0;
+    const { resolveLoader } = renderPendingAt("/services/app/metrics");
+
+    // While the parent loader is pending, the frame is chrome + skeleton:
+    // the tab page has not mounted at all (the pre-fix pending copy rendered
+    // the layout's <Outlet/>, streaming a second live copy of the page into
+    // the SSR shell that hydration left behind as a dead duplicate).
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(screen.queryByText("Application Metrics")).not.toBeInTheDocument();
+    expect(probeMounts).toEqual([]);
+
+    await act(async () => {
+      resolveLoader({});
+    });
+    expect(
+      await screen.findByText("Application Metrics"),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Application Metrics")).toHaveLength(1);
+    expect(probeMounts).toEqual(["mount"]);
   });
 
   it("shows a retryable error instead of not-found when the service query fails", async () => {

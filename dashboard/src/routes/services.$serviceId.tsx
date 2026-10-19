@@ -16,11 +16,11 @@ import {
 export const Route = createFileRoute("/services/$serviceId")({
   staticData: { chrome: true },
   component: RouteComponent,
-  // The page doubles as its own pending state at 0ms: ServiceDetailLayout
-  // renders full chrome + a header skeleton while its Apollo read loads
-  // (tolerating the absent loaderData), so the title-loader wait shows the
-  // real frame instead of the router-level blank that used to flash white.
-  pendingComponent: RouteComponent,
+  // A dedicated pending frame at 0ms: the layout's chrome + tab skeleton
+  // without the live <Outlet/>, so the title-loader wait shows the real frame
+  // instead of the router-level blank that used to flash white — and never a
+  // second live copy of the tab page (w4/m236; w3/m44's shape).
+  pendingComponent: PendingRouteComponent,
   pendingMs: 0,
   // No-arg requireAuth: `next` is the requested href (the old form passed the
   // literal "$serviceId" pattern), so a login bounce returns to the actual
@@ -53,6 +53,13 @@ export const Route = createFileRoute("/services/$serviceId")({
       match,
     ),
 });
+
+function PendingRouteComponent() {
+  const { serviceId } = Route.useParams();
+  return (
+    <ServiceDetailLayout serviceId={serviceId} base="/services" routePending />
+  );
+}
 
 function RouteComponent() {
   const { serviceId } = Route.useParams();

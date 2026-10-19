@@ -898,7 +898,7 @@ func view(r store.ServiceEventRow, service string) Event {
 	case store.EventSourceDeploy:
 		ev.Details.DeployID = r.DeployID
 		// Enrich with deploy details for dashboard display (w1/m47)
-		ev.Details.Image = r.Image
+		ev.Details.Image = store.PublicImageRef(r.Image)
 		ev.Details.CommitID = r.CommitID
 		ev.Details.CommitMessage = r.CommitMessage
 		ev.Details.StartedAt = r.StartedAt
@@ -1000,7 +1000,7 @@ func view(r store.ServiceEventRow, service string) Event {
 	case store.EventSourceFact:
 		ev.Type = r.FactType
 		ev.Details.DeployID = r.DeployID
-		ev.Details.Image = r.Image
+		ev.Details.Image = store.PublicImageRef(r.Image)
 		ev.Details.CommitID = r.CommitID
 		ev.Details.ReasonCode = r.ReasonCode
 		ev.Details.CancelReason = r.CancelReason

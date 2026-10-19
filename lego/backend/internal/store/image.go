@@ -56,8 +56,8 @@ func ValidateImage(v string) error {
 	registry := reference.Domain(named)
 	// Preserve the explicit host before Docker Hub alias normalization; parsing
 	// index.docker.io as docker.io must not expand the platform's trusted set.
-	if first, _, hasSlash := strings.Cut(v, "/"); hasSlash && strings.ContainsAny(first, ".:") {
-		registry = first
+	if segment, _, ok := registrySegment(v); ok {
+		registry = segment
 	}
 	host := (&url.URL{Host: registry}).Hostname()
 	if strings.EqualFold(host, "localhost") {
@@ -85,8 +85,47 @@ func ImageRepository(v string) (string, error) {
 	return strings.ToLower(reference.Domain(named)) + "/" + reference.Path(named), nil
 }
 
+// PublicImageRef returns the tenant-facing form of a stored deploy image
+// reference (w4/m236). A reference whose registry host is cluster-internal
+// (the platform's own zot build registry, any *.svc or *.cluster.local host)
+// loses that host, keeping the repository path with its tag/digest, so no
+// tenant surface prints cluster-internal DNS. Every other reference — a
+// user-supplied image above all — passes through byte-identical. The stored
+// value is never changed; this runs at the read-projection boundary only, so
+// rollback still runs the exact stored image.
+func PublicImageRef(v string) string {
+	segment, rest, ok := registrySegment(v)
+	if !ok {
+		return v
+	}
+	hostname := normalizeRegistryHost((&url.URL{Host: segment}).Hostname())
+	if hostname == "zot.bex-registry.svc" ||
+		strings.HasSuffix(hostname, ".svc") ||
+		strings.HasSuffix(hostname, ".cluster.local") {
+		return rest
+	}
+	return v
+}
+
+// registrySegment returns the explicit registry host segment (host[:port]) of
+// an image reference and the remainder after it. A first path segment counts
+// as a registry only when it contains a dot or a port colon — the reference
+// grammar's own rule, which keeps Docker Hub short forms (`traefik/whoami`)
+// from being mistaken for a host.
+func registrySegment(v string) (segment, rest string, ok bool) {
+	segment, rest, hasSlash := strings.Cut(v, "/")
+	if !hasSlash || !strings.ContainsAny(segment, ".:") {
+		return "", "", false
+	}
+	return segment, rest, true
+}
+
+func normalizeRegistryHost(host string) string {
+	return strings.ToLower(strings.TrimSuffix(host, "."))
+}
+
 func trustedImageRegistry(host string) bool {
-	host = strings.ToLower(strings.TrimSuffix(host, "."))
+	host = normalizeRegistryHost(host)
 	switch host {
 	case "docker.io", "registry-1.docker.io", "ghcr.io", "quay.io", "gcr.io",
 		"registry.k8s.io", "public.ecr.aws", "mcr.microsoft.com",

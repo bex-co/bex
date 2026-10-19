@@ -38,9 +38,19 @@ import { ServiceRouteContentSkeleton } from "@/common/components/route-skeletons
 export function ServiceDetailLayout({
   serviceId,
   base = "/services",
+  routePending = false,
 }: {
   serviceId: string;
   base?: ServiceBase;
+  /**
+   * Rendered as the parent route's pendingComponent while its title loader
+   * runs. The pending frame shows the same chrome with the tab skeleton and
+   * must never mount the live `<Outlet/>`: reusing the full layout as its own
+   * pendingComponent streamed a second, unadopted copy of the tab page into
+   * the SSR shell, which hydration then left behind as a dead duplicate
+   * (w4/m236; same shape as w3/m44).
+   */
+  routePending?: boolean;
 }) {
   const { service, loading, error, refetch } = useServer(serviceId);
   const { deploy: latestDeploy } = useLatestDeploy(serviceId);
@@ -53,7 +63,7 @@ export function ServiceDetailLayout({
   // child tab at once. A genuine query error is excluded; it keeps the inline
   // retry state below, and so is this service's own delete (w4/340).
   useNotFoundRedirect(
-    !deletingSelf && resourceNotFound(service, loading, error),
+    !routePending && !deletingSelf && resourceNotFound(service, loading, error),
   );
 
   // `base` (the route tree this layout renders under) rides context so the
@@ -68,7 +78,11 @@ export function ServiceDetailLayout({
   // never the "The request to bex-api failed" retry card the screenshot showed.
   const loadErrorVariant = resourceLoadErrorVariant(service, loading, error);
   const expired = loadErrorVariant === "unauthenticated";
-  if (loadErrorVariant) {
+  // The pending frame never decides error/not-found and never shows the live
+  // service: it is chrome + the active tab's skeleton until the real mount
+  // replaces it.
+  const shownService = routePending ? null : service;
+  if (!routePending && loadErrorVariant) {
     content = (
       <DashboardLayout>
         <div className="flex-1 overflow-auto p-4 sm:p-6">
@@ -115,7 +129,7 @@ export function ServiceDetailLayout({
         </div>
       </DashboardLayout>
     );
-  } else if (!service && !loading) {
+  } else if (!routePending && !service && !loading) {
     // Unknown service id: the redirect above is already in flight. Render only
     // skeleton chrome for the WHOLE detail (every tab) — never let a child tab
     // borrow another service's data (the 2026-07-09 phantom-service bug the
@@ -136,11 +150,11 @@ export function ServiceDetailLayout({
     content = (
       <DashboardLayout>
         <div className="min-h-0 flex-1 overflow-auto">
-          {service ? (
+          {shownService ? (
             <ServiceDetailHeader
-              service={service}
+              service={shownService}
               latestDeploy={latestDeploy}
-              pending={pending?.id === service.id ? pending.action : null}
+              pending={pending?.id === shownService.id ? pending.action : null}
             />
           ) : (
             <ServiceDetailHeaderSkeleton />
@@ -150,10 +164,10 @@ export function ServiceDetailLayout({
                 page opts into a 6xl shell so its right rail doesn't compress
                 the existing form cards. */}
             <div
-              data-skeleton-region={!service ? "active-tab" : undefined}
+              data-skeleton-region={!shownService ? "active-tab" : undefined}
               className="mx-auto w-full max-w-4xl space-y-6 has-[>.service-settings-layout]:max-w-6xl"
             >
-              {service ? (
+              {shownService ? (
                 <Outlet />
               ) : (
                 <PendingTabContent serviceId={serviceId} base={base} />

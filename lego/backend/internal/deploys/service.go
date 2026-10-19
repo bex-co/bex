@@ -157,7 +157,7 @@ func view(d store.Deploy) DeployView {
 		ID:              d.ID,
 		ServiceID:       d.AppID,
 		Status:          d.Status,
-		Image:           d.Image,
+		Image:           store.PublicImageRef(d.Image),
 		Trigger:         d.Trigger,
 		RollbackOf:      d.RollbackOf,
 		CommitID:        d.Commit,

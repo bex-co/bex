@@ -1,16 +1,16 @@
 # w4 · m236 — The Metrics page shows one working Application Metrics card, not two
 
-**Worker:** worker4 **Goal:** a service's Metrics tab renders exactly one Application Metrics card and it carries data; tenant deploy/event surfaces stop printing the cluster-internal build registry host. **Status:** todo
+**Worker:** worker4 **Goal:** a service's Metrics tab renders exactly one Application Metrics card and it carries data; tenant deploy/event surfaces stop printing the cluster-internal build registry host. **Status:** blocked (t001–t005 done 2026-10-19, loopx w4; t006 live closeout waits on the deploy)
 
 ## Tasks (in order)
 
 | id             | title                                                                    | est | depends_on                    |
 | -------------- | ------------------------------------------------------------------------ | --- | ----------------------------- |
-| [t001](t001.md) | Root-cause and remove the duplicate dead Application Metrics card      | 45m | —                             |
-| [t002](t002.md) | Keep cluster-internal build image refs off tenant deploy/event surfaces | 45m | —                             |
-| [t003](t003.md) | Render parity                                                            | 20m | w4/m236/t001, w4/m236/t002    |
-| [t004](t004.md) | Simplify                                                                 | 15m | w4/m236/t003                  |
-| [t005](t005.md) | Test coverage                                                            | 30m | w4/m236/t003                  |
+| [t001](done/t001.md) | Root-cause and remove the duplicate dead Application Metrics card — **DONE**      | 45m | —                             |
+| [t002](done/t002.md) | Keep cluster-internal build image refs off tenant deploy/event surfaces — **DONE** | 45m | —                             |
+| [t003](done/t003.md) | Render parity — **DONE**                                                            | 20m | w4/m236/t001, w4/m236/t002    |
+| [t004](done/t004.md) | Simplify — **DONE**                                                                 | 15m | w4/m236/t003                  |
+| [t005](done/t005.md) | Test coverage — **DONE**                                                            | 30m | w4/m236/t003                  |
 | [t006](t006.md) | Closeout                                                                 | 15m | w4/m236/t004, w4/m236/t005    |
 
 Six tasks, 170m (2h50m). One **major** finding and one **minor** finding. This milestone schedules the work only.

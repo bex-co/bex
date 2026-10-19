@@ -1107,7 +1107,7 @@ func view(a *appv1alpha1.App) AppView {
 		InternalAddress:      a.InternalAddress(),
 		Port:                 addressablePort(a),
 		URLs:                 urls,
-		Image:                a.Status.Image,
+		Image:                store.PublicImageRef(a.Status.Image),
 		SourceImage:          a.Spec.Image,
 		RegistryCredentialID: clonePtr(a.Spec.RegistryCredentialID),
 		Runtime:              effectiveRuntime(a.Spec, svcType),
