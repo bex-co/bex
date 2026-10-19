@@ -427,3 +427,145 @@ func TestPGDatastoreFailureEdgeOutlivesTheDebouncedPhaseWrite(t *testing.T) {
 		t.Fatalf("available edge = %+v, want one at the :120 Ready transition", f)
 	}
 }
+
+// TestPGWakeRecordsOnlyItsLifecycleFact is w4/m230 against the real
+// checkpoint and the composed feed the webhook worker and PushWorker tail: an
+// idle wake (slow or fast) and a user Resume, observed through the startup
+// phase the operator reports (Deploying, Ready=False/RolloutProgressing, no
+// deploy row), record only service_woken / service_resumed — so no "Service
+// recovered" push or server_available webhook can be produced. A wake that
+// crash-loops records server_failed, which its recovery pairs with, and a
+// running service going unready without a deploy still pages.
+func TestPGWakeRecordsOnlyItsLifecycleFact(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	st := NewPGStore(pool)
+
+	stamp := fmt.Sprintf("%d", time.Now().UnixNano())
+	tenant, err := st.CreateWorkspace(ctx, "wake-"+stamp, PlanHobby, "alice-"+stamp)
+	if err != nil {
+		t.Fatalf("create workspace: %v", err)
+	}
+	t.Cleanup(func() { _ = st.DeleteTenant(context.Background(), tenant.ID) })
+
+	running := readyCR(appv1alpha1.PhaseRunning, metav1.ConditionTrue, "Deployed", time.Time{})
+	starting := readyCR(appv1alpha1.PhaseDeploying, metav1.ConditionFalse, "RolloutProgressing", time.Time{})
+	crashing := readyCR(appv1alpha1.PhaseDeploying, metav1.ConditionFalse, "CrashLoopBackOff", time.Time{})
+	asleep := readyCR(appv1alpha1.PhaseHibernated, metav1.ConditionFalse, "AutoHibernated", time.Time{})
+	suspended := readyCR(appv1alpha1.PhaseHibernated, metav1.ConditionFalse, "Suspended", time.Time{})
+	suspended.Spec.Suspended = true
+
+	for _, tc := range []struct {
+		name     string
+		sequence []*appv1alpha1.App
+		want     []ServiceEventFactType
+	}{
+		{"slow wake", []*appv1alpha1.App{running, asleep, starting, starting, starting, running},
+			[]ServiceEventFactType{EventFactServiceHibernated, EventFactServiceWoken}},
+		{"fast wake", []*appv1alpha1.App{running, asleep, running},
+			[]ServiceEventFactType{EventFactServiceHibernated, EventFactServiceWoken}},
+		{"user resume", []*appv1alpha1.App{running, suspended, starting, starting, running},
+			[]ServiceEventFactType{EventFactServiceSuspended, EventFactServiceResumed}},
+		{"failed wake", []*appv1alpha1.App{running, asleep, crashing, crashing, running},
+			[]ServiceEventFactType{EventFactServiceHibernated, EventFactServerFailed, EventFactServiceWoken, EventFactServerAvailable}},
+		{"running unready without a deploy", []*appv1alpha1.App{running, starting, starting, running},
+			[]ServiceEventFactType{EventFactServerFailed, EventFactServerAvailable}},
+		{"failure spanning a sleep", []*appv1alpha1.App{running, crashing, asleep, starting, running},
+			[]ServiceEventFactType{EventFactServerFailed, EventFactServiceHibernated, EventFactServiceWoken, EventFactServerAvailable}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app, err := st.CreateApp(ctx, App{
+				TenantID: tenant.ID, Name: fmt.Sprintf("wake-%d", time.Now().UnixNano()), Image: "python:3.13-alpine",
+				Branch: "main", Port: 8000, Replicas: 1, Tier: "free",
+			})
+			if err != nil {
+				t.Fatalf("create app: %v", err)
+			}
+			var got []ServiceEventFactType
+			for _, cr := range tc.sequence {
+				facts, err := st.RecordObservedServiceState(ctx, observedServiceStateFor(app.ID, cr, false))
+				if err != nil {
+					t.Fatalf("record observed state: %v", err)
+				}
+				got = append(got, factTypes(facts)...)
+			}
+			if fmt.Sprint(got) != fmt.Sprint(tc.want) {
+				t.Fatalf("facts = %v, want %v", got, tc.want)
+			}
+
+			rows, err := st.ListWebhookEvents(ctx, time.Time{}, "", time.Now().Add(time.Minute), []string{}, []string{tenant.ID}, 100)
+			if err != nil {
+				t.Fatalf("list webhook events: %v", err)
+			}
+			feed, want := map[string]int{}, map[string]int{}
+			for _, row := range rows {
+				if row.Source == EventSourceFact && row.AppID == app.ID {
+					feed[row.FactType]++
+				}
+			}
+			for _, typ := range tc.want {
+				want[string(typ)]++
+			}
+			if fmt.Sprint(feed) != fmt.Sprint(want) {
+				t.Fatalf("feed facts = %v, want %v", feed, want)
+			}
+		})
+	}
+}
+
+// TestPGWokenCarriesTheReadyTransition: through the real checkpoint, the
+// wake is stamped when its instance went Ready, not when a pass noticed.
+func TestPGWokenCarriesTheReadyTransition(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	st := NewPGStore(pool)
+	stamp := fmt.Sprintf("%d", time.Now().UnixNano())
+	tenant, err := st.CreateWorkspace(ctx, "woken-"+stamp, PlanHobby, "alice-"+stamp)
+	if err != nil {
+		t.Fatalf("create workspace: %v", err)
+	}
+	t.Cleanup(func() { _ = st.DeleteTenant(context.Background(), tenant.ID) })
+	app, err := st.CreateApp(ctx, App{TenantID: tenant.ID, Name: "woken-" + stamp, Image: "python:3.13-alpine", Branch: "main", Port: 8000, Replicas: 1, Tier: "free"})
+	if err != nil {
+		t.Fatalf("create app: %v", err)
+	}
+	record := func(cr *appv1alpha1.App) []ServiceEventFact {
+		t.Helper()
+		facts, err := st.RecordObservedServiceState(ctx, observedServiceStateFor(app.ID, cr, false))
+		if err != nil {
+			t.Fatalf("record observed state: %v", err)
+		}
+		return facts
+	}
+	record(readyCR(appv1alpha1.PhaseRunning, metav1.ConditionTrue, "Deployed", time.Time{}))
+	record(readyCR(appv1alpha1.PhaseHibernated, metav1.ConditionFalse, "AutoHibernated", time.Time{}))
+	time.Sleep(5 * time.Millisecond)
+	readyAt := time.Now().UTC()
+	time.Sleep(5 * time.Millisecond)
+	facts := record(readyCR(appv1alpha1.PhaseRunning, metav1.ConditionTrue, "Deployed", readyAt))
+	if len(facts) != 1 || facts[0].Type != EventFactServiceWoken || !facts[0].At.Equal(readyAt) {
+		t.Fatalf("facts = %+v, want one service_woken at the Ready transition %s", facts, readyAt)
+	}
+}
