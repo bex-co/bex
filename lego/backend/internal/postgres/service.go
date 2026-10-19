@@ -31,6 +31,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -429,6 +430,44 @@ func (req CreatePostgresRequest) validatePhysicalIdentifiers() error {
 	return nil
 }
 
+// annotationRestartFreeGeneration names the generation a restart-free write
+// lands at, mirroring the Key Value annotation of the same name (w4/m233):
+// an external-access or display-name change restarts nothing — CNPG re-signs
+// the server certificate and reloads, and the SNI proxy re-reads its routes —
+// so the status must not read config_restart while the operator catches up
+// to that generation (w4/364).
+const annotationRestartFreeGeneration = "app.bex.co/restart-free-generation"
+
+// restartFreePending reports a Ready database whose only unobserved
+// generation is one bex-api wrote as restart-free.
+func restartFreePending(d *appv1alpha1.Database) bool {
+	marked, ok := d.Annotations[annotationRestartFreeGeneration]
+	return ok && marked == strconv.FormatInt(d.Generation, 10) && d.Status.Phase == appv1alpha1.DBPhaseReady &&
+		core.DatastoreReadyStatus(d.Status.Conditions, d.Generation-1) == core.DatastoreAvailable
+}
+
+// markRestartFree records, on the write itself, whether the generation it
+// lands at restarts nothing: only the display name, the two allow-list
+// layers or external access change. Anything else — plan, version, storage,
+// parameters, HA, pooler, users, suspend, a restart stamp — keeps
+// config_restart until served (w4/m137). A write that leaves the spec alone
+// bumps no generation, so it marks nothing.
+func markRestartFree(before, after *appv1alpha1.Database) {
+	if apiequality.Semantic.DeepEqual(after.Spec, before.Spec) {
+		return
+	}
+	spec, prior := after.Spec, before.Spec
+	spec.Name, prior.Name = "", ""
+	spec.IPAllowList, prior.IPAllowList = nil, nil
+	spec.EnvironmentIPAllowList, prior.EnvironmentIPAllowList = nil, nil
+	spec.Public, prior.Public = false, false
+	if !apiequality.Semantic.DeepEqual(spec, prior) {
+		delete(after.Annotations, annotationRestartFreeGeneration)
+		return
+	}
+	metav1.SetMetaDataAnnotation(&after.ObjectMeta, annotationRestartFreeGeneration, strconv.FormatInt(before.Generation+1, 10))
+}
+
 // dbStatus maps bex's Database phase onto Render's databaseStatus enum. A
 // restart of a database that has served reads `config_restart`, never
 // `creating` (w4/m137).
@@ -440,6 +479,9 @@ func dbStatus(d *appv1alpha1.Database) string {
 		// not restarting (w4/m223).
 		if status == core.DatastoreConfigRestart && !d.Status.Provisioned {
 			return core.DatastoreCreating
+		}
+		if status == core.DatastoreConfigRestart && restartFreePending(d) {
+			return core.DatastoreAvailable
 		}
 		return status
 	case appv1alpha1.DBPhaseUpgrading:
@@ -1646,8 +1688,14 @@ func (s *Service) SetVersion(ctx context.Context, name, target string) (Postgres
 // follows. Callers that already hold the object use this to avoid a re-fetch.
 // A dry-run sends the same patch for admission alone (core.Base.PatchObject).
 func (s *Service) patchDatabaseObj(ctx context.Context, d *appv1alpha1.Database, mutate func(d *appv1alpha1.Database), dryRun bool) (PostgresView, error) {
+	before := d.DeepCopy()
 	patch := client.MergeFrom(d.DeepCopy())
 	mutate(d)
+	// The mark names the generation this write lands at (before+1). This is
+	// a plain merge patch, not KV's optimistic-locked one: a write that
+	// raced in between makes the mark name a stale generation, which
+	// restartFreePending then simply does not match — the safe direction.
+	markRestartFree(before, d)
 	resourcemeta.Touch(d, s.Now())
 	if err := s.PatchObject(ctx, d, patch, dryRun); err != nil {
 		return PostgresView{}, err
