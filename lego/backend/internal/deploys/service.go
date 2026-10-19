@@ -530,6 +530,24 @@ func (s *Service) Trigger(ctx context.Context, service string, p TriggerParams) 
 	return s.triggerFetched(ctx, service, a, p, store.TriggerAPI)
 }
 
+// Rebuild is a full rebuild from the latest commit, recorded as the
+// configuration change that asked for it: an environment save's "Save,
+// rebuild, and deploy" for a service or an environment group (w4/347). Manual
+// Deploy keeps Trigger's api cause; this one reads as config_change, so REST
+// reports service_updated and events carry envUpdated, not manual, as for any
+// other configuration-forced rollout (w6/m51). Parameter-free, so its
+// authorization is lifecycle, like a bare Trigger.
+func (s *Service) Rebuild(ctx context.Context, service string) (DeployView, error) {
+	a, err := s.AuthorizeApp(ctx, core.LifecycleOrCreate(false), service)
+	if err != nil {
+		return DeployView{}, err
+	}
+	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
+		return DeployView{}, err
+	}
+	return s.triggerFetched(ctx, service, a, TriggerParams{}, store.TriggerConfigChange)
+}
+
 // Restart selects the live release's artifact and configuration without changing
 // saved settings. For a legacy repo deploy with no resolved artifact, it retains
 // the existing commit-pinned rebuild fallback; this cannot promise historical

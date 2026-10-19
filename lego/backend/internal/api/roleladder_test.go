@@ -372,6 +372,9 @@ var representativeVerbRelations = map[string]string{
 	// Restart deploys the live commit, never caller-chosen content, so it stays
 	// a lifecycle verb (w1/m148).
 	"*deploys.Service.Restart": core.RelCanOperate,
+	// Rebuild builds the configured branch head, never caller-chosen content —
+	// a bare redeploy recorded as a configuration change (w4/347).
+	"*deploys.Service.Rebuild": core.RelCanOperate,
 	"*apps.Service.SetCronJob": core.RelCanOperate,
 	// AttachTicket is CONDITIONAL the same way (codex r7 #3): the zero-value
 	// action this sweep captures is the transcript READ branch (contributor,
