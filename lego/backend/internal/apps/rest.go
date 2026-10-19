@@ -1379,7 +1379,7 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 			EnvGroupIDs []string `json:"envGroupIds"`
 		}
 		if err := core.DecodeJSON(r, &body); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%w: invalid blueprint generate body", core.ErrBadRequest)
 		}
 		return s.GenerateBlueprint(r.Context(), GenerateBlueprintRequest{
 			OwnerID:     body.OwnerID,
