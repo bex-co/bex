@@ -4,7 +4,7 @@
 #
 #   bash scripts/qa-login.sh [OUT]           write a storage-state file
 #   bash scripts/qa-login.sh --serve         serve the state once over loopback
-#   bash scripts/qa-login.sh --logout [PATH] revoke the Kratos session in PATH
+#   bash scripts/qa-login.sh --logout PATH   revoke the Kratos session in PATH
 #   bash scripts/qa-login.sh --login-challenge CHALLENGE [--cookie-jar PATH] [OUT]
 #                                           finish a CLI device OAuth login
 #
@@ -12,17 +12,22 @@
 # Kratos password login against $KRATOS_PUB, and writes OUT: a Playwright
 # storage-state file (cookies only, mode 600) that /qa-find-bugs restores with
 # the browser_set_storage_state MCP tool. Credentials go to curl by file, never
-# in argv (ps leaks argv), and stdout is exactly "ok <path>" — no secret is ever
-# printed. Consumed by .claude/skills/qa-find-bugs/SKILL.md.
+# in argv (ps leaks argv), and stdout is exactly two lines — "ok <path-or-url>"
+# then "logout <jar>" — so no secret is ever printed. Consumed by
+# .claude/skills/qa-find-bugs/SKILL.md.
 #
-# Every successful login also writes a 0600 Netscape cookie jar at
-# .playwright-mcp/qa-session.jar (gitignored) so the hunt can revoke the session
-# later without putting cookies in the agent transcript. The session must outlive
-# this script (the browser uses it for the whole hunt), so revocation is NOT in
-# the EXIT trap — callers must run --logout when the hunt ends (Phase 8).
+# Every successful login also writes this run's own 0600 Netscape cookie jar at
+# .playwright-mcp/qa-session-<run>.jar (gitignored), printed on the logout line,
+# so the hunt can revoke the session later without putting cookies in the agent
+# transcript. Per-run paths keep concurrent hunts in one checkout from
+# overwriting or revoking each other's sessions (w4/343), which is also why
+# --logout takes the handle explicitly instead of guessing a shared default. The
+# session must outlive this script (the browser uses it for the whole hunt), so
+# revocation is NOT in the EXIT trap — callers must run --logout when the hunt
+# ends (Phase 8).
 #
-# OUT defaults to .playwright-mcp/qa-storage-state.json. Delete OUT and the
-# companion jar after --logout: they carried a live session cookie.
+# OUT defaults to .playwright-mcp/qa-storage-state-<run>.json. Delete OUT and
+# the jar after --logout: they carried a live session cookie.
 # --cookie-jar seeds a private copy of a jar or storage state. KRATOS_PUB, DASH,
 # and OAUTH_PUB configure the only origins allowed during OAuth continuation.
 set -euo pipefail
@@ -31,8 +36,9 @@ cd "$(dirname "$0")/.."
 KRATOS_PUB="${KRATOS_PUB:-https://auth.bex.co}"
 DASH="${DASH:-https://dashboard.bex.co}"
 OAUTH_PUB="${OAUTH_PUB:-https://oauth.bex.co}"
-DEFAULT_OUT=".playwright-mcp/qa-storage-state.json"
-DEFAULT_JAR=".playwright-mcp/qa-session.jar"
+RUN_ID="$(python3 -c 'import secrets; print(secrets.token_hex(6))')"
+DEFAULT_OUT=".playwright-mcp/qa-storage-state-$RUN_ID.json"
+RUN_JAR=".playwright-mcp/qa-session-$RUN_ID.jar"
 
 qa_curl() {
   curl --connect-timeout 10 --max-time 30 "$@"
@@ -214,14 +220,8 @@ print(url)
 
 if [ "$MODE" = logout ]; then
   if [ -z "$LOGOUT_PATH" ]; then
-    if [ -f "$DEFAULT_OUT" ]; then
-      LOGOUT_PATH="$DEFAULT_OUT"
-    elif [ -f "$DEFAULT_JAR" ]; then
-      LOGOUT_PATH="$DEFAULT_JAR"
-    else
-      echo "error: nothing to logout — expected $DEFAULT_OUT or $DEFAULT_JAR" >&2
-      exit 1
-    fi
+    echo "error: --logout requires the path your login printed on its logout line" >&2
+    exit 2
   fi
   tmp="$(mktemp -d)"
   trap 'rm -rf "$tmp"' EXIT
@@ -462,8 +462,8 @@ fi
 
 # 4. Netscape jar -> Playwright storage state (cookies only). --serve keeps it
 #    in memory and hands it out exactly once over loopback so cookies stay out
-#    of the agent transcript; otherwise it is written 0600 to OUT. Either way a
-#    companion jar is installed at DEFAULT_JAR for Phase 8 --logout.
+#    of the agent transcript; otherwise it is written 0600 to OUT. Either way
+#    this run's jar is installed at RUN_JAR for Phase 8 --logout.
 jar_to_state() { # jar -> {"cookies":[…],"origins":[]} on stdout
   python3 -c "
 import json, sys
@@ -488,16 +488,19 @@ json.dump({'cookies': cookies, 'origins': []}, sys.stdout)
 }
 
 install_logout_jar() {
-  mkdir -p "$(dirname "$DEFAULT_JAR")"
-  install -m 600 "$jar" "$DEFAULT_JAR"
+  mkdir -p "$(dirname "$RUN_JAR")"
+  install -m 600 "$jar" "$RUN_JAR"
+}
+
+print_logout_handle() {
+  echo "logout $(cd "$(dirname "$RUN_JAR")" && pwd)/$(basename "$RUN_JAR")"
 }
 
 if [ "$SERVE" = 1 ]; then
   # Hand the state out exactly once, on loopback, at an unguessable path, then
-  # exit. The companion jar is the Phase 8 logout handle.
+  # exit. This run's jar is the Phase 8 logout handle.
   state="$tmp/state.json"
   jar_to_state "$jar" >"$state"
-  install_logout_jar
   url_file="$(mktemp)"
   nohup python3 -c "
 import http.server, secrets, sys, threading
@@ -526,12 +529,16 @@ srv.serve_forever()
     sleep 0.1
   done
   [ -s "$url_file" ] || {
+    # No handle was printed, so nothing could revoke this session later.
+    logout_jar "$jar" >/dev/null 2>&1 || true
     echo "error: one-shot session server did not start" >&2
     rm -f "$url_file"
     exit 1
   }
+  install_logout_jar
   cat "$url_file"
   rm -f "$url_file"
+  print_logout_handle
   exit 0
 fi
 
@@ -540,3 +547,4 @@ jar_to_state "$jar" >"$tmp/state.json"
 install -m 600 "$tmp/state.json" "$OUT"
 install_logout_jar
 echo "ok $(cd "$(dirname "$OUT")" && pwd)/$(basename "$OUT")"
+print_logout_handle
