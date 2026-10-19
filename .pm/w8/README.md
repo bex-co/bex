@@ -363,6 +363,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **125** — [Backward log pages without a startTime hand out inverted cursors past the first hour](done/125.md) ← w8/123 code review 2026-10-19: the cursor start defaults to 1h while the read looks back 7 days — **DONE (2026-10-19)**
 
+- [ ] **128** — [Restart/Rollback refusals name the internal App name instead of the service the caller asked for](128.md) ← `/qa-find-bugs-cli` sweep 503 2026-10-19: Restart/Rollback refusals name the internal App CR name
+
 - [x] **127** — [An Update Source during a release in flight rolls that release on the previous image](done/127.md) (filed as `124`, renumbered 2026-10-19 after a number collision) ← w8/m119 code review 2026-10-19: `sourceUpdatePending` is decided before `releaseInFlight`, so a source update saved mid-build/pre-deploy reuses the prior image under the new revision — **DONE (2026-10-19)**
 
 - [ ] **124** — [qa-login.sh --login-challenge fails when the seeded session needs no refresh](124.md) ← `/qa-find-bugs-cli` solo loop 2026-10-19; reopened the same day (board repair: it had been closed with another item's fix)
