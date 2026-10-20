@@ -358,8 +358,19 @@ func nativeBuildDefaults(o Options) string {
 		return `ENV GUNICORN_CMD_ARGS="--preload --access-logfile -"` + "\n" +
 			`ENV FORWARDED_ALLOW_IPS="*"` + "\n"
 	case nativeRubyRuntime:
-		return "ENV RAILS_ENV=production\n" +
-			"ENV BUNDLE_DEPLOYMENT=true BUNDLE_PATH=" + nativeRubyGems + " BUNDLE_BIN=" + nativeRubyGems + "/bin\n" +
+		// Render's Ruby defaults, build and runtime alike (w5/162): Rails
+		// serves its own assets and logs to stdout only when told to, so
+		// without these a migrated app 404s its CSS/JS and its log lines
+		// never reach the Logs tab. PASSENGER_PORT is left out: Render pins it
+		// to its own default port, while a bex service's port is PORT. So is
+		// GEM_PATH: setting it drops RubyGems' default directory, hiding the
+		// gems Ruby ships (rake, minitest), and BUNDLE_PATH already decides
+		// where Bundler installs.
+		return "ENV RAILS_ENV=production RAILS_SERVE_STATIC_FILES=true RAILS_LOG_TO_STDOUT=true\n" +
+			"ENV MALLOC_ARENA_MAX=2 PIDFILE=/tmp/puma-server.pid\n" +
+			"ENV PASSENGER_ENGINE=builtin PASSENGER_ENVIRONMENT=production\n" +
+			"ENV BUNDLE_DEPLOYMENT=true BUNDLE_PATH=" + nativeRubyGems + " BUNDLE_BIN=" + nativeRubyGems + "/bin" +
+			" BUNDLE_APP_CONFIG=" + nativeRubyGems + "\n" +
 			"ENV PATH=" + nativeRubyGems + "/bin:$PATH\n"
 	}
 	return ""
