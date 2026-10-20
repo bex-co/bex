@@ -341,13 +341,14 @@ describe("DiskSection", () => {
     mockUseDiskSnapshots.mockReturnValue({
       ...noSnapshots,
       error: new CombinedGraphQLErrors({
-        errors: [{ message: "connection refused", extensions: { code: "INTERNAL" } }],
+        errors: [{ message: "internal error", extensions: { code: "INTERNAL" } }],
       } as never),
     });
     render(<DiskSection serviceId="srv-1" plan="starter" serviceType="web_service" />);
 
     expect(screen.getByText(/snapshots are unavailable/i)).toBeInTheDocument();
-    expect(screen.getByText(/connection refused/i)).toBeInTheDocument();
+    // bex-api redacts an outage's cause; the panel says so in its own words.
+    expect(screen.getByText(/something went wrong while loading/i)).toBeInTheDocument();
     expect(screen.queryByText(/aren't set up/i)).not.toBeInTheDocument();
   });
 });

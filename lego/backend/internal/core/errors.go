@@ -386,6 +386,12 @@ const CodeQueryTimeout = "QUERY_TIMEOUT"
 // read the current state before deciding whether to write again (w4/m206).
 const CodeWriteOutcomeUnknown = "WRITE_OUTCOME_UNKNOWN"
 
+// CodeInternal marks a GraphQL error bex-api redacted to "internal error": an
+// unclassified failure whose cause is logged, not a refusal. GraphQL answers
+// 200 whatever failed, so a client needs the code to tell it from a refusal
+// worth showing; REST answers the 500 status and MCP the bare text (w5/168).
+const CodeInternal = "INTERNAL"
+
 // CodeOperationNotStarted marks a GraphQL batch member that was never
 // dispatched because the batch's shared execution budget was already spent.
 // It did nothing, but earlier members of the same request may have committed
