@@ -97,7 +97,9 @@ func TestStuckPodMessage(t *testing.T) {
 		{
 			name: "crash loop with port", pod: crashing, port: 3000,
 			wantReason: "CrashLoopBackOff",
-			wantIn:     []string{"last exit code 1", "$PORT (3000)", "below 1024", "service logs"},
+			wantIn:     []string{"last exit code 1", "$PORT (3000)", "service logs"},
+			// Ports below 1024 are bindable (w6/m149), so the hint names $PORT only.
+			wantNotIn: []string{"below 1024"},
 		},
 		{
 			name: "crash loop without port (worker)", pod: crashing, port: 0,

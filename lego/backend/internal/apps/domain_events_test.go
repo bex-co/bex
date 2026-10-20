@@ -201,11 +201,11 @@ func TestRefusedConfigWritesLeaveNoTraceInTheFeed(t *testing.T) {
 			return err
 		},
 	}, {
-		name:  "a port the container could never bind",
+		name:  "an out-of-range port",
 		verb:  core.AuditVerbSetPort,
 		setup: func() *appv1alpha1.App { return sampleApp("web") },
 		call: func(s *Service) error {
-			_, err := s.SetPort(context.Background(), "web", 80)
+			_, err := s.SetPort(context.Background(), "web", 0)
 			return err
 		},
 	}, {

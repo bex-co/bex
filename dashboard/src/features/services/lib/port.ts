@@ -9,13 +9,11 @@ import type { ServiceView } from "@/features/services/types";
  * pre-filling it changes nothing about what gets created, it only makes the
  * value visible and editable before submit.
  *
- * The range is narrower than the backend's 1-65535 on purpose: the container
- * runs unprivileged, so it cannot bind a port below 1024 — the same claim the
- * image hint has always made (`services.createImagePortHint`). Offering 80 in
- * the dashboard would be offering a service that can never come up.
+ * The range is the backend's 1-65535. Ports below 1024 are bindable, as on
+ * Render: every pod lets an unprivileged process bind them (w6/m149).
  */
 export const DEFAULT_SERVICE_PORT = 3000;
-export const MIN_SERVICE_PORT = 1024;
+export const MIN_SERVICE_PORT = 1;
 export const MAX_SERVICE_PORT = 65535;
 
 /**

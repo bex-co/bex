@@ -56,7 +56,7 @@ In `/tmp`, root cannot `O_CREAT`-open another user's file on any of the three, b
    - the backend refusal `minTenantPort = 1024`;
    - the crash diagnosis "tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped)", which this run's deploy events carried.
 
-   This is a live parity bug, owned by w6/m149/t006.
+   This was a live parity bug; w6/m149/t006 removed the floor, the claim and the diagnosis text.
 
 3. **Seccomp is the remaining runtime divergence.** Render applies no filter. bex RuntimeDefault blocks `io_uring` and unprivileged user namespaces (the Chromium sandbox, bubblewrap). Relaxing it needs an explicit user decision (w6/m149/t003).
 4. **These already match:** `NoNewPrivs`, the AppArmor profile, no pod user namespace, `ping_group_range` and the `protected_*` sysctls.

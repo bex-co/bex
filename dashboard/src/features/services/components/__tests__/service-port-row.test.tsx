@@ -37,7 +37,27 @@ describe("ServicePortRow", () => {
     expect(setPort).toHaveBeenCalledWith("web", 8080);
   });
 
-  it("blocks a port the container could never bind instead of calling the API", async () => {
+  it("blocks a port outside 1-65535 instead of calling the API", async () => {
+    const user = userEvent.setup();
+    render(<ServicePortRow serviceId="web" port={3000} />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Port" }));
+    const input = screen.getByRole("spinbutton", { name: "Port" });
+    await user.clear(input);
+    await user.type(input, "70000");
+
+    expect(
+      screen.getByText("Enter a port between 1 and 65535."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /save changes/i }),
+    ).toBeDisabled();
+    expect(setPort).not.toHaveBeenCalled();
+  });
+
+  // w6/m149: every pod lets an unprivileged process bind ports below 1024, as
+  // on Render, so :80 is a valid port to save.
+  it("saves a port below 1024", async () => {
     const user = userEvent.setup();
     render(<ServicePortRow serviceId="web" port={3000} />);
 
@@ -45,14 +65,9 @@ describe("ServicePortRow", () => {
     const input = screen.getByRole("spinbutton", { name: "Port" });
     await user.clear(input);
     await user.type(input, "80");
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
 
-    expect(
-      screen.getByText("Enter a port between 1024 and 65535."),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /save changes/i }),
-    ).toBeDisabled();
-    expect(setPort).not.toHaveBeenCalled();
+    expect(setPort).toHaveBeenCalledWith("web", 80);
   });
 
   // w4/278: "03000" parses to the current port, yet the text comparison enabled

@@ -4612,24 +4612,17 @@ func addressablePort(app *appv1alpha1.App) int32 {
 // create and an update can never disagree about what is acceptable. Unlike
 // create, an update has no "0 means default" case: an explicit zero here is a
 // caller asking for a port that cannot be bound, not an omission.
+//
+// Ports below 1024 are accepted, as on Render: containerd 2.x's CRI default
+// sets net.ipv4.ip_unprivileged_port_start=0 inside every pod, so a process
+// binds :80 without NET_BIND_SERVICE — measured on production for the strict
+// policy (docs/render-artifacts/container-privileges.md, w6/m149).
 func validateServicePort(port int32) error {
-	if port < minTenantPort || port > 65535 {
-		return fmt.Errorf("%w: port must be %d-65535 — a tenant container has no NET_BIND_SERVICE capability, so it cannot bind a port below %d even as root (a stock :80 image such as nginx must be pointed at a high port)",
-			core.ErrBadRequest, minTenantPort, minTenantPort)
+	if port < 1 || port > 65535 {
+		return fmt.Errorf("%w: port must be 1-65535", core.ErrBadRequest)
 	}
 	return nil
 }
-
-// minTenantPort is the lowest port a tenant container can actually bind.
-//
-// Every tenant container is stamped with ALL Linux capabilities dropped
-// (ADR022 — tenantSecCtx()), so NET_BIND_SERVICE is gone and a privileged port
-// fails with `bind: permission denied` even as root. That is a deliberate
-// posture kept over Render parity, which makes a sub-1024 port a configuration
-// the platform KNOWS will crash-loop. Accepting it would reproduce, one layer
-// down, the failure w4/m121 exists to remove: a write that reports success and
-// then does not work.
-const minTenantPort = 1024
 
 // SetAutoDeploy flips whether a signed git push to the tracked branch redeploys
 // this App (spec.autoDeploy, Render's Auto-Deploy toggle). A direct CR patch,
