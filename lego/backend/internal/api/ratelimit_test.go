@@ -564,3 +564,36 @@ func TestRateLimitWiredInHandler(t *testing.T) {
 		t.Errorf("healthz must not be rate-limited, got 429")
 	}
 }
+
+// TestRateLimiterSendsRenderRateLimitHeaders (w8/147): Render returns
+// RateLimit-Limit/-Remaining/-Reset with every rate-limited response, and on
+// a 429 alongside Retry-After with Remaining 0.
+func TestRateLimiterSendsRenderRateLimitHeaders(t *testing.T) {
+	rl := NewRateLimiter(60, 3)
+	h := rl.Middleware(ok200)
+	id := core.Identity{Subject: "user1", Method: "oauth2"}
+	for i, wantRemaining := range []string{"2", "1", "0"} {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, reqWith("GET", "/v1/services", id))
+		if w.Code != http.StatusOK {
+			t.Fatalf("request %d: %d", i, w.Code)
+		}
+		if got := w.Header().Get("RateLimit-Limit"); got != "3" {
+			t.Errorf("request %d RateLimit-Limit = %q, want 3", i, got)
+		}
+		if got := w.Header().Get("RateLimit-Remaining"); got != wantRemaining {
+			t.Errorf("request %d RateLimit-Remaining = %q, want %s", i, got, wantRemaining)
+		}
+		if got := w.Header().Get("RateLimit-Reset"); got == "" || got == "0" {
+			t.Errorf("request %d RateLimit-Reset = %q, want the seconds until the bucket refills", i, got)
+		}
+	}
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, reqWith("POST", "/graphql", id))
+	if w.Code != http.StatusTooManyRequests || w.Header().Get("Retry-After") == "" {
+		t.Fatalf("refused = %d Retry-After %q", w.Code, w.Header().Get("Retry-After"))
+	}
+	if w.Header().Get("RateLimit-Remaining") != "0" || w.Header().Get("RateLimit-Limit") != "3" || w.Header().Get("RateLimit-Reset") == "" {
+		t.Errorf("429 rate-limit headers = %v, want Limit 3, Remaining 0 and a Reset", w.Header())
+	}
+}

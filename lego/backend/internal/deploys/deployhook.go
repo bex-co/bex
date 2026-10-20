@@ -310,7 +310,7 @@ func NewDeployHookRateLimiter(rpm float64, burst int) *DeployHookRateLimiter {
 
 // reserve returns whether a request may proceed and, when denied, the delay
 // until the next token is available.
-func (rl *DeployHookRateLimiter) reserve(token string) (bool, time.Duration) {
+func (rl *DeployHookRateLimiter) reserve(h http.Header, token string) (bool, time.Duration) {
 	if rl == nil {
 		return true, 0
 	}
@@ -319,8 +319,10 @@ func (rl *DeployHookRateLimiter) reserve(token string) (bool, time.Duration) {
 	res := lim.Reserve()
 	if delay := res.Delay(); delay > 0 {
 		res.Cancel()
+		core.SetRateLimitHeaders(h, time.Now(), true, lim)
 		return false, delay
 	}
+	core.SetRateLimitHeaders(h, time.Now(), false, lim)
 	return true, 0
 }
 
@@ -351,7 +353,7 @@ func (s *Service) DeployHookHandler() http.Handler {
 		// the credential out of RequestPath prevents it from reaching either the
 		// raw edge log or the tenant request-log pipeline (finding 25).
 		token := r.URL.Query().Get("key")
-		if ok, retry := limiter.reserve(token); !ok {
+		if ok, retry := limiter.reserve(w.Header(), token); !ok {
 			seconds := max(1, int(math.Ceil(retry.Seconds())))
 			w.Header().Set("Retry-After", strconv.Itoa(seconds))
 			core.WriteJSON(w, http.StatusTooManyRequests, map[string]any{

@@ -91,8 +91,11 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 			}{rl.workspace, workspace})
 		}
 		reservations := make([]*rate.Reservation, 0, len(keys))
+		buckets := make([]*rate.Limiter, 0, len(keys))
 		for _, key := range keys {
-			res := key.lim.Bucket(key.key).Reserve()
+			bucket := key.lim.Bucket(key.key)
+			buckets = append(buckets, bucket)
+			res := bucket.Reserve()
 			reservations = append(reservations, res)
 			if d := res.Delay(); d > 0 {
 				for _, reservation := range reservations {
@@ -103,10 +106,12 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 					retryAfter = 1
 				}
 				w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
+				core.SetRateLimitHeaders(w.Header(), time.Now(), true, buckets...)
 				writeTooManyRequests(w, r)
 				return
 			}
 		}
+		core.SetRateLimitHeaders(w.Header(), time.Now(), false, buckets...)
 		next.ServeHTTP(w, r)
 	})
 }
