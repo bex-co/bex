@@ -228,11 +228,13 @@ spec:
                 description: |-
                   ContainerPolicy is the persisted application-container execution policy.
                   Omission retains the historical drop-all-capabilities policy. Only new
-                  services opt into image-v1; changing platform defaults cannot migrate an
-                  existing service during reconciliation or Blueprint synchronization.
+                  services opt into image-v1 or render-v1, each a fixed added capability set;
+                  changing platform defaults cannot migrate an existing service during
+                  reconciliation or Blueprint synchronization.
                 enum:
                 - strict-v1
                 - image-v1
+                - render-v1
                 type: string
               disk:
                 description: |-

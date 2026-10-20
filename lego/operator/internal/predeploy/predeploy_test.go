@@ -28,6 +28,9 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/bex-co/bex/lego/operator/internal/execution"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 func TestJobName(t *testing.T) {
@@ -144,6 +147,23 @@ func TestJobCoLocatedOmitsAppNamespaceLabel(t *testing.T) {
 	}
 	if _, ok := j.Spec.Template.Labels["app.bex.co/app-namespace"]; ok {
 		t.Error("a co-located Job must not carry a separate app-namespace label")
+	}
+}
+
+// Workload admission admits a widened pre-deploy pod only by its policy
+// marker, so every widened policy must carry it — render-v1 too (w6/m149),
+// or its pre-deploy is refused — and strict pods stay unlabeled.
+func TestJobLabelsWidenedContainerPolicies(t *testing.T) {
+	for policy, want := range map[string]string{
+		"":                                  "",
+		appv1alpha1.ContainerPolicyStrictV1: "",
+		appv1alpha1.ContainerPolicyImageV1:  appv1alpha1.ContainerPolicyImageV1,
+		appv1alpha1.ContainerPolicyRenderV1: appv1alpha1.ContainerPolicyRenderV1,
+	} {
+		j := Job(Options{Name: "api", Namespace: "default", AppNamespace: "default", AppUID: "uid", Command: "echo", Revision: "gen-1", ContainerPolicy: policy})
+		if got := j.Spec.Template.Labels[execution.LabelContainerPolicy]; got != want {
+			t.Errorf("%q: pod policy label = %q, want %q", policy, got, want)
+		}
 	}
 }
 
