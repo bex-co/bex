@@ -61,6 +61,11 @@ Key entry points:
 
 ## Rules
 
+- **Render parity is the top product principle (user decision 2026-10-17, restated 2026-10-20; [ADR008 § Render parity first](docs/ADR008-vision.md#render-parity-first)).** Every customer-facing behavior must match render.com in **every** workspace.
+  - When an ADR, an earlier hardening decision or an existing design conflicts with parity, **amend that ADR or design**. Never preserve the divergence because an older document chose it.
+  - Allowlists and canaries (e.g. `BEX_IMAGE_COMPATIBILITY_WORKSPACES`, the `bex` workspace) are temporary rollout steps. Every one needs a dated widen-to-every-workspace task in the same milestone.
+  - Never park parity work on an optional decision. Ship the parity-sufficient choice, and file stricter or looser variants as separate follow-ups.
+  - A divergence stands only when [ADR018](docs/ADR018-render-parity.md) records it with the user's sign-off.
 - **Never `git commit`/`push` unless user runs `/ship` (Claude) or `$ship` (Codex), or explicitly requests an `rt-*` routine run.** A routine request authorizes planning, fixing, verification, and invoking ship in the same run without first filing a `.pm` milestone. Honor explicit audit-only or no-ship limits; follow the ship skill’s safety rules.
 - Never commit/print `.env` or `*.kubeconfig`.
 - **Local dev environments are pre-approved (user decision 2026-09-09).** `scripts/dev-env.sh <N> {up,down,status,clean,env}` for any `dev-N`, and `scripts/mock-cluster.sh` (bring-up, reprovision, `scale N`) on the local kind/CAPD cluster, never require user approval — run them whenever the work needs it, including destructive recovery (reprovision, `clean`) when the harness's own diagnostics point there. Still respect each harness's isolation boundaries (own `dev-N` namespaces/ports; read-only on other workstreams' stacks), and report what was rebuilt.

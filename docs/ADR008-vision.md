@@ -18,6 +18,15 @@ A PaaS built for agents must be:
 
 Render compatibility is part of the same thesis: agents (and their toolchains) already know Render's API shapes. bex speaks them, so existing tooling and habits transfer instead of restarting from zero.
 
+## Render parity first
+
+**User decision, 2026-10-17, restated 2026-10-20.** Matching render.com is the top product principle, above the platform's earlier tenant-hardening choices. It applies to every customer workspace, not just bex's own.
+
+- **Conflicts amend the older decision.** Where an ADR or design diverges from Render's observable behavior (API shapes, Blueprint semantics, runtime privileges, ports, defaults), the ADR is amended to parity. The divergence is not preserved. ADR022's drop-ALL hardening and ADR089's workspace allowlist are the first cases, amended by w6/m149.
+- **Rollout gates are temporary.** A canary or allowlist must carry a dated step that widens it to every workspace. A feature that works only in an internal workspace is unfinished.
+- **Optional decisions never block parity.** Ship the choice that is sufficient for parity, and treat stricter or looser variants (for example, the seccomp profile) as separate follow-ups.
+- **Recording divergences.** Accepted divergences are recorded, with the user's sign-off, in [ADR018](ADR018-render-parity.md).
+
 ## Pillars
 
 | # | Pillar | Status |

@@ -54,6 +54,10 @@ Read the item in full — for a milestone, `.pm/<wN>/mN/README.md` plus every ta
 Rules for triage:
 
 - **Evidence, not vibes.** "Already met" and "invalid" both require a concrete pointer — `file.go:123`, a passing test, the surviving duplicate's id, the `DO_NOT_DO` line.
+- **Render parity work is never blocked on an optional decision** ([ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first)).
+  - If a pending user decision is not required to reach Render's behavior in every workspace, it is not a gate. Ship the parity-sufficient option, and file the open variant as its own item.
+  - Example: m149's seccomp choice did not block `render-v1` under RuntimeDefault.
+  - An older ADR that conflicts with parity is likewise not a gate. Amend it as part of the work.
 - **When torn between blocked and invalid, choose blocked.** Deleting is the only outcome that destroys information.
 - **Size check on inbox notes.** If a note turns out to be > ~1h across more than one task, run `/pm promote <wN/NNN>` to materialize it as a milestone, then work that milestone in this same iteration.
 - **Non-implementation notes have preset verdicts — apply them without asking.** Many inbox notes are not "build this"; they are records, withdrawals, or debris. Route them by shape, in this order (first match wins):
