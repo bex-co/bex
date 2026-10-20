@@ -2793,7 +2793,8 @@ if [ "$headroom_preemption" != Never ]; then
   echo "FAIL: bex-tenant-headroom preemptionPolicy is '$headroom_preemption' (want Never — the placeholder yields capacity, never takes it)" >&2
   fail=1
 fi
-headroom_pod="select(.kind==\"Deployment\" and .metadata.name==\"tenant-headroom\") | .spec.template.spec"
+headroom_deploy="select(.kind==\"Deployment\" and .metadata.name==\"tenant-headroom\")"
+headroom_pod="$headroom_deploy | .spec.template.spec"
 headroom_class="$(yq -N "$headroom_pod | .priorityClassName" "$headroom_yaml")"
 headroom_grace="$(yq -N "$headroom_pod | .terminationGracePeriodSeconds" "$headroom_yaml")"
 headroom_pool="$(yq -N "$headroom_pod | .nodeSelector.\"bex.co/pool\"" "$headroom_yaml")"
@@ -2809,7 +2810,11 @@ headroom_pool="$(yq -N "$headroom_pod | .nodeSelector.\"bex.co/pool\"" "$headroo
 # 2026-09-12 onward -- it never passed once. Keep the `ea` form, and if you change
 # it, test against BOTH yq versions before trusting a local green.
 headroom_build_tol="$(yq -N ea "[$headroom_pod | .tolerations[]? | select(.key==\"bex.co/build-only\")] | length" "$headroom_yaml")"
-for captured in headroom_priority headroom_preemption headroom_class headroom_grace headroom_pool headroom_build_tol; do
+# The Pending-by-design placeholder must be the prod root app's LAST sync wave,
+# or a full tenant pool stalls every sync behind it (see tenant-headroom.yaml).
+headroom_wave="$(yq -N "$headroom_deploy | .metadata.annotations.\"argocd.argoproj.io/sync-wave\"" "$tmp/prod-apps.yaml")"
+other_max_wave="$(yq -N ea '[select((.kind == "Deployment" and .metadata.name == "tenant-headroom") | not) | (.metadata.annotations."argocd.argoproj.io/sync-wave" // "0") | to_number] | max' "$tmp/prod-apps.yaml")"
+for captured in headroom_priority headroom_preemption headroom_class headroom_grace headroom_pool headroom_build_tol headroom_wave other_max_wave; do
   scalar "$captured" "${!captured}" || fail=1
 done
 if [ "$headroom_class" != bex-tenant-headroom ]; then
@@ -2828,15 +2833,6 @@ if [ "$headroom_build_tol" != 0 ]; then
   echo "FAIL: tenant-headroom tolerates bex.co/build-only — that holds an elastic BUILD node (ADR060 D8) warm for serving rollouts that may not schedule there" >&2
   fail=1
 fi
-# The placeholder is meant to sit Pending while the tenant pool is full. Argo
-# waits for each sync wave to turn healthy before the next, so the headroom must
-# be the root app's LAST wave or a full pool freezes every production sync
-# behind it (w2/048; 2026-10-20 it held the root sync for over an hour).
-headroom_wave="$(yq -N "select(.kind==\"Deployment\" and .metadata.name==\"tenant-headroom\") | .metadata.annotations.\"argocd.argoproj.io/sync-wave\"" "$headroom_yaml")"
-other_max_wave="$(yq -N ea '[select(.metadata.name != "tenant-headroom") | (.metadata.annotations."argocd.argoproj.io/sync-wave" // "0") | to_number] | max' "$tmp/prod-apps.yaml")"
-for captured in headroom_wave other_max_wave; do
-  scalar "$captured" "${!captured}" || fail=1
-done
 if ! [ "$headroom_wave" -gt "$other_max_wave" ] 2>/dev/null; then
   echo "FAIL: tenant-headroom sync-wave is '$headroom_wave' but the prod root app has a resource at wave $other_max_wave — the Pending-by-design placeholder must be the LAST wave, or a full tenant pool stalls every sync (w2/048)" >&2
   fail=1
