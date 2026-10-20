@@ -777,6 +777,40 @@ func TestRESTMetricsShapeAndErrors(t *testing.T) {
 	}
 }
 
+func TestRESTMetricsEmptyResourceIsRequiredNot500(t *testing.T) {
+	// w4/370: a present-but-empty resource= (or service=) names no resource, so
+	// it must answer the same 400 as a missing parameter — never a 500 from an
+	// empty id reaching lookup. A mixed list resolves to the one real resource.
+	svc := newService(staticResourceMetrics(map[string]PodResourceUsage{
+		webInst: {CPUCores: 0.5, MemoryBytes: 512 << 20},
+	}), nil, sampleApp("web"), podWithLimits(webInst))
+
+	for _, path := range []string{
+		"/v1/metrics/cpu?resource=",
+		"/v1/metrics/cpu?service=",
+		"/v1/metrics/cpu?resource=%20",
+		"/v1/metrics/disk-usage?resource=",
+		"/v1/metrics/active-connections?resource=",
+		"/v1/metrics/filters/application?resource=",
+	} {
+		rec := serveREST(svc, path)
+		if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "resource is required") {
+			t.Errorf("GET %s => %d %s, want 400 naming the missing resource", path, rec.Code, rec.Body)
+		}
+	}
+	if rec := serveREST(svc, "/v1/metrics/cpu?resource=&resource=web"); rec.Code != http.StatusOK {
+		t.Errorf("mixed empty+valid resource => %d %s, want 200 for the real resource", rec.Code, rec.Body)
+	}
+	// Controls stay put: unknown id still 404s, a bad time still names itself.
+	if rec := serveREST(svc, "/v1/metrics/cpu?resource=nope"); rec.Code != http.StatusNotFound {
+		t.Errorf("unknown resource => %d, want 404", rec.Code)
+	}
+	if rec := serveREST(svc, "/v1/metrics/cpu?resource=web&startTime=banana"); rec.Code != http.StatusBadRequest ||
+		!strings.Contains(rec.Body.String(), "startTime") {
+		t.Errorf("bad startTime => %d %s, want a named 400", rec.Code, rec.Body)
+	}
+}
+
 // TestRESTHostPathFilters: REST serves a host/path filter on a request metric
 // from the log store (200 with the Loki series when wired, 503 store-unavailable
 // when not), and refuses it on bandwidth with a named 400 — never a silently

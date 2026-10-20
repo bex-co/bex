@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -90,8 +91,18 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 }
 
 // requestedResources is Render's `resource` list plus its `service` alias.
+// Empty values are dropped: a present-but-empty `resource=` names no resource,
+// so the callers' count checks must answer it like a missing parameter (the
+// "resource is required" 400) instead of letting an empty id flow into lookup
+// and surface as a 500 (w4/370).
 func requestedResources(v url.Values) []string {
-	return append(append([]string{}, v["resource"]...), v["service"]...)
+	out := []string{}
+	for _, raw := range append(append([]string{}, v["resource"]...), v["service"]...) {
+		if strings.TrimSpace(raw) != "" {
+			out = append(out, raw)
+		}
+	}
+	return out
 }
 
 // datastoreKindFor infers a datastore metric's kind from the resource id's
