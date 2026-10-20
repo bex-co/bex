@@ -996,6 +996,12 @@ func yamlNodeToBlueprintValue(node *yaml.Node, path []string, locations map[stri
 				problems = append(problems, budget.fail("BLUEPRINT_YAML_SCALAR_SIZE", pointer, fmt.Sprintf("Blueprint mapping keys are limited to %d bytes", blueprintMaxScalarBytes), key)...)
 				break
 			}
+			// Render's Deploy-to-Render templates annotate an env var with
+			// prompt metadata its published schema does not list; Render
+			// accepts and ignores them, so bex does too (w5/m143).
+			if blueprintEnvVarEntryPath.MatchString(pointer) && blueprintEnvVarTemplateMetadata[key.Value] {
+				continue
+			}
 			childPath := append(path, key.Value)
 			childPointer := renderSchemaPointer(childPath)
 			if first, duplicate := seen[key.Value]; duplicate {
@@ -1026,19 +1032,47 @@ func yamlNodeToBlueprintValue(node *yaml.Node, path []string, locations map[stri
 // group, at any nesting the Blueprint allows.
 var blueprintEnvValuePath = regexp.MustCompile(`^#/((ungrouped|projects/[0-9]+/environments/[0-9]+)/)?(services|envVarGroups)/[0-9]+/envVars/[0-9]+/value$`)
 
+// blueprintEnvVarsPath matches a service's or env group's envVars list, and
+// blueprintPlanPath a service's or database's plan (w5/m143).
+var (
+	blueprintEnvVarsPath = regexp.MustCompile(`^#/((ungrouped|projects/[0-9]+/environments/[0-9]+)/)?(services|envVarGroups)/[0-9]+/envVars$`)
+	blueprintPlanPath    = regexp.MustCompile(`^#/((ungrouped|projects/[0-9]+/environments/[0-9]+)/)?(services|databases)/[0-9]+/plan$`)
+	// blueprintEnvVarEntryPath matches one envVars[] entry.
+	blueprintEnvVarEntryPath = regexp.MustCompile(`^#/((ungrouped|projects/[0-9]+/environments/[0-9]+)/)?(services|envVarGroups)/[0-9]+/envVars/[0-9]+$`)
+)
+
+// blueprintEnvVarTemplateMetadata are the env-var keys Render's templates use
+// to prompt for a value at deploy time; they configure nothing.
+var blueprintEnvVarTemplateMetadata = map[string]bool{
+	"displayName": true, "description": true, "sensitive": true, "required": true,
+}
+
 func blueprintJSONScalar(node *yaml.Node, pointer string) (any, []BlueprintSourceProblem) {
 	problem := func(code, message string) (any, []BlueprintSourceProblem) {
 		return nil, []BlueprintSourceProblem{{Code: code, Path: pointer, Message: message, Line: node.Line, Column: node.Column}}
 	}
+	// Render's own Deploy-to-Render templates write `value: true`, `plan:
+	// Starter` and a bare `envVars:`, which its published schema forbids but
+	// Render accepts (w5/m143): an env value is the string the service
+	// receives, a plan name is case-insensitive, and an empty list is a list.
 	switch node.Tag {
 	case "!!str":
+		if blueprintPlanPath.MatchString(pointer) {
+			return strings.ToLower(node.Value), nil
+		}
 		return node.Value, nil
 	case "!!null":
+		if blueprintEnvVarsPath.MatchString(pointer) {
+			return []any{}, nil
+		}
 		return nil, nil
 	case "!!bool":
 		value, err := strconv.ParseBool(node.Value)
 		if err != nil {
 			return problem("BLUEPRINT_YAML_SCALAR", "Blueprint contains an invalid boolean")
+		}
+		if blueprintEnvValuePath.MatchString(pointer) {
+			return strconv.FormatBool(value), nil
 		}
 		return value, nil
 	case "!!int":
