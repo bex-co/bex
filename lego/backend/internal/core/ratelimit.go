@@ -18,6 +18,8 @@ package core
 
 import (
 	"math"
+	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -140,4 +142,34 @@ func (rl *KeyedRateLimiter[K]) Entries() int {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 	return len(rl.entries)
+}
+
+// SetRateLimitHeaders writes Render's RateLimit-Limit, RateLimit-Remaining and
+// RateLimit-Reset for the tightest of buckets, after this request's token is
+// taken (w8/147). On a token bucket the limit is its burst, remaining is the
+// whole tokens left, and reset is the seconds until it is full again. A
+// refused request reports remaining 0, as Render's 429 does.
+func SetRateLimitHeaders(h http.Header, now time.Time, refused bool, buckets ...*rate.Limiter) {
+	var tight *rate.Limiter
+	var tokens float64
+	for _, b := range buckets {
+		if t := b.TokensAt(now); tight == nil || t < tokens {
+			tight, tokens = b, t
+		}
+	}
+	if tight == nil {
+		return
+	}
+	limit := tight.Burst()
+	remaining := max(0, int(math.Floor(tokens)))
+	if refused {
+		remaining = 0
+	}
+	reset := 0
+	if perSecond := float64(tight.Limit()); perSecond > 0 && tokens < float64(limit) {
+		reset = int(math.Ceil((float64(limit) - max(tokens, 0)) / perSecond))
+	}
+	h.Set("RateLimit-Limit", strconv.Itoa(limit))
+	h.Set("RateLimit-Remaining", strconv.Itoa(remaining))
+	h.Set("RateLimit-Reset", strconv.Itoa(reset))
 }

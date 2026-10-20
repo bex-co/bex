@@ -367,7 +367,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **148** — [Tenant requests carry no `Rndr-Id`, and request logs have no `requestID` to correlate with app logs](148.md) ← `/qa-find-bugs-cli` sweep 1254 2026-10-20: Render's documented per-request tracing ID; minor, ~90m
 
-- [ ] **147** — [Bex sends no `RateLimit-*` headers, which Render now specifies on every response; ADR018's “parity-by-absence” is stale](147.md) ← `/qa-find-bugs-cli` sweep 1252 2026-10-20: minor, 45m
+- [ ] **147** — [Bex sends no `RateLimit-*` headers, which Render now specifies on every response; ADR018's “parity-by-absence” is stale](blocked/147.md) ← `/qa-find-bugs-cli` sweep 1252 2026-10-20: minor, 45m — **BLOCKED (2026-10-20: release pipeline deploys bex-api; QA sees `RateLimit-Limit`/`-Remaining`/`-Reset` on a live `GET /v1/services`)**. Source fixed: both limiters send Render's three headers (429s with Remaining 0); ADR006/ADR018 and the rate-limit artifact corrected.
 
 - [ ] **146** — [A recreated static site serves the deleted site's cached pages until its second deploy](blocked/146.md) ← `/qa-find-bugs-cli` sweep 1248 2026-10-20: static cache key `<ws>/<name>/rev-N/<path>` collides across incarnations; major, 45m — **BLOCKED (2026-10-20: release pipeline deploys the static-server; QA recreates a static site under a deleted one's name and its first live deploy serves its own `index.html`; delete the fixtures with 404 proofs)**. Source fixed: the static cache keys by the App UID too (objects, misses, Brotli variants); regression test fails before / passes after; ADR029.
 

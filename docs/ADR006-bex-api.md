@@ -662,6 +662,7 @@ Render's documented API rate limit is **500 requests per minute per API key** (s
 - **HTTP 429 Too Many Requests**
 - `Retry-After: <seconds>` header — the whole-seconds delay until the next token is available
 - Body: `{"id": "rate_limited", "message": "rate limit exceeded; see Retry-After header"}`
+- `RateLimit-Limit`, `RateLimit-Remaining` (`0`) and `RateLimit-Reset`, which every admitted response carries too, so a client can pace itself (w8/147). On bex's token buckets, Limit is the burst, Remaining is the whole tokens left, and Reset is the seconds until the bucket is full. The tighter of the caller and workspace buckets is reported.
 
 bex matches this contract with a per-caller token-bucket at the shared mux, keyed on the authenticated Identity (OAuth2 `client_id` / Kratos session id), falling back to remote IP for unauthenticated paths:
 

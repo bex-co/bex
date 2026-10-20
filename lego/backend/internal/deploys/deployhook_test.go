@@ -320,15 +320,15 @@ func TestDeployHookRateLimiterIsPerReplica(t *testing.T) {
 	replicaB := NewDeployHookRateLimiter(0.01, 1)
 
 	// Within a replica the per-token guarantee holds: first allowed, second denied.
-	if ok, _ := replicaA.reserve(token); !ok {
+	if ok, _ := replicaA.reserve(http.Header{}, token); !ok {
 		t.Fatal("replica A must allow the token's first request")
 	}
-	if ok, _ := replicaA.reserve(token); ok {
+	if ok, _ := replicaA.reserve(http.Header{}, token); ok {
 		t.Fatal("replica A must deny the token's second request (burst exhausted)")
 	}
 	// The second replica's bucket is independent: the same token is allowed once
 	// more there. Two replicas ⇒ up to 2× the per-token budget, by design.
-	if ok, _ := replicaB.reserve(token); !ok {
+	if ok, _ := replicaB.reserve(http.Header{}, token); !ok {
 		t.Fatal("replica B must independently allow the same token (per-replica by design)")
 	}
 }
