@@ -107,7 +107,7 @@ Disk *DiskSpec `json:"disk,omitempty"`
 type DiskSpec struct {
     Name      string `json:"name"`      // any string; Render does not display it
     MountPath string `json:"mountPath"` // absolute; denylist below
-    SizeGB    int32  `json:"sizeGB"`    // default 10; min 1; max 10000; grow-only
+    SizeGB    int32  `json:"sizeGB"`    // default 10; min 10 at the API (CRD keeps 1); max 10000; grow-only
 }
 ```
 
@@ -118,7 +118,7 @@ Behavior table (Render → bex):
 | Eligible services | paid web / private service / background worker | same: `web_service` / `private_service` / `background_worker`, `spec.tier != free` |
 | Cron / static / free | refused | refused (CRD CEL + API 400) |
 | Disks per service | one — explicit dashboard copy: "You can attach a maximum of one disk per service" ([live walk](render-artifacts/disks.md)) | one (`spec.disk` is singular); `POST /v1/disks` for a service that has one → 409 |
-| Size | default 10 GB, min 1 GB, max undocumented | default 10, min 1, **max 10 000 GB** (the Hetzner volume cap, stated rather than undocumented) |
+| Size | default 10 GB, min 1 GB, max undocumented | default 10, **min 10 GB** at the API (the Hetzner volume floor, w1/078 — the CRD keeps `Minimum=1` so disks provisioned before stay writable), **max 10 000 GB** (the Hetzner volume cap, stated rather than undocumented) |
 | Resize | grow-only, online, no restart | grow-only; applied online when the CSI completes it, otherwise finishes on the next restart (divergence, § D4) |
 | `name` / `mountPath` | mutable | mutable (`mountPath` change triggers a deploy) |
 | Scaling | single instance, no manual scale, no autoscaling | same: `replicas ≤ 1`, `autoscaling` must be off — CRD CEL + API 400 |
