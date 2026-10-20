@@ -363,7 +363,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **146** — [A recreated static site serves the deleted site's cached pages until its second deploy](146.md) ← `/qa-find-bugs-cli` sweep 1248 2026-10-20: static cache key `<ws>/<name>/rev-N/<path>` collides across incarnations; major, 45m
+- [ ] **146** — [A recreated static site serves the deleted site's cached pages until its second deploy](blocked/146.md) ← `/qa-find-bugs-cli` sweep 1248 2026-10-20: static cache key `<ws>/<name>/rev-N/<path>` collides across incarnations; major, 45m — **BLOCKED (2026-10-20: release pipeline deploys the static-server; QA recreates a static site under a deleted one's name and its first live deploy serves its own `index.html`; delete the fixtures with 404 proofs)**. Source fixed: the static cache keys by the App UID too (objects, misses, Brotli variants); regression test fails before / passes after; ADR029.
 
 - [ ] **145** — [Free Postgres never expires and never reports `expiresAt`, although ADR009 specifies a 30-day TTL](145.md) ← `/qa-find-bugs-cli` sweep 1247 2026-10-20: decision needed (record divergence vs implement Render's expiry); minor
 

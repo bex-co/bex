@@ -82,6 +82,9 @@ const (
 // key builds the object key the handler will look up for a site-relative path.
 func key(p string) string { return appID + "/" + rev + "/" + p }
 
+// cachedKey is the cache's key for key(p) on the test site.
+func cachedKey(p string) string { return Site{AppID: appID, Revision: rev}.cacheKey(p) }
+
 func newTestHandler(t *testing.T, site Site, objs map[string]Object) (*Handler, *fakeOrigin) {
 	t.Helper()
 	origin := newFakeOrigin(objs)

@@ -18,9 +18,12 @@ package staticserver
 
 import "sync"
 
-// cache is a byte-budgeted in-memory object cache. Keys are
-// "<appID>/<revision>/<path>" — a revision prefix is immutable, so an entry is
-// never stale and needs no TTL (a new deploy is a new revision => a new key).
+// cache is a byte-budgeted in-memory object cache. Keys are Site.cacheKey:
+// the App's UID, then "<appID>/<revision>/<path>". Within one App a revision
+// prefix is immutable, so an entry is never stale and needs no TTL (a new
+// deploy is a new revision => a new key); the UID keeps a site recreated under
+// the same name, whose revisions restart at rev-1, off its predecessor's
+// entries (w8/146).
 // When an insert would exceed the budget, entries are evicted (in map order,
 // which Go randomizes) until it fits, then the object is stored if it fits at
 // all. A single object larger than the whole budget is served but not cached.

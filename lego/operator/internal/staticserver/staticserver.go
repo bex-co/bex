@@ -131,6 +131,10 @@ type Site struct {
 	Prefix   string                     // full object-key prefix including trailing slash when known
 	Routes   []appv1alpha1.StaticRoute  // ordered redirect/rewrite rules
 	Headers  []appv1alpha1.StaticHeader // custom response headers by path
+	// Incarnation is the App's UID. Object keys restart at rev-1 when a site is
+	// deleted and recreated under its name, so the cache keys by it too
+	// (cacheKey, w8/146).
+	Incarnation string
 	// Unavailable marks a published site that is suspended in the last
 	// snapshot. Its host stays known so a request reaching the static-server
 	// across the suspend/resume Ingress handoff reads "try again", never the
@@ -148,6 +152,13 @@ func (s Site) keyFor(reqPath string) string {
 		prefix += "/"
 	}
 	return prefix + strings.TrimPrefix(reqPath, "/")
+}
+
+// cacheKey is the cache's key for a site-relative path: the object key under
+// the App's incarnation, so a recreated site never reads its predecessor's
+// cached bytes, misses or encodings for a reused revision key.
+func (s Site) cacheKey(reqPath string) string {
+	return s.Incarnation + "\x00" + s.keyFor(reqPath)
 }
 
 // legacyServePrefix is the prefix string used for legacy-shape detection /
@@ -389,7 +400,7 @@ func (h *Handler) serveObject(w http.ResponseWriter, r *http.Request, site Site,
 	if brotliCandidate(hdr, len(obj.Body)) {
 		varyAcceptEncoding(hdr)
 		if acceptsBrotli(r.Header) {
-			if encoded, ok := h.brotliVariant(site.AppID, site.keyFor(servedPath), obj.Body); ok {
+			if encoded, ok := h.brotliVariant(site.AppID, site.cacheKey(servedPath), obj.Body); ok {
 				// The encoded body leases its own bytes on top of the identity
 				// lease (the identity body stays referenced); HEAD writes none.
 				// Without room, serve identity rather than shed.
@@ -469,13 +480,13 @@ func (h *Handler) spaFallback(ctx context.Context, site Site, reqPath string) (O
 // and admitted through the fetch gate, so a burst can neither stampede the origin
 // nor buffer unbounded memory (finding 12).
 func (h *Handler) get(ctx context.Context, site Site, reqPath string) (Object, error) {
-	key := site.keyFor(reqPath)
-	if obj, ok := h.cache.get(key); ok {
+	key, ck := site.keyFor(reqPath), site.cacheKey(reqPath)
+	if obj, ok := h.cache.get(ck); ok {
 		return obj, negativeErr(obj)
 	}
-	v, err, _ := h.group.Do(key, func() (any, error) {
+	v, err, _ := h.group.Do(ck, func() (any, error) {
 		// A prior leader for this key may have just populated the cache.
-		if obj, ok := h.cache.get(key); ok {
+		if obj, ok := h.cache.get(ck); ok {
 			return obj, nil
 		}
 		if !h.gate.acquire(site.AppID) {
@@ -489,14 +500,14 @@ func (h *Handler) get(ctx context.Context, site Site, reqPath string) (Object, e
 			// Only ErrNotFound: a denial, timeout, or overload is transient
 			// and must be re-asked.
 			miss := Object{negative: true}
-			h.cache.put(site.AppID, key, miss)
+			h.cache.put(site.AppID, ck, miss)
 			return miss, nil
 		}
 		if gerr != nil {
 			return Object{}, gerr
 		}
 		obj.etag = contentETag(obj.Body)
-		h.cache.put(site.AppID, key, obj)
+		h.cache.put(site.AppID, ck, obj)
 		return obj, nil
 	})
 	if err != nil {

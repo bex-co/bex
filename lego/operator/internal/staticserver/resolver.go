@@ -92,6 +92,7 @@ func (c *CachedResolver) Refresh(ctx context.Context) error {
 		}
 		site := Site{
 			AppID:       app.Name,
+			Incarnation: string(app.UID),
 			Revision:    app.Status.ActiveRevision,
 			Prefix:      staticServePrefix(app),
 			Routes:      app.Spec.Routes,
