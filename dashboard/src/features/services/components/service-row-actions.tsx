@@ -25,6 +25,13 @@ import {
   type ActionConfirmBinding,
 } from "@/features/capabilities/hooks/use-bound-action-confirm";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+import { toast } from "sonner";
+import { useStrandedLinkGuard } from "@/features/env-groups/hooks/use-stranded-link-guard";
+import { strandedPromptItems } from "@/features/env-groups/lib/stranded";
+import {
+  StrandedGroupsConfirmDialog,
+  type StrandedGroupPromptItem,
+} from "@/features/environments/components/stranded-groups-confirm-dialog";
 import {
   gateAction,
   gateReason,
@@ -136,6 +143,31 @@ export function ServiceRowActions({
       : null;
   const [checking, setChecking] = useState(false);
   const busy = pending !== null || checking;
+
+  // w4/m238: Move to project / Remove from project clear the service's
+  // environment, which can strand a linked group scoped to it. The menu
+  // reports the intent here (it unmounts on selection); this host owns the
+  // confirmation.
+  const strandedGuard = useStrandedLinkGuard();
+  const [strandedPrompt, setStrandedPrompt] = useState<{
+    items: StrandedGroupPromptItem[];
+    proceed: () => void;
+  } | null>(null);
+  function handleMoveRequested(proceed: () => void) {
+    if (!strandedGuard.ready) {
+      toast.error(t("environments.strandedScopeUnknown"));
+      return;
+    }
+    const stranded = strandedGuard.strandedFor([service.id], null);
+    if (stranded.length === 0) {
+      proceed();
+      return;
+    }
+    setStrandedPrompt({
+      items: strandedPromptItems(stranded, strandedGuard.scopeNameFor),
+      proceed,
+    });
+  }
 
   // Render: restart is "Not supported for cron jobs" (w8/040).
   const noRestart = hideRestart || isCron(service);
@@ -254,9 +286,23 @@ export function ServiceRowActions({
             resourceId={service.id}
             resourceName={service.name}
             disabled={busy}
+            onMoveRequested={handleMoveRequested}
           />
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <StrandedGroupsConfirmDialog
+        open={strandedPrompt != null}
+        onOpenChange={(next) => {
+          if (!next) setStrandedPrompt(null);
+        }}
+        items={strandedPrompt?.items ?? []}
+        onConfirm={() => {
+          const proceed = strandedPrompt?.proceed;
+          setStrandedPrompt(null);
+          proceed?.();
+        }}
+      />
 
       <ConfirmDialog
         open={confirmAction !== null}

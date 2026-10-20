@@ -31,7 +31,10 @@ import { NewEnvGroupDialog } from "@/features/env-groups/components/new-env-grou
 import { useEnvVarKeys } from "@/features/services/hooks/use-env-vars";
 import { useSecretFileNames } from "@/features/services/hooks/use-secret-files";
 import { useServer } from "@/features/services/hooks/use-server";
-import { serviceMatchesGroupScope } from "@/features/env-groups/lib/scope";
+import {
+  environmentNameIn,
+  serviceMatchesGroupScope,
+} from "@/features/env-groups/lib/scope";
 import { useEnvGroupScopeIndex } from "@/features/env-groups/hooks/use-env-group-scope-index";
 
 /**
@@ -238,6 +241,33 @@ export function EnvGroupsPanel({
     [unlinked, compatibilityReady, serviceEnvironmentById, currentServiceId],
   );
 
+  // w4/m238: a linked group whose scope no longer matches this service (the
+  // state a move creates) says so next to its Unlink, naming both scopes.
+  // Only once the compatibility read settles — while it is pending the row
+  // shows nothing, exactly as the group page gates on scopeReady.
+  const outOfScopeNotice = (group: EnvGroupView): string | undefined => {
+    if (!compatibilityReady) return undefined;
+    if (
+      serviceMatchesGroupScope(serviceEnvironmentById, currentServiceId, group)
+    ) {
+      return undefined;
+    }
+    const groupScope =
+      group.environmentId == null
+        ? t("services.envGroupWorkspaceScope")
+        : (environmentNameIn(scope, group.environmentId) ??
+          scope.byId.get(group.environmentId)?.name ??
+          group.environmentId);
+    if (serviceEnvironmentId == null) {
+      return t("services.envGroupOutOfScopeNoEnvironment", { groupScope });
+    }
+    const serviceScope =
+      environmentNameIn(scope, serviceEnvironmentId) ??
+      scope.byId.get(serviceEnvironmentId)?.name ??
+      serviceEnvironmentId;
+    return t("services.envGroupOutOfScope", { groupScope, serviceScope });
+  };
+
   return (
     <Card>
       <CardHeader className="grid-cols-1 grid-rows-none sm:grid-cols-[minmax(0,1fr)_auto] sm:grid-rows-[auto_auto]">
@@ -311,6 +341,7 @@ export function EnvGroupsPanel({
                       serviceFiles={serviceFiles}
                       shadowedKeys={shadowed.get(group.id)?.keys}
                       shadowedFiles={shadowed.get(group.id)?.files}
+                      outOfScopeNotice={outOfScopeNotice(group)}
                       onLink={linkGroup}
                       onUnlink={unlinkGroup}
                       busy={busy}
@@ -424,6 +455,7 @@ function EnvGroupItem({
   serviceFiles,
   shadowedKeys,
   shadowedFiles,
+  outOfScopeNotice,
   onLink,
   onUnlink,
   busy,
@@ -441,6 +473,10 @@ function EnvGroupItem({
   shadowedKeys?: ReadonlyMap<string, string>;
   /** secret-file name -> name of the later-linked group that wins it. */
   shadowedFiles?: ReadonlyMap<string, string>;
+  /** w4/m238: set on a linked row whose group scope no longer matches the
+   *  service; rendered next to Unlink. Undefined while the scope read is
+   *  pending and for in-scope links. */
+  outOfScopeNotice?: string;
   onLink: (id: string, serviceId: string) => Promise<boolean>;
   onUnlink: (id: string, serviceId: string) => Promise<boolean>;
   busy: boolean;
@@ -491,6 +527,9 @@ function EnvGroupItem({
             <Badge variant="success">{t("services.envGroupLinked")}</Badge>
           )}
         </div>
+        {outOfScopeNotice ? (
+          <p className="text-destructive text-xs">{outOfScopeNotice}</p>
+        ) : null}
         {group.envVarKeys.length === 0 && group.secretFileNames.length === 0 ? (
           <p className="text-muted-foreground text-sm">
             {t("services.envGroupEmptyContents")}

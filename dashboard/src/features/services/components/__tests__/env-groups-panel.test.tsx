@@ -550,6 +550,63 @@ describe("EnvGroupsPanel group-vs-group precedence", () => {
       expect(screen.queryByRole("button", { name: /Link/ })).toBeNull();
     });
 
+    it("flags a linked group scoped to another environment, naming both (w4/m238)", async () => {
+      scopeState.environments = [
+        { id: "evm-prod", name: "Production" },
+        { id: "evm-staging", name: "Staging" },
+      ];
+      scopeState.byId = new Map(
+        scopeState.environments.map((e) => [e.id, e]),
+      );
+      scopeState.serviceEnvironmentById = new Map([["web", "evm-staging"]]);
+      mockServiceEnvironmentId = "evm-staging";
+      mockUseEnvGroups.mockReturnValue(
+        groupsResult([
+          {
+            ...group("evg-prod", "evm-prod"),
+            name: "prod-group",
+            serviceLinks: ["web"],
+          },
+          {
+            ...group("evg-staging", "evm-staging"),
+            name: "staging-group",
+            serviceLinks: ["web"],
+          },
+        ]),
+      );
+      render(<EnvGroupsPanel serviceId="web" />);
+      expect(
+        await screen.findByText(
+          /Scoped to Production, but this service is in Staging/,
+        ),
+      ).toBeInTheDocument();
+      // The in-scope linked group stays silent.
+      expect(
+        screen.queryByText(/Scoped to Staging, but this service is in/),
+      ).toBeNull();
+    });
+
+    it("shows no out-of-scope notice while the scope read is pending (w4/m238)", async () => {
+      scopeState.ready = false;
+      scopeState.environments = [{ id: "evm-prod", name: "Production" }];
+      scopeState.byId = new Map(
+        scopeState.environments.map((e) => [e.id, e]),
+      );
+      mockServiceEnvironmentId = "evm-staging";
+      mockUseEnvGroups.mockReturnValue(
+        groupsResult([
+          {
+            ...group("evg-prod", "evm-prod"),
+            name: "prod-group",
+            serviceLinks: ["web"],
+          },
+        ]),
+      );
+      render(<EnvGroupsPanel serviceId="web" />);
+      expect(await screen.findByText("prod-group")).toBeInTheDocument();
+      expect(screen.queryByText(/Scoped to Production/)).toBeNull();
+    });
+
     it("offers nothing until the scope resolves, and retries a failed lookup", async () => {
       mockUseEnvGroups.mockReturnValue({
         groups: [group("evg-workspace", null)],

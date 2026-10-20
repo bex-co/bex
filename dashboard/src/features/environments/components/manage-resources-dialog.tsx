@@ -40,6 +40,16 @@ import {
   restrictionMarkers,
 } from "@/features/environments/lib/placement";
 import type { ResourceChecklistItem } from "@/features/environments/components/resource-checklist";
+import { toast } from "sonner";
+import { environmentNameIn } from "@/features/env-groups/lib/scope";
+import {
+  strandedGroupsForDestination,
+  strandedPromptItems,
+} from "@/features/env-groups/lib/stranded";
+import {
+  StrandedGroupsConfirmDialog,
+  type StrandedGroupPromptItem,
+} from "@/features/environments/components/stranded-groups-confirm-dialog";
 
 /** The dialog's four tabs, which are also its four independent draft keys. */
 type ResourceKind = ProjectResourceFamily;
@@ -155,7 +165,67 @@ function ManageResourcesForm({
   // moves it out of there, which the row and the footer say before Save. An
   // ACL-bearing source needs an admin (w4/m232), so a confirmed non-admin
   // cannot check it, and the row says why rather than Save meeting a 403.
-  const { environments: workspaceEnvironments } = useEnvGroupScopeIndex();
+  const scopeIndex = useEnvGroupScopeIndex();
+  const { environments: workspaceEnvironments } = scopeIndex;
+
+  // w4/m238: saving the services tab moves services into this environment
+  // (checked) or out of every environment (unchecked). Either can strand a
+  // linked group scoped elsewhere — confirm before the single write.
+  const [strandedPrompt, setStrandedPrompt] = useState<{
+    items: StrandedGroupPromptItem[];
+    proceed: () => void;
+    cancel: () => void;
+  } | null>(null);
+
+  function strandedItemsFor(
+    serviceIds: string[],
+    destinationEnvironmentId: string | null,
+  ): StrandedGroupPromptItem[] {
+    return strandedPromptItems(
+      strandedGroupsForDestination(envGroups, serviceIds, destinationEnvironmentId),
+      (group) =>
+        group.environmentId == null
+          ? undefined
+          : environmentNameIn(scopeIndex, group.environmentId),
+    );
+  }
+
+  function saveServices(ids: string[]): Promise<boolean> {
+    const current = new Set(environment.serviceIds);
+    const wanted = new Set(ids);
+    const added = ids.filter((id) => !current.has(id));
+    const removed = environment.serviceIds.filter((id) => !wanted.has(id));
+    if (added.length === 0 && removed.length === 0) {
+      return setServices(environment.id, environment.name, ids);
+    }
+    if (!scopeIndex.ready) {
+      toast.error(t("environments.strandedScopeUnknown"));
+      return Promise.resolve(false);
+    }
+    const byId = new Map<string, StrandedGroupPromptItem>();
+    for (const item of [
+      ...strandedItemsFor(added, environment.id),
+      ...strandedItemsFor(removed, null),
+    ]) {
+      byId.set(item.id, item);
+    }
+    if (byId.size === 0) {
+      return setServices(environment.id, environment.name, ids);
+    }
+    return new Promise<boolean>((resolve) => {
+      setStrandedPrompt({
+        items: [...byId.values()],
+        proceed: () => {
+          setStrandedPrompt(null);
+          void setServices(environment.id, environment.name, ids).then(resolve);
+        },
+        cancel: () => {
+          setStrandedPrompt(null);
+          resolve(false);
+        },
+      });
+    });
+  }
   const environmentOf = useMemo(
     () => placementIndex(workspaceEnvironments),
     [workspaceEnvironments],
@@ -257,9 +327,7 @@ function ManageResourcesForm({
               onToggle={(id, next) => toggle("services", id, next)}
               busy={servicesBusyId === environment.id}
               emptyLabel={t("environments.manageNoServices")}
-              onSave={(ids) =>
-                setServices(environment.id, environment.name, ids)
-              }
+              onSave={(ids) => saveServices(ids)}
               onClose={onClose}
             />
           )}
@@ -337,6 +405,14 @@ function ManageResourcesForm({
           )}
         </TabsContent>
       </Tabs>
+      <StrandedGroupsConfirmDialog
+        open={strandedPrompt != null}
+        onOpenChange={(next) => {
+          if (!next) strandedPrompt?.cancel();
+        }}
+        items={strandedPrompt?.items ?? []}
+        onConfirm={() => strandedPrompt?.proceed()}
+      />
     </>
   );
 }

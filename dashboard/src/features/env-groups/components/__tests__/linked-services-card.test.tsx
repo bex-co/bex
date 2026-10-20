@@ -77,7 +77,7 @@ const WORKSPACE_GROUP: EnvGroupView = {
 };
 
 describe("LinkedServicesCard — w6/m48 workspace-scope compatibility", () => {
-  it("shows no Legacy-link warning for a workspace-scoped group linked to a workspace-scoped service", async () => {
+  it("shows no out-of-scope warning for a workspace-scoped group linked to a workspace-scoped service", async () => {
     renderCard({
       group: WORKSPACE_GROUP,
       services: [service("web", "web")],
@@ -85,7 +85,7 @@ describe("LinkedServicesCard — w6/m48 workspace-scope compatibility", () => {
     });
 
     await screen.findByRole("link", { name: "web" }); // linked-service row rendered
-    expect(screen.queryByText(/Legacy link/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Linked outside/i)).not.toBeInTheDocument();
   });
 
   it("lists another unlinked, environment-less service as available to link", async () => {
@@ -118,7 +118,7 @@ describe("LinkedServicesCard — w6/m48 workspace-scope compatibility", () => {
       ]),
     });
 
-    expect(await screen.findByText(/Legacy link/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Linked outside/i)).toBeInTheDocument();
     // "api" is environment-scoped while the group is workspace-scoped, so no
     // compatible candidate exists — the Link Service control stays hidden.
     expect(screen.queryByText("Select a service")).not.toBeInTheDocument();
@@ -162,7 +162,7 @@ describe("LinkedServicesCard — scope index still loading (w4/257)", () => {
     });
 
     await screen.findByRole("link", { name: "srv-web" });
-    expect(screen.queryByText(/Legacy link/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Linked outside/i)).not.toBeInTheDocument();
     expect(screen.getByTestId("linked-row-pending")).toBeInTheDocument();
 
     update({
@@ -175,7 +175,7 @@ describe("LinkedServicesCard — scope index still loading (w4/257)", () => {
       await screen.findByRole("link", { name: "storefront" }),
     ).toBeInTheDocument();
     expect(screen.getByText("srv-web")).toBeInTheDocument();
-    expect(screen.queryByText(/Legacy link/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Linked outside/i)).not.toBeInTheDocument();
     expect(screen.queryByTestId("linked-row-pending")).not.toBeInTheDocument();
   });
 
@@ -187,14 +187,14 @@ describe("LinkedServicesCard — scope index still loading (w4/257)", () => {
       scopeReady: false,
     });
     await screen.findByRole("link", { name: "storefront" });
-    expect(screen.queryByText(/Legacy link/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Linked outside/i)).not.toBeInTheDocument();
 
     update({
       serviceEnvironmentById: new Map([["srv-web", "env-staging"]]),
       scopeReady: true,
     });
 
-    expect(await screen.findByText(/Legacy link/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Linked outside/i)).toBeInTheDocument();
     unlinkGroup.mockClear();
     fireEvent.click(screen.getByRole("button", { name: "Unlink storefront" }));
     expect(unlinkGroup).toHaveBeenCalledWith("eg-1", "srv-web");
@@ -210,7 +210,7 @@ describe("LinkedServicesCard — scope index still loading (w4/257)", () => {
     });
 
     expect(await screen.findByRole("alert")).toBeInTheDocument();
-    expect(screen.queryByText(/Legacy link/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Linked outside/i)).not.toBeInTheDocument();
     expect(screen.queryByTestId("linked-row-pending")).not.toBeInTheDocument();
   });
 });

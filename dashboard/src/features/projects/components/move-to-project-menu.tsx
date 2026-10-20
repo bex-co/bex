@@ -18,6 +18,15 @@ export interface MoveToProjectMenuProps {
   resourceId: string;
   resourceName: string;
   disabled?: boolean;
+  /**
+   * Intercepts a move before it writes (w4/m238): the host decides whether
+   * the move may proceed immediately or must be confirmed first, and calls
+   * `proceed` to run the original single write. Hosted by the row-actions
+   * component because selecting a menu item unmounts this menu — a dialog
+   * owned here would die with it. Datastore hosts omit it: datastores never
+   * link groups, so their moves are never intercepted.
+   */
+  onMoveRequested?: (proceed: () => void) => void;
 }
 
 /**
@@ -33,12 +42,15 @@ export function MoveToProjectMenu({
   resourceId,
   resourceName,
   disabled,
+  onMoveRequested,
 }: MoveToProjectMenuProps) {
   const { t } = useTranslations();
   const { projects, currentProjectId, moveTo, removeFromProject, busyId } =
     useMoveToProject(kind);
   const current = currentProjectId(resourceId);
   const busy = busyId === resourceId;
+  const attempt = (action: () => void) =>
+    onMoveRequested ? onMoveRequested(action) : action();
 
   if (projects.length === 0) return null;
 
@@ -58,7 +70,9 @@ export function MoveToProjectMenu({
               <DropdownMenuItem
                 key={p.id}
                 disabled={p.id === current || busy}
-                onSelect={() => void moveTo(resourceId, resourceName, p.id)}
+                onSelect={() =>
+                  attempt(() => void moveTo(resourceId, resourceName, p.id))
+                }
               >
                 {p.name}
               </DropdownMenuItem>
@@ -69,7 +83,9 @@ export function MoveToProjectMenu({
                 <DropdownMenuItem
                   disabled={busy}
                   onSelect={() =>
-                    void removeFromProject(resourceId, resourceName)
+                    attempt(
+                      () => void removeFromProject(resourceId, resourceName),
+                    )
                   }
                 >
                   <FolderMinus />
