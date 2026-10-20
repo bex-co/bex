@@ -232,6 +232,11 @@ const (
 	TypePostgresUpgradeStarted   = eventvocab.TypePostgresUpgradeStarted
 	TypePostgresUpgradeSucceeded = eventvocab.TypePostgresUpgradeSucceeded
 	TypePostgresUpgradeFailed    = eventvocab.TypePostgresUpgradeFailed
+	// Point-in-time recovery (w5/m141), observed facts like their siblings.
+	TypePostgresPITRCheckpointStarted   = eventvocab.TypePostgresPITRCheckpointStarted
+	TypePostgresPITRCheckpointCompleted = eventvocab.TypePostgresPITRCheckpointCompleted
+	TypePostgresPITRCheckpointFailed    = eventvocab.TypePostgresPITRCheckpointFailed
+	TypePostgresWALArchiveFailed        = eventvocab.TypePostgresWALArchiveFailed
 )
 
 // bex-named types — real writes Render's vocabulary has no name for. Named in

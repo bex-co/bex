@@ -56,6 +56,19 @@ const (
 	TypePostgresUpgradeFailed    = "postgres_upgrade_failed"
 )
 
+// Point-in-time recovery names (w5/m141). Render's postgres_backup_* means a
+// manually triggered export; its PITR base backups are
+// postgres_pitr_checkpoint_*, and postgres_wal_archive_failed reports WAL no
+// longer reaching the object store. bex used to report CNPG base backups as
+// postgres_backup_completed/_failed; base backups are checkpoints now, and
+// exports carry the backup names.
+const (
+	TypePostgresPITRCheckpointStarted   = "postgres_pitr_checkpoint_started"
+	TypePostgresPITRCheckpointCompleted = "postgres_pitr_checkpoint_completed"
+	TypePostgresPITRCheckpointFailed    = "postgres_pitr_checkpoint_failed"
+	TypePostgresWALArchiveFailed        = "postgres_wal_archive_failed"
+)
+
 // Configuration-change names (w3/m82 t003). Audit-derived like the block at the
 // top of the file, but field-level rather than lifecycle: each is produced by a
 // successful PATCH that changed exactly that setting, and the audit row carries

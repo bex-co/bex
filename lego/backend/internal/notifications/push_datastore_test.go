@@ -52,6 +52,12 @@ func TestProjectDatastorePushEvents(t *testing.T) {
 		{string(store.DatastoreFactPostgresRestoreSucceeded), "", "", false},
 		{string(store.DatastoreFactPostgresUpgradeSucceeded), "", "", false},
 		{string(store.DatastoreFactPostgresUpgradeStarted), "", "", false},
+		// w5/m141: a failed nightly checkpoint and a WAL-archive failure stay
+		// in the "backup failed" category a saved preference already covers.
+		{string(store.DatastoreFactPostgresPITRCheckpointFailed), "postgres_backup_failed", string(DeliveryUrgencyImportant), true},
+		{string(store.DatastoreFactPostgresWALArchiveFailed), "postgres_backup_failed", string(DeliveryUrgencyImportant), true},
+		{string(store.DatastoreFactPostgresPITRCheckpointStarted), "", "", false},
+		{string(store.DatastoreFactPostgresPITRCheckpointCompleted), "", "", false},
 	}
 	for _, test := range tests {
 		t.Run(test.factType, func(t *testing.T) {

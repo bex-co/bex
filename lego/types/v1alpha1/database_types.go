@@ -552,6 +552,12 @@ type DatabaseStatus struct {
 	// +optional
 	LastBackup *DatabaseLastBackupStatus `json:"lastBackup,omitempty"`
 
+	// ActiveBackup is the CNPG base backup running right now, if any — the
+	// start edge of Render's postgres_pitr_checkpoint_started. Nil when no
+	// backup is in flight.
+	// +optional
+	ActiveBackup *DatabaseActiveBackupStatus `json:"activeBackup,omitempty"`
+
 	// Conditions represent the current state (Ready).
 	// +listType=map
 	// +listMapKey=type
@@ -588,6 +594,18 @@ type DatabaseLastBackupStatus struct {
 	// one (an API-triggered backup, or the post-major-upgrade base backup).
 	// +optional
 	Scheduled bool `json:"scheduled,omitempty"`
+}
+
+// DatabaseActiveBackupStatus names one in-flight CNPG base backup.
+type DatabaseActiveBackupStatus struct {
+	// Name is the CNPG Backup object's name, the same identity
+	// DatabaseLastBackupStatus.Name carries once it finishes.
+	// +required
+	Name string `json:"name"`
+
+	// StartedAt is RFC3339, copied from CNPG.
+	// +optional
+	StartedAt string `json:"startedAt,omitempty"`
 }
 
 // DatabaseDiskResizeStatus records one operator-triggered, grow-only storage

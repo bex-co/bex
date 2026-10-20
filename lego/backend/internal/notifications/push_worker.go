@@ -717,8 +717,16 @@ func projectPushEvent(row store.WebhookEventRow, serviceID, factStatus string) (
 			return newProjectedPush(DeliveryEventKeyValueUnhealthy, "Key Value unhealthy", serviceName+" is unhealthy."), true
 		case string(store.DatastoreFactKeyValueAvailable):
 			return newProjectedPush(DeliveryEventKeyValueAvailable, "Key Value recovered", serviceName+" recovered."), true
+		// One "backup failed" push category covers every way a database's
+		// backups can fail (w5/m141): a failed export, a failed nightly
+		// checkpoint, and WAL no longer archiving, so a saved preference keeps
+		// covering the nightly failure it covered before the rename.
 		case string(store.DatastoreFactPostgresBackupFailed):
+			return newProjectedPush(DeliveryEventPostgresBackupFailed, "Export failed", serviceName+" export failed."), true
+		case string(store.DatastoreFactPostgresPITRCheckpointFailed):
 			return newProjectedPush(DeliveryEventPostgresBackupFailed, "Backup failed", serviceName+" backup failed."), true
+		case string(store.DatastoreFactPostgresWALArchiveFailed):
+			return newProjectedPush(DeliveryEventPostgresBackupFailed, "Backups failing", serviceName+" stopped archiving WAL; point-in-time recovery is not advancing."), true
 		case string(store.DatastoreFactPostgresRestoreFailed):
 			return newProjectedPush(DeliveryEventPostgresRestoreFailed, "Restore failed", serviceName+" restore failed."), true
 		case string(store.DatastoreFactPostgresUpgradeFailed):

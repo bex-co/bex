@@ -20,6 +20,9 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -32,12 +35,41 @@ func observedDatastoreLifecycleFacts(obs ObservedDatastoreState, previous datast
 	if obs.Kind != DatastoreKindPostgres {
 		return nil, next
 	}
+	facts = append(facts, checkpointStartedFacts(obs, previous, &next)...)
 	facts = append(facts, backupFacts(obs, previous, &next)...)
+	facts = append(facts, exportFacts(obs, previous, &next)...)
+	facts = append(facts, walArchiveFacts(obs, previous, &next)...)
 	facts = append(facts, restoreFacts(obs, previous, &next)...)
 	facts = append(facts, upgradeFacts(obs, previous, &next)...)
 	return facts, next
 }
 
+// checkpointStartedFacts reports a CNPG base backup starting — Render's
+// postgres_pitr_checkpoint_started — once per backup name. A backup that both
+// started and finished between two passes is reported by its end alone.
+func checkpointStartedFacts(obs ObservedDatastoreState, previous datastoreCheckpointExtras, next *datastoreCheckpointExtras) []DatastoreEventFact {
+	if obs.ActiveBackupName == "" || obs.ActiveBackupName == previous.StartedBackup {
+		return nil
+	}
+	next.StartedBackup = obs.ActiveBackupName
+	at := obs.ActiveBackupAt
+	if at.IsZero() {
+		at = obs.At
+	}
+	return []DatastoreEventFact{{
+		SourceKey:   fmt.Sprintf("%s:checkpoint:%s:started", obs.DatastoreID, obs.ActiveBackupName),
+		WorkspaceID: obs.WorkspaceID,
+		DatastoreID: obs.DatastoreID,
+		Kind:        obs.Kind,
+		Type:        DatastoreFactPostgresPITRCheckpointStarted,
+		At:          at,
+		BackupName:  obs.ActiveBackupName,
+	}}
+}
+
+// backupFacts reports a CNPG base backup's outcome. Every base backup —
+// nightly or the post-upgrade one — is a point-in-time-recovery checkpoint in
+// Render's vocabulary; postgres_backup_* belongs to exports (exportFacts).
 func backupFacts(obs ObservedDatastoreState, previous datastoreCheckpointExtras, next *datastoreCheckpointExtras) []DatastoreEventFact {
 	if obs.LastBackupName == "" {
 		return nil
@@ -52,9 +84,9 @@ func backupFacts(obs ObservedDatastoreState, previous datastoreCheckpointExtras,
 	var typ DatastoreEventFactType
 	switch obs.LastBackupPhase {
 	case "completed":
-		typ = DatastoreFactPostgresBackupCompleted
+		typ = DatastoreFactPostgresPITRCheckpointCompleted
 	case "failed":
-		typ = DatastoreFactPostgresBackupFailed
+		typ = DatastoreFactPostgresPITRCheckpointFailed
 	default:
 		return nil
 	}
@@ -73,6 +105,86 @@ func backupFacts(obs ObservedDatastoreState, previous datastoreCheckpointExtras,
 		BackupName:  obs.LastBackupName,
 		BackupError: obs.LastBackupError,
 		Scheduled:   &scheduled,
+	}}
+}
+
+// WAL-archiving states an observation and the checkpoint latch carry; ""
+// means unreported or backups off.
+const (
+	walArchivingOK     = "ok"
+	walArchivingFailed = "failed"
+)
+
+// exportFloorGrace backs the first export floor off the observation time: an
+// export Job that finished just before this pass may not be in status yet.
+const exportFloorGrace = 5 * time.Minute
+
+// exportFloor is the first ExportsSince for a database: below every export
+// already visible (they are history), and a grace period before this pass so
+// an export the operator records a little late still reports.
+func exportFloor(obs ObservedDatastoreState) time.Time {
+	floor := obs.At.Add(-exportFloorGrace)
+	for _, export := range obs.Exports {
+		if export.CompletedAt.After(floor) {
+			floor = export.CompletedAt
+		}
+	}
+	return floor
+}
+
+// exportFacts reports each logical export reaching available or failed —
+// Render's postgres_backup_completed/_failed — exactly once (the source key is
+// the export id). Exports that finished before ExportsSince are history: the
+// first pass that sees a database only sets the floor.
+func exportFacts(obs ObservedDatastoreState, previous datastoreCheckpointExtras, next *datastoreCheckpointExtras) []DatastoreEventFact {
+	if previous.ExportsSince.IsZero() {
+		next.ExportsSince = exportFloor(obs)
+		return nil
+	}
+	var facts []DatastoreEventFact
+	for _, export := range obs.Exports {
+		if export.ID == "" || !export.CompletedAt.After(previous.ExportsSince) {
+			continue
+		}
+		typ := DatastoreFactPostgresBackupCompleted
+		if export.Failed {
+			typ = DatastoreFactPostgresBackupFailed
+		}
+		facts = append(facts, DatastoreEventFact{
+			SourceKey:   fmt.Sprintf("%s:export:%s", obs.DatastoreID, export.ID),
+			WorkspaceID: obs.WorkspaceID,
+			DatastoreID: obs.DatastoreID,
+			Kind:        obs.Kind,
+			Type:        typ,
+			At:          export.CompletedAt,
+			BackupName:  export.ID,
+			BackupError: export.Reason,
+		})
+	}
+	return facts
+}
+
+// walArchiveFacts reports WAL archiving starting to fail — Render's
+// postgres_wal_archive_failed — once per failure; recovery re-arms it. A
+// failure seen while the database is suspended, upgrading or restoring is
+// expected noise: it neither fires nor latches, so it fires afterwards if it
+// persists.
+func walArchiveFacts(obs ObservedDatastoreState, previous datastoreCheckpointExtras, next *datastoreCheckpointExtras) []DatastoreEventFact {
+	if obs.WALArchiving == walArchivingFailed && (obs.Suspended || obs.Recovering || obs.Phase == string(appv1alpha1.DBPhaseUpgrading)) {
+		return nil
+	}
+	next.WALArchiving = obs.WALArchiving
+	if obs.WALArchiving != walArchivingFailed || previous.WALArchiving == walArchivingFailed {
+		return nil
+	}
+	return []DatastoreEventFact{{
+		SourceKey:   fmt.Sprintf("%s:wal_archive_failed:%d", obs.DatastoreID, obs.At.UnixNano()),
+		WorkspaceID: obs.WorkspaceID,
+		DatastoreID: obs.DatastoreID,
+		Kind:        obs.Kind,
+		Type:        DatastoreFactPostgresWALArchiveFailed,
+		At:          obs.At,
+		BackupError: obs.WALArchivingMessage,
 	}}
 }
 
@@ -154,6 +266,39 @@ func hasUpgradeTerminal(key string) bool {
 
 func containsUpgradeEdge(key, edge string) bool {
 	return len(key) >= len(edge) && key[len(key)-len(edge):] == edge
+}
+
+// stampPITRObservation copies the in-flight backup, the WALArchiving
+// condition and the terminal exports off a Database's status.
+func stampPITRObservation(obs *ObservedDatastoreState, status *appv1alpha1.DatabaseStatus) {
+	if active := status.ActiveBackup; active != nil && active.Name != "" {
+		obs.ActiveBackupName = active.Name
+		if parsed, err := time.Parse(time.RFC3339, active.StartedAt); err == nil {
+			obs.ActiveBackupAt = parsed
+		}
+	}
+	if c := meta.FindStatusCondition(status.Conditions, appv1alpha1.ConditionWALArchiving); c != nil {
+		switch c.Status {
+		case metav1.ConditionTrue:
+			obs.WALArchiving = walArchivingOK
+		case metav1.ConditionFalse:
+			obs.WALArchiving = walArchivingFailed
+			obs.WALArchivingMessage = c.Message
+		}
+	}
+	for _, export := range status.Exports {
+		failed := export.Phase == appv1alpha1.DatabaseExportFailed
+		if export.Phase != appv1alpha1.DatabaseExportAvailable && !failed {
+			continue
+		}
+		completed, err := time.Parse(time.RFC3339, export.CompletedAt)
+		if err != nil {
+			continue
+		}
+		obs.Exports = append(obs.Exports, ObservedDatastoreExport{
+			ID: export.ID, Failed: failed, Reason: export.FailureReason, CompletedAt: completed,
+		})
+	}
 }
 
 // stampBackupObservation copies Database.status.lastBackup onto the observed

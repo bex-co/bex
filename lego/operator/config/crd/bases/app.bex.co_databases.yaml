@@ -345,6 +345,23 @@ spec:
           status:
             description: DatabaseStatus is the observed state of a Database.
             properties:
+              activeBackup:
+                description: |-
+                  ActiveBackup is the CNPG base backup running right now, if any — the
+                  start edge of Render's postgres_pitr_checkpoint_started. Nil when no
+                  backup is in flight.
+                properties:
+                  name:
+                    description: |-
+                      Name is the CNPG Backup object's name, the same identity
+                      DatabaseLastBackupStatus.Name carries once it finishes.
+                    type: string
+                  startedAt:
+                    description: StartedAt is RFC3339, copied from CNPG.
+                    type: string
+                required:
+                - name
+                type: object
               allocatedStorageGB:
                 description: |-
                   AllocatedStorageGB is the grow-only storage high-water mark accepted by

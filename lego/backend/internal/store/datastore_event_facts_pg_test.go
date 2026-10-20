@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -287,5 +288,57 @@ func TestPGObservedKeyValueArmsOnFirstReady(t *testing.T) {
 	want := []string{string(DatastoreFactKeyValueUnhealthy), string(DatastoreFactKeyValueAvailable)}
 	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
 		t.Fatalf("recorded %v, want %v", got, want)
+	}
+}
+
+// TestPGPointInTimeRecoveryEdges is w5/m141 on real Postgres: the checkpoint
+// columns migration 0157 adds round-trip, so a checkpoint start, an export
+// outcome and a WAL-archive failure each record exactly once, a persisting
+// failure stays silent, and an export older than the checkpoint is history.
+func TestPGPointInTimeRecoveryEdges(t *testing.T) {
+	st, pool, tenant := openDatastoreTestStore(t)
+	ctx := context.Background()
+	id := "dpg-" + fmt.Sprintf("%d", time.Now().UnixNano())
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM datastore_event_facts WHERE datastore_id = $1`, id)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM datastore_observed_checkpoints WHERE datastore_id = $1`, id)
+	})
+	at := time.Now().Add(-time.Hour).UTC().Truncate(time.Microsecond)
+	obs := ObservedDatastoreState{
+		DatastoreID: id, WorkspaceID: tenant.ID, Kind: DatastoreKindPostgres, At: at,
+		Phase: string(appv1alpha1.DBPhaseReady), Availability: "healthy", AvailabilityObserved: true,
+		ReadyTransitionAt: at,
+		Exports:           []ObservedDatastoreExport{{ID: "exp-old", CompletedAt: at.Add(-time.Minute)}},
+	}
+	step := func() {
+		t.Helper()
+		obs.At = obs.At.Add(time.Second)
+		if _, err := st.RecordObservedDatastoreState(ctx, obs); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := st.RecordObservedDatastoreState(ctx, obs); err != nil { // baseline
+		t.Fatal(err)
+	}
+	step()
+	obs.ActiveBackupName = "nightly-1"
+	step()
+	step() // resync
+	obs.WALArchiving = "failed"
+	obs.WALArchivingMessage = "wal-push: access denied"
+	step()
+	step() // still failing
+	obs.Exports = append(obs.Exports, ObservedDatastoreExport{ID: "exp-1", CompletedAt: obs.At.Add(time.Millisecond)})
+	step()
+	step()
+
+	got := datastoreFactTypes(t, pool, id)
+	want := []string{"postgres_pitr_checkpoint_started", "postgres_wal_archive_failed", "postgres_backup_completed"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("facts = %v, want %v", got, want)
+	}
+	var message string
+	if err := pool.QueryRow(ctx, `SELECT backup_error FROM datastore_event_facts WHERE datastore_id = $1 AND fact_type = 'postgres_wal_archive_failed'`, id).Scan(&message); err != nil || message != "wal-push: access denied" {
+		t.Errorf("archive failure detail = %q, %v", message, err)
 	}
 }

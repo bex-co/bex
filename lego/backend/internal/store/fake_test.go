@@ -26,7 +26,6 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
-	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // memStore is the in-memory Store used by the API and reconciler tests. It
@@ -57,6 +56,7 @@ type memStore struct {
 	// resource id exactly as the Postgres tables are.
 	datastoreFacts       map[string]DatastoreEventFact
 	datastoreCheckpoints map[string]ObservedDatastoreState
+	datastoreExtras      map[string]datastoreCheckpointExtras
 	billingExcluded      map[string]bool // tenantID -> excluded (ADR040 §7)
 }
 
@@ -80,6 +80,7 @@ func newMemStore() *memStore {
 
 		datastoreFacts:       map[string]DatastoreEventFact{},
 		datastoreCheckpoints: map[string]ObservedDatastoreState{},
+		datastoreExtras:      map[string]datastoreCheckpointExtras{},
 		billingExcluded:      map[string]bool{},
 	}
 }
@@ -1060,17 +1061,10 @@ func (m *memStore) RecordObservedDatastoreState(_ context.Context, obs ObservedD
 	previous, ok := m.datastoreCheckpoints[obs.DatastoreID]
 	if !ok {
 		obs.Availability = nextDatastoreAvailability("", obs.Availability)
-		if obs.Recovering && obs.Availability == "healthy" {
-			obs.RestoreOutcome = "succeeded"
-		}
-		if obs.Recovering && obs.Phase == string(appv1alpha1.DBPhaseFailed) {
-			obs.RestoreOutcome = "failed"
-		}
-		if obs.Phase == string(appv1alpha1.DBPhaseUpgrading) && obs.SpecVersion != "" && obs.CurrentVersion != "" && obs.SpecVersion != obs.CurrentVersion {
-			from, to := obs.CurrentVersion, obs.SpecVersion
-			obs.UpgradeKey = fmt.Sprintf("%s:upgrade:%s-%s:started", obs.DatastoreID, from, to)
-		}
+		extras := datastoreBaselineExtras(obs)
+		obs.RestoreOutcome, obs.UpgradeKey = extras.RestoreOutcome, extras.UpgradeKey
 		m.datastoreCheckpoints[obs.DatastoreID] = obs
+		m.datastoreExtras[obs.DatastoreID] = extras
 		return nil, nil
 	}
 	if obs.AvailabilityObserved {
@@ -1084,12 +1078,7 @@ func (m *memStore) RecordObservedDatastoreState(_ context.Context, obs ObservedD
 	// obs.At as the lower bound keeps the fake on observation-time stamps; the
 	// w4/196 transition stamping is pinned against real Postgres.
 	facts := observedDatastoreStateFacts(obs, previous.Availability, obs.At)
-	previousExtras := datastoreCheckpointExtras{
-		LastBackupName:  previous.LastBackupName,
-		LastBackupPhase: previous.LastBackupPhase,
-		RestoreOutcome:  previous.RestoreOutcome,
-		UpgradeKey:      previous.UpgradeKey,
-	}
+	previousExtras := m.datastoreExtras[obs.DatastoreID]
 	lifecycle, nextExtras := observedDatastoreLifecycleFacts(obs, previousExtras)
 	facts = append(facts, lifecycle...)
 	var inserted []DatastoreEventFact
@@ -1105,6 +1094,7 @@ func (m *memStore) RecordObservedDatastoreState(_ context.Context, obs ObservedD
 	obs.RestoreOutcome = nextExtras.RestoreOutcome
 	obs.UpgradeKey = nextExtras.UpgradeKey
 	m.datastoreCheckpoints[obs.DatastoreID] = obs
+	m.datastoreExtras[obs.DatastoreID] = nextExtras
 	return inserted, nil
 }
 

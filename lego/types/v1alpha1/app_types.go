@@ -135,6 +135,13 @@ const ConditionReady = "Ready"
 // expansion, so the last step can land on the next restart.
 const ConditionDiskReady = "DiskReady"
 
+// ConditionWALArchiving mirrors CNPG's ContinuousArchiving on a backup-enabled
+// Database: True while WAL reaches the object store, False (with CNPG's reason
+// and message) when archiving fails — which silently stops point-in-time
+// recovery from advancing. Absent when backups are off or CNPG has not
+// reported yet.
+const ConditionWALArchiving = "WALArchiving"
+
 // ConditionBuild is the durable record of a source build's terminal outcome,
 // stamped with the RELEASE generation that was built (status.releaseGeneration)
 // rather than metadata.generation (w6/m100). Present and False with a
