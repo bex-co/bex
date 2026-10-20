@@ -447,6 +447,13 @@ export interface CustomDomainView {
   certificateReason: string | null;
   /** The DNS record to create; null if the backend couldn't derive the target. */
   dnsRecord: DnsRecordView | null;
+  /**
+   * An apex domain's A-record fallback: the platform host's current edge
+   * addresses, resolved by bex-api at read time (ADR005, w4/378). Empty for
+   * subdomains and whenever resolution failed — the setup guidance then
+   * renders without addresses. Optional here; the hook always sets it.
+   */
+  edgeAddresses?: string[];
 }
 
 /**

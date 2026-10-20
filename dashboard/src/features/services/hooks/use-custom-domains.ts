@@ -54,6 +54,9 @@ function mapDomain(
     redirectForName: d.redirectForName,
     certificateReason: d.certificateReason ?? null,
     dnsRecord: mapDNSRecord(d.dnsRecord),
+    edgeAddresses: (d.edgeAddresses ?? []).filter(
+      (addr): addr is string => addr != null,
+    ),
   };
 }
 

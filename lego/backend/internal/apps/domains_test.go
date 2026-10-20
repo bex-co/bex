@@ -2598,3 +2598,23 @@ func TestCustomDomainRefusesPlatformHostsIPsAndBareNames(t *testing.T) {
 		t.Fatalf("a real custom domain = %v", err)
 	}
 }
+
+func TestEdgeAddressesForApexFallback(t *testing.T) {
+	// w4/378: only an apex domain resolves the platform host's edge addresses;
+	// subdomains and any resolution failure yield nil (guidance without
+	// addresses), never a stale value.
+	svc := &Service{DomainResolver: fakeDomainResolver{addrs: map[string][]string{
+		"web.onbex.co": {"203.0.113.10", "203.0.113.11", "203.0.113.10"},
+	}}}
+	ctx := context.Background()
+	if got := svc.edgeAddressesFor(ctx, "apex", "web.onbex.co"); len(got) != 2 || got[0] != "203.0.113.10" || got[1] != "203.0.113.11" {
+		t.Errorf("apex edge addresses = %v, want deduped [203.0.113.10 203.0.113.11]", got)
+	}
+	if got := svc.edgeAddressesFor(ctx, "subdomain", "web.onbex.co"); got != nil {
+		t.Errorf("subdomain edge addresses = %v, want nil", got)
+	}
+	svc.DomainResolver = fakeDomainResolver{err: errors.New("dns down")}
+	if got := svc.edgeAddressesFor(ctx, "apex", "web.onbex.co"); got != nil {
+		t.Errorf("failed resolution = %v, want nil", got)
+	}
+}

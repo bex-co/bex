@@ -26,6 +26,7 @@ fragment CustomDomainFields on CustomDomain {
     name
     value
   }
+  edgeAddresses
 }
 
 query CustomDomains($id: String!) {
