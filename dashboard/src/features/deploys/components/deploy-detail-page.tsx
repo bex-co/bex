@@ -3,6 +3,7 @@ import { EmptyState } from "@/common/components/empty-state";
 import { Button } from "@/common/components/ui/button";
 import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { useServiceBase } from "@/features/services/lib/service-base";
 import { useDeploy } from "../hooks/use-deploy";
 import { useCanceledStepEnd } from "../hooks/use-canceled-step-end";
@@ -91,7 +92,7 @@ export function DeployDetailPage({
       <EmptyState
         iconName="AlertCircle"
         title={t("logs.errorTitle")}
-        description={error.message}
+        description={mutationErrorMessage(error, t("common.loadErrorRetry"))}
       />
     );
   }
