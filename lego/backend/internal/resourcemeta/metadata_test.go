@@ -69,8 +69,48 @@ func TestConfigAndTimestampOmissionRules(t *testing.T) {
 	}
 	managed := metav1.NewTime(time.Date(2026, 7, 15, 14, 0, 0, 0, time.UTC))
 	obj.SetManagedFields([]metav1.ManagedFieldsEntry{{Manager: "operator", Time: &managed}})
-	if got := UpdatedAt(obj); got != "2026-07-15T14:00:00Z" {
-		t.Fatalf("managed-field timestamp = %q", got)
+	// w4/373: with the annotation present it is authoritative — a later
+	// managed-field time (a reconciler write) must not move updatedAt.
+	if got := UpdatedAt(obj); got != "2026-07-15T13:00:00.000000123Z" {
+		t.Fatalf("annotation must win over managed fields: %q", got)
+	}
+}
+
+func TestUpdatedAtIgnoresStatusSubresourceWrites(t *testing.T) {
+	at := func(hour int) *metav1.Time {
+		ts := metav1.NewTime(time.Date(2026, 7, 15, hour, 0, 0, 0, time.UTC))
+		return &ts
+	}
+
+	// Annotated object + a NEWER status-subresource entry (the operator's
+	// crash-loop status writes): updatedAt stays the annotation (w4/373).
+	annotated := &metav1.PartialObjectMetadata{}
+	Touch(annotated, time.Date(2026, 7, 15, 13, 0, 0, 0, time.UTC))
+	annotated.SetManagedFields([]metav1.ManagedFieldsEntry{
+		{Manager: "bex-controller", Subresource: "status", Time: at(15)},
+	})
+	if got := UpdatedAt(annotated); got != "2026-07-15T13:00:00Z" {
+		t.Fatalf("status write moved updatedAt: %q", got)
+	}
+
+	// Legacy object, no annotation: the main-resource entry counts, the
+	// status entry does not.
+	legacy := &metav1.PartialObjectMetadata{}
+	legacy.SetManagedFields([]metav1.ManagedFieldsEntry{
+		{Manager: "kubectl", Time: at(12)},
+		{Manager: "bex-controller", Subresource: "status", Time: at(15)},
+	})
+	if got := UpdatedAt(legacy); got != "2026-07-15T12:00:00Z" {
+		t.Fatalf("legacy fallback = %q, want the main-resource time", got)
+	}
+
+	// Legacy object with only a status entry: no update time at all.
+	statusOnly := &metav1.PartialObjectMetadata{}
+	statusOnly.SetManagedFields([]metav1.ManagedFieldsEntry{
+		{Manager: "bex-controller", Subresource: "status", Time: at(15)},
+	})
+	if got := UpdatedAt(statusOnly); got != "" {
+		t.Fatalf("status-only object updatedAt = %q, want empty", got)
 	}
 }
 
