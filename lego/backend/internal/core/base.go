@@ -17,6 +17,7 @@ limitations under the License.
 package core
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -34,6 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -1958,6 +1960,46 @@ func (b *Base) AppPodsIn(ctx context.Context, namespace, app string) ([]corev1.P
 		return nil, err
 	}
 	return pods.Items, nil
+}
+
+// OwnAppPods is app's pods without those of an earlier App of the same name: a
+// service recreated under a deleted one's name shares its pod label, and the
+// predecessor's pods can still be terminating (w8/m124).
+func (b *Base) OwnAppPods(ctx context.Context, app *appv1alpha1.App) ([]corev1.Pod, error) {
+	pods, err := b.AppPodsIn(ctx, app.Namespace, app.Name)
+	return DropOtherIncarnations(pods, AppIncarnationID(app), AppNotBefore(app)), err
+}
+
+// AppIncarnationID is the id app's pods carry in LabelAppID: the operator
+// stamps the App's own LabelAppID, or its name for an App without one.
+func AppIncarnationID(app *appv1alpha1.App) string {
+	return cmp.Or(app.Labels[LabelAppID], app.Name)
+}
+
+// AppNotBefore is the earliest instant anything of app's can exist: the
+// earlier of its CR's creation and its service id's mint time. The store
+// projector can re-create a service's CR (same id, a fresh creation time),
+// and the id keeps that service's own history in view (w8/m124).
+func AppNotBefore(app *appv1alpha1.App) time.Time {
+	notBefore := app.CreationTimestamp.Time
+	// The mint time only relaxes the creation floor, never sets one: a Derive'd
+	// id's "time" is meaningless.
+	if minted, ok := ids.MintedAt(app.Labels[LabelAppID]); ok && !notBefore.IsZero() && minted.Before(notBefore) {
+		notBefore = minted
+	}
+	return notBefore
+}
+
+// DropOtherIncarnations removes the pods of an earlier App of the same name:
+// those labelled with an id other than id, and unlabeled ones (Job pods carry
+// no id) created before notBefore; an unknown creation time keeps the pod.
+func DropOtherIncarnations(pods []corev1.Pod, id string, notBefore time.Time) []corev1.Pod {
+	return slices.DeleteFunc(pods, func(p corev1.Pod) bool {
+		if other := p.Labels[LabelAppID]; other != "" {
+			return other != id
+		}
+		return !p.CreationTimestamp.IsZero() && p.CreationTimestamp.Time.Before(notBefore)
+	})
 }
 
 // AppInOwnWorkspaceNamespace reports whether a labeled App CR lives in its own

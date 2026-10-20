@@ -33,6 +33,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/rs/xid"
 )
@@ -260,4 +261,20 @@ func kindForPrefix(prefix string) (Kind, bool) {
 		}
 	}
 	return Kind{}, false
+}
+
+// MintedAt is when New minted id: the second its xid carries. ok is false for
+// a string that is not "<prefix>-<xid>". A Derive'd id parses too, with a
+// meaningless time, so a caller must only ever use MintedAt to relax a bound
+// it already holds, never to tighten one.
+func MintedAt(id string) (t time.Time, ok bool) {
+	i := strings.LastIndex(id, "-")
+	if i < 0 {
+		return time.Time{}, false
+	}
+	x, err := xid.FromString(id[i+1:])
+	if err != nil {
+		return time.Time{}, false
+	}
+	return x.Time(), true
 }

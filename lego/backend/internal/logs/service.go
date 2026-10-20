@@ -288,6 +288,12 @@ type LogQuery struct {
 	Method     []string
 	Path       []string
 
+	// appID and notBefore scope an App read to its own incarnation (w8/m124):
+	// a service recreated under a deleted one's name has a new id, and nothing
+	// it owns predates its App. Set by scopeToApp, never by a caller.
+	appID     string
+	notBefore time.Time
+
 	levelFilter *regexp.Regexp // datastore pod severity matcher, compiled once per query
 	// probe lets a page read one line past the caller's (clamped) Limit, so the
 	// page can tell whether any line lies beyond it (queryLogPage).
@@ -423,6 +429,23 @@ func (q LogQuery) liveSubscribable() error {
 }
 
 // keepPod reports whether a pod satisfies the `instance` filter.
+// scopeToApp points q at app's own streams and pods: its CR name (the label
+// the shipper and the pods carry), its id, and nothing before it existed.
+func (q *LogQuery) scopeToApp(app *appv1alpha1.App) {
+	q.App = app.Name
+	q.appID = core.AppIncarnationID(app)
+	q.notBefore = core.AppNotBefore(app)
+}
+
+// ownPods is the App's pods without an earlier incarnation's (core.OwnAppPods).
+func (s *Service) ownPods(ctx context.Context, namespace string, q LogQuery) ([]corev1.Pod, error) {
+	pods, err := s.AppPodsIn(ctx, namespace, q.App)
+	if q.appID == "" {
+		return pods, err
+	}
+	return core.DropOtherIncarnations(pods, q.appID, q.notBefore), err
+}
+
 func (q LogQuery) keepPod(pod string) bool {
 	if len(q.Instance) == 0 {
 		return true
@@ -549,7 +572,9 @@ func (s *Service) Logs(ctx context.Context, name string, tail int64) ([]LogEntry
 	}
 	if s.History != nil {
 		// Durable history: the unfiltered tail-N read is a limit-only query.
-		entries, err := s.History(ctx, app.Namespace, LogQuery{App: app.Name, Limit: tail}.normalized())
+		q := LogQuery{Limit: tail}
+		q.scopeToApp(app)
+		entries, err := s.History(ctx, app.Namespace, q.normalized())
 		// A tail is best-effort: the newest lines a budget-limited scan found
 		// are the answer, not a failure.
 		var partial *ScanIncompleteError
@@ -558,7 +583,9 @@ func (s *Service) Logs(ctx context.Context, name string, tail int64) ([]LogEntry
 		}
 		return setLogResource(entries, resource), err
 	}
-	entries, err := s.collectPodLogs(ctx, app.Namespace, LogQuery{App: app.Name}, tail)
+	var q LogQuery
+	q.scopeToApp(app)
+	entries, err := s.collectPodLogs(ctx, app.Namespace, q, tail)
 	return setLogResource(entries, resource), err
 }
 
@@ -581,7 +608,7 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	// Logs are indexed and pod-selected by the App CR's actual metadata.name,
 	// which may be tenant-prefixed. The public name/srv-id is only an API
 	// address and must not leak into the Kubernetes label selector.
-	q.App = app.Name
+	q.scopeToApp(app)
 	// The App CR is in hand — its namespace is the per-tenant `<ws>` namespace
 	// (ADR043), where its pods and Loki streams also live; use it directly
 	// rather than the shared s.Namespace, exactly as the metrics feature does.
@@ -603,7 +630,7 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 		entries, err := s.collectPreDeployLogs(ctx, appNS, resource, q)
 		return setLogResource(entries, resource), err
 	}
-	pods, err := s.AppPodsIn(ctx, appNS, app.Name)
+	pods, err := s.ownPods(ctx, appNS, q)
 	if err != nil {
 		return nil, err
 	}
@@ -821,7 +848,7 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 	if err := q.validate(); err != nil {
 		return nil, err
 	}
-	q.App = app.Name
+	q.scopeToApp(app)
 	if !slices.Contains(DiscoverableLabels, label) {
 		// Naming the offending label beats an empty list, which a client would read
 		// as "this service has no such values".
@@ -915,7 +942,7 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 		return err
 	}
 	resource := appLogResource(app.Labels, requested)
-	q.App = app.Name
+	q.scopeToApp(app)
 	if err := q.validate(); err != nil {
 		return err
 	}
@@ -931,7 +958,7 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 		return core.ErrLogsUnavailable
 	}
 	q = q.normalized()
-	podsLive, err := s.AppPodsIn(ctx, app.Namespace, app.Name)
+	podsLive, err := s.ownPods(ctx, app.Namespace, q)
 	if err != nil {
 		return err
 	}
@@ -956,7 +983,7 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	target := tailTarget{
 		resource: resource, namespace: app.Namespace, name: app.Name,
 		container: core.AppContainer, logType: LogTypeApp,
-		list: func(ctx context.Context) ([]corev1.Pod, error) { return s.AppPodsIn(ctx, app.Namespace, app.Name) },
+		list: func(ctx context.Context) ([]corev1.Pod, error) { return s.ownPods(ctx, app.Namespace, q) },
 		revalidate: func(ctx context.Context) error {
 			return s.revalidateTailTarget(ctx, app.Namespace, app.Name)
 		},
@@ -1666,7 +1693,7 @@ func (s *Service) collectDatastorePodLogs(ctx context.Context, q LogQuery, pods 
 // — the pod-log path's honoring of that filter (a pod name is a pod name, so this
 // one structured filter needs no store).
 func (s *Service) appPodNames(ctx context.Context, namespace string, q LogQuery) ([]string, error) {
-	pods, err := s.AppPodsIn(ctx, namespace, q.App)
+	pods, err := s.ownPods(ctx, namespace, q)
 	if err != nil {
 		return nil, err
 	}

@@ -217,8 +217,11 @@ type ResourceMetricsSource func(ctx context.Context, namespace, app string) ([]P
 // RequestMetricsRequest. The source owns the query language; the service only
 // resolves defaults and delegates.
 type ResourceMetricsRangeRequest struct {
-	Namespace  string
-	App        string
+	Namespace string
+	App       string
+	// NotBefore excludes pods created before it — an earlier App of the same
+	// name, whose pods share App's name shape (w8/m124). Zero: no exclusion.
+	NotBefore  time.Time
 	Metric     string // cpu | memory | instance_count
 	Start, End time.Time
 	Resolution time.Duration
@@ -499,6 +502,14 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 	if err := checkPointBudget(q.Start, q.End, q.Resolution); err != nil {
 		return nil, err
 	}
+	// Nothing an App owns predates it: a service recreated under a deleted
+	// one's name charts from its own creation (w8/m124). This only narrows.
+	if created := core.AppNotBefore(app); q.Start.Before(created) {
+		if !created.Before(q.End) {
+			return []MetricSeries{}, nil
+		}
+		q.Start = created
+	}
 	var series []MetricSeries
 	switch q.Metric {
 	case MetricCPU, MetricMemory:
@@ -520,7 +531,7 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 	var live []ids.InstanceCandidate
 	if len(q.Instances) > 0 || q.ReplicaAggregate != "" || q.AggregateMax {
 		if needsLiveInstanceCandidates(q.Metric) {
-			pods, podErr := s.AppPodsIn(ctx, app.Namespace, app.Name)
+			pods, podErr := s.OwnAppPods(ctx, app)
 			if podErr != nil {
 				return nil, podErr
 			}
@@ -683,7 +694,7 @@ func (s *Service) resourceMetric(ctx context.Context, q MetricQuery, app *appv1a
 	if q.CPUAggregation != "" {
 		return nil, fmt.Errorf("%w: cpu aggregation %s needs the Prometheus metrics source; this installation serves cpu from a metrics-server snapshot (one current point, nothing to aggregate)", core.ErrBadRequest, q.CPUAggregation)
 	}
-	pods, err := s.AppPodsIn(ctx, app.Namespace, app.Name)
+	pods, err := s.OwnAppPods(ctx, app)
 	if err != nil {
 		return nil, err
 	}
@@ -850,6 +861,7 @@ func (s *Service) rangedResourceSeries(ctx context.Context, q MetricQuery, app *
 		// than pinning the shared namespace (which the migration emptied of pods).
 		Namespace:  app.Namespace,
 		App:        app.Name,
+		NotBefore:  core.AppNotBefore(app),
 		Metric:     metric,
 		Start:      q.Start,
 		End:        q.End,
@@ -911,7 +923,7 @@ func (s *Service) resourceMetricRange(ctx context.Context, q MetricQuery, app *a
 // shape — production wires both from the same Prometheus).
 func (s *Service) percentageDenominators(ctx context.Context, q MetricQuery, app *appv1alpha1.App) (func(pod, ts string) (float64, bool), error) {
 	if s.ResourceLimitRange == nil {
-		pods, err := s.AppPodsIn(ctx, app.Namespace, app.Name)
+		pods, err := s.OwnAppPods(ctx, app)
 		if err != nil {
 			return nil, err
 		}
@@ -942,7 +954,7 @@ func (s *Service) percentageDenominators(ctx context.Context, q MetricQuery, app
 // resourceLimitMetric returns one current series per replica of the pod's
 // configured CPU/memory limit (from the pod spec, not metrics-server).
 func (s *Service) resourceLimitMetric(ctx context.Context, q MetricQuery, app *appv1alpha1.App) ([]MetricSeries, error) {
-	pods, err := s.AppPodsIn(ctx, app.Namespace, app.Name)
+	pods, err := s.OwnAppPods(ctx, app)
 	if err != nil {
 		return nil, err
 	}
@@ -1003,7 +1015,7 @@ func (s *Service) instanceCountMetric(ctx context.Context, q MetricQuery, app *a
 	if s.ResourceMetricsRange != nil {
 		return s.rangedResourceSeries(ctx, q, app, MetricInstanceCount, unitCount)
 	}
-	pods, err := s.AppPodsIn(ctx, app.Namespace, app.Name)
+	pods, err := s.OwnAppPods(ctx, app)
 	if err != nil {
 		return nil, err
 	}
@@ -1235,6 +1247,10 @@ func (s *Service) MonthToDateBandwidth(ctx context.Context, app string) (MonthTo
 	}
 	now := s.Now().UTC()
 	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	// An earlier App of the same name shares its router names (w8/m124).
+	if created := core.AppNotBefore(resolved).UTC(); monthStart.Before(created) && created.Before(now) {
+		monthStart = created
+	}
 	bytesByCategory, degraded, err := s.MonthToDateBandwidthSource(
 		ctx, appResourceID(resolved, app), routers,
 		resolved.Spec.Type != appv1alpha1.TypeStaticSite, monthStart, now,
@@ -1312,7 +1328,7 @@ func (s *Service) MetricsFilters(ctx context.Context, q MetricsFiltersQuery) ([]
 		case filterFieldResource:
 			out = append(out, MetricsFilterValues{Field: field, Values: []string{q.App}})
 		case filterFieldInstance:
-			pods, err := s.AppPodsIn(ctx, app.Namespace, app.Name)
+			pods, err := s.OwnAppPods(ctx, app)
 			if err != nil {
 				return nil, err
 			}

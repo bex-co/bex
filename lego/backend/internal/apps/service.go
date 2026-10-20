@@ -1504,7 +1504,7 @@ func (s *Service) ListInstances(ctx context.Context, name string) ([]ServiceInst
 		return out, nil
 	}
 
-	pods, err := s.AppPodsIn(ctx, a.Namespace, a.Name)
+	pods, err := s.OwnAppPods(ctx, a)
 	if err != nil {
 		return nil, err
 	}
@@ -1694,7 +1694,7 @@ func parseSSHUsername(username string) (serviceID, instanceID string, err error)
 }
 
 func (s *Service) readySSHInstances(ctx context.Context, a *appv1alpha1.App, v AppView) ([]SSHInstanceTarget, error) {
-	pods, err := s.AppPodsIn(ctx, a.Namespace, a.Name)
+	pods, err := s.OwnAppPods(ctx, a)
 	if err != nil {
 		return nil, err
 	}
