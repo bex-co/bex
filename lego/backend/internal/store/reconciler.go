@@ -24,6 +24,7 @@ import (
 	"log"
 	"maps"
 	"slices"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -37,6 +38,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -683,7 +685,16 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 		// Project desired spec only; observed status (phase/url) is read from
 		// the CR by bex-api, never copied back into Postgres. Labels are
 		// re-stamped so a LabelTenant value change migrates without a relabel.
-		specChanged := applyOwnedSpec(&cur.Spec, projectSpec(d))
+		want := projectSpec(d)
+		checkedImageVersion, versionErr := strconv.ParseInt(cur.Annotations[resourcemeta.AnnotCheckedImageVersion], 10, 64)
+		if cur.Annotations[resourcemeta.AnnotCheckedDeployReceipt] != "" ||
+			(versionErr == nil && checkedImageVersion >= 0 && d.SourceRevision <= checkedImageVersion) {
+			// Receipt cleanup can finish between the row and CR snapshots. Keep
+			// ignoring the consumed image until the row snapshot is newer, while
+			// continuing to project all other owned intent.
+			want.Image = cur.Spec.Image
+		}
+		specChanged := applyOwnedSpec(&cur.Spec, want)
 		labelsChanged := stampLabels(cur, d, r.identity())
 		if specChanged || labelsChanged {
 			if err := r.Client.Update(ctx, cur); err != nil {
