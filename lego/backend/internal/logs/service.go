@@ -106,7 +106,10 @@ const (
 	LabelInstance   = "instance"
 	LabelMethod     = "method"
 	LabelStatusCode = "statusCode"
-	LabelHost       = "host"
+	// LabelRequestID is a request line's edge-minted Rndr-Id (w8/m125), read
+	// from the line, never a stream label: it is unique per request.
+	LabelRequestID = "requestID"
+	LabelHost      = "host"
 )
 
 // DiscoverableLabels is the label enum LogLabelValues accepts — Render's exact six

@@ -21,10 +21,17 @@
 // client: the TCP peer (after PROXY protocol), or Cloudflare's CF-Connecting-IP
 // when the peer is a Cloudflare edge — a tenant custom domain behind its own
 // Cloudflare proxy. CF-* headers survive only from a Cloudflare peer.
+//
+// It also gives every request Render's Rndr-Id (w8/m125): a fresh id on the
+// request to the app and on the response, which the access log keeps, so a
+// request line and the app lines that log the header share one searchable
+// value. A caller's Rndr-Id is replaced, never trusted.
 package bex_client_ip_headers
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"net"
 	"net/http"
 	"strings"
@@ -51,9 +58,9 @@ var cloudflareHeaders = map[string]bool{
 	"cf-ray": true, "cf-visitor": true, "cf-worker": true,
 }
 
-// alwaysStripped never comes from a party bex trusts; True-Client-IP is
-// rewritten below.
-var alwaysStripped = map[string]bool{"x-client-ip": true, "true-client-ip": true}
+// alwaysStripped never comes from a party bex trusts; True-Client-IP and
+// Rndr-Id are rewritten below.
+var alwaysStripped = map[string]bool{"x-client-ip": true, "true-client-ip": true, "rndr-id": true}
 
 type Config struct{}
 
@@ -98,7 +105,22 @@ func (s *sanitizer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case peer != nil:
 		h.Set("True-Client-IP", peer.String())
 	}
+	// Set before the app answers: an app that sends its own Rndr-Id adds a
+	// second value after ours, and Header.Get still reads ours.
+	id := requestID()
+	h.Set("Rndr-Id", id)
+	w.Header().Set("Rndr-Id", id)
 	s.next.ServeHTTP(w, r)
+}
+
+// requestID is a random UUID-shaped id (version 4 layout).
+func requestID() string {
+	var b [16]byte
+	_, _ = rand.Read(b[:]) // never fails on supported platforms (Go 1.24+)
+	b[6] = b[6]&0x0f | 0x40
+	b[8] = b[8]&0x3f | 0x80
+	x := hex.EncodeToString(b[:])
+	return x[0:8] + "-" + x[8:12] + "-" + x[12:16] + "-" + x[16:20] + "-" + x[20:]
 }
 
 func (s *sanitizer) fromCloudflare(ip net.IP) bool {

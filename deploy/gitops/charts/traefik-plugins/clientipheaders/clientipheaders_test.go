@@ -18,6 +18,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -132,5 +133,35 @@ func TestSanitizer(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestRndrID (w8/m125): every request gets a fresh Rndr-Id on the request and
+// the response; a caller's (either spelling) is replaced.
+func TestRndrID(t *testing.T) {
+	var seen []string
+	h, err := New(context.Background(), http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		seen = append(seen, r.Header.Get("Rndr-Id"))
+		if len(r.Header.Values("Rndr-Id")) != 1 || r.Header.Get("Rndr_id") != "" {
+			t.Errorf("app saw Rndr-Id values %q and underscore %q, want one minted value", r.Header.Values("Rndr-Id"), r.Header.Get("Rndr_id"))
+		}
+	}), CreateConfig(), "client-ip-headers")
+	if err != nil {
+		t.Fatal(err)
+	}
+	uuid := regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
+	for i := range 2 {
+		req := httptest.NewRequest(http.MethodGet, "https://web.onbex.co/", nil)
+		req.RemoteAddr = "198.51.100.20:1"
+		req.Header = http.Header{"Rndr-Id": {"forged"}, "Rndr_id": {"forged-too"}}
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		got := rec.Header().Get("Rndr-Id")
+		if !uuid.MatchString(got) || got != seen[i] {
+			t.Fatalf("request %d: response Rndr-Id %q, app saw %q; want one minted UUID on both", i, got, seen[i])
+		}
+	}
+	if seen[0] == seen[1] {
+		t.Errorf("two requests shared Rndr-Id %q", seen[0])
 	}
 }
