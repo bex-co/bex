@@ -900,7 +900,13 @@ func NewServer(base *core.Base, d Deps) *Server {
 		return err
 	}
 	envGroupsSvc.RebuildService = rebuildForConfig
-	secretsSvc.RebuildService = rebuildForConfig
+	secretsSvc.RebuildService = func(ctx context.Context, serviceID string) (json.RawMessage, error) {
+		d, err := deploysSvc.Rebuild(ctx, serviceID)
+		if err != nil {
+			return nil, err
+		}
+		return deploys.RenderJSON(d)
+	}
 	// REST and MCP restart (in apps) run the same deploys verb as GraphQL
 	// restartServer, so every surface keeps the running commit (w1/m148).
 	// Without a deploy store there is no live commit, so apps keeps its CR-only

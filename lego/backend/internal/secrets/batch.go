@@ -19,6 +19,7 @@ package secrets
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -62,6 +63,10 @@ type EnvironmentPatch struct {
 	SecretFiles         []SecretFilePatch `json:"secretFiles,omitempty"`
 	SaveMode            SaveMode          `json:"saveMode"`
 	ExpectedEnvRevision *string           `json:"expectedEnvRevision,omitempty"`
+	// Replace drops every stored variable the patch does not set, inside the
+	// same CAS write (Render's replace-all, as SetEnvVars). Not on the wire:
+	// only Render's MCP update_environment_variables asks for it.
+	Replace bool `json:"-"`
 }
 
 // EnvironmentPatchResult contains names and an opaque revision, never secret material.
@@ -75,6 +80,9 @@ type EnvironmentPatchResult struct {
 	RolloutError string `json:"rolloutError,omitempty"`
 	// Revision is null for sparse patches, which make no caller-visible CAS promise.
 	Revision *string `json:"revision"`
+	// Deploy is the Render-shaped deploy a rebuild save opened, when the
+	// rebuild hook reports one; Render's MCP tool answers with it.
+	Deploy json.RawMessage `json:"-"`
 }
 
 // PatchEnvironment applies a mixed, sparse environment patch after validating
@@ -137,7 +145,8 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 	}
 	// By id: service is now the name label, which a rename can hand to
 	// another App.
-	if err := s.RebuildService(callerCtx, core.AppPublicID(a)); err != nil {
+	deploy, err := s.RebuildService(callerCtx, core.AppPublicID(a))
+	if err != nil {
 		// Redacted like any API error (core.IsPublicError): a public refusal
 		// keeps its message; an internal failure is logged and left blank for
 		// the client's own generic copy. A suspend that landed after the read
@@ -151,7 +160,7 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 		}
 		return result, nil
 	}
-	result.RolledOut = true
+	result.RolledOut, result.Deploy = true, deploy
 	return result, nil
 }
 
@@ -304,6 +313,9 @@ func (s *Service) patchEnvironmentSparse(ctx context.Context, service string, a 
 	// A refused map is not written: the mutate reports "unchanged".
 	env, envWrite, err := s.updateMapCAS(ctx, envPath(service), func(current map[string]string) bool {
 		before := core.CloneStringMap(current)
+		if patch.Replace {
+			clear(current)
+		}
 		if err := applyEnvPatch(current, patch.EnvVars); err != nil {
 			applyErr = err
 			return false
