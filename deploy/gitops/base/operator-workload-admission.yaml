@@ -12,10 +12,10 @@
 # the isolated execution namespaces every pod MUST run in a user namespace
 # (hostUsers=false — that is what confines BuildKit's mount capabilities and
 # unconfined seccomp to a pod user namespace); outside them (tenant hosting +
-# legacy bootstrap) every container is restricted — only bounded App image-v1
-# and disk backup profiles add capabilities, with no privilege escalation and
-# RuntimeDefault seccomp. Security round 10 also applies
-# the canonical namespace boundary to DELETE and PVC mutation: admission must
+# legacy bootstrap) every container is restricted — only bounded App
+# image-v1/render-v1 and disk backup profiles add capabilities, with no
+# privilege escalation and RuntimeDefault seccomp. Security round 10 also
+# applies the canonical namespace boundary to DELETE and PVC mutation: admission must
 # contain every destructive cluster-wide verb, not only authored object bodies.
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
@@ -87,6 +87,16 @@ spec:
          variables.target.metadata.name.startsWith('dskrst-'))
     - name: diskSnapshotCaps
       expression: "['DAC_OVERRIDE', 'CHOWN', 'FOWNER']"
+    # Each persisted policy's exact added set: image-v1 (ADR089 D2) and
+    # render-v1, Render's measured runtime set (ADR089 § Privilege slice
+    # decisions, w6/m149). Mirrors appv1alpha1.ContainerPolicyCapabilities;
+    # container_policy_test.go pins the two together.
+    - name: containerPolicyCaps
+      expression: >-
+        {'image-v1': ['CHOWN', 'DAC_OVERRIDE', 'SETUID', 'SETGID'],
+         'render-v1': ['CHOWN', 'DAC_OVERRIDE', 'FOWNER', 'SETGID', 'SETUID', 'SYS_CHROOT']}
+    - name: containerPolicy
+      expression: variables.podMetadata.?labels['app.bex.co/container-policy'].orValue('')
     # The operator projects the persisted App policy onto its pod template.
     # Ownership/UID consistency prevents a marker alone from granting this
     # profile to datastore/platform/backup workloads. CEL cannot read App.spec:
@@ -96,7 +106,7 @@ spec:
     - name: imageCompatibilityWorkload
       expression: >-
         request.resource.resource in ['deployments', 'cronjobs', 'jobs'] &&
-        variables.podMetadata.?labels['app.bex.co/container-policy'].orValue('') == 'image-v1' &&
+        variables.containerPolicy in variables.containerPolicyCaps &&
         variables.target.metadata.?ownerReferences.orValue([]).exists(o,
           o.apiVersion == 'app.bex.co/v1alpha1' && o.kind == 'App' &&
           o.?controller.orValue(false) && o.uid != '' &&
@@ -107,8 +117,6 @@ spec:
           (request.resource.resource == 'jobs' && variables.pod.containers[0].name == 'predeploy' &&
            variables.target.metadata.name.startsWith('predeploy-') &&
            variables.podMetadata.?labels['app.bex.co/component'].orValue('') == 'predeploy'))
-    - name: imageCompatibilityCaps
-      expression: "['CHOWN', 'DAC_OVERRIDE', 'SETUID', 'SETGID']"
   validations:
     - expression: variables.canonicalNamespace
       reason: Forbidden
@@ -164,9 +172,10 @@ spec:
     # Outside the execution boundary (tenant hosting + legacy bootstrap), every
     # container is restricted: no added capabilities, no privilege escalation,
     # RuntimeDefault seccomp at the container or pod level. Disk snapshots and
-    # restores retain their DAC-bypass set. App image-v1 additionally requires
-    # drop ALL, explicit no-escalation and effective RuntimeDefault seccomp;
-    # init containers never inherit either capability exception.
+    # restores retain their DAC-bypass set. App image-v1/render-v1 workloads
+    # additionally require drop ALL, explicit no-escalation and effective
+    # RuntimeDefault seccomp; init containers never inherit either capability
+    # exception.
     - expression: >-
         request.operation == 'DELETE' ||
         variables.untrustedExecutionNamespace ||
@@ -175,7 +184,7 @@ spec:
            (variables.imageCompatibilityWorkload ?
              (c.?securityContext.?allowPrivilegeEscalation.orValue(true) == false &&
               c.?securityContext.?capabilities.?drop.orValue([]) == ['ALL'] &&
-              c.?securityContext.?capabilities.?add.orValue([]).all(cap, cap in variables.imageCompatibilityCaps)) :
+              c.?securityContext.?capabilities.?add.orValue([]).all(cap, cap in variables.containerPolicyCaps[variables.containerPolicy])) :
             variables.diskSnapshotVolumeWorkload ?
              c.?securityContext.?capabilities.?add.orValue([]).all(cap, cap in variables.diskSnapshotCaps) :
              c.?securityContext.?capabilities.?add.orValue([]).size() == 0) &&
@@ -190,7 +199,7 @@ spec:
            c.?securityContext.?seccompProfile.?type.orValue(
              variables.pod.?securityContext.?seccompProfile.?type.orValue('')) == 'RuntimeDefault')))
       reason: Forbidden
-      message: operator-authored containers outside the execution boundary must be restricted (no privilege escalation, RuntimeDefault seccomp; only App-owned image-v1 workloads and disk snapshot/restore Jobs may add their bounded capability sets)
+      message: operator-authored containers outside the execution boundary must be restricted (no privilege escalation, RuntimeDefault seccomp; only App-owned image-v1/render-v1 workloads and disk snapshot/restore Jobs may add their bounded capability sets)
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding

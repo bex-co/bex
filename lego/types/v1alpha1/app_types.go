@@ -330,10 +330,11 @@ const (
 type AppSpec struct {
 	// ContainerPolicy is the persisted application-container execution policy.
 	// Omission retains the historical drop-all-capabilities policy. Only new
-	// services opt into image-v1; changing platform defaults cannot migrate an
-	// existing service during reconciliation or Blueprint synchronization.
+	// services opt into image-v1 or render-v1, each a fixed added capability set;
+	// changing platform defaults cannot migrate an existing service during
+	// reconciliation or Blueprint synchronization.
 	// +optional
-	// +kubebuilder:validation:Enum=strict-v1;image-v1
+	// +kubebuilder:validation:Enum=strict-v1;image-v1;render-v1
 	ContainerPolicy string `json:"containerPolicy,omitempty"`
 
 	// DisplayName is the free-form, human-facing label for this App. It is
