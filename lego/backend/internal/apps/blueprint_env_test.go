@@ -733,7 +733,7 @@ func TestSyncBlueprintGraphQLReportsKeyValuesAndEnvGroups(t *testing.T) {
 		Blueprints:      fs,
 		EnvGroups:       groups,
 		EnvSeeder:       &fakeSeeder{},
-		DomainOwnership: allowDomainOwnership{},
+		DomainTraffic: allowDomainTraffic{},
 		// w8/m36 t003: Git-backed sync fetches instead of reapplying stored.
 		GitFetcher: fakeBlueprintFetcher{contents: allKindsManifest},
 	}

@@ -164,7 +164,7 @@ func ownSourceService(fs *fakeBlueprintStore, rec *recordingStore, apps ...*appv
 	svc.BlueprintGroups = groups
 	svc.Environments = groups
 	svc.Blueprints = fs
-	svc.DomainOwnership = allowDomainOwnership{}
+	svc.DomainTraffic = allowDomainTraffic{}
 	return svc, core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 }
 

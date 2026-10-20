@@ -62,11 +62,7 @@ import {
   pairedSibling,
   type CustomDomainView,
 } from "@/features/services/types";
-import {
-  dnsInstructionZone,
-  ownershipDnsHostForDisplay,
-  ownershipHostKey,
-} from "@/features/services/lib/dns-instruction-host";
+import { dnsInstructionZone } from "@/features/services/lib/dns-instruction-host";
 
 // A hostname bex-api (and the operator's Ingress) will accept: optional wildcard
 // label, then dot-separated labels, ending in a 2+ char TLD. Reject bad input
@@ -76,38 +72,6 @@ const VALID_FQDN = /^(\*\.)?([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i;
 // The custom-domains table has four columns (Name, Verified, Certificate, Actions);
 // the DNS-instructions detail row spans all of them.
 const COLUMN_COUNT = 4;
-
-/** One sibling claim's TXT proof at the shared ownership host. */
-interface OwnershipSibling {
-  domain: string;
-  value: string;
-}
-
-/**
- * The OTHER claims that share this domain's ownership TXT host. Every domain
- * under one registrable domain proves ownership at the same `_bex-challenge`
- * host (relative to that zone), one TXT record per claim
- * (docs/ADR005-custom-domain.md) — so each panel lists the sibling values that
- * must stay in place while this one is added (w6/055: following "create this
- * record" literally in a single-value DNS edit box used to destroy the
- * sibling's proof). Matching is by relative host + zone (w4/092), not the
- * legacy FQDN string alone.
- */
-function ownershipSiblings(
-  domain: CustomDomainView,
-  domains: CustomDomainView[],
-): OwnershipSibling[] {
-  const key = ownershipHostKey(domain);
-  if (!key) return [];
-  return domains
-    .filter(
-      (other) => other.name !== domain.name && ownershipHostKey(other) === key,
-    )
-    .map((other) => ({
-      domain: other.name,
-      value: other.ownershipDnsRecord?.value ?? "",
-    }));
-}
 
 /**
  * The Custom Domains section of the service Settings tab (Render dashboard shape,
@@ -154,7 +118,6 @@ export function CustomDomainsSection({
             addError={addError}
             clearAddError={clearAddError}
             disabled={busy}
-            domains={domains}
           />
         </CardAction>
       </CardHeader>
@@ -191,7 +154,6 @@ export function CustomDomainsSection({
                   key={domain.name}
                   domain={domain}
                   sibling={pairedSibling(domain, domains)}
-                  txtSiblings={ownershipSiblings(domain, domains)}
                   onDelete={deleteDomain}
                   onVerify={verifyDomain}
                   busy={busy}
@@ -224,28 +186,25 @@ export function CustomDomainsSection({
 function CustomDomainRow({
   domain,
   sibling,
-  txtSiblings,
   onDelete,
   onVerify,
   busy,
 }: {
   domain: CustomDomainView;
   sibling: CustomDomainView | null;
-  /** Other claims sharing the ownership TXT host, one value each (w6/055). */
-  txtSiblings: OwnershipSibling[];
   onDelete: (name: string) => Promise<boolean>;
   onVerify: (name: string) => Promise<CustomDomainView | null>;
   busy: boolean;
 }) {
   const { t } = useTranslations();
   const [confirming, setConfirming] = useState(false);
-  // Pending ownership or TLS still needs action/visibility, so open it by default.
+  // Unverified DNS or TLS still needs action/visibility, so open it by default.
   const [open, setOpen] = useState(
-    () => !domain.ownershipVerified || !domain.verified,
+    () => !domain.dnsVerified || !domain.certificateVerified,
   );
   let deleteDescription = t("services.domainDeleteConfirmBody");
-  if (!domain.ownershipVerified) {
-    // A pending claim was never routed and never got a certificate: deleting
+  if (!domain.dnsVerified) {
+    // An unverified claim was never routed and never got a certificate: deleting
     // it removes nothing that was serving (w4/142).
     deleteDescription = sibling
       ? t("services.domainDeletePendingPairConfirmBody", {
@@ -296,14 +255,14 @@ function CustomDomainRow({
         </TableCell>
         <TableCell>
           <StatusBadge
-            ok={domain.ownershipVerified}
+            ok={domain.dnsVerified}
             okLabel={t("services.domainVerified")}
             pendingLabel={t("services.domainPending")}
           />
         </TableCell>
         <TableCell>
           <CertificateStatusBadge
-            verified={domain.verified}
+            verified={domain.certificateVerified}
             active={domain.active}
           />
         </TableCell>
@@ -367,12 +326,7 @@ function CustomDomainRow({
       {open && (
         <TableRow className="hover:bg-transparent">
           <TableCell colSpan={COLUMN_COUNT} className="bg-muted/30">
-            <DnsInstructions
-              domain={domain}
-              txtSiblings={txtSiblings}
-              onVerify={onVerify}
-              busy={busy}
-            />
+            <DnsInstructions domain={domain} onVerify={onVerify} busy={busy} />
           </TableCell>
         </TableRow>
       )}
@@ -383,57 +337,12 @@ function CustomDomainRow({
 /** The apex/subdomain guidance line + the DNS record to create (Type/Host/Target
  *  with copy buttons), or a fallback when the backend couldn't derive the target.
  *  Shared by the per-row panel and the post-add dialog so the two can't drift. */
-function DnsRecordFields({
-  domain,
-  txtSiblings = [],
-}: {
-  domain: CustomDomainView;
-  /** Other claims sharing the ownership TXT host, one value each (w6/055). */
-  txtSiblings?: OwnershipSibling[];
-}) {
+function DnsRecordFields({ domain }: { domain: CustomDomainView }) {
   const { t } = useTranslations();
   const record = domain.dnsRecord;
   const zone = dnsInstructionZone(domain);
-  const ownershipRecord = domain.ownershipDnsRecord
-    ? {
-        ...domain.ownershipDnsRecord,
-        name: ownershipDnsHostForDisplay(domain.ownershipDnsRecord.name),
-      }
-    : null;
   return (
     <div className="space-y-3">
-      {!domain.ownershipVerified && ownershipRecord ? (
-        <>
-          <p className="text-muted-foreground text-sm">
-            {t("services.domainOwnershipGuidance", { zone })}
-          </p>
-          <DnsRecordFieldsRow record={ownershipRecord} />
-          {txtSiblings.length > 0 ? (
-            <div className="space-y-1">
-              <p className="text-muted-foreground text-xs">
-                {t("services.domainOwnershipSiblingsNote")}
-              </p>
-              {txtSiblings.map((entry) => (
-                <div
-                  key={entry.domain}
-                  className="bg-background overflow-x-auto rounded-md border px-3 py-2"
-                >
-                  <code className="font-mono text-xs whitespace-pre">
-                    {entry.value}
-                  </code>
-                  <p className="text-muted-foreground mt-1 text-xs">
-                    {entry.domain}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : null}
-          <Separator />
-          <p className="text-sm font-medium">
-            {t("services.domainTrafficRecordTitle")}
-          </p>
-        </>
-      ) : null}
       <p className="text-muted-foreground text-sm">
         {domain.domainType === "apex"
           ? t("services.domainDnsApexGuidance", { zone })
@@ -457,8 +366,6 @@ function DnsRecordFieldsRow({
 }) {
   const { t } = useTranslations();
   if (!record) return null;
-  // Discriminate ownership TXT vs traffic CNAME/ALIAS so the four copy
-  // buttons in a pending-domain dialog do not share two identical names.
   const type = record.type;
   return (
     <div className="grid gap-2 sm:grid-cols-3">
@@ -483,12 +390,10 @@ function DnsRecordFieldsRow({
  *  action, then the shared record fields. */
 function DnsInstructions({
   domain,
-  txtSiblings,
   onVerify,
   busy,
 }: {
   domain: CustomDomainView;
-  txtSiblings: OwnershipSibling[];
   onVerify: (name: string) => Promise<CustomDomainView | null>;
   busy: boolean;
 }) {
@@ -506,7 +411,7 @@ function DnsInstructions({
           <RefreshCw /> {t("services.domainRecheck")}
         </Button>
       </div>
-      <DnsRecordFields domain={domain} txtSiblings={txtSiblings} />
+      <DnsRecordFields domain={domain} />
     </div>
   );
 }
@@ -633,7 +538,6 @@ function AddDomainButton({
   addError,
   clearAddError,
   disabled,
-  domains,
 }: {
   addDomain: (name: string) => Promise<AddedDomain | null>;
   /** The server's reason the last add failed, shown inline (persistent) so the
@@ -641,9 +545,6 @@ function AddDomainButton({
   addError: string | null;
   clearAddError: () => void;
   disabled: boolean;
-  /** Every claim on the service, so the post-add DNS step can list the other
-   *  TXT values sharing the ownership host (w6/055). */
-  domains: CustomDomainView[];
 }) {
   const { t } = useTranslations();
   const [open, setOpen] = useState(false);
@@ -653,20 +554,6 @@ function AddDomainButton({
   // swaps the input for the DNS record(s) so the tenant sees exactly what to
   // create without hunting for the new row(s).
   const [added, setAdded] = useState<AddedDomain | null>(null);
-
-  // The claim universe for the post-add sibling listing: the fetched list may
-  // not include the just-added pair yet (refetch in flight), so union it with
-  // the snapshot in hand, deduplicated by name.
-  const addedNames = new Set(
-    added ? [added.primary.name, added.sibling?.name].filter(Boolean) : [],
-  );
-  const knownClaims = added
-    ? [
-        ...domains.filter((d) => !addedNames.has(d.name)),
-        added.primary,
-        ...(added.sibling ? [added.sibling] : []),
-      ]
-    : domains;
 
   function reset() {
     setName("");
@@ -712,10 +599,7 @@ function AddDomainButton({
                 {t("services.domainAddedDescription")}
               </DialogDescription>
             </DialogHeader>
-            <DnsRecordFields
-              domain={added.primary}
-              txtSiblings={ownershipSiblings(added.primary, knownClaims)}
-            />
+            <DnsRecordFields domain={added.primary} />
             {added.sibling && (
               <>
                 <Separator />
@@ -725,10 +609,7 @@ function AddDomainButton({
                     canonical: added.primary.name,
                   })}
                 </p>
-                <DnsRecordFields
-                  domain={added.sibling}
-                  txtSiblings={ownershipSiblings(added.sibling, knownClaims)}
-                />
+                <DnsRecordFields domain={added.sibling} />
               </>
             )}
             <DialogFooter>

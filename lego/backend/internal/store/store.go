@@ -18,8 +18,6 @@ package store
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -341,8 +339,10 @@ type Deploy struct {
 
 // Domain is a row of `domains` — a BYOD custom domain attached to an app.
 // The primary domain becomes the App CR's spec.host, the rest spec.hosts.
-// ClaimState is durable ownership admission; only verified rows are projected
-// into App CRs. TLS/cert status remains observed from the cluster.
+// ClaimState is durable DNS-verification admission (pending = Render's
+// "unverified": the traffic record does not yet point at the service); only
+// verified rows are projected into App CRs. TLS/cert status remains observed
+// from the cluster.
 type Domain struct {
 	ID                   string     `json:"id"`
 	AppID                string     `json:"appId"`
@@ -350,8 +350,6 @@ type Domain struct {
 	Primary              bool       `json:"primary"`
 	RedirectForName      string     `json:"redirectForName,omitempty"`
 	ClaimState           string     `json:"claimState"`
-	Challenge            string     `json:"challenge,omitempty"`
-	ChallengeVersion     int64      `json:"challengeVersion"`
 	VerificationAttempts int64      `json:"verificationAttempts"`
 	LastVerificationAt   *time.Time `json:"lastVerificationAt,omitempty"`
 	VerifiedAt           *time.Time `json:"verifiedAt,omitempty"`
@@ -359,8 +357,8 @@ type Domain struct {
 }
 
 // DomainDeclaration is one desired host plus projection metadata. Replacing a
-// declaration set preserves an unchanged row's claim state and challenge;
-// newly declared hosts enter pending.
+// declaration set preserves an unchanged row's claim state; newly declared
+// hosts enter pending.
 type DomainDeclaration struct {
 	Host            string
 	Primary         bool
@@ -1127,7 +1125,7 @@ func (s *PGStore) DeleteApp(ctx context.Context, id string) error {
 
 func (s *PGStore) CreateDomain(ctx context.Context, appID, host string, primary bool) (Domain, error) {
 	now := time.Now().UTC()
-	d := Domain{ID: ids.New(ids.Domain), AppID: appID, Host: host, Primary: primary, ClaimState: "verified", ChallengeVersion: 1, VerifiedAt: &now}
+	d := Domain{ID: ids.New(ids.Domain), AppID: appID, Host: host, Primary: primary, ClaimState: "verified", VerifiedAt: &now}
 	err := s.Pool.QueryRow(ctx,
 		`INSERT INTO domains (id, app_id, host, is_primary, claim_state, verified_at)
 		 VALUES ($1, $2, $3, $4, 'verified', $5)
@@ -1141,56 +1139,44 @@ func (s *PGStore) CreateDomain(ctx context.Context, appID, host string, primary 
 }
 
 const domainClaimColumns = `id, app_id, host, is_primary, COALESCE(redirect_for_name, ''),
-	claim_state, COALESCE(challenge, ''), challenge_version, verification_attempts,
+	claim_state, verification_attempts,
 	last_verification_at, verified_at, created_at`
 
 func scanDomainClaim(row rowScanner) (Domain, error) {
 	var d Domain
 	err := row.Scan(&d.ID, &d.AppID, &d.Host, &d.Primary, &d.RedirectForName,
-		&d.ClaimState, &d.Challenge, &d.ChallengeVersion, &d.VerificationAttempts,
+		&d.ClaimState, &d.VerificationAttempts,
 		&d.LastVerificationAt, &d.VerifiedAt, &d.CreatedAt)
 	return d, err
 }
 
-func newDomainChallenge() (string, error) {
-	raw := make([]byte, 24)
-	if _, err := rand.Read(raw); err != nil {
-		return "", err
-	}
-	return "bex-domain-verification=" + base64.RawURLEncoding.EncodeToString(raw), nil
-}
-
 // AddDomainClaim creates one globally-unique pending claim. A same-App retry
-// returns the exact existing row and challenge, updating only redirect intent;
-// a claim owned by another App remains a conflict regardless of claim state.
+// returns the exact existing row, updating only redirect intent; a claim
+// owned by another App remains a conflict regardless of claim state.
 func (s *PGStore) AddDomainClaim(ctx context.Context, appID, host, redirectForName string) (Domain, bool, error) {
-	challenge, err := newDomainChallenge()
-	if err != nil {
-		return Domain{}, false, err
-	}
 	var redirect any
 	if redirectForName != "" {
 		redirect = redirectForName
 	}
 	var d Domain
 	created := false
-	err = pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		// SECURITY (finding-6): expired pending claims are reclaimed atomically
 		// before evaluating the global uniqueness conflict. Without expiry a
-		// tenant can squat any hostname indefinitely without proving DNS
-		// ownership. 48h matches the typical DNS challenge window and prevents
-		// indefinite reservation while keeping a fresh pending claim conflicting
-		// during its proof window. Verified rows are never reclaimed.
+		// tenant can squat any hostname indefinitely without ever pointing its
+		// DNS here. 48h bounds the reservation while keeping a fresh pending
+		// claim conflicting during its setup window. Verified rows are never
+		// reclaimed.
 		if _, err := tx.Exec(ctx, `DELETE FROM domains WHERE host = $1 AND claim_state = 'pending' AND created_at < now() - interval '48 hours'`, host); err != nil {
 			return err
 		}
 		var insertErr error
 		d, insertErr = scanDomainClaim(tx.QueryRow(ctx,
-			`INSERT INTO domains (id, app_id, host, is_primary, redirect_for_name, claim_state, challenge)
-			 VALUES ($1, $2, $3, false, $4, 'pending', $5)
+			`INSERT INTO domains (id, app_id, host, is_primary, redirect_for_name, claim_state)
+			 VALUES ($1, $2, $3, false, $4, 'pending')
 			 ON CONFLICT (host) DO NOTHING
 			 RETURNING `+domainClaimColumns,
-			ids.New(ids.Domain), appID, host, redirect, challenge))
+			ids.New(ids.Domain), appID, host, redirect))
 		if insertErr == nil {
 			created = true
 			return nil
@@ -1233,9 +1219,9 @@ func (s *PGStore) GetDomainClaim(ctx context.Context, appID, host string) (Domai
 
 // ListDomainClaims returns pending and verified claims in stable projection
 // order, primary first and then creation order.
-func (s *PGStore) ListDomainClaims(ctx context.Context, appID string) ([]Domain, error) {
-	rows, err := s.Pool.Query(ctx,
-		`SELECT `+domainClaimColumns+` FROM domains WHERE app_id = $1 ORDER BY is_primary DESC, created_at, id`, appID)
+// collectDomainClaims drains a claim query into rows (the one scan loop both
+// list functions share).
+func collectDomainClaims(rows pgx.Rows, err error) ([]Domain, error) {
 	if err != nil {
 		return nil, err
 	}
@@ -1249,6 +1235,11 @@ func (s *PGStore) ListDomainClaims(ctx context.Context, appID string) ([]Domain,
 		out = append(out, d)
 	}
 	return out, rows.Err()
+}
+
+func (s *PGStore) ListDomainClaims(ctx context.Context, appID string) ([]Domain, error) {
+	return collectDomainClaims(s.Pool.Query(ctx,
+		`SELECT `+domainClaimColumns+` FROM domains WHERE app_id = $1 ORDER BY is_primary DESC, created_at, id`, appID))
 }
 
 // CountWorkspaceDomainClaims returns how many claims (pending and verified) one
@@ -1265,8 +1256,28 @@ func (s *PGStore) CountWorkspaceDomainClaims(ctx context.Context, workspaceID st
 	return n, nil
 }
 
+// ListPendingDomainClaims returns still-unverified claims that are DUE for
+// another check, across all apps, for the verification sweep: never-checked
+// rows first, then least-recently checked, bounded per tick. The due rule is
+// an exponential backoff from the recorded attempts (30s doubling, capped at
+// 1h), so a claim whose tenant never creates the record decays to one DNS
+// check + one attempt write per hour instead of one per sweep tick forever.
+// A manual Verify bypasses this list entirely and always checks now.
+func (s *PGStore) ListPendingDomainClaims(ctx context.Context, limit int) ([]Domain, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	return collectDomainClaims(s.Pool.Query(ctx,
+		`SELECT `+domainClaimColumns+` FROM domains
+		 WHERE claim_state = 'pending'
+		   AND (last_verification_at IS NULL
+		        OR last_verification_at <= now() - LEAST(interval '1 hour',
+		             interval '30 seconds' * power(2, LEAST(verification_attempts, 7)::double precision)))
+		 ORDER BY last_verification_at ASC NULLS FIRST, created_at, id LIMIT $1`, limit))
+}
+
 // RecordDomainVerificationAttempt records a conservative failed-or-successful
-// resolver attempt without changing ownership state.
+// resolver attempt without changing claim state.
 func (s *PGStore) RecordDomainVerificationAttempt(ctx context.Context, appID, id string, at time.Time) error {
 	_, err := s.Pool.Exec(ctx,
 		`UPDATE domains SET verification_attempts = verification_attempts + 1, last_verification_at = $3
@@ -1274,38 +1285,41 @@ func (s *PGStore) RecordDomainVerificationAttempt(ctx context.Context, appID, id
 	return err
 }
 
-// PromoteDomainClaim atomically promotes the same pending row that supplied
-// expectedChallenge. A concurrent delete/recreate cannot promote the new row.
-// Already-verified rows are idempotent only when the id still matches.
-func (s *PGStore) PromoteDomainClaim(ctx context.Context, appID, id, expectedChallenge string, at time.Time) (Domain, error) {
-	d, err := scanDomainClaim(s.Pool.QueryRow(ctx,
+// PromoteDomainClaim atomically promotes the same pending row the caller
+// checked; promoted reports whether THIS call flipped it (false when another
+// replica won the race — the row comes back already verified, and the caller
+// must not re-run promotion side effects like projection kicks or the
+// verified audit event). A concurrent delete/recreate cannot promote the new
+// row (the id changed) and is ErrConflict, as is an unknown id.
+func (s *PGStore) PromoteDomainClaim(ctx context.Context, appID, id string, at time.Time) (d Domain, promoted bool, err error) {
+	d, err = scanDomainClaim(s.Pool.QueryRow(ctx,
 		`UPDATE domains
-		 SET claim_state = 'verified', verified_at = $4,
-		     verification_attempts = verification_attempts + 1, last_verification_at = $4
-		 WHERE app_id = $1 AND id = $2 AND claim_state = 'pending' AND challenge = $3
-		 RETURNING `+domainClaimColumns, appID, id, expectedChallenge, at))
+		 SET claim_state = 'verified', verified_at = $3,
+		     verification_attempts = verification_attempts + 1, last_verification_at = $3
+		 WHERE app_id = $1 AND id = $2 AND claim_state = 'pending'
+		 RETURNING `+domainClaimColumns, appID, id, at))
 	if err == nil {
-		return d, nil
+		return d, true, nil
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
-		return Domain{}, err
+		return Domain{}, false, err
 	}
 	d, err = scanDomainClaim(s.Pool.QueryRow(ctx,
 		`SELECT `+domainClaimColumns+` FROM domains WHERE app_id = $1 AND id = $2`, appID, id))
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Domain{}, ErrConflict
+		return Domain{}, false, ErrConflict
 	}
 	if err != nil {
-		return Domain{}, err
+		return Domain{}, false, err
 	}
 	if d.ClaimState != "verified" {
-		return Domain{}, ErrConflict
+		return Domain{}, false, ErrConflict
 	}
-	return d, nil
+	return d, false, nil
 }
 
 // ReplaceDomainClaims atomically reconciles a declaration set while preserving
-// unchanged rows' ownership evidence. Newly introduced hosts start pending.
+// unchanged rows' claim state. Newly introduced hosts start pending.
 func (s *PGStore) ReplaceDomainClaims(ctx context.Context, appID string, declarations []DomainDeclaration) ([]Domain, error) {
 	seen := make(map[string]struct{}, len(declarations))
 	for _, declaration := range declarations {
@@ -1332,21 +1346,17 @@ func (s *PGStore) ReplaceDomainClaims(ctx context.Context, appID string, declara
 				continue
 			}
 			hosts = append(hosts, declaration.Host)
-			challenge, err := newDomainChallenge()
-			if err != nil {
-				return err
-			}
 			var redirect any
 			if declaration.RedirectForName != "" {
 				redirect = declaration.RedirectForName
 			}
 			tag, err := tx.Exec(ctx,
-				`INSERT INTO domains (id, app_id, host, is_primary, redirect_for_name, claim_state, challenge)
-				 VALUES ($1, $2, $3, $4, $5, 'pending', $6)
+				`INSERT INTO domains (id, app_id, host, is_primary, redirect_for_name, claim_state)
+				 VALUES ($1, $2, $3, $4, $5, 'pending')
 				 ON CONFLICT (host) DO UPDATE
 				 SET is_primary = EXCLUDED.is_primary, redirect_for_name = EXCLUDED.redirect_for_name
 				 WHERE domains.app_id = EXCLUDED.app_id`,
-				ids.New(ids.Domain), appID, declaration.Host, declaration.Primary, redirect, challenge)
+				ids.New(ids.Domain), appID, declaration.Host, declaration.Primary, redirect)
 			if err != nil {
 				return err
 			}

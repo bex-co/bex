@@ -2264,10 +2264,10 @@ func assertDomainClaimLifecycle(ctx context.Context, t *testing.T, s *PGStore, t
 		t.Fatalf("concurrent claim results = %v, want one owner and one conflict", errs)
 	}
 	claim := claims[winner]
-	if claim.ClaimState != "pending" || !strings.HasPrefix(claim.Challenge, "bex-domain-verification=") {
+	if claim.ClaimState != "pending" {
 		t.Fatalf("new claim = %+v", claim)
 	}
-	if retry, created, err := s.AddDomainClaim(ctx, claim.AppID, claim.Host, ""); err != nil || created || retry.ID != claim.ID || retry.Challenge != claim.Challenge {
+	if retry, created, err := s.AddDomainClaim(ctx, claim.AppID, claim.Host, ""); err != nil || created || retry.ID != claim.ID {
 		t.Fatalf("same-App retry = %+v created=%v err=%v", retry, created, err)
 	}
 	desired, err := s.ListDesiredApps(ctx)
@@ -2279,12 +2279,15 @@ func assertDomainClaimLifecycle(ctx context.Context, t *testing.T, s *PGStore, t
 			t.Fatal("pending claim entered desired serving projection")
 		}
 	}
-	if _, err := s.PromoteDomainClaim(ctx, claim.AppID, claim.ID, "wrong", time.Now()); !errors.Is(err, ErrConflict) {
-		t.Fatalf("wrong challenge promotion = %v", err)
+	if _, _, err := s.PromoteDomainClaim(ctx, claim.AppID, "cdm-nonexistent", time.Now()); !errors.Is(err, ErrConflict) {
+		t.Fatalf("unknown-id promotion = %v", err)
 	}
-	verified, err := s.PromoteDomainClaim(ctx, claim.AppID, claim.ID, claim.Challenge, time.Now())
-	if err != nil || verified.ClaimState != "verified" {
-		t.Fatalf("correct promotion = %+v err=%v", verified, err)
+	verified, didPromote, err := s.PromoteDomainClaim(ctx, claim.AppID, claim.ID, time.Now())
+	if err != nil || verified.ClaimState != "verified" || !didPromote {
+		t.Fatalf("correct promotion = %+v promoted=%v err=%v", verified, didPromote, err)
+	}
+	if again, didPromote, err := s.PromoteDomainClaim(ctx, claim.AppID, claim.ID, time.Now()); err != nil || didPromote || again.ClaimState != "verified" {
+		t.Fatalf("second promotion must be a no-op: %+v promoted=%v err=%v", again, didPromote, err)
 	}
 	desired, err = s.ListDesiredApps(ctx)
 	if err != nil {
@@ -2307,10 +2310,10 @@ func assertDomainClaimLifecycle(ctx context.Context, t *testing.T, s *PGStore, t
 	if err != nil {
 		t.Fatal(err)
 	}
-	if replacement.ID == claim.ID || replacement.Challenge == claim.Challenge {
-		t.Fatal("delete/recreate reused claim identity or challenge")
+	if replacement.ID == claim.ID {
+		t.Fatal("delete/recreate reused claim identity")
 	}
-	if _, err := s.PromoteDomainClaim(ctx, claim.AppID, claim.ID, claim.Challenge, time.Now()); !errors.Is(err, ErrConflict) {
+	if _, _, err := s.PromoteDomainClaim(ctx, claim.AppID, claim.ID, time.Now()); !errors.Is(err, ErrConflict) {
 		t.Fatalf("stale promotion = %v", err)
 	}
 
@@ -2322,10 +2325,10 @@ func assertDomainClaimLifecycle(ctx context.Context, t *testing.T, s *PGStore, t
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.PromoteDomainClaim(ctx, a1.ID, canonical.ID, canonical.Challenge, time.Now()); err != nil {
+	if _, _, err := s.PromoteDomainClaim(ctx, a1.ID, canonical.ID, time.Now()); err != nil {
 		t.Fatalf("promote pair canonical: %v", err)
 	}
-	if _, err := s.PromoteDomainClaim(ctx, a1.ID, generated.ID, generated.Challenge, time.Now()); err != nil {
+	if _, _, err := s.PromoteDomainClaim(ctx, a1.ID, generated.ID, time.Now()); err != nil {
 		t.Fatalf("promote pair generated sibling: %v", err)
 	}
 	if err := s.RemoveDomain(ctx, a1.ID, canonical.Host); err != nil {
@@ -2395,7 +2398,7 @@ func assertWorkspaceDomainClaimCount(ctx context.Context, t *testing.T, s *PGSto
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.PromoteDomainClaim(ctx, a2.ID, pending.ID, pending.Challenge, time.Now()); err != nil {
+	if _, _, err := s.PromoteDomainClaim(ctx, a2.ID, pending.ID, time.Now()); err != nil {
 		t.Fatal(err)
 	}
 	// The other workspace's claim must not leak into the count.

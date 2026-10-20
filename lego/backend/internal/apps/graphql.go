@@ -770,9 +770,10 @@ var customDomainGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"id":                 gqlutil.StrField(func(d DomainView) any { return d.Name }),
 		"name":               gqlutil.StrField(func(d DomainView) any { return d.Name }),
 		"domainType":         gqlutil.StrField(func(d DomainView) any { return d.DomainType }),
-		"ownershipStatus":    gqlutil.StrField(func(d DomainView) any { return d.OwnershipStatus }),
 		"verificationStatus": gqlutil.StrField(func(d DomainView) any { return d.VerificationStatus }),
+		"certificateStatus":  gqlutil.StrField(func(d DomainView) any { return d.CertificateStatus }),
 		"serverStatus":       gqlutil.StrField(func(d DomainView) any { return d.ServerStatus }),
+		"createdAt":          gqlutil.StrField(func(d DomainView) any { return d.CreatedAt }),
 		"redirectForName": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DomainView) any {
 			if d.RedirectForName == "" {
 				return nil
@@ -790,12 +791,6 @@ var customDomainGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// dnsRecord is the record the tenant must create (bex extension; the target is
 		// the app's platform host <app>.<base-domain>).
 		"dnsRecord": gqlutil.Typed(dnsRecordGQLType, func(d DomainView) any { return d.DNSRecord }),
-		"ownershipDnsRecord": &graphql.Field{Type: dnsRecordGQLType, Resolve: gqlutil.Field(func(d DomainView) any {
-			if d.OwnershipDNSRecord == nil {
-				return nil
-			}
-			return *d.OwnershipDNSRecord
-		})},
 	},
 })
 
@@ -1800,8 +1795,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return err == nil, err
 			},
 		},
-		// verifyCustomDomain checks the durable ownership TXT proof and atomically
-		// promotes a pending managed claim before it can enter serving intent.
+		// verifyCustomDomain checks the traffic DNS record now (the sweep also
+		// does this automatically) and promotes a pointed claim into serving intent.
 		"verifyCustomDomain": gqlutil.ArgMutation(customDomainGQLType, "name", s.VerifyDomain),
 		// setAutoscaling: enable/update autoscaling on a service (mirrors Render's
 		// PUT /v1/services/{id}/autoscaling). Returns the updated autoscaling config.

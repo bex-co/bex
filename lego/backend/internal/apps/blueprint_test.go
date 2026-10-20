@@ -1868,7 +1868,7 @@ func TestSyncBlueprintReappliesManifest(t *testing.T) {
 	svc := &Service{
 		Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
 		Blueprints:      fs,
-		DomainOwnership: allowDomainOwnership{},
+		DomainTraffic: allowDomainTraffic{},
 		// w8/m36 t003: a Git-backed sync with no fetcher is a failure, so the
 		// reapply path fetches the unchanged manifest through the seam.
 		GitFetcher: fakeBlueprintFetcher{contents: stackManifest},
@@ -2170,7 +2170,7 @@ func TestSyncBlueprintFailedCompletionWriteIsError(t *testing.T) {
 	svc := &Service{
 		Base:            &core.Base{Client: client, Namespace: "default", Workspace: ws},
 		Blueprints:      fs,
-		DomainOwnership: allowDomainOwnership{},
+		DomainTraffic: allowDomainTraffic{},
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 
@@ -2189,7 +2189,7 @@ func TestSyncBlueprintSuppliedManifestClaimsNoCommit(t *testing.T) {
 		Branch: "main", Path: CanonicalBlueprintFilename, Manifest: stackManifest,
 		Status: "active", Name: "app",
 	})
-	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws}, Blueprints: fs, DomainOwnership: allowDomainOwnership{}}
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws}, Blueprints: fs, DomainTraffic: allowDomainTraffic{}}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 
 	if _, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", stackManifest, "", nil); err != nil {
@@ -2265,7 +2265,7 @@ func TestBlueprintDisconnectedReadsAsAbsent(t *testing.T) {
 	svc := &Service{
 		Base:            &core.Base{Client: client, Namespace: "default", Workspace: ws},
 		Blueprints:      fs,
-		DomainOwnership: allowDomainOwnership{},
+		DomainTraffic: allowDomainTraffic{},
 		GitFetcher:      fakeBlueprintFetcher{contents: stackManifest},
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
@@ -2315,7 +2315,7 @@ func TestBlueprintRecreationFencesOldExecution(t *testing.T) {
 	svc := &Service{
 		Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
 		Blueprints:      fs,
-		DomainOwnership: allowDomainOwnership{},
+		DomainTraffic: allowDomainTraffic{},
 		GitFetcher:      fakeBlueprintFetcher{contents: stackManifest},
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
@@ -2386,7 +2386,7 @@ func TestSyncAdmissionRaceAdmitsOne(t *testing.T) {
 		return &Service{
 			Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
 			Blueprints:      barrier,
-			DomainOwnership: allowDomainOwnership{},
+			DomainTraffic: allowDomainTraffic{},
 		}
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
@@ -2573,7 +2573,7 @@ func TestSettingsChangeDuringRunPreserved(t *testing.T) {
 	svc := &Service{
 		Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
 		Blueprints:      gated,
-		DomainOwnership: allowDomainOwnership{},
+		DomainTraffic: allowDomainTraffic{},
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 
@@ -2895,7 +2895,7 @@ func TestSyncBlueprintPersistsFailureReason(t *testing.T) {
 	svc := &Service{
 		Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
 		Blueprints:      fs,
-		DomainOwnership: allowDomainOwnership{},
+		DomainTraffic: allowDomainTraffic{},
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 
@@ -3483,7 +3483,7 @@ func TestGraphQLSyncBlueprint(t *testing.T) {
 	svc := &Service{
 		Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
 		Blueprints:      fs,
-		DomainOwnership: allowDomainOwnership{},
+		DomainTraffic: allowDomainTraffic{},
 		// w8/m36 t003: Git-backed sync fetches instead of reapplying stored.
 		GitFetcher: fakeBlueprintFetcher{contents: stackManifest},
 	}
@@ -3526,7 +3526,7 @@ func TestBlueprintAutoSyncPreservesTenantContext(t *testing.T) {
 	// w8/m36 t003: the webhook-triggered sync fetches the manifest through
 	// the seam instead of reapplying the stored one.
 	fetcher := fakeBlueprintFetcher{contents: stackManifest}
-	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", Workspace: ws}, Blueprints: fs, DomainOwnership: allowDomainOwnership{}, GitFetcher: fetcher}
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", Workspace: ws}, Blueprints: fs, DomainTraffic: allowDomainTraffic{}, GitFetcher: fetcher}
 
 	tenantID := "tea-a"
 
@@ -3622,7 +3622,7 @@ func TestBlueprintAutoSyncScopedMatchingIgnoresForeignResources(t *testing.T) {
 	}
 	cl := fakeClient(foreignApp, foreignDB)
 	// w8/m36 t003: the sync fetches the manifest through the seam.
-	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", Workspace: ws}, Blueprints: fs, DomainOwnership: allowDomainOwnership{}, GitFetcher: fakeBlueprintFetcher{contents: foreignMatchManifest}}
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", Workspace: ws}, Blueprints: fs, DomainTraffic: allowDomainTraffic{}, GitFetcher: fakeBlueprintFetcher{contents: foreignMatchManifest}}
 
 	// The ctx exactly as triggerBlueprintSync builds it (webhook-shaped
 	// workspace-named ctx + the acting-tenant binding from the blueprint row).
@@ -3684,7 +3684,7 @@ func TestRunSyncFailsClosedWithoutResolvableTenant(t *testing.T) {
 	}
 	fs := newFakeBlueprintStore(bp)
 	cl := fakeClient()
-	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", Workspace: ws}, Blueprints: fs, DomainOwnership: allowDomainOwnership{}}
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", Workspace: ws}, Blueprints: fs, DomainTraffic: allowDomainTraffic{}}
 
 	if _, err := svc.runSync(context.Background(), bp, "", "", nil); !errors.Is(err, ErrBlueprintSyncWorkspaceUnresolved) {
 		t.Fatalf("runSync(identity-less, workspace-less ctx) err = %v, want ErrBlueprintSyncWorkspaceUnresolved", err)

@@ -1,31 +1,27 @@
-# bex-api's custom-domains surface, Render dashboard-shaped. Managed domains are
-# durable claims: `ownershipStatus` gates projection into App.spec.host(s), and
-# `ownershipDnsRecord` is the exact pending TXT proof. `verificationStatus` is
-# "verified"/"pending" (TLS cert issued?); `serverStatus`
-# is "active"/"pending" (cert issued and not suspended). `domainType` is
-# "apex"/"subdomain"; `dnsRecord` is the record the tenant must create to point the
-# domain at the service (CNAME/ALIAS -> the app's platform host, w5/m10).
-# `certificateReason` is cert-manager's own explanation of a stalled TLS
-# issuance (w3/m85) — null once the certificate is issued.
+# bex-api's custom-domains surface, Render dashboard-shaped. `verificationStatus`
+# is Render's field with Render's meaning: "unverified" until the traffic DNS
+# record points at the service, then "verified" (verification runs automatically
+# in the background; `verifyCustomDomain` is the manual trigger). `dnsRecord` is
+# the one record the tenant creates (CNAME/ALIAS -> the app's platform host,
+# w5/m10). `certificateStatus` is "verified"/"pending" (TLS cert issued?);
+# `serverStatus` is "active"/"pending" (cert issued and not suspended).
+# `domainType` is "apex"/"subdomain". `certificateReason` is cert-manager's own
+# explanation of a stalled TLS issuance (w3/m85) — null once issued.
 # Mutations are Render-dashboard-shaped: addCustomDomain returns the new domain;
 # deleteCustomDomain returns a success boolean; verifyCustomDomain re-checks the
-# domain's DNS/cert state now and returns its fresh status.
+# domain's traffic DNS now and returns its fresh status (still "unverified",
+# without an error, when the record does not point here yet).
 
 fragment CustomDomainFields on CustomDomain {
   id
   name
   domainType
-  ownershipStatus
   verificationStatus
+  certificateStatus
   serverStatus
   redirectForName
   certificateReason
   dnsRecord {
-    type
-    name
-    value
-  }
-  ownershipDnsRecord {
     type
     name
     value

@@ -1155,11 +1155,17 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 		if req.Name == "" {
 			return nil, core.ErrBadRequest
 		}
-		d, err := s.AddDomain(r.Context(), r.PathValue("id"), req.Name)
+		d, sibling, err := s.addDomainPair(r.Context(), r.PathValue("id"), req.Name)
 		if err != nil {
 			return nil, err
 		}
-		return toRenderCustomDomain(d), nil
+		// Render's add answers 201 with an ARRAY: the requested domain plus
+		// the auto-paired www/apex sibling the same call created (w5/m137).
+		out := []renderCustomDomain{toRenderCustomDomain(d)}
+		if sibling != nil {
+			out = append(out, toRenderCustomDomain(*sibling))
+		}
+		return out, nil
 	})
 	getDomain := core.HandleMapped(http.StatusOK, func(r *http.Request) (DomainView, error) {
 		return s.GetDomain(r.Context(), r.PathValue("id"), r.PathValue("name"))
@@ -1167,11 +1173,13 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 	deleteDomain := core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		return s.DeleteDomain(r.Context(), r.PathValue("id"), r.PathValue("name"))
 	})
-	// verifyDomain promotes a pending ownership claim after an exact TXT match,
-	// then returns the fresh ownership/TLS/serving state.
-	verifyDomain := core.HandleMapped(http.StatusOK, func(r *http.Request) (DomainView, error) {
-		return s.VerifyDomain(r.Context(), r.PathValue("id"), r.PathValue("name"))
-	}, toRenderCustomDomain)
+	// verifyDomain is Render's asynchronous trigger: 202 with no body. The
+	// shared check runs now (and again in the background sweep); an unpointed
+	// domain is still a 202, never a conflict.
+	verifyDomain := core.HandleNoBody(http.StatusAccepted, func(r *http.Request) error {
+		_, err := s.VerifyDomain(r.Context(), r.PathValue("id"), r.PathValue("name"))
+		return err
+	})
 
 	// Autoscaling sub-resource (Render-compatible).
 	// GET   …/autoscaling — current config (bex extension; Render has no GET)

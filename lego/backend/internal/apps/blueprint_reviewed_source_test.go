@@ -79,7 +79,7 @@ func TestSyncBlueprintReviewedSourcePinsCommitAcrossBranchMove(t *testing.T) {
 	svc := &Service{
 		Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
 		Blueprints:      fs,
-		DomainOwnership: allowDomainOwnership{},
+		DomainTraffic: allowDomainTraffic{},
 		GitFetcher:      fetcher,
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
@@ -124,7 +124,7 @@ func TestSyncBlueprintOmitReviewedFollowsMovedHead(t *testing.T) {
 	svc := &Service{
 		Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
 		Blueprints:      fs,
-		DomainOwnership: allowDomainOwnership{},
+		DomainTraffic: allowDomainTraffic{},
 		GitFetcher:      fetcher,
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
@@ -155,7 +155,7 @@ func TestSyncBlueprintReviewedPathMismatchConflicts(t *testing.T) {
 	}
 	svc := &Service{
 		Base:       &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
-		Blueprints: fs, DomainOwnership: allowDomainOwnership{}, GitFetcher: fetcher,
+		Blueprints: fs, DomainTraffic: allowDomainTraffic{}, GitFetcher: fetcher,
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 	reviewed := &ReviewedBlueprintSource{
@@ -181,7 +181,7 @@ func TestSyncBlueprintReviewedWithBexYAMLIsBadRequest(t *testing.T) {
 	})
 	svc := &Service{
 		Base:       &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
-		Blueprints: fs, DomainOwnership: allowDomainOwnership{},
+		Blueprints: fs, DomainTraffic: allowDomainTraffic{},
 		GitFetcher: fakeBlueprintFetcher{contents: stackManifest},
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
@@ -204,7 +204,7 @@ func TestReviewedSourceAcrossAdapters(t *testing.T) {
 		svc := &Service{
 			Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
 			Blueprints:      fs,
-			DomainOwnership: allowDomainOwnership{},
+			DomainTraffic: allowDomainTraffic{},
 			GitFetcher: &advancingBlueprintFetcher{
 				headSHA: movedCommitB,
 				byCommit: map[string]string{

@@ -65,10 +65,11 @@ type Service struct {
 	// integration checks have passed. Persisted policies survive removal from
 	// the set; it never changes an existing service's privileges.
 	ImageCompatibilityWorkspaces map[string]bool
-	// DomainOwnership verifies an app-bound DNS TXT challenge before any custom
-	// host enters App.spec and becomes routable. nil uses the system resolver;
-	// tests inject a deterministic verifier.
-	DomainOwnership DomainOwnershipVerifier
+	// DomainTraffic checks whether a custom domain's traffic DNS points at the
+	// service before any custom host enters App.spec and becomes routable
+	// (ADR005: the traffic record is the verification). nil uses the system
+	// resolver; tests inject a deterministic checker.
+	DomainTraffic DomainTrafficChecker
 	// ProxiedHosts detects custom domains that resolve into Cloudflare's edge,
 	// where an inbound IP allowlist sees Cloudflare instead of the client
 	// (w1/m171). nil detects nothing, so the warning field stays empty.
@@ -4682,9 +4683,9 @@ func (s *Service) SetNotificationsToSend(ctx context.Context, name, value string
 // URL. Cannot be set to "disabled" without at least one custom host already
 // configured on the App — that would leave the service silently unreachable.
 // subdomainNeedsVerifiedDomain is the rule the subdomain guard enforces, in the
-// user's terms. A custom domain only serves the app once its ownership is
-// verified (projectDomainClaims admits verified claims into spec.hosts), so a
-// pending domain does not count. The old message said "without at least one
+// user's terms. A custom domain only serves the app once its traffic DNS
+// is verified (projectDomainClaims admits verified claims into spec.hosts),
+// so an unverified domain does not count. The old message said "without at least one
 // custom domain" to a user looking at one (w4/142).
 const subdomainNeedsVerifiedDomain = "the platform subdomain can't be disabled until a custom domain is verified, since the service would have no address left"
 

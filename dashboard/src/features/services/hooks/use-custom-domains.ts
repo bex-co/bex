@@ -23,8 +23,9 @@ import {
   type CustomDomainView,
 } from "@/features/services/types";
 
-// Managed custom domains are durable ownership claims. Pending claims are
-// intentionally absent from App.spec.host(s); an exact TXT match atomically
+// Managed custom domains are durable claims. Unverified claims are
+// intentionally absent from App.spec.host(s); once the traffic DNS record
+// points at the service, verification (automatic sweep or manual re-check)
 // promotes them, after which the operator converges routing and TLS.
 
 type RawDomain = CustomDomainFieldsFragment | null;
@@ -47,13 +48,12 @@ function mapDomain(
   return {
     name: d.name,
     domainType: d.domainType ?? "subdomain",
-    ownershipVerified: d.ownershipStatus === "verified",
-    verified: d.verificationStatus === "verified",
+    dnsVerified: d.verificationStatus === "verified",
+    certificateVerified: d.certificateStatus === "verified",
     active: d.serverStatus === "active",
     redirectForName: d.redirectForName,
     certificateReason: d.certificateReason ?? null,
     dnsRecord: mapDNSRecord(d.dnsRecord),
-    ownershipDnsRecord: mapDNSRecord(d.ownershipDnsRecord),
   };
 }
 
@@ -164,8 +164,8 @@ export interface UseCustomDomainMutationsResult {
 /**
  * Wires the custom-domain write mutations (`addCustomDomain` / `deleteCustomDomain`
  * / `verifyCustomDomain`), refetching the list after each write and toasting the
- * result. Add creates a pending ownership claim; verify promotes an exact TXT
- * match into serving intent; delete removes either pending or verified state.
+ * result. Add creates an unverified claim; verify (or the automatic sweep)
+ * promotes it once its traffic record points here; delete removes either state.
  */
 export function useCustomDomainMutations(
   serviceId: string,
@@ -193,7 +193,7 @@ export function useCustomDomainMutations(
         const fresh = await refetch();
         const primary = mapRaw(res.data?.addCustomDomain ?? null);
         toast.success(t("services.domainAddSuccess", { name }), {
-          description: t("services.domainOwnershipNote"),
+          description: t("services.domainPropagateNote"),
         });
         return primary
           ? { primary, sibling: pairedSibling(primary, fresh) }
@@ -244,23 +244,19 @@ export function useCustomDomainMutations(
         });
         await refetch();
         const view = mapRaw(res.data?.verifyCustomDomain ?? null);
-        if (view?.ownershipVerified) {
+        if (view?.dnsVerified) {
           toast.success(t("services.domainVerifySuccess", { name }));
         } else {
           toast.info(t("services.domainVerifyPending", { name }));
         }
         return view;
       } catch (error) {
-        if (hasGraphQLErrorCode(error, "DOMAIN_OWNERSHIP_PENDING")) {
-          toast.info(t("services.domainVerifyPending", { name }));
-        } else {
-          toast.error(
-            mutationErrorMessage(
-              error,
-              t("services.domainVerifyError", { name }),
-            ),
-          );
-        }
+        toast.error(
+          mutationErrorMessage(
+            error,
+            t("services.domainVerifyError", { name }),
+          ),
+        );
         return null;
       } finally {
         setBusy(false);

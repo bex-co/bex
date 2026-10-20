@@ -500,7 +500,7 @@ type listCustomDomainsArgs struct {
 	ServiceID          string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	Cursor             string `json:"cursor,omitempty" jsonschema:"resume after this cursor; omit for the first page"`
 	Limit              int    `json:"limit,omitempty" jsonschema:"page size, 1-100 (default 20)"`
-	VerificationStatus string `json:"verificationStatus,omitempty" jsonschema:"filter by verification status: unverified/pending or verified"`
+	VerificationStatus string `json:"verificationStatus,omitempty" jsonschema:"filter by DNS verification status: unverified (traffic record not pointing here yet) or verified"`
 	DomainType         string `json:"domainType,omitempty" jsonschema:"filter by domain type: apex or subdomain"`
 }
 
@@ -917,7 +917,7 @@ func (s *Service) registerAutoscalingTools(srv *mcp.Server) {
 func (s *Service) registerCustomDomainTools(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_custom_domains",
-		Description: "List custom domains configured for a service. Optional verificationStatus (unverified|pending|verified; pending is the bex alias) and domainType (apex|subdomain) filters narrow the result; cursor/limit page it (default 20 per page).",
+		Description: "List custom domains configured for a service. Each carries its DNS verification status (unverified until its traffic record points at the service), certificate status, and the exact traffic DNS record to create (dnsRecord). Optional verificationStatus (unverified|pending|verified; pending is a bex alias) and domainType (apex|subdomain) filters narrow the result; cursor/limit page it (default 20 per page).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listCustomDomainsArgs) (*mcp.CallToolResult, domainListResult, error) {
 		domains, err := s.ListDomains(ctx, in.ServiceID)
 		if err != nil {
@@ -950,7 +950,7 @@ func (s *Service) registerCustomDomainTools(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "add_custom_domain",
-		Description: "Create a pending custom-domain claim. The result includes the exact ownership TXT record; the domain is not routed until verify_custom_domain promotes it.",
+		Description: "Add a custom domain (adding an apex also adds www redirecting to it, and vice versa). The result is unverified and includes the exact traffic DNS record to create (dnsRecord: CNAME for a subdomain, ALIAS for an apex); once that record points at the service, verification completes automatically and the domain routes.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in domainArgs) (*mcp.CallToolResult, renderCustomDomain, error) {
 		return customDomainResult(s.AddDomain(ctx, in.ServiceID, in.Name))
 	})
@@ -965,7 +965,7 @@ func (s *Service) registerCustomDomainTools(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "verify_custom_domain",
-		Description: "Check a pending custom domain's exact ownership TXT record and atomically promote it into serving intent. Already-verified claims are idempotent.",
+		Description: "Trigger a DNS verification check for a custom domain now (it also runs automatically). If the traffic record points at the service, the domain is promoted into serving intent and returned verified; otherwise it is returned still unverified. Already-verified domains are idempotent.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in domainArgs) (*mcp.CallToolResult, renderCustomDomain, error) {
 		return customDomainResult(s.VerifyDomain(ctx, in.ServiceID, in.Name))
 	})

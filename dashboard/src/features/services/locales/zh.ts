@@ -1491,8 +1491,7 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.domainColVerified": {
     message: "验证状态",
-    description:
-      "Custom-domains table column header (DNS/ownership verification)",
+    description: "Custom-domains table column header (DNS verification)",
   },
   "services.domainColCertificate": {
     message: "证书状态",
@@ -1507,7 +1506,7 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.domainVerified": {
     message: "已验证",
     description:
-      "Custom-domains status badge: ownership or TLS verification is complete",
+      "Custom-domains status badge: DNS or TLS verification is complete",
   },
   "services.domainCertActive": {
     message: "已生效",
@@ -1528,7 +1527,7 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.domainPending": {
     message: "待处理",
     description:
-      "Custom-domains status badge: ownership or certificate is not complete",
+      "Custom-domains status badge: DNS or certificate is not complete",
   },
   "services.domainActionsMenu": {
     message: "打开域名操作菜单",
@@ -1567,7 +1566,7 @@ const zhServices: Record<string, TranslationEntry> = {
     message:
       "这会删除 {name} 的待验证声明。该域名从未通过验证，因此从未在其上提供服务，也未签发证书。",
     description:
-      "Custom-domain delete confirmation for a domain whose ownership is still pending: it was never routed (w4/142)",
+      "Custom-domain delete confirmation for a domain still unverified: it was never routed (w4/142)",
   },
   "services.domainDeletePendingPairConfirmBody": {
     message:
@@ -1630,10 +1629,6 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Toast description after a custom-domain add (async convergence)",
   },
-  "services.domainOwnershipNote": {
-    message: "请创建显示的 TXT 记录，然后重新检查所有权。",
-    description: "创建待验证自定义域名所有权声明后的提示说明",
-  },
   "services.domainDnsToggle": {
     message: "显示 DNS 配置",
     description:
@@ -1643,29 +1638,14 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "DNS 配置",
     description: "Heading of the per-domain DNS-instructions panel",
   },
-  "services.domainOwnershipGuidance": {
-    message:
-      "请先在 {zone} 区域添加这条 TXT 记录以证明所有权；验证成功前，平台不会路由此域名。主机名相对于该区域（粘贴 _bex-challenge，不要粘贴完整域名）。此主机名下每个域名各有一条 TXT 记录——请将此值作为新增记录添加，并保留已有的 bex-domain-verification 值。",
-    description:
-      "持久自定义域名所有权 TXT 挑战上方的说明——必须点名 Host 相对的 DNS 区域（w4/092），并说明主机名是共享的（每个域名一条记录），以免用户在单值 DNS 编辑框里覆盖其他域名的验证记录",
-  },
-  "services.domainOwnershipSiblingsNote": {
-    message: "此服务的其他域名共用此 TXT 主机名——请保留它们的记录：",
-    description:
-      "Intro to the list of sibling domains' TXT values at the same shared ownership host",
-  },
-  "services.domainTrafficRecordTitle": {
-    message: "流量记录",
-    description: "所有权 TXT 记录后方 CNAME 或 ALIAS 记录的标题",
-  },
   "services.domainDnsSubdomainGuidance": {
     message:
-      "请在 {zone} 区域于你的 DNS 服务商处创建以下记录，然后重新检查。主机名相对于该区域。记录生效后，bex 会自动签发 TLS 证书。",
+      "请在 {zone} 区域于你的 DNS 服务商处创建此记录。主机名相对于该区域。记录生效后，验证与 TLS 证书会自动完成。",
     description: "子域名 DNS 记录上方的说明——点名 Host 相对的区域（w4/092）",
   },
   "services.domainDnsApexGuidance": {
     message:
-      "顶级域名无法使用普通 CNAME —— 请在 {zone} 区域创建此记录（若你的服务商支持 ALIAS/ANAME 或 CNAME flattening），然后重新检查。主机名相对于该区域（@ 表示区域 apex）。解析生效后 bex 会自动签发 TLS 证书，并为你自动配置 www ↔ 顶级域名之间的重定向。",
+      "顶级域名无法使用普通 CNAME —— 请在 {zone} 区域创建此 ALIAS/ANAME（或 CNAME flattening）记录（@ 表示区域 apex）。若服务商都不支持，可为 @ 创建 A 记录，填入「目标」当前解析到的 IP 地址。记录生效后，验证与 TLS 证书会自动完成，bex 也会为你配置 www ↔ 顶级域名之间的重定向。",
     description: "顶级域名 DNS 记录上方的说明——点名 Host 相对的区域（w4/092）",
   },
   "services.domainRecordType": {
@@ -1682,13 +1662,11 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.domainCopyHost": {
     message: "复制 {type} 主机",
-    description:
-      "Accessible label for copying a DNS host field — type discriminates ownership TXT vs traffic CNAME",
+    description: "Accessible label for copying a DNS host field",
   },
   "services.domainCopyTarget": {
     message: "复制 {type} 目标",
-    description:
-      "Accessible label for copying a DNS target/value field — type discriminates ownership TXT vs traffic CNAME",
+    description: "Accessible label for copying a DNS target/value field",
   },
   "services.domainDnsUnavailable": {
     message: "DNS 目标尚不可用——服务运行后请重新检查。",
@@ -1707,12 +1685,11 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Toast when copying a DNS record value fails",
   },
   "services.domainAddedTitle": {
-    message: "域名声明已创建——请配置 DNS",
+    message: "域名已添加——请配置 DNS",
     description: "Title of the post-add DNS-record step in the add dialog",
   },
   "services.domainAddedDescription": {
-    message:
-      "请在你的 DNS 服务商处创建所有权 TXT 记录，然后重新检查以启用路由。",
+    message: "请在你的 DNS 服务商处创建此 DNS 记录；记录生效后验证会自动完成。",
     description: "Subtitle of the post-add DNS-record step in the add dialog",
   },
   "services.domainRedirectsTo": {
@@ -4091,7 +4068,7 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.eventsTypeCustomDomainVerified": {
     message: "自定义域名已验证",
-    description: "Service activity type: custom domain ownership verified",
+    description: "Service activity type: custom domain verified",
   },
   "services.eventsTypeDiskCreated": {
     message: "已创建磁盘",

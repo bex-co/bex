@@ -95,7 +95,7 @@ func TestPGObserveProductAppHostingAndCertificates(t *testing.T) {
 				if _, err := pool.Exec(ctx, "UPDATE domains SET claim_state='verified',verified_at=now() WHERE id=$1", domain.ID); err != nil {
 					t.Fatal(err)
 				}
-			} else if _, err := pool.Exec(ctx, "UPDATE domains SET claim_state='pending',verified_at=NULL,challenge='test-proof' WHERE id=$1", domain.ID); err != nil {
+			} else if _, err := pool.Exec(ctx, "UPDATE domains SET claim_state='pending',verified_at=NULL WHERE id=$1", domain.ID); err != nil {
 				t.Fatal(err)
 			}
 			alias, err := st.CreateDomain(ctx, row.ID, "www."+domain.Host, false)
