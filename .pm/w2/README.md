@@ -128,7 +128,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] [048 — Every production GitOps sync stalls while the tenant pool is full: Argo waits on the `tenant-headroom` placeholder](048.md) ← seen during w2/m170 rollout, 2026-10-20.
+- [x] [048 — Every production GitOps sync stalls while the tenant pool is full: Argo waits on the `tenant-headroom` placeholder](done/048.md) — **DONE 2026-10-20** (placeholder moved to the root app's last sync wave; validator keeps it last) ← seen during w2/m170 rollout, 2026-10-20.
 
 - [ ] [047 — `basic-256mb` and `basic-1gb` Postgres are priced above bex's own Render × 0.70 rule](047.md) (~45m) ← found by w2/m171 t001 research, 2026-10-19.
 

@@ -2828,6 +2828,19 @@ if [ "$headroom_build_tol" != 0 ]; then
   echo "FAIL: tenant-headroom tolerates bex.co/build-only — that holds an elastic BUILD node (ADR060 D8) warm for serving rollouts that may not schedule there" >&2
   fail=1
 fi
+# The placeholder is meant to sit Pending while the tenant pool is full. Argo
+# waits for each sync wave to turn healthy before the next, so the headroom must
+# be the root app's LAST wave or a full pool freezes every production sync
+# behind it (w2/048; 2026-10-20 it held the root sync for over an hour).
+headroom_wave="$(yq -N "select(.kind==\"Deployment\" and .metadata.name==\"tenant-headroom\") | .metadata.annotations.\"argocd.argoproj.io/sync-wave\"" "$headroom_yaml")"
+other_max_wave="$(yq -N ea '[select(.metadata.name != "tenant-headroom") | (.metadata.annotations."argocd.argoproj.io/sync-wave" // "0") | to_number] | max' "$tmp/prod-apps.yaml")"
+for captured in headroom_wave other_max_wave; do
+  scalar "$captured" "${!captured}" || fail=1
+done
+if ! [ "$headroom_wave" -gt "$other_max_wave" ] 2>/dev/null; then
+  echo "FAIL: tenant-headroom sync-wave is '$headroom_wave' but the prod root app has a resource at wave $other_max_wave — the Pending-by-design placeholder must be the LAST wave, or a full tenant pool stalls every sync (w2/048)" >&2
+  fail=1
+fi
 # Drift guard against the tier catalog: the reservation must be the shape of the
 # Pod it stands in for. If `standard` grows and this does not, the placeholder
 # under-reserves and the surge Pod is unschedulable again — with the added
