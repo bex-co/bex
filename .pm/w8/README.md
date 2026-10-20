@@ -367,11 +367,11 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **135** — [`POST`/`PATCH /registrycredentials` are unreachable: the Render-schema validator and the bex handler demand contradictory bodies](135.md) ← `/qa-find-bugs-cli` sweep 676 2026-10-19
 
-- [ ] **134** — [`POST /blueprints` answers every fetch failure with a bare 500, hiding its own classified reason](134.md) ← `/qa-find-bugs-cli` loop 2026-10-19
+- [x] **134** — [`POST /blueprints` answers every fetch failure with a bare 500, hiding its own classified reason](done/134.md) ← `/qa-find-bugs-cli` loop 2026-10-19 — **DONE (2026-10-19)**
 
-- [ ] **133** — [`POST /blueprints/generate` answers malformed JSON with a bare 500](133.md) ← `/qa-find-bugs-cli` loop 2026-10-19
+- [x] **133** — [`POST /blueprints/generate` answers malformed JSON with a bare 500](done/133.md) ← `/qa-find-bugs-cli` loop 2026-10-19 — **DONE (2026-10-19)**
 
-- [ ] **132** — [Log filters `task`, `taskRun`, and `sandbox` are accepted but silently ignored](132.md) ← `/qa-find-bugs-cli` loop 2026-10-19
+- [x] **132** — [Log filters `task`, `taskRun`, and `sandbox` are accepted but silently ignored](done/132.md) ← `/qa-find-bugs-cli` loop 2026-10-19 — **DONE (2026-10-19)**
 
 - [x] **131** — [A nonexistent Docker Hub image burns the full 15-minute rollout budget instead of the 90-second pull-failure settle](done/131.md) ← `/qa-find-bugs-cli` sweep 532 2026-10-19 — **DONE (2026-10-19)**
 
