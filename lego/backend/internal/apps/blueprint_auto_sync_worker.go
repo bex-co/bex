@@ -36,6 +36,13 @@ const (
 	blueprintAutoSyncLease = 5 * time.Minute
 )
 
+// blueprintAutoSyncRetry marks a refused pre-apply attempt. Accepted intent
+// remains leased for recovery; no additional webhook is needed.
+type blueprintAutoSyncRetry struct{ err error }
+
+func (e *blueprintAutoSyncRetry) Error() string { return e.err.Error() }
+func (e *blueprintAutoSyncRetry) Unwrap() error { return e.err }
+
 // BlueprintAutoSyncWorker periodically claims and executes pending Blueprint
 // auto-sync intents. Run is a no-op when the store is unwired.
 type BlueprintAutoSyncWorker struct {
@@ -77,41 +84,34 @@ func (w *BlueprintAutoSyncWorker) process(ctx context.Context, intent store.Blue
 	b, err := w.Svc.Blueprints.GetBlueprint(ctx, intent.BlueprintID, intent.TenantID)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
-			_ = w.Svc.Blueprints.CompleteBlueprintAutoSyncIntent(ctx, intent.ID)
+			_ = w.Svc.Blueprints.CompleteBlueprintAutoSyncIntent(ctx, intent.ID, intent.ClaimGeneration, "Blueprint disconnected or removed")
 			return
 		}
 		log.Printf("blueprint auto-sync: get %s: %v", intent.BlueprintID, err)
-		_ = w.Svc.Blueprints.FailBlueprintAutoSyncIntent(ctx, intent.ID, "blueprint lookup failed")
+		// Storage failure is not a terminal policy decision; recover the lease.
 		return
 	}
 	// Policy is rechecked at execution: Auto Sync may have been disabled or
 	// the row disconnected between acceptance and the claim.
-	if !b.AutoSync {
-		_ = w.Svc.Blueprints.CompleteBlueprintAutoSyncIntent(ctx, intent.ID)
+	if !b.AutoSync || b.Path != intent.Path {
+		_ = w.Svc.Blueprints.CompleteBlueprintAutoSyncIntent(ctx, intent.ID, intent.ClaimGeneration, "Auto Sync disabled or Blueprint path changed")
 		return
 	}
-	reviewed := &ReviewedBlueprintSource{
-		Repo:     b.Repo,
-		Path:     intent.Path,
-		CommitID: intent.CommitSHA,
-	}
 	runCtx := core.WithActingTenant(core.WithWorkspace(ctx, b.TenantID), b.TenantID)
-	_, syncErr := w.Svc.runSync(runCtx, b, "", "", reviewed)
+	_, syncErr := w.Svc.runSync(runCtx, b, "", "", nil, &intent)
 	if syncErr != nil {
+		var retry *blueprintAutoSyncRetry
 		var coded *core.CodedError
-		if errors.As(syncErr, &coded) && coded.Code == "BLUEPRINT_SYNC_BUSY" {
+		if errors.As(syncErr, &retry) || errors.Is(syncErr, context.Canceled) || errors.Is(syncErr, context.DeadlineExceeded) ||
+			(errors.As(syncErr, &coded) && coded.Code == "BLUEPRINT_SYNC_BUSY") {
 			// Leave claimed; lease expiry lets another tick retry without
 			// marking a transient busy as terminal failure.
 			return
 		}
-		msg := syncErr.Error()
-		if len(msg) > 500 {
-			msg = msg[:500]
-		}
-		_ = w.Svc.Blueprints.FailBlueprintAutoSyncIntent(ctx, intent.ID, msg)
+		_ = w.Svc.Blueprints.FailBlueprintAutoSyncIntent(ctx, intent.ID, intent.ClaimGeneration, "Automatic Blueprint sync failed; see sync history for the failure reason.")
 		return
 	}
-	if err := w.Svc.Blueprints.CompleteBlueprintAutoSyncIntent(ctx, intent.ID); err != nil {
+	if err := w.Svc.Blueprints.CompleteBlueprintAutoSyncIntent(ctx, intent.ID, intent.ClaimGeneration, "Applied current branch; see sync history for accepted and consumed source commits"); err != nil {
 		log.Printf("blueprint auto-sync: complete %s: %v", intent.ID, err)
 	}
 }
