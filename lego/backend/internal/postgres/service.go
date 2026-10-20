@@ -520,17 +520,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 	}
 	dbn := d.Spec.EffectiveDatabaseName(d.Name)
 	dbUser := d.Spec.EffectiveDatabaseUser(d.Name)
-	replicas := make([]ReadReplicaView, 0, len(d.Status.ReadReplicaStatuses))
-	for _, rs := range d.Status.ReadReplicaStatuses {
-		rv := ReadReplicaView{ID: ReadReplicaID(d.Name, rs.Name), Name: rs.Name}
-		if rs.InternalHost != "" || rs.ExternalHost != "" {
-			rv.ConnectionInfo = &ReadReplicaConnectionInfo{
-				InternalHost: rs.InternalHost,
-				ExternalHost: rs.ExternalHost,
-			}
-		}
-		replicas = append(replicas, rv)
-	}
+	replicas := readReplicaViews(d)
 	version := d.Status.CurrentVersion
 	if version == "" {
 		version = d.Spec.Version
@@ -761,10 +751,6 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if err != nil {
 		return PostgresView{}, err
 	}
-	crReplicas := make([]appv1alpha1.DatabaseReadReplica, 0, len(req.ReadReplicas))
-	for _, r := range req.ReadReplicas {
-		crReplicas = append(crReplicas, appv1alpha1.DatabaseReadReplica{Name: r.Name})
-	}
 	d := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.Postgres), Namespace: s.TenantNamespace(tenantID)},
 		Spec: appv1alpha1.DatabaseSpec{
@@ -779,7 +765,7 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 			IPAllowList:      core.AllowListToSpec(req.IPAllowList),
 			Pooler:           pooler != nil && *pooler,
 			HighAvailability: req.EnableHighAvailability,
-			ReadReplicas:     crReplicas,
+			ReadReplicas:     readReplicaSpecs(req.ReadReplicas),
 			Parameters:       normalizeParameterOverrides(req.ParameterOverrides),
 		},
 	}
@@ -1116,6 +1102,11 @@ type PostgresPatch struct {
 	// false withdraws the endpoint while retaining any rules. Nil alone leaves
 	// existing intent untouched, including legacy public/empty resources.
 	Public *bool
+	// ReadReplicas replaces the named replica set (Render's
+	// postgresPATCHInput.readReplicas): nil leaves it unchanged, an empty
+	// slice removes every replica. CheckDatabaseAdmission judges the patched
+	// set, names included, exactly as it judges a create.
+	ReadReplicas *[]ReadReplicaInput
 }
 
 // validate checks every field present in the patch (plan enum, CIDR syntax)
@@ -1230,6 +1221,36 @@ func (patch PostgresPatch) apply(d *appv1alpha1.Database) {
 	if patch.Public != nil {
 		d.Spec.Public = *patch.Public
 	}
+	// Names alias one shared reader pool, so a reordered set is no change.
+	if patch.ReadReplicas != nil && !sameReplicaNames(d.Spec.ReadReplicas, *patch.ReadReplicas) {
+		d.Spec.ReadReplicas = readReplicaSpecs(*patch.ReadReplicas)
+	}
+}
+
+func sameReplicaNames(current []appv1alpha1.DatabaseReadReplica, requested []ReadReplicaInput) bool {
+	if len(current) != len(requested) {
+		return false
+	}
+	names := make(map[string]bool, len(current))
+	for _, r := range current {
+		names[r.Name] = true
+	}
+	for _, r := range requested {
+		if !names[r.Name] {
+			return false
+		}
+	}
+	return true
+}
+
+// readReplicaSpecs maps the API's replica items onto the Database CR, for a
+// create and an update alike.
+func readReplicaSpecs(in []ReadReplicaInput) []appv1alpha1.DatabaseReadReplica {
+	out := make([]appv1alpha1.DatabaseReadReplica, 0, len(in))
+	for _, r := range in {
+		out = append(out, appv1alpha1.DatabaseReadReplica{Name: r.Name})
+	}
+	return out
 }
 
 // sensitiveLoggingParameters are the PostgreSQL settings that put STATEMENT
@@ -1485,6 +1506,27 @@ func (s *Service) updatePostgres(ctx context.Context, name string, patch Postgre
 	return view, nil
 }
 
+// readReplicaViews lists the database's configured replicas (spec), each with
+// the hosts the operator reports for it once it has (status). Listing the
+// spec rather than the status keeps a read and the update that just changed
+// the set in agreement, so a client building the next set from either never
+// drops a replica the operator has not reported yet (w5/m138).
+func readReplicaViews(d *appv1alpha1.Database) []ReadReplicaView {
+	hosts := make(map[string]appv1alpha1.DatabaseReadReplicaStatus, len(d.Status.ReadReplicaStatuses))
+	for _, rs := range d.Status.ReadReplicaStatuses {
+		hosts[rs.Name] = rs
+	}
+	out := make([]ReadReplicaView, 0, len(d.Spec.ReadReplicas))
+	for _, r := range d.Spec.ReadReplicas {
+		rv := ReadReplicaView{ID: ReadReplicaID(d.Name, r.Name), Name: r.Name}
+		if rs := hosts[r.Name]; rs.InternalHost != "" || rs.ExternalHost != "" {
+			rv.ConnectionInfo = &ReadReplicaConnectionInfo{InternalHost: rs.InternalHost, ExternalHost: rs.ExternalHost}
+		}
+		out = append(out, rv)
+	}
+	return out
+}
+
 // checkUpdate is every read-only check a Postgres update runs before its
 // write: the patch itself, protection, billing, admission rules this service
 // enforces ahead of the API server, name uniqueness and the version upgrade.
@@ -1507,7 +1549,7 @@ func (s *Service) checkUpdate(ctx context.Context, d *appv1alpha1.Database, patc
 		if err := s.RequirePlanBilling(ctx, d.Labels[core.LabelTenant], tiers.Postgres.CanonicalID(*patch.Plan)); err != nil {
 			return err
 		}
-	case patch.Version != nil || patch.DiskSizeGB != nil || patch.EnableDiskAutoscaling != nil || patch.EnableHighAvailability != nil:
+	case patch.Version != nil || patch.DiskSizeGB != nil || patch.EnableDiskAutoscaling != nil || patch.EnableHighAvailability != nil || patch.ReadReplicas != nil:
 		if err := s.RequireBillingMutation(ctx, d.Labels[core.LabelTenant]); err != nil {
 			return err
 		}
@@ -1528,10 +1570,10 @@ func (s *Service) checkUpdate(ctx context.Context, d *appv1alpha1.Database, patc
 
 // recordUpdateEffects records what a successful PATCH actually changed, one
 // fixed verb per field whose change Render's datastore event vocabulary names
-// (plan, high availability, the connection pooler, disk size) — the
-// maintenance-mode shape, where one atomic write emits a row per field effect
-// rather than a single undifferentiated Update. Fields Render has no name for
-// (rename, ip-allow-list, parameter overrides, disk autoscaling) keep the
+// (plan, high availability, the connection pooler, disk size, read replicas,
+// disk autoscaling) — the maintenance-mode shape, where one atomic write emits
+// a row per field effect rather than a single undifferentiated Update. Fields
+// Render has no name for (rename, ip-allow-list, parameter overrides) keep the
 // generic DatabaseUpdated row, which is also what an idempotent PATCH records:
 // the caller made a call, and the audit trail says so without claiming a
 // configuration change that did not happen.
@@ -1555,6 +1597,14 @@ func (s *Service) recordUpdateEffects(ctx context.Context, d *appv1alpha1.Databa
 	// plan_changed event, not a resize the caller requested.
 	if before.StorageGB != d.Spec.StorageGB {
 		s.RecordDatabaseDiskSizeChanged(ctx, d, DatabaseStorageHighWater(d))
+		recorded = true
+	}
+	if !slices.Equal(before.ReadReplicas, d.Spec.ReadReplicas) {
+		s.RecordDatabaseEffect(ctx, d, core.DatabaseReadReplicasChanged)
+		recorded = true
+	}
+	if before.DiskAutoscaling != d.Spec.DiskAutoscaling {
+		s.RecordDatabaseEffect(ctx, d, core.DatabaseDiskAutoscalingChanged)
 		recorded = true
 	}
 	if !recorded {

@@ -21,7 +21,10 @@ import (
 	"slices"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/util/validation"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -41,6 +44,11 @@ func CheckDatabaseAdmission(current *appv1alpha1.Database, desired appv1alpha1.D
 	checkPooler := desired.Pooler && (planChanged || current == nil || !current.Spec.Pooler)
 	if !planChanged && !storageChanged && !checkReplicas && !checkAutoscaling && !checkPooler {
 		return nil
+	}
+	if checkReplicas && replicasChanged {
+		if err := checkReadReplicaNames(current, desired.ReadReplicas); err != nil {
+			return err
+		}
 	}
 	tier, ok := tiers.Postgres.ByID(plan)
 	if !ok {
@@ -96,6 +104,44 @@ func CheckDatabaseAdmission(current *appv1alpha1.Database, desired appv1alpha1.D
 	if checkPooler && !tier.SupportsConnectionPooling() {
 		return core.NewBadRequestError("POSTGRES_CONNECTION_POOL_PLAN_UNSUPPORTED", "connection pooling requires a paid Postgres plan; disable connection pooling before selecting the free plan",
 			map[string]any{"field": "connectionPool", "plan": plan})
+	}
+	return nil
+}
+
+// readReplicaNameMaxLength keeps a replica's external SNI label,
+// <database id>-ro-<name> (the operator's databaseServerAltDNSNames), within
+// one DNS label. Every database id has the same length, so the bound is fixed.
+var readReplicaNameMaxLength = validation.DNS1123LabelMaxLength - len(ReadReplicaID(id.Derive(id.Postgres), ""))
+
+// checkReadReplicaNames refuses a replica set the operator cannot address: an
+// empty or repeated name, or a new name that cannot form the replica's
+// hostname label. Render's name is a free-form display name, but bex builds
+// <database id>-ro-<name> from it, so a name must be a lowercase DNS label.
+// Names the database already carries are kept as they are, so an unrelated
+// edit never strands a replica created before this rule.
+func checkReadReplicaNames(current *appv1alpha1.Database, desired []appv1alpha1.DatabaseReadReplica) error {
+	kept := map[string]bool{}
+	if current != nil {
+		for _, r := range current.Spec.ReadReplicas {
+			kept[r.Name] = true
+		}
+	}
+	seen := make(map[string]bool, len(desired))
+	for _, r := range desired {
+		if seen[r.Name] {
+			return core.NewBadRequestError("POSTGRES_READ_REPLICA_NAME_DUPLICATE",
+				fmt.Sprintf("read replica names must be unique; %q appears more than once", r.Name),
+				map[string]any{"field": "readReplicas", "name": r.Name})
+		}
+		seen[r.Name] = true
+		if kept[r.Name] {
+			continue
+		}
+		if len(r.Name) > readReplicaNameMaxLength || len(validation.IsDNS1123Label(r.Name)) != 0 {
+			return core.NewBadRequestError("POSTGRES_READ_REPLICA_NAME_INVALID",
+				fmt.Sprintf("read replica name %q must be 1-%d lowercase letters, digits or hyphens, starting and ending with a letter or digit; it becomes part of the replica's hostname", r.Name, readReplicaNameMaxLength),
+				map[string]any{"field": "readReplicas", "name": r.Name, "maxLength": readReplicaNameMaxLength})
+		}
 	}
 	return nil
 }

@@ -122,3 +122,31 @@ func TestKeyValueEnumsAcceptBothSeparatorsOverREST(t *testing.T) {
 		}
 	}
 }
+
+// Render's postgresPATCHInput.readReplicas reaches bex's handler through the
+// composed stack and replaces the set (w5/m138). The pinned item schema also
+// allows a per-replica parameterOverrides, which bex cannot honor — its named
+// replicas share one reader pool — so the strict decoder refuses it by name
+// rather than dropping it, and a name bex cannot build a hostname from is a
+// named 400.
+func TestPostgresReadReplicasPatchThroughComposedStack(t *testing.T) {
+	h, _ := serverWith(t, &core.Base{Client: fakeClient(), Namespace: "default"}, Deps{})
+	w := do(t, h, http.MethodPost, "/v1/postgres", testToken, `{"name":"pgr","plan":"basic_1gb","diskSizeGB":10}`)
+	var created struct{ ID string }
+	if err := json.Unmarshal(w.Body.Bytes(), &created); w.Code != http.StatusCreated || err != nil || created.ID == "" {
+		t.Fatalf("create = %d %s", w.Code, w.Body.String())
+	}
+	path := "/v1/postgres/" + created.ID
+	w = do(t, h, http.MethodPatch, path, testToken, `{"readReplicas":[{"name":"r1"}]}`)
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"name":"r1"`) {
+		t.Fatalf("PATCH readReplicas = %d %s", w.Code, w.Body.String())
+	}
+	w = do(t, h, http.MethodPatch, path, testToken, `{"readReplicas":[{"name":"r1","parameterOverrides":{"work_mem":"4MB"}}]}`)
+	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), `unknown field \"parameterOverrides\"`) {
+		t.Fatalf("per-replica parameterOverrides = %d %s, want the strict decoder's named 400", w.Code, w.Body.String())
+	}
+	w = do(t, h, http.MethodPatch, path, testToken, `{"readReplicas":[{"name":"Reader_2"}]}`)
+	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "POSTGRES_READ_REPLICA_NAME_INVALID") {
+		t.Fatalf("invalid replica name = %d %s, want POSTGRES_READ_REPLICA_NAME_INVALID", w.Code, w.Body.String())
+	}
+}

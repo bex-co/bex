@@ -5,8 +5,13 @@
 // database, Key Value and workspace name becomes a CR name under — so the
 // client can never accept a name the backend would then reject. Both sides are
 // tested against lego/types/v1alpha1/testdata/resource-names.json (w5/m118).
-const DNS_LABEL_RE = /^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$/;
+const DNS_LABEL_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
+
+/** A DNS-1123 label of at most `maxLength` characters. */
+export function isDnsLabel(name: string, maxLength: number): boolean {
+  return name.length <= maxLength && DNS_LABEL_RE.test(name);
+}
 
 export function isValidDnsLabel(name: string): boolean {
-  return DNS_LABEL_RE.test(name);
+  return isDnsLabel(name, 30);
 }

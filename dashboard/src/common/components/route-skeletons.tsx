@@ -24,6 +24,7 @@ import {
 } from "@/common/components/datastore-plan-preview";
 import { servicePlanSlotCount } from "@/features/services/lib/instance-type";
 import {
+  DatabaseHighAvailabilityPreview,
   DatastoreConnectionsPreview,
   DatastoreMetadataPreview,
   KeyValueNetworkingPreview,
@@ -2402,7 +2403,7 @@ export function DatabaseOverviewSkeleton() {
           <ReservedCardSkeleton height={375} />
         </Region>
         <Region name="high-availability">
-          <ReservedCardSkeleton height={160} />
+          <DatabaseHighAvailabilityPreview />
         </Region>
         <Region name="metrics">
           <ReservedCardSkeleton height={320} />

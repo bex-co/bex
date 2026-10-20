@@ -89,9 +89,16 @@ var readReplicaConnectionInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
 var readReplicaViewGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "ReadReplicaView",
 	Fields: graphql.Fields{
-		"id":             gqlutil.StrField(func(v ReadReplicaView) any { return v.ID }),
-		"name":           gqlutil.StrField(func(v ReadReplicaView) any { return v.Name }),
-		"connectionInfo": gqlutil.Typed(readReplicaConnectionInfoGQLType, func(v ReadReplicaView) any { return v.ConnectionInfo }),
+		"id":   gqlutil.StrField(func(v ReadReplicaView) any { return v.ID }),
+		"name": gqlutil.StrField(func(v ReadReplicaView) any { return v.Name }),
+		// Dereferenced: gqlutil.Field asserts the value type, so a
+		// *ReadReplicaConnectionInfo would resolve every host to null.
+		"connectionInfo": gqlutil.Typed(readReplicaConnectionInfoGQLType, func(v ReadReplicaView) any {
+			if v.ConnectionInfo == nil {
+				return nil
+			}
+			return *v.ConnectionInfo
+		}),
 	},
 })
 
@@ -217,6 +224,17 @@ var readReplicaInputGQLType = graphql.NewInputObject(graphql.InputObjectConfig{
 		"name": &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
 	},
 })
+
+// readReplicaArgs reads the readReplicas argument, shared by createDatabase
+// and setDatabaseReadReplicas; an absent argument reads as no replicas.
+func readReplicaArgs(args map[string]any) []ReadReplicaInput {
+	items, _ := args["readReplicas"].([]any)
+	replicas := make([]ReadReplicaInput, 0, len(items))
+	for _, item := range items {
+		replicas = append(replicas, ReadReplicaInput{Name: item.(map[string]any)["name"].(string)})
+	}
+	return replicas
+}
 
 // databaseLogGQLType is one CNPG log line — timestamp, message, and labels
 // (service/instance/type) — the same Render shape as app log entries.
@@ -513,11 +531,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"dryRun": gqlutil.Arg(graphql.Boolean),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				items, _ := p.Args["readReplicas"].([]any)
-				replicas := make([]ReadReplicaInput, 0, len(items))
-				for _, item := range items {
-					replicas = append(replicas, ReadReplicaInput{Name: item.(map[string]any)["name"].(string)})
-				}
+				replicas := readReplicaArgs(p.Args)
 				return s.CreatePostgres(p.Context, CreatePostgresRequest{
 					Name:                  p.Args["name"].(string),
 					OwnerID:               gqlutil.Str(p.Args, "ownerId"),
@@ -560,6 +574,28 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				enabled := p.Args["enabled"].(bool)
 				return s.UpdatePostgres(p.Context, p.Args["id"].(string), PostgresPatch{EnableDiskAutoscaling: &enabled})
+			},
+		},
+		// setDatabaseReadReplicas replaces the named replica set (w5/m138), the
+		// GraphQL form of REST's PATCH readReplicas; [] removes every replica.
+		"setDatabaseReadReplicas": &graphql.Field{
+			Type: postgresGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":           gqlutil.ReqArg(graphql.String),
+				"readReplicas": gqlutil.ReqArg(graphql.NewList(graphql.NewNonNull(readReplicaInputGQLType))),
+				"dryRun":       gqlutil.Arg(graphql.Boolean),
+				// As gqlutil.PatchMutation threads it: unguarded today, so a
+				// future protected-environment guard has a way to confirm.
+				"confirm": gqlutil.Arg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				replicas := readReplicaArgs(p.Args)
+				patch := PostgresPatch{ReadReplicas: &replicas}
+				ctx := core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm"))
+				if gqlutil.Bool(p.Args, "dryRun") {
+					return s.UpdatePostgresDryRun(ctx, p.Args["id"].(string), patch)
+				}
+				return s.UpdatePostgres(ctx, p.Args["id"].(string), patch)
 			},
 		},
 		"renameDatabase": gqlutil.PatchMutation(postgresGQLType, "name",

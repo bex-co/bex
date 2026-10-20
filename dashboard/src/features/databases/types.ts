@@ -97,6 +97,8 @@ export interface DatabaseInstanceTypeView {
   supportsDiskAutoscaling: boolean;
   supportsConnectionPooling: boolean;
   maxReadReplicas: number;
+  /** Storage a database needs before it may carry read replicas, in GB. */
+  readReplicaMinStorageGB: number;
   /** The plan offers high availability (at least 1 CPU; w8/m43). */
   supportsHighAvailability: boolean;
   /** Always-on monthly price ("14.00"), "" when the sheet lists none (w4/156). */

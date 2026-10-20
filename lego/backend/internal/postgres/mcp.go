@@ -324,7 +324,9 @@ type updatePostgresArgs struct {
 	// needs on a member of a protected environment (w4/m127).
 	Confirm string `json:"confirm,omitempty" jsonschema:"exact confirmation phrase returned when a protected environment blocks a rename or version upgrade"`
 	Public  *bool  `json:"public,omitempty" jsonschema:"expose (true) or withdraw (false) the external TLS endpoint; overrides publication inferred from ipAllowList in the same call. public:true with [] deliberately enables external access without resource-level IP restrictions; environment rules still apply"`
-	DryRun  bool   `json:"dryRun,omitempty" jsonschema:"if true, validate and return the resolved preview without any writes"`
+	// ReadReplicas is REST's postgresPATCHInput.readReplicas (w5/m138).
+	ReadReplicas *[]ReadReplicaInput `json:"readReplicas,omitempty" jsonschema:"replaces the named read replica set with these {name} entries; [] removes every replica, omission leaves them unchanged"`
+	DryRun       bool                `json:"dryRun,omitempty" jsonschema:"if true, validate and return the resolved preview without any writes"`
 }
 
 type userArgs struct {
@@ -363,7 +365,7 @@ func (s *Service) registerAccessMCP(srv *mcp.Server) {
 		// The disk-autoscaling cap is interpolated from the shared plan catalog
 		// rather than written out, so the number an agent reads cannot drift from
 		// the number the operator enforces (pinned by the adapter-parity test).
-		Description: fmt.Sprintf("Update a managed Postgres database's settings in one call: name, plan, major version, disk size, disk autoscaling, connection pooling, external access, IP allowlist, and postgresql.conf parameter overrides. Omitted fields stay unchanged; supplied lists and maps replace the declared set (empty clears it). An empty ipAllowList disables external connections; a nonempty list enables access for its source CIDRs. An explicit public value overrides that inferred publication state. Internal access is unchanged. Pass dryRun:true to validate and preview without writes. A plan change is billable, and a version upgrade takes the database offline during pg_upgrade. Free storage is fixed at 1 GB; autoscaling and connection pooling require a paid plan. With enableDiskAutoscaling on, storage grows by 50%% rounded up to 5 GB at 90%% full, capped at %d TB with a 12-hour cooldown.", tiers.Postgres.DiskAutoscalingCapGB()/1024),
+		Description: fmt.Sprintf("Update a managed Postgres database's settings in one call: name, plan, major version, disk size, disk autoscaling, connection pooling, external access, IP allowlist, read replicas, and postgresql.conf parameter overrides. Omitted fields stay unchanged; supplied lists and maps replace the declared set (empty clears it). An empty ipAllowList disables external connections; a nonempty list enables access for its source CIDRs. An explicit public value overrides that inferred publication state. Internal access is unchanged. Pass dryRun:true to validate and preview without writes. A plan change is billable, and a version upgrade takes the database offline during pg_upgrade. Free storage is fixed at 1 GB; autoscaling and connection pooling require a paid plan. With enableDiskAutoscaling on, storage grows by 50%% rounded up to 5 GB at 90%% full, capped at %d TB with a 12-hour cooldown. readReplicas replaces the named replica set: at most %d, on plans with at least %s CPU and %d GB of storage; a new name is a lowercase DNS label of at most %d characters, and each replica is a billed instance.", tiers.Postgres.DiskAutoscalingCapGB()/1024, tiers.PostgresMaxReadReplicas, tiers.PostgresReadReplicaMinCPU, tiers.PostgresReadReplicaMinStorageGB, readReplicaNameMaxLength),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updatePostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
 		allowList, err := core.ResolveAllowListPatch(in.IPAllowList, in.IPAllowListCidrs)
 		if err != nil {
@@ -383,6 +385,7 @@ func (s *Service) registerAccessMCP(srv *mcp.Server) {
 			ParameterOverrides:    in.ParameterOverrides,
 			IPAllowList:           allowList,
 			Public:                in.Public,
+			ReadReplicas:          in.ReadReplicas,
 		}
 		// The protected-environment phrase reaches the dry-run too: it is the
 		// real call stopped before its first write (w5/m116).

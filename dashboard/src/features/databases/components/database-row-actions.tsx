@@ -57,10 +57,7 @@ export function DatabaseRowActionsWithCapabilities({
   lifecycle,
   capabilities,
 }: DatabaseRowActionsProps & {
-  capabilities: Pick<
-    Capabilities,
-    "canCreate" | "canOperate" | "reasonKey"
-  >;
+  capabilities: Pick<Capabilities, "canCreate" | "canOperate" | "reasonKey">;
 }) {
   const { t } = useTranslations();
   const { canCreate, canOperate } = capabilities;

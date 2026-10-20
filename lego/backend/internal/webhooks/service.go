@@ -119,12 +119,13 @@ const (
 	TypePostgresCredentialsCreated = eventvocab.TypePostgresCredentialsCreated
 	TypePostgresCredentialsDeleted = eventvocab.TypePostgresCredentialsDeleted
 	TypePostgresBackupStarted      = eventvocab.TypePostgresBackupStarted
-	// Field-level datastore configuration changes (w3/m82). Render's
-	// postgres_read_replicas_changed stays unsupported — see eventvocab.
-	TypePostgresHAStatusChanged              = eventvocab.TypePostgresHAStatusChanged
-	TypePostgresConnectionPoolEnabledChanged = eventvocab.TypePostgresConnectionPoolEnabledChanged
-	TypePostgresDiskSizeChanged              = eventvocab.TypePostgresDiskSizeChanged
-	TypeKeyValueConfigRestart                = eventvocab.TypeKeyValueConfigRestart
+	// Field-level datastore configuration changes (w3/m82, w5/m138).
+	TypePostgresHAStatusChanged               = eventvocab.TypePostgresHAStatusChanged
+	TypePostgresConnectionPoolEnabledChanged  = eventvocab.TypePostgresConnectionPoolEnabledChanged
+	TypePostgresDiskSizeChanged               = eventvocab.TypePostgresDiskSizeChanged
+	TypePostgresReadReplicasChanged           = eventvocab.TypePostgresReadReplicasChanged
+	TypePostgresDiskAutoscalingEnabledChanged = eventvocab.TypePostgresDiskAutoscalingEnabledChanged
+	TypeKeyValueConfigRestart                 = eventvocab.TypeKeyValueConfigRestart
 	// Observed datastore lifecycle (w3/m82). Unlike every datastore name above
 	// these are not audit effects: the control-plane reconciler derives them
 	// from Database/KeyValue status and records them as typed

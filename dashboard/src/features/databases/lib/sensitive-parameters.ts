@@ -19,7 +19,9 @@ const SENSITIVE_LOGGING_PARAMETERS = new Set([
 const SENSITIVE_LOGGING_PARAMETER_PREFIXES = ["debug_print_", "auto_explain."];
 
 /** Whether any of the given parameter names is a statement-logging setting. */
-export function setsSensitiveLoggingParameter(names: readonly string[]): boolean {
+export function setsSensitiveLoggingParameter(
+  names: readonly string[],
+): boolean {
   return names.some((raw) => {
     const name = raw.trim().toLowerCase();
     if (SENSITIVE_LOGGING_PARAMETERS.has(name)) return true;

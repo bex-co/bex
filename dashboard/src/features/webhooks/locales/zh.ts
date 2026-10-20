@@ -633,6 +633,14 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     message: "Postgres 磁盘容量变更",
     description: "Event label — postgres_disk_size_changed",
   },
+  "webhooks.event.postgres_disk_autoscaling_enabled_changed": {
+    message: "Postgres 磁盘自动扩容变更",
+    description: "Event label — postgres_disk_autoscaling_enabled_changed",
+  },
+  "webhooks.event.postgres_read_replicas_changed": {
+    message: "Postgres 只读副本变更",
+    description: "Event label — postgres_read_replicas_changed",
+  },
   "webhooks.event.postgres_backup_completed": {
     message: "Postgres 备份完成",
     description: "Event label — postgres_backup_completed",

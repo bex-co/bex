@@ -296,7 +296,8 @@ const enDatabases: Record<string, TranslationEntry> = {
       "Why an unavailable database is unavailable: the operator's PoolerFailed Ready reason (bex-api statusReasonCode)",
   },
   "databases.statusReasonExtensionsFailed": {
-    message: "The database's managed extensions could not be installed, so it is not available yet.",
+    message:
+      "The database's managed extensions could not be installed, so it is not available yet.",
     description:
       "Why an unavailable database is unavailable: the operator's ExtensionsFailed Ready reason (bex-api statusReasonCode)",
   },
@@ -1026,9 +1027,94 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "External",
     description: "HA panel replica connection label (public SNI host)",
   },
+  "databases.haAddReplica": {
+    message: "Add read replica",
+    description:
+      "HA panel button that opens the add-read-replica dialog (w5/m138)",
+  },
+  "databases.haAddReplicaTitle": {
+    message: "Add a read replica",
+    description: "Add-read-replica dialog title",
+  },
+  "databases.haAddReplicaBody": {
+    message:
+      "A read replica is a separate, billed instance that streams from the primary and serves read-only queries at its own address.",
+    description: "Add-read-replica dialog description",
+  },
+  "databases.haReplicaNameLabel": {
+    message: "Name",
+    description: "Add-read-replica dialog name field label",
+  },
+  "databases.haReplicaNameHint": {
+    message:
+      "Lowercase letters, digits and hyphens, up to {max} characters. It becomes part of the replica's hostname.",
+    description: "Add-read-replica name hint; max is the API's length limit",
+  },
+  "databases.haReplicaNameInvalid": {
+    message:
+      "Use 1–{max} lowercase letters, digits or hyphens, starting and ending with a letter or digit.",
+    description:
+      "Add-read-replica name error; mirrors the API's POSTGRES_READ_REPLICA_NAME_INVALID",
+  },
+  "databases.haReplicaNameDuplicate": {
+    message: "This database already has a read replica named {name}.",
+    description: "Add-read-replica name error for a name already in use",
+  },
+  "databases.haAddReplicaSubmit": {
+    message: "Add replica",
+    description: "Add-read-replica dialog submit button",
+  },
+  "databases.haAddReplicaSuccess": {
+    message: "Read replica {name} is being created.",
+    description: "Toast after a read replica is added",
+  },
+  "databases.haAddReplicaError": {
+    message: "Couldn't add read replica {name}.",
+    description: "Toast when adding a read replica fails",
+  },
+  "databases.haRemoveReplica": {
+    message: "Remove",
+    description: "HA panel per-replica remove button",
+  },
+  "databases.haRemoveReplicaTitle": {
+    message: "Remove read replica {name}?",
+    description: "Remove-read-replica confirmation title",
+  },
+  "databases.haRemoveReplicaBody": {
+    message:
+      "Its instance is deleted and its connection strings stop working. The primary is unaffected.",
+    description: "Remove-read-replica confirmation body",
+  },
+  "databases.haRemoveReplicaConfirm": {
+    message: "Remove replica",
+    description: "Remove-read-replica confirm button",
+  },
+  "databases.haRemoveReplicaSuccess": {
+    message: "Read replica {name} is being removed.",
+    description: "Toast after a read replica is removed",
+  },
+  "databases.haRemoveReplicaError": {
+    message: "Couldn't remove read replica {name}.",
+    description: "Toast when removing a read replica fails",
+  },
+  "databases.haReplicaPlanUnsupported": {
+    message: "Read replicas aren't available on this database's plan.",
+    description: "Why Add read replica is disabled: the plan allows none",
+  },
+  "databases.haReplicaLimitReached": {
+    message: "This database has the maximum of {max} read replicas.",
+    description:
+      "Why Add read replica is disabled: the plan's replica limit is reached",
+  },
+  "databases.haReplicaStorageTooSmall": {
+    message:
+      "Read replicas need at least {min} GB of storage; this database has {current} GB.",
+    description:
+      "Why Add read replica is disabled: storage is below the replica minimum",
+  },
   "databases.haNotEnabled": {
     message: "High availability is not enabled for this database.",
-    description: "HA panel state when HA is off and there are no replicas",
+    description: "HA panel line when HA is off on a plan that offers it",
   },
   "databases.haPlanUnsupported": {
     message:

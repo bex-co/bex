@@ -644,6 +644,14 @@ const enWebhooks: Record<string, TranslationEntry> = {
     message: "Postgres Disk Size Changed",
     description: "Event label — postgres_disk_size_changed",
   },
+  "webhooks.event.postgres_disk_autoscaling_enabled_changed": {
+    message: "Postgres Disk Autoscaling Changed",
+    description: "Event label — postgres_disk_autoscaling_enabled_changed",
+  },
+  "webhooks.event.postgres_read_replicas_changed": {
+    message: "Postgres Read Replicas Changed",
+    description: "Event label — postgres_read_replicas_changed",
+  },
   "webhooks.event.postgres_backup_completed": {
     message: "Postgres Backup Completed",
     description: "Event label — postgres_backup_completed",

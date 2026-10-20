@@ -997,9 +997,92 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "外部",
     description: "HA panel replica connection label (public SNI host)",
   },
+  "databases.haAddReplica": {
+    message: "添加只读副本",
+    description:
+      "HA panel button that opens the add-read-replica dialog (w5/m138)",
+  },
+  "databases.haAddReplicaTitle": {
+    message: "添加只读副本",
+    description: "Add-read-replica dialog title",
+  },
+  "databases.haAddReplicaBody": {
+    message:
+      "只读副本是一个单独计费的实例，从主库同步数据，并在自己的地址上提供只读查询。",
+    description: "Add-read-replica dialog description",
+  },
+  "databases.haReplicaNameLabel": {
+    message: "名称",
+    description: "Add-read-replica dialog name field label",
+  },
+  "databases.haReplicaNameHint": {
+    message:
+      "小写字母、数字和连字符，最多 {max} 个字符。名称会成为副本主机名的一部分。",
+    description: "Add-read-replica name hint; max is the API's length limit",
+  },
+  "databases.haReplicaNameInvalid": {
+    message:
+      "请使用 1–{max} 个小写字母、数字或连字符，并以字母或数字开头和结尾。",
+    description:
+      "Add-read-replica name error; mirrors the API's POSTGRES_READ_REPLICA_NAME_INVALID",
+  },
+  "databases.haReplicaNameDuplicate": {
+    message: "此数据库已有名为 {name} 的只读副本。",
+    description: "Add-read-replica name error for a name already in use",
+  },
+  "databases.haAddReplicaSubmit": {
+    message: "添加副本",
+    description: "Add-read-replica dialog submit button",
+  },
+  "databases.haAddReplicaSuccess": {
+    message: "正在创建只读副本 {name}。",
+    description: "Toast after a read replica is added",
+  },
+  "databases.haAddReplicaError": {
+    message: "无法添加只读副本 {name}。",
+    description: "Toast when adding a read replica fails",
+  },
+  "databases.haRemoveReplica": {
+    message: "移除",
+    description: "HA panel per-replica remove button",
+  },
+  "databases.haRemoveReplicaTitle": {
+    message: "移除只读副本 {name}？",
+    description: "Remove-read-replica confirmation title",
+  },
+  "databases.haRemoveReplicaBody": {
+    message: "该副本的实例将被删除，其连接字符串将失效。主库不受影响。",
+    description: "Remove-read-replica confirmation body",
+  },
+  "databases.haRemoveReplicaConfirm": {
+    message: "移除副本",
+    description: "Remove-read-replica confirm button",
+  },
+  "databases.haRemoveReplicaSuccess": {
+    message: "正在移除只读副本 {name}。",
+    description: "Toast after a read replica is removed",
+  },
+  "databases.haRemoveReplicaError": {
+    message: "无法移除只读副本 {name}。",
+    description: "Toast when removing a read replica fails",
+  },
+  "databases.haReplicaPlanUnsupported": {
+    message: "此数据库的套餐不支持只读副本。",
+    description: "Why Add read replica is disabled: the plan allows none",
+  },
+  "databases.haReplicaLimitReached": {
+    message: "此数据库已达到 {max} 个只读副本的上限。",
+    description:
+      "Why Add read replica is disabled: the plan's replica limit is reached",
+  },
+  "databases.haReplicaStorageTooSmall": {
+    message: "只读副本至少需要 {min} GB 存储；此数据库为 {current} GB。",
+    description:
+      "Why Add read replica is disabled: storage is below the replica minimum",
+  },
   "databases.haNotEnabled": {
     message: "该数据库未启用高可用。",
-    description: "HA panel state when HA is off and there are no replicas",
+    description: "HA panel line when HA is off on a plan that offers it",
   },
   "databases.haPlanUnsupported": {
     message: "高可用需要至少 1 个 CPU 的规格，当前规格不支持。",

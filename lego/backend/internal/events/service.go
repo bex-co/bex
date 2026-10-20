@@ -212,7 +212,10 @@ const (
 	TypePostgresHAStatusChanged              = eventvocab.TypePostgresHAStatusChanged
 	TypePostgresConnectionPoolEnabledChanged = eventvocab.TypePostgresConnectionPoolEnabledChanged
 	TypePostgresDiskSizeChanged              = eventvocab.TypePostgresDiskSizeChanged
-	TypeKeyValueConfigRestart                = eventvocab.TypeKeyValueConfigRestart
+	// Thin, like Render's envelope: no detail beyond the type (w5/m138).
+	TypePostgresReadReplicasChanged           = eventvocab.TypePostgresReadReplicasChanged
+	TypePostgresDiskAutoscalingEnabledChanged = eventvocab.TypePostgresDiskAutoscalingEnabledChanged
+	TypeKeyValueConfigRestart                 = eventvocab.TypeKeyValueConfigRestart
 	// Observed datastore lifecycle (w3/m82): typed datastore_event_facts rows
 	// the control-plane reconciler records, not audit effects. Like the audit
 	// names above they have no service-scoped list home — a datastore is not an
