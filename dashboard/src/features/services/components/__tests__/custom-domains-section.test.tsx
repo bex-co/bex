@@ -311,6 +311,29 @@ describe("CustomDomainsSection", () => {
     expect(document.body.textContent).not.toContain("_bex-challenge");
   });
 
+  it("shows each resolved edge address as an A record for an apex domain (w4/378)", () => {
+    mockUseCustomDomains.mockReturnValue(
+      domainsResult([
+        {
+          name: "example.com",
+          domainType: "apex",
+          dnsVerified: false,
+          certificateVerified: false,
+          active: false,
+          redirectForName: null,
+          certificateReason: null,
+          dnsRecord: { type: "ALIAS", name: "@", value: "web.onbex.co" },
+          edgeAddresses: ["203.0.113.10", "203.0.113.11"],
+        },
+      ]),
+    );
+    render(<CustomDomainsSection serviceId="web" />);
+    expect(screen.getByText(/No ALIAS\/ANAME or CNAME flattening/)).toBeInTheDocument();
+    expect(screen.getByText("203.0.113.10")).toBeInTheDocument();
+    expect(screen.getByText("203.0.113.11")).toBeInTheDocument();
+    expect(screen.getAllByText("A")).toHaveLength(2);
+  });
+
   it("shows exactly two traffic records total for an unverified apex+www pair", () => {
     mockUseCustomDomains.mockReturnValue(
       domainsResult([apexDomain, wwwSiblingDomain]),

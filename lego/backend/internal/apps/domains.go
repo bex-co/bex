@@ -132,6 +132,41 @@ func (c systemDomainTrafficChecker) PointsAtService(ctx context.Context, host, p
 	return slices.ContainsFunc(hostAddrs, func(addr string) bool { return edge[addr] })
 }
 
+// domainHostResolver is the seam edgeAddressesFor resolves through: the
+// injected DomainResolver when set, nil ⇒ the system resolver.
+func (s *Service) domainHostResolver() domainResolver {
+	if s.DomainResolver != nil {
+		return s.DomainResolver
+	}
+	return net.DefaultResolver
+}
+
+// edgeAddressesFor returns the platform host's current edge addresses for an
+// apex domain — the A-record fallback a registrar without ALIAS/ANAME needs
+// (ADR005). Best-effort by contract: subdomains, an empty platform host, and
+// any resolution failure all yield nil, so the setup guidance renders
+// without addresses rather than printing a stale one (w4/378).
+func (s *Service) edgeAddressesFor(ctx context.Context, dtype, platformHost string) []string {
+	if dtype != "apex" || platformHost == "" {
+		return nil
+	}
+	lookupCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	addrs, err := s.domainHostResolver().LookupHost(lookupCtx, normalizeHostname(platformHost))
+	if err != nil || len(addrs) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(addrs))
+	seen := make(map[string]bool, len(addrs))
+	for _, addr := range addrs {
+		if !seen[addr] {
+			seen[addr] = true
+			out = append(out, addr)
+		}
+	}
+	return out
+}
+
 func (s *Service) domainTrafficChecker() DomainTrafficChecker {
 	if s.DomainTraffic != nil {
 		return s.DomainTraffic
@@ -173,6 +208,11 @@ type DomainView struct {
 	// DNSRecord is the record the tenant must create at their registrar to point
 	// this domain at the service (Render's post-add DNS instructions, w5/m10).
 	DNSRecord DNSRecordView
+	// EdgeAddresses is an apex domain's A-record fallback: the platform host's
+	// currently resolved edge addresses, resolved at read time (ADR005). Nil
+	// for subdomains and whenever resolution fails — the setup guidance then
+	// renders without addresses rather than showing a stale value (w4/378).
+	EdgeAddresses []string
 }
 
 // DNSRecordView is the single DNS record a tenant creates to point a custom
@@ -542,6 +582,7 @@ func (s *Service) domainView(ctx context.Context, app *appv1alpha1.App, host, pl
 		ServerStatus:       sStatus,
 		RedirectForName:    app.Spec.HostRedirects[host],
 		DNSRecord:          dnsRecordFor(host, dtype, platformHost),
+		EdgeAddresses:      s.edgeAddressesFor(ctx, dtype, platformHost),
 	}
 	if !app.CreationTimestamp.IsZero() {
 		view.CreatedAt = app.CreationTimestamp.UTC().Format(time.RFC3339Nano)
@@ -570,6 +611,7 @@ func (s *Service) domainClaimView(ctx context.Context, app *appv1alpha1.App, cla
 		view.CreatedAt = claim.CreatedAt.UTC().Format(time.RFC3339Nano)
 	}
 	view.DNSRecord = dnsRecordFor(claim.Host, view.DomainType, platformHost)
+	view.EdgeAddresses = s.edgeAddressesFor(ctx, view.DomainType, platformHost)
 	if claim.ClaimState != "verified" {
 		return view
 	}

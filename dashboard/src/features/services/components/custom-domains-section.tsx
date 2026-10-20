@@ -355,6 +355,20 @@ function DnsRecordFields({ domain }: { domain: CustomDomainView }) {
           {t("services.domainDnsUnavailable")}
         </p>
       )}
+      {domain.domainType === "apex" &&
+      (domain.edgeAddresses ?? []).length > 0 ? (
+        <>
+          <p className="text-muted-foreground text-sm">
+            {t("services.domainDnsApexFallback")}
+          </p>
+          {(domain.edgeAddresses ?? []).map((addr) => (
+            <DnsRecordFieldsRow
+              key={addr}
+              record={{ type: "A", name: "@", value: addr }}
+            />
+          ))}
+        </>
+      ) : null}
     </div>
   );
 }
