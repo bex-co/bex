@@ -15,6 +15,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -52,6 +53,20 @@ func server() {
 	http.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprintf(w, "%s http 8123\n", marker())
 	})
+	// The process's own privilege profile, read from inside the running pod,
+	// so acceptance checks what the container actually got (w6/m148).
+	http.HandleFunc("/proc", func(w http.ResponseWriter, _ *http.Request) {
+		status, _ := os.ReadFile("/proc/self/status")
+		uidMap, _ := os.ReadFile("/proc/self/uid_map")
+		for _, line := range strings.Split(string(status), "\n") {
+			for _, key := range []string{"CapBnd:", "CapEff:", "NoNewPrivs:", "Seccomp:"} {
+				if strings.HasPrefix(line, key) {
+					fmt.Fprintln(w, line)
+				}
+			}
+		}
+		fmt.Fprintf(w, "uid_map: %s", uidMap)
+	})
 	log.Print("listening on 8123 (http) and 9000 (tcp); $PORT is ignored")
 	log.Fatal(http.ListenAndServe("0.0.0.0:8123", nil))
 }
@@ -71,6 +86,11 @@ func consumer() {
 			body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 			resp.Body.Close()
 			report["http"] = string(body)
+		}
+		if resp, err := client.Get("http://" + report["API_HOSTPORT"] + "/proc"); err == nil {
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+			resp.Body.Close()
+			report["server_proc"] = string(body)
 		}
 		if conn, err := net.DialTimeout("tcp", net.JoinHostPort(report["API_HOST"], "9000"), 5*time.Second); err != nil {
 			report["tcp"] = "error: " + err.Error()
