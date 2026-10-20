@@ -347,6 +347,91 @@ func TestCreateDuplicateNameIsConflict(t *testing.T) {
 	}
 }
 
+// dupEnvGroupings is a GroupingStore fake whose CreateEnvironment enforces
+// (project, name) uniqueness the way the real grouping tx does (w4/372);
+// dupEnvTxStore carries the created environment names across the tx boundary
+// so the test can see what landed.
+type dupEnvGroupings struct{ t *dupEnvTxStore }
+
+type dupEnvTxStore struct {
+	*fakeProjectStore
+	envs map[string][]string
+}
+
+func (t *dupEnvTxStore) RunGroupingTx(ctx context.Context, fn func(store.GroupingStore) error) error {
+	return fn(dupEnvGroupings{t})
+}
+
+func (g dupEnvGroupings) ListProjects(ctx context.Context, tenantID string) ([]store.Project, error) {
+	return g.t.ListProjects(ctx, tenantID)
+}
+
+func (g dupEnvGroupings) CreateProject(ctx context.Context, tenantID, name string) (store.Project, error) {
+	return g.t.CreateProject(ctx, tenantID, name)
+}
+
+func (dupEnvGroupings) ListEnvironments(context.Context, string) ([]store.Environment, error) {
+	return nil, nil
+}
+
+func (g dupEnvGroupings) CreateEnvironment(_ context.Context, projectID, _, name string) (store.Environment, error) {
+	for _, n := range g.t.envs[projectID] {
+		if n == name {
+			// Mirrors the real store's classify("environment", …) on a
+			// UNIQUE(project_id, name) violation.
+			return store.Environment{}, fmt.Errorf("environment: %w", store.ErrConflict)
+		}
+	}
+	g.t.envs[projectID] = append(g.t.envs[projectID], name)
+	return store.Environment{ID: "env-" + name, Name: name}, nil
+}
+
+func (dupEnvGroupings) SetEnvironmentACL(context.Context, string, string, bool, []core.IPAllowListEntry) error {
+	return nil
+}
+
+func (g dupEnvGroupings) CountWorkspaceGroupings(ctx context.Context, tenantID string) (int, int, error) {
+	ps, err := g.t.ListProjects(ctx, tenantID)
+	if err != nil {
+		return 0, 0, err
+	}
+	n := 0
+	for _, names := range g.t.envs {
+		n += len(names)
+	}
+	return len(ps), n, nil
+}
+
+// w4/372: a duplicate environment supplied inline in the project-create body
+// must conflict naming that environment — the same message POST
+// /v1/environments gives — not the unnamed "environment: already exists".
+func TestCreateWithDuplicateInlineEnvironmentNamesIt(t *testing.T) {
+	newSvc := func() (*Service, *dupEnvTxStore) {
+		st := &dupEnvTxStore{fakeProjectStore: newFakeProjectStore(), envs: map[string][]string{}}
+		return &Service{Base: &core.Base{Authz: allowChecker{}}, Store: st}, st
+	}
+	svc, _ := newSvc()
+	ctx := ctxAs("user-a")
+
+	_, err := svc.CreateWithEnvironments(ctx, "tea-a", "proj", []EnvironmentInput{{Name: "staging"}, {Name: "staging"}})
+	var coded *core.CodedError
+	if !errors.Is(err, core.ErrConflict) || !errors.As(err, &coded) || coded.Code != "CONFLICT" {
+		t.Fatalf("duplicate inline environment: got %v, want a CONFLICT-coded 409", err)
+	}
+	if want := `an environment named "staging" already exists in this project`; err.Error() != want {
+		t.Errorf("message = %q, want %q", err.Error(), want)
+	}
+
+	// Distinct inline names still create both in one call.
+	svc, st := newSvc()
+	if _, err := svc.CreateWithEnvironments(ctx, "tea-a", "proj2", []EnvironmentInput{{Name: "staging"}, {Name: "prod"}}); err != nil {
+		t.Fatalf("distinct inline environments: %v", err)
+	}
+	if got := st.envs["prj-created"]; len(got) != 2 {
+		t.Errorf("created environments = %v, want staging+prod", got)
+	}
+}
+
 // w4/155: a rename onto a taken name answers like a create does, and a rename
 // to the row's own name is not a conflict with itself.
 func TestRenameOntoATakenNameIsANamedConflict(t *testing.T) {

@@ -472,7 +472,7 @@ func (s *Service) CreateWithEnvironments(ctx context.Context, workspaceID, name 
 			for _, input := range environments {
 				e, err := g.CreateEnvironment(ctx, p.ID, workspaceID, input.Name)
 				if err != nil {
-					return store.MapError(err)
+					return envConflictOrMapError(err, input.Name)
 				}
 				if input.ProtectedStatus == "" && !input.NetworkIsolationEnabled && input.IPAllowList == nil {
 					continue
@@ -497,6 +497,19 @@ func (s *Service) CreateWithEnvironments(ctx context.Context, workspaceID, name 
 		return ProjectView{}, conflictOrMapError(err, name)
 	}
 	return toView(p), nil
+}
+
+// envConflictOrMapError names the attempted inline environment name on a
+// duplicate-name conflict inside the project-create transaction — the same
+// message the POST /v1/environments verb gives (environments'
+// conflictOrMapError), so a caller can tell which inline environment
+// collided — and otherwise falls through to store.MapError (w4/372).
+func envConflictOrMapError(err error, name string) error {
+	if errors.Is(err, store.ErrConflict) {
+		return core.NewConflictError("CONFLICT",
+			fmt.Sprintf("an environment named %q already exists in this project", name), nil)
+	}
+	return store.MapError(err)
 }
 
 // conflictOrMapError names the attempted project name on a duplicate-name
