@@ -445,7 +445,7 @@ const enEnvGroups: Record<string, TranslationEntry> = {
     description: "Linked-services inventory error",
   },
   "envGroups.incompatibleLink": {
-    message: "Legacy link outside this group's Environment",
+    message: "Linked outside this group's Environment",
     description: "Warning on an existing incompatible Environment Group link",
   },
   "envGroups.searchPlaceholder": {

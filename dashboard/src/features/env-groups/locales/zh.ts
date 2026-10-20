@@ -430,7 +430,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Linked-services inventory error",
   },
   "envGroups.incompatibleLink": {
-    message: "旧关联不在此组的环境范围内",
+    message: "关联不在此组的环境范围内",
     description: "Warning on an existing incompatible Environment Group link",
   },
   "envGroups.searchPlaceholder": {

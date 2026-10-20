@@ -83,6 +83,13 @@ import { useSetEnvironmentServices } from "@/features/environments/hooks/use-set
 import { useSetEnvironmentDatabases } from "@/features/environments/hooks/use-set-environment-databases";
 import { useSetEnvironmentKeyValues } from "@/features/environments/hooks/use-set-environment-keyvalues";
 import { useSetEnvironmentEnvGroups } from "@/features/environments/hooks/use-set-environment-env-groups";
+import { toast } from "sonner";
+import { useStrandedLinkGuard } from "@/features/env-groups/hooks/use-stranded-link-guard";
+import { strandedPromptItems } from "@/features/env-groups/lib/stranded";
+import {
+  StrandedGroupsConfirmDialog,
+  type StrandedGroupPromptItem,
+} from "@/features/environments/components/stranded-groups-confirm-dialog";
 
 export interface EnvironmentCardProps {
   environment: EnvironmentView;
@@ -152,6 +159,11 @@ export function EnvironmentCard({
     useSetEnvironmentKeyValues();
   const { setEnvGroups, busyId: envGroupsBusyId } =
     useSetEnvironmentEnvGroups();
+  const guard = useStrandedLinkGuard();
+  const [strandedPrompt, setStrandedPrompt] = useState<{
+    targetId: string;
+    items: StrandedGroupPromptItem[];
+  } | null>(null);
 
   const rows = useMemo((): ResourceRow[] => {
     const serviceById = new Map(services.map((s) => [s.id, s]));
@@ -243,6 +255,33 @@ export function EnvironmentCard({
     const selectedRows = rows.filter((row) =>
       selectedHere.has(resourceSelectionKey(row)),
     );
+    // w4/m238: a move that would leave a service linked to a group scoped
+    // elsewhere asks first; with no stranded link the move is exactly the
+    // single write it is today.
+    const movingServiceIds = selectedRows
+      .filter((row) => row.kind === "service")
+      .map((row) => row.id);
+    if (movingServiceIds.length > 0) {
+      if (!guard.ready) {
+        toast.error(t("environments.strandedScopeUnknown"));
+        return;
+      }
+      const stranded = guard.strandedFor(movingServiceIds, target.id);
+      if (stranded.length > 0) {
+        setStrandedPrompt({
+          targetId: target.id,
+          items: strandedPromptItems(stranded, guard.scopeNameFor),
+        });
+        return;
+      }
+    }
+    await performMove(target, selectedRows);
+  }
+
+  async function performMove(
+    target: EnvironmentView,
+    selectedRows: ResourceRow[],
+  ) {
     // One entry per resource kind: which of the target's ids that kind already
     // holds, and the setter that replaces them. All four setters share the same
     // (id, name, ids) => Promise<boolean> shape, so the move is one loop.
@@ -479,6 +518,25 @@ export function EnvironmentCard({
         }
         pending={deletingThis}
         onConfirm={() => void handleDelete()}
+      />
+
+      <StrandedGroupsConfirmDialog
+        open={strandedPrompt != null}
+        onOpenChange={(next) => {
+          if (!next) setStrandedPrompt(null);
+        }}
+        items={strandedPrompt?.items ?? []}
+        onConfirm={() => {
+          const target = moveTargets.find(
+            (candidate) => candidate.id === strandedPrompt?.targetId,
+          );
+          setStrandedPrompt(null);
+          if (!target) return;
+          const selectedRows = rows.filter((row) =>
+            selectedHere.has(resourceSelectionKey(row)),
+          );
+          void performMove(target, selectedRows);
+        }}
       />
 
       <ManageResourcesDialog

@@ -1039,6 +1039,22 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Env-groups badge: this group is linked to the current service",
   },
+  "services.envGroupWorkspaceScope": {
+    message: "工作区",
+    description: "Scope label for a workspace-scoped environment group",
+  },
+  "services.envGroupOutOfScope": {
+    message:
+      "该组作用于 {groupScope}，但此服务位于 {serviceScope}——其变量和文件仍会继续生效。",
+    description:
+      "Notice on a linked group whose scope no longer matches the service (w4/m238)",
+  },
+  "services.envGroupOutOfScopeNoEnvironment": {
+    message:
+      "该组作用于 {groupScope}，但此服务没有所属环境——其变量和文件仍会继续生效。",
+    description:
+      "Notice on a linked group scoped to an environment while the service has none (w4/m238)",
+  },
   "services.envGroupEmptyContents": {
     message: "暂无变量或文件。",
     description: "Env-groups: shown when a group has no vars or secret files",

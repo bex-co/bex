@@ -20,6 +20,20 @@ vi.mock("@/features/projects/hooks/use-move-to-project", () => ({
   }),
 }));
 
+// w4/m238: the stranded-link guard is inert here — reads resolved, nothing
+// stranded; the menu never renders with no projects.
+vi.mock("@/features/env-groups/hooks/use-stranded-link-guard", () => ({
+  useStrandedLinkGuard: () => ({
+    groups: [],
+    ready: true,
+    loading: false,
+    error: undefined,
+    retry: () => undefined,
+    strandedFor: () => [],
+    scopeNameFor: () => undefined,
+  }),
+}));
+
 const apolloQuery = vi.fn();
 vi.mock("@apollo/client/react", () => ({
   useApolloClient: () => ({ query: apolloQuery }),
