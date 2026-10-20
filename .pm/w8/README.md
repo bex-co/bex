@@ -363,6 +363,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **125** — [Backward log pages without a startTime hand out inverted cursors past the first hour](done/125.md) ← w8/123 code review 2026-10-19: the cursor start defaults to 1h while the read looks back 7 days — **DONE (2026-10-19)**
 
+- [ ] **135** — [`POST`/`PATCH /registrycredentials` are unreachable: the Render-schema validator and the bex handler demand contradictory bodies](135.md) ← `/qa-find-bugs-cli` sweep 676 2026-10-19
+
 - [ ] **134** — [`POST /blueprints` answers every fetch failure with a bare 500, hiding its own classified reason](134.md) ← `/qa-find-bugs-cli` loop 2026-10-19
 
 - [ ] **133** — [`POST /blueprints/generate` answers malformed JSON with a bare 500](133.md) ← `/qa-find-bugs-cli` loop 2026-10-19
