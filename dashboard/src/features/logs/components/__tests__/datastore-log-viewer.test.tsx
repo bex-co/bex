@@ -6,6 +6,7 @@ import userEvent from "@testing-library/user-event";
 import { serverRendered } from "@/test/hydration";
 import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 import { EMPTY_LOG_FILTERS, type LogLine } from "../../types";
+import { FakeEventSource } from "@/test/mocks/event-source";
 import {
   scrollViewport,
   setupVirtualGeometry,
@@ -221,3 +222,97 @@ it.each([
     expect(search().value).toBe("checkpoint");
   },
 );
+
+// w5/m139: a datastore's public instance id is `<id>-<20-char opaque>`; shown
+// whole it squeezed the message to nothing on a narrow screen. The row shows
+// the short suffix and keeps the full id as its title.
+it("shortens a long datastore instance id and keeps it whole as the title", () => {
+  const instance = "red-dbbhh61jg4r11240u0l0-qblf27h3o38bsl8kh48l";
+  state.lines = [{ ...line(0), instance }];
+  render(<DatastoreLogViewer kind="keyvalue" resource="red-example" />);
+  const label = screen.getByText("[qblf2]");
+  expect(label).toHaveAttribute("title", instance);
+});
+
+// w5/m139: both datastores' lines carry a level, and Render's /logs/subscribe
+// takes a postgres or redis resource, so the tab filters by level and tails live.
+describe("DatastoreLogViewer level and live tail (w5/m139)", () => {
+  let streams: FakeEventSource[] = [];
+  const createEventSource = (url: string) => {
+    const s = new FakeEventSource(url);
+    streams.push(s);
+    return s;
+  };
+  beforeEach(() => {
+    streams = [];
+  });
+
+  it("filters the history by level and writes it to the URL", async () => {
+    const onFiltersChange = vi.fn();
+    render(
+      <DatastoreLogViewer
+        kind="keyvalue"
+        resource="red-example"
+        filters={{ text: "", instance: "", level: "warning" }}
+        onFiltersChange={onFiltersChange}
+      />,
+    );
+    expect(useHistorySpy).toHaveBeenLastCalledWith(
+      "red-example",
+      expect.objectContaining({ level: "warning" }),
+      expect.anything(),
+    );
+    await userEvent.click(screen.getByRole("combobox", { name: "Level" }));
+    // Valkey's markers name no error level, so Key Value does not offer one.
+    expect(screen.queryByRole("option", { name: "error" })).toBeNull();
+    await userEvent.click(screen.getByRole("option", { name: "debug" }));
+    expect(onFiltersChange).toHaveBeenLastCalledWith({ level: "debug" });
+  });
+
+  it("opens no stream until Live is switched on, then tails with the same filters", async () => {
+    // History inside the selected window, as the server returns it: the merge
+    // drops lines stamped before the window's start.
+    state.lines = [
+      { ...line(0), timestamp: new Date(Date.now() - 60_000).toISOString() },
+    ];
+    render(
+      <DatastoreLogViewer
+        kind="keyvalue"
+        resource="red-example"
+        filters={{ text: "", instance: "", level: "warning" }}
+        onFiltersChange={() => undefined}
+        createEventSource={createEventSource}
+      />,
+    );
+    expect(streams).toHaveLength(0);
+    await userEvent.click(screen.getByRole("switch", { name: "Live" }));
+    expect(streams).toHaveLength(1);
+    const url = new URL(streams[0].url, "http://x");
+    expect(url.pathname).toMatch(/\/v1\/logs\/subscribe$/);
+    expect(url.searchParams.get("resource")).toBe("red-example");
+    expect(url.searchParams.get("level")).toBe("warning");
+    expect(url.searchParams.get("type")).toBeNull();
+    expect(url.searchParams.get("startTime")).not.toBeNull();
+
+    act(() => {
+      streams[0].open();
+      streams[0].frame({
+        message: "1:M 15 Jul 2026 12:00:59.000 # WARNING low memory",
+        timestamp: new Date().toISOString(),
+        labels: [
+          { name: "type", value: "keyvalue" },
+          { name: "instance", value: "red-example-0" },
+          { name: "level", value: "warning" },
+        ],
+      });
+    });
+    // Frames are flushed in batches.
+    expect(
+      await screen.findByText(
+        "1:M 15 Jul 2026 12:00:59.000 # WARNING low memory",
+      ),
+    ).toBeInTheDocument();
+    // History stays beside the tail.
+    expect(screen.getByText("checkpoint complete")).toBeInTheDocument();
+  });
+});

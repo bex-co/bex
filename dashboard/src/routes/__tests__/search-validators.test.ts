@@ -24,11 +24,13 @@ const NO_RANGE = {
   rangeStart: undefined,
   rangeEnd: undefined,
 };
-// The datastore Logs tab's own keys (w4/228): range + text + instance only.
+// The datastore Logs tab's own keys (w4/228, w5/m139): range + text +
+// instance + level only.
 const NO_DATASTORE_LOG_FILTERS = {
   ...NO_RANGE,
   text: undefined,
   instance: undefined,
+  level: undefined,
 };
 const NO_LOG_FILTERS = {
   t: undefined,

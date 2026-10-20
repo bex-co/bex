@@ -150,3 +150,7 @@ export function hasActiveLogFilters(f: LogFilters): boolean {
     STRUCTURED_FILTER_KEYS.some((key) => f[key] !== "")
   );
 }
+
+/** The shipper's level buckets: the values a log line's `level` label takes
+ *  (app severities, a Postgres record's, a Valkey line's marker). */
+export const LOG_LEVELS = ["debug", "info", "warning", "error"] as const;

@@ -279,7 +279,7 @@ type LogQuery struct {
 
 	// Structured filters. Each is a value set (OR within a filter, AND across
 	// filters — Render's semantics); a `*` wildcard is supported per value.
-	// Level applies to app and Postgres logs; Host/StatusCode/Method/Path to request logs;
+	// Level applies to app and datastore logs; Host/StatusCode/Method/Path to request logs;
 	// Instance to app and datastore logs (request logs originate at the edge).
 	Level      []string
 	Instance   []string
@@ -288,7 +288,7 @@ type LogQuery struct {
 	Method     []string
 	Path       []string
 
-	levelFilter *regexp.Regexp // Postgres pod severity matcher, compiled once per query
+	levelFilter *regexp.Regexp // datastore pod severity matcher, compiled once per query
 	// probe lets a page read one line past the caller's (clamped) Limit, so the
 	// page can tell whether any line lies beyond it (queryLogPage).
 	probe bool
@@ -408,6 +408,11 @@ func (q LogQuery) onlyRequest() bool {
 // disconnects (codex #3). Note: build logs CAN be tailed live (the build
 // Job's pod stdout, w3/m14).
 func (q LogQuery) liveSubscribable() error {
+	// A datastore tail reads its pods' process log and applies the level
+	// filter per line (compileLevelFilter), so its own contract decides.
+	if isDatastoreResource(q.App) {
+		return q.datastoreFilters(q.App)
+	}
 	if q.hasStoreOnlyFilters() && !q.onlyRequest() {
 		return fmt.Errorf("%w: the live tail reads pod logs, so it cannot filter app or build lines by level/statusCode/method/path/host — query the logs API for those, or subscribe to request logs alone", core.ErrBadRequest)
 	}
@@ -564,11 +569,8 @@ func (s *Service) Logs(ctx context.Context, name string, tail int64) ([]LogEntry
 // rather than returning unfiltered lines. `type=build` without the store is a
 // 503, not a silent empty — the same honesty rule as request logs.
 func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error) {
-	if isPostgresResource(q.App) {
-		return s.queryPostgresLogs(ctx, q)
-	}
-	if isKeyValueResource(q.App) {
-		return s.queryKeyValueLogs(ctx, q)
+	if isDatastoreResource(q.App) {
+		return s.queryDatastoreLogs(ctx, q)
 	}
 	requested := q.App
 	app, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, requested)
@@ -634,50 +636,96 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	return setLogResource(q.filterAndCap(out), resource), nil
 }
 
-// queryPostgresLogs is the one datastore-scoped core read behind the existing
-// REST, GraphQL, and MCP log adapters. Render addresses every log-producing
-// resource through the generic `resource` filter, so no parallel public API is
-// needed. The Database authorization gate runs before either a Loki selector or
-// a pod selector is constructed.
-func (s *Service) queryPostgresLogs(ctx context.Context, q LogQuery) ([]LogEntry, error) {
-	requested := q.App
-	database, err := s.AuthorizeDatabase(ctx, core.RelCanViewLogs, requested)
+// queryDatastoreLogs is the one datastore-scoped core read behind the REST,
+// GraphQL, and MCP log adapters, for a managed Postgres or Key Value alike.
+// Render addresses every log-producing resource through the generic `resource`
+// filter, so no parallel public API is needed. The datastore's authorization
+// gate runs before either a Loki selector or a pod selector is constructed.
+func (s *Service) queryDatastoreLogs(ctx context.Context, q LogQuery) ([]LogEntry, error) {
+	target, err := s.datastoreTarget(ctx, &q)
 	if err != nil {
 		return nil, err
 	}
-	q.App = ""
-	q.Database = database.Name
-	if err := q.validatePostgres(); err != nil {
+	if err := q.compileLevelFilter(); err != nil {
 		return nil, err
-	}
-	if len(q.Level) > 0 {
-		q.levelFilter, err = regexp.Compile(labelValuePattern(storedLevels(q.Level)))
-		if err != nil {
-			return nil, fmt.Errorf("%w: invalid Postgres level filter: %v", core.ErrBadRequest, err)
-		}
 	}
 	if s.History == nil && s.PodLogs == nil {
 		return nil, core.ErrLogsUnavailable
 	}
 	q = q.normalized()
-	pods, err := s.DatabasePods(ctx, database.Namespace, database.Name)
+	pods, err := target.list(ctx)
 	if err != nil {
 		return nil, err
 	}
-	s.translateInstanceFilter(ctx, requested, database.Namespace, &q, candidatesFromPods(pods))
+	s.translateInstanceFilter(ctx, target.resource, target.namespace, &q, candidatesFromPods(pods))
 	if s.History != nil {
-		entries, err := s.History(ctx, database.Namespace, q)
-		return labelHistory(entries, err, requested)
+		entries, err := s.History(ctx, target.namespace, q)
+		return labelHistory(entries, err, target.resource)
 	}
-	entries, err := s.collectDatastorePodLogs(ctx, database.Namespace, q, pods, datastore{
-		name:      q.Database,
-		container: core.CNPGPostgresContainer,
-		kind:      datastorelogs.KindPostgres,
-	})
+	entries, err := s.collectDatastorePodLogs(ctx, q, pods, target)
 	if err != nil {
 		return nil, err
 	}
-	return setLogResource(q.filterAndCap(entries), requested), nil
+	return setLogResource(q.filterAndCap(entries), target.resource), nil
+}
+
+// datastoreTarget is the opening every managed-datastore read shares —
+// history, label discovery and the live tail (w5/m139): authorize the `dpg-` or
+// `red-` resource for can_view_logs, point q at the datastore's own streams,
+// and validate q against the datastore contract. The target it answers says
+// where the datastore's process log lives and how to follow it.
+func (s *Service) datastoreTarget(ctx context.Context, q *LogQuery) (tailTarget, error) {
+	requested := q.App
+	var target tailTarget
+	if isPostgresResource(requested) {
+		database, err := s.AuthorizeDatabase(ctx, core.RelCanViewLogs, requested)
+		if err != nil {
+			return tailTarget{}, err
+		}
+		q.App, q.Database = "", database.Name
+		target = tailTarget{
+			namespace: database.Namespace, name: database.Name,
+			container: core.CNPGPostgresContainer, logType: datastorelogs.KindPostgres,
+			list: func(ctx context.Context) ([]corev1.Pod, error) {
+				return s.DatabasePods(ctx, database.Namespace, database.Name)
+			},
+			revalidate: func(ctx context.Context) error {
+				var fresh appv1alpha1.Database
+				if err := s.Client.Get(ctx, client.ObjectKeyFromObject(database), &fresh); err != nil {
+					return err
+				}
+				return s.AuthorizeDatabaseFresh(ctx, core.RelCanViewLogs, &fresh)
+			},
+		}
+	} else {
+		kv, err := s.AuthorizeKeyValue(ctx, core.RelCanViewLogs, requested)
+		if err != nil {
+			return tailTarget{}, err
+		}
+		q.App, q.KeyValue = "", kv.Name
+		target = tailTarget{
+			namespace: kv.Namespace, name: kv.Name,
+			container: core.ValkeyContainer, logType: datastorelogs.KindKeyValue,
+			list: func(ctx context.Context) ([]corev1.Pod, error) {
+				return s.KeyValuePods(ctx, kv.Namespace, kv.Name)
+			},
+			revalidate: func(ctx context.Context) error {
+				var fresh appv1alpha1.KeyValue
+				if err := s.Client.Get(ctx, client.ObjectKeyFromObject(kv), &fresh); err != nil {
+					return err
+				}
+				return s.AuthorizeKeyValueFresh(ctx, core.RelCanViewLogs, &fresh)
+			},
+		}
+	}
+	target.resource = requested
+	// CNPG and Valkey pods change rarely, and a slower re-list only delays
+	// re-attaching to a restarted container; each is an uncached pod LIST.
+	target.relist = 5 * s.tailRelistInterval()
+	if err := q.validate(); err != nil {
+		return tailTarget{}, err
+	}
+	return target, q.datastoreFilters(requested)
 }
 
 // labelHistory attributes a durable-history read to the requested resource,
@@ -697,88 +745,43 @@ func isPostgresResource(resource string) bool {
 	return ok && kind == ids.Postgres
 }
 
-// validatePostgres pins the supported managed-Postgres contract: time range,
-// direction, text search, level, limit, and instance. HTTP request/build filters are
-// service concepts; refusing them is safer than silently dropping them.
-func (q LogQuery) validatePostgres() error {
-	if err := q.validate(); err != nil {
-		return err
-	}
-	if len(q.Types) > 0 || len(q.Host) > 0 || len(q.StatusCode) > 0 || len(q.Method) > 0 || len(q.Path) > 0 {
-		return fmt.Errorf("%w: managed Postgres logs support text, time range, direction, level, limit, and instance filters", core.ErrBadRequest)
-	}
-	return nil
-}
-
-// queryKeyValueLogs is the one datastore-scoped core read behind the existing
-// REST, GraphQL, and MCP key-value log adapters. Mirrors queryPostgresLogs with
-// AuthorizeKeyValue and the Loki `keyvalue` stream label.
-func (s *Service) queryKeyValueLogs(ctx context.Context, q LogQuery) ([]LogEntry, error) {
-	requested := q.App
-	kv, err := s.AuthorizeKeyValue(ctx, core.RelCanViewLogs, requested)
-	if err != nil {
-		return nil, err
-	}
-	q.App = ""
-	q.KeyValue = kv.Name
-	if err := q.validateKeyValue(); err != nil {
-		return nil, err
-	}
-	if s.History == nil && s.PodLogs == nil {
-		return nil, core.ErrLogsUnavailable
-	}
-	q = q.normalized()
-	pods, err := s.KeyValuePods(ctx, kv.Namespace, kv.Name)
-	if err != nil {
-		return nil, err
-	}
-	s.translateInstanceFilter(ctx, requested, kv.Namespace, &q, candidatesFromPods(pods))
-	if s.History != nil {
-		entries, err := s.History(ctx, kv.Namespace, q)
-		return labelHistory(entries, err, requested)
-	}
-	entries, err := s.collectDatastorePodLogs(ctx, kv.Namespace, q, pods, datastore{
-		name:      q.KeyValue,
-		container: core.ValkeyContainer,
-		kind:      datastorelogs.KindKeyValue,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return setLogResource(q.filterAndCap(entries), requested), nil
-}
-
-// unsupportedLiveResource is the named refusal for a managed datastore's live
-// tail, which bex does not offer; nil for any other resource. Callers
-// authorize the resource first, so the refusal never confirms existence.
-func unsupportedLiveResource(resource string) error {
-	var family string
-	switch {
-	case isPostgresResource(resource):
-		family = "Postgres"
-	case isKeyValueResource(resource):
-		family = "Key Value"
-	default:
-		return nil
-	}
-	return fmt.Errorf("%w: managed %s live log subscription is not supported; use the historical logs query", core.ErrBadRequest, family)
-}
-
 func isKeyValueResource(resource string) bool {
 	kind, ok := ids.KindOf(resource)
 	return ok && kind == ids.KeyValue
 }
 
-// validateKeyValue pins the supported managed Key Value contract: time range,
-// direction, text search, limit, and instance. HTTP request/build filters are
-// service concepts; refusing them is safer than silently dropping them.
-func (q LogQuery) validateKeyValue() error {
-	if err := q.validate(); err != nil {
-		return err
+func isDatastoreResource(resource string) bool {
+	return isPostgresResource(resource) || isKeyValueResource(resource)
+}
+
+// datastoreFilters pins the supported managed-datastore contract: time range,
+// direction, text search, level, limit, and instance. HTTP request/build
+// filters are service concepts; refusing them is safer than silently dropping
+// them. resource names the datastore family in the refusal.
+func (q LogQuery) datastoreFilters(resource string) error {
+	if len(q.Types) > 0 || len(q.Host) > 0 || len(q.StatusCode) > 0 || len(q.Method) > 0 || len(q.Path) > 0 {
+		family := "Key Value"
+		if isPostgresResource(resource) {
+			family = "Postgres"
+		}
+		return fmt.Errorf("%w: managed %s logs support text, time range, direction, level, limit, and instance filters", core.ErrBadRequest, family)
 	}
-	if len(q.Types) > 0 || len(q.Level) > 0 || len(q.Host) > 0 || len(q.StatusCode) > 0 || len(q.Method) > 0 || len(q.Path) > 0 {
-		return fmt.Errorf("%w: managed Key Value logs support text, time range, direction, limit, and instance filters", core.ErrBadRequest)
+	return nil
+}
+
+// compileLevelFilter turns a datastore query's level filter into the
+// line-level matcher its pod reads apply (the store applies it as a label
+// matcher instead). Postgres and Key Value lines carry the shipper's level
+// vocabulary, so storedLevels maps Render's names the same way for both.
+func (q *LogQuery) compileLevelFilter() error {
+	if len(q.Level) == 0 {
+		return nil
 	}
+	filter, err := regexp.Compile(labelValuePattern(storedLevels(q.Level)))
+	if err != nil {
+		return fmt.Errorf("%w: invalid level filter: %v", core.ErrBadRequest, err)
+	}
+	q.levelFilter = filter
 	return nil
 }
 
@@ -806,11 +809,8 @@ func (q LogQuery) filterAndCap(entries []LogEntry) []LogEntry {
 // stream label — the cardinality budget keeps it in the line), so it resolves even
 // without the store.
 func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) ([]string, error) {
-	if isPostgresResource(q.App) {
-		return s.postgresLogLabelValues(ctx, label, q)
-	}
-	if isKeyValueResource(q.App) {
-		return s.keyValueLogLabelValues(ctx, label, q)
+	if isDatastoreResource(q.App) {
+		return s.datastoreLogLabelValues(ctx, label, q)
 	}
 	requested := q.App
 	app, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, requested)
@@ -848,34 +848,31 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 	return slices.Compact(slices.Sorted(slices.Values(values))), nil
 }
 
-func (s *Service) postgresLogLabelValues(ctx context.Context, label string, q LogQuery) ([]string, error) {
-	requested := q.App
-	database, err := s.AuthorizeDatabase(ctx, core.RelCanViewLogs, requested)
+// datastoreLogLabelValues discovers a managed datastore's instance and level
+// values: both datastores' lines carry a level (a Postgres record's severity,
+// a Valkey line's marker — w5/m139), which only the store indexes.
+func (s *Service) datastoreLogLabelValues(ctx context.Context, label string, q LogQuery) ([]string, error) {
+	target, err := s.datastoreTarget(ctx, &q)
 	if err != nil {
 		return nil, err
 	}
-	q.App = ""
-	q.Database = database.Name
-	if err := q.validatePostgres(); err != nil {
-		return nil, err
-	}
 	if label != LabelInstance && label != LabelLevel {
-		return nil, fmt.Errorf("%w: managed Postgres log label %q is unsupported (want %s|%s)", core.ErrBadRequest, label, LabelInstance, LabelLevel)
+		return nil, fmt.Errorf("%w: managed datastore log label %q is unsupported (want %s|%s)", core.ErrBadRequest, label, LabelInstance, LabelLevel)
 	}
 	if s.LabelValues != nil {
-		values, err := s.LabelValues(ctx, database.Namespace, label, q.normalized())
+		values, err := s.LabelValues(ctx, target.namespace, label, q.normalized())
 		if err != nil {
 			return nil, err
 		}
 		if label == LabelInstance {
-			return projectLogLabelValues(requested, values), nil
+			return projectLogLabelValues(target.resource, values), nil
 		}
 		return slices.Compact(slices.Sorted(slices.Values(values))), nil
 	}
 	if label == LabelLevel {
 		return nil, core.ErrLogStoreUnavailable
 	}
-	pods, err := s.DatabasePods(ctx, database.Namespace, database.Name)
+	pods, err := target.list(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -883,46 +880,15 @@ func (s *Service) postgresLogLabelValues(ctx context.Context, label string, q Lo
 	for i := range pods {
 		values = append(values, pods[i].Name)
 	}
-	return projectLogLabelValues(requested, values), nil
+	return projectLogLabelValues(target.resource, values), nil
 }
 
-func (s *Service) keyValueLogLabelValues(ctx context.Context, label string, q LogQuery) ([]string, error) {
-	requested := q.App
-	kv, err := s.AuthorizeKeyValue(ctx, core.RelCanViewLogs, requested)
-	if err != nil {
-		return nil, err
-	}
-	q.App = ""
-	q.KeyValue = kv.Name
-	if err := q.validateKeyValue(); err != nil {
-		return nil, err
-	}
-	if label != LabelInstance {
-		return nil, fmt.Errorf("%w: managed Key Value log label %q is unsupported (want %s)", core.ErrBadRequest, label, LabelInstance)
-	}
-	if s.LabelValues != nil {
-		values, err := s.LabelValues(ctx, kv.Namespace, label, q.normalized())
-		if err != nil {
-			return nil, err
-		}
-		return projectLogLabelValues(requested, values), nil
-	}
-	pods, err := s.KeyValuePods(ctx, kv.Namespace, kv.Name)
-	if err != nil {
-		return nil, err
-	}
-	values := make([]string, 0, len(pods))
-	for i := range pods {
-		values = append(values, pods[i].Name)
-	}
-	return projectLogLabelValues(requested, values), nil
-}
-
-// FollowLogs streams an App's new log lines to emit until ctx is cancelled or
-// emit errors. The tail always reads live pod logs (never the store — real-time,
-// zero ingest lag). It serves app logs from App pods and type=build from the
-// active build pod in BuildNamespace, with the text/time/instance filters; it
-// refuses store-only filters. Requires a PodLogStream (nil =>
+// FollowLogs streams a resource's new log lines to emit until ctx is cancelled
+// or emit errors. The tail always reads live pod logs (never the store —
+// real-time, zero ingest lag). It serves app logs from App pods and type=build
+// from the active build pod in BuildNamespace, with the text/time/instance
+// filters, refusing store-only filters over those; and a managed datastore's
+// process log with its instance/text/level filters (w5/m139). Requires a PodLogStream (nil =>
 // core.ErrLogsUnavailable).
 //
 // An app tail stays open for as long as it is authorized and the App exists:
@@ -940,17 +906,8 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 // that calls emit, so a transport can write its keepalive without racing a log
 // frame.
 func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry) error, heartbeat func() error) error {
-	if isPostgresResource(q.App) {
-		if _, err := s.AuthorizeDatabase(ctx, core.RelCanViewLogs, q.App); err != nil {
-			return err
-		}
-		return unsupportedLiveResource(q.App)
-	}
-	if isKeyValueResource(q.App) {
-		if _, err := s.AuthorizeKeyValue(ctx, core.RelCanViewLogs, q.App); err != nil {
-			return err
-		}
-		return unsupportedLiveResource(q.App)
+	if isDatastoreResource(q.App) {
+		return s.followDatastore(ctx, q, emit, heartbeat)
 	}
 	requested := q.App
 	app, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, requested)
@@ -996,9 +953,17 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	// deletion cancels the stream ctx, which ends every producer goroutine and
 	// the emit loops below — and with them the caller's subscription cap slots.
 	// An allowed re-check touches nothing: the tail is not interrupted.
-	ctx, stopWatchdog := withRevalidation(ctx, s.revalidateInterval(), func(checkCtx context.Context) error {
-		return s.revalidateTailTarget(checkCtx, app.Namespace, app.Name)
-	})
+	target := tailTarget{
+		resource: resource, namespace: app.Namespace, name: app.Name,
+		container: core.AppContainer, logType: LogTypeApp,
+		list: func(ctx context.Context) ([]corev1.Pod, error) { return s.AppPodsIn(ctx, app.Namespace, app.Name) },
+		revalidate: func(ctx context.Context) error {
+			return s.revalidateTailTarget(ctx, app.Namespace, app.Name)
+		},
+		relist:       s.tailRelistInterval(),
+		pollRequests: true,
+	}
+	ctx, stopWatchdog := withRevalidation(ctx, s.revalidateInterval(), target.revalidate)
 	defer stopWatchdog()
 	if len(q.Types) == 1 && q.Types[0] == LogTypeBuild {
 		return s.followBuildLogs(ctx, q, resource, newProgressContext(app), emit)
@@ -1015,10 +980,38 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 
 	// app.Namespace: the pods stream from their `<ws>` namespace under ADR043,
 	// the same namespace translateInstanceFilter selected them in.
-	return s.followAppPods(ctx, q, selectors, resource, app.Namespace, podsLive, emit, heartbeat)
+	return s.followPods(ctx, q, selectors, target, podsLive, emit, heartbeat)
 }
 
-// podFollow is the app tail's record of one pod it has attached to.
+// followDatastore is the live tail of a managed Postgres or Key Value
+// (w5/m139): its pods' process log, followed and parsed as the historical pod
+// read parses it, under the same authorization, filters and watchdog as an
+// app tail. Render's /logs/subscribe takes a postgres or redis resource as it
+// takes a service.
+func (s *Service) followDatastore(ctx context.Context, q LogQuery, emit func(LogEntry) error, heartbeat func() error) error {
+	target, err := s.datastoreTarget(ctx, &q)
+	if err != nil {
+		return err
+	}
+	if err := q.compileLevelFilter(); err != nil {
+		return err
+	}
+	if s.PodLogsFollow == nil {
+		return core.ErrLogsUnavailable
+	}
+	q = q.normalized()
+	pods, err := target.list(ctx)
+	if err != nil {
+		return err
+	}
+	selectors := slices.Clone(q.Instance)
+	s.translateInstanceFilter(ctx, target.resource, target.namespace, &q, candidatesFromPods(pods))
+	ctx, stopWatchdog := withRevalidation(ctx, s.revalidateInterval(), target.revalidate)
+	defer stopWatchdog()
+	return s.followPods(ctx, q, selectors, target, pods, emit, heartbeat)
+}
+
+// podFollow is a pod tail's record of one pod it has attached to.
 type podFollow struct {
 	active   bool  // a follow goroutine is still reading the pod's log
 	opened   bool  // the last follow opened a log (false: kubelet refused it)
@@ -1030,17 +1023,34 @@ type followEnd struct {
 	opened bool
 }
 
-// followAppPods is the app tail's producer loop. It attaches a follow to every
-// admitted pod whose app container has started, re-lists the App's pods every
-// TailRelistInterval to attach to new ones, and ends only on ctx cancellation
-// or an emit/heartbeat error.
+// tailTarget is what a pod tail follows: one App's app container, or one
+// managed datastore's process container (w5/m139).
+type tailTarget struct {
+	resource  string // the requested id, stamped on every emitted entry
+	namespace string
+	name      string // the CR name: the entries' service label
+	container string
+	logType   string
+	list      func(context.Context) ([]corev1.Pod, error)
+	// revalidate is the tail watchdog's fresh check: the target still exists
+	// and the caller may still read its logs.
+	revalidate func(context.Context) error
+	relist     time.Duration
+	// pollRequests adds the store poll's request lines: an App's edge traffic.
+	pollRequests bool
+}
+
+// followPods is the pod tail's producer loop. It attaches a follow to every
+// admitted pod whose target container has started, re-lists the target's pods
+// every TailRelistInterval to attach to new ones, and ends only on ctx
+// cancellation or an emit/heartbeat error.
 //
 // A pod is attached once per container life: a Succeeded cron run replays once
 // per subscription, not on every re-list. A container that restarted after its
 // follow ended is attached again — kubelet follows the current container, so
 // the new follow reads only the new life's log — which is what a crash-looping
 // service's tail used to get from the client reconnecting when its stream ended.
-func (s *Service) followAppPods(ctx context.Context, q LogQuery, selectors []string, resource, namespace string, pods []corev1.Pod, emit func(LogEntry) error, heartbeat func() error) error {
+func (s *Service) followPods(ctx context.Context, q LogQuery, selectors []string, target tailTarget, pods []corev1.Pod, emit func(LogEntry) error, heartbeat func() error) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	ch := make(chan LogEntry, 64)
@@ -1050,10 +1060,10 @@ func (s *Service) followAppPods(ctx context.Context, q LogQuery, selectors []str
 	attach := func(pods []corev1.Pod) {
 		for i := range pods {
 			pod := &pods[i]
-			if !q.keepPod(pod.Name) || !appContainerStarted(pod) {
+			if !q.keepPod(pod.Name) || !containerStarted(pod, target.container) {
 				continue
 			}
-			restarts := appContainerRestarts(pod)
+			restarts := containerRestarts(pod, target.container)
 			if f := follows[pod.Name]; f != nil {
 				restarted := f.opened && restarts > f.restarts
 				// A follow kubelet refused is retried while the pod can still
@@ -1067,7 +1077,7 @@ func (s *Service) followAppPods(ctx context.Context, q LogQuery, selectors []str
 			follows[pod.Name] = &podFollow{active: true, restarts: restarts}
 			go func(name string) {
 				var opened atomic.Bool
-				s.streamContainerLogs(ctx, namespace, q.App, name, core.AppContainer, LogTypeApp, q.Since, ch, &opened)
+				s.streamContainerLogs(ctx, target.namespace, target.name, name, target.container, target.logType, q.Since, ch, &opened)
 				select {
 				case ended <- followEnd{pod: name, opened: opened.Load()}:
 				case <-ctx.Done():
@@ -1077,15 +1087,15 @@ func (s *Service) followAppPods(ctx context.Context, q LogQuery, selectors []str
 	}
 	// A request-only subscription follows no pods: its only producer is the
 	// store poll below.
-	followPods := q.wants(LogTypeApp)
-	if followPods {
+	tailPods := !target.pollRequests || q.wants(LogTypeApp)
+	if tailPods {
 		attach(pods)
 	}
-	if q.wants(LogTypeRequest) && s.History != nil {
-		go s.pollRequestLogs(ctx, q, namespace, ch)
+	if target.pollRequests && q.wants(LogTypeRequest) && s.History != nil {
+		go s.pollRequestLogs(ctx, q, target.namespace, ch)
 	}
 
-	relist := time.NewTicker(s.tailRelistInterval())
+	relist := time.NewTicker(target.relist)
 	defer relist.Stop()
 	var beat <-chan time.Time
 	if heartbeat != nil {
@@ -1099,15 +1109,15 @@ func (s *Service) followAppPods(ctx context.Context, q LogQuery, selectors []str
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-relist.C:
-			if !followPods {
+			if !tailPods {
 				continue
 			}
-			current, err := s.AppPodsIn(ctx, namespace, q.App)
+			current, err := target.list(ctx)
 			if err != nil {
 				continue // a failed list is retried next tick; the tail stays up
 			}
 			if len(selectors) > 0 {
-				resolved := ids.ResolveInstanceSelectors(selectors, resource, candidatesFromPods(current))
+				resolved := ids.ResolveInstanceSelectors(selectors, target.resource, candidatesFromPods(current))
 				for _, name := range resolved {
 					if !slices.Contains(q.Instance, name) {
 						q.Instance = append(q.Instance, name)
@@ -1127,7 +1137,7 @@ func (s *Service) followAppPods(ctx context.Context, q LogQuery, selectors []str
 			if !q.keep(e) {
 				continue
 			}
-			setLogEntryResource(&e, resource)
+			setLogEntryResource(&e, target.resource)
 			if err := emit(e); err != nil {
 				return err
 			}
@@ -1249,18 +1259,18 @@ func (s *Service) requestPollInterval() time.Duration {
 // image pull) has none yet, and the pod is attached on a later re-list once it
 // starts. A pod with no reported app container status is attempted unless it
 // is Pending.
-func appContainerStarted(pod *corev1.Pod) bool {
+func containerStarted(pod *corev1.Pod, container string) bool {
 	for _, status := range pod.Status.ContainerStatuses {
-		if status.Name == core.AppContainer {
+		if status.Name == container {
 			return status.State.Waiting == nil
 		}
 	}
 	return pod.Status.Phase != corev1.PodPending
 }
 
-func appContainerRestarts(pod *corev1.Pod) int32 {
+func containerRestarts(pod *corev1.Pod, container string) int32 {
 	for _, status := range pod.Status.ContainerStatuses {
-		if status.Name == core.AppContainer {
+		if status.Name == container {
 			return status.RestartCount
 		}
 	}
@@ -1631,23 +1641,18 @@ func (s *Service) collectPodLogs(ctx context.Context, namespace string, q LogQue
 // datastore names everything the managed Postgres and Key Value pod-log reads
 // do differently: which instance, which container carries the process log, and
 // which type label the entries are stamped with.
-type datastore struct {
-	name      string
-	container string
-	kind      string
-}
 
 // collectDatastorePodLogs reads one managed datastore's logs from its pods.
 // namespace is the datastore CR's own namespace (ADR043 D8) — reading from the
 // shared one instead returns no error and no logs, which is how the App-side
 // version of this bug stayed invisible.
-func (s *Service) collectDatastorePodLogs(ctx context.Context, namespace string, q LogQuery, pods []corev1.Pod, ds datastore) ([]LogEntry, error) {
+func (s *Service) collectDatastorePodLogs(ctx context.Context, q LogQuery, pods []corev1.Pod, ds tailTarget) ([]LogEntry, error) {
 	var out []LogEntry
 	for i := range pods {
 		if !q.keepPod(pods[i].Name) {
 			continue
 		}
-		entries, err := s.readContainerLogs(ctx, namespace, ds.name, pods[i].Name, ds.container, ds.kind, q.Limit)
+		entries, err := s.readContainerLogs(ctx, ds.namespace, ds.name, pods[i].Name, ds.container, ds.logType, q.Limit)
 		if err != nil {
 			return nil, err
 		}
@@ -1689,28 +1694,41 @@ func (s *Service) readContainerLogs(ctx context.Context, namespace, service, pod
 	}
 	defer func() { _ = rc.Close() }()
 
+	parse := func(line string) (LogEntry, bool) {
+		return parseContainerLogLine(service, pod, container, logType, line), true
+	}
+	if isDatastoreLog(logType) {
+		parse = func(line string) (LogEntry, bool) { return datastoreLogEntry(service, pod, container, logType, line) }
+	}
 	var entries []LogEntry
 	sc := bufio.NewScanner(rc)
 	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024) // allow long lines
 	for sc.Scan() {
-		if logType != datastorelogs.KindPostgres && logType != datastorelogs.KindKeyValue {
-			entries = append(entries, parseContainerLogLine(service, pod, container, logType, sc.Text()))
-			continue
+		if entry, keep := parse(sc.Text()); keep {
+			entries = append(entries, entry)
 		}
-		// A datastore line follows the rule its own fallback reader applies:
-		// the kubelet's answers and CNPG's chatter are dropped, and a Postgres
-		// record is unwrapped, as the shipper does for history (w8/030).
-		ts, msg, level, keep := datastorelogs.ParseLine(logType, sc.Text())
-		if !keep {
-			continue
-		}
-		entry := newLogEntry(service, pod, container, logType, ts, msg)
-		if level != "" {
-			entry.Labels[LabelLevel] = level
-		}
-		entries = append(entries, entry)
 	}
 	return entries, sc.Err()
+}
+
+func isDatastoreLog(logType string) bool {
+	return logType == datastorelogs.KindPostgres || logType == datastorelogs.KindKeyValue
+}
+
+// datastoreLogEntry parses one datastore container line by the rule its own
+// fallback reader applies: the kubelet's answers and CNPG's chatter are
+// dropped, and a Postgres record is unwrapped, as the shipper does for history
+// (w8/030), with its level — or a Valkey line's (w5/m139) — as a label.
+func datastoreLogEntry(service, pod, container, kind, line string) (LogEntry, bool) {
+	ts, msg, level, keep := datastorelogs.ParseLine(kind, line)
+	if !keep {
+		return LogEntry{}, false
+	}
+	entry := newLogEntry(service, pod, container, kind, ts, msg)
+	if level != "" {
+		entry.Labels[LabelLevel] = level
+	}
+	return entry, true
 }
 
 // collectPreDeployLogs reads the pre-deploy step's Job-pod logs (w1/m33) for an
@@ -1776,9 +1794,19 @@ func (s *Service) streamContainerLogs(ctx context.Context, namespace, service, p
 	// the rest of a split line whose first chunk it skipped as older. So an
 	// unstamped first line is held: the kubelet's own answer when the stream
 	// ends there, the tenant's text when more output follows.
-	var held *string
 	sc := bufio.NewScanner(rc)
 	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	// A datastore follow drops what its historical read drops, the kubelet's
+	// unstamped answers included, so it has no first line to hold.
+	if isDatastoreLog(logType) {
+		for sc.Scan() {
+			if entry, keep := datastoreLogEntry(service, pod, container, logType, sc.Text()); keep && !send(entry) {
+				return
+			}
+		}
+		return
+	}
+	var held *string
 	for first := true; sc.Scan(); first = false {
 		line := sc.Text()
 		entry := parseContainerLogLine(service, pod, container, logType, line)

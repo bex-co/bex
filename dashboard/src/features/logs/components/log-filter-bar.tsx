@@ -33,6 +33,7 @@ import {
   LOG_LABEL_LEVEL,
   LOG_LABEL_METHOD,
   LOG_LABEL_STATUS_CODE,
+  LOG_LEVELS,
   LOG_TYPE_ALL,
   LOG_TYPE_APP,
   LOG_TYPE_FILTERS,
@@ -74,7 +75,7 @@ const ALL = "all";
 //
 // They are fallbacks for "we could not ask", NOT for "the answer was none" —
 // see mergeOptions (w6/m131/t003).
-const LEVEL_FALLBACK = ["debug", "info", "warning", "error"];
+
 const METHOD_FALLBACK = ["GET", "POST", "PUT", "PATCH", "DELETE"];
 const STATUS_CLASSES = ["2xx", "3xx", "4xx", "5xx"];
 
@@ -92,7 +93,7 @@ const STATUS_CLASSES = ["2xx", "3xx", "4xx", "5xx"];
 // => 503), where they are a guess in place of an answer rather than a
 // contradiction of one.
 function mergeOptions(
-  fallback: string[],
+  fallback: readonly string[],
   discovery: LogLabelDiscovery,
 ): string[] {
   if (discovery.resolved && discovery.values.length === 0) return [];
@@ -143,7 +144,7 @@ export function LogFilterBar({
   // Discover real observed values for each dropdown; degrades to [] without the
   // store, where the static fallbacks carry the UI.
   const levels = mergeOptions(
-    LEVEL_FALLBACK,
+    LOG_LEVELS,
     useLogLabelDiscovery(resource, LOG_LABEL_LEVEL),
   );
   const methods = mergeOptions(
@@ -259,21 +260,13 @@ export function LogFilterBar({
         </PopoverContent>
       </Popover>
 
-      <div className="flex items-center gap-2">
-        <Switch
-          id="logs-live-toggle"
-          checked={live && liveSupported}
-          disabled={!liveSupported}
-          onCheckedChange={onLiveChange}
-        />
-        <Label
-          htmlFor="logs-live-toggle"
-          className="cursor-pointer text-sm"
-          title={liveSupported ? undefined : t("logs.liveUnsupported")}
-        >
-          {t("logs.live")}
-        </Label>
-      </div>
+      <LiveToggle
+        id="logs-live-toggle"
+        checked={live && liveSupported}
+        disabled={!liveSupported}
+        onCheckedChange={onLiveChange}
+        title={liveSupported ? undefined : t("logs.liveUnsupported")}
+      />
 
       {active.length > 0 ? (
         <div className="flex w-full flex-wrap items-center gap-1.5">
@@ -348,5 +341,35 @@ function SelectFilterRow({
         </SelectContent>
       </Select>
     </FilterRow>
+  );
+}
+
+/** The Live switch the service and datastore log viewers share. */
+export function LiveToggle({
+  id,
+  checked,
+  disabled,
+  onCheckedChange,
+  title,
+}: {
+  id: string;
+  checked: boolean;
+  disabled?: boolean;
+  onCheckedChange: (checked: boolean) => void;
+  title?: string;
+}) {
+  const { t } = useTranslations();
+  return (
+    <div className="flex items-center gap-2">
+      <Switch
+        id={id}
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={onCheckedChange}
+      />
+      <Label htmlFor={id} className="cursor-pointer text-sm" title={title}>
+        {t("logs.live")}
+      </Label>
+    </div>
   );
 }
