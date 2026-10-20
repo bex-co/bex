@@ -1188,7 +1188,7 @@ describe("NewServicePage", () => {
   describe("Existing Image port hint", () => {
     // w4/m121/t003 reworded the hint: the port is now a field on this form, so
     // the hint names it instead of claiming a fixed default.
-    const PORT_HINT = /must listen on the port set below/i;
+    const PORT_HINT = /set the port below to it/i;
 
     async function selectTypeThenImageTab(label: RegExp) {
       const user = userEvent.setup();
@@ -1269,7 +1269,7 @@ describe("NewServicePage", () => {
       );
     });
 
-    it("blocks submit on a port the container could never bind", async () => {
+    it("blocks submit on a port outside 1-65535", async () => {
       const user = userEvent.setup();
       renderPage();
       await user.click(
@@ -1277,10 +1277,10 @@ describe("NewServicePage", () => {
       );
       const port = screen.getByLabelText("Port");
       await user.clear(port);
-      await user.type(port, "80");
+      await user.type(port, "70000");
 
       expect(
-        screen.getByText("Enter a port between 1024 and 65535."),
+        screen.getByText("Enter a port between 1 and 65535."),
       ).toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: /Deploy Service/i }),

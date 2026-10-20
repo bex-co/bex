@@ -80,7 +80,7 @@ var _ = Describe("Pod hardening defaults (w7/m2)", func() {
 			Expect(c.SecurityContext.AllowPrivilegeEscalation).NotTo(BeNil())
 			Expect(*c.SecurityContext.AllowPrivilegeEscalation).To(BeFalse())
 
-			By("all capabilities dropped, none added — high port needs no NET_BIND_SERVICE")
+			By("all capabilities dropped, none added")
 			Expect(c.SecurityContext.Capabilities).NotTo(BeNil())
 			Expect(c.SecurityContext.Capabilities.Drop).To(ContainElement(corev1.Capability("ALL")))
 			Expect(c.SecurityContext.Capabilities.Add).To(BeEmpty())

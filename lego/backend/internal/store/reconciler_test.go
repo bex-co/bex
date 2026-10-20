@@ -1830,7 +1830,7 @@ func TestFailureReasonFor(t *testing.T) {
 		}}
 		return app
 	}
-	crash := "container exited shortly after start and is restarting repeatedly (last exit code 1) — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (3000), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped)."
+	crash := "container exited shortly after start and is restarting repeatedly (last exit code 1) — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (3000)."
 	if got, _ := failureReasonFor(mk(appv1alpha1.PhaseDeploying, "CrashLoopBackOff", crash), DeployUpdateFailed); got != crash {
 		t.Errorf("CrashLoopBackOff reason = %q, want the condition message", got)
 	}
