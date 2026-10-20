@@ -17,13 +17,14 @@ import { WorkspacesDocument } from "@/graphql/definitions";
 
 vi.unmock("@/features/capabilities/hooks/use-capabilities");
 
-const { mockFetch, navigate } = vi.hoisted(() => ({
+const { mockFetch, navigate, auth } = vi.hoisted(() => ({
   mockFetch: vi.fn<typeof fetch>(),
   navigate: vi.fn(),
+  auth: { signedIn: true },
 }));
 
 vi.mock("@/common/hooks/use-is-authenticated", () => ({
-  useIsAuthenticated: () => true,
+  useIsAuthenticated: () => auth.signedIn,
 }));
 vi.mock("@tanstack/react-router", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@tanstack/react-router")>()),
@@ -88,6 +89,7 @@ beforeEach(() => {
   resetAccessGenerationForTests();
   navigate.mockReset();
   mockFetch.mockReset();
+  auth.signedIn = true;
   dispatched.length = 0;
   capabilityOutcome = "allowed";
   document.cookie = `${WORKSPACE_SELECTION_KEY}=; Max-Age=0; Path=/`;
@@ -159,6 +161,44 @@ async function settleBeforePoll() {
 }
 
 describe("capability initialization through the browser transport", () => {
+  it("sends nothing on a signed-out page that kept a workspace cookie (w6/078)", async () => {
+    auth.signedIn = false;
+    const { result } = mount("tea-first");
+    // Mount, two poll periods and a focus refresh.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(65_000);
+      window.dispatchEvent(new Event("focus"));
+      await vi.advanceTimersByTimeAsync(1_000);
+    });
+
+    expect(result.current.workspace.currentWorkspaceId).toBeNull();
+    expect(dispatched).toEqual([]);
+  });
+
+  it("starts checking with a fresh read once a session appears without a reload", async () => {
+    auth.signedIn = false;
+    const { result, rerender } = mount("tea-first");
+    await settleBeforePoll();
+    expect(dispatched).toEqual([]);
+
+    auth.signedIn = true;
+    rerender();
+    await settleBeforePoll();
+
+    expect(result.current.workspace.currentWorkspaceId).toBe("tea-first");
+    expect(result.current.capabilities).toMatchObject({
+      canCreate: true,
+      loaded: true,
+    });
+    expect(
+      dispatched.some(
+        (op) =>
+          op.operationName === "ViewerCapabilities" &&
+          op.variables.ownerId === "tea-first",
+      ),
+    ).toBe(true);
+  });
+
   it("settles a retained workspace selection before its first poll (navigation control)", async () => {
     const { result } = mount("tea-first");
     await settleBeforePoll();
