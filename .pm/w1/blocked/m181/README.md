@@ -1,6 +1,6 @@
 # w1 · m181 — Auto-deploy after CI checks pass (`autoDeployTrigger: checksPass`)
 
-**Worker:** worker1 **Goal:** a Git service set to "After CI Checks Pass" deploys a pushed commit only when all of its GitHub checks pass, on every surface and from Blueprints, as on Render. **Status:** in progress (2026-10-20: t011–t013 correctness repairs approved; t006 retains the Check suite subscription gate)
+**Worker:** worker1 **Goal:** a Git service set to "After CI Checks Pass" deploys a pushed commit only when all of its GitHub checks pass, on every surface and from Blueprints, as on Render. **Status:** blocked (2026-10-20: t011–t013 repair, simplify and coverage complete; t006 needs the GitHub App owner to subscribe Check suite, then t007 final parity and t010 closeout)
 
 ## Tasks (in order)
 
@@ -11,13 +11,13 @@
 | t003 | Gate auto-deploy on the commit's checks — **DONE** | 1h30m | t002       |
 | t004 | Accept checksPass on REST, GraphQL, MCP, Blueprints and the dashboard — **DONE** | 1h    | t003       |
 | t005 | Update the parity docs — **DONE** | 20m   | t004       |
-| t011 | Make checked-commit acceptance and release handoff durable and idempotent | 60m | t003 |
-| t012 | Recover interrupted checked-commit dispatch | 60m | t011 |
-| t013 | Fence checked-commit retries against supersession and current settings | 45m | t012 |
+| t011 | Make checked-commit acceptance and release handoff durable and idempotent — **DONE** | 60m | t003 |
+| t012 | Recover interrupted checked-commit dispatch — **DONE** | 60m | t011 |
+| t013 | Fence checked-commit retries against supersession and current settings — **DONE** | 45m | t012 |
 | t006 | Live check with a GitHub Actions repository                                                | 45m   | t004, t013 |
 | t007 | Render parity | 20m   | t005, t006, t013 |
-| t008 | Simplify | 15m   | t007       |
-| t009 | Test coverage | 40m   | t007       |
+| t008 | Simplify — **DONE** | 15m   | t007       |
+| t009 | Test coverage — **DONE** | 40m   | t007       |
 | t010 | Closeout                                                                                   | 10m   | t009       |
 
 ## Definition of done
@@ -49,3 +49,7 @@ The user approved brainstorm item 3 as a correctness repair to the existing Rend
 `checks_pass.go` removes the awaited marker before `redeployFetched`; interruption there loses accepted work. Its failure restoration uses an unconditional merge patch, so restoring A can overwrite newer B. Source-derived counterexamples, not a live reproduction.
 
 Additional definition of done: interruption between claim and release creation recovers one release; duplicate deliveries cannot create another for the same accepted dispatch; late restoration of A cannot replace B; fresh trigger/source settings govern retry. t011–t013 are implementable now; the owner-only Check suite event subscription continues to gate t006 and final closeout. Repeat closing reviews for this change rather than treating their 2026-10-17 runs as current evidence.
+
+## Implementation checkpoint — 2026-10-20
+
+Durable receipt recovery and source-revision fencing are implemented and verified locally. No public field or UI choice changed. The owner-only live gate remains: `gh api /apps/bex-co` reports checks write, events deployment/push, and no check_suite. t006, final live parity in t007 and t010 remain open; this milestone is parked rather than marked done.

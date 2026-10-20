@@ -331,6 +331,9 @@ type IntentStore interface {
 	// resolved commit this deploy runs (w9/001), zero when unresolvable. The
 	// reconciler's write-back closes the row once the CR reaches Running/Failed.
 	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string) (store.Deploy, error)
+	EnsureCheckedDeploy(ctx context.Context, appID string, generation int64, commit store.CommitInfo) (store.Deploy, error)
+	CheckedDeploySourceVersion(ctx context.Context, appID, repo, branch, image string) (int64, bool, error)
+	ClearCheckedDeployImage(ctx context.Context, appID, repo, branch, image string, version int64) (bool, error)
 	// LatestDeployCommit returns the newest non-empty commit for the app — the
 	// rollout.Tracker seam that carries a prior release's provenance onto
 	// config_change re-rolls (w4/m100). Zero when none exists.
@@ -4671,7 +4674,7 @@ func (s *Service) setAutoDeployFetched(ctx context.Context, a *appv1alpha1.App, 
 		a.Spec.AutoDeploy = enabled
 		a.Spec.AutoDeployTrigger = trigger
 		if !enabled || trigger != checksPassTrigger {
-			delete(a.Annotations, annotChecksPendingCommit)
+			clearCheckedPending(a)
 		}
 	})
 	if err != nil {
@@ -5038,7 +5041,11 @@ func (s *Service) patchTracked(ctx context.Context, a *appv1alpha1.App, trigger 
 		return AppView{}, err
 	}
 	err := s.rollouts().Patch(ctx, s.Client, a, trigger, func(a *appv1alpha1.App) error {
+		before := a.Spec
 		mutate(a)
+		if a.Spec.Repo != before.Repo || a.Spec.Branch != before.Branch {
+			clearCheckedPending(a)
+		}
 		resourcemeta.Touch(a, s.Now())
 		return nil
 	})
@@ -5057,7 +5064,11 @@ func (s *Service) patchTracked(ctx context.Context, a *appv1alpha1.App, trigger 
 // records a richer deploy row itself.
 func (s *Service) patchUntracked(ctx context.Context, a *appv1alpha1.App, mutate func(*appv1alpha1.App)) (AppView, error) {
 	base := client.MergeFrom(a.DeepCopy())
+	before := a.Spec
 	mutate(a)
+	if a.Spec.Repo != before.Repo || a.Spec.Branch != before.Branch {
+		clearCheckedPending(a)
+	}
 	resourcemeta.Touch(a, s.Now())
 	if err := s.PatchObject(ctx, a, base, false); err != nil {
 		return AppView{}, err

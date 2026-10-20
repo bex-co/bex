@@ -36,6 +36,15 @@ import (
 // immediately authoritative without waiting for a controller round trip.
 const UpdatedAtAnnotation = "app.bex.co/updated-at"
 
+// AnnotCheckedDeployReceipt keeps a checked release's handoff authoritative
+// until its rollback-image override and deploy history settle in Postgres.
+const AnnotCheckedDeployReceipt = "app.bex.co/checks-dispatch"
+
+// AnnotCheckedImageVersion records the apps.source_revision superseded by a
+// checked release. It survives receipt cleanup so delayed row snapshots cannot
+// restore the image override that release consumed.
+const AnnotCheckedImageVersion = "app.bex.co/checks-image-version"
+
 // Owner is the neutral workspace identity shared by resource adapters.
 // Email is optional; Type is currently "team" for every bex workspace.
 type Owner struct {

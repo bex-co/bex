@@ -396,6 +396,10 @@ type DiskUsageRow struct {
 
 type DesiredApp struct {
 	App
+	// SourceRevision advances only on explicit source writes, including a
+	// rollback selecting the same image. It fences checked-dispatch recovery
+	// without treating unrelated settings as a newer source decision.
+	SourceRevision int64
 	// Disk is the service's live disk, nil when it has none. The projector
 	// turns it into spec.disk; clearing it detaches the volume.
 	Disk          *Disk
@@ -1503,7 +1507,7 @@ func (s *PGStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {
 	// projector (re)creates, keeping the fallback-create path consistent with
 	// the environments fan-out.
 	rows, err := s.Pool.Query(ctx,
-		`SELECT `+appColumns+`, t.name, e.ip_allow_list FROM apps a JOIN tenants t ON t.id = a.tenant_id
+		`SELECT `+appColumns+`, t.name, e.ip_allow_list, a.source_revision FROM apps a JOIN tenants t ON t.id = a.tenant_id
 		 LEFT JOIN environments e ON e.id = a.environment_id ORDER BY a.created_at`)
 	if err != nil {
 		return nil, err
@@ -1516,7 +1520,7 @@ func (s *PGStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {
 		var envRules []byte
 		err := rows.Scan(&d.ID, &d.TenantID, &d.Name, &d.Slug, &d.Type, &d.Repo, &d.Image,
 			&d.RegistryCredentialID, &d.Branch, &d.Port, &d.Replicas, &d.Tier, &d.IdleTTLSeconds, &d.Suspended,
-			&d.ProjectID, &d.EnvironmentID, &d.CreatedAt, &d.ContainerPolicy, &d.PortMode, &d.CreationPending, &d.DisplayName, &d.TenantName, &envRules)
+			&d.ProjectID, &d.EnvironmentID, &d.CreatedAt, &d.ContainerPolicy, &d.PortMode, &d.CreationPending, &d.DisplayName, &d.TenantName, &envRules, &d.SourceRevision)
 		if err != nil {
 			return nil, err
 		}
@@ -2070,8 +2074,74 @@ func (s *PGStore) SetAppImage(ctx context.Context, id string, image string) erro
 	return nil
 }
 
+// CheckedDeploySourceVersion snapshots a checked dispatch's exact source
+// without mutating it. The accepted dispatch stores its revision so recovery
+// cannot clear a later rollback, even if that rollback selects the same image.
+func (s *PGStore) CheckedDeploySourceVersion(ctx context.Context, appID, repo, branch, image string) (int64, bool, error) {
+	var version int64
+	err := s.Pool.QueryRow(ctx,
+		`SELECT source_revision FROM apps
+		 WHERE id = $1 AND COALESCE(repo, '') = $2 AND branch = $3 AND COALESCE(image, '') = $4`,
+		appID, repo, branch, image).Scan(&version)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, false, nil
+	}
+	return version, err == nil, classify("app", err)
+}
+
+// ClearCheckedDeployImage clears a rollback's image override only while the
+// row still has the accepted checked dispatch's source and version. An empty
+// image is a read-only check: recovery must not advance the app's update clock.
+func (s *PGStore) ClearCheckedDeployImage(ctx context.Context, appID, repo, branch, image string, expectedVersion int64) (bool, error) {
+	if image == "" {
+		var matches bool
+		err := s.Pool.QueryRow(ctx,
+			`SELECT EXISTS (SELECT 1 FROM apps
+			 WHERE id = $1 AND COALESCE(repo, '') = $2 AND branch = $3 AND COALESCE(image, '') = '' AND source_revision = $4)`,
+			appID, repo, branch, expectedVersion).Scan(&matches)
+		return matches, classify("app", err)
+	}
+	tag, err := s.Pool.Exec(ctx,
+		`UPDATE apps SET image = NULL, updated_at = now()
+		 WHERE id = $1 AND COALESCE(repo, '') = $2 AND branch = $3 AND COALESCE(image, '') = $4 AND source_revision = $5`,
+		appID, repo, branch, image, expectedVersion)
+	return tag.RowsAffected() != 0, classify("app", err)
+}
+
 func (s *PGStore) CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit CommitInfo, triggeredBy string) (Deploy, error) {
 	return s.createDeploy(ctx, appID, trigger, image, generation, commit, triggeredBy, supersededByReason)
+}
+
+// EnsureCheckedDeploy records a checked commit's already-applied CR release.
+// Its durable dispatch receipt can be retried after either process loss or an
+// uncertain database commit, including after the deploy has become terminal.
+// The app row lock serializes the lookup and insert with every deploy creator.
+func (s *PGStore) EnsureCheckedDeploy(ctx context.Context, appID string, generation int64, commit CommitInfo) (Deploy, error) {
+	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: TriggerNewCommit, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, Status: DeployCreated}
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		var lockedID string
+		if err := tx.QueryRow(ctx, `SELECT id FROM apps WHERE id = $1 FOR UPDATE`, appID).Scan(&lockedID); err != nil {
+			return err
+		}
+		existing, err := scanDeploy(tx.QueryRow(ctx,
+			`SELECT `+deployColumns+` FROM deploys WHERE app_id = $1 AND generation = $2 ORDER BY created_at, id LIMIT 1`,
+			appID, generation))
+		if err == nil {
+			if existing.Trigger != TriggerNewCommit || existing.Commit != commit.Hash || existing.Image != "" || existing.TriggeredBy != "" {
+				return fmt.Errorf("checked deploy generation %d has different provenance: %w", generation, ErrConflict)
+			}
+			d = existing
+			return nil
+		}
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return err
+		}
+		return insertDeploy(ctx, tx, &d, supersededByReason(d.ID))
+	})
+	if err != nil {
+		return Deploy{}, classify("checked deploy", err)
+	}
+	return d, nil
 }
 
 // CreateRestartDeploy opens a Restart's deploy row (trigger "api"). Unlike
@@ -2088,23 +2158,27 @@ func (s *PGStore) CreateRestartDeploy(ctx context.Context, appID, image string, 
 func (s *PGStore) createDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit CommitInfo, triggeredBy string, replaced func(id string) string) (Deploy, error) {
 	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, TriggeredBy: triggeredBy, Status: DeployCreated}
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
-		status, cancelReason, err := prepareDeployCreate(ctx, tx, appID, generation, replaced(d.ID))
-		if err != nil {
-			return err
-		}
-		d.Status, d.CancelReason = status, cancelReason
-		d.OverlapPending = status == DeployQueued
-		return tx.QueryRow(ctx,
-			`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, commit_author_at, triggered_by, status, overlap_pending, finished_at, cancel_reason)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CASE WHEN $10 = $12 THEN clock_timestamp() END, $13)
-			 RETURNING created_at, updated_at, finished_at`,
-			d.ID, d.AppID, d.Trigger, d.Image, d.Generation, d.Commit, d.CommitMessage, d.CommitAuthorAt, d.TriggeredBy, d.Status, d.OverlapPending, DeployCanceled, d.CancelReason,
-		).Scan(&d.CreatedAt, &d.UpdatedAt, &d.FinishedAt)
+		return insertDeploy(ctx, tx, &d, replaced(d.ID))
 	})
 	if err != nil {
 		return Deploy{}, classify("deploy", err)
 	}
 	return d, nil
+}
+
+func insertDeploy(ctx context.Context, tx pgx.Tx, d *Deploy, replacedReason string) error {
+	status, cancelReason, err := prepareDeployCreate(ctx, tx, d.AppID, d.Generation, replacedReason)
+	if err != nil {
+		return err
+	}
+	d.Status, d.CancelReason = status, cancelReason
+	d.OverlapPending = status == DeployQueued
+	return tx.QueryRow(ctx,
+		`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, commit_author_at, triggered_by, status, overlap_pending, finished_at, cancel_reason)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CASE WHEN $10 = $12 THEN clock_timestamp() END, $13)
+		 RETURNING created_at, updated_at, finished_at`,
+		d.ID, d.AppID, d.Trigger, d.Image, d.Generation, d.Commit, d.CommitMessage, d.CommitAuthorAt, d.TriggeredBy, d.Status, d.OverlapPending, DeployCanceled, d.CancelReason,
+	).Scan(&d.CreatedAt, &d.UpdatedAt, &d.FinishedAt)
 }
 
 // LatestDeployCommit returns the newest non-empty commit for appID. Rows with

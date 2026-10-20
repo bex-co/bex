@@ -405,7 +405,7 @@ func newTenantService(ws core.WorkspaceResolver, apps ...*appv1alpha1.App) (*Ser
 	}
 	cl := fakeClient(objs...)
 	return &Service{
-		Base:            &core.Base{Client: cl, Namespace: "default", Workspace: ws},
+		Base:          &core.Base{Client: cl, Namespace: "default", Workspace: ws},
 		DomainTraffic: allowDomainTraffic{},
 	}, cl
 }
@@ -812,6 +812,29 @@ func (r *recordingStore) CreateDeploy(_ context.Context, appID, trigger, image s
 	d := store.Deploy{ID: "dep-test", AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, TriggeredBy: triggeredBy, Status: store.DeployUpdateInProgress}
 	r.deployCalls = append(r.deployCalls, d)
 	return d, nil
+}
+
+func (r *recordingStore) EnsureCheckedDeploy(ctx context.Context, appID string, generation int64, commit store.CommitInfo) (store.Deploy, error) {
+	for _, d := range r.deployCalls {
+		if d.AppID == appID && d.Generation == generation {
+			if d.Trigger != store.TriggerNewCommit || d.Commit != commit.Hash {
+				return store.Deploy{}, store.ErrConflict
+			}
+			return d, nil
+		}
+	}
+	return r.CreateDeploy(ctx, appID, store.TriggerNewCommit, "", generation, commit, "")
+}
+
+func (r *recordingStore) CheckedDeploySourceVersion(context.Context, string, string, string, string) (int64, bool, error) {
+	return 0, true, r.err
+}
+
+func (r *recordingStore) ClearCheckedDeployImage(ctx context.Context, appID, _, _, _ string, _ int64) (bool, error) {
+	if err := r.SetAppImage(ctx, appID, ""); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (r *recordingStore) LatestDeployCommit(_ context.Context, _ string) (store.CommitInfo, error) {

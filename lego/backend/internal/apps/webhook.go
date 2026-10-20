@@ -411,8 +411,17 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			deleted = append(deleted, h.recordBranchDeletedCandidates(r.Context(), candidates, branch, ev.DeliveryKey)...)
 			continue
 		}
+		// Check acceptance can fail on a storage or authoritative-source read.
+		// Fail before any ordinary redeploy in this scope, and release its replay
+		// claim so the sender can redeliver the failed request safely.
+		if err := h.prepareCheckedPush(r.Context(), ev, branch, candidates); err != nil {
+			log.Printf("webhook: accept checked push: %v", err)
+			claims.release(r.Context())
+			core.WriteErrStatus(w, http.StatusServiceUnavailable, "failed to accept checked commit; redeliver this webhook")
+			return
+		}
 		// Durable Blueprint intents before acknowledgment (w8/m38): enqueue first
-		// so a failure returns 5xx (claims released → GitHub retries) without
+		// so a failure returns 5xx (claims released → redelivery is safe) without
 		// having already mutated Apps. Successful inserts survive an API restart.
 		if err := h.enqueueBlueprintAutoSyncIntents(r.Context(), key, body, ev.After, blueprintTargets); err != nil {
 			claims.release(r.Context())
@@ -421,6 +430,8 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		scopeRedeployed, _ := h.redeployCandidates(r.Context(), ev, branch, candidates)
 		redeployed = append(redeployed, scopeRedeployed...)
+		// Earlier completed scopes must retain their claims if a later one fails.
+		claims.taken = nil
 	}
 
 	if branchDeleted {
@@ -798,7 +809,7 @@ func (h *GitWebhook) recordBranchDeletedFact(ctx context.Context, app *appv1alph
 func (h *GitWebhook) disableAutoDeploy(ctx context.Context, app *appv1alpha1.App) error {
 	patch := client.MergeFrom(app.DeepCopy())
 	app.Spec.AutoDeploy = false
-	delete(app.Annotations, annotChecksPendingCommit)
+	clearCheckedPending(app)
 	return h.Svc.Client.Patch(ctx, app, patch)
 }
 
@@ -813,8 +824,30 @@ func (h *GitWebhook) redeployMatching(ctx context.Context, ev pushEvent, branch,
 	if err != nil {
 		return nil, nil, err
 	}
+	if err := h.prepareCheckedPush(ctx, ev, branch, candidates); err != nil {
+		return nil, nil, err
+	}
 	redeployed, tenants = h.redeployCandidates(ctx, ev, branch, candidates)
 	return redeployed, tenants, nil
+}
+
+// prepareCheckedPush persists every eligible checked acceptance before this
+// workspace's ordinary deployment mutations. Failed intake is not acknowledged.
+func (h *GitWebhook) prepareCheckedPush(ctx context.Context, ev pushEvent, branch string, candidates []appv1alpha1.App) error {
+	for i := range candidates {
+		a := &candidates[i]
+		if !checksGated(a.Spec) || !branchMatches(a.Spec.Branch, branch) || commitHasSkipPhrase(ev.HeadCommit.Message) ||
+			!rootDirMatches(a.Spec.RootDir, ev.changedPaths()) || !buildFilterMatches(a.Spec.BuildFilter, ev.changedPaths()) {
+			continue
+		}
+		if err := h.Svc.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
+			continue
+		}
+		if err := h.awaitChecks(ctx, a, ev.commitInfo()); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (h *GitWebhook) redeployCandidates(ctx context.Context, ev pushEvent, branch string, candidates []appv1alpha1.App) (redeployed []string, tenants map[string]struct{}) {
@@ -860,11 +893,7 @@ func (h *GitWebhook) redeployCandidates(ctx context.Context, ev pushEvent, branc
 		// commit CI checked on another branch before this fast-forward — deploy
 		// it now, since no further suite will complete for it.
 		if a.Spec.AutoDeployTrigger == checksPassTrigger {
-			if err := h.awaitChecks(ctx, a, ev.After); err != nil {
-				log.Printf("webhook: await checks for %s: %v", a.Name, err)
-				continue
-			}
-			if h.deployIfChecksPass(ctx, a, ev.After, ev.commitInfo()) {
+			if h.deployIfChecksPass(ctx, a, ev.commitInfo()) {
 				redeployed = append(redeployed, a.Name)
 			}
 			continue

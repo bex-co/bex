@@ -113,6 +113,7 @@ type Server struct {
 	// auto-sync intents accepted at the signed git webhook (w8/m38).
 	// nil / store-off ⇒ no-op.
 	BlueprintAutoSync *apps.BlueprintAutoSyncWorker
+	CheckedDeploys    *apps.CheckedDeployWorker
 	// DomainVerification is the sweep that promotes a pending custom-domain
 	// claim once its traffic DNS points at the service — Render's automatic
 	// verification (w5/m137). nil / store-off ⇒ no-op.
@@ -988,6 +989,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		},
 		BlueprintRecovery:  &apps.BlueprintRecoverer{Store: d.BlueprintsStore},
 		BlueprintAutoSync:  &apps.BlueprintAutoSyncWorker{Svc: appsSvc},
+		CheckedDeploys:     &apps.CheckedDeployWorker{Svc: appsSvc},
 		DomainVerification: &apps.DomainVerificationWorker{Svc: appsSvc},
 		ServiceRefs:        &apps.ServiceRefPropagator{Svc: appsSvc},
 		AgentSessionCompleter: &agentsessions.Completer{

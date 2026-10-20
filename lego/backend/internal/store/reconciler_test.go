@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -34,6 +35,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -508,6 +510,170 @@ func TestReconcileProjectsExplicitRegistryCredential(t *testing.T) {
 	}
 	if app.Spec.ExternalRegistryPullSecret != "" {
 		t.Errorf("cleared pull secret reference = %q, want empty", app.Spec.ExternalRegistryPullSecret)
+	}
+}
+
+func TestReconcileProtectsCheckedReleaseUntilStoreHandoffSettles(t *testing.T) {
+	ctx := context.Background()
+	rec, store, cl := newTestReconciler(t)
+	ten, _ := store.CreateTenant(ctx, "acme", "free")
+	row, _ := store.CreateApp(ctx, App{
+		TenantID: ten.ID, Name: "web", Repo: "https://github.com/acme/web", Image: "img:rollback", Branch: "main",
+		Port: 80, Replicas: 1, Tier: "free",
+	})
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	// The CR accepted a source build before Postgres cleared the rollback image.
+	app := getApp(t, cl)
+	app.Spec.Image = ""
+	app.Spec.BuildCommit = strings.Repeat("a", 40)
+	if app.Annotations == nil {
+		app.Annotations = map[string]string{}
+	}
+	app.Annotations[resourcemeta.AnnotCheckedDeployReceipt] = `{"generation":2}`
+	if err := cl.Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	store.mu.Lock()
+	desired := store.apps[row.ID]
+	desired.Replicas = 3
+	store.apps[row.ID] = desired
+	store.mu.Unlock()
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	app = getApp(t, cl)
+	if app.Spec.Image != "" {
+		t.Fatalf("pending checked release restored rollback image %q", app.Spec.Image)
+	}
+	if app.Spec.Replicas != 3 || app.Spec.BuildCommit != strings.Repeat("a", 40) {
+		t.Fatalf("pending handoff blocked other intent or lost its source pin: %+v", app.Spec)
+	}
+
+	if err := store.SetAppImage(ctx, row.ID, ""); err != nil {
+		t.Fatal(err)
+	}
+	delete(app.Annotations, resourcemeta.AnnotCheckedDeployReceipt)
+	if err := cl.Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if got := getApp(t, cl); got.Spec.Image != "" {
+		t.Fatalf("settled handoff restored rollback image %q", got.Spec.Image)
+	}
+
+	// Once the receipt settles, a subsequent image intent is projected normally.
+	if err := store.SetAppImage(ctx, row.ID, "img:new-intent"); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if got := getApp(t, cl); got.Spec.Image != "img:new-intent" {
+		t.Fatalf("settled handoff blocked newer image intent: %q", got.Spec.Image)
+	}
+}
+
+func TestReconcileFencesImageSnapshotTakenBeforeCheckedRelease(t *testing.T) {
+	for _, tc := range []struct {
+		name                             string
+		snapshotVersion, acceptedVersion int64
+	}{
+		{"initial revision", 0, 0},
+		{"equal revision", 7, 7},
+		{"older revision", 6, 7},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			rec, store, cl := newTestReconciler(t)
+			ten, _ := store.CreateTenant(ctx, "acme", "free")
+			row, _ := store.CreateApp(ctx, App{
+				TenantID: ten.ID, Name: "web", Repo: "https://github.com/acme/web", Image: "img:rollback", Branch: "main",
+				Port: 80, Replicas: 1, Tier: "free",
+			})
+			if err := rec.ReconcileOnce(ctx); err != nil {
+				t.Fatal(err)
+			}
+			racing := &snapshotRaceStore{memStore: store, appSourceRevision: map[string]int64{row.ID: tc.snapshotVersion}}
+			rec.Store = racing
+			racing.after = func() {
+				// Acceptance and cleanup both finish after the old row snapshot,
+				// so its paired CR snapshot never sees the transient receipt.
+				if err := store.SetAppImage(ctx, row.ID, ""); err != nil {
+					t.Fatal(err)
+				}
+				racing.appSourceRevision[row.ID] = tc.acceptedVersion + 1
+				app := getApp(t, cl)
+				app.Spec.Image = ""
+				if app.Annotations == nil {
+					app.Annotations = map[string]string{}
+				}
+				app.Annotations[resourcemeta.AnnotCheckedImageVersion] = strconv.FormatInt(tc.acceptedVersion, 10)
+				if err := cl.Update(ctx, app); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := rec.ReconcileOnce(ctx); err != nil {
+				t.Fatal(err)
+			}
+			if app := getApp(t, cl); app.Spec.Image != "" {
+				t.Fatalf("pre-acceptance snapshot restored rollback image %q after receipt cleanup", app.Spec.Image)
+			}
+			if err := rec.ReconcileOnce(ctx); err != nil {
+				t.Fatal(err)
+			}
+			if app := getApp(t, cl); app.Spec.Image != "" {
+				t.Fatalf("settled source image = %q", app.Spec.Image)
+			}
+
+			if err := store.SetAppImage(ctx, row.ID, "img:new-intent"); err != nil {
+				t.Fatal(err)
+			}
+			racing.appSourceRevision[row.ID] = tc.acceptedVersion + 2
+			if err := rec.ReconcileOnce(ctx); err != nil {
+				t.Fatal(err)
+			}
+			if app := getApp(t, cl); app.Spec.Image != "img:new-intent" {
+				t.Fatalf("persistent version fence blocked newer image intent: %q", app.Spec.Image)
+			}
+		})
+	}
+}
+
+func TestReconcileMalformedImageVersionKeepsReceiptProtection(t *testing.T) {
+	for _, receipt := range []string{"", `{"generation":2}`} {
+		t.Run(fmt.Sprint(receipt != ""), func(t *testing.T) {
+			ctx := context.Background()
+			rec, store, cl := newTestReconciler(t)
+			ten, _ := store.CreateTenant(ctx, "acme", "free")
+			_, _ = store.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img:intent", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+			if err := rec.ReconcileOnce(ctx); err != nil {
+				t.Fatal(err)
+			}
+			app := getApp(t, cl)
+			app.Spec.Image = ""
+			app.Annotations = map[string]string{
+				resourcemeta.AnnotCheckedImageVersion:  "malformed",
+				resourcemeta.AnnotCheckedDeployReceipt: receipt,
+			}
+			if err := cl.Update(ctx, app); err != nil {
+				t.Fatal(err)
+			}
+			if err := rec.ReconcileOnce(ctx); err != nil {
+				t.Fatal(err)
+			}
+			want := "img:intent"
+			if receipt != "" {
+				want = ""
+			}
+			if app := getApp(t, cl); app.Spec.Image != want {
+				t.Fatalf("image = %q, want %q", app.Spec.Image, want)
+			}
+		})
 	}
 }
 

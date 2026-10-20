@@ -19,16 +19,18 @@ package apps
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"slices"
-
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strconv"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/github"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
+	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -41,11 +43,30 @@ import (
 // checksPassTrigger is spec.autoDeployTrigger's checks-gated value.
 const checksPassTrigger = "checksPass"
 
-// annotChecksPendingCommit holds the latest pushed commit a checksPass service
-// awaits checks for. A newer push overwrites it, so a late result for an
-// older commit never deploys; removing it with an optimistic update is what
-// makes one deploy per commit even when two suites finish together.
-const annotChecksPendingCommit = "app.bex.co/checks-pending-commit"
+// Pending acceptance and the release receipt live on the same App so a single
+// optimistic write can request the release without losing accepted work.
+const (
+	annotChecksPendingCommit = "app.bex.co/checks-pending-commit"
+	annotChecksPendingSource = "app.bex.co/checks-pending-source"
+	annotChecksDispatch      = resourcemeta.AnnotCheckedDeployReceipt
+)
+
+type checkedSource struct {
+	Repo   string           `json:"repo"`
+	Branch string           `json:"branch"`
+	Commit store.CommitInfo `json:"commit"`
+}
+
+type checkedDispatch struct {
+	Generation int64            `json:"generation"`
+	Commit     store.CommitInfo `json:"commit"`
+	Repo       string           `json:"repo"`
+	Branch     string           `json:"branch"`
+	Image      string           `json:"image,omitempty"`
+	RowVersion int64            `json:"rowVersion"`
+}
+
+var errCheckedSuperseded = errors.New("checked deployment superseded")
 
 // ChecksSource reads a commit's GitHub check runs through the workspace's
 // GitHub App connection. The github service satisfies it structurally.
@@ -66,7 +87,7 @@ const (
 )
 
 // checksVerdict applies Render's rule: all checks pass (success, neutral or
-// skipped) deploys; any completed failure drops the commit at once; anything
+// skipped) deploys; any completed failure refuses deployment; anything
 // still running waits. No check runs at all waits too: Render never deploys a
 // commit with zero checks.
 func checksVerdict(runs []github.CheckRun) checksState {
@@ -113,47 +134,94 @@ func checksGated(spec appv1alpha1.AppSpec) bool {
 	return spec.AutoDeploy && spec.AutoDeployTrigger == checksPassTrigger
 }
 
-// awaitChecks records sha as the commit a checksPass service waits on,
-// replacing any older one. It is metadata only: no release, no generation.
-func (h *GitWebhook) awaitChecks(ctx context.Context, a *appv1alpha1.App, sha string) error {
-	if a.Annotations[annotChecksPendingCommit] == sha {
+// awaitChecks persists source-bound acceptance before any remote check reads.
+// A consumed predecessor does not supersede a newer push. Rival pending commits
+// are ordered by the authoritative branch tip rather than event arrival order.
+func (h *GitWebhook) awaitChecks(ctx context.Context, a *appv1alpha1.App, commit store.CommitInfo) error {
+	source := checkedSource{Repo: a.Spec.Repo, Branch: a.Spec.Branch, Commit: commit}
+	// Kubernetes annotations have a shared size budget; history keeps a bounded
+	// commit summary rather than allowing an arbitrary push message to consume it.
+	if len(source.Commit.Message) > 8192 {
+		runes := []rune(source.Commit.Message)
+		source.Commit.Message = string(runes[:min(len(runes), 2048)])
+	}
+	data, err := json.Marshal(source)
+	if err != nil {
+		return err
+	}
+	previous := a.Annotations[annotChecksPendingCommit]
+	err = rollout.PatchAppLocked(ctx, h.Svc.Client, a, func(live *appv1alpha1.App) error {
+		pending := live.Annotations[annotChecksPendingCommit]
+		if !checksGated(live.Spec) || live.Spec.Repo != source.Repo || live.Spec.Branch != source.Branch ||
+			!live.DeletionTimestamp.IsZero() {
+			return errCheckedSuperseded
+		}
+		if (pending == commit.Hash && live.Annotations[annotChecksPendingSource] == string(data)) ||
+			(pending == "" && live.Spec.BuildCommit == commit.Hash) {
+			return errCheckedSuperseded // exact redelivery is already durable
+		}
+		if pending != "" && pending != commit.Hash {
+			if h.Svc.Commits != nil {
+				branch := source.Branch
+				if branch == "" {
+					branch = appv1alpha1.DefaultBranch
+				}
+				head, ok, err := h.Svc.Commits.ResolveCommit(ctx, h.Svc.AppWorkspace(ctx, live), source.Repo, branch)
+				if err != nil {
+					return err
+				}
+				if !ok {
+					return fmt.Errorf("checked source branch is unavailable")
+				}
+				if head.Hash != commit.Hash {
+					return errCheckedSuperseded
+				}
+			} else if pending != previous {
+				return errCheckedSuperseded
+			}
+		}
+		if live.Annotations == nil {
+			live.Annotations = map[string]string{}
+		}
+		live.Annotations[annotChecksPendingCommit] = commit.Hash
+		live.Annotations[annotChecksPendingSource] = string(data)
+		return nil
+	})
+	if errors.Is(err, errCheckedSuperseded) {
 		return nil
 	}
-	base := a.DeepCopy()
-	if a.Annotations == nil {
-		a.Annotations = map[string]string{}
-	}
-	a.Annotations[annotChecksPendingCommit] = sha
-	return h.Svc.Client.Patch(ctx, a, client.MergeFrom(base))
+	return err
 }
 
-// takeChecksPending removes the awaited commit if it is still sha, with the
-// App's resourceVersion as a precondition, so of two deliveries racing on one
-// commit exactly one removes it and reports true. A conflict from any other
-// write (an operator status update) re-reads and tries again rather than
-// stranding the commit.
-func (h *GitWebhook) takeChecksPending(ctx context.Context, a *appv1alpha1.App, sha string) (bool, error) {
-	for range 5 {
-		var live appv1alpha1.App
-		if err := h.Svc.Client.Get(ctx, client.ObjectKeyFromObject(a), &live); err != nil {
-			return false, client.IgnoreNotFound(err)
+func checkedPendingSource(a *appv1alpha1.App, commit store.CommitInfo) (checkedSource, error) {
+	source := checkedSource{Repo: a.Spec.Repo, Branch: a.Spec.Branch, Commit: commit}
+	if raw := a.Annotations[annotChecksPendingSource]; raw != "" {
+		if err := json.Unmarshal([]byte(raw), &source); err != nil {
+			return checkedSource{}, err
 		}
-		if live.Annotations[annotChecksPendingCommit] != sha {
-			return false, nil
-		}
-		base := live.DeepCopy()
-		delete(live.Annotations, annotChecksPendingCommit)
-		err := h.Svc.Client.Patch(ctx, &live, client.MergeFromWithOptions(base, client.MergeFromWithOptimisticLock{}))
-		if apierrors.IsConflict(err) {
-			continue
-		}
-		if err != nil {
-			return false, err
-		}
-		*a = live
-		return true, nil
 	}
-	return false, fmt.Errorf("claiming checked commit %s for %s: the App kept changing", sha, a.Name)
+	return source, nil
+}
+
+func checkedSourceMatches(a *appv1alpha1.App, source checkedSource) bool {
+	return checksGated(a.Spec) && a.DeletionTimestamp.IsZero() &&
+		a.Annotations[annotChecksPendingCommit] == source.Commit.Hash &&
+		a.Spec.Repo == source.Repo && a.Spec.Branch == source.Branch
+}
+
+func clearCheckedPending(a *appv1alpha1.App) {
+	delete(a.Annotations, annotChecksPendingCommit)
+	delete(a.Annotations, annotChecksPendingSource)
+}
+
+func (s *Service) discardCheckedPending(ctx context.Context, a *appv1alpha1.App, pending, binding string) error {
+	return rollout.PatchAppLocked(ctx, s.Client, a, func(live *appv1alpha1.App) error {
+		if live.Annotations[annotChecksPendingCommit] != pending || live.Annotations[annotChecksPendingSource] != binding {
+			return errCheckedSuperseded
+		}
+		clearCheckedPending(live)
+		return nil
+	})
 }
 
 // checkSuiteEvent is the subset of GitHub's check_suite payload a deploy needs.
@@ -222,52 +290,171 @@ func (h *GitWebhook) serveCheckSuite(w http.ResponseWriter, r *http.Request, bod
 		if !slices.ContainsFunc(scopes, func(scope string) bool { return scope == "" || a.Labels[core.LabelTenant] == scope }) {
 			continue
 		}
-		if h.deployIfChecksPass(ctx, a, sha, commit) {
+		if h.deployIfChecksPass(ctx, a, commit) {
 			redeployed = append(redeployed, a.Name)
 		}
 	}
 	core.WriteJSON(w, http.StatusOK, map[string]any{"redeployed": redeployed})
 }
 
-// deployIfChecksPass reads the awaited commit's checks and deploys it once
-// they all pass. A failed check, a still-running one, or a read error leaves
-// it awaiting: a re-run that passes, or the next completed suite, asks again,
-// and a newer push replaces it. Like the push path, a per-service failure
-// never fails the delivery, which GitHub would retry.
-func (h *GitWebhook) deployIfChecksPass(ctx context.Context, a *appv1alpha1.App, sha string, commit store.CommitInfo) bool {
-	if h.Svc.Checks == nil {
-		return false
-	}
-	runs, err := h.Svc.Checks.CommitCheckRuns(ctx, h.Svc.AppWorkspace(ctx, a), a.Spec.Repo, sha)
+// Suite delivery is a low-latency wake-up; periodic recovery handles crashes
+// and transient failures without requiring another external suite event.
+func (h *GitWebhook) deployIfChecksPass(ctx context.Context, a *appv1alpha1.App, commit store.CommitInfo) bool {
+	deployed, err := h.Svc.dispatchCheckedCommit(ctx, a, commit)
 	if err != nil {
-		log.Printf("webhook: checks for %s at %s: %v", a.Name, sha, err)
-		return false
-	}
-	switch checksVerdict(runs) {
-	case checksPending:
-		return false
-	case checksFailed:
-		log.Printf("webhook: %s not deployed: a check failed for %s", a.Name, sha)
-		return false
-	}
-	if err := h.Svc.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
-		log.Printf("webhook: skip checked deploy %s: billing enforced: %v", a.Name, err)
-		return false
-	}
-	taken, err := h.takeChecksPending(ctx, a, sha)
-	if err != nil || !taken {
-		if err != nil {
-			log.Printf("webhook: claim checked commit for %s at %s: %v", a.Name, sha, err)
-		}
-		return false
-	}
-	if _, err := h.Svc.redeployFetched(ctx, a, commit); err != nil {
 		log.Printf("webhook: checked deploy %s: %v", a.Name, err)
-		// Put the commit back so the next suite can try again.
-		if err := h.awaitChecks(ctx, a, sha); err != nil {
-			log.Printf("webhook: restore awaited commit for %s: %v", a.Name, err)
-		}
-		return false
 	}
-	return true
+	return deployed
+}
+
+func (s *Service) dispatchCheckedCommit(ctx context.Context, a *appv1alpha1.App, commit store.CommitInfo) (bool, error) {
+	sha := commit.Hash
+	if err := core.RereadApp(ctx, s.Client, a); err != nil {
+		return false, err
+	}
+	if err := s.finishCheckedDispatch(ctx, a); err != nil {
+		return false, err
+	}
+	if s.Checks == nil || a.Annotations[annotChecksPendingCommit] != sha {
+		return false, nil
+	}
+	source, err := checkedPendingSource(a, commit)
+	if err != nil {
+		return false, fmt.Errorf("decode checked source: %w", err)
+	}
+	binding := a.Annotations[annotChecksPendingSource]
+	if !checkedSourceMatches(a, source) {
+		return false, s.discardCheckedPending(ctx, a, sha, binding)
+	}
+	if a.Spec.Suspended {
+		return false, nil
+	}
+	permitted, err := s.Checks.ChecksPermitted(ctx, s.AppWorkspace(ctx, a), source.Repo)
+	if err != nil {
+		return false, err
+	}
+	if !permitted {
+		return false, nil
+	}
+	runs, err := s.Checks.CommitCheckRuns(ctx, s.AppWorkspace(ctx, a), source.Repo, sha)
+	if err != nil {
+		return false, err
+	}
+	if checksVerdict(runs) != checksPassed {
+		return false, nil
+	}
+	// Arrival order cannot establish Git order. Re-read the actual branch tip;
+	// a legitimate force push may move it in either ancestry direction.
+	if s.Commits != nil {
+		branch := source.Branch
+		if branch == "" {
+			branch = appv1alpha1.DefaultBranch
+		}
+		head, ok, err := s.Commits.ResolveCommit(ctx, s.AppWorkspace(ctx, a), source.Repo, branch)
+		if err != nil {
+			return false, err
+		}
+		if !ok {
+			return false, fmt.Errorf("checked source branch is unavailable")
+		}
+		if head.Hash != sha {
+			return false, s.discardCheckedPending(ctx, a, sha, binding)
+		}
+	}
+	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
+		return false, err
+	}
+	cloneSecret, err := s.ensureCloneSecret(ctx, a)
+	if err != nil {
+		return false, err
+	}
+	pullSecret, err := s.ensureExternalRegistryPullSecret(ctx, a)
+	if err != nil {
+		return false, err
+	}
+	image := a.Spec.Image
+	var rowVersion int64
+	if s.Store != nil && managedAppID(a) != "" {
+		version, matches, err := s.Store.CheckedDeploySourceVersion(ctx, managedAppID(a), source.Repo, source.Branch, image)
+		if err != nil {
+			return false, err
+		}
+		if !matches {
+			return false, nil
+		}
+		rowVersion = version
+	}
+	err = rollout.PatchAppLocked(ctx, s.Client, a, func(live *appv1alpha1.App) error {
+		if !checkedSourceMatches(live, source) || live.Spec.Suspended || live.Spec.Image != image ||
+			live.Annotations[annotChecksPendingSource] != binding || live.Annotations[annotChecksDispatch] != "" {
+			return errCheckedSuperseded
+		}
+		generation := live.Generation + 1
+		receipt, err := json.Marshal(checkedDispatch{Generation: generation, Commit: source.Commit, Repo: source.Repo, Branch: source.Branch, Image: image, RowVersion: rowVersion})
+		if err != nil {
+			return err
+		}
+		clearCheckedPending(live)
+		if live.Annotations == nil {
+			live.Annotations = map[string]string{}
+		}
+		live.Annotations[annotChecksDispatch] = string(receipt)
+		if s.Store != nil && managedAppID(live) != "" {
+			live.Annotations[resourcemeta.AnnotCheckedImageVersion] = strconv.FormatInt(rowVersion, 10)
+		}
+		stampReleaseGeneration(live, generation)
+		if cloneSecret != "" {
+			live.Spec.CloneSecret = cloneSecret
+		}
+		live.Spec.ExternalRegistryPullSecret = pullSecret
+		live.Spec.Image = ""
+		live.Spec.BuildCommit = sha
+		live.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339Nano)
+		resourcemeta.Touch(live, s.Now())
+		return nil
+	})
+	if errors.Is(err, errCheckedSuperseded) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	s.notifyDeployStarted(ctx, a, core.AppPublicName(a))
+	return true, s.finishCheckedDispatch(ctx, a)
+}
+
+// The receipt is written with the release, and cleared only after an idempotent
+// history write. A lost database reply or API restart therefore cannot lose the
+// row or request the release again. New pushes may await alongside this receipt.
+func (s *Service) finishCheckedDispatch(ctx context.Context, a *appv1alpha1.App) error {
+	raw := a.Annotations[annotChecksDispatch]
+	if raw == "" {
+		return nil
+	}
+	var receipt checkedDispatch
+	if err := json.Unmarshal([]byte(raw), &receipt); err != nil {
+		return err
+	}
+	if receipt.Generation <= 0 || !validGitObjectID(receipt.Commit.Hash) {
+		return fmt.Errorf("invalid checked deploy receipt")
+	}
+	if s.Store != nil && managedAppID(a) != "" {
+		if _, err := s.Store.ClearCheckedDeployImage(ctx, managedAppID(a), receipt.Repo, receipt.Branch, receipt.Image, receipt.RowVersion); err != nil {
+			return err
+		}
+		if _, err := s.Store.EnsureCheckedDeploy(ctx, managedAppID(a), receipt.Generation, receipt.Commit); err != nil {
+			return err
+		}
+	}
+	err := rollout.PatchAppLocked(ctx, s.Client, a, func(live *appv1alpha1.App) error {
+		if live.Annotations[annotChecksDispatch] != raw {
+			return errCheckedSuperseded
+		}
+		delete(live.Annotations, annotChecksDispatch)
+		return nil
+	})
+	if errors.Is(err, errCheckedSuperseded) {
+		return nil
+	}
+	return err
 }

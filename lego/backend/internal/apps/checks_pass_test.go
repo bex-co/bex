@@ -32,6 +32,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/github"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -213,7 +214,7 @@ func TestAlreadyPassingCommitDeploysOnPushAndSuitesIgnoreTheirBranch(t *testing.
 
 // Any other write between the read and the claim (an operator status update)
 // is retried, not taken for a rival claim that would strand the commit.
-func TestTakeChecksPendingRetriesAConflict(t *testing.T) {
+func TestCheckedDispatchRetriesAConflict(t *testing.T) {
 	base := fakeClient(checksApp("api", checksRepo, shaA)).(client.WithWatch)
 	conflicts := 0
 	cl := interceptor.NewClient(base, interceptor.Funcs{
@@ -225,14 +226,14 @@ func TestTakeChecksPendingRetriesAConflict(t *testing.T) {
 			return c.Patch(ctx, obj, patch, opts...)
 		},
 	})
-	h := &GitWebhook{Svc: &Service{Base: &core.Base{Client: cl, Namespace: "default"}}}
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}, Checks: &fakeChecks{permitted: true, runs: []github.CheckRun{run("completed", "success")}}}
+	h := &GitWebhook{Svc: svc}
 	a := checksApp("api", checksRepo, shaA)
-	taken, err := h.takeChecksPending(context.Background(), a, shaA)
-	if err != nil || !taken || conflicts != 1 {
-		t.Fatalf("taken %v err %v after %d conflict(s), want the retry to take it", taken, err, conflicts)
+	if deployed := h.deployIfChecksPass(context.Background(), a, store.CommitInfo{Hash: shaA}); !deployed || conflicts != 1 {
+		t.Fatalf("deployed %v after %d conflicts, want successful retry", deployed, conflicts)
 	}
-	if again, _ := h.takeChecksPending(context.Background(), a, shaA); again {
-		t.Error("a second claim of the same commit succeeded")
+	if h.deployIfChecksPass(context.Background(), a, store.CommitInfo{Hash: shaA}) {
+		t.Fatal("duplicate dispatch")
 	}
 }
 
