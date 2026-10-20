@@ -1,6 +1,6 @@
 # w2 · m170 — Grafana analytics keep trusting `bex-db` across CA renewals
 
-**Worker:** worker2 **Goal:** both Grafana analytics datasources are healthy again, a `bex-db` CA renewal reaches them with no human reseal, and a failing analytics datasource or stale CA copy raises an alert instead of going unnoticed. **Status:** in progress — t001, t002, t004 done 2026-10-19; t003 needs the user's authorization for the `bex-db` TLS change
+**Worker:** worker2 **Goal:** both Grafana analytics datasources are healthy again, a `bex-db` CA renewal reaches them with no human reseal, and a failing analytics datasource or stale CA copy raises an alert instead of going unnoticed. **Status:** blocked — t001, t002, t004 done and live 2026-10-20 (both readers verify the renewed CA; the probe passes in production); t003 needs the user's authorization to give `bex-db` a long-lived cert-manager server CA (a production TLS change on the control-plane database), then t005's drill
 
 ## Tasks (in order)
 
@@ -27,7 +27,7 @@
 
 - **Source:** `/pm-brainstorm for w2` (2026-10-19), item 3, chosen by the user the same day. Absorbs `w7/blocked/060.md` (moved here as `source-w7-060.md`), whose external gate — CNPG issuing the renewed CA — cleared around 2026-10-01 with no follow-up since 2026-09-28; also executes that note's own "consider a milestone that removes the manual step".
 - **Evidence (read-only, `hetzner-prod`, 2026-10-19):** `bex-system/bex-db-ca` `notAfter=Dec 30 23:56:17 2026 GMT`; `monitoring/grafana-product-analytics` and `monitoring/grafana-cli-analytics` `ca.crt` `notAfter=Oct  8 23:06:42 2026 GMT`. Both datasources use `sslmode: verify-full` with `sslRootCertFile` mounted from those Secrets (`deploy/gitops/base/values/grafana.values.yaml:50-65,110-150`), so both have trusted an expired CA for eleven days. Datasource health endpoints were not queried; failure is inferred from the expired trust root.
-- **Goal linkage:** [ADR088](../../../docs/ADR088-platform-observability-ui.md) platform observability (product and CLI analytics are its business-metrics half); [ADR008](../../../docs/ADR008-vision.md) "Ops hardening".
+- **Goal linkage:** [ADR088](../../../../docs/ADR088-platform-observability-ui.md) platform observability (product and CLI analytics are its business-metrics half); [ADR008](../../../../docs/ADR008-vision.md) "Ops hardening".
 - **Expected outcome:** analytics dashboards work again, and the roughly 90-day manual reseal disappears.
 - **Why now:** broken today and unnoticed for eleven days — proof that nothing watches datasource health; the renewed CA expires 2026-12-30, so the same outage recurs in about ten weeks without t003.
 - **Render parity omitted:** platform-internal observability; no REST/GraphQL/MCP/UI surface changes.
@@ -50,3 +50,4 @@
 ## Evidence
 
 - **t001 (2026-10-19):** both SealedSecrets resealed with the unchanged live reader passwords and the current `bex-db-ca` (`kubeseal` against the production controller; only the two `encryptedData` values change per file; nothing printed). The probe was dry-run against production through a port-forward with the same script: stale CA → `certificate verify failed`; current CA → both readers OK. Live confirmation after the Argo sync is recorded below.
+- **Live (2026-10-20):** after the root sync stalled 06:17Z–07:21Z on an unrelated placeholder (fixed as `w2/048`), Argo applied `e7d71fd10`: both `monitoring/grafana-{product,cli}-analytics` now carry `ca.crt` `notAfter=Dec 30 23:56:17 2026 GMT`, and the first scheduled `analytics-datasource-probe` run (07:30Z, `analytics-datasource-probe-29874690`) logged `ok: product analytics reader (verify-full)` / `ok: cli analytics reader (verify-full)`.
