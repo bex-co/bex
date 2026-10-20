@@ -131,7 +131,7 @@ function ServiceBreadcrumbs({ serviceId }: { serviceId: string }) {
           <Button
             variant="ghost"
             size="sm"
-            className="min-w-0 max-w-48 gap-1 px-2 font-medium"
+            className="min-w-0 max-w-48 shrink gap-1 px-2 font-medium"
           >
             <Globe2 className="shrink-0" />
             <span className="truncate">{service?.name ?? serviceId}</span>
@@ -353,7 +353,7 @@ function ProjectMenu({
         <Button
           variant="ghost"
           size="sm"
-          className="min-w-0 max-w-48 gap-1 px-2 font-medium"
+          className="min-w-0 max-w-48 shrink gap-1 px-2 font-medium"
         >
           <FolderKanban className="shrink-0" />
           <span className="truncate">{current?.name ?? currentId}</span>
@@ -411,7 +411,7 @@ function EnvironmentMenu({
         <Button
           variant="ghost"
           size="sm"
-          className="hidden min-w-0 max-w-40 gap-1 px-2 font-medium md:inline-flex"
+          className="hidden min-w-0 max-w-40 shrink gap-1 px-2 font-medium md:inline-flex"
         >
           <Boxes className="shrink-0" />
           <span className="truncate">{current?.name ?? currentId}</span>
