@@ -15,6 +15,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m123** — [Sanitize client-identity headers at the tenant edge](m123/README.md) (7 tasks;220m) ← promoted from `143` on 2026-10-20: tenant apps receive caller-forged `True-Client-IP`/`CF-Connecting-IP`, the headers Render tells apps to trust
+
 - [ ] **m122** — [Report the image digest each prebuilt-image deploy ran](blocked/m122/README.md) (7 tasks;225m) ← `/qa-find-bugs-cli` sweep 1228 2026-10-20 — **BLOCKED (2026-10-20: release pipeline deploys the operator and bex-api; QA runs t007 on production: a fresh free web service on `docker.io/ealen/echo-server:0.9.2` goes live and `GET …/deploys` shows `image.sha` equal to the tag's index digest (the kubelet records the index, not the platform manifest — [evidence](blocked/m122/evidence/README.md)); `bex deploys list` prints it after `SHA:`; a second deploy gets its own row digest; a bad-tag deploy carries none; a by-digest service reports that digest; a Git-backed deploy has no `image`; GraphQL `imageSha`/MCP/dashboard match; then delete the fixture with a 404 proof)**. t001–t006 done: the operator records `status.imageDigest {generation, digest}` when a release first serves (digest-pinned ref, else the Ready current-revision pod's `imageID`); bex-api stamps `deploys.image_sha` only on that release's own live close; REST/MCP `image.sha`, GraphQL `imageSha`, dashboard short digest with copy; ADR004/006/018.
 
 - [x] **m121** — [A release in flight builds its own source after a later save](done/m121/README.md) (8 tasks;370m) ← promoted from `126` on 2026-10-19 — **DONE (2026-10-19):** shipped `00a00c9d6`. A held release runs on its adopted spec's view (own build ref and inputs, image, pre-deploy, snapshots, launch). Live 13/13: a queued release builds its own commit past a newer deploy and past a branch Update Source, and a repo build finishes past a switch to a prebuilt image.
@@ -361,7 +363,9 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **143** — [Web services receive caller-forged `True-Client-IP` / `CF-Connecting-IP`, the client-IP headers Render tells apps to trust](143.md) ← `/qa-find-bugs-cli` sweep 1241 2026-10-20: major, 60m
+- [ ] **144** — [A new service shows the logs of a deleted service that had the same name](144.md) ← `/qa-find-bugs-cli` sweep 1244 2026-10-20: App log reads select by name, not service id; major, 60m
+
+- [x] **143** — [Web services receive caller-forged `True-Client-IP` / `CF-Connecting-IP`, the client-IP headers Render tells apps to trust](done/143.md) ← `/qa-find-bugs-cli` sweep 1241 2026-10-20: major, 60m — **PROMOTED (2026-10-20)** to `m123`.
 
 - [ ] **142** — [Blueprint `ipAllowList` refuses a bare IP address, so Render's own example `render.yaml` fails validation](blocked/142.md) ← `/qa-find-bugs-cli` sweep 1240 2026-10-20 — **BLOCKED (2026-10-20: release pipeline deploys bex-api; QA runs `bex blueprints validate` on Render's full example Blueprint (no `is not a valid CIDR` left) and a sync of a free Key Value from `source: 198.51.100.1` that reads back `cidrBlock: 198.51.100.1/32`; delete the fixture with a 404 proof)**. Source fixed: `manifestAllowEntries` compiles a bare Blueprint `source` to its single-host prefix (`/32`, `/128`, v4-mapped unmapped, zoned refused) before validation; REST/GraphQL `cidrBlock` unchanged; `TestManifestAllowEntriesAcceptsBareAddresses` + a bare-address row in `TestBlueprintDatastoreCreateAccess` (plan noop after apply).
 
