@@ -4,6 +4,8 @@ Use this file as a hard constraint when running `/pm-brainstorm` and `/pm`. If a
 
 ## Anti-goals
 
+- **Do not keep a Render-parity gap because an older ADR or hardening decision chose otherwise** ([ADR008 § Render parity first](../docs/ADR008-vision.md#render-parity-first), user decision 2026-10-17/2026-10-20). Propose amending the ADR instead.
+- **Do not leave a customer-facing capability behind an internal-workspace allowlist or canary** without a dated widen-to-every-workspace task in the same milestone.
 - Do not propose roadmap work that is not clearly tied to bex's project goals/pillars (`docs/ADR008-vision.md`) or current platform roadmap intent.
 - Do not create milestones that are vague, non-testable, or missing observable outcomes.
 - Do not create milestones for sub-hour work; keep those as inbox notes (`wN/NNN.md`).
