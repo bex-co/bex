@@ -368,3 +368,24 @@ One automatic intent per Blueprint is leased at a time across API replicas; othe
 A retryable Git read, a source that advances during fetch/admission, a busy apply or a process restart retains accepted work for lease recovery. Auto Sync off, disconnect or a changed path prevents queued work from applying. Permanent apply refusal settles the intent with a bounded explanation. Existing sync history records the actual immutable consumed commit and an existing `note` names both accepted and consumed commits; intent evidence retains the original accepted commit. REST, GraphQL, MCP and the dashboard continue to read the same history fields.
 
 Verification includes a failing-before delayed-A/current-B regression, force-push and unchanged-file successor cases, pre/post-fetch provider failures, policy races, concurrent real-Postgres claims and reclaimed-worker fencing. A signed-webhook/worker walkthrough uses real Postgres plus a controlled Kubernetes client to exercise rapid/reversed delivery, restart, stale-token replay, force push, Auto Sync off and disconnect. It is not a live GitHub delivery or running workload acceptance test.
+
+## Render template spellings (w5/m143, 2026-10-20)
+
+Render's own Deploy-to-Render templates use four inputs its published `render.yaml` schema forbids. Because the templates ship deploy buttons, Render evidently accepts them. bex now accepts them the same way:
+
+- **Unquoted booleans as env values** (`value: true`): the service receives the text `true`/`false`. 13 of the 170 `github.com/render-examples` files did this. A boolean anywhere else keeps its type and its schema checks.
+- **Capitalized plan names** (`plan: Starter`) on services and databases: plans are case-insensitive.
+- **A bare `envVars:`** (null): an empty list.
+- **Env-var prompt metadata** (`displayName`, `description`, `sensitive`, `required` on an `envVars` entry): accepted and ignored, since they configure nothing. The same keys elsewhere are still schema refusals.
+
+The w8/m53 fence that kept booleans as "located schema refusals" was a reading of the schema, not of Render's behavior; it is withdrawn for env values.
+
+**Corpus guard.** `TestRenderExamplesCorpus` (opt-in: `BEX_RENDER_EXAMPLES_DIR`, files fetched with `scripts/render-examples-corpus.sh` because they are third-party) runs every render-examples `render.yaml` through `ValidateBlueprint`. A file may fail only for:
+
+- a deliberate divergence: region, previews and `previewValue`, workflows, the reserved `PORT`, `RENDER_*` references, the 10 GB disk minimum;
+- a refusal Render makes too: `sync: false` in an env group, the misspelled `dockerFilePath`, a free `private_service`, retired Postgres plans such as `pro-4gb`;
+- a gap already filed: free-form resource names and dotted env keys, both w5/169.
+
+Any other refusal fails the test as a new class to triage. On 2026-10-20 all 170 files passed this rule.
+
+Through dev-5's REST `POST /v1/blueprints/validate`, the unmodified `retool` and `redash` templates validate. `langfuse4-template`, `hasura-graphql` and `zulip` now fail only on the reserved `PORT`, and `saleor` only on a `RENDER_*` `fromService` reference.
