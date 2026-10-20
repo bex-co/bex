@@ -143,6 +143,12 @@ const (
 	TypePostgresUpgradeStarted   = eventvocab.TypePostgresUpgradeStarted
 	TypePostgresUpgradeSucceeded = eventvocab.TypePostgresUpgradeSucceeded
 	TypePostgresUpgradeFailed    = eventvocab.TypePostgresUpgradeFailed
+	// Point-in-time recovery (w5/m141): base backups are checkpoints, and an
+	// archiving failure stops the recovery window advancing.
+	TypePostgresPITRCheckpointStarted   = eventvocab.TypePostgresPITRCheckpointStarted
+	TypePostgresPITRCheckpointCompleted = eventvocab.TypePostgresPITRCheckpointCompleted
+	TypePostgresPITRCheckpointFailed    = eventvocab.TypePostgresPITRCheckpointFailed
+	TypePostgresWALArchiveFailed        = eventvocab.TypePostgresWALArchiveFailed
 	// Persistent-disk lifecycle (ADR082; w8/m34). Render's webhook enum spells
 	// these disk_created/disk_updated/disk_deleted — the earlier bex-only
 	// disk_attached/disk_detached filters are rewritten by migration 0106.
@@ -216,17 +222,21 @@ var factEvents = map[string]string{
 	// rather than service_event_facts, but the composed feed the dispatcher
 	// tails UNIONs both under EventSourceFact, so one fact_type → type map
 	// serves them all.
-	string(store.DatastoreFactPostgresUnavailable):      TypePostgresUnavailable,
-	string(store.DatastoreFactPostgresAvailable):        TypePostgresAvailable,
-	string(store.DatastoreFactKeyValueUnhealthy):        TypeKeyValueUnhealthy,
-	string(store.DatastoreFactKeyValueAvailable):        TypeKeyValueAvailable,
-	string(store.DatastoreFactPostgresBackupCompleted):  TypePostgresBackupCompleted,
-	string(store.DatastoreFactPostgresBackupFailed):     TypePostgresBackupFailed,
-	string(store.DatastoreFactPostgresRestoreSucceeded): TypePostgresRestoreSucceeded,
-	string(store.DatastoreFactPostgresRestoreFailed):    TypePostgresRestoreFailed,
-	string(store.DatastoreFactPostgresUpgradeStarted):   TypePostgresUpgradeStarted,
-	string(store.DatastoreFactPostgresUpgradeSucceeded): TypePostgresUpgradeSucceeded,
-	string(store.DatastoreFactPostgresUpgradeFailed):    TypePostgresUpgradeFailed,
+	string(store.DatastoreFactPostgresUnavailable):             TypePostgresUnavailable,
+	string(store.DatastoreFactPostgresAvailable):               TypePostgresAvailable,
+	string(store.DatastoreFactKeyValueUnhealthy):               TypeKeyValueUnhealthy,
+	string(store.DatastoreFactKeyValueAvailable):               TypeKeyValueAvailable,
+	string(store.DatastoreFactPostgresBackupCompleted):         TypePostgresBackupCompleted,
+	string(store.DatastoreFactPostgresBackupFailed):            TypePostgresBackupFailed,
+	string(store.DatastoreFactPostgresRestoreSucceeded):        TypePostgresRestoreSucceeded,
+	string(store.DatastoreFactPostgresRestoreFailed):           TypePostgresRestoreFailed,
+	string(store.DatastoreFactPostgresUpgradeStarted):          TypePostgresUpgradeStarted,
+	string(store.DatastoreFactPostgresUpgradeSucceeded):        TypePostgresUpgradeSucceeded,
+	string(store.DatastoreFactPostgresUpgradeFailed):           TypePostgresUpgradeFailed,
+	string(store.DatastoreFactPostgresPITRCheckpointStarted):   TypePostgresPITRCheckpointStarted,
+	string(store.DatastoreFactPostgresPITRCheckpointCompleted): TypePostgresPITRCheckpointCompleted,
+	string(store.DatastoreFactPostgresPITRCheckpointFailed):    TypePostgresPITRCheckpointFailed,
+	string(store.DatastoreFactPostgresWALArchiveFailed):        TypePostgresWALArchiveFailed,
 }
 
 // auditVerbs is verbEvents' key set — the dispatcher's push-down filter,

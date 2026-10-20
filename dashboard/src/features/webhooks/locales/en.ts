@@ -660,6 +660,22 @@ const enWebhooks: Record<string, TranslationEntry> = {
     message: "Postgres Backup Failed",
     description: "Event label — postgres_backup_failed",
   },
+  "webhooks.event.postgres_pitr_checkpoint_started": {
+    message: "Postgres PITR Checkpoint Started",
+    description: "Event label — postgres_pitr_checkpoint_started",
+  },
+  "webhooks.event.postgres_pitr_checkpoint_completed": {
+    message: "Postgres PITR Checkpoint Completed",
+    description: "Event label — postgres_pitr_checkpoint_completed",
+  },
+  "webhooks.event.postgres_pitr_checkpoint_failed": {
+    message: "Postgres PITR Checkpoint Failed",
+    description: "Event label — postgres_pitr_checkpoint_failed",
+  },
+  "webhooks.event.postgres_wal_archive_failed": {
+    message: "Postgres WAL Archive Failed",
+    description: "Event label — postgres_wal_archive_failed",
+  },
   "webhooks.event.postgres_restore_succeeded": {
     message: "Postgres Restore Succeeded",
     description: "Event label — postgres_restore_succeeded",

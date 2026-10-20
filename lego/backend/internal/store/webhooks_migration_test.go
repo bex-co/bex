@@ -289,3 +289,65 @@ func TestDiskEventTypeRenameMigration(t *testing.T) {
 		}
 	}
 }
+
+// TestPITREventSubscriptionMigration is w5/m141's 0157: an endpoint that
+// filtered on postgres_backup_completed/_failed — which used to fire for
+// nightly base backups — also receives the checkpoint events those backups now
+// report, appended after its existing order; other endpoints are untouched,
+// and a re-run adds nothing.
+func TestPITREventSubscriptionMigration(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	up, err := migrationsFS.ReadFile("migrations/0157_datastore_pitr_events.up.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The ALTERs are skipped in this scratch schema: only the subscription
+	// rewrite is under test.
+	rewrite := string(up)[strings.Index(string(up), "UPDATE webhook_endpoints"):]
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `
+		CREATE SCHEMA migration_0157_pitr_events;
+		SET LOCAL search_path TO migration_0157_pitr_events;
+		CREATE TABLE webhook_endpoints (id text PRIMARY KEY, event_types text[] NOT NULL);
+		INSERT INTO webhook_endpoints (id, event_types) VALUES
+			('whk-both', ARRAY['deploy_ended','postgres_backup_completed','postgres_backup_failed']),
+			('whk-failed', ARRAY['postgres_backup_failed']),
+			('whk-already', ARRAY['postgres_backup_completed','postgres_pitr_checkpoint_completed']),
+			('whk-other', ARRAY['deploy_ended']);
+	`); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if _, err := tx.Exec(ctx, rewrite); err != nil {
+			t.Fatalf("apply rewrite: %v", err)
+		}
+	}
+	want := map[string]string{
+		"whk-both":    "deploy_ended,postgres_backup_completed,postgres_backup_failed,postgres_pitr_checkpoint_completed,postgres_pitr_checkpoint_failed",
+		"whk-failed":  "postgres_backup_failed,postgres_pitr_checkpoint_failed",
+		"whk-already": "postgres_backup_completed,postgres_pitr_checkpoint_completed",
+		"whk-other":   "deploy_ended",
+	}
+	for id, w := range want {
+		var got []string
+		if err := tx.QueryRow(ctx, `SELECT event_types FROM webhook_endpoints WHERE id = $1`, id).Scan(&got); err != nil {
+			t.Fatal(err)
+		}
+		if strings.Join(got, ",") != w {
+			t.Errorf("%s = %v, want %s", id, got, w)
+		}
+	}
+}

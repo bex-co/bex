@@ -48,6 +48,11 @@ const (
 	DatastoreFactPostgresUpgradeStarted   DatastoreEventFactType = eventvocab.TypePostgresUpgradeStarted
 	DatastoreFactPostgresUpgradeSucceeded DatastoreEventFactType = eventvocab.TypePostgresUpgradeSucceeded
 	DatastoreFactPostgresUpgradeFailed    DatastoreEventFactType = eventvocab.TypePostgresUpgradeFailed
+
+	DatastoreFactPostgresPITRCheckpointStarted   DatastoreEventFactType = eventvocab.TypePostgresPITRCheckpointStarted
+	DatastoreFactPostgresPITRCheckpointCompleted DatastoreEventFactType = eventvocab.TypePostgresPITRCheckpointCompleted
+	DatastoreFactPostgresPITRCheckpointFailed    DatastoreEventFactType = eventvocab.TypePostgresPITRCheckpointFailed
+	DatastoreFactPostgresWALArchiveFailed        DatastoreEventFactType = eventvocab.TypePostgresWALArchiveFailed
 )
 
 // DatastoreKind separates the two managed datastore products. It is the CHECK
@@ -116,6 +121,20 @@ type ObservedDatastoreState struct {
 	LastBackupScheduled bool
 	LastBackupAt        time.Time
 
+	// ActiveBackupName is Database.status.activeBackup: the base backup running
+	// now, the start edge of a PITR checkpoint.
+	ActiveBackupName string
+	ActiveBackupAt   time.Time
+
+	// WALArchiving is the WALArchiving condition: "" unreported (or backups
+	// off), walArchivingOK, or walArchivingFailed.
+	WALArchiving        string
+	WALArchivingMessage string
+
+	// Exports are Database.status.exports that reached a terminal phase —
+	// Render's postgres_backup_completed/_failed.
+	Exports []ObservedDatastoreExport
+
 	// Recovering is true when Spec.Recovery.SourceBackupServerName is set —
 	// the Database was created as a restore target (ADR009).
 	Recovering bool
@@ -132,6 +151,14 @@ type ObservedDatastoreState struct {
 	UpgradeKey     string
 }
 
+// ObservedDatastoreExport is one terminal logical export.
+type ObservedDatastoreExport struct {
+	ID          string
+	Failed      bool
+	Reason      string
+	CompletedAt time.Time
+}
+
 // datastoreCheckpointExtras is the t002 half of the checkpoint row — fields
 // the availability CAS does not touch but that must round-trip with it so a
 // backup/upgrade edge cannot be lost between passes.
@@ -140,6 +167,15 @@ type datastoreCheckpointExtras struct {
 	LastBackupPhase string
 	RestoreOutcome  string
 	UpgradeKey      string
+	// StartedBackup is the base backup whose checkpoint start was reported.
+	StartedBackup string
+	// WALArchiving latches "" / walArchivingOK / walArchivingFailed; a failure
+	// fact fires on the move into failed and re-arms once archiving recovers.
+	WALArchiving string
+	// ExportsSince is the floor for export facts: exports that finished before
+	// the checkpoint first saw this database (or before w5/m141 shipped) are
+	// history, not events. Zero until set.
+	ExportsSince time.Time
 }
 
 // datastoreFactTypeFor names the availability edge for one datastore kind.
@@ -264,8 +300,10 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 	var inserted []DatastoreEventFact
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		selectCheckpoint := `SELECT phase, availability, suspended,
-			last_backup_name, last_backup_phase, restore_outcome, upgrade_key, updated_at
+			last_backup_name, last_backup_phase, restore_outcome, upgrade_key,
+			started_backup, wal_archiving, exports_since, updated_at
 			FROM datastore_observed_checkpoints WHERE datastore_id = $1 FOR UPDATE`
+		var exportsSince *time.Time
 		var previousPhase, previousAvailability string
 		var previousSuspended bool
 		var previousChangedAt time.Time
@@ -273,7 +311,8 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 		err := tx.QueryRow(ctx, selectCheckpoint, obs.DatastoreID).
 			Scan(&previousPhase, &previousAvailability, &previousSuspended,
 				&previousExtras.LastBackupName, &previousExtras.LastBackupPhase,
-				&previousExtras.RestoreOutcome, &previousExtras.UpgradeKey, &previousChangedAt)
+				&previousExtras.RestoreOutcome, &previousExtras.UpgradeKey,
+				&previousExtras.StartedBackup, &previousExtras.WALArchiving, &exportsSince, &previousChangedAt)
 		if errors.Is(err, pgx.ErrNoRows) {
 			// The baseline latches through the same arming rule as every later
 			// pass, so a first-ever observation caught mid-provisioning records
@@ -282,28 +321,18 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 			// a Database created mid-restore must not fire restore_succeeded
 			// until it actually reaches Ready after the checkpoint exists.
 			baseline := nextDatastoreAvailability("", obs.Availability)
-			baselineExtras := datastoreCheckpointExtras{
-				LastBackupName:  obs.LastBackupName,
-				LastBackupPhase: obs.LastBackupPhase,
-			}
-			if obs.Recovering && obs.AvailabilityObserved && obs.Availability == "healthy" {
-				baselineExtras.RestoreOutcome = "succeeded"
-			}
-			if obs.Recovering && obs.Phase == string(appv1alpha1.DBPhaseFailed) {
-				baselineExtras.RestoreOutcome = "failed"
-			}
-			if obs.Phase == string(appv1alpha1.DBPhaseUpgrading) && obs.SpecVersion != "" && obs.CurrentVersion != "" && obs.SpecVersion != obs.CurrentVersion {
-				baselineExtras.UpgradeKey = fmt.Sprintf("%s:upgrade:%s-%s:started", obs.DatastoreID, obs.CurrentVersion, obs.SpecVersion)
-			}
+			baselineExtras := datastoreBaselineExtras(obs)
 			tag, insertErr := tx.Exec(ctx,
 				`INSERT INTO datastore_observed_checkpoints
 				     (datastore_id, workspace_id, kind, phase, availability, suspended, updated_at, healthy_transition_at,
-				      last_backup_name, last_backup_phase, restore_outcome, upgrade_key)
-				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+				      last_backup_name, last_backup_phase, restore_outcome, upgrade_key,
+				      started_backup, wal_archiving, exports_since)
+				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 				 ON CONFLICT (datastore_id) DO NOTHING`,
 				obs.DatastoreID, obs.WorkspaceID, obs.Kind, obs.Phase, baseline, obs.Suspended, obs.At, healthyTransition,
 				baselineExtras.LastBackupName, baselineExtras.LastBackupPhase,
-				baselineExtras.RestoreOutcome, baselineExtras.UpgradeKey)
+				baselineExtras.RestoreOutcome, baselineExtras.UpgradeKey,
+				baselineExtras.StartedBackup, baselineExtras.WALArchiving, nullTime(baselineExtras.ExportsSince))
 			if insertErr != nil {
 				return insertErr
 			}
@@ -313,10 +342,14 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 			err = tx.QueryRow(ctx, selectCheckpoint, obs.DatastoreID).
 				Scan(&previousPhase, &previousAvailability, &previousSuspended,
 					&previousExtras.LastBackupName, &previousExtras.LastBackupPhase,
-					&previousExtras.RestoreOutcome, &previousExtras.UpgradeKey, &previousChangedAt)
+					&previousExtras.RestoreOutcome, &previousExtras.UpgradeKey,
+				&previousExtras.StartedBackup, &previousExtras.WALArchiving, &exportsSince, &previousChangedAt)
 		}
 		if err != nil {
 			return err
+		}
+		if exportsSince != nil {
+			previousExtras.ExportsSince = exportsSince.UTC()
 		}
 
 		availability := previousAvailability
@@ -328,10 +361,13 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 		lifecycle, nextExtras := observedDatastoreLifecycleFacts(obs, previousExtras)
 		facts = append(facts, lifecycle...)
 		for _, fact := range facts {
-			if err := insertDatastoreEventFactTx(ctx, tx, fact); err != nil {
+			written, err := insertDatastoreEventFactTx(ctx, tx, fact)
+			if err != nil {
 				return err
 			}
-			inserted = append(inserted, fact)
+			if written {
+				inserted = append(inserted, fact)
+			}
 		}
 		// IS DISTINCT FROM makes the steady state a no-op instead of a row
 		// write: the reconciler observes every datastore on every resync and
@@ -347,14 +383,17 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 			     updated_at = CASE WHEN $12 THEN updated_at ELSE $6 END,
 			     healthy_transition_at = COALESCE($7, healthy_transition_at),
 			     last_backup_name = $8, last_backup_phase = $9,
-			     restore_outcome = $10, upgrade_key = $11
+			     restore_outcome = $10, upgrade_key = $11,
+			     started_backup = $13, wal_archiving = $14, exports_since = $15
 			 WHERE datastore_id = $1
 			   AND (workspace_id, phase, availability, suspended,
-			        last_backup_name, last_backup_phase, restore_outcome, upgrade_key)
-			       IS DISTINCT FROM ($2, $3, $4, $5, $8, $9, $10, $11)`,
+			        last_backup_name, last_backup_phase, restore_outcome, upgrade_key,
+			        started_backup, wal_archiving, exports_since)
+			       IS DISTINCT FROM ($2, $3, $4, $5, $8, $9, $10, $11, $13, $14, $15)`,
 			obs.DatastoreID, obs.WorkspaceID, obs.Phase, availability, obs.Suspended, obs.At, healthyTransition,
 			nextExtras.LastBackupName, nextExtras.LastBackupPhase,
-			nextExtras.RestoreOutcome, nextExtras.UpgradeKey, obs.AvailabilitySuppressed)
+			nextExtras.RestoreOutcome, nextExtras.UpgradeKey, obs.AvailabilitySuppressed,
+			nextExtras.StartedBackup, nextExtras.WALArchiving, nullTime(nextExtras.ExportsSince))
 		return err
 	})
 	if err != nil {
@@ -363,12 +402,39 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 	return inserted, nil
 }
 
-func insertDatastoreEventFactTx(ctx context.Context, tx pgx.Tx, fact DatastoreEventFact) error {
-	_, err := tx.Exec(ctx, insertDatastoreEventFactSQL,
+// datastoreBaselineExtras is the lifecycle half of a first-ever checkpoint:
+// whatever is already true is recorded as seen, so the baseline emits nothing
+// — a Database created mid-restore must not fire restore_succeeded until it
+// actually reaches Ready after the checkpoint exists, and an export or a WAL
+// failure that predates the checkpoint is history.
+func datastoreBaselineExtras(obs ObservedDatastoreState) datastoreCheckpointExtras {
+	extras := datastoreCheckpointExtras{
+		LastBackupName:  obs.LastBackupName,
+		LastBackupPhase: obs.LastBackupPhase,
+		StartedBackup:   obs.ActiveBackupName,
+		WALArchiving:    obs.WALArchiving,
+		ExportsSince:    exportFloor(obs),
+	}
+	if obs.Recovering && obs.AvailabilityObserved && obs.Availability == "healthy" {
+		extras.RestoreOutcome = "succeeded"
+	}
+	if obs.Recovering && obs.Phase == string(appv1alpha1.DBPhaseFailed) {
+		extras.RestoreOutcome = "failed"
+	}
+	if obs.Phase == string(appv1alpha1.DBPhaseUpgrading) && obs.SpecVersion != "" && obs.CurrentVersion != "" && obs.SpecVersion != obs.CurrentVersion {
+		extras.UpgradeKey = fmt.Sprintf("%s:upgrade:%s-%s:started", obs.DatastoreID, obs.CurrentVersion, obs.SpecVersion)
+	}
+	return extras
+}
+
+// insertDatastoreEventFactTx reports whether the row was new: a fact already
+// recorded under its source key (an export seen on an earlier pass) is not.
+func insertDatastoreEventFactTx(ctx context.Context, tx pgx.Tx, fact DatastoreEventFact) (bool, error) {
+	tag, err := tx.Exec(ctx, insertDatastoreEventFactSQL,
 		fact.SourceKey, fact.WorkspaceID, fact.DatastoreID, fact.Kind, fact.Type, fact.At,
 		fact.ReasonCode, fact.BackupName, fact.BackupError, fact.VersionFrom, fact.VersionTo,
 		fact.Scheduled)
-	return err
+	return err == nil && tag.RowsAffected() > 0, err
 }
 
 // LastDatastoreHealthyTransitionAt returns the Ready=True transition time
