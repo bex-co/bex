@@ -17,7 +17,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 - [ ] **m169** — [Forum uploads survive restarts: restore the recovered files and attach a durable disk](blocked/m169/README.md) (9 tasks) — **BLOCKED (the user must authorize a brief downtime window: attaching the disk switches the forum App to `Recreate` deploys, so beancount.io/forum, tianpan.co/forum and forum.bex.co/forum all go down briefly — t003)**. t001–t002 done 2026-10-19: 39 referenced uploads, **0 served**, 29 recoverable from `nvme4tbfish` by SHA-1, and 10 unrecoverable (all uploaded after the move to bex and lost on restarts). Mount path `/var/www/discourse/public/uploads`, 10 GB. ← `/pm-brainstorm for w2` 2026-10-19 #2; Render parity omitted (first-party tenant operations).
 - [ ] **m170** — [Grafana analytics keep trusting `bex-db` across CA renewals](m170/README.md) (8 tasks) ← `/pm-brainstorm for w2` 2026-10-19 #3; absorbs `w7/060`. Both analytics readers have trusted an expired CA since 2026-10-08 (verified read-only), the renewed CA expires 2026-12-30, and nothing alerted. Render parity omitted (platform observability).
-- [ ] **m171** — [Postgres plans large enough for high availability](m171/README.md) (11 tasks) ← `/pm-brainstorm for w2` 2026-10-19 #4. No Postgres tier has ≥1 CPU, so the shipped HA gate, failover verb and HA panel are unreachable. t001 needs the user's tier/price approval, and t004 waits on `w5/m138/t003`. Render parity included.
+- [ ] **m171** — [Postgres plans large enough for high availability](blocked/m171/README.md) (11 tasks) — **BLOCKED (the user must approve the tiers and prices to add — recommendation in the README: `1c-2g` $28.00, `pro-4gb`/`1c-4g` $38.50 and `basic-4gb`/`2c-4g` $52.50 per instance-month at Render × 0.70, with HA standbys billed like the primary; t004 also waits on `w5/m138/t003`)**. t001 research done 2026-10-19. ← `/pm-brainstorm for w2` 2026-10-19 #4; Render parity included.
 
 - [x] **m168** — [Email verification is a hard per-request gate](done/m168/README.md) (10 tasks; **DONE 2026-10-06**, shipped `22180488a`; prod: REST/GraphQL/MCP 403, dashboard wall, OAuth refused; dev-2: refuse→verify→admit, consent deny path live) ← promoted from w2/045 (forum.bex.co OIDC setup, 2026-10-05); user decision 2026-10-06 un-defers ADR075 Option B.
 
@@ -128,7 +128,11 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] [046 — MCP `update_environment_variables`, exactly as Render's official MCP server defines it](046.md) (~60m) ← `/pm-brainstorm for w2` 2026-10-19 #5; pinned to upstream `render-oss/render-mcp-server` `c6b8bb11196c`.
+- [ ] [048 — Every production GitOps sync stalls while the tenant pool is full: Argo waits on the `tenant-headroom` placeholder](048.md) ← seen during w2/m170 rollout, 2026-10-20.
+
+- [ ] [047 — `basic-256mb` and `basic-1gb` Postgres are priced above bex's own Render × 0.70 rule](047.md) (~45m) ← found by w2/m171 t001 research, 2026-10-19.
+
+- [x] [046 — MCP `update_environment_variables`, exactly as Render's official MCP server defines it](done/046.md) — **DONE 2026-10-20** (`Parity1to1` in the pinned MCP guard; merge/replace/one deploy/Render's text) ← `/pm-brainstorm for w2` 2026-10-19 #5.
 
 - [x] [040 — Keep the product analytics sampling test inside its intended UTC day](done/040.md) — **DONE 2026-10-02** ← fresh integration validation, 2026-10-02
 
