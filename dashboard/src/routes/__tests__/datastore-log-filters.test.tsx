@@ -130,7 +130,7 @@ const MOUNTS = [
 
 type Mount = (typeof MOUNTS)[number];
 
-function renderAt(mount: Mount, href: string) {
+async function renderAt(mount: Mount, href: string) {
   const root = createRootRoute();
   const page = createRoute({
     getParentRoute: () => root,
@@ -143,6 +143,9 @@ function renderAt(mount: Mount, href: string) {
     history: createMemoryHistory({ initialEntries: [href] }),
     context: { client: {} as never, session: null },
   });
+  // Resolve the initial match before mounting: otherwise the first test in a
+  // cold worker can spend findByRole's whole timeout on an empty router outlet.
+  await router.load();
   render(<RouterProvider router={router} />);
   return router;
 }
@@ -160,7 +163,7 @@ describe.each(MOUNTS)("$name Logs tab filter URL state (w4/228)", (mount) => {
 
   it("restores text + instance from a copied link, querying them first, without rewriting the URL", async () => {
     const href = `${mount.base}?tab=logs&range=7d&text=Ready%20to%20accept&instance=${mount.instance}`;
-    const router = renderAt(mount, href);
+    const router = await renderAt(mount, href);
 
     expect(await searchBox()).toHaveValue("Ready to accept");
     // Discovery has not named the instance yet; the linked one still shows.
@@ -184,7 +187,7 @@ describe.each(MOUNTS)("$name Logs tab filter URL state (w4/228)", (mount) => {
   it("writes typed text and a picked instance, and survives a reload", async () => {
     labels.values = [mount.instance];
     const user = userEvent.setup({ pointerEventsCheck: 0 });
-    const router = renderAt(mount, `${mount.base}?tab=logs&range=7d`);
+    const router = await renderAt(mount, `${mount.base}?tab=logs&range=7d`);
 
     fireEvent.change(await searchBox(), { target: { value: "checkpoint" } });
     await waitFor(() =>
@@ -208,7 +211,7 @@ describe.each(MOUNTS)("$name Logs tab filter URL state (w4/228)", (mount) => {
     cleanup();
     queries.length = 0;
     labels.values = [];
-    renderAt(mount, href);
+    await renderAt(mount, href);
     expect(await searchBox()).toHaveValue("checkpoint");
     expect(instancePicker()).toHaveTextContent(mount.instance);
     expect(queries[0]).toMatchObject({
@@ -219,7 +222,7 @@ describe.each(MOUNTS)("$name Logs tab filter URL state (w4/228)", (mount) => {
 
   it("clearing a filter removes only its key", async () => {
     const user = userEvent.setup({ pointerEventsCheck: 0 });
-    const router = renderAt(
+    const router = await renderAt(
       mount,
       `${mount.base}?tab=logs&range=custom&rangeStart=2026-10-03T07:00:00.000Z&rangeEnd=2026-10-03T08:00:00.000Z&text=x&instance=${mount.instance}`,
     );
@@ -242,7 +245,7 @@ describe.each(MOUNTS)("$name Logs tab filter URL state (w4/228)", (mount) => {
   });
 
   it("round-trips numeric-looking text as a string", async () => {
-    const router = renderAt(mount, `${mount.base}?tab=logs&text=404`);
+    const router = await renderAt(mount, `${mount.base}?tab=logs&text=404`);
     expect(await searchBox()).toHaveValue("404");
     expect(queries[0]).toMatchObject({ text: "404" });
 
@@ -253,13 +256,13 @@ describe.each(MOUNTS)("$name Logs tab filter URL state (w4/228)", (mount) => {
     const href = router.state.location.href;
     cleanup();
     queries.length = 0;
-    renderAt(mount, href);
+    await renderAt(mount, href);
     expect(await searchBox()).toHaveValue("500");
     expect(queries[0]).toMatchObject({ text: "500" });
   });
 
   it("adopts a URL change it did not write (back/forward)", async () => {
-    const router = renderAt(mount, `${mount.base}?tab=logs&text=first`);
+    const router = await renderAt(mount, `${mount.base}?tab=logs&text=first`);
     expect(await searchBox()).toHaveValue("first");
 
     await act(async () => {
@@ -298,7 +301,7 @@ describe.each(MOUNTS)("$name Logs tab filter URL state (w4/228)", (mount) => {
   });
 
   it("Back within the debounce drops the typed text rather than re-writing it", async () => {
-    const router = renderAt(mount, `${mount.base}?tab=logs&text=first`);
+    const router = await renderAt(mount, `${mount.base}?tab=logs&text=first`);
     expect(await searchBox()).toHaveValue("first");
     await act(async () => {
       await router.navigate({
