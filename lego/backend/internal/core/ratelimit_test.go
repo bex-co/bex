@@ -18,6 +18,7 @@ package core
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
@@ -147,5 +148,27 @@ func TestKeyedRateLimiterCapsEntries(t *testing.T) {
 	if got := rl.Entries(); got > maxKeyedRateLimitEntries {
 		t.Errorf("entries = %d after %d distinct keys; want ≤ %d — the map must be capped, not unbounded",
 			got, maxKeyedRateLimitEntries*2, maxKeyedRateLimitEntries)
+	}
+}
+
+func TestSetRateLimitHeadersReportsTheTightestBucket(t *testing.T) {
+	now := time.Now()
+	roomy := rate.NewLimiter(rate.Limit(1), 10) // full: 10 tokens
+	tight := rate.NewLimiter(rate.Limit(0.5), 4)
+	tight.AllowN(now, 3) // 1 token left, 3 to refill at 0.5/s
+	h := http.Header{}
+	SetRateLimitHeaders(h, now, false, roomy, tight)
+	if h.Get("RateLimit-Limit") != "4" || h.Get("RateLimit-Remaining") != "1" || h.Get("RateLimit-Reset") != "6" {
+		t.Errorf("headers = %v, want the tight bucket's 4/1/6", h)
+	}
+	full := http.Header{}
+	SetRateLimitHeaders(full, now, false, roomy)
+	if full.Get("RateLimit-Remaining") != "10" || full.Get("RateLimit-Reset") != "0" {
+		t.Errorf("full bucket = %v, want remaining 10 and reset 0", full)
+	}
+	refused := http.Header{}
+	SetRateLimitHeaders(refused, now, true, roomy)
+	if refused.Get("RateLimit-Remaining") != "0" {
+		t.Errorf("refused remaining = %q, want 0", refused.Get("RateLimit-Remaining"))
 	}
 }
