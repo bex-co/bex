@@ -167,17 +167,28 @@ func Touch(obj metav1.Object, now time.Time) {
 	obj.SetAnnotations(annotations)
 }
 
-// UpdatedAt returns the newest authoritative mutation/reconciliation time.
-// Legacy objects with neither the bex annotation nor managed-field timestamps
-// return empty instead of copying creationTimestamp into a fake update time.
+// UpdatedAt returns the resource's last API mutation time (ADR006):
+// the app.bex.co/updated-at annotation Touch stamps on every API write is
+// authoritative when present — later reads return it unchanged until the
+// next write. The operator's status-subresource writes also land in
+// managedFields with fresh times, so they must never move updatedAt: a
+// crash loop is not an update (w4/373).
+//
+// Legacy objects without the annotation fall back to managed-field times,
+// still ignoring subresource: status entries — a status change is never an
+// update. An object with neither source returns empty instead of copying
+// creationTimestamp into a fake update time.
 func UpdatedAt(obj metav1.Object) string {
-	var latest time.Time
 	if raw := obj.GetAnnotations()[UpdatedAtAnnotation]; raw != "" {
 		if parsed, err := time.Parse(time.RFC3339Nano, raw); err == nil {
-			latest = parsed
+			return parsed.UTC().Format(time.RFC3339Nano)
 		}
 	}
+	var latest time.Time
 	for _, field := range obj.GetManagedFields() {
+		if field.Subresource == "status" {
+			continue
+		}
 		if field.Time != nil && field.Time.After(latest) {
 			latest = field.Time.Time
 		}
