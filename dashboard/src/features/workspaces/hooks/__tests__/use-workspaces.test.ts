@@ -6,8 +6,8 @@ vi.mock("@apollo/client/react", () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
 }));
 
-vi.mock("@/common/hooks/use-is-authenticated", () => ({
-  useIsAuthenticated: () => true,
+vi.mock("@/common/hooks/use-has-verified-session", () => ({
+  useHasVerifiedSession: () => true,
 }));
 
 import { useWorkspaces } from "@/features/workspaces/hooks/use-workspaces";

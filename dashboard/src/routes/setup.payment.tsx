@@ -1,7 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { PaymentSetupRouteSkeleton } from "@/common/components/route-skeletons";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { translatedTitleHead } from "@/common/lib/document-head";
+import {
+  emailVerificationPath,
+  emailVerificationRequired,
+} from "@/features/onboarding/lib/email-verification";
 import PaymentSetupPage from "@/features/onboarding/pages/payment-setup-page";
 
 /**
@@ -10,11 +14,19 @@ import PaymentSetupPage from "@/features/onboarding/pages/payment-setup-page";
  * shell (the same chrome as sign-up and verification — it is the last
  * onboarding step), not the sidebar, so there is nothing to wander off into.
  * `requireAuth`'s default `next` brings a session-less visitor straight back.
+ * An unverified session (a direct URL or bookmark) meets the verification wall
+ * first, as sign-up orders it: no workspace query runs for it, so nothing
+ * would ever load here (w6/079).
  */
 export const Route = createFileRoute("/setup/payment")({
   component: PaymentSetupPage,
   pendingComponent: PaymentSetupRouteSkeleton,
-  beforeLoad: requireAuth(),
+  beforeLoad: (ctx) => {
+    requireAuth()(ctx);
+    if (emailVerificationRequired(ctx.context.session)) {
+      throw redirect({ href: emailVerificationPath(ctx.location.href) });
+    }
+  },
   validateSearch: (search: Record<string, unknown>) => ({
     // The guarded deep link to continue to once the gate opens (safeNext at
     // read; verification success and the root gate both set it).

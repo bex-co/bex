@@ -26,7 +26,7 @@ export function WorkspaceProvider({
   initialWorkspaceId?: string | null;
   onWorkspaceChange?: () => void;
 }) {
-  const { workspaces, loading, error, ready, authenticated, refetch } =
+  const { workspaces, loading, error, ready, verified, refetch } =
     useWorkspaces();
   const navigate = useNavigate();
   // User/cookie preference. Effective selection is derived below so membership
@@ -38,18 +38,19 @@ export function WorkspaceProvider({
   const handledFallbackRef = useRef<string | null>(null);
 
   const selectedId = useMemo(() => {
-    // Public pages (login, sign-up) sit under this provider, and the selection
-    // cookie outlives the session: without a session there is no current
-    // workspace, so no always-mounted consumer (capability polling) fetches
-    // with a stale id (w6/078). Loading keeps the cookie's choice.
-    if (!authenticated) return null;
+    // Public pages (login, sign-up, the verification wall) sit under this
+    // provider, and the selection cookie outlives the session: without a
+    // session bex-api serves there is no current workspace, so no
+    // always-mounted consumer (capability polling) fetches with a stale id
+    // (w6/078, w6/079). Loading keeps the cookie's choice.
+    if (!verified) return null;
     if (!ready) return preferredId;
     if (workspaces.length === 0) return null;
     if (preferredId && workspaces.some((w) => w.id === preferredId)) {
       return preferredId;
     }
     return workspaces[0].id;
-  }, [authenticated, ready, workspaces, preferredId]);
+  }, [verified, ready, workspaces, preferredId]);
 
   // Persist + navigate as external side effects of a confirmed membership
   // transition. Does not call setState — selectedId is already derived.
