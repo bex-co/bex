@@ -406,6 +406,13 @@ func applyRenderSchemaCompatibility(operationID string, schema *openapi3.Schema)
 	if operationID == "create-postgres" || operationID == "update-postgres" {
 		extendSchemaEnum(schema.Properties["plan"], tiers.Postgres.IDs())
 	}
+	if operationID == "create-key-value" || operationID == "update-key-value" {
+		for _, name := range []string{"maxmemoryPolicy", "persistenceMode"} {
+			if ref := schema.Properties[name]; ref != nil && ref.Value != nil {
+				schema.Properties[name] = withHyphenatedEnum(ref)
+			}
+		}
+	}
 	if operationID != "create-service" && operationID != "update-service" {
 		return
 	}
@@ -445,6 +452,25 @@ func nullableBuildFilterLists(schema *openapi3.Schema) {
 		filter.Properties[name] = &openapi3.SchemaRef{Value: &nullable}
 	}
 	schema.Properties["buildFilter"] = &openapi3.SchemaRef{Value: &filter}
+}
+
+// withHyphenatedEnum is ref's enum widened with each value's hyphenated
+// spelling. Key Value's maxmemoryPolicy and persistenceMode are underscore on
+// Render's wire and hyphenated in the CRD; the handler normalizes either, as
+// GraphQL and MCP accept both, so REST must not refuse the hyphen alone
+// (w8/139). The component is cloned because the Key Value response shares it.
+func withHyphenatedEnum(ref *openapi3.SchemaRef) *openapi3.SchemaRef {
+	widened := *ref.Value
+	widened.Enum = slices.Clone(ref.Value.Enum)
+	var hyphenated []string
+	for _, value := range ref.Value.Enum {
+		if s, ok := value.(string); ok {
+			hyphenated = append(hyphenated, strings.ReplaceAll(s, "_", "-"))
+		}
+	}
+	clone := &openapi3.SchemaRef{Value: &widened}
+	extendSchemaEnum(clone, hyphenated)
+	return clone
 }
 
 func extendSchemaEnum(schema *openapi3.SchemaRef, values []string) {
