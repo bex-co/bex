@@ -202,10 +202,16 @@ func buildJSONFieldTypes(target reflect.Type) jsonFields {
 }
 
 // UnmarshalJSON applies the same context-selected strictness to nested raw JSON
-// fragments decoded after the top-level request body.
+// fragments decoded after the top-level request body. Failure errors are the
+// safe, field-naming ones safeJSONDecodeError produces in both modes, so a
+// caller wrapping the error for the client never leaks encoding/json's raw
+// Go-typed message (w4/369).
 func UnmarshalJSON(ctx context.Context, data []byte, dst any) error {
 	if !strictJSONDecoding(ctx) {
-		return json.Unmarshal(data, dst)
+		if err := json.Unmarshal(data, dst); err != nil {
+			return safeJSONDecodeError(err)
+		}
+		return nil
 	}
 	return decodeJSON(ctx, bytes.NewReader(data), dst)
 }
