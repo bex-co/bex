@@ -163,6 +163,15 @@ jobs:
         env:
           GITOPS_TEST_FILESYSTEM_COLLECTOR: "1"
         run: bash scripts/gitops-validate.sh
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: deploy/gitops/charts/traefik-plugins/clientipheaders/go.mod
+          cache: false
+      - name: Traefik local plugins # the edge loads them; a broken one is an outage (abortOnPluginFailure)
+        run: |
+          for plugin in deploy/gitops/charts/traefik-plugins/*/; do
+            (cd "$plugin" && GOWORK=off go vet ./... && GOWORK=off go test ./...)
+          done
       - name: app log severity parsing in the pinned Alloy image
         run: python3 -m unittest scripts/test_log_shipper.py -v
       - name: log delivery failure and recovery in pinned Alloy and Loki

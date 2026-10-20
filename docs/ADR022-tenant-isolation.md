@@ -142,6 +142,20 @@ NetworkPolicy does not constrain what Traefik itself may route. Traefik's global
 
 This closes the control-plane bypass adjacent to network isolation. It does not add an arbitrary upstream proxy to static sites: their rewrites remain object-key rewrites inside the fixed S3 origin ([ADR029](ADR029-static-sites.md)). `scripts/verify-static-site-security.sh live` enumerates real ServiceAccounts/RoleBinding subjects, checks every write verb by impersonation, and submits both admitted and hostile server-side dry-run aliases.
 
+### Client-identity headers a tenant app receives (w8/m123)
+
+Render puts every web service behind Cloudflare, which overwrites `CF-Connecting-IP` and `True-Client-IP` with the real client, and Render tells apps to trust those headers for rate limits, allowlists and audit logs. Traefik rewrites only its own `X-Forwarded-*`/`X-Real-IP` set. Without more, a migrated app would trust caller-controlled values.
+
+The `web` and `websecure` entrypoints therefore run the `bex-client-ip-headers` local plugin (`deploy/gitops/charts/traefik-plugins/clientipheaders/`) before every router. It covers every App, static site, custom domain and platform host. With the peer being the TCP source after PROXY protocol:
+
+| Request | `True-Client-IP` | `CF-Connecting-IP`, `CF-IPCountry`, other `CF-*` | `X-Client-IP` |
+| --- | --- | --- | --- |
+| From any non-Cloudflare peer (every `*.onbex.co` host, a DNS-only custom domain, or a direct hit on the LB) | the peer | removed | removed |
+| From a Cloudflare edge peer (a custom domain behind the tenant's own Cloudflare proxy) with a valid `CF-Connecting-IP` | that `CF-Connecting-IP` | kept, since Cloudflare set them | removed |
+| From a Cloudflare edge peer whose `CF-Connecting-IP` is not an IP | the peer | removed | removed |
+
+Underscore spellings (`True_Client_IP`, `CF_Connecting_IP`) are stripped too, because CGI-style frameworks (Rack, PHP, WSGI) read them as the same variable as the hyphenated header. A trusted edge's `CF-Connecting-IP` is reduced to its first value. Because the reference sits on the entrypoint, a missing `Middleware` fails every router on `web`/`websecure`, not one App. The `Middleware` therefore ships in the Traefik release itself (`extraObjects`), beside the CRDs it needs. `X-Forwarded-For`/`X-Real-IP` keep Traefik's behavior: they name the peer, and a forged value is replaced. The plugin's Cloudflare ranges equal `core/proxiedhosts.go`'s, and `scripts/gitops-validate.sh` fails when they drift. bex's own inbound-IP allowlist still matches the TCP source, never `CF-Connecting-IP` (m150 Decision 2). `X-Forwarded-Server` (the Traefik pod name) still reaches apps; it identifies no client.
+
 ## Tenant container hardening (w7/m2)
 
 Every tenant container (Deployments, CronJobs, pre-deploy Jobs) is stamped with a hardening SecurityContext (`tenantSecCtx()`, `app_controller.go`): `allowPrivilegeEscalation: false`, **all Linux capabilities dropped**, RuntimeDefault seccomp. `runAsNonRoot` is deliberately absent — tenant images may run as root (PSS baseline, not restricted). **Ports below 1024 are bindable despite the dropped `NET_BIND_SERVICE` (corrected w6/m149, 2026-10-19).** Every pod gets `net.ipv4.ip_unprivileged_port_start=0` from the pinned containerd 2.x CRI default. A live `strict-v1` root process bound `:80`, as on Render ([container-privileges.md](render-artifacts/container-privileges.md)). The earlier claim that "a tenant container cannot bind ports below 1024 even as root" does not hold on this runtime. bex-api accepts any port 1-65535, and `scripts/clusterapi-validate.sh` keeps node bootstrap from overriding the default. The operator's crash-loop diagnosis still tells the user to listen on `$PORT` (w9/011, [ADR004-app-deployment.md](ADR004-app-deployment.md)).

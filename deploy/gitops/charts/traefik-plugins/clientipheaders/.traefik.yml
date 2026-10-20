@@ -1,0 +1,5 @@
+displayName: bex client-identity header sanitizer
+type: middleware
+import: github.com/bex-co/bex-client-ip-headers
+summary: Drops caller-forged client-IP headers and sets True-Client-IP to the real client.
+testData: {}
