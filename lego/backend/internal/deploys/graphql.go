@@ -38,6 +38,7 @@ var deployGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"status":     gqlutil.StrField(func(d DeployView) any { return d.Status }),
 		"trigger":    gqlutil.StrField(func(d DeployView) any { return d.Trigger }),
 		"image":      gqlutil.StrField(func(d DeployView) any { return d.Image }),
+		"imageSha":   gqlutil.StrField(func(d DeployView) any { return d.ImageSHA }), // REST's image.sha, flat like commitId (w8/m122)
 		"rollbackOf": gqlutil.StrField(func(d DeployView) any { return d.RollbackOf }),
 		// The resolved commit this deploy ran (w9/001 + w2/m42) — flat fields,
 		// the fragment's existing style (REST nests them as Render's commit

@@ -79,6 +79,7 @@ const canceled = (over: Partial<DeployView> = {}): DeployView => ({
   status: "canceled",
   trigger: "api",
   image: "",
+  imageSha: "",
   rollbackOf: "",
   commitId: "",
   commitMessage: "",

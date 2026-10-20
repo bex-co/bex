@@ -2,6 +2,7 @@ import { formatDateTime } from "@/common/lib/format";
 import { Card, CardContent } from "@/common/components/ui/card";
 import { Badge } from "@/common/components/ui/badge";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import { CopyButton } from "@/common/components/copy-button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import type { ReactNode } from "react";
@@ -14,6 +15,12 @@ import {
 import { formatDeployDuration } from "@/features/deploys/lib/deploy-presentation";
 import { DeployFailureReason } from "./deploy-failure-reason";
 import type { DeployView } from "../hooks/use-deploy";
+
+/** "sha256:" plus the first 12 hex digits, Docker's short image id length. */
+function shortDigest(digest: string): string {
+  const [algorithm, hex] = digest.split(":");
+  return hex ? `${algorithm}:${hex.slice(0, 12)}` : digest;
+}
 
 export interface DeployHeaderProps {
   /** Nullish while the header `deploy` query is still in flight (w9/m62 t002). */
@@ -158,10 +165,24 @@ export function DeployHeader({ deploy, actions }: DeployHeaderProps) {
           </p>
         )}
 
+        {/* Render's image.sha (w8/m122): unknown => omitted, not faked. */}
         {deploy.image ? (
-          <p className="truncate font-mono text-xs text-muted-foreground">
-            {deploy.image}
-          </p>
+          <div className="flex min-w-0 items-center gap-2 font-mono text-xs text-muted-foreground">
+            <p className="truncate">{deploy.image}</p>
+            {deploy.imageSha ? (
+              <>
+                <span className="shrink-0" title={deploy.imageSha}>
+                  {shortDigest(deploy.imageSha)}
+                </span>
+                <CopyButton
+                  value={deploy.imageSha}
+                  label={t("deploys.imageDigestCopy")}
+                  successText={t("deploys.imageDigestCopied")}
+                  errorText={t("deploys.imageDigestCopyError")}
+                />
+              </>
+            ) : null}
+          </div>
         ) : null}
 
         {facts.length > 0 ? (

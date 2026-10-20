@@ -69,6 +69,7 @@ function row(overrides: Partial<DeployRow> = {}): DeployRow {
     status: "deactivated",
     trigger: "api",
     image: "registry.example.com/web:1",
+    imageSha: "",
     rollbackOf: "",
     commitId: "abc1234def5678",
     commitMessage: "Ship searchable deploy history",

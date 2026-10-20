@@ -383,6 +383,29 @@ Repo-backed deploy rows are stamped with commit provenance **at deploy-open time
 
 **Honest omission, never fabrication.** Non-github.com URLs, private repos without a connection, unknown refs, and provider failures all leave `commit` omitted (`ok=false`). 404 and 403 collapse to the same miss so the public path is not an existence oracle. Callers treat any resolution failure as "no metadata" and still open the deploy.
 
+## Deploy image digest (w8/m122)
+
+An image deploy reports Render's `image.sha`, "the SHA that the image reference was resolved to", on REST and MCP (`image.sha`), GraphQL (`Deploy.imageSha`) and the dashboard deploy header (short form, full value on hover, copy). Render's pinned CLI prints it after `SHA:` in its deploy list.
+
+**Source.** The operator records `status.imageDigest {generation, digest}` when a release first serves (`markRunning`, the shared web/private/worker path, `operator/internal/controller/image_digest.go`):
+
+1. A digest-pinned `status.image` (`…@sha256:…`, every in-cluster build, or a service created by digest) is its own evidence; no pod is read.
+2. Otherwise the digest comes from the kubelet: `containerStatuses[app].imageID` of the earliest-created Ready, non-terminating pod of the release's own revision. A bare `sha256:…` imageID is a local image's config id, not a registry digest, and is ignored.
+
+Once a generation has a digest, it keeps it. A pod that later re-pulls a moved tag never rewrites what the release first ran. A record for another generation is dropped, never carried forward. bex-api stamps the row's `image_sha` beside `resolved_image` on the row's **live** close, and only from a record of that row's own generation. A failed, canceled or superseded deploy has no digest, and neither does a live deploy whose release recorded none. It is never shown with the previous release's digest. A rollback row takes the digest its own release records when it goes live, not one copied from its target.
+
+**Which digest.** Observed on containerd (kind v1.36.1, arm64, 2026-10-20): a pod running `docker.io/ealen/echo-server:0.9.2` reported `imageID` `docker.io/ealen/echo-server@sha256:006b92e1…`. That is the tag's OCI **index** digest (`docker buildx imagetools inspect`), not the linux/arm64 manifest (`sha256:74afa5ff…`). So for a multi-arch tag, `image.sha` is the platform-independent digest the tag resolved to. It is what a registry `HEAD` on the tag returns, and it is what `ref@<sha>` pulls on any node.
+
+**Limits.**
+
+- A Git-backed deploy's built image has a digest too, but Render reports no `image` object for a Git-backed deploy. No surface reports it.
+- A cron job has no long-running pod at convergence, so it records a digest only for a digest-pinned image. A cron job on a tag reports none.
+- A static site has no runtime container and records nothing.
+- The pod read goes through the informer cache. If the cache has not yet seen the Ready pod when the Deployment reports the rollout complete, that release records no digest and its row stays without one. Nothing is backfilled after the live close.
+- `image.registryCredential` is not reported.
+
+**Open question: pinned runs.** bex still _runs_ the tag with `imagePullPolicy: Always`. A restart, scale-out or reschedule of the same release can therefore pull a moved tag and run bytes other than its recorded `image.sha`. Pinning each release to `ref@digest` would close that gap, but at a cost: digest resolution against tenant registries, with their credentials, before the rollout, instead of reading the kubelet afterwards. Render's docs are ambiguous about restarts, and its rollback re-pulls the tag. This is a separate product decision; it is not implemented.
+
 ## Control-plane deploy lifecycle
 
 For store-managed Apps, bex-api projects the operator's current-release facts into Render's deploy vocabulary without adding an operator-to-database dependency. A deploy row begins `created`; `BuildQueued` and `Building` evidence yield `queued` and `build_in_progress`; a release-generation-scoped pre-deploy Job yields `pre_deploy_in_progress`; rollout reconciliation yields `update_in_progress`; and the corresponding failure or convergence facts yield `build_failed`, `pre_deploy_failed`, `update_failed`, or `live`. A later operational metadata generation does not detach the open row: the projector matches it to `status.releaseGeneration` and the active `rev-<release-generation>`. A row whose own release generation carries a terminal `status.conditions[Build]` verdict closes `build_failed` with that verdict's message even once the release has advanced past it — otherwise the deploy that actually failed would report the `canceled` a bare generation comparison infers (w6/m100). Fast phases may be skipped when the polling control plane never observes them. Invalid regressions are rejected.

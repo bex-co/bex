@@ -1229,7 +1229,9 @@ func assertDeployLifecycle(ctx context.Context, t *testing.T, s *PGStore, app Ap
 	// Reaching live atomically deactivates the prior live deploy and advances
 	// both rows' transition timestamps. The prior finished_at remains the time
 	// it originally reached live; deactivation is represented by updated_at.
-	if won, err := s.CloseDeploy(ctx, second.ID, DeployLive, "img:second"); err != nil || !won {
+	// The live close stores the digest it ran beside resolved_image (w8/m122).
+	secondSHA := "sha256:" + strings.Repeat("b", 64)
+	if won, err := s.TransitionDeploy(ctx, second.ID, DeployLive, RanImage{Ref: "img:second", SHA: secondSHA}, "", "", "", nil); err != nil || !won {
 		t.Fatalf("close second live: won=%v err=%v", won, err)
 	}
 	prior, err := s.GetDeploy(ctx, app.ID, first.ID)
@@ -1241,6 +1243,9 @@ func assertDeployLifecycle(ctx context.Context, t *testing.T, s *PGStore, app Ap
 	// start stays unknown rather than equal to the live observation (w4/m156).
 	if err != nil || current.Status != DeployLive || current.StartedAt != nil || current.FinishedAt == nil || !current.UpdatedAt.After(second.UpdatedAt) {
 		t.Fatalf("current deploy = %+v (err %v), want live with an unknown start and transition timestamps", current, err)
+	}
+	if current.ResolvedImage != "img:second" || current.ImageSHA != secondSHA || prior.ImageSHA != "" {
+		t.Fatalf("ran images = current %q@%q, prior sha %q; want the second row's own digest and none on the first", current.ResolvedImage, current.ImageSHA, prior.ImageSHA)
 	}
 	if got, err := s.ListDeploys(ctx, app.ID, DeployFilter{UpdatedAfter: second.UpdatedAt}); err != nil || len(got) != 2 {
 		t.Fatalf("updatedAfter = %+v (err %v), want both rows changed by the live/deactivate transaction", got, err)
@@ -1269,7 +1274,7 @@ func assertDeployLifecycle(ctx context.Context, t *testing.T, s *PGStore, app Ap
 		t.Fatalf("image-pull deploy fixture = %+v (err %v)", failureDeploys, err)
 	}
 	failedDeploy := failureDeploys[0]
-	if won, err := s.TransitionDeploy(ctx, failedDeploy.ID, DeployUpdateFailed, "", "bounded operator diagnosis", EventReasonImagePullBackoff, "", nil); err != nil || !won {
+	if won, err := s.TransitionDeploy(ctx, failedDeploy.ID, DeployUpdateFailed, RanImage{}, "bounded operator diagnosis", EventReasonImagePullBackoff, "", nil); err != nil || !won {
 		t.Fatalf("image-pull transition = (%v, %v)", won, err)
 	}
 	failureEvents, err := s.ListServiceEvents(ctx, failureApp.ID, failureApp.TenantID, ServiceEventFilter{
@@ -1282,7 +1287,7 @@ func assertDeployLifecycle(ctx context.Context, t *testing.T, s *PGStore, app Ap
 	if failureFact.DeployID != failedDeploy.ID || failureFact.Image != failureApp.Image || failureFact.ReasonCode != EventReasonImagePullBackoff {
 		t.Fatalf("image-pull fact = %+v, want deploy/image/bounded reason", failureFact)
 	}
-	if won, err := s.TransitionDeploy(ctx, failedDeploy.ID, DeployUpdateFailed, "", "retry", EventReasonImagePullBackoff, "", nil); err != nil || won {
+	if won, err := s.TransitionDeploy(ctx, failedDeploy.ID, DeployUpdateFailed, RanImage{}, "retry", EventReasonImagePullBackoff, "", nil); err != nil || won {
 		t.Fatalf("image-pull retry = (%v, %v), want terminal no-op", won, err)
 	}
 }

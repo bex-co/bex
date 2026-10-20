@@ -189,6 +189,7 @@ describe("resource action projection freshness", () => {
       status: "deactivated",
       trigger: "api",
       image: "",
+      imageSha: "",
       rollbackOf: "",
       commitId: "",
       commitMessage: "",

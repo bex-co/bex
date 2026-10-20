@@ -9,6 +9,7 @@ function deploy(over: Partial<DeployView> = {}): DeployView {
     status: "live",
     trigger: "api",
     image: "registry.example.com/web:1",
+    imageSha: "",
     rollbackOf: "",
     commitId: "",
     commitMessage: "",
@@ -26,6 +27,35 @@ function deploy(over: Partial<DeployView> = {}): DeployView {
 }
 
 describe("DeployHeader", () => {
+  it("shows the digest a live image deploy ran beside its image, with copy (w8/m122)", () => {
+    const sha =
+      "sha256:4f1e2a9b8c7d6e5f40312233445566778899aabbccddeeff0011223344556677";
+    render(
+      <DeployHeader
+        deploy={deploy({
+          image: "docker.io/ealen/echo-server:0.9.2",
+          imageSha: sha,
+        })}
+      />,
+    );
+    expect(
+      screen.getByText("docker.io/ealen/echo-server:0.9.2"),
+    ).toBeInTheDocument();
+    const short = screen.getByText("sha256:4f1e2a9b8c7d");
+    expect(short).toHaveAttribute("title", sha);
+    expect(
+      screen.getByRole("button", { name: "Copy image digest" }),
+    ).toBeInTheDocument();
+  });
+
+  it("omits the digest while it is unknown", () => {
+    render(<DeployHeader deploy={deploy({ imageSha: "" })} />);
+    expect(screen.queryByText(/^sha256:/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Copy image digest" }),
+    ).not.toBeInTheDocument();
+  });
+
   it.each([
     ["live", "Live"],
     ["update_in_progress", "In Progress"],

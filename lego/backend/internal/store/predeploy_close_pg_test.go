@@ -69,7 +69,7 @@ func TestPGTerminalCloseSettlesARunningPreDeploy(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			app, d := preDeployingDeploy(t, s, ten.ID, fmt.Sprintf("pd-close-%d-%d", run, i), tc.preDeploy)
-			if won, err := s.TransitionDeploy(ctx, d.ID, tc.close, "", "", "", tc.cancelReason, nil); err != nil || !won {
+			if won, err := s.TransitionDeploy(ctx, d.ID, tc.close, RanImage{}, "", "", tc.cancelReason, nil); err != nil || !won {
 				t.Fatalf("close %s = (%v, %v)", tc.close, won, err)
 			}
 			got, err := s.GetDeploy(ctx, app.ID, d.ID)
@@ -189,7 +189,7 @@ func TestPGCanceledReleaseStepTakesItsVerdict(t *testing.T) {
 		t.Helper()
 		app, d := preDeployingDeploy(t, s, ten.ID, fmt.Sprintf("%s-%d", name, run), PreDeployRunning)
 		if close != "" {
-			if won, err := s.TransitionDeploy(ctx, d.ID, close, "", "", "", "", nil); err != nil || !won {
+			if won, err := s.TransitionDeploy(ctx, d.ID, close, RanImage{}, "", "", "", nil); err != nil || !won {
 				t.Fatalf("close %s = (%v, %v)", close, won, err)
 			}
 		}
@@ -282,7 +282,7 @@ func preDeployingDeploy(t *testing.T, s *PGStore, tenantID, name, step string) (
 		t.Fatalf("deploy fixture = %+v (err %v)", deploys, err)
 	}
 	d := deploys[0]
-	if _, err := s.TransitionDeploy(ctx, d.ID, DeployPreDeployInProgress, "", "", "", "", nil); err != nil {
+	if _, err := s.TransitionDeploy(ctx, d.ID, DeployPreDeployInProgress, RanImage{}, "", "", "", nil); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
 	if step != "" {

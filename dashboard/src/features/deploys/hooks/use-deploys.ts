@@ -23,6 +23,8 @@ export interface DeployRow {
   status: string;
   trigger: string;
   image: string;
+  /** Render's image.sha (w8/m122); "" while unknown and for a Git-backed deploy. */
+  imageSha: string;
   rollbackOf: string;
   commitId: string;
   commitMessage: string;
@@ -55,6 +57,7 @@ function toRows(raw: DeploysQuery["deploys"] | undefined): DeployRow[] {
       status: d.status ?? "",
       trigger: d.trigger ?? "",
       image: d.image ?? "",
+      imageSha: d.imageSha ?? "",
       rollbackOf: d.rollbackOf ?? "",
       commitId: d.commitId ?? "",
       commitMessage: d.commitMessage ?? "",

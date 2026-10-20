@@ -8,6 +8,7 @@ query Deploy($serviceId: String!, $deployId: String!) {
     status
     trigger
     image
+    imageSha
     rollbackOf
     commitId
     commitMessage
