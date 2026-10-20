@@ -99,19 +99,13 @@ var conformanceAllowlist = map[string][]conformanceDivergence{
 		`/owner: property "owner" is missing`,
 	),
 
-	// Secret-file list values are intentionally redacted; custom-domain status
-	// reports bex's pending state and DNS instructions; event details are a
-	// documented partial activity-feed projection.
+	// Secret-file list values are intentionally redacted; event details are a
+	// documented partial activity-feed projection. Custom domains conform
+	// fully since w5/m137 (Render's verificationStatus semantics + the
+	// required publicSuffix/createdAt/redirectForName keys) — no entry.
 	"list-secret-files-for-service": knownConformanceDivergences(
 		"ADR018 §Environment variables & secret files: list returns names without secret contents",
 		`secretFile/content: property "content" is missing`,
-	),
-	"list-custom-domains": knownConformanceDivergences(
-		"ADR018 §Custom domains: bex exposes pending DNS-instruction state and omits unavailable provider metadata",
-		`customDomain/verificationStatus: value is not one of the allowed values`,
-		`customDomain/publicSuffix: property "publicSuffix" is missing`,
-		`customDomain/createdAt: property "createdAt" is missing`,
-		`customDomain/redirectForName: property "redirectForName" is missing`,
 	),
 	"list-events": knownConformanceDivergences(
 		"ADR018 §Services & lifecycle — Service events / activity feed: deliberate partial event-detail dialect",

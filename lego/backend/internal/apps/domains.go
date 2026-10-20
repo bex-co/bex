@@ -18,7 +18,6 @@ package apps
 
 import (
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"maps"
@@ -41,14 +40,17 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// DomainOwnershipVerifier checks one exact TXT value at a challenge name.
-// Implementations must treat resolver errors and absent/mismatched values as a
-// refusal. The narrow seam keeps DNS deterministic in tests.
-type DomainOwnershipVerifier interface {
-	VerifyTXT(ctx context.Context, name, value string) error
+// DomainTrafficChecker reports whether a custom domain's traffic DNS points
+// at one service's platform host — the whole verification predicate (ADR005
+// as amended 2026-10-19, Render's model: the CNAME/ALIAS the tenant creates
+// IS the proof). Implementations must
+// treat resolver errors, timeouts, and records pointing elsewhere as "not
+// pointed". The narrow seam keeps DNS deterministic in tests.
+type DomainTrafficChecker interface {
+	PointsAtService(ctx context.Context, host, platformHost string) bool
 }
 
-// domainClaimStore is the managed-App ownership state machine. It is separate
+// domainClaimStore is the managed-App claim state machine. It is separate
 // from IntentStore so a storeless bex-api keeps the historical verify-before-
 // add behavior, while the Postgres-backed service never projects pending rows.
 type domainClaimStore interface {
@@ -56,94 +58,118 @@ type domainClaimStore interface {
 	GetDomainClaim(ctx context.Context, appID, host string) (store.Domain, error)
 	ListDomainClaims(ctx context.Context, appID string) ([]store.Domain, error)
 	RecordDomainVerificationAttempt(ctx context.Context, appID, id string, at time.Time) error
-	PromoteDomainClaim(ctx context.Context, appID, id, expectedChallenge string, at time.Time) (store.Domain, error)
+	PromoteDomainClaim(ctx context.Context, appID, id string, at time.Time) (store.Domain, bool, error)
 	ReplaceDomainClaims(ctx context.Context, appID string, declarations []store.DomainDeclaration) ([]store.Domain, error)
 }
 
-type systemDomainOwnershipVerifier struct{}
+// pendingDomainClaimStore is the verification sweep's cross-App read: every
+// still-unverified claim, oldest-checked first, bounded per tick.
+type pendingDomainClaimStore interface {
+	ListPendingDomainClaims(ctx context.Context, limit int) ([]store.Domain, error)
+}
 
-func (systemDomainOwnershipVerifier) VerifyTXT(ctx context.Context, name, value string) error {
+// domainVerificationStore is what the sweep needs in one assertion: the due
+// list plus the claim mutations the shared promote path runs.
+type domainVerificationStore interface {
+	domainClaimStore
+	pendingDomainClaimStore
+}
+
+// domainResolver is the two lookups the traffic predicate needs, seamed so a
+// test can script DNS without a network.
+type domainResolver interface {
+	LookupCNAME(ctx context.Context, host string) (string, error)
+	LookupHost(ctx context.Context, host string) ([]string, error)
+}
+
+type systemDomainTrafficChecker struct {
+	resolver domainResolver // nil ⇒ net.DefaultResolver
+}
+
+func (c systemDomainTrafficChecker) PointsAtService(ctx context.Context, host, platformHost string) bool {
+	host, platformHost = normalizeHostname(host), normalizeHostname(platformHost)
+	if host == "" || platformHost == "" || host == platformHost {
+		return false
+	}
+	resolver := c.resolver
+	if resolver == nil {
+		resolver = net.DefaultResolver
+	}
 	lookupCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	values, err := net.DefaultResolver.LookupTXT(lookupCtx, name)
-	if err != nil {
-		return err
+	// (a) The CNAME chain reaches (or passes through) the platform host:
+	// LookupCNAME returns the chain's canonical end, so equality with the
+	// platform host proves a direct CNAME, and equality with the platform
+	// host's own canonical end proves the chain continued through it.
+	if cname, err := resolver.LookupCNAME(lookupCtx, host); err == nil {
+		cname = normalizeHostname(cname)
+		if cname == platformHost {
+			return true
+		}
+		if cname != "" && cname != host {
+			if platformCNAME, err := resolver.LookupCNAME(lookupCtx, platformHost); err == nil && normalizeHostname(platformCNAME) == cname {
+				return true
+			}
+		}
 	}
-	if !slices.Contains(values, value) {
-		return errors.New("TXT challenge value not found")
+	// (b) ALIAS/ANAME/flattening or a direct apex A: the host resolves to an
+	// address the platform host resolves to. This proves "points at the bex
+	// edge"; the globally unique claim row binds the host to this service —
+	// Render's apex-A structure (ADR005 §Tenant workflow). A proxied record
+	// (Cloudflare anycast) satisfies neither branch, as on Render.
+	hostAddrs, err := resolver.LookupHost(lookupCtx, host)
+	if err != nil || len(hostAddrs) == 0 {
+		return false
 	}
-	return nil
+	platformAddrs, err := resolver.LookupHost(lookupCtx, platformHost)
+	if err != nil || len(platformAddrs) == 0 {
+		return false
+	}
+	edge := make(map[string]bool, len(platformAddrs))
+	for _, addr := range platformAddrs {
+		edge[addr] = true
+	}
+	return slices.ContainsFunc(hostAddrs, func(addr string) bool { return edge[addr] })
 }
 
-func ownershipDomain(host string) string {
-	root := registrableDomain(host)
-	if root == "" {
-		root = host
+func (s *Service) domainTrafficChecker() DomainTrafficChecker {
+	if s.DomainTraffic != nil {
+		return s.DomainTraffic
 	}
-	return root
+	return systemDomainTrafficChecker{}
 }
 
-// ownershipDNSRecordName is the FQDN LookupTXT resolves for ownership proof.
-// Providers' Host/Name fields are relative to the zone — never present this
-// string as the Host to create (w4/092); use ownershipDNSRecordRelativeName.
-func ownershipDNSRecordName(host string) string {
-	return ownershipDNSRecordRelativeName + "." + ownershipDomain(host)
-}
-
-// ownershipDNSRecordRelativeName is the Host value shown in DNS instructions:
-// relative to the registrable-domain zone (same contract as DNSRecordView.Name
-// for traffic records). Pasting the FQDN into a provider that appends the zone
-// creates `_bex-challenge.<zone>.<zone>` and verification never succeeds.
-const ownershipDNSRecordRelativeName = "_bex-challenge"
-
-func domainOwnershipChallenge(app *appv1alpha1.App, host string) (name, value string) {
-	name = ownershipDNSRecordName(host)
-	root := ownershipDomain(host)
-	appID := managedAppID(app)
-	if appID == "" {
-		appID = app.Labels[core.LabelAppID]
+// requireDomainTraffic is the storeless admission gate: with no Postgres to
+// hold a pending claim, the traffic record must already point at the service
+// before the host may enter the App spec (fail-closed).
+func (s *Service) requireDomainTraffic(ctx context.Context, app *appv1alpha1.App, host string) error {
+	platformHost := s.platformHost(app)
+	if s.domainTrafficChecker().PointsAtService(ctx, host, platformHost) {
+		return nil
 	}
-	if appID == "" {
-		appID = string(app.UID)
-	}
-	if appID == "" {
-		appID = app.Namespace + "/" + app.Name
-	}
-	digest := sha256.Sum256([]byte(appID + "\x00" + root))
-	return name, fmt.Sprintf("bex-domain-verification=%x", digest[:16])
-}
-
-func (s *Service) requireDomainOwnership(ctx context.Context, app *appv1alpha1.App, host string) error {
-	name, value := domainOwnershipChallenge(app, host)
-	verifier := s.DomainOwnership
-	if verifier == nil {
-		verifier = systemDomainOwnershipVerifier{}
-	}
-	if err := verifier.VerifyTXT(ctx, name, value); err != nil {
-		return fmt.Errorf("%w: domain ownership is unverified; create TXT %s with value %s and retry", core.ErrConflict, name, value)
-	}
-	return nil
+	record := dnsRecordFor(host, domainType(host), platformHost)
+	return fmt.Errorf("%w: domain is unverified; create %s %s with value %s and retry", core.ErrConflict, record.Type, record.Name, record.Value)
 }
 
 // DomainView is the neutral bex projection of a custom domain on an App.
 type DomainView struct {
-	CreatedAt          string // RFC3339 claim creation time; empty for legacy storeless domains.
-	Name               string
-	DomainType         string // "apex" or "subdomain" (Render's enum)
-	OwnershipStatus    string // "pending" or "verified" (durable DNS-TXT claim)
-	VerificationStatus string // "pending" or "verified" (TLS cert issued?)
-	ServerStatus       string // "active" or "pending"
-	RedirectForName    string // canonical host for an auto-paired sibling; empty when served directly
+	CreatedAt  string // RFC3339 claim creation time; empty for legacy storeless domains.
+	Name       string
+	DomainType string // "apex" or "subdomain" (Render's enum)
+	// VerificationStatus is Render's field with Render's meaning: traffic-DNS
+	// verification ("unverified" until the record points at this service).
+	VerificationStatus string // "unverified" or "verified"
+	// CertificateStatus is the bex-visible TLS axis the dashboard's
+	// Certificate column reads (Render's API folds this into its UI only).
+	CertificateStatus string // "pending" or "verified" (TLS cert issued?)
+	ServerStatus      string // "active" or "pending"
+	RedirectForName   string // canonical host for an auto-paired sibling; empty when served directly
 	// CertificateReason explains why TLS issuance has not completed, in
 	// cert-manager's own words (e.g. `Waiting for HTTP-01 challenge propagation:
-	// wrong status code '404'`). Populated ONLY while VerificationStatus is
+	// wrong status code '404'`). Populated ONLY while CertificateStatus is
 	// "pending" — an issued certificate has nothing to explain — and empty
 	// whenever the ACME objects are unreadable, so it is a hint, never a status.
 	CertificateReason string
-	// OwnershipDNSRecord is the TXT proof for a pending managed claim. It is
-	// omitted after promotion and for storeless domains already admitted by the
-	// legacy synchronous proof gate.
-	OwnershipDNSRecord *DNSRecordView
 	// DNSRecord is the record the tenant must create at their registrar to point
 	// this domain at the service (Render's post-add DNS instructions, w5/m10).
 	DNSRecord DNSRecordView
@@ -158,9 +184,9 @@ type DomainView struct {
 // (bex points apex at the platform host via ALIAS/ANAME/CNAME-flattening rather
 // than a bare A-record IP — the edge is Cloudflare-proxied, docs/ADR005-custom-domain.md.)
 type DNSRecordView struct {
-	Type  string // "CNAME" (subdomain), "ALIAS" (apex), or "TXT" (ownership)
-	Name  string // Host relative to the DNS zone: the labels below the registrable domain, "@" for apex, or "_bex-challenge" for ownership TXT (never an FQDN — w4/092)
-	Value string // the target/value: platform host <app>.<base-domain>, or the ownership challenge string
+	Type  string // "CNAME" (subdomain) or "ALIAS" (apex)
+	Name  string // Host relative to the DNS zone: the labels below the registrable domain, or "@" for apex (never an FQDN — w4/092)
+	Value string // the target: platform host <app>.<base-domain>
 }
 
 // registrableDomain returns the eTLD+1 (registrable domain) of host — e.g.
@@ -323,43 +349,38 @@ func (s *Service) platformHost(app *appv1alpha1.App) string {
 	return ""
 }
 
+// dnsZone is the zone a host's DNS instructions are relative to: its
+// registrable domain, or the host itself when it has none.
+func dnsZone(host string) string {
+	if zone := registrableDomain(host); zone != "" {
+		return zone
+	}
+	return host
+}
+
 // dnsRecordFor computes the DNS record the tenant must create for host, given its
 // already-classified dtype ("apex"/"subdomain") and the app's platform host as the
 // target. A subdomain gets a CNAME named by its labels below the registrable
-// domain, the zone its owner manages and the ownership TXT record's zone too
-// (www.example.co.uk -> "www"); an apex gets an ALIAS at "@". Target is the
-// platform host; empty target still yields a well-typed record (the dashboard
-// renders the type/host guidance regardless).
+// domain, the zone its owner manages (www.example.co.uk -> "www"); an apex gets
+// an ALIAS at "@". Target is the platform host; empty target still yields a
+// well-typed record (the dashboard renders the type/host guidance regardless).
 func dnsRecordFor(host, dtype, platformHost string) DNSRecordView {
 	if dtype == "apex" {
 		return DNSRecordView{Type: "ALIAS", Name: "@", Value: platformHost}
 	}
 	name := normalizeHostname(host)
-	if label, ok := strings.CutSuffix(name, "."+ownershipDomain(name)); ok {
+	if label, ok := strings.CutSuffix(name, "."+dnsZone(name)); ok {
 		name = label
 	}
 	return DNSRecordView{Type: "CNAME", Name: name, Value: platformHost}
 }
 
-func ownershipDNSRecordFor(host, challenge string) *DNSRecordView {
-	if challenge == "" {
-		return nil
-	}
-	// Relative Host for DNS providers (zone = ownershipDomain(host)); LookupTXT
-	// still uses ownershipDNSRecordName (FQDN). See w4/092.
-	name := ownershipDNSRecordRelativeName
-	if zone := ownershipDomain(host); zone != "" {
-		if rel, ok := strings.CutSuffix(ownershipDNSRecordName(host), "."+zone); ok && rel != "" {
-			name = rel
-		}
-	}
-	return &DNSRecordView{Type: "TXT", Name: name, Value: challenge}
-}
-
-// domainVerified reports whether cert-manager has issued a TLS certificate for
-// the host by looking for the corresponding TLS Secret. Any absence or error
-// is treated as "pending" — the conservative state during cert issuance.
-func (s *Service) domainVerified(ctx context.Context, app *appv1alpha1.App, host string) bool {
+// domainCertificateIssued reports whether cert-manager has issued a TLS
+// certificate for the host by looking for the corresponding TLS Secret. Any
+// absence or error is treated as "pending" — the conservative state during
+// cert issuance. (Named for the certificate axis: on the wire "verified"
+// means DNS verification since w5/m137.)
+func (s *Service) domainCertificateIssued(ctx context.Context, app *appv1alpha1.App, host string) bool {
 	ready, _ := domainCertificateReady(ctx, s.Client, app, s.BaseDomain, host)
 	return ready
 }
@@ -496,29 +517,36 @@ func certificateReadyReason(ctx context.Context, cl client.Client, namespace, na
 
 // domainView builds a DomainView for one host on the given App. platformHost is
 // passed in (host-independent, so callers compute it once per app rather than per
-// host). The TLS Secret lookup makes the verification status truthful at query time.
+// host). The TLS Secret lookup makes the certificate status truthful at query time.
 func (s *Service) domainView(ctx context.Context, app *appv1alpha1.App, host, platformHost string) DomainView {
-	verified := s.domainVerified(ctx, app, host)
-	vStatus := "pending"
-	if verified {
-		vStatus = "verified"
+	certVerified := s.domainCertificateIssued(ctx, app, host)
+	cStatus := "pending"
+	if certVerified {
+		cStatus = "verified"
 	}
 	// "active" once the cert is issued and the App is not suspended; "pending" otherwise.
 	sStatus := "pending"
-	if verified && !app.Spec.Suspended {
+	if certVerified && !app.Spec.Suspended {
 		sStatus = "active"
 	}
 	dtype := domainType(host)
+	// A storeless host in the spec was admitted by the synchronous traffic
+	// gate, so it is DNS-verified by construction. No claim row timestamps it;
+	// the App's creation time is the honest bound Render's required
+	// createdAt can carry.
 	view := DomainView{
 		Name:               host,
 		DomainType:         dtype,
-		OwnershipStatus:    "verified",
-		VerificationStatus: vStatus,
+		VerificationStatus: "verified",
+		CertificateStatus:  cStatus,
 		ServerStatus:       sStatus,
 		RedirectForName:    app.Spec.HostRedirects[host],
 		DNSRecord:          dnsRecordFor(host, dtype, platformHost),
 	}
-	if !verified {
+	if !app.CreationTimestamp.IsZero() {
+		view.CreatedAt = app.CreationTimestamp.UTC().Format(time.RFC3339Nano)
+	}
+	if !certVerified {
 		view.CertificateReason = domainCertificateReason(ctx, s.Client, app, s.BaseDomain, host)
 	}
 	return view
@@ -526,32 +554,36 @@ func (s *Service) domainView(ctx context.Context, app *appv1alpha1.App, host, pl
 
 func (s *Service) domainClaimView(ctx context.Context, app *appv1alpha1.App, claim store.Domain, platformHost string) DomainView {
 	view := DomainView{
-		Name:               claim.Host,
-		DomainType:         domainType(claim.Host),
-		OwnershipStatus:    claim.ClaimState,
-		VerificationStatus: "pending",
-		ServerStatus:       "pending",
-		RedirectForName:    claim.RedirectForName,
+		Name:              claim.Host,
+		DomainType:        domainType(claim.Host),
+		CertificateStatus: "pending",
+		ServerStatus:      "pending",
+		RedirectForName:   claim.RedirectForName,
+	}
+	// Internal claim_state pending is Render's "unverified" on the wire.
+	if claim.ClaimState == "verified" {
+		view.VerificationStatus = "verified"
+	} else {
+		view.VerificationStatus = "unverified"
 	}
 	if !claim.CreatedAt.IsZero() {
 		view.CreatedAt = claim.CreatedAt.UTC().Format(time.RFC3339Nano)
 	}
 	view.DNSRecord = dnsRecordFor(claim.Host, view.DomainType, platformHost)
-	if claim.ClaimState == "pending" {
-		view.OwnershipDNSRecord = ownershipDNSRecordFor(claim.Host, claim.Challenge)
+	if claim.ClaimState != "verified" {
 		return view
 	}
-	if s.domainVerified(ctx, app, claim.Host) {
-		view.VerificationStatus = "verified"
+	if s.domainCertificateIssued(ctx, app, claim.Host) {
+		view.CertificateStatus = "verified"
 		if !app.Spec.Suspended {
 			view.ServerStatus = "active"
 		}
 		return view
 	}
-	// Ownership is verified but the certificate is not issued — the one state
-	// that can stall for weeks, and the only one with a reason worth reading.
-	// An ownership-pending claim is never projected into spec.hosts, so no
-	// Ingress and no ACME exchange exist for it to explain (it returned above).
+	// DNS is verified but the certificate is not issued — the one state that
+	// can stall for weeks, and the only one with a reason worth reading. An
+	// unverified claim is never projected into spec.hosts, so no Ingress and
+	// no ACME exchange exist for it to explain (it returned above).
 	view.CertificateReason = domainCertificateReason(ctx, s.Client, app, s.BaseDomain, claim.Host)
 	return view
 }
@@ -623,7 +655,7 @@ func applyVerifiedDomainClaims(spec *appv1alpha1.AppSpec, claims []store.Domain)
 
 // projectDomainClaims is the only managed-claim bridge into serving intent.
 // Pending rows are absent from Host/Hosts/HostRedirects; a redirect is emitted
-// only when both source and target have verified ownership.
+// only when both source and target are DNS-verified.
 func (s *Service) projectDomainClaims(ctx context.Context, app *appv1alpha1.App, claims []store.Domain) error {
 	baseObject := app.DeepCopy()
 	applyVerifiedDomainClaims(&app.Spec, claims)
@@ -668,13 +700,13 @@ func (s *Service) ListDomains(ctx context.Context, appName string) ([]DomainView
 // core.ErrBadRequest. REST, GraphQL, and MCP all route through here so the
 // accepted vocabulary and its 400 cannot drift between the three surfaces.
 func filterDomains(domains []DomainView, verificationStatus, domainType string) ([]DomainView, error) {
-	// Render's public API calls the pre-verification value "unverified". Keep
-	// bex's established "pending" spelling as an additive alias while accepting
-	// the official CLI's generated enum unchanged.
-	if verificationStatus == "unverified" {
-		verificationStatus = "pending"
+	// Render's public API calls the pre-verification value "unverified" — the
+	// wire spelling bex now emits. Keep bex's established "pending" as an
+	// additive alias so older bex clients keep filtering.
+	if verificationStatus == "pending" {
+		verificationStatus = "unverified"
 	}
-	status, err := core.ParseEnum("verificationStatus", verificationStatus, "pending", "verified")
+	status, err := core.ParseEnum("verificationStatus", verificationStatus, "unverified", "verified")
 	if err != nil {
 		return nil, err
 	}
@@ -717,12 +749,12 @@ func (s *Service) GetDomain(ctx context.Context, appName, hostname string) (Doma
 
 func (s *Service) VerifyDomain(ctx context.Context, appName, hostname string) (DomainView, error) {
 	// Deferred audit (w4/m122). Verification FAILING is the normal first
-	// outcome — a Re-check before the TXT record propagates — so auditing at
-	// authorize time put a `custom_domain_verified` row in the feed on the
+	// outcome — a Re-check before the traffic record propagates — so auditing
+	// at authorize time put a `custom_domain_verified` row in the feed on the
 	// common path. Live, five Re-checks on a domain that never verified
 	// produced five "Custom domain verified" rows while the domain's own row
-	// still read Pending. The row is now recorded at the one place a claim is
-	// actually promoted, below.
+	// still read Pending. The row is recorded only at an actual promotion,
+	// in checkAndPromoteClaim.
 	app, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, appName)
 	if err != nil {
 		return DomainView{}, err
@@ -747,55 +779,58 @@ func (s *Service) VerifyDomain(ctx context.Context, appName, hostname string) (D
 	if err != nil {
 		return DomainView{}, err
 	}
-	if claim.ClaimState == "verified" {
-		return s.domainClaimView(ctx, app, claim, s.platformHost(app)), nil
-	}
-	// Resolve the FQDN — not the relative Host shown in DNS instructions.
-	name := ownershipDNSRecordName(claim.Host)
-	verifier := s.DomainOwnership
-	if verifier == nil {
-		verifier = systemDomainOwnershipVerifier{}
-	}
-	if err := verifier.VerifyTXT(ctx, name, claim.Challenge); err != nil {
-		_ = claims.RecordDomainVerificationAttempt(ctx, appID, claim.ID, s.Now())
-		return DomainView{}, core.NewConflictError(
-			"DOMAIN_OWNERSHIP_PENDING",
-			"domain ownership TXT record is not verified",
-			map[string]any{
-				"recordName": name,
-				// Relative Host to paste at the registrable-domain zone (w4/092).
-				"recordHost": ownershipDNSRecordRelativeName,
-				"recordZone": ownershipDomain(claim.Host),
-			},
-		)
-	}
-	claim, err = claims.PromoteDomainClaim(ctx, appID, claim.ID, claim.Challenge, s.Now())
-	if errors.Is(err, store.ErrConflict) {
-		return DomainView{}, core.NewConflictError(
-			"DOMAIN_CLAIM_STALE",
-			"domain claim changed while verification was in progress",
-			nil,
-		)
-	}
+	// Render's manual Verify is a trigger, not a synchronous verdict: an
+	// unpointed domain returns its fresh unverified view, never a conflict.
+	// The background sweep runs the same check without a caller.
+	claim, err = s.checkAndPromoteClaim(ctx, app, claims, appID, claim)
 	if err != nil {
 		return DomainView{}, err
+	}
+	return s.domainClaimView(ctx, app, claim, s.platformHost(app)), nil
+}
+
+// checkAndPromoteClaim is the one verification path, shared by the manual
+// Verify verb and the background sweep (domain_verification_worker.go): if
+// the claim's traffic DNS now points at this App's platform host, promote it,
+// project the verified claim set, kick the reconciler, and record the one
+// verified event. An unpointed or unresolvable record is not an error — the
+// claim stays unverified with a bounded attempt recorded. A row deleted or
+// recreated during the lookup fails promotion's CAS and the replacement
+// stays unverified; the freshly read row is returned either way.
+func (s *Service) checkAndPromoteClaim(ctx context.Context, app *appv1alpha1.App, claims domainClaimStore, appID string, claim store.Domain) (store.Domain, error) {
+	if claim.ClaimState == "verified" {
+		return claim, nil
+	}
+	if !s.domainTrafficChecker().PointsAtService(ctx, claim.Host, s.platformHost(app)) {
+		_ = claims.RecordDomainVerificationAttempt(ctx, appID, claim.ID, s.Now())
+		return claim, nil
+	}
+	promoted, didPromote, err := claims.PromoteDomainClaim(ctx, appID, claim.ID, s.Now())
+	if err == nil && !didPromote {
+		return promoted, nil // another replica promoted it; its side effects stand
+	}
+	if errors.Is(err, store.ErrConflict) {
+		fresh, getErr := claims.GetDomainClaim(ctx, appID, claim.Host)
+		if getErr != nil {
+			return claim, getErr
+		}
+		return fresh, nil // replaced mid-check; the new row verifies on its own record
+	}
+	if err != nil {
+		return claim, err
 	}
 	rows, err := claims.ListDomainClaims(ctx, appID)
 	if err != nil {
-		return DomainView{}, err
+		return promoted, err
 	}
 	if err := s.projectDomainClaims(ctx, app, rows); err != nil {
-		return DomainView{}, err
+		return promoted, err
 	}
 	if s.Kick != nil {
 		s.Kick()
 	}
-	// The one real verification path: the claim was pending, the TXT record
-	// checked out, and PromoteDomainClaim moved it to verified. Every other
-	// exit above — unmanaged passthrough, an already-verified no-op, the 409,
-	// a stale claim — leaves the feed untouched.
 	s.RecordDomainEffect(ctx, app, core.AuditVerbVerifyDomain)
-	return s.domainClaimView(ctx, app, claim, s.platformHost(app)), nil
+	return promoted, nil
 }
 
 // ownPlatformHost is the App's own `<slug>.<base>` auto host — the single
@@ -1209,10 +1244,11 @@ func (s *Service) ensureHostsClaimable(ctx context.Context, app *appv1alpha1.App
 //     service name unless another workspace already holds it, when it adds a
 //     random suffix. So the plan exempts `<slug>.<base>` for slug, the name;
 //     in the collision case the write-time check still refuses the host.
-//   - The synchronous DNS-TXT ownership proof (the storeless fallback): its
-//     challenge is keyed by the service id the create mints, so the plan does
-//     not check it, though a storeless real create still does as it writes.
-//     With the store on no create runs it — managed claims start pending.
+//   - The synchronous traffic-DNS proof (the storeless fallback): it resolves
+//     against the platform host of the slug the create will mint, which the
+//     plan only approximates, so the plan does not check it, though a
+//     storeless real create still does as it writes. With the store on no
+//     create runs it — managed claims start unverified and verify later.
 func (s *Service) previewHostsClaimable(ctx context.Context, app *appv1alpha1.App, slug string) error {
 	probe := app.DeepCopy()
 	probe.Spec.Subdomain = slug
@@ -1241,7 +1277,7 @@ func (s *Service) checkHostsClaimable(ctx context.Context, app *appv1alpha1.App,
 		if s.Store != nil && app.Labels[core.LabelTenant] != "" && !existing {
 			ownHost = ""
 		}
-		managedClaims = true // skip the id-keyed TXT proof (see previewHostsClaimable)
+		managedClaims = true // skip the storeless traffic proof (see previewHostsClaimable)
 	}
 	// One cluster-wide index serves every host in the set, built on first need
 	// so a hostless create still Lists nothing and a reserved first host still
@@ -1266,7 +1302,7 @@ func (s *Service) checkHostsClaimable(ctx context.Context, app *appv1alpha1.App,
 			return fmt.Errorf("%w: %q", errDomainInUse(), h)
 		}
 		if !managedClaims {
-			if err := s.requireDomainOwnership(ctx, app, h); err != nil {
+			if err := s.requireDomainTraffic(ctx, app, h); err != nil {
 				return err
 			}
 		}
@@ -1293,6 +1329,14 @@ func (s *Service) checkHostsClaimable(ctx context.Context, app *appv1alpha1.App,
 // hostClaimedElsewhere) elsewhere-claimed sibling is skipped silently rather
 // than failing the caller's own successful add.
 func (s *Service) AddDomain(ctx context.Context, appName, hostname string) (DomainView, error) {
+	view, _, err := s.addDomainPair(ctx, appName, hostname)
+	return view, err
+}
+
+// addDomainPair is AddDomain plus the auto-paired sibling's view when this
+// call created it (nil otherwise) — REST's 201 array renders both without a
+// second authorized read.
+func (s *Service) addDomainPair(ctx context.Context, appName, hostname string) (DomainView, *DomainView, error) {
 	// One index of the platform's host claims serves both adds: the sibling
 	// add's check can only differ by this App's own claims, which are exempt.
 	ctx = withRequestMemo(ctx)
@@ -1301,12 +1345,14 @@ func (s *Service) AddDomain(ctx context.Context, appName, hostname string) (Doma
 	// canonical value comes back as view.Name for the sibling pairing below.
 	view, added, err := s.addOne(ctx, appName, hostname, "")
 	if err != nil || !added {
-		return view, err
+		return view, nil, err
 	}
 	if sib := wwwSibling(view.Name); sib != "" {
-		_, _, _ = s.addOne(ctx, appName, sib, view.Name)
+		if sibling, siblingAdded, siblingErr := s.addOne(ctx, appName, sib, view.Name); siblingErr == nil && siblingAdded {
+			return view, &sibling, nil
+		}
 	}
-	return view, nil
+	return view, nil, nil
 }
 
 // addOne adds a single host, with no sibling pairing of its own — AddDomain
@@ -1415,7 +1461,7 @@ func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName
 		} else if claimed {
 			return DomainView{}, false, errDomainInUse()
 		}
-		if err := s.requireDomainOwnership(ctx, app, hostname); err != nil {
+		if err := s.requireDomainTraffic(ctx, app, hostname); err != nil {
 			return DomainView{}, false, err
 		}
 	}
@@ -1559,10 +1605,15 @@ type renderCustomDomain struct {
 	ID                 string `json:"id"`   // hostname used as opaque id (Render ids are opaque)
 	Name               string `json:"name"` // the FQDN
 	DomainType         string `json:"domainType"`
-	OwnershipStatus    string `json:"ownershipStatus"`
-	VerificationStatus string `json:"verificationStatus"`
-	ServerStatus       string `json:"serverStatus"`
-	RedirectForName    string `json:"redirectForName,omitempty"`
+	PublicSuffix       string `json:"publicSuffix"`       // Render-required: the host's public suffix ("com", "co.uk")
+	VerificationStatus string `json:"verificationStatus"` // Render: traffic-DNS "unverified" | "verified"
+	CreatedAt          string `json:"createdAt"`
+	// CertificateStatus is a bex extension (Render folds certificate progress
+	// into its dashboard, not this schema): "pending" until the TLS cert is
+	// issued, then "verified".
+	CertificateStatus string `json:"certificateStatus"`
+	ServerStatus      string `json:"serverStatus"`    // bex extension, as CertificateStatus
+	RedirectForName   string `json:"redirectForName"` // Render-required key; "" when served directly
 	// CertificateReason is a bex extension (no Render equivalent): cert-manager's
 	// own explanation of why TLS issuance has not completed. omitempty keeps an
 	// issued domain's response byte-identical to the pre-w3/m85 shape.
@@ -1571,9 +1622,6 @@ type renderCustomDomain struct {
 	// record in the dashboard, not the API): the record the tenant must create to
 	// point this domain at the service. A safe superset, w5/m10.
 	DNSRecord renderDNSRecord `json:"dnsRecord"`
-	// OwnershipDNSRecord is deliberately returned only while the authorized
-	// claim is pending; it never appears in URLs, logs, metrics, or Secrets.
-	OwnershipDNSRecord *renderDNSRecord `json:"ownershipDnsRecord,omitempty"`
 }
 
 // renderDNSRecord is the wire shape of a DNSRecordView (the DNS record to create).
@@ -1590,12 +1638,15 @@ type customDomainWithCursor struct {
 }
 
 func toRenderCustomDomain(d DomainView) renderCustomDomain {
-	out := renderCustomDomain{
+	suffix, _ := publicsuffix.PublicSuffix(d.Name)
+	return renderCustomDomain{
 		ID:                 d.Name,
 		Name:               d.Name,
 		DomainType:         d.DomainType,
-		OwnershipStatus:    d.OwnershipStatus,
+		PublicSuffix:       suffix,
 		VerificationStatus: d.VerificationStatus,
+		CreatedAt:          d.CreatedAt,
+		CertificateStatus:  d.CertificateStatus,
 		ServerStatus:       d.ServerStatus,
 		RedirectForName:    d.RedirectForName,
 		CertificateReason:  d.CertificateReason,
@@ -1605,12 +1656,6 @@ func toRenderCustomDomain(d DomainView) renderCustomDomain {
 			Value: d.DNSRecord.Value,
 		},
 	}
-	if d.OwnershipDNSRecord != nil {
-		out.OwnershipDNSRecord = &renderDNSRecord{
-			Type: d.OwnershipDNSRecord.Type, Name: d.OwnershipDNSRecord.Name, Value: d.OwnershipDNSRecord.Value,
-		}
-	}
-	return out
 }
 
 func toCustomDomainList(domains []DomainView) []customDomainWithCursor {

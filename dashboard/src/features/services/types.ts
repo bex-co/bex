@@ -393,12 +393,14 @@ export interface SecretFileName {
 /**
  * One custom domain on a service's Settings tab (Render dashboard shape). bex-api
  * uses the hostname as the opaque id (id === name), so this view carries just the
- * name. `verified` and `active` are derived from bex-api's string status fields
- * (verificationStatus / serverStatus) so the UI never re-encodes them:
- * - `verified` — the TLS certificate has been issued for the host (Render's
- *   "Verified Status" column).
+ * name. The booleans are derived from bex-api's string status fields
+ * (verificationStatus / certificateStatus / serverStatus) so the UI never
+ * re-encodes them:
+ * - `dnsVerified` — the traffic DNS record points at the service (Render's
+ *   "Verified" column).
+ * - `certificateVerified` — the TLS certificate has been issued for the host.
  * - `active` — the certificate is issued and the service isn't suspended, so it's
- *   actively serving the host (Render's "Certificate Status" column).
+ *   actively serving the host (Render's "Certificate" column).
  */
 /** The DNS record the tenant creates to point a custom domain at the service. */
 export interface DnsRecordView {
@@ -415,10 +417,10 @@ export interface CustomDomainView {
   name: string;
   /** "apex" or "subdomain" — drives the apex vs subdomain DNS guidance. */
   domainType: string;
-  /** Durable DNS-TXT ownership admission; false means the host is not routed. */
-  ownershipVerified: boolean;
-  /** TLS certificate issued after ownership admission. */
-  verified: boolean;
+  /** Traffic DNS points at this service (Render's verification); false means not routed yet. */
+  dnsVerified: boolean;
+  /** TLS certificate issued after DNS verification. */
+  certificateVerified: boolean;
   active: boolean;
   /** Canonical host when this auto-paired sibling redirects; null when served directly. */
   redirectForName: string | null;
@@ -430,8 +432,6 @@ export interface CustomDomainView {
   certificateReason: string | null;
   /** The DNS record to create; null if the backend couldn't derive the target. */
   dnsRecord: DnsRecordView | null;
-  /** Exact TXT proof while ownership is pending; null after atomic promotion. */
-  ownershipDnsRecord: DnsRecordView | null;
 }
 
 /**

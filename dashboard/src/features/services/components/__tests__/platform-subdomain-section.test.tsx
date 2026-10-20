@@ -113,9 +113,7 @@ describe("PlatformSubdomainRow", () => {
         serviceId="my-svc"
         url="https://web.onbex.co"
         renderSubdomainPolicy="enabled"
-        domains={[
-          { name: "qa-20260925.example.com", ownershipVerified: false },
-        ]}
+        domains={[{ name: "qa-20260925.example.com", dnsVerified: false }]}
       />,
     );
 
@@ -134,7 +132,7 @@ describe("PlatformSubdomainRow", () => {
         serviceId="my-svc"
         url="https://web.onbex.co"
         renderSubdomainPolicy="enabled"
-        domains={[{ name: "www.example.com", ownershipVerified: true }]}
+        domains={[{ name: "www.example.com", dnsVerified: true }]}
       />,
     );
     expect(

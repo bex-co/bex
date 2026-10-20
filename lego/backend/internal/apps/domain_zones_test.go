@@ -38,9 +38,9 @@ func TestAStoredPublicSuffixCanStillBeDeleted(t *testing.T) {
 	}
 }
 
-// The CNAME is named below the registrable domain, the zone its owner manages
-// and the one the ownership TXT record is named in, whatever the suffix or the
-// stored spelling. Stripping two labels named www.example.co.uk's "www.example".
+// The CNAME is named below the registrable domain, the zone its owner
+// manages, whatever the suffix or the stored spelling. Stripping two labels
+// named www.example.co.uk's "www.example".
 func TestDNSRecordNameIsRelativeToTheRegistrableDomain(t *testing.T) {
 	for host, want := range map[string]string{
 		"www.example.co.uk":   "www",
@@ -51,8 +51,8 @@ func TestDNSRecordNameIsRelativeToTheRegistrableDomain(t *testing.T) {
 		if got.Type != "CNAME" || got.Name != want || got.Value != "web.onbex.co" {
 			t.Errorf("dnsRecordFor(%q) = %+v, want {CNAME %s web.onbex.co}", host, got, want)
 		}
-		if canonical := normalizeHostname(host); got.Name+"."+ownershipDomain(canonical) != canonical {
-			t.Errorf("%q: CNAME %q is not named in the TXT record's zone", host, got.Name)
+		if canonical := normalizeHostname(host); got.Name+"."+dnsZone(canonical) != canonical {
+			t.Errorf("%q: CNAME %q is not named in its registrable zone", host, got.Name)
 		}
 	}
 }
@@ -75,8 +75,8 @@ func TestALongHostIsVerifiedOnceItsSecretExists(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDomain: %v", err)
 	}
-	if d.VerificationStatus != "verified" {
-		t.Fatalf("verificationStatus = %q, want verified: its TLS Secret %s exists", d.VerificationStatus, secret.Name)
+	if d.CertificateStatus != "verified" {
+		t.Fatalf("certificateStatus = %q, want verified: its TLS Secret %s exists", d.CertificateStatus, secret.Name)
 	}
 }
 
@@ -114,8 +114,8 @@ func TestTheFirstEffectiveHostIsVerifiedFromTheLegacySecret(t *testing.T) {
 	disabled.Spec.Type, disabled.Spec.Expose = appv1alpha1.TypeWebService, true
 	disabled.Spec.SubdomainPolicy = appv1alpha1.SubdomainPolicyDisabled
 	svc := &Service{Base: &core.Base{Client: fakeClient(disabled, tlsSecret("default", "web-tls")), Namespace: "default"}, BaseDomain: "onbex.co"}
-	if d, err := svc.GetDomain(ctx, "web", "www.example.com"); err != nil || d.VerificationStatus != "verified" {
-		t.Errorf("subdomain off: GetDomain = %+v, %v, want verified from web-tls", d, err)
+	if d, err := svc.GetDomain(ctx, "web", "www.example.com"); err != nil || d.CertificateStatus != "verified" {
+		t.Errorf("subdomain off: GetDomain = %+v, %v, want cert verified from web-tls", d, err)
 	}
 
 	primary := appWithHosts("web", "example.com")

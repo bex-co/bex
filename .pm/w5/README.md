@@ -13,6 +13,12 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 `up` prints the dashboard command to point at it once bex-api is running. One shared implementation serves every workstream since `w1/m72`; `.pm/w5/dev-5/` keeps only `ports.env` (a generated record of the derivation), this README, and `.gitignore`.
 
+## Approved queue — 2026-10-19
+
+User decision 2026-10-19, from the live beancount.io domain setup on dashboard.bex.co: custom-domain setup must match Render exactly. ADR005 was amended first (Render parity as a hard constraint; the m84 `_bex-challenge` ownership TXT withdrawn), then this milestone was filed to implement it. It ends with the standing closing tasks: Render parity, Simplify, Test coverage and Closeout.
+
+- [x] **m137** — [Custom domains match Render exactly: traffic DNS is the only setup step](done/m137/README.md) (11 tasks; 7h45m total) ← user decision 2026-10-19; [ADR005 amended](../../docs/ADR005-custom-domain.md) before filing. **DONE 2026-10-19**: the `_bex-challenge` ownership TXT is deleted everywhere — one traffic record per domain, automatic 30s verification sweep (exponential due-backoff, 2-replica-safe promotion), REST `201` pair array + `202` verify + Render-semantics `verificationStatus` (OpenAPI conformance needs no custom-domain allowlist entry), dashboard dialog/row show the single CNAME/ALIAS; unverified-never-routes gate unchanged, migration 0152 retires the challenge constraint. Full backend suite green on real Postgres/OpenFGA, dashboard 5188 tests green, `make lint` clean, dev-5 walk proved the shipped binary end-to-end.
+
 ## Approved queue — 2026-10-05
 
 On 2026-10-05 the user handed every fix from the last-24h code review (`061ab7698^..327a7e4b1`) to w5: the confirmed bugs, the lower-severity findings, the structural proposals and the process/test-gate items. Execute top to bottom: the 2026-10-04 regressions and billing first, then the test gates that protect the rest of the queue, then the structural milestones. Inbox notes are sub-hour fixes. Each milestone ends with its standing closing tasks: Render parity where a REST/GraphQL/MCP/UI surface changes (omitted for m112, tooling only), then Simplify, Test coverage and Closeout.

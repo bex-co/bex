@@ -1,6 +1,6 @@
-# Render custom-domain contract and Bex ownership extension
+# Render custom-domain contract and the Bex mapping
 
-**Rechecked:** 2026-08-17. **Primary evidence:** Render's current [custom-domain guide](https://render.com/docs/custom-domains), [public OpenAPI](https://api-docs.render.com/openapi/render-public-api-1.json), [Verify endpoint](https://api-docs.render.com/reference/refresh-custom-domain), [Blueprint reference](https://render.com/docs/blueprint-spec), and the repository-pinned official CLI module `github.com/render-oss/cli@v1.1.3-0.20260721145337-d8fd7c2bb09d`.
+**Rechecked:** 2026-10-19 (w5/m137: the former Bex ownership-TXT extension is withdrawn; [ADR005](../ADR005-custom-domain.md) makes Render's traffic-DNS flow the hard contract, and the mapping below describes the converged code). **Primary evidence:** Render's current [custom-domain guide](https://render.com/docs/custom-domains), [public OpenAPI](https://api-docs.render.com/openapi/render-public-api-1.json), [Verify endpoint](https://api-docs.render.com/reference/refresh-custom-domain), [Blueprint reference](https://render.com/docs/blueprint-spec), and the repository-pinned official CLI module `github.com/render-oss/cli@v1.1.3-0.20260721145337-d8fd7c2bb09d`.
 
 ## Current Render behavior
 
@@ -14,34 +14,19 @@
 
 ## Bex mapping
 
-Traffic instructions remain:
+- bex-api implements the same lifecycle: Add persists the domain `unverified`, the tenant creates the one traffic record, verification checks that record, and only then is the host projected for ingress/operator TLS. Verification runs automatically (a 30s sweep in bex-api) and on manual trigger.
+- Internal storage keeps a `pending | verified` claim state (pending is wire `unverified`); promotion is an id-keyed CAS, so a claim deleted/recreated during a lookup is never promoted by the stale check.
+- The traffic predicate (`lego/backend/internal/apps/domains.go`, `PointsAtService`): the host's CNAME chain reaches the service's platform host, or its resolved addresses intersect the platform host's — the ALIAS/ANAME/flattening and direct-A apex forms. A proxied (Cloudflare anycast) record satisfies neither branch.
+- REST returns Render's `201` array from add (requested + auto-paired sibling) and `202` with no body from verify; `verificationStatus` is `unverified | verified` meaning DNS verification, and the list filter takes the same spellings (`pending` remains an accepted alias). GraphQL/MCP return the fresh domain view from the same check.
+- Cross-service writes still 409; an unverified claim older than 48h is reclaimed when a conflicting add arrives (invisible anti-squatting bound).
 
-| Domain kind | Type | Name | Value |
-| --- | --- | --- | --- |
-| subdomain | `CNAME` | labels below the registrable domain | `<service>.<BEX_BASE_DOMAIN>` |
-| apex | `ALIAS` | `@` | `<service>.<BEX_BASE_DOMAIN>` |
+## Remaining divergences (all named in ADR005)
 
-Bex adds an ownership instruction for every new managed claim:
+1. **Additive read fields**: `dnsRecord`, `certificateStatus`, `serverStatus`, and `certificateReason` — safe supersets; no Render field is changed and none imposes a tenant step. (The former `ownershipStatus`/`ownershipDnsRecord` and the synchronous named pending conflicts are deleted.)
+2. **Apex `A` value**: guidance leads with ALIAS/ANAME as Render's does; the `A` fallback names the platform host's currently resolved edge addresses where Render prints its committed-stable `216.24.57.1`.
+3. **Wildcards**: bex rejects tenant wildcards; Render supports them behind extra TXT machinery. Revisit only as its own decision.
+4. **Invisible refusals**: reserved platform hosts and bare public suffixes are refused; Render documents no such rule, and neither can trigger for a servable domain.
+5. **Pair deletion cascade**: Render's public references do not specify it; bex's rule is in [the pairing evidence](custom-domain-pairing.md).
+6. **Storeless mode** (no Render counterpart): the same traffic predicate runs synchronously before a host enters the App spec.
 
-| Type | Name | Value |
-| --- | --- | --- |
-| `TXT` | `_bex-challenge.<registrable-domain>` | one durable random `bex-domain-verification=…` value |
-
-All Bex adapters expose the same neutral lifecycle:
-
-| State | `ownershipStatus` | TLS `verificationStatus` | `serverStatus` | Serving spec |
-| --- | --- | --- | --- | --- |
-| New/wrong DNS | `pending` | `pending` | `pending` | Host absent |
-| TXT verified, cert issuing | `verified` | `pending` | `pending` | Host present |
-| Certificate ready | `verified` | `verified` | `active` | Host present |
-
-REST add/get/verify, GraphQL, MCP, and the dashboard intentionally return the authorized pending TXT instruction so it remains recoverable. Durable random values are excluded from URLs, errors, logs, metrics, Secrets, and desired-App projection. Missing/wrong/resolver-failed proofs return `DOMAIN_OWNERSHIP_PENDING`; a delete/recreate race returns `DOMAIN_CLAIM_STALE`.
-
-## Deliberate divergences
-
-1. **Stronger admission.** Render verifies traffic DNS. Bex requires a separate random TXT before the hostname can enter any Ingress or Certificate input, preventing an unverified database declaration from becoming routable through another write path.
-2. **Synchronous Verify result.** Render accepts an asynchronous trigger with 202/no body. Bex checks now and returns the fresh view, enabling one shared REST/GraphQL/MCP/dashboard contract.
-3. **Explicit states.** Bex retains TLS `verificationStatus` and adds `ownershipStatus`; `pending` remains an accepted alias while REST filters also accept Render's official `unverified` spelling.
-4. **Apex record.** Bex has no stable public A record and emits ALIAS to the platform host.
-5. **Wildcards.** Render supports them with extra DNS machinery. Bex rejects tenant wildcards because a literal global unique index cannot arbitrate a wildcard safely against every concrete hostname.
-6. **Add response.** Bex's established REST add returns the requested domain object, while the paired sibling is discoverable from the list. Render's current OpenAPI declares an array. This remains a documented wire-shape gap; changing it would break existing Bex clients and is not required for the ownership invariant.
+The protection the withdrawn TXT bought, and why it was traded away, is recorded as accepted residuals in [ADR005](../ADR005-custom-domain.md).

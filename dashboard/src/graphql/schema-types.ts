@@ -427,12 +427,12 @@ export type CronRun = {
 export type CustomDomain = {
   __typename: 'CustomDomain';
   certificateReason: Maybe<Scalars['String']['output']>;
+  certificateStatus: Maybe<Scalars['String']['output']>;
+  createdAt: Maybe<Scalars['String']['output']>;
   dnsRecord: Maybe<DnsRecord>;
   domainType: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
   name: Maybe<Scalars['String']['output']>;
-  ownershipDnsRecord: Maybe<DnsRecord>;
-  ownershipStatus: Maybe<Scalars['String']['output']>;
   redirectForName: Maybe<Scalars['String']['output']>;
   serverStatus: Maybe<Scalars['String']['output']>;
   verificationStatus: Maybe<Scalars['String']['output']>;

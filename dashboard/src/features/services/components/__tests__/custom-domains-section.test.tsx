@@ -53,29 +53,23 @@ function domainsResult(
 const verifiedDomain: CustomDomainView = {
   name: "www.example.com",
   domainType: "subdomain",
-  ownershipVerified: true,
-  verified: true,
+  dnsVerified: true,
+  certificateVerified: true,
   active: true,
   redirectForName: null,
   certificateReason: null,
   dnsRecord: { type: "CNAME", name: "www", value: "web.onbex.co" },
-  ownershipDnsRecord: null,
 };
 
 const pendingDomain: CustomDomainView = {
   name: "api.example.com",
   domainType: "subdomain",
-  ownershipVerified: false,
-  verified: false,
+  dnsVerified: false,
+  certificateVerified: false,
   active: false,
   redirectForName: null,
   certificateReason: null,
   dnsRecord: { type: "CNAME", name: "api", value: "web.onbex.co" },
-  ownershipDnsRecord: {
-    type: "TXT",
-    name: "_bex-challenge",
-    value: "bex-domain-verification=test-api",
-  },
 };
 
 // w6/m23: an auto-paired www<->apex pair, as ListDomains returns after AddDomain
@@ -83,45 +77,34 @@ const pendingDomain: CustomDomainView = {
 const apexDomain: CustomDomainView = {
   name: "foo.com",
   domainType: "apex",
-  ownershipVerified: false,
-  verified: false,
+  dnsVerified: false,
+  certificateVerified: false,
   active: false,
   redirectForName: null,
   certificateReason: null,
   dnsRecord: { type: "ALIAS", name: "@", value: "web.onbex.co" },
-  ownershipDnsRecord: {
-    type: "TXT",
-    name: "_bex-challenge",
-    value: "bex-domain-verification=test-apex",
-  },
 };
 
-// The routed state of a pair fixture: ownership verified and certificate issued,
+// The routed state of a pair fixture: DNS verified and certificate issued,
 // the only state whose delete removes serving routes and certificates.
 function verifiedPair(domain: CustomDomainView): CustomDomainView {
   return {
     ...domain,
-    ownershipVerified: true,
-    verified: true,
+    dnsVerified: true,
+    certificateVerified: true,
     active: true,
-    ownershipDnsRecord: null,
   };
 }
 
 const wwwSiblingDomain: CustomDomainView = {
   name: "www.foo.com",
   domainType: "subdomain",
-  ownershipVerified: false,
-  verified: false,
+  dnsVerified: false,
+  certificateVerified: false,
   active: false,
   redirectForName: "foo.com",
   certificateReason: null,
   dnsRecord: { type: "CNAME", name: "www", value: "web.onbex.co" },
-  ownershipDnsRecord: {
-    type: "TXT",
-    name: "_bex-challenge",
-    value: "bex-domain-verification=test-www",
-  },
 };
 
 // Radix's DropdownMenu relies on pointer-capture APIs jsdom doesn't implement.
@@ -169,10 +152,9 @@ describe("CustomDomainsSection", () => {
         {
           ...verifiedDomain,
           name: "api.example.com",
-          ownershipVerified: false,
-          verified: false,
+          dnsVerified: false,
+          certificateVerified: false,
           active: false,
-          ownershipDnsRecord: pendingDomain.ownershipDnsRecord,
         },
       ]),
     );
@@ -180,12 +162,12 @@ describe("CustomDomainsSection", () => {
     expect(screen.getAllByText("Pending")).toHaveLength(2);
   });
 
-  it("shows ownership verified while certificate activation is pending", () => {
+  it("shows DNS verified while certificate activation is pending", () => {
     mockUseCustomDomains.mockReturnValue(
       domainsResult([
         {
           ...verifiedDomain,
-          verified: false,
+          certificateVerified: false,
           active: false,
         },
       ]),
@@ -275,34 +257,22 @@ describe("CustomDomainsSection", () => {
     expect(mockAddDomain).not.toHaveBeenCalled();
   });
 
-  it("distinguishes ownership pending and shows TXT plus traffic records", () => {
+  it("shows exactly one traffic record for an unverified domain — no TXT step", () => {
     mockUseCustomDomains.mockReturnValue(domainsResult([pendingDomain]));
     render(<CustomDomainsSection serviceId="web" />);
 
     // Pending rows open by default, revealing the DNS-setup panel + record.
     expect(screen.getByText("DNS setup")).toBeInTheDocument();
-    expect(screen.getByText("TXT")).toBeInTheDocument();
     expect(screen.getByText("CNAME")).toBeInTheDocument();
-    // Both Hosts are zone-relative (w4/092) — never an FQDN beside a label.
-    expect(screen.getByText("_bex-challenge")).toBeInTheDocument();
-    expect(
-      screen.queryByText("_bex-challenge.example.com"),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getAllByText(/in the example\.com zone/).length,
-    ).toBeGreaterThanOrEqual(1);
-    expect(
-      screen.getByText("bex-domain-verification=test-api"),
-    ).toBeInTheDocument();
+    // The Host is zone-relative (w4/092) — never an FQDN beside a label.
     expect(screen.getByText("api")).toBeInTheDocument();
+    expect(screen.getByText(/in the example\.com zone/)).toBeInTheDocument();
     expect(screen.getByText("web.onbex.co")).toBeInTheDocument();
+    // Render parity (w5/m137): no ownership TXT anywhere in the panel.
+    expect(document.body.textContent).not.toContain("TXT");
+    expect(document.body.textContent).not.toContain("_bex-challenge");
+    expect(document.body.textContent).not.toContain("bex-domain-verification");
     // Verb-shaped, type-discriminated copy names (m101/t014) — not bare "Host"/"Target".
-    expect(
-      screen.getByRole("button", { name: "Copy TXT host" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Copy TXT target" }),
-    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Copy CNAME host" }),
     ).toBeInTheDocument();
@@ -317,43 +287,18 @@ describe("CustomDomainsSection", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("strips a legacy FQDN ownership Host so paste stays relative (w4/092)", () => {
-    mockUseCustomDomains.mockReturnValue(
-      domainsResult([
-        {
-          ...pendingDomain,
-          ownershipDnsRecord: {
-            type: "TXT",
-            name: "_bex-challenge.example.com",
-            value: "bex-domain-verification=legacy",
-          },
-        },
-      ]),
-    );
-    render(<CustomDomainsSection serviceId="web" />);
-    expect(screen.getByText("_bex-challenge")).toBeInTheDocument();
-    expect(
-      screen.queryByText("_bex-challenge.example.com"),
-    ).not.toBeInTheDocument();
-  });
-
   it("shows apex guidance for an apex domain", () => {
     mockUseCustomDomains.mockReturnValue(
       domainsResult([
         {
           name: "example.com",
           domainType: "apex",
-          ownershipVerified: false,
-          verified: false,
+          dnsVerified: false,
+          certificateVerified: false,
           active: false,
           redirectForName: null,
           certificateReason: null,
           dnsRecord: { type: "ALIAS", name: "@", value: "web.onbex.co" },
-          ownershipDnsRecord: {
-            type: "TXT",
-            name: "_bex-challenge",
-            value: "bex-domain-verification=apex",
-          },
         },
       ]),
     );
@@ -362,39 +307,23 @@ describe("CustomDomainsSection", () => {
     expect(
       screen.getByText(/Apex domains can't use a plain CNAME/),
     ).toBeInTheDocument();
-    expect(
-      screen.getAllByText(/in the example\.com zone/).length,
-    ).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/in the example\.com zone/)).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain("_bex-challenge");
   });
 
-  it("lists sibling TXT values sharing the ownership host so none get overwritten (w6/055)", () => {
+  it("shows exactly two traffic records total for an unverified apex+www pair", () => {
     mockUseCustomDomains.mockReturnValue(
       domainsResult([apexDomain, wwwSiblingDomain]),
     );
     render(<CustomDomainsSection serviceId="web" />);
 
-    // Both pending rows are open; each shows its own TXT value once as the
-    // record to add, plus once more inside the sibling row's keep-these list.
-    expect(
-      screen.getAllByText("bex-domain-verification=test-apex"),
-    ).toHaveLength(2);
-    expect(
-      screen.getAllByText("bex-domain-verification=test-www"),
-    ).toHaveLength(2);
-    expect(
-      screen.getAllByText(
-        "Other domains on this service share this TXT host — keep their records in place:",
-      ),
-    ).toHaveLength(2);
-  });
-
-  it("shows no sibling TXT note for a lone pending claim (w6/055)", () => {
-    mockUseCustomDomains.mockReturnValue(domainsResult([pendingDomain]));
-    render(<CustomDomainsSection serviceId="web" />);
-    expect(screen.queryByText(/share this TXT host/)).not.toBeInTheDocument();
-    expect(
-      screen.getByText("bex-domain-verification=test-api"),
-    ).toBeInTheDocument();
+    // Both pending rows are open; each shows its single traffic record, and
+    // no cross-domain TXT bookkeeping is mentioned anywhere.
+    expect(screen.getByText("ALIAS")).toBeInTheDocument();
+    expect(screen.getByText("CNAME")).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain("TXT");
+    expect(document.body.textContent).not.toContain("bex-domain-verification");
+    expect(screen.getAllByText("web.onbex.co")).toHaveLength(2);
   });
 
   it("re-checks a pending domain from the DNS panel", async () => {
@@ -422,10 +351,11 @@ describe("CustomDomainsSection", () => {
 
     // The dialog swaps to the DNS-record step (mockAddDomain resolves a domain view).
     expect(
-      await within(dialog).findByText("Domain claim created — set up DNS"),
+      await within(dialog).findByText("Domain added — set up DNS"),
     ).toBeInTheDocument();
-    expect(within(dialog).getByText("_bex-challenge")).toBeInTheDocument();
     expect(within(dialog).getByText("web.onbex.co")).toBeInTheDocument();
+    expect(dialog.textContent).not.toContain("_bex-challenge");
+    expect(dialog.textContent).not.toContain("TXT");
   });
 
   it("shows DNS instructions for both halves of an auto-paired add (w6/m23)", async () => {
@@ -589,7 +519,7 @@ describe("CustomDomainsSection", () => {
           ...verifiedDomain,
           name: "blockeden.xyz",
           domainType: "apex",
-          verified: false,
+          certificateVerified: false,
           active: false,
           certificateReason: reason,
         },
