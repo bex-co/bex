@@ -34,8 +34,8 @@ import (
 // codedRefusal is what one refusal answers on every surface: REST's status,
 // body code and params, GraphQL's extensions (params flattened) and MCP's
 // "CODE: " text. An empty msg checks the code and params without the wording.
-// An empty code expects an uncoded answer, such as the redacted
-// "internal error".
+// An empty code expects an uncoded answer, such as REST's and MCP's redacted
+// "internal error" (GraphQL codes it INTERNAL, w5/168).
 type codedRefusal struct {
 	status int
 	code   string
