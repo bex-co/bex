@@ -544,7 +544,7 @@ func TestReconcileUpdatesOwnedFieldsOnly(t *testing.T) {
 	store.mu.Lock()
 	store.domains["pending-domain"] = Domain{
 		ID: "pending-domain", AppID: row.ID, Host: "pending.example.com",
-		ClaimState: "pending", Challenge: "bex-domain-verification=test",
+		ClaimState: "pending",
 	}
 	store.mu.Unlock()
 

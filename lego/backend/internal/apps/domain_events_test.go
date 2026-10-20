@@ -39,7 +39,7 @@ func auditedDomainService(t *testing.T) (*Service, *memoryDomainClaimStore, *cap
 }
 
 // TestFailedVerificationLeavesNoTraceInTheFeed is w4/m122's headline. Live on
-// 2026-09-21, five Re-checks on a domain whose TXT record had not propagated
+// 2026-09-21, five Re-checks on a domain whose DNS record had not propagated
 // produced five "Custom domain verified" rows in the Activity feed while the
 // domain's own row still read Pending — because the audit row was emitted at
 // AUTHORIZE time, and the feed projects an allowed audit row into a past-tense
@@ -54,12 +54,15 @@ func TestFailedVerificationLeavesNoTraceInTheFeed(t *testing.T) {
 	if _, err := svc.AddDomain(ctx, "web", "app.example.com"); err != nil {
 		t.Fatalf("AddDomain: %v", err)
 	}
-	pending := errors.New("txt record absent")
-	svc.DomainOwnership = domainOwnershipFunc(func(context.Context, string, string) error { return pending })
+	svc.DomainTraffic = domainTrafficFunc(func(context.Context, string, string) bool { return false })
 
 	for i := range 5 {
-		if _, err := svc.VerifyDomain(ctx, "web", "app.example.com"); err == nil {
-			t.Fatalf("re-check %d unexpectedly succeeded", i+1)
+		view, err := svc.VerifyDomain(ctx, "web", "app.example.com")
+		if err != nil {
+			t.Fatalf("re-check %d errored: %v (an unpointed verify is not an error)", i+1, err)
+		}
+		if view.VerificationStatus != "unverified" {
+			t.Fatalf("re-check %d view = %+v, want unverified", i+1, view)
 		}
 	}
 	if n := sink.countVerb(core.AuditVerbVerifyDomain); n != 0 {
@@ -67,7 +70,7 @@ func TestFailedVerificationLeavesNoTraceInTheFeed(t *testing.T) {
 	}
 
 	// And a real verification still records exactly one.
-	svc.DomainOwnership = domainOwnershipFunc(func(context.Context, string, string) error { return nil })
+	svc.DomainTraffic = domainTrafficFunc(func(context.Context, string, string) bool { return true })
 	if _, err := svc.VerifyDomain(ctx, "web", "app.example.com"); err != nil {
 		t.Fatalf("VerifyDomain after the record landed: %v", err)
 	}

@@ -113,25 +113,29 @@ type Server struct {
 	// auto-sync intents accepted at the signed git webhook (w8/m38).
 	// nil / store-off ⇒ no-op.
 	BlueprintAutoSync *apps.BlueprintAutoSyncWorker
-	Postgres          *postgres.Service
-	KeyValue          *keyvalue.Service
-	Secrets           *secrets.Service
-	EnvGroups         *envgroups.Service
-	Workspaces        *workspaces.Service
-	Members           *members.Service
-	Billing           *billing.Service
-	Usage             *usage.Service
-	Deploys           *deploys.Service
-	Events            *events.Service
-	Audit             *audit.Service
-	GitHub            *github.Service
-	Notifications     *notifications.Service
-	Projects          *projects.Service
-	Environments      *environments.Service
-	RegistryCreds     *registrycreds.Service
-	Webhooks          *webhooks.Service
-	Jobs              *jobs.Service
-	CLITelemetry      *clitelemetry.Service
+	// DomainVerification is the sweep that promotes a pending custom-domain
+	// claim once its traffic DNS points at the service — Render's automatic
+	// verification (w5/m137). nil / store-off ⇒ no-op.
+	DomainVerification *apps.DomainVerificationWorker
+	Postgres           *postgres.Service
+	KeyValue           *keyvalue.Service
+	Secrets            *secrets.Service
+	EnvGroups          *envgroups.Service
+	Workspaces         *workspaces.Service
+	Members            *members.Service
+	Billing            *billing.Service
+	Usage              *usage.Service
+	Deploys            *deploys.Service
+	Events             *events.Service
+	Audit              *audit.Service
+	GitHub             *github.Service
+	Notifications      *notifications.Service
+	Projects           *projects.Service
+	Environments       *environments.Service
+	RegistryCreds      *registrycreds.Service
+	Webhooks           *webhooks.Service
+	Jobs               *jobs.Service
+	CLITelemetry       *clitelemetry.Service
 	// StripeWebhook is the signature-verifying public billing callback. It is
 	// nil unless BEX_STRIPE_WEBHOOK_SECRET is configured.
 	StripeWebhook http.Handler
@@ -969,8 +973,9 @@ func NewServer(base *core.Base, d Deps) *Server {
 			RetentionTTL:       d.AgentSnapshotRetentionTTL,
 			TurnTimeout:        d.AgentTurnTimeout,
 		},
-		BlueprintRecovery: &apps.BlueprintRecoverer{Store: d.BlueprintsStore},
-		BlueprintAutoSync: &apps.BlueprintAutoSyncWorker{Svc: appsSvc},
+		BlueprintRecovery:  &apps.BlueprintRecoverer{Store: d.BlueprintsStore},
+		BlueprintAutoSync:  &apps.BlueprintAutoSyncWorker{Svc: appsSvc},
+		DomainVerification: &apps.DomainVerificationWorker{Svc: appsSvc},
 		AgentSessionCompleter: &agentsessions.Completer{
 			Store: d.AgentSessionStore, Sandbox: agentLifecycle,
 			GitHub: d.GitHubClient, Connections: d.GitHubStore, APIPublicURL: d.DeployHookBaseURL,

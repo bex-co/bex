@@ -68,13 +68,13 @@ func newService(st IntentStore, apps ...*appv1alpha1.App) (*Service, client.Clie
 	cl := fakeClient(objs...)
 	return &Service{
 		Base: &core.Base{Client: cl, Namespace: "default"}, Store: st,
-		DomainOwnership: allowDomainOwnership{},
+		DomainTraffic: allowDomainTraffic{},
 	}, cl
 }
 
-type allowDomainOwnership struct{}
+type allowDomainTraffic struct{}
 
-func (allowDomainOwnership) VerifyTXT(context.Context, string, string) error { return nil }
+func (allowDomainTraffic) PointsAtService(context.Context, string, string) bool { return true }
 
 func getApp(t *testing.T, cl client.Client, name string) *appv1alpha1.App {
 	t.Helper()
@@ -406,7 +406,7 @@ func newTenantService(ws core.WorkspaceResolver, apps ...*appv1alpha1.App) (*Ser
 	cl := fakeClient(objs...)
 	return &Service{
 		Base:            &core.Base{Client: cl, Namespace: "default", Workspace: ws},
-		DomainOwnership: allowDomainOwnership{},
+		DomainTraffic: allowDomainTraffic{},
 	}, cl
 }
 

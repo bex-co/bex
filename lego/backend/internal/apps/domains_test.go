@@ -129,15 +129,16 @@ func TestAddDomainAppendsToHosts(t *testing.T) {
 	}
 }
 
-type recordingDomainOwnership struct {
-	err         error
-	name, value string
+type recordingDomainTraffic struct {
+	pointed        bool
+	host, platform string
+	calls          int
 }
 
-type domainOwnershipFunc func(context.Context, string, string) error
+type domainTrafficFunc func(context.Context, string, string) bool
 
-func (f domainOwnershipFunc) VerifyTXT(ctx context.Context, name, value string) error {
-	return f(ctx, name, value)
+func (f domainTrafficFunc) PointsAtService(ctx context.Context, host, platformHost string) bool {
+	return f(ctx, host, platformHost)
 }
 
 // memoryDomainClaimStore adds the new durable-claim methods to recordingStore
@@ -182,8 +183,7 @@ func (m *memoryDomainClaimStore) AddDomainClaim(_ context.Context, appID, host, 
 	claim := store.Domain{
 		ID: "cdm-test-" + host, AppID: appID, Host: host,
 		RedirectForName: redirect, ClaimState: "pending",
-		Challenge:        "bex-domain-verification=test-" + host,
-		ChallengeVersion: 1, CreatedAt: time.Unix(int64(m.next), 0),
+		CreatedAt: time.Unix(int64(m.next), 0),
 	}
 	m.claims[host] = claim
 	return claim, true, nil
@@ -224,25 +224,51 @@ func (m *memoryDomainClaimStore) RecordDomainVerificationAttempt(_ context.Conte
 	return nil
 }
 
-func (m *memoryDomainClaimStore) PromoteDomainClaim(_ context.Context, appID, id, challenge string, at time.Time) (store.Domain, error) {
+func (m *memoryDomainClaimStore) ListPendingDomainClaims(_ context.Context, limit int) ([]store.Domain, error) {
+	var out []store.Domain
+	for _, claim := range m.claims {
+		if claim.ClaimState == "pending" {
+			out = append(out, claim)
+		}
+	}
+	// Same ordering as the PG due list: never-checked first, then
+	// least-recently checked, then oldest. (The fake ignores due-backoff:
+	// every pending row is always due here.)
+	sort.Slice(out, func(i, j int) bool {
+		a, b := out[i].LastVerificationAt, out[j].LastVerificationAt
+		if (a == nil) != (b == nil) {
+			return a == nil
+		}
+		if a != nil && !a.Equal(*b) {
+			return a.Before(*b)
+		}
+		if !out[i].CreatedAt.Equal(out[j].CreatedAt) {
+			return out[i].CreatedAt.Before(out[j].CreatedAt)
+		}
+		return out[i].ID < out[j].ID
+	})
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+	return out, nil
+}
+
+func (m *memoryDomainClaimStore) PromoteDomainClaim(_ context.Context, appID, id string, at time.Time) (store.Domain, bool, error) {
 	for host, claim := range m.claims {
 		if claim.AppID != appID || claim.ID != id {
 			continue
 		}
 		if claim.ClaimState == "verified" {
-			return claim, nil
-		}
-		if claim.Challenge != challenge {
-			return store.Domain{}, store.ErrConflict
+			return claim, false, nil
 		}
 		claim.ClaimState = "verified"
 		claim.VerifiedAt = &at
 		claim.VerificationAttempts++
 		claim.LastVerificationAt = &at
 		m.claims[host] = claim
-		return claim, nil
+		return claim, true, nil
 	}
-	return store.Domain{}, store.ErrConflict
+	return store.Domain{}, false, store.ErrConflict
 }
 
 func (m *memoryDomainClaimStore) ReplaceDomainClaims(_ context.Context, appID string, declarations []store.DomainDeclaration) ([]store.Domain, error) {
@@ -276,59 +302,51 @@ func (m *memoryDomainClaimStore) RemoveDomain(_ context.Context, appID, host str
 func TestManagedDomainClaimLifecycleNeverServesPending(t *testing.T) {
 	claims := newMemoryDomainClaimStore()
 	svc, cl := newService(claims, managedApp("web", "srv-1"))
-	resolver := &recordingDomainOwnership{err: errors.New("not propagated")}
-	svc.DomainOwnership = resolver
+	resolver := &recordingDomainTraffic{pointed: false} // DNS not propagated yet
+	svc.DomainTraffic = resolver
 
 	created, err := svc.AddDomain(context.Background(), "web", "app.example.com")
 	if err != nil {
 		t.Fatalf("AddDomain: %v", err)
 	}
-	if created.OwnershipStatus != "pending" || created.OwnershipDNSRecord == nil || created.OwnershipDNSRecord.Type != "TXT" {
+	// The only instruction is the traffic record (Render's one step): a CNAME
+	// named relative to the zone, at this service's platform host.
+	if created.VerificationStatus != "unverified" || created.DNSRecord.Type != "CNAME" || created.DNSRecord.Name != "app" {
 		t.Fatalf("pending view = %+v", created)
 	}
-	// Host must be zone-relative (_bex-challenge), not the LookupTXT FQDN (w4/092).
-	if created.OwnershipDNSRecord.Name != ownershipDNSRecordRelativeName {
-		t.Fatalf("ownership Host = %q, want relative %q", created.OwnershipDNSRecord.Name, ownershipDNSRecordRelativeName)
-	}
-	challenge := created.OwnershipDNSRecord.Value
 	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 0 {
 		t.Fatalf("pending claim reached serving spec: %v", got)
 	}
 	retried, err := svc.AddDomain(context.Background(), "web", "app.example.com")
-	if err != nil || retried.OwnershipDNSRecord == nil || retried.OwnershipDNSRecord.Value != challenge {
-		t.Fatalf("same-App retry did not preserve challenge: %+v err=%v", retried, err)
+	if err != nil || retried.VerificationStatus != "unverified" || len(claims.claims) != 1 {
+		t.Fatalf("same-App retry was not idempotent: %+v claims=%v err=%v", retried, claims.claims, err)
 	}
 
-	_, err = svc.VerifyDomain(context.Background(), "web", "app.example.com")
-	var coded *core.CodedError
-	if !errors.As(err, &coded) || coded.Code != "DOMAIN_OWNERSHIP_PENDING" {
-		t.Fatalf("wrong TXT = %v, want DOMAIN_OWNERSHIP_PENDING", err)
+	// Unpointed: Verify is a trigger, not a verdict — fresh unverified view,
+	// no error, and the pending host still does not serve.
+	stillPending, err := svc.VerifyDomain(context.Background(), "web", "app.example.com")
+	if err != nil {
+		t.Fatalf("unpointed VerifyDomain = %v, want no error", err)
 	}
-	// Verifier still looks up the FQDN; conflict params name both forms.
-	if resolver.name != "_bex-challenge.example.com" {
-		t.Fatalf("VerifyTXT looked up %q, want FQDN", resolver.name)
+	if stillPending.VerificationStatus != "unverified" || len(getApp(t, cl, "web").Spec.Hosts) != 0 {
+		t.Fatalf("unpointed verify served or misreported: view=%+v hosts=%v", stillPending, getApp(t, cl, "web").Spec.Hosts)
 	}
-	if coded.Params["recordName"] != "_bex-challenge.example.com" ||
-		coded.Params["recordHost"] != ownershipDNSRecordRelativeName ||
-		coded.Params["recordZone"] != "example.com" {
-		t.Fatalf("pending params = %#v", coded.Params)
-	}
-	if strings.Contains(err.Error(), challenge) || len(getApp(t, cl, "web").Spec.Hosts) != 0 {
-		t.Fatal("failed verification leaked its challenge or served the pending host")
+	if resolver.host != "app.example.com" || resolver.platform == "" {
+		t.Fatalf("traffic check resolved host=%q platform=%q", resolver.host, resolver.platform)
 	}
 
-	resolver.err = nil
+	resolver.pointed = true
 	verified, err := svc.VerifyDomain(context.Background(), "web", "app.example.com")
 	if err != nil {
 		t.Fatalf("VerifyDomain: %v", err)
 	}
-	if verified.OwnershipStatus != "verified" || verified.OwnershipDNSRecord != nil || verified.VerificationStatus != "pending" {
+	if verified.VerificationStatus != "verified" || verified.CertificateStatus != "pending" {
 		t.Fatalf("post-promotion view = %+v", verified)
 	}
 	if got := getApp(t, cl, "web").Spec.Hosts; !slices.Equal(got, []string{"app.example.com"}) {
 		t.Fatalf("verified claim not projected: %v", got)
 	}
-	if again, err := svc.VerifyDomain(context.Background(), "web", "app.example.com"); err != nil || again.OwnershipStatus != "verified" {
+	if again, err := svc.VerifyDomain(context.Background(), "web", "app.example.com"); err != nil || again.VerificationStatus != "verified" {
 		t.Fatalf("verified retry = %+v err=%v", again, err)
 	}
 }
@@ -416,24 +434,25 @@ func TestManagedDomainVerificationCannotPromoteRecreatedClaim(t *testing.T) {
 	if _, err := svc.AddDomain(context.Background(), "web", "app.example.com"); err != nil {
 		t.Fatalf("AddDomain: %v", err)
 	}
-	svc.DomainOwnership = domainOwnershipFunc(func(_ context.Context, _, _ string) error {
+	svc.DomainTraffic = domainTrafficFunc(func(_ context.Context, _, _ string) bool {
 		delete(claims.claims, "app.example.com")
 		claims.next++
 		claims.claims["app.example.com"] = store.Domain{
 			ID: "cdm-recreated", AppID: "srv-1", Host: "app.example.com",
-			ClaimState: "pending", Challenge: "bex-domain-verification=recreated",
-			ChallengeVersion: 2, CreatedAt: time.Unix(99, 0),
+			ClaimState: "pending", CreatedAt: time.Unix(99, 0),
 		}
-		return nil
+		return true
 	})
 
-	_, err := svc.VerifyDomain(context.Background(), "web", "app.example.com")
-	var coded *core.CodedError
-	if !errors.As(err, &coded) || coded.Code != "DOMAIN_CLAIM_STALE" {
-		t.Fatalf("stale proof = %v, want DOMAIN_CLAIM_STALE", err)
+	view, err := svc.VerifyDomain(context.Background(), "web", "app.example.com")
+	if err != nil {
+		t.Fatalf("recreated-claim verify = %v, want no error", err)
+	}
+	if view.VerificationStatus != "unverified" {
+		t.Fatalf("recreated claim view = %+v, want unverified", view)
 	}
 	if claims.claims["app.example.com"].ClaimState != "pending" || len(getApp(t, cl, "web").Spec.Hosts) != 0 {
-		t.Fatal("stale proof promoted or served the replacement claim")
+		t.Fatal("stale check promoted or served the replacement claim")
 	}
 }
 
@@ -482,7 +501,7 @@ func TestManagedBlueprintDomainSyncPreservesPendingClaimWithoutServing(t *testin
 	if claim.ClaimState != "pending" || !claim.Primary {
 		t.Fatalf("Blueprint claim = %+v", claim)
 	}
-	challenge := claim.Challenge
+	claimID := claim.ID
 	current := getApp(t, cl, "web")
 	retry := current.DeepCopy()
 	retry.Spec.Host = "blueprint.example.com"
@@ -491,39 +510,40 @@ func TestManagedBlueprintDomainSyncPreservesPendingClaimWithoutServing(t *testin
 	}); err != nil {
 		t.Fatalf("Blueprint retry: %v", err)
 	}
-	if got := claims.claims["blueprint.example.com"].Challenge; got != challenge {
-		t.Fatalf("Blueprint retry rotated challenge: %q -> %q", challenge, got)
+	if got := claims.claims["blueprint.example.com"]; got.ID != claimID || got.ClaimState != "pending" {
+		t.Fatalf("Blueprint retry replaced the claim: %+v", got)
 	}
 }
 
-func (v *recordingDomainOwnership) VerifyTXT(_ context.Context, name, value string) error {
-	v.name, v.value = name, value
-	return v.err
+func (v *recordingDomainTraffic) PointsAtService(_ context.Context, host, platformHost string) bool {
+	v.calls++
+	v.host, v.platform = host, platformHost
+	return v.pointed
 }
 
-func TestAddDomainRequiresCurrentAppBoundTXTBeforeRouting(t *testing.T) {
+func TestAddDomainRequiresTrafficPointingBeforeRouting(t *testing.T) {
 	a := sampleApp("web")
 	a.Labels = map[string]string{core.LabelAppID: "srv-current"}
 	svc, cl := newService(nil, a)
-	proof := &recordingDomainOwnership{err: errors.New("stale CNAME only")}
-	svc.DomainOwnership = proof
+	proof := &recordingDomainTraffic{pointed: false} // stale CNAME only
+	svc.DomainTraffic = proof
 
 	if _, err := svc.AddDomain(context.Background(), "web", "app.example.com"); !errors.Is(err, core.ErrConflict) {
-		t.Fatalf("unproved domain = %v, want conflict", err)
+		t.Fatalf("unpointed domain = %v, want conflict", err)
 	}
-	if proof.name != "_bex-challenge.example.com" || !strings.HasPrefix(proof.value, "bex-domain-verification=") {
-		t.Fatalf("challenge = %q %q", proof.name, proof.value)
+	if proof.host != "app.example.com" || proof.platform == "" {
+		t.Fatalf("traffic check = host %q platform %q", proof.host, proof.platform)
 	}
 	if got := getApp(t, cl, "web"); len(got.Spec.Hosts) != 0 {
-		t.Fatalf("unproved domain became routable: %v", got.Spec.Hosts)
+		t.Fatalf("unpointed domain became routable: %v", got.Spec.Hosts)
 	}
 
-	proof.err = nil
+	proof.pointed = true
 	if _, err := svc.AddDomain(context.Background(), "web", "app.example.com"); err != nil {
-		t.Fatalf("proved domain: %v", err)
+		t.Fatalf("pointed domain: %v", err)
 	}
 	if got := getApp(t, cl, "web"); !slices.Contains(got.Spec.Hosts, "app.example.com") {
-		t.Fatalf("proved domain not routed: %v", got.Spec.Hosts)
+		t.Fatalf("pointed domain not routed: %v", got.Spec.Hosts)
 	}
 }
 
@@ -970,8 +990,8 @@ func TestDomainVerifiedWhenTLSSecretExists(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDomain: %v", err)
 	}
-	if d.VerificationStatus != "verified" {
-		t.Errorf("verificationStatus = %q, want verified (TLS secret present)", d.VerificationStatus)
+	if d.CertificateStatus != "verified" {
+		t.Errorf("certificateStatus = %q, want verified (TLS secret present)", d.CertificateStatus)
 	}
 	if d.ServerStatus != "active" {
 		t.Errorf("serverStatus = %q, want active (cert issued and not suspended)", d.ServerStatus)
@@ -988,8 +1008,11 @@ func TestDomainPendingWithoutTLSSecret(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDomain: %v", err)
 	}
-	if d.VerificationStatus != "pending" {
-		t.Errorf("verificationStatus = %q, want pending (no TLS secret)", d.VerificationStatus)
+	if d.CertificateStatus != "pending" {
+		t.Errorf("certificateStatus = %q, want pending (no TLS secret)", d.CertificateStatus)
+	}
+	if d.VerificationStatus != "verified" {
+		t.Errorf("verificationStatus = %q, want verified (storeless host was admitted by the traffic gate)", d.VerificationStatus)
 	}
 	if d.ServerStatus != "pending" {
 		t.Errorf("serverStatus = %q, want pending", d.ServerStatus)
@@ -1009,8 +1032,8 @@ func TestDomainServerStatusPendingWhenSuspended(t *testing.T) {
 		t.Fatalf("GetDomain: %v", err)
 	}
 	// Cert issued but app is suspended → serverStatus must be pending.
-	if d.VerificationStatus != "verified" {
-		t.Errorf("verificationStatus = %q, want verified", d.VerificationStatus)
+	if d.CertificateStatus != "verified" {
+		t.Errorf("certificateStatus = %q, want verified", d.CertificateStatus)
 	}
 	if d.ServerStatus != "pending" {
 		t.Errorf("serverStatus = %q, want pending (app suspended)", d.ServerStatus)
@@ -1032,8 +1055,8 @@ func TestTLSSecretForFirstHostWhenNoPrimaryHost(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDomain: %v", err)
 	}
-	if d.VerificationStatus != "verified" {
-		t.Errorf("verificationStatus = %q, want verified (first host uses <app>-tls)", d.VerificationStatus)
+	if d.CertificateStatus != "verified" {
+		t.Errorf("certificateStatus = %q, want verified (first host uses <app>-tls)", d.CertificateStatus)
 	}
 }
 
@@ -1162,8 +1185,8 @@ func TestVerifyDomainReturnsFreshStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("VerifyDomain: %v", err)
 	}
-	if d.VerificationStatus != "verified" || d.ServerStatus != "active" {
-		t.Errorf("verify status = %q/%q, want verified/active", d.VerificationStatus, d.ServerStatus)
+	if d.VerificationStatus != "verified" || d.CertificateStatus != "verified" || d.ServerStatus != "active" {
+		t.Errorf("verify status = dns:%q cert:%q server:%q, want verified/verified/active", d.VerificationStatus, d.CertificateStatus, d.ServerStatus)
 	}
 	if d.DNSRecord.Value != "web.onbex.co" {
 		t.Errorf("verify dnsRecord.Value = %q, want web.onbex.co", d.DNSRecord.Value)
@@ -1193,32 +1216,33 @@ func TestRESTCustomDomains(t *testing.T) {
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("POST => 201, got %d: %s", rec.Code, rec.Body)
 	}
-	var created renderCustomDomain
+	// Render's add answers with an ARRAY of the created domains (here one:
+	// no pairing for a deep subdomain).
+	var created []renderCustomDomain
 	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if created.Name != "app.example.com" {
-		t.Errorf("name = %q", created.Name)
+	if len(created) != 1 {
+		t.Fatalf("add returned %d domains, want 1: %s", len(created), rec.Body)
 	}
-	if created.DomainType != "subdomain" {
-		t.Errorf("domainType = %q, want subdomain", created.DomainType)
+	if created[0].Name != "app.example.com" {
+		t.Errorf("name = %q", created[0].Name)
 	}
-	if created.DNSRecord.Type != "CNAME" || created.DNSRecord.Name != "app" {
-		t.Errorf("dnsRecord = %+v, want CNAME/app", created.DNSRecord)
+	if created[0].DomainType != "subdomain" {
+		t.Errorf("domainType = %q, want subdomain", created[0].DomainType)
+	}
+	if created[0].DNSRecord.Type != "CNAME" || created[0].DNSRecord.Name != "app" {
+		t.Errorf("dnsRecord = %+v, want CNAME/app", created[0].DNSRecord)
 	}
 
-	// POST …/verify re-checks and returns 200 with the fresh domain.
+	// POST …/verify is Render's asynchronous trigger: 202, no body.
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/custom-domains/app.example.com/verify", nil))
-	if rec.Code != http.StatusOK {
-		t.Fatalf("POST verify => 200, got %d: %s", rec.Code, rec.Body)
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("POST verify => 202, got %d: %s", rec.Code, rec.Body)
 	}
-	var verified renderCustomDomain
-	if err := json.Unmarshal(rec.Body.Bytes(), &verified); err != nil {
-		t.Fatalf("decode verify: %v", err)
-	}
-	if verified.Name != "app.example.com" || verified.DNSRecord.Type != "CNAME" {
-		t.Errorf("verify result wrong: %+v", verified)
+	if rec.Body.Len() != 0 {
+		t.Errorf("verify body = %q, want empty", rec.Body)
 	}
 
 	// GET list returns [{customDomain:{...}, cursor:"..."}].
@@ -1260,9 +1284,9 @@ func TestRESTCustomDomains(t *testing.T) {
 	}
 }
 
-// TestRESTCustomDomainsPairedAdd: adding an apex over REST returns the primary
-// domain (201, as before) and the list surfaces both paired hosts, each with
-// its own DNS instructions — w6/m23 t005.
+// TestRESTCustomDomainsPairedAdd: adding an apex over REST returns 201 with
+// the array of BOTH paired hosts (Render's shape), requested first, each with
+// its own single traffic record — w6/m23 t005, array form w5/m137.
 func TestRESTCustomDomainsPairedAdd(t *testing.T) {
 	svc, _ := newService(nil, sampleApp("web"))
 	svc.BaseDomain = "onbex.co"
@@ -1274,6 +1298,16 @@ func TestRESTCustomDomainsPairedAdd(t *testing.T) {
 		strings.NewReader(`{"name":"foo.com"}`)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("POST => 201, got %d: %s", rec.Code, rec.Body)
+	}
+	var created []renderCustomDomain
+	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
+		t.Fatalf("decode add array: %v", err)
+	}
+	if len(created) != 2 || created[0].Name != "foo.com" || created[1].Name != "www.foo.com" {
+		t.Fatalf("add array = %+v, want [foo.com www.foo.com]", created)
+	}
+	if created[0].DNSRecord.Type != "ALIAS" || created[1].DNSRecord.Type != "CNAME" || created[1].RedirectForName != "foo.com" {
+		t.Fatalf("add array records wrong: %+v", created)
 	}
 
 	rec = httptest.NewRecorder()
@@ -1364,15 +1398,16 @@ func TestManagedPendingDomainSurfaceParity(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("REST get = %d: %s", rec.Code, rec.Body)
 	}
+	if strings.Contains(rec.Body.String(), "ownership") {
+		t.Fatalf("REST body still exposes ownership fields: %s", rec.Body)
+	}
 	var rest renderCustomDomain
 	if err := json.Unmarshal(rec.Body.Bytes(), &rest); err != nil {
 		t.Fatal(err)
 	}
-	if rest.OwnershipStatus != "pending" || rest.OwnershipDNSRecord == nil || rest.OwnershipDNSRecord.Type != "TXT" {
-		t.Fatalf("REST pending shape = %+v", rest)
-	}
-	if rest.OwnershipDNSRecord.Name != ownershipDNSRecordRelativeName {
-		t.Fatalf("REST ownership Host = %q, want relative %q", rest.OwnershipDNSRecord.Name, ownershipDNSRecordRelativeName)
+	// Render's shape: unverified + the one traffic record (zone-relative CNAME).
+	if rest.VerificationStatus != "unverified" || rest.DNSRecord.Type != "CNAME" || rest.DNSRecord.Name != "app" {
+		t.Fatalf("REST unverified shape = %+v", rest)
 	}
 
 	schema, err := graphql.NewSchema(graphql.SchemaConfig{
@@ -1384,24 +1419,27 @@ func TestManagedPendingDomainSurfaceParity(t *testing.T) {
 	}
 	gql := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: `{
 		customDomain(id: "web", name: "app.example.com") {
-			ownershipStatus ownershipDnsRecord { type name value }
+			verificationStatus dnsRecord { type name value }
 		}
 	}`})
 	if len(gql.Errors) != 0 {
 		t.Fatalf("GraphQL get: %v", gql.Errors)
 	}
 	gqlDomain := gql.Data.(map[string]any)["customDomain"].(map[string]any)
-	gqlProof := gqlDomain["ownershipDnsRecord"].(map[string]any)
-	if gqlDomain["ownershipStatus"] != "pending" || gqlProof["value"] != rest.OwnershipDNSRecord.Value || gqlProof["name"] != ownershipDNSRecordRelativeName {
-		t.Fatalf("GraphQL pending shape = %v", gqlDomain)
+	gqlRecord := gqlDomain["dnsRecord"].(map[string]any)
+	if gqlDomain["verificationStatus"] != "unverified" || gqlRecord["type"] != rest.DNSRecord.Type || gqlRecord["name"] != rest.DNSRecord.Name || gqlRecord["value"] != rest.DNSRecord.Value {
+		t.Fatalf("GraphQL unverified shape = %v (REST %+v)", gqlDomain, rest)
 	}
 
 	call, cleanup := appsMCPClient(t, svc)
 	defer cleanup()
 	mcpDomain := call("get_custom_domain", map[string]any{"serviceId": "web", "name": "app.example.com"})
-	proof, _ := mcpDomain["ownershipDnsRecord"].(map[string]any)
-	if mcpDomain["ownershipStatus"] != "pending" || proof["value"] != rest.OwnershipDNSRecord.Value || proof["name"] != ownershipDNSRecordRelativeName {
-		t.Fatalf("MCP pending shape = %v", mcpDomain)
+	if _, ok := mcpDomain["ownershipStatus"]; ok {
+		t.Fatalf("MCP still exposes ownershipStatus: %v", mcpDomain)
+	}
+	record, _ := mcpDomain["dnsRecord"].(map[string]any)
+	if mcpDomain["verificationStatus"] != "unverified" || record["value"] != rest.DNSRecord.Value || record["name"] != rest.DNSRecord.Name {
+		t.Fatalf("MCP unverified shape = %v (REST %+v)", mcpDomain, rest)
 	}
 }
 
@@ -1581,8 +1619,10 @@ func TestMCPCustomDomainsPairedAdd(t *testing.T) {
 	if rec, _ := byName["www.foo.com"]["dnsRecord"].(map[string]any); rec["type"] != "CNAME" || rec["name"] != "www" {
 		t.Errorf("www.foo.com dnsRecord = %v, want CNAME/www", rec)
 	}
-	if _, present := byName["foo.com"]["redirectForName"]; present {
-		t.Errorf("direct canonical must omit redirectForName: %v", byName["foo.com"])
+	// redirectForName is a Render-required key: present and empty for a
+	// directly served domain (w5/m137 conformance).
+	if got, present := byName["foo.com"]["redirectForName"]; !present || got != "" {
+		t.Errorf("direct canonical redirectForName = %v (present=%v), want present and empty", got, present)
 	}
 	if byName["www.foo.com"]["redirectForName"] != "foo.com" {
 		t.Errorf("MCP sibling redirectForName = %v, want foo.com", byName["www.foo.com"]["redirectForName"])
@@ -1687,15 +1727,25 @@ func TestRESTListDomainsPagination(t *testing.T) {
 	}
 }
 
-// TestRESTListDomainsFilterVerificationStatus: verificationStatus=verified returns
-// only domains with a TLS secret; verificationStatus=pending the rest.
+// TestRESTListDomainsFilterVerificationStatus: verificationStatus filters DNS
+// verification (Render's meaning): verified returns only domains whose
+// traffic record has been seen pointing at the service; unverified (and the
+// bex alias pending) the rest.
 func TestRESTListDomainsFilterVerificationStatus(t *testing.T) {
-	app := appWithHosts("web", "www.example.com", "api.example.com")
-	app.Spec.Host = "web.onbex.co"
-	// Only www.example.com gets a TLS secret → verified.
-	secret := tlsSecret("default", "web-tls-www.example.com")
-	cl := fakeClient(app, secret)
-	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}}
+	claims := newMemoryDomainClaimStore()
+	svc, _ := newService(claims, managedApp("web", "srv-1"))
+	for _, host := range []string{"app.example.com", "api.example.com"} {
+		if _, err := svc.AddDomain(context.Background(), "web", host); err != nil {
+			t.Fatalf("AddDomain(%s): %v", host, err)
+		}
+	}
+	// Only app.example.com's traffic record lands.
+	svc.DomainTraffic = domainTrafficFunc(func(_ context.Context, host, _ string) bool {
+		return host == "app.example.com"
+	})
+	if _, err := svc.VerifyDomain(context.Background(), "web", "app.example.com"); err != nil {
+		t.Fatalf("VerifyDomain: %v", err)
+	}
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
@@ -1715,12 +1765,14 @@ func TestRESTListDomainsFilterVerificationStatus(t *testing.T) {
 	}
 
 	verified := getList("verified")
-	if len(verified) != 1 || verified[0].CustomDomain.Name != "www.example.com" {
-		t.Errorf("verificationStatus=verified: want [www.example.com], got %v", verified)
+	if len(verified) != 1 || verified[0].CustomDomain.Name != "app.example.com" {
+		t.Errorf("verificationStatus=verified: want [app.example.com], got %v", verified)
 	}
-	pending := getList("pending")
-	if len(pending) != 1 || pending[0].CustomDomain.Name != "api.example.com" {
-		t.Errorf("verificationStatus=pending: want [api.example.com], got %v", pending)
+	for _, spelling := range []string{"unverified", "pending"} {
+		unverified := getList(spelling)
+		if len(unverified) != 1 || unverified[0].CustomDomain.Name != "api.example.com" {
+			t.Errorf("verificationStatus=%s: want [api.example.com], got %v", spelling, unverified)
+		}
 	}
 }
 
@@ -1792,13 +1844,23 @@ func TestRESTListDomainsInvalidEnumBadRequest(t *testing.T) {
 // TestGQLCustomDomainsFilters: verificationStatus / domainType / cursor / limit
 // args on customDomains(id:…) match the REST semantics w7/m38 shipped.
 func TestGQLCustomDomainsFilters(t *testing.T) {
-	// foo.com is apex (pending — no TLS secret); www.foo.com is subdomain+redirect.
-	app := appWithHosts("web", "foo.com", "api.example.com")
-	app.Spec.Host = "web.onbex.co"
-	// api.example.com gets a TLS secret → verified.
-	secret := tlsSecret("default", "web-tls-api.example.com")
-	cl := fakeClient(app, secret)
-	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}, BaseDomain: "onbex.co"}
+	// Managed claims: foo.com stays unverified (its traffic record never
+	// lands); api.example.com is DNS-verified.
+	claims := newMemoryDomainClaimStore()
+	svc, _ := newService(claims, managedApp("web", "srv-1"))
+	svc.BaseDomain = "onbex.co"
+	for _, host := range []string{"foo.com", "api.example.com"} {
+		if _, _, err := claims.AddDomainClaim(context.Background(), "srv-1", host, ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	api, err := claims.GetDomainClaim(context.Background(), "srv-1", "api.example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := claims.PromoteDomainClaim(context.Background(), "srv-1", api.ID, time.Now()); err != nil {
+		t.Fatal(err)
+	}
 	schema, err := graphql.NewSchema(graphql.SchemaConfig{
 		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
 		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
@@ -1900,11 +1962,21 @@ func TestGQLCustomDomainsPagination(t *testing.T) {
 // TestMCPListCustomDomainsFilters: verificationStatus / domainType / cursor /
 // limit args on list_custom_domains match the REST semantics.
 func TestMCPListCustomDomainsFilters(t *testing.T) {
-	app := appWithHosts("web", "foo.com", "api.example.com")
-	app.Spec.Host = "web.onbex.co"
-	secret := tlsSecret("default", "web-tls-api.example.com")
-	cl := fakeClient(app, secret)
-	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}, BaseDomain: "onbex.co"}
+	claims := newMemoryDomainClaimStore()
+	svc, _ := newService(claims, managedApp("web", "srv-1"))
+	svc.BaseDomain = "onbex.co"
+	for _, host := range []string{"foo.com", "api.example.com"} {
+		if _, _, err := claims.AddDomainClaim(context.Background(), "srv-1", host, ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	api, err := claims.GetDomainClaim(context.Background(), "srv-1", "api.example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := claims.PromoteDomainClaim(context.Background(), "srv-1", api.ID, time.Now()); err != nil {
+		t.Fatal(err)
+	}
 	call, cleanup := appsMCPClient(t, svc)
 	defer cleanup()
 
@@ -1950,9 +2022,9 @@ func TestMCPListCustomDomainsFilters(t *testing.T) {
 // route through filterDomains, so this pins the semantics once for all three.
 func TestFilterDomainsComposesBothFilters(t *testing.T) {
 	domains := []DomainView{
-		{Name: "apex-pending.com", DomainType: "apex", VerificationStatus: "pending"},
+		{Name: "apex-pending.com", DomainType: "apex", VerificationStatus: "unverified"},
 		{Name: "apex-verified.com", DomainType: "apex", VerificationStatus: "verified"},
-		{Name: "www.sub-pending.com", DomainType: "subdomain", VerificationStatus: "pending"},
+		{Name: "www.sub-pending.com", DomainType: "subdomain", VerificationStatus: "unverified"},
 		{Name: "www.sub-verified.com", DomainType: "subdomain", VerificationStatus: "verified"},
 	}
 
@@ -2106,17 +2178,21 @@ func TestAddDomainPerWorkspaceQuota(t *testing.T) {
 }
 
 // TestAddDomainPerServiceQuotaStoreless pins the CR-only path: the cap counts
-// spec.hosts and refuses BEFORE any DNS verification fan-out — the failing
-// resolver proves the ownership check was never consulted.
+// spec.hosts and refuses BEFORE any DNS verification fan-out — the zero call
+// count proves the traffic check was never consulted.
 func TestAddDomainPerServiceQuotaStoreless(t *testing.T) {
 	svc, _ := newService(nil, appWithHosts("web", "a.example.com", "b.example.com"))
 	svc.MaxCustomDomainsPerService = 2
-	svc.DomainOwnership = &recordingDomainOwnership{err: errors.New("must not be consulted")}
+	checker := &recordingDomainTraffic{}
+	svc.DomainTraffic = checker
 
 	_, err := svc.AddDomain(context.Background(), "web", "c.example.com")
 	var coded *core.CodedError
 	if !errors.As(err, &coded) || coded.Code != "CUSTOM_DOMAIN_LIMIT" {
 		t.Fatalf("over-cap add err = %v, want CUSTOM_DOMAIN_LIMIT", err)
+	}
+	if checker.calls != 0 {
+		t.Fatalf("traffic checker consulted %d times before the quota refusal", checker.calls)
 	}
 }
 
@@ -2256,7 +2332,7 @@ func acmeService(apps []*appv1alpha1.App, objs ...client.Object) *Service {
 	}
 	all = append(all, objs...)
 	cl := fake.NewClientBuilder().WithScheme(acmeScheme()).WithObjects(all...).Build()
-	return &Service{Base: &core.Base{Client: cl, Namespace: "default"}, DomainOwnership: allowDomainOwnership{}}
+	return &Service{Base: &core.Base{Client: cl, Namespace: "default"}, DomainTraffic: allowDomainTraffic{}}
 }
 
 // The motivating case (w3/037): a Cloudflare-proxied apex whose HTTP-01 solver
@@ -2277,8 +2353,8 @@ func TestPendingDomainProjectsChallengeReason(t *testing.T) {
 	if len(domains) != 1 {
 		t.Fatalf("want 1 domain, got %d", len(domains))
 	}
-	if domains[0].VerificationStatus != "pending" {
-		t.Fatalf("no TLS Secret => pending, got %q", domains[0].VerificationStatus)
+	if domains[0].CertificateStatus != "pending" {
+		t.Fatalf("no TLS Secret => cert pending, got %q", domains[0].CertificateStatus)
 	}
 	if domains[0].CertificateReason != reason {
 		t.Errorf("CertificateReason = %q, want %q", domains[0].CertificateReason, reason)
@@ -2324,8 +2400,8 @@ func TestVerifiedDomainCarriesNoCertificateReason(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListDomains: %v", err)
 	}
-	if domains[0].VerificationStatus != "verified" {
-		t.Fatalf("TLS Secret present => verified, got %q", domains[0].VerificationStatus)
+	if domains[0].CertificateStatus != "verified" {
+		t.Fatalf("TLS Secret present => cert verified, got %q", domains[0].CertificateStatus)
 	}
 	if domains[0].CertificateReason != "" {
 		t.Errorf("verified domain must carry no reason, got %q", domains[0].CertificateReason)
@@ -2394,8 +2470,8 @@ func TestCertificateReasonDegradesWhenACMEUnreadable(t *testing.T) {
 	if domains[0].CertificateReason != "" {
 		t.Errorf("want no reason, got %q", domains[0].CertificateReason)
 	}
-	if domains[0].VerificationStatus != "pending" {
-		t.Errorf("status must be unchanged, got %q", domains[0].VerificationStatus)
+	if domains[0].CertificateStatus != "pending" {
+		t.Errorf("status must be unchanged, got %q", domains[0].CertificateStatus)
 	}
 }
 

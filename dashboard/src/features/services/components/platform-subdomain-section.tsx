@@ -30,15 +30,15 @@ export function PlatformSubdomainRow({
    * never serves), so the switch explains that up front instead of a refusal
    * toast after the click (w4/142). Absent => no pre-check.
    */
-  domains?: Pick<CustomDomainView, "name" | "ownershipVerified">[];
+  domains?: Pick<CustomDomainView, "name" | "dnsVerified">[];
   withHeading?: boolean;
 }) {
   const { t } = useTranslations();
   const { setSubdomainPolicy, busy } = useSubdomainPolicy();
   const enabled = (renderSubdomainPolicy ?? "enabled") === "enabled";
-  const pending = (domains ?? []).filter((d) => !d.ownershipVerified);
+  const pending = (domains ?? []).filter((d) => !d.dnsVerified);
   const cannotDisable =
-    enabled && !!domains && !domains.some((d) => d.ownershipVerified);
+    enabled && !!domains && !domains.some((d) => d.dnsVerified);
   const disableHint = !cannotDisable
     ? null
     : pending.length > 0

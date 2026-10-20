@@ -1524,8 +1524,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.domainColVerified": {
     message: "Verified Status",
-    description:
-      "Custom-domains table column header (DNS/ownership verification)",
+    description: "Custom-domains table column header (DNS verification)",
   },
   "services.domainColCertificate": {
     message: "Certificate Status",
@@ -1540,7 +1539,7 @@ const enServices: Record<string, TranslationEntry> = {
   "services.domainVerified": {
     message: "Verified",
     description:
-      "Custom-domains status badge: ownership or TLS verification is complete",
+      "Custom-domains status badge: DNS or TLS verification is complete",
   },
   "services.domainCertActive": {
     message: "Active",
@@ -1561,7 +1560,7 @@ const enServices: Record<string, TranslationEntry> = {
   "services.domainPending": {
     message: "Pending",
     description:
-      "Custom-domains status badge: ownership or certificate is not complete",
+      "Custom-domains status badge: DNS or certificate is not complete",
   },
   "services.domainActionsMenu": {
     message: "Open domain actions menu",
@@ -1600,7 +1599,7 @@ const enServices: Record<string, TranslationEntry> = {
     message:
       "This removes the pending claim for {name}. It was never verified, so nothing was served on it and no certificate was issued.",
     description:
-      "Custom-domain delete confirmation for a domain whose ownership is still pending: it was never routed (w4/142)",
+      "Custom-domain delete confirmation for a domain still unverified: it was never routed (w4/142)",
   },
   "services.domainDeletePendingPairConfirmBody": {
     message:
@@ -1664,11 +1663,6 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Toast description after a custom-domain add (async convergence)",
   },
-  "services.domainOwnershipNote": {
-    message: "Create the shown TXT record, then re-check ownership.",
-    description:
-      "Toast description after creating a pending custom-domain ownership claim",
-  },
   "services.domainDnsToggle": {
     message: "Show DNS setup",
     description:
@@ -1678,32 +1672,15 @@ const enServices: Record<string, TranslationEntry> = {
     message: "DNS setup",
     description: "Heading of the per-domain DNS-instructions panel",
   },
-  "services.domainOwnershipGuidance": {
-    message:
-      "First, add this TXT record in the {zone} zone to prove ownership; the domain is not routed until verification succeeds. Host is relative to that zone (paste _bex-challenge, not the full name). This host holds one TXT record per domain — add this value as an additional record and keep any bex-domain-verification values already there.",
-    description:
-      "Guidance above the durable custom-domain ownership TXT challenge — must name the DNS zone Host is relative to (w4/092) and say the host is shared (one record per domain) so users don't overwrite a sibling domain's proof in a single-value DNS edit box",
-  },
-  "services.domainOwnershipSiblingsNote": {
-    message:
-      "Other domains on this service share this TXT host — keep their records in place:",
-    description:
-      "Intro to the list of sibling domains' TXT values at the same shared ownership host",
-  },
-  "services.domainTrafficRecordTitle": {
-    message: "Traffic record",
-    description:
-      "Heading above the CNAME or ALIAS record shown after the ownership TXT record",
-  },
   "services.domainDnsSubdomainGuidance": {
     message:
-      "Create the following record in the {zone} zone at your DNS provider, then re-check. Host is relative to that zone. bex issues the TLS certificate automatically once it resolves.",
+      "Create this record in the {zone} zone at your DNS provider. Host is relative to that zone. Verification and the TLS certificate happen automatically once it resolves.",
     description:
       "Guidance line above the DNS record for a subdomain — names the zone Host is relative to (w4/092)",
   },
   "services.domainDnsApexGuidance": {
     message:
-      "Apex domains can't use a plain CNAME — create this record in the {zone} zone if your provider supports ALIAS/ANAME (or CNAME flattening), then re-check. Host is relative to that zone (@ means the zone apex). bex issues the TLS certificate automatically once it resolves, and sets up the www ↔ apex redirect for you.",
+      "Apex domains can't use a plain CNAME — create this ALIAS/ANAME (or CNAME-flattening) record in the {zone} zone (@ means the zone apex). If your provider supports neither, create an A record for @ using the IP addresses the Target resolves to. Verification and TLS happen automatically once it resolves, and bex sets up the www ↔ apex redirect for you.",
     description:
       "Guidance line above the DNS record for an apex domain — names the zone Host is relative to (w4/092)",
   },
@@ -1721,13 +1698,11 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.domainCopyHost": {
     message: "Copy {type} host",
-    description:
-      "Accessible label for copying a DNS host field — type discriminates ownership TXT vs traffic CNAME",
+    description: "Accessible label for copying a DNS host field",
   },
   "services.domainCopyTarget": {
     message: "Copy {type} target",
-    description:
-      "Accessible label for copying a DNS target/value field — type discriminates ownership TXT vs traffic CNAME",
+    description: "Accessible label for copying a DNS target/value field",
   },
   "services.domainDnsUnavailable": {
     message:
@@ -1747,12 +1722,12 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Toast when copying a DNS record value fails",
   },
   "services.domainAddedTitle": {
-    message: "Domain claim created — set up DNS",
+    message: "Domain added — set up DNS",
     description: "Title of the post-add DNS-record step in the add dialog",
   },
   "services.domainAddedDescription": {
     message:
-      "Create the ownership TXT record at your DNS provider, then re-check to enable routing.",
+      "Create the DNS record at your provider; verification completes automatically once it resolves.",
     description: "Subtitle of the post-add DNS-record step in the add dialog",
   },
   "services.domainRedirectsTo": {
@@ -4194,7 +4169,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.eventsTypeCustomDomainVerified": {
     message: "Custom domain verified",
-    description: "Service activity type: custom domain ownership verified",
+    description: "Service activity type: custom domain verified",
   },
   "services.eventsTypeDiskCreated": {
     message: "Disk created",

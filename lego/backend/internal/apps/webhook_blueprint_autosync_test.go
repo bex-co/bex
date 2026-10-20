@@ -333,7 +333,7 @@ services:
 	svc := &Service{
 		Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: fakeWorkspace{"u": "tea-a"}},
 		Blueprints:      fs,
-		DomainOwnership: allowDomainOwnership{},
+		DomainTraffic: allowDomainTraffic{},
 		GitFetcher:      fetcher,
 	}
 	w := &BlueprintAutoSyncWorker{Svc: svc}

@@ -144,7 +144,7 @@ const (
 	// They are recorded ONLY after the claim actually changed (w4/m122). The
 	// events feed projects allowed audit rows into past-tense facts, so
 	// emitting them at authorize time reported attempts as accomplishments: a
-	// domain whose TXT record had not propagated produced a
+	// domain whose DNS record had not propagated produced a
 	// `custom_domain_verified` row on every Re-check — five of them, live, for
 	// a domain that never verified — and an add refused as a reserved platform
 	// hostname produced a `custom_domain_added` row for a domain that was never
