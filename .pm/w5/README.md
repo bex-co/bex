@@ -17,11 +17,12 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 User decision 2026-10-20: the parity-only set from the third `/pm-brainstorm for w5` proposal, followed by `/loopx w5`. Render parity is included for m143, m145 and m146 and omitted for m144 (build toolchain) and m147 (runtime env only), then Simplify, Test coverage and Closeout.
 
-- [ ] **m143** — [Blueprints from Render's own templates validate on bex](m143/README.md) (9 tasks; 5h total) ← round 3 item 2; 65 of 170 render-examples files validate; unquoted booleans, capitalized plans and empty `envVars` refused
+- [x] **m143** — [Blueprints from Render's own templates validate on bex](done/m143/README.md) (9 tasks; 5h total) ← round 3 item 2; 65 of 170 render-examples files validate; unquoted booleans, capitalized plans and empty `envVars` refused — **DONE 2026-10-20**: Render template spellings (boolean env values, plan case, bare `envVars`, env prompt metadata) validate; corpus guard over all 170 render-examples files; `retool`/`redash` valid on dev-5. Follow-up w5/169 (names, dotted keys — needs your naming decision).
 - [ ] **m144** — [Native Go builds use Go's current release, Bun gains 1.4, and the freshness check notices the next release](m144/README.md) (8 tasks; 4h10m total) ← round 3 item 1; `golang:1.24` with `GOTOOLCHAIN=local` refuses `go 1.25`+ modules
 - [ ] **m145** — [bex's MCP tools match Render's contract in argument types and annotations, guarded](m145/README.md) (9 tasks; 5h30m total) ← round 3 item 3; `clearCache: true` and `version: 16` fail; no tool annotations
 - [ ] **m146** — [Every request field Render declares on a served operation is handled or refused by name](m146/README.md) (8 tasks; 5h5m total) ← round 3 item 4; nested `serviceDetails.headers/routes/autoscaling` answer `unknown field`
 - [ ] **m147** — [Web and private services get Render's `WEB_CONCURRENCY` for their plan](m147/README.md) (7 tasks; 3h50m total) ← round 3 item 5; bex never sets it, so paid plans run 1 worker
+- [ ] **169** — [Render templates with free-form resource names or dotted env keys validate](169.md) (~1h each half, needs a naming decision) ← w5/m143's corpus run
 
 ## Approved queue — 2026-10-20 (brainstorm round 4)
 

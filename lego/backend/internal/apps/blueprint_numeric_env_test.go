@@ -125,14 +125,16 @@ projects:
 	}
 }
 
-// Non-string, non-number values stay compiler refusals with a source location,
-// never a Go decoder message.
-func TestBlueprintEnvValueStillRefusesBooleans(t *testing.T) {
+// A mapping env value stays a compiler refusal with a source location, never a
+// Go decoder message. (Booleans are accepted as their text since w5/m143:
+// Render's own templates write them unquoted.)
+func TestBlueprintEnvValueStillRefusesMappings(t *testing.T) {
 	_, _, problems := CompileBlueprintIR(numericEnvService(`      - key: FLAG
-        value: true
+        value:
+          nested: true
 `))
 	if len(problems) == 0 {
-		t.Fatal("boolean env value accepted")
+		t.Fatal("mapping env value accepted")
 	}
 	for _, p := range problems {
 		if strings.Contains(p.Message, "unmarshal") {
