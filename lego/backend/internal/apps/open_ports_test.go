@@ -22,6 +22,7 @@ import (
 	"os"
 	"reflect"
 	"slices"
+	"strconv"
 	"testing"
 
 	"github.com/graphql-go/graphql"
@@ -131,6 +132,18 @@ func TestRenderServiceDetailsOpenPorts(t *testing.T) {
 			// The published number and the address name the same primary.
 			if len(tc.want) > 0 && view.Port != int32(tc.want[0].(int)) && tc.app.Spec.UsesImagePorts() {
 				t.Fatalf("port %d is not the serving primary %v", view.Port, tc.want[0])
+			}
+			// ADR041's address follows the same primary on every surface, and a
+			// pending image-port service has none rather than a guessed :3000.
+			if tc.app.Spec.UsesImagePorts() {
+				want := ""
+				if len(tc.want) > 0 { // want[0] is the primary
+					want = tc.app.Spec.PlatformSubdomain(tc.app.Name) + ":" + strconv.Itoa(tc.want[0].(int))
+				}
+				got, _ := details["internalAddress"].(string)
+				if got != want || view.InternalAddress != want {
+					t.Fatalf("internalAddress REST %q / GraphQL %q, want %q", got, view.InternalAddress, want)
+				}
 			}
 		})
 	}

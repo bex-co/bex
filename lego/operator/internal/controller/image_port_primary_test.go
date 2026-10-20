@@ -57,6 +57,8 @@ func TestImagePortPrimarySelection(t *testing.T) {
 	}{
 		{"low port is bindable and lowest", `"80/tcp":{},"8123/tcp":{},"9000/tcp":{}`, 0, 80, []int32{80, 8123, 9000}},
 		{"declared 3000 wins", `"3000/tcp":{},"8080/tcp":{}`, 0, 3000, []int32{3000, 8080}},
+		// An image inheriting EXPOSE 80 whose server binds $PORT keeps 3000.
+		{"declared 3000 wins over a lower port", `"80/tcp":{},"3000/tcp":{}`, 0, 3000, []int32{80, 3000}},
 		{"no declarations fall back to 3000", ``, 0, 3000, []int32{3000}},
 		{"udp is not published", `"53/udp":{},"9000/tcp":{}`, 0, 9000, []int32{9000}},
 		{"explicit port selects the primary and keeps the rest", `"8123/tcp":{},"9000/tcp":{}`, 9100, 9100, []int32{8123, 9000, 9100}},

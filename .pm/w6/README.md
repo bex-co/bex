@@ -37,7 +37,7 @@ Materialized from the three proposals in `$pm-brainstorm for w6`, approved by th
 
 - [ ] **m149** — [Tenant containers run what Render runs: a Render-compatible privilege policy in every workspace (privilege slice of deploying `render-examples/clickhouse`)](m149/README.md) (14 tasks; ~10.3h) ← user decision 2026-10-17 ("render parity 比之前的 security hardening 重要，所以修改 adr，同时对应的实际改动，一并都 /pm for w6"). Amends ADR089 D2 (accepted), ADR022, ADR018; depends on m148 t002/t007.
 
-- [ ] **m148** — [Private services serve every port their image declares, as on Render (port slice of deploying `render-examples/clickhouse`)](m148/README.md) (11 tasks; ~7.5h) ← user request 2026-10-17 ("Deploy render-examples/clickhouse to bex" → "先支持 custom port 吧，像是 render 一样")
+- [x] **m148** — [Private services serve every port their image declares, as on Render (port slice of deploying `render-examples/clickhouse`)](done/m148/README.md) (11 tasks; ~7.5h) — **done 2026-10-20**, live on production (DoD 1–5 in `done/m148/evidence/README.md`) ← user request 2026-10-17 ("Deploy render-examples/clickhouse to bex" → "先支持 custom port 吧，像是 render 一样")
 
 - [x] **m147** — [A free service that auto-hibernates mid-rollout loses its crash diagnosis (generic health-gate reason) and its header disagrees with its phase](done/m147/README.md) (8 tasks) — done 2026-10-05; park deferred until the rollout's verdict (`rolloutAwaitingVerdict`), a park keeps the row's stall diagnosis, parking passes never stamp Deploying; live on production: exit-127 and TCP-probe reasons on GraphQL/REST/MCP, header agreed with phase over 5 min. Related: w1/m172, w6/076.
 
