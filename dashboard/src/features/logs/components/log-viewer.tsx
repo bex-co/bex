@@ -280,10 +280,7 @@ export function LogViewer({
           />
         ) : null}
         {live && liveSupported && stream.status === "error" ? (
-          <div className="flex items-center gap-2 rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
-            <WifiOff className="h-4 w-4" />
-            {t("logs.disconnected")}
-          </div>
+          <StreamDisconnected />
         ) : null}
         <LogLineList
           lines={lines}
@@ -362,7 +359,7 @@ function commitDraft(
 
 // The footer under the log list: a live pulse while streaming, a paused note
 // when the tail is off, and a note when the active filters can't be live-tailed.
-function StreamStatus({
+export function StreamStatus({
   live,
   liveSupported,
   status,
@@ -394,5 +391,16 @@ function StreamStatus({
         </>
       ) : null}
     </p>
+  );
+}
+
+/** The banner over a live tail whose stream dropped and is reconnecting. */
+export function StreamDisconnected() {
+  const { t } = useTranslations();
+  return (
+    <div className="flex items-center gap-2 rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
+      <WifiOff className="h-4 w-4" />
+      {t("logs.disconnected")}
+    </div>
   );
 }

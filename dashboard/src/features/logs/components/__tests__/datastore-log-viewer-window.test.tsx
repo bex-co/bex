@@ -127,7 +127,9 @@ describe("DatastoreLogViewer window per committed reader (w4/319)", () => {
       3600_000,
     );
     await act(async () => {
-      search.reply([[T0 + 10_000, 'column "qa_a662_error_delta" does not exist']]);
+      search.reply([
+        [T0 + 10_000, 'column "qa_a662_error_delta" does not exist'],
+      ]);
       await vi.advanceTimersByTimeAsync(1);
     });
     expect(
@@ -149,7 +151,7 @@ describe("DatastoreLogViewer window per committed reader (w4/319)", () => {
           kind="databases"
           resource={resource}
           range={HOUR}
-          filters={{ text: "", instance }}
+          filters={{ text: "", instance, level: "" }}
           onFiltersChange={() => undefined}
         />
       </ApolloProvider>

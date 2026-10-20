@@ -225,6 +225,7 @@ describe("key value detail tab search contract", () => {
       ...CLEARED_RANGE_SEARCH,
       text: undefined,
       instance: undefined,
+      level: undefined,
     });
     // A picked preset survives a reload alongside the tab key…
     expect(validate({ tab: "logs", range: "24h" })).toEqual({
@@ -251,6 +252,7 @@ describe("key value detail tab search contract", () => {
       ...CLEARED_RANGE_SEARCH,
       text: undefined,
       instance: undefined,
+      level: undefined,
     });
   });
 });

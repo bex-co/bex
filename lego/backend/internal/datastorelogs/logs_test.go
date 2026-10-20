@@ -367,6 +367,26 @@ func TestCNPGLineFollowsTheSharedTable(t *testing.T) {
 	}
 }
 
+// w5/m139: a Valkey line keeps its text and gains the level its severity
+// marker names, by the rule the shipper's type=keyvalue pipeline applies to the
+// same table.
+func TestValkeyLevelFollowsTheSharedTable(t *testing.T) {
+	cases := readTenantLogLines(t).KeyValue
+	levelled := 0
+	for _, tc := range cases {
+		_, msg, level, keep := ParseLine(KindKeyValue, "2026-10-05T01:02:03Z "+tc.Line)
+		if !keep || msg != tc.Message || level != tc.Level {
+			t.Errorf("%s: ParseLine = (%q, %q, %v), want (%q, %q, true)", tc.Name, msg, level, keep, tc.Message, tc.Level)
+		}
+		if tc.Level != "" {
+			levelled++
+		}
+	}
+	if levelled < 4 {
+		t.Fatalf("the table covers %d levelled Valkey lines; it must cover every marker", levelled)
+	}
+}
+
 // The kubelet's own answers carry no timestamp: the fallback read drops them
 // for every kind, while a Key Value's timestamped lines are its own.
 func TestCollectDropsTheKubeletsOwnAnswers(t *testing.T) {

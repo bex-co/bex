@@ -15,6 +15,10 @@ import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import { LogEmptyState } from "./log-empty-state";
 import { LogLineList } from "./log-line-list";
 import { LogTruncationNotice } from "./log-truncation-notice";
+import { StreamDisconnected, StreamStatus } from "./log-viewer";
+import { LiveToggle } from "./log-filter-bar";
+import { useLiveLogs, type EventSourceFactory } from "../hooks/use-live-logs";
+import { mergeLogLines } from "../lib/map";
 import { useLogLabelValues } from "../hooks/use-log-label-values";
 import { RangeSelect } from "@/features/metrics/components/range-select";
 import {
@@ -24,15 +28,24 @@ import {
 import { type RangeSelection } from "@/features/metrics/lib/range";
 import { type DatastoreLogFilters } from "../lib/datastore-log-search";
 import { useLogHistory } from "../hooks/use-log-history";
-import { EMPTY_LOG_FILTERS, LOG_PAGE_SIZE } from "../types";
+import {
+  EMPTY_LOG_FILTERS,
+  LOG_LEVELS,
+  LOG_PAGE_SIZE,
+  LOG_TYPE_ALL,
+} from "../types";
 
-const ALL_INSTANCES = "all";
+// The "no pick" option of the instance and level selects.
+const ALL = "all";
+// Valkey's markers name no error level (`#` is warning), so Key Value offers
+// the levels its lines can carry (w5/m139).
+const KEY_VALUE_LEVELS = LOG_LEVELS.filter((level) => level !== "error");
 
 // The Logs tab of a managed datastore — Postgres (`dpg-`) or Key Value (`red-`).
-// The two are one viewer: the same window/text/instance filters (the datastore
-// logs contract answers service-only filters with a named 400,
-// docs/render-artifacts/keyvalue-logs.md), the same paging, and copy that
-// differs only by namespace.
+// The two are one viewer: the same window/text/instance/level filters (the
+// datastore logs contract answers service-only filters with a named 400,
+// docs/render-artifacts/keyvalue-logs.md), the same paging, an opt-in live
+// tail (w5/m139), and copy that differs only by namespace.
 export type DatastoreLogKind = "databases" | "keyvalue";
 
 type Translate = ReturnType<typeof useTranslations>["t"];
@@ -100,6 +113,7 @@ export function DatastoreLogViewer({
   onRangeChange,
   filters: urlFilters,
   onFiltersChange,
+  createEventSource,
 }: {
   kind: DatastoreLogKind;
   resource: string;
@@ -107,6 +121,8 @@ export function DatastoreLogViewer({
   onRangeChange?: (range: RangeSelection) => void;
   filters?: DatastoreLogFilters;
   onFiltersChange?: (patch: Partial<DatastoreLogFilters>) => void;
+  /** The live tail's stream factory; tests inject a fake (as LogViewer). */
+  createEventSource?: EventSourceFactory;
 }) {
   const { t } = useTranslations();
   const hydrated = useIsHydrated();
@@ -119,8 +135,10 @@ export function DatastoreLogViewer({
   const urlText = urlFilters?.text ?? "";
   // The instance is a discrete pick, so a hosted viewer reads it straight
   // from the URL, like the range.
-  const [localInstance, setLocalInstance] = useState("");
-  const instance = urlFilters ? urlFilters.instance : localInstance;
+  const [localPicks, setLocalPicks] = useState({ instance: "", level: "" });
+  const { instance, level } = urlFilters ?? localPicks;
+  // Off until asked for: the tab opens as the one-shot reader it always was.
+  const [live, setLive] = useState(false);
   // `text` is the input; `committedText` is what the query and the URL carry —
   // it trails typing by one 300ms debounce, and is committed together with
   // its URL write, so the URL echoing back always equals it.
@@ -164,9 +182,9 @@ export function DatastoreLogViewer({
       if (value !== current.urlText) current.onFiltersChange?.({ text: value });
     }, 300);
   };
-  const changeInstance = (value: string) => {
-    if (urlFilters) onFiltersChange?.({ instance: value });
-    else setLocalInstance(value);
+  const changePick = (patch: { instance: string } | { level: string }) => {
+    if (urlFilters) onFiltersChange?.(patch);
+    else setLocalPicks((previous) => ({ ...previous, ...patch }));
   };
 
   // A relative range is resampled whenever the reader's predicate changes —
@@ -175,7 +193,7 @@ export function DatastoreLogViewer({
   // The viewer stays a one-shot reader: an unchanged predicate keeps its window
   // and pages, and an explicit Custom range passes through unchanged.
   // Keyed by value, so a parent re-deriving an equal range object is no change.
-  const reader = JSON.stringify([range, resource, queryText, instance]);
+  const reader = JSON.stringify([range, resource, queryText, instance, level]);
   const [sampled, setSampled] = useState(() => ({
     reader,
     win: rangeWindow(range),
@@ -186,20 +204,44 @@ export function DatastoreLogViewer({
     setSampled({ reader, win });
   }
   const queryFilters = useMemo(
-    () => ({ ...EMPTY_LOG_FILTERS, text: queryText, instance }),
-    [queryText, instance],
+    () => ({ ...EMPTY_LOG_FILTERS, text: queryText, instance, level }),
+    [queryText, instance, level],
   );
   // Paged exactly like the service Logs tab (w4/m107): scrolling to the top
   // loads older pages until `hasMore` is false (w4/m136).
   const history = useLogHistory(resource, queryFilters, win);
+  // Follows the datastore's pods from the window's edge with the same text,
+  // instance and level, merged into the history beside it (as the service tab).
+  const stream = useLiveLogs({
+    resource,
+    enabled: live,
+    type: LOG_TYPE_ALL,
+    text: queryText,
+    instance,
+    requestFilters: queryFilters,
+    startTime: win.startTime,
+    createEventSource,
+  });
+  // Until the tail has streamed anything the history is the reader as it
+  // always was; after, the two merge, and a paused tail's lines stay on screen.
+  const lines = useMemo(
+    () =>
+      stream.lines.length === 0
+        ? history.lines
+        : mergeLogLines(history.lines, stream.lines, Date.parse(win.startTime)),
+    [history.lines, stream.lines, win.startTime],
+  );
   const refusal = classifyRefusal(history.error, "LOGS_UNAVAILABLE");
   const discovered = useLogLabelValues(resource, "instance");
   // A linked instance stays selectable before (or without) discovery naming
   // it — label values arrive late and age out, and neither may clear it.
-  const instances =
-    instance && !discovered.includes(instance)
-      ? [instance, ...discovered]
-      : discovered;
+  const instances = withPick(discovered, instance);
+  // A linked level the list does not name (Render's `notice`, `critical`)
+  // stays selectable too.
+  const levels = withPick(
+    kind === "keyvalue" ? KEY_VALUE_LEVELS : LOG_LEVELS,
+    level,
+  );
 
   let body: ReactNode;
   if (refusal === "unavailable") {
@@ -228,18 +270,18 @@ export function DatastoreLogViewer({
         message={history.error.message}
       />
     );
-  } else if (history.loading) {
+  } else if (history.loading && lines.length === 0) {
     body = (
       <div className="flex h-64 items-center justify-center rounded-md border text-muted-foreground">
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         {copy.loading}
       </div>
     );
-  } else if (history.lines.length === 0) {
+  } else if (lines.length === 0) {
     body = (
       <LogEmptyState
         reason="empty"
-        filtered={Boolean(text || instance)}
+        filtered={Boolean(text || instance || level)}
         emptyTitle={copy.emptyTitle}
         emptyBody={copy.emptyBody}
         pages={history}
@@ -255,12 +297,16 @@ export function DatastoreLogViewer({
             onLoadOlder={history.loadOlder}
           />
         ) : null}
+        {live && stream.status === "error" ? <StreamDisconnected /> : null}
         <LogLineList
-          lines={history.lines}
+          lines={lines}
           hasMore={history.hasMore}
           loadingOlder={history.loadingOlder}
           onLoadOlder={history.loadOlder}
         />
+        {live ? (
+          <StreamStatus live liveSupported status={stream.status} />
+        ) : null}
       </div>
     );
   }
@@ -274,28 +320,23 @@ export function DatastoreLogViewer({
           ariaLabel={copy.rangeLabel}
         />
 
-        <Select
-          value={instance || ALL_INSTANCES}
-          onValueChange={(value) =>
-            changeInstance(value === ALL_INSTANCES ? "" : value)
-          }
-        >
-          <SelectTrigger
-            className="w-56"
-            size="sm"
-            aria-label={copy.instanceLabel}
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_INSTANCES}>{copy.allInstances}</SelectItem>
-            {instances.map((inst) => (
-              <SelectItem key={inst} value={inst}>
-                {inst}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <PickSelect
+          value={instance}
+          options={instances}
+          allLabel={copy.allInstances}
+          ariaLabel={copy.instanceLabel}
+          className="w-56"
+          onChange={(value) => changePick({ instance: value })}
+        />
+
+        <PickSelect
+          value={level}
+          options={levels}
+          allLabel={t("logs.levelAll")}
+          ariaLabel={t("logs.levelLabel")}
+          className="w-40"
+          onChange={(value) => changePick({ level: value })}
+        />
 
         <div className="relative min-w-56 flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -310,8 +351,58 @@ export function DatastoreLogViewer({
             className="pl-8"
           />
         </div>
+
+        <LiveToggle
+          id="datastore-logs-live-toggle"
+          checked={live}
+          disabled={!hydrated}
+          onCheckedChange={setLive}
+        />
       </div>
       {body}
     </div>
+  );
+}
+
+/** `options` with the current pick added when they do not name it: a linked
+ *  value stays selectable before (or without) the list naming it. */
+function withPick<T extends string>(options: readonly T[], pick: string) {
+  return pick && !options.includes(pick as T) ? [pick, ...options] : options;
+}
+
+// One of the viewer's discrete picks (instance, level): a Select whose ALL
+// option clears it.
+function PickSelect({
+  value,
+  options,
+  allLabel,
+  ariaLabel,
+  className,
+  onChange,
+}: {
+  value: string;
+  options: readonly string[];
+  allLabel: string;
+  ariaLabel: string;
+  className: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <Select
+      value={value || ALL}
+      onValueChange={(next) => onChange(next === ALL ? "" : next)}
+    >
+      <SelectTrigger className={className} size="sm" aria-label={ariaLabel}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={ALL}>{allLabel}</SelectItem>
+        {options.map((option) => (
+          <SelectItem key={option} value={option}>
+            {option}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

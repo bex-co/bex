@@ -32,6 +32,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"slices"
 	"sort"
 	"strconv"
@@ -181,12 +182,40 @@ func ParseLine(kind, line string) (ts, msg, level string, keep bool) {
 	if !ok {
 		return "", "", "", false
 	}
-	if kind == KindPostgres {
+	switch kind {
+	case KindPostgres:
 		if msg, level, keep = CNPGLine(msg); !keep {
 			return "", "", "", false
 		}
+	case KindKeyValue:
+		level = ValkeyLevel(msg)
 	}
 	return ts, msg, level, true
+}
+
+// valkeyLine is the prefix Valkey writes on each of its own log lines,
+// "<pid>:<role> <date> <time> <marker> ", whose marker is the line's severity.
+var valkeyLine = regexp.MustCompile(`^\d+:[XCSM] \d{2} [A-Z][a-z]{2} \d{4} \d{2}:\d{2}:\d{2}\.\d{3} ([.*#-]) `)
+
+// ValkeyLevel maps a Valkey line's severity marker onto the shipper's level
+// vocabulary (w5/m139): # warning, * notice → info, - verbose and . debug →
+// debug. A line without Valkey's prefix (its start-up banner) has no level,
+// as a Postgres line that is not a record has none. The log shipper's
+// type=keyvalue pipeline applies the same rule; both are tested against one
+// fixture file.
+func ValkeyLevel(line string) string {
+	m := valkeyLine.FindStringSubmatch(line)
+	if m == nil {
+		return ""
+	}
+	switch m[1] {
+	case "#":
+		return "warning"
+	case "*":
+		return "info"
+	default:
+		return "debug"
+	}
 }
 
 func (in Instance) parseLine(pod, line string) (Entry, bool) {

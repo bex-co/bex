@@ -337,14 +337,18 @@ class TenantDatastoreLogsTest(unittest.TestCase):
         cases = TENANT_LOG_LINES["keyvalue"]
         actual, output = run_pipeline(self, "keyvalue_logs", [case["line"] for case in cases], "keyvalue",
                                       KV_TARGET, cri=True)
-        self.assertEqual(set(actual), {case["message"] for case in cases}, f"unexpected Key Value lines:\n{output}")
+        want = {case["message"]: case.get("level") for case in cases}
+        self.assertEqual(set(actual), set(want), f"unexpected Key Value lines:\n{output}")
         # The stream labels stay those of the API source the pipeline replaced:
-        # the file source's node path and CRI stream never become labels.
-        for line, labels in actual.items():
+        # the file source's node path and CRI stream never become labels, and
+        # the severity marker's temporary label is dropped (w5/m139).
+        for line, level in want.items():
             with self.subTest(line=line):
-                self.assertEqual({key: value for key, value in labels.items() if key != "__ts"},
-                                 {"namespace": "tenant", "keyvalue": "red-test", "pod": "red-test-0",
-                                  "container": "valkey", "type": "keyvalue"})
+                labels = {"namespace": "tenant", "keyvalue": "red-test", "pod": "red-test-0",
+                          "container": "valkey", "type": "keyvalue"}
+                if level is not None:
+                    labels["level"] = level
+                self.assertEqual({key: value for key, value in actual[line].items() if key != "__ts"}, labels)
 
     def test_tenant_pipelines_read_only_container_files(self):
         """The kubelet's own answers once a container's log is gone (the table's
