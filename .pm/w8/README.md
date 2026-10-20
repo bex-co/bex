@@ -367,7 +367,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **149** — [Tenant apps cannot reach SMTP on 25/465, while free apps can use 587; neither rule matches Render or is documented for tenants](149.md) ← `/qa-find-bugs-cli` sweep 1256 2026-10-20: decision needed (document vs unblock; free-tier 587 policy); minor
+- [ ] **149** — [Tenant apps cannot reach SMTP on 25/465, while free apps can use 587; neither rule matches Render or is documented for tenants](blocked/149.md) ← `/qa-find-bugs-cli` sweep 1256 2026-10-20: decision needed (document vs unblock; free-tier 587 policy); minor — **BLOCKED (2026-10-20: needs the user to decide whether to request Hetzner's SMTP 25/465 unblock for the tenant pool (with abuse controls) or keep the block, and whether free services lose 587 as on Render)**. Current behavior documented in ADR018 ("Outbound SMTP ports").
 
 - [x] **148** — [Tenant requests carry no `Rndr-Id`, and request logs have no `requestID` to correlate with app logs](done/148.md) ← `/qa-find-bugs-cli` sweep 1254 2026-10-20: Render's documented per-request tracing ID; minor, ~90m — **PROMOTED (2026-10-20)** to `m125`.
 
