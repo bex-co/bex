@@ -755,7 +755,7 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description: "Toast after a restore request is accepted",
   },
   "databases.recoveryRestoreError": {
-    message: "无法恢复：{error}",
+    message: "无法恢复，请重试。",
     description: "Toast when a restore request fails",
   },
   // --- Access control panel ---
@@ -840,7 +840,7 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description: "Toast after saving the IP allowlist",
   },
   "databases.accessAllowListError": {
-    message: "无法保存允许列表：{error}",
+    message: "无法保存允许列表，请重试。",
     description: "Toast when saving the allowlist fails",
   },
   "databases.accessUsers": {
@@ -884,7 +884,7 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description: "Toast after creating a database user",
   },
   "databases.accessUserError": {
-    message: "无法创建用户：{error}",
+    message: "无法创建用户，请重试。",
     description: "Toast when creating a user fails",
   },
   "databases.accessUserDeleted": {
@@ -1440,7 +1440,7 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description: "SQL console run button while a query is executing",
   },
   "databases.sqlUnknownError": {
-    message: "查询失败。请检查语句后重试。",
+    message: "无法运行查询，请重试。",
     description: "SQL console fallback error",
   },
   "databases.sqlReturnedRows_other": {

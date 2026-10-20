@@ -15,6 +15,7 @@ vi.mock("sonner", () => ({
   },
 }));
 
+import { uncodedGraphQLError } from "@/test/mocks/apollo";
 import { useServiceNetworking } from "@/features/services/hooks/use-service-networking";
 
 beforeEach(() => {
@@ -41,7 +42,22 @@ describe("useServiceNetworking", () => {
 
   it("reports mutation failures without false success", async () => {
     mockUseMutation.mockReturnValue([
-      vi.fn().mockRejectedValue(new Error("invalid CIDR")),
+      vi
+        .fn()
+        .mockRejectedValue(uncodedGraphQLError("bad request: invalid CIDR")),
+      { loading: false },
+    ]);
+    const { result } = renderHook(() => useServiceNetworking());
+    await act(async () => {
+      expect(await result.current.saveAllowList("srv-web", [])).toBe(false);
+    });
+    expect(toastError).toHaveBeenCalledWith("Invalid CIDR");
+    expect(toastSuccess).not.toHaveBeenCalled();
+  });
+
+  it("shows reason-less copy for a transport failure (w5/166)", async () => {
+    mockUseMutation.mockReturnValue([
+      vi.fn().mockRejectedValue(new TypeError("Failed to fetch")),
       { loading: false },
     ]);
     const { result } = renderHook(() => useServiceNetworking());
@@ -49,8 +65,7 @@ describe("useServiceNetworking", () => {
       expect(await result.current.saveAllowList("srv-web", [])).toBe(false);
     });
     expect(toastError).toHaveBeenCalledWith(
-      "Failed to update IP allowlist: invalid CIDR",
+      "Failed to update IP allowlist. Please try again.",
     );
-    expect(toastSuccess).not.toHaveBeenCalled();
   });
 });

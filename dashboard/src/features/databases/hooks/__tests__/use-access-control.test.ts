@@ -14,6 +14,8 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: (...a: unknown[]) => toastError(...a) },
 }));
 
+import i18n from "@/i18n/init";
+import { uncodedGraphQLError } from "@/test/mocks/apollo";
 import { useAccessControl } from "@/features/databases/hooks/use-access-control";
 
 beforeEach(() => {
@@ -50,14 +52,36 @@ describe("useAccessControl createUser", () => {
 
   it("keeps the server's reason for any other refusal", async () => {
     createUserMut.mockRejectedValue(
-      new Error('user "analytics" already exists'),
+      uncodedGraphQLError('bad request: user "analytics" already exists'),
     );
     const { result } = renderHook(() => useAccessControl("dpg-1"));
     await act(async () => {
       await result.current.createUser("analytics");
     });
-    expect(toastError).toHaveBeenCalledWith(
-      `Couldn't create the user: user "analytics" already exists`,
+    expect(toastError).toHaveBeenCalledWith('User "analytics" already exists');
+  });
+
+  // w5/166: the browser's "Failed to fetch" is untranslated and names
+  // nothing the user can act on, so the toast reads the copy alone.
+  it("shows reason-less copy for a transport failure, in the user's language", async () => {
+    createUserMut.mockRejectedValue(new TypeError("Failed to fetch"));
+    const { result } = renderHook(() => useAccessControl("dpg-1"));
+    await act(async () => {
+      await result.current.createUser("analytics");
+    });
+    expect(toastError).toHaveBeenLastCalledWith(
+      "Couldn't create the user. Please try again.",
     );
+
+    await i18n.changeLanguage("zh");
+    try {
+      const zh = renderHook(() => useAccessControl("dpg-1"));
+      await act(async () => {
+        await zh.result.current.createUser("analytics");
+      });
+      expect(toastError).toHaveBeenLastCalledWith("无法创建用户，请重试。");
+    } finally {
+      await i18n.changeLanguage("en");
+    }
   });
 });

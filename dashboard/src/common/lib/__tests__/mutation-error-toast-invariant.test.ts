@@ -76,43 +76,6 @@ const ALLOWED: Record<string, string> = {
     STRIPE,
 };
 
-const AGENT_SESSIONS = "agent-session REST errors; follow-up w5/166";
-const INTERPOLATED =
-  "the raw text is interpolated into translated copy; follow-up w5/166";
-const ENV_GROUPS = "toast description under translated copy; follow-up w5/166";
-
-/**
- * Catch blocks that still hand the caught error's raw `.message` to a toast or
- * an inline error, call → why. A transport failure's message is the browser's
- * own English ("Failed to fetch"), untranslated and naming nothing the user can
- * act on, so a dialog relays a server refusal through `mutationErrorMessage` /
- * `refusalReason` and otherwise shows its own copy (w5/164).
- */
-const ALLOWED_RAW_MESSAGE: Record<string, string> = {
-  "features/agent-sessions/components/session-detail-header.tsx: toast.error(errinstanceofError?err.message:String(err))":
-    AGENT_SESSIONS,
-  'features/databases/components/sql-console.tsx: setError(causeinstanceofError&&cause.message?cause.message:t("databases.sqlUnknownError"))':
-    "Postgres's own error for the user's SQL; transport fallback is w5/166",
-  'features/databases/hooks/use-access-control.ts: toast.error(t("databases.accessAllowListError",{error:(easError).message}))':
-    INTERPOLATED,
-  'features/databases/hooks/use-access-control.ts: toast.error(hasGraphQLErrorCode(e,"POSTGRES_IDENTIFIER_RESERVED")?t("databases.fieldPhysicalNameReserved",{name}):t("databases.accessUserError",{error:(easError).message}))':
-    INTERPOLATED,
-  'features/databases/hooks/use-recovery.ts: toast.error(t("databases.recoveryRestoreError",{error:(easError).message,}))':
-    INTERPOLATED,
-  'features/env-groups/hooks/use-env-groups.ts: toast.error(t("envGroups.createError",{name:input.name}),{description:errorinstanceofError?error.message:undefined,})':
-    ENV_GROUPS,
-  'features/env-groups/hooks/use-env-groups.ts: toast.error(t("envGroups.renameError"),{description:errorinstanceofError?error.message:undefined,})':
-    ENV_GROUPS,
-  'features/env-groups/hooks/use-env-groups.ts: toast.error(t("envGroups.moveError"),{description:errorinstanceofError?error.message:undefined,})':
-    ENV_GROUPS,
-  'features/env-groups/hooks/use-env-groups.ts: toast.error(t("envGroups.cloneError"),{description:errorinstanceofError?error.message:undefined,})':
-    ENV_GROUPS,
-  'features/keyvalue/hooks/use-key-value-networking.ts: toast.error(t("keyvalue.networkingError",{error:(easError).message}))':
-    INTERPOLATED,
-  'features/services/hooks/use-service-networking.ts: toast.error(t("services.networkingError",{error:(easError).message}))':
-    INTERPOLATED,
-};
-
 /** Every non-test source file under src, as path relative to src → contents. */
 function readSources(): Map<string, string> {
   const sources = new Map<string, string>();
@@ -242,18 +205,12 @@ describe("mutation-error toast invariant (w1/m145)", () => {
       rawMessageReads(src).map((call) => `${path}: ${call}`),
     );
 
-    it("no catch block shows the caught error's raw message, or is allowlisted", () => {
-      expect(
-        rawReaders.filter((reader) => !(reader in ALLOWED_RAW_MESSAGE)),
-      ).toEqual([]);
-    });
-
-    it("has no stale allowlist entries", () => {
-      expect(
-        Object.keys(ALLOWED_RAW_MESSAGE).filter(
-          (entry) => !rawReaders.includes(entry),
-        ),
-      ).toEqual([]);
+    // A transport failure's message is the browser's own English ("Failed to
+    // fetch"), untranslated and naming nothing the user can act on, so a catch
+    // block relays a server refusal through mutationErrorMessage /
+    // mutationErrorSentence / refusalReason and otherwise shows its own copy.
+    it("no catch block shows the caught error's raw message", () => {
+      expect(rawReaders).toEqual([]);
     });
 
     it("flags the shape w5/164 removed and passes its fix", () => {

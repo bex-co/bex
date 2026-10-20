@@ -147,8 +147,16 @@ export function isNameConflictError(err: unknown): boolean {
  * toast that ignores the caught error from coming back.
  */
 export function mutationErrorMessage(err: unknown, generic: string): string {
-  if (isThrottledError(err)) return generic;
-  return refusalReason(err) || generic;
+  return relayableReason(err) || generic;
+}
+
+/**
+ * The server's refusal worth showing, or "" for a transport failure or
+ * throttling: `mutationErrorMessage` without the fallback, for a caller that
+ * places the reason itself (a toast description, an inline error slot).
+ */
+export function relayableReason(err: unknown): string {
+  return isThrottledError(err) ? "" : refusalReason(err);
 }
 
 /**

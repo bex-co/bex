@@ -107,8 +107,9 @@ describe("useRecovery post-create identity", () => {
 
     expect(recoveredId).toBeNull();
     expect(toastSuccess).not.toHaveBeenCalled();
+    // The client-side guard's text is for developers, not the toast.
     expect(toastError).toHaveBeenCalledWith(
-      "Couldn't restore: recoverDatabase returned no id",
+      "Couldn't restore. Please try again.",
     );
   });
 });

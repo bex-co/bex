@@ -9,6 +9,7 @@ import {
   mutationErrorMessage,
   planLimitExtensions,
   refusalReason,
+  relayableReason,
 } from "@/common/lib/graphql-error";
 import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 
@@ -257,9 +258,34 @@ describe("transport failures carry no reason", () => {
     expect(refusalReason(err)).toBe("");
   });
 
+  it.each(transport)("relayableReason(%s) is empty", (err) => {
+    expect(relayableReason(err)).toBe("");
+  });
+
   it.each(transport)("mutationErrorMessage(%s) is the generic copy", (err) => {
     expect(mutationErrorMessage(err, "Couldn't rename the workspace")).toBe(
       "Couldn't rename the workspace",
     );
+  });
+});
+
+describe("relayableReason", () => {
+  it("relays a server refusal, prefix stripped", () => {
+    expect(
+      relayableReason(
+        uncodedGraphQLError("bad request: invalid CIDR 10.0.0.0/33"),
+      ),
+    ).toBe("Invalid CIDR 10.0.0.0/33");
+  });
+
+  it("relays nothing for throttling, whose text names no fix", () => {
+    expect(
+      relayableReason(
+        codedGraphQLError("RATE_LIMITED", {}, "rate limit exceeded"),
+      ),
+    ).toBe("");
+    expect(
+      relayableReason(codedGraphQLError("AUTH_OVERLOADED", {}, "overloaded")),
+    ).toBe("");
   });
 });

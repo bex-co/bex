@@ -134,7 +134,7 @@ export function SessionDetailHeader({
       }
       await onChanged?.(); // re-read before re-enabling the lifecycle control
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err));
+      toast.error(agentSessionErrorMessage(err, t));
     } finally {
       setPinning(false);
     }
@@ -170,7 +170,7 @@ export function SessionDetailHeader({
       toast.success(t("agentSessions.cancelSuccess"));
       await onChanged?.();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err));
+      toast.error(agentSessionErrorMessage(err, t));
     } finally {
       setCanceling(false);
       setConfirmOpen(false);

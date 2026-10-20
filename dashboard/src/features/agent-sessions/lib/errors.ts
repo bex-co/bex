@@ -5,6 +5,7 @@
 // changes have no effect on which UI branch fires.
 
 import { CombinedGraphQLErrors, ServerError } from "@apollo/client/errors";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 /** Structured params carried on a coded agent-session error's extensions. */
 export interface AgentSessionErrorParams {
@@ -43,8 +44,9 @@ export class AgentSessionError extends Error {
  * Resolves a typed agent-session error into a display string via `t()`: the
  * availability copy for a configuration/dependency/storage refusal, the coded
  * `agentSessions.errors.*` message (with params + server fallback) for any other
- * coded error, else the raw error text. Callers own only the sink (toast vs
- * inline state); this keeps the error→copy mapping in one place.
+ * coded error, else an uncoded server refusal, else generic copy — never a
+ * transport failure's raw text ("Failed to fetch"). Callers own only the sink
+ * (toast vs inline state); this keeps the error→copy mapping in one place.
  * Note: a caller that needs to branch on the *kind* (e.g. the create composer
  * anchoring a coded error to a form field) still inspects the typed error itself.
  */
@@ -57,7 +59,7 @@ export function agentSessionErrorMessage(
   if (err instanceof AgentSessionError) {
     return t(err.messageKey, { ...err.params, defaultValue: err.message });
   }
-  return err instanceof Error ? err.message : String(err);
+  return mutationErrorMessage(err, t("common.errorDefaultMessage"));
 }
 
 export interface AgentSessionAvailabilityCopy {

@@ -693,7 +693,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Toast after saving the IP allowlist",
   },
   "keyvalue.networkingError": {
-    message: "无法保存允许列表：{error}",
+    message: "无法保存允许列表，请重试。",
     description: "Toast when saving the allowlist fails",
   },
   // --- Name row (rename control; edit-in-place w5/m55) ---

@@ -706,7 +706,7 @@ const enKeyValue: Record<string, TranslationEntry> = {
     description: "Toast after saving the IP allowlist",
   },
   "keyvalue.networkingError": {
-    message: "Couldn't save the allowlist: {error}",
+    message: "Couldn't save the allowlist. Please try again.",
     description: "Toast when saving the allowlist fails",
   },
   // --- Name row (rename control; edit-in-place w5/m55) ---

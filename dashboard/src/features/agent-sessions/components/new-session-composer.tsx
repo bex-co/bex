@@ -38,6 +38,7 @@ import { useAgentSessionMutations } from "@/features/agent-sessions/hooks/use-ag
 import {
   AgentSessionError,
   agentSessionAvailabilityCopy,
+  agentSessionErrorMessage,
   toAgentSessionError,
 } from "@/features/agent-sessions/lib/errors";
 import { ConfigurationFields } from "@/features/agent-sessions/components/configuration-fields";
@@ -202,7 +203,7 @@ export function NewSessionComposer() {
     // error to report.
     if (isPaymentOnboardingCancelled(err)) return;
     if (!(err instanceof AgentSessionError)) {
-      setSubmitError(err instanceof Error ? err.message : String(err));
+      setSubmitError(agentSessionErrorMessage(err, t));
       return;
     }
     if (agentSessionAvailabilityCopy(err)) {

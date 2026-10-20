@@ -271,6 +271,37 @@ describe("useEnvGroupMutations", () => {
     expect(result.current.busy).toBe(false);
   });
 
+  // w5/166: the description under the translated title relays a server
+  // refusal, never the browser's untranslated "Failed to fetch".
+  it("describes a refused rename with the server's reason and a transport failure with none", async () => {
+    const mutate = vi
+      .fn()
+      .mockRejectedValueOnce(
+        uncodedGraphQLError(
+          'bad request: a group named "shared" already exists',
+        ),
+      )
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    mockUseMutation.mockImplementation(() => [mutate]);
+    const { result } = renderHook(() =>
+      useEnvGroupMutations(vi.fn().mockResolvedValue([])),
+    );
+
+    await act(async () => {
+      await result.current.renameGroup("eg1", "shared");
+    });
+    expect(toastError).toHaveBeenLastCalledWith("Couldn't rename the group", {
+      description: 'A group named "shared" already exists',
+    });
+
+    await act(async () => {
+      await result.current.renameGroup("eg1", "shared");
+    });
+    expect(toastError).toHaveBeenLastCalledWith("Couldn't rename the group", {
+      description: undefined,
+    });
+  });
+
   it("refuses to create until the switcher's workspace resolves", async () => {
     currentWorkspaceId = null;
     const mutate = vi.fn();
