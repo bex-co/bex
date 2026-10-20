@@ -116,6 +116,7 @@ type DeployView struct {
 	ServiceID      string
 	Status         string
 	Image          string
+	ImageSHA       string // Render's image.sha (w8/m122): see imageSHA
 	Trigger        string
 	RollbackOf     string
 	CommitID       string
@@ -158,6 +159,7 @@ func view(d store.Deploy) DeployView {
 		ServiceID:       d.AppID,
 		Status:          d.Status,
 		Image:           store.PublicImageRef(d.Image),
+		ImageSHA:        imageSHA(d),
 		Trigger:         d.Trigger,
 		RollbackOf:      d.RollbackOf,
 		CommitID:        d.Commit,
@@ -172,6 +174,16 @@ func view(d store.Deploy) DeployView {
 		CancelReason:    d.CancelReason,
 		StallReason:     d.StallReason,
 	}
+}
+
+// imageSHA is the digest d's image resolved to when d went live, "" while
+// unknown. A Git-backed deploy's built image has a digest too, but Render
+// reports no image object for one, so no surface reports its digest either.
+func imageSHA(d store.Deploy) string {
+	if d.Image == "" {
+		return ""
+	}
+	return d.ImageSHA
 }
 
 // Service lists and triggers deploys for store-managed Apps. Embeds

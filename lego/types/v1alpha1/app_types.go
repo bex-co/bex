@@ -1394,6 +1394,20 @@ type BuildRunStatus struct {
 	FinishedAt string `json:"finishedAt,omitempty"`
 }
 
+// ImageDigestStatus is the digest of the image a serving release's app
+// container runs (w8/m122): Render's deploy image.sha, "the SHA that the image
+// reference was resolved to". It is the digest the reference itself pins or,
+// for a tag, the one the kubelet reports in a Ready current-revision pod's
+// imageID once the release first serves. It is never carried from one release
+// to the next.
+type ImageDigestStatus struct {
+	// Generation is the release generation that ran Digest.
+	Generation int64 `json:"generation"`
+
+	// Digest is the content digest, "sha256:<64 hex>".
+	Digest string `json:"digest"`
+}
+
 const (
 	AutoscalingTransitionStarted = "Started"
 	AutoscalingTransitionEnded   = "Ended"
@@ -1521,6 +1535,13 @@ type AppStatus struct {
 	// Image is the OCI image of the active revision.
 	// +optional
 	Image string `json:"image,omitempty"`
+
+	// ImageDigest is the digest the serving release's app container runs,
+	// attributed to that release's generation. Nil until a release serves with
+	// a known digest, and for releases without a long-running app container
+	// (static sites; cron jobs whose image is a tag).
+	// +optional
+	ImageDigest *ImageDigestStatus `json:"imageDigest,omitempty"`
 
 	// ArtifactFingerprint is the operator-computed, versioned identity of the
 	// source/build inputs that produced ArtifactImage (or selected a prebuilt

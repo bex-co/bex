@@ -25,6 +25,11 @@ export interface DeployView {
   status: string;
   trigger: string;
   image: string;
+  /**
+   * The digest `image` resolved to when the deploy went live (Render's
+   * image.sha, w8/m122); "" while unknown and for a Git-backed deploy.
+   */
+  imageSha: string;
   rollbackOf: string;
   /** The resolved commit this deploy ran (w9/001 + w2/m42); "" when unresolved. */
   commitId: string;
@@ -131,6 +136,7 @@ function toDeployView(
     status: d.status ?? "",
     trigger: d.trigger ?? "",
     image: d.image ?? "",
+    imageSha: d.imageSha ?? "",
     rollbackOf: d.rollbackOf ?? "",
     commitId: d.commitId ?? "",
     commitMessage: d.commitMessage ?? "",

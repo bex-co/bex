@@ -120,7 +120,7 @@ func TestDisabledWebhookIntervalNeverReplays(t *testing.T) {
 				if err != nil || len(deploys) != 1 {
 					t.Fatalf("deploys of %s = %+v, %v", name, deploys, err)
 				}
-				if _, err := s.TransitionDeploy(ctx, deploys[0].ID, store.DeployLive, "", "", "", "", nil); err != nil {
+				if _, err := s.TransitionDeploy(ctx, deploys[0].ID, store.DeployLive, store.RanImage{}, "", "", "", nil); err != nil {
 					t.Fatalf("close %s: %v", name, err)
 				}
 			}

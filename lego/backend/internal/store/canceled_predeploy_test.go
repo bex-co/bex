@@ -47,7 +47,7 @@ func canceledStepFixture(t *testing.T, stepRan bool, pd *appv1alpha1.PreDeploySt
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.TransitionDeploy(ctx, open.ID, DeployPreDeployInProgress, "", "", "", "", nil); err != nil {
+	if _, err := st.TransitionDeploy(ctx, open.ID, DeployPreDeployInProgress, RanImage{}, "", "", "", nil); err != nil {
 		t.Fatal(err)
 	}
 	if stepRan {

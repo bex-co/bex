@@ -54,6 +54,19 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploy detail header: explicit label distinguishing deploy status from service phase",
   },
+  "deploys.imageDigestCopy": {
+    message: "复制镜像摘要",
+    description:
+      "Deploy header: accessible label of the button copying the image digest the deploy ran",
+  },
+  "deploys.imageDigestCopied": {
+    message: "已复制镜像摘要",
+    description: "Deploy header: toast after copying the image digest",
+  },
+  "deploys.imageDigestCopyError": {
+    message: "无法复制到剪贴板",
+    description: "Deploy header: toast when copying the image digest fails",
+  },
   "deploys.created": {
     message: "创建于",
     description: "Deploy header: created-at label",

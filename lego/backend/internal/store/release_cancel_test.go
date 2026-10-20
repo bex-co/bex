@@ -57,7 +57,7 @@ func TestSuspendCloseSurvivesAFailedBuildDelete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.TransitionDeploy(ctx, open.ID, DeployBuildInProgress, "", "", "", "", nil); err != nil {
+	if _, err := st.TransitionDeploy(ctx, open.ID, DeployBuildInProgress, RanImage{}, "", "", "", nil); err != nil {
 		t.Fatal(err)
 	}
 	app := &appv1alpha1.App{
@@ -303,7 +303,7 @@ func TestStampedReleaseClosesItsStrandedRow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.TransitionDeploy(ctx, open.ID, DeployUpdateInProgress, "", "", "", "", nil); err != nil {
+	if _, err := st.TransitionDeploy(ctx, open.ID, DeployUpdateInProgress, RanImage{}, "", "", "", nil); err != nil {
 		t.Fatal(err)
 	}
 	app := &appv1alpha1.App{

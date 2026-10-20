@@ -289,6 +289,12 @@ type Deploy struct {
 	Trigger        string     `json:"trigger"`
 	Image          string     `json:"image,omitempty"`
 	ResolvedImage  string     `json:"-"`
+	// ImageSHA is the digest ResolvedImage resolved to when this deploy went
+	// live (Render's image.sha, w8/m122), stamped with ResolvedImage from the
+	// App's status.imageDigest for this deploy's own release — "" until then,
+	// and forever for a deploy that never serves or whose digest the operator
+	// did not observe.
+	ImageSHA       string     `json:"-"`
 	RollbackOf     string     `json:"rollbackOf,omitempty"`
 	Generation     int64      `json:"-"`
 	Commit         string     `json:"commit,omitempty"`
@@ -618,7 +624,8 @@ type Store interface {
 	// updated_at only when the status actually changes, stamps started_at on
 	// the first dispatch-observing phase (see DeployStatusStampsDispatch) and
 	// finished_at on terminal transitions, and atomically deactivates a prior
-	// live deploy when this one reaches live. failureReason (w9/011) is stored
+	// live deploy when this one reaches live. ran is what a live close ran
+	// (each non-empty part stored; pass the zero value otherwise). failureReason (w9/011) is stored
 	// with the same transition when non-empty — pass it only alongside a
 	// failure status. startedAt is observed execution-start evidence (the
 	// operator's recorded build window, w6/m123), applied only when the row
@@ -629,7 +636,7 @@ type Store interface {
 	// cancelReason (w4/089) is stored with the same transition when non-empty —
 	// pass it only alongside DeployCanceled from the reconciler's supersede or
 	// suspend close; deploys.Cancel / CloseDeploy leave it empty.
-	TransitionDeploy(ctx context.Context, id, status, resolvedImage, failureReason, failureCode, cancelReason string, startedAt *time.Time) (bool, error)
+	TransitionDeploy(ctx context.Context, id, status string, ran RanImage, failureReason, failureCode, cancelReason string, startedAt *time.Time) (bool, error)
 	// DeployIDByGeneration returns the deploy id for appID at generation, or
 	// "" when none exists (w4/089 supersede naming). Newest wins if somehow
 	// multiple rows share a generation.
@@ -2397,11 +2404,11 @@ func pageKeyset(query string, args []any, table, sortCol, cursor string, limit i
 	return query, args
 }
 
-const deployColumns = `id, app_id, trigger, image, resolved_image, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason`
+const deployColumns = `id, app_id, trigger, image, resolved_image, image_sha, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason`
 
 func scanDeploy(row pgx.Row) (Deploy, error) {
 	var d Deploy
-	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason, &d.CancelReason, &d.StallReason)
+	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.ImageSHA, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason, &d.CancelReason, &d.StallReason)
 	return d, err
 }
 
@@ -2492,7 +2499,16 @@ func (s *PGStore) DeployIDByGeneration(ctx context.Context, appID string, genera
 	return id, err
 }
 
-func (s *PGStore) TransitionDeploy(ctx context.Context, id, status, resolvedImage, failureReason, failureCode, cancelReason string, startedAt *time.Time) (bool, error) {
+// RanImage is what a deploy put into the cluster, known once it goes live:
+// Ref is its resolved_image (Rollback's restore target) and SHA the digest
+// that reference resolved to (image_sha, w8/m122). "" parts are unknown and
+// leave the stored value alone.
+type RanImage struct {
+	Ref string
+	SHA string
+}
+
+func (s *PGStore) TransitionDeploy(ctx context.Context, id, status string, ran RanImage, failureReason, failureCode, cancelReason string, startedAt *time.Time) (bool, error) {
 	transitioned := false
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		var appID, current string
@@ -2533,6 +2549,7 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status, resolvedImag
 			 SET status = $2,
 			     overlap_pending = CASE WHEN $2 = $7 THEN overlap_pending ELSE false END,
 			     resolved_image = COALESCE(NULLIF($3, ''), resolved_image),
+			     image_sha = COALESCE(NULLIF($16, ''), image_sha),
 			     failure_reason = COALESCE(NULLIF($6, ''), failure_reason),
 			     cancel_reason = COALESCE(NULLIF($8, ''), cancel_reason),
 			     -- A terminal row's story is failure_reason/cancel_reason; the
@@ -2551,8 +2568,8 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status, resolvedImag
 			     finished_at = CASE WHEN $5 THEN COALESCE(finished_at, clock_timestamp()) ELSE finished_at END,
 			     updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp())
 			 WHERE id = $1`,
-			id, status, resolvedImage, stampNow, terminal, failureReason, DeployQueued, cancelReason, startedAt,
-			PreDeployRunning, DeployLive, PreDeploySucceeded, PreDeployCanceled, DeployPreDeployFailed, PreDeployFailed); err != nil {
+			id, status, ran.Ref, stampNow, terminal, failureReason, DeployQueued, cancelReason, startedAt,
+			PreDeployRunning, DeployLive, PreDeploySucceeded, PreDeployCanceled, DeployPreDeployFailed, PreDeployFailed, ran.SHA); err != nil {
 			return err
 		}
 		if status == DeployLive {
@@ -2588,7 +2605,7 @@ func (s *PGStore) CloseDeploy(ctx context.Context, id, status, resolvedImage str
 	if !IsTerminalDeployStatus(status) || status == DeployDeactivated {
 		return false, nil
 	}
-	return s.TransitionDeploy(ctx, id, status, resolvedImage, "", "", "", nil)
+	return s.TransitionDeploy(ctx, id, status, RanImage{Ref: resolvedImage}, "", "", "", nil)
 }
 
 // SetDeployPreDeployStatus records the pre-deploy step's outcome on a deploy

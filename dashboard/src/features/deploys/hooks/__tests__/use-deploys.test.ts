@@ -18,6 +18,7 @@ function row(partial: Partial<DeployRow> & { id: string }): DeployRow {
     status: "live",
     trigger: "api",
     image: "",
+    imageSha: "",
     rollbackOf: "",
     commitId: "",
     commitMessage: "",
