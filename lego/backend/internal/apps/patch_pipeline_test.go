@@ -89,6 +89,69 @@ func TestRESTPatchNestedScheduleWinsAndKeepsTopLevelCommand(t *testing.T) {
 	}
 }
 
+func serveRESTStrict(t *testing.T, svc *Service, method, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(method, path, strings.NewReader(body))
+	req = req.WithContext(core.WithStrictJSONDecoding(req.Context()))
+	mux.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestRESTPatchNestedEnvSpecificErrorsNameTheField(t *testing.T) {
+	// w4/369: replaying the GET-emitted envSpecificDetails.preDeployCommand
+	// shape (or a wrong-typed nested value) must 400 naming the field, not a
+	// bare "bad request". preDeployCommand stays writable only at
+	// serviceDetails.preDeployCommand.
+	cases := []struct{ body, field string }{
+		{`{"serviceDetails":{"envSpecificDetails":{"buildCommand":"go build -o app .","startCommand":"./app","preDeployCommand":"false"}}}`, `preDeployCommand`},
+		{`{"serviceDetails":{"envSpecificDetails":{"buildCommand":5}}}`, `buildCommand`},
+	}
+	for _, tc := range cases {
+		svc, _ := newService(nil, sampleApp("web"))
+		rec := serveRESTStrict(t, svc, http.MethodPatch, "/v1/services/web", tc.body)
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("PATCH %s => 400, got %d: %s", tc.body, rec.Code, rec.Body)
+		}
+		if !strings.Contains(rec.Body.String(), tc.field) {
+			t.Errorf("PATCH %s error = %s, want it to name %s", tc.body, rec.Body, tc.field)
+		}
+	}
+	// A well-formed nested block still applies.
+	svc, cl := newService(nil, sampleApp("web"))
+	rec := serveRESTStrict(t, svc, http.MethodPatch, "/v1/services/web", `{"serviceDetails":{"envSpecificDetails":{"buildCommand":"go build .","startCommand":"./app"}}}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("valid nested envSpecificDetails => 200, got %d: %s", rec.Code, rec.Body)
+	}
+	if got := getApp(t, cl, "web").Spec.BuildCommand; got != "go build ." {
+		t.Errorf("spec.buildCommand = %q, want the applied nested value", got)
+	}
+}
+
+func TestRESTAuditedDecodeSitesNameTheField(t *testing.T) {
+	// w4/369 audit: the other rest.go handlers that discarded their decode
+	// error behind a bare ErrBadRequest now name the offending field too.
+	cases := []struct{ method, path, body, field string }{
+		{http.MethodPost, "/v1/blueprints", `{"repo":"https://example.com/r","bogus":1}`, `bogus`},
+		{http.MethodPatch, "/v1/blueprints/blp-1", `{"bogus":1}`, `bogus`},
+		{http.MethodPost, "/v1/blueprints/deploy", `{"bexYaml":5}`, `bexYaml`},
+		{http.MethodPost, "/v1/blueprints/preview", `{"bogus":1}`, `bogus`},
+		{http.MethodPost, "/v1/services/web/custom-domains", `{"name":5}`, `name`},
+	}
+	for _, tc := range cases {
+		svc, _ := newService(nil, sampleApp("web"))
+		rec := serveRESTStrict(t, svc, tc.method, tc.path, tc.body)
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("%s %s => 400, got %d: %s", tc.method, tc.path, rec.Code, rec.Body)
+		}
+		if !strings.Contains(rec.Body.String(), tc.field) {
+			t.Errorf("%s %s error = %s, want it to name %s", tc.method, tc.path, rec.Body, tc.field)
+		}
+	}
+}
+
 func TestDecodeIPAllowListAbsentAndNullMeanNotProvided(t *testing.T) {
 	for _, raw := range []string{"", "null"} {
 		entries, ok, err := decodeIPAllowList(context.Background(), []byte(raw))
