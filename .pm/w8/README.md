@@ -15,6 +15,10 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m127** — [Free services cannot send outbound SMTP (25/465/587), as on Render](m127/README.md) (7 tasks;210m) ← promoted from `149` on 2026-10-20 (user decision: keep the provider 25/465 block, refuse free services 587)
+
+- [ ] **m126** — [Free Postgres expires after 30 days and reports `expiresAt`, as on Render](m126/README.md) (9 tasks;380m) ← promoted from `145` on 2026-10-20 (user decision: implement Render's expiry)
+
 - [ ] **m125** — [Give every tenant request Render's `Rndr-Id` and a `requestID` in request logs](blocked/m125/README.md) (7 tasks;195m) ← promoted from `148` on 2026-10-20 — **BLOCKED (2026-10-20: GitOps syncs Traefik and the release pipeline deploys bex-api; QA runs t007: a request to a fresh free echo service gets an `Rndr-Id` response header equal to the app's `rndr-id`, a forged one is replaced, `bex logs --type request -o json` shows it as `requestID` and `--text <id>` finds it; the same on a static site; delete the fixture with a 404 proof)**. t001–t006 done: the edge plugin mints `Rndr-Id`, the access log keeps it, request entries expose `requestID` (REST/GraphQL/MCP); verified on the pinned Traefik ([evidence](blocked/m125/evidence/README.md)); ADR010/ADR018.
 
 - [ ] **m124** — [Scope a service's logs and metrics to its own incarnation](blocked/m124/README.md) (7 tasks;250m) ← promoted from `144` on 2026-10-20 — **BLOCKED (2026-10-20: release pipeline deploys bex-api and GitOps syncs the log shipper; QA runs t007: delete and recreate a free echo service under one name, then the new id's `bex logs` (`--text`, `--path`, unfiltered, `--tail`), instance discovery and `/v1/metrics/{cpu,memory,instance-count,http-requests}` show nothing of the predecessor; delete the fixtures with 404 proofs)**. t001–t006 done: an `app_id` stream label from `bex.co/app-id`, every App log/metric read starting at `core.AppNotBefore` and selecting `app_id=~"<id>|"`, pod lists dropping other incarnations (`core.OwnAppPods`, also the instance list and SSH targets), and cAdvisor PromQL `unless on(pod) (kube_pod_created < floor)`; ADR010/ADR018.
@@ -367,7 +371,13 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **149** — [Tenant apps cannot reach SMTP on 25/465, while free apps can use 587; neither rule matches Render or is documented for tenants](blocked/149.md) ← `/qa-find-bugs-cli` sweep 1256 2026-10-20: decision needed (document vs unblock; free-tier 587 policy); minor — **BLOCKED (2026-10-20: needs the user to decide whether to request Hetzner's SMTP 25/465 unblock for the tenant pool (with abuse controls) or keep the block, and whether free services lose 587 as on Render)**. Current behavior documented in ADR018 ("Outbound SMTP ports").
+- [ ] **152** — [A Render region is silently normalized on create but refused in every Blueprint, so 75 of 100 real Render exports fail on `region` alone](152.md) ← `/qa-find-bugs-cli` sweep 1267 2026-10-20: decision needed (normalize everywhere vs refuse everywhere); major, ~60m once decided.
+
+- [ ] **151** — [`PATCH /v1/services/{id}` refuses Render's `envSpecificDetails.dockerContext` as an unknown field](151.md) ← `/qa-find-bugs-cli` sweep 1266 2026-10-20: no update path for the build context on any surface; minor, ~40m.
+
+- [ ] **150** — [A Docker service's `dockerContext` resolves from the repo root, so Render's own monorepo export (`rootDir` + `dockerContext: .`) fails to build](150.md) ← `/qa-find-bugs-cli` sweep 1266 2026-10-20: Render resolves it inside `rootDir`; major, ~90m.
+
+- [x] **149** — [Tenant apps cannot reach SMTP on 25/465, while free apps can use 587; neither rule matches Render or is documented for tenants](done/149.md) ← `/qa-find-bugs-cli` sweep 1256 2026-10-20: decision needed (document vs unblock; free-tier 587 policy); minor — **PROMOTED (2026-10-20)** to `m127` (user chose to keep the 25/465 block and refuse free services 587).
 
 - [x] **148** — [Tenant requests carry no `Rndr-Id`, and request logs have no `requestID` to correlate with app logs](done/148.md) ← `/qa-find-bugs-cli` sweep 1254 2026-10-20: Render's documented per-request tracing ID; minor, ~90m — **PROMOTED (2026-10-20)** to `m125`.
 
@@ -375,7 +385,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **146** — [A recreated static site serves the deleted site's cached pages until its second deploy](blocked/146.md) ← `/qa-find-bugs-cli` sweep 1248 2026-10-20: static cache key `<ws>/<name>/rev-N/<path>` collides across incarnations; major, 45m — **BLOCKED (2026-10-20: release pipeline deploys the static-server; QA recreates a static site under a deleted one's name and its first live deploy serves its own `index.html`; delete the fixtures with 404 proofs)**. Source fixed: the static cache keys by the App UID too (objects, misses, Brotli variants); regression test fails before / passes after; ADR029.
 
-- [ ] **145** — [Free Postgres never expires and never reports `expiresAt`, although ADR009 specifies a 30-day TTL](blocked/145.md) ← `/qa-find-bugs-cli` sweep 1247 2026-10-20: decision needed (record divergence vs implement Render's expiry); minor — **BLOCKED (2026-10-20: needs the user to decide — implement Render's free-Postgres expiry (sweeper + `expiresAt`, a milestone) or record "free Postgres does not expire on Bex" as a deliberate divergence in ADR009/ADR018)**.
+- [x] **145** — [Free Postgres never expires and never reports `expiresAt`, although ADR009 specifies a 30-day TTL](done/145.md) ← `/qa-find-bugs-cli` sweep 1247 2026-10-20: decision needed (record divergence vs implement Render's expiry); minor — **PROMOTED (2026-10-20)** to `m126` (user chose Render's expiry).
 
 - [x] **144** — [A new service shows the logs of a deleted service that had the same name](done/144.md) ← `/qa-find-bugs-cli` sweep 1244 2026-10-20: App log reads select by name, not service id; major, 60m — **PROMOTED (2026-10-20)** to `m124`.
 
