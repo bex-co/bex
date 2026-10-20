@@ -8,7 +8,7 @@ import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
 } from "@/common/lib/polling";
-import { useIsAuthenticated } from "@/common/hooks/use-is-authenticated";
+import { useHasVerifiedSession } from "@/common/hooks/use-has-verified-session";
 import type { WorkspaceView } from "@/features/workspaces/types";
 
 type RawWorkspace = NonNullable<WorkspacesQuery["workspaces"]>[number];
@@ -38,10 +38,11 @@ export interface UseWorkspacesResult {
    */
   ready: boolean;
   /**
-   * False without a session (a public page): there is no current workspace
-   * then, whatever the selection cookie says (w6/078).
+   * False without a session bex-api serves — none at all (a public page), or
+   * one still walled behind email verification: there is no current workspace
+   * then, whatever the selection cookie says (w6/078, w6/079).
    */
-  authenticated: boolean;
+  verified: boolean;
   /** Re-run the list query (callers refresh after create/rename/delete). */
   refetch: () => Promise<unknown>;
 }
@@ -53,12 +54,13 @@ export interface UseWorkspacesResult {
  * WorkspaceProvider mounts at the app root (so hooks called before a page
  * returns `<DashboardLayout>` still see it), which puts public pages
  * (login/sign-up/...) in its subtree too — `skip` keeps this query from
- * firing (and 401ing) before a session exists.
+ * firing (and 401ing) before a session exists, or while it is still walled
+ * behind email verification (refused with EMAIL_VERIFICATION_REQUIRED, w6/079).
  */
 export function useWorkspaces(): UseWorkspacesResult {
-  const authenticated = useIsAuthenticated();
+  const verified = useHasVerifiedSession();
   const { data, loading, error, refetch } = useQuery(WorkspacesDocument, {
-    skip: !authenticated,
+    skip: !verified,
     fetchPolicy: "cache-first",
     errorPolicy: "all",
     pollInterval: RESOURCE_POLL_INTERVAL_MS,
@@ -66,8 +68,7 @@ export function useWorkspaces(): UseWorkspacesResult {
   });
 
   const workspaces = useMemo(() => toWorkspaceViews(data?.workspaces), [data]);
-  const ready =
-    authenticated && !loading && data !== undefined && error == null;
+  const ready = verified && !loading && data !== undefined && error == null;
 
-  return { workspaces, loading, error, ready, authenticated, refetch };
+  return { workspaces, loading, error, ready, verified, refetch };
 }

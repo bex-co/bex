@@ -35,8 +35,7 @@ export function sessionTraitEmail(
   session: Session | null | undefined,
 ): string | undefined {
   const traits = session?.identity?.traits as
-    | Record<string, unknown>
-    | undefined;
+    Record<string, unknown> | undefined;
   const email = traits?.email;
   return typeof email === "string" && email.length > 0 ? email : undefined;
 }
@@ -67,4 +66,15 @@ export function emailVerificationRequired(
       typeof address.value === "string" &&
       address.value.toLowerCase() === want,
   );
+}
+
+/**
+ * A session bex-api serves: signed in, and not walled behind email
+ * verification. The one rule the root route (invitation redirect, the
+ * loaders' workspace scope) and `useHasVerifiedSession` share (w6/079).
+ */
+export function hasVerifiedSession(
+  session: Session | null | undefined,
+): boolean {
+  return session != null && !emailVerificationRequired(session);
 }

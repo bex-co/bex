@@ -11,7 +11,7 @@ import { getActiveI18n } from "@/i18n/request-scope";
 import { getDashboardOrigin, globalMetadata } from "@/common/lib/document-head";
 import { pendingInvitationDestination } from "@/features/invites/redirect-pending-invitation";
 import { getPersistedWorkspaceId } from "@/features/workspaces/lib/selection";
-import { emailVerificationRequired } from "@/features/onboarding/lib/email-verification";
+import { hasVerifiedSession } from "@/features/onboarding/lib/email-verification";
 
 import appCss from "../style.css?inline";
 
@@ -24,7 +24,6 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     const language = detectLanguage();
     const sessionPromise = fetchSession();
     const dashboardOrigin = getDashboardOrigin();
-    const workspaceId = getPersistedWorkspaceId();
     // Applied before this route's component renders (both on the server and
     // on the client's initial hydration pass) so the first render on each
     // side uses the same language — no hydration mismatch. Skipped when
@@ -45,11 +44,12 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     // other answer (a live session that owes a second factor), and `requireAuth`
     // needs it to redirect to the step-up (w4/m17).
     const { session, aal2Required } = await sessionPromise;
+    const verified = hasVerifiedSession(session);
     const invitation = pendingInvitationDestination({
       // A pending invitation is reviewed after verification (ADR075
       // § Invitation precedence): an unverified session meets the
       // verification wall first, whose success continues to /invite.
-      authenticated: Boolean(session) && !emailVerificationRequired(session),
+      authenticated: verified,
       eligible: matches.some(
         (match) =>
           match.staticData?.chrome || match.routeId === "/setup/payment",
@@ -62,7 +62,10 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       aal2Required,
       language,
       dashboardOrigin,
-      workspaceId,
+      // Route loaders scope their reads to this workspace. bex-api refuses an
+      // unverified session's every request, so there is no workspace until
+      // verification; its success navigation re-runs this (w6/079).
+      workspaceId: verified ? getPersistedWorkspaceId() : null,
     };
   },
   loader: ({ context }) => {
