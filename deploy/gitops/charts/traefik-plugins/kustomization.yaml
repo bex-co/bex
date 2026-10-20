@@ -18,3 +18,8 @@ configMapGenerator:
       - .traefik.yml=websocketegress/.traefik.yml
       - go.mod=websocketegress/go.mod
       - websocketegress.go=websocketegress/websocketegress.go
+  - name: bex-client-ip-headers-plugin
+    files:
+      - .traefik.yml=clientipheaders/.traefik.yml
+      - go.mod=clientipheaders/go.mod
+      - clientipheaders.go=clientipheaders/clientipheaders.go

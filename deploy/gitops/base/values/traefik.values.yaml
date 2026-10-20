@@ -16,6 +16,10 @@ deployment:
         # and this name changing is what rolls them (w4/m164). gitops-validate
         # prints the current name when this one is stale.
         name: bex-websocket-egress-plugin-9745f4t2d6
+    - name: bex-client-ip-headers-plugin
+      configMap:
+        # Content-hashed like the egress plugin above (w8/m123).
+        name: bex-client-ip-headers-plugin-f7ftg9726t
 # A second pod cannot bind the same host ports on the pinned edge node, so a
 # rolling update deadlocks with the new pod Pending. Recreate gives restarts
 # a deterministic metering-counter reset and a brief, explicit edge
@@ -31,6 +35,11 @@ experimental:
       moduleName: github.com/bex-co/bex-websocket-egress
       mountPath: /plugins-local/src/github.com/bex-co/bex-websocket-egress
       volumeName: bex-websocket-egress-plugin
+    bexClientIPHeaders:
+      type: localPath
+      moduleName: github.com/bex-co/bex-client-ip-headers
+      mountPath: /plugins-local/src/github.com/bex-co/bex-client-ip-headers
+      volumeName: bex-client-ip-headers-plugin
 # w1/m19 t003: platform pool
 nodeSelector:
   bex.co/pool: platform
@@ -50,11 +59,20 @@ securityContext:
     drop: [ALL]
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
+# Every request on the tenant HTTP entrypoints passes the client-identity
+# sanitizer first (w8/m123): an app never sees a caller-forged True-Client-IP,
+# CF-Connecting-IP, CF-IPCountry or X-Client-IP, and True-Client-IP always names
+# the real client, as on Render behind Cloudflare. The Middleware ships in this
+# release (extraObjects below), so it exists before any router references it.
 ports:
   web:
     port: 80 # host :80 (HTTP + ACME HTTP-01 challenge)
+    http:
+      middlewares: [traefik-bex-client-ip-headers@kubernetescrd]
   websecure:
     port: 443 # host :443 (HTTPS)
+    http:
+      middlewares: [traefik-bex-client-ip-headers@kubernetescrd]
   ssh:
     # The hostNetwork/dev edge uses :2222 so it never collides with node-admin
     # sshd on :22. The prod LB overlay exposes this entrypoint publicly as :22.
@@ -170,3 +188,12 @@ metrics:
     addRoutersLabels: true # per-router labels (host/path attribution, future use)
 # entrypoints web(:80) + websecure(:443) with NO forced web->websecure redirect,
 # so cert-manager HTTP-01 challenges on :80 succeed.
+extraObjects:
+  - apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      name: bex-client-ip-headers
+      namespace: traefik
+    spec:
+      plugin:
+        bexClientIPHeaders: {}

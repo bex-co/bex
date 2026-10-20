@@ -15,7 +15,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m123** — [Sanitize client-identity headers at the tenant edge](m123/README.md) (7 tasks;220m) ← promoted from `143` on 2026-10-20: tenant apps receive caller-forged `True-Client-IP`/`CF-Connecting-IP`, the headers Render tells apps to trust
+- [ ] **m123** — [Sanitize client-identity headers at the tenant edge](blocked/m123/README.md) (7 tasks;220m) ← promoted from `143` on 2026-10-20 — **BLOCKED (2026-10-20: GitOps syncs Traefik; QA runs t007 on production: a fresh free echo web service shows `true-client-ip` = `x-real-ip` and no `cf-connecting-ip`/`cf-ipcountry`/`x-client-ip` for the forged-header curl, the same on a static site and a custom domain; delete the fixture with a 404 proof)**. t001–t006 done: a Cloudflare-aware `bex-client-ip-headers` local plugin on the `web`/`websecure` entrypoints (forged and underscore spellings stripped, `True-Client-IP` = the real client, `CF-*` kept only from a Cloudflare edge), its Middleware in the Traefik release, gitops-validate guards (mounted ConfigMaps, entrypoint wiring, Cloudflare range drift), plugin tests in CI, and a load check on the pinned Traefik v3.7.5 ([evidence](blocked/m123/evidence/README.md)); ADR018/ADR022.
 
 - [ ] **m122** — [Report the image digest each prebuilt-image deploy ran](blocked/m122/README.md) (7 tasks;225m) ← `/qa-find-bugs-cli` sweep 1228 2026-10-20 — **BLOCKED (2026-10-20: release pipeline deploys the operator and bex-api; QA runs t007 on production: a fresh free web service on `docker.io/ealen/echo-server:0.9.2` goes live and `GET …/deploys` shows `image.sha` equal to the tag's index digest (the kubelet records the index, not the platform manifest — [evidence](blocked/m122/evidence/README.md)); `bex deploys list` prints it after `SHA:`; a second deploy gets its own row digest; a bad-tag deploy carries none; a by-digest service reports that digest; a Git-backed deploy has no `image`; GraphQL `imageSha`/MCP/dashboard match; then delete the fixture with a 404 proof)**. t001–t006 done: the operator records `status.imageDigest {generation, digest}` when a release first serves (digest-pinned ref, else the Ready current-revision pod's `imageID`); bex-api stamps `deploys.image_sha` only on that release's own live close; REST/MCP `image.sha`, GraphQL `imageSha`, dashboard short digest with copy; ADR004/006/018.
 
@@ -362,6 +362,10 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [Static byte-range acceptance and scoped rollout recheck](evidence/static-ranges-sweep317/README.md) — sweep317:62 text/binary/multipart/conditional/HEAD HTTP checks and three source controls pass; all three clients now refuse Free cron and accept the shared service/database name (six validations). Two sites/two deploys cleaned; no new issue.
 
 ## Inbox
+
+- [ ] **146** — [A recreated static site serves the deleted site's cached pages until its second deploy](146.md) ← `/qa-find-bugs-cli` sweep 1248 2026-10-20: static cache key `<ws>/<name>/rev-N/<path>` collides across incarnations; major, 45m
+
+- [ ] **145** — [Free Postgres never expires and never reports `expiresAt`, although ADR009 specifies a 30-day TTL](145.md) ← `/qa-find-bugs-cli` sweep 1247 2026-10-20: decision needed (record divergence vs implement Render's expiry); minor
 
 - [ ] **144** — [A new service shows the logs of a deleted service that had the same name](144.md) ← `/qa-find-bugs-cli` sweep 1244 2026-10-20: App log reads select by name, not service id; major, 60m
 
