@@ -1055,6 +1055,35 @@ func TestParsePromMatrixDropsNaN(t *testing.T) {
 	}
 }
 
+func TestParsePromMatrixTotalPointsBudget(t *testing.T) {
+	// w4/375: the per-series request budget cannot bound upstream series
+	// cardinality, so the matrix parser itself caps the TOTAL samples one
+	// response may materialize — and fails rather than truncating.
+	mk := func(series, points int) promRangeResponse {
+		pr := promRangeResponse{Status: "success"}
+		for i := 0; i < series; i++ {
+			vals := make([][]any, points)
+			for j := range vals {
+				vals[j] = []any{float64(1_000_000 + j*60), "1"}
+			}
+			pr.Data.Result = append(pr.Data.Result, struct {
+				Metric map[string]string `json:"metric"`
+				Values [][]any           `json:"values"`
+			}{Metric: map[string]string{"code": "200"}, Values: vals})
+		}
+		return pr
+	}
+	if _, err := parsePromMatrix(mk(3, 2)); err != nil {
+		t.Fatalf("small matrix must pass: %v", err)
+	}
+	// 26 series × 10k points = 260k > the 250k total budget, while each
+	// series alone sits under the per-series request budget.
+	if _, err := parsePromMatrix(mk(26, 10_000)); err == nil ||
+		!strings.Contains(err.Error(), "exceeds the") {
+		t.Fatalf("over-total-budget matrix must fail naming the budget, got %v", err)
+	}
+}
+
 func TestPrometheusRequestSourceRoundTrip(t *testing.T) {
 	var gotQuery string
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
