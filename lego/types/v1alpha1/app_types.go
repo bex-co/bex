@@ -189,7 +189,8 @@ const ConditionBuild = "Build"
 // Written only as False, stamped with the RELEASE generation that failed to
 // roll out, with the operator's diagnosis as Reason (ImagePullBackOff,
 // CrashLoopBackOff, CreateContainerConfigError, HealthCheckFailing,
-// RolloutBlockedByQuota, or ProgressDeadlineExceeded when nothing was found)
+// RolloutBlockedByQuota, Unschedulable, ContainerCreating, or
+// ProgressDeadlineExceeded when nothing was found)
 // and its user-facing text as Message. Bounded to one slot like ConditionBuild.
 //
 // A static site's rollout is its publication (w4/m155): a terminal publish
@@ -284,6 +285,12 @@ const (
 	ReasonRolloutSettling          = "RolloutSettling"
 	ReasonPriorReleaseServing      = "PriorReleaseServing"
 	ReasonServedReleaseCannotStart = "ServedReleaseCannotStart"
+	// ReasonUnschedulable and ReasonContainerCreating name a new instance that
+	// never started: no node had room for it, or its container stayed in
+	// creation (image download, disk attach). bex-api shows the message as the
+	// deploy's stall reason (w6/080).
+	ReasonUnschedulable     = "Unschedulable"
+	ReasonContainerCreating = "ContainerCreating"
 )
 
 // DefaultBranch is the git branch a repo-backed App tracks when none is
