@@ -31,22 +31,43 @@ import (
 //
 // A malformed CIDR anywhere fails the whole parse: the front doors treat that
 // as an unroutable resource rather than serving it with a partial allowlist.
+//
+// Render's "allow any IP" rule is exactly 0.0.0.0/0, and Render's datastore
+// endpoints are IPv4-only, so there it admits every client. Ours also publish
+// AAAA, and dual-stack clients try IPv6 first, so the literal rule would
+// refuse every one of them (w8/140). A rule that masks to 0.0.0.0/0 therefore
+// also admits ::/0 here, at enforcement only: the saved rule and every
+// readback stay as authored. Narrower IPv4 rules are not widened.
 func ParseAllowList(entries []appv1alpha1.IPAllowEntry, environment []string) (allow, envAllow []netip.Prefix, err error) {
 	for _, entry := range entries {
-		prefix, err := netip.ParsePrefix(entry.CIDR)
-		if err != nil {
+		if allow, err = appendRule(allow, entry.CIDR); err != nil {
 			return nil, nil, fmt.Errorf("invalid allowlist CIDR %q: %w", entry.CIDR, err)
 		}
-		allow = append(allow, prefix.Masked())
 	}
 	for _, cidr := range environment {
-		prefix, err := netip.ParsePrefix(cidr)
-		if err != nil {
+		if envAllow, err = appendRule(envAllow, cidr); err != nil {
 			return nil, nil, fmt.Errorf("invalid environment allowlist CIDR %q: %w", cidr, err)
 		}
-		envAllow = append(envAllow, prefix.Masked())
 	}
 	return allow, envAllow, nil
+}
+
+var (
+	anyIPv4 = netip.MustParsePrefix("0.0.0.0/0")
+	anyIPv6 = netip.MustParsePrefix("::/0")
+)
+
+func appendRule(prefixes []netip.Prefix, cidr string) ([]netip.Prefix, error) {
+	prefix, err := netip.ParsePrefix(cidr)
+	if err != nil {
+		return prefixes, err
+	}
+	prefix = prefix.Masked()
+	prefixes = append(prefixes, prefix)
+	if prefix == anyIPv4 {
+		prefixes = append(prefixes, anyIPv6)
+	}
+	return prefixes, nil
 }
 
 // AllowedBy reports whether source falls inside one layer's prefixes. An empty
