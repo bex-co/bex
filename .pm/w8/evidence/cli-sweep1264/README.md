@@ -1,0 +1,5 @@
+# CLI sweep 1264 — connecting Render's FastAPI repo as a Blueprint (live, 2026-10-20)
+
+`POST /v1/blueprints {name, ownerId, repo: https://github.com/render-examples/fastapi, branch: main}` created `blp-dbbs0k65u6js73eso1i0`. Its `render.yaml` created `fastapi-example` (`srv-dbbs0k65u6js73eso1jg`; free, `autoDeploy: no`, the repo's build/start commands), which went live in 233 s and served `{"message":"Hello World"}`. One sync recorded, `success`. The Blueprint was deleted (204 → 404), leaving the service in place (200, unmanaged), which matches Render's “deleting a Blueprint keeps its resources”. The service was then deleted (204 → 404). No new bug filed.
+
+- Observation, not filed: the create body also carried `autoSync: false`, which was silently ignored (the Blueprint reads `autoSync: true`). `POST /v1/blueprints` is a Bex-native route outside the strict Render-schema gate (ADR018 “Strict Render REST input contract … Bex extensions … outside the gate”), so unknown fields are dropped. Render has no create API and defaults dashboard Blueprints to auto-sync on. `PATCH /v1/blueprints/{id} {"autoSync":false}` works (200, reads back false).
