@@ -33,7 +33,7 @@ import (
 // validator's schema refusal, or the strict decoder refusing a bex field.
 //
 // The table is every Render operation with a JSON request body that bex serves
-// (25 at w8/136). A body operation bex starts serving belongs here too.
+// (28 after w8/137). A body operation bex starts serving belongs here too.
 func TestRenderGatedBexBodiesReachTheirHandlers(t *testing.T) {
 	const (
 		srv = "srv-00000000000000000000"
@@ -68,6 +68,9 @@ func TestRenderGatedBexBodiesReachTheirHandlers(t *testing.T) {
 		{"update-env-group", http.MethodPatch, "/v1/env-groups/evg-00000000000000000000", `{"name":"shared2"}`},
 		{"update-env-group-env-var", http.MethodPut, "/v1/env-groups/evg-00000000000000000000/env-vars/KEY", `{"value":"v"}`},
 		{"update-env-group-secret-file", http.MethodPut, "/v1/env-groups/evg-00000000000000000000/secret-files/ca.pem", `{"content":"c"}`},
+		{"add-route", http.MethodPost, "/v1/services/" + srv + "/routes", `{"type":"redirect","source":"/a","destination":"/b"}`},
+		{"patch-route", http.MethodPatch, "/v1/services/" + srv + "/routes/rte-00000000000000000000", `{"priority":0}`},
+		{"add-headers", http.MethodPost, "/v1/services/" + srv + "/headers", `{"path":"/*","name":"X-Test","value":"1"}`},
 		{"create-webhook", http.MethodPost, "/v1/webhooks", `{"name":"hook","url":"https://example.com/hook"}`},
 		{"update-webhook", http.MethodPatch, "/v1/webhooks/" + whk, `{"name":"hook2"}`},
 	} {

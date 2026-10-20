@@ -1239,7 +1239,7 @@ func sweepEveryVerb(t *testing.T, ctx context.Context, services []any, fn func(s
 // checks its walk against — shared so the sweeps' thresholds can't drift
 // apart (w4/087). Bump deliberately in the same commit that adds or removes a
 // verb; a loose floor would absorb silent filter regressions.
-const wantSweptVerbs = 349 // deploys.Rebuild: an environment save's rebuild as a configuration change (w4/347)
+const wantSweptVerbs = 354 // apps.{Add,Delete}Header, apps.{Add,Move,Delete}Route: Render's single-rule static-site edge operations (w8/137)
 
 func assertSweptVerbCount(t *testing.T, swept int) {
 	t.Helper()
