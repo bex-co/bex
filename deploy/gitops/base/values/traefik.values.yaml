@@ -19,7 +19,7 @@ deployment:
     - name: bex-client-ip-headers-plugin
       configMap:
         # Content-hashed like the egress plugin above (w8/m123).
-        name: bex-client-ip-headers-plugin-f7ftg9726t
+        name: bex-client-ip-headers-plugin-9dc8tc9kkd
 # A second pod cannot bind the same host ports on the pinned edge node, so a
 # rolling update deadlocks with the new pod Pending. Recreate gives restarts
 # a deterministic metering-counter reset and a brief, explicit edge
@@ -168,6 +168,11 @@ accessLog:
       entryPointName: keep
     headers:
       defaultMode: drop
+      # The edge-minted request id (w8/m125): bex-api reads it as the request
+      # line's requestID. The client-identity plugin replaces any caller value
+      # before this log sees the request.
+      names:
+        Rndr-Id: keep
     # Deploy-hook credentials use the `key` query parameter so they remain
     # copy/paste URLs without entering RequestPath. Drop every query parameter
     # before the raw access-log sink; request-log filtering never depends on it.

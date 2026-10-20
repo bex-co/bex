@@ -1,0 +1,38 @@
+# w8 · m125 — Give every tenant request Render's `Rndr-Id` and a `requestID` in request logs
+
+**Worker:** worker8 **Goal:** Every request to a web service or static site carries an edge-minted `Rndr-Id`. The app receives it, the client gets it back, and the request log entry shows the same value as `requestID`. An app that logs the header can find a request's whole history with `--text <id>`, as Render's logging guide describes. **Status:** blocked — t001–t006 done 2026-10-20; t007 live check on production after GitOps syncs Traefik and the release pipeline deploys bex-api
+
+## Tasks (in order)
+
+| id   | title                                                                      | est | depends_on                 |
+| ---- | -------------------------------------------------------------------------- | --- | -------------------------- |
+| t001 — **DONE** | Edge: the client-identity plugin mints `Rndr-Id` on request and response   | 40m | w8/m123                    |
+| t002 — **DONE** | Access log: keep `Rndr-Id` in Traefik's header allowlist                   | 20m | w8/m125/t001               |
+| t003 — **DONE** | Logs: request entries expose `requestID` on REST, GraphQL, MCP, dashboard  | 45m | w8/m125/t002               |
+| t004 — **DONE** | Render parity: request correlation in ADR018/ADR010                        | 15m | w8/m125/t003               |
+| t005 — **DONE** | Simplify the changed code                                                  | 15m | w8/m125/t004               |
+| t006 — **DONE** | Test coverage: minted, overwritten, logged and surfaced                    | 30m | w8/m125/t004               |
+| t007 | Close out the milestone                                                    | 30m | w8/m125/t005, w8/m125/t006 |
+
+## Definition of done
+
+Live on production after GitOps syncs Traefik and the release pipeline deploys bex-api, on a fresh free echo service deleted by ID with a 404 proof:
+
+- A request gets an `Rndr-Id` response header, and the app receives the same value in `rndr-id`. A client-supplied `Rndr-Id` is replaced.
+- `bex logs -r <id> --type request -o json` shows that value as `requestID`. `bex logs -r <id> --text <value>` returns the request line and any app line that logged it.
+- A static site behaves the same.
+
+## Source + Goal linkage
+
+- **Source:** promoted from inbox note `w8/148` on 2026-10-20 (`/qa-find-bugs-cli` sweeps 1241 and 1254, [evidence](../../evidence/cli-sweep1254/README.md)). The note's text is kept in [`done/148.md`](../../done/148.md).
+- **Goal linkage:** [ADR018](../../../../docs/ADR018-render-parity.md) logs rows and [ADR010](../../../../docs/ADR010-observability.md). render.com/docs/logging documents `Rndr-Id` and `requestID` as the request correlation contract.
+- **Expected outcome:** migrated apps that log `Rndr-Id` keep working, and support can trace one request through edge and app logs.
+- **Why now:** it builds directly on w8/m123's edge plugin, which every request already passes through.
+
+## Design
+
+- **t001:** in `clientipheaders`, always replace the request's `Rndr-Id` with a fresh random id (UUID-shaped, `crypto/rand`, Yaegi-safe) and set it on the response before calling `next`.
+- **t002:** `accessLog.fields.headers.names: {Rndr-Id: keep}`, so the JSON line carries `request_Rndr-Id`. Confirm on the pinned Traefik that the access log records the middleware-set value, not the caller's. Update the field-allowlist test.
+- **Dashboard (t003):** the request row renders the raw access-log line, which now carries `request_Rndr-Id`, and the Logs tab's text search finds it, so no new chip was added.
+- **Limit:** an app that sends its own `Rndr-Id` response header adds a second value after the edge's. `Header.Get` still reads the edge's, and a wrapper that rewrote upstream headers would risk `Flush`/`Hijack` (SSE, websockets) inside Yaegi.
+- **t003:** `parseLokiStreams` derives `requestID` from a request line's JSON. It stays a line field, never a Loki label (unbounded). It surfaces as a REST label, GraphQL `requestId` and the MCP entry, and the dashboard request row shows it.

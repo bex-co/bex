@@ -44,6 +44,7 @@ var renderLabels = []struct{ name, key string }{
 	{LabelLevel, LabelLevel},
 	{LabelMethod, LabelMethod},
 	{LabelStatusCode, LabelStatusCode},
+	{LabelRequestID, LabelRequestID},
 }
 
 // renderLabel is Render's logLabel ({name, value}); the REST logs API returns
