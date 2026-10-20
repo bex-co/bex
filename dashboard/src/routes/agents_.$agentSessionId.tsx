@@ -104,6 +104,7 @@ export const Route = createFileRoute("/agents_/$agentSessionId")({
 });
 
 function AgentSessionDetailPage() {
+  const { t } = useTranslations();
   const { agentSessionId } = Route.useParams();
   const { fromArchived, fromPhase } = Route.useSearch();
   const { session, loading, error, refetch } = useAgentSession(agentSessionId);
