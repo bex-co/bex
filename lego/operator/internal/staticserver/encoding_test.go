@@ -251,7 +251,7 @@ func TestBrotliIncompressibleIsRememberedNotRetried(t *testing.T) {
 	}
 	h, _ := newTestHandler(t, Site{}, map[string]Object{key("noise.txt"): {Body: noise, ContentType: "text/plain"}})
 	assertIdentity(t, "incompressible", doWith(h, http.MethodGet, "/noise.txt", brHeader("br")), noise)
-	if v, ok := h.cache.get(brotliVariantKey(key("noise.txt"))); !ok || !v.negative || v.Body != nil {
+	if v, ok := h.cache.get(brotliVariantKey(cachedKey("noise.txt"))); !ok || !v.negative || v.Body != nil {
 		t.Fatalf("incompressible variant cache = %+v %v, want a remembered negative", v, ok)
 	}
 	defer holdSiteEncode(t, h)() // a further encode attempt would have no slot
@@ -267,13 +267,13 @@ func TestBrotliVariantCachedOncePerKey(t *testing.T) {
 	first := doWith(h, http.MethodGet, "/app.js", brHeader("br"))
 	assertBrotli(t, "first", first, body)
 
-	vkey := brotliVariantKey(key("app.js"))
+	vkey := brotliVariantKey(cachedKey("app.js"))
 	v, ok := h.cache.get(vkey)
 	if !ok || !bytes.Equal(v.Body, first.Body.Bytes()) {
 		t.Fatal("encoded variant was not cached")
 	}
 	h.cache.mu.Lock()
-	charged, used := h.cache.siteUsed[appID], entryCharge(key("app.js"), Object{Body: body, ContentType: "text/javascript", etag: contentETag(body)})+entryCharge(vkey, v)
+	charged, used := h.cache.siteUsed[appID], entryCharge(cachedKey("app.js"), Object{Body: body, ContentType: "text/javascript", etag: contentETag(body)})+entryCharge(vkey, v)
 	h.cache.mu.Unlock()
 	if charged != used {
 		t.Fatalf("site cache charge = %d, want identity + variant = %d", charged, used)
@@ -307,7 +307,7 @@ func TestBrotliDegradesToIdentityUnderBudget(t *testing.T) {
 
 	h.liveBodies = semaphore.NewWeighted(int64(len(body)) + 1) // identity fits, encode working set does not
 	assertIdentity(t, "no encode memory", doWith(h, http.MethodGet, "/app.css", brHeader("br")), body)
-	if _, cached := h.cache.get(brotliVariantKey(key("app.css"))); cached {
+	if _, cached := h.cache.get(brotliVariantKey(cachedKey("app.css"))); cached {
 		t.Fatal("a capacity fallback was cached as the variant outcome")
 	}
 
@@ -398,7 +398,7 @@ func TestBrotliConcurrentRequestsStayCorrect(t *testing.T) {
 	if n := origin.total.Load(); n != 1 {
 		t.Fatalf("origin fetches = %d, want 1", n)
 	}
-	if _, ok := h.cache.get(brotliVariantKey(key("burst.html"))); !ok {
+	if _, ok := h.cache.get(brotliVariantKey(cachedKey("burst.html"))); !ok {
 		t.Fatal("burst left no cached variant")
 	}
 }
