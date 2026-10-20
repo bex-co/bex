@@ -5886,6 +5886,43 @@ dashboards:
                "range": false
               }
              ]
+            },
+            {
+             "id": 12,
+             "type": "timeseries",
+             "title": "Analytics datasource probe — age since success",
+             "description": "Time since monitoring/analytics-datasource-probe last connected to bex-db as both Grafana analytics readers with sslmode=verify-full (same Secrets Grafana mounts), the series AnalyticsDatasourceProbeStale alerts on (a probe that has never succeeded counts from its creation). Above the 30m line the Product/CLI analytics dashboards are failing — usually a sealed ca.crt left stale by a bex-db CA renewal.",
+             "gridPos": { "h": 8, "w": 24, "x": 0, "y": 38 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": {
+                 "unit": "s",
+                 "min": 0,
+                 "custom": { "thresholdsStyle": { "mode": "line" } },
+                 "thresholds": {
+                   "mode": "absolute",
+                   "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 1800 }
+                    ]
+                  }
+                },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "bex:analytics_datasource_probe_age_seconds",
+                 "legendFormat": "{{namespace}}/{{cronjob}}"
+                }
+              ],
+             "links": [
+              {
+               "title": "Analytics datasource custody runbook",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR088-platform-observability-ui.md#analytics-datasource-custody",
+               "targetBlank": true
+              }
+             ]
             }
           ]
         }

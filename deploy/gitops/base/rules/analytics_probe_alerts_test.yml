@@ -1,0 +1,90 @@
+# AnalyticsDatasourceProbeStale: three missed 10-minute probe runs (>30m) fire;
+# a recent success, a young never-successful probe, a suspended probe, a probe of
+# the same name elsewhere, and no probe at all (the local overlay) stay quiet.
+# Extract alerting_rules.yml from prometheus.yaml via scripts/gitops-validate.sh.
+rule_files:
+  - alerting_rules.yml
+
+evaluation_interval: 1m
+
+# promtool's clock starts at t=0: at eval_time 30m, time()=1800s and the age is
+# 1800 - <series value>; at 28m it is 1680 - <series value>.
+tests:
+  - name: probe fires after 30m without a success, not before
+    interval: 1m
+    input_series:
+      - series: 'kube_cronjob_status_last_successful_time{cronjob="analytics-datasource-probe", namespace="monitoring"}'
+        values: "-60x40"
+      - series: 'kube_cronjob_spec_suspend{cronjob="analytics-datasource-probe", namespace="monitoring"}'
+        values: "0x40"
+    alert_rule_test:
+      - eval_time: 28m # age 1740s
+        alertname: AnalyticsDatasourceProbeStale
+        exp_alerts: []
+      - eval_time: 30m # age 1860s
+        alertname: AnalyticsDatasourceProbeStale
+        exp_alerts: &probe_stale
+          - exp_labels:
+              severity: warning
+              cronjob: analytics-datasource-probe
+              namespace: monitoring
+            exp_annotations:
+              summary: "Grafana's analytics datasources have not passed a connection probe in >30m"
+              description: "monitoring/analytics-datasource-probe connects to bex-db as bex_product_analytics and bex_cli_analytics with sslmode=verify-full, using the same Secrets Grafana mounts, and has not succeeded in over 30 minutes — the Product/CLI analytics dashboards are failing. Debug: kubectl -n monitoring get jobs -l batch.kubernetes.io/cronjob-name=analytics-datasource-probe, then kubectl -n monitoring logs job/<latest>. 'certificate verify failed' means the sealed ca.crt no longer matches bex-system/bex-db-ca: reseal per scripts/lib/analytics-bootstrap.sh (SEAL_TO=deploy/gitops/overlays/prod/grafana-<profile>-analytics.sealedsecret.yaml). Runbook: docs/ADR088-platform-observability-ui.md § Analytics datasource custody"
+
+  - name: probe that never succeeded fires once 30m old, not while young
+    interval: 1m
+    input_series:
+      - series: 'kube_cronjob_created{cronjob="analytics-datasource-probe", namespace="monitoring"}'
+        values: "-60x40"
+      - series: 'kube_cronjob_spec_suspend{cronjob="analytics-datasource-probe", namespace="monitoring"}'
+        values: "0x40"
+    alert_rule_test:
+      - eval_time: 28m
+        alertname: AnalyticsDatasourceProbeStale
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: AnalyticsDatasourceProbeStale
+        exp_alerts: *probe_stale
+
+  - name: probe stays quiet after a recent success
+    interval: 1m
+    input_series:
+      - series: 'kube_cronjob_status_last_successful_time{cronjob="analytics-datasource-probe", namespace="monitoring"}'
+        values: "600x40" # age 1200s at 30m
+      - series: 'kube_cronjob_spec_suspend{cronjob="analytics-datasource-probe", namespace="monitoring"}'
+        values: "0x40"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: AnalyticsDatasourceProbeStale
+        exp_alerts: []
+
+  - name: suspended, same-name-elsewhere, and other CronJobs stay quiet
+    interval: 1m
+    input_series:
+      - series: 'kube_cronjob_status_last_successful_time{cronjob="analytics-datasource-probe", namespace="monitoring"}'
+        values: "-6000x40"
+      - series: 'kube_cronjob_spec_suspend{cronjob="analytics-datasource-probe", namespace="monitoring"}'
+        values: "1x40"
+      - series: 'kube_cronjob_status_last_successful_time{cronjob="analytics-datasource-probe", namespace="default"}'
+        values: "-6000x40"
+      - series: 'kube_cronjob_spec_suspend{cronjob="analytics-datasource-probe", namespace="default"}'
+        values: "0x40"
+      - series: 'kube_cronjob_status_last_successful_time{cronjob="other-probe", namespace="monitoring"}'
+        values: "-6000x40"
+      - series: 'kube_cronjob_spec_suspend{cronjob="other-probe", namespace="monitoring"}'
+        values: "0x40"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: AnalyticsDatasourceProbeStale
+        exp_alerts: []
+
+  - name: no probe at all (local overlay) stays quiet
+    interval: 1m
+    input_series:
+      - series: 'up{job="kube-state-metrics"}'
+        values: "1x40"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: AnalyticsDatasourceProbeStale
+        exp_alerts: []

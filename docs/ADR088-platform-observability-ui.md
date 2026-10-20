@@ -16,6 +16,14 @@ Grafana is deployed by an Argo CD Application in `deploy/gitops/base/` (per-env 
 
 The CLI usage board also reads a dedicated Postgres datasource (`cli-analytics`), restricted to `cli_analytics.events` by a separate database role. This supports distinct counts, retained-history cohorts and command-duration percentiles without exporting identities as Prometheus labels. Connections use CNPG CA/hostname verification, four pooled connections and database-side connection/query limits. Definitions, bootstrap and custody: [CLI analytics runbook](runbooks/cli-analytics.md).
 
+#### Analytics datasource custody
+
+Both analytics datasources (`product-analytics`, `cli-analytics`) verify `bex-db` with `sslmode: verify-full` against a `ca.crt` sealed into `monitoring/grafana-{product,cli}-analytics` beside the reader password (custody contract: `scripts/lib/analytics-bootstrap.sh`, w7/m153). CNPG generates the `bex-db` CA itself and renews it, with the server certificate, on a ~90-day cycle (`bex-db` `status.certificates.expirations`). Each renewal makes the sealed copy stale, and both dashboards then fail — silently, because Grafana only reports a datasource error when a panel queries it. That happened at the 2026-10-08 CA expiry and went unnoticed until 2026-10-19 (w2/m170).
+
+- **Detection.** `monitoring/analytics-datasource-probe` (prod overlay) connects every 10 minutes as each reader with the same mounted Secrets and `verify-full`, and the `AnalyticsDatasourceProbeStale` alert fires after 30 minutes without a success. It holds no Kubernetes API credential and nothing Grafana does not already mount.
+- **Repair.** `certificate verify failed` in the probe log means the sealed `ca.crt` no longer matches `bex-system/bex-db-ca`: rerun the profile's bootstrap with `SEAL_TO=deploy/gitops/overlays/prod/grafana-<profile>-analytics.sealedsecret.yaml` (or reseal the unchanged password with the current CA), ship it, and confirm the probe passes. The mounted file refreshes in place; Grafana picks it up on its next connection.
+- **Not automated by copying the CA.** `bex-db-ca` holds the CA **private key** as well as `ca.crt`, and RBAC cannot grant one key of a Secret, so an automated mirror would give a long-lived identity the key that mints `bex-db` client certificates. Removing the reseal instead means giving `bex-db` a long-lived server CA (cert-manager CA via CNPG `spec.certificates`) — a production TLS change to the control-plane database, tracked in w2/m170.
+
 Explicit non-choices:
 
 - **Not a bex-hosted customer App.** Our operations tooling must not depend on the product it exists to observe.

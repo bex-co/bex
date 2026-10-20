@@ -1703,6 +1703,32 @@ spec:
                       summary: "Backup {{ $labels.namespace }}/{{ $labels.cronjob }} has not succeeded in >26h"
                       description: "The nightly {{ $labels.cronjob }} has no successful backup in over 26h — silent backup rot is unrecoverable data loss. Debug: kubectl -n {{ $labels.namespace }} get cronjob {{ $labels.cronjob }}; kubectl -n {{ $labels.namespace }} get jobs -l batch.kubernetes.io/cronjob-name={{ $labels.cronjob }}. Runbooks: docs/ADR011-etcd-backup-restore.md, docs/ADR015-openbao-backup-restore.md, docs/ADR021-keyvalue-management.md, docs/ADR031-platform-data-backup.md"
 
+                  # Grafana reports a datasource error only when a panel queries it,
+                  # so the analytics readers can fail for days unseen (a bex-db CA
+                  # renewal did, w2/m170). The prod-only probe connects exactly as
+                  # Grafana does; the local overlay has no probe, so no series.
+                  - record: bex:analytics_datasource_probe_age_seconds
+                    expr: |
+                      (
+                        (time() - kube_cronjob_status_last_successful_time{namespace="monitoring",cronjob="analytics-datasource-probe"})
+                        or
+                        (
+                          (time() - kube_cronjob_created{namespace="monitoring",cronjob="analytics-datasource-probe"})
+                          unless on(namespace, cronjob)
+                            kube_cronjob_status_last_successful_time{namespace="monitoring",cronjob="analytics-datasource-probe"}
+                        )
+                      )
+                      and on(namespace, cronjob)
+                        (kube_cronjob_spec_suspend{namespace="monitoring",cronjob="analytics-datasource-probe"} == 0)
+                  - alert: AnalyticsDatasourceProbeStale
+                    expr: bex:analytics_datasource_probe_age_seconds > 1800
+                    for: 0m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Grafana's analytics datasources have not passed a connection probe in >30m"
+                      description: "monitoring/analytics-datasource-probe connects to bex-db as bex_product_analytics and bex_cli_analytics with sslmode=verify-full, using the same Secrets Grafana mounts, and has not succeeded in over 30 minutes — the Product/CLI analytics dashboards are failing. Debug: kubectl -n monitoring get jobs -l batch.kubernetes.io/cronjob-name=analytics-datasource-probe, then kubectl -n monitoring logs job/<latest>. 'certificate verify failed' means the sealed ca.crt no longer matches bex-system/bex-db-ca: reseal per scripts/lib/analytics-bootstrap.sh (SEAL_TO=deploy/gitops/overlays/prod/grafana-<profile>-analytics.sealedsecret.yaml). Runbook: docs/ADR088-platform-observability-ui.md § Analytics datasource custody"
+
                   # Declared platform DBs remain expected through discovery loss.
                   # pg_stat_archiver also emits on primaries without backups;
                   # its -1 never-archived sentinel is present, not missing data.

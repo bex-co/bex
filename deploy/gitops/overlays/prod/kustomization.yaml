@@ -9,6 +9,7 @@ resources:
   - openfga-pdb.yaml
   - grafana-cli-analytics.sealedsecret.yaml
   - grafana-product-analytics.sealedsecret.yaml
+  - analytics-datasource-probe.yaml
 patches:
   # The retained production WAL outgrew the shared 512Mi cap (w4/m144).
   # Reserve a larger working set and bound the recovery attempt; local keeps
