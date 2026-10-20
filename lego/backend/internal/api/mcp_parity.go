@@ -126,13 +126,6 @@ var mcpKnownUpstreamOnly = map[string]string{
 	// transitional.
 	"select_workspace":       "w1/m55 adopted the request-scoped workspaceId contract and removed session selection; upstream calls its own selection tools transitional",
 	"get_selected_workspace": "w1/m55 — see select_workspace",
-
-	// NOT a deliberate omission: bex covers the capability under a different
-	// name (update_env_vars, plus set_env_var/delete_env_var). Listed here so
-	// the guard passes, but the name divergence is real and is why
-	// internal/secrets/mcp.go's "Render's official MCP has no env-var tools"
-	// header comment was stale — upstream added this after that comment.
-	"update_environment_variables": "bex covers the capability as `update_env_vars`; the NAME diverges and the stale header comment in internal/secrets/mcp.go was corrected in w1/m70",
 }
 
 // classifyMCPTool derives a tool's parity class from the pin.

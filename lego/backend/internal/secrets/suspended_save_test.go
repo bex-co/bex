@@ -18,6 +18,7 @@ package secrets
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -38,7 +39,7 @@ func TestADeployingSaveOnASuspendedServiceStagesAndSaysWhy(t *testing.T) {
 			app.Spec.Suspended = true
 			svc := newService(store, app)
 			rebuilt := 0
-			svc.RebuildService = func(context.Context, string) error { rebuilt++; return nil }
+			svc.RebuildService = func(context.Context, string) (json.RawMessage, error) { rebuilt++; return nil, nil }
 
 			result, err := svc.PatchEnvironment(context.Background(), "web", EnvironmentPatch{
 				SaveMode: mode,
@@ -68,13 +69,13 @@ func TestADeployingSaveOnASuspendedServiceStagesAndSaysWhy(t *testing.T) {
 func TestARebuildRefusedByARacingSuspendSaysTheSameSentence(t *testing.T) {
 	store := newFakeSecretStore()
 	svc := newService(store, sampleApp("web"))
-	svc.RebuildService = func(ctx context.Context, _ string) error {
+	svc.RebuildService = func(ctx context.Context, _ string) (json.RawMessage, error) {
 		a := getApp(t, svc.Client, "web")
 		a.Spec.Suspended = true
 		if err := svc.Client.Update(ctx, a); err != nil {
 			t.Fatal(err)
 		}
-		return fmt.Errorf("%w: service %q is suspended", core.ErrConflict, "srv-c185th5c2rvvnhbfiltg")
+		return nil, fmt.Errorf("%w: service %q is suspended", core.ErrConflict, "srv-c185th5c2rvvnhbfiltg")
 	}
 	result, err := svc.PatchEnvironment(context.Background(), "web", EnvironmentPatch{
 		SaveMode: SaveModeRebuild,
