@@ -227,15 +227,17 @@ func TestMCPParityInventory(t *testing.T) {
 	// w4/m189 added the optional textMode extension to list_logs and
 	// list_log_label_values (1:1 11 → 9, Superset 3 → 5): Render-shaped calls
 	// are unchanged, omitted textMode keeps raw text matching.
+	// w2/046 implemented upstream's update_environment_variables to its exact
+	// contract (1:1 9 → 10, total 189 → 190).
 	// Update this table and ADR018's MCP inventory together — that pairing is
 	// the point.
 	want := map[mcpParityClass]int{
-		mcpParity1to1:      9,   // +list_events (w1/m165); -list_logs -list_log_label_values (w4/m189)
+		mcpParity1to1:      10,  // +list_events (w1/m165); -list_logs -list_log_label_values (w4/m189); +update_environment_variables (w2/046)
 		mcpParitySuperset:  5,   // +get_metrics (w2/m91 Render arg names); +list_logs +list_log_label_values (w4/m189 textMode)
 		mcpParityDivergent: 6,   // -get_metrics (w2/m91)
 		mcpParityExtension: 169, // +leave_workspace (w5/m102); +5 disk tools (ADR082 w1/m84) +2 snapshot tools (w1/m85); +list_git_connections (ADR075 w5/m74); +get_service_outbound_ips (w2/023); +list_postgres_parameters (w6/m133); +resume_keyvalue (w4/083)
 	}
-	const wantTotal = 189
+	const wantTotal = 190
 
 	if len(tools) != wantTotal {
 		t.Errorf("bex registers %d MCP tools, expected %d — update this test AND ADR018's MCP inventory together",

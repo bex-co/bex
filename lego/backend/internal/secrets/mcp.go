@@ -18,9 +18,11 @@ package secrets
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
@@ -28,12 +30,8 @@ import (
 // Render's env-vars REST noun, and every tool delegates to the same Service
 // method REST/GraphQL call.
 //
-// Corrected in w1/m70: this comment used to claim "Render's official MCP has no
-// env-var tools". That was true when written and is not now — upstream added
-// `update_environment_variables`, which bex covers under the different name
-// `update_env_vars`. The parity pin (internal/api/render_mcp.go) records the
-// name divergence in mcpKnownUpstreamOnly; it is what caught this comment, and
-// it is why parity claims no longer live in comments like this one.
+// The exception is update_environment_variables: Render's own tool, kept 1:1
+// with render-oss/render-mcp-server (pkg/service/tools.go).
 
 type serviceEnvArgs struct {
 	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name)"`
@@ -55,6 +53,19 @@ type envVarWriteArg struct {
 	Key           string `json:"key" jsonschema:"the environment variable name"`
 	Value         string `json:"value,omitempty" jsonschema:"the value to set; omit when generateValue is true"`
 	GenerateValue bool   `json:"generateValue,omitempty" jsonschema:"mint a base64-encoded 256-bit value server-side; cannot be combined with value"`
+}
+
+// updateEnvironmentVariablesArgs is Render's update_environment_variables input:
+// no generateValue, and both key and value are required strings.
+type updateEnvironmentVariablesArgs struct {
+	ServiceID string                 `json:"serviceId" jsonschema:"The ID of the service to update"`
+	Replace   bool                   `json:"replace,omitempty" jsonschema:"Whether to replace all existing environment variables with the provided list, or merge with the existing ones. Defaults to false."`
+	EnvVars   []renderEnvVarInputArg `json:"envVars" jsonschema:"The list of environment variables to update or set for the service."`
+}
+
+type renderEnvVarInputArg struct {
+	Key   string `json:"key" jsonschema:"The name of the environment variable"`
+	Value string `json:"value" jsonschema:"The value of the environment variable"`
 }
 
 type setEnvVarArgs struct {
@@ -147,6 +158,44 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
+		Name: "update_environment_variables",
+		Description: "Update environment variables for a service. " +
+			"By default, environment variables passed in will be merged with the service's " +
+			"existing environment variables. This makes it safe to update environment variables " +
+			"without pulling the existing ones into the MCP host's context. " +
+			"To replace all existing environment variables, set the 'replace' parameter to 'true'.",
+		Annotations: &mcp.ToolAnnotations{
+			Title:           "Update environment variables",
+			DestructiveHint: new(true),
+			OpenWorldHint:   new(true),
+		},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateEnvironmentVariablesArgs) (*mcp.CallToolResult, any, error) {
+		if in.EnvVars == nil { // an explicit null passes the schema's nullable array type
+			return nil, nil, fmt.Errorf("%w: Environment variables are required", core.ErrBadRequest)
+		}
+		result, err := s.PatchEnvironment(ctx, in.ServiceID, EnvironmentPatch{
+			EnvVars: lastWins(in.EnvVars), Replace: in.Replace, SaveMode: SaveModeRebuild,
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+		text, isError := "Environment variables updated. A new deploy has been triggered to pick up the changes.\n\n"+
+			"Response from deploying service: "+string(result.Deploy), false
+		switch {
+		case !result.RolledOut: // saved, but the deploy did not start (suspended, billing, …)
+			text, isError = result.RolloutError, true
+			if text == "" {
+				text = "Environment variables updated, but the deploy to pick up the changes could not be started."
+			}
+		case result.Deploy == nil:
+			text = "Environment variables updated. A deploy was requested to pick up the changes; " +
+				"the request was accepted but the deploy has not been created yet. " +
+				"Use list_deploys to check on the service's deploys."
+		}
+		return &mcp.CallToolResult{IsError: isError, Content: []mcp.Content{&mcp.TextContent{Text: text}}}, nil, nil
+	})
+
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "set_env_var",
 		Description: "Add or update one environment variable of a service (merged into the existing set, not a replace); the service's pods roll to pick up the change.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvVarArgs) (*mcp.CallToolResult, EnvVarView, error) {
@@ -197,4 +246,21 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		err := s.DeleteSecretFile(ctx, in.ServiceID, in.Name)
 		return nil, deleteSecretFileResult{Deleted: err == nil}, err
 	})
+}
+
+// lastWins turns Render's envVars list into set operations, a later duplicate
+// key overriding an earlier one as in Render's merge map (the patch itself
+// refuses duplicates).
+func lastWins(vars []renderEnvVarInputArg) []core.EnvVarPatch {
+	at := make(map[string]int, len(vars))
+	ops := make([]core.EnvVarPatch, 0, len(vars))
+	for _, v := range vars {
+		if i, seen := at[v.Key]; seen {
+			ops[i].Value = v.Value
+			continue
+		}
+		at[v.Key] = len(ops)
+		ops = append(ops, core.EnvVarPatch{Key: v.Key, Value: v.Value, ValueSet: true})
+	}
+	return ops
 }

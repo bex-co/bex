@@ -17,6 +17,7 @@ limitations under the License.
 package deploys
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -113,6 +114,10 @@ func formatTimePtr(t *time.Time) string {
 	}
 	return formatTime(*t)
 }
+
+// RenderJSON is a deploy in Render's REST deploy shape, for a caller in another
+// package that answers with the deploy it opened (secrets' rebuild save).
+func RenderJSON(d DeployView) (json.RawMessage, error) { return json.Marshal(toRenderDeploy(d)) }
 
 func toRenderDeploy(d DeployView) renderDeploy {
 	out := renderDeploy{

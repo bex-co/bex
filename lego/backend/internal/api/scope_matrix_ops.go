@@ -488,6 +488,7 @@ var classifiedOps = map[string]string{
 	"MCP update_env_group_vars":                                        core.OpClassWrite,
 	"MCP update_env_vars":                                              core.OpClassWrite,
 	"MCP update_environment":                                           core.OpClassWrite,
+	"MCP update_environment_variables":                                 core.OpClassWrite,
 	"MCP update_key_value":                                             core.OpClassWrite,
 	"MCP update_notification_settings":                                 core.OpClassWrite,
 	"MCP update_postgres":                                              core.OpClassWrite,

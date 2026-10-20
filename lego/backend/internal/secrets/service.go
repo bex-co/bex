@@ -27,6 +27,7 @@ package secrets
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -91,9 +92,10 @@ type Service struct {
 	// store; nil leaves the patch untracked (CR-only mode).
 	Rollout *rollout.Tracker
 	// RebuildService opens the rebuild a "rebuild" environment save asks for,
-	// recorded as a configuration change (deploys.Service.Rebuild, w4/347).
-	// Nil makes that save mode unavailable while save_only/deploy still work.
-	RebuildService func(ctx context.Context, serviceID string) error
+	// recorded as a configuration change (deploys.Service.Rebuild, w4/347), and
+	// returns that deploy's Render JSON (nil when unknown). Nil makes that save
+	// mode unavailable while save_only/deploy still work.
+	RebuildService func(ctx context.Context, serviceID string) (json.RawMessage, error)
 }
 
 // rollApp applies mutate to an already-fetched App and merge-patches it,

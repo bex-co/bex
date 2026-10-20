@@ -18,6 +18,7 @@ package secrets
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"testing"
@@ -41,7 +42,7 @@ func TestRebuildSaveStagesThenRebuildsOnce(t *testing.T) {
 	svc := newService(store, app)
 	var rebuilt []string
 	callerCtx := context.WithValue(context.Background(), rebuildCtxKey{}, "caller")
-	svc.RebuildService = func(ctx context.Context, serviceID string) error {
+	svc.RebuildService = func(ctx context.Context, serviceID string) (json.RawMessage, error) {
 		// The caller's own context: the scoped write context defers
 		// allowed-write audits, which would drop the rebuild's audit row.
 		if ctx != callerCtx {
@@ -52,7 +53,7 @@ func TestRebuildSaveStagesThenRebuildsOnce(t *testing.T) {
 			t.Errorf("rebuild ran before the save landed: %#v", store.m[envPath("web")])
 		}
 		rebuilt = append(rebuilt, serviceID)
-		return nil
+		return nil, nil
 	}
 
 	result, err := svc.PatchEnvironment(callerCtx, "web", EnvironmentPatch{
@@ -92,7 +93,7 @@ func TestRebuildFailureKeepsTheSaveAndSaysWhy(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			store := newFakeSecretStore()
 			svc := newService(store, sampleApp("web"))
-			svc.RebuildService = func(context.Context, string) error { return tc.err }
+			svc.RebuildService = func(context.Context, string) (json.RawMessage, error) { return nil, tc.err }
 
 			result, err := svc.PatchEnvironment(context.Background(), "web", EnvironmentPatch{
 				SaveMode: SaveModeRebuild,
