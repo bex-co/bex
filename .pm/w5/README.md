@@ -13,6 +13,16 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 `up` prints the dashboard command to point at it once bex-api is running. One shared implementation serves every workstream since `w1/m72`; `.pm/w5/dev-5/` keeps only `ports.env` (a generated record of the derivation), this README, and `.gitignore`.
 
+## Approved queue — 2026-10-20 (parity-only set)
+
+User decision 2026-10-20: the parity-only set from the third `/pm-brainstorm for w5` proposal, followed by `/loopx w5`. Render parity is included for m143, m145 and m146 and omitted for m144 (build toolchain) and m147 (runtime env only), then Simplify, Test coverage and Closeout.
+
+- [ ] **m143** — [Blueprints from Render's own templates validate on bex](m143/README.md) (9 tasks; 5h total) ← round 3 item 2; 65 of 170 render-examples files validate; unquoted booleans, capitalized plans and empty `envVars` refused
+- [ ] **m144** — [Native Go builds use Go's current release, Bun gains 1.4, and the freshness check notices the next release](m144/README.md) (8 tasks; 4h10m total) ← round 3 item 1; `golang:1.24` with `GOTOOLCHAIN=local` refuses `go 1.25`+ modules
+- [ ] **m145** — [bex's MCP tools match Render's contract in argument types and annotations, guarded](m145/README.md) (9 tasks; 5h30m total) ← round 3 item 3; `clearCache: true` and `version: 16` fail; no tool annotations
+- [ ] **m146** — [Every request field Render declares on a served operation is handled or refused by name](m146/README.md) (8 tasks; 5h5m total) ← round 3 item 4; nested `serviceDetails.headers/routes/autoscaling` answer `unknown field`
+- [ ] **m147** — [Web and private services get Render's `WEB_CONCURRENCY` for their plan](m147/README.md) (7 tasks; 3h50m total) ← round 3 item 5; bex never sets it, so paid plans run 1 worker
+
 ## Approved queue — 2026-10-20 (brainstorm round 4)
 
 User decision 2026-10-20: all five items of the fourth `/pm-brainstorm for w5` proposal, in priority order, after the round-2 queue below. Both milestones end with Render parity (each adds event types on REST/GraphQL/MCP, webhooks and the dashboard), then Simplify, Test coverage and Closeout.
