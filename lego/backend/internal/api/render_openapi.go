@@ -74,6 +74,11 @@ var renderRequiredCompatibility = map[string][]string{
 	"create-project":   {"environments"},
 	"create-service":   {"ownerId", "type"},
 	"create-webhook":   {"ownerId", "enabled", "eventFilter"},
+	// bex names a registry by `host`, not Render's `registry` enum
+	// (registrycreds/rest.go), and its PATCH is per-field partial. Requiring
+	// Render's fields left no body the strict handler accepts (w8/135).
+	"create-registry-credential": {"registry", "ownerId"},
+	"update-registry-credential": {"name", "registry", "username", "authToken"},
 }
 
 // renderCommaListQueryCompatibility names query parameters whose pinned schema
@@ -247,6 +252,11 @@ var renderQueryExtensions = map[string]map[string]struct{}{
 var renderBodyPropertyExtensions = map[string]map[string]*openapi3.SchemaRef{
 	"create-key-value": {"public": {Value: openapi3.NewBoolSchema()}},
 	"create-postgres":  {"public": {Value: openapi3.NewBoolSchema()}},
+	"create-registry-credential": {
+		"host":      {Value: openapi3.NewStringSchema()},
+		"expiresAt": {Value: openapi3.NewStringSchema()},
+	},
+	"update-registry-credential": {"expiresAt": {Value: openapi3.NewStringSchema()}},
 }
 
 func loadRenderOpenAPIContract() (*renderOpenAPIContract, error) {

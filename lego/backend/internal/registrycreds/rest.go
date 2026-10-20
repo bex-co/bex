@@ -18,6 +18,7 @@ package registrycreds
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -128,7 +129,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/registrycredentials", func(w http.ResponseWriter, r *http.Request) {
 		var req createCredentialRequest
 		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
+			// The strict decoder's message is safe and names the field, e.g.
+			// Render's `registry`, which bex's wire has no place for (w8/135).
+			core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
 			return
 		}
 		expiresAt, err := parseExpiresAt(req.ExpiresAt)
@@ -159,7 +162,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("PATCH /v1/registrycredentials/{id}", func(w http.ResponseWriter, r *http.Request) {
 		var req patchCredentialRequest
 		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
+			// The strict decoder's message is safe and names the field, e.g.
+			// Render's `registry`, which bex's wire has no place for (w8/135).
+			core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
 			return
 		}
 		upd := UpdateRequest{Name: req.Name, Username: req.Username, Secret: req.AuthToken}
