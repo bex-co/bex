@@ -64,4 +64,33 @@ In `/tmp`, root cannot `O_CREAT`-open another user's file on any of the three, b
    - bex runs `dockerCommand` as `sh -c <command>` (`shellCommand`, `lego/operator/internal/controller/deployment_projection.go:217`). Render does not use a shell. The quote-free `python3 -c exec(...)` command ran on Render but crash-looped on bex with `/bin/sh: 1: Syntax error: "(" unexpected`.
    - Render keeps quote characters literally: `sh -c "…"` failed there with `File name too long`.
    - Commands containing shell syntax therefore behave differently on the two platforms.
-6. **Not measured:** Render private services (no free plan) and paid instance types; bex with pod user namespaces (w6/m149/t002).
+6. **Not measured:** Render private services (no free plan) and paid instance types. bex with pod user namespaces is measured below (w6/m149/t002).
+
+## bex user namespaces (w6/m149 t002 spike, 2026-10-20)
+
+The local CAPD cluster runs Kubernetes v1.36.1, containerd 2.3.1 and the 7.0.12-linuxkit arm64 kernel. Hetzner production uses the same containerd major version, with `UserNamespacesSupport=true`.
+
+- **Pod spec:** each pod was hand-projected with `render-v1`: drop `ALL` plus `CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID, SYS_CHROOT`, `allowPrivilegeEscalation: false`, RuntimeDefault seccomp and `hostUsers: false`.
+- **Image:** unchanged `postgres:17`, whose entrypoint runs `chown` and then `gosu`. `yandex/clickhouse-server:21` is amd64-only and cannot run on this arm64 host.
+- **Scope:** both the spike namespace and the node fixtures were removed afterwards.
+
+**Two volume types gave opposite results.**
+
+- **No-go on the local `local-path` class.** The volume is a directory on the CAPD node's overlayfs root. runc refused the pod: `failed to set MOUNT_ATTR_IDMAP on /opt/local-path-provisioner/pvc-…: invalid argument (maybe the filesystem used doesn't support idmap mounts on this kernel?)`. The container never started.
+  - **Cause:** this overlayfs does not accept an idmapped mount. Kubernetes needs that mount to place a pod user namespace on a volume. It is a filesystem limitation, not a bex one.
+  - **Consequence:** on any storage class whose filesystem cannot be idmapped, `hostUsers: false` fails closed at container start.
+- **Go on ext4.** Production disks are ext4 on LUKS `hcloud-volumes` (ADR082). Each volume was a local PV on a loopback ext4 mounted on the tenant node.
+
+| Path | Result | Observation |
+| --- | --- | --- |
+| Fresh disk | go | First start ran `initdb`. Inside the pod: `uid_map 0 2522939392 65536`, `CapBnd 00000000000400cb` (exactly the six), `CapEff 0` after `gosu`, `NoNewPrivs 1`, `Seccomp 2`. |
+| Host ownership | go | On the node, `pgdata` is `uid=999` and `PG_VERSION` `999:999`: the in-container UID, not shifted. |
+| Re-owned disk (restart) | go | After delete and recreate, the pod starts on the volume it already owns and reads the sentinel row. |
+| Pre-existing non-userns disk | go | A `hostUsers: true` Postgres initialized and wrote the volume. The same Deployment was then switched to `hostUsers: false`: it starts, reads the old row and writes a new one. Files on disk stay `999:999`. **A t008 migration needs no chown step.** |
+| Secrets | go | Secret files under `/etc/secrets` are readable (owned by 0 inside the pod); `envFrom` secret values are present. |
+| `emptyDir` | go | Writable. |
+| SIGTERM | go | Pod deletion took 4s: `received fast shutdown request` → `database system is shut down`. |
+| Exec (SSH gateway path) | go | `kubectl exec … psql` works. The gateway uses the same `exec` subresource. |
+| Snapshot/restore | go | The snapshot Job was emulated with the same security context (root, no user namespace, `DAC_OVERRIDE, CHOWN, FOWNER`, a read-only source bind). It ran `tar` from the userns-written volume into a new one with `--numeric-owner`. A `hostUsers: false` Postgres then started on the restored volume and read the sentinel. |
+
+**Verdict.** Pod user namespaces work for disk-backed runtime services on ext4, with every runtime path above. They must not be projected until Hetzner `hcloud-volumes` passes the same idmap check (w6/m149/t009): a filesystem that cannot be idmapped would turn every such deploy into a start failure.
