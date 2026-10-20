@@ -86,16 +86,18 @@ func TestRESTAggregateByStatusCodeBreaksRequestsDown(t *testing.T) {
 	}
 }
 
-func TestRESTAggregateByHostIsACodedRefusal(t *testing.T) {
+// The Traefik counter has no host, so a host breakdown never falls back to it:
+// with the request-log store unwired it is the host filter's 503.
+func TestRESTAggregateByHostNeedsTheRequestLogStore(t *testing.T) {
 	svc := newService(nil, groupedRequestSource(t), sampleApp("web"), podFor("web", webInst))
 
 	rec := serveREST(svc, "/v1/metrics/http-requests?resource=web&aggregateBy=host")
-	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "aggregateBy=host is unsupported") {
-		t.Fatalf("aggregateBy=host = %d %s, want a 400 naming the unsupported breakdown", rec.Code, rec.Body)
+	if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), "LOG_STORE_UNAVAILABLE") {
+		t.Fatalf("aggregateBy=host without Loki = %d %s, want 503 LOG_STORE_UNAVAILABLE", rec.Code, rec.Body)
 	}
 }
 
-func TestRESTCPUAggregationMethodIsHonoredOrRefused(t *testing.T) {
+func TestRESTCPUAggregationOnTheSnapshotSourceIsRefused(t *testing.T) {
 	svc := newService(staticResourceMetrics(map[string]PodResourceUsage{
 		webInst: {CPUCores: 0.5, MemoryBytes: 512 << 20},
 	}), nil, sampleApp("web"), podWithLimits(webInst))
@@ -104,8 +106,8 @@ func TestRESTCPUAggregationMethodIsHonoredOrRefused(t *testing.T) {
 		t.Errorf("aggregationMethod=AVG = %d %s, want 200", rec.Code, rec.Body)
 	}
 	if rec := serveREST(svc, "/v1/metrics/cpu?resource=web&aggregationMethod=MAX"); rec.Code != http.StatusBadRequest ||
-		!strings.Contains(rec.Body.String(), "aggregationMethod") {
-		t.Errorf("aggregationMethod=MAX = %d %s, want a coded 400", rec.Code, rec.Body)
+		!strings.Contains(rec.Body.String(), "metrics-server snapshot") {
+		t.Errorf("aggregationMethod=MAX on the snapshot source = %d %s, want a coded 400", rec.Code, rec.Body)
 	}
 }
 
