@@ -185,3 +185,21 @@ These decisions split D3/D4 (ports and references) from D2 (capabilities). They 
    - the effective port for configured web and private services;
    - `[]` while discovery is pending;
    - absent for workers, cron jobs and static sites.
+
+## Privilege slice decisions — 2026-10-19 (w6/m149)
+
+**User decision, 2026-10-17:** Render parity outranks the earlier drop-ALL hardening. These decisions turn that into D2's contract. The evidence is a live probe of Render and of bex `strict-v1`/`image-v1` ([container-privileges.md](render-artifacts/container-privileges.md)).
+
+1. **Parity criterion:** every image that starts on Render starts on bex unchanged. bex may be more permissive where Render is unmeasured, but it is never stricter on a measured axis.
+2. **Policy `render-v1`.** It is versioned and persisted per service, like `image-v1`.
+   - It drops `ALL` and adds exactly Render's measured set: `CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID, SYS_CHROOT`. That is `image-v1` plus `FOWNER` (an entrypoint that chmods after chowning fails without it, as the probe itself did) and `SYS_CHROOT`.
+   - Docker-default capabilities that Render lacks are **not** added: `NET_BIND_SERVICE`, `KILL`, `SETPCAP`, `SETFCAP`, `FSETID`, `MKNOD`, `AUDIT_WRITE` and `NET_RAW`.
+   - Ports below 1024 need none of them: containerd 2.x enables unprivileged ports in every pod (w6/m149 t006).
+3. **Kept as is:** `allowPrivilegeEscalation: false` (Render measured `NoNewPrivs=1`), the AppArmor default (the same profile on both), and no host namespaces, devices or privileged mode.
+4. **Seccomp: open, the user's call.** Render applies no filter, so `io_uring` and unprivileged user namespaces work there. bex's RuntimeDefault blocks both. Until the user decides, `render-v1` keeps RuntimeDefault and the difference is a named divergence. Anything else ships as its own security-reviewed milestone.
+5. **Pod user namespaces: open, decided by w6/m149 t002.** Render runs none, so `hostUsers: false` is bex-only defense in depth, not parity. It is adopted where the spike proves it works, persistent disks included. A no-go narrows the mitigation and never blocks the capability set.
+6. **Scope and lifecycle.**
+   - New Docker/image services in every workspace get `render-v1` once w6/m149 t009 widens the gate.
+   - `strict-v1` and `image-v1` rows never change on upgrade or Blueprint sync.
+   - Moving an existing service is an explicit operator-run migration of one service (w6/m149 t008).
+   - Rollback reverts the creation default only.

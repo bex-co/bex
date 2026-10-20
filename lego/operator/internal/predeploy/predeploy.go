@@ -160,12 +160,14 @@ func Job(o Options) *batchv1.Job {
 	labels[LabelService] = o.Name
 	podLabels := execution.PodLabels(o.Name, o.AppUID, ComponentValue, o.Workspace, appNamespace, o.VerifyImage)
 	podLabels[LabelService] = o.Name
-	if o.ContainerPolicy == appv1alpha1.ContainerPolicyImageV1 {
+	// Every widened policy (image-v1, render-v1) carries its admission marker;
+	// strict pre-deploy pods stay unlabeled.
+	if len(appv1alpha1.ContainerPolicyCapabilities(o.ContainerPolicy)) > 0 {
 		podLabels[execution.LabelContainerPolicy] = o.ContainerPolicy
 	}
 	var owners []metav1.OwnerReference
 	// App owner references are valid only for co-located Jobs. They also bind
-	// the image-v1 admission marker to the same App lifetime as the UID label.
+	// the policy admission marker to the same App lifetime as the UID label.
 	if o.AppUID != "" && o.AppNamespace == o.Namespace {
 		owners = []metav1.OwnerReference{{
 			APIVersion: appv1alpha1.SchemeGroupVersion.String(), Kind: "App",

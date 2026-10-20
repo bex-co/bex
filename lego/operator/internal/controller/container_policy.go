@@ -27,14 +27,14 @@ import (
 // appPolicyLabels projects only persisted policy, never an App's arbitrary
 // labels. Keep strict templates byte-identical to avoid rolling legacy Apps.
 func appPolicyLabels(app *appv1alpha1.App, labels map[string]string) map[string]string {
-	if app.Spec.ContainerPolicy != appv1alpha1.ContainerPolicyImageV1 {
+	if len(appv1alpha1.ContainerPolicyCapabilities(app.Spec.ContainerPolicy)) == 0 {
 		return labels
 	}
 	labels = maps.Clone(labels)
 	if labels == nil {
 		labels = make(map[string]string)
 	}
-	labels[execution.LabelContainerPolicy] = appv1alpha1.ContainerPolicyImageV1
+	labels[execution.LabelContainerPolicy] = app.Spec.ContainerPolicy
 	labels[execution.LabelApp] = app.Name
 	labels[execution.LabelAppUID] = string(app.UID)
 	return labels
@@ -45,8 +45,8 @@ func appPolicyLabels(app *appv1alpha1.App, labels map[string]string) map[string]
 // containers and managed datastores continue to use tenantSecCtx directly.
 func appSecCtx(spec appv1alpha1.AppSpec) *corev1.SecurityContext {
 	security := tenantSecCtx()
-	if spec.ContainerPolicy == appv1alpha1.ContainerPolicyImageV1 {
-		security.Capabilities.Add = []corev1.Capability{"CHOWN", "DAC_OVERRIDE", "SETUID", "SETGID"}
+	for _, capability := range appv1alpha1.ContainerPolicyCapabilities(spec.ContainerPolicy) {
+		security.Capabilities.Add = append(security.Capabilities.Add, corev1.Capability(capability))
 	}
 	return security
 }

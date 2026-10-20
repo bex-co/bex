@@ -1,6 +1,6 @@
 # w6 · m149 — Tenant containers run what Render runs: a Render-compatible privilege policy in every workspace (privilege slice of deploying `render-examples/clickhouse`)
 
-**Worker:** worker6 **Goal:** in any workspace, a new Docker/image service whose unchanged image initializes as root (it changes file ownership, then switches to an unprivileged user, as ClickHouse, Postgres, MySQL and nginx images do) starts and serves. The policy is persisted per service, applied to every path that runs the service image, and confined by a pod user namespace where t002 proves that works. ADR089, ADR022 and ADR018 record the user decision that Render parity outranks the earlier drop-ALL hardening. **Status:** todo (t001, t006 done 2026-10-19)
+**Worker:** worker6 **Goal:** in any workspace, a new Docker/image service whose unchanged image initializes as root (it changes file ownership, then switches to an unprivileged user, as ClickHouse, Postgres, MySQL and nginx images do) starts and serves. The policy is persisted per service, applied to every path that runs the service image, and confined by a pod user namespace where t002 proves that works. ADR089, ADR022 and ADR018 record the user decision that Render parity outranks the earlier drop-ALL hardening. **Status:** todo (t001, t006 done 2026-10-19; the `render-v1` policy value shipped across types/store/operator/admission — t004/t005/t007 remain open for the creation default and `hostUsers`)
 
 ## Tasks (in order)
 

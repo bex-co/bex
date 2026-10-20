@@ -2443,12 +2443,14 @@ for required_operator_workload_guard in \
   "bex-kubeconfig" \
   "bex-ca" \
   "variables.target.metadata.name.startsWith('dskbak-')" \
-  "variables.podMetadata.?labels['app.bex.co/container-policy'].orValue('') == 'image-v1'" \
+  "variables.containerPolicy in variables.containerPolicyCaps" \
+  "cap in variables.containerPolicyCaps[variables.containerPolicy]" \
   "o.uid == variables.podMetadata.?labels['app.bex.co/app-uid'].orValue('')" \
   "o.apiVersion == 'app.bex.co/v1alpha1' && o.kind == 'App'" \
   "variables.pod.containers.size() == 1" \
   "c.?securityContext.?capabilities.?drop.orValue([]) == ['ALL']" \
   "['CHOWN', 'DAC_OVERRIDE', 'SETUID', 'SETGID']" \
+  "['CHOWN', 'DAC_OVERRIDE', 'FOWNER', 'SETGID', 'SETUID', 'SYS_CHROOT']" \
   "['DAC_OVERRIDE', 'CHOWN', 'FOWNER']"; do
   grep -qF "$required_operator_workload_guard" deploy/gitops/base/operator-workload-admission.yaml || {
     echo "FAIL: operator workload admission lost '$required_operator_workload_guard'" >&2

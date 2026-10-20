@@ -23,4 +23,22 @@ const (
 	// ContainerPolicyImageV1 supports ordinary root image initialization and
 	// privilege dropping without privileged mode or arbitrary tenant capabilities.
 	ContainerPolicyImageV1 = "image-v1"
+	// ContainerPolicyRenderV1 adds exactly the capability set Render's runtime
+	// grants, measured live (ADR089 § Privilege slice decisions, w6/m149):
+	// every image that starts on Render starts on bex unchanged.
+	ContainerPolicyRenderV1 = "render-v1"
 )
+
+// ContainerPolicyCapabilities is the one table of capabilities a policy adds
+// on top of dropping ALL: the operator projects it, and the workload admission
+// policy's lists are tested against it. Strict (and "") adds none.
+func ContainerPolicyCapabilities(policy string) []string {
+	switch policy {
+	case ContainerPolicyImageV1:
+		return []string{"CHOWN", "DAC_OVERRIDE", "SETUID", "SETGID"}
+	case ContainerPolicyRenderV1:
+		return []string{"CHOWN", "DAC_OVERRIDE", "FOWNER", "SETGID", "SETUID", "SYS_CHROOT"}
+	default:
+		return nil
+	}
+}

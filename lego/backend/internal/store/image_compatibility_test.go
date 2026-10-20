@@ -17,13 +17,14 @@ limitations under the License.
 package store
 
 import (
+	"strings"
 	"testing"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 func TestReconcileRestoresImageCompatibilityPolicy(t *testing.T) {
-	for _, policy := range []string{"", appv1alpha1.ContainerPolicyStrictV1, appv1alpha1.ContainerPolicyImageV1} {
+	for _, policy := range []string{"", appv1alpha1.ContainerPolicyStrictV1, appv1alpha1.ContainerPolicyImageV1, appv1alpha1.ContainerPolicyRenderV1} {
 		t.Run(policy, func(t *testing.T) {
 			rec, st, cl := newTestReconciler(t)
 			ctx := t.Context()
@@ -32,7 +33,7 @@ func TestReconcileRestoresImageCompatibilityPolicy(t *testing.T) {
 				t.Fatal(err)
 			}
 			mode := ""
-			if policy == appv1alpha1.ContainerPolicyImageV1 {
+			if policy == appv1alpha1.ContainerPolicyImageV1 || policy == appv1alpha1.ContainerPolicyRenderV1 {
 				mode = appv1alpha1.PortModeImageV1
 			}
 			_, err = st.CreateApp(ctx, App{
@@ -78,9 +79,9 @@ func TestPGImageCompatibilityPolicyRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, policy := range []string{"", appv1alpha1.ContainerPolicyStrictV1, appv1alpha1.ContainerPolicyImageV1} {
+	for _, policy := range []string{"", appv1alpha1.ContainerPolicyStrictV1, appv1alpha1.ContainerPolicyImageV1, appv1alpha1.ContainerPolicyRenderV1} {
 		mode := ""
-		if policy == appv1alpha1.ContainerPolicyImageV1 {
+		if policy == appv1alpha1.ContainerPolicyImageV1 || policy == appv1alpha1.ContainerPolicyRenderV1 {
 			mode = appv1alpha1.PortModeImageV1
 		}
 		app, err := st.CreateApp(ctx, App{
@@ -151,5 +152,72 @@ func TestPGInitialDiskFailureRollsBackService(t *testing.T) {
 	var count int
 	if err := st.Pool.QueryRow(ctx, `SELECT count(*) FROM apps WHERE tenant_id = $1`, tenant.ID).Scan(&count); err != nil || count != 0 {
 		t.Fatalf("failed disk left service rows: %d, error = %v", count, err)
+	}
+}
+
+// 0153 widens the policy CHECK for render-v1 (w6/m149). Its down migration
+// refuses while a render-v1 service exists, rather than stranding it with a
+// policy an older control plane cannot project, and restores the old CHECK.
+func TestPGRenderV1PolicyMigrationRoundTrip(t *testing.T) {
+	st, ctx := newBillingTestStore(t)
+	tenant, err := st.CreateTenant(ctx, "render-v1-migration", "hobby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := st.CreateApp(ctx, App{
+		TenantID: tenant.ID, Name: "web", Image: "nginx:1", Port: 80, Replicas: 1, Tier: "starter",
+		ContainerPolicy: appv1alpha1.ContainerPolicyRenderV1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Every step runs in one rolled-back transaction (Postgres DDL is
+	// transactional): a failure midway cannot leave the shared test database
+	// at the pre-0153 constraint with 0153 recorded as applied.
+	tx, err := st.Pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	// Each step gets a savepoint, so an expected failure does not abort the
+	// transaction.
+	exec := func(sql string, args ...any) error {
+		step, err := tx.Begin(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := step.Exec(ctx, sql, args...); err != nil {
+			_ = step.Rollback(ctx)
+			return err
+		}
+		return step.Commit(ctx)
+	}
+	migrate := func(direction string) error {
+		migration, err := migrationsFS.ReadFile("migrations/0153_app_container_policy_render_v1." + direction + ".sql")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return exec(string(migration))
+	}
+	if err := migrate("down"); err == nil || !strings.Contains(err.Error(), "render-v1 services exist") {
+		t.Fatalf("down with a render-v1 service = %v, want a refusal", err)
+	}
+	if err := exec(`UPDATE apps SET container_policy = '' WHERE id = $1`, app.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := migrate("down"); err != nil {
+		t.Fatalf("down without render-v1 services: %v", err)
+	}
+	if err := exec(`UPDATE apps SET container_policy = 'render-v1' WHERE id = $1`, app.ID); err == nil {
+		t.Fatal("the pre-0153 CHECK accepted render-v1")
+	}
+	if err := migrate("up"); err != nil {
+		t.Fatalf("up again: %v", err)
+	}
+	if err := exec(`UPDATE apps SET container_policy = 'render-v1' WHERE id = $1`, app.ID); err != nil {
+		t.Fatalf("0153 refused render-v1: %v", err)
+	}
+	if err := exec(`UPDATE apps SET container_policy = 'docker-default' WHERE id = $1`, app.ID); err == nil {
+		t.Fatal("the CHECK accepted an unknown policy")
 	}
 }

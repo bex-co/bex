@@ -113,7 +113,7 @@ func TestPrivateImagePortRejectsReservedCreationWithoutWrites(t *testing.T) {
 }
 
 func TestBlueprintSyncPreservesContainerPolicy(t *testing.T) {
-	for _, policy := range []string{"", appv1alpha1.ContainerPolicyStrictV1, appv1alpha1.ContainerPolicyImageV1} {
+	for _, policy := range []string{"", appv1alpha1.ContainerPolicyStrictV1, appv1alpha1.ContainerPolicyImageV1, appv1alpha1.ContainerPolicyRenderV1} {
 		t.Run(policy, func(t *testing.T) {
 			existing := sampleApp("app")
 			existing.Spec.ContainerPolicy = policy

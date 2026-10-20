@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -110,11 +111,13 @@ var _ = Describe("Application container policy admission", func() {
 				return apierrors.IsForbidden(err) && strings.Contains(err.Error(), "bex-operator-workloads")
 			}, 20*time.Second, 100*time.Millisecond).Should(BeTrue(), "workload binding must become active")
 
-			workloads := make([]client.Object, 0, 23)
-			for _, policy := range []string{appv1alpha1.ContainerPolicyImageV1, appv1alpha1.ContainerPolicyStrictV1, ""} {
-				workloads = append(workloads, admissionApplicationWorkloads(namespace, policy)...)
-			}
-			workloads = append(workloads, admissionPlatformWorkloads(namespace)...)
+			workloads := slices.Concat(
+				admissionApplicationWorkloads(namespace, appv1alpha1.ContainerPolicyImageV1),
+				admissionApplicationWorkloads(namespace, appv1alpha1.ContainerPolicyRenderV1),
+				admissionApplicationWorkloads(namespace, appv1alpha1.ContainerPolicyStrictV1),
+				admissionApplicationWorkloads(namespace, ""),
+				admissionPlatformWorkloads(namespace),
+			)
 			for _, projected := range workloads {
 				workload := admissionFreshWorkload(projected)
 				scenario := fmt.Sprintf("%T %s/%s", workload, namespace, workload.GetName())
@@ -183,13 +186,23 @@ var _ = Describe("Application container policy admission", func() {
 					}
 				}
 
-				if admissionPodTemplate(workload).Labels["app.bex.co/container-policy"] == appv1alpha1.ContainerPolicyImageV1 {
+				if widened := admissionPodTemplate(workload).Labels["app.bex.co/container-policy"]; widened != "" {
+					// A capability outside this policy's set (for image-v1, one
+					// render-v1 adds): each set is exact, not the union of every
+					// widened policy.
+					foreign := corev1.Capability("FOWNER")
+					if widened == appv1alpha1.ContainerPolicyRenderV1 {
+						foreign = "NET_BIND_SERVICE"
+					}
 					for _, mutation := range []struct {
 						name         string
 						metadataOnly bool
 						change       func(client.Object, *corev1.PodTemplateSpec)
 					}{
 						{"missing-marker", false, func(_ client.Object, p *corev1.PodTemplateSpec) { delete(p.Labels, "app.bex.co/container-policy") }},
+						{"capability-outside-its-policy", false, func(_ client.Object, p *corev1.PodTemplateSpec) {
+							p.Spec.Containers[0].SecurityContext.Capabilities.Add = append(p.Spec.Containers[0].SecurityContext.Capabilities.Add, foreign)
+						}},
 						{"forged-marker", false, func(_ client.Object, p *corev1.PodTemplateSpec) { p.Labels["app.bex.co/container-policy"] = "image-v2" }},
 						{"missing-app-uid", false, func(_ client.Object, p *corev1.PodTemplateSpec) { delete(p.Labels, "app.bex.co/app-uid") }},
 						{"forged-app-uid", false, func(_ client.Object, p *corev1.PodTemplateSpec) { p.Labels["app.bex.co/app-uid"] = "foreign-uid" }},
