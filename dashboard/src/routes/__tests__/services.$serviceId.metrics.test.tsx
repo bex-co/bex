@@ -119,4 +119,44 @@ describe("ServiceMetricsPage (w5/m48 — static sites get no pod metrics)", () =
     expect(screen.queryByText("application card")).not.toBeInTheDocument();
     expect(screen.getByText("network card")).toBeInTheDocument();
   });
+
+  // w4/m236 t007: when the service resolves after first render, the
+  // Application card must appear exactly once — a duplicate sibling
+  // key={serviceId} (Application + Network) left the overwritten fiber's DOM
+  // mounted and frozen beside its fresh replacement.
+  it("renders exactly one Application card when the service resolves after first render", () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    try {
+      serverState.service = null;
+      serverState.loading = true;
+      const { rerender } = render(<ServiceMetricsPage serviceId="srv-1" />);
+      expect(screen.queryByText("application card")).not.toBeInTheDocument();
+
+      serverState.service = {
+        id: "srv-1",
+        type: "web_service",
+        suspended: false,
+        phase: "Running",
+      } as ServiceView;
+      serverState.loading = false;
+      rerender(<ServiceMetricsPage serviceId="srv-1" />);
+
+      expect(screen.getAllByText("application card")).toHaveLength(1);
+      expect(screen.getAllByText("network card")).toHaveLength(1);
+      // The production duplicate was a fiber leaked by react-dom's keyed
+      // reconciliation; React names the cause itself. The stubbed DOM does
+      // not reproduce the leak, so pin the warning too: duplicate sibling
+      // keys must never come back.
+      const duplicateKeyWarning = consoleError.mock.calls.some((args) =>
+        args.some(
+          (a) => typeof a === "string" && a.includes("same key"),
+        ),
+      );
+      expect(duplicateKeyWarning).toBe(false);
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
 });

@@ -127,7 +127,12 @@ export function ServiceMetricsPage({
 
       {showApplicationCard && (
         <ApplicationMetricsCard
-          key={serviceId}
+          // Distinct from the Network card's key: siblings sharing
+          // key={serviceId} made react-dom's keyed reconciliation overwrite
+          // one fiber with the other, leaving the loser's DOM mounted and
+          // frozen beside its replacement (w4/m236 t007). Each card still
+          // remounts when serviceId changes (w5/m91, w4/m224).
+          key={`application:${serviceId}`}
           resource={serviceId}
           window={window}
           markers={markers}
@@ -135,7 +140,7 @@ export function ServiceMetricsPage({
         />
       )}
       <NetworkMetricsCard
-        key={serviceId}
+        key={`network:${serviceId}`}
         resource={serviceId}
         window={window}
         markers={markers}
