@@ -3510,7 +3510,7 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 			existing.Spec.MaintenanceMode = currentMaintenance
 		}
 		if !checksGated(existing.Spec) {
-			delete(existing.Annotations, annotChecksPendingCommit)
+			clearCheckedPending(existing)
 		}
 	}
 	if changes.initialHookChanged {

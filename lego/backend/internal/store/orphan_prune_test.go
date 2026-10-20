@@ -34,8 +34,9 @@ import (
 // cluster list — and can fail the fresh per-object reads.
 type snapshotRaceStore struct {
 	*memStore
-	after  func()
-	getErr error
+	after             func()
+	getErr            error
+	appSourceRevision map[string]int64
 }
 
 func (s *snapshotRaceStore) runAfter() {
@@ -49,6 +50,11 @@ func (s *snapshotRaceStore) runAfter() {
 func (s *snapshotRaceStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {
 	snapshot, err := s.memStore.ListDesiredApps(ctx)
 	if err == nil {
+		for i := range snapshot {
+			if version, ok := s.appSourceRevision[snapshot[i].ID]; ok {
+				snapshot[i].SourceRevision = version
+			}
+		}
 		s.runAfter()
 	}
 	return snapshot, err
