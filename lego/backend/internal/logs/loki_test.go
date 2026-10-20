@@ -762,7 +762,7 @@ func TestQueryLogsBuildType(t *testing.T) {
 		t.Errorf("entry label type = %q, want %q", entries[0].Labels["type"], LogTypeBuild)
 	}
 	// The Loki query used the type="build" selector.
-	if q := f.lastValues.Get("query"); q != `{namespace="default", app="web", type="build"}` {
+	if q := f.lastValues.Get("query"); q != `{namespace="default", app="web", app_id=~"web|", type="build"}` {
 		t.Errorf("Loki query wrong: %s", q)
 	}
 

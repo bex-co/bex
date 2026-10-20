@@ -278,9 +278,19 @@ const instanceLivenessWindow = "90s"
 
 func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 	matchers := egressquery.PodNameMatcher(req.Namespace, req.App)
+	// Pod names cannot tell an App from an earlier one of the same name, but
+	// kube-state-metrics knows each pod's creation: drop the pods known to
+	// predate the App (w8/m124). `unless`, not `and`, so a pod KSM has no
+	// series for still charts rather than vanishing.
+	own := func(perPod string) string {
+		if req.NotBefore.IsZero() {
+			return perPod
+		}
+		return fmt.Sprintf(`(%s) unless on(pod) (kube_pod_created{namespace=%q} < %d)`, perPod, req.Namespace, req.NotBefore.Unix())
+	}
 	switch req.Metric {
 	case MetricMemory, MetricCPU:
-		return resourceUsageQuery(req.Metric, matchers, req.Resolution, req.CPUAggregation)
+		return own(resourceUsageQuery(req.Metric, matchers, req.Resolution, req.CPUAggregation))
 	case MetricInstanceCount:
 		// The inner `sum by (pod)` already reduces a pod's (possibly duplicated)
 		// container series to one series per pod, so counting pods is unaffected
@@ -297,10 +307,10 @@ func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 		// Unlike the per-pod cpu/memory gauges — where a stale point merely
 		// extends a line — staleness on a *count* invents instances, so this is
 		// the one query that must be liveness-gated.
-		return fmt.Sprintf(`count(sum by (pod) (count_over_time(container_memory_working_set_bytes{%s}[%s])) > 0)`,
-			matchers, instanceLivenessWindow)
+		return fmt.Sprintf(`count(%s)`, own(fmt.Sprintf(`sum by (pod) (count_over_time(container_memory_working_set_bytes{%s}[%s])) > 0`,
+			matchers, instanceLivenessWindow)))
 	}
-	return resourceUsageQuery(MetricCPU, matchers, req.Resolution, req.CPUAggregation)
+	return own(resourceUsageQuery(MetricCPU, matchers, req.Resolution, req.CPUAggregation))
 }
 
 // resourceUsageQuery is the per-pod cpu (cores) or memory (bytes) usage over

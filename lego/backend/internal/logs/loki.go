@@ -380,6 +380,10 @@ func lokiRange(q LogQuery, now time.Time) (start, end time.Time) {
 	if start.IsZero() {
 		start = end.Add(-lokiLookback)
 	}
+	// Nothing an App owns predates it (w8/m124). This only ever narrows.
+	if start.Before(q.notBefore) {
+		start = q.notBefore
+	}
 	return start, end
 }
 
@@ -451,6 +455,11 @@ func lokiSelectorFor(namespace string, q LogQuery) string {
 		matchers = append(matchers, fmt.Sprintf("keyvalue=%q", q.KeyValue))
 	default:
 		matchers = append(matchers, fmt.Sprintf("app=%q", q.App))
+		// Its own id's streams, or the unlabeled ones shipped before streams
+		// carried app_id (w8/m124); notBefore keeps those to this incarnation.
+		if q.appID != "" {
+			matchers = append(matchers, fmt.Sprintf("app_id=~%q", regexp.QuoteMeta(q.appID)+"|"))
+		}
 	}
 	if q.Database == "" && q.KeyValue == "" {
 		if m := lokiTypeMatcher(q); m != "" {
