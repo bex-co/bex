@@ -243,26 +243,28 @@ describe("refusalReason", () => {
   });
 });
 
-// w5/164: a transport failure's text is the browser's own untranslated
-// English ("Failed to fetch", "NetworkError when attempting to fetch
-// resource."), so no helper hands it to a dialog as a reason; the dialog's
-// translated copy is shown instead.
-describe("transport failures carry no reason", () => {
-  const transport = [
+// w5/164, w5/168: a transport failure's text is the browser's own
+// untranslated English ("Failed to fetch"), and bex-api's redacted "internal
+// error" names nothing either, so no helper hands them to a dialog as a
+// reason; the dialog's translated copy is shown instead.
+describe("failures with no reason to relay", () => {
+  const noReason = [
     new TypeError("Failed to fetch"),
     new TypeError("NetworkError when attempting to fetch resource."),
     new Error("Response not successful: Received status code 502"),
+    // bex-api's redacted resolver failure: a server answer, but no reason.
+    codedGraphQLError("INTERNAL", {}, "internal error"),
   ];
 
-  it.each(transport)("refusalReason(%s) is empty", (err) => {
+  it.each(noReason)("refusalReason(%s) is empty", (err) => {
     expect(refusalReason(err)).toBe("");
   });
 
-  it.each(transport)("relayableReason(%s) is empty", (err) => {
+  it.each(noReason)("relayableReason(%s) is empty", (err) => {
     expect(relayableReason(err)).toBe("");
   });
 
-  it.each(transport)("mutationErrorMessage(%s) is the generic copy", (err) => {
+  it.each(noReason)("mutationErrorMessage(%s) is the generic copy", (err) => {
     expect(mutationErrorMessage(err, "Couldn't rename the workspace")).toBe(
       "Couldn't rename the workspace",
     );
@@ -287,5 +289,19 @@ describe("relayableReason", () => {
     expect(
       relayableReason(codedGraphQLError("AUTH_OVERLOADED", {}, "overloaded")),
     ).toBe("");
+  });
+});
+
+// The code is read off the error whose message would be shown: a refusal
+// first in the response still reads, whatever failed after it (w5/168).
+describe("refusalReason with a later INTERNAL error", () => {
+  it("relays the first error's refusal", () => {
+    const err = new CombinedGraphQLErrors({
+      errors: [
+        { message: "bad request: name is taken" },
+        { message: "internal error", extensions: { code: "INTERNAL" } },
+      ],
+    });
+    expect(refusalReason(err)).toBe("Name is taken");
   });
 });

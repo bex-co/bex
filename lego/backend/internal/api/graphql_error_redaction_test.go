@@ -52,8 +52,12 @@ func TestSanitizeGraphQLErrors(t *testing.T) {
 		wrap(leaky), wrap(classified), wrap(coded), parseErr,
 	}, false)
 
-	if out[0].Message != "internal error" {
-		t.Errorf("unclassified resolver error not redacted: %q", out[0].Message)
+	if out[0].Message != "internal error" || out[0].Extensions["code"] != core.CodeInternal {
+		t.Errorf("unclassified resolver error = %q %v, want redacted with code %s", out[0].Message, out[0].Extensions, core.CodeInternal)
+	}
+	// A parse error is the caller's to fix, not an internal fault.
+	if _, has := out[3].Extensions["code"]; has {
+		t.Errorf("parse error gained a code: %v", out[3].Extensions)
 	}
 	if out[1].Message == "internal error" {
 		t.Errorf("classified (not found) resolver error wrongly redacted: %q", out[1].Message)

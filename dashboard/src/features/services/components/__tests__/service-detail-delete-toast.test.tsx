@@ -117,7 +117,7 @@ const link = new ApolloLink(
           send({
             data: null,
             errors: [
-              { message: "delete failed", extensions: { code: "INTERNAL" } },
+              { message: "internal error", extensions: { code: "INTERNAL" } },
             ],
           });
           return;
@@ -222,7 +222,7 @@ describe("service detail delete (w4/340)", () => {
     const { client, router, releaseHome } = renderDetail();
     await confirmDelete();
     await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith("Delete failed"),
+      expect(toast.error).toHaveBeenCalledWith("Couldn't delete web"),
     );
     expect(router.state.location.pathname).toBe("/services/srv-1/settings");
 

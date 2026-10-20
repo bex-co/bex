@@ -1705,6 +1705,7 @@ func sanitizeGraphQLErrors(errs []gqlerrors.FormattedError, mutation bool) []gql
 		}
 		log.Printf("bex-api graphql: internal error: %v", resolverErr)
 		errs[i].Message = "internal error"
+		errs[i].Extensions = map[string]any{"code": core.CodeInternal}
 	}
 	return errs
 }

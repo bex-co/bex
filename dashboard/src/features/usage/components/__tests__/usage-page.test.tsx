@@ -15,7 +15,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import i18n from "@/i18n/init";
-import { uncodedGraphQLError } from "@/test/mocks/apollo";
+import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 import { UsagePage } from "../usage-page";
 import { useUsage, type UsageSummary } from "@/features/usage/hooks/use-usage";
 
@@ -166,6 +166,21 @@ describe("UsagePage", () => {
     } finally {
       await i18n.changeLanguage("en");
     }
+
+    // bex-api's redacted resolver failure reads as the panel's copy (w5/168).
+    mockUseUsage.mockReturnValue({
+      summary: null,
+      loading: false,
+      error: codedGraphQLError("INTERNAL", {}, "internal error"),
+    });
+    const internal = render(<UsagePage />);
+    expect(
+      screen.getByText(
+        "Something went wrong while loading. Refresh the page to try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Internal error")).toBeNull();
+    internal.unmount();
 
     mockUseUsage.mockReturnValue({
       summary: null,

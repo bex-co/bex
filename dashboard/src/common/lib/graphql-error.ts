@@ -4,11 +4,14 @@ import { CombinedGraphQLErrors } from "@apollo/client/errors";
  * The first GraphQL error's message, or null for anything else. A transport
  * failure's message ("Failed to fetch") is the browser's own English, names
  * nothing the user can act on, and would show untranslated in every locale, so
- * a caller falls back to its own copy instead.
+ * a caller falls back to its own copy instead. So does bex-api's redacted
+ * `INTERNAL` "internal error": a failure, not a refusal (w5/168).
  */
 function graphQLErrorMessage(err: unknown): string | null {
   if (!CombinedGraphQLErrors.is(err)) return null;
-  return err.errors[0]?.message ?? null;
+  const first = err.errors[0];
+  if (!first || first.extensions?.["code"] === "INTERNAL") return null;
+  return first.message;
 }
 
 /**
@@ -17,11 +20,12 @@ function graphQLErrorMessage(err: unknown): string | null {
  * request:" names an HTTP class, not anything the user can act on) and the first
  * letter is capitalized so it reads as a sentence.
  *
- * Returns "" when there is no usable message — a transport failure — which is a
- * caller's signal to fall back to its own generic copy. Showing the server's
- * reason is what turns "Couldn't add example.com" / "Couldn't invite bob@x.com"
- * into "Wildcard hostnames are not allowed" / "…is already a member" (w1/m81,
- * w1/m82); keep it here so both dialogs strip the same prefixes.
+ * Returns "" when there is no usable message — a transport failure, or the
+ * redacted "internal error" — which is a caller's signal to fall back to its
+ * own generic copy. Showing the server's reason is what turns "Couldn't add
+ * example.com" / "Couldn't invite bob@x.com" into "Wildcard hostnames are not
+ * allowed" / "…is already a member" (w1/m81, w1/m82); keep it here so both
+ * dialogs strip the same prefixes.
  */
 export function refusalReason(err: unknown): string {
   const detail = (graphQLErrorMessage(err) ?? "")
@@ -136,11 +140,12 @@ export function isNameConflictError(err: unknown): boolean {
  * The message for a failed request — a mutation's toast, a read's error
  * panel: the server's own refusal when it answered with one ("schedule must be
  * a valid 5-field cron expression", a name conflict, "total secret file size
- * limit of 524288 bytes exceeded"), and the caller's generic copy otherwise. Generic is right for a transport failure,
- * which has no answer to relay ("Failed to fetch" names nothing the user can act
- * on; an expired session is a transport 401 the auth link already redirects),
- * and for throttling, whose "rate limit exceeded" says nothing that "please try
- * again" doesn't.
+ * limit of 524288 bytes exceeded"), and the caller's generic copy otherwise.
+ * Generic is right for a transport failure, which has no answer to relay
+ * ("Failed to fetch" names nothing the user can act on; an expired session is a
+ * transport 401 the auth link already redirects), for bex-api's redacted
+ * "internal error", and for throttling, whose "rate limit exceeded" says
+ * nothing that "please try again" doesn't.
  *
  * w6/037 put this contract on `useFieldMutation`; w1/m145 extended it to every
  * mutation catch site, and `mutation-error-toast-invariant.test.ts` keeps a
@@ -151,9 +156,10 @@ export function mutationErrorMessage(err: unknown, generic: string): string {
 }
 
 /**
- * The server's refusal worth showing, or "" for a transport failure or
- * throttling: `mutationErrorMessage` without the fallback, for a caller that
- * places the reason itself (a toast description, an inline error slot).
+ * The server's refusal worth showing, or "" for a transport failure, the
+ * redacted "internal error" or throttling: `mutationErrorMessage` without the
+ * fallback, for a caller that places the reason itself (a toast description,
+ * an inline error slot).
  */
 export function relayableReason(err: unknown): string {
   return isThrottledError(err) ? "" : refusalReason(err);

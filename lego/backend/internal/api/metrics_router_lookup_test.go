@@ -28,8 +28,9 @@ import (
 )
 
 // TestAFailedRouterLookupAnswersWithoutItsText (w5/112): a configured metrics
-// source whose router lookup fails answers an uncoded "internal error" on every
-// surface, never METRICS_UNAVAILABLE or the Kubernetes text, and reads nothing.
+// source whose router lookup fails answers "internal error" on every surface,
+// never METRICS_UNAVAILABLE or the Kubernetes text, and reads nothing. Only
+// GraphQL, which answers 200 whatever failed, codes it INTERNAL (w5/168).
 func TestAFailedRouterLookupAnswersWithoutItsText(t *testing.T) {
 	// Both Apps are Running with public hosts, but the Ingresses their routers
 	// are read from are missing.
@@ -54,6 +55,7 @@ func TestAFailedRouterLookupAnswersWithoutItsText(t *testing.T) {
 		},
 	})
 	internalError := codedRefusal{status: http.StatusInternalServerError, msg: "internal error"}
+	internalOnGraphQL := codedRefusal{code: core.CodeInternal, msg: "internal error"}
 
 	for _, path := range []string{
 		"/v1/metrics/bandwidth?resource=web",
@@ -68,7 +70,7 @@ func TestAFailedRouterLookupAnswersWithoutItsText(t *testing.T) {
 		`{ monthToDateBandwidth(resourceId: "web") { egressBandwidthMB } }`,
 		`{ metricsFilters(query: {filters: [{field: "RESOURCE", values: ["site"]}], outputFilters: ["STATUS_CODE"]}) { values { field } } }`,
 	} {
-		internalError.onGraphQL(t, h, query)
+		internalOnGraphQL.onGraphQL(t, h, query)
 	}
 	cs := mcpSessionAs(t, srv, "dana")
 	for resource, metricType := range map[string]string{"web": "bandwidth_usage", "site": "http_request_count"} {
