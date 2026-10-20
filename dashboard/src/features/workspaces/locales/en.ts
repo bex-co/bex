@@ -244,6 +244,11 @@ const enWorkspaces: Record<string, TranslationEntry> = {
     message: "Couldn't create the workspace",
     description: "Fallback toast/inline message on a failed create",
   },
+  "workspaces.creationLoadError": {
+    message: "Couldn't load workspace setup. Refresh the page to try again.",
+    description:
+      "Inline message when the workspace-creation plan policy or a resumed setup attempt fails to load",
+  },
   "workspaces.settingsTitle": {
     message: "Workspace settings",
     description: "Workspace settings page and card title",

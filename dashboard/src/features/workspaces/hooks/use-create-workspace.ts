@@ -6,7 +6,7 @@ import {
   WorkspacesDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { graphQLErrorMessage } from "@/common/lib/graphql-error";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import type { WorkspaceView } from "@/features/workspaces/types";
 
 export interface UseCreateWorkspaceResult {
@@ -65,7 +65,7 @@ export function useCreateWorkspace(): UseCreateWorkspaceResult {
           createdAt: w.createdAt,
         };
       } catch (err) {
-        setError(graphQLErrorMessage(err) ?? t("workspaces.createError"));
+        setError(mutationErrorMessage(err, t("workspaces.createError")));
         return null;
       } finally {
         setBusy(false);

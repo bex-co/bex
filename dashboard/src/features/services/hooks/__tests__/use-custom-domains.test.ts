@@ -1,14 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import { classifyAddError } from "@/features/services/hooks/use-custom-domains";
+import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 
 describe("classifyAddError", () => {
   // bex-api's coded refusals (w5/m118): the dialog keys on the code, so the
   // server's wording can change without the localized line going missing.
   const coded = (code: string, message: string) =>
-    new CombinedGraphQLErrors({
-      errors: [{ message, extensions: { code } }],
-    } as never);
+    codedGraphQLError(code, {}, message);
 
   it("maps the two coded refusals to their localized keys", () => {
     expect(
@@ -32,7 +31,9 @@ describe("classifyAddError", () => {
   it("decides by the code, not the wording", () => {
     // The old sentinel text with no code is just another refusal now.
     expect(
-      classifyAddError(new Error("host already exists on another site")),
+      classifyAddError(
+        uncodedGraphQLError("host already exists on another site"),
+      ),
     ).toEqual({ detail: "Host already exists on another site" });
     expect(
       classifyAddError(coded("CUSTOM_DOMAIN_IN_USE", "reworded upstream")),
@@ -55,7 +56,7 @@ describe("classifyAddError", () => {
     // A different, unforeseen rejection also carries its own reason through.
     expect(
       classifyAddError(
-        new Error("bad request: apex domains are not supported"),
+        uncodedGraphQLError("bad request: apex domains are not supported"),
       ),
     ).toEqual({ detail: "Apex domains are not supported" });
   });
@@ -69,7 +70,12 @@ describe("classifyAddError", () => {
   });
 
   it("returns nothing to classify when the message is empty (caller falls back to the generic key)", () => {
-    expect(classifyAddError(new Error(""))).toEqual({});
+    expect(classifyAddError(uncodedGraphQLError(""))).toEqual({});
     expect(classifyAddError("not an error")).toEqual({});
+  });
+
+  // w5/164: the browser's "Failed to fetch" is not a reason to show.
+  it("returns nothing for a transport failure, so the dialog shows its own copy", () => {
+    expect(classifyAddError(new TypeError("Failed to fetch"))).toEqual({});
   });
 });

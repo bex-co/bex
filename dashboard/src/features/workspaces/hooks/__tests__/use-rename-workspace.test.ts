@@ -15,6 +15,7 @@ vi.mock("sonner", () => ({
   },
 }));
 
+import { uncodedGraphQLError } from "@/test/mocks/apollo";
 import { useRenameWorkspace } from "@/features/workspaces/hooks/use-rename-workspace";
 
 beforeEach(() => {
@@ -52,7 +53,11 @@ describe("useRenameWorkspace", () => {
   });
 
   it("resolves false and surfaces the backend error inline on a forbidden rename", async () => {
-    const mutate = vi.fn().mockRejectedValue(new Error("forbidden"));
+    const mutate = vi
+      .fn()
+      .mockRejectedValue(
+        uncodedGraphQLError("forbidden: you are not an admin of tea-1"),
+      );
     mockUseMutation.mockReturnValue([mutate]);
 
     const { result } = renderHook(() => useRenameWorkspace());
@@ -62,6 +67,19 @@ describe("useRenameWorkspace", () => {
     });
 
     expect(ok).toBe(false);
-    expect(result.current.error).toBe("forbidden");
+    expect(result.current.error).toBe(
+      "Forbidden: you are not an admin of tea-1",
+    );
+  });
+
+  it("shows the translated fallback, not the browser's text, on a network failure", async () => {
+    const mutate = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+    mockUseMutation.mockReturnValue([mutate]);
+
+    const { result } = renderHook(() => useRenameWorkspace());
+    await act(async () => {
+      await result.current.rename("tea-1", "acme-renamed");
+    });
+    expect(result.current.error).toBe("Couldn't rename the workspace");
   });
 });

@@ -31,7 +31,7 @@ import {
   DialogTitle,
 } from "@/common/components/ui/dialog";
 import { SudoCommandField } from "@/common/components/sudo-command-field";
-import { graphQLErrorMessage } from "@/common/lib/graphql-error";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   clearBrowserAccountState,
@@ -90,7 +90,7 @@ export function SelfHostExit() {
       submitGuard.current = false;
       setSubmitting(false);
       setError(
-        graphQLErrorMessage(cause) ?? t("onboarding.paymentSetupSelfHostError"),
+        mutationErrorMessage(cause, t("onboarding.paymentSetupSelfHostError")),
       );
       return;
     }

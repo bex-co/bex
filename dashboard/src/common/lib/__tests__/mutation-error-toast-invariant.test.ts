@@ -76,6 +76,43 @@ const ALLOWED: Record<string, string> = {
     STRIPE,
 };
 
+const AGENT_SESSIONS = "agent-session REST errors; follow-up w5/166";
+const INTERPOLATED =
+  "the raw text is interpolated into translated copy; follow-up w5/166";
+const ENV_GROUPS = "toast description under translated copy; follow-up w5/166";
+
+/**
+ * Catch blocks that still hand the caught error's raw `.message` to a toast or
+ * an inline error, call → why. A transport failure's message is the browser's
+ * own English ("Failed to fetch"), untranslated and naming nothing the user can
+ * act on, so a dialog relays a server refusal through `mutationErrorMessage` /
+ * `refusalReason` and otherwise shows its own copy (w5/164).
+ */
+const ALLOWED_RAW_MESSAGE: Record<string, string> = {
+  "features/agent-sessions/components/session-detail-header.tsx: toast.error(errinstanceofError?err.message:String(err))":
+    AGENT_SESSIONS,
+  'features/databases/components/sql-console.tsx: setError(causeinstanceofError&&cause.message?cause.message:t("databases.sqlUnknownError"))':
+    "Postgres's own error for the user's SQL; transport fallback is w5/166",
+  'features/databases/hooks/use-access-control.ts: toast.error(t("databases.accessAllowListError",{error:(easError).message}))':
+    INTERPOLATED,
+  'features/databases/hooks/use-access-control.ts: toast.error(hasGraphQLErrorCode(e,"POSTGRES_IDENTIFIER_RESERVED")?t("databases.fieldPhysicalNameReserved",{name}):t("databases.accessUserError",{error:(easError).message}))':
+    INTERPOLATED,
+  'features/databases/hooks/use-recovery.ts: toast.error(t("databases.recoveryRestoreError",{error:(easError).message,}))':
+    INTERPOLATED,
+  'features/env-groups/hooks/use-env-groups.ts: toast.error(t("envGroups.createError",{name:input.name}),{description:errorinstanceofError?error.message:undefined,})':
+    ENV_GROUPS,
+  'features/env-groups/hooks/use-env-groups.ts: toast.error(t("envGroups.renameError"),{description:errorinstanceofError?error.message:undefined,})':
+    ENV_GROUPS,
+  'features/env-groups/hooks/use-env-groups.ts: toast.error(t("envGroups.moveError"),{description:errorinstanceofError?error.message:undefined,})':
+    ENV_GROUPS,
+  'features/env-groups/hooks/use-env-groups.ts: toast.error(t("envGroups.cloneError"),{description:errorinstanceofError?error.message:undefined,})':
+    ENV_GROUPS,
+  'features/keyvalue/hooks/use-key-value-networking.ts: toast.error(t("keyvalue.networkingError",{error:(easError).message}))':
+    INTERPOLATED,
+  'features/services/hooks/use-service-networking.ts: toast.error(t("services.networkingError",{error:(easError).message}))':
+    INTERPOLATED,
+};
+
 /** Every non-test source file under src, as path relative to src → contents. */
 function readSources(): Map<string, string> {
   const sources = new Map<string, string>();
@@ -119,26 +156,44 @@ function closingIndex(src: string, open: number): number {
 
 const CATCH = /\bcatch\s*(?:\(\s*([A-Za-z_$][\w$]*)[^)]*\))?\s*\{/g;
 
-/** Each toast.error(…) in a catch block that never mentions the caught error, whitespace removed. */
-function blindErrorToasts(src: string): string[] {
-  const found: string[] = [];
+/** Each `callee(…)` call inside a catch block, with the block's error binding. */
+function* catchBlockCalls(src: string, callee: RegExp) {
   for (const m of src.matchAll(CATCH)) {
     const open = m.index + m[0].length - 1;
     const body = src.slice(open, closingIndex(src, open) + 1);
-    // Only the arguments count, and not as a property name: a binding called
-    // `error` must not be "read" by `toast.error` itself.
-    const readsError = m[1]
-      ? new RegExp(`(?<![\\w$.])${m[1]}(?![\\w$])`)
-      : null;
-    for (const call of body.matchAll(/\btoast\.error\(/g)) {
+    for (const call of body.matchAll(callee)) {
       const paren = call.index + call[0].length - 1;
       const text = body.slice(call.index, closingIndex(body, paren) + 1);
-      if (!readsError?.test(text.slice(call[0].length))) {
-        found.push(text.replace(/\s+/g, "").replace(/,\)/g, ")"));
-      }
+      yield { binding: m[1], call: text, args: text.slice(call[0].length) };
     }
   }
-  return found;
+}
+
+/**
+ * True when args read binding as a value. Only the arguments count, and not as
+ * a property name: a binding called `error` must not be "read" by
+ * `toast.error` itself.
+ */
+function reads(binding: string | undefined, args: string): boolean {
+  return !!binding && new RegExp(`(?<![\\w$.])${binding}(?![\\w$])`).test(args);
+}
+
+const compact = (call: string) => call.replace(/\s+/g, "").replace(/,\)/g, ")");
+
+/** Each toast.error(…) in a catch block that never mentions the caught error, whitespace removed. */
+function blindErrorToasts(src: string): string[] {
+  return [...catchBlockCalls(src, /\btoast\.error\(/g)]
+    .filter(({ binding, args }) => !reads(binding, args))
+    .map(({ call }) => compact(call));
+}
+
+/** Each toast.error(…) or set…(…) call in a catch block that shows the caught error's `.message`, whitespace removed. */
+function rawMessageReads(src: string): string[] {
+  return [...catchBlockCalls(src, /\b(?:toast\.error|set[A-Z][\w$]*)\(/g)]
+    .filter(
+      ({ binding, args }) => reads(binding, args) && /\.message\b/.test(args),
+    )
+    .map(({ call }) => compact(call));
 }
 
 describe("mutation-error toast invariant (w1/m145)", () => {
@@ -180,6 +235,49 @@ describe("mutation-error toast invariant (w1/m145)", () => {
         `try { await save(); } catch (err) { toast.error(mutationErrorMessage(err, t("services.deployError"))); }`,
       ),
     ).toEqual([]);
+  });
+
+  describe("no raw transport text (w5/164)", () => {
+    const rawReaders = [...sources].flatMap(([path, src]) =>
+      rawMessageReads(src).map((call) => `${path}: ${call}`),
+    );
+
+    it("no catch block shows the caught error's raw message, or is allowlisted", () => {
+      expect(
+        rawReaders.filter((reader) => !(reader in ALLOWED_RAW_MESSAGE)),
+      ).toEqual([]);
+    });
+
+    it("has no stale allowlist entries", () => {
+      expect(
+        Object.keys(ALLOWED_RAW_MESSAGE).filter(
+          (entry) => !rawReaders.includes(entry),
+        ),
+      ).toEqual([]);
+    });
+
+    it("flags the shape w5/164 removed and passes its fix", () => {
+      expect(
+        rawMessageReads(
+          `try { await save(); } catch (err) { setError(err instanceof Error ? err.message : t("workspaces.renameError")); }`,
+        ),
+      ).toHaveLength(1);
+      expect(
+        rawMessageReads(
+          `try { await save(); } catch (error) { toast.error(t("x"), { description: error.message }); }`,
+        ),
+      ).toHaveLength(1);
+      expect(
+        rawMessageReads(
+          `try { await save(); } catch (e) { toast.error(t("x", { error: (e as Error).message })); }`,
+        ),
+      ).toHaveLength(1);
+      expect(
+        rawMessageReads(
+          `try { await save(); } catch (err) { setError(mutationErrorMessage(err, t("workspaces.renameError"))); }`,
+        ),
+      ).toEqual([]);
+    });
   });
 
   it("scans a non-trivial number of catch blocks", () => {
