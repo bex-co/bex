@@ -153,3 +153,35 @@ Canceling a replacement restores the image and network metadata bound to the las
 Passing local checks cover the unchanged upstream Blueprint through create and an unchanged second apply, durable policy/disk reconstruction, deployment/cron/pre-deploy capability projection, metadata digest and size limits, and the serving-port transition. The full shared-types test suite, backend/operator package compilation, and the backend/operator/types module lint checks also pass. Markdown formatting and `git diff --check` pass.
 
 Real Postgres tests cover policy/disk round trips and atomic rollback when disk creation fails. On 2026-10-01 the full backend suite passed against a pristine Postgres 17 (the pinned CI image), after fixing the new fixtures' invalid tenant plan; `0135` down/up, its refusal while compatible services exist, and its CHECK constraints were exercised directly. The full operator `make test` (codegen plus envtest controller suite) passed with no generated drift. Hosted deployment, persistence and isolation gates remain open.
+
+## Port slice decisions — 2026-10-19 (w6/m148)
+
+These decisions split D3/D4 (ports and references) from D2 (capabilities). They ship in w6/m148. D2's capability policy for customer workspaces is w6/m149.
+
+1. **The gate is split.**
+   - Image-derived ports (`portMode` `image-v1`, or `image-configured-v1` with an explicit port) become the creation default for new Git-built Docker private services in **every** workspace.
+   - `containerPolicy` `image-v1` stays behind `BEX_IMAGE_COMPATIBILITY_WORKSPACES`.
+   - Port discovery needs no security exception: it reads the service's own digest-verified image config and publishes ClusterIP ports that are already reachable under the workspace network policy.
+2. **Rollback switch.** `BEX_PRIVATE_IMAGE_PORTS` is `on` (the default) or `off`. `off` restores `configured-v1` creation. Any other value refuses bex-api startup. Neither value ever rewrites an existing row.
+3. **Primary-port rule.**
+
+   - An explicit port wins.
+   - Otherwise 3000, if the image declares it.
+   - Otherwise the lowest declared TCP port.
+   - With no declarations, 3000.
+
+   Ports below 1024 are **not** excluded. Tenant nodes run `ip_unprivileged_port_start=0`, the containerd v2.3.3 default, and a `strict-v1` root process binds `:80` on production (measured 2026-10-19, [container-privileges.md](render-artifacts/container-privileges.md)). The explicit-port floor `minTenantPort` is a separate, stale check owned by w6/m149/t006.
+
+4. **References: backend-resolved literals, propagated by bex-api.**
+   - A Blueprint `fromService` `port`/`hostport` stays a literal environment value, so it remains visible in the Environment view (w4/m120) and goes through the normal release machinery.
+   - At apply, its value comes from the target's current serving port (`App.ServicePort()`, which follows `ServingNetwork` during a replacement), never from a parse-time default.
+   - For a target whose port is not yet known (an image-port service before its first metadata read), the variable is **omitted**: never written as 3000.
+   - The consumer records each such reference in the `app.bex.co/service-refs` annotation.
+   - A bex-api loop compares each recorded reference with its target's serving port. On a difference it rewrites the literal through the tracked patch path, so the change opens a `config_change` deploy with normal history. That covers a later `SetPort`, a promotion that moves the primary, and the first discovery.
+   - Suspended consumers are left until they resume.
+   - An operator-resolved `valueFrom` reference was rejected: release identity is a pure function of the spec and is tied to backend-opened deploys, so an operator-only re-roll would bypass deploy history.
+5. **Cycles need no special rule.** A service's own port never depends on its consumers' environment, so mutual `hostport` references converge independently.
+6. **Read surfaces.** REST and MCP `serviceDetails.openPorts` (Render's required `serverPort[]`) and GraphQL `Service.openPorts` report the serving set:
+   - the effective port for configured web and private services;
+   - `[]` while discovery is pending;
+   - absent for workers, cron jobs and static sites.

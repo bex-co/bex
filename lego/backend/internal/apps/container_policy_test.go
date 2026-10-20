@@ -35,7 +35,7 @@ import (
 
 func TestImageCompatibilityCreationPolicy(t *testing.T) {
 	for _, tc := range []struct {
-		name    string
+		name       string
 		workspaces map[string]bool
 		request    CreateRequest
 		want       string
@@ -82,26 +82,32 @@ func TestPrivateImagePortCreationIntent(t *testing.T) {
 func TestPrivateImagePortRejectsReservedCreationWithoutWrites(t *testing.T) {
 	for _, port := range []int32{18012, 18013, 19099} {
 		for _, dryRun := range []bool{false, true} {
-			t.Run(fmt.Sprintf("%d/dryRun=%t", port, dryRun), func(t *testing.T) {
-				st := &recordingStore{}
-				service, cl := newTenantStoreService(fakeWorkspace{"qa": "tea-qa"}, st)
-				service.ImageCompatibilityWorkspaces = map[string]bool{"tea-qa": true}
-				ctx := core.WithIdentity(t.Context(), core.Identity{Subject: "qa", Method: "session"})
-				_, err := service.Create(ctx, CreateRequest{
-					Name: "clickhouse", Type: appv1alpha1.TypePrivateService, DryRun: dryRun,
-					Repo: "https://github.com/render-examples/clickhouse", Runtime: "docker", Port: port,
+			// Image ports are a default in every workspace now, so the refusal
+			// must not depend on the capability allowlist (w6/m148).
+			for _, admitted := range []bool{false, true} {
+				t.Run(fmt.Sprintf("%d/dryRun=%t/admitted=%t", port, dryRun, admitted), func(t *testing.T) {
+					st := &recordingStore{}
+					service, cl := newTenantStoreService(fakeWorkspace{"qa": "tea-qa"}, st)
+					if admitted {
+						service.ImageCompatibilityWorkspaces = map[string]bool{"tea-qa": true}
+					}
+					ctx := core.WithIdentity(t.Context(), core.Identity{Subject: "qa", Method: "session"})
+					_, err := service.Create(ctx, CreateRequest{
+						Name: "clickhouse", Type: appv1alpha1.TypePrivateService, DryRun: dryRun,
+						Repo: "https://github.com/render-examples/clickhouse", Runtime: "docker", Port: port,
+					})
+					if !errors.Is(err, core.ErrBadRequest) {
+						t.Fatalf("reserved port %d: got %v, want bad request", port, err)
+					}
+					if len(st.appCreates) != 0 {
+						t.Fatal("invalid port created a durable service")
+					}
+					var apps appv1alpha1.AppList
+					if err := cl.List(ctx, &apps); err != nil || len(apps.Items) != 0 {
+						t.Fatalf("invalid port created an App: count=%d, err=%v", len(apps.Items), err)
+					}
 				})
-				if !errors.Is(err, core.ErrBadRequest) {
-					t.Fatalf("reserved port %d: got %v, want bad request", port, err)
-				}
-				if len(st.appCreates) != 0 {
-					t.Fatal("invalid port created a durable service")
-				}
-				var apps appv1alpha1.AppList
-				if err := cl.List(ctx, &apps); err != nil || len(apps.Items) != 0 {
-					t.Fatalf("invalid port created an App: count=%d, err=%v", len(apps.Items), err)
-				}
-			})
+			}
 		}
 	}
 }
@@ -128,6 +134,31 @@ func TestBlueprintSyncPreservesContainerPolicy(t *testing.T) {
 			}
 			if got := getApp(t, client, "app").Spec.ContainerPolicy; got != policy {
 				t.Fatalf("disabled gate migrated %q to %q", policy, got)
+			}
+		})
+	}
+}
+
+// A Blueprint resync never routes an existing service through the creation
+// defaults: turning image ports on (or off) must not migrate its port mode,
+// which would change its published ports and roll it (w6/m148).
+func TestBlueprintSyncPreservesPortMode(t *testing.T) {
+	manifest := "services: [{name: app, type: pserv, runtime: docker, repo: 'https://github.com/example/app'}]"
+	for _, mode := range []string{"", appv1alpha1.PortModeImageV1, appv1alpha1.PortModeImageConfiguredV1} {
+		t.Run(mode, func(t *testing.T) {
+			existing := sampleApp("app")
+			existing.Spec.Type = appv1alpha1.TypePrivateService
+			existing.Spec.Repo, existing.Spec.Runtime = "https://github.com/example/app", "docker"
+			existing.Spec.PortMode = mode
+			service, client := newService(nil, existing)
+			for _, disabled := range []bool{false, true} {
+				service.PrivateImagePortsDisabled = disabled
+				if _, err := service.DeployStack(t.Context(), DeployRequest{Manifest: manifest}); err != nil {
+					t.Fatal(err)
+				}
+				if got := getApp(t, client, "app").Spec.PortMode; got != mode {
+					t.Fatalf("sync with ports disabled=%t migrated %q to %q", disabled, mode, got)
+				}
 			}
 		})
 	}
@@ -184,19 +215,27 @@ func TestImageCompatibilityIsScopedToListedWorkspaces(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// w6/m148 split the gate: image-derived private ports are the creation
+	// default in every workspace (rollback: BEX_PRIVATE_IMAGE_PORTS=off), while
+	// the image-v1 container policy stays scoped to the listed workspaces.
 	for _, tc := range []struct {
-		workspaces map[string]bool
-		policy     string
-		mode       string
+		workspaces    map[string]bool
+		portsDisabled bool
+		policy        string
+		mode          string
 	}{
-		{map[string]bool{"tea-qa": true}, appv1alpha1.ContainerPolicyImageV1, appv1alpha1.PortModeImageV1},
-		// Another workspace's admission grants this one nothing.
-		{map[string]bool{"tea-other": true}, "", ""},
-		{nil, "", ""},
+		{map[string]bool{"tea-qa": true}, false, appv1alpha1.ContainerPolicyImageV1, appv1alpha1.PortModeImageV1},
+		// Another workspace's admission grants this one no capabilities.
+		{map[string]bool{"tea-other": true}, false, "", appv1alpha1.PortModeImageV1},
+		{nil, false, "", appv1alpha1.PortModeImageV1},
+		// The rollback switch restores configured ports without touching policy.
+		{nil, true, "", ""},
+		{map[string]bool{"tea-qa": true}, true, appv1alpha1.ContainerPolicyImageV1, ""},
 	} {
 		st := &recordingStore{disks: map[string]store.Disk{}}
 		service, client := newTenantStoreService(fakeWorkspace{"qa": "tea-qa"}, st)
 		service.ImageCompatibilityWorkspaces = tc.workspaces
+		service.PrivateImagePortsDisabled = tc.portsDisabled
 		ctx := core.WithIdentity(t.Context(), core.Identity{Subject: "qa", Method: "session"})
 		request := DeployRequest{Manifest: string(manifest), Repo: "https://github.com/render-examples/clickhouse", Branch: "master"}
 		if _, err := service.DeployStack(ctx, request); err != nil {
@@ -204,7 +243,39 @@ func TestImageCompatibilityIsScopedToListedWorkspaces(t *testing.T) {
 		}
 		app := getTenantApp(t, client, "tea-qa", "clickhouse")
 		if app.Spec.ContainerPolicy != tc.policy || app.Spec.PortMode != tc.mode {
-			t.Fatalf("admitted %v: policy=%q mode=%q, want %q/%q", tc.workspaces, app.Spec.ContainerPolicy, app.Spec.PortMode, tc.policy, tc.mode)
+			t.Fatalf("admitted %v, ports disabled %t: policy=%q mode=%q, want %q/%q", tc.workspaces, tc.portsDisabled, app.Spec.ContainerPolicy, app.Spec.PortMode, tc.policy, tc.mode)
 		}
+		if len(st.appCreates) != 1 || st.appCreates[0].ContainerPolicy != tc.policy || st.appCreates[0].PortMode != tc.mode {
+			t.Fatalf("durable creation did not record the split decision: %+v", st.appCreates)
+		}
+	}
+}
+
+// Only a new Git-built Docker private service takes image ports by default;
+// every other creation keeps its configured port in every workspace (w6/m148).
+func TestPrivateImagePortsDefaultOnlyForGitBuiltDockerPrivateServices(t *testing.T) {
+	repo := "https://github.com/example/app"
+	for _, tc := range []struct {
+		name    string
+		request CreateRequest
+		want    string
+	}{
+		{"docker pserv", CreateRequest{Name: "app", Type: appv1alpha1.TypePrivateService, Repo: repo, Runtime: "docker"}, appv1alpha1.PortModeImageV1},
+		{"docker pserv explicit port", CreateRequest{Name: "app", Type: appv1alpha1.TypePrivateService, Repo: repo, Runtime: "docker", Port: 8080}, appv1alpha1.PortModeImageConfiguredV1},
+		{"docker web", CreateRequest{Name: "app", Repo: repo, Runtime: "docker"}, ""},
+		{"docker worker", CreateRequest{Name: "app", Type: appv1alpha1.TypeBackgroundWorker, Repo: repo, Runtime: "docker"}, ""},
+		{"native pserv", CreateRequest{Name: "app", Type: appv1alpha1.TypePrivateService, Repo: repo, Runtime: "go", BuildCommand: "go build .", StartCommand: "./app"}, ""},
+		{"prebuilt pserv", CreateRequest{Name: "app", Type: appv1alpha1.TypePrivateService, Image: "nginx:1"}, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			service, client := newService(nil)
+			if _, err := service.Create(t.Context(), tc.request); err != nil {
+				t.Fatal(err)
+			}
+			app := getApp(t, client, "app")
+			if app.Spec.PortMode != tc.want || app.Spec.ContainerPolicy != "" {
+				t.Fatalf("mode=%q policy=%q, want mode %q and no policy", app.Spec.PortMode, app.Spec.ContainerPolicy, tc.want)
+			}
+		})
 	}
 }

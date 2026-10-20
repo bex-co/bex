@@ -3369,7 +3369,7 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: notReadyReason,
 		Message: notReadyMessage, ObservedGeneration: app.Generation,
 	})
-	if reason, msg := r.stuckPodMessage(ctx, dep, port); msg != "" {
+	if reason, msg := r.rolloutStallDiagnosis(ctx, app, dep, port); msg != "" {
 		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
 			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason,
 			Message: msg, ObservedGeneration: app.Generation,
@@ -3448,7 +3448,7 @@ func (r *AppReconciler) holdFailedFirstRelease(ctx context.Context, app *appv1al
 // served ⇒ PhaseFailed. ActiveRevision set ⇒ prior release still describes what
 // is (or was) serving ⇒ Running / Hibernated, deploy fact only.
 func (r *AppReconciler) settleFailedRollout(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, port int) (ctrl.Result, error) {
-	reason, msg := r.stuckPodMessage(ctx, dep, port)
+	reason, msg := r.rolloutStallDiagnosis(ctx, app, dep, port)
 	if msg == "" {
 		if qr, qm := r.rolloutQuotaBlockMessage(ctx, dep); qm != "" {
 			reason, msg = qr, qm
@@ -5259,6 +5259,35 @@ func tenantSecCtx() *corev1.SecurityContext {
 		Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
 		SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 	}
+}
+
+// rolloutStallDiagnosis is stuckPodMessage plus, for an image-port private
+// service whose TCP check never connects, the ports bex expected the process to
+// listen on (w6/m148) — Render's "no open ports detected", in bex's terms.
+func (r *AppReconciler) rolloutStallDiagnosis(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, port int) (string, string) {
+	reason, msg := r.stuckPodMessage(ctx, dep, port)
+	if reason == reasonHealthCheckFailing {
+		msg += imagePortStallHint(app, port)
+	}
+	return reason, msg
+}
+
+// imagePortStallHint names the primary bex selected from the image and the
+// TCP ports the image declares, so a server bound elsewhere (or only to
+// localhost) is told what to listen on. Empty for configured ports and for an
+// HTTP health check, whose failure is about the path rather than the listener.
+func imagePortStallHint(app *appv1alpha1.App, port int) string {
+	network := app.Status.ImageNetwork
+	if !app.Spec.UsesImagePorts() || app.Spec.HealthCheckPath != "" || network == nil || len(network.Ports) == 0 {
+		return ""
+	}
+	declared := make([]string, len(network.Ports))
+	for i, p := range network.Ports {
+		declared[i] = strconv.Itoa(int(p))
+	}
+	return fmt.Sprintf(" Nothing accepted a TCP connection on port %d, the primary port selected from the image's declared TCP ports (%s)."+
+		" Bind the server to 0.0.0.0 on one of those ports, or set the service's port to the one it listens on.",
+		port, strings.Join(declared, ", "))
 }
 
 // stuckPodMessage inspects the pods behind a not-yet-ready tenant Deployment

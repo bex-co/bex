@@ -44,6 +44,21 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Label before a private service's internal address in the detail header (Render's private-service wording)",
   },
+  "services.openPorts": {
+    message: "开放端口",
+    description:
+      "Label before the TCP ports a private service's hostname serves, beside its Service Address and in Connect → Internal (Render's serviceDetails.openPorts, w6/m148)",
+  },
+  "services.openPortsPrimary": {
+    message: "主端口",
+    description:
+      "Marker on the open port that is the service's primary port — the <slug>:<port> suffix of its Service Address (w6/m148)",
+  },
+  "services.openPortsPending": {
+    message: "首次构建后将从镜像中检测端口。",
+    description:
+      "Shown instead of a Service Address while an image-port private service has not built yet, so no port is known (openPorts is empty, w6/m148)",
+  },
   "services.internalCopy": {
     message: "复制内部地址",
     description: "Copy service internal address button",
@@ -1303,6 +1318,12 @@ const zhServices: Record<string, TranslationEntry> = {
     message:
       "容器监听的端口（默认 {port}）。bex 将流量路由到该端口并以 $PORT 注入，因此拒绝把 PORT 作为环境变量。保存会触发一次新的部署并重启实例。",
     description: "Settings tab: service port row hint text",
+  },
+  "services.settingsPortImageHint": {
+    message:
+      "该私有服务会发布其镜像声明的 TCP 端口。在此设置端口即选择主监听端口——即服务地址中的端口，也是以 $PORT 注入的端口——镜像声明的其他 TCP 端口仍保持发布。保存会触发一次新的部署并重启实例。",
+    description:
+      "Settings tab: service port row hint for a private service whose open ports come from its Docker image's EXPOSE instructions (w6/m148)",
   },
   "services.settingsPortEdit": {
     message: "编辑端口",

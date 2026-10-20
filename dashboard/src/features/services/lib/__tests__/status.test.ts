@@ -134,6 +134,7 @@ function server(overrides: Partial<ServerNode> = {}): ServerNode {
     renderSubdomainPolicy: null,
     healthCheckPath: null,
     port: 3000,
+    openPorts: null,
     maxShutdownDelaySeconds: null,
     preDeployCommand: null,
     schedule: null,
@@ -216,6 +217,8 @@ describe("toServiceView", () => {
       // The list node does not select the port, so the mapper reports null
       // rather than inventing the platform default (w4/m121/t003).
       port: null,
+      // Nor the open ports: null (unknown), never [] (discovery pending).
+      openPorts: null,
       maxShutdownDelaySeconds: null,
       preDeployCommand: null,
       publishPath: null,
@@ -362,6 +365,46 @@ describe("toServiceView", () => {
       slug: "web-a1b2",
     });
     expect(toServiceView(serverNode).slug).toBe("web-a1b2");
+  });
+
+  // w6/m148: null (no network address) and [] (image-port discovery pending)
+  // are different answers, so the projection must not collapse them.
+  it("keeps a server node's open ports, null and pending apart", () => {
+    const ports = (port: number | null) => ({
+      __typename: "ServerPort" as const,
+      port,
+      protocol: "TCP",
+    });
+    expect(
+      toServiceView(
+        server({
+          type: "private_service",
+          port: 8123,
+          openPorts: [ports(8123), ports(9000), ports(9009)],
+        }),
+      ).openPorts,
+    ).toEqual([
+      { port: 8123, protocol: "TCP" },
+      { port: 9000, protocol: "TCP" },
+      { port: 9009, protocol: "TCP" },
+    ]);
+    expect(
+      toServiceView(server({ type: "private_service", openPorts: [] }))
+        .openPorts,
+    ).toEqual([]);
+    expect(
+      toServiceView(server({ type: "background_worker", openPorts: null }))
+        .openPorts,
+    ).toBeNull();
+    // A hole is never shown as a port nothing listens on.
+    expect(
+      toServiceView(
+        server({
+          type: "private_service",
+          openPorts: [ports(null), ports(9000), ports(0)],
+        }),
+      ).openPorts,
+    ).toEqual([{ port: 9000, protocol: "TCP" }]);
   });
 
   it("leaves slug null for a list node (not selected by the services query)", () => {

@@ -108,7 +108,7 @@ export function isWebServiceType(type: string): boolean {
  * header shows a copyable Service Address (internalAddress) instead of a
  * public-URL link (ADR041 D4, w9/m58).
  */
-export function isPrivateService(s: ServiceView): boolean {
+export function isPrivateService(s: Pick<ServiceView, "type">): boolean {
   return s.type === "private_service";
 }
 

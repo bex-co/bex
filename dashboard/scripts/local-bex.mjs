@@ -135,6 +135,9 @@ const SERVICE_DEFAULTS = {
   command: null,
   runs: [],
   healthCheckPath: null,
+  // Render's serviceDetails.openPorts (w6/m148): null for a type without a
+  // network address; a fixture that serves ports overrides it.
+  openPorts: null,
   notifyOnFail: "default",
   notificationsToSend: "default",
   maxShutdownDelaySeconds: null,

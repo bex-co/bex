@@ -262,25 +262,25 @@ func TestParseStackDefersFromDatabaseUntilStableIDIsKnown(t *testing.T) {
 }
 
 func TestParseStackDefersFromServiceHostUntilSlugIsKnown(t *testing.T) {
-	// host defers to apply — the injected hostname is the sibling's slug,
-	// minted at create (ADR041 D3; the same deferral shape as fromDatabase
-	// above). port still resolves at parse from the platform default.
+	// host and port both defer to apply: the hostname is the sibling's slug,
+	// minted at create (ADR041 D3), and the port is the sibling's serving port,
+	// read from its applied App (w6/m148) — never a parse-time 3000.
 	st, _ := parseStack(DeployRequest{Manifest: stackManifest})
 	web := findSvc(t, st, "web")
-	if len(web.hostRefs) != 1 {
-		t.Fatalf("hostRefs = %+v, want the one deferred api host ref", web.hostRefs)
+	byKey := map[string]hostRef{}
+	for _, ref := range web.hostRefs {
+		byKey[ref.key] = ref
 	}
-	// The port half resolves at parse; only the slug hostname waits for apply.
-	if ref := web.hostRefs[0]; ref.target != "api" || ref.key != "API_HOST" || ref.port != 3000 || ref.hostport {
-		t.Errorf("hostRef = %+v, want {key API_HOST, target api, port 3000, host-only}", ref)
+	if ref := byKey["API_HOST"]; ref.target != "api" || ref.property != serviceRefPropertyHost || ref.carriesPort() {
+		t.Errorf("API_HOST ref = %+v, want a host-only ref to api", ref)
+	}
+	if ref := byKey["API_PORT"]; ref.target != "api" || ref.property != serviceRefPropertyPort || !ref.carriesPort() {
+		t.Errorf("API_PORT ref = %+v, want a deferred port ref to api", ref)
 	}
 	for _, env := range web.req.Env {
-		if env.Name == "API_HOST" {
-			t.Errorf("API_HOST was resolved before the sibling's slug was known")
+		if env.Name == "API_HOST" || env.Name == "API_PORT" {
+			t.Errorf("%s was resolved before the sibling existed", env.Name)
 		}
-	}
-	if p := findEnv(t, web.req.Env, "API_PORT"); p.Value != "3000" {
-		t.Errorf("fromService port = %q, want the platform default 3000", p.Value)
 	}
 }
 
