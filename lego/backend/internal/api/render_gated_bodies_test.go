@@ -17,7 +17,9 @@ limitations under the License.
 package api
 
 import (
+	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -83,5 +85,40 @@ func TestRenderGatedBexBodiesReachTheirHandlers(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// Key Value's maxmemoryPolicy and persistenceMode take either separator: the
+// handler normalizes Render's underscore and bex's hyphen alike, as GraphQL and
+// MCP do. The pinned enums admitted only underscores, so REST alone refused
+// `allkeys-lru` (w8/139). Responses stay underscore, and a genuinely unknown
+// value is still refused.
+func TestKeyValueEnumsAcceptBothSeparatorsOverREST(t *testing.T) {
+	h, _ := serverWith(t, &core.Base{Client: fakeClient(), Namespace: "default"}, Deps{})
+	type kv struct {
+		ID      string
+		Options struct{ MaxmemoryPolicy, PersistenceMode string }
+	}
+	read := func(w *httptest.ResponseRecorder, want int) kv {
+		t.Helper()
+		var got kv
+		if err := json.Unmarshal(w.Body.Bytes(), &got); w.Code != want || err != nil {
+			t.Fatalf("= %d %s, want %d", w.Code, w.Body.String(), want)
+		}
+		return got
+	}
+	created := read(do(t, h, http.MethodPost, "/v1/key-value", testToken, `{"name":"kvh","plan":"free","maxmemoryPolicy":"allkeys-lru"}`), http.StatusCreated)
+	if created.Options.MaxmemoryPolicy != "allkeys_lru" {
+		t.Fatalf("created maxmemoryPolicy = %q, want Render's allkeys_lru", created.Options.MaxmemoryPolicy)
+	}
+	read(do(t, h, http.MethodPost, "/v1/key-value", testToken, `{"name":"kvu","plan":"free","maxmemoryPolicy":"allkeys_lru"}`), http.StatusCreated)
+	patched := read(do(t, h, http.MethodPatch, "/v1/key-value/"+created.ID, testToken, `{"persistenceMode":"journal-snapshot","maxmemoryPolicy":"volatile-ttl"}`), http.StatusOK)
+	if patched.Options.PersistenceMode != "journal_snapshot" || patched.Options.MaxmemoryPolicy != "volatile_ttl" {
+		t.Fatalf("patched = %+v, want journal_snapshot and volatile_ttl", patched)
+	}
+	for _, body := range []string{`{"name":"kvb","plan":"free","maxmemoryPolicy":"bogus-w8-139"}`, `{"name":"kvb","plan":"free","persistenceMode":"journal-bogus"}`} {
+		if w := do(t, h, http.MethodPost, "/v1/key-value", testToken, body); w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "invalid request body at") {
+			t.Errorf("POST %s = %d %s, want the validator's 400", body, w.Code, w.Body.String())
+		}
 	}
 }
