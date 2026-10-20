@@ -649,6 +649,22 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     message: "Postgres 备份失败",
     description: "Event label — postgres_backup_failed",
   },
+  "webhooks.event.postgres_pitr_checkpoint_started": {
+    message: "Postgres PITR 检查点开始",
+    description: "Event label — postgres_pitr_checkpoint_started",
+  },
+  "webhooks.event.postgres_pitr_checkpoint_completed": {
+    message: "Postgres PITR 检查点完成",
+    description: "Event label — postgres_pitr_checkpoint_completed",
+  },
+  "webhooks.event.postgres_pitr_checkpoint_failed": {
+    message: "Postgres PITR 检查点失败",
+    description: "Event label — postgres_pitr_checkpoint_failed",
+  },
+  "webhooks.event.postgres_wal_archive_failed": {
+    message: "Postgres WAL 归档失败",
+    description: "Event label — postgres_wal_archive_failed",
+  },
   "webhooks.event.postgres_restore_succeeded": {
     message: "Postgres 恢复成功",
     description: "Event label — postgres_restore_succeeded",

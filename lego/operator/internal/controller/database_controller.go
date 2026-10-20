@@ -1010,6 +1010,7 @@ const cnpgScheduledBackupLabel = "cnpg.io/scheduledBackupName"
 // cache), and a plan with no backups configured has no Backup objects to find.
 func (r *DatabaseReconciler) stampLastBackupStatus(ctx context.Context, db *appv1alpha1.Database, backupEnabled bool) {
 	if !backupEnabled {
+		db.Status.ActiveBackup = nil
 		return
 	}
 	backupList := &unstructured.UnstructuredList{}
@@ -1022,6 +1023,8 @@ func (r *DatabaseReconciler) stampLastBackupStatus(ctx context.Context, db *appv
 	}
 	var newest *appv1alpha1.DatabaseLastBackupStatus
 	var newestAt time.Time
+	var active *appv1alpha1.DatabaseActiveBackupStatus
+	var activeAt time.Time
 	for i := range backupList.Items {
 		backup := &backupList.Items[i]
 		cluster, _, _ := unstructured.NestedString(backup.Object, "spec", "cluster", "name")
@@ -1030,6 +1033,10 @@ func (r *DatabaseReconciler) stampLastBackupStatus(ctx context.Context, db *appv
 		}
 		summary, at, ok := terminalBackupSummary(backup)
 		if !ok {
+			if running, startedAt, isRunning := runningBackupSummary(backup); isRunning &&
+				(active == nil || startedAt.After(activeAt) || (startedAt.Equal(activeAt) && running.Name > active.Name)) {
+				active, activeAt = &running, startedAt
+			}
 			continue
 		}
 		// Ties break on name so the choice is stable across passes: two backups
@@ -1042,6 +1049,23 @@ func (r *DatabaseReconciler) stampLastBackupStatus(ctx context.Context, db *appv
 	if newest != nil {
 		db.Status.LastBackup = newest
 	}
+	db.Status.ActiveBackup = active
+}
+
+// runningBackupSummary names a CNPG Backup that has started and not finished,
+// ordered by its start: CNPG's running phase, or any non-terminal phase that
+// already recorded startedAt.
+func runningBackupSummary(backup *unstructured.Unstructured) (appv1alpha1.DatabaseActiveBackupStatus, time.Time, bool) {
+	phase, _, _ := unstructured.NestedString(backup.Object, "status", "phase")
+	startedAt, _, _ := unstructured.NestedString(backup.Object, "status", "startedAt")
+	if !strings.EqualFold(phase, "running") && startedAt == "" {
+		return appv1alpha1.DatabaseActiveBackupStatus{}, time.Time{}, false
+	}
+	at := backup.GetCreationTimestamp().Time
+	if parsed, err := time.Parse(time.RFC3339, startedAt); err == nil {
+		at = parsed
+	}
+	return appv1alpha1.DatabaseActiveBackupStatus{Name: backup.GetName(), StartedAt: startedAt}, at, true
 }
 
 // terminalBackupSummary reduces one CNPG Backup to the closed summary
@@ -1054,7 +1078,9 @@ func terminalBackupSummary(backup *unstructured.Unstructured) (appv1alpha1.Datab
 	switch strings.ToLower(phase) {
 	case "completed":
 		summaryPhase = "completed"
-	case "failed":
+	case "failed", "walarchivingfailing":
+		// walArchivingFailing is CNPG's verdict that the backup cannot finish
+		// because WAL is not reaching the object store.
 		summaryPhase = "failed"
 	default:
 		return appv1alpha1.DatabaseLastBackupStatus{}, time.Time{}, false
@@ -1284,7 +1310,7 @@ func (r *DatabaseReconciler) reconcileDatabaseReadiness(
 	exportRequeue time.Duration,
 ) (ctrl.Result, error) {
 	previousVersion := db.Status.CurrentVersion
-	clusterState := r.readClusterStatus(ctx, db, cluster)
+	clusterState := r.readClusterStatus(ctx, db, cluster, backupEnabled)
 	// A new major is recorded once its cluster is healthy (or its upgrade has
 	// failed, whose revert needs the cluster's own version, w5/110). CNPG
 	// reports the target PGDATA major before its instances are ready; adopting
@@ -1542,11 +1568,13 @@ func (r *DatabaseReconciler) readClusterStatus(
 	ctx context.Context,
 	db *appv1alpha1.Database,
 	cluster *unstructured.Unstructured,
+	backupEnabled bool,
 ) cnpgClusterState {
 	if err := r.Get(ctx, client.ObjectKeyFromObject(cluster), cluster); err != nil {
 		db.Status.HighAvailabilityEnabled = false
 		return cnpgClusterState{}
 	}
+	stampWALArchivingCondition(db, cluster, backupEnabled)
 	ready, _, _ := unstructured.NestedInt64(cluster.Object, "status", "readyInstances")
 	phase, _, _ := unstructured.NestedString(cluster.Object, "status", "phase")
 	major, _, _ := unstructured.NestedInt64(cluster.Object, "status", "pgDataImageInfo", "majorVersion")
@@ -1567,6 +1595,38 @@ func (r *DatabaseReconciler) readClusterStatus(
 	// HighAvailabilityEnabled: HA is on in spec AND the cluster has ≥2 ready instances.
 	db.Status.HighAvailabilityEnabled = db.Spec.HighAvailability && ready >= 2
 	return state
+}
+
+// stampWALArchivingCondition mirrors CNPG's ContinuousArchiving onto the
+// Database's WALArchiving condition for a backup-enabled database, so the
+// control plane can tell a tenant that point-in-time recovery stopped
+// advancing without reading CNPG itself. Removed when backups are off or CNPG
+// has not reported, so a stale False can never outlive its cause.
+func stampWALArchivingCondition(db *appv1alpha1.Database, cluster *unstructured.Unstructured, backupEnabled bool) {
+	if backupEnabled {
+		conditions, _, _ := unstructured.NestedSlice(cluster.Object, "status", "conditions")
+		for _, raw := range conditions {
+			c, ok := raw.(map[string]any)
+			if !ok || c["type"] != "ContinuousArchiving" {
+				continue
+			}
+			status, _ := c["status"].(string)
+			if status != string(metav1.ConditionTrue) && status != string(metav1.ConditionFalse) {
+				break
+			}
+			reason, _ := c["reason"].(string)
+			if reason == "" {
+				reason = "ContinuousArchiving" + status
+			}
+			message, _ := c["message"].(string)
+			meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
+				Type: appv1alpha1.ConditionWALArchiving, Status: metav1.ConditionStatus(status),
+				Reason: reason, Message: message, ObservedGeneration: db.Generation,
+			})
+			return
+		}
+	}
+	meta.RemoveStatusCondition(&db.Status.Conditions, appv1alpha1.ConditionWALArchiving)
 }
 
 // triggerCNPGSwitchover patches cluster.status.targetPrimary to a non-primary

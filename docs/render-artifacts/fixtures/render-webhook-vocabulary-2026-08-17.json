@@ -186,6 +186,9 @@
     "postgres_disk_autoscaling_enabled_changed",
     "postgres_disk_size_changed",
     "postgres_ha_status_changed",
+    "postgres_pitr_checkpoint_completed",
+    "postgres_pitr_checkpoint_failed",
+    "postgres_pitr_checkpoint_started",
     "postgres_read_replicas_changed",
     "postgres_restarted",
     "postgres_restore_failed",
@@ -194,6 +197,7 @@
     "postgres_upgrade_failed",
     "postgres_upgrade_started",
     "postgres_upgrade_succeeded",
+    "postgres_wal_archive_failed",
     "pre_deploy_ended",
     "pre_deploy_started",
     "server_available",
@@ -234,10 +238,6 @@
     "pipeline_minutes_exhausted",
     "postgres_cluster_leader_changed",
     "postgres_connection_pool_changed",
-    "postgres_pitr_checkpoint_completed",
-    "postgres_pitr_checkpoint_failed",
-    "postgres_pitr_checkpoint_started",
-    "postgres_read_replica_stale",
-    "postgres_wal_archive_failed"
+    "postgres_read_replica_stale"
   ]
 }
