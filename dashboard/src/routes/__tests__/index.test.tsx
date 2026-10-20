@@ -32,6 +32,19 @@ const servicesState: {
   error: undefined,
   refetch: vi.fn(async () => []),
 };
+// Service row actions guard moves against stranding a linked env group
+// (w4/m238); the home page renders them, so the guard needs a resolved stub.
+vi.mock("@/features/env-groups/hooks/use-stranded-link-guard", () => ({
+  useStrandedLinkGuard: () => ({
+    groups: [],
+    ready: true,
+    loading: false,
+    error: undefined,
+    retry: () => undefined,
+    strandedFor: () => [],
+    scopeNameFor: () => undefined,
+  }),
+}));
 vi.mock("@/features/services/hooks/use-services", () => ({
   useServices: () => servicesState,
 }));
