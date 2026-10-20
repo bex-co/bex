@@ -3,8 +3,10 @@ import { CombinedGraphQLErrors, ServerError } from "@apollo/client/errors";
 import {
   AgentSessionError,
   agentSessionAvailabilityCopy,
+  agentSessionErrorMessage,
   toAgentSessionError,
 } from "@/features/agent-sessions/lib/errors";
+import { translator } from "@/test/translator";
 
 function gqlError(
   code: string | undefined,
@@ -144,5 +146,26 @@ describe("toAgentSessionError", () => {
     expect(configured?.bodyKey).not.toBe(transient?.bodyKey);
     expect(configured?.destructive).toBe(false);
     expect(transient?.destructive).toBe(true);
+  });
+});
+
+// w5/166: an action that never reached bex-api shows translated copy, not the
+// browser's "Failed to fetch"; an uncoded refusal still shows the server's text.
+describe("agentSessionErrorMessage", () => {
+  it("falls back to translated copy for a transport failure", () => {
+    const err = new TypeError("Failed to fetch");
+    expect(agentSessionErrorMessage(err, translator("en"))).toBe(
+      "Something went wrong.",
+    );
+    expect(agentSessionErrorMessage(err, translator("zh"))).toBe("出错了。");
+  });
+
+  it("relays an uncoded server refusal", () => {
+    expect(
+      agentSessionErrorMessage(
+        gqlError(undefined, "bad request: session is archived"),
+        translator("en"),
+      ),
+    ).toBe("Session is archived");
   });
 });

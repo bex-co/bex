@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { SetServiceIpAllowListDocument } from "@/graphql/definitions";
 import type { IPAllowListEntryDraft } from "@/common/lib/ip-allow-list";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 /**
  * Edits a web service's or static site's inbound IP allowlist (w7/m32,
@@ -24,9 +25,7 @@ export function useServiceNetworking() {
         toast.success(t("services.networkingSaved"));
         return true;
       } catch (e) {
-        toast.error(
-          t("services.networkingError", { error: (e as Error).message }),
-        );
+        toast.error(mutationErrorMessage(e, t("services.networkingError")));
         return false;
       }
     },

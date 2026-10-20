@@ -26,7 +26,7 @@ import {
   SetDatabaseParameterOverridesDocument,
   type ParameterInput,
 } from "@/graphql/definitions";
-import { isThrottledError, refusalReason } from "@/common/lib/graphql-error";
+import { relayableReason } from "@/common/lib/graphql-error";
 import { nonNull } from "@/common/lib/non-null";
 import {
   RESOURCE_POLL_INTERVAL_MS,
@@ -108,10 +108,7 @@ export function useDatabaseInsights(id: string) {
       void parameterOverrides.refetch();
       return { ok: true };
     } catch (err) {
-      return {
-        ok: false,
-        error: isThrottledError(err) ? null : refusalReason(err) || null,
-      };
+      return { ok: false, error: relayableReason(err) || null };
     }
   }
 

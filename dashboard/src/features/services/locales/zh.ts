@@ -4489,7 +4489,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Toast on successful setServiceIpAllowList mutation (w7/m32)",
   },
   "services.networkingError": {
-    message: "更新 IP 允许列表失败：{error}",
+    message: "更新 IP 允许列表失败，请重试。",
     description: "Toast on failed setServiceIpAllowList mutation (w7/m32)",
   },
   "services.outboundIpsTitle": {
