@@ -35,7 +35,7 @@ Materialized from the three proposals in `$pm-brainstorm for w6`, approved by th
 
 ## Milestones
 
-- [ ] **m149** — [Tenant containers run what Render runs: a Render-compatible privilege policy in every workspace (privilege slice of deploying `render-examples/clickhouse`)](m149/README.md) (14 tasks; ~10.3h) ← user decision 2026-10-17 ("render parity 比之前的 security hardening 重要，所以修改 adr，同时对应的实际改动，一并都 /pm for w6"). Amends ADR089 D2 (accepted), ADR022, ADR018; depends on m148 t002/t007.
+- [ ] **m149** — **BLOCKED (user decision: seccomp profile for `render-v1` — keep RuntimeDefault and name the divergence, a Localhost profile adding io_uring + unprivileged userns, or Unconfined; see blocked/m149/t003.md step 3)** — [Tenant containers run what Render runs: a Render-compatible privilege policy in every workspace (privilege slice of deploying `render-examples/clickhouse`)](blocked/m149/README.md) (14 tasks; t001, t002, t006 done; render-v1 value shipped across types/store/operator/admission) ← user decision 2026-10-17 ("render parity 比之前的 security hardening 重要，所以修改 adr，同时对应的实际改动，一并都 /pm for w6"). Amends ADR089 D2 (accepted), ADR022, ADR018; depends on m148 t002/t007.
 
 - [x] **m148** — [Private services serve every port their image declares, as on Render (port slice of deploying `render-examples/clickhouse`)](done/m148/README.md) (11 tasks; ~7.5h) — **done 2026-10-20**, live on production (DoD 1–5 in `done/m148/evidence/README.md`) ← user request 2026-10-17 ("Deploy render-examples/clickhouse to bex" → "先支持 custom port 吧，像是 render 一样")
 
