@@ -5323,7 +5323,7 @@ func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deploym
 					"container exited shortly after start and is restarting repeatedly%s — check the service logs for the crash output.", exit)
 				if port > 0 {
 					msg += fmt.Sprintf(
-						" If the crash is a port bind: the process must listen on $PORT (%d), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped).", port)
+						" If the crash is a port bind: the process must listen on $PORT (%d).", port)
 				}
 				return crashLoopBackOff, msg
 			case imagePullBackOff, "ErrImagePull":

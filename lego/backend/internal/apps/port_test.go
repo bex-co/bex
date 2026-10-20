@@ -260,6 +260,27 @@ func TestPortBoundsAreRefusedBeforeAnyWrite(t *testing.T) {
 	}
 }
 
+// TestPortsBelow1024AreAccepted: every pod runs with
+// net.ipv4.ip_unprivileged_port_start=0 (containerd 2.x's CRI default), so a
+// process binds :80 without NET_BIND_SERVICE, as on Render (w6/m149). Create
+// and the port verb both keep it.
+func TestPortsBelow1024AreAccepted(t *testing.T) {
+	ctx := context.Background()
+	svc, cl := newService(nil, portApp("web", appv1alpha1.TypeWebService, 3000))
+	if _, err := svc.SetPort(ctx, "web", 80); err != nil {
+		t.Fatalf("SetPort(80) = %v", err)
+	}
+	if got := getApp(t, cl, "web").Spec.Port; got != 80 {
+		t.Fatalf("spec.port = %d after SetPort(80)", got)
+	}
+	if _, err := svc.Create(ctx, CreateRequest{Name: "nginx", Image: "nginx:1", Port: 80}); err != nil {
+		t.Fatalf("Create(port 80) = %v", err)
+	}
+	if got := getApp(t, cl, "nginx").Spec.Port; got != 80 {
+		t.Fatalf("created spec.port = %d, want 80", got)
+	}
+}
+
 // TestReservedPortRefusalNamesAReachableControl is w4/m121's point, stated as a
 // test: the sentence exists to redirect a caller, so it has to name something
 // that exists. It is asserted on the sentence rather than on any one surface

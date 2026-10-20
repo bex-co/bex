@@ -170,7 +170,7 @@ These decisions split D3/D4 (ports and references) from D2 (capabilities). They 
    - Otherwise the lowest declared TCP port.
    - With no declarations, 3000.
 
-   Ports below 1024 are **not** excluded. Tenant nodes run `ip_unprivileged_port_start=0`, the containerd v2.3.3 default, and a `strict-v1` root process binds `:80` on production (measured 2026-10-19, [container-privileges.md](render-artifacts/container-privileges.md)). The explicit-port floor `minTenantPort` is a separate, stale check owned by w6/m149/t006.
+   Ports below 1024 are **not** excluded. containerd 2.x's CRI default sets `ip_unprivileged_port_start=0` inside every pod, and a `strict-v1` root process binds `:80` on production (measured 2026-10-19, [container-privileges.md](render-artifacts/container-privileges.md)). w6/m149/t006 removed the old 1024 floor from every surface.
 
 4. **References: backend-resolved literals, propagated by bex-api.**
    - A Blueprint `fromService` `port`/`hostport` stays a literal environment value, so it remains visible in the Environment view (w4/m120) and goes through the normal release machinery.

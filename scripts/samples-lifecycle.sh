@@ -246,10 +246,9 @@ load_spec() {
     whoami)
       # Prebuilt image (skips the build plane). traefik/whoami has no MESSAGE knob,
       # so verify-up asserts its own signature line instead of the run token.
-      # It ignores $PORT and defaults to :80 — which bex can't serve: tenant pods
-      # drop ALL caps incl. NET_BIND_SERVICE (high ports only, docs/ADR022 / w7/m2),
-      # and bex routes an image service to its default 3000. So point whoami at 3000
-      # via its own env knob (bex has no Render-style listening-port auto-detection).
+      # It ignores $PORT and defaults to :80, while bex routes an image web service
+      # to its default 3000 (bex has no Render-style listening-port auto-detection
+      # for web services). So point whoami at 3000 via its own env knob.
       HEALTH_PATH="/"; EXPECTED_BODY="Hostname:"
       CREATE_ARGS+=(--image traefik/whoami --plan "$PLAN" --env-var "WHOAMI_PORT_NUMBER=3000") ;;
     static-site)

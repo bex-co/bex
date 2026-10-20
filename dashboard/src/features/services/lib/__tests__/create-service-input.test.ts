@@ -384,8 +384,9 @@ describe("isSubmittable", () => {
     }
   });
 
-  it("refuses a port outside the range the container can bind", () => {
-    expect(isSubmittable(form({ port: "80" }))).toBe(false);
+  it("refuses a port outside 1-65535, and accepts one below 1024 (w6/m149)", () => {
+    expect(isSubmittable(form({ port: "80" }))).toBe(true);
+    expect(isSubmittable(form({ port: "0" }))).toBe(false);
     expect(isSubmittable(form({ port: "70000" }))).toBe(false);
     expect(isSubmittable(form({ port: "" }))).toBe(false);
     expect(isSubmittable(form({ port: "8080" }))).toBe(true);

@@ -75,7 +75,7 @@ func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha
 	}
 	if app.Spec.PortMode == appv1alpha1.PortModeImageConfiguredV1 {
 		primary = app.Spec.Port
-		if primary < 1024 || primary > 65535 || appv1alpha1.IsReservedImagePort(primary) {
+		if primary < 1 || primary > 65535 || appv1alpha1.IsReservedImagePort(primary) {
 			return "", 0, fmt.Errorf("configured private primary port is unsupported")
 		}
 		if !slices.Contains(ports, primary) {

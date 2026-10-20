@@ -34,7 +34,7 @@ GITOPS_BASE="${GITOPS_BASE_DIR:-deploy/gitops/base}"
 OPERATOR_CONFIG="${OPERATOR_CONFIG_DIR:-lego/operator/config}"
 BUILD_SOURCE="${BUILD_SOURCE_FILE:-lego/operator/internal/build/build.go}"
 SANDBOX_OVERLAY="${SANDBOX_OVERLAY_FILE:-infra/clusterapi/overlays/hetzner-caph/sandbox-pool.yaml}"
-PACKER="infra/packer/bex-worker.pkr.hcl"
+PACKER="${PACKER_FILE:-infra/packer/bex-worker.pkr.hcl}"
 SNAPSHOT_WORKFLOW=".github/workflows/snapshot.yml"
 SNAPSHOT_RELEASE="infra/packer/release.conf"
 AUTOSCALER_VALUES="infra/clusterapi/autoscaler-values.yaml"
@@ -140,6 +140,19 @@ while read -r md infra cfg; do
   esac
 done < <(yq -N 'select(.kind=="MachineDeployment") | .metadata.name + " " + .spec.template.spec.infrastructureRef.name + " " + .spec.template.spec.bootstrap.configRef.name' "$OVERLAY")
 
+# Tenant processes bind ports below 1024 without NET_BIND_SERVICE: containerd
+# 2.x's built-in CRI default enables unprivileged ports, setting
+# net.ipv4.ip_unprivileged_port_start=0 inside every pod, as on Render (1.7's
+# default turns it off). bex-api accepts such ports (w6/m149,
+# docs/render-artifacts/container-privileges.md), so the baked containerd must
+# stay on 2.x and no bootstrap may override the setting (checked per template
+# in the restart loop below), or every service on :80 crash-loops.
+echo "==> $PACKER bakes a containerd whose CRI default enables unprivileged ports"
+if [ -z "$pk_containerd" ] || [ "${pk_containerd%%.*}" -lt 2 ]; then
+  echo "FAIL: packer containerd_version '$pk_containerd' is not 2.x; containerd before 2.0 disables unprivileged ports by default" >&2
+  fail=1
+fi
+
 # containerd 1.x and 2.x use different CRI plugin section names and quote styles,
 # and both also emit an unrelated transfer config_path. The bootstrap must scope
 # its replacement and verification to the CRI registry section only.
@@ -165,6 +178,10 @@ while read -r kind name; do
   fi
   if echo "$prek" | grep -q 'systemctl start containerd'; then
     echo "FAIL: $kind/$name uses 'systemctl start containerd'; an already-active package service would retain its stale non-CRI config" >&2
+    fail=1
+  fi
+  if echo "$prek" | grep -q 'enable_unprivileged_ports'; then
+    echo "FAIL: $kind/$name overrides containerd's enable_unprivileged_ports; tenant services bind ports below 1024 through its default" >&2
     fail=1
   fi
 done < <(yq -N 'select(.kind=="KubeadmControlPlane" or .kind=="KubeadmConfigTemplate") | .kind + " " + .metadata.name' "$OVERLAY")

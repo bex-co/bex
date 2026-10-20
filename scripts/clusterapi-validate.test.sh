@@ -20,6 +20,7 @@ SCRIPT="$here/clusterapi-validate.sh"
 OVERLAY_SRC="$root/infra/clusterapi/overlays/hetzner-caph/cluster.yaml"
 SANDBOX_SRC="$root/infra/clusterapi/overlays/hetzner-caph/sandbox-pool.yaml"
 GITOPS_SRC="$root/deploy/gitops/base"
+PACKER_SRC="$root/infra/packer/bex-worker.pkr.hcl"
 
 fails=0
 tmp="$(mktemp -d)"
@@ -32,6 +33,7 @@ fixture() {
   cp "$OVERLAY_SRC" "$dir/cluster.yaml"
   cp "$SANDBOX_SRC" "$dir/sandbox-pool.yaml"
   cp "$GITOPS_SRC/build-image-prewarm.yaml" "$GITOPS_SRC/log-shipper.yaml" "$dir/gitops/"
+  cp "$PACKER_SRC" "$dir/bex-worker.pkr.hcl"
   echo "$dir"
 }
 
@@ -39,7 +41,7 @@ fixture() {
 assert() {
   local label="$1" want="$2" dir="$3" needle="${4:-}" err got
   set +e
-  err="$(OVERLAY_FILE="$dir/cluster.yaml" SANDBOX_OVERLAY_FILE="$dir/sandbox-pool.yaml" GITOPS_BASE_DIR="$dir/gitops" "$SCRIPT" 2>&1 >/dev/null)"
+  err="$(OVERLAY_FILE="$dir/cluster.yaml" SANDBOX_OVERLAY_FILE="$dir/sandbox-pool.yaml" GITOPS_BASE_DIR="$dir/gitops" PACKER_FILE="$dir/bex-worker.pkr.hcl" "$SCRIPT" 2>&1 >/dev/null)"
   got=$?
   set -e
   if [ "$got" -ne "$want" ]; then
@@ -59,6 +61,18 @@ assert() {
 
 # ── GREEN: the canonical tree, read through the same overrides ───────────────
 assert "canonical tree passes" 0 "$(fixture green)"
+
+# ── RED (w6/m149): unprivileged ports must stay enabled ──────────────────────
+# bex-api accepts ports below 1024 because containerd 2.x enables unprivileged
+# ports by default. A bootstrap that turns it off, or a containerd 1.x bake,
+# would leave every :80 service crash-looping.
+d="$(fixture unprivileged-ports-override)"
+yq -i '(select(.kind=="KubeadmConfigTemplate" and .metadata.name=="bex-tenant-0") | .spec.template.spec.preKubeadmCommands) += ["sed -i s/enable_unprivileged_ports = true/enable_unprivileged_ports = false/ /etc/containerd/config.toml"]' "$d/cluster.yaml"
+assert "a bootstrap that disables unprivileged ports" 1 "$d" "KubeadmConfigTemplate/bex-tenant-0 overrides containerd's enable_unprivileged_ports"
+
+d="$(fixture containerd-1x)"
+sed -i.bak -E '/variable "containerd_version"/,/}/ s/default[[:space:]]*=[[:space:]]*"[^"]+"/default = "1.7.22"/' "$d/bex-worker.pkr.hcl"
+assert "a containerd 1.x bake" 1 "$d" "packer containerd_version '1.7.22' is not 2.x"
 
 # ── RED (t003): the exact production regression measured 2026-08-17 ──────────
 d="$(fixture no-toleration)"

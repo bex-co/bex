@@ -1,6 +1,6 @@
 # w6 · m149 — Tenant containers run what Render runs: a Render-compatible privilege policy in every workspace (privilege slice of deploying `render-examples/clickhouse`)
 
-**Worker:** worker6 **Goal:** in any workspace, a new Docker/image service whose unchanged image initializes as root (it changes file ownership, then switches to an unprivileged user, as ClickHouse, Postgres, MySQL and nginx images do) starts and serves. The policy is persisted per service, applied to every path that runs the service image, and confined by a pod user namespace where t002 proves that works. ADR089, ADR022 and ADR018 record the user decision that Render parity outranks the earlier drop-ALL hardening. **Status:** todo (t001 done 2026-10-19: Render + bex profiles measured live)
+**Worker:** worker6 **Goal:** in any workspace, a new Docker/image service whose unchanged image initializes as root (it changes file ownership, then switches to an unprivileged user, as ClickHouse, Postgres, MySQL and nginx images do) starts and serves. The policy is persisted per service, applied to every path that runs the service image, and confined by a pod user namespace where t002 proves that works. ADR089, ADR022 and ADR018 record the user decision that Render parity outranks the earlier drop-ALL hardening. **Status:** todo (t001, t006 done 2026-10-19)
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 | Decide and amend the ADRs: ADR089 D2 accepted as amended, ADR022 hardening section, ADR018, ADR004, ADR070 | 1h | t001, t002 |
 | t004 | Types + store + backend: the new persisted policy and its creation default | 1h | t003, w6/m148/t002 |
 | t005 | Operator: project the policy (capabilities + `hostUsers`) onto every path that runs the service image | 1h | t003 |
-| t006 | Low-port contract: align the `< 1024` refusals and the diagnosis with the measured node behavior | 45m | t001, t003 |
+| t006 | Low-port contract: align the `< 1024` refusals and the diagnosis with the measured node behavior — **DONE** | 45m | t001, t003 |
 | t007 | Workload admission: admit exactly the new policy's shape | 45m | t005 |
 | t008 | Explicit migration operation for existing services (never on upgrade) | 45m | t004, t005 |
 | t009 | Canary in the `bex` workspace, then make the policy the default for every workspace | 45m | t004, t005, t006, t007, t008 |

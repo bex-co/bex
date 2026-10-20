@@ -3035,9 +3035,9 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.createImagePortHint": {
     message:
-      "容器必须监听下方设置的端口——bex 会以 $PORT 注入——且无法绑定 1024 以下的端口。",
+      "如果镜像固定监听某个端口（例如 :80），请将下方端口设为该值——bex 会把流量路由到该端口并以 $PORT 注入。",
     description:
-      "Create-wizard Existing Image tab hint about bex's routed port and the no-privileged-ports hardening (w9/011)",
+      "Create-wizard Existing Image tab hint: set the port below to the one the image listens on (w9/011, w6/m149)",
   },
   "services.createFieldPort": {
     message: "端口",

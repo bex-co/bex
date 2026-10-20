@@ -3099,9 +3099,9 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.createImagePortHint": {
     message:
-      "The container must listen on the port set below — bex injects it as $PORT — and cannot bind ports below 1024.",
+      "If the image listens on a fixed port (for example :80), set the port below to it — bex routes there and injects it as $PORT.",
     description:
-      "Create-wizard Existing Image tab hint about bex's routed port and the no-privileged-ports hardening (w9/011)",
+      "Create-wizard Existing Image tab hint: set the port below to the one the image listens on (w9/011, w6/m149)",
   },
   "services.createFieldPort": {
     message: "Port",
