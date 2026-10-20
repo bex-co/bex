@@ -26,9 +26,7 @@ import (
 // Every absent Render operation is a named, documented omission; new upstream
 // operations cannot silently fall out of the route intersection inventory.
 var renderOperationOmissions = map[string]string{
-	"add-headers":                          "ADR018 \u00a7 Render operation omissions \u2014 Individual static rule mutations",
 	"add-resources-to-environment":         "ADR018 \u00a7 Render operation omissions \u2014 Environment resource mutation paths",
-	"add-route":                            "ADR018 \u00a7 Render operation omissions \u2014 Individual static rule mutations",
 	"cancelTaskRun":                        "ADR018 \u00a7 Render operation omissions \u2014 Render Workflows",
 	"create-dedicated-ip":                  "ADR018 \u00a7 Render operation omissions \u2014 Dedicated outbound IPs",
 	"create-postgres-user":                 "ADR018 \u00a7 Render operation omissions \u2014 Postgres default credential rotation",
@@ -37,11 +35,9 @@ var renderOperationOmissions = map[string]string{
 	"createWorkflow":                       "ADR018 \u00a7 Render operation omissions \u2014 Render Workflows",
 	"createWorkflowVersion":                "ADR018 \u00a7 Render operation omissions \u2014 Render Workflows",
 	"delete-dedicated-ip":                  "ADR018 \u00a7 Render operation omissions \u2014 Dedicated outbound IPs",
-	"delete-header":                        "ADR018 \u00a7 Render operation omissions \u2014 Individual static rule mutations",
 	"delete-owner-log-stream":              "ADR018 \u00a7 Render operation omissions \u2014 External telemetry streams",
 	"delete-redis":                         "ADR018 \u00a7 Render operation omissions \u2014 Legacy Redis spelling",
 	"delete-resource-log-stream":           "ADR018 \u00a7 Render operation omissions \u2014 External telemetry streams",
-	"delete-route":                         "ADR018 \u00a7 Render operation omissions \u2014 Individual static rule mutations",
 	"deleteOwnerMetricsStream":             "ADR018 \u00a7 Render operation omissions \u2014 External telemetry streams",
 	"deleteWorkflow":                       "ADR018 \u00a7 Render operation omissions \u2014 Render Workflows",
 	"get-owner-log-stream":                 "ADR018 \u00a7 Render operation omissions \u2014 External telemetry streams",
@@ -62,7 +58,6 @@ var renderOperationOmissions = map[string]string{
 	"listTasks":                            "ADR018 \u00a7 Render operation omissions \u2014 Render Workflows",
 	"listWorkflowVersions":                 "ADR018 \u00a7 Render operation omissions \u2014 Render Workflows",
 	"patch-owner-notification-settings":    "ADR018 \u00a7 Render operation omissions \u2014 Owner notification policy",
-	"patch-route":                          "ADR018 \u00a7 Render operation omissions \u2014 Individual static rule mutations",
 	"preview-service":                      "ADR018 \u00a7 Render operation omissions \u2014 PR previews",
 	"purge-cache":                          "ADR018 \u00a7 Render operation omissions \u2014 Static cache purge",
 	"remove-resources-from-environment":    "ADR018 \u00a7 Render operation omissions \u2014 Environment resource mutation paths",

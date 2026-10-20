@@ -423,6 +423,5 @@ The route coverage guard (`TestEveryRenderOperationMountedOrDocumented`) walks e
 | Environment resource mutation paths | — | POST/DELETE `/environments/{environmentId}/resources` are absent; bex's environment assignment verbs use their native contract. |
 | PR previews | — | Preview-service creation remains a user-rejected non-goal. |
 | Static cache purge | — | Render's `/services/{id}/cache/purge` is absent; bex's static delivery cache lifecycle is deployment-controlled. |
-| Individual static rule mutations | — | Render's add/delete-header and add/patch/delete-route operations are absent; supported collection replacement routes remain the editing contract. |
 
 Recovery POST returns Render's HTTP 200 detail response. `restoreName` must be supplied, and `environmentId`/Datadog recovery overrides return named 400s rather than being silently ignored; recovery retains the existing domain's workspace/backup constraints. Native `/recover` preserves its prior fields and HTTP 201. These are adapter compatibility additions; GraphQL and MCP keep their established names and call the same domain verbs.
