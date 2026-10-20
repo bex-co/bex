@@ -879,7 +879,12 @@ func (req patchServiceRequest) resolveFields(r *http.Request) (patchFields, erro
 				RegistryCredentialID json.RawMessage `json:"registryCredentialId"`
 			}
 			if err := core.UnmarshalJSON(r.Context(), req.ServiceDetails.EnvSpecific, &envSpecific); err != nil {
-				return patchFields{}, core.ErrBadRequest
+				// Name the offending field (unknown key like the GET-emitted
+				// preDeployCommand, or a wrong-typed value) exactly as the
+				// top-level strict decoder does, instead of a bare sentinel
+				// (w4/369). preDeployCommand stays unwritable here — the
+				// write channel is serviceDetails.preDeployCommand.
+				return patchFields{}, fmt.Errorf("%w: %s", core.ErrBadRequest, err.Error())
 			}
 			if envSpecific.BuildCommand != nil {
 				f.buildCommand = envSpecific.BuildCommand
@@ -1144,7 +1149,10 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 		var req struct {
 			Name string `json:"name"`
 		}
-		if err := core.DecodeJSON(r, &req); err != nil || req.Name == "" {
+		if err := core.DecodeJSON(r, &req); err != nil {
+			return nil, fmt.Errorf("%w: %v", core.ErrBadRequest, err)
+		}
+		if req.Name == "" {
 			return nil, core.ErrBadRequest
 		}
 		d, err := s.AddDomain(r.Context(), r.PathValue("id"), req.Name)
@@ -1291,7 +1299,7 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 			Confirm      string            `json:"confirm"`
 		}
 		if err := core.DecodeJSON(r, &body); err != nil {
-			return nil, core.ErrBadRequest
+			return nil, fmt.Errorf("%w: %v", core.ErrBadRequest, err)
 		}
 		return s.CreateBlueprint(r.Context(), body.OwnerID, CreateBlueprintRequest{
 			Repo:         body.Repo,
@@ -1313,7 +1321,7 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 			OwnerID  string  `json:"ownerId"`
 		}
 		if err := core.DecodeJSON(r, &body); err != nil {
-			return nil, core.ErrBadRequest
+			return nil, fmt.Errorf("%w: %v", core.ErrBadRequest, err)
 		}
 		return s.UpdateBlueprint(r.Context(), r.PathValue("id"), body.OwnerID, UpdateBlueprintRequest{
 			Name:     body.Name,
@@ -1363,7 +1371,10 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 			BexYAML string `json:"bexYaml"`
 			Confirm string `json:"confirm"`
 		}
-		if err := core.DecodeJSON(r, &body); err != nil || strings.TrimSpace(body.BexYAML) == "" {
+		if err := core.DecodeJSON(r, &body); err != nil {
+			return nil, fmt.Errorf("%w: %v", core.ErrBadRequest, err)
+		}
+		if strings.TrimSpace(body.BexYAML) == "" {
 			return nil, core.ErrBadRequest
 		}
 		return s.DeployStack(r.Context(), DeployRequest{
@@ -1401,7 +1412,7 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 			BlueprintID string `json:"blueprintId"`
 		}
 		if err := core.DecodeJSON(r, &body); err != nil {
-			return nil, core.ErrBadRequest
+			return nil, fmt.Errorf("%w: %v", core.ErrBadRequest, err)
 		}
 		return s.PreviewBlueprint(r.Context(), body.OwnerID, body.Repo, body.Branch, body.Path, body.BlueprintID)
 	}))

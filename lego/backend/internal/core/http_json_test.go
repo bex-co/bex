@@ -104,6 +104,17 @@ func TestUnmarshalJSONUsesContextStrictness(t *testing.T) {
 	}
 }
 
+func TestUnmarshalJSONLenientErrorsAreSafe(t *testing.T) {
+	// Even outside the strict gate, a nested fragment's decode failure is the
+	// safe field-naming error, never encoding/json's raw Go-typed message
+	// (w4/369).
+	var got jsonDecoderFixture
+	err := UnmarshalJSON(context.Background(), []byte(`{"name":5}`), &got)
+	if err == nil || !strings.Contains(err.Error(), `field "name"`) || strings.Contains(err.Error(), "cannot unmarshal") {
+		t.Fatalf("lenient nested decode error = %v, want safe field-naming error", err)
+	}
+}
+
 func TestDecodeJSONStrictChecksAllowListEntries(t *testing.T) {
 	type request struct {
 		IPAllowList []IPAllowListEntry `json:"ipAllowList"`
