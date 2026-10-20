@@ -67,8 +67,8 @@ limitations under the License.
 //	pre_deploy_command_changed  apps.SetPreDeployCommand
 //	max_shutdown_delay_changed  apps.SetMaxShutdownDelay
 //	publish_path_changed        apps.SetPublishPath
-//	routes_changed              apps.SetRoutes
-//	headers_changed             apps.SetHeaders
+//	routes_changed              apps.SetRoutes, apps.AddRoute, apps.MoveRoute, apps.DeleteRoute
+//	headers_changed             apps.SetHeaders, apps.AddHeader, apps.DeleteHeader
 //	custom_domain_added/removed/verified apps.Add/Delete/VerifyDomain
 //	notify_on_fail_changed      apps.SetNotifyOnFail/SetNotificationsToSend (w4/m21 + w3/m15, a bex-only name — Render has no dedicated event type)
 //	subdomain_policy_changed    apps.SetSubdomainPolicy         (w7/m31, a bex-only name — Render's renderSubdomainPolicy has no dedicated event type)
@@ -390,18 +390,24 @@ var eventTypes = map[string]string{
 	// w4/m121: a port change rolls the pods and moves the Service, Ingress and
 	// probe with it — a config change the owner should be able to see in
 	// Activity, in the same class as the build-setting changes above.
-	"apps.SetPort":                          TypePortChanged,
-	"apps.SetBuildFilter":                   TypeBuildFilterChanged,
-	"apps.SetCommands":                      TypeCommandsChanged,
-	"apps.SetSource":                        TypeSourceChanged,
-	"apps.SetRegistryCredential":            TypeSourceChanged,
-	"apps.SetSourceAndRegistryCredential":   TypeSourceChanged,
-	"apps.SetDisplayName":                   TypeDisplayNameChanged,
-	"apps.SetPreDeployCommand":              TypePreDeployChanged,
-	"apps.SetMaxShutdownDelay":              TypeMaxShutdownDelayChanged,
-	"apps.SetPublishPath":                   TypePublishPathChanged,
-	"apps.SetRoutes":                        TypeRoutesChanged,
-	"apps.SetHeaders":                       TypeHeadersChanged,
+	"apps.SetPort":                        TypePortChanged,
+	"apps.SetBuildFilter":                 TypeBuildFilterChanged,
+	"apps.SetCommands":                    TypeCommandsChanged,
+	"apps.SetSource":                      TypeSourceChanged,
+	"apps.SetRegistryCredential":          TypeSourceChanged,
+	"apps.SetSourceAndRegistryCredential": TypeSourceChanged,
+	"apps.SetDisplayName":                 TypeDisplayNameChanged,
+	"apps.SetPreDeployCommand":            TypePreDeployChanged,
+	"apps.SetMaxShutdownDelay":            TypeMaxShutdownDelayChanged,
+	"apps.SetPublishPath":                 TypePublishPathChanged,
+	"apps.SetRoutes":                      TypeRoutesChanged,
+	"apps.SetHeaders":                     TypeHeadersChanged,
+	// Render's single-rule edge operations (w8/137) change the same lists.
+	"apps.AddRoute":                         TypeRoutesChanged,
+	"apps.MoveRoute":                        TypeRoutesChanged,
+	"apps.DeleteRoute":                      TypeRoutesChanged,
+	"apps.AddHeader":                        TypeHeadersChanged,
+	"apps.DeleteHeader":                     TypeHeadersChanged,
 	"apps.AddDisk":                          TypeDiskCreated,
 	"apps.UpdateDisk":                       TypeDiskUpdated,
 	"apps.DeleteDisk":                       TypeDiskDeleted,

@@ -1276,6 +1276,62 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 		return toRenderHeaderObjects(r.PathValue("id"), app.Headers), nil
 	})
 
+	// Render's single-rule edge operations (w8/137) edit the lists the bulk PUTs
+	// replace. Their responses mirror the pinned schema, including its own
+	// asymmetries: add-headers and patch-route wrap the rule in "headers",
+	// add-route answers the bare route.
+	addRoute := core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
+		body, err := core.DecodeBody[struct {
+			StaticRouteView
+			Priority *int `json:"priority"`
+		}](r)
+		if err != nil {
+			return nil, err
+		}
+		serviceID := r.PathValue("id")
+		app, at, err := s.AddRoute(r.Context(), serviceID, body.StaticRouteView, body.Priority)
+		if err != nil {
+			return nil, err
+		}
+		return toRenderRouteObjects(serviceID, app.Routes)[at], nil
+	})
+	patchRoute := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		body, err := core.DecodeBody[struct {
+			Priority *int `json:"priority"`
+		}](r)
+		if err != nil {
+			return nil, err
+		}
+		if body.Priority == nil {
+			return nil, fmt.Errorf("%w: priority is required", core.ErrBadRequest)
+		}
+		serviceID := r.PathValue("id")
+		app, err := s.MoveRoute(r.Context(), serviceID, r.PathValue("routeId"), *body.Priority)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]renderRoute{"headers": toRenderRouteObjects(serviceID, app.Routes)[*body.Priority]}, nil
+	})
+	deleteRoute := core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
+		return s.DeleteRoute(r.Context(), r.PathValue("id"), r.PathValue("routeId"))
+	})
+	addHeader := core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
+		body, err := core.DecodeBody[StaticHeaderView](r)
+		if err != nil {
+			return nil, err
+		}
+		serviceID := r.PathValue("id")
+		app, err := s.AddHeader(r.Context(), serviceID, body)
+		if err != nil {
+			return nil, err
+		}
+		headers := toRenderHeaderObjects(serviceID, app.Headers)
+		return map[string]renderHeader{"headers": headers[len(headers)-1]}, nil
+	})
+	deleteHeader := core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
+		return s.DeleteHeader(r.Context(), r.PathValue("id"), r.PathValue("headerId"))
+	})
+
 	mux.HandleFunc("GET "+servicesBase+"/{id}/autoscaling", getAutoscaling)
 	mux.HandleFunc("PUT "+servicesBase+"/{id}/autoscaling", putAutoscaling)
 	mux.HandleFunc("DELETE "+servicesBase+"/{id}/autoscaling", deleteAutoscaling)
@@ -1288,6 +1344,11 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT "+servicesBase+"/{id}/routes", putRoutes)
 	mux.HandleFunc("GET "+servicesBase+"/{id}/headers", listHeaders)
 	mux.HandleFunc("PUT "+servicesBase+"/{id}/headers", putHeaders)
+	mux.HandleFunc("POST "+servicesBase+"/{id}/routes", addRoute)
+	mux.HandleFunc("PATCH "+servicesBase+"/{id}/routes/{routeId}", patchRoute)
+	mux.HandleFunc("DELETE "+servicesBase+"/{id}/routes/{routeId}", deleteRoute)
+	mux.HandleFunc("POST "+servicesBase+"/{id}/headers", addHeader)
+	mux.HandleFunc("DELETE "+servicesBase+"/{id}/headers/{headerId}", deleteHeader)
 }
 
 // registerBlueprintRoutes mounts the Blueprint routes (w2/m15 + w2/m41 +
