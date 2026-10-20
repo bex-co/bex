@@ -212,34 +212,136 @@ func (f *fakeBlueprintStore) EnqueueBlueprintAutoSyncIntent(_ context.Context, i
 	return true, nil
 }
 
-func (f *fakeBlueprintStore) ClaimBlueprintAutoSyncIntents(_ context.Context, limit int, _ time.Duration) ([]store.BlueprintAutoSyncIntent, error) {
+func (f *fakeBlueprintStore) ClaimBlueprintAutoSyncIntents(_ context.Context, limit int, lease time.Duration) ([]store.BlueprintAutoSyncIntent, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	var out []store.BlueprintAutoSyncIntent
-	for k, intent := range f.autoSyncIntents {
-		if intent.State != store.BlueprintAutoSyncIntentPending && intent.State != store.BlueprintAutoSyncIntentClaimed {
+	if limit <= 0 {
+		limit = 50
+	}
+	if lease <= 0 {
+		lease = 5 * time.Minute
+	}
+	now := time.Now().UTC()
+	staleBefore := now.Add(-lease)
+	blocked := map[string]bool{}
+	dueByBlueprint := map[string]string{}
+	oldestByBlueprint := map[string]time.Time{}
+	for key, intent := range f.autoSyncIntents {
+		if _, ok := f.blueprints[intent.BlueprintID]; !ok {
 			continue
 		}
-		now := time.Now().UTC()
+		switch intent.State {
+		case store.BlueprintAutoSyncIntentPending:
+		case store.BlueprintAutoSyncIntentClaimed:
+			if intent.ClaimedAt != nil && !intent.ClaimedAt.Before(staleBefore) {
+				blocked[intent.BlueprintID] = true
+				continue
+			}
+		default:
+			continue
+		}
+		if oldest, ok := oldestByBlueprint[intent.BlueprintID]; !ok || intent.CreatedAt.Before(oldest) {
+			oldestByBlueprint[intent.BlueprintID] = intent.CreatedAt
+		}
+		previousKey, exists := dueByBlueprint[intent.BlueprintID]
+		previous := f.autoSyncIntents[previousKey]
+		if !exists || (intent.State == store.BlueprintAutoSyncIntentClaimed && previous.State != intent.State) ||
+			(intent.State == previous.State && (intent.CreatedAt.Before(previous.CreatedAt) || (intent.CreatedAt.Equal(previous.CreatedAt) && intent.ID < previous.ID))) {
+			dueByBlueprint[intent.BlueprintID] = key
+		}
+	}
+	var due []string
+	for blueprintID, key := range dueByBlueprint {
+		if !blocked[blueprintID] {
+			due = append(due, key)
+		}
+	}
+	sort.Slice(due, func(i, j int) bool {
+		a, b := f.autoSyncIntents[due[i]], f.autoSyncIntents[due[j]]
+		at, bt := oldestByBlueprint[a.BlueprintID], oldestByBlueprint[b.BlueprintID]
+		if at.Equal(bt) {
+			return a.BlueprintID < b.BlueprintID
+		}
+		return at.Before(bt)
+	})
+	var out []store.BlueprintAutoSyncIntent
+	for _, key := range due {
+		intent := f.autoSyncIntents[key]
+		if blocked[intent.BlueprintID] {
+			continue
+		}
 		intent.State = store.BlueprintAutoSyncIntentClaimed
 		intent.ClaimedAt = &now
-		f.autoSyncIntents[k] = intent
+		intent.ClaimGeneration++
+		f.autoSyncIntents[key] = intent
+		f.retireAutoSyncRunLocked(intent.BlueprintID, now)
+		blocked[intent.BlueprintID] = true
 		out = append(out, intent)
-		if limit > 0 && len(out) >= limit {
+		if len(out) >= limit {
 			break
 		}
 	}
 	return out, nil
 }
 
-func (f *fakeBlueprintStore) CompleteBlueprintAutoSyncIntent(_ context.Context, id string) error {
+func (f *fakeBlueprintStore) retireAutoSyncRunLocked(blueprintID string, now time.Time) {
+	b := f.blueprints[blueprintID]
+	run, ok := f.syncs[b.ActiveRunID]
+	if !ok || run.AutoIntentID == "" || f.assertAutoSyncIntentLocked(run.AutoIntentID, run.AutoClaimGeneration) == nil {
+		return
+	}
+	if run.State == store.BlueprintSyncStateRunning {
+		msg := store.BlueprintAutoSyncReclaimedReason
+		run.State = store.BlueprintSyncStateError
+		run.CompletedAt, run.ErrorMessage = &now, &msg
+		f.syncs[run.ID] = run
+	}
+	b.ExecutionGeneration++
+	b.ActiveRunID = ""
+	if b.Status == store.BlueprintStatusSyncing {
+		b.Status = fakeProjectStatus(store.BlueprintSyncStateError, b.AutoSync)
+	}
+	f.blueprints[b.ID] = b
+}
+
+func (f *fakeBlueprintStore) AssertBlueprintAutoSyncIntent(_ context.Context, id string, claimGeneration int64) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	return f.assertAutoSyncIntentLocked(id, claimGeneration)
+}
+
+func (f *fakeBlueprintStore) assertAutoSyncIntentLocked(id string, claimGeneration int64) error {
+	intent, ok := f.autoSyncIntentLocked(id)
+	if ok && intent.State == store.BlueprintAutoSyncIntentClaimed && intent.ClaimGeneration == claimGeneration {
+		return nil
+	}
+	return fakeBusy()
+}
+
+func (f *fakeBlueprintStore) autoSyncIntentLocked(id string) (store.BlueprintAutoSyncIntent, bool) {
+	for _, intent := range f.autoSyncIntents {
+		if intent.ID == id {
+			return intent, true
+		}
+	}
+	return store.BlueprintAutoSyncIntent{}, false
+}
+
+func (f *fakeBlueprintStore) CompleteBlueprintAutoSyncIntent(_ context.Context, id string, claimGeneration int64, reason string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if err := f.assertAutoSyncIntentLocked(id, claimGeneration); err != nil {
+		return err
+	}
 	for k, intent := range f.autoSyncIntents {
 		if intent.ID == id {
 			now := time.Now().UTC()
 			intent.State = store.BlueprintAutoSyncIntentCompleted
 			intent.CompletedAt = &now
+			intent.ErrorMessage = nil
+			if reason != "" {
+				intent.ErrorMessage = &reason
+			}
 			f.autoSyncIntents[k] = intent
 			return nil
 		}
@@ -247,9 +349,12 @@ func (f *fakeBlueprintStore) CompleteBlueprintAutoSyncIntent(_ context.Context, 
 	return store.ErrNotFound
 }
 
-func (f *fakeBlueprintStore) FailBlueprintAutoSyncIntent(_ context.Context, id, errMsg string) error {
+func (f *fakeBlueprintStore) FailBlueprintAutoSyncIntent(_ context.Context, id string, claimGeneration int64, errMsg string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if err := f.assertAutoSyncIntentLocked(id, claimGeneration); err != nil {
+		return err
+	}
 	for k, intent := range f.autoSyncIntents {
 		if intent.ID == id {
 			now := time.Now().UTC()
@@ -359,6 +464,32 @@ func (f *fakeBlueprintStore) ListBlueprintSyncs(_ context.Context, blueprintID, 
 func (f *fakeBlueprintStore) AdmitBlueprintSyncRun(_ context.Context, blueprintID, tenantID string, run store.BlueprintSync) (store.Blueprint, store.BlueprintSync, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	return f.admitBlueprintSyncRunLocked(blueprintID, tenantID, run)
+}
+
+func (f *fakeBlueprintStore) AdmitBlueprintAutoSyncRun(_ context.Context, intent store.BlueprintAutoSyncIntent, expectedSource store.Blueprint, run store.BlueprintSync) (store.Blueprint, store.BlueprintSync, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if err := f.assertAutoSyncIntentLocked(intent.ID, intent.ClaimGeneration); err != nil {
+		return store.Blueprint{}, store.BlueprintSync{}, err
+	}
+	b, ok := f.blueprints[intent.BlueprintID]
+	if !ok || b.ID != expectedSource.ID || b.TenantID != intent.TenantID || b.TenantID != expectedSource.TenantID ||
+		!b.AutoSync || b.Status == "disconnected" || b.Repo != expectedSource.Repo || b.Branch != expectedSource.Branch || b.Path != expectedSource.Path || intent.Path != b.Path {
+		return store.Blueprint{}, store.BlueprintSync{}, fakeBusy()
+	}
+	accepted, ok := f.autoSyncIntentLocked(intent.ID)
+	if !ok || accepted.BlueprintID != b.ID || accepted.TenantID != b.TenantID || accepted.Path != b.Path {
+		return store.Blueprint{}, store.BlueprintSync{}, fakeBusy()
+	}
+	f.retireAutoSyncRunLocked(b.ID, time.Now().UTC())
+	run.AutoIntentID = intent.ID
+	run.AutoClaimGeneration = intent.ClaimGeneration
+	run.AutoSourceRepo, run.AutoSourceBranch, run.AutoSourcePath = b.Repo, b.Branch, b.Path
+	return f.admitBlueprintSyncRunLocked(intent.BlueprintID, intent.TenantID, run)
+}
+
+func (f *fakeBlueprintStore) admitBlueprintSyncRunLocked(blueprintID, tenantID string, run store.BlueprintSync) (store.Blueprint, store.BlueprintSync, error) {
 	if f.insertSyncErr != nil {
 		return store.Blueprint{}, store.BlueprintSync{}, f.insertSyncErr
 	}
@@ -452,6 +583,9 @@ func (f *fakeBlueprintStore) StageBlueprintManifest(_ context.Context, id, tenan
 	if !ok || b.TenantID != tenantID || b.ExecutionGeneration != generation || b.ActiveRunID != runID {
 		return store.Blueprint{}, fakeBusy()
 	}
+	if err := f.assertAutoSyncRunLocked(b, f.syncs[runID]); err != nil {
+		return store.Blueprint{}, err
+	}
 	b.Manifest = manifest
 	b.Status = store.BlueprintStatusSyncing
 	f.blueprints[id] = b
@@ -463,6 +597,21 @@ func (f *fakeBlueprintStore) AssertBlueprintExecution(_ context.Context, id, ten
 	defer f.mu.Unlock()
 	b, ok := f.blueprints[id]
 	if !ok || b.TenantID != tenantID || b.ExecutionGeneration != generation || b.ActiveRunID != runID || b.Status == "disconnected" {
+		return fakeBusy()
+	}
+	return f.assertAutoSyncRunLocked(b, f.syncs[runID])
+}
+
+func (f *fakeBlueprintStore) assertAutoSyncRunLocked(b store.Blueprint, run store.BlueprintSync) error {
+	if run.AutoIntentID == "" {
+		return nil
+	}
+	if err := f.assertAutoSyncIntentLocked(run.AutoIntentID, run.AutoClaimGeneration); err != nil {
+		return err
+	}
+	intent, ok := f.autoSyncIntentLocked(run.AutoIntentID)
+	if !ok || intent.BlueprintID != b.ID || intent.TenantID != b.TenantID || !b.AutoSync || b.Status == "disconnected" ||
+		b.Repo != run.AutoSourceRepo || b.Branch != run.AutoSourceBranch || b.Path != run.AutoSourcePath {
 		return fakeBusy()
 	}
 	return nil
@@ -494,14 +643,19 @@ func (f *fakeBlueprintStore) CompleteBlueprintSync(_ context.Context, id, tenant
 	if !ok || run.State != store.BlueprintSyncStateRunning || run.ExecutionGeneration != generation {
 		return store.Blueprint{}, fakeBusy()
 	}
-	run.State = state
-	run.CompletedAt = &completedAt
-	run.ErrorMessage = errMsg
-	f.syncs[runID] = run
 	b, ok := f.blueprints[id]
 	if !ok || b.TenantID != tenantID || b.ExecutionGeneration != generation || b.ActiveRunID != runID || b.Status == "disconnected" {
 		return store.Blueprint{}, fakeBusy()
 	}
+	if state == store.BlueprintSyncStateSuccess {
+		if err := f.assertAutoSyncRunLocked(b, run); err != nil {
+			return store.Blueprint{}, err
+		}
+	}
+	run.State = state
+	run.CompletedAt = &completedAt
+	run.ErrorMessage = errMsg
+	f.syncs[runID] = run
 	b.Status = fakeProjectStatus(state, b.AutoSync)
 	b.LastSyncAt = &completedAt
 	b.ActiveRunID = ""
@@ -1866,8 +2020,8 @@ func TestSyncBlueprintReappliesManifest(t *testing.T) {
 		Name:     "app",
 	})
 	svc := &Service{
-		Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
-		Blueprints:      fs,
+		Base:          &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
+		Blueprints:    fs,
 		DomainTraffic: allowDomainTraffic{},
 		// w8/m36 t003: a Git-backed sync with no fetcher is a failure, so the
 		// reapply path fetches the unchanged manifest through the seam.
@@ -2168,8 +2322,8 @@ func TestSyncBlueprintFailedCompletionWriteIsError(t *testing.T) {
 	fs.updateSyncErr = errors.New("blueprints store unavailable")
 	client := fakeClient()
 	svc := &Service{
-		Base:            &core.Base{Client: client, Namespace: "default", Workspace: ws},
-		Blueprints:      fs,
+		Base:          &core.Base{Client: client, Namespace: "default", Workspace: ws},
+		Blueprints:    fs,
 		DomainTraffic: allowDomainTraffic{},
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
@@ -2263,10 +2417,10 @@ func TestBlueprintDisconnectedReadsAsAbsent(t *testing.T) {
 	})
 	client := fakeClient()
 	svc := &Service{
-		Base:            &core.Base{Client: client, Namespace: "default", Workspace: ws},
-		Blueprints:      fs,
+		Base:          &core.Base{Client: client, Namespace: "default", Workspace: ws},
+		Blueprints:    fs,
 		DomainTraffic: allowDomainTraffic{},
-		GitFetcher:      fakeBlueprintFetcher{contents: stackManifest},
+		GitFetcher:    fakeBlueprintFetcher{contents: stackManifest},
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 
@@ -2313,10 +2467,10 @@ func TestBlueprintRecreationFencesOldExecution(t *testing.T) {
 	ws := fakeWorkspace{"user-a": "tea-a"}
 	fs := newFakeBlueprintStore()
 	svc := &Service{
-		Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
-		Blueprints:      fs,
+		Base:          &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
+		Blueprints:    fs,
 		DomainTraffic: allowDomainTraffic{},
-		GitFetcher:      fakeBlueprintFetcher{contents: stackManifest},
+		GitFetcher:    fakeBlueprintFetcher{contents: stackManifest},
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 	create := CreateBlueprintRequest{Repo: "https://github.com/a/app", Branch: "main"}
@@ -2384,8 +2538,8 @@ func TestSyncAdmissionRaceAdmitsOne(t *testing.T) {
 	barrier.attempts.Add(racers)
 	newSvc := func() *Service {
 		return &Service{
-			Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
-			Blueprints:      barrier,
+			Base:          &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
+			Blueprints:    barrier,
 			DomainTraffic: allowDomainTraffic{},
 		}
 	}
@@ -2571,8 +2725,8 @@ func TestSettingsChangeDuringRunPreserved(t *testing.T) {
 	release := sync.OnceFunc(func() { close(gated.proceed) })
 	t.Cleanup(release)
 	svc := &Service{
-		Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
-		Blueprints:      gated,
+		Base:          &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
+		Blueprints:    gated,
 		DomainTraffic: allowDomainTraffic{},
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
@@ -2893,8 +3047,8 @@ func TestSyncBlueprintPersistsFailureReason(t *testing.T) {
 		Name:     "app",
 	})
 	svc := &Service{
-		Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
-		Blueprints:      fs,
+		Base:          &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
+		Blueprints:    fs,
 		DomainTraffic: allowDomainTraffic{},
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
@@ -3481,8 +3635,8 @@ func TestGraphQLSyncBlueprint(t *testing.T) {
 		Name:     "app",
 	})
 	svc := &Service{
-		Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
-		Blueprints:      fs,
+		Base:          &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
+		Blueprints:    fs,
 		DomainTraffic: allowDomainTraffic{},
 		// w8/m36 t003: Git-backed sync fetches instead of reapplying stored.
 		GitFetcher: fakeBlueprintFetcher{contents: stackManifest},
@@ -3627,7 +3781,7 @@ func TestBlueprintAutoSyncScopedMatchingIgnoresForeignResources(t *testing.T) {
 	// The ctx exactly as triggerBlueprintSync builds it (webhook-shaped
 	// workspace-named ctx + the acting-tenant binding from the blueprint row).
 	syncCtx := core.WithActingTenant(core.WithWorkspace(context.Background(), "tea-a"), "tea-a")
-	if _, err := svc.runSync(syncCtx, bp, "", "", nil); err != nil {
+	if _, err := svc.runSync(syncCtx, bp, "", "", nil, nil); err != nil {
 		t.Fatalf("runSync: %v", err)
 	}
 
@@ -3686,7 +3840,7 @@ func TestRunSyncFailsClosedWithoutResolvableTenant(t *testing.T) {
 	cl := fakeClient()
 	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", Workspace: ws}, Blueprints: fs, DomainTraffic: allowDomainTraffic{}}
 
-	if _, err := svc.runSync(context.Background(), bp, "", "", nil); !errors.Is(err, ErrBlueprintSyncWorkspaceUnresolved) {
+	if _, err := svc.runSync(context.Background(), bp, "", "", nil, nil); !errors.Is(err, ErrBlueprintSyncWorkspaceUnresolved) {
 		t.Fatalf("runSync(identity-less, workspace-less ctx) err = %v, want ErrBlueprintSyncWorkspaceUnresolved", err)
 	}
 

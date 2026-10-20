@@ -61,8 +61,10 @@ type BlueprintStore interface {
 	// ClaimBlueprintAutoSyncIntents leases a bounded pending batch for the
 	// durable auto-sync worker (w8/m38).
 	ClaimBlueprintAutoSyncIntents(ctx context.Context, limit int, lease time.Duration) ([]store.BlueprintAutoSyncIntent, error)
-	CompleteBlueprintAutoSyncIntent(ctx context.Context, id string) error
-	FailBlueprintAutoSyncIntent(ctx context.Context, id, errMsg string) error
+	CompleteBlueprintAutoSyncIntent(ctx context.Context, id string, claimGeneration int64, reason string) error
+	FailBlueprintAutoSyncIntent(ctx context.Context, id string, claimGeneration int64, errMsg string) error
+	AssertBlueprintAutoSyncIntent(ctx context.Context, id string, claimGeneration int64) error
+	AdmitBlueprintAutoSyncRun(ctx context.Context, intent store.BlueprintAutoSyncIntent, source store.Blueprint, run store.BlueprintSync) (store.Blueprint, store.BlueprintSync, error)
 	UpdateBlueprint(ctx context.Context, id, tenantID string, name *string, autoSync *bool, path *string, status *string, lastSyncAt *time.Time) (store.Blueprint, error)
 	DisconnectBlueprint(ctx context.Context, id, tenantID string) error
 	InsertBlueprintSync(ctx context.Context, run store.BlueprintSync) (store.BlueprintSync, error)
@@ -1299,7 +1301,7 @@ func (s *Service) SyncBlueprint(ctx context.Context, bpID, ownerID, bexYAML, con
 	if err != nil {
 		return SyncBlueprintResult{}, store.MapError(err)
 	}
-	return s.runSync(ctx, b, bexYAML, confirm, reviewed)
+	return s.runSync(ctx, b, bexYAML, confirm, reviewed, nil)
 }
 
 // runSync is the shared sync engine: admits the apply, pulls-from-repo or uses
@@ -1354,7 +1356,10 @@ func (s *Service) failSync(ctx context.Context, b store.Blueprint, commitSHA str
 	return SyncBlueprintResult{}, srcErr
 }
 
-func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confirm string, reviewed *ReviewedBlueprintSource) (SyncBlueprintResult, error) {
+// Automatic delivery is a wake-up for the current branch, not a manual
+// reviewed-commit pin. Its durable claim also fences admission and each later
+// mutation through the existing Blueprint execution authority.
+func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confirm string, reviewed *ReviewedBlueprintSource, auto *store.BlueprintAutoSyncIntent) (SyncBlueprintResult, error) {
 	tenantID := b.TenantID
 	// w1/m69: a sync that cannot name the workspace it acts in must refuse
 	// rather than apply identity-less (ErrBlueprintSyncWorkspaceUnresolved's
@@ -1367,7 +1372,25 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 			return SyncBlueprintResult{}, ErrBlueprintSyncWorkspaceUnresolved
 		}
 	}
+	if auto != nil {
+		if b.Repo == "" {
+			return SyncBlueprintResult{}, fmt.Errorf("%w: automatic Blueprint sync requires a Git source", core.ErrBadRequest)
+		}
+		if err := s.Blueprints.AssertBlueprintAutoSyncIntent(ctx, auto.ID, auto.ClaimGeneration); err != nil {
+			return SyncBlueprintResult{}, errBlueprintExecutionLost()
+		}
+	}
 	now := s.Now().UTC()
+	// Only pre-apply, retryable provider failures retain the automatic intent.
+	// The public failure stays sanitized through the shared source classifier.
+	failSource := func(commit string, sourceErr error) (SyncBlueprintResult, error) {
+		reason, _ := classifyBlueprintFetchError(sourceErr, b.Path, b.Branch)
+		result, err := s.failSync(ctx, b, commit, now, blueprintFetchFailure(sourceErr, b.Path, b.Branch))
+		if auto != nil && RetryableBlueprintFetch(reason) {
+			return result, &blueprintAutoSyncRetry{err: err}
+		}
+		return result, err
+	}
 	var commitSHA string
 	var manifest string
 	var prepared *parsedStack
@@ -1392,6 +1415,9 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		manifest = bexYAML
 	} else if b.Repo != "" {
 		if s.GitFetcher == nil {
+			if auto != nil {
+				return SyncBlueprintResult{}, &blueprintAutoSyncRetry{err: ErrBlueprintFetchUnavailable}
+			}
 			return s.failSync(ctx, b, "", now, ErrBlueprintFetchUnavailable)
 		}
 		// Re-validate the stored path before the token-backed fetch (round-6
@@ -1410,7 +1436,7 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 			}
 			contents, fetchErr := s.GitFetcher.FetchBlueprintFileAtCommit(ctx, tenantID, b.Repo, reviewed.CommitID, b.Path)
 			if fetchErr != nil {
-				return s.failSync(ctx, b, reviewed.CommitID, now, blueprintFetchFailure(fetchErr, b.Path, b.Branch))
+				return failSource(reviewed.CommitID, fetchErr)
 			}
 			commitSHA, manifest = reviewed.CommitID, contents
 		} else {
@@ -1420,11 +1446,14 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 			// callers that omit the reviewed pin keep this HEAD-resolve path.
 			sha, resolveErr := s.GitFetcher.ResolveBlueprintCommit(ctx, tenantID, b.Repo, b.Branch)
 			if resolveErr != nil {
-				return s.failSync(ctx, b, "", now, blueprintFetchFailure(resolveErr, b.Path, b.Branch))
+				return failSource("", resolveErr)
+			}
+			if auto != nil && (!validGitObjectID(sha) || isZeroSHA(sha)) {
+				return failSource("", errors.New("GitHub returned an invalid Blueprint source commit"))
 			}
 			contents, fetchErr := s.GitFetcher.FetchBlueprintFileAtCommit(ctx, tenantID, b.Repo, sha, b.Path)
 			if fetchErr != nil {
-				return s.failSync(ctx, b, sha, now, blueprintFetchFailure(fetchErr, b.Path, b.Branch))
+				return failSource(sha, fetchErr)
 			}
 			commitSHA, manifest = sha, contents
 		}
@@ -1440,17 +1469,25 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 	// failed admission blocks every workload side effect below. A competing
 	// live claim loses with the documented busy conflict (recorded in history);
 	// a disconnect that lands first fences here the same way.
-	b, run, err := s.Blueprints.AdmitBlueprintSyncRun(ctx, b.ID, tenantID, store.BlueprintSync{
-		CommitID:  commitSHA,
-		State:     store.BlueprintSyncStateRunning,
-		StartedAt: now,
-	})
+	run := store.BlueprintSync{CommitID: commitSHA, State: store.BlueprintSyncStateRunning, StartedAt: now}
+	var admitted store.Blueprint
+	var err error
+	if auto != nil {
+		run.Note = fmt.Sprintf("Automatic delivery accepted commit %s; consumed current branch commit %s.", auto.CommitSHA, commitSHA)
+		admitted, run, err = s.Blueprints.AdmitBlueprintAutoSyncRun(ctx, *auto, b, run)
+	} else {
+		admitted, run, err = s.Blueprints.AdmitBlueprintSyncRun(ctx, b.ID, tenantID, run)
+	}
 	if err != nil {
 		if isBlueprintBusy(err) {
 			return s.failSync(ctx, b, commitSHA, now, errBlueprintSyncBusy("another sync is already running for this blueprint; retry after it settles"))
 		}
+		if auto != nil {
+			return SyncBlueprintResult{}, &blueprintAutoSyncRetry{err: err}
+		}
 		return SyncBlueprintResult{}, err
 	}
+	b = admitted
 	// The admitted sync's reads until it writes a resource share one snapshot;
 	// staging writes only the store.
 	snap := s.newWorkspaceSnapshot(ctx)
@@ -1464,6 +1501,23 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		completedAt := s.Now().UTC()
 		_ = s.Blueprints.FailAdmittedSync(ctx, b.ID, tenantID, run.ID, run.ExecutionGeneration, completedAt, errMsgPtr(stageErr))
 		return SyncBlueprintResult{}, stageErr
+	}
+	if auto != nil {
+		// A slow immutable fetch may have finished after the branch moved. The
+		// admitted execution serializes applies, so revalidate before staging
+		// or any workload mutation. A retry resolves the new head afresh.
+		head, err := s.GitFetcher.ResolveBlueprintCommit(ctx, tenantID, b.Repo, b.Branch)
+		if err != nil {
+			reason, _ := classifyBlueprintFetchError(err, b.Path, b.Branch)
+			failure := blueprintFetchFailure(err, b.Path, b.Branch)
+			if RetryableBlueprintFetch(reason) {
+				return settleStage(&blueprintAutoSyncRetry{err: failure})
+			}
+			return settleStage(failure)
+		}
+		if head != commitSHA {
+			return settleStage(&blueprintAutoSyncRetry{err: errors.New("automatic Blueprint source advanced before apply; retry current branch")})
+		}
 	}
 	if useStored {
 		// Legacy non-Git rows apply the stored manifest: staging records the
@@ -1555,7 +1609,7 @@ func (s *Service) triggerBlueprintSync(ctx context.Context, tenantID, repo, bran
 	// run with Tenant(ctx)=="". The acting tenant is derived from this store
 	// row, never from the push payload.
 	ctx = core.WithActingTenant(ctx, b.TenantID)
-	_, _ = s.runSync(ctx, b, "", "", nil)
+	_, _ = s.runSync(ctx, b, "", "", nil, nil)
 }
 
 // ListBlueprintSyncs returns recorded sync runs for a blueprint, newest first.

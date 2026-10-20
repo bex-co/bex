@@ -71,6 +71,13 @@ type BlueprintSync struct {
 	// migration 0111) so recovery and completion never settle a run against a
 	// newer generation. Internal; never rendered on API views.
 	ExecutionGeneration int64 `json:"-"`
+	// Automatic runs carry both the accepted intent's lease and the actual
+	// source snapshot they resolved. Manual reviewed commits have no intent.
+	AutoIntentID        string `json:"-"`
+	AutoClaimGeneration int64  `json:"-"`
+	AutoSourceRepo      string `json:"-"`
+	AutoSourceBranch    string `json:"-"`
+	AutoSourcePath      string `json:"-"`
 }
 
 // Blueprint sync state constants (Render's vocabulary).

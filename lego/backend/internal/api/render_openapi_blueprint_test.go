@@ -122,12 +122,16 @@ func (f *blueprintFixtureStore) ClaimBlueprintAutoSyncIntents(context.Context, i
 	return nil, nil
 }
 
-func (f *blueprintFixtureStore) CompleteBlueprintAutoSyncIntent(context.Context, string) error {
+func (f *blueprintFixtureStore) CompleteBlueprintAutoSyncIntent(context.Context, string, int64, string) error {
 	return nil
 }
 
-func (f *blueprintFixtureStore) FailBlueprintAutoSyncIntent(context.Context, string, string) error {
+func (f *blueprintFixtureStore) FailBlueprintAutoSyncIntent(context.Context, string, int64, string) error {
 	return nil
+}
+
+func (f *blueprintFixtureStore) AssertBlueprintAutoSyncIntent(context.Context, string, int64) error {
+	return fmt.Errorf("blueprintFixtureStore: %w", store.ErrNotFound)
 }
 
 func (f *blueprintFixtureStore) InsertBlueprintSync(_ context.Context, run store.BlueprintSync) (store.BlueprintSync, error) {
@@ -141,6 +145,10 @@ func (f *blueprintFixtureStore) UpdateBlueprintSync(_ context.Context, id, state
 // Lifecycle stubs (w8/m37): the by-id route tests never admit, stage,
 // complete, or recover runs, so these stay unimplemented.
 func (f *blueprintFixtureStore) AdmitBlueprintSyncRun(context.Context, string, string, store.BlueprintSync) (store.Blueprint, store.BlueprintSync, error) {
+	return store.Blueprint{}, store.BlueprintSync{}, fmt.Errorf("blueprintFixtureStore: %w", store.ErrNotFound)
+}
+
+func (f *blueprintFixtureStore) AdmitBlueprintAutoSyncRun(context.Context, store.BlueprintAutoSyncIntent, store.Blueprint, store.BlueprintSync) (store.Blueprint, store.BlueprintSync, error) {
 	return store.Blueprint{}, store.BlueprintSync{}, fmt.Errorf("blueprintFixtureStore: %w", store.ErrNotFound)
 }
 

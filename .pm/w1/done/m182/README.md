@@ -1,6 +1,6 @@
 # w1 · m182 — Older Blueprint auto-sync work cannot overwrite newer configuration
 
-**Worker:** worker1 **Goal:** automatic Blueprint synchronization converges to the current eligible branch source despite reordered deliveries, workers and retries. **Status:** todo
+**Worker:** worker1 **Goal:** automatic Blueprint synchronization converges to the current eligible branch source despite reordered deliveries, workers and retries. **Status:** done (2026-10-20: implementation, parity review, simplify, real-Postgres walkthrough, full backend suite and lint complete)
 
 **Estimate:** 175m implementation; ~4h25m including standing closing tasks.
 
@@ -8,14 +8,14 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Establish authoritative source freshness for automatic intents | 60m | — |
-| t002 | Serialize automatic claims per Blueprint and fence reclaimed work | 45m | t001 |
-| t003 | Prevent stale automatic work from applying after newer sources | 45m | t001, t002 |
-| t004 | Preserve source attribution and explain superseded automatic work | 25m | t003 |
-| t005 | Render parity | 25m | t004 |
-| t006 | Simplify | 20m | t005 |
-| t007 | Test coverage | 40m | t005, t006 |
-| t008 | Closeout | 10m | t007 |
+| t001 | Establish authoritative source freshness for automatic intents — **DONE** | 60m | — |
+| t002 | Serialize automatic claims per Blueprint and fence reclaimed work — **DONE** | 45m | t001 |
+| t003 | Prevent stale automatic work from applying after newer sources — **DONE** | 45m | t001, t002 |
+| t004 | Preserve source attribution and explain superseded automatic work — **DONE** | 25m | t003 |
+| t005 | Render parity — **DONE** | 25m | t004 |
+| t006 | Simplify — **DONE** | 20m | t005 |
+| t007 | Test coverage — **DONE** | 40m | t005, t006 |
+| t008 | Closeout — **DONE** | 10m | t007 |
 
 ## Definition of done
 
@@ -32,3 +32,7 @@
 - **Why now:** durable intake already exists, but the source-ordering guarantee promised in shipped `w8/done/m38` is not established by its current worker; this is a scoped correction, not another auto-sync feature.
 - **Render parity included:** Render's [Blueprint documentation](https://render.com/docs/infrastructure-as-code) confirms automatic application of changed linked Blueprints. Ordering, crash recovery, fencing and force-push behavior here are **bex correctness requirements; Render's corresponding guarantees are undocumented and were not measured**. Preserve the ADR018 Blueprint row's existing partial markers.
 - **Boundaries:** reuse the existing worker/store/apply fence. No external queue service, new deployment product or automatic resource deletion.
+
+## Verification — 2026-10-20
+
+The delayed-A/current-B counterexample failed against the old worker and passes now. Tests exercise two API claimers and every stale authority boundary against real Postgres, with a signed-intake/restart/policy walkthrough using a controlled Kubernetes client. Fresh full backend suite and all-module lint/dead-code checks pass. This closes the scoped correctness repair; no claim is made about undocumented Render internals or a live GitHub acceptance run.

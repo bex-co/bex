@@ -35,15 +35,17 @@ import (
 // advancingBlueprintFetcher starts Resolve at headSHA while Fetch serves
 // byCommit — models a branch move between preview and confirm (w8/m41).
 type advancingBlueprintFetcher struct {
-	headSHA  string
-	byCommit map[string]string
-	resolves int
-	fetched  []string
+	headSHA    string
+	byCommit   map[string]string
+	resolves   int
+	fetched    []string
+	resolveErr error
+	afterFetch func()
 }
 
 func (f *advancingBlueprintFetcher) ResolveBlueprintCommit(context.Context, string, string, string) (string, error) {
 	f.resolves++
-	return f.headSHA, nil
+	return f.headSHA, f.resolveErr
 }
 
 func (f *advancingBlueprintFetcher) FetchBlueprintFileAtCommit(_ context.Context, _, _, commit, _ string) (string, error) {
@@ -51,6 +53,9 @@ func (f *advancingBlueprintFetcher) FetchBlueprintFileAtCommit(_ context.Context
 	contents, ok := f.byCommit[commit]
 	if !ok {
 		return "", fmt.Errorf("bad request: unknown commit %s", commit)
+	}
+	if f.afterFetch != nil {
+		f.afterFetch()
 	}
 	return contents, nil
 }
@@ -77,10 +82,10 @@ func TestSyncBlueprintReviewedSourcePinsCommitAcrossBranchMove(t *testing.T) {
 		},
 	}
 	svc := &Service{
-		Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
-		Blueprints:      fs,
+		Base:          &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
+		Blueprints:    fs,
 		DomainTraffic: allowDomainTraffic{},
-		GitFetcher:      fetcher,
+		GitFetcher:    fetcher,
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 	reviewed := &ReviewedBlueprintSource{
@@ -122,10 +127,10 @@ func TestSyncBlueprintOmitReviewedFollowsMovedHead(t *testing.T) {
 		},
 	}
 	svc := &Service{
-		Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
-		Blueprints:      fs,
+		Base:          &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
+		Blueprints:    fs,
 		DomainTraffic: allowDomainTraffic{},
-		GitFetcher:      fetcher,
+		GitFetcher:    fetcher,
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 
@@ -202,8 +207,8 @@ func TestReviewedSourceAcrossAdapters(t *testing.T) {
 			Status: "active", Name: "app",
 		})
 		svc := &Service{
-			Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
-			Blueprints:      fs,
+			Base:          &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
+			Blueprints:    fs,
 			DomainTraffic: allowDomainTraffic{},
 			GitFetcher: &advancingBlueprintFetcher{
 				headSHA: movedCommitB,
