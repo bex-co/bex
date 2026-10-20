@@ -170,11 +170,13 @@ func TestHACreateWithReadReplicas(t *testing.T) {
 }
 
 func TestReadReplicaView(t *testing.T) {
-	// pgView reads ReadReplicaStatuses from the operator and projects them to
-	// ReadReplicaView entries. HighAvailabilityEnabled comes from operator status.
+	// pgView lists the configured replicas (spec) with the hosts the operator
+	// reports for them (status, w5/m138). HighAvailabilityEnabled comes from
+	// operator status.
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "rr-db", Namespace: "default"},
-		Spec:       appv1alpha1.DatabaseSpec{Plan: "basic-1gb", HighAvailability: true},
+		Spec: appv1alpha1.DatabaseSpec{Plan: "basic-1gb", HighAvailability: true,
+			ReadReplicas: []appv1alpha1.DatabaseReadReplica{{Name: "reader-1"}, {Name: "reader-2"}}},
 		Status: appv1alpha1.DatabaseStatus{
 			Phase:                   appv1alpha1.DBPhaseReady,
 			HighAvailabilityEnabled: true,

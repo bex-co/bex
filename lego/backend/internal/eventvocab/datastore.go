@@ -61,16 +61,17 @@ const (
 // successful PATCH that changed exactly that setting, and the audit row carries
 // the value it was set to (see core.AuditEvent's datastore fields).
 //
-// Render's postgres_read_replicas_changed is deliberately NOT here: read
-// replicas are a create-time-only array in bex (PostgresPatch has no
-// ReadReplicas field, and the Blueprint apply path writes spec.readReplicas
-// without recording any datastore audit effect), so there is no post-create
-// mutation to source the event from. Advertising it would name an event nothing
-// can emit. Reopen when a replica add/remove verb exists.
+// postgres_read_replicas_changed and postgres_disk_autoscaling_enabled_changed
+// (w5/m138) come from the same PATCH and carry no value: Render's envelope for
+// them is the thin one, so the row names only the database. Like their
+// siblings they are PATCH effects; a Blueprint sync writes spec.readReplicas
+// and spec.diskAutoscaling without recording a datastore audit effect.
 const (
-	TypePostgresHAStatusChanged              = "postgres_ha_status_changed"
-	TypePostgresConnectionPoolEnabledChanged = "postgres_connection_pool_enabled_changed"
-	TypePostgresDiskSizeChanged              = "postgres_disk_size_changed"
+	TypePostgresHAStatusChanged               = "postgres_ha_status_changed"
+	TypePostgresConnectionPoolEnabledChanged  = "postgres_connection_pool_enabled_changed"
+	TypePostgresDiskSizeChanged               = "postgres_disk_size_changed"
+	TypePostgresReadReplicasChanged           = "postgres_read_replicas_changed"
+	TypePostgresDiskAutoscalingEnabledChanged = "postgres_disk_autoscaling_enabled_changed"
 	// TypeKeyValueConfigRestart is Render's "a config change restarted the
 	// instance". Verified against the mechanism before advertising: the operator
 	// folds spec.maxmemoryPolicy and spec.persistenceMode into the Valkey server
@@ -85,16 +86,18 @@ const (
 // additions cannot mutate the shared vocabulary.
 func DatastoreAuditTypes() map[string]string {
 	return map[string]string{
-		core.AuditVerbPostgresCreated:            TypePostgresCreated,
-		core.AuditVerbPostgresRestarted:          TypePostgresRestarted,
-		core.AuditVerbPostgresCredentialsCreated: TypePostgresCredentialsCreated,
-		core.AuditVerbPostgresCredentialsDeleted: TypePostgresCredentialsDeleted,
-		core.AuditVerbPostgresBackupStarted:      TypePostgresBackupStarted,
-		core.AuditVerbPostgresPlanChanged:        TypePlanChanged,
-		core.AuditVerbKeyValuePlanChanged:        TypePlanChanged,
-		core.AuditVerbPostgresHAChanged:          TypePostgresHAStatusChanged,
-		core.AuditVerbPostgresPoolerChanged:      TypePostgresConnectionPoolEnabledChanged,
-		core.AuditVerbPostgresDiskSizeChanged:    TypePostgresDiskSizeChanged,
-		core.AuditVerbKeyValueConfigChanged:      TypeKeyValueConfigRestart,
+		core.AuditVerbPostgresCreated:                TypePostgresCreated,
+		core.AuditVerbPostgresRestarted:              TypePostgresRestarted,
+		core.AuditVerbPostgresCredentialsCreated:     TypePostgresCredentialsCreated,
+		core.AuditVerbPostgresCredentialsDeleted:     TypePostgresCredentialsDeleted,
+		core.AuditVerbPostgresBackupStarted:          TypePostgresBackupStarted,
+		core.AuditVerbPostgresPlanChanged:            TypePlanChanged,
+		core.AuditVerbKeyValuePlanChanged:            TypePlanChanged,
+		core.AuditVerbPostgresHAChanged:              TypePostgresHAStatusChanged,
+		core.AuditVerbPostgresPoolerChanged:          TypePostgresConnectionPoolEnabledChanged,
+		core.AuditVerbPostgresDiskSizeChanged:        TypePostgresDiskSizeChanged,
+		core.AuditVerbPostgresReadReplicasChanged:    TypePostgresReadReplicasChanged,
+		core.AuditVerbPostgresDiskAutoscalingChanged: TypePostgresDiskAutoscalingEnabledChanged,
+		core.AuditVerbKeyValueConfigChanged:          TypeKeyValueConfigRestart,
 	}
 }

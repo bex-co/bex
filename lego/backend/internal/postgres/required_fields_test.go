@@ -182,7 +182,7 @@ func TestPostgresReadReplicasNonEmptySerializes(t *testing.T) {
 	svc, _ := newService(
 		&appv1alpha1.Database{
 			ObjectMeta: metav1.ObjectMeta{Name: "rr-req-pg", Namespace: "default"},
-			Spec:       appv1alpha1.DatabaseSpec{Plan: "basic-1gb"},
+			Spec:       appv1alpha1.DatabaseSpec{Plan: "basic-1gb", ReadReplicas: []appv1alpha1.DatabaseReadReplica{{Name: "reader-1"}}},
 			Status: appv1alpha1.DatabaseStatus{
 				Phase: appv1alpha1.DBPhaseReady,
 				ReadReplicaStatuses: []appv1alpha1.DatabaseReadReplicaStatus{

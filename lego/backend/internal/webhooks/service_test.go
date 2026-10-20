@@ -568,6 +568,9 @@ func TestDatastoreConfigEventTypesAreSubscribableAndMapped(t *testing.T) {
 		core.AuditVerbPostgresPoolerChanged:   TypePostgresConnectionPoolEnabledChanged,
 		core.AuditVerbPostgresDiskSizeChanged: TypePostgresDiskSizeChanged,
 		core.AuditVerbKeyValueConfigChanged:   TypeKeyValueConfigRestart,
+		// w5/m138: post-create replica changes and the autoscaling toggle.
+		core.AuditVerbPostgresReadReplicasChanged:    TypePostgresReadReplicasChanged,
+		core.AuditVerbPostgresDiskAutoscalingChanged: TypePostgresDiskAutoscalingEnabledChanged,
 	}
 	for verb, want := range wantByVerb {
 		if got := verbEvents[verb]; got != want {
@@ -586,10 +589,6 @@ func TestDatastoreConfigEventTypesAreSubscribableAndMapped(t *testing.T) {
 		if !ok || eventType != want || data.ServiceID != "dpg-1" || data.ServiceName != "orders" {
 			t.Errorf("project(%q) = %q %+v ok=%t, want %q", verb, eventType, data, ok, want)
 		}
-	}
-	// No producer, so not advertised — read replicas are create-time only.
-	if slices.Contains(EventTypes, "postgres_read_replicas_changed") {
-		t.Error("postgres_read_replicas_changed is subscribable but nothing can emit it")
 	}
 }
 

@@ -148,6 +148,7 @@ const instanceTypes: DatabaseInstanceTypeView[] = [
     supportsDiskAutoscaling: false,
     supportsConnectionPooling: false,
     maxReadReplicas: 0,
+    readReplicaMinStorageGB: 10,
     supportsHighAvailability: false,
     monthlyUsd: "",
   },

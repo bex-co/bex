@@ -27,6 +27,17 @@ query Databases($ownerId: String) {
   }
 }
 
+# id lets Apollo normalize each replica, so a changed set replaces cached
+# references rather than overwriting unidentified objects (w5/m138).
+fragment ReadReplicaFields on ReadReplicaView {
+  id
+  name
+  connectionInfo {
+    internalHost
+    externalHost
+  }
+}
+
 query Database($id: String!) {
   database(id: $id) {
     id
@@ -43,11 +54,7 @@ query Database($id: String!) {
     diskAutoscalingEnabled
     highAvailabilityEnabled
     readReplicas {
-      name
-      connectionInfo {
-        internalHost
-        externalHost
-      }
+      ...ReadReplicaFields
     }
     suspended
     createdAt
@@ -139,6 +146,22 @@ query DatabaseIpAllowList($id: String!) {
 
 mutation FailoverDatabase($id: String!) {
   failoverDatabase(id: $id)
+}
+
+# Replaces the named read replica set (w5/m138) — REST's PATCH readReplicas.
+# The HA panel sends the whole set: the current names plus one to add, or
+# minus one to remove; [] removes every replica.
+mutation SetDatabaseReadReplicas(
+  $id: String!
+  $readReplicas: [DatabaseReadReplicaInput!]!
+) {
+  setDatabaseReadReplicas(id: $id, readReplicas: $readReplicas) {
+    id
+    status
+    readReplicas {
+      ...ReadReplicaFields
+    }
+  }
 }
 
 mutation SuspendDatabase($id: String!, $confirm: String) {
@@ -237,6 +260,7 @@ query DatabaseInstanceTypes {
     supportsDiskAutoscaling
     supportsConnectionPooling
     maxReadReplicas
+    readReplicaMinStorageGB
     supportsHighAvailability
     # The price from bex-api's one price sheet (w4/156).
     monthlyUsd

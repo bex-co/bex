@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"slices"
 	"testing"
 
@@ -158,6 +157,16 @@ func TestPostgresConfigurationEffectsProjectRenderNames(t *testing.T) {
 			check: wantBoolDetail("connectionPoolEnabled", func(e core.AuditEvent) *bool { return e.ConnectionPoolEnabled }, true),
 		},
 		{
+			name: "read replicas set", patch: PostgresPatch{ReadReplicas: &[]ReadReplicaInput{{Name: "r1"}}},
+			wantVerb: core.AuditVerbPostgresReadReplicasChanged, wantEvent: eventvocab.TypePostgresReadReplicasChanged,
+			check: wantNoDatastoreDetail,
+		},
+		{
+			name: "disk autoscaling on", patch: PostgresPatch{EnableDiskAutoscaling: &enabled},
+			wantVerb: core.AuditVerbPostgresDiskAutoscalingChanged, wantEvent: eventvocab.TypePostgresDiskAutoscalingEnabledChanged,
+			check: wantNoDatastoreDetail,
+		},
+		{
 			name: "disk grown", patch: PostgresPatch{DiskSizeGB: &grown},
 			wantVerb: core.AuditVerbPostgresDiskSizeChanged, wantEvent: eventvocab.TypePostgresDiskSizeChanged,
 			check: func(e core.AuditEvent) error {
@@ -247,6 +256,15 @@ func TestPostgresConfigurationEffectsProjectRenderNames(t *testing.T) {
 	})
 }
 
+// wantNoDatastoreDetail is the thin-envelope events' check (w5/m138): Render's
+// payload names only the resource, so the row carries no typed value.
+func wantNoDatastoreDetail(e core.AuditEvent) error {
+	if e.HighAvailabilityEnabled != nil || e.ConnectionPoolEnabled != nil || e.DiskSizeGB != nil {
+		return fmt.Errorf("thin event carries a typed detail: %+v", e)
+	}
+	return nil
+}
+
 func wantBoolDetail(field string, read func(core.AuditEvent) *bool, want bool) func(core.AuditEvent) error {
 	return func(event core.AuditEvent) error {
 		got := read(event)
@@ -289,17 +307,28 @@ func TestPostgresUnnamedFieldsStillRecordTheGenericUpdate(t *testing.T) {
 	}
 }
 
-// Render's postgres_read_replicas_changed has no bex producer: read replicas
-// are create-time only (PostgresPatch has no ReadReplicas field), so the name
-// must stay out of the advertised vocabulary rather than be advertised empty.
-func TestPostgresReadReplicasChangedHasNoProducerAndIsNotAdvertised(t *testing.T) {
-	for _, name := range eventvocab.DatastoreAuditTypes() {
-		if name == "postgres_read_replicas_changed" {
-			t.Fatal("postgres_read_replicas_changed is advertised, but no verb mutates read replicas after create")
-		}
+// Re-asserting the replica set or the autoscaling flag a database already has
+// changes nothing, so it records the generic update row and no
+// postgres_read_replicas_changed / postgres_disk_autoscaling_enabled_changed
+// (w5/m138) — the idempotent-HA rule above.
+func TestUnchangedReplicaSetAndAutoscalingRecordNoSettingEffect(t *testing.T) {
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "dpg-same", Namespace: "default"},
+		Spec: appv1alpha1.DatabaseSpec{Name: "orders", Plan: "basic-1gb", StorageGB: 20, DiskAutoscaling: true,
+			ReadReplicas: []appv1alpha1.DatabaseReadReplica{{Name: "r1"}}},
 	}
-	if _, ok := reflect.TypeOf(PostgresPatch{}).FieldByName("ReadReplicas"); ok {
-		t.Fatal("PostgresPatch gained a ReadReplicas field — record the resulting replica set and advertise postgres_read_replicas_changed")
+	svc, _ := newService(db)
+	sink := &webhookAuditSink{}
+	svc.Audit = sink
+
+	on := true
+	if _, err := svc.UpdatePostgres(context.Background(), db.Name, PostgresPatch{
+		ReadReplicas: &[]ReadReplicaInput{{Name: "r1"}}, EnableDiskAutoscaling: &on,
+	}); err != nil {
+		t.Fatalf("UpdatePostgres: %v", err)
+	}
+	if len(sink.events) != 1 || sink.events[0].Verb != core.AuditVerbPostgresUpdated {
+		t.Fatalf("effects = %+v, want one %s", sink.events, core.AuditVerbPostgresUpdated)
 	}
 }
 

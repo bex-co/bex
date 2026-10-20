@@ -41,6 +41,7 @@ export function useDatabaseInstanceTypes(): UseDatabaseInstanceTypesResult {
           supportsDiskAutoscaling: t.supportsDiskAutoscaling ?? false,
           supportsConnectionPooling: t.supportsConnectionPooling ?? false,
           maxReadReplicas: t.maxReadReplicas ?? 0,
+          readReplicaMinStorageGB: t.readReplicaMinStorageGB ?? 0,
           supportsHighAvailability: t.supportsHighAvailability ?? false,
           monthlyUsd: t.monthlyUsd ?? "",
         })),

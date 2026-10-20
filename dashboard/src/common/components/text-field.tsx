@@ -18,6 +18,7 @@ export function TextField({
   error,
   invalid,
   autoComplete = "off",
+  maxLength,
 }: {
   id: string;
   label: string;
@@ -29,6 +30,7 @@ export function TextField({
   /** Marks the field invalid without showing error copy of its own. */
   invalid?: boolean;
   autoComplete?: string;
+  maxLength?: number;
 }) {
   return (
     <div className="space-y-2">
@@ -39,6 +41,7 @@ export function TextField({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         autoComplete={autoComplete}
+        maxLength={maxLength}
         aria-invalid={invalid || Boolean(error)}
       />
       {error ? (

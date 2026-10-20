@@ -74,6 +74,8 @@ The official list contains no managed-datastore suspend, resume, or delete event
 | `postgres_ha_status_changed` | Successful PATCH that changed high availability (w3/m82) |
 | `postgres_connection_pool_enabled_changed` | Successful PATCH that toggled the PgBouncer pooler (w3/m82) |
 | `postgres_disk_size_changed` | Successful PATCH that changed the disk size (w3/m82) |
+| `postgres_read_replicas_changed` | Successful PATCH that changed the read replica set (w5/m138) |
+| `postgres_disk_autoscaling_enabled_changed` | Successful PATCH that toggled disk autoscaling (w5/m138) |
 | `key_value_config_restart` | Successful PATCH of `maxmemoryPolicy`/`persistenceMode`, which the operator folds into the Valkey StatefulSet's args and therefore rolls the pod (w3/m82) |
 
 Each successful write records one fixed, typed audit effect after the Kubernetes mutation succeeds. The existing durable webhook worker projects that row, so the delivery queue, retry behavior, and signing path remain shared with service events. The payload's `serviceId` is the immutable `dpg-…` or `red-…` resource id; `serviceName` is captured in the same audit row so a later rename cannot rewrite historical deliveries. The four w3/m82 configuration events additionally carry the value the field was set **to** in `GET /v1/events/{id}`'s `details`.
@@ -94,4 +96,4 @@ Two rules keep availability truthful rather than noisy. A datastore that has nev
 
 ## Honest omissions
 
-`postgres_cluster_leader_changed`, `postgres_connection_pool_changed`, `postgres_disk_autoscaling_enabled_changed`, the three `postgres_pitr_checkpoint_*` types, `postgres_read_replica_stale`, and `postgres_wal_archive_failed` still require a durable source or a feature bex does not yet implement. `postgres_read_replicas_changed` is a distinct case: read replicas are create-time-only in bex (no patch verb writes them after create), so there is no mutation to source the event from — it stays unsupported until a replica add/remove verb exists. None of these is approximated by request acceptance.
+`postgres_cluster_leader_changed`, `postgres_connection_pool_changed`, the three `postgres_pitr_checkpoint_*` types, `postgres_read_replica_stale`, and `postgres_wal_archive_failed` still require a durable source or a feature bex does not yet implement. None of these is approximated by request acceptance.

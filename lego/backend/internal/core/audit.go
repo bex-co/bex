@@ -237,7 +237,10 @@ const (
 	AuditVerbPostgresHAChanged       = "postgres.SetHighAvailability"
 	AuditVerbPostgresPoolerChanged   = "postgres.SetPooler"
 	AuditVerbPostgresDiskSizeChanged = "postgres.SetDiskSize"
-	AuditVerbKeyValueConfigChanged   = "keyvalue.UpdateConfig"
+	// Thin w5/m138 effects: Render's events name only the database.
+	AuditVerbPostgresReadReplicasChanged    = "postgres.SetReadReplicas"
+	AuditVerbPostgresDiskAutoscalingChanged = "postgres.SetDiskAutoscaling"
+	AuditVerbKeyValueConfigChanged          = "keyvalue.UpdateConfig"
 	// Team-membership effects (w1/m33). Invite and ChangeRole are spelled exactly
 	// as callerVerb() derives them (deferred-success recording, like SetPlan);
 	// AcceptInvite is recorded explicitly — redemption happens on the auth gate's
@@ -280,16 +283,21 @@ const (
 	DatabaseBackupStarted
 	DatabasePlanChanged
 	DatabaseUpdated
+	// Field effects whose Render events carry no value of their own (w5/m138).
+	DatabaseReadReplicasChanged
+	DatabaseDiskAutoscalingChanged
 )
 
 var databaseAuditVerbs = map[DatabaseAuditEffect]string{
-	DatabaseCreated:            AuditVerbPostgresCreated,
-	DatabaseRestarted:          AuditVerbPostgresRestarted,
-	DatabaseCredentialsCreated: AuditVerbPostgresCredentialsCreated,
-	DatabaseCredentialsDeleted: AuditVerbPostgresCredentialsDeleted,
-	DatabaseBackupStarted:      AuditVerbPostgresBackupStarted,
-	DatabasePlanChanged:        AuditVerbPostgresPlanChanged,
-	DatabaseUpdated:            AuditVerbPostgresUpdated,
+	DatabaseCreated:                AuditVerbPostgresCreated,
+	DatabaseRestarted:              AuditVerbPostgresRestarted,
+	DatabaseCredentialsCreated:     AuditVerbPostgresCredentialsCreated,
+	DatabaseCredentialsDeleted:     AuditVerbPostgresCredentialsDeleted,
+	DatabaseBackupStarted:          AuditVerbPostgresBackupStarted,
+	DatabasePlanChanged:            AuditVerbPostgresPlanChanged,
+	DatabaseUpdated:                AuditVerbPostgresUpdated,
+	DatabaseReadReplicasChanged:    AuditVerbPostgresReadReplicasChanged,
+	DatabaseDiskAutoscalingChanged: AuditVerbPostgresDiskAutoscalingChanged,
 }
 
 // KeyValueAuditEffect is the closed successful-write vocabulary for Key Value.

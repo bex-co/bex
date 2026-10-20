@@ -62,6 +62,7 @@ const FREE: DatabaseInstanceTypeView = {
   supportsDiskAutoscaling: false,
   supportsConnectionPooling: false,
   maxReadReplicas: 0,
+  readReplicaMinStorageGB: 10,
   supportsHighAvailability: false,
   monthlyUsd: "0.00",
 };
@@ -75,6 +76,7 @@ const BASIC: DatabaseInstanceTypeView = {
   supportsDiskAutoscaling: true,
   supportsConnectionPooling: true,
   maxReadReplicas: 5,
+  readReplicaMinStorageGB: 10,
   supportsHighAvailability: false,
   monthlyUsd: "14.00",
 };

@@ -470,7 +470,9 @@ func (s *Service) handleUpdatePostgres(w http.ResponseWriter, r *http.Request) {
 		// Public is bex's explicit external-endpoint control (w4/m116). Render
 		// clients never send it; omitted leaves the endpoint as it is.
 		Public *bool `json:"public,omitempty"`
-		DryRun bool  `json:"dryRun,omitempty"`
+		// ReadReplicas is Render's full replacement replica set; [] removes all.
+		ReadReplicas *[]ReadReplicaInput `json:"readReplicas,omitempty"`
+		DryRun       bool                `json:"dryRun,omitempty"`
 	}
 	if !decodeOr400(w, r, &req) {
 		return
@@ -493,6 +495,7 @@ func (s *Service) handleUpdatePostgres(w http.ResponseWriter, r *http.Request) {
 		IPAllowList:        req.IPAllowList,
 		ParameterOverrides: req.ParameterOverrides,
 		Public:             req.Public,
+		ReadReplicas:       req.ReadReplicas,
 	}
 	// The protected-environment phrase for a rename or version upgrade (w4/m127).
 	ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))

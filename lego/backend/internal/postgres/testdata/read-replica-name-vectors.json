@@ -1,0 +1,17 @@
+[
+  { "name": "r1", "code": null },
+  { "name": "replica-1", "code": null },
+  { "name": "a", "code": null },
+  { "name": "0", "code": null },
+  { "name": "eu-west-reader-2", "code": null },
+  { "name": "a", "repeat": 35, "code": null, "why": "<database id>-ro-<name> is then exactly 63, one DNS label" },
+  { "name": "a", "repeat": 36, "code": "POSTGRES_READ_REPLICA_NAME_INVALID", "why": "one past the label bound" },
+  { "name": "", "code": "POSTGRES_READ_REPLICA_NAME_INVALID" },
+  { "name": "Replica", "code": "POSTGRES_READ_REPLICA_NAME_INVALID", "why": "uppercase; hostnames are lowercase" },
+  { "name": "replica_1", "code": "POSTGRES_READ_REPLICA_NAME_INVALID" },
+  { "name": "-reader", "code": "POSTGRES_READ_REPLICA_NAME_INVALID" },
+  { "name": "reader-", "code": "POSTGRES_READ_REPLICA_NAME_INVALID" },
+  { "name": "r.1", "code": "POSTGRES_READ_REPLICA_NAME_INVALID", "why": "a dot would split the hostname label" },
+  { "name": "my replica", "code": "POSTGRES_READ_REPLICA_NAME_INVALID", "why": "Render accepts a free-form display name; bex builds a hostname from it" },
+  { "name": "réplica", "code": "POSTGRES_READ_REPLICA_NAME_INVALID" }
+]

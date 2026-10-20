@@ -25,6 +25,7 @@ Sources: [public Update Postgres reference](https://api-docs.render.com/referenc
 
 - The dashboard mirrors Render's version row, explicit confirmation, downtime warning, and `upgrading` status.
 - bex allows any **newer** supported target from its 13–18 catalog instead of forcing the latest. This is a deliberate CNPG-backed convenience; unknown, equal, and lower versions return named 400 errors.
+- bex's `PATCH /v1/postgres/{id}` accepts Render's `readReplicas` (full replacement, w5/m138), alongside the other public fields; Render's per-replica `parameterOverrides` is not accepted.
 - bex exposes the same core verb on REST (`PATCH /v1/postgres/{id}` `version`), GraphQL (`updateDatabaseVersion`), and MCP (`update_postgres` with `version`; the dedicated tool folded in at `w1/m74`). These are deliberate public extensions because Render's public REST/MCP omit the dashboard-only operation.
 - A durable (`basic-*`) bex instance must have a completed physical backup in its **current archive generation** before the upgrade is accepted. This is stricter than Render's stated recommendation and ensures there is a known recovery point before downtime. The ephemeral Free plan has no backup promise and is not blocked by this durability guard.
 
