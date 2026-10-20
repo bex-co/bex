@@ -33,6 +33,7 @@ import (
 	"github.com/getkin/kin-openapi/routers"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -936,5 +937,40 @@ func TestRegistryCredentialWorkspaceQueryPassesRenderValidator(t *testing.T) {
 				t.Fatalf("workspace selector: status=%d seen=%q body=%s", result.Code, seen, result.Body.String())
 			}
 		})
+	}
+}
+
+// POST and PATCH /v1/registrycredentials reach the real handler through the
+// Render request validator in bex's own dialect (w8/135). The pinned schema
+// demanded Render's `registry` enum and every field on a PATCH, while the
+// strict handler refuses `registry` as unknown, so no REST body could create
+// or rename a credential.
+func TestRegistryCredentialRESTWritesPassTheRenderValidator(t *testing.T) {
+	rc := &registrycreds.Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}, Store: newFakeRCStore(), Secret: newFakeRCSecretKV()}
+	mux := http.NewServeMux()
+	rc.RegisterREST(mux)
+	handler, err := newRenderRequestValidator(mux)
+	if err != nil {
+		t.Fatal(err)
+	}
+	created := requestOpenAPITest(t, handler, http.MethodPost, "/v1/registrycredentials", "application/json",
+		`{"name":"ghcr","host":"ghcr.io","username":"alice","authToken":"hunter2","expiresAt":"2099-01-01T00:00:00Z"}`)
+	var credential struct{ ID, Name, Host string }
+	if err := json.Unmarshal(created.Body.Bytes(), &credential); created.Code != http.StatusCreated || err != nil || credential.Host != "ghcr.io" {
+		t.Fatalf("create = %d %s, want 201", created.Code, created.Body.String())
+	}
+	if strings.Contains(created.Body.String(), "hunter2") {
+		t.Fatalf("create echoed the secret: %s", created.Body.String())
+	}
+	renamed := requestOpenAPITest(t, handler, http.MethodPatch, "/v1/registrycredentials/"+credential.ID, "application/json", `{"name":"renamed"}`)
+	if renamed.Code != http.StatusOK || !strings.Contains(renamed.Body.String(), `"name":"renamed"`) {
+		t.Fatalf("rename = %d %s, want 200 with the new name", renamed.Code, renamed.Body.String())
+	}
+	// Render's `registry` enum is not bex's wire; it is refused by name, not
+	// with a bare bad request.
+	refused := requestOpenAPITest(t, handler, http.MethodPost, "/v1/registrycredentials", "application/json",
+		`{"name":"x","registry":"DOCKER","username":"u","authToken":"t","ownerId":"tea-a"}`)
+	if refused.Code != http.StatusBadRequest || !strings.Contains(refused.Body.String(), "registry") {
+		t.Fatalf("registry body = %d %s, want a 400 naming the field", refused.Code, refused.Body.String())
 	}
 }
