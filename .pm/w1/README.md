@@ -16,7 +16,7 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 ## Milestones
 
 - [x] **m182** — [Older Blueprint auto-sync work cannot overwrite newer configuration](done/m182/README.md) (8 tasks) — done 2026-10-20: current-branch immutable source, per-Blueprint leases, reclaimed-worker execution fencing and truthful accepted/consumed history; real-Postgres walkthrough, full backend suite and lint pass. Render ordering/recovery guarantees remain explicitly unverified.
-- [ ] **134** — [Verify the already-landed headroom GitOps fix](134.md) (~20m) ← approved item 1; concurrent fix `2c60b7196` / w2/done/048, verification only; operational, not Render parity.
+- [x] **134** — [Verify the already-landed headroom GitOps fix](done/134.md) — closed as already met 2026-10-20: fixing commit `2c60b7196`; production wave 10 exceeds every other wave (maximum 4), reservation contract intact, full GitOps validator passes. Operational, not Render parity.
 
 - [x] **m167** — [Preserve configured commands when cloning image cron jobs](done/m167/README.md) (6 tasks; ~2h55m) — transferred intact from w9/m167 by user approval 2026-09-28; source QA evidence retained. **Done 2026-09-29:** `da6e615cf`; live clone ran `QA_CLONE_MARKER` (pinned library over the deployed read; binary device login not exercised).
 - [x] **m168** — [Honor multiple workspace IDs in REST resource lists](done/m168/README.md) (8 tasks; ~4h15m) — approved brainstorm item 2, 2026-09-28; Render parity is the default. **Done 2026-09-29:** services, Postgres and Key Value lists honor `ownerId` arrays (`core.ListOwners`), fail closed on any forbidden workspace, and page a multi-workspace services union by id.
