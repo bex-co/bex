@@ -100,7 +100,8 @@ const nativeBuildRun = "\nRUN --mount=type=secret,id=render-env"
 
 // Elixir builds and runs with MIX_ENV=prod (w8/112), Python with Render's
 // Gunicorn flags (w8/113) and forwarding trust (w8/116), and Ruby with
-// RAILS_ENV=production (w8/114) and Render's Bundler settings (w8/117): each
+// RAILS_ENV=production (w8/114), Render's Bundler settings (w8/117) and the
+// rest of Render's Ruby defaults (w5/162): each
 // default precedes the build RUN once on
 // every reviewed line and for an explicit static build of that runtime, and
 // no other runtime gets it.
@@ -109,9 +110,12 @@ func TestNativeBuildDefaultsPrecedeTheBuild(t *testing.T) {
 		{"elixir", "ELIXIR_VERSION", "", "ENV MIX_ENV=prod\n", "MIX_ENV"},
 		{nativePythonRuntime, "PYTHON_VERSION", "", `ENV GUNICORN_CMD_ARGS="--preload --access-logfile -"` + "\n", "GUNICORN_CMD_ARGS"},
 		{nativePythonRuntime, "PYTHON_VERSION", "", `ENV FORWARDED_ALLOW_IPS="*"` + "\n", "FORWARDED_ALLOW_IPS"},
-		{nativeRubyRuntime, "", ".ruby-version", "ENV RAILS_ENV=production\n", "RAILS_ENV"},
+		{nativeRubyRuntime, "", ".ruby-version", "ENV RAILS_ENV=production RAILS_SERVE_STATIC_FILES=true RAILS_LOG_TO_STDOUT=true\n", "RAILS_SERVE_STATIC_FILES"},
+		{nativeRubyRuntime, "", ".ruby-version", "ENV MALLOC_ARENA_MAX=2 PIDFILE=/tmp/puma-server.pid\n", "MALLOC_ARENA_MAX"},
+		{nativeRubyRuntime, "", ".ruby-version", "ENV PASSENGER_ENGINE=builtin PASSENGER_ENVIRONMENT=production\n", "PASSENGER_ENGINE"},
 		{nativeRubyRuntime, "", ".ruby-version",
-			"ENV BUNDLE_DEPLOYMENT=true BUNDLE_PATH=/opt/render/project/.gems BUNDLE_BIN=/opt/render/project/.gems/bin\n", "BUNDLE_DEPLOYMENT"},
+			"ENV BUNDLE_DEPLOYMENT=true BUNDLE_PATH=/opt/render/project/.gems BUNDLE_BIN=/opt/render/project/.gems/bin" +
+				" BUNDLE_APP_CONFIG=/opt/render/project/.gems\n", "BUNDLE_DEPLOYMENT"},
 		{nativeRubyRuntime, "", ".ruby-version", "ENV PATH=/opt/render/project/.gems/bin:$PATH\n", "/opt/render/project/.gems"},
 	} {
 		precedesBuild := func(df string) bool {
@@ -320,24 +324,31 @@ module QA114
 end
 `,
 		"config/environment.rb": "require_relative \"application\"\nRails.application.initialize!\n",
-		"config/routes.rb":      "Rails.application.routes.draw do\n  root to: proc { [200, {}, [\"built=#{File.read(\"build.txt\")} running=#{Rails.env}\"]] }\nend\n",
+		"config/routes.rb":      "Rails.application.routes.draw do\n  root to: proc { [200, {}, [\"built=#{File.read(\"build.txt\")} running=#{Rails.env} static=#{ENV[\"RAILS_SERVE_STATIC_FILES\"]} stdout=#{ENV[\"RAILS_LOG_TO_STDOUT\"]} arena=#{ENV[\"MALLOC_ARENA_MAX\"]} pid=#{ENV[\"PIDFILE\"]}\"]] }\nend\n",
 		"bin/rails":             "#!/usr/bin/env ruby\nAPP_PATH = File.expand_path(\"../config/application\", __dir__)\nrequire_relative \"../config/boot\"\nrequire \"rails/commands\"\n",
 	}
 	o := nativeOptions()
 	o.Runtime, o.BuildEnv = nativeRubyRuntime, nil
 	// Locked at build time only because this fixture commits no
 	// Gemfile.lock; deployment mode (w8/117) installs from it.
-	o.BuildCommand = `BUNDLE_DEPLOYMENT=false bundle lock >/dev/null && bundle install --quiet && ` +
+	// rake --version guards Ruby's bundled gems staying reachable outside the
+	// Gemfile (a GEM_PATH default would hide them, w5/162).
+	o.BuildCommand = `rake --version >/dev/null && BUNDLE_DEPLOYMENT=false bundle lock >/dev/null && bundle install --quiet && ` +
 		`ruby -e 'print ENV.fetch("RAILS_ENV", "unset")' > build.txt`
 	o.StartCommand = "bundle exec ruby bin/rails server"
 	tag := buildResolvedImage(t, o, nil, app, fmt.Sprintf("bex-native-rails-env-it:%d", os.Getpid()))
+	// Render's other Ruby defaults reach the app; a service value (here an
+	// explicit empty one) still wins over the image's (w5/162).
+	const defaults = " static=true stdout=true arena=2 pid=/tmp/puma-server.pid"
 	for i, tc := range []struct {
 		name, env, running string
 		public             bool // reachable on the container's own address
+		rest               string
 	}{
-		{"default", "", "production", true},
-		{"configured development", "RAILS_ENV=development", "development", false},
-		{"explicit empty", "RAILS_ENV=", "development", false},
+		{"default", "", "production", true, defaults},
+		{"configured development", "RAILS_ENV=development", "development", false, defaults},
+		{"explicit empty", "RAILS_ENV=", "development", false, defaults},
+		{"service clears static serving", "RAILS_SERVE_STATIC_FILES=", "production", true, " static= stdout=true arena=2 pid=/tmp/puma-server.pid"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			name := fmt.Sprintf("bex-native-rails-env-it-%d-%d", i, os.Getpid())
@@ -348,7 +359,7 @@ end
 				args = append(args, "-e", tc.env)
 			}
 			body, readLogs := runServing(t, tag, name, "http://127.0.0.1:10000/", args...)
-			if want := "built=production running=" + tc.running; body != want {
+			if want := "built=production running=" + tc.running + tc.rest; body != want {
 				t.Fatalf("body = %q, want %q", body, want)
 			}
 			// curl exits 7 when the connection is refused: nothing listens there.
