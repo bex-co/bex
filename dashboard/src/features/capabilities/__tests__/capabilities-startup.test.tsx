@@ -20,11 +20,11 @@ vi.unmock("@/features/capabilities/hooks/use-capabilities");
 const { mockFetch, navigate, auth } = vi.hoisted(() => ({
   mockFetch: vi.fn<typeof fetch>(),
   navigate: vi.fn(),
-  auth: { signedIn: true },
+  auth: { verified: true },
 }));
 
-vi.mock("@/common/hooks/use-is-authenticated", () => ({
-  useIsAuthenticated: () => auth.signedIn,
+vi.mock("@/common/hooks/use-has-verified-session", () => ({
+  useHasVerifiedSession: () => auth.verified,
 }));
 vi.mock("@tanstack/react-router", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@tanstack/react-router")>()),
@@ -89,7 +89,7 @@ beforeEach(() => {
   resetAccessGenerationForTests();
   navigate.mockReset();
   mockFetch.mockReset();
-  auth.signedIn = true;
+  auth.verified = true;
   dispatched.length = 0;
   capabilityOutcome = "allowed";
   document.cookie = `${WORKSPACE_SELECTION_KEY}=; Max-Age=0; Path=/`;
@@ -161,8 +161,8 @@ async function settleBeforePoll() {
 }
 
 describe("capability initialization through the browser transport", () => {
-  it("sends nothing on a signed-out page that kept a workspace cookie (w6/078)", async () => {
-    auth.signedIn = false;
+  it("sends nothing without a verified session, even with a workspace cookie (w6/078, w6/079)", async () => {
+    auth.verified = false;
     const { result } = mount("tea-first");
     // Mount, two poll periods and a focus refresh.
     await act(async () => {
@@ -175,13 +175,13 @@ describe("capability initialization through the browser transport", () => {
     expect(dispatched).toEqual([]);
   });
 
-  it("starts checking with a fresh read once a session appears without a reload", async () => {
-    auth.signedIn = false;
+  it("starts checking with a fresh read once a verified session appears without a reload", async () => {
+    auth.verified = false;
     const { result, rerender } = mount("tea-first");
     await settleBeforePoll();
     expect(dispatched).toEqual([]);
 
-    auth.signedIn = true;
+    auth.verified = true;
     rerender();
     await settleBeforePoll();
 

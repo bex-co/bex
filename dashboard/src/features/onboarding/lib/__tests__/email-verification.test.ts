@@ -3,6 +3,7 @@ import type { Session } from "@ory/client-fetch";
 import {
   emailVerificationPath,
   emailVerificationRequired,
+  hasVerifiedSession,
   sessionTraitEmail,
 } from "../email-verification";
 
@@ -95,5 +96,32 @@ describe("sessionTraitEmail", () => {
       undefined,
     );
     expect(sessionTraitEmail(null)).toBe(undefined);
+  });
+});
+
+describe("hasVerifiedSession (w6/079)", () => {
+  it("is false without a session or while the email is unverified", () => {
+    expect(hasVerifiedSession(null)).toBe(false);
+    expect(hasVerifiedSession(undefined)).toBe(false);
+    expect(
+      hasVerifiedSession(
+        withIdentity({
+          traits: { email: "dev@example.com" },
+          verifiable_addresses: [{ value: "dev@example.com", verified: false }],
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it("is true for a verified session, and fails open like the wall", () => {
+    expect(
+      hasVerifiedSession(
+        withIdentity({
+          traits: { email: "dev@example.com" },
+          verifiable_addresses: [{ value: "dev@example.com", verified: true }],
+        }),
+      ),
+    ).toBe(true);
+    expect(hasVerifiedSession(withIdentity({ traits: {} }))).toBe(true);
   });
 });

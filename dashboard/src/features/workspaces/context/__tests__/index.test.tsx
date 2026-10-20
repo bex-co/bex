@@ -82,20 +82,20 @@ function mockReady(
     loading: false,
     error: undefined,
     ready: true,
-    authenticated: true,
+    verified: true,
     refetch: vi.fn(),
     ...extra,
   });
 }
 
 describe("WorkspaceProvider", () => {
-  it("has no current workspace without a session, whatever the cookie says (w6/078)", () => {
+  it("has no current workspace without a verified session, whatever the cookie says (w6/078, w6/079)", () => {
     mockUseWorkspaces.mockReturnValue({
       workspaces: [],
       loading: false,
       error: undefined,
       ready: false,
-      authenticated: false,
+      verified: false,
       refetch: vi.fn(),
     });
     const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -215,7 +215,7 @@ describe("WorkspaceProvider", () => {
       loading: false,
       error: new Error("network"),
       ready: false,
-      authenticated: true,
+      verified: true,
       refetch: vi.fn(),
     });
     rerender();
