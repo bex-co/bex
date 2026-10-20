@@ -888,12 +888,29 @@ type promLabelValuesResponse struct {
 	Data   []string `json:"data"`
 }
 
+// maxMatrixTotalPoints bounds the samples one matrix response may
+// materialize ACROSS all its series. checkPointBudget caps the requested
+// samples per series before the query, but the returned series count is
+// upstream cardinality (status codes, hosts, pods) — nothing upstream of
+// here bounds series × points, so a wide grouped read could allocate
+// without limit (w4/375). Past the cap the read fails rather than
+// truncating: a silently shortened chart is worse than an honest error,
+// the same call DecodeUpstreamJSON makes on bytes.
+const maxMatrixTotalPoints = 250_000
+
 // parsePromMatrix maps a Prometheus matrix response onto MetricSeries: one series
 // per result, points RFC3339-stamped and oldest-first. NaN/parse-failures drop
 // the point rather than fail the series.
 func parsePromMatrix(pr promRangeResponse) ([]MetricSeries, error) {
 	if pr.Status != "" && pr.Status != promStatusSuccess {
 		return nil, fmt.Errorf("prometheus status %q", pr.Status)
+	}
+	total := 0
+	for _, res := range pr.Data.Result {
+		total += len(res.Values)
+	}
+	if total > maxMatrixTotalPoints {
+		return nil, fmt.Errorf("matrix response too large: %d samples across %d series exceeds the %d-sample budget", total, len(pr.Data.Result), maxMatrixTotalPoints)
 	}
 	out := make([]MetricSeries, 0, len(pr.Data.Result))
 	for _, res := range pr.Data.Result {
