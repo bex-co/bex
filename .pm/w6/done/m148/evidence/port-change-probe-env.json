@@ -1,0 +1,1 @@
+[{"envVar":{"key":"T_HOSTPORT","value":"qa-20261020-m148-target:8080","revision":"evr1_AAAAAAAAAAA","managedBy":"blueprint"},"cursor":"T_HOSTPORT"},{"envVar":{"key":"T_PORT","value":"8080","revision":"evr1_AAAAAAAAAAA","managedBy":"blueprint"},"cursor":"T_PORT"}]

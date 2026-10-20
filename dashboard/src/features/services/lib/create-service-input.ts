@@ -8,7 +8,7 @@ import {
 } from "@/features/services/lib/environment-draft";
 import type { ServiceType } from "@/features/services/lib/create-context";
 import { servesHttp } from "@/features/services/lib/service-type";
-import { parsePort } from "@/features/services/lib/port";
+import { DEFAULT_SERVICE_PORT, parsePort } from "@/features/services/lib/port";
 import type { GitRuntime } from "@/features/services/lib/runtime";
 import type { SourceTab } from "@/features/services/components/service-source-picker";
 import type { RepoView } from "@/features/services/hooks/use-repos";
@@ -40,8 +40,12 @@ export interface NewServiceForm {
   buildFilterPaths: string[];
   buildFilterIgnored: string[];
   plan: string;
-  /** Draft container port, as typed (w4/m121/t003); only read for `showPort` types. */
-  port: string;
+  /**
+   * Draft container port, as typed (w4/m121/t003); `null` until edited, which
+   * shows the shape's default ({@link portDraft}). Only read for `showPort`
+   * types.
+   */
+  port: string | null;
   autoDeploy: boolean;
   schedule: string;
   command: string;
@@ -77,6 +81,13 @@ export interface BuildShape {
    * render a port control or submit a `port`.
    */
   showPort: boolean;
+  /**
+   * A Git-built Docker private service publishes the TCP ports its image
+   * declares (w6/m148): its port is optional, blank by default, and only picks
+   * the primary when set. bex-api applies the same rule to a create with no
+   * port.
+   */
+  imagePorts: boolean;
 }
 
 export function buildShape(form: NewServiceForm): BuildShape {
@@ -105,7 +116,23 @@ export function buildShape(form: NewServiceForm): BuildShape {
       form.serviceType === "private_service" ||
       form.serviceType === "background_worker",
     showPort: servesHttp(form.serviceType),
+    imagePorts: form.serviceType === "private_service" && isDockerBuild,
   };
+}
+
+/**
+ * The port field's value: what the user typed, else the shape's default — the
+ * platform's 3000, pre-filled so it is visible before submit (w4/m121/t003),
+ * or blank for an image-port private service, whose ports come from its image.
+ */
+export function portDraft(form: NewServiceForm, shape: BuildShape): string {
+  return form.port ?? (shape.imagePorts ? "" : String(DEFAULT_SERVICE_PORT));
+}
+
+/** Blank is valid only where the image supplies the ports; else 1-65535. */
+export function portIsValid(form: NewServiceForm, shape: BuildShape): boolean {
+  const draft = portDraft(form, shape);
+  return (shape.imagePorts && draft.trim() === "") || parsePort(draft) !== null;
 }
 
 /** Blank means "leave it to the platform default", never an empty string. */
@@ -156,7 +183,7 @@ export function isSubmittable(form: NewServiceForm): boolean {
     // A port the backend would refuse never leaves the browser: the form blocks
     // Submit exactly as it does for a reserved env key (w4/m121/t003). Types
     // that bind no port never read the field at all.
-    (!shape.showPort || parsePort(form.port) !== null) &&
+    (!shape.showPort || portIsValid(form, shape)) &&
     (shape.isStaticType || form.plan !== "") &&
     // bex-api refuses a static site without a publish directory, and the
     // builder trims a blank one away, so blank never reaches Submit (w4/332).
@@ -230,7 +257,9 @@ export function buildCreateServiceInput(
     // The wizard used to send no port at all, so an image binding anything but
     // 3000 (nginx:alpine binds :80) came up unroutable and answered 503
     // (.pm/w4/m121 Evidence 1). Only the port-binding types send one.
-    port: shape.showPort ? (parsePort(form.port) ?? undefined) : undefined,
+    port: shape.showPort
+      ? (parsePort(portDraft(form, shape)) ?? undefined)
+      : undefined,
     envVars: submittableEnvVars(form.envVars),
     secretFiles: submittableSecretFiles(form.secretFiles),
   };

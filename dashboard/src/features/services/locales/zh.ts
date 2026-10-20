@@ -3022,7 +3022,8 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Create-wizard Public Git URL tab input placeholder",
   },
   "services.createPublicUrlError": {
-    message: "请输入 https:// URL，或 GitHub SSH URL（git@github.com:owner/repo.git）。",
+    message:
+      "请输入 https:// URL，或 GitHub SSH URL（git@github.com:owner/repo.git）。",
     description: "Create-wizard Public Git URL tab validation message",
   },
   "services.createImageLabel": {
@@ -3042,6 +3043,17 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.createFieldPort": {
     message: "端口",
     description: "Create wizard: service port field label",
+  },
+  "services.createFieldPortFromImage": {
+    message: "从镜像读取",
+    description:
+      "Create wizard: port placeholder for a Git-built Docker private service, whose ports come from its image (w6/m148)",
+  },
+  "services.createFieldPortImageHint": {
+    message:
+      "可选。bex 会发布镜像声明（EXPOSE）的每个 TCP 端口；若声明了 3000 则以它为主端口，否则取声明的最小端口，未声明时为 3000，作为 $PORT 并用于健康检查。填写端口即可自行指定主端口。",
+    description:
+      "Create wizard: port hint for a Git-built Docker private service — blank publishes the image's declared ports (w6/m148)",
   },
   "services.createFieldPortHint": {
     message:

@@ -96,6 +96,54 @@ func TestBlueprintPortReferencesFollowAnEditedTargetPort(t *testing.T) {
 	}
 }
 
+// ADR089 port decision 5: a service's own port never depends on its
+// consumers' environment, so two services that reference each other's
+// hostport need no cycle rule. Both resolve on first apply and each follows
+// the other's port change.
+func TestMutualPortReferencesResolveWithoutACycleRule(t *testing.T) {
+	ctx := context.Background()
+	service, client := newService(nil)
+	manifest := `
+services:
+  - name: left
+    type: pserv
+    runtime: image
+    image: {url: 'left:1'}
+    envVars:
+      - key: PEER
+        fromService: {name: right, type: pserv, property: hostport}
+  - name: right
+    type: pserv
+    runtime: image
+    image: {url: 'right:1'}
+    envVars:
+      - key: PEER
+        fromService: {name: left, type: pserv, property: hostport}
+`
+	if _, err := service.DeployStack(ctx, DeployRequest{Manifest: manifest}); err != nil {
+		t.Fatalf("mutual references refused: %v", err)
+	}
+	peers := func() (string, string) {
+		left, _ := envValue(getApp(t, client, "left"), "PEER")
+		right, _ := envValue(getApp(t, client, "right"), "PEER")
+		return left, right
+	}
+	leftApp, rightApp := getApp(t, client, "left"), getApp(t, client, "right")
+	leftSlug, rightSlug := leftApp.Spec.PlatformSubdomain(leftApp.Name), rightApp.Spec.PlatformSubdomain(rightApp.Name)
+	if left, right := peers(); left != rightSlug+":3000" || right != leftSlug+":3000" {
+		t.Fatalf("first apply: left.PEER=%q right.PEER=%q", left, right)
+	}
+	if _, err := service.SetPort(ctx, "right", 8080); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.DeployStack(ctx, DeployRequest{Manifest: manifest}); err != nil {
+		t.Fatal(err)
+	}
+	if left, right := peers(); left != rightSlug+":8080" || right != leftSlug+":3000" {
+		t.Fatalf("after right's SetPort: left.PEER=%q right.PEER=%q", left, right)
+	}
+}
+
 // A Git-built Docker private service learns its port from its image after the
 // first build, so a first apply has nothing true to write: the port-carrying
 // variables are omitted — never 3000 — and recorded for the propagator. A

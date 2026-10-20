@@ -1,0 +1,1 @@
+{"API_HOST":"multi-port","API_HOSTPORT":"multi-port:8123","API_PORT":"8123","http":"multi-port http 8123\n","server_proc":"CapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nNoNewPrivs:\t1\nSeccomp:\t2\nuid_map:          0          0 4294967295\n","tcp":"multi-port tcp 9000\n"}

@@ -384,6 +384,40 @@ describe("isSubmittable", () => {
     }
   });
 
+  // w6/m148 (w6/083): a Git-built Docker private service publishes the ports
+  // its image declares. An unedited or cleared port sends nothing, so bex-api
+  // reads the image instead of pinning the primary to 3000. Every other
+  // port-binding shape keeps the pre-filled 3000 (w4/m121/t003).
+  it("leaves an image-port private service's port to its image unless one is typed", () => {
+    const dockerPrivate = {
+      serviceType: "private_service",
+      runtime: "docker",
+    } as const;
+    for (const port of [null, "", "  "]) {
+      const draft = form({ ...dockerPrivate, port });
+      expect(isSubmittable(draft)).toBe(true);
+      expect(buildCreateServiceInput(draft).port).toBeUndefined();
+    }
+    expect(
+      buildCreateServiceInput(form({ ...dockerPrivate, port: "8123" })).port,
+    ).toBe(8123);
+    expect(isSubmittable(form({ ...dockerPrivate, port: "abc" }))).toBe(false);
+  });
+
+  it.each([
+    ["a web service", { serviceType: "web_service", runtime: "docker" }],
+    ["a native private service", { serviceType: "private_service" }],
+    [
+      "an existing-image private service",
+      { serviceType: "private_service", tab: "image", image: "nginx:1" },
+    ],
+  ] as const)("still sends the pre-filled 3000 for %s", (_name, overrides) => {
+    const draft = form({ ...overrides, port: null });
+    expect(isSubmittable(draft)).toBe(true);
+    expect(buildCreateServiceInput(draft).port).toBe(3000);
+    expect(isSubmittable(form({ ...overrides, port: "" }))).toBe(false);
+  });
+
   it("refuses a port outside 1-65535, and accepts one below 1024 (w6/m149)", () => {
     expect(isSubmittable(form({ port: "80" }))).toBe(true);
     expect(isSubmittable(form({ port: "0" }))).toBe(false);
