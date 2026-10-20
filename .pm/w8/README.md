@@ -367,11 +367,11 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **135** — [`POST`/`PATCH /registrycredentials` are unreachable: the Render-schema validator and the bex handler demand contradictory bodies](done/135.md) ← `/qa-find-bugs-cli` sweep 676 2026-10-19 — **DONE (2026-10-20)**
 
-- [ ] **137** — [Static-site single-rule REST operations are missing: `POST`/`DELETE …/headers`, `POST`/`PATCH`/`DELETE …/routes` answer 405/404](137.md) ← `/qa-find-bugs-cli` sweep 801 2026-10-20
+- [x] **137** — [Static-site single-rule REST operations are missing: `POST`/`DELETE …/headers`, `POST`/`PATCH`/`DELETE …/routes` answer 405/404](done/137.md) ← `/qa-find-bugs-cli` sweep 801 2026-10-20 — **DONE 2026-10-20** (w5/165): implemented in `e8d28e88e`, deployed, live acceptance passed on `bex-canary`.
 
 - [ ] **138** — [Per-service notification-override `GET`/`PATCH` omit the schema-required `serviceId`](138.md) ← `/qa-find-bugs-cli` sweep 806 2026-10-20
 
-- [ ] **139** — [Key Value REST refuses the hyphenated enum spellings its handler, MCP schema, and ADR021 all say are accepted](139.md) ← `/qa-find-bugs-cli` sweep 864 2026-10-20
+- [x] **139** — [Key Value REST refuses the hyphenated enum spellings its handler, MCP schema, and ADR021 all say are accepted](done/139.md) ← `/qa-find-bugs-cli` sweep 864 2026-10-20 — **DONE 2026-10-20** (w5/165): fixed in `9e9c28e82`, deployed, live acceptance passed on `bex-canary`.
 
 - [x] **134** — [`POST /blueprints` answers every fetch failure with a bare 500, hiding its own classified reason](done/134.md) ← `/qa-find-bugs-cli` loop 2026-10-19 — **DONE (2026-10-19)**
 
