@@ -243,6 +243,25 @@ describe("dashboard topbar navigation", () => {
     ).toHaveAttribute("href", "/");
   });
 
+  it("lets the crumb buttons shrink so long labels truncate instead of overlapping Search (w4/374)", async () => {
+    const router = buildRouter(
+      "/services/srv-api/settings",
+      DashboardBreadcrumbs,
+    );
+    render(<RouterProvider router={router} />);
+
+    for (const name of [/Storefront/, /Production/, /storefront-api/]) {
+      const button = await screen.findByRole("button", { name });
+      // tailwind-merge keeps the caller's `shrink`, dropping the shared
+      // button base's `shrink-0` — the pin that kept every crumb at content
+      // width until it painted over the header's Search button.
+      const tokens = button.className.split(/\s+/);
+      expect(tokens).toContain("shrink");
+      expect(tokens).not.toContain("shrink-0");
+      expect(button.querySelector("span")?.className).toContain("truncate");
+    }
+  });
+
   it("renders the platform-neutral shortcut on the server, then the Mac glyph after mount", async () => {
     // Regression for the every-page React #418: on a non-Mac SSR host
     // navigator.platform is not "MacIntel", so reading it during render made
