@@ -13,6 +13,23 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 `up` prints the dashboard command to point at it once bex-api is running. One shared implementation serves every workstream since `w1/m72`; `.pm/w5/dev-5/` keeps only `ports.env` (a generated record of the derivation), this README, and `.gitignore`.
 
+## Approved queue — 2026-10-20 (brainstorm round 4)
+
+User decision 2026-10-20: all five items of the fourth `/pm-brainstorm for w5` proposal, in priority order, after the round-2 queue below. Both milestones end with Render parity (each adds event types on REST/GraphQL/MCP, webhooks and the dashboard), then Simplify, Test coverage and Closeout.
+
+- [ ] **m141** — [Postgres backup and archiving events mean what Render's mean](m141/README.md) (9 tasks; 6h15m total) ← round 4 item 1 (folds in round 2's WAL-archive candidate); nightly base backups emit `postgres_backup_completed` (`store/datastore_lifecycle_facts.go:41-76`), exports never finish, archive failures reach only a platform alert
+- [ ] **163** — [The registry-credentials list honors Render's filters](163.md) (~1h) ← round 4 item 2; `registrycreds/rest.go:120-127` reads only `ownerId`
+- [ ] **164** — [Failed actions in dialogs show translated messages, not raw "Failed to fetch"](164.md) (~1h) ← round 4 item 3; `graphql-error.ts:4-8`, follow-up from w1/m145
+- [ ] **165** — [Close stale board items and correct stale docs](165.md) (~45m) ← round 4 item 4; w8/137, w8/139, ADR082, ADR008, CLI checklist, FUTURE-MAYBE, four code comments
+- [ ] **m142** — [A node failure is reported as `server_hardware_failure`, not as an app crash](m142/README.md) (7 tasks; 4h20m total) ← round 4 item 5; node losses fall through to `server_failed` (`store/event_facts.go:45`)
+
+## Approved queue — 2026-10-20 (brainstorm round 2)
+
+User decision 2026-10-20: from the second `/pm-brainstorm for w5` proposal (2026-10-19), items 3 and 4 were chosen, in that order. The milestone ends with its standing closing tasks: Render parity (it changes REST/GraphQL/MCP metrics queries and the dashboard chart), then Simplify, Test coverage and Closeout.
+
+- [ ] **162** — [Native Ruby gets Render's remaining runtime defaults](162.md) (~45m) ← second `/pm-brainstorm for w5` item 3; `RAILS_SERVE_STATIC_FILES`/`RAILS_LOG_TO_STDOUT`/`MALLOC_ARENA_MAX`/`PIDFILE` missing from `build/native.go:360-379`, left "not supplied" by w8/114
+- [ ] **m140** — [Metrics aggregation matches Render: CPU MAX/MIN, per-host requests, no silently ignored arguments](m140/README.md) (10 tasks; 6h15m total) ← second `/pm-brainstorm for w5` item 4; stale w1/m155 refusals (`metrics/mcp.go:111-145`) and GraphQL's silently ignored `aggregationMethod`/`HOST` (`metrics/graphql.go:116,444-450`)
+
 ## Approved queue — 2026-10-19 (brainstorm)
 
 User decision 2026-10-19: from the `/pm-brainstorm for w5` proposal, items 4, 5 and 2 were chosen, in that order, followed by `/loopx w5`. Each milestone ends with its standing closing tasks: Render parity (both change REST/GraphQL/MCP/UI), then Simplify, Test coverage and Closeout.
