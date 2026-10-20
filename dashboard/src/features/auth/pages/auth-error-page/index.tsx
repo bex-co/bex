@@ -38,7 +38,7 @@ export default function AuthErrorPage({ id }: { id?: string }) {
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
-    createFrontendApi()
+    void createFrontendApi()
       .getFlowError({ id })
       .then((flowError) => (flowError.error as KratosError | undefined) ?? null)
       .catch(() => null)
