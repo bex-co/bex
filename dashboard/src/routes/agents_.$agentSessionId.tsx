@@ -20,6 +20,7 @@ import {
 } from "@/common/components/ui/card";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { useAgentSession } from "@/features/agent-sessions/hooks/use-agent-session";
 import {
   agentSessionDisplayName,
@@ -120,7 +121,9 @@ function AgentSessionDetailPage() {
         <div className="flex min-w-0 flex-1 flex-col">
           {loading && !session ? <DetailSkeleton /> : null}
           {!loading && !session && error ? (
-            <LoadErrorState message={error.message} />
+            <LoadErrorState
+              message={mutationErrorMessage(error, t("common.loadErrorRetry"))}
+            />
           ) : null}
           {session ? (
             <SessionChatColumn

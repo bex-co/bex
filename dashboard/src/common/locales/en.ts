@@ -342,6 +342,12 @@ const enCommon: Record<string, TranslationEntry> = {
     message: "Something went wrong.",
     description: "Fallback error message when none is provided",
   },
+  "common.loadErrorRetry": {
+    message:
+      "Something went wrong while loading. Refresh the page to try again.",
+    description:
+      "Body of a panel whose read failed with no server reason to show (a network failure or throttling)",
+  },
   "common.resourceNotFoundToast": {
     message: "That resource doesn't exist or was deleted.",
     description:

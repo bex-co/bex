@@ -19,6 +19,10 @@ import { describe, expect, it } from "vitest";
  * read, a Kratos call, a dedicated branch message) goes on ALLOWED with the
  * reason. Structural on purpose, like `one-rail-invariant.test.ts`: it catches
  * the shape where it is written, not after a QA pass finds it live.
+ *
+ * The same walk also keeps two w5 guards: no catch block shows the caught
+ * error's raw `.message` (w5/164, w5/166), and no component renders one
+ * (w5/167) — a transport failure's text is the browser's English.
  */
 const SRC_DIR = join(import.meta.dirname, "../../..");
 
@@ -232,6 +236,45 @@ describe("mutation-error toast invariant (w1/m145)", () => {
       expect(
         rawMessageReads(
           `try { await save(); } catch (err) { setError(mutationErrorMessage(err, t("workspaces.renameError"))); }`,
+        ),
+      ).toEqual([]);
+    });
+  });
+
+  // w5/167: a failed read rendered straight into the page — a prop
+  // (`message={error.message}`) or a child (`: {history.error.message}`) —
+  // showed the browser's "Failed to fetch"; panels pass the error through
+  // `mutationErrorMessage(error, t(…))` instead.
+  describe("no raw error text in JSX (w5/167)", () => {
+    const RAW_RENDER =
+      /\{\s*[\w$.?()\s]*?(?:\be|\berr|\bcause|[eE]rror)\)?\??\.message\s*(?:\}|\|\||\?\?)/g;
+    const renders = (src: string) =>
+      [...src.matchAll(RAW_RENDER)].map((m) => m[0].replace(/\s+/g, ""));
+    // Stripe.js localizes its own confirmation errors to the page's locale.
+    const STRIPE_OWN_COPY =
+      "features/workspaces/components/create-workspace-payment-panel.tsx";
+    const found = [...sources]
+      .filter(([path]) => path.endsWith(".tsx") && path !== STRIPE_OWN_COPY)
+      .flatMap(([path, src]) => renders(src).map((r) => `${path}: ${r}`));
+
+    it("no component renders an error's raw message", () => {
+      expect(found).toEqual([]);
+    });
+
+    it("flags the shapes w5/167 removed and passes its fix", () => {
+      for (const shape of [
+        `<EmptyState description={error.message} />`,
+        `<LogEmptyState message={history.error.message} />`,
+        `<AlertDescription>{error.message}</AlertDescription>`,
+        `{t("logs.errorTitle")}: {history.error.message}`,
+        `{(e as Error).message}`,
+        `{queryError.message || t("x")}`,
+      ]) {
+        expect(renders(shape)).toHaveLength(1);
+      }
+      expect(
+        renders(
+          `<EmptyState description={mutationErrorMessage(error, t("common.loadErrorRetry"))} />`,
         ),
       ).toEqual([]);
     });

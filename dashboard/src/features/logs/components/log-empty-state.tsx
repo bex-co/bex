@@ -1,5 +1,6 @@
 import { EmptyState } from "@/common/components/empty-state";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { LogTruncationNotice } from "./log-truncation-notice";
 import type { UseLogHistoryResult } from "../hooks/use-log-history";
 
@@ -11,7 +12,12 @@ import type { UseLogHistoryResult } from "../hooks/use-log-history";
 export function LogEmptyState(
   props:
     | { reason: "timeout" }
-    | { reason: "failed"; title: string; message: string }
+    | {
+        reason: "failed";
+        title: string;
+        /** The failed read: its server refusal is shown, else generic copy. */
+        error: unknown;
+      }
     | {
         reason: "empty";
         filtered: boolean;
@@ -41,7 +47,10 @@ export function LogEmptyState(
         <EmptyState
           iconName="AlertCircle"
           title={props.title}
-          description={props.message}
+          description={mutationErrorMessage(
+            props.error,
+            t("common.loadErrorRetry"),
+          )}
         />
       );
     case "empty": {

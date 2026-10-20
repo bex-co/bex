@@ -9,6 +9,7 @@ import {
 import { AlertCircle, WifiOff } from "lucide-react";
 import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { relayableReason } from "@/common/lib/graphql-error";
 import { useUrlEcho } from "@/common/hooks/use-url-echo";
 import { EmptyState } from "@/common/components/empty-state";
 import { LogEmptyState } from "./log-empty-state";
@@ -228,6 +229,7 @@ export function LogViewer({
 
   // One body per state (store-unavailable / error / loading-first / empty /
   // list) — resolved to a single node so the render stays flat.
+  const historyReason = relayableReason(history.error);
   let body: ReactNode;
   if (history.storeUnavailable && history.lines.length === 0) {
     // Request logs / structured filters need the durable store, which isn't
@@ -246,7 +248,7 @@ export function LogViewer({
       <LogEmptyState
         reason="failed"
         title={t("logs.errorTitle")}
-        message={history.error.message}
+        error={history.error}
       />
     );
   } else if (history.loading && history.lines.length === 0) {
@@ -269,7 +271,9 @@ export function LogViewer({
             role="alert"
             className="rounded-md border border-destructive/30 px-3 py-2 text-sm text-destructive"
           >
-            {t("logs.errorTitle")}: {history.error.message}
+            {historyReason
+              ? t("logs.errorTitleWithReason", { reason: historyReason })
+              : t("logs.errorTitle")}
           </div>
         ) : null}
         {history.hasMore ? (

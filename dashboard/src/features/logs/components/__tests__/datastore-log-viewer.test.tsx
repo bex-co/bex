@@ -91,15 +91,26 @@ describe("DatastoreLogViewer", () => {
     rerender(<DatastoreLogViewer kind="databases" resource="dpg-example" />);
     expect(screen.getByText("You can't view these logs")).toBeInTheDocument();
 
-    state.error = new Error("Loki is unavailable");
+    // A read that never reached bex-api shows translated copy, not the
+    // browser's transport text (w5/167).
+    state.error = new TypeError("Failed to fetch");
     rerender(<DatastoreLogViewer kind="databases" resource="dpg-example" />);
     expect(screen.getByText("Couldn't load database logs")).toBeInTheDocument();
-    expect(screen.getByText("Loki is unavailable")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Something went wrong while loading. Refresh the page to try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Failed to fetch")).toBeNull();
 
-    // The server's wording without its code decides nothing (w5/m128).
+    // The server's wording without its code decides nothing (w5/m128), but
+    // it is still the reason shown.
     state.error = uncodedGraphQLError("forbidden: logs source not configured");
     rerender(<DatastoreLogViewer kind="databases" resource="dpg-example" />);
     expect(screen.getByText("Couldn't load database logs")).toBeInTheDocument();
+    expect(
+      screen.getByText("Forbidden: logs source not configured"),
+    ).toBeInTheDocument();
   });
 
   it("uses Key Value copy for a red- resource", () => {

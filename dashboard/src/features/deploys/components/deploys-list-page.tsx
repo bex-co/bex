@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Search } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import { useNow } from "@/common/hooks/use-now";
 import { useUrlEcho } from "@/common/hooks/use-url-echo";
@@ -161,7 +162,7 @@ export function DeploysListPage({
       <EmptyState
         iconName="AlertCircle"
         title={t("deploys.listTitle")}
-        description={error.message}
+        description={mutationErrorMessage(error, t("common.loadErrorRetry"))}
       />
     );
   } else if (loading) {

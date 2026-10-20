@@ -340,6 +340,11 @@ const zhCommon: Record<string, TranslationEntry> = {
     message: "出错了。",
     description: "Fallback error message when none is provided",
   },
+  "common.loadErrorRetry": {
+    message: "加载时出错，请刷新页面重试。",
+    description:
+      "Body of a panel whose read failed with no server reason to show (a network failure or throttling)",
+  },
   "common.resourceNotFoundToast": {
     message: "该资源不存在或已被删除。",
     description:

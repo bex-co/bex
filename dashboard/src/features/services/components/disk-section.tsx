@@ -24,7 +24,10 @@ import {
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { hasGraphQLErrorCode } from "@/common/lib/graphql-error";
+import {
+  hasGraphQLErrorCode,
+  mutationErrorMessage,
+} from "@/common/lib/graphql-error";
 
 /** Mirrors apps.DiskSnapshotsNotConfiguredCode (lego/backend/internal/apps/disk_snapshots.go). */
 const DISK_SNAPSHOTS_NOT_CONFIGURED = "DISK_SNAPSHOTS_NOT_CONFIGURED";
@@ -138,7 +141,7 @@ export function DiskSection({
               <PanelCenteredState
                 icon={<HardDrive className="size-6" />}
                 title={t("services.diskLoadErrorTitle")}
-                body={error.message}
+                body={mutationErrorMessage(error, t("common.loadErrorRetry"))}
               />
             ) : (
               <AddDiskForm
@@ -584,7 +587,7 @@ function SnapshotsCard({
           <PanelCenteredState
             icon={<HardDrive className="size-6" />}
             title={t("services.diskSnapshotsUnavailableTitle")}
-            body={error.message}
+            body={mutationErrorMessage(error, t("common.loadErrorRetry"))}
           />
         ) : snapshots.length === 0 ? (
           <PanelCenteredState
