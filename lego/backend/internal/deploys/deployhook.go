@@ -23,6 +23,7 @@ import (
 	"crypto/subtle"
 	"encoding/base32"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -376,7 +377,7 @@ func (s *Service) DeployHookHandler() http.Handler {
 			ImageURL: r.URL.Query().Get("imgURL"),
 		}, store.TriggerDeployHook)
 		if err != nil {
-			core.WriteErr(w, err)
+			core.WriteErr(w, inHookVocabulary(err))
 			return
 		}
 		core.WriteJSON(w, http.StatusOK, map[string]any{
@@ -384,3 +385,25 @@ func (s *Service) DeployHookHandler() http.Handler {
 		})
 	})
 }
+
+// hookFieldNames maps the trigger body's field names onto the hook's query
+// parameters, which the hook passes through as CommitID and ImageURL.
+var hookFieldNames = strings.NewReplacer("commitId", "ref", "imageUrl", "imgURL")
+
+// inHookVocabulary renames the trigger's field names in a bad-request message
+// to the hook parameters the caller actually sent (w8/141). The rule text and
+// status are unchanged, and the authenticated surfaces keep their own names.
+func inHookVocabulary(err error) error {
+	if !errors.Is(err, core.ErrBadRequest) {
+		return err
+	}
+	return renamedError{err: err, msg: hookFieldNames.Replace(err.Error())}
+}
+
+type renamedError struct {
+	err error
+	msg string
+}
+
+func (e renamedError) Error() string { return e.msg }
+func (e renamedError) Unwrap() error { return e.err }

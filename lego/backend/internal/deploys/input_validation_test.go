@@ -44,6 +44,7 @@ func TestTriggerInputRefusalsAcrossAdapters(t *testing.T) {
 		{"untrusted registry", "imageUrl", "registry.example.com/web:v1", "not trusted"},
 		{"other repository", "imageUrl", "docker.io/library/nginx:1.27", "configured image docker.io/library/web (got docker.io/library/nginx)"},
 		{"other registry", "imageUrl", "ghcr.io/library/web:v1", "configured image docker.io/library/web (got ghcr.io/library/web)"},
+		{"malformed reference", "imageUrl", "docker.io/library/web:not a tag", "image reference is malformed"},
 	} {
 		for _, adapter := range []string{"REST", "GraphQL", "MCP", "deploy hook"} {
 			t.Run(tc.name+"/"+adapter, func(t *testing.T) {
@@ -120,8 +121,16 @@ func TestTriggerInputRefusalsAcrossAdapters(t *testing.T) {
 						}
 					}
 				}
-				if !strings.Contains(message, tc.want) {
-					t.Fatalf("error = %q, want %q", message, tc.want)
+				want := tc.want
+				if adapter == "deploy hook" {
+					// The hook names its own ref/imgURL parameters (w8/141).
+					want = hookFieldNames.Replace(want)
+					if strings.Contains(message, "commitId") || strings.Contains(message, "imageUrl") {
+						t.Fatalf("hook error = %q names a REST body field the caller never sent", message)
+					}
+				}
+				if !strings.Contains(message, want) {
+					t.Fatalf("error = %q, want %q", message, want)
 				}
 				if after := getApp(t, cl, "web"); !reflect.DeepEqual(before, after) {
 					t.Fatal("refused input changed the App")
