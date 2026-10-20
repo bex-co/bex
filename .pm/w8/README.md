@@ -359,6 +359,14 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **143** — [Web services receive caller-forged `True-Client-IP` / `CF-Connecting-IP`, the client-IP headers Render tells apps to trust](143.md) ← `/qa-find-bugs-cli` sweep 1241 2026-10-20: major, 60m
+
+- [ ] **142** — [Blueprint `ipAllowList` refuses a bare IP address, so Render's own example `render.yaml` fails validation](142.md) ← `/qa-find-bugs-cli` sweep 1240 2026-10-20: Render's schema says “IP address or CIDR block”; minor, 30m
+
+- [ ] **141** — [Deploy-hook 400s name REST body fields the caller never sent (`commitId`, `imageUrl`) instead of the hook's `ref`/`imgURL`](141.md) ← `/qa-find-bugs-cli` sweep 1239 2026-10-20: minor, 25m
+
+- [ ] **140** — [Render's “allow any IP” datastore rule `0.0.0.0/0` locks out every IPv6-capable client](140.md) ← `/qa-find-bugs-cli` sweeps 1230/1232 2026-10-20: with exactly `0.0.0.0/0`, `bex psql` and `redis-cli` by hostname die with a bare TLS EOF over IPv6 while IPv4 works. Decision-independent piece of [w9/m164](../w9/blocked/m164/README.md)
+
 - [x] **126** — [A source update before a release's build starts still rolls the previous image as that release](done/126.md) — **PROMOTED (2026-10-19)** to `m121`.
 
 - [x] **125** — [Backward log pages without a startTime hand out inverted cursors past the first hour](done/125.md) ← w8/123 code review 2026-10-19: the cursor start defaults to 1h while the read looks back 7 days — **DONE (2026-10-19)**
@@ -369,7 +377,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **137** — [Static-site single-rule REST operations are missing: `POST`/`DELETE …/headers`, `POST`/`PATCH`/`DELETE …/routes` answer 405/404](done/137.md) ← `/qa-find-bugs-cli` sweep 801 2026-10-20 — **DONE 2026-10-20** (w5/165): implemented in `e8d28e88e`, deployed, live acceptance passed on `bex-canary`.
 
-- [ ] **138** — [Per-service notification-override `GET`/`PATCH` omit the schema-required `serviceId`](138.md) ← `/qa-find-bugs-cli` sweep 806 2026-10-20
+- [x] **138** — [Per-service notification-override `GET`/`PATCH` omit the schema-required `serviceId`](done/138.md) ← `/qa-find-bugs-cli` sweep 806 2026-10-20 — **DONE (2026-10-20): fixed `d98da2870`, live-verified at pin `9e9c28e82d0f`**
 
 - [x] **139** — [Key Value REST refuses the hyphenated enum spellings its handler, MCP schema, and ADR021 all say are accepted](done/139.md) ← `/qa-find-bugs-cli` sweep 864 2026-10-20 — **DONE 2026-10-20** (w5/165): fixed in `9e9c28e82`, deployed, live acceptance passed on `bex-canary`.
 
