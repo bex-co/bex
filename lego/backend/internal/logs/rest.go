@@ -513,11 +513,17 @@ func (s *Service) subscribeStream(w http.ResponseWriter, r *http.Request, querie
 }
 
 // unsupportedLogFilters are list-logs filters Render declares that select
-// streams bex has none of: Render Workflows task runs (an ADR018 omission) and
-// sandboxes (DO_NOT_DO #18). Honoring one could only answer an empty page, and
-// ignoring it silently widened the read to every log (w8/132), so each is
-// refused by name.
-var unsupportedLogFilters = []string{"task", "taskRun", "sandbox"}
+// streams this API has none of, each with the reason it names in its refusal:
+// Render Workflows task runs (an ADR018 omission), and sandboxes, whose output
+// bex streams through the sandbox run stream rather than these routes.
+// Honoring one could only answer an empty page, and ignoring it silently
+// widened the read to every log (w8/132), so each is refused by name. A slice,
+// not a map, so a request carrying several names the same one every time.
+var unsupportedLogFilters = []struct{ name, reason string }{
+	{"task", "bex runs no Render Workflows, so no log belongs to a task"},
+	{"taskRun", "bex runs no Render Workflows, so no log belongs to a task run"},
+	{"sandbox", "sandbox output is not served by the logs API; read it from the sandbox's run stream (/v1/sandboxes/{id}/runs/{executionId}/stream)"},
+}
 
 // parseLogParams maps Render's logs query string onto resources + a LogQuery.
 // Every filter Render documents (level/instance/host/statusCode/method/path,
@@ -528,9 +534,9 @@ var unsupportedLogFilters = []string{"task", "taskRun", "sandbox"}
 // /v1/logs/subscribe so the three agree on what a filter means.
 func parseLogParams(r *http.Request) ([]string, LogQuery, error) {
 	v := r.URL.Query()
-	for _, name := range unsupportedLogFilters {
-		if v.Has(name) {
-			return nil, LogQuery{}, fmt.Errorf("%w: log filter %q is not supported: bex runs no Render Workflows or sandboxes, so no log belongs to one", core.ErrBadRequest, name)
+	for _, f := range unsupportedLogFilters {
+		if v.Has(f.name) {
+			return nil, LogQuery{}, fmt.Errorf("%w: log filter %q is not supported: %s", core.ErrBadRequest, f.name, f.reason)
 		}
 	}
 

@@ -169,10 +169,10 @@ type renderService struct {
 	// AppView.LinkedEnvGroupIDs and docs/ADR018-render-parity.md.
 	LinkedEnvGroupIDs []string `json:"linkedEnvGroupIds,omitempty"`
 	// AutoDeployTrigger is Render's newer representation of the same Auto-Deploy
-	// toggle (components.schemas.autoDeployTrigger): "off"|"commit"|"checksPass".
-	// bex maps its boolean spec.autoDeploy onto "commit"/"off" and never emits
-	// "checksPass" (a documented divergence — bex has no CI-gated deploy). Emitted
-	// alongside the legacy string enum so both Render API generations read it.
+	// toggle (components.schemas.autoDeployTrigger): "off"|"commit"|"checksPass",
+	// from spec.autoDeploy and spec.autoDeployTrigger (triggerEnum; checksPass
+	// since w1/m181). Emitted alongside the legacy string enum so both Render API
+	// generations read it.
 	AutoDeployTrigger string `json:"autoDeployTrigger"`
 	// PushDeliveryMethod is a bex extension (no Render counterpart): whether a
 	// push can actually reach bex for THIS repo, which the AutoDeploy setting

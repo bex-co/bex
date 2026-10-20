@@ -45,7 +45,7 @@ All five pillars ship today: an agent can create, operate, and sandbox-execute o
 - **Local agent-session draft-PR proof** — finish `w3/m79` once a developer-supplied GitHub App installation exists (repo-less sessions already green on `dev-N`).
 - **Mobile mission control** — `w11` (push hygiene, live attach / needs-decision steering, tier-2 quick actions).
 - **Pillar-5 follow-ons** — sandbox metering, deeper hibernation/continuity, and the remaining ADR047 phase-2 attach surface.
-- **Ops hardening** — authorize the production canary fixture (`BEX_CANARY_*`) so m83's scheduled synthetics stop soft-skipping; keep origin-vs-edge SLIs honest as traffic grows ([ADR088](ADR088-platform-observability-ui.md)).
+- **Ops hardening** — keep origin-vs-edge SLIs honest as traffic grows ([ADR088](ADR088-platform-observability-ui.md)); the production canary fixture is authorized (w5/m96).
 
 ## Non-goals
 

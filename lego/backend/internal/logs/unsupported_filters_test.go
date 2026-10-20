@@ -40,6 +40,10 @@ func TestUnsupportedLogFiltersAreRefusedByName(t *testing.T) {
 	}
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
+	reasons := map[string]string{}
+	for _, f := range unsupportedLogFilters {
+		reasons[f.name] = f.reason
+	}
 	for _, name := range []string{"task", "taskRun", "sandbox"} {
 		for _, route := range []string{"/v1/logs?", "/v1/logs/values?label=instance&", "/v1/logs/subscribe?"} {
 			// A subscribe that is not refused streams until its deadline.
@@ -49,9 +53,19 @@ func TestUnsupportedLogFiltersAreRefusedByName(t *testing.T) {
 			cancel()
 			var body struct{ Message string }
 			_ = json.Unmarshal(rec.Body.Bytes(), &body)
-			if rec.Code != http.StatusBadRequest || !strings.Contains(body.Message, strconv.Quote(name)) {
-				t.Errorf("%s%s = %d %s, want a 400 naming the filter", route, name, rec.Code, rec.Body.String())
+			if rec.Code != http.StatusBadRequest || reasons[name] == "" || !strings.Contains(body.Message, strconv.Quote(name)) ||
+				!strings.Contains(body.Message, reasons[name]) {
+				t.Errorf("%s%s = %d %s, want a 400 naming the filter and its reason", route, name, rec.Code, rec.Body.String())
 			}
+		}
+	}
+	// Several unsupported names refuse the same one every time.
+	for range 5 {
+		rec := serveREST(svc, http.MethodGet, "/v1/logs?resource=web&sandbox=a&taskRun=b&task=c")
+		var body struct{ Message string }
+		_ = json.Unmarshal(rec.Body.Bytes(), &body)
+		if !strings.Contains(body.Message, strconv.Quote("task")+" is not supported") {
+			t.Fatalf("multi-filter refusal = %d %s, want the first declared filter (task)", rec.Code, rec.Body.String())
 		}
 	}
 }

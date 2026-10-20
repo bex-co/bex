@@ -45,8 +45,8 @@ const (
 const DeliveryRehydrate = "rehydrate"
 
 // Delivery mode records how a turn's sandbox was obtained (ADR047 D8 phase 1):
-// resume of the existing sandbox, or a re-dispatch onto a fresh sandbox+clone
-// (the working path until w3/m42 hibernation lands).
+// resume of the existing sandbox, or a re-dispatch onto a fresh sandbox+clone.
+// A hibernated session's turn is DeliveryRehydrate instead (ADR059 D4).
 const (
 	DeliveryResume     = "resume"
 	DeliveryRedispatch = "redispatch"
