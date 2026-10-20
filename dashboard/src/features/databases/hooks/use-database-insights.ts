@@ -26,7 +26,7 @@ import {
   SetDatabaseParameterOverridesDocument,
   type ParameterInput,
 } from "@/graphql/definitions";
-import { graphQLErrorMessage } from "@/common/lib/graphql-error";
+import { isThrottledError, refusalReason } from "@/common/lib/graphql-error";
 import { nonNull } from "@/common/lib/non-null";
 import {
   RESOURCE_POLL_INTERVAL_MS,
@@ -34,8 +34,7 @@ import {
 } from "@/common/lib/polling";
 
 export type SaveParametersResult =
-  | { ok: true }
-  | { ok: false; error: string | null };
+  { ok: true } | { ok: false; error: string | null };
 
 /**
  * Returns all five insight datasets for a managed-Postgres database.
@@ -109,7 +108,10 @@ export function useDatabaseInsights(id: string) {
       void parameterOverrides.refetch();
       return { ok: true };
     } catch (err) {
-      return { ok: false, error: graphQLErrorMessage(err) };
+      return {
+        ok: false,
+        error: isThrottledError(err) ? null : refusalReason(err) || null,
+      };
     }
   }
 

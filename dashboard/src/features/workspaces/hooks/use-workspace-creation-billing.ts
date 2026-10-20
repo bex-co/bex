@@ -11,7 +11,7 @@ import {
   type WorkspaceCreationAttemptQuery,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { graphQLErrorMessage } from "@/common/lib/graphql-error";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import type {
   WorkspacePlanId,
   WorkspaceView,
@@ -139,9 +139,7 @@ export function useWorkspaceCreationBilling(
         setAttempt(prepared);
         return prepared;
       } catch (error) {
-        setLocalError(
-          graphQLErrorMessage(error) ?? t("workspaces.createError"),
-        );
+        setLocalError(mutationErrorMessage(error, t("workspaces.createError")));
         return null;
       } finally {
         setBusy(false);
@@ -182,9 +180,7 @@ export function useWorkspaceCreationBilling(
           createdAt: workspace.createdAt,
         } satisfies WorkspaceView;
       } catch (error) {
-        setLocalError(
-          graphQLErrorMessage(error) ?? t("workspaces.createError"),
-        );
+        setLocalError(mutationErrorMessage(error, t("workspaces.createError")));
         return null;
       } finally {
         setBusy(false);
@@ -202,6 +198,8 @@ export function useWorkspaceCreationBilling(
     }
   }, [attempt, cancelMutation]);
 
+  const loadError = policyQuery.error ?? resumeQuery.error;
+
   return {
     policy,
     policyLoading: policyQuery.loading,
@@ -212,7 +210,8 @@ export function useWorkspaceCreationBilling(
     busy,
     error:
       localError ??
-      graphQLErrorMessage(policyQuery.error) ??
-      graphQLErrorMessage(resumeQuery.error),
+      (loadError
+        ? mutationErrorMessage(loadError, t("workspaces.creationLoadError"))
+        : null),
   };
 }

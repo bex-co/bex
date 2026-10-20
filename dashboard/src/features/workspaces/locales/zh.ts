@@ -240,6 +240,11 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     message: "无法创建工作区",
     description: "Fallback toast/inline message on a failed create",
   },
+  "workspaces.creationLoadError": {
+    message: "无法加载工作区创建信息。请刷新页面重试。",
+    description:
+      "Inline message when the workspace-creation plan policy or a resumed setup attempt fails to load",
+  },
   "workspaces.settingsTitle": {
     message: "工作区设置",
     description: "Workspace settings page and card title",
