@@ -361,7 +361,9 @@ describe("NetworkMetricsCard", () => {
     renderCard();
 
     expect(
-      screen.getAllByText("Host and Path filters need the log store").length,
+      screen.getAllByText(
+        "Host and Path filters and the Host breakdown need the log store",
+      ).length,
     ).toBeGreaterThanOrEqual(2);
   });
 
@@ -557,6 +559,77 @@ describe("NetworkMetricsCard", () => {
     // …but both series stack into the single shared time bucket.
     expect(
       screen.getByRole("img", { name: /Bar chart with 1 data point$/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("groups requests by host and legends each series with its host (w5/m140)", async () => {
+    const user = userEvent.setup();
+    mockUseMetrics.mockImplementation((_resource, metric, opts) => {
+      if (
+        metric === "http_requests" &&
+        opts &&
+        "groupBy" in opts &&
+        opts.groupBy === "host"
+      ) {
+        return {
+          series: [
+            {
+              unit: "count",
+              labels: { host: "a.example.com" },
+              points: [{ timestamp: "2026-07-06T09:00:00Z", value: 3 }],
+            },
+            {
+              unit: "count",
+              labels: { host: "b.example.com" },
+              points: [{ timestamp: "2026-07-06T09:00:00Z", value: 1 }],
+            },
+          ],
+          loading: false,
+          unavailable: false,
+          storeUnavailable: false,
+          throttled: false,
+          degradedSources: [],
+          error: undefined,
+        };
+      }
+      return emptyResult();
+    });
+
+    renderCard();
+    await user.click(screen.getByLabelText("Group by"));
+    await user.click(screen.getByRole("option", { name: "Host" }));
+
+    expect(mockUseMetrics).toHaveBeenCalledWith(
+      "beancount-cms",
+      "http_requests",
+      expect.objectContaining({ groupBy: "host" }),
+    );
+    expect(screen.getByText("a.example.com")).toBeInTheDocument();
+    expect(screen.getByText("b.example.com")).toBeInTheDocument();
+  });
+
+  it("shows the request-log store's unavailable state for a host breakdown with no store", async () => {
+    const user = userEvent.setup();
+    mockUseMetrics.mockImplementation((_resource, metric, opts) => {
+      if (
+        metric === "http_requests" &&
+        opts &&
+        "groupBy" in opts &&
+        opts.groupBy === "host"
+      ) {
+        return { ...emptyResult(), storeUnavailable: true };
+      }
+      return emptyResult();
+    });
+
+    renderCard();
+    await user.click(screen.getByLabelText("Group by"));
+    await user.click(screen.getByRole("option", { name: "Host" }));
+
+    expect(
+      screen.getByText(
+        "Host and Path filters and the Host breakdown need the log store",
+      ),
     ).toBeInTheDocument();
   });
 

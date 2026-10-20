@@ -280,7 +280,7 @@ func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 	matchers := egressquery.PodNameMatcher(req.Namespace, req.App)
 	switch req.Metric {
 	case MetricMemory, MetricCPU:
-		return resourceUsageQuery(req.Metric, matchers, req.Resolution)
+		return resourceUsageQuery(req.Metric, matchers, req.Resolution, req.CPUAggregation)
 	case MetricInstanceCount:
 		// The inner `sum by (pod)` already reduces a pod's (possibly duplicated)
 		// container series to one series per pod, so counting pods is unaffected
@@ -300,13 +300,18 @@ func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 		return fmt.Sprintf(`count(sum by (pod) (count_over_time(container_memory_working_set_bytes{%s}[%s])) > 0)`,
 			matchers, instanceLivenessWindow)
 	}
-	return resourceUsageQuery(MetricCPU, matchers, req.Resolution)
+	return resourceUsageQuery(MetricCPU, matchers, req.Resolution, req.CPUAggregation)
 }
 
 // resourceUsageQuery is the per-pod cpu (cores) or memory (bytes) usage over
 // cAdvisor for pods matched by matchers — a service's (promResourceQueryFor)
 // or a datastore's (promDatastoreResourceQuery).
-func resourceUsageQuery(metric, matchers string, resolution time.Duration) string {
+//
+// cpuAgg ("" | MAX | MIN) is Render's interval aggregation (MetricQuery.
+// CPUAggregation): a minRateLookback rate is sampled every
+// cpuAggregationSubstep across each resolution step and the step reports its
+// max or min. "" keeps the plain rate, whose value averages the step.
+func resourceUsageQuery(metric, matchers string, resolution time.Duration, cpuAgg string) string {
 	switch metric {
 	case MetricMemory:
 		// `max by (pod, container)` before the sum collapses cAdvisor's DUPLICATE
@@ -325,8 +330,33 @@ func resourceUsageQuery(metric, matchers string, resolution time.Duration) strin
 	default: // cpu
 		// Same cAdvisor restart double-count guard as memory: dedupe a container's
 		// overlapping instances before summing across containers (w4/050).
-		return fmt.Sprintf(`sum by (pod) (max by (pod, container) (rate(container_cpu_usage_seconds_total{%s}[%ds])))`,
-			matchers, rateLookbackSeconds(resolution))
+		const usage = `sum by (pod) (max by (pod, container) (rate(container_cpu_usage_seconds_total{%s}[%ds])))`
+		fn := cpuAggregationFunc(cpuAgg)
+		if fn == "" {
+			return fmt.Sprintf(usage, matchers, rateLookbackSeconds(resolution))
+		}
+		// The inner rate keeps the shortest lookback, not the step: a rate
+		// already averaged over the whole step has no peak left to find, and
+		// the subquery's cost would grow with step × step instead of linearly.
+		return fmt.Sprintf(`%s((`+usage+`)[%ds:%ds])`, fn, matchers, minRateLookback,
+			max(stepSeconds(resolution), cpuAggregationSubstep), cpuAggregationSubstep)
+	}
+}
+
+// cpuAggregationSubstep is the subquery resolution of a MAX/MIN cpu read: the
+// cAdvisor scrape interval (deploy/gitops/base/prometheus.yaml), the finest
+// grain a rate sample can change at.
+const cpuAggregationSubstep = 15
+
+// cpuAggregationFunc maps a CPUAggregation onto its PromQL range function.
+func cpuAggregationFunc(agg string) string {
+	switch agg {
+	case cpuAggregationMax:
+		return "max_over_time"
+	case cpuAggregationMin:
+		return "min_over_time"
+	default:
+		return ""
 	}
 }
 
@@ -729,7 +759,7 @@ func promDatastoreResourceQuery(req DatastoreResourceRequest) string {
 	case MetricMemoryLimit:
 		return resourceLimitQuery(matchers, "memory")
 	default:
-		return resourceUsageQuery(req.Metric, matchers, req.Resolution)
+		return resourceUsageQuery(req.Metric, matchers, req.Resolution, req.CPUAggregation)
 	}
 }
 

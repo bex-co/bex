@@ -150,6 +150,8 @@ type DatastoreResourceRequest struct {
 	Metric     string // cpu | memory | cpu_limit | memory_limit
 	Start, End time.Time
 	Resolution time.Duration
+	// CPUAggregation is MetricQuery.CPUAggregation, set only for cpu.
+	CPUAggregation string
 }
 
 // DatastoreResourceSource returns per-instance resource series for a datastore
@@ -172,6 +174,9 @@ type DatastoreMetricQuery struct {
 	Metric     string
 	Start, End time.Time
 	Resolution time.Duration
+	// CPUAggregation is Render's cpu interval aggregation (MetricQuery.
+	// CPUAggregation) on Render's own App-metric paths for a datastore id.
+	CPUAggregation string
 }
 
 func (q DatastoreMetricQuery) normalized(now time.Time) DatastoreMetricQuery {
@@ -419,6 +424,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		series, err := s.DatastoreResource(ctx, DatastoreResourceRequest{
 			Namespace: namespace, Resource: resource, Container: container, Metric: q.Metric,
 			Start: q.Start, End: q.End, Resolution: q.Resolution,
+			CPUAggregation: cpuAggregationFor(q.Metric, q.CPUAggregation),
 		})
 		projectInstanceLabels(q.Resource, series)
 		return series, err

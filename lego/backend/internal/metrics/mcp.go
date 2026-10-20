@@ -54,13 +54,14 @@ type getMetricsArgs struct {
 	Host     string `json:"host,omitempty" jsonschema:"legacy bex alias of httpHost; ignored when httpHost is also set"`
 	HTTPPath string `json:"httpPath,omitempty" jsonschema:"filter http_requests/http_latency to one request Path — Render's MCP spelling; served from the request-log store (Loki)"`
 	Path     string `json:"path,omitempty" jsonschema:"legacy bex alias of httpPath; ignored when httpPath is also set"`
-	// CPUUsageAggregationMethod is accepted for contract parity. bex's CPU
-	// series is a metrics-server snapshot (no interval aggregation), so only
-	// AVG (or omit) is honored; MAX/MIN are rejected.
-	CPUUsageAggregationMethod string `json:"cpuUsageAggregationMethod,omitempty" jsonschema:"AVG (default, only supported value) | MAX | MIN — bex CPU is a metrics-server snapshot, so MAX/MIN are rejected"`
-	// AggregateHTTPRequestCountsBy groups http_requests. statusCode maps onto
-	// GroupBy=status; host has no Traefik/Loki group-by axis and is rejected.
-	AggregateHTTPRequestCountsBy string `json:"aggregateHttpRequestCountsBy,omitempty" jsonschema:"group http_requests by statusCode (wired) or host (unsupported — rejected)"`
+	// CPUUsageAggregationMethod is Render's interval aggregation for CPU usage,
+	// passed through to REST aggregationMethod as Render's own MCP server does
+	// (render-mcp-server pkg/metrics/repo.go). It applies to the cpu metric type
+	// only; other types in the same call are read unaggregated.
+	CPUUsageAggregationMethod string `json:"cpuUsageAggregationMethod,omitempty" jsonschema:"Method for aggregating CPU usage over each resolution interval: AVG (default), MAX or MIN. Only applies to the cpu metric type."`
+	// AggregateHTTPRequestCountsBy groups http_requests by statusCode or by
+	// request host (the host breakdown reads the request-log store).
+	AggregateHTTPRequestCountsBy string `json:"aggregateHttpRequestCountsBy,omitempty" jsonschema:"Field to aggregate http_requests by: host (one series per request host) or statusCode. When not specified, returns total request counts."`
 	// Instance is a bex extension (w5/m89): public instance ids from m87. Omit
 	// for all instances; unresolved ids yield an empty series, never a broaden.
 	Instance []string `json:"instance,omitempty" jsonschema:"public service instance ids to keep (canonical srv-…-… ids from metricsFilters INSTANCE / serviceInstances); omit for all"`
@@ -107,23 +108,13 @@ func (a getMetricsArgs) path() string {
 	return mcputil.PreferString(a.HTTPPath, a.Path)
 }
 
-// cpuAggregation is the AVG-only rule for Render's CPU interval aggregation,
-// under the caller's parameter name: MCP cpuUsageAggregationMethod, REST
-// aggregationMethod (w1/m155 — REST used to accept and ignore it). Empty/AVG
-// are no-ops; MAX/MIN are capability gaps.
-func cpuAggregation(param, method string) error {
-	switch strings.ToUpper(strings.TrimSpace(method)) {
-	case "", "AVG":
-		return nil
-	case "MAX", "MIN":
-		return fmt.Errorf("%w: %s %q is unsupported — bex CPU is a metrics-server snapshot without interval aggregation (only AVG)", core.ErrBadRequest, param, method)
-	default:
-		return fmt.Errorf("%w: unknown %s %q (want AVG|MAX|MIN)", core.ErrBadRequest, param, method)
-	}
-}
-
-// groupByStatus is MetricQuery.GroupBy's per-status-code breakdown.
-const groupByStatus = "status"
+// groupByStatus and groupByHost are MetricQuery.GroupBy's per-status-code and
+// per-request-host breakdowns.
+const (
+	groupByStatus = "status"
+	groupByMethod = "method"
+	groupByHost   = "host"
+)
 
 // requestGroupBy maps Render's request-count breakdown — REST `aggregateBy`, MCP
 // `aggregateHttpRequestCountsBy`, both `statusCode|host` — onto
@@ -137,7 +128,7 @@ func requestGroupBy(param, by string) (string, error) {
 	case "statusCode":
 		return groupByStatus, nil
 	case "host":
-		return "", fmt.Errorf("%w: %s=host is unsupported — neither Traefik Prometheus counters nor the Loki request-log path expose a host group-by axis (filter by host instead)", core.ErrBadRequest, param)
+		return groupByHost, nil
 	default:
 		return "", fmt.Errorf("%w: unknown %s %q (want statusCode|host)", core.ErrBadRequest, param, by)
 	}
@@ -175,7 +166,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		if err != nil {
 			return nil, getMetricsResult{}, err
 		}
-		if err := cpuAggregation("cpuUsageAggregationMethod", in.CPUUsageAggregationMethod); err != nil {
+		cpuAgg, err := parseCPUAggregation("cpuUsageAggregationMethod", in.CPUUsageAggregationMethod)
+		if err != nil {
 			return nil, getMetricsResult{}, err
 		}
 		groupBy, err := requestGroupBy("aggregateHttpRequestCountsBy", in.AggregateHTTPRequestCountsBy)
@@ -226,9 +218,12 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 				} else if isDatastoreResource(id) {
 					dq := q
 					dq.Metric = metricIDFor(metricType)
+					dq.CPUAggregation = cpuAggregationFor(dq.Metric, cpuAgg)
 					series, err = s.datastoreAppMetric(ctx, dq, id)
 				} else {
 					q.App, q.Metric = id, metricIDFor(metricType)
+					// Render's MCP passes the aggregation to its cpu read only.
+					q.CPUAggregation = cpuAggregationFor(q.Metric, cpuAgg)
 					// MetricsWithQuantiles fans http_latency out over q.Quantiles (the
 					// percentile "All" overlay), tagging each series with its quantile.
 					var withQuantiles []QuantileSeries

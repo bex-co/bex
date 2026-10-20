@@ -431,6 +431,10 @@ func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
 		}
 		q.ReplicaAggregate, q.AggregateMax = replica, aggMax
 	}
+	method, _ := input["aggregationMethod"].(string)
+	if q.CPUAggregation, err = parseCPUAggregation("aggregationMethod", method); err != nil {
+		return nil, MetricQuery{}, err
+	}
 	// aggregateBy carries Render's per-chart "Group by" breakdown: an entry
 	// naming the label to break the series out by (STATUS_CODE / METHOD, the
 	// captured filter-field vocabulary), mapped onto Core's GroupBy — the same
@@ -446,7 +450,9 @@ func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
 		case filterFieldStatusCode:
 			q.GroupBy = groupByStatus
 		case filterFieldMethod:
-			q.GroupBy = "method"
+			q.GroupBy = groupByMethod
+		case filterFieldHost:
+			q.GroupBy = groupByHost
 		}
 	}
 

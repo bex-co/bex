@@ -70,18 +70,16 @@ func TestGetMetricsArgsAliasPolicy(t *testing.T) {
 	}
 }
 
-func TestCPUAggregation(t *testing.T) {
-	if err := cpuAggregation("cpuUsageAggregationMethod", ""); err != nil {
-		t.Errorf("empty: %v", err)
-	}
-	if err := cpuAggregation("cpuUsageAggregationMethod", "AVG"); err != nil {
-		t.Errorf("AVG: %v", err)
-	}
-	for _, bad := range []string{"MAX", "MIN", "p99"} {
-		err := cpuAggregation("cpuUsageAggregationMethod", bad)
-		if !errors.Is(err, core.ErrBadRequest) {
-			t.Errorf("%s: %v, want ErrBadRequest", bad, err)
+func TestParseCPUAggregation(t *testing.T) {
+	for in, want := range map[string]string{"": "", "AVG": "", "avg": "", "MAX": "MAX", " min ": "MIN"} {
+		got, err := parseCPUAggregation("cpuUsageAggregationMethod", in)
+		if err != nil || got != want {
+			t.Errorf("%q = %q, %v; want %q", in, got, err, want)
 		}
+	}
+	_, err := parseCPUAggregation("cpuUsageAggregationMethod", "p99")
+	if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "cpuUsageAggregationMethod") {
+		t.Errorf("p99: %v, want ErrBadRequest naming the parameter", err)
 	}
 }
 
@@ -90,9 +88,12 @@ func TestRequestGroupBy(t *testing.T) {
 	if err != nil || got != "status" {
 		t.Fatalf("statusCode = %q, %v; want status", got, err)
 	}
-	if _, err := requestGroupBy("aggregateHttpRequestCountsBy", "host"); !errors.Is(err, core.ErrBadRequest) ||
-		!strings.Contains(err.Error(), "aggregateHttpRequestCountsBy=host is unsupported") {
-		t.Errorf("host: %v, want ErrBadRequest naming the parameter", err)
+	if got, err := requestGroupBy("aggregateHttpRequestCountsBy", "host"); err != nil || got != groupByHost {
+		t.Errorf("host = %q, %v; want %q", got, err, groupByHost)
+	}
+	if _, err := requestGroupBy("aggregateHttpRequestCountsBy", "path"); !errors.Is(err, core.ErrBadRequest) ||
+		!strings.Contains(err.Error(), "aggregateHttpRequestCountsBy") {
+		t.Errorf("path: %v, want ErrBadRequest naming the parameter", err)
 	}
 }
 
@@ -183,13 +184,15 @@ func TestMCPGetMetricsRenderSpellings(t *testing.T) {
 			"cpuUsageAggregationMethod": "MAX",
 		},
 	})
+	// This fixture serves cpu from the metrics-server snapshot only: one current
+	// point, nothing to aggregate, so MAX is a named refusal here.
 	if err == nil && !result.IsError {
-		t.Fatal("cpuUsageAggregationMethod=MAX should fail")
+		t.Fatal("cpuUsageAggregationMethod=MAX on the snapshot source should fail")
 	}
 	if result != nil && result.IsError {
 		msg, _ := json.Marshal(result.Content)
-		if !strings.Contains(string(msg), "cpuUsageAggregationMethod") {
-			t.Errorf("MAX error should name the arg, got %s", msg)
+		if !strings.Contains(string(msg), "metrics-server") {
+			t.Errorf("MAX error should name the snapshot source, got %s", msg)
 		}
 	}
 
@@ -201,7 +204,11 @@ func TestMCPGetMetricsRenderSpellings(t *testing.T) {
 			"aggregateHttpRequestCountsBy": "host",
 		},
 	})
-	if err == nil && (result == nil || !result.IsError) {
-		t.Fatal("aggregateHttpRequestCountsBy=host should fail")
+	if err != nil || result.IsError {
+		raw, _ := json.Marshal(result)
+		t.Fatalf("aggregateHttpRequestCountsBy=host: err=%v result=%s", err, raw)
+	}
+	if gotGroupBy != groupByHost {
+		t.Errorf("host breakdown reached the source as GroupBy=%q, want %q", gotGroupBy, groupByHost)
 	}
 }
