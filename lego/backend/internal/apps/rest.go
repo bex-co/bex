@@ -1513,13 +1513,17 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 
 // notificationOverrideResponse is the per-service notification-override wire
 // shape served under /v1/notification-settings/overrides/services/{id}.
+// notificationOverrideResponse is Render's single override object, which
+// requires serviceId like the list's rows (w8/138).
 type notificationOverrideResponse struct {
+	ServiceID                   string `json:"serviceId"`
 	NotificationsToSend         string `json:"notificationsToSend"`
 	PreviewNotificationsEnabled string `json:"previewNotificationsEnabled"`
 }
 
 func toNotificationOverride(app AppView) notificationOverrideResponse {
 	return notificationOverrideResponse{
+		ServiceID:                   app.ID,
 		NotificationsToSend:         app.NotificationsToSend,
 		PreviewNotificationsEnabled: "default",
 	}

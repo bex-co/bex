@@ -240,3 +240,29 @@ func TestNotificationOverridesListIsWorkspaceScoped(t *testing.T) {
 		}
 	})
 }
+
+// Render requires serviceId on the single override object, as on the list's
+// rows, and both single verbs answer it: the public service id, whatever
+// selector the path used (w8/138).
+func TestNotificationOverrideSingleObjectCarriesServiceID(t *testing.T) {
+	svc, _ := newService(nil, sampleApp("web"))
+	view, err := svc.Get(context.Background(), "web")
+	if err != nil || view.ID == "" {
+		t.Fatalf("precondition: Get = %+v, %v", view, err)
+	}
+	want := view.ID
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	for _, req := range []*http.Request{
+		httptest.NewRequest(http.MethodGet, "/v1/notification-settings/overrides/services/web", nil),
+		httptest.NewRequest(http.MethodPatch, "/v1/notification-settings/overrides/services/web", strings.NewReader(`{"notificationsToSend":"failure"}`)),
+	} {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		var got struct{ ServiceID, NotificationsToSend, PreviewNotificationsEnabled string }
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); rec.Code != http.StatusOK || err != nil ||
+			got.ServiceID != want || got.NotificationsToSend == "" || got.PreviewNotificationsEnabled == "" {
+			t.Fatalf("%s = %d %s, want serviceId %q with both settings", req.Method, rec.Code, rec.Body.String(), want)
+		}
+	}
+}
