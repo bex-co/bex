@@ -95,19 +95,23 @@ type AbandonedBlueprintSync struct {
 const blueprintColumns = `id, tenant_id, name, repo, branch, path, auto_sync, manifest, status,
 	last_sync_at, created_at, updated_at, execution_generation, COALESCE(active_run_id, '')`
 
-const blueprintSyncColumns = `id, blueprint_id, commit_id, state, started_at, completed_at, created_at, error_message, execution_generation, note`
+const blueprintSyncColumns = `id, blueprint_id, commit_id, state, started_at, completed_at, created_at, error_message, execution_generation, note,
+ COALESCE(auto_intent_id, ''), auto_claim_generation, auto_source_repo, auto_source_branch, auto_source_path`
 
 // insertAdmittedRun records the running run of an admission inside the claim
 // transaction, so claim and run always commit together.
 func insertAdmittedRun(ctx context.Context, tx pgx.Tx, run BlueprintSync) (BlueprintSync, error) {
 	var out BlueprintSync
 	err := tx.QueryRow(ctx, `
-		INSERT INTO blueprint_syncs (id, blueprint_id, commit_id, state, started_at, execution_generation, note)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO blueprint_syncs (id, blueprint_id, commit_id, state, started_at, execution_generation, note,
+		 auto_intent_id, auto_claim_generation, auto_source_repo, auto_source_branch, auto_source_path)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, ''), $9, $10, $11, $12)
 		RETURNING `+blueprintSyncColumns,
 		run.ID, run.BlueprintID, run.CommitID, run.State, run.StartedAt, run.ExecutionGeneration, run.Note,
+		run.AutoIntentID, run.AutoClaimGeneration, run.AutoSourceRepo, run.AutoSourceBranch, run.AutoSourcePath,
 	).Scan(&out.ID, &out.BlueprintID, &out.CommitID, &out.State,
-		&out.StartedAt, &out.CompletedAt, &out.CreatedAt, &out.ErrorMessage, &out.ExecutionGeneration, &out.Note)
+		&out.StartedAt, &out.CompletedAt, &out.CreatedAt, &out.ErrorMessage, &out.ExecutionGeneration, &out.Note,
+		&out.AutoIntentID, &out.AutoClaimGeneration, &out.AutoSourceRepo, &out.AutoSourceBranch, &out.AutoSourcePath)
 	if err != nil {
 		return BlueprintSync{}, err
 	}
@@ -127,6 +131,16 @@ func scanBlueprint(out *Blueprint, active *string) []any {
 // a competing admission won the race → ErrBlueprintSyncBusy, never a silent
 // second apply.
 func (s *PGStore) AdmitBlueprintSyncRun(ctx context.Context, blueprintID, tenantID string, run BlueprintSync) (Blueprint, BlueprintSync, error) {
+	return s.admitBlueprintSyncRun(ctx, blueprintID, tenantID, run, nil, nil)
+}
+
+// AdmitBlueprintAutoSyncRun binds automatic admission to its current lease,
+// policy and resolved source in the same transaction as the execution claim.
+func (s *PGStore) AdmitBlueprintAutoSyncRun(ctx context.Context, intent BlueprintAutoSyncIntent, expectedSource Blueprint, run BlueprintSync) (Blueprint, BlueprintSync, error) {
+	return s.admitBlueprintSyncRun(ctx, intent.BlueprintID, intent.TenantID, run, &intent, &expectedSource)
+}
+
+func (s *PGStore) admitBlueprintSyncRun(ctx context.Context, blueprintID, tenantID string, run BlueprintSync, intent *BlueprintAutoSyncIntent, expectedSource *Blueprint) (Blueprint, BlueprintSync, error) {
 	if run.ID == "" {
 		run.ID = ids.New(ids.BlueprintSync)
 	}
@@ -134,6 +148,34 @@ func (s *PGStore) AdmitBlueprintSyncRun(ctx context.Context, blueprintID, tenant
 	var out BlueprintSync
 	var active string
 	err := s.withTx(ctx, func(tx pgx.Tx) error {
+		if intent != nil {
+			var live Blueprint
+			if err := tx.QueryRow(ctx, `SELECT `+blueprintColumns+` FROM blueprints
+			 WHERE id = $1 AND tenant_id = $2 FOR UPDATE`, blueprintID, tenantID).Scan(scanBlueprint(&live, &active)...); err != nil {
+				if errors.Is(err, pgx.ErrNoRows) {
+					return ErrBlueprintSyncBusy
+				}
+				return err
+			}
+			if !live.AutoSync || live.Status == "disconnected" || expectedSource.ID != live.ID || expectedSource.TenantID != live.TenantID ||
+				live.Repo != expectedSource.Repo || live.Branch != expectedSource.Branch || live.Path != expectedSource.Path || intent.Path != live.Path {
+				return ErrBlueprintSyncBusy
+			}
+			var one int
+			if err := tx.QueryRow(ctx, `SELECT 1 FROM blueprint_auto_sync_intents
+			 WHERE id = $1 AND blueprint_id = $2 AND tenant_id = $3 AND state = 'claimed'
+			 AND claim_generation = $4 AND path = $5 FOR UPDATE`, intent.ID, blueprintID, tenantID, intent.ClaimGeneration, live.Path).Scan(&one); err != nil {
+				if errors.Is(err, pgx.ErrNoRows) {
+					return ErrBlueprintSyncBusy
+				}
+				return err
+			}
+			if err := retireReclaimedBlueprintRun(ctx, tx, blueprintID); err != nil {
+				return err
+			}
+			run.AutoIntentID, run.AutoClaimGeneration = intent.ID, intent.ClaimGeneration
+			run.AutoSourceRepo, run.AutoSourceBranch, run.AutoSourcePath = live.Repo, live.Branch, live.Path
+		}
 		// The claim (generation + active_run_id) is taken without touching
 		// status: a preflight failure must leave current status and settings
 		// exactly as they were (w8/m37 t005). Staging flips to syncing.
@@ -248,12 +290,24 @@ func (s *PGStore) AdmitBlueprintCreate(ctx context.Context, b Blueprint, run Blu
 // Complete is the sink precondition: a Get-then-act race loses here rather
 // than writing under a freed claim.
 func (s *PGStore) AssertBlueprintExecution(ctx context.Context, id, tenantID string, generation int64, runID string) error {
+	return assertBlueprintExecution(ctx, s.Pool, id, tenantID, generation, runID)
+}
+
+func assertBlueprintExecution(ctx context.Context, q interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, id, tenantID string, generation int64, runID string) error {
 	var one int
-	err := s.Pool.QueryRow(ctx, `
-		SELECT 1 FROM blueprints
-		WHERE id = $1 AND tenant_id = $2
-		  AND execution_generation = $3 AND active_run_id = $4
-		  AND status != 'disconnected'`,
+	err := q.QueryRow(ctx, `
+		SELECT 1 FROM blueprints b
+		JOIN blueprint_syncs r ON r.id = b.active_run_id
+		LEFT JOIN blueprint_auto_sync_intents i ON i.id = r.auto_intent_id
+		WHERE b.id = $1 AND b.tenant_id = $2
+		  AND b.execution_generation = $3 AND b.active_run_id = $4
+		  AND b.status != 'disconnected'
+		  AND (r.auto_intent_id IS NULL OR (b.auto_sync AND i.state = 'claimed'
+		    AND i.claim_generation = r.auto_claim_generation
+		    AND i.blueprint_id = b.id AND i.tenant_id = b.tenant_id
+		    AND b.repo = r.auto_source_repo AND b.branch = r.auto_source_branch AND b.path = r.auto_source_path))`,
 		id, tenantID, generation, runID,
 	).Scan(&one)
 	if err != nil {
@@ -272,13 +326,22 @@ func (s *PGStore) AssertBlueprintExecution(ctx context.Context, id, tenantID str
 func (s *PGStore) StageBlueprintManifest(ctx context.Context, id, tenantID string, generation int64, runID, manifest string) (Blueprint, error) {
 	var out Blueprint
 	var active string
-	err := s.Pool.QueryRow(ctx, `
-		UPDATE blueprints SET manifest = $4, status = 'syncing', updated_at = now()
-		WHERE id = $1 AND tenant_id = $2
-		  AND execution_generation = $3 AND active_run_id = $5
-		RETURNING `+blueprintColumns,
-		id, tenantID, generation, manifest, runID,
-	).Scan(scanBlueprint(&out, &active)...)
+	err := s.withTx(ctx, func(tx pgx.Tx) error {
+		var lockedID string
+		if err := tx.QueryRow(ctx, `SELECT id FROM blueprints WHERE id = $1 AND tenant_id = $2 FOR UPDATE`, id, tenantID).Scan(&lockedID); err != nil {
+			return err
+		}
+		if err := assertBlueprintExecution(ctx, tx, id, tenantID, generation, runID); err != nil {
+			return err
+		}
+		return tx.QueryRow(ctx, `
+			UPDATE blueprints SET manifest = $4, status = 'syncing', updated_at = now()
+			WHERE id = $1 AND tenant_id = $2
+			  AND execution_generation = $3 AND active_run_id = $5
+			RETURNING `+blueprintColumns,
+			id, tenantID, generation, manifest, runID,
+		).Scan(scanBlueprint(&out, &active)...)
+	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Blueprint{}, fmt.Errorf("blueprint manifest stage: %w", ErrBlueprintSyncBusy)
@@ -317,6 +380,11 @@ func (s *PGStore) CompleteBlueprintSync(ctx context.Context, id, tenantID, runID
 			SELECT auto_sync, status FROM blueprints WHERE id = $1 AND tenant_id = $2 FOR UPDATE`,
 			id, tenantID).Scan(&autoSync, &status); err != nil {
 			return err
+		}
+		if state == BlueprintSyncStateSuccess {
+			if err := assertBlueprintExecution(ctx, tx, id, tenantID, generation, runID); err != nil {
+				return err
+			}
 		}
 		finalStatus := status
 		if state == BlueprintSyncStateSuccess {
