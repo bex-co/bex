@@ -23,7 +23,12 @@ type LogoutStatus = "confirm" | "logging-out" | "success" | "error";
 function logoutStatusCopy(
   status: LogoutStatus,
   t: ReturnType<typeof useTranslations>["t"],
-): { title: string; subtitle: string; icon: LucideIcon; tone: "default" | "error" } {
+): {
+  title: string;
+  subtitle: string;
+  icon: LucideIcon;
+  tone: "default" | "error";
+} {
   switch (status) {
     case "logging-out":
       return {

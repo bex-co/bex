@@ -166,6 +166,43 @@ const zhAuth: Record<string, TranslationEntry> = {
     message: "重试",
     description: "Account deletion preview retry button",
   },
+  "auth.errorTitle": {
+    message: "出错了",
+    description:
+      "Title of /auth/error, where Kratos sends a self-service error (w5/161)",
+  },
+  "auth.errorSubtitle": {
+    message: "我们未能完成这一步。",
+    description: "Subtitle of /auth/error",
+  },
+  "auth.errorGeneric": {
+    message: "该登录步骤已过期或无法完成。请从登录页面重新开始。",
+    description:
+      "/auth/error body when Kratos's error has no readable reason or the id is unknown",
+  },
+  "auth.errorBackToSignIn": {
+    message: "返回登录",
+    description: "/auth/error button to the sign-in page",
+  },
+  "auth.errorFlowExpired": {
+    message: "该登录步骤耗时过长，已过期。请从登录页面重新开始。",
+    description: "/auth/error message for Kratos self_service_flow_expired",
+  },
+  "auth.errorCsrf": {
+    message:
+      "浏览器安全校验不匹配——通常是因为打开了另一个标签页或清除了 Cookie。请从登录页面重新开始。",
+    description: "/auth/error message for Kratos security_csrf_violation",
+  },
+  "auth.errorIdentityMismatch": {
+    message:
+      "该步骤属于另一个账户，而非当前登录的账户。请先退出登录，再重新开始。",
+    description: "/auth/error message for Kratos security_identity_mismatch",
+  },
+  "auth.errorReturnToForbidden": {
+    message: "登录后要返回的地址不被允许。",
+    description:
+      "/auth/error message for Kratos self_service_flow_return_to_forbidden",
+  },
   "auth.accountDeletedTitle": {
     message: "账户删除已开始",
     description: "Accepted account deletion terminal page title",
@@ -421,8 +458,7 @@ const zhAuth: Record<string, TranslationEntry> = {
       "Device confirm page heading when there is no live device request",
   },
   "auth.deviceExpiredSubtitle": {
-    message:
-      "此页面需要设备代码，或该代码已过期。请在你的设备上重新发起登录。",
+    message: "此页面需要设备代码，或该代码已过期。请在你的设备上重新发起登录。",
     description:
       "Device confirm page subtext when there is no live device request to confirm",
   },

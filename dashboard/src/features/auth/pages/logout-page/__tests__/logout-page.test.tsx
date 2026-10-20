@@ -63,7 +63,9 @@ describe("LogoutPage", () => {
   });
 
   it("keeps a blocking error with retry when the provider logout fails — never a false success screen (codex #6)", async () => {
-    endBrowserSession.mockRejectedValue(new Error("logout request failed: 500"));
+    endBrowserSession.mockRejectedValue(
+      new Error("logout request failed: 500"),
+    );
 
     render(<LogoutPage />);
     fireEvent.click(screen.getByRole("button", { name: "Sign out" }));

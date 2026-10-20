@@ -1326,8 +1326,19 @@ export function LogoutRouteSkeleton() {
 }
 
 export function AccountDeletedRouteSkeleton() {
+  return <AuthStatusRouteSkeleton route="account-deleted" />;
+}
+
+/** `/auth/error` — Kratos's error page (w5/161): the same single status card
+ *  as `/auth/account-deleted`. */
+export function AuthErrorRouteSkeleton() {
+  return <AuthStatusRouteSkeleton route="auth-error" />;
+}
+
+/** One status card: an icon beside a two-line message, then one button. */
+function AuthStatusRouteSkeleton({ route }: { route: string }) {
   return (
-    <AuthRouteSkeleton route="account-deleted">
+    <AuthRouteSkeleton route={route}>
       <Region name="status-card">
         <Card>
           <CardContent className="space-y-6 p-6 sm:p-8">
