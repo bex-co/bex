@@ -45,7 +45,7 @@ interface NetworkMetricsCardProps {
   markers?: ChartEventMarker[];
 }
 
-type GroupBy = "status" | "method" | undefined;
+type GroupBy = "status" | "method" | "host" | undefined;
 const GROUP_BY_ALL = "all";
 
 // Render's Percentile options on Response Times (captured live 2026-07-17,
@@ -329,6 +329,9 @@ export function NetworkMetricsCard({
                   <SelectItem value="method">
                     {t("metrics.groupByMethod")}
                   </SelectItem>
+                  <SelectItem value="host">
+                    {t("metrics.groupByHost")}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -433,9 +436,9 @@ export function NetworkMetricsCard({
   );
 }
 
-/** The grouped series' display name: its status code or method label. */
+/** The grouped series' display name: its status code, method or host label. */
 function groupLabel(labels: Record<string, string>): string {
-  return labels["code"] ?? labels["method"] ?? "";
+  return labels["code"] ?? labels["method"] ?? labels["host"] ?? "";
 }
 
 /** "0.9" → "p90": the overlaid latency line's legend name (percentile "All"). */

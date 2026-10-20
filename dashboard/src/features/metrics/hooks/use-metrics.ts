@@ -56,11 +56,13 @@ export interface UseMetricsOptions {
    */
   statusCode?: string;
   /**
-   * Render's per-chart "Group by": breaks the series out per status code or
-   * method, sent as aggregateBy (the captured vocabulary — bex-api maps it
-   * onto Core's groupBy exactly like REST's `groupBy` param).
+   * Render's per-chart "Group by": breaks the series out per status code,
+   * method or request host, sent as aggregateBy (the captured vocabulary —
+   * bex-api maps it onto Core's groupBy exactly like REST's `aggregateBy`).
+   * The host breakdown reads the request-log store, so with none wired it
+   * reports storeUnavailable (503) like the Host filter (w5/m140).
    */
-  groupBy?: "status" | "method";
+  groupBy?: "status" | "method" | "host";
   /**
    * Render's Network-card Host / Path filters (w5/m58). Sent as HOST / PATH
    * filters entries alongside RESOURCE; they apply only to http_requests /
@@ -169,7 +171,9 @@ export function useMetrics(
             ? ["STATUS_CODE"]
             : groupBy === "method"
               ? ["METHOD"]
-              : undefined,
+              : groupBy === "host"
+                ? ["HOST"]
+                : undefined,
         aggregateAllMethod:
           aggregateMethod ?? (aggregateMax ? "MAX" : undefined),
         percentage: percentage ?? undefined,

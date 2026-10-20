@@ -28,7 +28,7 @@ User decision 2026-10-20: all five items of the fourth `/pm-brainstorm for w5` p
 User decision 2026-10-20: from the second `/pm-brainstorm for w5` proposal (2026-10-19), items 3 and 4 were chosen, in that order. The milestone ends with its standing closing tasks: Render parity (it changes REST/GraphQL/MCP metrics queries and the dashboard chart), then Simplify, Test coverage and Closeout.
 
 - [ ] **162** — [Native Ruby gets Render's remaining runtime defaults](162.md) (~45m) ← second `/pm-brainstorm for w5` item 3; `RAILS_SERVE_STATIC_FILES`/`RAILS_LOG_TO_STDOUT`/`MALLOC_ARENA_MAX`/`PIDFILE` missing from `build/native.go:360-379`, left "not supplied" by w8/114
-- [ ] **m140** — [Metrics aggregation matches Render: CPU MAX/MIN, per-host requests, no silently ignored arguments](m140/README.md) (10 tasks; 6h15m total) ← second `/pm-brainstorm for w5` item 4; stale w1/m155 refusals (`metrics/mcp.go:111-145`) and GraphQL's silently ignored `aggregationMethod`/`HOST` (`metrics/graphql.go:116,444-450`)
+- [ ] **m140** — [Metrics aggregation matches Render: CPU MAX/MIN, per-host requests, no silently ignored arguments](m140/README.md) (10 tasks; 6h15m total) ← second `/pm-brainstorm for w5` item 4; stale w1/m155 refusals (`metrics/mcp.go:111-145`) and GraphQL's silently ignored `aggregationMethod`/`HOST` (`metrics/graphql.go:116,444-450`) — **IN PROGRESS** (t001–t005, t007–t009 done 2026-10-20: CPU MAX/MIN and the host breakdown on REST/MCP/GraphQL/dashboard, verified on promtool + pinned Loki; t006's production read waits for the release pipeline)
 
 ## Approved queue — 2026-10-19 (brainstorm)
 

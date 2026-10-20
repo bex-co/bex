@@ -171,9 +171,13 @@ func (s *Service) datastoreAppMetric(ctx context.Context, q MetricQuery, resourc
 		return nil, fmt.Errorf("%w: percentage and instance filters apply to services, not %s %s",
 			core.ErrBadRequest, datastoreNoun(kind), resource)
 	}
+	if err := checkCPUAggregation(q.Metric, q.CPUAggregation); err != nil {
+		return nil, err
+	}
 	series, err := s.DatastoreMetrics(ctx, DatastoreMetricQuery{
 		Kind: kind, Resource: resource, Metric: q.Metric,
 		Start: q.Start, End: q.End, Resolution: q.Resolution,
+		CPUAggregation: q.CPUAggregation,
 	})
 	if err != nil {
 		return nil, err
@@ -399,12 +403,14 @@ func parseMetricParams(r *http.Request) ([]string, MetricQuery, error) {
 	if err != nil {
 		return nil, MetricQuery{}, err
 	}
-	if err := cpuAggregation("aggregationMethod", v.Get("aggregationMethod")); err != nil {
+	cpuAgg, err := parseCPUAggregation("aggregationMethod", v.Get("aggregationMethod"))
+	if err != nil {
 		return nil, MetricQuery{}, err
 	}
 
 	q := MetricQuery{
-		StatusCode: v.Get("statusCode"),
+		CPUAggregation: cpuAgg,
+		StatusCode:     v.Get("statusCode"),
 		// host/path are parsed only so Metrics can refuse them (see MetricQuery.Host).
 		Host:       v.Get("host"),
 		Path:       v.Get("path"),

@@ -161,7 +161,7 @@ type MetricQuery struct {
 	// core.ErrLogStoreUnavailable, never a silently-unfiltered Prometheus result.
 	Host    string
 	Path    string
-	GroupBy string // request group-by: "status" | "method" | "instance" | ""
+	GroupBy string // request group-by: "status" | "method" | "host" | "instance" | ""
 	// Instances selects public instance ids (m87) for cpu/memory and their
 	// limit series. Empty means all instances. Oversized/blank values error;
 	// unresolved selectors yield an empty result rather than broadening (w5/m89).
@@ -170,6 +170,12 @@ type MetricQuery struct {
 	// timestamp. Empty keeps raw per-instance series. Distinct from
 	// AggregateMax (legacy latest-point collapse used by limit callers).
 	ReplicaAggregate string
+	// CPUAggregation is Render's interval aggregation for CPU usage (REST
+	// aggregationMethod, MCP cpuUsageAggregationMethod, GraphQL
+	// aggregationMethod): "" (AVG, the default) or MAX/MIN of the per-instance
+	// usage within each resolution step. Only cpu honors it; any other metric
+	// refuses it (checkCPUAggregation).
+	CPUAggregation string
 	// AggregateMax collapses a per-instance series (cpu_limit/memory_limit) down
 	// to one series holding the max value across instances — Render's dashboard
 	// GraphQL requests this via aggregateAllMethod:"MAX" (captured live).
@@ -216,6 +222,8 @@ type ResourceMetricsRangeRequest struct {
 	Metric     string // cpu | memory | instance_count
 	Start, End time.Time
 	Resolution time.Duration
+	// CPUAggregation is MetricQuery.CPUAggregation, set only for cpu.
+	CPUAggregation string
 }
 
 // ResourceMetricsRangeSource returns stepped resource time-series for an App over
@@ -476,6 +484,12 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 			return nil, fmt.Errorf("%w: host/path filters apply only to http_requests and http_latency", core.ErrBadRequest)
 		}
 	}
+	if err := checkCPUAggregation(q.Metric, q.CPUAggregation); err != nil {
+		return nil, err
+	}
+	if q.GroupBy == groupByHost && q.Metric != MetricHTTPRequests {
+		return nil, fmt.Errorf("%w: aggregateBy=host applies only to http_requests", core.ErrBadRequest)
+	}
 	q = q.normalized(s.Now())
 	if q.Metric == MetricBandwidth {
 		if err := checkBandwidthGranularity(q.Start, q.End, q.Resolution); err != nil {
@@ -666,6 +680,9 @@ func (s *Service) resourceMetric(ctx context.Context, q MetricQuery, app *appv1a
 	if s.ResourceMetrics == nil {
 		return nil, core.ErrMetricsUnavailable
 	}
+	if q.CPUAggregation != "" {
+		return nil, fmt.Errorf("%w: cpu aggregation %s needs the Prometheus metrics source; this installation serves cpu from a metrics-server snapshot (one current point, nothing to aggregate)", core.ErrBadRequest, q.CPUAggregation)
+	}
 	pods, err := s.AppPodsIn(ctx, app.Namespace, app.Name)
 	if err != nil {
 		return nil, err
@@ -837,6 +854,8 @@ func (s *Service) rangedResourceSeries(ctx context.Context, q MetricQuery, app *
 		Start:      q.Start,
 		End:        q.End,
 		Resolution: q.Resolution,
+		// A source-boundary guard: only a cpu read may carry it.
+		CPUAggregation: cpuAggregationFor(metric, q.CPUAggregation),
 	})
 	if err != nil {
 		return nil, err
@@ -1007,7 +1026,11 @@ func (s *Service) requestMetric(ctx context.Context, q MetricQuery, app *appv1al
 	// Prometheus counters carry no per-request host/path axis (w5/m58). Metrics()
 	// has already rejected host/path on any metric but the two request metrics, so
 	// this branch only ever sees http_requests/http_latency.
-	if q.Host != "" || q.Path != "" {
+	//
+	// A per-host breakdown is served from there for the same reason, and never
+	// falls back to the counter below: it has no host, so it would answer one
+	// unlabelled series as if it were the breakdown.
+	if q.Host != "" || q.Path != "" || q.GroupBy == groupByHost {
 		if s.RequestLogMetrics == nil {
 			return nil, core.ErrLogStoreUnavailable
 		}

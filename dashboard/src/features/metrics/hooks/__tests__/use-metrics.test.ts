@@ -88,6 +88,19 @@ describe("useMetrics", () => {
         }),
       }),
     );
+
+    renderHook(() => useMetrics("app", "http_requests", { groupBy: "host" }));
+    expect(mockUseQuery).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        variables: expect.objectContaining({
+          query: expect.objectContaining({
+            filters: [{ field: "RESOURCE", values: ["app"] }],
+            aggregateBy: ["HOST"],
+          }),
+        }),
+      }),
+    );
   });
 
   it("sends aggregateAllMethod: MAX for a limit metric when aggregateMax is set", () => {

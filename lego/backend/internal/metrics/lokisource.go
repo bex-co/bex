@@ -73,11 +73,16 @@ func NewLokiRequestMetricsSource(base string, hc *http.Client) RequestMetricsSou
 		}
 		// Relabel the store's `status` group label onto Prometheus's `code`
 		// vocabulary so a host/path-filtered group-by series legends identically
-		// to the unfiltered Prometheus one.
+		// to the unfiltered Prometheus one, and a host breakdown's extracted
+		// request host onto Render's `host`.
 		for i := range series {
 			if v, ok := series[i].Labels["status"]; ok {
 				delete(series[i].Labels, "status")
 				series[i].Labels["code"] = v
+			}
+			if v, ok := series[i].Labels[lokiLabelRequestHost]; ok {
+				delete(series[i].Labels, lokiLabelRequestHost)
+				series[i].Labels[groupByHost] = v
 			}
 		}
 		return series, nil
@@ -152,13 +157,13 @@ func lokiRequestQueryFor(req RequestMetricsRequest) string {
 // fields the read filters on and applies the host/path line filters. latency adds
 // the numeric Duration field the quantile read unwraps.
 func lokiRequestPipeline(req RequestMetricsRequest, latency bool) string {
-	fields := []string{`request_host="RequestHost"`, `request_path="RequestPath"`}
+	fields := []string{lokiLabelRequestHost + `="RequestHost"`, `request_path="RequestPath"`}
 	if latency {
 		fields = append([]string{`latency_ns="Duration"`}, fields...)
 	}
 	p := " | json " + strings.Join(fields, ", ")
 	if req.Host != "" {
-		p += fmt.Sprintf(" | request_host=%q", req.Host)
+		p += fmt.Sprintf(" | %s=%q", lokiLabelRequestHost, req.Host)
 	}
 	if req.Path != "" {
 		p += fmt.Sprintf(" | request_path=%q", req.Path)
@@ -199,6 +204,10 @@ func lokiEntryWindow(start, end time.Time) string {
 		lokiTSSec, lokiTSNano, strings.Join(conds, " and "))
 }
 
+// lokiLabelRequestHost is the label lokiRequestPipeline extracts each line's
+// request host into — the host filter's and the host breakdown's axis.
+const lokiLabelRequestHost = "request_host"
+
 // lokiGroupLabel maps a Render groupBy onto the request-log stream label. Both
 // status and method ride stream labels the shipper attaches; the status series is
 // relabelled to `code` after the read to match the Prometheus grouped output.
@@ -208,6 +217,9 @@ func lokiGroupLabel(groupBy string) string {
 		return "status"
 	case "method":
 		return "method"
+	case groupByHost:
+		// Not a stream label: lokiRequestPipeline extracts it from each line.
+		return lokiLabelRequestHost
 	default:
 		return ""
 	}

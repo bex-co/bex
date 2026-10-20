@@ -346,9 +346,9 @@ const zhMetrics: Record<string, TranslationEntry> = {
     description: "Accessible label for the button that clears the Path filter",
   },
   "metrics.hostPathStoreUnavailable": {
-    message: "主机和路径筛选需要日志存储",
+    message: "主机和路径筛选及按主机分组需要日志存储",
     description:
-      "Per-section state when a host/path-filtered request metric hits a deployment with no durable log store (503) — served from the request-log store (Loki), unavailable here",
+      "Per-section state when a host/path-filtered or host-grouped request metric hits a deployment with no durable log store (503) — served from the request-log store (Loki), unavailable here",
   },
   "metrics.groupBy": {
     message: "分组",
@@ -365,6 +365,10 @@ const zhMetrics: Record<string, TranslationEntry> = {
   "metrics.groupByMethod": {
     message: "按方法",
     description: "Group-by option: one series per HTTP method",
+  },
+  "metrics.groupByHost": {
+    message: "按主机",
+    description: "Group-by option: one series per request host",
   },
   "metrics.memory": {
     message: "内存",

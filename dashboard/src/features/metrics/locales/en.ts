@@ -276,8 +276,7 @@ const enMetrics: Record<string, TranslationEntry> = {
       "Memory/CPU chart header annotation when the selected replicas declare different limits — each replica is percentized against its own limit, so no single limit value applies",
   },
   "metrics.percentageUnavailable": {
-    message:
-      "Percentages unavailable — no trustworthy limit for this window",
+    message: "Percentages unavailable — no trustworthy limit for this window",
     description:
       "Shown instead of a percentage chart when usage samples exist but every denominator was missing, zero, or otherwise untrustworthy (deleted pods, predated limit history, a mid-window rollout gap) — distinct from no usage samples or a source failure",
   },
@@ -368,9 +367,9 @@ const enMetrics: Record<string, TranslationEntry> = {
     description: "Accessible label for the button that clears the Path filter",
   },
   "metrics.hostPathStoreUnavailable": {
-    message: "Host and Path filters need the log store",
+    message: "Host and Path filters and the Host breakdown need the log store",
     description:
-      "Per-section state when a host/path-filtered request metric hits a deployment with no durable log store (503) — served from the request-log store (Loki), unavailable here",
+      "Per-section state when a host/path-filtered or host-grouped request metric hits a deployment with no durable log store (503) — served from the request-log store (Loki), unavailable here",
   },
   "metrics.groupBy": {
     message: "Group by",
@@ -387,6 +386,10 @@ const enMetrics: Record<string, TranslationEntry> = {
   "metrics.groupByMethod": {
     message: "Method",
     description: "Group-by option: one series per HTTP method",
+  },
+  "metrics.groupByHost": {
+    message: "Host",
+    description: "Group-by option: one series per request host",
   },
   "metrics.memory": {
     message: "Memory",
