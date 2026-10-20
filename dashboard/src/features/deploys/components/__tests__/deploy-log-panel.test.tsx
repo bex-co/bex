@@ -187,7 +187,12 @@ describe("DeployLogPanel", () => {
       />,
     );
 
-    expect(screen.getByText("logs query unavailable")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Something went wrong while loading. Refresh the page to try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("logs query unavailable")).toBeNull();
     expect(
       screen.queryByText("No logs in this time range"),
     ).not.toBeInTheDocument();

@@ -15,6 +15,7 @@
 import { useState } from "react";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import {
   Alert,
   AlertDescription,
@@ -115,7 +116,9 @@ export function UsagePage() {
             {error && !summary && (
               <Alert variant="destructive">
                 <AlertTitle>{t("usage.errorTitle")}</AlertTitle>
-                <AlertDescription>{error.message}</AlertDescription>
+                <AlertDescription>
+                  {mutationErrorMessage(error, t("common.loadErrorRetry"))}
+                </AlertDescription>
               </Alert>
             )}
 

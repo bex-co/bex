@@ -178,6 +178,11 @@ const zhLogs: Record<string, TranslationEntry> = {
     message: "无法加载日志",
     description: "Error-state title when the logs query fails",
   },
+  "logs.errorTitleWithReason": {
+    message: "无法加载日志：{reason}",
+    description:
+      "Inline banner over loaded log lines when a later read was refused; reason is the server's refusal",
+  },
 };
 
 export default zhLogs;

@@ -164,6 +164,13 @@ describe("DeployDetailPage", () => {
 
     render(<DeployDetailPage serviceId="web" deployId="dep-1" />);
 
-    expect(screen.getByText("deploy query unavailable")).toBeInTheDocument();
+    // A read that never got an answer shows translated copy, not its raw
+    // transport text (w5/167).
+    expect(
+      screen.getByText(
+        "Something went wrong while loading. Refresh the page to try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("deploy query unavailable")).toBeNull();
   });
 });

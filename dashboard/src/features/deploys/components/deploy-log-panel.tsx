@@ -159,7 +159,7 @@ export function DeployLogPanel({
       <LogEmptyState
         reason="failed"
         title={t("logs.errorTitle")}
-        message={error.message}
+        error={error}
       />
     );
   } else if ((loading || startTime === undefined) && lines.length === 0) {

@@ -181,6 +181,11 @@ const enLogs: Record<string, TranslationEntry> = {
     message: "Couldn't load logs",
     description: "Error-state title when the logs query fails",
   },
+  "logs.errorTitleWithReason": {
+    message: "Couldn't load logs: {reason}",
+    description:
+      "Inline banner over loaded log lines when a later read was refused; reason is the server's refusal",
+  },
 };
 
 export default enLogs;

@@ -78,7 +78,12 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
     historyState.error = new Error("upstream exploded");
     render(<LogViewer resource="web" />);
     expect(screen.getByText("Couldn't load logs")).toBeInTheDocument();
-    expect(screen.getByText("upstream exploded")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Something went wrong while loading. Refresh the page to try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("upstream exploded")).toBeNull();
   });
 
   it("renders log lines when history has content", () => {

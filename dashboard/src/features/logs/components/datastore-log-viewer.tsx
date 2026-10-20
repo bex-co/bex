@@ -267,7 +267,7 @@ export function DatastoreLogViewer({
       <LogEmptyState
         reason="failed"
         title={copy.errorTitle}
-        message={history.error.message}
+        error={history.error}
       />
     );
   } else if (history.loading && lines.length === 0) {

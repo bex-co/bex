@@ -14,6 +14,8 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import i18n from "@/i18n/init";
+import { uncodedGraphQLError } from "@/test/mocks/apollo";
 import { UsagePage } from "../usage-page";
 import { useUsage, type UsageSummary } from "@/features/usage/hooks/use-usage";
 
@@ -138,7 +140,42 @@ describe("UsagePage", () => {
     render(<UsagePage />);
 
     expect(screen.getByText("Could not load usage")).toBeInTheDocument();
-    expect(screen.getByText("network exploded")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Something went wrong while loading. Refresh the page to try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("network exploded")).toBeNull();
+  });
+
+  // w5/167: the panel's own copy follows the UI language; a refusal still
+  // reads as the server's sentence.
+  it("explains a failed read in Chinese and relays a refusal", async () => {
+    mockUseUsage.mockReturnValue({
+      summary: null,
+      loading: false,
+      error: new TypeError("Failed to fetch"),
+    });
+    await i18n.changeLanguage("zh");
+    try {
+      const { unmount } = render(<UsagePage />);
+      expect(
+        screen.getByText("加载时出错，请刷新页面重试。"),
+      ).toBeInTheDocument();
+      unmount();
+    } finally {
+      await i18n.changeLanguage("en");
+    }
+
+    mockUseUsage.mockReturnValue({
+      summary: null,
+      loading: false,
+      error: uncodedGraphQLError("forbidden: billing is not enabled"),
+    });
+    render(<UsagePage />);
+    expect(
+      screen.getByText("Forbidden: billing is not enabled"),
+    ).toBeInTheDocument();
   });
 
   it("shows the invoice history only once there are finalized invoices", () => {
