@@ -36,7 +36,7 @@ User decision 2026-10-19: from the `/pm-brainstorm for w5` proposal, items 4, 5 
 
 - [x] **m138** — [Postgres read replicas can be changed after create](done/m138/README.md) (9 tasks; 6h15m total) ← `/pm-brainstorm for w5` item 4; Render `postgresPATCHInput.readReplicas` vs bex's strict PATCH 400 (`postgres/rest.go:454-474`) — **DONE 2026-10-19**: REST/GraphQL/MCP/dashboard replace the replica set with create's checks plus a DNS-label name rule; `postgres_read_replicas_changed` + `postgres_disk_autoscaling_enabled_changed`; reads list the configured set with observed hosts; GraphQL replica hosts fixed (were null). Real CNPG reader walked 1→2→3→2→1 on dev-5 (local operator brought current).
 - [x] **m139** — [Postgres and Key Value logs stream live and filter by level](done/m139/README.md) (8 tasks; 6h15m total) ← `/pm-brainstorm for w5` item 5; `unsupportedLiveResource` + Key Value `level` 400 (`logs/service.go:754-781`), CLI checklist `--tail` `[~]` — **DONE 2026-10-20**: `/v1/logs/subscribe` follows `dpg-`/`red-` pods (CLI `render logs -r … --tail`, dashboard Live switch); Key Value lines carry Valkey's level in the shipper and direct reads alike (one fixture table); walked live on dev-5.
-- [ ] **161** — [`/auth/error` is a 404 — every Kratos self-service error lands on Not Found](161.md) (~45m) ← `/pm-brainstorm for w5` item 2; Kratos `error.ui_url` has no dashboard route
+- [x] **161** — [`/auth/error` is a 404 — every Kratos self-service error lands on Not Found](done/161.md) (~45m) ← `/pm-brainstorm for w5` item 2; Kratos `error.ui_url` has no dashboard route — **DONE 2026-10-20**: `/auth/error` reads Kratos's error by id and shows its reason with the way back to sign in; walked live on dev-5.
 
 ## Approved queue — 2026-10-19
 

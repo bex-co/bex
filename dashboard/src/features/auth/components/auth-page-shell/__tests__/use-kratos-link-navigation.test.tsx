@@ -95,7 +95,10 @@ describe("useKratosLinkNavigation", () => {
   it("routes the recovery link to the forgot-password page", async () => {
     const user = userEvent.setup();
     const router = renderAnchors([
-      { label: "Recover Account", href: `${KRATOS}/self-service/recovery/browser` },
+      {
+        label: "Recover Account",
+        href: `${KRATOS}/self-service/recovery/browser`,
+      },
     ]);
     await user.click(await anchorByText("Recover Account"));
     await waitFor(() =>
@@ -167,10 +170,7 @@ describe("useKratosLinkNavigation", () => {
         testid: "ory/screen/login/action/restart",
       },
     ],
-    [
-      "an unrelated link",
-      { label: "Docs", href: "https://docs.bex.co/guide" },
-    ],
+    ["an unrelated link", { label: "Docs", href: "https://docs.bex.co/guide" }],
     [
       "a non-self-service Kratos link",
       { label: "Logout", href: `${KRATOS}/self-service/logout?token=t` },

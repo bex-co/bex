@@ -203,13 +203,21 @@ describe("ConsentPage", () => {
   it("names the missing capability scopes on a scope_required refusal (round-14 #1)", () => {
     routeData.consent = null;
     routeData.consentErrorCode = "scope_required";
-    routeData.consentRequiredScopes = ["bex.read", "bex.write", "bex.sensitive"];
+    routeData.consentRequiredScopes = [
+      "bex.read",
+      "bex.write",
+      "bex.sensitive",
+    ];
     routeData.challenge = "challenge-1";
 
     render(<ConsentPage />);
 
-    expect(screen.getByText("Invalid authorization request")).toBeInTheDocument();
-    expect(screen.getByText(/bex\.read, bex\.write, bex\.sensitive/)).toBeInTheDocument();
+    expect(
+      screen.getByText("Invalid authorization request"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/bex\.read, bex\.write, bex\.sensitive/),
+    ).toBeInTheDocument();
   });
 
   it("never reloads a recovered error code — the handler already answered", () => {

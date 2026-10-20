@@ -167,6 +167,45 @@ const enAuth: Record<string, TranslationEntry> = {
     message: "Try again",
     description: "Account deletion preview retry button",
   },
+  "auth.errorTitle": {
+    message: "Something went wrong",
+    description:
+      "Title of /auth/error, where Kratos sends a self-service error (w5/161)",
+  },
+  "auth.errorSubtitle": {
+    message: "We couldn't finish that step.",
+    description: "Subtitle of /auth/error",
+  },
+  "auth.errorGeneric": {
+    message:
+      "The sign-in step expired or couldn't be completed. Start again from the sign-in page.",
+    description:
+      "/auth/error body when Kratos's error has no readable reason or the id is unknown",
+  },
+  "auth.errorBackToSignIn": {
+    message: "Back to sign in",
+    description: "/auth/error button to the sign-in page",
+  },
+  "auth.errorFlowExpired": {
+    message:
+      "That sign-in step took too long and expired. Start again from the sign-in page.",
+    description: "/auth/error message for Kratos self_service_flow_expired",
+  },
+  "auth.errorCsrf": {
+    message:
+      "Your browser's security check didn't match — usually a second tab or cleared cookies. Start again from the sign-in page.",
+    description: "/auth/error message for Kratos security_csrf_violation",
+  },
+  "auth.errorIdentityMismatch": {
+    message:
+      "That step belongs to a different account than the one signed in. Sign out, then start again.",
+    description: "/auth/error message for Kratos security_identity_mismatch",
+  },
+  "auth.errorReturnToForbidden": {
+    message: "The address to return to after signing in isn't allowed.",
+    description:
+      "/auth/error message for Kratos self_service_flow_return_to_forbidden",
+  },
   "auth.accountDeletedTitle": {
     message: "Account deletion started",
     description: "Accepted account deletion terminal page title",

@@ -14,7 +14,11 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { cn } from "@/common/lib/utils/utils.ts";
 import { AuthPageShell } from "@/features/auth/components/auth-page-shell";
-import { SCOPE_DESCRIPTION_KEYS, SCOPE_SENSITIVE, SCOPE_WRITE } from "@/common/lib/oauth-scopes";
+import {
+  SCOPE_DESCRIPTION_KEYS,
+  SCOPE_SENSITIVE,
+  SCOPE_WRITE,
+} from "@/common/lib/oauth-scopes";
 import type { ConsentErrorCode } from "@/common/server-fn/hydra-consent";
 
 const route = getRouteApi("/auth/consent");
