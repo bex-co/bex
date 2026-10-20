@@ -3496,7 +3496,8 @@ func lastStallDiagnosis(app *appv1alpha1.App) (string, string) {
 		return "", ""
 	}
 	switch c.Reason {
-	case reasonHealthCheckFailing, crashLoopBackOff, imagePullBackOff, reasonInvalidImageName, createContainerConfigError:
+	case reasonHealthCheckFailing, crashLoopBackOff, imagePullBackOff, reasonInvalidImageName, createContainerConfigError,
+		appv1alpha1.ReasonUnschedulable, appv1alpha1.ReasonContainerCreating:
 		return c.Reason, c.Message
 	}
 	return "", ""
@@ -5353,6 +5354,9 @@ func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deploym
 			}
 		}
 	}
+	if reason, msg := pendingPodMessage(pods.Items, time.Now()); msg != "" {
+		return reason, msg
+	}
 	// No container is Waiting, so nothing above fired. The remaining stall
 	// class is the one that used to fall through every layer: a container that
 	// is RUNNING and simply never becomes Ready because its health-check probe
@@ -5360,6 +5364,70 @@ func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deploym
 	// crash-looping and unready still reports the crash — the stronger signal.
 	return probeStallMessage(pods.Items)
 }
+
+// pendingStallGrace and containerCreatingStallAfter keep a merely slow start
+// from being reported: a scheduling retry, an ordinary image download. Live on
+// 2026-10-20 new starter-plan pods sat unstarted for the whole 900s budget and
+// the deploy closed with only the bare progress deadline: the scheduler's
+// verdict lived on the pod and reached no tenant surface (w6/080).
+const (
+	pendingStallGrace           = time.Minute
+	containerCreatingStallAfter = 5 * time.Minute
+)
+
+// pendingPodMessage diagnoses a live pod that has not started: unschedulable
+// past a scheduling retry, or still creating its container long after it was
+// placed on a node.
+func pendingPodMessage(pods []corev1.Pod, now time.Time) (string, string) {
+	for i := range pods {
+		p := &pods[i]
+		if p.DeletionTimestamp != nil || p.Status.Phase != corev1.PodPending {
+			continue
+		}
+		var placedAt time.Time
+		for _, c := range p.Status.Conditions {
+			if c.Type != corev1.PodScheduled {
+				continue
+			}
+			if c.Status == corev1.ConditionFalse && c.Reason == corev1.PodReasonUnschedulable &&
+				now.Sub(c.LastTransitionTime.Time) > pendingStallGrace {
+				return appv1alpha1.ReasonUnschedulable, unschedulableMessage(c.Message)
+			}
+			if c.Status == corev1.ConditionTrue {
+				placedAt = c.LastTransitionTime.Time
+			}
+		}
+		if placedAt.IsZero() || now.Sub(placedAt) <= containerCreatingStallAfter {
+			continue
+		}
+		for _, cs := range p.Status.ContainerStatuses {
+			if w := cs.State.Waiting; w != nil && w.Reason == appv1alpha1.ReasonContainerCreating {
+				return appv1alpha1.ReasonContainerCreating, fmt.Sprintf(
+					"the new instance was placed on a node %d minutes ago but its container has still not started"+
+						" — the image download or the disk attach is taking unusually long. Nothing has run yet, so there are no service logs.",
+					int(now.Sub(placedAt).Minutes()))
+			}
+		}
+	}
+	return "", ""
+}
+
+// unschedulableMessage keeps the scheduler's resource verdict, which names no
+// node, and drops its taint/affinity detail, which describes platform layout.
+func unschedulableMessage(scheduler string) string {
+	msg := "no node currently has room for this service's instance"
+	if short := build.ScarceResources(scheduler); len(short) > 0 {
+		msg += " (not enough " + strings.Join(short, ", ") + " free for its instance type)"
+	}
+	return msg + ". Nothing has run yet, so there are no service logs; " + unschedulableWaiting + ", or choose a smaller instance type."
+}
+
+// unschedulableWaiting is the in-flight half of an unschedulable diagnosis;
+// terminalStallMessage swaps it for unschedulableFailed.
+const (
+	unschedulableWaiting = "the instance starts as soon as capacity frees up"
+	unschedulableFailed  = "the rollout window ended before capacity freed up; deploy again later"
+)
 
 // runtimeStartError is the terminated-state reason the kubelet records when the
 // container runtime could not launch the container's program at all — the
@@ -5485,6 +5553,8 @@ func terminalStallMessage(reason, msg string) string {
 		return strings.Replace(msg, probeStallWaiting, probeStallFailed, 1)
 	case imagePullBackOff:
 		return strings.Replace(msg, "image pull is failing", "image pull failed", 1)
+	case appv1alpha1.ReasonUnschedulable:
+		return strings.Replace(msg, unschedulableWaiting, unschedulableFailed, 1)
 	}
 	return msg
 }
