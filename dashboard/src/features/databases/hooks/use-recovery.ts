@@ -171,9 +171,7 @@ export function useRecovery(id: string) {
         return recoveredID;
       } catch (e) {
         toast.error(
-          t("databases.recoveryRestoreError", {
-            error: (e as Error).message,
-          }),
+          mutationErrorMessage(e, t("databases.recoveryRestoreError")),
         );
         return null;
       }

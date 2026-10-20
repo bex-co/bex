@@ -11,7 +11,10 @@ import {
   skipPollWhenHidden,
 } from "@/common/lib/polling";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { graphQLErrorExtensions } from "@/common/lib/graphql-error";
+import {
+  graphQLErrorExtensions,
+  mutationErrorMessage,
+} from "@/common/lib/graphql-error";
 
 /**
  * bex-api refused the save until the user confirms the restart it causes: a
@@ -73,9 +76,7 @@ export function useKeyValueNetworking(id: string) {
             name: typeof name === "string" ? name : "",
           };
         }
-        toast.error(
-          t("keyvalue.networkingError", { error: (e as Error).message }),
-        );
+        toast.error(mutationErrorMessage(e, t("keyvalue.networkingError")));
         return false;
       }
     },

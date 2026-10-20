@@ -27,10 +27,13 @@ import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
 } from "@/common/lib/polling";
-import { isNotFoundError } from "@/common/lib/graphql-error";
 import { PRIMED_FETCH_POLICY } from "@/common/lib/fetch-policy";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import {
+  isNotFoundError,
+  mutationErrorMessage,
+  relayableReason,
+} from "@/common/lib/graphql-error";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type {
   CreateEnvGroupInput,
@@ -229,7 +232,7 @@ export function useEnvGroupMutations(
         return id;
       } catch (error) {
         toast.error(t("envGroups.createError", { name: input.name }), {
-          description: error instanceof Error ? error.message : undefined,
+          description: relayableReason(error) || undefined,
         });
         // A create that failed may still have been saved — its answer can be
         // lost after the write (w4/m206). Re-read the list before the user
@@ -255,7 +258,7 @@ export function useEnvGroupMutations(
         return true;
       } catch (error) {
         toast.error(t("envGroups.renameError"), {
-          description: error instanceof Error ? error.message : undefined,
+          description: relayableReason(error) || undefined,
         });
         return false;
       } finally {
@@ -354,7 +357,7 @@ export function useEnvGroupMutations(
         return true;
       } catch (error) {
         toast.error(t("envGroups.moveError"), {
-          description: error instanceof Error ? error.message : undefined,
+          description: relayableReason(error) || undefined,
         });
         return false;
       } finally {
@@ -394,7 +397,7 @@ export function useEnvGroupMutations(
         return cloneID;
       } catch (error) {
         toast.error(t("envGroups.cloneError"), {
-          description: error instanceof Error ? error.message : undefined,
+          description: relayableReason(error) || undefined,
         });
         return null;
       } finally {

@@ -20,6 +20,7 @@ import {
 } from "@/common/components/ui/table";
 import { Textarea } from "@/common/components/ui/textarea";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import {
   useExecuteDatabaseQuery,
   type QueryResult,
@@ -85,11 +86,7 @@ export function SQLConsole({
       setPage(0);
     } catch (cause) {
       setResult(null);
-      setError(
-        cause instanceof Error && cause.message
-          ? cause.message
-          : t("databases.sqlUnknownError"),
-      );
+      setError(mutationErrorMessage(cause, t("databases.sqlUnknownError")));
     }
   }
 

@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SQLConsole } from "@/features/databases/components/sql-console";
 import { isReadOnlySQL } from "@/features/databases/lib/sql";
+import { uncodedGraphQLError } from "@/test/mocks/apollo";
 
 const mocks = vi.hoisted(() => ({
   execute: vi.fn(),
@@ -204,14 +205,30 @@ describe("SQLConsole", () => {
   });
 
   it("shows execution errors without swallowing them", async () => {
-    mocks.execute.mockRejectedValue(new Error("bad request: SQLSTATE 42601"));
+    mocks.execute.mockRejectedValue(
+      uncodedGraphQLError('bad request: syntax error at or near "SELEC"'),
+    );
     const user = userEvent.setup();
     render(<SQLConsole id="orders-db" />);
 
     await user.click(screen.getByRole("button", { name: "Run query" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "bad request: SQLSTATE 42601",
+      'Syntax error at or near "SELEC"',
+    );
+  });
+
+  // w5/166: a query that never reached Postgres has no error of its own to
+  // show, so the console's copy replaces the browser's "Failed to fetch".
+  it("shows its own copy when the query never reached the server", async () => {
+    mocks.execute.mockRejectedValue(new TypeError("Failed to fetch"));
+    const user = userEvent.setup();
+    render(<SQLConsole id="orders-db" />);
+
+    await user.click(screen.getByRole("button", { name: "Run query" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Couldn't run the query. Please try again.",
     );
   });
 });

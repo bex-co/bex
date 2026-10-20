@@ -80,7 +80,7 @@ export function useAccessControl(id: string) {
         return true;
       } catch (e) {
         toast.error(
-          t("databases.accessAllowListError", { error: (e as Error).message }),
+          mutationErrorMessage(e, t("databases.accessAllowListError")),
         );
         return false;
       }
@@ -99,7 +99,7 @@ export function useAccessControl(id: string) {
         toast.error(
           hasGraphQLErrorCode(e, "POSTGRES_IDENTIFIER_RESERVED")
             ? t("databases.fieldPhysicalNameReserved", { name })
-            : t("databases.accessUserError", { error: (e as Error).message }),
+            : mutationErrorMessage(e, t("databases.accessUserError")),
         );
         return null;
       }

@@ -771,7 +771,7 @@ const enDatabases: Record<string, TranslationEntry> = {
     description: "Toast after a restore request is accepted",
   },
   "databases.recoveryRestoreError": {
-    message: "Couldn't restore: {error}",
+    message: "Couldn't restore. Please try again.",
     description: "Toast when a restore request fails",
   },
   // --- Access control panel ---
@@ -859,7 +859,7 @@ const enDatabases: Record<string, TranslationEntry> = {
     description: "Toast after saving the IP allowlist",
   },
   "databases.accessAllowListError": {
-    message: "Couldn't save the allowlist: {error}",
+    message: "Couldn't save the allowlist. Please try again.",
     description: "Toast when saving the allowlist fails",
   },
   "databases.accessUsers": {
@@ -904,7 +904,7 @@ const enDatabases: Record<string, TranslationEntry> = {
     description: "Toast after creating a database user",
   },
   "databases.accessUserError": {
-    message: "Couldn't create the user: {error}",
+    message: "Couldn't create the user. Please try again.",
     description: "Toast when creating a user fails",
   },
   "databases.accessUserDeleted": {
@@ -1486,7 +1486,7 @@ const enDatabases: Record<string, TranslationEntry> = {
     description: "SQL console run button while a query is executing",
   },
   "databases.sqlUnknownError": {
-    message: "The query failed. Check the statement and try again.",
+    message: "Couldn't run the query. Please try again.",
     description: "SQL console fallback error",
   },
   "databases.sqlReturnedRows_one": {

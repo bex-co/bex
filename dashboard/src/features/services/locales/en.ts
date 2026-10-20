@@ -4591,7 +4591,7 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Toast on successful setServiceIpAllowList mutation (w7/m32)",
   },
   "services.networkingError": {
-    message: "Failed to update IP allowlist: {error}",
+    message: "Failed to update IP allowlist. Please try again.",
     description: "Toast on failed setServiceIpAllowList mutation (w7/m32)",
   },
   "services.outboundIpsTitle": {
