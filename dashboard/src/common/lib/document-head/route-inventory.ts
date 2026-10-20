@@ -31,6 +31,7 @@ export const ROUTE_HEAD_INVENTORY: Record<
     "auth.consent.tsx",
     "auth.device.success.tsx",
     "auth.device.tsx",
+    "auth.error.tsx",
     "auth.forgot-password.tsx",
     "auth.login.tsx",
     "auth.logout.tsx",
