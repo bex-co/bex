@@ -471,3 +471,30 @@ func TestARotationLeavesARecreatedNamesakesDeployHookAlone(t *testing.T) {
 		t.Fatalf("the namesake %s holds token %q, want its own kept", namesake.UID, namesake.Annotations[DeployHookTokenAnnotation])
 	}
 }
+
+// TestDeployHookRefRefusalsNameTheHookParameter (w8/141): a hook caller sent
+// `ref`, so a refused ref names `ref`, not the REST body's commitId.
+func TestDeployHookRefRefusalsNameTheHookParameter(t *testing.T) {
+	for name, ref := range map[string]string{
+		"cron job":     "abc123",
+		"option-shape": "--upload-pack=/bin/sh",
+	} {
+		t.Run(name, func(t *testing.T) {
+			app := repoApp("cron", "srv-2", "main")
+			if name == "cron job" {
+				app.Spec.Type = appv1alpha1.TypeCronJob
+			}
+			svc, _ := newService(newFakeStore(), app)
+			hook, err := svc.GetDeployHook(context.Background(), "cron")
+			if err != nil {
+				t.Fatal(err)
+			}
+			rec := httptest.NewRecorder()
+			svc.DeployHookHandler().ServeHTTP(rec, httptest.NewRequest(http.MethodPost, hook.URL+"&ref="+url.QueryEscape(ref), nil))
+			body := rec.Body.String()
+			if rec.Code != http.StatusBadRequest || !strings.Contains(body, "ref ") || strings.Contains(body, "commitId") {
+				t.Fatalf("hook refusal = %d %s, want 400 naming ref, never commitId", rec.Code, body)
+			}
+		})
+	}
+}
