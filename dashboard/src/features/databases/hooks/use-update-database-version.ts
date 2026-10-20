@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
-import { graphQLErrorMessage } from "@/common/lib/graphql-error";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { UpdateDatabaseVersionDocument } from "@/graphql/definitions";
 
@@ -20,9 +20,7 @@ export function useUpdateDatabaseVersion() {
         toast.success(t("databases.versionUpgradeAccepted", { version }));
         return true;
       } catch (err) {
-        setError(
-          graphQLErrorMessage(err) ?? t("databases.versionUpgradeError"),
-        );
+        setError(mutationErrorMessage(err, t("databases.versionUpgradeError")));
         return false;
       } finally {
         setBusy(false);

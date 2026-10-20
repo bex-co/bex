@@ -23,6 +23,7 @@ import {
 } from "@/graphql/definitions";
 import { skipPollWhenHidden } from "@/common/lib/polling";
 import { useDatabaseInsights } from "@/features/databases/hooks/use-database-insights";
+import { uncodedGraphQLError } from "@/test/mocks/apollo";
 
 const mockUseQuery = vi.fn();
 const mockUseMutation = vi.fn();
@@ -98,13 +99,24 @@ describe("useDatabaseInsights parameter writes", () => {
   });
 
   it("returns the backend message without refetching after rejection", async () => {
-    setParameters.mockRejectedValue(new Error("operation forbidden"));
+    setParameters.mockRejectedValue(uncodedGraphQLError("operation forbidden"));
     const { result } = renderHook(() => useDatabaseInsights("db-1"));
 
     const saved = await result.current.saveParameters([]);
 
-    expect(saved).toEqual({ ok: false, error: "operation forbidden" });
+    expect(saved).toEqual({ ok: false, error: "Operation forbidden" });
     expect(refetchOverrides).not.toHaveBeenCalled();
+  });
+
+  // The editor shows its own translated copy for a null error (w5/164).
+  it("returns no message for a transport failure", async () => {
+    setParameters.mockRejectedValue(new TypeError("Failed to fetch"));
+    const { result } = renderHook(() => useDatabaseInsights("db-1"));
+
+    expect(await result.current.saveParameters([])).toEqual({
+      ok: false,
+      error: null,
+    });
   });
 
   // A poll or post-save refetch reports loading too; the panel would swap the

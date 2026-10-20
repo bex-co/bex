@@ -15,6 +15,7 @@ vi.mock("sonner", () => ({
   },
 }));
 
+import { uncodedGraphQLError } from "@/test/mocks/apollo";
 import { useDeleteWorkspace } from "@/features/workspaces/hooks/use-delete-workspace";
 
 beforeEach(() => {
@@ -51,7 +52,7 @@ describe("useDeleteWorkspace", () => {
     const mutate = vi
       .fn()
       .mockRejectedValue(
-        new Error(
+        uncodedGraphQLError(
           'bad request: confirmation must be "sudo delete workspace acme-hq"',
         ),
       );
@@ -65,7 +66,7 @@ describe("useDeleteWorkspace", () => {
 
     expect(ok).toBe(false);
     expect(result.current.error).toBe(
-      'bad request: confirmation must be "sudo delete workspace acme-hq"',
+      'Confirmation must be "sudo delete workspace acme-hq"',
     );
   });
 });

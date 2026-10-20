@@ -15,6 +15,7 @@ vi.mock("sonner", () => ({
   },
 }));
 
+import { uncodedGraphQLError } from "@/test/mocks/apollo";
 import { useChangeWorkspacePlan } from "@/features/workspaces/hooks/use-change-workspace-plan";
 
 beforeEach(() => {
@@ -55,7 +56,9 @@ describe("useChangeWorkspacePlan", () => {
     const mutate = vi
       .fn()
       .mockRejectedValue(
-        new Error("workspace has 2 members, exceeds hobby plan's limit of 1"),
+        uncodedGraphQLError(
+          "workspace has 2 members, exceeds hobby plan's limit of 1",
+        ),
       );
     mockUseMutation.mockReturnValue([mutate]);
 
@@ -67,7 +70,7 @@ describe("useChangeWorkspacePlan", () => {
 
     expect(ok).toBe(false);
     expect(result.current.error).toBe(
-      "workspace has 2 members, exceeds hobby plan's limit of 1",
+      "Workspace has 2 members, exceeds hobby plan's limit of 1",
     );
   });
 });

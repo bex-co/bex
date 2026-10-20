@@ -3,7 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { ChangeWorkspacePlanDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { graphQLErrorMessage } from "@/common/lib/graphql-error";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface UseChangeWorkspacePlanResult {
   /** Fires changeWorkspacePlan; resolves true on success. */
@@ -38,7 +38,7 @@ export function useChangeWorkspacePlan(): UseChangeWorkspacePlanResult {
         toast.success(t("workspaces.changePlanSuccess", { plan }));
         return true;
       } catch (err) {
-        setError(graphQLErrorMessage(err) ?? t("workspaces.changePlanError"));
+        setError(mutationErrorMessage(err, t("workspaces.changePlanError")));
         return false;
       } finally {
         setBusy(false);

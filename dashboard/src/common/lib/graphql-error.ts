@@ -1,10 +1,14 @@
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 
-/** Extracts the first GraphQL error message, falling back to a plain Error's. */
-export function graphQLErrorMessage(err: unknown): string | null {
-  if (CombinedGraphQLErrors.is(err)) return err.errors[0]?.message ?? null;
-  if (err instanceof Error) return err.message;
-  return null;
+/**
+ * The first GraphQL error's message, or null for anything else. A transport
+ * failure's message ("Failed to fetch") is the browser's own English, names
+ * nothing the user can act on, and would show untranslated in every locale, so
+ * a caller falls back to its own copy instead.
+ */
+function graphQLErrorMessage(err: unknown): string | null {
+  if (!CombinedGraphQLErrors.is(err)) return null;
+  return err.errors[0]?.message ?? null;
 }
 
 /**
@@ -21,7 +25,7 @@ export function graphQLErrorMessage(err: unknown): string | null {
  */
 export function refusalReason(err: unknown): string {
   const detail = (graphQLErrorMessage(err) ?? "")
-    .replace(/^(graphql error:\s*)?bad request:\s*/i, "")
+    .replace(/^bad request:\s*/i, "")
     .trim();
   return detail ? detail.charAt(0).toUpperCase() + detail.slice(1) : "";
 }
@@ -133,18 +137,17 @@ export function isNameConflictError(err: unknown): boolean {
  * with one ("schedule must be a valid 5-field cron expression", a name
  * conflict, "total secret file size limit of 524288 bytes exceeded"), and the
  * caller's generic copy otherwise. Generic is right for a transport failure,
- * which has no answer to relay — so this reads only a GraphQL response, never a
- * plain `Error` the way `refusalReason` does ("Failed to fetch" names nothing
- * the user can act on; an expired session is a transport 401 the auth link
- * already redirects) — and for throttling, whose "rate limit exceeded" says
- * nothing that "please try again" doesn't.
+ * which has no answer to relay ("Failed to fetch" names nothing the user can act
+ * on; an expired session is a transport 401 the auth link already redirects),
+ * and for throttling, whose "rate limit exceeded" says nothing that "please try
+ * again" doesn't.
  *
  * w6/037 put this contract on `useFieldMutation`; w1/m145 extended it to every
  * mutation catch site, and `mutation-error-toast-invariant.test.ts` keeps a
  * toast that ignores the caught error from coming back.
  */
 export function mutationErrorMessage(err: unknown, generic: string): string {
-  if (!CombinedGraphQLErrors.is(err) || isThrottledError(err)) return generic;
+  if (isThrottledError(err)) return generic;
   return refusalReason(err) || generic;
 }
 

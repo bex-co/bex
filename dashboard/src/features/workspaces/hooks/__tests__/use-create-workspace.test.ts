@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { CombinedGraphQLErrors } from "@apollo/client/errors";
 
 const mockUseMutation = vi.fn();
 vi.mock("@apollo/client/react", () => ({
@@ -16,6 +15,8 @@ vi.mock("sonner", () => ({
   },
 }));
 
+import i18n from "@/i18n/init";
+import { uncodedGraphQLError } from "@/test/mocks/apollo";
 import { useCreateWorkspace } from "@/features/workspaces/hooks/use-create-workspace";
 
 beforeEach(() => {
@@ -109,13 +110,11 @@ describe("useCreateWorkspace", () => {
   });
 
   it("surfaces the backend's plan-limit refusal inline (not just a toast) — the 6th Hobby workspace", async () => {
-    const mutate = vi.fn().mockRejectedValue(
-      new CombinedGraphQLErrors({
-        errors: [
-          { message: "bad request: at most 5 hobby workspaces per user" },
-        ],
-      } as never),
-    );
+    const mutate = vi
+      .fn()
+      .mockRejectedValue(
+        uncodedGraphQLError("bad request: at most 5 hobby workspaces per user"),
+      );
     mockUseMutation.mockReturnValue([mutate]);
 
     const { result } = renderHook(() => useCreateWorkspace());
@@ -125,27 +124,38 @@ describe("useCreateWorkspace", () => {
     });
 
     expect(workspace).toBeNull();
-    expect(result.current.error).toBe(
-      "bad request: at most 5 hobby workspaces per user",
-    );
+    expect(result.current.error).toBe("At most 5 hobby workspaces per user");
   });
 
-  it("falls back to a generic error message for a non-GraphQL failure", async () => {
-    const mutate = vi.fn().mockRejectedValue(new Error("network down"));
+  // The browser's "Failed to fetch" is untranslated and names nothing the
+  // user can act on, so a transport failure shows the dialog's own copy in
+  // the user's language (w5/164).
+  it("falls back to the translated generic message for a non-GraphQL failure", async () => {
+    const mutate = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
     mockUseMutation.mockReturnValue([mutate]);
 
     const { result } = renderHook(() => useCreateWorkspace());
     await act(async () => {
       await result.current.create("acme-staging", "hobby");
     });
+    expect(result.current.error).toBe("Couldn't create the workspace");
 
-    expect(result.current.error).toBe("network down");
+    await i18n.changeLanguage("zh");
+    try {
+      const zh = renderHook(() => useCreateWorkspace());
+      await act(async () => {
+        await zh.result.current.create("acme-staging", "hobby");
+      });
+      expect(zh.result.current.error).toBe("无法创建工作区");
+    } finally {
+      await i18n.changeLanguage("en");
+    }
   });
 
   it("clears a previous error on a fresh attempt", async () => {
     const mutate = vi
       .fn()
-      .mockRejectedValueOnce(new Error("first failure"))
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
       .mockResolvedValueOnce({
         data: {
           createWorkspace: {
@@ -163,7 +173,7 @@ describe("useCreateWorkspace", () => {
     await act(async () => {
       await result.current.create("acme-2", "hobby");
     });
-    expect(result.current.error).toBe("first failure");
+    expect(result.current.error).toBe("Couldn't create the workspace");
 
     await act(async () => {
       await result.current.create("acme-2", "hobby");

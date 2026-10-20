@@ -187,15 +187,6 @@ describe("mutationErrorMessage", () => {
     );
   });
 
-  it("returns the caller's generic copy for a transport failure", () => {
-    expect(
-      mutationErrorMessage(
-        new TypeError("Failed to fetch"),
-        "generic fallback",
-      ),
-    ).toBe("generic fallback");
-  });
-
   it("returns the caller's generic copy when the server throttled the request", () => {
     const err = new CombinedGraphQLErrors({
       data: null,
@@ -229,14 +220,11 @@ describe("refusalReason", () => {
   it("strips the transport prefix and capitalizes the server's reason", () => {
     expect(
       refusalReason(
-        new Error('bad request: wildcard hostnames are not allowed: "*.x.com"'),
+        uncodedGraphQLError(
+          'bad request: wildcard hostnames are not allowed: "*.x.com"',
+        ),
       ),
     ).toBe('Wildcard hostnames are not allowed: "*.x.com"');
-    expect(
-      refusalReason(
-        new Error("GraphQL error: bad request: invalid email address"),
-      ),
-    ).toBe("Invalid email address");
   });
 
   it("reads the first error of a combined GraphQL response", () => {
@@ -248,8 +236,30 @@ describe("refusalReason", () => {
   });
 
   it("returns empty when there is no usable message, so callers keep their generic copy", () => {
-    expect(refusalReason(new Error(""))).toBe("");
+    expect(refusalReason(uncodedGraphQLError(""))).toBe("");
     expect(refusalReason("not an error")).toBe("");
     expect(refusalReason(undefined)).toBe("");
+  });
+});
+
+// w5/164: a transport failure's text is the browser's own untranslated
+// English ("Failed to fetch", "NetworkError when attempting to fetch
+// resource."), so no helper hands it to a dialog as a reason; the dialog's
+// translated copy is shown instead.
+describe("transport failures carry no reason", () => {
+  const transport = [
+    new TypeError("Failed to fetch"),
+    new TypeError("NetworkError when attempting to fetch resource."),
+    new Error("Response not successful: Received status code 502"),
+  ];
+
+  it.each(transport)("refusalReason(%s) is empty", (err) => {
+    expect(refusalReason(err)).toBe("");
+  });
+
+  it.each(transport)("mutationErrorMessage(%s) is the generic copy", (err) => {
+    expect(mutationErrorMessage(err, "Couldn't rename the workspace")).toBe(
+      "Couldn't rename the workspace",
+    );
   });
 });

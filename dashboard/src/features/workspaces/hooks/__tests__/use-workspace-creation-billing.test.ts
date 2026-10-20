@@ -15,6 +15,8 @@ vi.mock("@apollo/client/react", () => ({
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+import i18n from "@/i18n/init";
+import { uncodedGraphQLError } from "@/test/mocks/apollo";
 import { useWorkspaceCreationBilling } from "@/features/workspaces/hooks/use-workspace-creation-billing";
 
 function attemptRow(overrides: Record<string, unknown> = {}) {
@@ -32,7 +34,7 @@ function attemptRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
-const policyRead = {
+const resolvedPolicy = {
   data: {
     workspaceCreationPolicy: {
       mode: "on",
@@ -43,10 +45,12 @@ const policyRead = {
   loading: false,
   error: undefined,
 };
+let policyRead: { data?: unknown; loading: boolean; error?: Error };
 let resumeRead: { data?: unknown; loading: boolean };
 const prepareMutation = vi.fn();
 
 beforeEach(() => {
+  policyRead = resolvedPolicy;
   resumeRead = { data: undefined, loading: true };
   prepareMutation.mockReset();
   mockUseQuery.mockReset();
@@ -103,7 +107,7 @@ describe("useWorkspaceCreationBilling", () => {
   });
 
   it("drops the previous plan's error as soon as the plan changes", async () => {
-    prepareMutation.mockRejectedValue(new Error("card declined"));
+    prepareMutation.mockRejectedValue(uncodedGraphQLError("card declined"));
     let plan: WorkspacePlanId = "pro";
     const committed: (string | null)[] = [];
     const { result, rerender } = renderHook(() => {
@@ -116,7 +120,7 @@ describe("useWorkspaceCreationBilling", () => {
     await act(async () => {
       await result.current.prepare("acme", "billing@acme.test", true);
     });
-    expect(result.current.error).toBe("card declined");
+    expect(result.current.error).toBe("Card declined");
 
     plan = "scale";
     committed.length = 0;
@@ -124,5 +128,38 @@ describe("useWorkspaceCreationBilling", () => {
 
     expect(result.current.error).toBeNull();
     expect(committed).toEqual([null]);
+  });
+
+  // A plan-policy read that never reached bex-api has no reason to relay: the
+  // banner reads the page's own copy in the user's language, while a refused
+  // read still shows the server's sentence (w5/164).
+  it("explains a failed policy read in the user's language", async () => {
+    policyRead = {
+      data: undefined,
+      loading: false,
+      error: new TypeError("Failed to fetch"),
+    };
+    const { result } = renderHook(() => useWorkspaceCreationBilling("pro"));
+    expect(result.current.error).toBe(
+      "Couldn't load workspace setup. Refresh the page to try again.",
+    );
+
+    await i18n.changeLanguage("zh");
+    try {
+      const zh = renderHook(() => useWorkspaceCreationBilling("pro"));
+      expect(zh.result.current.error).toBe(
+        "无法加载工作区创建信息。请刷新页面重试。",
+      );
+    } finally {
+      await i18n.changeLanguage("en");
+    }
+
+    policyRead = {
+      data: undefined,
+      loading: false,
+      error: uncodedGraphQLError("workspace creation is paused"),
+    };
+    const refused = renderHook(() => useWorkspaceCreationBilling("pro"));
+    expect(refused.result.current.error).toBe("Workspace creation is paused");
   });
 });

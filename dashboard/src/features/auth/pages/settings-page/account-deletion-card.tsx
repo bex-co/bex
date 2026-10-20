@@ -16,7 +16,7 @@ import {
 } from "@/common/components/ui/card";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { SudoCommandField } from "@/common/components/sudo-command-field";
-import { graphQLErrorMessage } from "@/common/lib/graphql-error";
+import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import {
   clearBrowserAccountState,
   endBrowserSession,
@@ -159,7 +159,7 @@ export function AccountDeletionCard() {
     } catch (cause) {
       submitGuard.current = false;
       setSubmitting(false);
-      setError(graphQLErrorMessage(cause) ?? t("auth.deleteAccountError"));
+      setError(mutationErrorMessage(cause, t("auth.deleteAccountError")));
       return;
     }
 
