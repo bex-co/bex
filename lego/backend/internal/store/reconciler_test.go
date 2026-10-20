@@ -2948,6 +2948,8 @@ func TestDeployStallReasonOnlyForActionableDiagnoses(t *testing.T) {
 		{"probe stall", appAt("HealthCheckFailing", probeMsg, metav1.ConditionFalse, 5), probeMsg},
 		{"crash loop", appAt("CrashLoopBackOff", "container exited", metav1.ConditionFalse, 5), "container exited"},
 		{"quota block", appAt("RolloutBlockedByQuota", "exceeded quota", metav1.ConditionFalse, 5), "exceeded quota"},
+		{"unschedulable (w6/080)", appAt(appv1alpha1.ReasonUnschedulable, "no node currently has room", metav1.ConditionFalse, 5), "no node currently has room"},
+		{"container creating (w6/080)", appAt(appv1alpha1.ReasonContainerCreating, "container has still not started", metav1.ConditionFalse, 5), "container has still not started"},
 		{"served release cannot start", appAt(appv1alpha1.ReasonServedReleaseCannotStart, "cannot create its pods", metav1.ConditionFalse, 5), "cannot create its pods"},
 		// Ordinary progress must stay silent, or every healthy deploy reads
 		// as stalled for its whole rollout.

@@ -875,10 +875,12 @@ func podsPlaced(pods []corev1.Pod) bool {
 	return false
 }
 
-// unschedulableReason is the scheduler's own explanation for why a build could
-// not be placed, so the tenant sees "0/3 nodes are available: insufficient
-// memory" rather than a generic wait.
+// unschedulableReason says why a build could not be placed (the controller
+// prefixes "waiting for build capacity: "), in the tenant's terms: which resources the scheduler found short ("not enough cpu, memory
+// free"), never its raw verdict, whose node counts and taints describe the
+// platform's layout (w6/084).
 func unschedulableReason(pods []corev1.Pod) string {
+	const waiting = "no build node has room for it yet"
 	for i := range pods {
 		pod := &pods[i]
 		if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
@@ -886,11 +888,31 @@ func unschedulableReason(pods []corev1.Pod) string {
 		}
 		for _, cond := range pod.Status.Conditions {
 			if cond.Type == corev1.PodScheduled && cond.Status == corev1.ConditionFalse && cond.Message != "" {
-				return cond.Message
+				if short := ScarceResources(cond.Message); len(short) > 0 {
+					return waiting + " (not enough " + strings.Join(short, ", ") + " free)"
+				}
+				return waiting
 			}
 		}
 	}
-	return "waiting for a node with capacity for the build"
+	return waiting
+}
+
+// ScarceResources lists the resources a scheduler verdict reports as short,
+// in tenant-safe words. Shared by build and runtime stall messages.
+func ScarceResources(scheduler string) []string {
+	var short []string
+	for _, verdict := range []struct{ needle, label string }{
+		{"Insufficient cpu", "cpu"},
+		{"Insufficient memory", "memory"},
+		{"Insufficient ephemeral-storage", "ephemeral-storage"},
+		{"Too many pods", "pods"},
+	} {
+		if strings.Contains(scheduler, verdict.needle) {
+			short = append(short, verdict.label)
+		}
+	}
+	return short
 }
 
 // BuildJob constructs the credential-separated source build Job for o. Its

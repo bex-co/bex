@@ -1843,7 +1843,8 @@ func parkReason(reason string) bool {
 func stallDiagnosis(reason string) bool {
 	switch reason {
 	case "HealthCheckFailing", "CrashLoopBackOff", "ImagePullBackOff",
-		"CreateContainerConfigError", "RolloutBlockedByQuota", appv1alpha1.ReasonServedReleaseCannotStart:
+		"CreateContainerConfigError", "RolloutBlockedByQuota", appv1alpha1.ReasonUnschedulable,
+		appv1alpha1.ReasonContainerCreating, appv1alpha1.ReasonServedReleaseCannotStart:
 		return true
 	}
 	return false

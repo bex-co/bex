@@ -1147,14 +1147,14 @@ func TestBuildQueuedSeparatesWaitingForCapacityFromBuilding(t *testing.T) {
 		Reason: "Unschedulable", Message: "0/10 nodes are available: 3 Insufficient memory.",
 	}
 
-	t.Run("unplaced pod is queued and carries the scheduler's reason", func(t *testing.T) {
+	t.Run("unplaced pod is queued and names the scarce resource", func(t *testing.T) {
 		o.Client = fakeClient(job, buildPod(o, "b-1", "", unschedulable))
 		queued, reason := buildQueued(context.Background(), o, job.Name)
 		if !queued {
 			t.Fatal("a pod the scheduler could not place must report queued")
 		}
-		if !strings.Contains(reason, "Insufficient memory") {
-			t.Errorf("reason = %q, want the scheduler's own message", reason)
+		if !strings.Contains(reason, "not enough memory") || strings.Contains(reason, "0/10 nodes") {
+			t.Errorf("reason = %q, want the scarce resource without the platform's node count (w6/084)", reason)
 		}
 	})
 
