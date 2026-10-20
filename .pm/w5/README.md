@@ -13,6 +13,14 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 `up` prints the dashboard command to point at it once bex-api is running. One shared implementation serves every workstream since `w1/m72`; `.pm/w5/dev-5/` keeps only `ports.env` (a generated record of the derivation), this README, and `.gitignore`.
 
+## Approved queue — 2026-10-19 (brainstorm)
+
+User decision 2026-10-19: from the `/pm-brainstorm for w5` proposal, items 4, 5 and 2 were chosen, in that order, followed by `/loopx w5`. Each milestone ends with its standing closing tasks: Render parity (both change REST/GraphQL/MCP/UI), then Simplify, Test coverage and Closeout.
+
+- [ ] **m138** — [Postgres read replicas can be changed after create](m138/README.md) (9 tasks; 6h15m total) ← `/pm-brainstorm for w5` item 4; Render `postgresPATCHInput.readReplicas` vs bex's strict PATCH 400 (`postgres/rest.go:454-474`)
+- [ ] **m139** — [Postgres and Key Value logs stream live and filter by level](m139/README.md) (8 tasks; 6h15m total) ← `/pm-brainstorm for w5` item 5; `unsupportedLiveResource` + Key Value `level` 400 (`logs/service.go:754-781`), CLI checklist `--tail` `[~]`
+- [ ] **161** — [`/auth/error` is a 404 — every Kratos self-service error lands on Not Found](161.md) (~45m) ← `/pm-brainstorm for w5` item 2; Kratos `error.ui_url` has no dashboard route
+
 ## Approved queue — 2026-10-19
 
 User decision 2026-10-19, from the live beancount.io domain setup on dashboard.bex.co: custom-domain setup must match Render exactly. ADR005 was amended first (Render parity as a hard constraint; the m84 `_bex-challenge` ownership TXT withdrawn), then this milestone was filed to implement it. It ends with the standing closing tasks: Render parity, Simplify, Test coverage and Closeout.
