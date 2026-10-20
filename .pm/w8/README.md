@@ -365,7 +365,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **136** — [Audit every Render-gated create/update body against its bex handler](done/136.md) ← w8/135 fix 2026-10-19: the schema/handler body conflict class — **DONE (2026-10-19)**
 
-- [ ] **135** — [`POST`/`PATCH /registrycredentials` are unreachable: the Render-schema validator and the bex handler demand contradictory bodies](135.md) ← `/qa-find-bugs-cli` sweep 676 2026-10-19
+- [x] **135** — [`POST`/`PATCH /registrycredentials` are unreachable: the Render-schema validator and the bex handler demand contradictory bodies](done/135.md) ← `/qa-find-bugs-cli` sweep 676 2026-10-19 — **DONE (2026-10-20)**
 
 - [ ] **137** — [Static-site single-rule REST operations are missing: `POST`/`DELETE …/headers`, `POST`/`PATCH`/`DELETE …/routes` answer 405/404](137.md) ← `/qa-find-bugs-cli` sweep 801 2026-10-20
 
