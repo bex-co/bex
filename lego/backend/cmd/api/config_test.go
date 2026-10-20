@@ -88,6 +88,7 @@ func TestLoadConfigDefaults(t *testing.T) {
 		{"AgentMaxPinnedSandboxesPerWorkspace", cfg.AgentMaxPinnedSandboxesPerWorkspace, 10},
 		{"MaxBlueprintGroupings", cfg.MaxBlueprintGroupings, 1000},
 		{"ImageCompatibilityWorkspaces (off)", len(cfg.ImageCompatibilityWorkspaces), 0},
+		{"PrivateImagePortsDisabled (default on)", cfg.PrivateImagePortsDisabled, false},
 		{"MaxEnvGroupsPerWorkspace", cfg.MaxEnvGroupsPerWorkspace, 100},
 		{"MaxGitConnectionsPerWorkspace", cfg.MaxGitConnectionsPerWorkspace, 10},
 		{"MaxRegistryCredentialsPerWorkspace", cfg.MaxRegistryCredentialsPerWorkspace, 50},
@@ -400,6 +401,23 @@ func TestLoadConfigOpsWorkspacePin(t *testing.T) {
 	}
 	if cfg.CPAddr != "" {
 		t.Fatalf("stdio mode parsed the internal listener addr: %q", cfg.CPAddr)
+	}
+}
+
+// BEX_PRIVATE_IMAGE_PORTS is the w6/m148 rollback switch: on by default, and a
+// typo refuses startup instead of silently flipping the creation default.
+func TestLoadConfigPrivateImagePorts(t *testing.T) {
+	for value, disabled := range map[string]bool{"": false, "on": false, " off ": true, "off": true} {
+		cfg, _, err := loadFor(t, map[string]string{"BEX_PRIVATE_IMAGE_PORTS": value})
+		if err != nil || cfg.PrivateImagePortsDisabled != disabled {
+			t.Errorf("%q: disabled=%t err=%v, want disabled=%t", value, cfg.PrivateImagePortsDisabled, err, disabled)
+		}
+	}
+	for _, bad := range []string{"1", "true", "false", "OFF", "disabled"} {
+		if _, _, err := loadFor(t, map[string]string{"BEX_PRIVATE_IMAGE_PORTS": bad}); err == nil ||
+			!strings.Contains(err.Error(), "BEX_PRIVATE_IMAGE_PORTS") {
+			t.Errorf("%q: err = %v, want a startup refusal", bad, err)
+		}
 	}
 }
 

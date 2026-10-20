@@ -71,8 +71,8 @@ func TestBlueprintNamesMayRepeatAcrossKinds(t *testing.T) {
 	if len(app.kvRefs) != 1 || app.kvRefs[0].FromService.Name != "shared" {
 		t.Errorf("kvRefs = %+v, want the one Key Value reference to shared", app.kvRefs)
 	}
-	if len(app.hostRefs) != 1 || app.hostRefs[0].target != "shared" || app.hostRefs[0].port <= 0 {
-		t.Errorf("hostRefs = %+v, want the web service shared with its port", app.hostRefs)
+	if len(app.hostRefs) != 1 || app.hostRefs[0].target != "shared" || app.hostRefs[0].property != serviceRefPropertyHost {
+		t.Errorf("hostRefs = %+v, want the host reference to the web service shared", app.hostRefs)
 	}
 }
 

@@ -60,7 +60,7 @@ Isolation is unaffected: NetworkPolicies select **pods** by label ([ADR022](ADR0
 
 ### D3 — `fromService` resolves to the slug
 
-`host` → `<slug>`, `hostport` → `<slug>:<port>` (`port` unchanged). This fixes gap 1 (the literal finally names a real Service) and lands parity in the same move. Requires create-path plumbing so sibling slugs are known at resolve time (slugs are minted at create).
+`host` → `<slug>`, `hostport` → `<slug>:<port>` (`port` unchanged). **Amended by w6/m148 (2026-10-19, [ADR089](ADR089-render-container-compatibility.md) § Port slice decisions):** `port` and `hostport` take the target's current serving port (`App.ServicePort()`), never a parse-time 3000. A bex-api loop keeps them current when that port changes, and opens a normal deploy. This fixes gap 1 (the literal finally names a real Service) and lands parity in the same move. Requires create-path plumbing so sibling slugs are known at resolve time (slugs are minted at create).
 
 ### D4 — Surface the internal address on all surfaces
 
@@ -81,7 +81,7 @@ The value is `PlatformSubdomain(name) + ":" + port` for addressable types — th
 | Divergence | Rationale |
 | --- | --- |
 | Default `PORT` stays **3000** (Render: 10000) | changing it rolls every existing tenant Deployment for a cosmetic default; `PORT`-reading apps see no difference |
-| One addressable port per service (Render private services may listen on many) | the k8s Service exposes `spec.port` only; pod-to-pod same-workspace traffic is already port-unrestricted, so a second port works by pod IP but is not part of the addressable contract |
+| ~~One addressable port per service~~ **Superseded by w6/m148 (2026-10-19):** an image-port private service publishes every TCP port its image declares under both stable hostnames, and `internalAddress` names the primary ([ADR089](ADR089-render-container-compatibility.md) D3). Configured-port services and web services keep one addressable port | web services expose one public port, as on Render; a configured private service publishes `spec.port` only |
 | No region axis | bex is one cluster; the private-network scope is workspace (+ environment isolation), never region |
 | Cross-workspace DNS **resolution** succeeds (connection denied) | shared cluster DNS; the enforced boundary is NetworkPolicy reachability, verified by `make verify-tenant-isolation` |
 

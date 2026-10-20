@@ -1,5 +1,5 @@
 import { beforeEach, describe, it, expect, vi } from "vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   Outlet,
@@ -835,4 +835,130 @@ it("omits the extra Blueprint name when it is already the display label", async 
   );
   expect(await screen.findByText("original-api-x123")).toBeInTheDocument();
   expect(screen.queryByText("Blueprint name")).not.toBeInTheDocument();
+});
+
+// w6/m148: an image-port private service publishes every TCP port its image
+// declares. The header lists them beside the Service Address with the primary
+// (the `<slug>:<port>` suffix) marked, and says when none is known yet.
+describe("open ports beside the Service Address (w6/m148)", () => {
+  const tcp = (...ports: number[]) =>
+    ports.map((port) => ({ port, protocol: "TCP" }));
+  const pendingNote =
+    "Ports are detected from the image after the first build.";
+  const clickhouse = {
+    type: "private_service",
+    url: null,
+    internalAddress: "ch-x1y2:8123",
+    port: 8123,
+    openPorts: tcp(8123, 9000, 9009),
+  } satisfies Partial<ServiceView>;
+
+  function expectPorts(list: HTMLElement) {
+    const items = within(list).getAllByRole("listitem");
+    expect(items).toHaveLength(3);
+    expect(items[0]).toHaveTextContent("8123");
+    expect(within(items[0]).getByText("primary")).toBeInTheDocument();
+    for (const [item, port] of [
+      [items[1], "9000"],
+      [items[2], "9009"],
+    ] as const) {
+      expect(item).toHaveTextContent(port);
+      expect(within(item).queryByText("primary")).not.toBeInTheDocument();
+    }
+  }
+
+  it("lists every open port beside the address, marking the primary", async () => {
+    renderHeader(svc(clickhouse));
+
+    expectPorts(await screen.findByRole("list", { name: "Open ports" }));
+    expect(screen.getByText("Service Address")).toBeInTheDocument();
+    expect(screen.getByText("ch-x1y2:8123")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Copy internal address" }),
+    ).toBeInTheDocument();
+  });
+
+  it("repeats the open ports under Connect → Internal", async () => {
+    const user = userEvent.setup();
+    renderHeader(svc(clickhouse));
+
+    await user.click(await screen.findByRole("button", { name: "Connect" }));
+    const menu = screen.getByRole("menu");
+
+    expect(within(menu).getByText("ch-x1y2:8123")).toBeInTheDocument();
+    expectPorts(within(menu).getByRole("list", { name: "Open ports" }));
+  });
+
+  it("says the ports are not known yet before the first build", async () => {
+    const user = userEvent.setup();
+    renderHeader(
+      svc({
+        type: "private_service",
+        url: null,
+        internalAddress: null,
+        port: null,
+        openPorts: [],
+      }),
+    );
+
+    expect(await screen.findByText("Service Address")).toBeInTheDocument();
+    expect(screen.getByText(pendingNote)).toBeInTheDocument();
+    // No address exists yet, so there is nothing to copy and no port to list.
+    expect(
+      screen.queryByRole("button", { name: "Copy internal address" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Open ports")).not.toBeInTheDocument();
+
+    await user.click(await screen.findByRole("button", { name: "Connect" }));
+    const menu = screen.getByRole("menu");
+    expect(within(menu).getByText("Internal")).toBeInTheDocument();
+    expect(within(menu).getByText(pendingNote)).toBeInTheDocument();
+  });
+
+  it("keeps a single-port private service's Service Address as it was", async () => {
+    renderHeader(
+      svc({
+        type: "private_service",
+        url: null,
+        internalAddress: "app-x1y2:8080",
+        port: 8080,
+        openPorts: tcp(8080),
+      }),
+    );
+
+    expect(await screen.findByText("app-x1y2:8080")).toBeInTheDocument();
+    expect(screen.queryByText("Open ports")).not.toBeInTheDocument();
+    expect(screen.queryByText("primary")).not.toBeInTheDocument();
+    expect(screen.queryByText(pendingNote)).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [
+      "a background worker",
+      {
+        type: "background_worker",
+        url: null,
+        internalAddress: null,
+        port: null,
+        openPorts: null,
+      },
+    ],
+    [
+      "a web service",
+      { internalAddress: "app-x1y2:3000", port: 3000, openPorts: tcp(3000) },
+    ],
+  ] satisfies [string, Partial<ServiceView>][])(
+    "adds no port facts for %s",
+    async (_name, overrides) => {
+      const user = userEvent.setup();
+      renderHeader(svc(overrides));
+
+      await screen.findByRole("heading", { name: "app" });
+      expect(screen.queryByText("Service Address")).not.toBeInTheDocument();
+
+      await user.click(await screen.findByRole("button", { name: "Connect" }));
+      expect(screen.queryByText("Open ports")).not.toBeInTheDocument();
+      expect(screen.queryByText(pendingNote)).not.toBeInTheDocument();
+    },
+  );
 });

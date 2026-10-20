@@ -44,6 +44,21 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Label before a private service's internal address in the detail header (Render's private-service wording)",
   },
+  "services.openPorts": {
+    message: "Open ports",
+    description:
+      "Label before the TCP ports a private service's hostname serves, beside its Service Address and in Connect → Internal (Render's serviceDetails.openPorts, w6/m148)",
+  },
+  "services.openPortsPrimary": {
+    message: "primary",
+    description:
+      "Marker on the open port that is the service's primary port — the <slug>:<port> suffix of its Service Address (w6/m148)",
+  },
+  "services.openPortsPending": {
+    message: "Ports are detected from the image after the first build.",
+    description:
+      "Shown instead of a Service Address while an image-port private service has not built yet, so no port is known (openPorts is empty, w6/m148)",
+  },
   "services.internalCopy": {
     message: "Copy internal address",
     description: "Copy service internal address button",
@@ -1335,6 +1350,12 @@ const enServices: Record<string, TranslationEntry> = {
     message:
       "The port your container listens on (default {port}). bex routes traffic to it, injects it as $PORT, and refuses PORT as an environment variable because of it. Saving starts a new deploy and restarts the instances.",
     description: "Settings tab: service port row hint text",
+  },
+  "services.settingsPortImageHint": {
+    message:
+      "This private service publishes the TCP ports its image declares. Setting a port here selects the primary listener — the port in the Service Address and the one injected as $PORT — while the image's other declared TCP ports stay published. Saving starts a new deploy and restarts the instances.",
+    description:
+      "Settings tab: service port row hint for a private service whose open ports come from its Docker image's EXPOSE instructions (w6/m148)",
   },
   "services.settingsPortEdit": {
     message: "Edit Port",

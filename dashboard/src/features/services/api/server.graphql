@@ -108,7 +108,18 @@ query Server($id: String!) {
     # port is the container port bex routes to and injects as $PORT (w4/m121).
     # 0/absent for the types that bind none (background_worker, cron_job,
     # static_site); only web_service and private_service carry one.
+    # For an image-port private service it is the PRIMARY port (the
+    # `<slug>:<port>` suffix of internalAddress), 0 while discovery is pending.
     port
+    # openPorts is every TCP port the stable hostname serves (Render's
+    # serviceDetails.openPorts, w6/m148): null for types without a network
+    # address, [port] for a configured-port service, the image's declared TCP
+    # ports for an image-port private service — [] until its first build
+    # discovers them. The header lists them beside the Service Address.
+    openPorts {
+      port
+      protocol
+    }
     # healthCheckPath is the HTTP path the ReadinessProbe pings (w1/m23/t001);
     # empty means the default "/". Only applies to web_service/private_service.
     healthCheckPath

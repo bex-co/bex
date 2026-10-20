@@ -16,7 +16,10 @@ limitations under the License.
 
 package v1alpha1
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 const (
 	// PortModeImageV1 opts a new private service into verified image TCP metadata.
@@ -79,6 +82,24 @@ func (a *App) ServicePort() int32 {
 		return network.PrimaryPort
 	}
 	return 0
+}
+
+// OpenPorts is the TCP port set the stable hostnames serve: Render's
+// serviceDetails.openPorts (w6/m148). It is nil for types without a network
+// address, the effective port for a configured service, and the serving (else
+// first candidate) image network's ports for an image-port private service.
+// While that service's discovery is pending it is empty, never an invented 3000.
+func (a *App) OpenPorts() []int32 {
+	if !a.Spec.InternallyAddressable() {
+		return nil
+	}
+	if !a.Spec.UsesImagePorts() {
+		return []int32{a.Spec.EffectivePort()}
+	}
+	if network := a.ActiveImageNetwork(); network != nil {
+		return slices.Clone(network.Ports)
+	}
+	return []int32{}
 }
 
 // InternalAddress returns the Render-shaped private-network address sibling

@@ -570,7 +570,7 @@ type parsedService struct {
 	fields        map[string]BlueprintField
 	databaseRefs  []bexEnvVar       // resolved after database IDs are known
 	kvRefs        []bexEnvVar       // resolved after keyvalue CR names are known
-	hostRefs      []hostRef         // fromService host/hostport — resolved after sibling slugs are known
+	hostRefs      []hostRef         // fromService host/hostport/port — resolved at apply from the target's slug and serving port
 	groupLinks    []string          // fromGroup names, linked as a create writes the service or after an update
 	seedLiterals  map[string]string // sync:false literals, seeded once
 	seedGenerates []string          // generateValue keys, minted + seeded once
@@ -592,29 +592,42 @@ type parsedService struct {
 	ungrouped              bool
 }
 
-// hostRef is a deferred fromService host/hostport reference: the env key, the
-// sibling render.yaml name it targets, that sibling's effective port (declared or
-// the 3000 default — known at parse), and whether the literal is host-only or
-// host:port. The hostname half is the sibling's slug, minted at create, so
-// resolution happens at apply (docs/ADR041-service-addresses.md D3). refType
-// and index are the authored fromService.type and envVars entry, which check
-// and locate a reference to an existing workspace App (hostReferenceProblems).
+// hostRef is a deferred fromService host/hostport/port reference: the env key,
+// the sibling render.yaml name it targets, and the property. The hostname is
+// the sibling's slug, minted at create (docs/ADR041-service-addresses.md D3);
+// the port is the sibling's current serving port, which an image-port private
+// service only knows after its first build. Both resolve at apply, and a
+// port-carrying reference is recorded on its consumer (serviceRefsAnnotation)
+// so bex-api keeps it current when that port changes (w6/m148). refType and
+// index are the authored fromService.type and envVars entry, which check and
+// locate a reference to an existing workspace App (hostReferenceProblems).
 type hostRef struct {
 	key      string
 	target   string
-	port     int32
-	hostport bool
+	property string
 	refType  string
 	index    int
 }
 
-// env materializes the reference once the target's slug is known.
-func (ref hostRef) env(slug string) appv1alpha1.EnvVar {
-	value := slug
-	if ref.hostport {
-		value = fmt.Sprintf("%s:%d", slug, ref.port)
+// carriesPort reports whether the reference's value includes the target's port.
+func (ref hostRef) carriesPort() bool { return ref.property != serviceRefPropertyHost }
+
+// env materializes the reference from target's slug and serving port. ok is
+// false for a port-carrying reference whose target port is not known yet: the
+// variable is then omitted, never written with a guessed 3000 (ADR089 D4).
+func (ref hostRef) env(target *appv1alpha1.App) (appv1alpha1.EnvVar, bool) {
+	slug, port := target.Spec.PlatformSubdomain(target.Name), target.ServicePort()
+	if ref.carriesPort() && port <= 0 {
+		return appv1alpha1.EnvVar{}, false
 	}
-	return appv1alpha1.EnvVar{Name: ref.key, Value: value}
+	value := slug
+	switch ref.property {
+	case serviceRefPropertyHostPort:
+		value = fmt.Sprintf("%s:%d", slug, port)
+	case serviceRefPropertyPort:
+		value = strconv.Itoa(int(port))
+	}
+	return appv1alpha1.EnvVar{Name: ref.key, Value: value}, true
 }
 
 type parsedDatabase struct {
@@ -668,10 +681,11 @@ var dbPropertyKey = map[string]string{
 }
 
 // serviceRefProperty is the set of fromService properties bex honors for a
-// web/private service (host/port/hostport), resolved to literal env values:
-// port at parse (the platform default); host/hostport at apply, injecting
-// the sibling's slug — the hostname the operator's slug-named Service makes
-// resolvable in-cluster (docs/ADR041-service-addresses.md D3, w9/m57).
+// web/private service (host/port/hostport). All three resolve at apply to
+// literal env values (hostRef): the sibling's slug — the hostname the
+// operator's slug-named Service makes resolvable in-cluster
+// (docs/ADR041-service-addresses.md D3, w9/m57) — and its serving port
+// (w6/m148).
 var serviceRefProperty = map[string]bool{
 	serviceRefPropertyHost: true, serviceRefPropertyPort: true, serviceRefPropertyHostPort: true,
 }
@@ -834,27 +848,32 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	// before its referrer is written — no spec churn; a ref to a service created
 	// later in this same first apply is deferred to the post-create patch pass
 	// below.
-	serviceSlugs := make(map[string]string, len(st.services))
-	lookupSlug := func(target string) string {
-		if slug, ok := serviceSlugs[target]; ok {
-			return slug
+	// The port half is the target's current serving port (App.ServicePort),
+	// never a parse-time default (w6/m148).
+	serviceApps := make(map[string]*appv1alpha1.App, len(st.services))
+	lookupTarget := func(target string) *appv1alpha1.App {
+		if app := serviceApps[target]; app != nil {
+			return app
 		}
-		if existing := appsByName[target]; existing != nil {
-			return existing.Spec.PlatformSubdomain(existing.Name)
-		}
-		return ""
+		return appsByName[target] // nil: a sibling this first apply has not created yet
 	}
 	if err := s.requireBlueprintExecution(ctx, req); err != nil {
 		return res, err
 	}
-	deferred, err := s.applyStackServices(ctx, st, appsByName, assignments, databaseIDs, kvCRNames, serviceSlugs, lookupSlug, &res)
+	deferred, err := s.applyStackServices(ctx, st, appsByName, assignments, databaseIDs, kvCRNames, serviceApps, lookupTarget, &res)
 	if err != nil {
 		return res, err
 	}
 	if err := s.requireBlueprintExecution(ctx, req); err != nil {
 		return res, err
 	}
-	if err := s.patchDeferredStackServices(ctx, deferred, serviceSlugs); err != nil {
+	if err := s.patchDeferredStackServices(ctx, deferred, lookupTarget); err != nil {
+		return res, err
+	}
+	if err := s.requireBlueprintExecution(ctx, req); err != nil {
+		return res, err
+	}
+	if err := s.stampServiceRefs(ctx, st, serviceApps, lookupTarget); err != nil {
 		return res, err
 	}
 	// Auto-register a blueprint row when called with a repo (w2/m15): lets
@@ -970,7 +989,7 @@ type deferredService struct {
 // with every already-resolvable reference on its env and its applied view
 // appended onto res; the services whose host refs were forward references are
 // returned for the post-create patch pass.
-func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsByName map[string]*appv1alpha1.App, assignments map[string]core.EnvironmentAssignment, databaseIDs, kvCRNames, serviceSlugs map[string]string, lookupSlug func(string) string, res *StackResult) ([]deferredService, error) {
+func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsByName map[string]*appv1alpha1.App, assignments map[string]core.EnvironmentAssignment, databaseIDs, kvCRNames map[string]string, serviceApps map[string]*appv1alpha1.App, lookupTarget func(string) *appv1alpha1.App, res *StackResult) ([]deferredService, error) {
 	var deferred []deferredService
 	type appliedTarget struct {
 		ctx context.Context
@@ -981,7 +1000,7 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 		if err := requireDeployAuthority(ctx, s); err != nil {
 			return nil, err
 		}
-		laterRefs, err := resolveServiceRefs(&svc, databaseIDs, kvCRNames, lookupSlug)
+		laterRefs, err := resolveServiceRefs(&svc, databaseIDs, kvCRNames, lookupTarget)
 		if err != nil {
 			return nil, err
 		}
@@ -999,7 +1018,7 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 		}
 		verbCtx, ref := stackServiceTarget(ctx, app)
 		targets[svc.req.Name] = appliedTarget{ctx: verbCtx, ref: ref}
-		serviceSlugs[svc.req.Name] = v.Slug
+		serviceApps[svc.req.Name] = app
 		if len(laterRefs) > 0 {
 			deferred = append(deferred, deferredService{req: svc.req, fields: svc.fields, refs: laterRefs, app: app})
 		}
@@ -1053,17 +1072,19 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 // patchDeferredStackServices is the second pass: every service now exists,
 // every slug is known — patch the services whose host refs were forward
 // references (first apply only).
-func (s *Service) patchDeferredStackServices(ctx context.Context, deferred []deferredService, serviceSlugs map[string]string) error {
+func (s *Service) patchDeferredStackServices(ctx context.Context, deferred []deferredService, lookupTarget func(string) *appv1alpha1.App) error {
 	for _, d := range deferred {
 		if err := requireDeployAuthority(ctx, s); err != nil {
 			return err
 		}
 		for _, ref := range d.refs {
-			slug := serviceSlugs[ref.target]
-			if slug == "" { // unreachable: deployParsedStack refused unknown targets before any write
+			target := lookupTarget(ref.target)
+			if target == nil { // unreachable: deployParsedStack refused unknown targets before any write
 				return fmt.Errorf("blueprint apply: service %q: fromService target %q has no address after the create pass", d.req.Name, ref.target)
 			}
-			d.req.Env = append(d.req.Env, ref.env(slug))
+			if env, ok := ref.env(target); ok {
+				d.req.Env = append(d.req.Env, env)
+			}
 		}
 		// The first pass wrote this service, so it is re-applied to that App.
 		if _, _, err := s.applyStackService(ctx, d.req, d.fields, map[string]*appv1alpha1.App{d.req.Name: d.app}); err != nil {
@@ -1077,7 +1098,7 @@ func (s *Service) patchDeferredStackServices(ctx context.Context, deferred []def
 // resolved database/key-value env vars and every already-resolvable host ref
 // are appended onto svc.req.Env; the forward host refs (sibling not created
 // yet) are returned for the post-create patch pass.
-func resolveServiceRefs(svc *parsedService, databaseIDs, kvCRNames map[string]string, lookupSlug func(string) string) ([]hostRef, error) {
+func resolveServiceRefs(svc *parsedService, databaseIDs, kvCRNames map[string]string, lookupTarget func(string) *appv1alpha1.App) ([]hostRef, error) {
 	for _, ref := range svc.databaseRefs {
 		ev, err := resolveDatabaseRef(ref, databaseIDs)
 		if err != nil {
@@ -1094,12 +1115,16 @@ func resolveServiceRefs(svc *parsedService, databaseIDs, kvCRNames map[string]st
 	}
 	var laterRefs []hostRef
 	for _, ref := range svc.hostRefs {
-		slug := lookupSlug(ref.target)
-		if slug == "" {
+		target := lookupTarget(ref.target)
+		if target == nil {
 			laterRefs = append(laterRefs, ref) // forward ref — sibling not created yet
 			continue
 		}
-		svc.req.Env = append(svc.req.Env, ref.env(slug))
+		// A known target whose port is not (yet) known leaves the variable
+		// out; serviceRefsAnnotation records it for the propagator.
+		if env, ok := ref.env(target); ok {
+			svc.req.Env = append(svc.req.Env, env)
+		}
 	}
 	return laterRefs, nil
 }
@@ -2124,11 +2149,7 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 		idx.serviceKnownEnv[req.Name], idx.serviceGenerated[req.Name] = knownServiceEnv(se, st.envGroups)
 		idx.serviceTypes[req.Name] = req.Type
 		if req.Type == appv1alpha1.TypeWebService || req.Type == appv1alpha1.TypePrivateService {
-			port := req.Port
-			if port <= 0 {
-				port = appv1alpha1.DefaultPort
-			}
-			idx.servicePorts[req.Name] = port
+			idx.addressableServices[req.Name] = true
 		}
 	}
 
@@ -2214,11 +2235,11 @@ type stackIndex struct {
 	// databasePoolers records whether each declares connectionPool: pgbouncer.
 	databaseNames   map[string]bool
 	databasePoolers map[string]bool
-	// servicePorts: name -> effective port, for services that expose a k8s Service
-	// (web/private only — workers, cron jobs and static sites have no Service, so a
-	// fromService reference to them has no DNS name to resolve). Effective port is
-	// the declared one, or the 3000 default when omitted.
-	servicePorts map[string]int32
+	// addressableServices: the services that expose a k8s Service (web/private
+	// only — workers, cron jobs and static sites have no Service, so a
+	// fromService reference to them has no DNS name to resolve). Their ports are
+	// read at apply, from the applied App (w6/m148).
+	addressableServices map[string]bool
 	// serviceKnownEnv: name -> the statically-known env of that service (its
 	// linked in-file groups' literals under its own literals and sync:false
 	// seeds, knownServiceEnv), the resolvable target set for a
@@ -2246,12 +2267,12 @@ var serviceRefTypes = map[string][]string{
 
 func newStackIndex(serviceCount, databaseCount int) *stackIndex {
 	return &stackIndex{
-		databaseNames:    make(map[string]bool, databaseCount),
-		databasePoolers:  make(map[string]bool, databaseCount),
-		servicePorts:     make(map[string]int32, serviceCount),
-		serviceKnownEnv:  make(map[string]map[string]knownValue, serviceCount),
-		serviceGenerated: make(map[string]map[string]bool, serviceCount),
-		serviceTypes:     make(map[string]string, serviceCount),
+		databaseNames:       make(map[string]bool, databaseCount),
+		databasePoolers:     make(map[string]bool, databaseCount),
+		addressableServices: make(map[string]bool, serviceCount),
+		serviceKnownEnv:     make(map[string]map[string]knownValue, serviceCount),
+		serviceGenerated:    make(map[string]map[string]bool, serviceCount),
+		serviceTypes:        make(map[string]string, serviceCount),
 	}
 }
 
@@ -2303,21 +2324,18 @@ func (idx *stackIndex) classifyRef(svc *parsedService, r envRef) error {
 	// site has no port to resolve (it would become "0"/"<slug>:0", w8/081).
 	// An undeclared host target gets the same checks against the existing
 	// workspace App (hostReferenceProblems).
-	if declaredService && r.FromService.EnvVarKey == "" && serviceRefProperty[r.FromService.Property] {
-		if _, addressable := idx.servicePorts[r.FromService.Name]; !addressable {
+	//
+	// They name the sibling's slug (minted at create, w4/m19) and its serving
+	// port (known only once it exists, and for an image-port private service
+	// only after its first build), so resolution is deferred to apply like
+	// databaseRefs above (w6/m148).
+	if r.FromService != nil && r.FromService.EnvVarKey == "" && serviceRefProperty[r.FromService.Property] {
+		if declaredService && !idx.addressableServices[r.FromService.Name] {
 			return serviceRefUnaddressable(svc.req.Name, r.Key, r.FromService.Property, r.FromService.Name)
 		}
-	}
-	// host/hostport inject the sibling's slug — minted at create (w4/m19),
-	// so resolution is deferred to apply like databaseRefs above. The port
-	// half is already known and resolved into the ref now.
-	if r.FromService != nil && r.FromService.EnvVarKey == "" &&
-		(r.FromService.Property == serviceRefPropertyHost || r.FromService.Property == serviceRefPropertyHostPort) {
-		port := idx.servicePorts[r.FromService.Name]
 		svc.hostRefs = append(svc.hostRefs, hostRef{
-			key: r.Key, target: r.FromService.Name, port: port,
-			hostport: r.FromService.Property == serviceRefPropertyHostPort,
-			refType:  r.FromService.Type, index: r.index,
+			key: r.Key, target: r.FromService.Name, property: r.FromService.Property,
+			refType: r.FromService.Type, index: r.index,
 		})
 		return nil
 	}
@@ -2335,7 +2353,7 @@ func (idx *stackIndex) classifyRef(svc *parsedService, r envRef) error {
 		svc.req.storeEnvKeys = append(svc.req.storeEnvKeys, r.Key)
 		return nil
 	}
-	ev, err := resolveRef(r.bexEnvVar, idx.servicePorts, idx.serviceKnownEnv)
+	ev, err := resolveRef(r.bexEnvVar, idx.serviceKnownEnv)
 	if err != nil {
 		return envRefError(svc.req.Name, r.Key, err)
 	}
@@ -3132,36 +3150,28 @@ func resolveKeyValueRef(e bexEnvVar, kvCRNames map[string]string) (appv1alpha1.E
 	}, nil
 }
 
-// resolveRef turns one fromService env entry into a concrete EnvVar now that
-// every service port and parse-time-known env is available. Target existence
-// is already checked once by the caller's shared guard.
-func resolveRef(e bexEnvVar, ports map[string]int32, knownEnv map[string]map[string]knownValue) (appv1alpha1.EnvVar, error) {
-	switch {
-	case e.FromService != nil:
-		ref := e.FromService
-		// envVarKey copies a sibling service's declared var by value (Render's
-		// copy-by-value; re-copied on each sync, not live). Same-file resolution:
-		// the target must be a service (not a database) with a parse-time-known
-		// value (a plain literal or sync:false var — not itself a reference/generate).
-		if ref.EnvVarKey != "" {
-			env, ok := knownEnv[ref.Name]
-			if !ok {
-				return appv1alpha1.EnvVar{}, fmt.Errorf("fromService.envVarKey references %q, which is not a service", ref.Name)
-			}
-			val, ok := env[ref.EnvVarKey]
-			if !ok {
-				return appv1alpha1.EnvVar{}, fmt.Errorf("fromService.envVarKey references env %q on service %q, which has no such plainly-defined variable", ref.EnvVarKey, ref.Name)
-			}
-			return appv1alpha1.EnvVar{Name: e.Key, Value: val.value}, nil
-		}
-		// host/hostport are classified into parsedService.hostRefs at parse and
-		// resolved at apply (the hostname is the sibling's slug, minted at create
-		// — docs/ADR041-service-addresses.md D3); only port resolves here.
-		if ref.Property == "port" {
-			return appv1alpha1.EnvVar{Name: e.Key, Value: strconv.Itoa(int(ports[ref.Name]))}, nil
-		}
+// resolveRef turns one fromService envVarKey entry into a concrete EnvVar now
+// that every parse-time-known env is available. Target existence is already
+// checked once by the caller's shared guard; host/hostport/port never reach
+// here (hostRefs, resolved at apply).
+func resolveRef(e bexEnvVar, knownEnv map[string]map[string]knownValue) (appv1alpha1.EnvVar, error) {
+	// envVarKey copies a sibling service's declared var by value (Render's
+	// copy-by-value; re-copied on each sync, not live). Same-file resolution:
+	// the target must be a service (not a database) with a parse-time-known
+	// value (a plain literal or sync:false var — not itself a reference/generate).
+	ref := e.FromService
+	if ref == nil || ref.EnvVarKey == "" {
+		return appv1alpha1.EnvVar{}, fmt.Errorf("unsupported env reference")
 	}
-	return appv1alpha1.EnvVar{}, fmt.Errorf("unsupported env reference")
+	env, ok := knownEnv[ref.Name]
+	if !ok {
+		return appv1alpha1.EnvVar{}, fmt.Errorf("fromService.envVarKey references %q, which is not a service", ref.Name)
+	}
+	val, ok := env[ref.EnvVarKey]
+	if !ok {
+		return appv1alpha1.EnvVar{}, fmt.Errorf("fromService.envVarKey references env %q on service %q, which has no such plainly-defined variable", ref.EnvVarKey, ref.Name)
+	}
+	return appv1alpha1.EnvVar{Name: e.Key, Value: val.value}, nil
 }
 
 // manifestType maps a render.yaml-style service type (+ optional runtime) to the

@@ -104,8 +104,10 @@ patches:
         path: /spec/replicas
         value: 2
       # ADR089 D5 hosted gate: only the owner-approved `bex` workspace gets the
-      # image-v1 creation defaults. Customer workspaces stay strict until the
-      # ADR's reference, persistence and isolation gates pass.
+      # image-v1 container policy (capabilities). Since w6/m148 this gates
+      # capabilities only: image-derived private ports are a default in every
+      # workspace (BEX_PRIVATE_IMAGE_PORTS, unset = on). Widening the policy to
+      # customer workspaces is w6/m149.
       - op: add
         path: /spec/template/spec/containers/0/env/-
         value:

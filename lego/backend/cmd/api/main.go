@@ -432,6 +432,7 @@ func main() {
 	// Custom-domain verification sweep (w5/m137): promotes a pending domain
 	// once its traffic DNS propagates. No-op store-less.
 	go srv.DomainVerification.Run(ctx)
+	go srv.ServiceRefs.Run(ctx)
 	if stripeLifecycleWorker != nil {
 		stripeLifecycleWorker.Notifier = notifications.BillingNotifier{Service: srv.Notifications}
 		go stripeLifecycleWorker.Run(ctx)
@@ -1209,6 +1210,7 @@ func wireAgentSessions(deps *api.Deps, cfg *Config) {
 	deps.AgentMaxLiveSandboxesPerWorkspace = cfg.AgentMaxLiveSandboxesPerWorkspace
 	deps.MaxBlueprintGroupings = cfg.MaxBlueprintGroupings
 	deps.ImageCompatibilityWorkspaces = cfg.ImageCompatibilityWorkspaces
+	deps.PrivateImagePortsDisabled = cfg.PrivateImagePortsDisabled
 	// Round-11 #3: per-workspace env-group quota (default 100; 0 disables).
 	deps.MaxEnvGroupsPerWorkspace = cfg.MaxEnvGroupsPerWorkspace
 	// ADR075 §2: per-workspace GitHub-connection quota (default 10; 0 disables).

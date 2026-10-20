@@ -12,6 +12,12 @@ export interface ServicePortRowProps {
   serviceId: string;
   /** Current spec.port; null while loading, or for a type that binds none. */
   port: number | null | undefined;
+  /**
+   * A private service whose open ports come from its image (w6/m148): the
+   * port set here picks the primary listener rather than the only one, so the
+   * hint says the image's other declared TCP ports stay published.
+   */
+  imagePorts?: boolean;
 }
 
 /**
@@ -23,7 +29,11 @@ export interface ServicePortRowProps {
  * the section, and bex-api refuses `setPort` for every other type. Saving opens
  * a deploy (the backend bumps restartedAt), which the hint states up front.
  */
-export function ServicePortRow({ serviceId, port }: ServicePortRowProps) {
+export function ServicePortRow({
+  serviceId,
+  port,
+  imagePorts = false,
+}: ServicePortRowProps) {
   const { t } = useTranslations();
   const { setPort, busy } = usePort();
   const current = port != null ? String(port) : "";
@@ -31,11 +41,17 @@ export function ServicePortRow({ serviceId, port }: ServicePortRowProps) {
   return (
     <EditableFieldRow
       label={t("services.settingsPort")}
-      hint={t("services.settingsPortHint", {
-        port: String(DEFAULT_SERVICE_PORT),
-      })}
+      hint={
+        imagePorts
+          ? t("services.settingsPortImageHint")
+          : t("services.settingsPortHint", {
+              port: String(DEFAULT_SERVICE_PORT),
+            })
+      }
       value={current}
-      placeholder={String(DEFAULT_SERVICE_PORT)}
+      // An image-port service's primary comes from the image, so a blank
+      // value must not suggest the configured-port default (w6/m148).
+      placeholder={imagePorts ? undefined : String(DEFAULT_SERVICE_PORT)}
       editLabel={t("services.settingsPortEdit")}
       type="number"
       min={MIN_SERVICE_PORT}

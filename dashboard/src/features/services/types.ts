@@ -213,6 +213,15 @@ export interface ServiceView {
    */
   port?: number | null;
   /**
+   * Every TCP port the service's stable hostname serves (Render's
+   * `serviceDetails.openPorts`, w6/m148). null for the types without a network
+   * address (and when not selected); `[port]` for a configured-port service;
+   * the image's declared TCP ports for an image-port private service, where
+   * `port` is the primary — and `[]` while that discovery is still pending.
+   * Optional like `port`: fixtures that predate the field read as unknown.
+   */
+  openPorts?: ServerPortView[] | null;
+  /**
    * Seconds Kubernetes waits after SIGTERM before SIGKILL (1-300; default 30).
    * Only web/private/background-worker services expose this setting.
    */
@@ -278,6 +287,12 @@ export interface ServiceView {
    * `{enabled: false, uri: ""}` even when never configured).
    */
   maintenanceMode: MaintenanceModeView | null;
+}
+
+/** Render's `serverPort`: one open port and its protocol (always "TCP" today). */
+export interface ServerPortView {
+  port: number;
+  protocol: string;
 }
 
 /**

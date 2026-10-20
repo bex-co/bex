@@ -93,4 +93,44 @@ describe("ServicePortRow", () => {
 
     expect(screen.getByRole("spinbutton", { name: "Port" })).toHaveValue(null);
   });
+
+  // w6/m148: an image-port private service publishes every TCP port its image
+  // declares, so the port set here picks the primary, not the only listener.
+  it("explains that an image-port service's other declared ports stay published", () => {
+    render(<ServicePortRow serviceId="ch" port={8123} imagePorts />);
+
+    expect(
+      screen.getByText(
+        /Setting a port here selects the primary listener .* while the image's other declared TCP ports stay published\./,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/The port your container listens on/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not suggest the default port while an image's ports are unknown", () => {
+    const { unmount } = render(<ServicePortRow serviceId="web" port={null} />);
+    expect(screen.getByRole("spinbutton", { name: "Port" })).toHaveAttribute(
+      "placeholder",
+      "3000",
+    );
+    unmount();
+
+    render(<ServicePortRow serviceId="ch" port={null} imagePorts />);
+    expect(
+      screen.getByRole("spinbutton", { name: "Port" }),
+    ).not.toHaveAttribute("placeholder");
+  });
+
+  it("keeps the configured-port hint for every other service", () => {
+    render(<ServicePortRow serviceId="web" port={8080} />);
+
+    expect(
+      screen.getByText(/The port your container listens on \(default 3000\)/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/other declared TCP ports/),
+    ).not.toBeInTheDocument();
+  });
 });

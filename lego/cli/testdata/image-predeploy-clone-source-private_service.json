@@ -14,6 +14,12 @@
     "internalAddress": "qa-image-predeploy:3000",
     "maxShutdownDelaySeconds": 30,
     "numInstances": 1,
+    "openPorts": [
+      {
+        "port": 3000,
+        "protocol": "TCP"
+      }
+    ],
     "plan": "starter",
     "port": 3000,
     "preDeployCommand": "echo QA_PREDEPLOY_MARKER",

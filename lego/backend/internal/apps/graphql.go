@@ -49,6 +49,15 @@ var autoscalingGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// serverPortGQLType is Render's serverPort: an open port and its protocol.
+var serverPortGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "ServerPort",
+	Fields: graphql.Fields{
+		"port":     gqlutil.IntField(func(p ServerPortView) any { return p.Port }),
+		"protocol": gqlutil.StrField(func(p ServerPortView) any { return p.Protocol }),
+	},
+})
+
 // staticRouteGQLType / staticHeaderGQLType render a static_site's edge rules
 // (Render's route and header shapes); the *Input variants are their mutation
 // inputs (setRoutes/setHeaders and createService).
@@ -321,7 +330,16 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// data source; a bex extension (docs/ADR041-service-addresses.md D4).
 		"internalAddress": gqlutil.StrField(func(a AppView) any { return a.InternalAddress }),
 		// See AppView.Port — readable because it is settable (w4/m121).
-		"port":       gqlutil.IntField(func(a AppView) any { return a.Port }),
+		"port": gqlutil.IntField(func(a AppView) any { return a.Port }),
+		// openPorts is every TCP port the stable hostnames serve (Render's
+		// serviceDetails.openPorts): null for types without a network address,
+		// [] while an image-port service's discovery is pending (w6/m148).
+		"openPorts": gqlutil.Typed(graphql.NewList(graphql.NewNonNull(serverPortGQLType)), func(a AppView) any {
+			if a.OpenPorts == nil {
+				return nil // an untyped nil, or graphql-go renders the typed nil slice as []
+			}
+			return a.OpenPorts
+		}),
 		"createdAt":  gqlutil.StrField(func(a AppView) any { return a.CreatedAt }),
 		"updatedAt":  gqlutil.StrField(func(a AppView) any { return a.UpdatedAt }),
 		"region":     gqlutil.StrField(func(a AppView) any { return a.Region }),

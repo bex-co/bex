@@ -1,17 +1,17 @@
 # w6 · m148 — Private services serve every port their image declares, as on Render (port slice of deploying `render-examples/clickhouse`)
 
-**Worker:** worker6 **Goal:** in any workspace, a new Git-built Docker private service with no configured port is reachable on every TCP port its image declares. It runs its health check against a port the container can bind, and reports those ports as Render's `openPorts`. Blueprint `fromService` `port`/`hostport` resolve to the port the target actually serves, and none of this grants the ADR089 `image-v1` capability policy. **Status:** todo
+**Worker:** worker6 **Goal:** in any workspace, a new Git-built Docker private service with no configured port is reachable on every TCP port its image declares. It runs its health check against a port the container can bind, and reports those ports as Render's `openPorts`. Blueprint `fromService` `port`/`hostport` resolve to the port the target actually serves, and none of this grants the ADR089 `image-v1` capability policy. **Status:** todo (t001–t006 done 2026-10-19; t007 live acceptance next)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Decide the port contract: split ADR089 port discovery from the capability gate, primary-port rule, reference mechanism, rollout switch | 40m | — |
-| t002 | Backend: default image-derived ports for new Git-built Docker private services in every workspace; capabilities stay allowlisted | 45m | t001 |
-| t003 | Operator: bindable primary selection and a Render-style "no listener on the expected port" diagnosis | 1h | t001 |
-| t004 | Read surfaces: Render `openPorts` on REST/MCP `serviceDetails`, GraphQL `Service.openPorts`, dashboard port list | 1h | t002, t003 |
-| t005 | Blueprint: `fromService` `port`/`hostport` stop resolving to a parse-time 3000 | 45m | t001 |
-| t006 | Operator: resolve service-port references from the target's serving port; dependents wait, then re-roll on change | 1h | t003, t005 |
+| t001 | Decide the port contract: split ADR089 port discovery from the capability gate, primary-port rule, reference mechanism, rollout switch — **DONE** | 40m | — |
+| t002 | Backend: default image-derived ports for new Git-built Docker private services in every workspace; capabilities stay allowlisted — **DONE** | 45m | t001 |
+| t003 | Operator: bindable primary selection and a Render-style "no listener on the expected port" diagnosis — **DONE** | 1h | t001 |
+| t004 | Read surfaces: Render `openPorts` on REST/MCP `serviceDetails`, GraphQL `Service.openPorts`, dashboard port list — **DONE** | 1h | t002, t003 |
+| t005 | Blueprint: `fromService` `port`/`hostport` stop resolving to a parse-time 3000 — **DONE** | 45m | t001 |
+| t006 | bex-api: propagate service-port references when a target's serving port changes — **DONE** | 1h | t005 |
 | t007 | Fixture + live acceptance: multi-port private service in a customer workspace, unchanged ClickHouse in `bex` | 1h | t002, t003, t004, t005, t006 |
 | t008 | Render parity | 20m | t007 |
 | t009 | Simplify | 15m | t008 |

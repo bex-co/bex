@@ -2034,14 +2034,14 @@
       "\"port\"": {
         "state": "translated",
         "handler": "parseCompiledStack",
-        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
-        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
+        "fixture": "internal/apps/service_refs_test.go:TestBlueprintPortReferencesFollowAnEditedTargetPort",
+        "reason": "resolved at apply from the target's serving port (never a parse-time default) and kept current by ServiceRefPropagator (w6/m148)"
       },
       "\"hostport\"": {
         "state": "translated",
         "handler": "parseCompiledStack",
-        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
-        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
+        "fixture": "internal/apps/service_refs_test.go:TestBlueprintPortReferencesFollowAnEditedTargetPort",
+        "reason": "resolved at apply from the target's serving port (never a parse-time default) and kept current by ServiceRefPropagator (w6/m148)"
       },
       "\"slug\"": {
         "state": "unsupported",

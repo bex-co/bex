@@ -9,6 +9,7 @@ import type {
   StaticHeaderView,
   BuildFilterView,
   MaintenanceModeView,
+  ServerPortView,
 } from "@/features/services/types";
 
 // Render's `suspended` is a string enum, NOT a boolean: "suspended" means the
@@ -100,6 +101,7 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     // 0 is the backend's "this type binds no port" reading, not a real port —
     // project it to null so the Settings control never shows a bogus 0.
     port: "port" in s ? s.port || null : null,
+    openPorts: "openPorts" in s ? toOpenPorts(s.openPorts) : null,
     maxShutdownDelaySeconds:
       "maxShutdownDelaySeconds" in s
         ? (s.maxShutdownDelaySeconds ?? null)
@@ -120,6 +122,22 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     maintenanceMode:
       "maintenanceMode" in s ? toMaintenanceMode(s.maintenanceMode) : null,
   };
+}
+
+/**
+ * Project the detail query's `openPorts` onto ServerPortView[], keeping null
+ * (no network address) distinct from `[]` (image-port discovery pending). A
+ * hole or a 0 is dropped rather than shown as a port nothing listens on.
+ */
+function toOpenPorts(
+  ports: ServerNode["openPorts"] | undefined,
+): ServerPortView[] | null {
+  if (ports == null) return null;
+  return ports.flatMap((p) =>
+    p.port != null && p.port > 0
+      ? [{ port: p.port, protocol: p.protocol || "TCP" }]
+      : [],
+  );
 }
 
 function toOutboundIps(

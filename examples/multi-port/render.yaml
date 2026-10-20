@@ -1,0 +1,32 @@
+# render.yaml — the w6/m148 multi-port fixture (ADR089 § Port slice decisions).
+# `multi-port` is a private service whose image declares TCP 8123 and 9000 and
+# ignores $PORT; bex publishes both under its stable hostname. The consumer
+# reaches them through fromService references, which resolve to the port the
+# private service actually serves (never a parse-time 3000). GET / on the
+# consumer reports the references and both connections.
+services:
+  - name: multi-port
+    type: pserv
+    runtime: docker
+    repo: https://github.com/bex-co/bex # replace with your fork/checkout
+    rootDir: examples/multi-port
+    plan: starter
+    envVars:
+      - key: MARKER
+        value: multi-port
+  - name: multi-port-consumer
+    type: web
+    runtime: docker
+    repo: https://github.com/bex-co/bex
+    rootDir: examples/multi-port
+    plan: free
+    healthCheckPath: /healthz
+    envVars:
+      - key: ROLE
+        value: consumer
+      - key: API_HOST
+        fromService: {name: multi-port, type: pserv, property: host}
+      - key: API_HOSTPORT
+        fromService: {name: multi-port, type: pserv, property: hostport}
+      - key: API_PORT
+        fromService: {name: multi-port, type: pserv, property: port}

@@ -117,25 +117,29 @@ type Server struct {
 	// claim once its traffic DNS points at the service — Render's automatic
 	// verification (w5/m137). nil / store-off ⇒ no-op.
 	DomainVerification *apps.DomainVerificationWorker
-	Postgres           *postgres.Service
-	KeyValue           *keyvalue.Service
-	Secrets            *secrets.Service
-	EnvGroups          *envgroups.Service
-	Workspaces         *workspaces.Service
-	Members            *members.Service
-	Billing            *billing.Service
-	Usage              *usage.Service
-	Deploys            *deploys.Service
-	Events             *events.Service
-	Audit              *audit.Service
-	GitHub             *github.Service
-	Notifications      *notifications.Service
-	Projects           *projects.Service
-	Environments       *environments.Service
-	RegistryCreds      *registrycreds.Service
-	Webhooks           *webhooks.Service
-	Jobs               *jobs.Service
-	CLITelemetry       *clitelemetry.Service
+	// ServiceRefs keeps Blueprint fromService port/hostport references equal to
+	// their targets' serving ports (w6/m148). main.go starts it with the serve
+	// context.
+	ServiceRefs   *apps.ServiceRefPropagator
+	Postgres      *postgres.Service
+	KeyValue      *keyvalue.Service
+	Secrets       *secrets.Service
+	EnvGroups     *envgroups.Service
+	Workspaces    *workspaces.Service
+	Members       *members.Service
+	Billing       *billing.Service
+	Usage         *usage.Service
+	Deploys       *deploys.Service
+	Events        *events.Service
+	Audit         *audit.Service
+	GitHub        *github.Service
+	Notifications *notifications.Service
+	Projects      *projects.Service
+	Environments  *environments.Service
+	RegistryCreds *registrycreds.Service
+	Webhooks      *webhooks.Service
+	Jobs          *jobs.Service
+	CLITelemetry  *clitelemetry.Service
 	// StripeWebhook is the signature-verifying public billing callback. It is
 	// nil unless BEX_STRIPE_WEBHOOK_SECRET is configured.
 	StripeWebhook http.Handler
@@ -372,8 +376,11 @@ type Deps struct {
 	// BLUEPRINT_GROUPING_LIMIT identically across REST/GraphQL/MCP.
 	MaxBlueprintGroupings int
 	// ImageCompatibilityWorkspaces opts newly created Docker/image apps in these
-	// workspaces ("*" for all) into ADR089.
+	// workspaces ("*" for all) into ADR089's image-v1 container policy.
 	ImageCompatibilityWorkspaces map[string]bool
+	// PrivateImagePortsDisabled is BEX_PRIVATE_IMAGE_PORTS=off: the rollback
+	// switch for image-derived private ports (ADR089 § Port slice decisions).
+	PrivateImagePortsDisabled bool
 	// MaxEnvGroupsPerWorkspace caps a workspace's environment-group count
 	// (BEX_MAX_ENV_GROUPS_PER_WORKSPACE, default 100; 0 disables) — round-11 #3:
 	// group metadata shares one index, so the cap bounds every tenant's
@@ -936,7 +943,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		APIKeys:    accountKeys,
 		OAuth:      d.AccountOAuth, Kratos: d.AccountKratos,
 	}
-	appsSvc := &apps.Service{Base: base, ProxiedHosts: d.ProxiedHosts, ImageCompatibilityWorkspaces: d.ImageCompatibilityWorkspaces, Store: d.Store, Placements: d.AppPlacements, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), PlatformHosts: []string{hostOf(d.DeployHookBaseURL), sshHost}, ReservedDomains: d.ReservedDomains, MaxCustomDomainsPerService: d.MaxCustomDomainsPerService, MaxCustomDomainsPerWorkspace: d.MaxCustomDomainsPerWorkspace, SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, DiskSnapshots: d.DiskSnapshots, SnapshotSecret: d.DiskSnapshotSecret, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), Checks: gh.DeployChecksSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, BlueprintGroupsTx: blueprintGroupsTx, MaxGroupings: d.MaxBlueprintGroupings, GroupingReclaim: groupingReclaim, EnvGroups: envGroupApplier, EnvGroupLinks: &envgroups.WorkspacePurger{Service: envGroupsSvc}, EnvSeeder: envSeeder, EnvCopier: envCopier, EnvNames: envNames, EnvGroupExport: envGroupExport, CreateSecrets: createSecrets, Environments: environmentCreateResolver, ExitGuards: environments.ExitGuards(environmentsSvc), Owners: workspaceSvc, Metadata: resourceMetadata, RestartDeploy: restartDeploy}
+	appsSvc := &apps.Service{Base: base, ProxiedHosts: d.ProxiedHosts, ImageCompatibilityWorkspaces: d.ImageCompatibilityWorkspaces, PrivateImagePortsDisabled: d.PrivateImagePortsDisabled, Store: d.Store, Placements: d.AppPlacements, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), PlatformHosts: []string{hostOf(d.DeployHookBaseURL), sshHost}, ReservedDomains: d.ReservedDomains, MaxCustomDomainsPerService: d.MaxCustomDomainsPerService, MaxCustomDomainsPerWorkspace: d.MaxCustomDomainsPerWorkspace, SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, DiskSnapshots: d.DiskSnapshots, SnapshotSecret: d.DiskSnapshotSecret, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), Checks: gh.DeployChecksSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, BlueprintGroupsTx: blueprintGroupsTx, MaxGroupings: d.MaxBlueprintGroupings, GroupingReclaim: groupingReclaim, EnvGroups: envGroupApplier, EnvGroupLinks: &envgroups.WorkspacePurger{Service: envGroupsSvc}, EnvSeeder: envSeeder, EnvCopier: envCopier, EnvNames: envNames, EnvGroupExport: envGroupExport, CreateSecrets: createSecrets, Environments: environmentCreateResolver, ExitGuards: environments.ExitGuards(environmentsSvc), Owners: workspaceSvc, Metadata: resourceMetadata, RestartDeploy: restartDeploy}
 	srv := &Server{
 		Apps: appsSvc,
 		Logs: logSvc,
@@ -976,6 +983,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		BlueprintRecovery:  &apps.BlueprintRecoverer{Store: d.BlueprintsStore},
 		BlueprintAutoSync:  &apps.BlueprintAutoSyncWorker{Svc: appsSvc},
 		DomainVerification: &apps.DomainVerificationWorker{Svc: appsSvc},
+		ServiceRefs:        &apps.ServiceRefPropagator{Svc: appsSvc},
 		AgentSessionCompleter: &agentsessions.Completer{
 			Store: d.AgentSessionStore, Sandbox: agentLifecycle,
 			GitHub: d.GitHubClient, Connections: d.GitHubStore, APIPublicURL: d.DeployHookBaseURL,

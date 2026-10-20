@@ -725,6 +725,31 @@ describe("ServiceSettingsPage", () => {
         ).not.toBeInTheDocument();
       },
     );
+
+    // w6/m148: the page tells the row when a private service's ports come
+    // from its image — pending discovery, or ports besides the primary.
+    it.each([
+      ["whose image adds ports", 8123, [8123, 9000, 9009], true],
+      ["whose image is not read yet", null, [], true],
+      ["with one configured port", 8080, [8080], false],
+    ] as const)(
+      "picks the port hint for a private service %s",
+      async (_name, port, open, imageHint) => {
+        serverState.service = svc({
+          type: "private_service",
+          url: null,
+          port,
+          openPorts: open.map((p) => ({ port: p, protocol: "TCP" })),
+        });
+        renderSettings();
+
+        await screen.findByRole("spinbutton", { name: "Port" });
+        expect(
+          screen.queryByText(/other declared TCP ports stay published/) !==
+            null,
+        ).toBe(imageHint);
+      },
+    );
   });
 
   it("shows the mutable Service Name while making the immutable id explicit", async () => {
