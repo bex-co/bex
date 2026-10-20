@@ -15,6 +15,10 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m169** — [Forum uploads survive restarts: restore the recovered files and attach a durable disk](m169/README.md) (9 tasks) ← `/pm-brainstorm for w2` 2026-10-19 #2; promotes the FUTURE-MAYBE forum-restore entry (trigger met: `nvme4tbfish` attached). The live forum App has no volumes, so every restart loses uploads. t003 is STOP-gated on the user's downtime authorization. Render parity omitted (first-party tenant operations).
+- [ ] **m170** — [Grafana analytics keep trusting `bex-db` across CA renewals](m170/README.md) (8 tasks) ← `/pm-brainstorm for w2` 2026-10-19 #3; absorbs `w7/060`. Both analytics readers have trusted an expired CA since 2026-10-08 (verified read-only), the renewed CA expires 2026-12-30, and nothing alerted. Render parity omitted (platform observability).
+- [ ] **m171** — [Postgres plans large enough for high availability](m171/README.md) (11 tasks) ← `/pm-brainstorm for w2` 2026-10-19 #4. No Postgres tier has ≥1 CPU, so the shipped HA gate, failover verb and HA panel are unreachable. t001 needs the user's tier/price approval, and t004 waits on `w5/m138/t003`. Render parity included.
+
 - [x] **m168** — [Email verification is a hard per-request gate](done/m168/README.md) (10 tasks; **DONE 2026-10-06**, shipped `22180488a`; prod: REST/GraphQL/MCP 403, dashboard wall, OAuth refused; dev-2: refuse→verify→admit, consent deny path live) ← promoted from w2/045 (forum.bex.co OIDC setup, 2026-10-05); user decision 2026-10-06 un-defers ADR075 Option B.
 
 - [x] **m167** — [Preserve every requested log text filter](done/m167/README.md) (6 tasks; **DONE 2026-10-02**, 17 local acceptance cases and full backend suite passed) ← live `$qa-find-bugs-cli` loop, 2026-10-02; major silent omission across CLI, REST and MCP.
@@ -123,6 +127,8 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [x] **m62** — Git-connected Blueprints: Render dashboard + API parity (13 tasks; DONE 2026-08-01 — POST /v1/blueprints create, PATCH update, DELETE disconnect, GET syncs, auto-sync on push, status lifecycle, resources[], all surfaces + dashboard create dialog + detail parity) ← user-directed research 2026-08-01 (live `dashboard.render.com/blueprints` walk + Render OpenAPI vs code map): bex Blueprints are stored-manifest re-apply records, Render's are Git-connected instances — dashboard create-from-repo flow, auto-sync on push, sync history (`GET /v1/blueprints/{id}/syncs`), `PATCH`/`DELETE` disconnect, status lifecycle (`in_sync`/`syncing`/`error`/`paused`), and `resources[]` are all missing; rides m8/m9's GitHub App + the `/v1/webhooks/git` intake
 
 ## Inbox
+
+- [ ] [046 — MCP `update_environment_variables`, exactly as Render's official MCP server defines it](046.md) (~60m) ← `/pm-brainstorm for w2` 2026-10-19 #5; pinned to upstream `render-oss/render-mcp-server` `c6b8bb11196c`.
 
 - [x] [040 — Keep the product analytics sampling test inside its intended UTC day](done/040.md) — **DONE 2026-10-02** ← fresh integration validation, 2026-10-02
 
