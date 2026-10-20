@@ -206,7 +206,7 @@ type createWebServiceArgs struct {
 	MaxShutdownDelaySeconds *int32                  `json:"maxShutdownDelaySeconds,omitempty" jsonschema:"maximum seconds to wait after SIGTERM before SIGKILL (1-300; default 30)"`
 	PreDeployCommand        string                  `json:"preDeployCommand,omitempty" jsonschema:"a command run to completion against the new image before it serves traffic (Render's Pre-Deploy Command, e.g. a DB migration); a non-zero exit fails the deploy"`
 	MaintenanceMode         *maintenanceModeArg     `json:"maintenanceMode,omitempty" jsonschema:"Render's maintenanceMode object at create time; web_service only, omit for disabled"`
-	Port                    int32                   `json:"port,omitempty" jsonschema:"the port the app listens on (default 3000; ignored for a background_worker)"`
+	Port                    int32                   `json:"port,omitempty" jsonschema:"the port the app listens on (default 3000; a Git-built Docker private_service created without one publishes every TCP port its image declares, and this field only picks the primary; ignored for a background_worker)"`
 	Replicas                int32                   `json:"replicas,omitempty" jsonschema:"desired running instances (default 1)"`
 	DryRun                  bool                    `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 	IPAllowList             []string                `json:"ipAllowList,omitempty" jsonschema:"CIDR blocks to restrict inbound HTTP to (e.g. '203.0.113.0/24'); empty = open to all source IPs (Render default). Only applies to web_service and static_site."`

@@ -3086,7 +3086,8 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Create-wizard Public Git URL tab input placeholder",
   },
   "services.createPublicUrlError": {
-    message: "Enter an https:// URL, or a GitHub SSH URL (git@github.com:owner/repo.git).",
+    message:
+      "Enter an https:// URL, or a GitHub SSH URL (git@github.com:owner/repo.git).",
     description: "Create-wizard Public Git URL tab validation message",
   },
   "services.createImageLabel": {
@@ -3106,6 +3107,17 @@ const enServices: Record<string, TranslationEntry> = {
   "services.createFieldPort": {
     message: "Port",
     description: "Create wizard: service port field label",
+  },
+  "services.createFieldPortFromImage": {
+    message: "From the image",
+    description:
+      "Create wizard: port placeholder for a Git-built Docker private service, whose ports come from its image (w6/m148)",
+  },
+  "services.createFieldPortImageHint": {
+    message:
+      "Optional. bex publishes every TCP port the image declares (EXPOSE); 3000 if declared, else the lowest declared, else 3000, becomes $PORT and the health-checked primary. Set a port to choose the primary yourself.",
+    description:
+      "Create wizard: port hint for a Git-built Docker private service — blank publishes the image's declared ports (w6/m148)",
   },
   "services.createFieldPortHint": {
     message:

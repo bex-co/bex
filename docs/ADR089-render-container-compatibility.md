@@ -1,6 +1,6 @@
 # ADR089 — Deploy Render Docker examples without changing their source
 
-**Status:** Proposed, 2026-09-29. Experimental implementation is in progress; hosted creation remains disabled by default. The end-to-end deployment and isolation gates have not passed.
+**Status:** Proposed, 2026-09-29. Experimental implementation is in progress; hosted creation remains disabled by default. The end-to-end deployment and isolation gates have not passed. **Update 2026-10-20:** the port slice (D3/D4) is the creation default in every workspace since w6/m148 and passed its hosted gate (§ Port slice decisions). The capability policy (D2) remains gated (w6/m149).
 
 **Scope:** Import and run the unchanged `render-examples/clickhouse` repository, with a reusable contract for legacy Blueprint aliases, container initialization, and multiple private TCP ports. This does not establish complete Render runtime parity.
 
@@ -157,6 +157,8 @@ Real Postgres tests cover policy/disk round trips and atomic rollback when disk 
 ## Port slice decisions — 2026-10-19 (w6/m148)
 
 These decisions split D3/D4 (ports and references) from D2 (capabilities). They ship in w6/m148. D2's capability policy for customer workspaces is w6/m149.
+
+**Status, 2026-10-20:** D3 and D4 shipped in w6/m148 (`94533d795`) as the default in every workspace, and were verified live on production on 2026-10-20 ([evidence](../.pm/w6/done/m148/evidence/README.md)). The live checks covered a multi-port private service in a customer workspace under the strict policy, agreement between REST, GraphQL, MCP and the dashboard, `fromService` propagation on first discovery and on `setPort`, cross-workspace denial, and the unchanged ClickHouse Blueprint in `bex`. Still open from the 2026-09-30 checkpoint: port discovery for prebuilt-image and native-runtime private services (out of scope), and the CMS checker snapshot (w6/081). The remaining Render divergences are named in [ADR018](ADR018-render-parity.md)'s Open ports row and in [ADR049](ADR049-render-yaml-parity.md) § `fromService` port references follow the real port.
 
 1. **The gate is split.**
    - Image-derived ports (`portMode` `image-v1`, or `image-configured-v1` with an explicit port) become the creation default for new Git-built Docker private services in **every** workspace.

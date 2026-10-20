@@ -46,7 +46,6 @@ import {
   DEFAULT_SERVICE_PORT,
   MAX_SERVICE_PORT,
   MIN_SERVICE_PORT,
-  parsePort,
 } from "@/features/services/lib/port";
 import { CreateEnvVarEditor } from "@/features/services/components/create-env-var-editor";
 import { CreateSecretFileEditor } from "@/features/services/components/create-secret-file-editor";
@@ -54,6 +53,8 @@ import {
   buildCreateServiceInput,
   buildShape,
   isSubmittable,
+  portDraft,
+  portIsValid,
 } from "@/features/services/lib/create-service-input";
 import {
   parseNewServiceSearch,
@@ -107,7 +108,8 @@ export function NewServicePage() {
     : null;
   // Only a port-binding type reads the field, so a stale draft under a worker
   // never shows an error (or blocks Submit) for a value nothing will send.
-  const portError = shape.showPort && parsePort(form.port) === null;
+  const portError = shape.showPort && !portIsValid(form, shape);
+  const port = portDraft(form, shape);
   const publishPathMissing = form.publishPath.trim() === "";
   const showNameError = name.name.length > 0 && !name.nameValid;
   const showNameTaken = name.nameValid && (name.nameTaken || nameConflict);
@@ -478,12 +480,20 @@ export function NewServicePage() {
                     <TextField
                       id="svc-port"
                       label={t("services.createFieldPort")}
-                      value={form.port}
+                      value={port}
                       onChange={(port) => set({ port })}
-                      placeholder={String(DEFAULT_SERVICE_PORT)}
-                      hint={t("services.createFieldPortHint", {
-                        port: form.port.trim() || String(DEFAULT_SERVICE_PORT),
-                      })}
+                      placeholder={
+                        shape.imagePorts
+                          ? t("services.createFieldPortFromImage")
+                          : String(DEFAULT_SERVICE_PORT)
+                      }
+                      hint={
+                        shape.imagePorts
+                          ? t("services.createFieldPortImageHint")
+                          : t("services.createFieldPortHint", {
+                              port: port.trim() || String(DEFAULT_SERVICE_PORT),
+                            })
+                      }
                       error={
                         portError
                           ? t("services.portRangeError", {

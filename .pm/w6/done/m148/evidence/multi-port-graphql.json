@@ -1,0 +1,1 @@
+{"data":{"server":{"id":"srv-dbbgehr581vs73bjhi4g","internalAddress":"multi-port:8123","name":"multi-port","openPorts":[{"port":8123,"protocol":"TCP"},{"port":9000,"protocol":"TCP"}],"port":8123}}}
