@@ -589,6 +589,24 @@ func TestUsersCRUD(t *testing.T) {
 	}
 }
 
+func TestDeleteUserMissingUserNamesTheChild(t *testing.T) {
+	// w4/371: a missing user on an existing, authorized database reads
+	// "user not found"; a missing database keeps the bare parent answer, so
+	// the named child never becomes an existence oracle.
+	svc, cl := newService()
+	seedDatabaseSpec(t, cl, "msg-db", appv1alpha1.DatabaseSpec{Plan: "free"}, false)
+	ctx := context.Background()
+
+	err := svc.DeleteUser(ctx, "msg-db", "ghost")
+	if !errors.Is(err, core.ErrNotFound) || err.Error() != "user not found" {
+		t.Errorf("missing user on existing db = %v, want named 'user not found'", err)
+	}
+	err = svc.DeleteUser(ctx, "no-such-db", "ghost")
+	if !errors.Is(err, core.ErrNotFound) || err.Error() != "not found" {
+		t.Errorf("missing db = %v, want the bare parent 'not found'", err)
+	}
+}
+
 func TestCreateUserReplacesLegacyCredentialAndClearsTombstone(t *testing.T) {
 	svc, cl := newService()
 	seedDatabaseSpec(t, cl, "rotate-db", appv1alpha1.DatabaseSpec{

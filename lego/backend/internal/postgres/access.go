@@ -215,7 +215,10 @@ func (s *Service) DeleteUser(ctx context.Context, name, role string) error {
 		}
 	}
 	if idx < 0 {
-		return core.ErrNotFound
+		// Name the missing child like the service children (w4/154); a missing
+		// or unauthorized parent database keeps the neutral answer above, so
+		// this is never an existence oracle (w4/371).
+		return core.NotFound("user")
 	}
 	secretName := d.Spec.Users[idx].SecretName
 	// Delete the credential first so a transient Secret deletion failure leaves
