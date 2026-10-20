@@ -205,6 +205,17 @@ Shapes verified against `render-public-api-1.json` and `render-oss/render-mcp-se
 
 The api ServiceAccount reads `pods` (`get`/`list`/`watch`) and `pods/log` (`get`) — added with the logs verb in `lego/operator/config/api/rbac.yaml`. No clientset lives in Core; only `podlogs.go` (and its `main.go` wiring) touch it. The Loki-backed history reaches Loki over HTTP (`BEX_LOKI_URL`), not the kube API, so it needs **no extra bex-api RBAC** — the log-shipper DaemonSet's own ServiceAccount (its chart's ClusterRole) does the pod-log reads, exactly as the Prometheus scrape's ServiceAccount does for metrics.
 
+### Service incarnations (w8/m124)
+
+An App's streams, pods and Traefik routers are keyed by its CR name, which follows the service name. Deleting a service and creating another with the same name therefore handed the newcomer its predecessor's history: paths, client IPs, SIGTERM lines and metric points. Render scopes logs and metrics to the service id, so every App read is now scoped to the current incarnation:
+
+- **Stream label.** The log shipper copies the pod's `bex.co/app-id` into an `app_id` stream label (`deploy/gitops/base/log-shipper.yaml`, `app_pods`). App reads add `app_id=~"<id>|"` beside the namespace/app tenant matchers. The empty alternative keeps streams shipped before the label, and Job pods, which carry no id label. A predecessor's terminating pod carries its own id and is excluded.
+- **Creation floor.** Every log read (history, the initial tail, label values, `--tail`) and every metric read starts no earlier than the App CR's `creationTimestamp`. The floor only narrows: an App older than the default 7-day lookback keeps the lookback. It removes the predecessor's unlabeled history and its request lines, which Traefik streams carry no pod label for. Month-to-date bandwidth starts there too.
+- **Pods.** Every pod list (live tail, instance discovery and filters, the pod-log fallback, metrics' snapshot paths) drops pods labelled with another id (`core.OwnAppPods`).
+- **cAdvisor series.** Pod names cannot tell incarnations apart, so pod-scoped PromQL ends in `unless on(pod) (kube_pod_created{namespace=…} < <creation unix>)`. That is `unless`, not `and`, so a pod kube-state-metrics has no series for still charts.
+
+Postgres and Key Value already select by immutable id.
+
 ## Metrics
 
 The same one-Core-many-adapters shape as logs. `Core.Metrics(MetricQuery)` is the single read; REST (`internal/metrics/rest.go`) and GraphQL (`internal/metrics/graphql.go`) are the surfaces. Two backends, each an injected source so Core stays clientset-free (like `PodLogSource`):

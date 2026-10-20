@@ -250,6 +250,13 @@ spec:
                   source_labels = ["__meta_kubernetes_pod_label_app_bex_co_app"]
                   target_label  = "app"
                 }
+                // The service id (bex.co/app-id) beside its name: a service
+                // recreated under a deleted one's name gets a new id, and
+                // bex-api reads only its own id's streams (w8/m124).
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_label_bex_co_app_id"]
+                  target_label  = "app_id"
+                }
                 rule {
                   source_labels = ["__meta_kubernetes_pod_name"]
                   target_label  = "pod"
