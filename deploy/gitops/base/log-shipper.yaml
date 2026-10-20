@@ -726,6 +726,32 @@ spec:
                 stage.label_drop {
                   values = ["filename", "stream"]
                 }
+                // Valkey prefixes each of its own lines "<pid>:<role> <date>
+                // <time> <marker> ", and the marker is the line's severity:
+                // # warning, * notice -> info, - verbose and . debug -> debug
+                // (w5/m139). A line without the prefix (the start-up banner)
+                // gets no level, as a non-record Postgres line gets none.
+                // datastorelogs.ValkeyLevel applies the same rule to direct
+                // reads, and both are tested against one fixture file.
+                stage.regex {
+                  expression = "^\\d+:[XCSM] \\d{2} [A-Z][a-z]{2} \\d{4} \\d{2}:\\d{2}:\\d{2}\\.\\d{3} (?P<valkey_marker>[.*#-]) "
+                }
+                stage.labels {
+                  values = { valkey_marker = "" }
+                }
+                stage.match {
+                  selector = "{valkey_marker=~\".+\"}"
+                  stage.template {
+                    source   = "level"
+                    template = "{{ "{{" }} if eq .valkey_marker \"#\" {{ "}}" }}warning{{ "{{" }} else if eq .valkey_marker \"*\" {{ "}}" }}info{{ "{{" }} else {{ "}}" }}debug{{ "{{" }} end {{ "}}" }}"
+                  }
+                  stage.labels {
+                    values = { level = "level" }
+                  }
+                }
+                stage.label_drop {
+                  values = ["valkey_marker"]
+                }
                 stage.static_labels {
                   values = { type = "keyvalue" }
                 }

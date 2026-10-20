@@ -58,8 +58,15 @@ function subscribeUrl(opts: {
   startTime: string;
   requestFilters: RequestLogFilters;
 }): string {
-  const { resource, type, text, textMode, instance, startTime, requestFilters } =
-    opts;
+  const {
+    resource,
+    type,
+    text,
+    textMode,
+    instance,
+    startTime,
+    requestFilters,
+  } = opts;
   const params = new URLSearchParams({ resource });
   if (type !== LOG_TYPE_ALL) params.set("type", type);
   if (text) params.set("text", text);
@@ -81,8 +88,10 @@ function subscribeUrl(opts: {
   return `${config.apiBaseUrl}/v1/logs/subscribe?${params.toString()}`;
 }
 
-/** The structured filters the store poll honors for request lines (w4/m237):
- *  a slice of the viewer's one filter state, not a parallel vocabulary. */
+/** The structured filters a subscription carries: the store poll honors them
+ *  for request lines (w4/m237), and a datastore tail applies `level` per line
+ *  (w5/m139). A slice of the viewer's one filter state, not a parallel
+ *  vocabulary. */
 export type RequestLogFilters = Pick<
   LogFilters,
   "level" | "method" | "statusCode" | "path"

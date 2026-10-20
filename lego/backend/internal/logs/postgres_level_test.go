@@ -18,6 +18,7 @@ package logs
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -25,6 +26,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
@@ -119,9 +122,6 @@ func TestManagedPostgresLokiLevels(t *testing.T) {
 }
 
 func TestManagedPostgresLevelFilterGuards(t *testing.T) {
-	if err := (LogQuery{Level: []string{"error"}}).validateKeyValue(); !errors.Is(err, core.ErrBadRequest) {
-		t.Fatalf("Key Value level filter = %v, want bad request", err)
-	}
 	for _, history := range []bool{false, true} {
 		t.Run(fmt.Sprintf("history=%t", history), func(t *testing.T) {
 			svc := newService(nil, sampleDatabase(postgresID))
@@ -169,5 +169,85 @@ func TestManagedPostgresLevelValues(t *testing.T) {
 	svc.LabelValues = nil
 	if _, err := svc.LogLabelValues(context.Background(), LabelLevel, LogQuery{App: postgresID}); !errors.Is(err, core.ErrLogStoreUnavailable) {
 		t.Fatalf("level values without store = %v, want unavailable", err)
+	}
+}
+
+// w5/m139: a Key Value's level filter is Postgres's — the pod read keeps the
+// lines whose Valkey marker names a matching level, and the store read selects
+// the level label the shipper attaches.
+func TestKeyValueLevelFilter(t *testing.T) {
+	svc := newManagedTailService()
+	entries, err := svc.QueryLogs(context.Background(), LogQuery{App: keyValueID, Level: []string{"warning"}})
+	if err != nil || len(entries) != 1 || !strings.Contains(entries[0].Message, "Memory overcommit") || entries[0].Labels[LabelLevel] != "warning" {
+		t.Fatalf("pod read = %+v, err=%v; want only the warning line", entries, err)
+	}
+
+	f := newFakeLoki(lokiResp(map[string]any{
+		"stream": `{"keyvalue":"` + keyValueID + `","pod":"` + keyValueID + `-0","container":"valkey","type":"keyvalue","level":"warning"}`,
+		"values": `[["1751673606000000000","1:M 05 Jul 2026 00:00:06.000 # WARNING Memory overcommit must be enabled!"]]`,
+	}))
+	defer f.srv.Close()
+	svc.History = NewLokiSource(f.srv.URL, f.srv.Client())
+	entries, err = svc.QueryLogs(context.Background(), LogQuery{App: keyValueID, Level: []string{"warning"}})
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("store read = %+v, err=%v", entries, err)
+	}
+	query := f.lastValues.Get("query")
+	if !strings.Contains(query, `keyvalue="`+keyValueID+`"`) || !strings.Contains(query, "level") || !strings.Contains(query, "warning") {
+		t.Fatalf("Loki query = %q, want the keyvalue stream narrowed by level", query)
+	}
+}
+
+// w5/m139: the generic GraphQL `logs` and MCP `list_logs` adapters carry a Key
+// Value level filter exactly as REST does — one core verb behind all three.
+func TestKeyValueLevelOnEveryAdapter(t *testing.T) {
+	svc := newManagedTailService()
+	schema, err := gqlSchema(svc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data := runQuery(t, schema, `{ logs(resource:"`+keyValueID+`", level:["warning"]) { logs { message } } }`)
+	raw, _ := json.Marshal(data["logs"])
+	if !strings.Contains(string(raw), "Memory overcommit") || strings.Contains(string(raw), "Ready to accept") {
+		t.Fatalf("GraphQL logs(level:warning) = %s", raw)
+	}
+
+	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	serverT, clientT := mcp.NewInMemoryTransports()
+	ctx := context.Background()
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatal(err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = cs.Close() }()
+	result, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "list_logs", Arguments: map[string]any{
+		"resource": []string{keyValueID}, "level": []string{"warning"},
+	}})
+	if err != nil || result.IsError {
+		t.Fatalf("MCP list_logs = %+v, err=%v", result, err)
+	}
+	text := result.Content[0].(*mcp.TextContent).Text
+	if !strings.Contains(text, "Memory overcommit") || strings.Contains(text, "Ready to accept") {
+		t.Fatalf("MCP list_logs(level:warning) = %s", text)
+	}
+}
+
+// w5/m139: Key Value lines carry a level now, so level discovery reads the
+// keyvalue stream's level index as Postgres's does.
+func TestKeyValueLevelValues(t *testing.T) {
+	f := newFakeLoki(`{"status":"success","data":["info","warning"]}`)
+	defer f.srv.Close()
+	svc := newManagedTailService()
+	svc.LabelValues = NewLokiLabelValuesSource(f.srv.URL, f.srv.Client())
+	values, err := svc.LogLabelValues(context.Background(), LabelLevel, LogQuery{App: keyValueID})
+	if err != nil || !slices.Equal(values, []string{"info", "warning"}) {
+		t.Fatalf("level values = %v, err=%v", values, err)
+	}
+	if f.lastPath != "/loki/api/v1/label/level/values" || f.lastValues.Get("query") != `{namespace="default", keyvalue="`+keyValueID+`"}` {
+		t.Fatalf("label source = %s %v", f.lastPath, f.lastValues)
 	}
 }

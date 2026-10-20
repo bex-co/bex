@@ -25,10 +25,8 @@ import (
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -65,9 +63,7 @@ func TestDatastoreLogsPageCursorsChainOnEveryAdapter(t *testing.T) {
 	svc := newService(map[string][]string{kvPod: lines, pgPod: lines},
 		sampleDatabase(postgresID), databasePod(postgresID, pgPod),
 		&appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: keyValueID, Namespace: "default"}},
-		&corev1.Pod{ObjectMeta: metav1.ObjectMeta{
-			Name: kvPod, Namespace: "default", Labels: map[string]string{core.PodLabelKeyValue: keyValueID},
-		}},
+		keyValuePod(keyValueID, kvPod),
 	)
 
 	schema, err := gqlSchema(svc)

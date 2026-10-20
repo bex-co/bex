@@ -92,6 +92,12 @@ func databasePod(database, name string) *corev1.Pod {
 	}}
 }
 
+func keyValuePod(keyValue, name string) *corev1.Pod {
+	return &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
+		Name: name, Namespace: "default", Labels: map[string]string{core.PodLabelKeyValue: keyValue},
+	}}
+}
+
 func podFor(app, name string) *corev1.Pod {
 	return &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
 		Name: name, Namespace: "default", Labels: map[string]string{core.PodLabelApp: app},

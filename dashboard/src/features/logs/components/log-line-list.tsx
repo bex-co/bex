@@ -426,8 +426,14 @@ const LogRow = memo(function LogRow({
             [{shortInstance(line.instance)}]
           </button>
         ) : (
-          <span className="shrink-0 text-muted-foreground/70">
-            [{line.instance}]
+          // Short like the button's label: a full datastore instance id
+          // (`red-<id>-<opaque>`) left no room for the message on a narrow
+          // screen, which wrapped one character per line (w5/m139).
+          <span
+            className="shrink-0 text-muted-foreground/70"
+            title={line.instance}
+          >
+            [{shortInstance(line.instance)}]
           </span>
         )
       ) : null}

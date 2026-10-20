@@ -175,9 +175,16 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 	// acquiring a slot — a type=predeploy (or other producerless) request would
 	// otherwise park on an idle stream and hold one of the process-global SSE
 	// slots until it chose to disconnect, letting one tenant exhaust the pool.
-	if err := q.liveSubscribable(); err != nil {
-		core.WriteErr(w, err)
-		return
+	// Every resource answers to its own contract — a datastore tail can filter
+	// by level, an App tail cannot (w5/m139) — and the check reads only the
+	// id's kind and the query, so it confirms nothing about existence.
+	for _, resource := range resources {
+		each := q
+		each.App = resource
+		if err := each.liveSubscribable(); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
 	}
 	// The request producer polls the log store: with none wired, a
 	// request-only subscription fails closed here too, before a slot or a
@@ -207,12 +214,6 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer release()
-		// After authorization, before any streaming header or 101: the pinned
-		// CLI reads a closed socket as a finished tail and exits 0 (w8/083).
-		if err := unsupportedLiveResource(resource); err != nil {
-			core.WriteErr(w, err)
-			return
-		}
 	}
 
 	// Render CLI v2+ sends an upgrade request; everyone else gets SSE or NDJSON.

@@ -1,5 +1,5 @@
 {
-  "_comment": "One classification table for tenant logs (w5/m122), read by scripts/test_log_shipper.py (the shipper's own pipelines, in its Alloy image) and by the Go direct reads (logs, datastorelogs). An entry with a message is kept with that message (and level, when set); one without is dropped. kubelet lists the kubelet's own answers once a container's log is gone: they reach no tenant pipeline, because the shipper reads containers' files and the direct reads treat an untimestamped line as the kubelet's.",
+  "_comment": "One classification table for tenant logs (w5/m122), read by scripts/test_log_shipper.py (the shipper's own pipelines, in its Alloy image) and by the Go direct reads (logs, datastorelogs). An entry with a message is kept with that message (and level, when set — a Postgres record's severity, a Valkey line's marker); one without is dropped. kubelet lists the kubelet's own answers once a container's log is gone: they reach no tenant pipeline, because the shipper reads containers' files and the direct reads treat an untimestamped line as the kubelet's.",
   "postgres": [
     {
       "name": "instance manager",
@@ -143,9 +143,50 @@
   ],
   "keyvalue": [
     {
-      "name": "server ready",
+      "name": "server ready (notice)",
       "line": "1:M 05 Oct 2026 01:02:03.456 * Ready to accept connections tcp",
-      "message": "1:M 05 Oct 2026 01:02:03.456 * Ready to accept connections tcp"
+      "message": "1:M 05 Oct 2026 01:02:03.456 * Ready to accept connections tcp",
+      "level": "info"
+    },
+    {
+      "name": "warning",
+      "line": "1:M 05 Oct 2026 01:02:04.001 # WARNING Memory overcommit must be enabled!",
+      "message": "1:M 05 Oct 2026 01:02:04.001 # WARNING Memory overcommit must be enabled!",
+      "level": "warning"
+    },
+    {
+      "name": "verbose",
+      "line": "1:M 05 Oct 2026 01:02:05.000 - Accepted 10.0.0.7:50432",
+      "message": "1:M 05 Oct 2026 01:02:05.000 - Accepted 10.0.0.7:50432",
+      "level": "debug"
+    },
+    {
+      "name": "debug",
+      "line": "1:M 05 Oct 2026 01:02:06.000 . Client closed connection",
+      "message": "1:M 05 Oct 2026 01:02:06.000 . Client closed connection",
+      "level": "debug"
+    },
+    {
+      "name": "background save child",
+      "line": "42:C 05 Oct 2026 01:02:07.000 * DB saved on disk",
+      "message": "42:C 05 Oct 2026 01:02:07.000 * DB saved on disk",
+      "level": "info"
+    },
+    {
+      "name": "replica role",
+      "line": "7:S 05 Oct 2026 01:02:08.000 # Error condition on socket for SYNC",
+      "message": "7:S 05 Oct 2026 01:02:08.000 # Error condition on socket for SYNC",
+      "level": "warning"
+    },
+    {
+      "name": "start-up banner has no level",
+      "line": "                Valkey 8.1.1 (00000000/0) 64 bit",
+      "message": "                Valkey 8.1.1 (00000000/0) 64 bit"
+    },
+    {
+      "name": "a marker-like word mid-line is only text",
+      "line": "connected # to nowhere",
+      "message": "connected # to nowhere"
     },
     {
       "name": "JSON is the server's own",

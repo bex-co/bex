@@ -9,18 +9,21 @@ import { DEFAULT_DATASTORE_LOG_RANGE } from "./datastore-log-range";
 import { str } from "./log-search";
 
 // The datastore Logs tab's URL state (Postgres + Key Value, w4/228): the shared
-// range keys (w6/065) plus the viewer's own two filters, text and instance, so
+// range keys (w6/065) plus the viewer's own filters — text, instance and, since
+// both datastores' lines carry one (w5/m139), level — so
 // a filtered datastore view survives a reload and a copied link like the
 // service Logs tab's does (w7/m42). Deliberately not the service vocabulary —
 // the datastore logs contract refuses service-only filters.
 export interface DatastoreLogFilters {
   text: string;
   instance: string;
+  level: string;
 }
 
 export interface DatastoreLogSearch extends RangeSearch {
   text?: string;
   instance?: string;
+  level?: string;
 }
 
 /**
@@ -35,6 +38,7 @@ export function parseDatastoreLogSearch(
     ...parseRangeSearch(search),
     text: str(search.text),
     instance: str(search.instance),
+    level: str(search.level),
   };
 }
 
@@ -55,7 +59,11 @@ export function datastoreLogSearchProps(
   return {
     range: rangeFromSearch(search, DEFAULT_DATASTORE_LOG_RANGE),
     onRangeChange: (range) => write(rangeToSearch(range)),
-    filters: { text: search.text ?? "", instance: search.instance ?? "" },
+    filters: {
+      text: search.text ?? "",
+      instance: search.instance ?? "",
+      level: search.level ?? "",
+    },
     // Only the keys a patch names are written; an emptied one is cleared.
     onFiltersChange: (patch) =>
       write(

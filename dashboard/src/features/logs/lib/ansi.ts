@@ -138,7 +138,7 @@ export function parseAnsi(input: string): AnsiSpan[] {
   // panel does merge multi-line frames, so track the start of the current one.
   let lineStart = 0;
 
-  for (let i = 0; i < input.length; ) {
+  for (let i = 0; i < input.length;) {
     const ch = input[i];
 
     if (ch === ESC) {
