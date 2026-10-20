@@ -22,6 +22,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -285,4 +286,82 @@ func TestRESTNonDefaultWorkspaceCredentialIsFullyReachable(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestRESTListHonorsRenderFilters is w5/163: every filter Render declares on
+// GET /registrycredentials narrows the list or is refused by name — none is
+// accepted and ignored.
+func TestRESTListHonorsRenderFilters(t *testing.T) {
+	_, mux := testMux()
+	var ids []string
+	for _, body := range []string{
+		`{"host":"ghcr.io","username":"alice","authToken":"t1","name":"ghcr"}`,
+		`{"host":"docker.io","username":"bob","authToken":"t2","name":"hub"}`,
+		`{"host":"quay.io","username":"alice","authToken":"t3","name":"quay"}`,
+	} {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/registrycredentials", strings.NewReader(body)))
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("create: %d %s", rec.Code, rec.Body)
+		}
+		var c credentialWire
+		if err := json.Unmarshal(rec.Body.Bytes(), &c); err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, c.ID)
+	}
+	list := func(query string) (int, []string) {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/registrycredentials?"+query, nil))
+		var got []credentialWire
+		_ = json.Unmarshal(rec.Body.Bytes(), &got)
+		var names []string
+		for _, c := range got {
+			names = append(names, c.Name)
+		}
+		return rec.Code, names
+	}
+	for query, want := range map[string]string{
+		"name=nomatch":                        "",
+		"name=hub":                            "hub",
+		"name=ghcr,quay":                      "ghcr,quay",
+		"username=alice":                      "ghcr,quay",
+		"username=bob&name=ghcr":              "",
+		"createdAfter=2999-01-01T00:00:00Z":   "",
+		"createdBefore=2999-01-01T00:00:00Z":  "ghcr,hub,quay",
+		"updatedAfter=2000-01-01T00:00:00Z":   "ghcr,hub,quay",
+		"updatedBefore=2000-01-01T00:00:00Z":  "",
+	} {
+		code, got := list(query)
+		if code != http.StatusOK || strings.Join(sortedCopy(got), ",") != want {
+			t.Errorf("?%s = %d %v, want %q", query, code, got, want)
+		}
+	}
+	// limit pages the list, and the cursor continues it: every credential
+	// exactly once across the two pages.
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/registrycredentials?limit=2", nil))
+	var page1 []credentialWire
+	if err := json.Unmarshal(rec.Body.Bytes(), &page1); err != nil || len(page1) != 2 {
+		t.Fatalf("limit=2 = %s (err %v)", rec.Body, err)
+	}
+	code, rest := list("limit=2&cursor=" + page1[1].ID)
+	if code != http.StatusOK || len(rest) != 1 || slices.Contains([]string{page1[0].Name, page1[1].Name}, rest[0]) {
+		t.Fatalf("second page = %d %v after %v", code, rest, page1)
+	}
+	if code, _ := list("createdAfter=not-a-time"); code != http.StatusBadRequest {
+		t.Errorf("a malformed window = %d, want 400", code)
+	}
+	// type is Render's registry enum, which bex does not store: a named
+	// refusal, never the whole list.
+	if code, _ := list("type=GITHUB"); code != http.StatusBadRequest {
+		t.Errorf("type filter = %d, want 400", code)
+	}
+}
+
+func sortedCopy(in []string) []string {
+	out := append([]string(nil), in...)
+	slices.Sort(out)
+	return out
 }

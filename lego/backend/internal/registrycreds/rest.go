@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -117,14 +118,42 @@ func restOwnerScoped(r *http.Request) context.Context {
 
 // RegisterREST mounts Render's canonical registrycredentials CRUD surface.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
-	mux.HandleFunc("GET /v1/registrycredentials", func(w http.ResponseWriter, r *http.Request) {
-		views, err := s.List(r.Context(), r.URL.Query().Get("ownerId"))
-		if err != nil {
-			core.WriteErr(w, err)
-			return
+	mux.HandleFunc("GET /v1/registrycredentials", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		q := r.URL.Query()
+		// Every filter Render's pinned spec declares passes the request
+		// validator, so one this handler ignored would return an unfiltered
+		// list the caller believes is filtered (w5/163). Same helpers and order
+		// as the disks and Key Value lists.
+		if q.Has("type") {
+			// Render's type is its registry enum, which bex replaces with an
+			// arbitrary host (see the note at the top of this file): refuse it
+			// by name rather than answer every credential.
+			return nil, fmt.Errorf("%w: type filters by Render's registry enum, which bex does not store (credentials carry a registry host); filter by name or username instead", core.ErrBadRequest)
 		}
-		core.WriteJSON(w, http.StatusOK, toWireList(views))
-	})
+		names := core.QueryNameList(r.URL, "name")
+		usernames := core.QueryNameList(r.URL, "username")
+		created, err := core.QueryTimeWindow(q, "createdBefore", "createdAfter")
+		if err != nil {
+			return nil, err
+		}
+		updated, err := core.QueryTimeWindow(q, "updatedBefore", "updatedAfter")
+		if err != nil {
+			return nil, err
+		}
+		views, err := core.ListOwners(r.Context(), core.QueryList(q, "ownerId"), s.List)
+		if err != nil {
+			return nil, err
+		}
+		views = core.Filter(views, func(v CredentialView) bool {
+			return (len(names) == 0 || slices.Contains(names, v.Name)) &&
+				(len(usernames) == 0 || slices.Contains(usernames, v.Username)) &&
+				created.Contains(v.CreatedAt) && updated.Contains(v.UpdatedAt)
+		})
+		after, limit := core.PageParams(q)
+		views = core.StablePage(views, after, limit, q.Has("cursor") || q.Has("limit"),
+			func(v CredentialView) string { return v.ID })
+		return toWireList(views), nil
+	}))
 
 	mux.HandleFunc("POST /v1/registrycredentials", func(w http.ResponseWriter, r *http.Request) {
 		var req createCredentialRequest
