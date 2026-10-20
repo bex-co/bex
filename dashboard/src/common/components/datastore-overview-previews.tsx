@@ -1,4 +1,4 @@
-import { Eye, Plus } from "lucide-react";
+import { Eye, Plus, ShieldCheck } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import {
@@ -256,6 +256,58 @@ export function KeyValueNetworkingPreview() {
             </Button>
           </div>
         </section>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Mirrors the database HA panel (features/databases/components/ha-panel.tsx,
+ * w5/m138): its static title and description, the status row, the plan line,
+ * and the Read replicas header with its Add action over one list line. The
+ * status badge, the plan line and the replicas are data, so they stay
+ * skeletons; the plan line keeps two lines below xl, where its copy wraps.
+ */
+export function DatabaseHighAvailabilityPreview() {
+  const { t } = useTranslations();
+  return (
+    <Card inert aria-busy="true">
+      <CardHeader>
+        <CardTitle>{t("databases.haTitle")}</CardTitle>
+        <CardDescription>{t("databases.haDescription")}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">
+              {t("databases.haStatus")}
+            </span>
+            <Skeleton className="h-[22px] w-16 rounded-full" />
+          </div>
+        </div>
+        <div>
+          <div className="flex h-5 items-center">
+            <Skeleton className="h-3.5 w-full" />
+          </div>
+          <div className="flex h-5 items-center xl:hidden">
+            <Skeleton className="h-3.5 w-1/2" />
+          </div>
+        </div>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm font-medium">
+              {t("databases.haReadReplicas")}
+            </p>
+            <Button variant="outline" size="sm" disabled>
+              <Plus />
+              {t("databases.haAddReplica")}
+            </Button>
+          </div>
+          <div className="flex h-5 items-center">
+            <Skeleton className="h-3.5 w-48" />
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

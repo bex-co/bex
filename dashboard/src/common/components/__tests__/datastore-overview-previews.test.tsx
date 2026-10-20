@@ -14,6 +14,7 @@ import { KeyValuePersistenceModeSection } from "@/features/keyvalue/components/k
 import { KeyValueNetworkingPanel } from "@/features/keyvalue/components/key-value-networking-panel";
 import type { DatabaseDetailView } from "@/features/databases/types";
 import type { KeyValueView } from "@/features/keyvalue/types";
+import { shape } from "@/test/card-shape";
 
 // The ready cards render for real (EditableFieldRow, MetadataList, the masked
 // Connections panel); only their data and mutation hooks are stubbed.
@@ -99,25 +100,6 @@ const keyValue: KeyValueView = {
   suspended: false,
   region: "oregon",
 };
-
-/**
- * The card's structural signature: every element's tag and classes plus its
- * own static text, in document order. A `dd` collapses to its tag (its value
- * is resource data), and an input drops its value, so a preview matches the
- * ready card exactly when it has the same anatomy, copy and spacing.
- */
-function shape(element: Element): string {
-  const tag = element.tagName.toLowerCase();
-  if (tag === "dd") return "dd";
-  if (tag === "svg") return `svg.${element.getAttribute("class")}`;
-  const own = [...element.childNodes]
-    .filter((node) => node.nodeType === Node.TEXT_NODE)
-    .map((node) => node.textContent?.trim())
-    .filter(Boolean)
-    .join(" ");
-  const children = [...element.children].map(shape).join(",");
-  return `${tag}.${element.getAttribute("class") ?? ""}${own ? `"${own}"` : ""}[${children}]`;
-}
 
 function card(ui: ReactElement, region?: string): Element {
   const { container } = render(ui);

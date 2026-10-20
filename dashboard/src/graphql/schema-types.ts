@@ -1187,6 +1187,7 @@ export type Mutation = {
   setDatabaseIpAllowList: Maybe<Database>;
   setDatabaseParameterOverrides: Maybe<Database>;
   setDatabasePublic: Maybe<Database>;
+  setDatabaseReadReplicas: Maybe<Database>;
   setDisplayName: Maybe<Service>;
   setDockerfilePath: Maybe<Service>;
   setEnvGroupSecretFile: Maybe<Scalars['Boolean']['output']>;
@@ -2002,6 +2003,13 @@ export type MutationSetDatabaseParameterOverridesArgs = {
 export type MutationSetDatabasePublicArgs = {
   id: Scalars['String']['input'];
   public: Scalars['Boolean']['input'];
+};
+
+
+export type MutationSetDatabaseReadReplicasArgs = {
+  dryRun?: InputMaybe<Scalars['Boolean']['input']>;
+  id: Scalars['String']['input'];
+  readReplicas: Array<DatabaseReadReplicaInput>;
 };
 
 

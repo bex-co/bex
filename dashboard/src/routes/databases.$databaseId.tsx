@@ -46,6 +46,7 @@ import {
   translatedText,
 } from "@/common/lib/document-head";
 import { DatastorePlanPreview } from "@/common/components/datastore-plan-preview";
+import { DatabaseHighAvailabilityPreview } from "@/common/components/datastore-overview-previews";
 import { DeferredMount } from "@/common/components/deferred-mount";
 import {
   SECTION_NAVIGATION_STICKY_CLASS,
@@ -294,8 +295,8 @@ function DatabaseDetailPage() {
                   id="high-availability"
                   className={SECTION_NAVIGATION_TARGET_CLASS}
                 >
-                  <DeferredMount hashId="high-availability" minHeight={160}>
-                    <Suspense fallback={<CardSkeleton rows={2} />}>
+                  <DeferredMount hashId="high-availability" minHeight={236}>
+                    <Suspense fallback={<DatabaseHighAvailabilityPreview />}>
                       <HAPanel database={database} refetch={refetch} />
                     </Suspense>
                   </DeferredMount>
