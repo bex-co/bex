@@ -371,6 +371,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **138** — [Per-service notification-override `GET`/`PATCH` omit the schema-required `serviceId`](138.md) ← `/qa-find-bugs-cli` sweep 806 2026-10-20
 
+- [ ] **139** — [Key Value REST refuses the hyphenated enum spellings its handler, MCP schema, and ADR021 all say are accepted](139.md) ← `/qa-find-bugs-cli` sweep 864 2026-10-20
+
 - [x] **134** — [`POST /blueprints` answers every fetch failure with a bare 500, hiding its own classified reason](done/134.md) ← `/qa-find-bugs-cli` loop 2026-10-19 — **DONE (2026-10-19)**
 
 - [x] **133** — [`POST /blueprints/generate` answers malformed JSON with a bare 500](done/133.md) ← `/qa-find-bugs-cli` loop 2026-10-19 — **DONE (2026-10-19)**
