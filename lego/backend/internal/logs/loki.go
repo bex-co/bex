@@ -18,6 +18,7 @@ package logs
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -686,6 +687,11 @@ func parseLokiStreams(lr lokiRangeResponse, q LogQuery) ([]LogEntry, error) {
 				continue
 			}
 			labels := entryLabels(st.Stream, q)
+			if labels[LabelType] == LogTypeRequest {
+				if id := requestLineID(pair[1]); id != "" {
+					labels[LabelRequestID] = id
+				}
+			}
 			out = append(out, LogEntry{
 				Timestamp: time.Unix(0, ns).UTC().Format(time.RFC3339Nano),
 				Message:   capLogMessage(canonicalHistoryMessage(pair[1], labels[LabelType])),
@@ -695,6 +701,19 @@ func parseLokiStreams(lr lokiRangeResponse, q LogQuery) ([]LogEntry, error) {
 	}
 	sort.SliceStable(out, func(i, j int) bool { return core.TimestampLess(out[i].Timestamp, out[j].Timestamp) })
 	return q.capToLimit(out), nil
+}
+
+// requestLineID is the Rndr-Id the edge minted for a request line (w8/m125):
+// Traefik's access log keeps that one request header, as request_Rndr-Id.
+// "" for a line without it (one logged before the edge minted ids).
+func requestLineID(line string) string {
+	var v struct {
+		ID string `json:"request_Rndr-Id"`
+	}
+	if json.Unmarshal([]byte(line), &v) != nil {
+		return ""
+	}
+	return v.ID
 }
 
 // canonicalHistoryMessage strips the single kubelet transport line terminator a
