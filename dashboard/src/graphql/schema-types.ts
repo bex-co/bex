@@ -3603,6 +3603,12 @@ export type SecretFileWithCursor = {
   secretFile: Maybe<SecretFileListValue>;
 };
 
+export type ServerPort = {
+  __typename: 'ServerPort';
+  port: Maybe<Scalars['Int']['output']>;
+  protocol: Maybe<Scalars['String']['output']>;
+};
+
 export type Service = {
   __typename: 'Service';
   autoDeploy: Maybe<Scalars['Boolean']['output']>;
@@ -3641,6 +3647,7 @@ export type Service = {
   nextRunAt: Maybe<Scalars['String']['output']>;
   notificationsToSend: Maybe<Scalars['String']['output']>;
   notifyOnFail: Maybe<Scalars['String']['output']>;
+  openPorts: Maybe<Array<ServerPort>>;
   outboundIps: Maybe<OutboundIPs>;
   ownerId: Maybe<Scalars['String']['output']>;
   phase: Maybe<Scalars['String']['output']>;

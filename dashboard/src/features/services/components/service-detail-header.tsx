@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   AlertTriangle,
@@ -32,6 +32,7 @@ import { CopyButton } from "@/common/components/copy-button";
 import { RelativeAge, RelativeUntil } from "@/common/components/relative-time";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { safeHttpHref } from "@/common/lib/external-url";
+import { cn } from "@/common/lib/utils/utils";
 import { AddSshKeyCta } from "@/features/ssh-keys/components/add-ssh-key-cta";
 import { RequiresSshKey } from "@/features/ssh-keys/components/requires-ssh-key";
 import { ManualDeployButton } from "@/features/services/components/manual-deploy-button";
@@ -49,6 +50,10 @@ import {
 import { serviceBaseForType } from "@/features/services/lib/service-base";
 import { sshRemedy } from "@/features/services/lib/ssh-remedy";
 import { autoSleepEligible } from "@/features/services/lib/idle-timeout";
+import {
+  openPortsDisplay,
+  type OpenPortsDisplay,
+} from "@/features/services/lib/port";
 import {
   isSleeping,
   isDeleting,
@@ -108,6 +113,7 @@ export function ServiceDetailHeader({
   // in that state and by-id reads 404, so this is belt-and-suspenders for any
   // transient/stale render.
   const safeServiceUrl = isDeleting(service) ? null : safeHttpHref(service.url);
+  const openPorts = openPortsDisplay(service);
 
   return (
     <div className="space-y-2 border-b px-4 py-3 sm:px-6">
@@ -166,7 +172,9 @@ export function ServiceDetailHeader({
         <div className="flex shrink-0 items-center gap-2">
           {/* A static_site has no running instance to SSH into — Render's
               static header carries only Manual Deploy (w5/m48/t001). */}
-          {!isStaticSite(service) && <ServiceConnectButton service={service} />}
+          {!isStaticSite(service) && (
+            <ServiceConnectButton service={service} openPorts={openPorts} />
+          )}
           <ManualDeployButton service={service} pending={pending !== null} />
         </div>
       </div>
@@ -241,25 +249,18 @@ export function ServiceDetailHeader({
               </div>
             ) : null}
           </>
-        ) : isPrivateService(service) && service.internalAddress ? (
+        ) : isPrivateService(service) &&
+          (service.internalAddress || openPorts.kind === "pending") ? (
           // A private service has no public URL — Render's header shows its
           // Service Address (the private-network `<slug>:<port>`) as copyable
           // text, never a link (the old cluster-internal href was dead from a
-          // browser). ADR041 D4, w9/m58.
-          <div className="flex min-w-0 items-center gap-1.5">
-            <span className="text-muted-foreground">
-              {t("services.headerServiceAddress")}
-            </span>
-            <span className="text-foreground truncate font-mono text-xs">
-              {service.internalAddress}
-            </span>
-            <CopyButton
-              value={service.internalAddress}
-              label={t("services.internalCopy")}
-              successText={t("services.internalCopied")}
-              errorText={t("services.internalCopyError")}
-            />
-          </div>
+          // browser). ADR041 D4, w9/m58. An image-port service also lists the
+          // other TCP ports its hostname serves, or says they are not known
+          // yet (w6/m148).
+          <ServiceAddressFact
+            address={service.internalAddress}
+            openPorts={openPorts}
+          />
         ) : safeServiceUrl ? (
           <div className="flex min-w-0 items-center gap-1.5">
             <a
@@ -351,7 +352,13 @@ function RegistryCredentialFact({ id }: { id: string }) {
   );
 }
 
-function ServiceConnectButton({ service }: { service: ServiceView }) {
+function ServiceConnectButton({
+  service,
+  openPorts,
+}: {
+  service: ServiceView;
+  openPorts: OpenPortsDisplay;
+}) {
   const { t } = useTranslations();
   const command = service.sshAddress ? `ssh ${service.sshAddress}` : "";
   // A link inside the menu (a remedy, the add-key CTA, the browser terminal)
@@ -374,21 +381,25 @@ function ServiceConnectButton({ service }: { service: ServiceView }) {
           if ((e.target as Element).closest("a[href]")) setOpen(false);
         }}
       >
-        {service.internalAddress ? (
+        {service.internalAddress || openPorts.kind === "pending" ? (
           // Render's Connect → Internal tab: the private-network
-          // `<slug>:<port>` sibling services dial (ADR041 D4, w9/m58).
+          // `<slug>:<port>` sibling services dial (ADR041 D4, w9/m58), plus
+          // an image-port service's other open ports (w6/m148).
           <>
             <DropdownMenuLabel className="flex items-center gap-2 px-0 pt-0">
               <Network className="size-4" />
               {t("services.connectInternal")}
             </DropdownMenuLabel>
-            <ConnectCodeRow
-              className="mb-2"
-              value={service.internalAddress}
-              copyLabel={t("services.internalCopy")}
-              copiedText={t("services.internalCopied")}
-              errorText={t("services.internalCopyError")}
-            />
+            {service.internalAddress ? (
+              <ConnectCodeRow
+                className="mb-2"
+                value={service.internalAddress}
+                copyLabel={t("services.internalCopy")}
+                copiedText={t("services.internalCopied")}
+                errorText={t("services.internalCopyError")}
+              />
+            ) : null}
+            <OpenPortsFact className="mb-2" openPorts={openPorts} />
             {/* Only public traffic reaches the activator that wakes a
                 sleeping Free web service (ADR003), so a sibling's internal
                 call fails while it sleeps. Shown while awake too: it will
@@ -477,6 +488,116 @@ function SshUnavailable({ service }: { service: ServiceView }) {
           {t(remedy.action.label)}
         </Link>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * A private service's Service Address fact: the copyable `<slug>:<port>`, and
+ * for an image-port service its open ports beside it (wrapping under it on a
+ * narrow screen), or — before the first build has read the image — why there
+ * is no address yet. The row keeps the copy button's height in every state so
+ * it lines up with the header skeleton's address row.
+ */
+function ServiceAddressFact({
+  address,
+  openPorts,
+}: {
+  address: string | null;
+  openPorts: OpenPortsDisplay;
+}) {
+  const { t } = useTranslations();
+  return (
+    <div className="flex min-h-8 min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5">
+      <div className="flex min-w-0 items-center gap-1.5">
+        <span className="text-muted-foreground">
+          {t("services.headerServiceAddress")}
+        </span>
+        {address ? (
+          <>
+            <span className="text-foreground truncate font-mono text-xs">
+              {address}
+            </span>
+            <CopyButton
+              value={address}
+              label={t("services.internalCopy")}
+              successText={t("services.internalCopied")}
+              errorText={t("services.internalCopyError")}
+            />
+          </>
+        ) : null}
+      </div>
+      <OpenPortsFact openPorts={openPorts} />
+    </div>
+  );
+}
+
+/**
+ * The open-ports line beside a Service Address: the port list, or why there is
+ * none yet (image-port discovery pending); nothing for a single-port service.
+ */
+function OpenPortsFact({
+  openPorts,
+  className,
+}: {
+  openPorts: OpenPortsDisplay;
+  className?: string;
+}) {
+  const { t } = useTranslations();
+  if (openPorts.kind === "list") {
+    return <OpenPortsList className={className} ports={openPorts.ports} />;
+  }
+  if (openPorts.kind === "pending") {
+    return (
+      <p className={cn("text-muted-foreground text-xs", className)}>
+        {t("services.openPortsPending")}
+      </p>
+    );
+  }
+  return null;
+}
+
+/**
+ * The TCP ports a private service's hostname serves, dot-separated
+ * (`8123 · 9000 · 9009`), the primary — the `<slug>:<port>` suffix — marked.
+ */
+function OpenPortsList({
+  ports,
+  className,
+}: {
+  ports: { port: number; primary: boolean }[];
+  className?: string;
+}) {
+  const { t } = useTranslations();
+  const labelId = useId();
+  return (
+    <div
+      className={cn(
+        "text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs",
+        className,
+      )}
+    >
+      <span id={labelId}>{t("services.openPorts")}</span>
+      <ul
+        aria-labelledby={labelId}
+        className="text-foreground flex flex-wrap items-center gap-x-1.5 gap-y-0.5 font-mono tabular-nums"
+      >
+        {ports.map(({ port, primary }, i) => (
+          <li key={port} className="flex items-center gap-1.5">
+            {i > 0 ? (
+              <span aria-hidden="true" className="text-muted-foreground">
+                ·
+              </span>
+            ) : null}
+            {port}
+            {primary ? (
+              <Badge variant="secondary" className="px-1.5 py-0 font-sans">
+                {t("services.openPortsPrimary")}
+              </Badge>
+            ) : null}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

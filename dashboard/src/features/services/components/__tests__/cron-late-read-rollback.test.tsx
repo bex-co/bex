@@ -176,6 +176,7 @@ const link = new ApolloLink(
               notificationsToSend: "default",
               renderSubdomainPolicy: null,
               port: 0,
+              openPorts: null,
               healthCheckPath: "",
               maxShutdownDelaySeconds: null,
               preDeployCommand: "",

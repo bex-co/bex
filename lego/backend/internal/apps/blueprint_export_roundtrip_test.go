@@ -107,6 +107,10 @@ var blueprintNotExported = map[string]exportGap{
 		reason:  "render.yaml has no port and reserves PORT: a Blueprint create listens on the default port, and the port verb sets it",
 		applies: func(appv1alpha1.AppSpec) bool { return true },
 	},
+	"PortMode": {
+		reason:  "a creation default, not a Blueprint field (w6/m148): render.yaml has no port mode, and creating the exported Git-built Docker private service applies the same image-port default (an explicit port, the image-configured mode, is the Port gap above)",
+		applies: func(spec appv1alpha1.AppSpec) bool { return spec.PortMode != "" },
+	},
 	"NotifyOnFail": {
 		reason:  "not a Blueprint field: a sync keeps the service's own setting",
 		applies: func(appv1alpha1.AppSpec) bool { return true },

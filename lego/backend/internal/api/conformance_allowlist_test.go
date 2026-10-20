@@ -48,6 +48,10 @@ var conformanceAllowlist = map[string][]conformanceDivergence{
 	// bex truthfully omits values that are not configured or known and exposes
 	// its currently implemented details as a documented partial REST surface.
 	// ADR018 §Services & lifecycle and §Resource metadata contract.
+	// openPorts, required on webServiceDetails and privateServiceDetails, is no
+	// longer one of the omissions: it is emitted since w6/m148 and its shape is
+	// pinned by apps.TestRenderServiceDetailsOpenPorts, so this union entry no
+	// longer masks it.
 	"list-services": knownConformanceDivergences(
 		"ADR018 §Services & lifecycle / §Resource metadata contract: optional truthful metadata and partial serviceDetails projection",
 		`serviceDetails: does not match the documented union`,

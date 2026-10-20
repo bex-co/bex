@@ -60,11 +60,15 @@ import (
 // — the operator does the mechanism.
 type Service struct {
 	*core.Base
-	// ImageCompatibilityWorkspaces gates ADR089 creation defaults per creating
-	// workspace ("*" admits every workspace) until the runtime and private-port
-	// integration checks have passed. Persisted policies survive removal from
-	// the set; it never changes an existing service's privileges.
+	// ImageCompatibilityWorkspaces gates ADR089's image-v1 container policy per
+	// creating workspace ("*" admits every workspace) until the runtime and
+	// isolation checks have passed. Persisted policies survive removal from the
+	// set; it never changes an existing service's privileges.
 	ImageCompatibilityWorkspaces map[string]bool
+	// PrivateImagePortsDisabled turns off image-derived ports as the creation
+	// default for new Git-built Docker private services (BEX_PRIVATE_IMAGE_PORTS
+	// =off, the w6/m148 rollback switch). Existing rows keep their port mode.
+	PrivateImagePortsDisabled bool
 	// DomainTraffic checks whether a custom domain's traffic DNS points at the
 	// service before any custom host enters App.spec and becomes routable
 	// (ADR005: the traffic record is the verification). nil uses the system
@@ -519,9 +523,14 @@ type AppView struct {
 	// (w4/m121): before that the number existed only as the suffix of
 	// internalAddress, so a caller who had just set a port at create could not
 	// read it back, and GraphQL answered `Cannot query field "port"`.
-	Port      int32  `json:"port,omitempty"`
-	CreatedAt string `json:"createdAt"`
-	UpdatedAt string `json:"updatedAt,omitempty"`
+	Port int32 `json:"port,omitempty"`
+	// OpenPorts is Render's serviceDetails.openPorts (`serverPort[]`, required
+	// on web and private services): the TCP ports the stable hostnames serve.
+	// nil for types without a network address; empty, never an invented 3000,
+	// while an image-port private service's discovery is pending (w6/m148).
+	OpenPorts []ServerPortView `json:"openPorts,omitempty"`
+	CreatedAt string           `json:"createdAt"`
+	UpdatedAt string           `json:"updatedAt,omitempty"`
 	// DashboardURL is the control-plane detail route, in Render's
 	// `/{web|worker|pserv|static|cron}/{id}` shape (docs/render-artifacts/
 	// dashboard-routes.md). URL above remains the hosted data-plane endpoint;
@@ -1107,6 +1116,7 @@ func view(a *appv1alpha1.App) AppView {
 		// drift (ADR041 D2/D4).
 		InternalAddress:      a.InternalAddress(),
 		Port:                 addressablePort(a),
+		OpenPorts:            serverPorts(a.OpenPorts()),
 		URLs:                 urls,
 		Image:                store.PublicImageRef(a.Status.Image),
 		SourceImage:          a.Spec.Image,
@@ -2419,17 +2429,25 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 
 // Resolve creation defaults before dry-run or any durable write. Existing
 // services never pass through this helper during Blueprint synchronization.
+//
+// Two independent decisions (ADR089 § Port slice decisions, w6/m148): a new
+// Git-built Docker private service publishes its image's TCP ports in every
+// workspace unless BEX_PRIVATE_IMAGE_PORTS=off, while the image-v1 container
+// policy stays scoped to BEX_IMAGE_COMPATIBILITY_WORKSPACES.
 func (s *Service) configureNewImageCompatibility(ctx context.Context, spec *appv1alpha1.AppSpec, explicitPort bool) error {
-	if s.imageCompatibilityAdmits(ctx) && spec.Type != appv1alpha1.TypeStaticSite &&
-		(spec.Image != "" || spec.Runtime == "docker" || spec.Builder == "dockerfile") {
+	if spec.Type == appv1alpha1.TypeStaticSite ||
+		(spec.Image == "" && spec.Runtime != "docker" && spec.Builder != "dockerfile") {
+		return nil
+	}
+	if s.imageCompatibilityAdmits(ctx) {
 		spec.ContainerPolicy = appv1alpha1.ContainerPolicyImageV1
-		if spec.Type == appv1alpha1.TypePrivateService && spec.Repo != "" {
-			spec.PortMode = appv1alpha1.PortModeImageV1
-			if explicitPort {
-				spec.PortMode = appv1alpha1.PortModeImageConfiguredV1
-				if appv1alpha1.IsReservedImagePort(spec.Port) {
-					return fmt.Errorf("%w: private image port %d is reserved", core.ErrBadRequest, spec.Port)
-				}
+	}
+	if spec.Type == appv1alpha1.TypePrivateService && spec.Repo != "" && !s.PrivateImagePortsDisabled {
+		spec.PortMode = appv1alpha1.PortModeImageV1
+		if explicitPort {
+			spec.PortMode = appv1alpha1.PortModeImageConfiguredV1
+			if appv1alpha1.IsReservedImagePort(spec.Port) {
+				return fmt.Errorf("%w: private image port %d is reserved", core.ErrBadRequest, spec.Port)
 			}
 		}
 	}
@@ -4556,6 +4574,26 @@ func (s *Service) SetPort(ctx context.Context, name string, port int32) (AppView
 	}
 	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetPort)
 	return result, nil
+}
+
+// ServerPortView is Render's `serverPort`: one open port and its protocol.
+// bex discovers TCP ports only, so protocol is always "TCP" today.
+type ServerPortView struct {
+	Port     int32  `json:"port"`
+	Protocol string `json:"protocol"`
+}
+
+// serverPorts renders App.OpenPorts in Render's shape, keeping nil (no network
+// address) distinct from empty (discovery pending).
+func serverPorts(ports []int32) []ServerPortView {
+	if ports == nil {
+		return nil
+	}
+	out := make([]ServerPortView, len(ports))
+	for i, port := range ports {
+		out[i] = ServerPortView{Port: port, Protocol: string(corev1.ProtocolTCP)}
+	}
+	return out
 }
 
 // addressablePort reports the port a read surface publishes: the effective

@@ -215,6 +215,7 @@ type Config struct {
 	AgentMaxLiveSandboxesPerWorkspace  int
 	MaxBlueprintGroupings              int
 	ImageCompatibilityWorkspaces       map[string]bool
+	PrivateImagePortsDisabled          bool
 	MaxEnvGroupsPerWorkspace           int
 	MaxGitConnectionsPerWorkspace      int
 	MaxWorkspacesPerGitInstallation    int
@@ -523,6 +524,7 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	cfg.AgentMaxLiveSandboxesPerWorkspace = p.zeroableInt("BEX_AGENT_MAX_LIVE_SANDBOXES_PER_WORKSPACE", 5)
 	cfg.MaxBlueprintGroupings = p.zeroableInt("BEX_MAX_BLUEPRINT_GROUPINGS", 1000)
 	cfg.ImageCompatibilityWorkspaces = p.imageCompatibilityWorkspaces("BEX_IMAGE_COMPATIBILITY_WORKSPACES")
+	cfg.PrivateImagePortsDisabled = !p.onOff("BEX_PRIVATE_IMAGE_PORTS", true)
 	// Round-11 #3, ADR075 §2, codex-security geyRc8 F1 + round 18 quotas.
 	cfg.MaxEnvGroupsPerWorkspace = p.zeroableInt("BEX_MAX_ENV_GROUPS_PER_WORKSPACE", 100)
 	cfg.MaxGitConnectionsPerWorkspace = p.zeroableInt("BEX_MAX_GIT_CONNECTIONS_PER_WORKSPACE", 10)
@@ -656,6 +658,22 @@ func (p *parser) imageCompatibilityWorkspaces(name string) map[string]bool {
 		set[v] = true
 	}
 	return set
+}
+
+// onOff — policy "fail": "on" or "off"; unset ⇒ def. Any other value refuses
+// startup, so a typo can never silently flip a creation default.
+func (p *parser) onOff(name string, def bool) bool {
+	switch v := strings.TrimSpace(p.getenv(name)); v {
+	case "":
+		return def
+	case "on":
+		return true
+	case "off":
+		return false
+	default:
+		p.errorf("%s: %q is not on or off", name, v)
+		return def
+	}
 }
 
 // str: unset ⇒ def (no failure mode).

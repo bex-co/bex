@@ -415,6 +415,16 @@ func renderServiceDetails(a AppView, svcType, region string) map[string]any {
 	if a.Port > 0 {
 		details["port"] = int(a.Port)
 	}
+	// openPorts is required on Render's webServiceDetails and
+	// privateServiceDetails, and absent on every other type. An image-port
+	// service whose discovery is pending reports [] rather than a guess (w6/m148).
+	if svcType == appv1alpha1.TypeWebService || svcType == renderPrivateService {
+		open := make([]any, 0, len(a.OpenPorts))
+		for _, p := range a.OpenPorts {
+			open = append(open, map[string]any{"port": int(p.Port), "protocol": p.Protocol})
+		}
+		details["openPorts"] = open
+	}
 	for _, field := range []struct{ key, value string }{
 		// internalAddress is a documented bex extension (ADR041 D4): Render's REST
 		// has no internal-address field — its consumers derive `<slug>:<port>` from
