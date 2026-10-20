@@ -1739,7 +1739,7 @@ func TestRecordDeploySupersededRollbackEmitsNoBuildFacts(t *testing.T) {
 	if len(deploys) != 1 {
 		t.Fatalf("deploys after create = %+v, want one", deploys)
 	}
-	if _, err := st.TransitionDeploy(ctx, deploys[0].ID, DeployCanceled, "", "", "", "", nil); err != nil {
+	if _, err := st.TransitionDeploy(ctx, deploys[0].ID, DeployCanceled, RanImage{}, "", "", "", nil); err != nil {
 		t.Fatalf("clear the create row: %v", err)
 	}
 

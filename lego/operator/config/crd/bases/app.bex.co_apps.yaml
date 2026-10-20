@@ -1171,6 +1171,24 @@ spec:
               image:
                 description: Image is the OCI image of the active revision.
                 type: string
+              imageDigest:
+                description: |-
+                  ImageDigest is the digest the serving release's app container runs,
+                  attributed to that release's generation. Nil until a release serves with
+                  a known digest, and for releases without a long-running app container
+                  (static sites; cron jobs whose image is a tag).
+                properties:
+                  digest:
+                    description: Digest is the content digest, "sha256:<64 hex>".
+                    type: string
+                  generation:
+                    description: Generation is the release generation that ran Digest.
+                    format: int64
+                    type: integer
+                required:
+                - digest
+                - generation
+                type: object
               imageNetwork:
                 description: ImageNetwork is the verified private port set for the
                   candidate image.

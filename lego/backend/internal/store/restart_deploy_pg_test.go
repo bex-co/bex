@@ -44,7 +44,7 @@ func TestPGRestartNamesThePendingDeployItReplaces(t *testing.T) {
 		t.Fatalf("CreateApp history = %+v (err %v), want its first deploy", history, err)
 	}
 	executing := history[0]
-	if _, err := st.TransitionDeploy(ctx, executing.ID, DeployBuildInProgress, "", "", "", "", nil); err != nil {
+	if _, err := st.TransitionDeploy(ctx, executing.ID, DeployBuildInProgress, RanImage{}, "", "", "", nil); err != nil {
 		t.Fatal(err)
 	}
 	pending, err := st.CreateDeploy(ctx, row.ID, TriggerAPI, "", executing.Generation+1, CommitInfo{}, "")

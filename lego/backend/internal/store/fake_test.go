@@ -853,7 +853,7 @@ func (m *memStore) ListOpenDeploys(_ context.Context) ([]Deploy, error) {
 	return out, nil
 }
 
-func (m *memStore) TransitionDeploy(_ context.Context, id, status, resolvedImage, failureReason, _, cancelReason string, startedAt *time.Time) (bool, error) {
+func (m *memStore) TransitionDeploy(_ context.Context, id, status string, ran RanImage, failureReason, _, cancelReason string, startedAt *time.Time) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	d, ok := m.deploys[id]
@@ -874,8 +874,11 @@ func (m *memStore) TransitionDeploy(_ context.Context, id, status, resolvedImage
 		d.OverlapPending = false
 	}
 	d.UpdatedAt = now
-	if resolvedImage != "" {
-		d.ResolvedImage = resolvedImage
+	if ran.Ref != "" {
+		d.ResolvedImage = ran.Ref
+	}
+	if ran.SHA != "" {
+		d.ImageSHA = ran.SHA
 	}
 	if failureReason != "" {
 		d.FailureReason = failureReason
@@ -923,7 +926,7 @@ func (m *memStore) CloseDeploy(ctx context.Context, id, status, resolvedImage st
 	if !IsTerminalDeployStatus(status) || status == DeployDeactivated {
 		return false, nil
 	}
-	return m.TransitionDeploy(ctx, id, status, resolvedImage, "", "", "", nil)
+	return m.TransitionDeploy(ctx, id, status, RanImage{Ref: resolvedImage}, "", "", "", nil)
 }
 
 func (m *memStore) DeployIDByGeneration(_ context.Context, appID string, generation int64) (string, error) {

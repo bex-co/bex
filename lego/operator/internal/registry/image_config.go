@@ -39,6 +39,10 @@ type ImageConfig struct {
 }
 
 var imageDigestPattern = regexp.MustCompile(`^sha256:[a-f0-9]{64}$`)
+
+// IsDigest reports whether s is a sha256 content digest, "sha256:<64 hex>".
+func IsDigest(s string) bool { return imageDigestPattern.MatchString(s) }
+
 var imageTagPattern = regexp.MustCompile(`^[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,127}$`)
 var imageRepoPattern = regexp.MustCompile(`^[a-z0-9]+(?:[._-]+[a-z0-9]+)*(?:/[a-z0-9]+(?:[._-]+[a-z0-9]+)*)*$`)
 

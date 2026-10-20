@@ -22,6 +22,7 @@ const deployState: {
     status: "live",
     trigger: "api",
     image: "registry.example.com/web:1",
+    imageSha: "",
     rollbackOf: "",
     commitId: "",
     commitMessage: "",

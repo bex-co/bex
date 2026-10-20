@@ -32,6 +32,7 @@ query Deploys(
     status
     trigger
     image
+    imageSha
     rollbackOf
     commitId
     commitMessage

@@ -794,7 +794,7 @@ func (r *Reconciler) settleAbandonedDeploys(ctx context.Context, d DesiredApp, o
 		if d.CreationPending {
 			reason = "the initial service configuration was not committed within the deployment window"
 		}
-		ok, err := r.Store.TransitionDeploy(ctx, deploy.ID, status, "", reason, "", "", nil)
+		ok, err := r.Store.TransitionDeploy(ctx, deploy.ID, status, RanImage{}, reason, "", "", nil)
 		if err != nil {
 			log.Printf("controlplane: settle abandoned deploy %s to %s: %v", deploy.ID, status, err)
 			continue
@@ -900,19 +900,22 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	if status == "" {
 		return
 	}
-	// resolvedImage backfills Deploy.ResolvedImage (Rollback's restore target,
-	// w2/m10) only on a genuine live convergence — cur.Status.Image is the
-	// image the operator actually ran, whether resolved from a build or taken
-	// straight from spec.image. Left "" on a failed/timed-out close: a deploy
-	// that never went live is correctly never a valid rollback target.
-	resolvedImage := ""
+	// ran backfills Deploy.ResolvedImage (Rollback's restore target, w2/m10)
+	// only on a genuine live convergence — cur.Status.Image is the image the
+	// operator actually ran, whether resolved from a build or taken straight
+	// from spec.image — and Deploy.ImageSHA with the digest the operator
+	// recorded for this row's own release (w8/m122). Left empty on a
+	// failed/timed-out close: a deploy that never went live is correctly never
+	// a valid rollback target, and ran no digest.
+	var ran RanImage
 	if status == DeployLive {
 		switch {
 		case matchesObservedRelease:
-			resolvedImage = cur.Status.Image
+			ran.Ref = cur.Status.Image
 		case servesGeneration(cur, open.Generation):
-			resolvedImage = r.servedReleaseImage(ctx, cur, open.Generation)
+			ran.Ref = r.servedReleaseImage(ctx, cur, open.Generation)
 		}
+		ran.SHA = releaseImageDigest(cur, open.Generation)
 	}
 	// w9/011: a failing close carries its actionable cause rather than an opaque
 	// terminal state; deployCloseFailureReason owns the sourcing order.
@@ -951,7 +954,7 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 			startedAt = failedPreDeployStart(cur, open)
 		}
 	}
-	ok, err := r.Store.TransitionDeploy(ctx, open.ID, status, resolvedImage, failureReason, failureCode, cancelReason, startedAt)
+	ok, err := r.Store.TransitionDeploy(ctx, open.ID, status, ran, failureReason, failureCode, cancelReason, startedAt)
 	if err != nil {
 		log.Printf("controlplane: transition deploy %s to %s: %v", open.ID, status, err)
 		return
@@ -1549,6 +1552,17 @@ func (r *Reconciler) servedReleaseImage(ctx context.Context, app *appv1alpha1.Ap
 		return app.Status.Image
 	}
 	return ""
+}
+
+// releaseImageDigest is the digest the operator recorded for generation's
+// release (status.imageDigest, w8/m122), or "" when the record is another
+// release's — never a previous release's digest on a newer row.
+func releaseImageDigest(app *appv1alpha1.App, generation int64) string {
+	d := app.Status.ImageDigest
+	if d == nil || generation == 0 || d.Generation != generation {
+		return ""
+	}
+	return d.Digest
 }
 
 // servesGeneration reports that status.activeRevision names generation: the

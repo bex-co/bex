@@ -50,10 +50,12 @@ type renderCommit struct {
 // renderDeployImage is Render's nested deploy.image object
 // (components.schemas.Deploy: "Image information used when creating the
 // deploy. Not present for Git-backed deploys" — {ref, registryCredential,
-// sha}), verified against the render-oss/cli generated client. bex only
-// tracks the resolved image string, reported as Ref.
+// sha}), verified against the render-oss/cli generated client. Ref is the
+// image string bex ran; Sha is the digest it resolved to once the deploy went
+// live (w8/m122), omitted while unknown. registryCredential is not reported.
 type renderDeployImage struct {
 	Ref string `json:"ref,omitempty"`
+	Sha string `json:"sha,omitempty"`
 }
 
 // renderDeploy mirrors Render's deploy object for the fields bex can honor
@@ -137,7 +139,7 @@ func toRenderDeploy(d DeployView) renderDeploy {
 		StallReason:     d.StallReason,
 	}
 	if d.Image != "" {
-		out.Image = &renderDeployImage{Ref: d.Image}
+		out.Image = &renderDeployImage{Ref: d.Image, Sha: d.ImageSHA}
 	}
 	if d.CommitID != "" {
 		rc := &renderCommit{ID: d.CommitID, Message: d.CommitMessage}

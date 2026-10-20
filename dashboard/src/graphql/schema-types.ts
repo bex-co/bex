@@ -647,6 +647,7 @@ export type Deploy = {
   finishedAt: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
   image: Maybe<Scalars['String']['output']>;
+  imageSha: Maybe<Scalars['String']['output']>;
   preDeployStatus: Maybe<Scalars['String']['output']>;
   rollbackOf: Maybe<Scalars['String']['output']>;
   serviceId: Maybe<Scalars['String']['output']>;

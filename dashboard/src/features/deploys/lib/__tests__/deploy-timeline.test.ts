@@ -9,6 +9,7 @@ function deploy(over: Partial<DeployView> = {}): DeployView {
     status: "live",
     trigger: "api",
     image: "",
+    imageSha: "",
     rollbackOf: "",
     commitId: "",
     commitMessage: "",

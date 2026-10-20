@@ -54,6 +54,19 @@ const enDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploy detail header: explicit label distinguishing deploy status from service phase",
   },
+  "deploys.imageDigestCopy": {
+    message: "Copy image digest",
+    description:
+      "Deploy header: accessible label of the button copying the image digest the deploy ran",
+  },
+  "deploys.imageDigestCopied": {
+    message: "Image digest copied",
+    description: "Deploy header: toast after copying the image digest",
+  },
+  "deploys.imageDigestCopyError": {
+    message: "Couldn't copy to clipboard",
+    description: "Deploy header: toast when copying the image digest fails",
+  },
   "deploys.created": {
     message: "Created",
     description: "Deploy header: created-at label",

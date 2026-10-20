@@ -3133,6 +3133,7 @@ func (r *AppReconciler) hibernated(ctx context.Context, app *appv1alpha1.App, im
 func (r *AppReconciler) markRunning(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, replicas int32, logMsg string, logKVs ...any) error {
 	app.Status.Phase = appv1alpha1.PhaseRunning
 	app.Status.ActiveRevision = releaseRevision(app)
+	r.recordImageDigest(ctx, app, dep)
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Deployed",
 		Message:            fmt.Sprintf("%d/%d replicas ready", dep.Status.ReadyReplicas, replicas),
@@ -4365,6 +4366,7 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	app.Status.URL = "" // a cron_job has no serving URL
 	app.Status.URLs = nil
 	app.Status.ActiveRevision = releaseRevision(app)
+	r.recordImageDigest(ctx, app, nil)
 	app.Status.ObservedGeneration = app.Generation
 	if app.Spec.Suspended {
 		app.Status.Phase = appv1alpha1.PhaseHibernated
