@@ -1,0 +1,78 @@
+# Connects to bex-db as Grafana's two analytics readers, with the same mounted
+# Secrets and sslmode=verify-full, so a stale CA, wrong password, lost grant or
+# broken path fails here instead of only when someone opens a dashboard
+# (AnalyticsDatasourceProbeStale). No Kubernetes API access. Production-only,
+# like the sealed reader Secrets it mounts.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: analytics-datasource-probe
+  namespace: monitoring
+spec:
+  schedule: "*/10 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 120
+      template:
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          enableServiceLinks: false
+          nodeSelector:
+            bex.co/pool: platform
+          tolerations:
+            - key: bex.co/platform
+              operator: Equal
+              value: "true"
+              effect: NoSchedule
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 70 # postgres in the alpine image
+            runAsGroup: 70
+            fsGroup: 70 # the 0440 Secret files are group-readable by the probe only
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: probe
+              image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+              command: ["/bin/sh", "-ceu"]
+              args:
+                - |
+                  for profile in product cli; do
+                    PGPASSWORD="$(cat "/readers/$profile/password")" \
+                    PGSSLROOTCERT="/readers/$profile/ca.crt" \
+                    PGUSER="bex_${profile}_analytics" \
+                      psql -X -c "SELECT 1 FROM ${profile}_analytics.events LIMIT 1" >/dev/null
+                    echo "ok: ${profile} analytics reader (verify-full)"
+                  done
+              env:
+                - { name: PGHOST, value: bex-db-rw.bex-system.svc }
+                - { name: PGPORT, value: "5432" }
+                - { name: PGDATABASE, value: bex }
+                - { name: PGSSLMODE, value: verify-full }
+                - { name: PGCONNECT_TIMEOUT, value: "10" }
+                - { name: PGAPPNAME, value: analytics-datasource-probe }
+              resources:
+                requests: { cpu: 10m, memory: 16Mi }
+                limits: { memory: 64Mi }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - { name: product, mountPath: /readers/product, readOnly: true }
+                - { name: cli, mountPath: /readers/cli, readOnly: true }
+          volumes:
+            - name: product
+              secret:
+                secretName: grafana-product-analytics
+                defaultMode: 0440
+            - name: cli
+              secret:
+                secretName: grafana-cli-analytics
+                defaultMode: 0440
