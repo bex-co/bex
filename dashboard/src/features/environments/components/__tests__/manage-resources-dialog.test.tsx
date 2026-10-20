@@ -27,9 +27,12 @@ vi.mock("@/features/environments/hooks/use-set-environment-env-groups", () => ({
   useSetEnvironmentEnvGroups: () => ({ setEnvGroups, busyId: null }),
 }));
 
+const groupsOverride = vi.hoisted(() => ({
+  groups: null as unknown[] | null,
+}));
 vi.mock("@/features/env-groups/hooks/use-env-groups", () => ({
   useEnvGroups: () => ({
-    groups: [
+    groups: groupsOverride.groups ?? [
       {
         id: "evg-shared",
         name: "shared",
@@ -54,7 +57,14 @@ const scope = vi.hoisted(() => ({ environments: [] as unknown[] }));
 vi.mock("@/features/env-groups/hooks/use-env-group-scope-index", () => ({
   useEnvGroupScopeIndex: () => ({
     environments: scope.environments,
+    byId: new Map(
+      (scope.environments as Array<{ id: string }>).map((e) => [e.id, e]),
+    ),
+    projects: [],
     ready: true,
+    loading: false,
+    error: undefined,
+    retry: () => undefined,
   }),
 }));
 const caps = vi.hoisted(() => ({ loaded: true, canManage: true }));
@@ -124,6 +134,7 @@ const env: EnvironmentView = {
 };
 
 beforeEach(() => {
+  groupsOverride.groups = null;
   scope.environments = [];
   caps.loaded = true;
   caps.canManage = true;
@@ -207,6 +218,54 @@ describe("ManageResourcesDialog", () => {
     expect(name).toBe("staging");
     expect([...ids].sort()).toEqual(["web", "worker"]);
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("confirms before a Save that strands a linked group (w4/m238)", async () => {
+    groupsOverride.groups = [
+      {
+        id: "evg-prod",
+        name: "prod-group",
+        environmentId: "evm-prod",
+        serviceLinks: ["api"],
+        envVarKeys: [],
+        secretFileNames: [],
+      },
+    ];
+    scope.environments = [
+      {
+        id: "evm-prod",
+        name: "Production",
+        projectId: "prj-1",
+        serviceIds: [],
+        databaseIds: [],
+        keyValueIds: [],
+        envGroupIds: [],
+      },
+    ];
+    const user = userEvent.setup();
+    renderDialog();
+
+    // Unchecking "api" removes it from every environment, stranding the
+    // Production-scoped group linked to it.
+    await user.click(screen.getByRole("checkbox", { name: /api/ }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(
+      await screen.findByText("This move leaves linked groups behind"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("prod-group")).toBeInTheDocument();
+    expect(setServices).not.toHaveBeenCalled();
+
+    // Cancel writes nothing; the dialog stays open for another attempt.
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(setServices).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Move anyway" }),
+    );
+    expect(setServices).toHaveBeenCalledTimes(1);
+    expect(setServices).toHaveBeenCalledWith("env-1", "staging", []);
   });
 
   it("switches to the Databases tab and full-replaces database membership", async () => {

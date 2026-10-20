@@ -615,7 +615,7 @@ describe("EnvGroupDetailPage", () => {
     expect(linkGroup).toHaveBeenCalledWith("eg1", "worker");
   });
 
-  it("offers only same-Environment services and flags legacy drift", async () => {
+  it("offers only same-Environment services and flags out-of-scope drift", async () => {
     detailState.group = group({
       environmentId: "env-a",
       serviceLinks: ["legacy-b"],
@@ -635,7 +635,7 @@ describe("EnvGroupDetailPage", () => {
     renderDetail();
 
     expect(
-      await screen.findByText("Legacy link outside this group's Environment"),
+      await screen.findByText("Linked outside this group's Environment"),
     ).toBeInTheDocument();
     await user.click(screen.getByRole("combobox"));
     expect(

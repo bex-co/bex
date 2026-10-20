@@ -225,6 +225,32 @@ const enEnvironments: Record<string, TranslationEntry> = {
     message: 'Services for "{name}" updated.',
     description: "Toast shown after an environment's services are updated",
   },
+  "environments.strandedMoveTitle": {
+    message: "This move leaves linked groups behind",
+    description:
+      "Confirmation title shown before a move that strands an environment-scoped group link (w4/m238)",
+  },
+  "environments.strandedMoveBody": {
+    message:
+      "These environment groups stay linked to the moving service, and their variables and files keep applying to it until the group is unlinked or moved:",
+    description:
+      "Confirmation body: the stranded groups keep feeding the service after the move",
+  },
+  "environments.strandedMoveConfirm": {
+    message: "Move anyway",
+    description: "Confirm button on the stranded-groups move confirmation",
+  },
+  "environments.strandedScopeWorkspace": {
+    message: "Workspace",
+    description:
+      "Scope label for a stranded group that is scoped to the whole workspace",
+  },
+  "environments.strandedScopeUnknown": {
+    message:
+      "Couldn't check linked environment groups yet — wait for the list to load and try again.",
+    description:
+      "Toast shown when a move is attempted before the group/scope reads resolve",
+  },
   "environments.assignError": {
     message: 'Failed to update services for "{name}".',
     description: "Toast shown when updating an environment's services fails",

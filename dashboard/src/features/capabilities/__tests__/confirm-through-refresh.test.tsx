@@ -55,6 +55,19 @@ vi.mock("@/features/projects/components/move-to-project-menu", () => ({
   MoveToProjectMenu: () => null,
 }));
 
+// w4/m238: the row actions consult the stranded-link guard; inert here.
+vi.mock("@/features/env-groups/hooks/use-stranded-link-guard", () => ({
+  useStrandedLinkGuard: () => ({
+    groups: [],
+    ready: true,
+    loading: false,
+    error: undefined,
+    retry: () => undefined,
+    strandedFor: () => [],
+    scopeNameFor: () => undefined,
+  }),
+}));
+
 import {
   DeployActionsDocument,
   ServerActionsDocument,

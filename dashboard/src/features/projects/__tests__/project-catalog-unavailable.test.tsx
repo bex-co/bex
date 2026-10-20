@@ -32,6 +32,20 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("@/features/workspaces/context/hooks", () =>
   mockWorkspaceContext("tea-1"),
 );
+// w4/m238: the stranded-link guard is inert here so the query accounting
+// stays about the catalog reads.
+vi.mock("@/features/env-groups/hooks/use-stranded-link-guard", () => ({
+  useStrandedLinkGuard: () => ({
+    groups: [],
+    ready: true,
+    loading: false,
+    error: undefined,
+    retry: () => undefined,
+    strandedFor: () => [],
+    scopeNameFor: () => undefined,
+  }),
+}));
+
 vi.mock("@/features/environments/components/manage-resources-dialog", () => ({
   ManageResourcesDialog: () => null,
 }));

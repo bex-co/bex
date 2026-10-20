@@ -1062,6 +1062,22 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Env-groups badge: this group is linked to the current service",
   },
+  "services.envGroupWorkspaceScope": {
+    message: "Workspace",
+    description: "Scope label for a workspace-scoped environment group",
+  },
+  "services.envGroupOutOfScope": {
+    message:
+      "Scoped to {groupScope}, but this service is in {serviceScope} — its variables and files still apply.",
+    description:
+      "Notice on a linked group whose scope no longer matches the service (w4/m238)",
+  },
+  "services.envGroupOutOfScopeNoEnvironment": {
+    message:
+      "Scoped to {groupScope}, but this service has no environment — its variables and files still apply.",
+    description:
+      "Notice on a linked group scoped to an environment while the service has none (w4/m238)",
+  },
   "services.envGroupEmptyContents": {
     message: "No variables or files yet.",
     description: "Env-groups: shown when a group has no vars or secret files",

@@ -215,6 +215,31 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     message: "已更新“{name}”的服务。",
     description: "Toast shown after an environment's services are updated",
   },
+  "environments.strandedMoveTitle": {
+    message: "此次移动会留下已关联的环境组",
+    description:
+      "Confirmation title shown before a move that strands an environment-scoped group link (w4/m238)",
+  },
+  "environments.strandedMoveBody": {
+    message:
+      "以下环境组仍会关联到移动中的服务，其变量和文件会持续作用于该服务，直到取消关联或移动该组：",
+    description:
+      "Confirmation body: the stranded groups keep feeding the service after the move",
+  },
+  "environments.strandedMoveConfirm": {
+    message: "仍要移动",
+    description: "Confirm button on the stranded-groups move confirmation",
+  },
+  "environments.strandedScopeWorkspace": {
+    message: "工作区",
+    description:
+      "Scope label for a stranded group that is scoped to the whole workspace",
+  },
+  "environments.strandedScopeUnknown": {
+    message: "尚无法检查已关联的环境组——请等列表加载完成后重试。",
+    description:
+      "Toast shown when a move is attempted before the group/scope reads resolve",
+  },
   "environments.assignError": {
     message: "更新“{name}”的服务失败。",
     description: "Toast shown when updating an environment's services fails",

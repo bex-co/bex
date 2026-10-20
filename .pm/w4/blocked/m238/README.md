@@ -1,17 +1,17 @@
 # w4 · m238 — A moved service's out-of-scope environment group is flagged, not silent
 
-**Worker:** worker4 **Goal:** a service that leaves its environment while still linked to that environment's group is moved knowingly, and every page that shows the link says it is out of scope. Today the move is silent, the service page lists the link as ordinary, and the group page calls it "Legacy". **Status:** todo
+**Worker:** worker4 **Goal:** a service that leaves its environment while still linked to that environment's group is moved knowingly, and every page that shows the link says it is out of scope. Today the move is silent, the service page lists the link as ordinary, and the group page calls it "Legacy". **Status:** blocked (t001–t006 done 2026-10-20, loopx w4; t007 closeout gated on the dashboard deploy + live DoD replay)
 
 ## Tasks (in order)
 
 | id              | title                                                                                 | est | depends_on                 |
 | --------------- | ------------------------------------------------------------------------------------- | --- | -------------------------- |
-| [t001](t001.md) | Confirm before an environment move strands a scoped group link                        | 45m | —                          |
-| [t002](t002.md) | Same confirmation on Move to project and Remove from project                          | 25m | w4/m238/t001               |
-| [t003](t003.md) | Flag out-of-scope linked groups on the service Environment page; drop "Legacy" wording | 30m | —                          |
-| [t004](t004.md) | Render parity                                                                         | 20m | w4/m238/t002, w4/m238/t003 |
-| [t005](t005.md) | Simplify                                                                              | 15m | w4/m238/t004               |
-| [t006](t006.md) | Test coverage                                                                         | 30m | w4/m238/t004               |
+| [t001](done/t001.md) | Confirm before an environment move strands a scoped group link — **DONE** | 45m | —                          |
+| [t002](done/t002.md) | Same confirmation on Move to project and Remove from project — **DONE** | 25m | w4/m238/t001               |
+| [t003](done/t003.md) | Flag out-of-scope linked groups on the service Environment page; drop "Legacy" wording — **DONE** | 30m | —                          |
+| [t004](done/t004.md) | Render parity — **DONE** | 20m | w4/m238/t002, w4/m238/t003 |
+| [t005](done/t005.md) | Simplify — **DONE** | 15m | w4/m238/t004               |
+| [t006](done/t006.md) | Test coverage — **DONE** | 30m | w4/m238/t004               |
 | [t007](t007.md) | Closeout                                                                              | 20m | w4/m238/t005, w4/m238/t006 |
 
 Seven tasks, 185m (3h05m). One **major** finding, recorded with complete probes in [finding.md](finding.md). This milestone schedules the work only.

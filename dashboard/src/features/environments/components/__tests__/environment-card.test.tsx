@@ -47,6 +47,23 @@ vi.mock("@/features/environments/hooks/use-set-environment-env-groups", () => ({
   useSetEnvironmentEnvGroups: () => ({ setEnvGroups, busyId: null }),
 }));
 
+// w4/m238: the card consults the stranded-link guard before a bulk move.
+// Default: reads resolved, nothing stranded — individual tests override
+// strandedFor to exercise the confirmation.
+const strandedFor = vi.fn(() => [] as unknown[]);
+const guardReady = { current: true };
+vi.mock("@/features/env-groups/hooks/use-stranded-link-guard", () => ({
+  useStrandedLinkGuard: () => ({
+    groups: [],
+    ready: guardReady.current,
+    loading: false,
+    error: undefined,
+    retry: () => undefined,
+    strandedFor,
+    scopeNameFor: () => "Project / Production",
+  }),
+}));
+
 // The manage-resources dialog reaches Apollo when opened; the card never opens
 // it in these tests, but stub it so mounting the (closed) dialog stays inert.
 vi.mock("@/features/environments/components/manage-resources-dialog", () => ({
@@ -283,6 +300,85 @@ describe("EnvironmentCard", () => {
       "srv-api",
     ]);
     expect(screen.getByText("Selected: 0")).toBeInTheDocument();
+  });
+
+  it("confirms before a bulk move that strands a linked group (w4/m238)", async () => {
+    strandedFor.mockReset();
+    strandedFor.mockReturnValue([
+      { id: "evg-1", name: "prod-group", environmentId: "env-1" },
+    ]);
+    const user = userEvent.setup();
+    const production: EnvironmentView = {
+      ...env,
+      id: "env-2",
+      name: "production",
+      serviceIds: ["srv-existing"],
+    };
+    renderCard({
+      services: [apiService],
+      environment: { ...env, serviceIds: ["srv-api"] },
+      allEnvironments: [{ ...env, serviceIds: ["srv-api"] }, production],
+    });
+
+    await user.click(screen.getByRole("button", { name: "select first row" }));
+    await user.click(
+      screen.getByRole("combobox", {
+        name: "Move selected resources to environment",
+      }),
+    );
+    await user.click(screen.getByRole("option", { name: "production" }));
+    await user.click(screen.getByRole("button", { name: "Move" }));
+
+    // The confirmation names the stranded group and writes nothing yet.
+    expect(
+      await screen.findByText("This move leaves linked groups behind"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("prod-group")).toBeInTheDocument();
+    expect(setServices).not.toHaveBeenCalled();
+
+    // Cancel: still no write.
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(setServices).not.toHaveBeenCalled();
+
+    // Again, and confirm: exactly one write, to the chosen target.
+    await user.click(screen.getByRole("button", { name: "Move" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Move anyway" }),
+    );
+    expect(setServices).toHaveBeenCalledTimes(1);
+    expect(setServices).toHaveBeenCalledWith("env-2", "production", [
+      "srv-existing",
+      "srv-api",
+    ]);
+  });
+
+  it("moves immediately when no linked group is stranded (w4/m238)", async () => {
+    strandedFor.mockReset();
+    strandedFor.mockReturnValue([]);
+    const user = userEvent.setup();
+    const production: EnvironmentView = {
+      ...env,
+      id: "env-2",
+      name: "production",
+      serviceIds: ["srv-existing"],
+    };
+    renderCard({
+      services: [apiService],
+      environment: { ...env, serviceIds: ["srv-api"] },
+      allEnvironments: [{ ...env, serviceIds: ["srv-api"] }, production],
+    });
+    await user.click(screen.getByRole("button", { name: "select first row" }));
+    await user.click(
+      screen.getByRole("combobox", {
+        name: "Move selected resources to environment",
+      }),
+    );
+    await user.click(screen.getByRole("option", { name: "production" }));
+    await user.click(screen.getByRole("button", { name: "Move" }));
+    expect(setServices).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByText("This move leaves linked groups behind"),
+    ).toBeNull();
   });
 
   it("retains only failed kinds after a truthful partial bulk Move", async () => {
