@@ -431,6 +431,7 @@ export type CustomDomain = {
   createdAt: Maybe<Scalars['String']['output']>;
   dnsRecord: Maybe<DnsRecord>;
   domainType: Maybe<Scalars['String']['output']>;
+  edgeAddresses: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   id: Maybe<Scalars['String']['output']>;
   name: Maybe<Scalars['String']['output']>;
   redirectForName: Maybe<Scalars['String']['output']>;
@@ -2008,6 +2009,7 @@ export type MutationSetDatabasePublicArgs = {
 
 
 export type MutationSetDatabaseReadReplicasArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   dryRun?: InputMaybe<Scalars['Boolean']['input']>;
   id: Scalars['String']['input'];
   readReplicas: Array<DatabaseReadReplicaInput>;

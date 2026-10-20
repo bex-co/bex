@@ -809,6 +809,16 @@ var customDomainGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// dnsRecord is the record the tenant must create (bex extension; the target is
 		// the app's platform host <app>.<base-domain>).
 		"dnsRecord": gqlutil.Typed(dnsRecordGQLType, func(d DomainView) any { return d.DNSRecord }),
+		// edgeAddresses is an apex domain's A-record fallback (ADR005): the
+		// platform host's current edge addresses, resolved at read time; empty
+		// for subdomains and whenever resolution fails (w4/378). Additive —
+		// REST/MCP keep Render's shape.
+		"edgeAddresses": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(d DomainView) any {
+			if len(d.EdgeAddresses) == 0 {
+				return []string{}
+			}
+			return d.EdgeAddresses
+		})},
 	},
 })
 
