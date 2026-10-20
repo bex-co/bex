@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net/netip"
 	"reflect"
 	"slices"
 	"strconv"
@@ -2047,12 +2048,25 @@ func manifestAllowEntries(entries []bexIPEntry, noun, name string) ([]core.IPAll
 		if strings.TrimSpace(e.Source) == "" {
 			return nil, fmt.Errorf("%w: %s %q has an ipAllowList entry without a source", core.ErrBadRequest, noun, name)
 		}
-		allow = append(allow, core.IPAllowListEntry{CIDRBlock: e.Source, Description: e.Description})
+		allow = append(allow, core.IPAllowListEntry{CIDRBlock: blueprintSourceCIDR(e.Source), Description: e.Description})
 	}
 	if err := core.ValidateAllowList(allow); err != nil {
 		return nil, fmt.Errorf("%w: %s %q ipAllowList: %v", core.ErrBadRequest, noun, name, err)
 	}
 	return allow, nil
+}
+
+// blueprintSourceCIDR is Render's Blueprint `source` ("the IP address or CIDR
+// block") as a CIDR: a bare address is its single-host prefix, /32 or /128
+// (w8/142), so every later parser sees canonical CIDRs. Anything else is left
+// for ValidateAllowList to judge.
+func blueprintSourceCIDR(source string) string {
+	addr, err := netip.ParseAddr(source)
+	if err != nil || addr.Zone() != "" {
+		return source
+	}
+	addr = addr.Unmap()
+	return netip.PrefixFrom(addr, addr.BitLen()).String()
 }
 
 // parseCompiledStack is the typed adapter boundary after the one strict

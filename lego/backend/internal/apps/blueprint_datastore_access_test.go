@@ -32,6 +32,8 @@ import (
 
 const blueprintDatastoreRules = `[{source: "203.0.113.7/32", description: office}, {source: "2001:db8::7/128", description: office-v6}]`
 
+const blueprintBareRules = `[{source: 203.0.113.7, description: office}, {source: "2001:db8::7", description: office-v6}]`
+
 func blueprintDatastoreManifest(databaseList, keyValueList string) string {
 	return fmt.Sprintf(`databases:
   - name: access-db
@@ -56,6 +58,8 @@ func TestBlueprintDatastoreCreateAccess(t *testing.T) {
 		{"omitted Postgres retains private create default", "", "[]", false},
 		{"explicit empty creates private datastores", "    ipAllowList: []", "[]", false},
 		{"explicit rules publish datastores", "    ipAllowList: " + blueprintDatastoreRules, blueprintDatastoreRules, true},
+		// Render's Blueprint source is "the IP address or CIDR block" (w8/142).
+		{"bare addresses are single-host rules", "    ipAllowList: " + blueprintBareRules, blueprintBareRules, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc, _ := newService(nil)
