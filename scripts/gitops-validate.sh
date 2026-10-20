@@ -1078,17 +1078,54 @@ kubectl kustomize lego/operator/config/prod >"$tmp/bex-operator-prod.yaml"
 # its files and Traefik mounts it by that exact name, so a code change rolls
 # the pods — unless the mounted name is stale, which would keep serving the
 # superseded (unpruned) ConfigMap's code forever (w4/m164).
-echo "==> Traefik mounts the current WebSocket/arrival plugin ConfigMap"
-plugin_cm="$(kubectl kustomize deploy/gitops/charts/traefik-plugins | yq -N 'select(.kind == "ConfigMap") | .metadata.name')"
-scalar plugin_cm "$plugin_cm" || fail=1
-for render in base prod; do
-  mounted="$(yq -N 'select(.kind == "Deployment") | .spec.template.spec.volumes[] | select(.name == "bex-websocket-egress-plugin") | .configMap.name' "$tmp/traefik-$render.yaml")"
-  scalar mounted "$mounted" || fail=1
-  if [ "$mounted" != "$plugin_cm" ]; then
-    echo "FAIL: $render Traefik mounts ConfigMap '$mounted' but charts/traefik-plugins generates '$plugin_cm' — set that name in deploy/gitops/base/values/traefik.values.yaml so the edge loads the new plugin code" >&2
+echo "==> Traefik mounts the current ConfigMap of every local plugin"
+# Each generated ConfigMap is "<volume>-<hash>"; Traefik mounts it under the
+# volume of the same base name (WebSocket/arrival meter, client-identity
+# sanitizer w8/m123).
+plugin_cms="$(kubectl kustomize deploy/gitops/charts/traefik-plugins | yq -N 'select(.kind == "ConfigMap") | .metadata.name')"
+for want in bex-websocket-egress-plugin bex-client-ip-headers-plugin; do
+  if ! grep -qE "^$want-[a-z0-9]+$" <<<"$plugin_cms"; then
+    echo "FAIL: charts/traefik-plugins generates no $want ConfigMap" >&2
     fail=1
   fi
 done
+for plugin_cm in $plugin_cms; do
+  volume="${plugin_cm%-*}"
+  for render in base prod; do
+    mounted="$(yq -N 'select(.kind == "Deployment") | .spec.template.spec.volumes[] | select(.name == "'"$volume"'") | .configMap.name' "$tmp/traefik-$render.yaml")"
+    scalar mounted "$mounted" || fail=1
+    if [ "$mounted" != "$plugin_cm" ]; then
+      echo "FAIL: $render Traefik mounts ConfigMap '$mounted' for $volume but charts/traefik-plugins generates '$plugin_cm' — set that name in deploy/gitops/base/values/traefik.values.yaml so the edge loads the new plugin code" >&2
+      fail=1
+    fi
+  done
+done
+
+# The client-identity sanitizer must front every request on the tenant HTTP
+# entrypoints, its Middleware must ship in the Traefik release (whose CRDs it
+# needs), and its Cloudflare ranges must equal core's proxied-host detector's
+# (w8/m123).
+echo "==> Traefik entrypoints sanitize client-identity headers"
+for render in base prod; do
+  # Captured first: grep -q closing the pipe early would fail yq under pipefail.
+  traefik_args="$(yq -N 'select(.kind == "Deployment") | .spec.template.spec.containers[] | select(.name == "traefik") | .args[]' "$tmp/traefik-$render.yaml")"
+  for ep in web websecure; do
+    if ! grep -qxF -- "--entryPoints.$ep.http.middlewares=traefik-bex-client-ip-headers@kubernetescrd" <<<"$traefik_args"; then
+      echo "FAIL: $render Traefik entrypoint $ep does not run traefik-bex-client-ip-headers@kubernetescrd first" >&2
+      fail=1
+    fi
+  done
+  sanitizer="$(yq -N 'select(.kind == "Middleware" and .metadata.name == "bex-client-ip-headers" and .metadata.namespace == "traefik") | .spec.plugin | keys | .[]' "$tmp/traefik-$render.yaml")"
+  if [ "$sanitizer" != bexClientIPHeaders ]; then
+    echo "FAIL: $render Traefik release lacks the traefik/bex-client-ip-headers Middleware using plugin bexClientIPHeaders (got '$sanitizer')" >&2
+    fail=1
+  fi
+done
+cidrs() { grep -oE '"[0-9a-f.:]+/[0-9]+"' "$1" | tr -d '"' | sort; }
+if ! diff <(cidrs lego/backend/internal/core/proxiedhosts.go) <(cidrs deploy/gitops/charts/traefik-plugins/clientipheaders/clientipheaders.go) >/dev/null; then
+  echo "FAIL: the client-identity plugin's Cloudflare ranges differ from lego/backend/internal/core/proxiedhosts.go's cloudflareRanges — update both together" >&2
+  fail=1
+fi
 
 # The single hostNetwork edge (base) owns its node's :80/:443, so a surge pod
 # could never bind them and a rolling update would stall with the old pod

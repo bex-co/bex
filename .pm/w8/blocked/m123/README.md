@@ -1,17 +1,17 @@
 # w8 · m123 — Sanitize client-identity headers at the tenant edge
 
-**Worker:** worker8 **Goal:** No tenant app ever receives a caller-forged `True-Client-IP`, `CF-Connecting-IP`, `CF-IPCountry` or `X-Client-IP`. `True-Client-IP` always carries the real client address, as it does on Render behind Cloudflare. A tenant custom domain behind the tenant's own Cloudflare proxy keeps its genuine `CF-*` headers. **Status:** todo
+**Worker:** worker8 **Goal:** No tenant app ever receives a caller-forged `True-Client-IP`, `CF-Connecting-IP`, `CF-IPCountry` or `X-Client-IP`. `True-Client-IP` always carries the real client address, as it does on Render behind Cloudflare. A tenant custom domain behind the tenant's own Cloudflare proxy keeps its genuine `CF-*` headers. **Status:** blocked — t001–t006 done 2026-10-20; t007 live check on production after GitOps syncs Traefik
 
 ## Tasks (in order)
 
 | id   | title                                                                    | est | depends_on                 |
 | ---- | ------------------------------------------------------------------------ | --- | -------------------------- |
-| t001 | Traefik local plugin: Cloudflare-aware client-identity header sanitizer  | 60m | —                          |
-| t002 | GitOps: load the plugin and attach it to the `web`/`websecure` entrypoints | 40m | w8/m123/t001               |
-| t003 | Guards: gitops-validate for two plugins, entrypoint wiring, range drift  | 30m | w8/m123/t002               |
-| t004 | Render parity: the client-IP header contract in ADR018/ADR022            | 15m | w8/m123/t003               |
-| t005 | Simplify the changed code                                                | 15m | w8/m123/t004               |
-| t006 | Test coverage: forged, plain and Cloudflare-peer requests; plugin load   | 30m | w8/m123/t004               |
+| t001 — **DONE** | Traefik local plugin: Cloudflare-aware client-identity header sanitizer  | 60m | —                          |
+| t002 — **DONE** | GitOps: load the plugin and attach it to the `web`/`websecure` entrypoints | 40m | w8/m123/t001               |
+| t003 — **DONE** | Guards: gitops-validate for two plugins, entrypoint wiring, range drift  | 30m | w8/m123/t002               |
+| t004 — **DONE** | Render parity: the client-IP header contract in ADR018/ADR022            | 15m | w8/m123/t003               |
+| t005 — **DONE** | Simplify the changed code                                                | 15m | w8/m123/t004               |
+| t006 — **DONE** | Test coverage: forged, plain and Cloudflare-peer requests; plugin load   | 30m | w8/m123/t004               |
 | t007 | Close out the milestone                                                  | 30m | w8/m123/t005, w8/m123/t006 |
 
 ## Definition of done
@@ -26,8 +26,8 @@ Live on production after GitOps syncs Traefik, on a fresh free echo web service 
 
 ## Source + Goal linkage
 
-- **Source:** promoted from inbox note `w8/143` on 2026-10-20 (`/qa-find-bugs-cli` sweep 1241, [evidence](../evidence/cli-sweep1241/README.md)). The note's text is kept in [`done/143.md`](../done/143.md).
-- **Goal linkage:** [ADR008](../../../docs/ADR008-vision.md) Render alternative, and [ADR018](../../../docs/ADR018-render-parity.md)'s inbound-IP row: Render's own guidance tells apps to trust `CF-Connecting-IP`/`True-Client-IP` for rate limits, allowlists and audit logs, because Cloudflare overwrites them. On bex a migrated app trusts caller-controlled values.
+- **Source:** promoted from inbox note `w8/143` on 2026-10-20 (`/qa-find-bugs-cli` sweep 1241, [evidence](../../evidence/cli-sweep1241/README.md)). The note's text is kept in [`done/143.md`](../../done/143.md).
+- **Goal linkage:** [ADR008](../../../../docs/ADR008-vision.md) Render alternative, and [ADR018](../../../../docs/ADR018-render-parity.md)'s inbound-IP row: Render's own guidance tells apps to trust `CF-Connecting-IP`/`True-Client-IP` for rate limits, allowlists and audit logs, because Cloudflare overwrites them. On bex a migrated app trusts caller-controlled values.
 - **Expected outcome:** IP-based rate limits and audit trails in migrated apps stop being spoofable. Apps keep one header that always names the client.
 - **Why now:** severity major (security-relevant parity gap); the fix is edge-only and needs no tenant change.
 - **Why the preferred variant, not the note's minimum:** stripping `CF-*` unconditionally would also strip the genuine value for a custom domain behind the tenant's own Cloudflare proxy. Traefik overwrites `X-Forwarded-For` with the Cloudflare edge address, so those apps would lose the real client IP entirely. A Cloudflare-aware sanitizer keeps them working and closes the spoof, including the bypass of hitting the bex LB directly with a forged header. Render parity is included because the header contract is user-visible on every web surface.
