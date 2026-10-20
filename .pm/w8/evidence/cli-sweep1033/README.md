@@ -1,0 +1,8 @@
+# CLI sweep 1033 — pin lands: w8/137, w8/138, w8/139 live-verified and closed (live, 2026-10-20)
+
+The production pin advanced (`f4fde7b4f` → `9e9c28e82d0f`, the w8/139 fix commit itself; ancestry confirms `e8d28e88e` and `d98da2870` are also contained). Fixtures: one free Key Value instance, four free web/static services — all deleted (204s; GETs 404). Three findings closed to `done/`.
+
+- **[w8/139](../../done/139.md) PASS.** First retests still showed the old 400 (rollout in flight, same as sweep 898); after the roll: REST create with `maxmemoryPolicy: "allkeys-lru"` → 201 reading back `allkeys_lru`; PATCH `persistenceMode: "journal-snapshot"` → 200 reading back `journal_snapshot`; bogus policy → 400.
+- **[w8/138](../../done/138.md) PASS.** Override GET and PATCH responses now carry `serviceId` equal to the path id.
+- **[w8/137](../../done/137.md) PASS** (three disposable static sites via the CLI recipe). `POST …/headers` → 201, `DELETE …/headers/{id}` → 204 with the rule gone, unknown header → coded 404 `header not found`; `POST …/routes` → 201 with sequential priorities, `PATCH …/routes/{id} {priority:1}` → 200 reordering the read-back, out-of-range priority → coded 400 naming the range, `DELETE …/routes/{id}` → 204, unknown route → coded 404 `route not found`. Two early probes were harness errors (a destination-only PATCH body; a priority outside the valid range) and were corrected against the filing's acceptance before the final pass.
+- Side probes in the same sweep: GraphQL has no `postgres` query field (`Cannot query field`), while `keyValue` on an unknown id answers the coded `NOT_FOUND` envelope.
