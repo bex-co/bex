@@ -1,6 +1,6 @@
 # w5 · m140 — Metrics aggregation matches Render: CPU MAX/MIN, per-host requests, no silently ignored arguments
 
-**Worker:** worker5 **Goal:** REST `aggregationMethod`, MCP `cpuUsageAggregationMethod` and GraphQL `aggregationMethod` return Render's MAX/MIN CPU series instead of a 400 or a silent no-op. `aggregateBy=host` / `aggregateHttpRequestCountsBy=host` / GraphQL `HOST` break request counts out by host. No metrics argument any surface accepts is dropped without effect. **Status:** blocked (t006: production read after the release pipeline deploys bex-api; t001–t005, t007–t009 done)
+**Worker:** worker5 **Goal:** REST `aggregationMethod`, MCP `cpuUsageAggregationMethod` and GraphQL `aggregationMethod` return Render's MAX/MIN CPU series instead of a 400 or a silent no-op. `aggregateBy=host` / `aggregateHttpRequestCountsBy=host` / GraphQL `HOST` break request counts out by host. No metrics argument any surface accepts is dropped without effect. **Status:** done
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | t003 | REST, MCP and GraphQL read `aggregationMethod`; nothing accepted is ignored — **DONE** | 45m | t002       |
 | t004 | Request counts break down by host from the request-log store — **DONE** | 60m | t001       |
 | t005 | Dashboard: the HTTP requests chart can group by host — **DONE** | 30m | t004       |
-| t006 | dev-5 walk; ADR018 row 230, `metrics-page.md` and tool descriptions match the shipped | 30m | t003, t005 |
+| t006 | dev-5 walk; ADR018 row 230, `metrics-page.md` and tool descriptions match the shipped — **DONE** | 30m | t003, t005 |
 | t007 | Render parity — **DONE** | 30m | t006       |
 | t008 | Simplify — **DONE** | 20m | t007       |
 | t009 | Test coverage — **DONE** | 45m | t007, t008 |
-| t010 | Closeout                                                                              | 10m | t009       |
+| t010 | Closeout — **DONE** | 10m | t009       |
 
 Total: **10 tasks, about 6h 15m**.
 
@@ -48,3 +48,4 @@ Total: **10 tasks, about 6h 15m**.
 - **Simplify (t008):** inner rate kept at 60s under MAX/MIN (cost linear in the window, real peaks visible); helpers moved to `aggregation.go`; Loki host label a constant. Skipped: sharing the OpenAPI-resolver/Loki-push/promtool test scaffolding across packages (two callers each).
 
 - **2026-10-20 production probe:** after `58f457109`'s run went green, production still ran the pre-m140 bex-api. Its build/deploy jobs were skipped as superseded, and the last image pin is `f641abe92` (`94533d795`). The tell: GraphQL accepted `aggregationMethod: "MAX"` on MEMORY, which m140 refuses by name, and CPU MAX/MIN/AVG read identical for `beancount-cms-v2`'s five instances. The QA session was logged out. **Resume:** once a `chore(deploy): pin platform images to <sha ≥ 08b22db8e>` lands, repeat the GraphQL CPU AVG/MAX/MIN read on `beancount-cms-v2` (6h, step 300: expect MAX ≥ AVG ≥ MIN with MAX > AVG somewhere) and an `HTTP_REQUESTS` `aggregateBy: ["HOST"]` read (expect one series per host, labelled `host`). Record them here, then t010.
+- **t006 production read (2026-10-20, after `5ce996b49` pinned `9cace6b6e`):** GraphQL as the QA user. MEMORY + `aggregationMethod: MAX` → `bad request: aggregationMethod applies only to cpu, not memory` (new code live). CPU on `beancount-cms-v2` (6h, step 300, 4 instances, 76 timestamp-aligned points): MAX > AVG×1.05 at all 76, e.g. AVG/MAX/MIN 0.338/0.452/0.194. Two points read MIN > AVG, each at an instance's first step, where AVG (the plain 300s rate) averages in the time before the pod existed and MIN samples only the live pod; this is AVG's interval semantics, not an aggregation bug. `HTTP_REQUESTS` + `aggregateBy: ["HOST"]` returned one series labelled `host` = `beancount-cms-v2.onbex.co` (83,290 requests): the service has one routed host, so the two-host split stays proven by `TestLokiHostBreakdownOnLoki`. QA session logged out. **DoD met; closed.**
