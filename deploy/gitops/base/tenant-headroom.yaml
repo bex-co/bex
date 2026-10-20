@@ -64,13 +64,11 @@ metadata:
   name: tenant-headroom
   namespace: bex-system
   annotations:
-    # LAST sync wave, after every child Application (waves 1-4). Argo waits for a
-    # wave to turn healthy before applying the next, and this Deployment is
-    # SUPPOSED to sit Pending whenever the tenant pool is full — so in wave 0 it
-    # froze every production sync behind it (2026-10-20: 06:17Z onward, until the
-    # pool drained). As the final wave nothing waits on it; it still applies and
-    # still reserves capacity as soon as a slot exists. scripts/gitops-validate.sh
-    # keeps it strictly last.
+    # The root app's LAST sync wave. Argo waits for each wave to turn healthy
+    # before applying the next, and this Deployment is meant to sit Pending while
+    # the tenant pool is full — in an earlier wave it froze every production sync
+    # behind it (2026-10-20). Last, nothing waits on it, and it still reserves a
+    # slot as soon as one frees. scripts/gitops-validate.sh keeps it last.
     argocd.argoproj.io/sync-wave: "10"
   labels:
     app: tenant-headroom
