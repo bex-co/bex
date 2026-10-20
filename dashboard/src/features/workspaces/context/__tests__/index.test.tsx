@@ -15,10 +15,9 @@ vi.mock("@/features/workspaces/hooks/use-workspaces", () => ({
   useWorkspaces: (...args: unknown[]) => mockUseWorkspaces(...args),
 }));
 vi.mock("@tanstack/react-router", async () => {
-  const actual =
-    await vi.importActual<typeof import("@tanstack/react-router")>(
-      "@tanstack/react-router",
-    );
+  const actual = await vi.importActual<typeof import("@tanstack/react-router")>(
+    "@tanstack/react-router",
+  );
   return {
     ...actual,
     useNavigate: () => mockNavigate,
@@ -74,18 +73,41 @@ beforeEach(() => {
   });
 });
 
-function mockReady(workspaces = WORKSPACES, extra: Record<string, unknown> = {}) {
+function mockReady(
+  workspaces = WORKSPACES,
+  extra: Record<string, unknown> = {},
+) {
   mockUseWorkspaces.mockReturnValue({
     workspaces,
     loading: false,
     error: undefined,
     ready: true,
+    authenticated: true,
     refetch: vi.fn(),
     ...extra,
   });
 }
 
 describe("WorkspaceProvider", () => {
+  it("has no current workspace without a session, whatever the cookie says (w6/078)", () => {
+    mockUseWorkspaces.mockReturnValue({
+      workspaces: [],
+      loading: false,
+      error: undefined,
+      ready: false,
+      authenticated: false,
+      refetch: vi.fn(),
+    });
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <WorkspaceProvider initialWorkspaceId="tea-1">
+        {children}
+      </WorkspaceProvider>
+    );
+    const { result } = renderHook(() => useWorkspace(), { wrapper });
+    expect(result.current.currentWorkspaceId).toBeNull();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
   it("falls back to the first workspace when nothing is stored", async () => {
     mockReady();
     const { result } = renderHook(() => useWorkspace(), {
@@ -166,9 +188,7 @@ describe("WorkspaceProvider", () => {
 
     mockReady([], {});
     rerender();
-    await waitFor(() =>
-      expect(result.current.currentWorkspaceId).toBeNull(),
-    );
+    await waitFor(() => expect(result.current.currentWorkspaceId).toBeNull());
     expect(cookieFns.remove).toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -195,6 +215,7 @@ describe("WorkspaceProvider", () => {
       loading: false,
       error: new Error("network"),
       ready: false,
+      authenticated: true,
       refetch: vi.fn(),
     });
     rerender();

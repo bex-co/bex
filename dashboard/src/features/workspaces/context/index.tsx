@@ -26,7 +26,8 @@ export function WorkspaceProvider({
   initialWorkspaceId?: string | null;
   onWorkspaceChange?: () => void;
 }) {
-  const { workspaces, loading, error, ready, refetch } = useWorkspaces();
+  const { workspaces, loading, error, ready, authenticated, refetch } =
+    useWorkspaces();
   const navigate = useNavigate();
   // User/cookie preference. Effective selection is derived below so membership
   // changes never need setState-in-effect (w6/m144).
@@ -37,13 +38,18 @@ export function WorkspaceProvider({
   const handledFallbackRef = useRef<string | null>(null);
 
   const selectedId = useMemo(() => {
+    // Public pages (login, sign-up) sit under this provider, and the selection
+    // cookie outlives the session: without a session there is no current
+    // workspace, so no always-mounted consumer (capability polling) fetches
+    // with a stale id (w6/078). Loading keeps the cookie's choice.
+    if (!authenticated) return null;
     if (!ready) return preferredId;
     if (workspaces.length === 0) return null;
     if (preferredId && workspaces.some((w) => w.id === preferredId)) {
       return preferredId;
     }
     return workspaces[0].id;
-  }, [ready, workspaces, preferredId]);
+  }, [authenticated, ready, workspaces, preferredId]);
 
   // Persist + navigate as external side effects of a confirmed membership
   // transition. Does not call setState — selectedId is already derived.
