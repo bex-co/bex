@@ -367,7 +367,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **141** — [Deploy-hook 400s name REST body fields the caller never sent (`commitId`, `imageUrl`) instead of the hook's `ref`/`imgURL`](141.md) ← `/qa-find-bugs-cli` sweep 1239 2026-10-20: minor, 25m
 
-- [ ] **140** — [Render's “allow any IP” datastore rule `0.0.0.0/0` locks out every IPv6-capable client](140.md) ← `/qa-find-bugs-cli` sweeps 1230/1232 2026-10-20: with exactly `0.0.0.0/0`, `bex psql` and `redis-cli` by hostname die with a bare TLS EOF over IPv6 while IPv4 works. Decision-independent piece of [w9/m164](../w9/blocked/m164/README.md)
+- [ ] **140** — [Render's “allow any IP” datastore rule `0.0.0.0/0` locks out every IPv6-capable client](blocked/140.md) ← `/qa-find-bugs-cli` sweeps 1230/1232 2026-10-20 — **BLOCKED (2026-10-20: release pipeline deploys `pg-sni-proxy`/`kv-sni-proxy`; QA runs the live acceptance from a dual-stack client: a fresh free Postgres and Key Value with exactly `cidr=0.0.0.0/0` answer `bex psql <id> -c 'select 1'` and `redis-cli --tls -h <kv host> PING` by hostname and over forced IPv6; with `203.0.113.0/24` both families are refused; readback still shows only `0.0.0.0/0`; delete both by ID with 404 proofs)**. Source fixed: `sniproxy.ParseAllowList` treats a rule that masks to `0.0.0.0/0` as `0.0.0.0/0` + `::/0` in both layers (enforcement-only; readbacks unchanged; narrower IPv4 rules not widened); `TestRenderAnyIPRuleAdmitsIPv6`; ADR009/021/032.
 
 - [x] **126** — [A source update before a release's build starts still rolls the previous image as that release](done/126.md) — **PROMOTED (2026-10-19)** to `m121`.
 
