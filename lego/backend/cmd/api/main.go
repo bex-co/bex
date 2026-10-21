@@ -201,6 +201,9 @@ func main() {
 	}
 
 	base := &core.Base{Client: cl, Namespace: cfg.Namespace}
+	if len(os.Args) > 1 && os.Args[1] == migrateContainerPolicyCommand {
+		os.Exit(runMigrateContainerPolicy(ctx, cpDBURI, base, os.Args[2:], os.Stdout, os.Stderr))
+	}
 
 	// One readiness flag for the whole pod (w1/m52): the public server's
 	// /readyz answers 200 until SIGTERM, then 503 while both servers keep

@@ -103,11 +103,12 @@ patches:
       - op: replace
         path: /spec/replicas
         value: 2
-      # ADR089 D5 hosted gate: only the owner-approved `bex` workspace gets the
-      # image-v1 container policy (capabilities). Since w6/m148 this gates
+      # Workspaces whose new Docker/image services get the render-v1 container
+      # policy (Render's measured capability set, ADR089 D2 / w6/m149). The
+      # owner-approved `bex` workspace is the canary; w6/m149 t009 widens this
+      # to "*" (every workspace) under ADR008 § Render parity first. It gates
       # capabilities only: image-derived private ports are a default in every
-      # workspace (BEX_PRIVATE_IMAGE_PORTS, unset = on). Widening the policy to
-      # customer workspaces is w6/m149.
+      # workspace (BEX_PRIVATE_IMAGE_PORTS, unset = on).
       - op: add
         path: /spec/template/spec/containers/0/env/-
         value:

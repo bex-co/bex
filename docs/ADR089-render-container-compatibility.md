@@ -1,10 +1,14 @@
 # ADR089 — Deploy Render Docker examples without changing their source
 
-**Status:** Proposed, 2026-09-29. Experimental implementation is in progress; hosted creation remains disabled by default. The end-to-end deployment and isolation gates have not passed. **Update 2026-10-20:** the port slice (D3/D4) is the creation default in every workspace since w6/m148 and passed its hosted gate (§ Port slice decisions). The capability policy (D2) remains gated (w6/m149).
+**Status:** Accepted, 2026-10-20, with D2 amended to the `render-v1` policy. This follows the user decisions of 2026-10-17 ("Render parity outranks the earlier security hardening") and 2026-10-20 (Render parity is the top product principle, [ADR008 § Render parity first](ADR008-vision.md#render-parity-first)).
+
+- Proposed 2026-09-29.
+- The port slice (D3/D4) has been the creation default in every workspace since w6/m148 and passed its hosted gate (§ Port slice decisions).
+- The capability policy `render-v1` (D2) is implemented (`67aa2bf35`). It is the creation default in the `BEX_IMAGE_COMPATIBILITY_WORKSPACES` canary, and widens to every workspace in w6/m149 t009.
 
 **Scope:** Import and run the unchanged `render-examples/clickhouse` repository, with a reusable contract for legacy Blueprint aliases, container initialization, and multiple private TCP ports. This does not establish complete Render runtime parity.
 
-**Related decisions:** [ADR049](ADR049-render-yaml-parity.md) owns Blueprint semantics; [ADR022](ADR022-tenant-isolation.md) owns the retained container hardening policy; [ADR043](ADR043-tenant-namespace-isolation.md) owns workspace isolation; [ADR041](ADR041-service-addresses.md) owns addresses and the current single-port limitation; [ADR082](ADR082-persistent-disks.md) owns persistent storage. Acceptance would amend ADR022's unconditional capability drop for the new execution policy and ADR041's single-port restriction. Their existing contracts remain in force while this ADR is proposed.
+**Related decisions:** [ADR049](ADR049-render-yaml-parity.md) owns Blueprint semantics; [ADR022](ADR022-tenant-isolation.md) owns the retained container hardening policy; [ADR043](ADR043-tenant-namespace-isolation.md) owns workspace isolation; [ADR041](ADR041-service-addresses.md) owns addresses and the current single-port limitation; [ADR082](ADR082-persistent-disks.md) owns persistent storage. Acceptance amends ADR022's unconditional capability drop for new services (the legacy contract stays in force for existing `strict-v1`/`image-v1` rows) and ADR041's single-port restriction.
 
 ## Customer outcome
 
@@ -56,14 +60,30 @@ Add an explicit, evidence-backed alias table before canonical schema validation.
 
 This repair can ship independently under ADR049. It must not be advertised as successful ClickHouse deployment while startup and routing still fail.
 
-### D2 — Introduce a versioned policy for ordinary image initialization
+### D2 — A versioned execution policy that matches Render's measured privileges
 
-Propose two centrally defined execution policies, with final API field names determined during implementation:
+**Amended 2026-10-20 (w6/m149).** The original proposal below the policy table (a four-capability `image-v1` allowlist) is superseded for new services. It remains the valid contract for rows that already carry `image-v1`.
+
+**Parity criterion.** Every image that starts on Render starts on bex unchanged, in every workspace. The measured evidence is [container-privileges.md](render-artifacts/container-privileges.md).
 
 | Policy | Capabilities | Selection |
 | --- | --- | --- |
-| Existing strict policy | Drop all; add none. | Existing services and direct App resources retain this behavior unless explicitly migrated. |
-| Image compatibility v1 | Drop all; add only `CHOWN`, `DAC_OVERRIDE`, `SETUID`, `SETGID`. | Proposed default for newly created Docker/image application services after the rollout gates pass. |
+| `strict-v1` (legacy) | Drop all; add none. | Existing services and direct App resources keep this policy unless explicitly migrated. |
+| `image-v1` (legacy) | Drop all; add only `CHOWN`, `DAC_OVERRIDE`, `SETUID`, `SETGID`. | Superseded for new services on 2026-10-20. Existing rows keep it unless explicitly migrated. |
+| `render-v1` | Drop all; add exactly `CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `SETGID`, `SETUID`, `SYS_CHROOT` (Render's measured set). | Creation default for new Docker/image/Dockerfile services. Static sites and native runtimes are out of scope. |
+
+- **Capabilities.** `render-v1` is `image-v1` plus `FOWNER` and `SYS_CHROOT`. Docker-default capabilities that Render lacks are **not** added: `NET_BIND_SERVICE`, `KILL`, `SETPCAP`, `SETFCAP`, `FSETID`, `MKNOD`, `AUDIT_WRITE` and `NET_RAW`. Leaving each one out matches Render.
+- **`allowPrivilegeEscalation: false`** is kept. It matches Render's measured `NoNewPrivs=1`.
+- **Low ports** are already bindable without `NET_BIND_SERVICE`: containerd 2.x sets `ip_unprivileged_port_start=0` in every pod, as Render does (w6/m149 t006).
+- **Seccomp: RuntimeDefault, a named divergence.** Render applies no filter, so `io_uring` and unprivileged user namespaces work there; RuntimeDefault blocks both. Relaxation is tracked by w6/085. Under parity first its default direction is a Localhost profile (RuntimeDefault plus `io_uring` and `unshare(CLONE_NEWUSER)`), shipped with its own security review. It does not gate `render-v1`.
+- **Pod user namespaces are not part of `render-v1`.** Render runs none, so `hostUsers: false` would be bex-only defense in depth, not parity. The t002 spike was a go on ext4 and fails closed on a filesystem that cannot be idmapped. Adoption is tracked by w6/086, gated on proving idmapped mounts on Hetzner `hcloud-volumes`.
+- **Lifecycle.**
+  - The creation default is `render-v1` for workspaces in `BEX_IMAGE_COMPATIBILITY_WORKSPACES`. Production widens it to `*` (every workspace) after the `bex` canary (w6/m149 t009).
+  - Existing `strict-v1`/`image-v1` rows never change on upgrade, Blueprint sync or redeploy.
+  - Moving one existing service is an explicit operator-run migration (w6/m149 t008).
+  - Rollback reverts only the creation default; it never migrates services already created.
+
+The rest of this section is the original 2026-09-29 proposal. It still holds except where the amendment above replaces it.
 
 Persist the resolved policy in authoritative service state and the projected App. Do not derive it afresh from a global flag on each reconciliation: an upgrade or Blueprint resync must not silently change an existing workload's privileges. New Blueprint and dashboard/API services use the same creation rule. The Blueprint example needs no extra field.
 
@@ -75,7 +95,7 @@ Retain `allowPrivilegeEscalation: false`, `RuntimeDefault` seccomp, disabled Ser
 
 Review every path that executes the same service image, including pre-deploy and scheduled/one-off execution where supported. Each path must deliberately inherit the service policy or reject the operation; it must not acquire a different implicit policy. Platform containers, managed datastores, builds, and agent sandboxes retain their separate contracts.
 
-Security review must assess the increased capability exposure on the actual hosting runtime and mounts. A passing startup probe is insufficient. If that review rejects the policy on shared hosting nodes, choose a stronger execution boundary before rollout; do not silently widen the allowlist.
+Security review must assess the increased capability exposure on the actual hosting runtime and mounts. A passing startup probe is insufficient. If that review rejects the policy on shared hosting nodes, choose a stronger execution boundary before rollout; do not silently widen the allowlist. **Superseded 2026-10-20:** under Render parity first the allowlist widens to Render's measured set; a stronger boundary (w6/085, w6/086) is a follow-up, not a precondition.
 
 ### D3 — Resolve private TCP ports from the exact deployed image
 
@@ -107,6 +127,8 @@ For an upgrade that changes the primary port, retain the active release's addres
 
 Use the pinned upstream repository as a conformance fixture, preserving its Dockerfile and Blueprint bytes. Record its source commit and the image digest actually resolved in each run; the upstream `:21` tag is mutable. A network-enabled integration lane may report upstream drift, while offline schema tests use committed fixtures.
 
+**Amended 2026-10-20:** the `BEX_IMAGE_COMPATIBILITY_WORKSPACES` allowlist is a rollout canary, not a permanent boundary. After the `bex` canary passes, w6/m149 t009 widens it to `*` (every workspace), per [ADR008 § Render parity first](ADR008-vision.md#render-parity-first).
+
 The release gate is a disposable Bex environment running the real API, operator, enforcing CNI, and representative storage. It must demonstrate:
 
 1. Git-context inheritance supplies the omitted repository/branch; validate, preview, and deploy accept the unchanged manifest. A second unchanged sync is a no-op.
@@ -123,7 +145,7 @@ The unchanged old template's authentication defaults are compatibility evidence 
 
 - **Require customers to fork every Docker example.** A verified workaround exists, but moves platform incompatibility into customer maintenance and misses the unchanged-source goal.
 - **Fix only `env`, or publish only port 8123.** Both are incomplete: accepted YAML can still crash, and HTTP-only connectivity omits the native interface.
-- **Enable privileged containers or restore every Docker capability globally.** Much broader than the observed requirement and silently changes existing services.
+- **Enable privileged containers or restore every Docker capability globally.** Much broader than the observed requirement and silently changes existing services. **Amended 2026-10-20:** parity first supersedes the minimal-allowlist posture, so new services get Render's measured six (D2). Docker-default capabilities beyond Render's set, privileged mode and changing existing services remain rejected.
 - **Force a non-root UID plus `fsGroup`.** Worth supporting separately, but the correct UID and filesystem setup are image-specific and cannot be inferred from this image's root default as a general rule.
 - **Use only `EXPOSE` as a health signal.** Incorrect: it is metadata, not a listening process. D3 uses normal live readiness checks.
 - **Implement full socket discovery immediately.** Broader parity remains useful, but requires its own observer trust model, protocol policy, startup timing, and resource limits. Do not claim that work is delivered by metadata-based support.
@@ -136,7 +158,7 @@ The unchanged old template's authentication defaults are compatibility evidence 
 4. Enable the new creation policy with explicit versioned state. Migrate existing services only through a deliberate operation; roll back creation defaults without silently breaking already-created compatible services.
 5. Update ADR018, ADR022, ADR041, the capability registry and CMS snapshot, plus their existing guards to assert both policies. Add the customer ClickHouse guide and translations after the actual Bex deployment passes.
 
-This ADR records the proposed product tradeoff. The four-capability local test is evidence for review, not authorization to change production isolation or a claim that hosted ClickHouse already works.
+This ADR records the proposed product tradeoff. The four-capability local test is evidence for review, not authorization to change production isolation or a claim that hosted ClickHouse already works. **Update 2026-10-20:** the authorization is now the user decisions cited in the status line, with D2 amended to `render-v1`.
 
 ## Implementation checkpoint — 2026-09-30
 
@@ -198,10 +220,10 @@ These decisions split D3/D4 (ports and references) from D2 (capabilities). They 
    - Docker-default capabilities that Render lacks are **not** added: `NET_BIND_SERVICE`, `KILL`, `SETPCAP`, `SETFCAP`, `FSETID`, `MKNOD`, `AUDIT_WRITE` and `NET_RAW`.
    - Ports below 1024 need none of them: containerd 2.x enables unprivileged ports in every pod (w6/m149 t006).
 3. **Kept as is:** `allowPrivilegeEscalation: false` (Render measured `NoNewPrivs=1`), the AppArmor default (the same profile on both), and no host namespaces, devices or privileged mode.
-4. **Seccomp: open, the user's call.** Render applies no filter, so `io_uring` and unprivileged user namespaces work there. bex's RuntimeDefault blocks both. Until the user decides, `render-v1` keeps RuntimeDefault and the difference is a named divergence. Anything else ships as its own security-reviewed milestone.
-5. **Pod user namespaces: open, decided by w6/m149 t002.** Render runs none, so `hostUsers: false` is bex-only defense in depth, not parity. It is adopted where the spike proves it works, persistent disks included. A no-go narrows the mitigation and never blocks the capability set.
+4. **Seccomp: decided 2026-10-20, RuntimeDefault.** Render applies no filter, so `io_uring` and unprivileged user namespaces work there. bex's RuntimeDefault blocks both, and this is a named divergence ([ADR018](ADR018-render-parity.md)). Relaxation is tracked by w6/085; its default direction is a Localhost profile (RuntimeDefault plus `io_uring` and `unshare(CLONE_NEWUSER)`), shipped with its own security review.
+5. **Pod user namespaces: not part of `render-v1` (2026-10-20).** Render runs none, so `hostUsers: false` is bex-only defense in depth, not parity. The t002 spike was a go on ext4 and fails closed on a filesystem that cannot be idmapped. Adoption is tracked by w6/086, gated on Hetzner `hcloud-volumes` idmap proof. It is not a gate for `render-v1` or for the t009 widen.
 6. **Scope and lifecycle.**
-   - New Docker/image services in every workspace get `render-v1` once w6/m149 t009 widens the gate.
-   - `strict-v1` and `image-v1` rows never change on upgrade or Blueprint sync.
+   - New Docker/image/Dockerfile services (not static sites, not native runtimes) get `render-v1`. The creation default applies to workspaces in `BEX_IMAGE_COMPATIBILITY_WORKSPACES` and widens to `*` after the `bex` canary (w6/m149 t009).
+   - `strict-v1` and `image-v1` rows never change on upgrade, Blueprint sync or redeploy.
    - Moving an existing service is an explicit operator-run migration of one service (w6/m149 t008).
    - Rollback reverts the creation default only.

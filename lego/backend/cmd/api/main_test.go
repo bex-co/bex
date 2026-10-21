@@ -78,3 +78,24 @@ func TestRequireCPAuth(t *testing.T) {
 		})
 	}
 }
+
+func TestParseMigrateContainerPolicyArgs(t *testing.T) {
+	for _, tc := range []struct {
+		args  []string
+		id    string
+		apply bool
+		ok    bool
+	}{
+		{[]string{"srv-a"}, "srv-a", false, true},
+		{[]string{"srv-a", "--apply"}, "srv-a", true, true},
+		{[]string{"--apply", "srv-a"}, "srv-a", true, true},
+		{nil, "", false, false},
+		{[]string{"srv-a", "srv-b"}, "", false, false},
+		{[]string{"srv-a", "--force"}, "", false, false},
+	} {
+		id, apply, err := parseMigrateContainerPolicyArgs(tc.args)
+		if (err == nil) != tc.ok || id != tc.id || apply != tc.apply {
+			t.Errorf("%v: id=%q apply=%t err=%v", tc.args, id, apply, err)
+		}
+	}
+}

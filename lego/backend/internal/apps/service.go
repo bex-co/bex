@@ -60,10 +60,11 @@ import (
 // — the operator does the mechanism.
 type Service struct {
 	*core.Base
-	// ImageCompatibilityWorkspaces gates ADR089's image-v1 container policy per
-	// creating workspace ("*" admits every workspace) until the runtime and
-	// isolation checks have passed. Persisted policies survive removal from the
-	// set; it never changes an existing service's privileges.
+	// ImageCompatibilityWorkspaces gives new Docker/image services in these
+	// workspaces ("*" for every workspace) the render-v1 container policy,
+	// Render's measured capability set (ADR089 § Privilege slice decisions,
+	// w6/m149). Persisted policies survive removal from the set; it never
+	// changes an existing service's privileges.
 	ImageCompatibilityWorkspaces map[string]bool
 	// PrivateImagePortsDisabled turns off image-derived ports as the creation
 	// default for new Git-built Docker private services (BEX_PRIVATE_IMAGE_PORTS
@@ -358,6 +359,7 @@ type IntentStore interface {
 	SetAppSuspended(ctx context.Context, id string, suspended bool) error
 	SetAppTier(ctx context.Context, id string, tier string) error
 	SetAppPort(ctx context.Context, id string, port int32, mode string) error
+	SetAppContainerPolicy(ctx context.Context, id, policy string) error
 	SetAppReplicas(ctx context.Context, id string, replicas int32) error
 	// SetAppIdleTTL updates the row's idle-TTL — the single write path for the
 	// idle-timeout verb on store-managed Apps, same row-first rationale as
@@ -2439,15 +2441,14 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 //
 // Two independent decisions (ADR089 § Port slice decisions, w6/m148): a new
 // Git-built Docker private service publishes its image's TCP ports in every
-// workspace unless BEX_PRIVATE_IMAGE_PORTS=off, while the image-v1 container
-// policy stays scoped to BEX_IMAGE_COMPATIBILITY_WORKSPACES.
+// workspace unless BEX_PRIVATE_IMAGE_PORTS=off, while the render-v1 container
+// policy follows BEX_IMAGE_COMPATIBILITY_WORKSPACES.
 func (s *Service) configureNewImageCompatibility(ctx context.Context, spec *appv1alpha1.AppSpec, explicitPort bool) error {
-	if spec.Type == appv1alpha1.TypeStaticSite ||
-		(spec.Image == "" && spec.Runtime != "docker" && spec.Builder != "dockerfile") {
+	if !runsContainerPolicy(*spec) {
 		return nil
 	}
 	if s.imageCompatibilityAdmits(ctx) {
-		spec.ContainerPolicy = appv1alpha1.ContainerPolicyImageV1
+		spec.ContainerPolicy = appv1alpha1.ContainerPolicyRenderV1
 	}
 	if spec.Type == appv1alpha1.TypePrivateService && spec.Repo != "" && !s.PrivateImagePortsDisabled {
 		spec.PortMode = appv1alpha1.PortModeImageV1
@@ -2459,6 +2460,14 @@ func (s *Service) configureNewImageCompatibility(ctx context.Context, spec *appv
 		}
 	}
 	return nil
+}
+
+// runsContainerPolicy is the one predicate for which services a widened
+// container policy applies to: Docker and image services, never static sites
+// or native runtimes. Creation and the operator-run migration share it.
+func runsContainerPolicy(spec appv1alpha1.AppSpec) bool {
+	return spec.Type != appv1alpha1.TypeStaticSite &&
+		(spec.Image != "" || spec.Runtime == "docker" || spec.Builder == "dockerfile")
 }
 
 func (s *Service) imageCompatibilityAdmits(ctx context.Context) bool {
