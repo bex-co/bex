@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"net/http"
 	"testing"
 )
 
@@ -97,5 +98,18 @@ func TestParseMigrateContainerPolicyArgs(t *testing.T) {
 		if (err == nil) != tc.ok || id != tc.id || apply != tc.apply {
 			t.Errorf("%v: id=%q apply=%t err=%v", tc.args, id, apply, err)
 		}
+	}
+}
+
+// The server must never close an idle keep-alive connection before the edge
+// stops reusing it; otherwise a request written onto it races the close
+// (w3/044). Zero would silently fall back to ReadTimeout.
+func TestNewHTTPServerIdleTimeoutOutlivesEdgePool(t *testing.T) {
+	srv := newHTTPServer(":0", http.NotFoundHandler())
+	if srv.IdleTimeout <= edgeUpstreamIdleTimeout {
+		t.Fatalf("IdleTimeout = %v, want > edge upstream idle timeout %v", srv.IdleTimeout, edgeUpstreamIdleTimeout)
+	}
+	if srv.IdleTimeout <= srv.ReadTimeout {
+		t.Fatalf("IdleTimeout = %v must exceed ReadTimeout %v (the implicit fallback that caused w3/044)", srv.IdleTimeout, srv.ReadTimeout)
 	}
 }
