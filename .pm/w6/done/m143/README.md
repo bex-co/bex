@@ -23,7 +23,7 @@
 - [x] The Events list and deploy detail share consistent Cancel/Rollback behavior. Eligibility and confirmation bind the exact selected deploy; an older eligible history row is not disabled solely because it falls outside the service projection's latest-20 scan.
 - [x] Confirmation rechecks the current workspace, target, action, and permission before dispatch; stale context clears the pending confirmation. Protected confirmation and billing recovery compose with the action decision, and cancellation remains possible when its own verb allows it.
 - [x] Mounted interaction tests assert permitted dispatch and zero forbidden dispatch. Pending layouts preserve ready geometry in unit-covered surfaces.
-- [ ] Live authenticated `dev-6` walkthrough of authorized/denied/unavailable states at desktop and narrow-mobile widths — deferred: local kind API server was unavailable this session (see Verification evidence).
+- [x] Live authenticated `dev-6` walkthrough of authorized/denied/unavailable states at desktop and narrow-mobile widths — verified 2026-10-21 with real Kratos sessions and enforced OpenFGA; see [m146 evidence](../m146/evidence.md).
 - [x] `yarn typecheck`, `yarn lint`, and `yarn test` pass in dashboard; affected backend checks pass if projection code changes. Evidence records scope and any remaining limitation before closeout.
 
 ## Source + Goal linkage
