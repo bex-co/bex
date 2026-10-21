@@ -395,7 +395,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **161** — [`bex blueprints validate` refuses a `fromService.envVarKey` copy of a `sync: false` variable, which Render's own AEO-analytics example uses](done/161.md) — **DONE (2026-10-21)**: Resolved by w5/170 (a service can copy a sibling's `sync: false` value): `syncref.yaml` (flat and nested) validates on pin `a3f66521f93d` (sweep 1286).
 
-- [ ] **160** — [A Blueprint database on Render's `pro-4gb` plan is refused as "not a supported Render Postgres plan", although it is one](160.md) ← `/qa-find-bugs-cli` sweep 1276 2026-10-21: wording, sibling of w8/054; minor, ~15m.
+- [x] **160** — [A Blueprint database on Render's `pro-4gb` plan is refused as "not a supported Render Postgres plan", although it is one](done/160.md) — **DONE (2026-10-21)**: unsold Postgres plan names bex's limit; ← `/qa-find-bugs-cli` sweep 1276 2026-10-21: wording, sibling of w8/054; minor, ~15m.
 
 - [x] **159** — [Render's official Django example cannot build on bex because bex sets no `RENDER` variable, and would run with `DEBUG=True` if it did](done/159.md) — **DONE (2026-10-21)**: Resolved by w5/m148: every service now carries Render's default variables (`RENDER`, `RENDER_EXTERNAL_HOSTNAME`, … at build and runtime), live on pin `a3f66521f93d` per w4/386's probe. The `RENDER_INSTANCE_ID` format follow-up is w4/386.
 
