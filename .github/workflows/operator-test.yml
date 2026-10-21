@@ -39,6 +39,19 @@ jobs:
           # Multi-GB remote Go caches outlive signed download URLs and stall
           # uploads on this fleet; keep the runner-local Go caches instead.
           cache: false
+      # TestValkeyPersistenceEngine's `docker run` of the pinned Valkey images
+      # was killed at its 240s budget while the runner's Docker Hub pull stalled
+      # (run 39524511518). Pull the exact pins the operator ships, read from its
+      # source so they cannot drift, with retries, so the test starts from cache.
+      - name: pull pinned Valkey images (with retries)
+        run: |
+          for image in $(grep -oE 'valkey/valkey:[0-9]+-alpine@sha256:[0-9a-f]{64}' lego/operator/internal/controller/keyvalue_controller.go | sort -u); do
+            for i in 1 2 3 4 5; do
+              docker pull "$image" && break
+              [ "$i" -lt 5 ] || exit 1
+              echo "pull $image attempt $i failed, retrying in $((i * 20))s..."; sleep $((i * 20))
+            done
+          done
       - name: make test (operator + envtest)
         working-directory: lego/operator
         run: make test
