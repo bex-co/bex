@@ -95,6 +95,13 @@ spec:
       expression: >-
         {'image-v1': ['CHOWN', 'DAC_OVERRIDE', 'SETUID', 'SETGID'],
          'render-v1': ['CHOWN', 'DAC_OVERRIDE', 'FOWNER', 'SETGID', 'SETUID', 'SYS_CHROOT']}
+    # The one Localhost seccomp profile each widened policy may run under
+    # (w6/m150): render-v1's RuntimeDefault plus the user-namespace and io_uring
+    # syscalls Render permits, installed by seccomp-profiles.yaml. Mirrors
+    # appv1alpha1.ContainerPolicySeccompProfile; container_policy_test.go pins
+    # the two together. RuntimeDefault stays admitted for every policy.
+    - name: containerPolicySeccomp
+      expression: "{'render-v1': 'profiles/bex-render-v1.json'}"
     - name: containerPolicy
       expression: variables.podMetadata.?labels['app.bex.co/container-policy'].orValue('')
     # The operator projects the persisted App policy onto its pod template.
@@ -174,8 +181,8 @@ spec:
     # RuntimeDefault seccomp at the container or pod level. Disk snapshots and
     # restores retain their DAC-bypass set. App image-v1/render-v1 workloads
     # additionally require drop ALL, explicit no-escalation and effective
-    # RuntimeDefault seccomp; init containers never inherit either capability
-    # exception.
+    # RuntimeDefault seccomp (render-v1 may instead run its own Localhost
+    # profile, w6/m150); init containers never inherit either exception.
     - expression: >-
         request.operation == 'DELETE' ||
         variables.untrustedExecutionNamespace ||
@@ -188,8 +195,13 @@ spec:
             variables.diskSnapshotVolumeWorkload ?
              c.?securityContext.?capabilities.?add.orValue([]).all(cap, cap in variables.diskSnapshotCaps) :
              c.?securityContext.?capabilities.?add.orValue([]).size() == 0) &&
-           c.?securityContext.?seccompProfile.?type.orValue(
-             variables.pod.?securityContext.?seccompProfile.?type.orValue('')) == 'RuntimeDefault') &&
+           (c.?securityContext.?seccompProfile.?type.orValue(
+              variables.pod.?securityContext.?seccompProfile.?type.orValue('')) == 'RuntimeDefault' ||
+            (variables.imageCompatibilityWorkload &&
+             variables.containerPolicy in variables.containerPolicySeccomp &&
+             c.?securityContext.?seccompProfile.?type.orValue('') == 'Localhost' &&
+             c.?securityContext.?seccompProfile.?localhostProfile.orValue('') ==
+               variables.containerPolicySeccomp[variables.containerPolicy]))) &&
          (!has(variables.pod.initContainers) || variables.pod.initContainers.all(c,
            (!variables.imageCompatibilityWorkload ||
              (c.?securityContext.?capabilities.?drop.orValue([]) == ['ALL'] &&

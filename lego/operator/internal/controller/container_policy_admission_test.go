@@ -204,6 +204,15 @@ var _ = Describe("Application container policy admission", func() {
 							p.Spec.Containers[0].SecurityContext.Capabilities.Add = append(p.Spec.Containers[0].SecurityContext.Capabilities.Add, foreign)
 						}},
 						{"forged-marker", false, func(_ client.Object, p *corev1.PodTemplateSpec) { p.Labels["app.bex.co/container-policy"] = "image-v2" }},
+						// Only render-v1's own Localhost profile is admitted, and only for
+						// render-v1 (w6/m150).
+						{"foreign-localhost-profile", false, func(_ client.Object, p *corev1.PodTemplateSpec) {
+							profile := "profiles/bex-render-v1.json"
+							if widened == appv1alpha1.ContainerPolicyRenderV1 {
+								profile = "profiles/other.json"
+							}
+							p.Spec.Containers[0].SecurityContext.SeccompProfile = &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeLocalhost, LocalhostProfile: &profile}
+						}},
 						{"missing-app-uid", false, func(_ client.Object, p *corev1.PodTemplateSpec) { delete(p.Labels, "app.bex.co/app-uid") }},
 						{"forged-app-uid", false, func(_ client.Object, p *corev1.PodTemplateSpec) { p.Labels["app.bex.co/app-uid"] = "foreign-uid" }},
 						{"forged-owner-name", true, func(o client.Object, _ *corev1.PodTemplateSpec) { o.GetOwnerReferences()[0].Name = "foreign-app" }},
