@@ -398,12 +398,14 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
 });
 
 describe("service plan pending groups (w4/m196)", () => {
+  // The card grid is each group's last child: a label always precedes it and
+  // an SMTP note may (w8/m127).
   function groupCards(container: HTMLElement): number[] {
     return [
       ...container.querySelectorAll(
         '[data-route-skeleton="service-plan"] [data-instance-type-group]',
       ),
-    ].map((group) => group.children[1].children.length);
+    ].map((group) => group.lastElementChild?.children.length ?? 0);
   }
 
   it.each([
