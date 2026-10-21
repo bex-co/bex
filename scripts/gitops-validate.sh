@@ -1235,7 +1235,8 @@ else
 fi
 
 # Platform alerting rules (w3/m6): the rule pack is the single source of truth
-# embedded in prometheus.yaml's Helm values (serverFiles.alerting_rules.yml).
+# in deploy/gitops/base/rules/alerting_rules.yml, mounted into Prometheus from
+# ConfigMap prometheus-alerting-rules (w3/m177).
 # Extract it and run promtool check + unit tests (deploy/gitops/base/rules/) so a
 # broken expression or regressed age-math/ratio fails CI, not prod.
 echo "==> platform CNPG WAL scrape stamps namespace + cluster on primaries"
@@ -1266,8 +1267,7 @@ if command -v promtool >/dev/null 2>&1; then
   echo "==> promtool check + test rules (extracted from prometheus.yaml)"
   # helm `values:` is a block-scalar string — from_yaml re-parses it in-process so
   # we can pull the rule groups out in a single yq (no second pipe stage).
-  yq '.spec.source.helm.values | from_yaml | {"groups": .serverFiles."alerting_rules.yml".groups}' \
-    deploy/gitops/base/prometheus.yaml >"$tmp/alerting_rules.yml"
+  cp deploy/gitops/base/rules/alerting_rules.yml "$tmp/alerting_rules.yml"
   yq '.spec.source.helm.values | from_yaml | .serverFiles."platform_gitops_expected.yml"' \
     deploy/gitops/base/prometheus.yaml >"$tmp/platform_gitops_expected.yml"
   cp deploy/gitops/base/rules/*_test.yml "$tmp/"

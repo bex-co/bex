@@ -1,6 +1,6 @@
 # Missing evidence is independent of the native archiver timestamp. Healthy
 # siblings, a previous primary, and another job cannot hide a missing database.
-# Extract alerting_rules.yml from prometheus.yaml via scripts/gitops-validate.sh.
+# Runs against deploy/gitops/base/rules/alerting_rules.yml via scripts/gitops-validate.sh.
 rule_files:
   - alerting_rules.yml
 

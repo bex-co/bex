@@ -1,7 +1,7 @@
 # w3/m174: the alert pipeline's own health, tenant disk-snapshot CronJobs,
 # Postgres base-backup age, tenant capacity and the static/activator path (w3/m175) — each failure mode fires and
 # its healthy twin stays quiet. Generated annotations match the rule templates.
-# Extract alerting_rules.yml from prometheus.yaml via scripts/gitops-validate.sh.
+# Runs against deploy/gitops/base/rules/alerting_rules.yml via scripts/gitops-validate.sh.
 rule_files:
 - alerting_rules.yml
 evaluation_interval: 1m
