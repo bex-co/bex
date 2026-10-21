@@ -22,15 +22,17 @@ patches:
       kind: Deployment
       name: controller-manager
     patch: |-
-      # w6/m151 t003: render-v1 runtime pods in the `bex` workspace run in a
-      # pod user namespace — the Hetzner hcloud-volumes idmap canary (disk-backed
-      # ClickHouse there). A non-idmappable volume fails only this workspace's
-      # pods closed; widen to "*" after it passes, roll back by removing this.
+      # w6/m151: render-v1 runtime pods in every workspace run in a pod user
+      # namespace (hostUsers: false). Widened 2026-10-21 after the `bex` canary
+      # proved Hetzner hcloud-volumes accept idmapped mounts (disk-backed
+      # ClickHouse Live, data intact across a restart, uid_map 0 2104885248
+      # 65536). Roll back by removing this; on-disk UIDs are unshifted, so no
+      # data migration either way.
       - op: add
         path: /spec/template/spec/containers/0/env/-
         value:
           name: BEX_RENDER_V1_USER_NAMESPACES
-          value: tea-d98210cbbpdc73dcrkvg
+          value: "*"
       # w7/047: bounded production cache trial. The absolute deadline survives
       # manager restarts; retain-or-rollback review is due after 48 hours.
       - op: add

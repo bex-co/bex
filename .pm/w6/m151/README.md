@@ -1,6 +1,6 @@
 # w6 · m151 — `render-v1` runtime pods run in a pod user namespace (`hostUsers: false`)
 
-**Worker:** worker6 **Goal:** `render-v1` runtime pods (Deployment, CronJob, manual run, predeploy) run with `hostUsers: false`, so the wider capability set and the relaxed seccomp profile act inside a user namespace, never as host root. It ships behind a switch, is proven on Hetzner `hcloud-volumes` first, then turned on. **Status:** todo (t001–t002 done 2026-10-21; t003 Hetzner canary after w6/m149 t009)
+**Worker:** worker6 **Goal:** `render-v1` runtime pods (Deployment, CronJob, manual run, predeploy) run with `hostUsers: false`, so the wider capability set and the relaxed seccomp profile act inside a user namespace, never as host root. It ships behind a switch, is proven on Hetzner `hcloud-volumes` first, then turned on. **Status:** todo (t001–t004 done 2026-10-21; widened to every workspace, closeout after the widen deploys)
 
 ## Tasks (in order)
 
@@ -8,8 +8,8 @@
 | --- | --- | --- | --- |
 | t001 | Operator: project `hostUsers: false` for `render-v1` behind `BEX_RENDER_V1_USER_NAMESPACES` (default off) on all four paths — **DONE** | 45m | — |
 | t002 | Admission: `render-v1` workloads may set `hostUsers: false`; when the switch is on, require it — **DONE** | 30m | t001 |
-| t003 | Hetzner proof: a disk-backed `render-v1` canary with the switch on in the `bex` workspace (idmapped `hcloud-volumes`, restart, snapshot/restore) | 45m | t002, w6/m149/t009 |
-| t004 | Turn the switch on in production; record the residual risk in ADR089/ADR022 | 20m | t003 |
+| t003 | Hetzner proof: a disk-backed `render-v1` canary with the switch on in the `bex` workspace (idmapped `hcloud-volumes`, restart, snapshot/restore) — **DONE** | 45m | t002, w6/m149/t009 |
+| t004 | Turn the switch on in production; record the residual risk in ADR089/ADR022 — **DONE** | 20m | t003 |
 | t005 | Simplify | 15m | t004 |
 | t006 | Test coverage | 30m | t004, t005 |
 | t007 | Closeout | 10m | t006 |
