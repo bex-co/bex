@@ -99,7 +99,7 @@ Group delete (`detach`) is therefore a third rowless writer. Private, worker and
 ## Unverified
 
 - Whether the value-only `PUT` (`rollOne`, `service.go:1264-1267`, returns early for a gated service and touches no CR) contributed. It changes no spec field, so the 06:28 republish is attributed to group 2's link. Both writes landed within seconds.
-- Private, worker and cron services with Auto-Deploy off. Web and unlink are confirmed in the follow-up probe above.
+- Private, worker and cron services with Auto-Deploy off. Web, unlink and group delete are confirmed in the follow-up probes above. All three types are paid-only (`POST /v1/services` with `type: cron_job, plan: free` → `400 a cron_job requires a paid plan`), so a QA pass under the no-purchase rule cannot probe them. t002 covers them with tests instead.
 - Where the `server_failed` event at 06:27:02 came from on a static site during the rowless release.
 - Render: "If you make changes to an environment group … Render kicks off a new deploy for every linked service that has autodeploys enabled". With Auto-Deploy off, nothing deploys until the owner deploys. This is quoted in `autoDeployGated`'s comment and was not re-fetched this run.
 
