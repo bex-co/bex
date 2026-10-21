@@ -99,6 +99,7 @@ type updateServiceArgs struct {
 	BuildCommand            *string                  `json:"buildCommand,omitempty" jsonschema:"the build command (e.g. npm run build) for static sites and native-runtime services; empty clears it (builder default)"`
 	StartCommand            *string                  `json:"startCommand,omitempty" jsonschema:"the command used to start the service — Render's Docker Command for a Docker service, Start Command for a native runtime; empty restores the image default where supported"`
 	DockerfilePath          *string                  `json:"dockerfilePath,omitempty" jsonschema:"path to the Dockerfile relative to rootDir; empty restores Dockerfile. Triggers a fresh build"`
+	DockerContext           *string                  `json:"dockerContext,omitempty" jsonschema:"Docker build context directory relative to rootDir; empty restores the default (rootDir itself). Docker builds only. Triggers a fresh build"`
 	HealthCheckPath         *string                  `json:"healthCheckPath,omitempty" jsonschema:"HTTP path the platform GETs to gate pod readiness and liveness; must start with /. Empty CLEARS the path, switching the service to a TCP check that only verifies the process is listening — the right choice for a service with no cheap 2xx route. Probed every 10s, so point it at a cheap endpoint. No effect on cron_job or background_worker"`
 	PreDeployCommand        *string                  `json:"preDeployCommand,omitempty" jsonschema:"a command run to completion against the new revision's image before it serves traffic (typically a database migration); a non-zero exit fails the deploy and leaves the previous revision serving. Empty clears the step. No effect on cron_job or static_site"`
 	Port                    *int32                   `json:"port,omitempty" jsonschema:"the port the container listens on, which the platform injects as PORT and targets with the Service, Ingress and health probe (1-65535). Changing it rolls the pods. web_service and private_service only — a worker or cron job has no listener, and a static site is served on the platform's own port. This is the setting bex's reserved-PORT refusal points at: set the port here rather than as an environment variable"`
@@ -194,7 +195,7 @@ type createWebServiceArgs struct {
 	BuildCommand            string                  `json:"buildCommand,omitempty" jsonschema:"command used to build a native-runtime service; required for a native runtime, refused for runtime image"`
 	StartCommand            string                  `json:"startCommand,omitempty" jsonschema:"command used to start the service; required for a native runtime; for runtime image it overrides the image's command (or pass dockerCommand)"`
 	DockerfilePath          string                  `json:"dockerfilePath,omitempty" jsonschema:"path to the Dockerfile, relative to rootDir, for a Dockerfile build: runtime docker, or no runtime with builder auto or dockerfile (default Dockerfile)"`
-	DockerContext           string                  `json:"dockerContext,omitempty" jsonschema:"Docker build context directory, relative to the repository root, for a Dockerfile build: runtime docker, or no runtime with builder auto or dockerfile (default the repo root)"`
+	DockerContext           string                  `json:"dockerContext,omitempty" jsonschema:"Docker build context directory, relative to rootDir, for a Dockerfile build: runtime docker, or no runtime with builder auto or dockerfile (default: rootDir itself)"`
 	DockerCommand           string                  `json:"dockerCommand,omitempty" jsonschema:"overrides the image's startup command; omitted or empty uses the image's ENTRYPOINT and CMD. Applies to a Dockerfile build or a prebuilt image, not to a native runtime or buildpacks; do not combine with startCommand"`
 	Builder                 string                  `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
 	Plan                    string                  `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default starter, Render's 0.5c-512mb; a background_worker or private_service is paid-only, so free is rejected)"`
@@ -309,7 +310,7 @@ type createCronJobArgs struct {
 	BuildCommand   string            `json:"buildCommand,omitempty" jsonschema:"command used to build a native-runtime cron job; required for a native runtime, refused for runtime image"`
 	StartCommand   string            `json:"startCommand,omitempty" jsonschema:"command run by the cron job; required for a native runtime; for runtime image it overrides the image's command (or pass dockerCommand)"`
 	DockerfilePath string            `json:"dockerfilePath,omitempty" jsonschema:"path to the Dockerfile, relative to rootDir, for a Dockerfile build: runtime docker, or no runtime with builder auto or dockerfile (default Dockerfile)"`
-	DockerContext  string            `json:"dockerContext,omitempty" jsonschema:"Docker build context directory, relative to the repository root, for a Dockerfile build: runtime docker, or no runtime with builder auto or dockerfile (default the repo root)"`
+	DockerContext  string            `json:"dockerContext,omitempty" jsonschema:"Docker build context directory, relative to rootDir, for a Dockerfile build: runtime docker, or no runtime with builder auto or dockerfile (default: rootDir itself)"`
 	DockerCommand  string            `json:"dockerCommand,omitempty" jsonschema:"overrides the image's command for each run; omitted or empty uses the image's ENTRYPOINT and CMD. Applies to a Dockerfile build or a prebuilt image, not to a native runtime or buildpacks; do not combine with startCommand or command"`
 	Builder        string            `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
 	Plan           string            `json:"plan,omitempty" jsonschema:"paid instance plan, e.g. starter, standard, pro (default starter, Render's 0.5c-512mb); a cron job cannot use free"`
@@ -862,6 +863,7 @@ func (s *Service) applyServicePatch(ctx context.Context, in updateServiceArgs) (
 		BuildCommand:                   in.BuildCommand,
 		StartCommand:                   in.StartCommand,
 		DockerfilePath:                 in.DockerfilePath,
+		DockerContext:                  in.DockerContext,
 		Port:                           in.Port,
 		NotifyOnFail:                   in.NotifyOnFail,
 		// MCP-only (divergence): notificationsToSend is an update_service

@@ -577,9 +577,8 @@ type AppView struct {
 	// Root Directory setting, for monorepos; spec.rootDir). Empty is the repo root.
 	RootDir        string `json:"rootDir,omitempty"`
 	DockerfilePath string `json:"dockerfilePath,omitempty"`
-	// DockerContext is Render's Docker Build Context Directory
-	// (repo-root-relative, independent of RootDir); empty means the RootDir
-	// context (w8/m19).
+	// DockerContext is Render's Docker Build Context Directory, relative to
+	// RootDir as on Render ("." is RootDir itself; w8/m128, docker_context.go).
 	DockerContext string `json:"dockerContext,omitempty"`
 	// Repo and Branch are the build-from-git source (spec.repo/spec.branch),
 	// empty for an image-backed App. The dashboard's Settings → Build & Deploy
@@ -1149,7 +1148,7 @@ func view(a *appv1alpha1.App) AppView {
 		BlueprintID:          a.Labels[core.LabelBlueprint],
 		RootDir:              a.Spec.RootDir,
 		DockerfilePath:       a.Spec.DockerfilePath,
-		DockerContext:        a.Spec.DockerContext,
+		DockerContext:        viewDockerContext(a.Spec),
 		// Redact any legacy embedded userinfo before the URL reaches a viewer
 		// (round-6 #13); create/update now reject such URLs outright.
 		Repo: store.RedactRepoURL(a.Spec.Repo),
@@ -1833,7 +1832,8 @@ type CreateRequest struct {
 	BuildFilter    *BuildFilterView
 	DockerfilePath string
 	// DockerContext is Render's Docker build context directory, relative to
-	// the repo root and independent of RootDir (docker builds only).
+	// RootDir as on Render (docker builds only). specFromCreate stores it as
+	// the repository-root path the build reads (w8/m128).
 	DockerContext   string
 	Port            int32
 	Replicas        int32
@@ -2959,7 +2959,7 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		BuildFilter:     buildFilter,
 		MaintenanceMode: maintenanceMode,
 		DockerfilePath:  req.DockerfilePath,
-		DockerContext:   req.DockerContext,
+		DockerContext:   storedDockerContext(req.RootDir, req.DockerContext),
 		Port:            port,
 		Replicas:        replicas,
 		Tier:            tier,
@@ -3029,10 +3029,7 @@ func validateCreateSource(req CreateRequest) error {
 	if req.DockerfilePath != "" && !store.ValidRootDir(req.DockerfilePath) {
 		return fmt.Errorf("%w: dockerfilePath must be a relative path with no '..' components", core.ErrBadRequest)
 	}
-	if req.DockerContext != "" && !store.ValidRootDir(req.DockerContext) {
-		return fmt.Errorf("%w: dockerContext must be a relative path with no '..' components", core.ErrBadRequest)
-	}
-	return nil
+	return checkDockerContextPath(req.DockerContext)
 }
 
 // validateTypeSpecificCreate enforces the create fields tied to the service
@@ -4091,6 +4088,7 @@ func (s *Service) SetRootDir(ctx context.Context, name, rootDir string) (AppView
 		return AppView{}, err
 	}
 	return s.recordedPatch(ctx, core.AuditVerbSetRootDir, a, func(a *appv1alpha1.App) {
+		a.Spec.DockerContext = rebaseDockerContext(a.Spec.RootDir, rootDir, a.Spec.DockerContext)
 		a.Spec.RootDir = rootDir
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 	})
@@ -4116,6 +4114,26 @@ func (s *Service) SetDockerfilePath(ctx context.Context, name, dockerfilePath st
 	}
 	return s.recordedPatch(ctx, core.AuditVerbSetDockerfilePath, a, func(a *appv1alpha1.App) {
 		a.Spec.DockerfilePath = dockerfilePath
+		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
+	})
+}
+
+// SetDockerContext changes a repo-backed Docker build's context directory,
+// relative to spec.rootDir as on Render (dockerDetailsPATCH.dockerContext,
+// w8/m128). Empty restores the default, rootDir itself. Like
+// SetDockerfilePath it starts a fresh build and needs can_create: the context
+// is the file tree BuildKit executes against.
+func (s *Service) SetDockerContext(ctx context.Context, name, dockerContext string) (AppView, error) {
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	dockerContext, err = s.checkDockerContext(ctx, a, name, dockerContext)
+	if err != nil {
+		return AppView{}, err
+	}
+	return s.recordedPatch(ctx, core.AuditVerbSetDockerContext, a, func(a *appv1alpha1.App) {
+		a.Spec.DockerContext = storedDockerContext(a.Spec.RootDir, dockerContext)
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 	})
 }

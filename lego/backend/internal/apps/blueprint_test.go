@@ -3989,7 +3989,7 @@ func TestValidateBlueprintDockerContext(t *testing.T) {
     repo: https://github.com/bex/mono
     rootDir: apps/api
     dockerfilePath: Dockerfile
-    dockerContext: apps/api/ctx
+    dockerContext: ctx
   - name: nightly
     type: cron
     runtime: docker
@@ -4011,6 +4011,8 @@ func TestValidateBlueprintDockerContext(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
+	// dockerContext is relative to rootDir (w8/m128); the stored spec keeps
+	// the repository-root path the build reads.
 	for i, want := range []string{"apps/api/ctx", "apps/nightly"} {
 		spec, err := specFromCreate(st.services[i].req)
 		if err != nil {
@@ -4021,7 +4023,7 @@ func TestValidateBlueprintDockerContext(t *testing.T) {
 		}
 	}
 
-	escape := strings.Replace(manifest, "apps/api/ctx", "../escape", 1)
+	escape := strings.Replace(manifest, "dockerContext: ctx", "dockerContext: ../escape", 1)
 	v, err = svc.ValidateBlueprint(context.Background(), "", escape, "")
 	if err != nil {
 		t.Fatalf("ValidateBlueprint(escape): %v", err)

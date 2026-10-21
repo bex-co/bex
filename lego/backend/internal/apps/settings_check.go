@@ -135,13 +135,27 @@ func (s *Service) checkRootDir(ctx context.Context, a *appv1alpha1.App, name, ro
 }
 
 func (s *Service) checkDockerfilePath(ctx context.Context, a *appv1alpha1.App, name, dockerfilePath string) (string, error) {
+	if err := s.checkDockerBuildSetting(ctx, a, name, "dockerfile path"); err != nil {
+		return "", err
+	}
+	dockerfilePath = strings.TrimSpace(dockerfilePath)
+	if dockerfilePath != "" && !store.ValidRootDir(dockerfilePath) {
+		return "", fmt.Errorf("%w: dockerfilePath must be a relative path with no '..' components", core.ErrBadRequest)
+	}
+	return dockerfilePath, nil
+}
+
+// checkDockerBuildSetting gates a change to a Dockerfile-build setting (the
+// Dockerfile path or the build context): an unprotected, repo-backed App that
+// can be a Dockerfile build. setting names the field in the refusal.
+func (s *Service) checkDockerBuildSetting(ctx context.Context, a *appv1alpha1.App, name, setting string) error {
 	// What gets built is what runs, so this is the same identity change that
 	// repointing the source is (w4/m126).
 	if err := s.requireUnprotected(ctx, a, "redefine"); err != nil {
-		return "", err
+		return err
 	}
-	if err := requireRepoBacked(a, name, "dockerfile path only applies to Dockerfile builds"); err != nil {
-		return "", err
+	if err := requireRepoBacked(a, name, setting+" only applies to Dockerfile builds"); err != nil {
+		return err
 	}
 	runtime := strings.ToLower(strings.TrimSpace(a.Spec.Runtime))
 	if staleImageRuntime(a.Spec) {
@@ -149,13 +163,21 @@ func (s *Service) checkDockerfilePath(ctx context.Context, a *appv1alpha1.App, n
 	}
 	builder := strings.ToLower(strings.TrimSpace(a.Spec.Builder))
 	if (runtime != "" && runtime != "docker") || builder == "native" || builder == "buildpack" {
-		return "", errDockerfileBuildOnly("dockerfile path")
+		return errDockerfileBuildOnly(setting)
 	}
-	dockerfilePath = strings.TrimSpace(dockerfilePath)
-	if dockerfilePath != "" && !store.ValidRootDir(dockerfilePath) {
-		return "", fmt.Errorf("%w: dockerfilePath must be a relative path with no '..' components", core.ErrBadRequest)
+	return nil
+}
+
+// checkDockerContext validates a rootDir-relative Docker build context for an
+// update: the same Dockerfile-build-only refusal as a Dockerfile path, and
+// create's path rule (no '..', not absolute). Empty restores the default
+// context, rootDir itself (w8/m128).
+func (s *Service) checkDockerContext(ctx context.Context, a *appv1alpha1.App, name, dockerContext string) (string, error) {
+	if err := s.checkDockerBuildSetting(ctx, a, name, "docker context"); err != nil {
+		return "", err
 	}
-	return dockerfilePath, nil
+	dockerContext = strings.TrimSpace(dockerContext)
+	return dockerContext, checkDockerContextPath(dockerContext)
 }
 
 func checkBuildFilter(a *appv1alpha1.App, name string, filter *BuildFilterView) (*appv1alpha1.BuildFilterSpec, error) {

@@ -472,10 +472,12 @@ type AppSpec struct {
 	// +kubebuilder:validation:MaxLength=512
 	DockerfilePath string `json:"dockerfilePath,omitempty"`
 
-	// DockerContext is Render's Docker Build Context Directory, relative to
-	// the repository root and resolved independently of RootDir (Docker's own
-	// context-vs-dockerfile split). Empty uses RootDir as the context — the
-	// prior behavior. Docker builds only (w8/m19).
+	// DockerContext is the Docker build context directory as a path relative
+	// to the repository root, resolved independently of RootDir (Docker's own
+	// context-vs-dockerfile split). Empty uses RootDir as the context. Docker
+	// builds only (w8/m19). bex-api's surfaces speak Render's rootDir-relative
+	// form and translate at one seam (w8/m128); this field stays the path the
+	// build reads.
 	// +optional
 	// +kubebuilder:validation:MaxLength=512
 	DockerContext string `json:"dockerContext,omitempty"`
