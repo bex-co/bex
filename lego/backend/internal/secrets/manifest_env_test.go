@@ -271,7 +271,7 @@ func TestNonManifestKeysStayWritable(t *testing.T) {
 func TestInvalidNameDebrisIsListedAndRemovable(t *testing.T) {
 	debrisApp := func() *appv1alpha1.App {
 		a := sampleApp("svc")
-		a.Spec.Env = []appv1alpha1.EnvVar{{Name: "1BAD", Value: "x"}, {Name: "BAD KEY", Value: "y"}, {Name: "MESSAGE", Value: "kept"}}
+		a.Spec.Env = []appv1alpha1.EnvVar{{Name: "BAD/KEY", Value: "x"}, {Name: "BAD KEY", Value: "y"}, {Name: "MESSAGE", Value: "kept"}}
 		return a
 	}
 	ctx := context.Background()
@@ -282,18 +282,18 @@ func TestInvalidNameDebrisIsListedAndRemovable(t *testing.T) {
 		t.Fatalf("ListEnvVars: %v", err)
 	}
 	for _, v := range list {
-		if (v.Key == "1BAD" || v.Key == "BAD KEY") && v.ManagedBy != "" {
+		if (v.Key == "BAD/KEY" || v.Key == "BAD KEY") && v.ManagedBy != "" {
 			t.Errorf("%q reads managedBy %q; nothing manages an invalid name", v.Key, v.ManagedBy)
 		}
 	}
-	if err := svc.DeleteEnvVar(ctx, "svc", "1BAD"); err != nil {
-		t.Fatalf("DELETE 1BAD: %v", err)
+	if err := svc.DeleteEnvVar(ctx, "svc", "BAD/KEY"); err != nil {
+		t.Fatalf("DELETE BAD/KEY: %v", err)
 	}
-	if err := svc.DeleteEnvVar(ctx, "svc", "1BAD"); !errors.Is(err, core.ErrNotFound) {
-		t.Errorf("second DELETE 1BAD = %v, want ErrNotFound", err)
+	if err := svc.DeleteEnvVar(ctx, "svc", "BAD/KEY"); !errors.Is(err, core.ErrNotFound) {
+		t.Errorf("second DELETE BAD/KEY = %v, want ErrNotFound", err)
 	}
 	if got := getApp(t, svc.Client, "svc").Spec.Env; len(got) != 2 || got[0].Name != "BAD KEY" || got[1].Name != "MESSAGE" {
-		t.Errorf("spec.Env after DELETE = %+v, want only 1BAD removed", got)
+		t.Errorf("spec.Env after DELETE = %+v, want only BAD/KEY removed", got)
 	}
 
 	svc = newService(newFakeSecretStore(), debrisApp())
@@ -305,7 +305,7 @@ func TestInvalidNameDebrisIsListedAndRemovable(t *testing.T) {
 		t.Fatalf("ListEnvVars: %v", err)
 	}
 	for _, v := range list {
-		if v.Key == "1BAD" || v.Key == "BAD KEY" {
+		if v.Key == "BAD/KEY" || v.Key == "BAD KEY" {
 			t.Errorf("PUT [] left %q listed", v.Key)
 		}
 	}

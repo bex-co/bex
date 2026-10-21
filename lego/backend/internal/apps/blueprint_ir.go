@@ -245,6 +245,12 @@ func normalizeBlueprintResourceLists(ir *BlueprintIR, problems *[]BlueprintSourc
 					resource.Kind = BlueprintResourceKeyValue
 				}
 			}
+			// One resource name for every IR consumer (plan, preview, the
+			// resource list, error locations, the duplicate check): a free-form
+			// Blueprint name maps onto its resource name here (w5/m150).
+			if resource.Kind != BlueprintResourceEnvVarGroup && resource.Name != "" {
+				resource.Name = blueprintResourceSlug(resource.Name)
+			}
 			if resource.Name == "" {
 				location := source.Locations[resource.SourcePath]
 				*problems = append(*problems, BlueprintSourceProblem{Code: "BLUEPRINT_IR_NAME", Path: resource.SourcePath + "/name", Message: "Blueprint resource is missing its name", Line: location.Line, Column: location.Column})

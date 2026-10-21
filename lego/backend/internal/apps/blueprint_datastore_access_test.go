@@ -21,12 +21,10 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
-	"strings"
 	"testing"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -176,20 +174,16 @@ func assertBlueprintDatastorePlan(t *testing.T, svc *Service, manifest string, o
 }
 
 // TestBlueprintKeyValueNameIsValidated (w5/m118): a Key Value name the CRD
-// refuses is a validation error, as a Postgres one always was. Before, validate
-// passed and the apply's CR create answered the apiserver's refusal as a 500.
+// refuses is a validation error, as a Postgres one always was. Render puts no
+// rule on a Blueprint name, so a free-form one maps onto a resource name first
+// (w5/m150).
 func TestBlueprintKeyValueNameIsValidated(t *testing.T) {
 	t.Parallel()
 	svc, _ := newService(nil)
 	for _, name := range []string{"Cache_1", "cache-cache-cache-cache-cache-31", "Plan_Cache"} {
 		manifest := fmt.Sprintf("services:\n  - type: keyvalue\n    name: %s\n    plan: free\n    ipAllowList: []\n", name)
-		v, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
-		if err != nil {
-			t.Fatalf("%s: ValidateBlueprint = %v, want a validation result", name, err)
-		}
-		if v.Valid || len(v.Errors) == 0 || !strings.Contains(v.Errors[0].Error, core.ResourceNameRule) ||
-			v.Errors[0].Code != "RESOURCE_NAME_INVALID" || v.Errors[0].Path == nil || *v.Errors[0].Path != "services[0].name" {
-			t.Errorf("%s: validation = %+v, want the name refused with RESOURCE_NAME_INVALID at services[0].name (w5/093)", name, v)
+		if v, err := svc.ValidateBlueprint(context.Background(), "", manifest, ""); err != nil || !v.Valid {
+			t.Errorf("%s: validation = %+v, %v; want the free-form name accepted", name, v, err)
 		}
 	}
 }

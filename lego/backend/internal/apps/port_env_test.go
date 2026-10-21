@@ -64,7 +64,7 @@ func TestCheckSpecEnvAcceptsPORT(t *testing.T) {
 	if err := checkSpecEnv([]appv1alpha1.EnvVar{{Name: "PORT", Value: "8080"}}); err != nil {
 		t.Fatalf("literal PORT = %v, want it accepted", err)
 	}
-	if err := checkSpecEnv([]appv1alpha1.EnvVar{{Name: "1BAD", Value: "x"}}); err == nil {
+	if err := checkSpecEnv([]appv1alpha1.EnvVar{{Name: "BAD KEY", Value: "x"}}); err == nil {
 		t.Fatal("a malformed name must still be refused")
 	}
 }

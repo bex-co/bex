@@ -826,7 +826,8 @@ const zhServices: Record<string, TranslationEntry> = {
       "Environment value placeholder while server generation is selected",
   },
   "services.envInvalidKey": {
-    message: "最多 253 个字符，只能使用字母、数字和下划线，且不能以数字开头。",
+    message:
+      "最多 253 个字符，只能使用字母、数字、点、短横线和下划线；不能为“.”或以“..”开头。",
     description:
       "Environment add-variable validation message for an invalid key",
   },
@@ -3406,7 +3407,8 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Placeholder for the env var value input in the create wizard",
   },
   "services.createFieldEnvVarsKeyError": {
-    message: "键名必须以字母或下划线开头，只能包含字母、数字和下划线。",
+    message:
+      "最多 253 个字符，只能使用字母、数字、点、短横线和下划线；不能为“.”或以“..”开头。",
     description:
       "Error shown when an env var key is invalid in the create wizard",
   },
@@ -4738,7 +4740,7 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.envImportKeyError": {
     message:
-      "第 {line} 行：变量名只能包含字母、数字和下划线，且不能以数字开头。",
+      "第 {line} 行：变量名最多 253 个字符，只能使用字母、数字、点、短横线和下划线。",
     description:
       "Dotenv import error: the variable name on a line is invalid (w4/159)",
   },

@@ -496,7 +496,7 @@ func TestCreationTimeEnvVarsLeaveReferencesOnTheSpec(t *testing.T) {
 // Create refuses it now, with the same 400 the env verbs give, and writes
 // nothing.
 func TestCreateRefusesInvalidEnvVarNames(t *testing.T) {
-	for _, name := range []string{"1BAD", "BAD KEY", "BAD-DASH"} {
+	for _, name := range []string{"BAD KEY", "BAD=EQ", "BAD/SLASH"} {
 		seeder := &recordingCreateSecretsSeeder{}
 		svc, cl := newService(nil)
 		svc.CreateSecrets = seeder

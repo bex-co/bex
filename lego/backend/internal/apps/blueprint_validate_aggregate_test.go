@@ -119,7 +119,7 @@ func TestValidateBlueprintReportsParseAndServiceErrorsTogether(t *testing.T) {
     image:
       url: nginx:1
     envVars:
-      - key: BAD-KEY
+      - key: "BAD KEY"
         value: "8080"
   - type: worker
     name: qa5-wrk
@@ -136,7 +136,7 @@ func TestValidateBlueprintReportsParseAndServiceErrorsTogether(t *testing.T) {
 	if v.Valid || len(v.Errors) != 2 {
 		t.Fatalf("want the env key and the plan errors, got %+v", v.Errors)
 	}
-	if e := v.Errors[0]; !strings.Contains(e.Error, "BAD-KEY") || e.Path == nil || *e.Path != "services[0].envVars[0]" || e.Line == nil || *e.Line != 8 {
+	if e := v.Errors[0]; !strings.Contains(e.Error, "BAD KEY") || e.Path == nil || *e.Path != "services[0].envVars[0]" || e.Line == nil || *e.Line != 8 {
 		t.Errorf("env key entry = %q path=%v line=%v", e.Error, ptrValue(e.Path), ptrValue(e.Line))
 	}
 	if e := v.Errors[1]; e.Path == nil || *e.Path != "services[1].plan" || e.Line == nil || *e.Line != 15 {
@@ -176,7 +176,7 @@ func TestValidateBlueprintAggregatesAcrossResourceKinds(t *testing.T) {
     image:
       url: nginx:1
     envVars:
-      - key: BAD-KEY
+      - key: "BAD KEY"
         value: bad
   - type: keyvalue
     name: bad-kv
@@ -188,13 +188,13 @@ databases:
 envVarGroups:
   - name: bad-group
     envVars:
-      - key: 1BAD
+      - key: "BAD KEY"
         value: bad
 `
 	// Apply still sees the first refusal in parse order (groups precede
 	// databases and services), even though validate presents source order.
 	_, applyErr := parseStack(DeployRequest{Manifest: manifest})
-	if !errors.Is(applyErr, core.ErrBadRequest) || !strings.Contains(applyErr.Error(), "1BAD") {
+	if !errors.Is(applyErr, core.ErrBadRequest) || !strings.Contains(applyErr.Error(), "BAD KEY") {
 		t.Fatalf("apply error = %v, want the first env-group refusal", applyErr)
 	}
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
@@ -225,7 +225,7 @@ func TestValidateBlueprintRefusedGroupDoesNotCascade(t *testing.T) {
 	const manifest = `envVarGroups:
   - name: bad-group
     envVars:
-      - key: 1BAD
+      - key: "BAD KEY"
         value: bad
 services:
   - type: web
@@ -249,7 +249,7 @@ services:
 	if v.Valid || len(v.Errors) != 1 {
 		t.Fatalf("want only the group refusal, got %+v", v)
 	}
-	if e := v.Errors[0]; e.Path == nil || *e.Path != "envVarGroups[0].envVars[0]" || !strings.Contains(e.Error, "1BAD") {
+	if e := v.Errors[0]; e.Path == nil || *e.Path != "envVarGroups[0].envVars[0]" || !strings.Contains(e.Error, "BAD KEY") {
 		t.Fatalf("want located group refusal, got %+v", e)
 	}
 }

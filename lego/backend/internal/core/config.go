@@ -23,7 +23,6 @@ import (
 	"sort"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/api/validate/content"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
@@ -65,25 +64,31 @@ func SortedKeys(m map[string]string) []string {
 // and a name over 253 characters wedged a service's environment (w4/m168).
 type configKeyKind struct {
 	noun, code, field string
-	// identifier also holds the key to a C identifier, what a shell reads.
-	identifier bool
+	// rule, when set, is the wording a refusal names instead of Kubernetes'.
+	rule string
 }
 
 var (
-	envVarKey = configKeyKind{noun: "environment variable", code: "ENVIRONMENT_VARIABLE_INVALID", field: "key",
-		identifier: true}
+	envVarKey     = configKeyKind{noun: "environment variable", code: "ENVIRONMENT_VARIABLE_INVALID", field: "key", rule: EnvKeyRule}
 	secretFileKey = configKeyKind{noun: "secret file", code: "SECRET_FILE_INVALID", field: "name"}
 )
 
-// EnvKeyRule is the one wording of what an environment variable may be named.
-var EnvKeyRule = fmt.Sprintf("letters, digits and underscores, not starting with a digit, at most %d characters", validation.DNS1123SubdomainMaxLength)
+// EnvKeyRule is the one wording of what an environment variable may be named:
+// a Kubernetes Secret key. Render's own templates use dotted names such as
+// Elasticsearch's discovery.type, so bex no longer requires a C identifier
+// (w5/m150); a native build's shell skips a name it cannot export.
+var EnvKeyRule = fmt.Sprintf("letters, digits, '-', '_' and '.', at most %d characters", validation.DNS1123SubdomainMaxLength)
 
 // problem names the rule key breaks, or "" when it is a valid name.
 func (k configKeyKind) problem(key string) string {
-	if k.identifier && len(content.IsCIdentifier(key)) > 0 {
-		return "use " + EnvKeyRule
+	errs := validation.IsConfigMapKey(key)
+	if len(errs) == 0 {
+		return ""
 	}
-	return strings.Join(validation.IsConfigMapKey(key), "; ")
+	if k.rule != "" {
+		return "use " + k.rule
+	}
+	return strings.Join(errs, "; ")
 }
 
 // refuse is the coded 400 for a key problem rejects, naming the rule it broke.
@@ -118,9 +123,8 @@ func (k configKeyKind) params() map[string]any {
 }
 
 // ValidEnvKey reports whether k is an environment variable name bex accepts: a
-// C identifier a shell reads that is also a valid Secret key. Rejecting the
-// rest keeps a bad name from failing the Secret write with a cryptic error
-// later.
+// valid Secret key. Rejecting the rest keeps a bad name from failing the Secret
+// write with a cryptic error later.
 func ValidEnvKey(k string) bool {
 	return envVarKey.problem(k) == ""
 }

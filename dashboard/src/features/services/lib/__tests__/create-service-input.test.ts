@@ -340,7 +340,7 @@ describe("isSubmittable", () => {
 
   it("rejects malformed env keys and secret-file names", () => {
     expect(
-      isSubmittable(form({ envVars: [{ key: "1BAD", value: "x" }] })),
+      isSubmittable(form({ envVars: [{ key: "BAD/KEY", value: "x" }] })),
     ).toBe(false);
     expect(
       isSubmittable(form({ secretFiles: [{ name: "../esc", content: "x" }] })),

@@ -301,6 +301,7 @@ while IFS= read -r record; do
   key=${record%%=*}
   encoded=${record#*=}
   value="$(printf '%s' "$encoded" | bex_decode 2>/dev/null && printf '.')" || exit 1
+  case $key in ''|[0-9]*|*[!A-Za-z0-9_]*) continue ;; esac # a dotted name reaches the container, not the shell
   export "$key=${value%.}"
 done < ` + nativeEnvSecretPath + "\n"
 	installLines, installStep := nativeStaticInstall(o)
