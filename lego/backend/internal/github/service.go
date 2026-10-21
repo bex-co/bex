@@ -939,7 +939,7 @@ func (s *Service) repoTreeTarget(ctx context.Context, repoURL, branch, rootDir s
 	if !s.configured() {
 		return repoTreeTarget{}, false, nil
 	}
-	rootDir = strings.TrimSpace(rootDir)
+	rootDir = store.NormalizeRootDir(strings.TrimSpace(rootDir))
 	if !store.ValidRootDir(rootDir) {
 		return repoTreeTarget{}, false, fmt.Errorf("%w: rootDir must be a relative path with no '..' components", core.ErrBadRequest)
 	}
