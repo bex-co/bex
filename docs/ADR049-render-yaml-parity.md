@@ -53,6 +53,8 @@ The alias is filename compatibility only. It is not a separate bex dialect and m
 
 `repo` must be an `https://` clone URL; a trailing `/tree/<branch>` selects the branch, otherwise the repository's default branch is used. An optional `path=` names a Blueprint file other than `render.yaml`. The link signs the user in if needed, then opens the Blueprint review with everything prefilled; approval still happens on that page.
 
+**Create refusals leave no row (w8/166, 2026-10-21).** `POST /v1/blueprints` (and GraphQL/MCP create) runs the per-service create checks that `blueprints validate` reports before admitting the Blueprint, so a manifest those checks refuse answers 400 with nothing created. A failure that only the apply itself can find (a platform fault or a workspace race) still leaves the admitted Blueprint in `error`; clients should list Blueprints after a non-validation error.
+
 There is no application-level `bex.yaml`. `deploy/gitops/base/bex.yaml` is an internal platform deployment manifest with a different purpose; reusing its name for tenant applications would make repository searches and operator instructions ambiguous.
 
 Existing wire fields such as MCP/GraphQL `bexYaml` remain decode aliases for client compatibility, but new descriptions call the value `manifest`. Renaming a transport field is not required to fix the manifest contract.
