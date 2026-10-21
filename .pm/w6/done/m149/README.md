@@ -1,6 +1,6 @@
 # w6 · m149 — Tenant containers run what Render runs: a Render-compatible privilege policy in every workspace (privilege slice of deploying `render-examples/clickhouse`)
 
-**Worker:** worker6 **Goal:** in any workspace, a new Docker/image service whose unchanged image initializes as root (it changes file ownership, then switches to an unprivileged user, as ClickHouse, Postgres, MySQL and nginx images do) starts and serves. The policy is persisted per service, applied to every path that runs the service image, and confined by a pod user namespace where t002 proves that works. ADR089, ADR022 and ADR018 record the user decision that Render parity outranks the earlier drop-ALL hardening. **Status:** todo — t001–t009 done (t009: canary passed in `bex` and `render-v1` widened to every workspace, 2026-10-21); t010 customer-workspace acceptance next
+**Worker:** worker6 **Goal:** in any workspace, a new Docker/image service whose unchanged image initializes as root (it changes file ownership, then switches to an unprivileged user, as ClickHouse, Postgres, MySQL and nginx images do) starts and serves. The policy is persisted per service, applied to every path that runs the service image, and confined by a pod user namespace where t002 proves that works. ADR089, ADR022 and ADR018 record the user decision that Render parity outranks the earlier drop-ALL hardening. **Status:** done 2026-10-21 (live in production; live migration and production admission dry-runs parked as w6/088)
 
 ## Re-scope — 2026-10-20 (Render parity first)
 
@@ -24,11 +24,11 @@ The user restated that Render parity is the top principle ([AGENTS.md](../../../
 | t007 | Workload admission: admit exactly the new policy's shape — **DONE** | 45m | t005 |
 | t008 | Explicit migration operation for existing services (never on upgrade) — **DONE** | 45m | t004, t005 |
 | t009 | Canary in the `bex` workspace, then make the policy the default for every workspace — **DONE** | 45m | t004, t005, t006, t007, t008 |
-| t010 | Live acceptance in a customer workspace: unchanged ClickHouse, unchanged nginx, isolation, legacy | 1h15m | t009, w6/m148/t007 |
-| t011 | Render parity | 20m | t010 |
-| t012 | Simplify | 15m | t011 |
-| t013 | Test coverage | 40m | t011, t012 |
-| t014 | Closeout | 10m | t013 |
+| t010 | Live acceptance in a customer workspace: unchanged ClickHouse, unchanged nginx, isolation, legacy — **DONE** | 1h15m | t009, w6/m148/t007 |
+| t011 | Render parity — **DONE** | 20m | t010 |
+| t012 | Simplify — **DONE** | 15m | t011 |
+| t013 | Test coverage — **DONE** | 40m | t011, t012 |
+| t014 | Closeout — **DONE** | 10m | t013 |
 
 ## Definition of done
 
