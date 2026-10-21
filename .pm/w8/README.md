@@ -407,7 +407,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **155** — [Blueprint `fromService.envVarKey` cannot reference Render's default variables (`RENDER_EXTERNAL_URL`, `RENDER_EXTERNAL_HOSTNAME`, …)](done/155.md) — **DONE (2026-10-21)**: Resolved by w5/m148 (Render default variables, incl. `fromService.envVarKey: RENDER_*` references): `default-ref.yaml` validates on pin `a3f66521f93d`, and the four official examples now fail only on the QA workspace quota (sweep 1284).
 
-- [ ] **154** — [A Docker service with no `dockerfilePath` reads back `""`, where Render reports its default `./Dockerfile`](154.md) ← `/qa-find-bugs-cli` sweep 1269 2026-10-21: read projection beside w8/m128's context default; minor, ~20m.
+- [x] **154** — [A Docker service with no `dockerfilePath` reads back `""`, where Render reports its default `./Dockerfile`](done/154.md) — **DONE (2026-10-21)**: unset path reads `./Dockerfile`; ← `/qa-find-bugs-cli` sweep 1269 2026-10-21: read projection beside w8/m128's context default; minor, ~20m.
 
 - [x] **153** — [`bex services create --type static_site` without `--publish-directory` is refused, although Render's API defaults the publish path to `public`](done/153.md) — **DONE (2026-10-21)**: REST create defaults a blank `publishPath` to `public`; ← `/qa-find-bugs-cli` sweep 1268 2026-10-21: REST create default; minor, ~30m.
 

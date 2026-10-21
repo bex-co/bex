@@ -585,7 +585,7 @@ func envSpecificDetails(a AppView, svcType string) (map[string]any, bool) {
 		docker := map[string]any{
 			"dockerCommand":  dockerCommand,
 			"dockerContext":  cmp.Or(a.DockerContext, "."),
-			"dockerfilePath": a.DockerfilePath,
+			"dockerfilePath": cmp.Or(a.DockerfilePath, "./Dockerfile"),
 		}
 		if svcType == appv1alpha1.TypeCronJob {
 			// A cron's command is canonically runtime-independent on the wire:
