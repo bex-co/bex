@@ -600,6 +600,12 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 	if err != nil {
 		return CreateRequest{}, err
 	}
+	// Render's staticSiteDetailsPOST.publishPath "Defaults to \"public\"": the
+	// wire boundary fills it so a bare `services create --type static_site`
+	// works; bex's own surfaces (Blueprint, GraphQL) keep requiring it.
+	if r.Type == appv1alpha1.TypeStaticSite && strings.TrimSpace(publishPath) == "" {
+		publishPath = "public"
+	}
 	return CreateRequest{
 		OwnerID:                 ownerID,
 		EnvironmentID:           r.EnvironmentID,
