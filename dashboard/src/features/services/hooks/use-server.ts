@@ -31,6 +31,8 @@ export interface UseServerResult {
    * `useServiceLifecycle`'s poll-to-converge, which finds by id.
    */
   refetch: () => Promise<ServiceView[]>;
+  /** The owning workspace id, or null until the service loads (w6/091). */
+  ownerId?: string | null;
 }
 
 /**
@@ -76,5 +78,11 @@ export function useServer(
     return res.data?.server ? [toServiceView(res.data.server)] : [];
   }, [refetch]);
 
-  return { service, loading, error, refetch: refetchViews };
+  return {
+    service,
+    loading,
+    error,
+    refetch: refetchViews,
+    ownerId: data?.server?.ownerId ?? null,
+  };
 }
