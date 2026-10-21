@@ -1195,6 +1195,7 @@ export type Mutation = {
   setDatabasePublic: Maybe<Database>;
   setDatabaseReadReplicas: Maybe<Database>;
   setDisplayName: Maybe<Service>;
+  setDockerContext: Maybe<Service>;
   setDockerfilePath: Maybe<Service>;
   setEnvGroupSecretFile: Maybe<Scalars['Boolean']['output']>;
   setEnvGroupVar: Maybe<Scalars['Boolean']['output']>;
@@ -2037,6 +2038,13 @@ export type MutationSetDatabaseReadReplicasArgs = {
 export type MutationSetDisplayNameArgs = {
   confirm?: InputMaybe<Scalars['String']['input']>;
   displayName: Scalars['String']['input'];
+  id: Scalars['String']['input'];
+};
+
+
+export type MutationSetDockerContextArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
+  dockerContext: Scalars['String']['input'];
   id: Scalars['String']['input'];
 };
 

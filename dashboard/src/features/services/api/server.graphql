@@ -9,6 +9,9 @@
 query Server($id: String!) {
   server(id: $id) {
     id
+    # The owning workspace: the detail page adopts it as the selection, so
+    # permissions are judged in the service's own workspace (w6/091).
+    ownerId
     name
     immutableName
     # slug is the globally-unique platform-host segment (Render's "slug" field;
