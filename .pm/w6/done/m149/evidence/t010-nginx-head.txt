@@ -1,0 +1,3 @@
+HTTP/2 200 
+accept-ranges: bytes
+content-type: text/html
