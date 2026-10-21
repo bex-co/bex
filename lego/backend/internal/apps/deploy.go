@@ -3022,7 +3022,7 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 	}
 	plan = tiers.Postgres.CanonicalID(plan)
 	if _, ok := tiers.Postgres.ByID(plan); !ok {
-		return parsedDatabase{}, fmt.Errorf("%w: database %q plan %q is not a supported Render Postgres plan (one of %s)", core.ErrBadRequest, d.Name, plan, strings.Join(tiers.Postgres.IDs(), "|"))
+		return parsedDatabase{}, fmt.Errorf("%w: database %q plan %q is not available on bex; choose one of %s", core.ErrBadRequest, d.Name, plan, strings.Join(tiers.Postgres.IDs(), "|"))
 	}
 	allow, err := parseBlueprintIPAllowList("database", d.Name, d.IPAllowList)
 	if err != nil {

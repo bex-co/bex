@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -205,6 +206,26 @@ func TestBlueprintKeyValueNameIsValidated(t *testing.T) {
 		manifest := fmt.Sprintf("services:\n  - type: keyvalue\n    name: %s\n    plan: free\n    ipAllowList: []\n", name)
 		if v, err := svc.ValidateBlueprint(context.Background(), "", manifest, ""); err != nil || !v.Valid {
 			t.Errorf("%s: validation = %+v, %v; want the free-form name accepted", name, v, err)
+		}
+	}
+}
+
+// A Render Postgres plan bex does not sell is a bex limit, not a Render syntax
+// error; a name Render itself lacks fails the schema instead (w8/160).
+func TestBlueprintUnsoldPostgresPlanNamesBexLimit(t *testing.T) {
+	t.Parallel()
+	svc, _ := newService(nil)
+	for _, tc := range []struct {
+		plan, want string
+	}{
+		{"pro-4gb", `plan "pro-4gb" is not available on bex; choose one of free|basic-256mb|basic-1gb`},
+		{"basic-4gb", `plan "basic-4gb" is not available on bex`},
+		{"accelerated-16gb", `plan "accelerated-16gb" is not available on bex`},
+		{"pro-5gb", "value must be one of"},
+	} {
+		v, err := svc.ValidateBlueprint(context.Background(), "", "databases:\n  - name: d\n    plan: "+tc.plan+"\n", "")
+		if err != nil || v.Valid || len(v.Errors) != 1 || !strings.Contains(v.Errors[0].Error, tc.want) {
+			t.Errorf("plan %s: %+v, err %v; want %q", tc.plan, v.Errors, err, tc.want)
 		}
 	}
 }
