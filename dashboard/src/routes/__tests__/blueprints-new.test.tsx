@@ -166,7 +166,7 @@ function validPreview(): BlueprintPreviewResult {
   };
 }
 
-function renderPage() {
+function renderPage(entry = "/blueprints/new") {
   const rootRoute = createRootRoute();
   const newRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -180,7 +180,7 @@ function renderPage() {
   });
   const router = createRouter({
     routeTree: rootRoute.addChildren([newRoute, detailRoute]),
-    history: createMemoryHistory({ initialEntries: ["/blueprints/new"] }),
+    history: createMemoryHistory({ initialEntries: [entry] }),
     context: { client: {} as never, session: null },
   });
   render(<RouterProvider router={router} />);
@@ -696,4 +696,38 @@ it("keeps the Blueprint form, path included, inside the hydration fieldset (w4/m
   );
   expect(fieldset).not.toBeNull();
   expect(fieldset).toContainElement(screen.getByLabelText(/Blueprint Path/i));
+});
+
+// w8/163: the Deploy-to-bex button's prefill.
+describe("deploy link prefill", () => {
+  it("opens the public-URL source with the repo and /tree branch", async () => {
+    renderPage(
+      "/blueprints/new?repo=https://github.com/acme/hello-go&branch=dev&path=infra/render.yaml",
+    );
+    expect(await screen.findByLabelText("Repository URL")).toHaveValue(
+      "https://github.com/acme/hello-go",
+    );
+    expect(screen.getByRole("combobox", { name: /branch/i })).toHaveValue(
+      "dev",
+    );
+    expect(screen.getByLabelText("Blueprint path")).toHaveValue(
+      "infra/render.yaml",
+    );
+  });
+
+  it("falls back to the default branch when the link names none", async () => {
+    branchesState.branches = ["develop", "master"];
+    renderPage("/blueprints/new?repo=https://github.com/acme/hello-go");
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: /branch/i })).toHaveValue(
+        "master",
+      ),
+    );
+  });
+
+  it("ignores a repo that is not a clone URL", async () => {
+    renderPage("/blueprints/new?repo=javascript:alert(1)");
+    await screen.findByRole("heading", { name: /blueprint/i });
+    expect(screen.queryByLabelText("Repository URL")).not.toBeInTheDocument();
+  });
 });

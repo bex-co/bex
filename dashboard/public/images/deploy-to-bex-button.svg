@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="32" viewBox="0 0 160 32" role="img" aria-label="Deploy to bex">
+  <rect width="160" height="32" rx="6" fill="#111827"/>
+  <path d="M14 21V11m0 0-4 4m4-4 4 4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="30" y="21" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="13" font-weight="600" fill="#fff">Deploy to bex</text>
+</svg>
