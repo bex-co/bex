@@ -1431,8 +1431,19 @@ func configureRateLimiters(srv *api.Server, cfg *Config) {
 	}
 }
 
-// newHTTPServer builds an HTTP server with the header/read/write timeouts
+// edgeUpstreamIdleTimeout is how long Traefik keeps an idle upstream
+// connection to bex-api in its pool: its forwardingTimeouts.idleConnTimeout
+// default, which deploy/gitops does not override (no ServersTransport).
+const edgeUpstreamIdleTimeout = 90 * time.Second
+
+// newHTTPServer builds an HTTP server with the header/read/write/idle timeouts
 // shared by the public and internal control-plane listeners.
+//
+// IdleTimeout must outlive the edge's upstream pool. Left zero, net/http uses
+// ReadTimeout (30s), so bex-api closed idle keep-alive connections that Traefik
+// still considered reusable; a POST written onto one as it closed failed with
+// no retry (GraphQL is always POST) and reached the browser as a CORS-less 502
+// or a closed connection — the intermittent dropped mutations of w3/044.
 func newHTTPServer(addr string, h http.Handler) *http.Server {
 	return &http.Server{
 		Addr:              addr,
@@ -1440,6 +1451,7 @@ func newHTTPServer(addr string, h http.Handler) *http.Server {
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      api.HTTPWriteTimeout,
+		IdleTimeout:       edgeUpstreamIdleTimeout + 30*time.Second,
 	}
 }
 
