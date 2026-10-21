@@ -18,6 +18,8 @@ package postgres
 
 import (
 	"testing"
+
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // TestCreatePostgresDiskSizeGbAlias covers w2/m91: Render's diskSizeGb wins
@@ -82,5 +84,24 @@ func TestMCPCreatePostgresDiskSizeGb(t *testing.T) {
 
 	if n := countDatabases(t, cl); n != 0 {
 		t.Fatalf("dry-run must not create a CR, got %d", n)
+	}
+}
+
+// TestMCPCreatePostgresVersionAcceptsRendersNumber is w5/m145: Render's MCP
+// server types create_postgres' version as a number (13–18), so an agent
+// sends 16, not "16". Both reach the same request; a fractional or non-scalar
+// value is refused by name.
+func TestMCPCreatePostgresVersionAcceptsRendersNumber(t *testing.T) {
+	svc, _ := newService()
+	call, cleanup := pgMCPClient(t, svc)
+	defer cleanup()
+	for _, v := range []any{16, "16"} {
+		got := call("create_postgres", map[string]any{"name": "ver-render", "plan": "basic-1gb", "version": v, "dryRun": true})
+		if got["version"] != "16" {
+			t.Fatalf("version %v (%T) preview = %v, want \"16\"", v, v, got["version"])
+		}
+	}
+	if _, err := mcputil.NumberOrString("version", 16.5); err == nil {
+		t.Fatal("a fractional version should be refused")
 	}
 }

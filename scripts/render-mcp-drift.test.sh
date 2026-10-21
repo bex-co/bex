@@ -39,7 +39,8 @@ make_stub() {
 #!/usr/bin/env python3
 import sys, json
 out = sys.argv[sys.argv.index("--out") + 1]
-open(out, "w").write(json.dumps($body))
+# The body is JSON, not a Python literal: the pin carries true/false (w5/m145).
+open(out, "w").write(json.dumps(json.loads(r'''$body''')))
 STUB
   chmod +x "$dest"
   echo "$dest"

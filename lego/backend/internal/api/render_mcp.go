@@ -44,7 +44,7 @@ var renderMCPToolsSource []byte
 // renderMCPToolsSHA256 pins the embedded capture the way renderOpenAPISHA256
 // pins the REST spec: a hand-edit or a truncated file fails loudly at load
 // rather than silently weakening every parity assertion built on it.
-const renderMCPToolsSHA256 = "8c044390d89fc2a2129714ba39e786de201af9d05deccb8f751e204c1c15ed2b"
+const renderMCPToolsSHA256 = "8fae488ee06fec607baf19091e3206294e375f222ebafbd2d19625b907ea2b89"
 
 // renderMCPTool is one upstream tool reduced to its contractual surface.
 type renderMCPTool struct {
@@ -54,6 +54,18 @@ type renderMCPTool struct {
 	// (its own ids differ), but a Parity1to1 tool may never ADD one — that would
 	// reject a call the official server accepts.
 	Required []string `json:"required"`
+	// ArgTypes is each argument's JSON type (and enum), and Annotations the
+	// tool's behavior hints (w5/m145): a call whose argument type differs fails
+	// as surely as one missing an argument, and a client prompts before any
+	// tool not marked read-only.
+	ArgTypes    map[string]renderMCPArgType `json:"argTypes"`
+	Annotations map[string]bool             `json:"annotations"`
+}
+
+// renderMCPArgType is one upstream argument's JSON type, plus its enum.
+type renderMCPArgType struct {
+	Type string   `json:"type"`
+	Enum []string `json:"enum,omitempty"`
 }
 
 // renderMCPContract is the parsed pin.

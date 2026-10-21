@@ -128,6 +128,33 @@ var mcpKnownUpstreamOnly = map[string]string{
 	"get_selected_workspace": "w1/m55 — see select_workspace",
 }
 
+// mcpAcceptedTypeDivergences records each "tool.arg" whose bex JSON type
+// deliberately differs from upstream's, with the reason (w5/m145). A type
+// mismatch not listed here fails TestMCPArgumentTypesMatchUpstream.
+var mcpAcceptedTypeDivergences = map[string]string{}
+
+// mcpArgTypeMismatches lists the upstream arguments bex accepts in a JSON type
+// upstream does not send. An integer satisfies a number; an argument upstream
+// leaves untyped, or bex does not accept at all (classifyMCPTool's concern),
+// is skipped.
+func mcpArgTypeMismatches(bexTypes map[string][]string, up renderMCPTool) []string {
+	var out []string
+	for arg, want := range up.ArgTypes {
+		have, ok := bexTypes[arg]
+		if !ok || want.Type == "" || len(have) == 0 {
+			continue
+		}
+		compatible := slices.Contains(have, want.Type) ||
+			(want.Type == "number" && slices.Contains(have, "integer")) ||
+			(want.Type == "integer" && slices.Contains(have, "number"))
+		if !compatible {
+			out = append(out, arg)
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
 // classifyMCPTool derives a tool's parity class from the pin.
 func classifyMCPTool(name string, args, required []string, pin *renderMCPContract) (mcpParityClass, mcpDivergence) {
 	up, ok := pin.Tool(name)
