@@ -293,8 +293,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
           </Card>
         );
       case "port":
-        // The container port bex routes to and injects as $PORT — the setting
-        // the reserved-PORT refusal names (w4/m121/t003).
+        // The container port bex routes to and injects as $PORT (w4/m121/t003).
         return (
           <Card>
             <CardHeader>

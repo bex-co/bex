@@ -638,6 +638,13 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	// gated separately (Status.Image reuse below), so a no-op pass never rebuilds.
 
 	port := int(app.Spec.EffectivePort())
+	// A service's own PORT selects the serving port (w5/m149), decided before
+	// the cancel branch so a cancel settles on the same port it reports.
+	if app.Spec.UsesImagePorts() {
+		app.Status.EnvPort = 0
+	} else if port, err = r.envPort(ctx, &app, port); err != nil {
+		return ctrl.Result{}, err
+	}
 
 	// The desired spec was classified before the validation/convergence gates so
 	// their failure status is attributable to the release that requested it.
@@ -5059,9 +5066,10 @@ func effectiveHosts(app *appv1alpha1.App, baseDomain string) []string {
 const portEnvName = "PORT"
 
 // appEnv builds the container's environment: the user's spec.env (literal
-// config) first, then the operator-owned PORT last. PORT is appended last and a
-// user entry named PORT is dropped, so a user variable can never shadow the
-// injected port — the one invariant the CRD contract promises. Secret-backed
+// config) first, then PORT last. port is the serving port, which already is
+// the service's own PORT when it set one (envPort, w5/m149), so the container
+// entry restates the user's value rather than overriding it, and the port the
+// process reads always equals the port the platform routes to. Secret-backed
 // variables arrive separately through envFrom (envFromSources); a container-level
 // Env entry overrides an envFrom key of the same name, so PORT wins over both.
 // A ValueFrom.SecretKeyRef entry (a bex.yml fromDatabase reference, w1/m24)
@@ -5071,7 +5079,7 @@ func appEnv(app *appv1alpha1.App, port int) []corev1.EnvVar {
 	env := make([]corev1.EnvVar, 0, len(app.Spec.Env)+1)
 	for _, e := range app.Spec.Env {
 		if e.Name == portEnvName {
-			continue // operator-owned; never let a user shadow it
+			continue // restated last as the serving port (envPort, w5/m149)
 		}
 		ev := corev1.EnvVar{Name: e.Name, Value: e.Value}
 		if e.ValueFrom != nil && e.ValueFrom.SecretKeyRef != nil {

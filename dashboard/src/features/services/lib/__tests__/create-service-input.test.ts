@@ -273,24 +273,10 @@ describe("isSubmittable", () => {
     ).toBe(true);
   });
 
-  // w2/m95 t003: bex-api refuses a reserved key at create, so the wizard must
-  // not let Submit through with one.
-  it("blocks a reserved env key and allows its near misses", () => {
+  // w5/m149: Render lets a service set PORT, so the wizard submits it.
+  it("accepts a PORT env var like any other key", () => {
     expect(
       isSubmittable(form({ envVars: [{ key: "PORT", value: "8080" }] })),
-    ).toBe(false);
-    expect(
-      isSubmittable(form({ envVars: [{ key: " PORT ", value: "8080" }] })),
-    ).toBe(false);
-    expect(
-      isSubmittable(
-        form({
-          envVars: [
-            { key: "port", value: "8080" },
-            { key: "APP_PORT", value: "8080" },
-          ],
-        }),
-      ),
     ).toBe(true);
   });
 

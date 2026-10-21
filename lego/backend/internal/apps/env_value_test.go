@@ -75,12 +75,12 @@ func TestBlueprintPromptValueRefusesNUL(t *testing.T) {
 	}
 }
 
-func TestCheckReservedSpecEnvRefusesNUL(t *testing.T) {
-	if err := checkReservedSpecEnv([]appv1alpha1.EnvVar{{Name: "QA", Value: "q\x00a"}}); err == nil ||
+func TestCheckSpecEnvRefusesNUL(t *testing.T) {
+	if err := checkSpecEnv([]appv1alpha1.EnvVar{{Name: "QA", Value: "q\x00a"}}); err == nil ||
 		!strings.Contains(err.Error(), core.EnvValueSentence("QA")) {
 		t.Fatalf("create literal NUL = %v, want the refusal", err)
 	}
-	if err := checkReservedSpecEnv([]appv1alpha1.EnvVar{{Name: "QA", Value: "a\nb\tc\r\n\\u0000"}}); err != nil {
+	if err := checkSpecEnv([]appv1alpha1.EnvVar{{Name: "QA", Value: "a\nb\tc\r\n\\u0000"}}); err != nil {
 		t.Fatalf("representable create literal = %v", err)
 	}
 }

@@ -2035,10 +2035,9 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		return AppView{}, errServiceNameInUse(req.Name)
 	}
 
-	// Refuse a reserved key at create for the same reason every other write
-	// path does: the operator injects its own PORT and would silently drop
-	// this one, so storing it would be a lie (w2/m95 t003).
-	if err := checkReservedSpecEnv(desired.Env); err != nil {
+	// Refuse at create what every later env write refuses: a malformed name
+	// or an unrepresentable value.
+	if err := checkSpecEnv(desired.Env); err != nil {
 		return AppView{}, err
 	}
 
@@ -2184,19 +2183,15 @@ type createSeed struct {
 
 func (s createSeed) empty() bool { return len(s.files) == 0 && len(s.env) == 0 }
 
-// checkReservedSpecEnv refuses a create whose spec carries a literal
-// environment variable bex owns (core.ReservedEnvKeys — today PORT). A
-// ValueFrom entry is skipped: it is a Secret key reference the operator
-// resolves, not a name the user is claiming.
-func checkReservedSpecEnv(env []appv1alpha1.EnvVar) error {
+// checkSpecEnv refuses a create whose spec carries a literal environment
+// variable no later env write would accept: a malformed name or an
+// unrepresentable value.
+func checkSpecEnv(env []appv1alpha1.EnvVar) error {
 	for _, item := range env {
 		// A name every later env write refuses is refused at create too
 		// (w8/027): stored, it became a var no verb could edit or delete.
 		if !core.ValidEnvKey(item.Name) {
 			return core.CheckEnvKey(item.Name)
-		}
-		if item.ValueFrom == nil && core.IsReservedEnvKey(item.Name) {
-			return core.ReservedEnvKeyError(item.Name)
 		}
 		if err := core.CheckEnvValue(item.Name, item.Value); err != nil {
 			return err
@@ -2218,7 +2213,7 @@ func checkReservedSpecEnv(env []appv1alpha1.EnvVar) error {
 // A ValueFrom entry stays exactly where it is: it is a Secret key reference,
 // not a literal (the shape a bex.yml fromDatabase reference resolves to). A
 // name outside core.ValidEnvKey never reaches here — create refuses it
-// (checkReservedSpecEnv, w8/027) instead of leaving it on spec.Env, where it
+// (checkSpecEnv, w8/027) instead of leaving it on spec.Env, where it
 // read as Blueprint-managed and no env verb could remove it.
 func takeCreateEnvLiterals(spec *appv1alpha1.AppSpec) map[string]string {
 	var literals map[string]string

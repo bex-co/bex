@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -63,5 +64,20 @@ func TestOpenPortsFollowTheServingNetwork(t *testing.T) {
 	app.OpenPorts()[0] = 1
 	if serving.Ports[0] != 8123 {
 		t.Fatal("OpenPorts aliased the serving network")
+	}
+}
+
+func TestServingPortPrefersTheServicesOwnPORT(t *testing.T) {
+	app := &App{Spec: AppSpec{Port: 3000}}
+	if got := app.ServingPort(); got != 3000 {
+		t.Fatalf("ServingPort = %d, want spec.port 3000", got)
+	}
+	app.Status.EnvPort = 8080
+	if app.ServingPort() != 8080 || app.ServicePort() != 8080 || app.OpenPorts()[0] != 8080 {
+		t.Fatalf("a recorded PORT must drive every reader: serving=%d service=%d open=%v",
+			app.ServingPort(), app.ServicePort(), app.OpenPorts())
+	}
+	if !strings.HasSuffix(app.InternalAddress(), ":8080") {
+		t.Fatalf("InternalAddress = %q, want the PORT", app.InternalAddress())
 	}
 }

@@ -471,9 +471,9 @@ describe("ServiceEnvironmentEditor", () => {
     expect(trigger).not.toHaveBeenCalled();
   });
 
-  // w2/m95 t003: bex owns PORT — the operator injects its own and would drop a
-  // user's — so the editor says so as the key is typed and refuses to save it.
-  it("flags a reserved key inline and blocks the save", async () => {
+  // w5/m149: Render lets a service set PORT, so the editor saves it like any
+  // other key.
+  it("saves a PORT variable like any other key", async () => {
     const user = userEvent.setup();
     renderEditor();
     await user.click(await screen.findByRole("button", { name: "Edit" }));
@@ -483,23 +483,23 @@ describe("ServiceEnvironmentEditor", () => {
     );
     const keys = screen.getAllByRole("textbox", { name: "Key" });
     await user.type(keys[keys.length - 1], "PORT");
+    await user.type(
+      screen.getByRole("textbox", { name: "Value for PORT" }),
+      "8080",
+    );
 
-    expect(
-      await screen.findByText(
-        "PORT is set by bex from the service port. Change the service's port field instead.",
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Save and deploy" }));
+    await waitFor(() =>
+      expect(save).toHaveBeenCalledWith(
+        "web",
+        {
+          envVars: [{ key: "PORT", value: "8080" }],
+          secretFiles: [],
+        },
+        "deploy",
       ),
-    ).toBeInTheDocument();
-    // w4/m121/t003: the sentence names the service's port field, so it links
-    // to the control that changes it instead of dead-ending.
-    expect(
-      screen.getByRole("link", {
-        name: "Change the service's port in Settings",
-      }),
-    ).toHaveAttribute("href", "/services/web/settings#port");
-    expect(
-      screen.getByRole("button", { name: "Save and deploy" }),
-    ).toBeDisabled();
-    expect(save).not.toHaveBeenCalled();
+    );
   });
 
   // w2/m95 t002: the value field used to be a single-line <input>, which the

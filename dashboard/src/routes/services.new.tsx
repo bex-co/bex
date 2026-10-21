@@ -559,10 +559,6 @@ export function NewServicePage() {
                   <CreateEnvVarEditor
                     rows={form.envVars}
                     onChange={(envVars) => set({ envVars })}
-                    // PORT is refused here too; the sentence points at this
-                    // wizard's own port field, which only exists for the
-                    // port-binding types (w4/m121/t003).
-                    portFieldId={shape.showPort ? "svc-port" : undefined}
                   />
                   <CreateSecretFileEditor
                     rows={form.secretFiles}

@@ -3,7 +3,6 @@ import { commandText } from "@/features/services/lib/command-text";
 import { isValidCron } from "@/features/services/lib/cron";
 import {
   VALID_ENV_KEY,
-  isReservedEnvKey,
   isValidSecretFileName,
 } from "@/features/services/lib/environment-draft";
 import type { ServiceType } from "@/features/services/lib/create-context";
@@ -172,17 +171,15 @@ export function isSubmittable(form: NewServiceForm): boolean {
   return (
     sourceValid &&
     nativeCommandsValid &&
-    submittableEnvVars(form.envVars).every(
-      // A reserved key is refused by bex-api at create (w2/m95 t003), so the
-      // form blocks it rather than letting Submit fail.
-      (row) => VALID_ENV_KEY.test(row.key) && !isReservedEnvKey(row.key.trim()),
+    submittableEnvVars(form.envVars).every((row) =>
+      VALID_ENV_KEY.test(row.key),
     ) &&
     submittableSecretFiles(form.secretFiles).every((file) =>
       isValidSecretFileName(file.name),
     ) &&
     // A port the backend would refuse never leaves the browser: the form blocks
-    // Submit exactly as it does for a reserved env key (w4/m121/t003). Types
-    // that bind no port never read the field at all.
+    // Submit (w4/m121/t003). Types that bind no port never read the field at
+    // all.
     (!shape.showPort || portIsValid(form, shape)) &&
     (shape.isStaticType || form.plan !== "") &&
     // bex-api refuses a static site without a publish directory, and the

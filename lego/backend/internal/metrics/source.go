@@ -456,7 +456,7 @@ func resourceLimitQuery(matchers, resource string) string {
 // ground-truthed 2026-07 against production; the identical regex is load-bearing
 // in the request-log pipeline, deploy/gitops/base/log-shipper.yaml's
 // `stage.regex` over the access log's ServiceName field). The operator names the
-// App's k8s Service after the App and gives it exactly app.Spec.EffectivePort()
+// App's k8s Service after the App and gives it exactly app.ServingPort()
 // (app_controller.go), so this is a reconstruction of a known identity, not a
 // heuristic — codex-security round-19 #6: the prior unanchored `.*<app>.*`
 // substring selector dropped namespace entirely and could match another

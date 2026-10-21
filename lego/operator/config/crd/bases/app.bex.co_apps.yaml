@@ -1170,6 +1170,16 @@ spec:
               endpoint:
                 description: Endpoint is the raw runtime target for the edge ("host:port/prefix").
                 type: string
+              envPort:
+                description: |-
+                  EnvPort is the port a service's own PORT environment variable selected
+                  (Render lets a service set PORT; w5/m149):
+                  the operator serves, routes and probes on it instead of spec.port. Zero
+                  means the service sets no valid PORT and spec.port applies.
+                format: int32
+                maximum: 65535
+                minimum: 0
+                type: integer
               image:
                 description: Image is the OCI image of the active revision.
                 type: string

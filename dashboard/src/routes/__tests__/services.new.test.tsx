@@ -1288,23 +1288,21 @@ describe("NewServicePage", () => {
       expect(create).not.toHaveBeenCalled();
     });
 
-    // The refusal that names the port control must reach it: in the wizard the
-    // control is the field on this very form (w4/m121/t003).
-    it("points the reserved-PORT refusal at the wizard's own port field", async () => {
+    // w5/m149: Render lets a service set PORT, so the wizard accepts it.
+    it("accepts a PORT env var like any other key", async () => {
       const user = userEvent.setup();
       renderPage();
       await screen.findAllByRole("radiogroup");
       await user.click(screen.getByRole("button", { name: "Add Variable" }));
       await user.type(screen.getAllByLabelText("Key")[0], "PORT");
 
+      expect(screen.getAllByLabelText("Key")[0]).toHaveAttribute(
+        "aria-invalid",
+        "false",
+      );
       expect(
-        screen.getByText(
-          /PORT is set by bex from the service port\. Change the service's port field instead\./,
-        ),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("link", { name: "Set the service's port above" }),
-      ).toHaveAttribute("href", "#svc-port");
+        screen.queryByText(/port field|valid environment variable/i),
+      ).not.toBeInTheDocument();
     });
   });
 

@@ -28,8 +28,9 @@ vi.mock("@/features/services/hooks/use-server", () => ({
 }));
 
 vi.mock("@/features/capabilities/hooks/use-resource-actions", async () => {
-  const { mockAllowedResourceActions } =
-    await import("@/test/mocks/resource-actions");
+  const { mockAllowedResourceActions } = await import(
+    "@/test/mocks/resource-actions"
+  );
   return mockAllowedResourceActions("app");
 });
 
@@ -687,9 +688,9 @@ describe("ServiceSettingsPage", () => {
     }
   });
 
-  // w4/m121/t003: the port is the setting bex's own reserved-PORT refusal names,
-  // so it has to be here for the two types that bind one — and nowhere for the
-  // three that don't, whose setPort bex-api refuses outright.
+  // w4/m121/t003: the port control is here for the two types that bind one —
+  // and nowhere for the three that don't, whose setPort bex-api refuses
+  // outright.
   describe("service port", () => {
     it.each(["web_service", "private_service"])(
       "offers a port control to a %s",

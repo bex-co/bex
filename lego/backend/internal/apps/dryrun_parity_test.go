@@ -69,7 +69,7 @@ func TestCreateDryRunRefusesWhatTheRealCreateRefuses(t *testing.T) {
 			wantErr: core.ErrBadRequest,
 		},
 		{name: "duplicate name", req: CreateRequest{Name: "taken", Image: "img:1"}, wantErr: core.ErrConflict},
-		{name: "reserved PORT env", req: CreateRequest{Name: "web", Image: "img:1", Env: []appv1alpha1.EnvVar{{Name: "PORT", Value: "8080"}}}, wantErr: core.ErrBadRequest},
+		{name: "malformed env key", req: CreateRequest{Name: "web", Image: "img:1", Env: []appv1alpha1.EnvVar{{Name: "BAD-KEY", Value: "8080"}}}, wantErr: core.ErrBadRequest},
 		{
 			name: "inaccessible repository",
 			req:  CreateRequest{Name: "web", Type: appv1alpha1.TypeWebService, Repo: "https://github.com/render-oss/render-examples-go-gin"},

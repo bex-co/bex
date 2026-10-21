@@ -843,26 +843,6 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Environment value placeholder while server generation is selected",
   },
-  "services.envReservedKey": {
-    message:
-      "{key} is set by bex from the service port. Change the service's port field instead.",
-    description: "Environment validation message for a key bex reserves (PORT)",
-  },
-  "services.envReservedKeySettingsLink": {
-    message: "Change the service's port in Settings",
-    description:
-      "Link from the reserved-PORT refusal to the service's Settings port control",
-  },
-  "services.envReservedKeyFieldLink": {
-    message: "Set the service's port above",
-    description:
-      "Link from the reserved-PORT refusal to the create wizard's own port field",
-  },
-  "services.envReservedKeyServicesLink": {
-    message: "Open a service's Settings to change its port",
-    description:
-      "Link from the reserved-PORT refusal when no single service owns the port (an env group can be linked to many)",
-  },
   "services.envInvalidKey": {
     message:
       "Use up to 253 letters, digits and underscores; can't start with a digit.",
@@ -1370,7 +1350,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.settingsPortHint": {
     message:
-      "The port your container listens on (default {port}). bex routes traffic to it, injects it as $PORT, and refuses PORT as an environment variable because of it. Saving starts a new deploy and restarts the instances.",
+      "The port your container listens on (default {port}). bex routes traffic to it and injects it as $PORT. A PORT environment variable on the service overrides it, as on Render. Saving starts a new deploy and restarts the instances.",
     description: "Settings tab: service port row hint text",
   },
   "services.settingsPortImageHint": {
