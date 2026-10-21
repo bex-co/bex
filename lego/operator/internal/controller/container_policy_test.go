@@ -193,3 +193,28 @@ func TestAdmissionCapabilityListsMatchTheTable(t *testing.T) {
 		t.Errorf("admission admits seccomp profiles for policies the table does not know: %v", profiles)
 	}
 }
+
+// w6/m151: BEX_RENDER_V1_USER_NAMESPACES puts render-v1 runtime pods (the
+// Deployment and the cron/manual-run template) in a pod user namespace; every
+// other policy, and every policy with the switch off, keeps hostUsers unset so
+// its template stays byte-identical.
+func TestRenderV1UserNamespacesSwitch(t *testing.T) {
+	for _, policy := range []string{"", appv1alpha1.ContainerPolicyStrictV1, appv1alpha1.ContainerPolicyImageV1, appv1alpha1.ContainerPolicyRenderV1} {
+		for _, on := range []bool{false, true} {
+			app := projectionApp(func(a *appv1alpha1.App) { a.Spec.ContainerPolicy = policy })
+			params := webParams()
+			params.userNamespaces = on
+			dep := project(app, params)
+			cron := (&AppReconciler{RenderV1UserNamespaces: on}).cronPodSpec(app, "image", 8123, nil, launchUnknown)
+			want := on && policy == appv1alpha1.ContainerPolicyRenderV1
+			for name, got := range map[string]*bool{"deployment": dep.Spec.Template.Spec.HostUsers, "cron": cron.Spec.HostUsers} {
+				if want && (got == nil || *got) {
+					t.Errorf("%q on=%t %s: hostUsers = %v, want false", policy, on, name, got)
+				}
+				if !want && got != nil {
+					t.Errorf("%q on=%t %s: hostUsers = %v, want unset", policy, on, name, *got)
+				}
+			}
+		}
+	}
+}

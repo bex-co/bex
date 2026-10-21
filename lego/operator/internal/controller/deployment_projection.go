@@ -172,6 +172,8 @@ type deploymentParams struct {
 	// webConcurrency is the WEB_CONCURRENCY default, 0 for none
 	// (web_concurrency.go).
 	webConcurrency int
+	// userNamespaces is BEX_RENDER_V1_USER_NAMESPACES (appHostUsers).
+	userNamespaces bool
 }
 
 // appPodLabels builds the pod template's label set.
@@ -543,6 +545,7 @@ func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymen
 	dep.Spec.Template.Spec.Containers = []corev1.Container{container}
 	dep.Spec.Template.Spec.ImagePullSecrets = p.pullSecrets
 	dep.Spec.Template.Spec.AutomountServiceAccountToken = new(false)
+	dep.Spec.Template.Spec.HostUsers = appHostUsers(app.Spec, p.userNamespaces)
 	// No legacy Docker-link variables (w4/m123). With Kubernetes' default
 	// (true), the kubelet injects a <NAME>_SERVICE_HOST / <NAME>_SERVICE_PORT /
 	// <NAME>_PORT_<n>_TCP_* set for EVERY Service in the pod's namespace — live,

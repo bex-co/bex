@@ -72,3 +72,16 @@ func appSecCtx(spec appv1alpha1.AppSpec) *corev1.SecurityContext {
 	}
 	return security
 }
+
+// appHostUsers is a runtime pod's hostUsers: false (a pod user namespace) for
+// render-v1 when BEX_RENDER_V1_USER_NAMESPACES is on (w6/m151), nil otherwise,
+// for the Deployment and cron/manual-run paths (pre-deploy pods already run in
+// one via execution.HardenPod),
+// so every other template stays byte-identical. On-disk UIDs are unshifted
+// under an idmapped volume, so turning it off needs no data migration (t002).
+func appHostUsers(spec appv1alpha1.AppSpec, enabled bool) *bool {
+	if !enabled || spec.ContainerPolicy != appv1alpha1.ContainerPolicyRenderV1 {
+		return nil
+	}
+	return new(false)
+}
