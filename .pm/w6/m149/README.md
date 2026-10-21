@@ -1,6 +1,15 @@
 # w6 · m149 — Tenant containers run what Render runs: a Render-compatible privilege policy in every workspace (privilege slice of deploying `render-examples/clickhouse`)
 
-**Worker:** worker6 **Goal:** in any workspace, a new Docker/image service whose unchanged image initializes as root (it changes file ownership, then switches to an unprivileged user, as ClickHouse, Postgres, MySQL and nginx images do) starts and serves. The policy is persisted per service, applied to every path that runs the service image, and confined by a pod user namespace where t002 proves that works. ADR089, ADR022 and ADR018 record the user decision that Render parity outranks the earlier drop-ALL hardening. **Status:** blocked on the user's seccomp decision (t003 step 3) — t001, t006 done 2026-10-19; t002 done 2026-10-20; the `render-v1` policy value shipped across types/store/operator/admission — t004/t005/t007 remain open for the creation default and `hostUsers`)
+**Worker:** worker6 **Goal:** in any workspace, a new Docker/image service whose unchanged image initializes as root (it changes file ownership, then switches to an unprivileged user, as ClickHouse, Postgres, MySQL and nginx images do) starts and serves. The policy is persisted per service, applied to every path that runs the service image, and confined by a pod user namespace where t002 proves that works. ADR089, ADR022 and ADR018 record the user decision that Render parity outranks the earlier drop-ALL hardening. **Status:** todo — unparked 2026-10-20 under Render parity first; t003–t005, t007, t008 done 2026-10-20 (t009 canary next); t001, t006 done 2026-10-19; t002 done 2026-10-20; the `render-v1` policy value shipped across types/store/operator/admission — t004/t005/t007 remain open for the creation default and `hostUsers`)
+
+## Re-scope — 2026-10-20 (Render parity first)
+
+The user restated that Render parity is the top principle ([AGENTS.md](../../../AGENTS.md) Rules; [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first)). This milestone therefore no longer waits on optional decisions.
+
+- **Seccomp:** `render-v1` ships with **RuntimeDefault**. That is enough for unchanged ClickHouse, Postgres, MySQL and nginx. Relaxing it (`io_uring`, unprivileged user namespaces) is a separate follow-up, w6/085.
+- **Pod user namespaces:** **not** part of `render-v1`. Render runs none, so this was bex-only defense in depth. The t002 spike passed on ext4, but Hetzner idmap support is unverified. Adoption is a separate follow-up, w6/086.
+- **Not a dependency of the widen:** neither gates t009's widen to every workspace.
+- **Tasks affected:** the `hostUsers` parts of t003, t005, t007 and DoD 3 are out of scope.
 
 ## Tasks (in order)
 
@@ -8,12 +17,12 @@
 | --- | --- | --- | --- |
 | t001 | Capture Render's container privilege profile and bex's measured one (evidence artifact) — **DONE** | 40m | — |
 | t002 | Spike: runtime pods in a pod user namespace with Render's capability set and a persistent disk — **DONE** | 1h | — |
-| t003 | Decide and amend the ADRs: ADR089 D2 accepted as amended, ADR022 hardening section, ADR018, ADR004, ADR070 | 1h | t001, t002 |
-| t004 | Types + store + backend: the new persisted policy and its creation default | 1h | t003, w6/m148/t002 |
-| t005 | Operator: project the policy (capabilities + `hostUsers`) onto every path that runs the service image | 1h | t003 |
+| t003 | Decide and amend the ADRs: ADR089 D2 accepted as amended, ADR022 hardening section, ADR018, ADR004, ADR070 — **DONE** | 1h | t001, t002 |
+| t004 | Types + store + backend: the new persisted policy and its creation default — **DONE** | 1h | t003, w6/m148/t002 |
+| t005 | Operator: project the policy (capabilities + `hostUsers`) onto every path that runs the service image — **DONE** | 1h | t003 |
 | t006 | Low-port contract: align the `< 1024` refusals and the diagnosis with the measured node behavior — **DONE** | 45m | t001, t003 |
-| t007 | Workload admission: admit exactly the new policy's shape | 45m | t005 |
-| t008 | Explicit migration operation for existing services (never on upgrade) | 45m | t004, t005 |
+| t007 | Workload admission: admit exactly the new policy's shape — **DONE** | 45m | t005 |
+| t008 | Explicit migration operation for existing services (never on upgrade) — **DONE** | 45m | t004, t005 |
 | t009 | Canary in the `bex` workspace, then make the policy the default for every workspace | 45m | t004, t005, t006, t007, t008 |
 | t010 | Live acceptance in a customer workspace: unchanged ClickHouse, unchanged nginx, isolation, legacy | 1h15m | t009, w6/m148/t007 |
 | t011 | Render parity | 20m | t010 |
