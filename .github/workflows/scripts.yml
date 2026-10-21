@@ -68,8 +68,9 @@ jobs:
         run: bash scripts/ci-red-streak.test.sh
       - name: Edge probe retry and failure classes (w1/131)
         run: bash scripts/edge-probe.test.sh
-      # w5/m112: /ship's pre-push gate refuses to stack commits on a red main
-      # unless the push is the fix; proven with a stubbed gh, no network.
+      # w5/m112: /ship's pre-push gate reports a red main (never blocks on it,
+      # 2026-10-21) and picks the newest real verdict; proven with a stubbed
+      # gh, no network.
       - name: ship gates self-test
         run: bash scripts/ship-gates.test.sh
       # w3/042. Its sibling for a probe that is green but late. Two things are

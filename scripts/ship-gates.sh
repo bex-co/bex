@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
 # ship-gates.sh — the checks /ship runs after committing and before pushing
-# (w5/m112). Exits non-zero when the push must not happen:
+# (w5/m112). Exits non-zero only when THIS push's own code fails:
 #
-#   1. main is red: the newest completed (not cancelled, skipped or neutral)
-#      `deploy (bex via Argo)` run on main failed or timed out. Stacking more
-#      commits on a red main is how three changes landed on top of a broken
-#      backend suite on 2026-10-05. Pass --fixes-red-main when this push is
-#      the fix (say so in the commit). One read, no waiting: /ship still does
-#      not watch CI.
+#   1. Main's CI status is reported, never enforced (user decision
+#      2026-10-21: never stop or wait because main is red). When the newest
+#      completed (not cancelled, skipped or neutral) `deploy (bex via Argo)`
+#      run on main failed or timed out, the gate prints a warning naming it so
+#      the caller pauses to fix CI first, then ships either way. Pass
+#      --fixes-red-main when this push is that fix: it only changes the
+#      message. One read, no waiting.
 #   2. The push changes lego/backend, lego/types or the seeded authz model and
 #      the backend suite fails against its real Postgres + OpenFGA + OpenBao
 #      (scripts/backend-test-deps.sh), which local `go test` otherwise skips.
+#      This one blocks: a failure here is the push's own defect, fixed before
+#      it ships.
 #
 #   bash scripts/ship-gates.sh [--fixes-red-main] <base-ref>   # e.g. origin/main
 set -euo pipefail
@@ -30,33 +33,34 @@ done
 root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
 
-if [ "$fixes_red_main" = 0 ]; then
-  # No --branch: that filter turns GitHub's run listing into a search, which
-  # can answer with a page of only old runs (it once blocked a green main on a
-  # month-old failure). deploy.yml runs on main pushes and manual dispatches,
-  # so filter the branch here and take the newest verdict by createdAt; the
-  # verdict filter is ci-red-streak.sh's.
-  if runs=$(gh run list --workflow deploy.yml --limit 20 \
-    --json conclusion,status,headSha,headBranch,url,createdAt 2>/dev/null); then
-    latest=$(jq -r 'map(select(.headBranch == "main" and .status == "completed"
-          and .conclusion != "cancelled" and .conclusion != "skipped" and .conclusion != "neutral"))
-      | max_by(.createdAt)
-      | if . == null then "" else "\(.conclusion) \(.headSha[0:9]) \(.createdAt) \(.url)" end' <<<"$runs")
-    if [ -z "$latest" ]; then
-      echo "ship-gates: warning: no completed deploy run on main to judge; not blocking" >&2
-    else
-      read -r conclusion sha created url <<<"$latest"
-      case "$conclusion" in
-        failure | timed_out | startup_failure)
-          echo "ship-gates: main is red — deploy run for $sha (created $created) ended $conclusion: $url" >&2
-          echo "ship-gates: fix main first, or run with --fixes-red-main if this push is the fix" >&2
-          exit 1
-          ;;
-      esac
-    fi
+# No --branch: that filter turns GitHub's run listing into a search, which can
+# answer with a page of only old runs (it once blocked a green main on a
+# month-old failure). deploy.yml runs on main pushes and manual dispatches, so
+# filter the branch here and take the newest verdict by createdAt; the verdict
+# filter is ci-red-streak.sh's.
+if runs=$(gh run list --workflow deploy.yml --limit 20 \
+  --json conclusion,status,headSha,headBranch,url,createdAt 2>/dev/null); then
+  latest=$(jq -r 'map(select(.headBranch == "main" and .status == "completed"
+        and .conclusion != "cancelled" and .conclusion != "skipped" and .conclusion != "neutral"))
+    | max_by(.createdAt)
+    | if . == null then "" else "\(.conclusion) \(.headSha[0:9]) \(.createdAt) \(.url)" end' <<<"$runs")
+  if [ -z "$latest" ]; then
+    echo "ship-gates: warning: no completed deploy run on main to judge" >&2
   else
-    echo "ship-gates: warning: could not read main's deploy status (gh unavailable?); not blocking" >&2
+    read -r conclusion sha created url <<<"$latest"
+    case "$conclusion" in
+      failure | timed_out | startup_failure)
+        echo "ship-gates: warning: main is red — deploy run for $sha (created $created) ended $conclusion: $url" >&2
+        if [ "$fixes_red_main" = 1 ]; then
+          echo "ship-gates: this push is marked as the fix; shipping" >&2
+        else
+          echo "ship-gates: fix CI first if you can (ship the fix alone, then resume); if it cannot be fixed now, ship anyway — never stop or wait" >&2
+        fi
+        ;;
+    esac
   fi
+else
+  echo "ship-gates: warning: could not read main's deploy status (gh unavailable?)" >&2
 fi
 
 # Captured, not piped into grep: under pipefail an early-exiting grep can
