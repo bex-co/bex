@@ -15,9 +15,24 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"strings"
+	"syscall"
 	"time"
+	"unsafe"
 )
+
+// ioUringSetup creates and closes a 4-entry io_uring (syscall 425 on both
+// amd64 and arm64), reporting "ok" or the errno.
+func ioUringSetup() string {
+	var params [120]byte
+	fd, _, errno := syscall.Syscall(425, 4, uintptr(unsafe.Pointer(&params[0])), 0)
+	if errno != 0 {
+		return errno.Error()
+	}
+	syscall.Close(int(fd))
+	return "ok"
+}
 
 func main() {
 	if os.Getenv("ROLE") == "consumer" {
@@ -66,6 +81,15 @@ func server() {
 			}
 		}
 		fmt.Fprintf(w, "uid_map: %s", uidMap)
+		// The two things Render's unfiltered runtime allows and bex's
+		// render-v1 seccomp profile must too (w6/m150): an io_uring instance
+		// and a user namespace created by a non-root process.
+		fmt.Fprintf(w, "io_uring_setup: %s\n", ioUringSetup())
+		if out, err := exec.Command("unshare", "-Ur", "true").CombinedOutput(); err != nil {
+			fmt.Fprintf(w, "unshare -Ur: %v %s\n", err, strings.TrimSpace(string(out)))
+		} else {
+			fmt.Fprintln(w, "unshare -Ur: ok")
+		}
 	})
 	log.Print("listening on 8123 (http) and 9000 (tcp); $PORT is ignored")
 	log.Fatal(http.ListenAndServe("0.0.0.0:8123", nil))
