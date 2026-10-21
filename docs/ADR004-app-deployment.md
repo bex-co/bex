@@ -383,6 +383,10 @@ Repo-backed deploy rows are stamped with commit provenance **at deploy-open time
 
 **Honest omission, never fabrication.** Non-github.com URLs, private repos without a connection, unknown refs, and provider failures all leave `commit` omitted (`ok=false`). 404 and 403 collapse to the same miss so the public path is not an existence oracle. Callers treat any resolution failure as "no metadata" and still open the deploy.
 
+## Render's default environment variables (w5/m148)
+
+Every service gets Render's documented default variables (`RENDER`, `RENDER_*`, `IS_PULL_REQUEST`; the full list and values are in [ADR018](ADR018-render-parity.md)). One package, `lego/types/renderenv`, computes the values that follow from the App alone, for both the operator and bex-api's Blueprint resolver. The operator adds them to the app container (and cron runs) just before `PORT`, as platform-owned entries. It also adds the pod name as `RENDER_INSTANCE_ID`, and `RENDER_GIT_COMMIT` from the serving image's OCI revision label. BuildKit stamps that label from the clone step's `git rev-parse HEAD`, so a commit always travels with its image. Each web, private and worker service also gets a headless `<slug>-discovery` Service for `RENDER_DISCOVERY_SERVICE`. The operator never adopts a same-named object it does not control.
+
 ## Deploy image digest (w8/m122)
 
 An image deploy reports Render's `image.sha`, "the SHA that the image reference was resolved to", on REST and MCP (`image.sha`), GraphQL (`Deploy.imageSha`) and the dashboard deploy header (short form, full value on hover, copy). Render's pinned CLI prints it after `SHA:` in its deploy list.

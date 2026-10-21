@@ -47,7 +47,7 @@ func m202Commands(t *testing.T, app *appv1alpha1.App, image string, launch launc
 	p := webParams()
 	p.image, p.launch = image, launch
 	web = appContainerOf(t, project(app, p)).Command
-	cron = (&AppReconciler{}).cronPodSpec(app, image, 0, nil, launch).Spec.Containers[0].Command
+	cron = (&AppReconciler{}).cronPodSpec(app, image, 0, nil, launch, "").Spec.Containers[0].Command
 	return web, cron
 }
 
@@ -99,7 +99,7 @@ func TestPrebuiltImageCommandAfterNativeSourceSwitch(t *testing.T) {
 			a.Spec = appv1alpha1.AppSpec{Type: appv1alpha1.TypeCronJob, Image: m202Busybox, Runtime: "node", StartCommand: m202Command, Command: m202Explicit}
 		})
 		for _, launch := range []launchMode{launchUnknown, launchImage} {
-			got := (&AppReconciler{}).cronPodSpec(app, m202Busybox, 0, nil, launch).Spec.Containers[0].Command
+			got := (&AppReconciler{}).cronPodSpec(app, m202Busybox, 0, nil, launch, "").Spec.Containers[0].Command
 			if want := shellCommand(m202Explicit); !slices.Equal(got, want) {
 				t.Errorf("launch %q: cron command = %q, want %q", launch, got, want)
 			}
@@ -185,7 +185,7 @@ func TestSelectedReleaseKeepsItsRecordedLaunch(t *testing.T) {
 		rec := m202Record(m202Command, m202Native, shellCommand(m202Explicit))
 		rec.spec.Command = new(m202Explicit)
 		app := projectionApp(func(a *appv1alpha1.App) { a.Spec = gitSaved; a.Spec.Type = appv1alpha1.TypeCronJob })
-		got := (&AppReconciler{}).cronPodSpec(rec.projectRuntimeApp(app, 9), m202Native, 0, nil, rec.launch(app)).Spec.Containers[0].Command
+		got := (&AppReconciler{}).cronPodSpec(rec.projectRuntimeApp(app, 9), m202Native, 0, nil, rec.launch(app), "").Spec.Containers[0].Command
 		if want := shellCommand(m202Explicit); !slices.Equal(got, want) {
 			t.Errorf("cron command = %q, want %q", got, want)
 		}

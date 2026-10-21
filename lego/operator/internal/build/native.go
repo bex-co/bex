@@ -312,7 +312,8 @@ done < ` + nativeEnvSecretPath + "\n"
 COPY . .
 COPY <<'%s' %s
 %s%s
-%sRUN --mount=type=secret,id=render-env,target=%s%s %s
+%sARG RENDER_GIT_COMMIT
+RUN --mount=type=secret,id=render-env,target=%s%s %s
 `, stages, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeNodeTools(o)+nativeMediaTools+hugo+nativeBuildDefaults(o), nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
 		installLines, nativeEnvSecretPath, fileMounts.String(), run)
 	if o.StaticSite {

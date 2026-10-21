@@ -37,7 +37,7 @@ func TestApplicationContainerPolicies(t *testing.T) {
 		t.Run(policy, func(t *testing.T) {
 			app := projectionApp(func(a *appv1alpha1.App) { a.Spec.ContainerPolicy = policy })
 			dep := project(app, webParams())
-			cron := (&AppReconciler{}).cronPodSpec(app, "image", 8123, nil, launchUnknown)
+			cron := (&AppReconciler{}).cronPodSpec(app, "image", 8123, nil, launchUnknown, "")
 			app.Spec.PreDeployCommand = "true"
 			app.UID = "policy-test"
 			scheme := datastoreSecretScheme(t)
@@ -205,7 +205,7 @@ func TestRenderV1UserNamespacesSwitch(t *testing.T) {
 			params := webParams()
 			params.userNamespaces = on
 			dep := project(app, params)
-			cron := (&AppReconciler{RenderV1UserNamespaces: on}).cronPodSpec(app, "image", 8123, nil, launchUnknown)
+			cron := (&AppReconciler{RenderV1UserNamespaces: on}).cronPodSpec(app, "image", 8123, nil, launchUnknown, "")
 			want := on && policy == appv1alpha1.ContainerPolicyRenderV1
 			for name, got := range map[string]*bool{"deployment": dep.Spec.Template.Spec.HostUsers, "cron": cron.Spec.HostUsers} {
 				if want && (got == nil || *got) {

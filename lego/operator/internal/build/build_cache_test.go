@@ -93,7 +93,7 @@ func TestBuildCacheGateOffLeavesTheBuildJobUntouched(t *testing.T) {
 	}
 	// The exact pre-feature invocation. Written out rather than derived, so a
 	// change to the cached form cannot silently redefine what "unchanged" means.
-	wantScript := classifyPrelude + `bex_run buildctl-daemonless.sh "$@"`
+	wantScript := classifyPrelude + revisionStamp + `bex_run buildctl-daemonless.sh "$@"`
 	if got := scriptOf(t, bk); got != wantScript {
 		t.Errorf("buildkit script changed with the gate off:\n got %q\nwant %q", got, wantScript)
 	}
@@ -166,7 +166,7 @@ func TestBuildCacheAddsOnlyWhatItClaimsToAdd(t *testing.T) {
 				c.VolumeMounts = slices.DeleteFunc(c.VolumeMounts, func(m corev1.VolumeMount) bool {
 					return m.MountPath == cacheInMount || m.MountPath == cacheOutMount
 				})
-				c.Command[scriptIndex(t, c)] = classifyPrelude + `bex_run buildctl-daemonless.sh "$@"`
+				c.Command[scriptIndex(t, c)] = classifyPrelude + revisionStamp + `bex_run buildctl-daemonless.sh "$@"`
 				if j := slices.Index(c.Args, "--export-cache"); j >= 0 {
 					c.Args = slices.Delete(c.Args, j, j+2)
 				}

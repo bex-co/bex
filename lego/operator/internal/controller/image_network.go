@@ -30,6 +30,21 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
+// ownImageReference is image's tag or digest within the App's own built
+// repository; ok is false for any other image, which can never receive
+// platform registry credentials.
+func (r *AppReconciler) ownImageReference(app *appv1alpha1.App, image string) (string, bool) {
+	prefix := r.Registry + "/" + appIdentity(app).Repo()
+	if r.Registry == "" || !strings.HasPrefix(image, prefix+":") && !strings.HasPrefix(image, prefix+"@") {
+		return "", false
+	}
+	reference := strings.TrimPrefix(image, prefix)
+	if _, digest, ok := strings.Cut(reference, "@"); ok {
+		return digest, true
+	}
+	return strings.TrimPrefix(reference, ":"), true
+}
+
 // resolveImageNetwork is deliberately scoped to the App's own built repository.
 // An arbitrary image host can never receive platform registry credentials.
 func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha1.App, image string) (string, int, error) {
@@ -41,16 +56,11 @@ func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha
 		cached.Revision = releaseRevision(app)
 		return image, int(cached.PrimaryPort), nil
 	}
-	prefix := r.Registry + "/" + appIdentity(app).Repo()
-	if r.Registry == "" || !strings.HasPrefix(image, prefix+":") && !strings.HasPrefix(image, prefix+"@") {
+	reference, ok := r.ownImageReference(app, image)
+	if !ok {
 		return "", 0, fmt.Errorf("image port discovery requires this service's built image repository")
 	}
-	reference := strings.TrimPrefix(image, prefix)
-	if _, digest, ok := strings.Cut(reference, "@"); ok {
-		reference = digest
-	} else {
-		reference = strings.TrimPrefix(reference, ":")
-	}
+	prefix := r.Registry + "/" + appIdentity(app).Repo()
 	authorization, ready, err := r.registryAuthHeader(ctx, app)
 	if err != nil {
 		return "", 0, err

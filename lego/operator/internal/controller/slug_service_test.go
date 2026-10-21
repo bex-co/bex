@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/bex-co/bex/lego/types/renderenv"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -155,7 +156,8 @@ var _ = Describe("Slug-named Service (ADR041 D2)", func() {
 			list := &corev1.ServiceList{}
 			Expect(k8sClient.List(ctx, list)).To(Succeed())
 			for i := range list.Items {
-				if metav1.IsControlledBy(&list.Items[i], got) {
+				// The headless discovery Service (w5/m148) is not an address.
+				if metav1.IsControlledBy(&list.Items[i], got) && list.Items[i].Name != renderenv.DiscoveryServiceName(got) {
 					owned++
 				}
 			}
