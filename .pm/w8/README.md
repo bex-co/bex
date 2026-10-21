@@ -383,7 +383,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **167** — [Prebuilt images from common public registries (cgr.dev, registry.gitlab.com, nvcr.io, docker.elastic.co, lscr.io, *.azurecr.io) are refused as "not trusted"](done/167.md) — **DUPLICATE (2026-10-21)** of w5/171: Duplicate of w5/171 ("Images from any public registry deploy, as on Render"), blocked on the user's DNS-rebinding risk decision. The probe table and the `render-examples/minio` evidence here feed that decision.
 
-- [ ] **166** — [`POST /v1/blueprints` answers 400 after it has already created the Blueprint, leaving an auto-syncing connection the caller never learns about](166.md) ← `/qa-find-bugs-cli` sweep 1283 2026-10-21: minor, ~45m.
+- [x] **166** — [`POST /v1/blueprints` answers 400 after it has already created the Blueprint, leaving an auto-syncing connection the caller never learns about](done/166.md) — **DONE (2026-10-21)**: create runs the validate-time service checks before admission, so a refused manifest leaves no row; ← `/qa-find-bugs-cli` sweep 1283 2026-10-21: minor, ~45m.
 
 - [x] **165** — [A root directory written with a trailing slash (`rootDir: ./`, `server/`) is refused as "a relative path with no '..' components"](done/165.md) — **DONE (2026-10-21)**: root directory spellings (./, server/, a//b) normalize to one stored form; ← `/qa-find-bugs-cli` sweep 1283 2026-10-21: Render's export writes `./`; minor, ~25m.
 

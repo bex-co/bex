@@ -1131,7 +1131,18 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	if err := s.requireStackBilling(ctx, parsed); err != nil {
 		return BlueprintView{}, err
 	}
-	if _, _, err := s.blueprintActionPlan(ctx, ir, parsed, "", s.newWorkspaceSnapshot(ctx)); err != nil {
+	preflight := s.newWorkspaceSnapshot(ctx)
+	if _, _, err := s.blueprintActionPlan(ctx, ir, parsed, "", preflight); err != nil {
+		return BlueprintView{}, err
+	}
+	// The per-service create checks the apply would run first, now, so a
+	// manifest `blueprints validate` refuses answers 400 with no row behind it
+	// (w8/166) instead of leaving an auto-syncing Blueprint in error.
+	checked := parsed
+	if err := s.resolveBlueprintRegistryCredentials(ctx, &checked); err != nil {
+		return BlueprintView{}, err
+	}
+	if err := s.validateBlueprintServices(withRequestMemo(ctx), checked, preflight); err != nil {
 		return BlueprintView{}, err
 	}
 
