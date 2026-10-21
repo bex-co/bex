@@ -2927,4 +2927,30 @@ if grep -q 'expendable-pods-priority-cutoff' infra/clusterapi/autoscaler-values.
   fail=1
 fi
 
+echo "==> render-v1 seccomp profile keeps its exact delta from RuntimeDefault (w6/m150)"
+# The profile is generated (scripts/seccomp-render-v1/generate.sh); this pins
+# what review accepted, so a regeneration or hand edit that widens it fails
+# here: io_uring and user-namespace creation allowed, the kernel-attack-surface
+# syscalls RuntimeDefault blocks still blocked, clone3 still ENOSYS.
+if ! python3 - deploy/gitops/base/seccomp/bex-render-v1.json <<'PY'
+import json, sys
+p = json.load(open(sys.argv[1]))
+assert p["defaultAction"] == "SCMP_ACT_ERRNO", "default action must deny"
+allow = {n for r in p["syscalls"] if r["action"] == "SCMP_ACT_ALLOW" and not r.get("args") for n in r["names"]}
+must_allow = {"io_uring_setup", "io_uring_enter", "io_uring_register", "clone", "unshare", "setns", "mount", "umount2", "pivot_root"}
+must_block = {"bpf", "perf_event_open", "keyctl", "add_key", "request_key", "userfaultfd", "kexec_load", "kexec_file_load",
+              "init_module", "finit_module", "delete_module", "fanotify_init", "lookup_dcookie", "quotactl", "syslog",
+              "open_by_handle_at", "reboot", "swapon", "swapoff", "acct"}
+missing = sorted(must_allow - allow)
+widened = sorted(must_block & allow)
+clone3 = [r for r in p["syscalls"] if "clone3" in r["names"]]
+assert not missing, f"must allow: {missing}"
+assert not widened, f"must stay blocked: {widened}"
+assert clone3 and clone3[0]["action"] == "SCMP_ACT_ERRNO" and clone3[0].get("errnoRet") == 38, "clone3 must stay ENOSYS"
+PY
+then
+  echo "FAIL: deploy/gitops/base/seccomp/bex-render-v1.json drifted from its reviewed delta (ADR089, w6/m150)" >&2
+  fail=1
+fi
+
 [ "$fail" -eq 0 ] && echo "PASS: gitops tree renders" || { echo "FAIL: see errors above" >&2; exit 1; }
