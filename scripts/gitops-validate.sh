@@ -288,8 +288,15 @@ require_onbex_literal() {
 }
 require_onbex_literal .env.example 'BEX_ONBEX_TLS_CERT_FILE='
 require_onbex_literal .env.example 'BEX_ONBEX_TLS_KEY_FILE='
-require_onbex_literal scripts/gh-secrets.sh 'set_file BEX_ONBEX_TLS_CERT "${BEX_ONBEX_TLS_CERT_FILE:?set BEX_ONBEX_TLS_CERT_FILE in .env}" production-deploy'
-require_onbex_literal scripts/gh-secrets.sh 'set_file BEX_ONBEX_TLS_KEY "${BEX_ONBEX_TLS_KEY_FILE:?set BEX_ONBEX_TLS_KEY_FILE in .env}" production-deploy'
+# gh-secrets.sh pushes from scripts/production-secrets.txt (w3/m173): the
+# certificate material is required and lands in production-deploy alone.
+for onbex_secret in BEX_ONBEX_TLS_CERT BEX_ONBEX_TLS_KEY; do
+  if [ "$(sed -e 's/#.*//' scripts/production-secrets.txt | awk -v n="$onbex_secret" '$1 == n { print $2 }')" != production-deploy ]; then
+    echo "FAIL: onbex TLS inventory: $onbex_secret must be assigned to production-deploy alone in scripts/production-secrets.txt" >&2
+    fail=1
+  fi
+  require_onbex_literal scripts/gh-secrets.sh " $onbex_secret "
+done
 deploy_tls_shape="$(yq -N '
   .jobs."deploy".steps[] |
   select(.name == "install onbex.co fallback TLS certificate") |
