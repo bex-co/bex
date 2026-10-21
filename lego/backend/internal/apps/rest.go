@@ -57,8 +57,13 @@ type patchServiceRequest struct {
 		RenderSubdomainPolicy *string         `json:"renderSubdomainPolicy"`
 		EnvSpecific           json.RawMessage `json:"envSpecificDetails"`
 		Previews              json.RawMessage `json:"previews"`
-		MaintenanceMode       json.RawMessage `json:"maintenanceMode"`
-		IPAllowList           json.RawMessage `json:"ipAllowList"`
+		// PullRequestPreviewsEnabled, Runtime and Cache are declared by
+		// Render's PATCH schema and refused by name (unsupportedField).
+		PullRequestPreviewsEnabled json.RawMessage `json:"pullRequestPreviewsEnabled"`
+		Runtime                    json.RawMessage `json:"runtime"`
+		Cache                      json.RawMessage `json:"cache"`
+		MaintenanceMode            json.RawMessage `json:"maintenanceMode"`
+		IPAllowList                json.RawMessage `json:"ipAllowList"`
 		// IdleTTLSeconds is a bex extra (Render has no idle-timeout field) — the
 		// free-tier auto-sleep window. A pointer so "absent" (leave unchanged) is
 		// distinct from an explicit 0 (restore the controller default).
@@ -289,6 +294,18 @@ type serviceDetailsReq struct {
 	// sizeGB while this path does not — that asymmetry is Render's, and bex
 	// reproduces it rather than smoothing it out.
 	Disk *serviceDiskReq `json:"disk"`
+	// Routes/Headers are Render's staticSiteDetailsPOST edge rules, and
+	// Autoscaling its webServiceDetailsPOST/privateServiceDetailsPOST/
+	// backgroundWorkerDetailsPOST autoscaling — where Render's schema puts them.
+	// bex also takes routes/headers at the top level (top level wins).
+	// Autoscaling stays raw so it is one whole policy, not seven independent
+	// leaves: no single leaf means anything without the others.
+	Routes      []StaticRouteView  `json:"routes"`
+	Headers     []StaticHeaderView `json:"headers"`
+	Autoscaling json.RawMessage    `json:"autoscaling"`
+	// PullRequestPreviewsEnabled is refused by name like previews (PR previews
+	// are a recorded non-goal).
+	PullRequestPreviewsEnabled json.RawMessage `json:"pullRequestPreviewsEnabled"`
 }
 
 // serviceDiskReq is Render's `serviceDisk` create schema.
@@ -331,23 +348,38 @@ func (r createServiceRequest) unsupportedField() string {
 	if r.ServiceDetails == nil {
 		return ""
 	}
-	return unsupportedPreviewsField(r.ServiceDetails.Previews)
+	return unsupportedPreviewsField(r.ServiceDetails.Previews, r.ServiceDetails.PullRequestPreviewsEnabled)
 }
 
 func (r patchServiceRequest) unsupportedField() string {
 	if r.ServiceDetails == nil {
 		return ""
 	}
-	return unsupportedPreviewsField(r.ServiceDetails.Previews)
+	if field := unsupportedPreviewsField(r.ServiceDetails.Previews, r.ServiceDetails.PullRequestPreviewsEnabled); field != "" {
+		return field
+	}
+	// Render's webServiceDetailsPATCH declares both (w5/m146): a runtime change
+	// is a rebuild bex does not run in place (the pinned CLI refuses it too), and
+	// cache.profile is Render's edge cache, which bex does not have (ADR018).
+	switch {
+	case len(r.ServiceDetails.Runtime) > 0:
+		return "serviceDetails.runtime (changing a service's runtime)"
+	case len(r.ServiceDetails.Cache) > 0:
+		return "serviceDetails.cache (edge caching)"
+	}
+	return ""
 }
 
 // unsupportedPreviewsField names the Render serviceDetails field bex cannot
 // honor, so create and patch refuse it identically rather than one silently
 // dropping it. The two requests spell serviceDetails with different Go types,
 // so the shared part is the field, not the struct.
-func unsupportedPreviewsField(previews json.RawMessage) string {
-	if len(previews) > 0 {
+func unsupportedPreviewsField(previews, pullRequestPreviewsEnabled json.RawMessage) string {
+	switch {
+	case len(previews) > 0:
 		return "previews"
+	case len(pullRequestPreviewsEnabled) > 0:
+		return "pullRequestPreviewsEnabled"
 	}
 	return ""
 }
@@ -463,6 +495,8 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 	var maxShutdownDelaySeconds *int32
 	var maintenanceMode *MaintenanceModeView
 	var disk *ServiceDiskView
+	routes, headers := r.Routes, r.Headers
+	var autoscaling *SetAutoscalingRequest
 	imagePath := ""
 	if r.Image != nil {
 		imagePath = r.Image.ImagePath
@@ -518,6 +552,25 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 		publishPath = preferTopLevel(publishPath, r.ServiceDetails.PublishPath)
 		preDeploy = preferTopLevel(preDeploy, r.ServiceDetails.PreDeployCommand)
 		subdomainPolicy = preferTopLevel(subdomainPolicy, r.ServiceDetails.RenderSubdomainPolicy)
+		if len(routes) == 0 {
+			routes = r.ServiceDetails.Routes
+		}
+		if len(headers) == 0 {
+			headers = r.ServiceDetails.Headers
+		}
+		if raw := r.ServiceDetails.Autoscaling; len(raw) > 0 {
+			var a renderAutoscalingConfig
+			if err := core.UnmarshalJSON(ctx, raw, &a); err != nil {
+				return CreateRequest{}, fmt.Errorf("%w: serviceDetails.autoscaling: %v", core.ErrBadRequest, err)
+			}
+			req, enable, err := setAutoscalingRequestFromRender(a)
+			if err != nil {
+				return CreateRequest{}, fmt.Errorf("serviceDetails.autoscaling: %w", err)
+			}
+			if enable {
+				autoscaling = &req
+			}
+		}
 		if d := r.ServiceDetails.Disk; d != nil {
 			// specFromCreate runs this through the same validateCreateDisk the
 			// Blueprint path uses, so eligibility, tier, replica count and the
@@ -587,8 +640,9 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 		PreDeployCommand:        preDeploy,
 		Disk:                    disk,
 		PublishPath:             publishPath,
-		Routes:                  r.Routes,
-		Headers:                 r.Headers,
+		Routes:                  routes,
+		Headers:                 headers,
+		Autoscaling:             autoscaling,
 		IPAllowList:             ipAllowList,
 		DryRun:                  r.DryRun,
 	}, nil
