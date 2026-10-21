@@ -31,6 +31,7 @@ export function toDatabaseView(d: DatabaseNode): DatabaseView {
     diskSizeGB: d.diskSizeGB ?? null,
     createdAt: d.createdAt ?? null,
     updatedAt: "updatedAt" in d ? (d.updatedAt ?? null) : null,
+    expiresAt: "expiresAt" in d ? (d.expiresAt ?? null) : null,
     region: "region" in d ? d.region || null : null,
     public: d.public ?? false,
     suspended: d.suspended ?? "",

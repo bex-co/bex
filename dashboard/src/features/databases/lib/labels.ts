@@ -18,6 +18,9 @@ export const STATUS_LABEL: Record<DatabaseStatusKey, keyof typeof en> = {
   unknown: "databases.statusUnknown",
 };
 
+/** bex-api's statusReasonCode for a suspended database whose free plan expired (w8/m126). */
+export const FREE_EXPIRED_REASON = "POSTGRES_FREE_EXPIRED";
+
 /**
  * An unavailable database's reason by bex-api's statusReasonCode, the
  * operator's Ready-condition reason (w5/079). A code missing here shows
@@ -39,6 +42,8 @@ const STATUS_REASON_LABEL: Record<string, keyof typeof en> = {
   ScheduledBackupCleanupFailed:
     "databases.statusReasonScheduledBackupCleanupFailed",
   ExtensionsFailed: "databases.statusReasonExtensionsFailed",
+  // A suspended database's only reason: its free plan expired (w8/m126).
+  [FREE_EXPIRED_REASON]: "databases.statusReasonFreeExpired",
 };
 
 /** The translation key of an unavailable database's reason, if this dashboard knows its code. */

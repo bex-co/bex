@@ -57,6 +57,8 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 		}
 	} else if err := s.RequireBillingMutation(ctx, d.Labels[core.LabelTenant]); err != nil {
 		return PostgresView{}, err
+	} else if freeExpired(d) {
+		return PostgresView{}, expiredResumeError(d)
 	}
 	if d.Spec.Suspended == suspended {
 		return pgView(d), nil

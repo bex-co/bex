@@ -19,6 +19,11 @@ export interface DatabaseView {
   createdAt: string | null;
   /** Authoritative last resource mutation time; absent on legacy fixtures. */
   updatedAt?: string | null;
+  /**
+   * Render's free-database expiry (RFC 3339), null for a paid plan (w8/m126;
+   * ADR009 §Free-plan expiry). Absent on legacy fixtures.
+   */
+  expiresAt?: string | null;
   /** Explicit installation placement (`BEX_REGION`), never browser-inferred. */
   region?: string | null;
   /** Whether the external (public) endpoint is enabled. */
@@ -116,10 +121,7 @@ export type DatabaseStatusKey =
   | "unknown";
 
 export type DatabaseBadgeVariant =
-  | "default"
-  | "secondary"
-  | "outline"
-  | "destructive";
+  "default" | "secondary" | "outline" | "destructive";
 
 export interface DatabaseStatus {
   key: DatabaseStatusKey;

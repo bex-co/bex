@@ -2,9 +2,11 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { MetadataList } from "@/common/components/metadata-list";
 import { StatusWithReason } from "@/common/components/status-with-reason";
 import { RelativeAge } from "@/common/components/relative-time";
+import { DatabaseExpiryValue } from "@/features/databases/components/database-expiry";
 import { DatabaseNameRow } from "@/features/databases/components/database-name-row";
 import { DatabaseVersionControl } from "@/features/databases/components/database-version-control";
 import {
+  FREE_EXPIRED_REASON,
   statusLabel,
   statusReasonLabel,
 } from "@/features/databases/lib/labels";
@@ -36,8 +38,12 @@ export function DatabaseMetadataCard({
   // without the reason, so a recovered database could still hold a stale one.
   // The shrink refusal names the allocated size, which diskSizeGB reports.
   const reasonKey = statusReasonLabel(database.statusReasonCode);
+  // An expired free database is suspended with its own reason (w8/m126).
+  const statusKey = deriveStatus(database).key;
   const reason =
-    deriveStatus(database).key === "unavailable"
+    statusKey === "unavailable" ||
+    (statusKey === "suspended" &&
+      database.statusReasonCode === FREE_EXPIRED_REASON)
       ? reasonKey
         ? t(reasonKey, { size: database.diskSizeGB ?? "" })
         : database.statusReason
@@ -115,6 +121,15 @@ export function DatabaseMetadataCard({
           label: t("databases.metaCreated"),
           value: <RelativeAge value={database.createdAt} />,
         },
+        // Free databases only: paid plans never expire (w8/m126).
+        ...(database.expiresAt
+          ? [
+              {
+                label: t("databases.metaExpires"),
+                value: <DatabaseExpiryValue expiresAt={database.expiresAt} />,
+              },
+            ]
+          : []),
       ]}
     />
   );

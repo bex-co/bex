@@ -121,26 +121,29 @@ type Server struct {
 	// ServiceRefs keeps Blueprint fromService port/hostport references equal to
 	// their targets' serving ports (w6/m148). main.go starts it with the serve
 	// context.
-	ServiceRefs   *apps.ServiceRefPropagator
-	Postgres      *postgres.Service
-	KeyValue      *keyvalue.Service
-	Secrets       *secrets.Service
-	EnvGroups     *envgroups.Service
-	Workspaces    *workspaces.Service
-	Members       *members.Service
-	Billing       *billing.Service
-	Usage         *usage.Service
-	Deploys       *deploys.Service
-	Events        *events.Service
-	Audit         *audit.Service
-	GitHub        *github.Service
-	Notifications *notifications.Service
-	Projects      *projects.Service
-	Environments  *environments.Service
-	RegistryCreds *registrycreds.Service
-	Webhooks      *webhooks.Service
-	Jobs          *jobs.Service
-	CLITelemetry  *clitelemetry.Service
+	ServiceRefs *apps.ServiceRefPropagator
+	Postgres    *postgres.Service
+	// PostgresExpiry expires and deletes free Postgres databases (ADR009
+	// §Free-plan expiry, w8/m126). main.go starts it with the serve context.
+	PostgresExpiry *postgres.FreeExpirySweeper
+	KeyValue       *keyvalue.Service
+	Secrets        *secrets.Service
+	EnvGroups      *envgroups.Service
+	Workspaces     *workspaces.Service
+	Members        *members.Service
+	Billing        *billing.Service
+	Usage          *usage.Service
+	Deploys        *deploys.Service
+	Events         *events.Service
+	Audit          *audit.Service
+	GitHub         *github.Service
+	Notifications  *notifications.Service
+	Projects       *projects.Service
+	Environments   *environments.Service
+	RegistryCreds  *registrycreds.Service
+	Webhooks       *webhooks.Service
+	Jobs           *jobs.Service
+	CLITelemetry   *clitelemetry.Service
 	// StripeWebhook is the signature-verifying public billing callback. It is
 	// nil unless BEX_STRIPE_WEBHOOK_SECRET is configured.
 	StripeWebhook http.Handler
@@ -988,6 +991,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			TurnTimeout:        d.AgentTurnTimeout,
 		},
 		BlueprintRecovery:  &apps.BlueprintRecoverer{Store: d.BlueprintsStore},
+		PostgresExpiry:     &postgres.FreeExpirySweeper{Service: pg, Notifier: notifications.DatabaseExpiryNotifier{Service: notificationsSvc}},
 		BlueprintAutoSync:  &apps.BlueprintAutoSyncWorker{Svc: appsSvc},
 		CheckedDeploys:     &apps.CheckedDeployWorker{Svc: appsSvc},
 		DomainVerification: &apps.DomainVerificationWorker{Svc: appsSvc},

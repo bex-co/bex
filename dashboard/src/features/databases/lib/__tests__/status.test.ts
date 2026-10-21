@@ -14,6 +14,7 @@ describe("toDatabaseViews", () => {
     const views = toDatabaseViews([
       {
         __typename: "Database",
+        expiresAt: null,
         id: "shop-db",
         name: "shop-db",
         plan: "basic-1gb",
@@ -40,6 +41,7 @@ describe("toDatabaseViews", () => {
       diskSizeGB: 5,
       createdAt: "2026-07-01T00:00:00Z",
       updatedAt: "2026-07-02T00:00:00Z",
+      expiresAt: null,
       region: "fsn1",
       public: true,
       suspended: "not_suspended",
@@ -53,6 +55,7 @@ describe("toDatabaseViews", () => {
   it("falls back name->id and coerces missing nullable fields", () => {
     const v = toDatabaseView({
       __typename: "Database",
+      expiresAt: null,
       id: "db1",
       name: null,
       plan: null,
@@ -79,6 +82,7 @@ describe("toDatabaseDetailView", () => {
   it("extends the list view with the detail-only fields", () => {
     const d = toDatabaseDetailView({
       __typename: "Database",
+      expiresAt: null,
       statusReason: null,
       statusReasonCode: null,
       id: "db1",
@@ -113,6 +117,7 @@ describe("toDatabaseDetailView", () => {
   it("normalizes the private-database empty-string externalHost to null (w6/052)", () => {
     const d = toDatabaseDetailView({
       __typename: "Database",
+      expiresAt: null,
       statusReason: null,
       statusReasonCode: null,
       id: "db3",
@@ -143,6 +148,7 @@ describe("toDatabaseDetailView", () => {
   it("carries region through from the wire type when configured (w9/m42/t004)", () => {
     const d = toDatabaseDetailView({
       __typename: "Database",
+      expiresAt: null,
       statusReason: null,
       statusReasonCode: null,
       id: "db2",
@@ -174,6 +180,7 @@ describe("toDatabaseDetailView", () => {
   it("carries an unavailable database's reason and its code", () => {
     const d = toDatabaseDetailView({
       __typename: "Database",
+      expiresAt: null,
       statusReason: "The connection pooler could not be provisioned.",
       statusReasonCode: "PoolerFailed",
       id: "db4",
