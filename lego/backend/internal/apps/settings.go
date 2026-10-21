@@ -61,6 +61,8 @@ type ServicePatch struct {
 	DisplayName *string
 	// CacheProfile is Render's serviceDetails.cache.profile (w5/m151).
 	CacheProfile *string
+	// Runtime is Render's serviceDetails.runtime (w5/m152).
+	Runtime *string
 	// ImageOwnerID is REST-only; Repo/Image/Branch are shared with MCP.
 	Repo                 *string
 	Image                *string
@@ -422,6 +424,21 @@ var servicePatchTable = []servicePatchOp{
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			return s.SetCommands(ctx, id, p.BuildCommand, p.StartCommand)
+		},
+	},
+	{
+		// After the commands, so a PATCH moving docker to a native runtime
+		// can carry the build and start commands that runtime needs.
+		fields:   []string{"Runtime"},
+		present:  func(p ServicePatch) bool { return p.Runtime != nil },
+		relation: canCreate,
+		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
+			runtime, builder, err := checkRuntime(probe, *p.Runtime)
+			probe.Spec.Runtime, probe.Spec.Builder = runtime, builder
+			return err
+		},
+		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
+			return s.SetRuntime(ctx, id, *p.Runtime)
 		},
 	},
 	{

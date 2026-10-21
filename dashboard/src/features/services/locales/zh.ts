@@ -1986,6 +1986,57 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法清除缓存，请重试。",
     description: "Toast on failed purgeServiceCache mutation",
   },
+  "services.runtimeTitle": {
+    message: "运行时",
+    description: "Settings tab runtime section title (Render parity)",
+  },
+  "services.runtimeDescription": {
+    message: "bex 构建并运行此服务所用的环境。",
+    description: "Settings tab runtime section description",
+  },
+  "services.runtimeLabel": {
+    message: "运行时",
+    description: "Settings runtime select label",
+  },
+  "services.runtimeNote": {
+    message:
+      "更改运行时会重新构建并重新部署服务。原生运行时使用下方的构建命令和启动命令。",
+    description: "Note beside the Settings runtime select",
+  },
+  "services.runtimePlaceholder": {
+    message: "选择运行时",
+    description:
+      "Settings runtime select placeholder for a legacy service with no runtime recorded",
+  },
+  "services.runtimeSave": {
+    message: "保存",
+    description: "Settings runtime save button",
+  },
+  "services.runtimeSaving": {
+    message: "保存中…",
+    description: "Settings runtime save button while the mutation is in flight",
+  },
+  "services.runtimeConfirmTitle": {
+    message: "将运行时更改为 {runtime}？",
+    description: "Confirm-dialog title for changing a service's runtime",
+  },
+  "services.runtimeConfirmBody": {
+    message:
+      "服务将使用 {runtime} 运行时重新构建并重新部署，这会开始一次新的部署。",
+    description: "Confirm-dialog body for changing a service's runtime",
+  },
+  "services.runtimeConfirmAction": {
+    message: "更改运行时",
+    description: "Confirm-dialog action for changing a service's runtime",
+  },
+  "services.runtimeSaved": {
+    message: "运行时已更新，新的部署已开始。",
+    description: "Toast on successful setRuntime mutation",
+  },
+  "services.runtimeError": {
+    message: "无法更改运行时，请重试。",
+    description: "Toast on failed setRuntime mutation without a server message",
+  },
   "services.maintenanceModeBannerTitle": {
     message: "维护模式已开启",
     description: "Service-detail header banner title while in maintenance",

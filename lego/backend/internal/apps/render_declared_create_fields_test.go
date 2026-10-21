@@ -75,7 +75,7 @@ func TestRESTRefusesDeclaredButUnservedFieldsByName(t *testing.T) {
 		{"create pullRequestPreviewsEnabled", http.MethodPost, "/v1/services",
 			`{"name":"app","type":"web_service","image":{"imagePath":"nginx:v1"},"serviceDetails":{"pullRequestPreviewsEnabled":"yes"}}`,
 			"pullRequestPreviewsEnabled"},
-		{"patch runtime", http.MethodPatch, "/v1/services/app", `{"serviceDetails":{"runtime":"node"}}`, "serviceDetails.runtime"},
+		{"patch an unknown runtime", http.MethodPatch, "/v1/services/app", `{"serviceDetails":{"runtime":"cobol"}}`, "unsupported runtime"},
 		{"patch an unknown cache profile", http.MethodPatch, "/v1/services/app", `{"serviceDetails":{"cache":{"profile":"aggressive"}}}`, "cache.profile"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

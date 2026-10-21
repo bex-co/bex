@@ -32,6 +32,7 @@ import { ServiceNetworkingPanel } from "@/features/services/components/service-n
 import { ServiceOutboundIpsPanel } from "@/features/services/components/service-outbound-ips-panel";
 import { MaintenanceModeSection } from "@/features/services/components/maintenance-mode-section";
 import { EdgeCachingSection } from "@/features/services/components/edge-caching-section";
+import { RuntimeSection } from "@/features/services/components/runtime-section";
 import { RegistryCredentialSection } from "@/features/services/components/registry-credential-section";
 import { ServiceSettingsNavigation } from "@/features/services/components/service-settings-navigation";
 import {
@@ -195,6 +196,16 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
             branch={service.branch ?? null}
             imagePath={service.imagePath ?? null}
             registryCredentialId={service.registryCredentialId ?? null}
+          />
+        );
+      case "runtime":
+        if (!service) return null;
+        return (
+          <RuntimeSection
+            key={serviceId}
+            serviceId={serviceId}
+            runtime={service.runtime}
+            builder={service.builder}
           />
         );
       case "build":

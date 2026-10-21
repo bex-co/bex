@@ -2,6 +2,7 @@ import {
   Bell,
   CirclePause,
   CirclePlay,
+  Cpu,
   FileText,
   Globe2,
   Hammer,
@@ -47,6 +48,10 @@ const SECTION_ITEMS: Record<NavigableSettingsSectionId, SectionItem> = {
   source: {
     labelKey: "services.sourceTitle",
     icon: Hammer,
+  },
+  runtime: {
+    labelKey: "services.runtimeTitle",
+    icon: Cpu,
   },
   "static-site": {
     labelKey: "services.staticTitle",

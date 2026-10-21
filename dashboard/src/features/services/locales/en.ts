@@ -2028,6 +2028,57 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Could not purge the cache. Try again.",
     description: "Toast on failed purgeServiceCache mutation",
   },
+  "services.runtimeTitle": {
+    message: "Runtime",
+    description: "Settings tab runtime section title (Render parity)",
+  },
+  "services.runtimeDescription": {
+    message: "The environment bex builds and runs this service in.",
+    description: "Settings tab runtime section description",
+  },
+  "services.runtimeLabel": {
+    message: "Runtime",
+    description: "Settings runtime select label",
+  },
+  "services.runtimeNote": {
+    message:
+      "Changing the runtime rebuilds and redeploys the service. Native runtimes use the Build Command and Start Command below.",
+    description: "Note beside the Settings runtime select",
+  },
+  "services.runtimePlaceholder": {
+    message: "Select a runtime",
+    description:
+      "Settings runtime select placeholder for a legacy service with no runtime recorded",
+  },
+  "services.runtimeSave": {
+    message: "Save",
+    description: "Settings runtime save button",
+  },
+  "services.runtimeSaving": {
+    message: "Saving…",
+    description: "Settings runtime save button while the mutation is in flight",
+  },
+  "services.runtimeConfirmTitle": {
+    message: "Change the runtime to {runtime}?",
+    description: "Confirm-dialog title for changing a service's runtime",
+  },
+  "services.runtimeConfirmBody": {
+    message:
+      "The service rebuilds with the {runtime} runtime and redeploys. This starts a new deploy.",
+    description: "Confirm-dialog body for changing a service's runtime",
+  },
+  "services.runtimeConfirmAction": {
+    message: "Change runtime",
+    description: "Confirm-dialog action for changing a service's runtime",
+  },
+  "services.runtimeSaved": {
+    message: "Runtime updated. A new deploy has started.",
+    description: "Toast on successful setRuntime mutation",
+  },
+  "services.runtimeError": {
+    message: "Could not change the runtime. Try again.",
+    description: "Toast on failed setRuntime mutation without a server message",
+  },
   "services.maintenanceModeBannerTitle": {
     message: "Maintenance mode is on",
     description: "Service-detail header banner title while in maintenance",

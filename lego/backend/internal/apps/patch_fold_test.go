@@ -72,6 +72,7 @@ func TestServicePatchFoldsMatchTheirVerbs(t *testing.T) {
 		{"idle timeout", repo, ServicePatch{IdleTTLSeconds: i32(900)}},
 		{"shutdown delay", repo, ServicePatch{MaxShutdownDelaySeconds: i32(45)}},
 		{"cache profile", paid, ServicePatch{CacheProfile: str("origin-controlled")}},
+		{"runtime", repo, ServicePatch{Runtime: str("docker")}},
 		{"root dir", repo, ServicePatch{RootDir: str("services/api")}},
 		{"build filter", repo, ServicePatch{BuildFilter: &BuildFilterView{Paths: []string{"src/**"}}}},
 		{"auto-deploy", repo, ServicePatch{AutoDeploy: new(bool)}},

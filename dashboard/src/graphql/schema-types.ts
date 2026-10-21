@@ -1226,6 +1226,7 @@ export type Mutation = {
   setRegistryCredential: Maybe<Service>;
   setRepo: Maybe<Service>;
   setRootDir: Maybe<Service>;
+  setRuntime: Maybe<Service>;
   setSecretFile: Maybe<Scalars['Boolean']['output']>;
   setServiceIpAllowList: Maybe<Service>;
   setStartCommand: Maybe<Service>;
@@ -2251,6 +2252,13 @@ export type MutationSetRootDirArgs = {
   confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   rootDir: Scalars['String']['input'];
+};
+
+
+export type MutationSetRuntimeArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
+  id: Scalars['String']['input'];
+  runtime: Scalars['String']['input'];
 };
 
 

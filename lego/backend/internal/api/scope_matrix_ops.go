@@ -152,6 +152,7 @@ var classifiedOps = map[string]string{
 	"GQL Mutation.setMaintenanceMode":                                  core.OpClassWrite,
 	"GQL Mutation.setMaxShutdownDelay":                                 core.OpClassWrite,
 	"GQL Mutation.setCacheProfile":                                     core.OpClassWrite,
+	"GQL Mutation.setRuntime":                                          core.OpClassWrite,
 	"GQL Mutation.purgeServiceCache":                                   core.OpClassWrite,
 	"GQL Mutation.setNotificationsToSend":                              core.OpClassWrite,
 	"GQL Mutation.setNotifyOnFail":                                     core.OpClassWrite,

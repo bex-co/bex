@@ -1,0 +1,12 @@
+# Render's runtime change for a repo-backed service: setRuntime moves it
+# between docker and the native runtimes (elixir | go | node | python | ruby |
+# rust) and rebuilds it with the builder the runtime selects. bex-api refuses a
+# native runtime without build and start commands, an image-backed service and
+# a static site.
+mutation SetRuntime($id: String!, $runtime: String!, $confirm: String) {
+  setRuntime(id: $id, runtime: $runtime, confirm: $confirm) {
+    id
+    runtime
+    builder
+  }
+}

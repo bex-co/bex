@@ -194,7 +194,7 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     [<DatabaseOverviewSkeleton key="database" />, 10],
     [<KeyValueOverviewSkeleton key="keyvalue" />, 7],
     [<WorkspaceSettingsPageSkeleton key="workspace" />, 3],
-    [<ServiceSettingsSkeleton key="service" />, 12],
+    [<ServiceSettingsSkeleton key="service" />, 13],
   ])(
     "keeps long-page section navigation at narrow and wide breakpoints",
     (component, count) => {
@@ -420,6 +420,56 @@ describe("service plan pending groups (w4/m196)", () => {
     async (serviceType, cards) => {
       const { container } = renderServicePlanParentSkeleton(serviceType);
       await waitFor(() => expect(groupCards(container)).toEqual(cards));
+    },
+  );
+});
+
+// The Runtime and Edge Caching cards reserve the heights measured in Chromium
+// at 390/640/768/1024/1280/1440 (en), one per breakpoint where the ready card
+// changes: the md sidebar narrows the card until xl, so a single
+// mobile/desktop pair mismatched at 768 and 1024.
+describe("service settings card heights per breakpoint", () => {
+  function regionCard(
+    plan: string | null,
+    region: "runtime" | "edge-caching",
+  ): Element | null {
+    const { container } = render(
+      <ServiceSettingsSkeleton
+        service={{
+          type: "web_service",
+          repo: "https://github.com/example/app",
+          runtime: "node",
+          plan,
+        }}
+      />,
+    );
+    return container.querySelector(
+      `[data-skeleton-region="${region}"] [data-slot="card"]`,
+    );
+  }
+
+  it("sizes the Runtime card at every breakpoint", () => {
+    expect(regionCard("starter", "runtime")).toHaveClass(
+      "h-[294px]",
+      "sm:h-[210px]",
+      "md:h-[230px]",
+      "xl:h-[210px]",
+    );
+  });
+
+  it.each([
+    ["starter", "h-[520px]"],
+    ["free", "h-[540px]"],
+  ])(
+    "sizes a %s plan's Edge Caching card at every breakpoint",
+    (plan, base) => {
+      expect(regionCard(plan, "edge-caching")).toHaveClass(
+        base,
+        "sm:h-[456px]",
+        "md:h-[488px]",
+        "xl:h-[436px]",
+        "min-[90rem]:h-[420px]",
+      );
     },
   );
 });
