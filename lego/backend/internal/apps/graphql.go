@@ -1711,9 +1711,10 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return s.SetMaxShutdownDelay(p.Context, p.Args["id"].(string), int32(p.Args["seconds"].(int)))
 			},
 		},
-		// setPort changes the port the container listens on (w4/m121) — the
-		// setting bex's reserved-PORT refusal names. Web and private services
-		// only; the verb refuses the types that have no listener.
+		// setPort changes the port the container listens on (w4/m121), unless
+		// the service sets its own PORT variable, which wins as on Render
+		// (w5/m149). Web and private services only; the verb refuses the types
+		// that have no listener.
 		"setPort": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{

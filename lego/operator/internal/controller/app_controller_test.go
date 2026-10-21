@@ -536,7 +536,7 @@ var _ = Describe("App Controller", func() {
 			Expect(getApp().Status.Phase).To(Equal(appv1alpha1.PhaseDeploying))
 		})
 
-		It("projects spec.env (PORT unshadowable) and spec.envFromSecret onto the container", func() {
+		It("projects spec.env (a user PORT selects the serving port) and spec.envFromSecret onto the container", func() {
 			By("creating the env Secret the spec references, so the release has something to snapshot")
 			// w1/m152: without a real source there is nothing to copy, and
 			// copyConfigSecret deliberately skips a missing source rather than wedging
@@ -548,14 +548,14 @@ var _ = Describe("App Controller", func() {
 				Data:       map[string][]byte{"FROM_SECRET": []byte("v1")},
 			})).To(Succeed())
 
-			By("creating an App with user env, a PORT shadow attempt, and an envFrom secret ref")
+			By("creating an App with user env, its own PORT, and an envFrom secret ref")
 			app := &appv1alpha1.App{
 				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
 				Spec: appv1alpha1.AppSpec{
 					Image: "traefik/whoami", Port: 3000,
 					Env: []appv1alpha1.EnvVar{
 						{Name: "GREETING", Value: "hello"},
-						{Name: "PORT", Value: "9999"}, // must be ignored
+						{Name: "PORT", Value: "9999"}, // Render: the service's own PORT wins (w5/m149)
 					},
 					EnvFromSecret: name + "-env",
 				},
@@ -564,7 +564,7 @@ var _ = Describe("App Controller", func() {
 			reconcileN()
 
 			c := getDep().Spec.Template.Spec.Containers[0]
-			By("user env is present and PORT stays operator-owned")
+			By("user env is present and the service's own PORT is the serving port")
 			envVal := func(key string) string {
 				v := ""
 				for _, e := range c.Env {
@@ -575,8 +575,16 @@ var _ = Describe("App Controller", func() {
 				return v
 			}
 			Expect(envVal("GREETING")).To(Equal("hello"))
-			Expect(envVal("PORT")).To(Equal("3000"), "user PORT=9999 must not shadow the injected port")
-			Expect(c.Env[len(c.Env)-1].Name).To(Equal("PORT"), "PORT is appended last so it wins")
+			Expect(envVal("PORT")).To(Equal("9999"), "the process reads the PORT it routes on")
+			Expect(c.Env[len(c.Env)-1].Name).To(Equal("PORT"), "PORT is appended last so it wins over envFrom")
+			Expect(c.Ports).To(ContainElement(HaveField("ContainerPort", int32(9999))))
+			svc := &corev1.Service{}
+			Expect(k8sClient.Get(ctx, nn, svc)).To(Succeed())
+			Expect(svc.Spec.Ports[0].Port).To(Equal(int32(9999)), "the Service routes to the service's PORT")
+			withPort := &appv1alpha1.App{}
+			Expect(k8sClient.Get(ctx, nn, withPort)).To(Succeed())
+			Expect(withPort.Status.EnvPort).To(Equal(int32(9999)))
+			Expect(withPort.ServingPort()).To(Equal(int32(9999)))
 
 			By("envFromSecret wires an envFrom SecretRef, pointing at the release's snapshot")
 			Expect(c.EnvFrom).To(HaveLen(1))

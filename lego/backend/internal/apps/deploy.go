@@ -2490,10 +2490,6 @@ func parseEnvGroup(g bexEnvGroup) (parsedEnvGroup, error) {
 			return parsedEnvGroup{}, atEnvEntry(i, fmt.Errorf("%w: env group %q envVars[%q]: invalid environment variable name (%s)",
 				core.ErrBadRequest, name, e.Key, core.EnvKeyRule))
 		}
-		if core.IsReservedEnvKey(e.Key) {
-			return parsedEnvGroup{}, atEnvEntry(i, fmt.Errorf("%w: env group %q envVars[%q]: %s",
-				core.ErrBadRequest, name, e.Key, core.ReservedEnvKeySentence(e.Key)))
-		}
 		switch {
 		case e.FromGroup != "", e.FromDatabase != nil, e.FromService != nil:
 			return parsedEnvGroup{}, atEnvEntry(i, fmt.Errorf("%w: env group %q envVars[%q]: a group cannot reference services or other groups", core.ErrBadRequest, name, e.Key))
@@ -2866,17 +2862,13 @@ func classifyServiceEnv(overrides blueprintParseOverrides, a bexService) ([]appv
 		if err := validateKeyedEnv(e); err != nil {
 			return nil, serviceEnv{}, atEnvEntry(i, fmt.Errorf("%w: %s envVars[%q]: %v", core.ErrBadRequest, a.Name, e.Key, err))
 		}
-		// A reserved key is refused here, before any seed or CR write. The
+		// A malformed key is refused here, before any seed or CR write. The
 		// message carries the location the way every neighbouring Blueprint
 		// parse error does — the validation surface renders the error string,
-		// not a code (w2/m95 t003).
+		// not a code.
 		if !core.ValidEnvKey(e.Key) {
 			return nil, serviceEnv{}, atEnvEntry(i, fmt.Errorf("%w: %s envVars[%q]: invalid environment variable name (%s)",
 				core.ErrBadRequest, a.Name, e.Key, core.EnvKeyRule))
-		}
-		if core.IsReservedEnvKey(e.Key) {
-			return nil, serviceEnv{}, atEnvEntry(i, fmt.Errorf("%w: %s envVars[%q]: %s",
-				core.ErrBadRequest, a.Name, e.Key, core.ReservedEnvKeySentence(e.Key)))
 		}
 		// The value this entry stores: its literal, or the prompt answer a
 		// sync:false key without one seeds.

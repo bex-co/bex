@@ -43,8 +43,9 @@ func portApp(name, serviceType string, port int32) *appv1alpha1.App {
 // the PATCH body (`unknown field "port"`), and no way to read it back
 // (`Cannot query field "port" on type "Service"`). So an off-the-shelf image
 // binding anything but 3000 was hostable through the create API and nowhere
-// else — and bex's own reserved-PORT refusal told every caller to "change the
-// service port instead", naming a setting that did not exist.
+// else, and bex's (since removed, w5/m149) reserved-PORT refusal told every
+// caller to "change the service port instead", naming a setting that did not
+// exist.
 func TestPortIsEditableAfterCreate(t *testing.T) {
 	svc, cl := newService(nil, portApp("web", appv1alpha1.TypeWebService, 3000))
 	ctx := context.Background()
@@ -281,20 +282,3 @@ func TestPortsBelow1024AreAccepted(t *testing.T) {
 	}
 }
 
-// TestReservedPortRefusalNamesAReachableControl is w4/m121's point, stated as a
-// test: the sentence exists to redirect a caller, so it has to name something
-// that exists. It is asserted on the sentence rather than on any one surface
-// because every surface renders this exact string.
-func TestReservedPortRefusalNamesAReachableControl(t *testing.T) {
-	sentence := core.ReservedEnvKeySentence("PORT")
-	for _, want := range []string{
-		"setPort",        // the GraphQL mutation
-		"update_service", // the MCP tool
-		"/v1/services",   // the REST route
-		"Settings",       // the dashboard control
-	} {
-		if !strings.Contains(sentence, want) {
-			t.Errorf("the reserved-PORT sentence does not name %q — it sends the reader nowhere:\n%s", want, sentence)
-		}
-	}
-}

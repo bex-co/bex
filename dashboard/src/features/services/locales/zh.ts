@@ -825,25 +825,6 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Environment value placeholder while server generation is selected",
   },
-  "services.envReservedKey": {
-    message: "{key} 由 bex 依据服务端口设置，请改为修改服务的端口字段。",
-    description: "Environment validation message for a key bex reserves (PORT)",
-  },
-  "services.envReservedKeySettingsLink": {
-    message: "在“设置”中修改服务端口",
-    description:
-      "Link from the reserved-PORT refusal to the service's Settings port control",
-  },
-  "services.envReservedKeyFieldLink": {
-    message: "在上方设置服务端口",
-    description:
-      "Link from the reserved-PORT refusal to the create wizard's own port field",
-  },
-  "services.envReservedKeyServicesLink": {
-    message: "打开某个服务的“设置”修改其端口",
-    description:
-      "Link from the reserved-PORT refusal when no single service owns the port (an env group can be linked to many)",
-  },
   "services.envInvalidKey": {
     message: "最多 253 个字符，只能使用字母、数字和下划线，且不能以数字开头。",
     description:
@@ -1338,7 +1319,7 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.settingsPortHint": {
     message:
-      "容器监听的端口（默认 {port}）。bex 将流量路由到该端口并以 $PORT 注入，因此拒绝把 PORT 作为环境变量。保存会触发一次新的部署并重启实例。",
+      "容器监听的端口（默认 {port}）。bex 将流量路由到该端口并以 $PORT 注入。服务上的 PORT 环境变量会覆盖此设置，与 Render 一致。保存会触发一次新的部署并重启实例。",
     description: "Settings tab: service port row hint text",
   },
   "services.settingsPortImageHint": {

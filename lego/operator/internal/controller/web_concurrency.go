@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 	"time"
 
@@ -48,37 +49,60 @@ func webConcurrencyEligible(app *appv1alpha1.App) bool {
 }
 
 // webConcurrency is the value the app container gets, or 0 for none. It must
-// yield to every value the service configures, but a container env entry
-// beats every envFrom key, so the operator injects it only when no literal
-// and no envFrom Secret the pod reads (linked groups, the service's own set,
-// or their release snapshots) already names it — an explicit empty value
-// included.
+// yield to every value the service configures — a literal, a linked group, the
+// service's own set or their release snapshots, an explicit empty value
+// included — because a container env entry beats every envFrom key.
 func (r *AppReconciler) webConcurrency(ctx context.Context, app *appv1alpha1.App) (int, error) {
 	if !webConcurrencyEligible(app) {
 		return 0, nil
 	}
-	for _, e := range app.Spec.Env {
-		if e.Name == webConcurrencyEnvName {
-			return 0, nil
-		}
+	if _, set, err := r.configuredEnv(ctx, app, webConcurrencyEnvName); err != nil || set {
+		return 0, err
 	}
-	for _, src := range envFromSources(app) {
-		if src.SecretRef == nil {
+	return renderenv.PlanCPUCount(app.Spec.Tier), nil
+}
+
+// configuredEnv is the value the service itself gives name, in Kubernetes'
+// own precedence: a spec.env literal beats every envFrom key, and among the
+// envFrom Secrets (linked groups first, the service's own set last) the last
+// wins. set is false when nothing the pod reads names it. A literal that
+// references a Secret key resolves through that key.
+func (r *AppReconciler) configuredEnv(ctx context.Context, app *appv1alpha1.App, name string) (value string, set bool, err error) {
+	for _, e := range app.Spec.Env {
+		if e.Name != name {
+			continue
+		}
+		if e.ValueFrom == nil || e.ValueFrom.SecretKeyRef == nil {
+			return e.Value, true, nil
+		}
+		ref := e.ValueFrom.SecretKeyRef
+		secret := &corev1.Secret{}
+		if err := r.uncachedSecretClient().Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: ref.Name}, secret); err != nil {
+			if apierrors.IsNotFound(err) {
+				return "", true, nil
+			}
+			return "", false, fmt.Errorf("%s: read Secret %s: %w", name, ref.Name, err)
+		}
+		return string(secret.Data[ref.Key]), true, nil
+	}
+	for _, src := range slices.Backward(envFromSources(app)) {
+		ref := src.SecretRef
+		if ref == nil {
 			continue
 		}
 		secret := &corev1.Secret{}
-		err := r.uncachedSecretClient().Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: src.SecretRef.Name}, secret)
+		err := r.uncachedSecretClient().Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: ref.Name}, secret)
 		if apierrors.IsNotFound(err) {
 			continue
 		}
 		if err != nil {
-			return 0, fmt.Errorf("%s: read env Secret %s: %w", webConcurrencyEnvName, src.SecretRef.Name, err)
+			return "", false, fmt.Errorf("%s: read env Secret %s: %w", name, ref.Name, err)
 		}
-		if _, ok := secret.Data[webConcurrencyEnvName]; ok {
-			return 0, nil
+		if v, ok := secret.Data[name]; ok {
+			return string(v), true, nil
 		}
 	}
-	return renderenv.PlanCPUCount(app.Spec.Tier), nil
+	return "", false, nil
 }
 
 // withWebConcurrency adds the default just before PORT, which appEnv always

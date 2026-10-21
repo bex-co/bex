@@ -2046,7 +2046,7 @@ func TestGraphQLCreateServiceEnvVars(t *testing.T) {
 	}
 
 	a := getApp(t, cl, "svc-with-env")
-	// APP_PORT, not PORT: PORT is reserved and refused at create (w2/m95 t003).
+	// Two ordinary literals; PORT would also be accepted (w5/m149).
 	want := []appv1alpha1.EnvVar{{Name: "APP_PORT", Value: "8080"}, {Name: "LOG_LEVEL", Value: "debug"}}
 	if len(a.Spec.Env) != len(want)+1 {
 		t.Fatalf("spec.Env len = %d, want %d", len(a.Spec.Env), len(want)+1)

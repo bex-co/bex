@@ -13,7 +13,6 @@ import { Button } from "@/common/components/ui/button";
 import { Checkbox } from "@/common/components/ui/checkbox";
 import { Input } from "@/common/components/ui/input";
 import { AutoTextarea } from "@/common/components/ui/auto-textarea";
-import { isReservedEnvKey } from "@/features/services/lib/environment-draft";
 import { Label } from "@/common/components/ui/label";
 import { Textarea } from "@/common/components/ui/textarea";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -33,7 +32,6 @@ import {
   serviceMatchesScope,
 } from "@/features/env-groups/lib/scope";
 import { EnvImportDialog } from "@/features/services/components/env-import-dialog";
-import { ReservedEnvKeyNotice } from "@/features/services/components/reserved-env-key-notice";
 import {
   upsertDotenvEntries,
   type DotenvEntry,
@@ -384,23 +382,9 @@ function NewEnvGroupForm({
                   );
                   setInvalid(false);
                 }}
-                aria-invalid={
-                  isReservedEnvKey(variable.key.trim()) ||
-                  (invalid && !isValidEnvVarKey(variable.key))
-                }
+                aria-invalid={invalid && !isValidEnvVarKey(variable.key)}
                 placeholder={t("envGroups.varKeyPlaceholder")}
               />
-              {/* bex owns PORT and refuses it server-side (w2/m95 t003) —
-                    said the moment it is typed, not only on submit. */}
-              {isReservedEnvKey(variable.key.trim()) ? (
-                // A group can be linked to many services (or none yet), so
-                // there is no single port to send the reader at — the notice
-                // falls back to the services list (w4/m121/t003).
-                <ReservedEnvKeyNotice
-                  envKey={variable.key.trim()}
-                  messageKey="envGroups.reservedKey"
-                />
-              ) : null}
             </div>
             <div className="space-y-1">
               <Label htmlFor={`env-group-var-value-${variable.id}`}>

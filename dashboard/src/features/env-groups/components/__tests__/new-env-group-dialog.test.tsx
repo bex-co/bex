@@ -1,11 +1,4 @@
 import { render, screen } from "@testing-library/react";
-import {
-  RouterProvider,
-  createMemoryHistory,
-  createRootRoute,
-  createRoute,
-  createRouter,
-} from "@tanstack/react-router";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -20,26 +13,6 @@ import { NewEnvGroupDialog } from "@/features/env-groups/components/new-env-grou
 beforeEach(() => {
   createGroup.mockReset().mockResolvedValue("eg-new");
 });
-
-/**
- * The reserved-PORT notice links to the services list (w4/m121/t003) — a group
- * can be linked to many services, so there is no single port control to open —
- * and a TanStack `Link` needs a router above it.
- */
-function renderInRouter(ui: React.ReactNode) {
-  const rootRoute = createRootRoute();
-  const indexRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: "/",
-    component: () => <>{ui}</>,
-  });
-  const router = createRouter({
-    routeTree: rootRoute.addChildren([indexRoute]),
-    history: createMemoryHistory({ initialEntries: ["/"] }),
-    context: { client: {} as never, session: null },
-  });
-  return render(<RouterProvider router={router} />);
-}
 
 describe("NewEnvGroupDialog", () => {
   it("blocks a blank name, then returns the created group id", async () => {
@@ -140,37 +113,34 @@ describe("NewEnvGroupDialog", () => {
     expect(screen.getByRole("dialog")).toHaveClass("grid-cols-[minmax(0,1fr)]");
   });
 
-  // w2/m95 t003: bex owns PORT — in a group it would be dropped for every
-  // linked service at once — so the dialog says so as the key is typed.
-  it("flags a reserved key inline and refuses to create", async () => {
+  // w5/m149: Render lets a group set PORT, so bex accepts it like any key.
+  it("creates a group with PORT like any other key", async () => {
     const user = userEvent.setup();
-    renderInRouter(
-      <NewEnvGroupDialog open onCreated={vi.fn()} services={[]} />,
-    );
+    render(<NewEnvGroupDialog open onCreated={vi.fn()} services={[]} />);
 
-    await user.type(
-      await screen.findByLabelText("Group name"),
-      "Shared production",
-    );
+    await user.type(screen.getByLabelText("Group name"), "Shared production");
     await user.click(
       screen.getByRole("button", { name: "Add Environment Variable" }),
     );
     await user.type(screen.getByLabelText("Key"), "PORT");
+    await user.type(screen.getByLabelText("Value"), "8080");
 
-    expect(
-      await screen.findByText(
-        "PORT is set by bex from the service port. Change the service's port field instead.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByLabelText("Key")).toHaveAttribute(
+    expect(screen.getByLabelText("Key")).not.toHaveAttribute(
       "aria-invalid",
       "true",
     );
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 
     await user.click(
       screen.getByRole("button", { name: "Create Environment Group" }),
     );
-    expect(createGroup).not.toHaveBeenCalled();
+    expect(createGroup).toHaveBeenCalledWith({
+      name: "Shared production",
+      envVars: [{ key: "PORT", value: "8080", generateValue: undefined }],
+      secretFiles: [],
+      serviceIds: [],
+      environmentId: null,
+    });
   });
 
   // w2/m95 t002: the value field was a single-line `type="password"` input, so
