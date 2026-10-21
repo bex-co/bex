@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   formatMetricValue,
   formatMetricShort,
+  axisTickValues,
   formatAxisTickLabels,
   METRIC_LABELS,
 } from "../format";
@@ -164,5 +165,20 @@ describe("METRIC_LABELS", () => {
         "memory_target",
       ].sort(),
     );
+  });
+});
+
+describe("axisTickValues (w4/382)", () => {
+  it("keeps count gridlines whole", () => {
+    expect(axisTickValues("count", 0, 1)).toEqual([0, 1]);
+    expect(axisTickValues("count", 0, 3)).toEqual([0, 2, 3]);
+    expect(axisTickValues("count", 0, 10)).toEqual([0, 5, 10]);
+    expect(axisTickValues("count", 0, 1500)).toEqual([0, 750, 1500]);
+    expect(axisTickValues("count", 0, 0)).toEqual([0, 0, 0]);
+  });
+
+  it("leaves other units on the plain midpoint", () => {
+    expect(axisTickValues("percentage", 0, 1)).toEqual([0, 0.5, 1]);
+    expect(axisTickValues("cpu", 0, 3)).toEqual([0, 1.5, 3]);
   });
 });
