@@ -2845,6 +2845,12 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Inline error under a static-site rule path that doesn't start with / (w4/145)",
   },
+  "services.staticRuleExternalHost": {
+    message:
+      "Use a plain http(s) URL with a fixed host, e.g. https://example.org/new",
+    description:
+      "Inline error under a redirect destination that is an absolute URL without a literal host (w8/162)",
+  },
   "services.staticRuleLocalPath": {
     message: "Must be a path on this site, not //host",
     description:

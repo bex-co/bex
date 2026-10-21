@@ -43,12 +43,34 @@ function unsafeDestination(value: string): boolean {
   return unsafe(value) || unsafe(path);
 }
 
+// A redirect (never a rewrite) may leave the site for a fixed http(s) host, as
+// on Render (w8/162): a literal DNS-style host, no credentials, no wildcard.
+const EXTERNAL_REDIRECT = /^https?:\/\/[a-z0-9.-]+(:\d+)?([/?#][^\\\s]*)?$/i;
+
+function externalRedirectError(value: string): keyof typeof en | undefined {
+  if (
+    !EXTERNAL_REDIRECT.test(value) ||
+    unsafeDestination(
+      value.slice(value.indexOf("//") + 2).replace(/^[^/?#]*/, ""),
+    )
+  ) {
+    return "services.staticRuleExternalHost";
+  }
+  return undefined;
+}
+
 export function routeErrors(
   route: StaticRouteView,
 ): RuleFieldErrors<StaticRouteView> {
   const errors: RuleFieldErrors<StaticRouteView> = {};
   const source = pathError(route.source);
   if (source) errors.source = source;
+  const trimmedDestination = route.destination.trim();
+  if (route.type === "redirect" && /^https?:\/\//i.test(trimmedDestination)) {
+    const external = externalRedirectError(trimmedDestination);
+    if (external) errors.destination = external;
+    return errors;
+  }
   const destination = pathError(route.destination);
   if (destination) {
     errors.destination = destination;

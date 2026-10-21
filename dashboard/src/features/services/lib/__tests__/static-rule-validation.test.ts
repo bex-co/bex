@@ -7,14 +7,33 @@ import {
 
 // w4/145: the rules bex-api enforces, checked in the row before Save.
 describe("static-site rule validation", () => {
-  it("marks a redirect destination that is not a site path", () => {
+  it("accepts a redirect to a fixed external host, but not a rewrite", () => {
     expect(
       routeErrors({
         type: "redirect",
         source: "/old",
         destination: "https://example.org/landing",
       }),
+    ).toEqual({});
+    expect(
+      routeErrors({
+        type: "rewrite",
+        source: "/old",
+        destination: "https://example.org/landing",
+      }),
     ).toEqual({ destination: "services.staticRulePathSlash" });
+    for (const destination of [
+      "https://user@example.org/x",
+      "https://*.example.org/x",
+      "https:///x",
+    ]) {
+      expect(
+        routeErrors({ type: "redirect", source: "/old", destination }),
+      ).toEqual({ destination: "services.staticRuleExternalHost" });
+    }
+  });
+
+  it("marks a redirect destination that is not a site path", () => {
     expect(
       routeErrors({
         type: "redirect",
