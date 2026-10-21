@@ -1961,6 +1961,7 @@ func stampEnvironmentMembership(a *appv1alpha1.App, environment core.Environment
 // against one workspace and land in another.
 func (s *Service) Create(ctx context.Context, req CreateRequest) (AppView, error) {
 	ctx = core.WithWorkspace(ctx, req.OwnerID)
+	req.RootDir = store.NormalizeRootDir(req.RootDir) // `./`, `server/` and `/server` are one directory (w8/165)
 	// A dry-run writes nothing, its audit row included (w5/m116); a refusal
 	// is still recorded.
 	authCtx := ctx
@@ -4106,6 +4107,7 @@ func (s *Service) SetIdleTTL(ctx context.Context, name string, seconds int32) (A
 // subtree BuildKit executes, so it is a can_create (developer) input like
 // Builder — not an operational can_operate one a contributor holds.
 func (s *Service) SetRootDir(ctx context.Context, name, rootDir string) (AppView, error) {
+	rootDir = store.NormalizeRootDir(rootDir)
 	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err

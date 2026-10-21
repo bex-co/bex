@@ -705,6 +705,30 @@ func ValidRootDir(v string) bool {
 	return true
 }
 
+// NormalizeRootDir maps the spellings of one directory to a single stored form
+// (w8/165): Render's export writes `./`, authors write `server/`, `./server`,
+// or `a//b`; all mean a directory under the repository root, so leading "./",
+// repeated and trailing slashes and "." segments go and the repository root
+// itself becomes "". An absolute path, or one with a ".." component, a
+// backslash or a control character, is returned unchanged for ValidRootDir to
+// refuse (the Blueprint compiler maps Render's "/server" spelling first).
+func NormalizeRootDir(v string) string {
+	if strings.HasPrefix(v, "/") || strings.ContainsAny(v, "\x00\r\n\t\\") {
+		return v
+	}
+	var kept []string
+	for _, part := range strings.Split(v, "/") {
+		switch part {
+		case "..":
+			return v
+		case "", ".":
+		default:
+			kept = append(kept, part)
+		}
+	}
+	return strings.Join(kept, "/")
+}
+
 // ValidGlob reports whether v is a safe build-filter glob pattern (Render's Build
 // Filters, docs/ADR018): a non-empty, ≤512-byte, repository-root-relative pattern
 // with no control characters, no backslash, no traversal ("..") component, and no

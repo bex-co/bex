@@ -385,7 +385,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **166** — [`POST /v1/blueprints` answers 400 after it has already created the Blueprint, leaving an auto-syncing connection the caller never learns about](166.md) ← `/qa-find-bugs-cli` sweep 1283 2026-10-21: minor, ~45m.
 
-- [ ] **165** — [A root directory written with a trailing slash (`rootDir: ./`, `server/`) is refused as "a relative path with no '..' components"](165.md) ← `/qa-find-bugs-cli` sweep 1283 2026-10-21: Render's export writes `./`; minor, ~25m.
+- [x] **165** — [A root directory written with a trailing slash (`rootDir: ./`, `server/`) is refused as "a relative path with no '..' components"](done/165.md) — **DONE (2026-10-21)**: root directory spellings (./, server/, a//b) normalize to one stored form; ← `/qa-find-bugs-cli` sweep 1283 2026-10-21: Render's export writes `./`; minor, ~25m.
 
 - [x] **164** — [Bex runs every Docker Command through its own `/bin/sh -c`: Render's documented `/bin/sh -c <commands>` form silently drops the first command's arguments, and shell-less images cannot start](done/164.md) — **DONE (2026-10-21)**: Docker Command runs as on Render: shell-form passes the script verbatim, plain commands exec directly; ← `/qa-find-bugs-cli` sweeps 1281/1283 2026-10-21: Render's Django example would skip its migration; major, ~90m.
 
