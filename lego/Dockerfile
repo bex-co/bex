@@ -36,6 +36,7 @@ RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go
 RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/pg-sni-proxy ./cmd/pg-sni-proxy
 RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/kv-sni-proxy ./cmd/kv-sni-proxy
 RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/egress-meter ./cmd/egress-meter
+RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/edge-cache ./cmd/edge-cache
 RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/backup-encrypt ./cmd/backup-encrypt
 RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/native-resolve ./cmd/native-resolve
 # native-init ships inside every native Node tenant image (w8/m88): stripped
@@ -58,6 +59,7 @@ COPY --from=builder /workspace/staticserver /staticserver
 COPY --from=builder /workspace/pg-sni-proxy /pg-sni-proxy
 COPY --from=builder /workspace/kv-sni-proxy /kv-sni-proxy
 COPY --from=builder /workspace/egress-meter /egress-meter
+COPY --from=builder /workspace/edge-cache /edge-cache
 COPY --from=builder /workspace/backup-encrypt /backup-encrypt
 COPY --from=builder /workspace/native-resolve /native-resolve
 COPY --from=builder /workspace/native-init /native-init

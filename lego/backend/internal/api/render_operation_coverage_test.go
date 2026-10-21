@@ -59,7 +59,6 @@ var renderOperationOmissions = map[string]string{
 	"listWorkflowVersions":                 "ADR018 \u00a7 Render operation omissions \u2014 Render Workflows",
 	"patch-owner-notification-settings":    "ADR018 \u00a7 Render operation omissions \u2014 Owner notification policy",
 	"preview-service":                      "ADR018 \u00a7 Render operation omissions \u2014 PR previews",
-	"purge-cache":                          "ADR018 \u00a7 Render operation omissions \u2014 Static cache purge",
 	"remove-resources-from-environment":    "ADR018 \u00a7 Render operation omissions \u2014 Environment resource mutation paths",
 	"remove-workspace-member":              "ADR018 \u00a7 Render operation omissions \u2014 Render member mutation paths",
 	"resume-redis":                         "ADR018 \u00a7 Render operation omissions \u2014 Legacy Redis spelling",

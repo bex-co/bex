@@ -705,6 +705,9 @@ func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1al
 		}
 		// Cached on app's status, which this pass persists; runtime is a view.
 		params.platform.gitCommit = r.imageCommit(ctx, app, params.image)
+		if r.edgeCaches(runtime) {
+			params.edgeCacheImage = r.BackupHelperImage
+		}
 	}
 	var prior *corev1.PodTemplateSpec
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, dep, func() error {

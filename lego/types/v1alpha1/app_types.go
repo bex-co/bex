@@ -29,6 +29,25 @@ const (
 	PendingFilesSecretAnnotation = "app.bex.co/pending-files-secret"
 )
 
+// CachePurgedAtAnnotation records the last manual edge-cache purge (Render's
+// POST /services/{id}/cache/purge; w5/m151). The operator stamps it on the
+// pod template, so a purge restarts the cache with the pods, as a deploy does.
+const CachePurgedAtAnnotation = "app.bex.co/cache-purged-at"
+
+// CacheProfile values (AppSpec.CacheProfile).
+const (
+	CacheProfileNone   = "no-cache"
+	CacheProfileStatic = "origin-controlled"
+	CacheProfileAll    = "origin-controlled-all"
+)
+
+// EdgeCaching reports whether the App caches at the edge: a web service with
+// a caching profile.
+func (s AppSpec) EdgeCaching() bool {
+	return (s.Type == "" || s.Type == TypeWebService) &&
+		(s.CacheProfile == CacheProfileStatic || s.CacheProfile == CacheProfileAll)
+}
+
 // AnnotationSavedConfigRevision is an opaque notification for an effective
 // service-local Save-only write. It contains no configuration or value digest,
 // changes no release identity, and wakes only configuration-status comparison.
@@ -358,6 +377,17 @@ type AppSpec struct {
 	// to Name in human-facing clients so existing Apps remain unchanged.
 	// +optional
 	DisplayName string `json:"displayName,omitempty"`
+
+	// CacheProfile is Render's web-service edge caching
+	// (serviceDetails.cache.profile; w5/m151): "no-cache" (the default when
+	// empty) serves every response from the service, "origin-controlled"
+	// caches Render's common static file types and "origin-controlled-all"
+	// every eligible response, each under the response's Cache-Control. Only
+	// a web_service on a paid plan caches; the operator puts a caching proxy
+	// in front of the app container (internal/edgecache).
+	// +optional
+	// +kubebuilder:validation:Enum=no-cache;origin-controlled;origin-controlled-all
+	CacheProfile string `json:"cacheProfile,omitempty"`
 
 	// Type is the service kind, tracking Render's serviceType vocabulary:
 	// web_service (default), private_service, background_worker, cron_job,

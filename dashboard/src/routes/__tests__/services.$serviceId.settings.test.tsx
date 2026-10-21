@@ -152,6 +152,17 @@ vi.mock("@/features/services/hooks/use-maintenance-mode", () => ({
   }),
 }));
 
+// Edge Caching section calls setCacheProfile/purgeServiceCache via Apollo;
+// mock it so section-presence assertions don't need an Apollo client.
+vi.mock("@/features/services/hooks/use-edge-cache", () => ({
+  useEdgeCache: () => ({
+    setCacheProfile: vi.fn(async () => true),
+    purgeCache: vi.fn(async () => true),
+    saving: false,
+    purging: false,
+  }),
+}));
+
 // Notifications row (w4/m21) calls setNotifyOnFail via Apollo; mock it so
 // section-presence assertions don't need an Apollo client.
 vi.mock("@/features/services/hooks/use-service-notifications", () => ({
@@ -427,6 +438,7 @@ describe("settings skeleton parity", () => {
         "notifications",
         "port",
         "health-checks",
+        "edge-caching",
         "maintenance",
         ...END,
       ],
@@ -444,6 +456,7 @@ describe("settings skeleton parity", () => {
         "notifications",
         "port",
         "health-checks",
+        "edge-caching",
         "maintenance",
         ...END,
       ],
@@ -615,6 +628,7 @@ describe("ServiceSettingsPage", () => {
       // setting, for the two types that bind a port (w4/m121/t003).
       "#port",
       "#health-checks",
+      "#edge-caching",
       "#maintenance",
       "#suspend",
       "#danger-zone",
@@ -648,6 +662,31 @@ describe("ServiceSettingsPage", () => {
       expect(screen.queryByText("Idle timeout")).not.toBeInTheDocument();
     },
   );
+
+  // Edge caching is web_service only: bex-api's setCacheProfile refuses every
+  // other type, so no other type gets the section or its navigation link.
+  it.each(["private_service", "background_worker", "cron_job", "static_site"])(
+    "offers no Edge Caching section to a %s",
+    async (type) => {
+      serverState.service = svc({ type, url: null });
+      renderSettings();
+
+      expect(await sectionHrefs()).not.toContain("#edge-caching");
+      expect(document.getElementById("edge-caching")).toBeNull();
+      expect(screen.queryByText("Edge Caching")).toBeNull();
+    },
+  );
+
+  it("renders the Edge Caching section for a web service", async () => {
+    serverState.service = svc({ cacheProfile: "origin-controlled" });
+    renderSettings();
+
+    expect(await sectionHrefs()).toContain("#edge-caching");
+    const section = document.getElementById("edge-caching")!;
+    expect(
+      within(section).getByRole("radio", { name: /Common static files/ }),
+    ).toHaveAttribute("aria-checked", "true");
+  });
 
   // static_site is the other publicly-routed type and has no coverage of this
   // gate; web_service's is the full-href-list assertion above.

@@ -66,6 +66,7 @@ function service(undeployedChanges: boolean): ServerQuery["server"] {
     publishPath: null,
     ipAllowList: null,
     maintenanceMode: null,
+    cacheProfile: null,
     buildFilter: null,
     runs: null,
     routes: null,

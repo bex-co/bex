@@ -1155,6 +1155,7 @@ export type Mutation = {
   patchServiceEnvironment: EnvironmentPatchResult;
   pinAgentSession: Maybe<AgentSession>;
   prepareWorkspaceCreation: Maybe<WorkspaceCreationAttempt>;
+  purgeServiceCache: Maybe<Service>;
   recoverDatabase: Maybe<Database>;
   regenerateDeployHook: Maybe<DeployHook>;
   registerNotificationDeviceSubscription: Maybe<NotificationDeviceSubscription>;
@@ -1188,6 +1189,7 @@ export type Mutation = {
   setBranch: Maybe<Service>;
   setBuildCommand: Maybe<Service>;
   setBuildFilter: Maybe<Service>;
+  setCacheProfile: Maybe<Service>;
   setDatabaseIpAllowList: Maybe<Database>;
   setDatabaseParameterOverrides: Maybe<Database>;
   setDatabasePublic: Maybe<Database>;
@@ -1775,6 +1777,12 @@ export type MutationPrepareWorkspaceCreationArgs = {
 };
 
 
+export type MutationPurgeServiceCacheArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
+  id: Scalars['String']['input'];
+};
+
+
 export type MutationRecoverDatabaseArgs = {
   id: Scalars['String']['input'];
   name: Scalars['String']['input'];
@@ -1988,6 +1996,13 @@ export type MutationSetBuildCommandArgs = {
 export type MutationSetBuildFilterArgs = {
   buildFilter: BuildFilterInput;
   id: Scalars['String']['input'];
+};
+
+
+export type MutationSetCacheProfileArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
+  id: Scalars['String']['input'];
+  profile: Scalars['String']['input'];
 };
 
 
@@ -3632,6 +3647,7 @@ export type Service = {
   buildCommand: Maybe<Scalars['String']['output']>;
   buildFilter: Maybe<BuildFilter>;
   builder: Maybe<Scalars['String']['output']>;
+  cacheProfile: Maybe<Scalars['String']['output']>;
   command: Maybe<Scalars['String']['output']>;
   createdAt: Maybe<Scalars['String']['output']>;
   dashboardUrl: Maybe<Scalars['String']['output']>;
