@@ -29,7 +29,10 @@ import (
 	specs "github.com/opencontainers/runtime-spec/specs-go"
 )
 
-// renderV1Capabilities mirrors appv1alpha1.ContainerPolicyCapabilities(render-v1).
+// renderV1Capabilities mirrors appv1alpha1.ContainerPolicyCapabilities(render-v1)
+// (lego/types/v1alpha1/container_policy.go). This module stays standalone so
+// regenerating the profile never drags in the operator's dependency graph;
+// change both together.
 var renderV1Capabilities = []string{"CAP_CHOWN", "CAP_DAC_OVERRIDE", "CAP_FOWNER", "CAP_SETGID", "CAP_SETUID", "CAP_SYS_CHROOT"}
 
 // userNamespaceSyscalls are what bubblewrap and the Chromium sandbox call

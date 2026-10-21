@@ -204,6 +204,20 @@ var _ = Describe("Application container policy admission", func() {
 							p.Spec.Containers[0].SecurityContext.Capabilities.Add = append(p.Spec.Containers[0].SecurityContext.Capabilities.Add, foreign)
 						}},
 						{"forged-marker", false, func(_ client.Object, p *corev1.PodTemplateSpec) { p.Labels["app.bex.co/container-policy"] = "image-v2" }},
+						// An init container never inherits the Localhost exception, and a
+						// pod-level Localhost profile is never the effective one admitted.
+						{"init-localhost-profile", false, func(_ client.Object, p *corev1.PodTemplateSpec) {
+							profile := "profiles/bex-render-v1.json"
+							init := corev1.Container{Name: "injected-init", Image: "busybox:latest", SecurityContext: tenantSecCtx()}
+							init.SecurityContext.Capabilities.Drop = []corev1.Capability{"ALL"}
+							init.SecurityContext.SeccompProfile = &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeLocalhost, LocalhostProfile: &profile}
+							p.Spec.InitContainers = append(p.Spec.InitContainers, init)
+						}},
+						{"pod-level-localhost-profile", false, func(_ client.Object, p *corev1.PodTemplateSpec) {
+							profile := "profiles/bex-render-v1.json"
+							p.Spec.SecurityContext = &corev1.PodSecurityContext{SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeLocalhost, LocalhostProfile: &profile}}
+							p.Spec.Containers[0].SecurityContext.SeccompProfile = nil
+						}},
 						// Only render-v1's own Localhost profile is admitted, and only for
 						// render-v1 (w6/m150).
 						{"foreign-localhost-profile", false, func(_ client.Object, p *corev1.PodTemplateSpec) {

@@ -44,10 +44,13 @@ spec:
           command:
             - /bin/sh
             - -c
-            - mkdir -p /host/profiles && cp /profiles/bex-render-v1.json /host/profiles/.bex-render-v1.json.tmp && mv /host/profiles/.bex-render-v1.json.tmp /host/profiles/bex-render-v1.json
+            - mkdir -p /host/profiles && for f in /profiles/*.json; do n=$(basename "$f"); cp "$f" "/host/profiles/.$n.tmp" && mv "/host/profiles/.$n.tmp" "/host/profiles/$n"; done
+          # Root writing a root-owned directory needs no capability.
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+            seccompProfile: { type: RuntimeDefault }
           resources:
             requests: { cpu: 1m, memory: 8Mi }
             limits: { memory: 16Mi }
