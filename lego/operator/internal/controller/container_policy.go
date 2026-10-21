@@ -18,6 +18,7 @@ package controller
 
 import (
 	"maps"
+	"strings"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -84,4 +85,31 @@ func appHostUsers(spec appv1alpha1.AppSpec, enabled bool) *bool {
 		return nil
 	}
 	return new(false)
+}
+
+// userNamespacesFor reports whether BEX_RENDER_V1_USER_NAMESPACES covers the
+// App's workspace. A tenant App's namespace is its workspace id (ADR043), so a
+// list scopes the switch to a canary workspace before "*" widens it.
+func (r *AppReconciler) userNamespacesFor(app *appv1alpha1.App) bool {
+	return r.RenderV1UserNamespaces["*"] || r.RenderV1UserNamespaces[app.Namespace]
+}
+
+// ParseWorkspaceSet reads a comma-separated workspace list; "on" and "*" mean
+// every workspace, and blanks are ignored. Nil for an empty value.
+func ParseWorkspaceSet(value string) map[string]bool {
+	var set map[string]bool
+	for item := range strings.SplitSeq(value, ",") {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			continue
+		}
+		if item == "on" {
+			item = "*"
+		}
+		if set == nil {
+			set = map[string]bool{}
+		}
+		set[item] = true
+	}
+	return set
 }

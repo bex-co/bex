@@ -205,7 +205,11 @@ func TestRenderV1UserNamespacesSwitch(t *testing.T) {
 			params := webParams()
 			params.userNamespaces = on
 			dep := project(app, params)
-			cron := (&AppReconciler{RenderV1UserNamespaces: on}).cronPodSpec(app, "image", 8123, nil, launchUnknown, "")
+			var set map[string]bool
+			if on {
+				set = map[string]bool{"*": true}
+			}
+			cron := (&AppReconciler{RenderV1UserNamespaces: set}).cronPodSpec(app, "image", 8123, nil, launchUnknown, "")
 			want := on && policy == appv1alpha1.ContainerPolicyRenderV1
 			for name, got := range map[string]*bool{"deployment": dep.Spec.Template.Spec.HostUsers, "cron": cron.Spec.HostUsers} {
 				if want && (got == nil || *got) {
@@ -215,6 +219,24 @@ func TestRenderV1UserNamespacesSwitch(t *testing.T) {
 					t.Errorf("%q on=%t %s: hostUsers = %v, want unset", policy, on, name, *got)
 				}
 			}
+		}
+	}
+}
+
+// The switch is scoped by workspace (the App's namespace) so a canary
+// workspace proves idmapped volumes before "*" widens it.
+func TestRenderV1UserNamespacesAreWorkspaceScoped(t *testing.T) {
+	app := projectionApp(func(a *appv1alpha1.App) {
+		a.Namespace = "tea-canary"
+		a.Spec.ContainerPolicy = appv1alpha1.ContainerPolicyRenderV1
+	})
+	for value, want := range map[string]bool{
+		"": false, "tea-other": false, "tea-canary": true, " tea-other , tea-canary ": true, "on": true, "*": true,
+	} {
+		r := &AppReconciler{RenderV1UserNamespaces: ParseWorkspaceSet(value)}
+		got := r.cronPodSpec(app, "image", 8123, nil, launchUnknown, "").Spec.HostUsers
+		if (got != nil && !*got) != want {
+			t.Errorf("BEX_RENDER_V1_USER_NAMESPACES=%q: hostUsers = %v, want userns %t", value, got, want)
 		}
 	}
 }

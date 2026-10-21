@@ -357,9 +357,10 @@ type AppReconciler struct {
 	// TenantSignKeySecret names a Secret (in the build namespace, keys
 	// "cosign.key"+"cosign.password") that enables tenant-image signing in the
 	// in-cluster build Job (w6/006). Empty => tenant images unsigned (the default).
-	// RenderV1UserNamespaces runs render-v1 runtime pods with hostUsers=false
-	// (BEX_RENDER_V1_USER_NAMESPACES=on, w6/m151).
-	RenderV1UserNamespaces bool
+	// RenderV1UserNamespaces lists the workspaces (namespaces; "*" = all)
+	// whose render-v1 runtime pods run with hostUsers=false
+	// (BEX_RENDER_V1_USER_NAMESPACES, w6/m151).
+	RenderV1UserNamespaces map[string]bool
 	TenantSignKeySecret    string
 	// TenantSignImage overrides the cosign image used by the signing container.
 	TenantSignImage string
@@ -2545,7 +2546,7 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		// (w7/m8). nil when no pull secret is configured or the image isn't
 		// registry-hosted, so a prebuilt public image is left untouched.
 		pullSecrets:    r.imagePullSecrets(app, image),
-		userNamespaces: r.RenderV1UserNamespaces,
+		userNamespaces: r.userNamespacesFor(app),
 	}, restore); err != nil {
 		return r.fail(ctx, app, "DeployFailed", err)
 	}
@@ -4965,7 +4966,7 @@ func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int
 	// Authenticate the pull under an auth-enabled registry (w7/m8) — owned here so
 	// every caller of cronPodSpec gets it without a post-hoc patch at each site.
 	spec.ImagePullSecrets = r.imagePullSecrets(app, image)
-	spec.HostUsers = appHostUsers(app.Spec, r.RenderV1UserNamespaces)
+	spec.HostUsers = appHostUsers(app.Spec, r.userNamespacesFor(app))
 	// Last, always — this PodSpec is built from nothing every pass. See
 	// server_defaults.go.
 	applyPodSpecServerDefaults(&spec)

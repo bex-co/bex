@@ -410,10 +410,11 @@ func setupAppReconciler(
 		// (including unset) leaves the build Job byte-identical to before the
 		// feature existed.
 		BuildCache: os.Getenv("BEX_BUILD_CACHE") == "registry",
-		// w6/m151: run render-v1 runtime pods in a pod user namespace. Off until
-		// the Hetzner hcloud-volumes idmap canary passes; any other value than
-		// "on" leaves every pod template byte-identical.
-		RenderV1UserNamespaces: os.Getenv("BEX_RENDER_V1_USER_NAMESPACES") == "on",
+		// w6/m151: run render-v1 runtime pods in a pod user namespace, per
+		// workspace: comma-separated tea- ids, or "on"/"*" for every workspace.
+		// Unset leaves every pod template byte-identical; the bex workspace is
+		// the Hetzner hcloud-volumes idmap canary before "*".
+		RenderV1UserNamespaces: controller.ParseWorkspaceSet(os.Getenv("BEX_RENDER_V1_USER_NAMESPACES")),
 	}
 	// Build-namespace pull credential for build-plane Jobs (the static-site publish
 	// Job) that pull the just-built tenant image from Zot. The per-App/shared tenant
