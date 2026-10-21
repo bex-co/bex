@@ -130,6 +130,7 @@ var classifiedOps = map[string]string{
 	"GQL Mutation.setDatabasePublic":                                   core.OpClassWrite,
 	"GQL Mutation.setDatabaseReadReplicas":                             core.OpClassWrite,
 	"GQL Mutation.setDisplayName":                                      core.OpClassWrite,
+	"GQL Mutation.setDockerContext":                                    core.OpClassWrite,
 	"GQL Mutation.setDockerfilePath":                                   core.OpClassWrite,
 	"GQL Mutation.setEnvGroupSecretFile":                               core.OpClassWrite,
 	"GQL Mutation.setEnvGroupVar":                                      core.OpClassWrite,

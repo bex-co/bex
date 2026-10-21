@@ -119,7 +119,7 @@ A protected environment refused to pause the service and permitted anyone to rep
 | verb | covers |
 | --- | --- |
 | `repoint` | `image`, `repo`, `branch`, `registryCredentialId` — which code runs; and, since w4/m176, a deploy trigger carrying `imageUrl` or `commitId` and every rollback |
-| `redefine` | build/start/pre-deploy commands, a cron's `command`, `dockerfilePath`, `rootDir` — how it is built and what it executes |
+| `redefine` | build/start/pre-deploy commands, a cron's `command`, `dockerfilePath`, `dockerContext` (w8/m128), `rootDir` — how it is built and what it executes |
 | `take offline` | **enabling** maintenance mode, which 503s every host |
 
 One phrase per class, not per setter. The per-verb design exists so a confirm typed for a cheap verb cannot arm an expensive one; within a class the stakes are identical, and eleven near-identical phrases would be a worse UI without being a stronger control.
