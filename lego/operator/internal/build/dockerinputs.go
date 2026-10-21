@@ -120,7 +120,7 @@ func dockerBuildInputsScript(o Options, literals []corev1.EnvVar) string {
 	}
 	return `umask 077
 if [ -d ` + dockerBuildEnvMount + ` ]; then
-  for path in ` + dockerBuildEnvMount + `/*; do
+  for path in ` + dockerBuildEnvMount + `/* ` + dockerBuildEnvMount + `/.[!.]*; do
     [ -f "$path" ] || continue
     value="$(cat "$path"; printf '.')"
     set -- "$@" --opt "build-arg:${path##*/}=${value%.}"

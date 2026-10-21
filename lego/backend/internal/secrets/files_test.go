@@ -438,7 +438,7 @@ func TestPrepareCreateEnvVarsRejectsBadKeyWithoutWriting(t *testing.T) {
 	store := newFakeSecretStore()
 	svc := newService(store)
 	err := NewCreateSecretsSeeder(svc).PrepareCreateSecrets(context.Background(), "web", sampleApp("web"), nil,
-		map[string]string{"bad-key": "never-print-this"})
+		map[string]string{"bad key": "never-print-this"})
 	if !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("want ErrBadRequest, got %v", err)
 	}

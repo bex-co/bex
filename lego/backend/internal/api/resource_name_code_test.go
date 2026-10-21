@@ -28,9 +28,9 @@ import (
 // TestAnInvalidResourceNameIsCodedOnEverySurface (w5/093): a service, Postgres
 // or Key Value name outside the resource-name rule is refused with
 // RESOURCE_NAME_INVALID on REST (400, params field and maxLength), GraphQL
-// (extensions) and MCP (the text's code prefix). A Blueprint that declares
-// such a name keeps the code when deployed, and its validation locates the
-// refusal at the declaration's name.
+// (extensions) and MCP (the text's code prefix). A Blueprint name, which
+// Render leaves free-form, maps onto a resource name instead (w5/m150): it
+// validates and deploys.
 func TestAnInvalidResourceNameIsCodedOnEverySurface(t *testing.T) {
 	h, srv := serverWith(t, &core.Base{Client: fakeClient(), Namespace: "default"}, Deps{})
 	cs := mcpSessionAs(t, srv, "dana")
@@ -63,26 +63,18 @@ func TestAnInvalidResourceNameIsCodedOnEverySurface(t *testing.T) {
 		})
 	}
 
-	for _, tc := range []struct{ kind, manifest, path string }{
-		{"Key Value", "services:\n  - type: keyvalue\n    name: Cache_1\n    ipAllowList: []\n", "services[0].name"},
-		{"service", "services:\n  - type: web\n    name: Web_1\n    runtime: image\n    image:\n      url: nginx\n", "services[0].name"},
-		{"Postgres", "databases:\n  - name: Db_1\n", "databases[0].name"},
+	for _, tc := range []struct{ kind, manifest string }{
+		{"Key Value", "services:\n  - type: keyvalue\n    name: Cache_1\n    ipAllowList: []\n"},
+		{"service", "services:\n  - type: web\n    name: Web_1\n    runtime: image\n    image:\n      url: nginx\n"},
+		{"Postgres", "databases:\n  - name: Db_1\n"},
 	} {
 		t.Run("Blueprint "+tc.kind, func(t *testing.T) {
-			body, _ := json.Marshal(map[string]string{"bexYaml": tc.manifest})
-			t.Run("REST deploy", func(t *testing.T) { refused.onREST(t, h, http.MethodPost, "/v1/blueprints/deploy", string(body)) })
-			t.Run("MCP deploy", func(t *testing.T) { refused.onMCP(t, cs, "deploy", map[string]any{"bexYaml": tc.manifest}) })
-			t.Run("GraphQL validate", func(t *testing.T) {
-				query, _ := json.Marshal(tc.manifest)
-				data := gql(t, h, `{ validateBlueprint(bexYaml: `+string(query)+`) { errorDetails { code path } } }`)
-				details, _ := data["validateBlueprint"].(map[string]any)["errorDetails"].([]any)
-				if len(details) != 1 {
-					t.Fatalf("errorDetails = %v, want the one refusal", details)
-				}
-				if got := details[0].(map[string]any); got["code"] != "RESOURCE_NAME_INVALID" || got["path"] != tc.path {
-					t.Fatalf("errorDetails = %v, want RESOURCE_NAME_INVALID at %s", got, tc.path)
-				}
-			})
+			query, _ := json.Marshal(tc.manifest)
+			data := gql(t, h, `{ validateBlueprint(bexYaml: `+string(query)+`) { valid errorDetails { code path } } }`)
+			result, _ := data["validateBlueprint"].(map[string]any)
+			if result["valid"] != true {
+				t.Fatalf("validateBlueprint = %v, want the free-form name accepted", result)
+			}
 		})
 	}
 }

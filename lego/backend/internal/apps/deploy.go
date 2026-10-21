@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"maps"
 	"net/netip"
 	"reflect"
@@ -568,7 +569,10 @@ type parsedEnvGroup struct {
 // to apply time: fromGroup links, and the sync:false/generateValue vars seeded
 // once into the mutable env store (never spec.Env, so a dashboard edit wins).
 type parsedService struct {
-	req           CreateRequest
+	req CreateRequest
+	// displayName is the label a free-form Blueprint name keeps, "" when the
+	// name already is a resource name (w5/m150).
+	displayName   string
 	fields        map[string]BlueprintField
 	databaseRefs  []bexEnvVar       // resolved after database IDs are known
 	kvRefs        []bexEnvVar       // resolved after keyvalue CR names are known
@@ -1038,6 +1042,17 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 			return nil, err
 		}
 		verbCtx, ref := stackServiceTarget(ctx, app)
+		// A free-form Blueprint name becomes the new service's label (w5/m150),
+		// once: a later rename in the dashboard sticks. A label the service
+		// cannot take (already used by another service) leaves the resource
+		// name showing, never a half-applied sync.
+		if created && svc.displayName != "" && app != nil {
+			if labeled, err := s.SetDisplayName(verbCtx, ref, svc.displayName); err == nil {
+				v, app.Spec.DisplayName = labeled, svc.displayName
+			} else {
+				log.Printf("blueprint: service %s keeps its resource name as its label: %v", ref, err)
+			}
+		}
 		targets[svc.req.Name] = appliedTarget{ctx: verbCtx, ref: ref}
 		serviceApps[svc.req.Name] = app
 		if len(laterRefs) > 0 {
@@ -2133,9 +2148,11 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 	// Databases next into the stack and the index fromDatabase resolves against.
 	idx := newStackIndex(len(services), len(databases))
 	for _, d := range databases {
-		ds, err := parseDatabase(d.value)
+		decl := d.value
+		decl.Name = blueprintResourceSlug(decl.Name)
+		ds, err := parseDatabase(decl)
 		if err != nil {
-			problems = append(problems, blueprintResourceError{kind: BlueprintResourcePostgres, name: d.value.Name, err: err})
+			problems = append(problems, blueprintResourceError{kind: BlueprintResourcePostgres, name: decl.Name, err: err})
 			continue
 		}
 		idx.databaseNames[ds.name] = true
@@ -2155,10 +2172,12 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 	}
 	pendings := make([]pending, 0, len(services))
 	for _, a := range services {
+		decl := a.value
+		decl.Name = blueprintResourceSlug(decl.Name)
 		if isKeyValueType(a.value.Type) {
-			kv, err := parseKeyValue(a.value)
+			kv, err := parseKeyValue(decl)
 			if err != nil {
-				problems = append(problems, blueprintResourceError{kind: BlueprintResourceKeyValue, name: a.value.Name, err: err})
+				problems = append(problems, blueprintResourceError{kind: BlueprintResourceKeyValue, name: decl.Name, err: err})
 				continue
 			}
 			kv.grouping = a.grouping
@@ -2167,17 +2186,17 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 			st.keyValues = append(st.keyValues, kv)
 			continue
 		}
-		req, se, err := parseService(overrides, a.value)
+		req, se, err := parseService(overrides, decl)
 		var credName string
 		if err == nil {
 			credName, err = blueprintRegistryCredentialName(a.value)
 		}
 		if err != nil {
-			problems = append(problems, blueprintResourceError{kind: BlueprintResourceService, name: a.value.Name, err: err})
+			problems = append(problems, blueprintResourceError{kind: BlueprintResourceService, name: decl.Name, err: err})
 			continue
 		}
 		pendings = append(pendings, pending{
-			svc:     parsedService{req: req, fields: blueprintServiceFields(fieldsByResource[BlueprintResourceService][req.Name]), groupLinks: se.groupLinks, seedLiterals: se.seedLiterals, seedGenerates: se.seedGenerates, promptKeys: se.promptKeys, env: se, registryCredentialName: credName, grouping: a.grouping, ungrouped: a.ungrouped},
+			svc:     parsedService{req: req, displayName: blueprintDisplayName(a.value.Name), fields: blueprintServiceFields(fieldsByResource[BlueprintResourceService][req.Name]), groupLinks: se.groupLinks, seedLiterals: se.seedLiterals, seedGenerates: se.seedGenerates, promptKeys: se.promptKeys, env: se, registryCredentialName: credName, grouping: a.grouping, ungrouped: a.ungrouped},
 			refVars: se.refVars,
 		})
 		idx.serviceKnownEnv[req.Name], idx.serviceGenerated[req.Name] = knownServiceEnv(se, st.envGroups)
@@ -2201,6 +2220,9 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 	// Pass 2: classify each pending service's deferred references now that
 	// every name, port, and known-env is available.
 	for _, p := range pendings {
+		for i := range p.refVars {
+			slugRefNames(&p.refVars[i].bexEnvVar)
+		}
 		svc, err := idx.classifyRefs(p.svc, p.refVars)
 		if err != nil {
 			// Attributed to its service so validation can locate the env entry.
