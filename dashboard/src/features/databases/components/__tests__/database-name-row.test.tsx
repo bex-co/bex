@@ -68,10 +68,25 @@ describe("DatabaseNameRow", () => {
     );
     const input = screen.getByLabelText("Name");
     await user.clear(input);
-    await user.type(input, "Bad Name");
+    await user.type(input, "dpg-abcdefghij0123456789");
 
-    expect(screen.getByText(/lowercase letters/i)).toBeInTheDocument();
+    expect(screen.getByText(/shaped like a resource ID/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
     expect(rename).not.toHaveBeenCalled();
+  });
+
+  it("renames to a free-form label, as on Render (w5/m153)", async () => {
+    const user = userEvent.setup();
+    render(<DatabaseNameRow database={database} onRenamed={vi.fn()} />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Edit database name" }),
+    );
+    const input = screen.getByLabelText("Name");
+    await user.clear(input);
+    await user.type(input, " Orders DB_2 ");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(rename).toHaveBeenCalledWith("dpg-stable", "Orders DB_2");
   });
 });

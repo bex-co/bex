@@ -210,6 +210,13 @@ export function NewServicePage() {
                       autoComplete="off"
                       aria-invalid={showNameError || showNameTaken}
                     />
+                    {name.resourceNamePreview !== null ? (
+                      <p className="text-sm text-muted-foreground">
+                        {t("services.createFieldNameResourceName", {
+                          name: name.resourceNamePreview,
+                        })}
+                      </p>
+                    ) : null}
                     {showNameError ? (
                       <p className="text-sm text-destructive">
                         {t("services.createFieldNameError")}

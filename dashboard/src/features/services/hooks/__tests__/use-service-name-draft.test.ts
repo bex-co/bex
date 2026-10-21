@@ -120,4 +120,32 @@ describe("useServiceNameDraft", () => {
     expect(result.current.nameTaken).toBe(true);
     expect(result.current.nameSuggestion).toBe("web-frontend-2");
   });
+
+  // w5/m153: a typed name is a free-form label; availability is checked for
+  // the resource name bex-api derives from it.
+  it("checks a free-form name's availability by its derived resource name", () => {
+    takenNames.set("my-api", "my-api-1");
+    const { result } = renderDraft();
+
+    act(() => result.current.editName("  My API "));
+    expect(result.current.nameValid).toBe(true);
+    expect(result.current.resourceName).toBe("my-api");
+    expect(result.current.resourceNamePreview).toBe("my-api");
+    expect(result.current.nameTaken).toBe(true);
+    expect(result.current.nameSuggestion).toBe("my-api-1");
+
+    act(() => result.current.editName("my-api"));
+    expect(result.current.resourceName).toBe("my-api");
+    expect(result.current.resourceNamePreview).toBeNull();
+  });
+
+  it("rejects a name shaped like a resource ID and checks nothing", () => {
+    takenNames.set("srv-abcdefghij0123456789", "x");
+    const { result } = renderDraft();
+
+    act(() => result.current.editName("srv-abcdefghij0123456789"));
+    expect(result.current.nameValid).toBe(false);
+    expect(result.current.resourceName).toBeNull();
+    expect(result.current.nameTaken).toBe(false);
+  });
 });

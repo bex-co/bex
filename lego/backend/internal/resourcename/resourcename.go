@@ -25,12 +25,18 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/id"
 )
 
-// CheckDatastore refuses a name a Postgres or Key Value cannot take: one
-// outside the resource-name rule (core.CheckResourceName), or one shaped like a
-// resource ID, which a selector could read as that ID (w8/049).
+// CheckDatastore refuses a name a Postgres or Key Value cannot take. The name
+// is the resource's mutable label (its dpg-/red- id is the identity), which
+// Render leaves free-form (w5/m153): it follows core.CheckLabel, must not be
+// empty, and must not be shaped like a resource ID, which a selector could
+// read as that ID (w8/049).
 func CheckDatastore(name string) error {
-	if err := core.CheckResourceName("name", name); err != nil {
+	label, err := core.CheckLabel(name)
+	if err != nil {
 		return err
+	}
+	if label == "" || label != name {
+		return core.NewBadRequestError("RESOURCE_NAME_INVALID", "name must be a non-empty label without leading or trailing spaces", map[string]any{"field": "name"})
 	}
 	if id.LooksLikeResourceID(name) {
 		return core.NameResourceIDReservedError("name", name)

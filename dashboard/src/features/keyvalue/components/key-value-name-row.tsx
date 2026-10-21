@@ -1,5 +1,5 @@
 import { useTranslations } from "@/common/hooks/use-translations";
-import { isValidDnsLabel } from "@/common/lib/utils/dns-label";
+import { isValidLabel } from "@/common/lib/utils/resource-label";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import { useRenameKeyValue } from "@/features/keyvalue/hooks/use-rename-key-value";
 import type { KeyValueView } from "@/features/keyvalue/types";
@@ -28,7 +28,7 @@ export function KeyValueNameRow({ keyValue, onRenamed }: KeyValueNameRowProps) {
       editLabel={t("keyvalue.nameEdit")}
       busy={busy}
       validate={(draft) =>
-        isValidDnsLabel(draft.trim()) ? null : t("keyvalue.nameInvalid")
+        isValidLabel(draft) ? null : t("keyvalue.nameInvalid")
       }
       onSave={async (value) => {
         const ok = await rename(keyValue.id, value);

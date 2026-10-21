@@ -28,6 +28,8 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -345,6 +347,25 @@ func CheckResourceName(field, name string) error {
 	}
 	return NewBadRequestError("RESOURCE_NAME_INVALID", field+" "+ResourceNameRule,
 		map[string]any{"field": field, "maxLength": appv1alpha1.MaxResourceNameLength})
+}
+
+// CheckLabel is the one rule for a free-form, human-facing label — a service's
+// display name and a Postgres or Key Value name (Render leaves both free-form;
+// w5/m153): no control characters or line separators, at most 100 code
+// points once trimmed. It returns the trimmed label. The resource-ID-shape
+// refusal needs internal/id, so callers add it.
+func CheckLabel(value string) (string, error) {
+	for _, c := range value {
+		if unicode.IsControl(c) || c == '\u2028' || c == '\u2029' {
+			return "", NewBadRequestError("DISPLAY_NAME_CONTROL_CHARACTER", "display name must not contain control characters or line separators", nil)
+		}
+	}
+	value = strings.TrimSpace(value)
+	const maxLength = 100
+	if utf8.RuneCountInString(value) > maxLength {
+		return "", NewBadRequestError("DISPLAY_NAME_TOO_LONG", fmt.Sprintf("display name must be at most %d Unicode code points", maxLength), map[string]any{"maxLength": maxLength})
+	}
+	return value, nil
 }
 
 // NameResourceIDReservedError refuses a name shaped like a resource ID

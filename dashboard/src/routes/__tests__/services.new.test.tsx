@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   describe,
   it,
@@ -512,7 +513,7 @@ describe("NewServicePage", () => {
       expect(deploy).toBeDisabled();
     });
 
-    it("keeps Deploy disabled when name is invalid", async () => {
+    it("keeps Deploy disabled when name is shaped like a resource ID", async () => {
       const user = userEvent.setup();
       renderPage();
       await user.click(
@@ -520,10 +521,53 @@ describe("NewServicePage", () => {
       );
       const nameInput = screen.getByLabelText("Name");
       await user.clear(nameInput);
-      await user.type(nameInput, "-invalid");
+      await user.type(nameInput, "srv-abcdefghij0123456789");
+      expect(
+        screen.getByText(/shaped like a resource ID/i),
+      ).toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: /Deploy Service/i }),
       ).toBeDisabled();
+    });
+
+    // w5/m153: the name is a free-form label, as on Render; bex derives the
+    // resource name from it and the form previews that derivation.
+    it("accepts a name that is not a slug and previews its resource name", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      expect(screen.queryByText(/^Resource name:/)).toBeNull();
+
+      const nameInput = screen.getByLabelText("Name");
+      await user.clear(nameInput);
+      await user.type(nameInput, "My_API -invalid");
+      expect(
+        screen.getByText("Resource name: my-api-invalid"),
+      ).toBeInTheDocument();
+      expect(nameInput).not.toHaveAttribute("aria-invalid", "true");
+      expect(
+        screen.getByRole("button", { name: /Deploy Service/i }),
+      ).toBeEnabled();
+    });
+
+    it("previews a long name's hashed resource name", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      const typed = "Customer Billing Reconciliation Worker";
+      const sum = createHash("sha256").update(typed).digest("hex").slice(0, 6);
+      const nameInput = screen.getByLabelText("Name");
+      await user.clear(nameInput);
+      await user.type(nameInput, typed);
+      expect(
+        await screen.findByText(
+          `Resource name: customer-billing-reconc-${sum}`,
+        ),
+      ).toBeInTheDocument();
     });
 
     it("enables Deploy when repo is selected and name is valid", async () => {
@@ -636,6 +680,22 @@ describe("NewServicePage", () => {
   });
 
   describe("create flow", () => {
+    it("sends a free-form name trimmed, for bex-api to derive the resource name (w5/m153)", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      const nameInput = screen.getByLabelText("Name");
+      await user.clear(nameInput);
+      await user.type(nameInput, " My API ");
+      expect(screen.getByText("Resource name: my-api")).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "My API" }),
+      );
+    });
+
     it("preselects Project and Environment from validated URL context", async () => {
       const user = userEvent.setup();
       renderPage("/?projectId=prj-platform&environmentId=env-production");

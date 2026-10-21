@@ -17,63 +17,50 @@ limitations under the License.
 package api
 
 import (
-	"encoding/json"
+	"context"
 	"net/http"
 	"testing"
 
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
-	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// TestAnInvalidResourceNameIsCodedOnEverySurface (w5/093): a service, Postgres
-// or Key Value name outside the resource-name rule is refused with
-// RESOURCE_NAME_INVALID on REST (400, params field and maxLength), GraphQL
-// (extensions) and MCP (the text's code prefix). A Blueprint name, which
-// Render leaves free-form, maps onto a resource name instead (w5/m150): it
-// validates and deploys.
-func TestAnInvalidResourceNameIsCodedOnEverySurface(t *testing.T) {
+// TestAFreeFormNameIsAcceptedOnEverySurface (w5/m153, replacing w5/093's
+// refusal): a service, Postgres or Key Value created with a free-form name,
+// as Render's creates allow, succeeds on REST, GraphQL and MCP.
+func TestAFreeFormNameIsAcceptedOnEverySurface(t *testing.T) {
 	h, srv := serverWith(t, &core.Base{Client: fakeClient(), Namespace: "default"}, Deps{})
 	cs := mcpSessionAs(t, srv, "dana")
-	const bad = "Bad_Name"
-	refused := codedRefusal{
-		status: http.StatusBadRequest, code: "RESOURCE_NAME_INVALID",
-		params: map[string]any{"field": "name", "maxLength": float64(appv1alpha1.MaxResourceNameLength)},
-	}
-
+	// Render's creates take a free-form name (w5/m153): a service maps it onto
+	// a resource name and keeps it as its label; a Postgres or Key Value keeps
+	// it as its name. Each surface gets its own name, so none collides.
 	for _, tc := range []struct {
 		kind, path, body, mutation, tool string
 		args                             map[string]any
 	}{{
-		kind: "service", path: "/v1/services", body: `{"name":"` + bad + `","ownerId":"tea-a","image":{"ownerId":"tea-a","imagePath":"nginx"}}`,
-		mutation: `mutation { createService(name: "` + bad + `", image: "nginx") { id } }`,
-		tool:     "create_web_service", args: map[string]any{"name": bad, "image": "nginx", "runtime": "image"},
+		kind: "service", path: "/v1/services", body: `{"name":"My API","ownerId":"tea-a","image":{"ownerId":"tea-a","imagePath":"nginx"}}`,
+		mutation: `mutation { createService(name: "My Gql API", image: "nginx") { id displayName } }`,
+		tool:     "create_web_service", args: map[string]any{"name": "My Mcp API", "image": "nginx", "runtime": "image"},
 	}, {
-		kind: "Postgres", path: "/v1/postgres", body: `{"name":"` + bad + `","plan":"free"}`,
-		mutation: `mutation { createDatabase(name: "` + bad + `", plan: "free") { id } }`,
-		tool:     "create_postgres", args: map[string]any{"name": bad, "plan": "free"},
+		kind: "Postgres", path: "/v1/postgres", body: `{"name":"Prod DB","plan":"free"}`,
+		mutation: `mutation { createDatabase(name: "Gql DB", plan: "free") { id } }`,
+		tool:     "create_postgres", args: map[string]any{"name": "Mcp DB", "plan": "free"},
 	}, {
-		kind: "Key Value", path: "/v1/key-value", body: `{"name":"` + bad + `","plan":"free"}`,
-		mutation: `mutation { createKeyValue(name: "` + bad + `", plan: "free") { id } }`,
-		tool:     "create_key_value", args: map[string]any{"name": bad, "plan": "free"},
+		kind: "Key Value", path: "/v1/key-value", body: `{"name":"Prod Cache","plan":"free"}`,
+		mutation: `mutation { createKeyValue(name: "Gql Cache", plan: "free") { id } }`,
+		tool:     "create_key_value", args: map[string]any{"name": "Mcp Cache", "plan": "free"},
 	}} {
 		t.Run(tc.kind, func(t *testing.T) {
-			t.Run("REST", func(t *testing.T) { refused.onREST(t, h, http.MethodPost, tc.path, tc.body) })
-			t.Run("GraphQL", func(t *testing.T) { refused.onGraphQL(t, h, tc.mutation) })
-			t.Run("MCP", func(t *testing.T) { refused.onMCP(t, cs, tc.tool, tc.args) })
-		})
-	}
-
-	for _, tc := range []struct{ kind, manifest string }{
-		{"Key Value", "services:\n  - type: keyvalue\n    name: Cache_1\n    ipAllowList: []\n"},
-		{"service", "services:\n  - type: web\n    name: Web_1\n    runtime: image\n    image:\n      url: nginx\n"},
-		{"Postgres", "databases:\n  - name: Db_1\n"},
-	} {
-		t.Run("Blueprint "+tc.kind, func(t *testing.T) {
-			query, _ := json.Marshal(tc.manifest)
-			data := gql(t, h, `{ validateBlueprint(bexYaml: `+string(query)+`) { valid errorDetails { code path } } }`)
-			result, _ := data["validateBlueprint"].(map[string]any)
-			if result["valid"] != true {
-				t.Fatalf("validateBlueprint = %v, want the free-form name accepted", result)
+			if rec := do(t, h, http.MethodPost, tc.path, testToken, tc.body); rec.Code != http.StatusCreated {
+				t.Fatalf("REST create => %d %s", rec.Code, rec.Body)
+			}
+			if data := gql(t, h, tc.mutation); data == nil {
+				t.Fatal("GraphQL create returned no data")
+			}
+			res, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: tc.tool, Arguments: tc.args})
+			if err != nil || res.IsError {
+				t.Fatalf("MCP %s = %s, %v", tc.tool, fmtMCP(res), err)
 			}
 		})
 	}

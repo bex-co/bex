@@ -181,9 +181,9 @@ spec:
                   Name is the required mutable, user-facing database name. metadata.name is
                   the immutable dpg-... resource id and the data-plane identity used for
                   every CNPG/PVC/Secret/route name.
-                maxLength: 30
+                  A free-form label, as on Render (w5/m153); metadata.name is the identity.
+                maxLength: 100
                 minLength: 1
-                pattern: ^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$
                 type: string
               parameters:
                 additionalProperties:

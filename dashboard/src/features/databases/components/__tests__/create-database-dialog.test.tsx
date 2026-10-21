@@ -100,16 +100,19 @@ describe("CreateDatabaseDialog", () => {
     });
     expect(submit).toBeDisabled(); // empty name
 
-    // Invalid: can't start with a hyphen — the inline error shows, submit stays off.
-    await user.type(within(dialog).getByLabelText("Name"), "-bad");
+    // Invalid: shaped like a resource ID — the inline error shows, submit stays off.
+    await user.type(
+      within(dialog).getByLabelText("Name"),
+      "dpg-abcdefghij0123456789",
+    );
     expect(
-      within(dialog).getByText(/can't start or end with a hyphen/i),
+      within(dialog).getByText(/shaped like a resource ID/i),
     ).toBeInTheDocument();
     expect(submit).toBeDisabled();
 
-    // Valid name enables submit.
+    // A free-form label is accepted, as on Render (w5/m153).
     await user.clear(within(dialog).getByLabelText("Name"));
-    await user.type(within(dialog).getByLabelText("Name"), "shop-db");
+    await user.type(within(dialog).getByLabelText("Name"), "Shop DB_1");
     expect(submit).toBeEnabled();
   });
 
@@ -178,6 +181,22 @@ describe("CreateDatabaseDialog", () => {
       environmentId: undefined,
     });
     expect(onCreated).toHaveBeenCalledWith("shop-db");
+  });
+
+  it("submits a free-form name trimmed, as bex-api takes it (w5/m153)", async () => {
+    const user = userEvent.setup();
+    render(<CreateDatabaseDialog onCreated={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "New Database" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Name"), " Shop DB ");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Create database" }),
+    );
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Shop DB" }),
+    );
   });
 
   it("validates and submits optional physical PostgreSQL names", async () => {

@@ -28,7 +28,7 @@ import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { Switch } from "@/common/components/ui/switch";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { isValidDnsLabel } from "@/common/lib/utils/dns-label";
+import { isValidLabel } from "@/common/lib/utils/resource-label";
 import { useDatabaseInstanceTypes } from "@/features/databases/hooks/use-database-instance-types";
 import { useCreateDatabase } from "@/features/databases/hooks/use-create-database";
 import {
@@ -109,7 +109,8 @@ export function CreateDatabaseDialog({
     [instanceTypes, plan],
   );
 
-  const nameValid = isValidDnsLabel(name);
+  // A free-form label (w5/m153), sent trimmed.
+  const nameValid = isValidLabel(name);
   const showNameError = name.length > 0 && !nameValid;
   const databaseNameReserved = isReservedPostgresDatabaseName(databaseName);
   const databaseUserReserved = isReservedPostgresRole(databaseUser);
@@ -160,7 +161,7 @@ export function CreateDatabaseDialog({
   async function handleSubmit() {
     if (!canSubmit) return;
     const id = await create({
-      name,
+      name: name.trim(),
       databaseName,
       databaseUser,
       plan,

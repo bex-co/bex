@@ -259,7 +259,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.fieldNameError": {
     message:
-      "请使用小写字母、数字和连字符（最多 30 个字符），且不能以连字符开头或结尾。",
+      "请输入最多 100 个字符的名称，不能包含换行或控制字符，也不能形如资源 ID（例如 srv-…）。",
     description: "Create-Key-Value name validation message",
   },
   "keyvalue.fieldPlan": {
@@ -719,7 +719,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.nameInvalid": {
     message:
-      "请使用小写字母、数字和连字符（最多 30 个字符），且不能以连字符开头或结尾。",
+      "请输入最多 100 个字符的名称，不能包含换行或控制字符，也不能形如资源 ID（例如 srv-…）。",
     description: "Key Value rename validation message",
   },
   // --- Tab navigation ---
