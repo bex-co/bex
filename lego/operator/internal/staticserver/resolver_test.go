@@ -265,3 +265,37 @@ func TestRunReloadsOnAnAppChange(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 }
+
+// A replica is Ready as soon as its port listens (TCP probe), so Start must
+// return only after the first snapshot exists: a live host resolves the moment
+// Start returns, with no watch signal and no backstop tick ever firing (w3/m175).
+func TestStartServesLiveHostsBeforeAnyBackgroundRefresh(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := appv1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: appID, Namespace: "apps"},
+		Spec:       appv1alpha1.AppSpec{Type: appv1alpha1.TypeStaticSite, Host: testHost},
+		Status:     appv1alpha1.AppStatus{ActiveRevision: rev, StaticPrefix: appID + "/" + rev + "/"},
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).WithStatusSubresource(app).Build()
+	resolver := NewCachedResolver(cl, app.Namespace, "onbex.co")
+	never := make(chan struct{})
+	if err := resolver.Start(t.Context(), time.Hour, never, func(err error) { t.Error(err) }); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := resolver.Resolve(testHost); !ok {
+		t.Fatalf("%s is unknown right after Start: a fresh replica would 404 live sites until its first background refresh", testHost)
+	}
+}
+
+// A first snapshot that cannot be built must stop startup rather than open the
+// listener with an empty host map.
+func TestStartFailsWhenTheFirstSnapshotCannotBeBuilt(t *testing.T) {
+	cl := fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build() // App kind unregistered: List fails
+	resolver := NewCachedResolver(cl, "apps", "onbex.co")
+	if err := resolver.Start(t.Context(), time.Hour, make(chan struct{}), nil); err == nil {
+		t.Fatal("Start succeeded without a snapshot")
+	}
+}

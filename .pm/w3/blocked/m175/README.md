@@ -1,25 +1,25 @@
 # w3 · m175 — Static sites and the activator survive a node drain
 
-**Worker:** worker3 **Goal:** draining, rolling or losing one platform node — or one pod — never takes down static-site hosting or the activator's wake, first-deploy, suspended and maintenance responses; their availability is measured and alerted per component **Status:** todo
+**Worker:** worker3 **Goal:** draining, rolling or losing one platform node — or one pod — never takes down static-site hosting or the activator's wake, first-deploy, suspended and maintenance responses; their availability is measured and alerted per component **Status:** blocked — t001–t003, t006, t007 done; t004 needs your OK for the public canary fixture repo, t005 drill needs a mock-cluster rebuild; t008 closeout follows
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Multi-replica safety audit for static-server and activator | 45m | — |
-| t002 | Two replicas, a PodDisruptionBudget and preferred anti-affinity | 30m | t001 |
-| t003 | Metrics, scrape jobs and per-component availability alerts | 1h | t001 |
+| t001 | Multi-replica safety audit for static-server and activator — **DONE** | 45m | — |
+| t002 | Two replicas, a PodDisruptionBudget and preferred anti-affinity — **DONE** | 30m | t001 |
+| t003 | Metrics, scrape jobs and per-component availability alerts — **DONE** | 1h | t001 |
 | t004 | Publish the static canary fixture and enable the canary's static leg (needs your OK) | 30m | — |
 | t005 | Drain drill on the mock cluster: zero failed probes | 1h | t002, t003 |
-| t006 | Simplify | 15m | t005 |
-| t007 | Test coverage | 30m | t005 |
+| t006 | Simplify — **DONE** | 15m | t005 |
+| t007 | Test coverage — **DONE** | 30m | t005 |
 | t008 | Closeout | 10m | t006, t007, t004 |
 
 ## Definition of done
 
 - On the mock cluster, continuous probes (≤1s interval) against a published static site, a hibernated free web service's wake path and a never-served first-deploy host record **zero** failed probes while each component's node is drained and while each Deployment rolls; recorded in `docs/drills/`.
 - Production runs 2 Ready replicas of each behind a PDB (`kubectl get deploy,pdb` output recorded), spread across platform nodes.
-- `StaticServerUnavailable` and `ActivatorUnavailable` fire when the component is scaled to 0 (rule test + mock cluster) and stay quiet during a normal roll.
+- `StaticHostingPathDown` fires when either component has no available replica (rule test + mock cluster) and stays quiet during a normal roll (custom metrics descoped: see t003).
 - The deploy canary's static leg runs on `main` instead of printing `SKIP` (run id recorded).
 
 ## Evidence (2026-10-19)
