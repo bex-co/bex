@@ -45,9 +45,7 @@ var deliberateBlueprintDivergences = []string{
 // knownBlueprintGaps are Render-accepted inputs bex still refuses, each owned
 // by a board item; remove an entry when its item ships.
 var knownBlueprintGaps = []string{
-	"name must use lowercase letters, digits, and hyphens", // w5/m150: Render's free-form resource names
-	"invalid environment variable name",                    // w5/m150: dotted env keys (discovery.type)
-	"which has no such plainly-defined variable",           // w5/170: copying a sibling's sync:false variable
+	"which has no such plainly-defined variable", // w5/170: copying a sibling's sync:false variable
 	"is not trusted",                        // w5/171: public registries outside the allowlist (cgr.dev)
 	"dockerContext must be a relative path", // w5/172: dockerContext "/" as the repo root
 }

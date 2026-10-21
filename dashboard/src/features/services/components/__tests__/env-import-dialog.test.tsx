@@ -52,13 +52,13 @@ describe("EnvImportDialog", () => {
   it("says when a variable name is invalid", async () => {
     render(<EnvImportDialog open onOpenChange={vi.fn()} onImport={vi.fn()} />);
 
-    paste("1BAD=x");
+    paste("BAD/KEY=x");
     await userEvent.click(
       screen.getByRole("button", { name: "Add variables" }),
     );
 
     expect(screen.getByRole("alert")).toHaveTextContent(
-      /Line 1: the name must be letters, digits, and underscores/,
+      /Line 1: the name must be up to 253 letters, digits, dots, dashes and underscores/,
     );
   });
 

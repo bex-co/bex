@@ -845,7 +845,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.envInvalidKey": {
     message:
-      "Use up to 253 letters, digits and underscores; can't start with a digit.",
+      "Use up to 253 letters, digits, dots, dashes and underscores; not '.' or starting with '..'.",
     description:
       "Environment add-variable validation message for an invalid key",
   },
@@ -3479,7 +3479,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.createFieldEnvVarsKeyError": {
     message:
-      "Keys must start with a letter or underscore and contain only letters, digits, and underscores.",
+      "Use up to 253 letters, digits, dots, dashes and underscores; not '.' or starting with '..'.",
     description:
       "Error shown when an env var key is invalid in the create wizard",
   },
@@ -4856,7 +4856,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.envImportKeyError": {
     message:
-      "Line {line}: the name must be letters, digits, and underscores, and not start with a digit.",
+      "Line {line}: the name must be up to 253 letters, digits, dots, dashes and underscores.",
     description:
       "Dotenv import error: the variable name on a line is invalid (w4/159)",
   },
