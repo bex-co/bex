@@ -7,7 +7,7 @@ Every row comes from the same probe, [`fixtures/container-privilege-probe.py`](f
   - `strict-v1`: `srv-dbaqn8dvjvcc73a4gp7g` in workspace `bex-canary` (`tea-daif693dqjvc73e7as3g`, not on the image-compatibility allowlist).
   - `image-v1`: `srv-dbaqn82d108c73fur01g` in workspace `bex` (`tea-d98210cbbpdc73dcrkvg`, allowlisted).
 
-This is the t001 evidence for [w6/m149](../../.pm/w6/m149/README.md) (ADR089 D2).
+This is the t001 evidence for [w6/m149](../../.pm/w6/done/m149/README.md) (ADR089 D2).
 
 ## Profile
 
