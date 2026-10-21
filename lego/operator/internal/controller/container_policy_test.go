@@ -101,7 +101,11 @@ func TestAppPolicyLabelsNameTheWidenedPolicy(t *testing.T) {
 		appv1alpha1.ContainerPolicyImageV1:  appv1alpha1.ContainerPolicyImageV1,
 		appv1alpha1.ContainerPolicyRenderV1: appv1alpha1.ContainerPolicyRenderV1,
 	} {
-		app := projectionApp(func(a *appv1alpha1.App) { a.Spec.ContainerPolicy = policy })
+		// Paid, so the free-plan label (w8/m127) stays out of this policy's view.
+		app := projectionApp(func(a *appv1alpha1.App) {
+			a.Spec.ContainerPolicy = policy
+			a.Spec.Tier = "starter"
+		})
 		app.UID = "uid-1"
 		base := map[string]string{"k": "v"}
 		got := appPolicyLabels(app, base)

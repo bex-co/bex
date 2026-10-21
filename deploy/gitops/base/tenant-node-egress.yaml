@@ -112,6 +112,39 @@ spec:
         - 169.254.0.0/16
         - fe80::/10
 ---
+# Free-plan outbound SMTP deny (w8/m127; ADR022 §Free-plan SMTP egress). Render
+# refuses outbound TCP 25, 465 and 587 from free instances
+# (render.com/docs/free); bex does the same. The operator labels every pod of a
+# free-plan App — Deployment, cron run, pre-deploy Job — app.bex.co/free-plan=true
+# and drops the label when the App moves to a paid plan; paid pods carry none.
+# Deny precedence beats the namespace's internet-egress allow. The deny names
+# the `world` entity: "outbound" means the internet, so an in-cluster
+# same-workspace relay stays reachable. enableDefaultDeny.egress is false: this
+# policy only subtracts these three ports and must never narrow anything else
+# (DNS, 443, 2525, same-workspace). 25 and 465 are also blocked for every plan by the cloud
+# provider; that is a kept decision (2026-10-20), not something bex config opens.
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: deny-free-plan-smtp-egress
+spec:
+  endpointSelector:
+    matchLabels:
+      app.bex.co/free-plan: "true"
+  enableDefaultDeny:
+    egress: false
+  egressDeny:
+    - toEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "25"
+              protocol: TCP
+            - port: "465"
+              protocol: TCP
+            - port: "587"
+              protocol: TCP
+---
 # Structural sandbox egress posture (w3/m35, phase split w3/m40): every
 # OpenSandbox workload is labeled app.bex.co/regime=sandbox by both bex create
 # metadata and the BatchSandbox template. This policy carries only the denies
