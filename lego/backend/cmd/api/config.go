@@ -639,10 +639,18 @@ func (p *parser) warnf(format string, args ...any) {
 }
 
 // imageCompatibilityWorkspaces — policy "fail": a comma-separated set of
-// workspace ids, or "*" for every workspace. Unset ⇒ nil (ADR089 creation
-// defaults off); a malformed entry refuses startup rather than silently
-// granting image-v1 capabilities to the wrong set of workspaces.
+// workspace ids, or "*" for every workspace. Unset ⇒ every workspace (Render
+// parity first, ADR008: unchanged root-init images must run on self-hosted bex
+// too); "off" ⇒ nil, the strict ADR089 policy. A malformed entry refuses
+// startup rather than silently granting render-v1 capabilities to the wrong
+// set of workspaces.
 func (p *parser) imageCompatibilityWorkspaces(name string) map[string]bool {
+	switch v := strings.TrimSpace(p.getenv(name)); v {
+	case "":
+		return map[string]bool{"*": true}
+	case "off":
+		return nil
+	}
 	var set map[string]bool
 	for _, v := range strings.Split(p.getenv(name), ",") {
 		if v = strings.TrimSpace(v); v == "" {
