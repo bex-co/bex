@@ -56,8 +56,8 @@ func TestPGRestartNamesThePendingDeployItReplaces(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if restart.Trigger != TriggerAPI || restart.Status != DeployQueued {
-		t.Errorf("restart row = %+v, want an api-triggered row queued behind the deploy in flight", restart)
+	if restart.Trigger != TriggerRestart || restart.Status != DeployQueued {
+		t.Errorf("restart row = %+v, want a restart-triggered row queued behind the deploy in flight", restart)
 	}
 	pending, _ = st.GetDeploy(ctx, row.ID, pending.ID)
 	if pending.Status != DeployCanceled || !strings.Contains(pending.CancelReason, "Canceled by restart "+restart.ID) ||
