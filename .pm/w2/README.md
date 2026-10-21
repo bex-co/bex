@@ -16,8 +16,8 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 ## Milestones
 
 - [ ] **m169** — [The forums run on bex as an ordinary tenant: uploads persist, nothing is hand-patched](blocked/m169/README.md) (12 tasks) — **BLOCKED (the user: DNS records for tenant-owned forum hostnames such as `forum.tianpan.co` and `forum.bex.co` as bex custom domains, and repointing the main sites' `/forum` proxies away from the hand-made `*-forum.onbex.co` names; then a downtime window for t006)**. t001–t003 done 2026-10-20 (routing mapped; `beancount-forum-ms` Ingress is dead). ← `/pm-brainstorm for w2` 2026-10-19 #2.
-- [ ] **m170** — [Grafana analytics keep trusting `bex-db` across CA renewals](m170/README.md) (8 tasks) — t001, t002, t004 done and live 2026-10-20 (renewed CA resealed; `analytics-datasource-probe` + `AnalyticsDatasourceProbeStale` pass in production); **t003 next**: by user decision 2026-10-20 the readers switch to `sslmode: require` and stop pinning the CA, instead of changing `bex-db`'s TLS. ← `/pm-brainstorm for w2` 2026-10-19 #3; absorbs `w7/060`; Render parity omitted.
-- [ ] **m171** — [Postgres plans large enough for high availability](m171/README.md) (12 tasks; absorbs `047`) — t001 done 2026-10-20: user approved `1c-2g` $28.00, `pro-4gb`/`1c-4g` $38.50, `basic-4gb`/`2c-4g` $52.50 (Render × 0.70, HA standby billed like the primary, follow Render's behavior); **t002 next**. ← `/pm-brainstorm for w2` 2026-10-19 #4; Render parity included.
+- [x] **m170** — [Grafana analytics keep trusting `bex-db` across CA renewals](done/m170/README.md) (8 tasks) — **DONE 2026-10-21**: both analytics datasources healthy with `sslmode: require` (user decision: internal read-only readers do not pin the CNPG CA) and password-only Secrets; `analytics-datasource-probe` + `AnalyticsDatasourceProbeStale` + `bex-data-plane` panel live; CA renewals need no human step. ← `/pm-brainstorm for w2` 2026-10-19 #3; absorbed `w7/060`.
+- [ ] **m171** — [Postgres plans large enough for high availability](blocked/m171/README.md) (12 tasks; absorbs `047`) — **BLOCKED (the user decides serving-pool capacity: `bex-tenant-0` is at its autoscaler max of 3 with ≤734m CPU free per node, so no 1-CPU instance can schedule; recommended max 3 → 6, billed only when used)**. t001 (tiers approved) and t002 (capacity check) done. ← `/pm-brainstorm for w2` 2026-10-19 #4; Render parity included.
 
 - [x] **m168** — [Email verification is a hard per-request gate](done/m168/README.md) (10 tasks; **DONE 2026-10-06**, shipped `22180488a`; prod: REST/GraphQL/MCP 403, dashboard wall, OAuth refused; dev-2: refuse→verify→admit, consent deny path live) ← promoted from w2/045 (forum.bex.co OIDC setup, 2026-10-05); user decision 2026-10-06 un-defers ADR075 Option B.
 
@@ -128,7 +128,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] [049 — Do tenants' `verify-full` Postgres connections break at every CNPG CA renewal?](049.md) (verify first) ← found while deciding w2/m170, 2026-10-20.
+- [ ] [049 — Do tenants' `verify-full` Postgres connections break at every CNPG CA renewal?](blocked/049.md) — **BLOCKED (premise confirmed 2026-10-20 — tenant CAs are CNPG-generated on a ~90-day cycle; the user picks the fix: publicly trusted `*.db.bex.co` certificates (recommended), a long-lived per-database CA, or documenting `sslmode=require`)** ← found while deciding w2/m170.
 
 - [x] [048 — Every production GitOps sync stalls while the tenant pool is full: Argo waits on the `tenant-headroom` placeholder](done/048.md) — **DONE 2026-10-20** (placeholder moved to the root app's last sync wave; validator keeps it last) ← seen during w2/m170 rollout, 2026-10-20.
 
