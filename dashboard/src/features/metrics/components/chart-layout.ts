@@ -32,7 +32,8 @@ export function tickLabelWidth(label: string): number {
     try {
       measureCtx = document.createElement("canvas").getContext("2d");
       if (measureCtx) {
-        const family = getComputedStyle(document.body).fontFamily || "sans-serif";
+        const family =
+          getComputedStyle(document.body).fontFamily || "sans-serif";
         measureCtx.font = `${TICK_FONT_PX}px ${family}`;
       }
     } catch {
@@ -41,7 +42,9 @@ export function tickLabelWidth(label: string): number {
   }
   const measured = measureCtx?.measureText(label).width;
   // Without a canvas, a bounded estimate: 0.6em per character.
-  return measured && measured > 0 ? measured : label.length * TICK_FONT_PX * 0.6;
+  return measured && measured > 0
+    ? measured
+    : label.length * TICK_FONT_PX * 0.6;
 }
 
 /**
@@ -51,7 +54,10 @@ export function tickLabelWidth(label: string): number {
  */
 export function axisLeftPad(labels: string[]): number {
   const widest = Math.max(0, ...labels.map(tickLabelWidth));
-  return Math.max(CHART_PAD.left, Math.ceil(widest + TICK_LABEL_GAP + TICK_INSET));
+  return Math.max(
+    CHART_PAD.left,
+    Math.ceil(widest + TICK_LABEL_GAP + TICK_INSET),
+  );
 }
 
 /** The x of an end-anchored tick label for a plot starting at left. */

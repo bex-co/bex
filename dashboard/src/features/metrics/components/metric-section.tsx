@@ -64,10 +64,7 @@ export function MetricSection({
   ) : (
     <>
       {throttledStale && (
-        <p
-          role="status"
-          className="text-muted-foreground mb-2 text-xs"
-        >
+        <p role="status" className="text-muted-foreground mb-2 text-xs">
           {t("metrics.chartStaleThrottled")}
         </p>
       )}
