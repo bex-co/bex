@@ -39,7 +39,7 @@ func TestRouteDestinationExpansionBudget(t *testing.T) {
 		{name: "repeated captures amplification", destination: "/" + strings.Repeat(":splat/", 250), capture: strings.Repeat("a", 100), invalid: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			target, err := expandDest(tc.destination, tc.capture)
+			target, err := expandDest(tc.destination, tc.capture, false)
 			if tc.invalid {
 				if err == nil {
 					t.Fatal("oversized target accepted")

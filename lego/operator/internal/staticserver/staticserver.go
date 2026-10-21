@@ -312,7 +312,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if act == actRedirect {
 		location := target.String()
-		if !safeRedirectTarget(location) {
+		if !safeRedirectLocation(location, target) {
 			serveSiteError(w, site, requestPath, http.StatusBadRequest, "invalid redirect target")
 			return
 		}
@@ -454,7 +454,53 @@ func safeRedirectTarget(target string) bool {
 		!strings.HasPrefix(target, "//") &&
 		!strings.HasPrefix(target, `/\`) &&
 		!strings.Contains(target, "\\") &&
-		strings.IndexFunc(target, func(r rune) bool { return r < 0x20 || r == 0x7f }) < 0
+		!hasControlByte(target)
+}
+
+func hasControlByte(s string) bool {
+	return strings.IndexFunc(s, func(r rune) bool { return r < 0x20 || r == 0x7f }) >= 0
+}
+
+func hasHTTPScheme(dest string) bool {
+	lower := strings.ToLower(dest)
+	return strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://")
+}
+
+// safeAbsoluteHost accepts only a literal DNS-style host (optionally with a
+// numeric port) and no userinfo: a capture expands in the path after the
+// authority, so it can never change which host the Location names.
+func safeAbsoluteHost(u *url.URL) bool {
+	if u.User != nil || u.Opaque != "" {
+		return false
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return false
+	}
+	host := u.Hostname()
+	if host == "" {
+		return false
+	}
+	for _, c := range host {
+		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '.') {
+			return false
+		}
+	}
+	for _, c := range u.Port() {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// safeRedirectLocation validates the final Location at the output sink: a
+// local path, or (for a redirect only) a plain http(s) URL with a literal host.
+func safeRedirectLocation(location string, target *url.URL) bool {
+	if safeRedirectTarget(location) {
+		return true
+	}
+	return hasHTTPScheme(location) && safeAbsoluteHost(target) && !strings.Contains(location, "\\") && !hasControlByte(location) &&
+		(target.Path == "" || safeRedirectTarget(target.Path))
 }
 
 // fetch resolves reqPath to an object, applying index.html defaulting for "/"
@@ -595,7 +641,7 @@ func matchRoutes(routes []appv1alpha1.StaticRoute, reqPath string) (routeAction,
 		default:
 			continue
 		}
-		dest, err := expandDest(rt.Destination, splat)
+		dest, err := expandDest(rt.Destination, splat, action == actRedirect)
 		return action, dest, err
 	}
 	return actNone, nil, nil
@@ -629,11 +675,14 @@ const (
 // expandDest separates URL syntax before substituting decoded path data. Never
 // parse the expanded path again: a captured ?/#/% is a filename character, not
 // a new query, fragment, or escape. Configured query/fragment values stay literal.
-func expandDest(dest, splat string) (*url.URL, error) {
+func expandDest(dest, splat string, allowAbsolute bool) (*url.URL, error) {
 	if len(dest) > maxRouteDestinationBytes {
 		return nil, errors.New("destination exceeds size limit")
 	}
-	if !safeRedirectTarget(dest) {
+	// A redirect may leave the site for a fixed http(s) host, as Render allows
+	// (w8/162); a rewrite fetches its target, so it stays local-only.
+	absolute := allowAbsolute && hasHTTPScheme(dest)
+	if !absolute && !safeRedirectTarget(dest) {
 		return nil, errors.New("destination must be local")
 	}
 	target, err := url.Parse(dest)
@@ -643,7 +692,11 @@ func expandDest(dest, splat string) (*url.URL, error) {
 	if _, err := url.QueryUnescape(target.RawQuery); err != nil {
 		return nil, err
 	}
-	if target.Host != "" || target.Scheme != "" || !safeRedirectTarget(target.Path) {
+	if absolute {
+		if !safeAbsoluteHost(target) || strings.ContainsAny(dest, "\\") || hasControlByte(dest) || (target.Path != "" && !safeRedirectTarget(target.Path)) {
+			return nil, errors.New("destination must be a plain http(s) URL with a literal host")
+		}
+	} else if target.Host != "" || target.Scheme != "" || !safeRedirectTarget(target.Path) {
 		return nil, errors.New("destination must be local")
 	}
 	if count := strings.Count(target.Path, ":splat"); count > 0 {
@@ -658,7 +711,7 @@ func expandDest(dest, splat string) (*url.URL, error) {
 		}
 		target.Path = strings.TrimSuffix(target.Path, "*") + splat
 	}
-	if !safeRedirectTarget(target.Path) {
+	if !(absolute && target.Path == "") && !safeRedirectTarget(target.Path) {
 		return nil, errors.New("expanded destination must be local")
 	}
 	target.RawPath = ""

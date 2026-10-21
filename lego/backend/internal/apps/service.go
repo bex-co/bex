@@ -5172,6 +5172,49 @@ const (
 	maxStaticHeaderValueLen = 4096
 )
 
+func isHTTPURLPrefix(dest string) bool {
+	lower := strings.ToLower(dest)
+	return strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://")
+}
+
+// validateExternalRedirect accepts an absolute http(s) redirect destination
+// whose host is literal: a DNS-style name (optionally with a numeric port), no
+// userinfo, no wildcard or :splat before the path. Captures expand only in the
+// path, so they can never change the host the Location names.
+func validateExternalRedirect(i int, dest string) error {
+	bad := func(why string) error {
+		return fmt.Errorf("%w: routes[%d].destination %s", core.ErrBadRequest, i, why)
+	}
+	if len(dest) > maxStaticPathLen {
+		return bad(fmt.Sprintf("must not exceed %d characters", maxStaticPathLen))
+	}
+	if strings.ContainsAny(dest, "\\") || strings.IndexFunc(dest, func(r rune) bool { return r < 0x20 || r == 0x7f }) >= 0 {
+		return bad("must be a valid URL without backslashes or control characters")
+	}
+	parsed, err := url.Parse(dest)
+	if err != nil {
+		return bad("must be a valid URL")
+	}
+	if _, err := url.QueryUnescape(parsed.RawQuery); err != nil {
+		return bad("must be a valid URL")
+	}
+	host := parsed.Hostname()
+	hostOK := host != "" && parsed.User == nil && parsed.Opaque == ""
+	for _, c := range host {
+		hostOK = hostOK && (c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '.')
+	}
+	for _, c := range parsed.Port() {
+		hostOK = hostOK && c >= '0' && c <= '9'
+	}
+	if !hostOK {
+		return bad("must name a literal host (no wildcard, placeholder or credentials) in an http(s) URL")
+	}
+	if parsed.Path != "" && (!strings.HasPrefix(parsed.Path, "/") || isNetworkPathReference(parsed.Path)) {
+		return bad("must be a valid URL")
+	}
+	return nil
+}
+
 // validateRoutes rejects a malformed redirect/rewrite list: each rule needs a
 // known type and a rooted source + destination path (Render's contract), and
 // the whole list stays inside the edge-rule budgets above.
@@ -5190,6 +5233,14 @@ func validateRoutes(routes []StaticRouteView) error {
 			return fmt.Errorf("%w: routes[%d].source must not exceed %d characters", core.ErrBadRequest, i, maxStaticPathLen)
 		}
 		dest := strings.TrimSpace(r.Destination)
+		// Render lets a redirect leave the site (a CDN, a moved domain); only a
+		// rewrite, which bex would have to fetch, stays local-only (w8/162).
+		if t == "redirect" && isHTTPURLPrefix(dest) {
+			if err := validateExternalRedirect(i, dest); err != nil {
+				return err
+			}
+			continue
+		}
 		if !strings.HasPrefix(dest, "/") {
 			return fmt.Errorf("%w: routes[%d].destination must be a path starting with /", core.ErrBadRequest, i)
 		}

@@ -2788,6 +2788,11 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Inline error under a static-site rule path that doesn't start with / (w4/145)",
   },
+  "services.staticRuleExternalHost": {
+    message: "请使用固定主机的 http(s) URL，例如 https://example.org/new",
+    description:
+      "Inline error under a redirect destination that is an absolute URL without a literal host (w8/162)",
+  },
   "services.staticRuleLocalPath": {
     message: "必须是本站点的路径，不能是 //host",
     description:

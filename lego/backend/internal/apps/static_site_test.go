@@ -330,3 +330,22 @@ func TestToRenderServiceStaticDetails(t *testing.T) {
 		t.Errorf("serviceDetails.publishPath = %v, want dist", rs.ServiceDetails["publishPath"])
 	}
 }
+
+// A redirect may name a fixed external http(s) host, as on Render; a rewrite
+// may not, and no capture or placeholder can reach the host (w8/162).
+func TestValidateRoutesExternalRedirect(t *testing.T) {
+	for _, dest := range []string{"https://cdn.example.com/maps/*", "http://example.org", "https://example.org:8443/new?x=1", "HTTPS://Example.org/x"} {
+		if err := validateRoutes([]StaticRouteView{{Type: "redirect", Source: "/a/*", Destination: dest}}); err != nil {
+			t.Errorf("redirect to %q refused: %v", dest, err)
+		}
+	}
+	for _, dest := range []string{"https://*.example.com/x", "https://:splat/x", "https://user@host.example/x", "https:///x", "https://host.example/\x01", `https://host.example\@evil/x`, "ftp://host.example/x", "//host/x"} {
+		if err := validateRoutes([]StaticRouteView{{Type: "redirect", Source: "/a", Destination: dest}}); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("redirect to %q accepted: %v", dest, err)
+		}
+	}
+	err := validateRoutes([]StaticRouteView{{Type: "rewrite", Source: "/a", Destination: "https://cdn.example.com/x"}})
+	if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "must be a path starting with /") {
+		t.Errorf("absolute rewrite: %v", err)
+	}
+}
