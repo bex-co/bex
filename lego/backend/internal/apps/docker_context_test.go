@@ -232,3 +232,18 @@ func TestBlueprintAppliersResolveDockerContextAgainstTheServiceRoot(t *testing.T
 		t.Errorf("rootDir change: %q / %q, want b / b/ctx", dst.RootDir, dst.DockerContext)
 	}
 }
+
+// An unset dockerfilePath reads back Render's default "./Dockerfile" beside
+// the "." context (w8/154); a stored path is reported as stored.
+func TestRenderServiceDetailsDefaultsDockerfilePath(t *testing.T) {
+	for _, tc := range []struct{ stored, want string }{
+		{"", "./Dockerfile"},
+		{"docker/Dockerfile.ci", "docker/Dockerfile.ci"},
+	} {
+		view := AppView{Runtime: "docker", DockerfilePath: tc.stored}
+		details, _ := renderServiceDetails(view, appv1alpha1.TypeWebService, "")["envSpecificDetails"].(map[string]any)
+		if got := details["dockerfilePath"]; got != tc.want {
+			t.Errorf("stored %q reads %v, want %q", tc.stored, got, tc.want)
+		}
+	}
+}
