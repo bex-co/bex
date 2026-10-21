@@ -32,10 +32,7 @@ PROBE="verify-regauth"
 TIMEOUT="${TIMEOUT:-5}"
 
 if [ -f .env ]; then
-  set -a
-  # shellcheck disable=SC1091
-  source ./.env
-  set +a
+  . scripts/lib/env-file.sh && bex_load_env ./.env || exit 1
 fi
 : "${BEX_REGISTRY_BUILDER_PASSWORD:?BEX_REGISTRY_BUILDER_PASSWORD required in .env for the credentialed probes}"
 

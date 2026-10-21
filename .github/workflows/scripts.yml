@@ -59,6 +59,14 @@ jobs:
         run: bash scripts/github-actions-validate.sh
       - name: GitHub Actions guard self-test
         run: bash scripts/github-actions-validate.test.sh
+      # w3/m173: the live-settings reader behind production-secret confinement.
+      - name: GitHub environment drift self-test
+        run: bash scripts/github-environments-drift.test.sh
+      # w3/m173 t006 (ADR079 F1): .env loaders refuse a group/world-readable file.
+      - name: .env permission guard self-test
+        run: bash scripts/env-file.test.sh
+      - name: gh-secrets environment-scope self-test
+        run: bash scripts/gh-secrets.test.sh
       # The daily CI-red-streak job is the thing that would have caught
       # `gitops (render)` shipping broken and staying red for five days. Its
       # arithmetic has one edge case that decides whether it reports anything at

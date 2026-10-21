@@ -25,10 +25,7 @@ case "$COMMAND" in
 esac
 
 if [ -f .env ]; then
-  set -a
-  # shellcheck disable=SC1091
-  source ./.env
-  set +a
+  . scripts/lib/env-file.sh && bex_load_env ./.env || exit 1
 fi
 
 KUBE=(kubectl)

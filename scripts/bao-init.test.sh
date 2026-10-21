@@ -66,10 +66,12 @@ assert "replace path re-pins 644 back to 600" "[ \"\$(stat -c '%a' .env 2>/dev/n
 
 cd - >/dev/null
 
-echo "==> BAO keys declared in .env.example + pushed by gh-secrets.sh"
+echo "==> BAO keys declared in .env.example + pushed by gh-secrets.sh (via scripts/production-secrets.txt, w3/m173)"
 for k in BAO_UNSEAL_KEY_1 BAO_UNSEAL_KEY_2 BAO_UNSEAL_KEY_3 BAO_ROOT_TOKEN; do
   assert ".env.example declares $k" "grep -q '^$k=' .env.example"
-  assert "gh-secrets.sh pushes $k" "grep -q '\\b$k\\b' scripts/gh-secrets.sh"
+  # gh-secrets.sh pushes every table entry; deploy.yml's unseal step needs it
+  # in production-deploy.
+  assert "gh-secrets.sh pushes $k into production-deploy" "grep -Eq '^$k [^#]*production-deploy' scripts/production-secrets.txt"
 done
 
 if [ "$fails" -eq 0 ]; then

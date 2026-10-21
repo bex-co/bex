@@ -11,10 +11,7 @@ secret_name="${BEX_WEBPUSH_SECRET_NAME:-bex-webpush}"
 env_file="${BEX_WEBPUSH_ENV_FILE:-.env}"
 
 if [ -f "$env_file" ]; then
-  set -a
-  # shellcheck disable=SC1091
-  source "$env_file"
-  set +a
+  . scripts/lib/env-file.sh && bex_load_env "$env_file" || exit 1
 fi
 
 command -v openssl >/dev/null || { echo "error: openssl is required" >&2; exit 1; }

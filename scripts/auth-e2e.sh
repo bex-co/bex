@@ -143,10 +143,7 @@ PIDS+=($!)
 wait_http "http://$OPENFGA/healthz"
 # Ensure store + model + seed tuples (idempotent) with the same key bex-api uses.
 if [ -z "${OPENFGA_PRESHARED_KEY:-}" ] && [ -f .env ]; then
-  set -a
-  # shellcheck disable=SC1091
-  source ./.env
-  set +a
+  . scripts/lib/env-file.sh && bex_load_env ./.env || exit 1
 fi
 OPENFGA_URL="http://$OPENFGA" bash scripts/authz-model.sh | tail -1
 

@@ -46,10 +46,7 @@ NS=auth
 # Load .env when present (local use); in CI the keys arrive as environment
 # variables instead (deploy.yml exports them from GitHub Actions secrets).
 if [ -f .env ]; then
-  set -a
-  # shellcheck disable=SC1091
-  source ./.env
-  set +a
+  . scripts/lib/env-file.sh && bex_load_env ./.env || exit 1
 fi
 
 # require NAME LEN [exact] — assert the .env key exists and is at least (or,
