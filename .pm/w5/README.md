@@ -13,6 +13,16 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 `up` prints the dashboard command to point at it once bex-api is running. One shared implementation serves every workstream since `w1/m72`; `.pm/w5/dev-5/` keeps only `ports.env` (a generated record of the derivation), this README, and `.gitignore`.
 
+## Approved queue — 2026-10-20 (brainstorm round 5, parity-first)
+
+User decision 2026-10-20: all five items of the fifth `/pm-brainstorm for w5` proposal, in priority order, followed by `/loopx w5`. They follow `2163b27c7` (Render parity is the top principle; a divergence stands only with ADR018-recorded user sign-off). Render parity is included for m149–m152 and omitted for m148 (runtime/build environment only). w5/169 is promoted into m150.
+
+- [ ] **m148** — [Services see Render's platform environment variables (`RENDER_*`)](m148/README.md) (8 tasks; 6h10m total) ← round 5 item 1; w4/m123 t005 shipped a narrower set than Render
+- [ ] **m149** — [`PORT` is user-settable like on Render](m149/README.md) (8 tasks; 6h total) ← round 5 item 2; ADR018 row 138 unsigned divergence (w2/m95)
+- [ ] **m150** — [Render templates with free-form resource names or dotted env keys validate](m150/README.md) (7 tasks; 5h15m total) ← round 5 item 3; promoted from w5/169 (w5/m143 corpus)
+- [ ] **m151** — [Render edge caching: `serviceDetails.cache.profile`](m151/README.md) (8 tasks; 7h total) ← round 5 item 4; replaces w5/m146's unsigned `—` row
+- [ ] **m152** — [Changing a service's runtime works (PATCH `serviceDetails.runtime`)](m152/README.md) (8 tasks; 6h30m total) ← round 5 item 5; replaces w5/m146's named refusal
+
 ## Approved queue — 2026-10-20 (parity-only set)
 
 User decision 2026-10-20: the parity-only set from the third `/pm-brainstorm for w5` proposal, followed by `/loopx w5`. Render parity is included for m143, m145 and m146 and omitted for m144 (build toolchain) and m147 (runtime env only), then Simplify, Test coverage and Closeout.
@@ -22,7 +32,6 @@ User decision 2026-10-20: the parity-only set from the third `/pm-brainstorm for
 - [x] **m145** — [bex's MCP tools match Render's contract in argument types and annotations, guarded](done/m145/README.md) (9 tasks; 5h30m total) ← round 3 item 3; `clearCache: true` and `version: 16` fail; no tool annotations — **DONE 2026-10-20**: argument types and behavior hints pinned and guarded; `clearCache: true` and `version: 16` work; every tool annotated, matching upstream on shared tools.
 - [x] **m146** — [Every request field Render declares on a served operation is handled or refused by name](done/m146/README.md) (8 tasks; 5h5m total) ← round 3 item 4; nested `serviceDetails.headers/routes/autoscaling` answer `unknown field`
 - [x] **m147** — [Web and private services get Render's `WEB_CONCURRENCY` for their plan](done/m147/README.md) (7 tasks; 3h50m total) ← round 3 item 5; bex never sets it, so paid plans run 1 worker
-- [ ] **169** — [Render templates with free-form resource names or dotted env keys validate](169.md) (~1h each half, needs a naming decision) ← w5/m143's corpus run
 
 ## Approved queue — 2026-10-20 (brainstorm round 4)
 
