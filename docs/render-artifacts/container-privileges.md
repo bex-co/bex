@@ -58,7 +58,7 @@ In `/tmp`, root cannot `O_CREAT`-open another user's file on any of the three, b
 
    This was a live parity bug; w6/m149/t006 removed the floor, the claim and the diagnosis text.
 
-3. **Seccomp is the remaining runtime divergence.** Render applies no filter. bex RuntimeDefault blocks `io_uring` and unprivileged user namespaces (the Chromium sandbox, bubblewrap). `render-v1` keeps RuntimeDefault (ADR089, 2026-10-20). Relaxing it is w6/085.
+3. **Seccomp is the remaining runtime divergence.** Render applies no filter. bex RuntimeDefault blocks `io_uring` and unprivileged user namespaces (the Chromium sandbox, bubblewrap). `render-v1` keeps RuntimeDefault (ADR089, 2026-10-20). Relaxing it is w6/085. **2026-10-21 (w6/m150):** `render-v1` now runs bex's Localhost profile `profiles/bex-render-v1.json` (RuntimeDefault plus user-namespace and `io_uring` syscalls; [ADR089](../ADR089-render-container-compatibility.md)).
 4. **These already match:** `NoNewPrivs`, the AppArmor profile, no pod user namespace, `ping_group_range` and the `protected_*` sysctls.
 5. **Separate parity finding: Docker Command launch.**
    - bex runs `dockerCommand` as `sh -c <command>` (`shellCommand`, `lego/operator/internal/controller/deployment_projection.go:217`). Render does not use a shell. The quote-free `python3 -c exec(...)` command ran on Render but crash-looped on bex with `/bin/sh: 1: Syntax error: "(" unexpected`.

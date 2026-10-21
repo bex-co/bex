@@ -65,7 +65,14 @@ func TestApplicationContainerPolicies(t *testing.T) {
 				if security.Privileged != nil && *security.Privileged {
 					t.Fatal("privileged container")
 				}
-				if security.SeccompProfile == nil || security.SeccompProfile.Type != corev1.SeccompProfileTypeRuntimeDefault {
+				// Literal path, not the shared helper: render-v1 runs bex's
+				// Localhost profile (w6/m150); every other policy RuntimeDefault.
+				if policy == appv1alpha1.ContainerPolicyRenderV1 {
+					if security.SeccompProfile == nil || security.SeccompProfile.Type != corev1.SeccompProfileTypeLocalhost ||
+						security.SeccompProfile.LocalhostProfile == nil || *security.SeccompProfile.LocalhostProfile != "profiles/bex-render-v1.json" {
+						t.Fatalf("render-v1 seccomp = %+v, want the bex Localhost profile", security.SeccompProfile)
+					}
+				} else if security.SeccompProfile == nil || security.SeccompProfile.Type != corev1.SeccompProfileTypeRuntimeDefault {
 					t.Fatal("seccomp disabled")
 				}
 				if !reflect.DeepEqual(security.Capabilities.Drop, []corev1.Capability{"ALL"}) {
@@ -133,7 +140,7 @@ func TestAdmissionCapabilityListsMatchTheTable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var expression string
+	var expression, seccomp string
 	for doc := range bytes.SplitSeq(raw, []byte("\n---")) {
 		var policy admissionregistrationv1.ValidatingAdmissionPolicy
 		if err := sigsyaml.Unmarshal(doc, &policy); err != nil {
@@ -143,13 +150,20 @@ func TestAdmissionCapabilityListsMatchTheTable(t *testing.T) {
 			continue
 		}
 		for _, v := range policy.Spec.Variables {
-			if v.Name == "containerPolicyCaps" {
+			switch v.Name {
+			case "containerPolicyCaps":
 				expression = v.Expression
+			case "containerPolicySeccomp":
+				seccomp = v.Expression
 			}
 		}
 	}
 	if expression == "" {
 		t.Fatal("bex-operator-workloads has no containerPolicyCaps variable")
+	}
+	profiles := map[string]string{}
+	for _, entry := range regexp.MustCompile(`'([a-z0-9-]+)':\s*'([^']+)'`).FindAllStringSubmatch(seccomp, -1) {
+		profiles[entry[1]] = entry[2]
 	}
 	admitted := map[string][]string{}
 	for _, entry := range regexp.MustCompile(`'([a-z0-9-]+)':\s*\[([^\]]*)\]`).FindAllStringSubmatch(expression, -1) {
@@ -168,5 +182,14 @@ func TestAdmissionCapabilityListsMatchTheTable(t *testing.T) {
 	}
 	if len(admitted) != 0 {
 		t.Errorf("admission admits capabilities for policies the table does not know: %v", admitted)
+	}
+	for _, policy := range []string{"", appv1alpha1.ContainerPolicyStrictV1, appv1alpha1.ContainerPolicyImageV1, appv1alpha1.ContainerPolicyRenderV1} {
+		if got, want := profiles[policy], appv1alpha1.ContainerPolicySeccompProfile(policy); got != want {
+			t.Errorf("%q: admission admits seccomp profile %q, the projection uses %q", policy, got, want)
+		}
+		delete(profiles, policy)
+	}
+	if len(profiles) != 0 {
+		t.Errorf("admission admits seccomp profiles for policies the table does not know: %v", profiles)
 	}
 }
