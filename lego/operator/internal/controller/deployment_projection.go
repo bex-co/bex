@@ -169,6 +169,9 @@ type deploymentParams struct {
 	baseDomain string
 	// launch is the selected or served release's recorded launch, if any.
 	launch launchMode
+	// webConcurrency is the WEB_CONCURRENCY default, 0 for none
+	// (web_concurrency.go).
+	webConcurrency int
 }
 
 // appPodLabels builds the pod template's label set.
@@ -257,7 +260,7 @@ func appContainer(app *appv1alpha1.App, p deploymentParams, probeHost string) co
 		Name:            appContainerName,
 		Image:           p.image,
 		ImagePullPolicy: pullPolicyFor(p.image),
-		Env:             appEnv(app, p.port),
+		Env:             withWebConcurrency(appEnv(app, p.port), p.webConcurrency),
 		EnvFrom:         envFromSources(app),
 		Ports:           ports,
 		Resources:       resourcesForTier(app.Spec.Tier),

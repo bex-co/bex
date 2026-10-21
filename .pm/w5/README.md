@@ -21,7 +21,7 @@ User decision 2026-10-20: the parity-only set from the third `/pm-brainstorm for
 - [x] **m144** — [Native Go builds use Go's current release, Bun gains 1.4, and the freshness check notices the next release](done/m144/README.md) (8 tasks; 4h10m total) ← round 3 item 1; `golang:1.24` with `GOTOOLCHAIN=local` refuses `go 1.25`+ modules
 - [x] **m145** — [bex's MCP tools match Render's contract in argument types and annotations, guarded](done/m145/README.md) (9 tasks; 5h30m total) ← round 3 item 3; `clearCache: true` and `version: 16` fail; no tool annotations — **DONE 2026-10-20**: argument types and behavior hints pinned and guarded; `clearCache: true` and `version: 16` work; every tool annotated, matching upstream on shared tools.
 - [x] **m146** — [Every request field Render declares on a served operation is handled or refused by name](done/m146/README.md) (8 tasks; 5h5m total) ← round 3 item 4; nested `serviceDetails.headers/routes/autoscaling` answer `unknown field`
-- [ ] **m147** — [Web and private services get Render's `WEB_CONCURRENCY` for their plan](m147/README.md) (7 tasks; 3h50m total) ← round 3 item 5; bex never sets it, so paid plans run 1 worker
+- [x] **m147** — [Web and private services get Render's `WEB_CONCURRENCY` for their plan](done/m147/README.md) (7 tasks; 3h50m total) ← round 3 item 5; bex never sets it, so paid plans run 1 worker
 - [ ] **169** — [Render templates with free-form resource names or dotted env keys validate](169.md) (~1h each half, needs a naming decision) ← w5/m143's corpus run
 
 ## Approved queue — 2026-10-20 (brainstorm round 4)

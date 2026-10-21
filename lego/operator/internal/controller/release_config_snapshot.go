@@ -696,6 +696,14 @@ func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1al
 		return err
 	}
 	params.launch = launch
+	// From the selected runtime, not app: a held, rolled-back or save-only
+	// release reads that release's env sources, and the default must yield to
+	// those. A restore replaces the template verbatim, so it needs no lookup.
+	if restore == nil {
+		if params.webConcurrency, err = r.webConcurrency(ctx, runtime); err != nil {
+			return err
+		}
+	}
 	var prior *corev1.PodTemplateSpec
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, dep, func() error {
 		if !dep.CreationTimestamp.IsZero() {
