@@ -43,7 +43,7 @@ Materialized from the three proposals in `$pm-brainstorm for w6`, approved by th
 
 - [x] **m147** — [A free service that auto-hibernates mid-rollout loses its crash diagnosis (generic health-gate reason) and its header disagrees with its phase](done/m147/README.md) (8 tasks) — done 2026-10-05; park deferred until the rollout's verdict (`rolloutAwaitingVerdict`), a park keeps the row's stall diagnosis, parking passes never stamp Deploying; live on production: exit-127 and TCP-probe reasons on GraphQL/REST/MCP, header agreed with phase over 5 min. Related: w1/m172, w6/076.
 
-- [ ] **m146** — **BLOCKED (stable local CAPD API and dev-6 auth databases needed for live acceptance + retained-fixture cleanup)** — [Keep service action permissions current through confirmation](blocked/m146/README.md) (8 tasks; t001–t003, t005–t007 done) ← promoted from 074
+- [x] **m146** — [Keep service action permissions current through confirmation](done/m146/README.md) (8 tasks) ← promoted from 074
 
 - [x] **m145** — [Render list_events and multi-type event filtering](done/m145/README.md) — done 2026-10-02 (7 tasks); completed MCP response/cursor parity and real-Postgres adapter regressions atop the implementation already shipped by w1/m165; legacy alias retained.
 
@@ -194,7 +194,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 - [x] **076** — [A deploy made while a free service sleeps never runs, then closes update_failed with the generic health-gate line](done/076.md) — done 2026-10-04; a deploy wakes an auto-hibernated free service once per release (`wakeForRelease`), so the release rolls and the row closes with its real outcome.
 - [x] **075** — [Honor Render region filters on Postgres and Key Value lists](done/075.md) — done 2026-10-02; literal placement filtering before pagination, repeated-value enum validation, and handler/composed regressions verified.
 
-- [x] **074** — [Live-verify m143/m144 permission UI on dev-6](done/074.md) — promoted to [m146](blocked/m146/README.md) on 2026-10-02; live verification and reproduced fixes remain tracked there.
+- [x] **074** — [Live-verify m143/m144 permission UI on dev-6](done/074.md) — promoted to [m146](done/m146/README.md) on 2026-10-02; live verification and reproduced fixes remain tracked there.
 - [x] **073** — [Refresh request-validator OpenAPI pin to include outbound-ips](done/073.md) — done 2026-09-11 (pin refreshed to the live 208-op document; `retrieve-service-outbound-ips` enforced through the composed validator; m96 Blueprint-ID guards green).
 - [x] **071** — [Fix mobile GraphQL token-refresh recovery](done/071.md) — done 2026-09-09; see the mobile review handoff above.
 - [x] **072** — [Refresh mobile session details opened directly](done/072.md) — done 2026-09-09; see the mobile review handoff above.
