@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { formatMetricShort } from "@/features/metrics/lib/format";
+import { formatAxisTickLabels } from "@/features/metrics/lib/format";
 import {
   CHART_WIDTH as WIDTH,
   CHART_HEIGHT as HEIGHT,
@@ -141,7 +141,7 @@ export function SvgLineChart({
               dominantBaseline="middle"
               className="fill-muted-foreground text-[9px]"
             >
-              {formatMetricShort(unit, t.value)}
+              {t.label}
             </text>
           </g>
         ))}
@@ -309,7 +309,7 @@ interface LineGeometry {
   frames: ChartFrame[];
   xForT: (t: number) => number;
   yFor: (v: number) => number;
-  yTicks: { value: number; y: number }[];
+  yTicks: { value: number; label: string; y: number }[];
   paths: { linePath: string; areaPath: string; color: string }[];
   /** y of the reference line, when one is drawn. */
   referenceY: number | null;
@@ -353,7 +353,10 @@ function buildGeometry(
   // Round ticks: min, midpoint, max — enough for a compact PoC axis. Their
   // formatted widths size the left gutter every x below is measured from.
   const tickValues = [minVal, (minVal + maxVal) / 2, maxVal];
-  const left = axisLeftPad(tickValues.map((v) => formatMetricShort(unit, v)));
+  // One shared precision per axis so differing ticks never share a label
+  // (w4/381); the final strings size the gutter.
+  const tickLabels = formatAxisTickLabels(unit, tickValues);
+  const left = axisLeftPad(tickLabels);
   const innerWidth = WIDTH - left - PAD.right;
   const innerHeight = HEIGHT - PAD.top - PAD.bottom;
 
@@ -380,8 +383,9 @@ function buildGeometry(
     return { linePath: line, areaPath: area, color: s.color };
   });
 
-  const yTicks = tickValues.map((v) => ({
+  const yTicks = tickValues.map((v, i) => ({
     value: v,
+    label: tickLabels[i],
     y: yFor(v),
   }));
 

@@ -176,6 +176,11 @@ func TestViewMapsEverySource(t *testing.T) {
 		wantType:    TypeServerRestarted,
 		wantDetails: Details{TriggeredByUser: "user-x"},
 	}, {
+		name:        "store-backed restart names its actor too (w4/379)",
+		row:         store.ServiceEventRow{Key: "aud-3b:", Source: store.EventSourceAudit, Verb: "deploys.Restart", Caller: "user-x"},
+		wantType:    TypeServerRestarted,
+		wantDetails: Details{TriggeredByUser: "user-x"},
+	}, {
 		name:     "scale carries no counts (structural redaction, not an oversight)",
 		row:      store.ServiceEventRow{Key: "aud-4:", Source: store.EventSourceAudit, Verb: "apps.Scale", Caller: "user-x"},
 		wantType: TypeInstanceCountChanged,

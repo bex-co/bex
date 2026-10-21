@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { formatMetricValue, formatMetricShort, METRIC_LABELS } from "../format";
+import {
+  formatMetricValue,
+  formatMetricShort,
+  formatAxisTickLabels,
+  METRIC_LABELS,
+} from "../format";
 
 describe("formatMetricValue", () => {
   it("formats cpu as cores to 3 decimal places", () => {
@@ -91,6 +96,55 @@ describe("small positive CPU/percentage values", () => {
     expect(formatMetricShort("seconds", 0.0001)).toBe("0ms");
     expect(formatMetricShort("count", 0.01)).toBe("0.0");
     expect(formatMetricValue("seconds", 0.0001)).toBe("0 ms");
+  });
+});
+
+describe("formatAxisTickLabels (w4/381)", () => {
+  it("gives a narrow percentage axis three distinct labels", () => {
+    expect(formatAxisTickLabels("percentage", [0, 0.7, 1.4])).toEqual([
+      "0.0%",
+      "0.7%",
+      "1.4%",
+    ]);
+  });
+
+  it("keeps ordinary magnitudes on the compact labels", () => {
+    expect(formatAxisTickLabels("percentage", [0, 50, 100])).toEqual([
+      "0%",
+      "50%",
+      "100%",
+    ]);
+    expect(formatAxisTickLabels("cpu", [0, 0.5, 1])).toEqual([
+      "0.00",
+      "0.50",
+      "1.00",
+    ]);
+  });
+
+  it("separates narrow cpu, bytes and count ranges", () => {
+    expect(formatAxisTickLabels("cpu", [0, 1.004, 1.005])).toEqual([
+      "0.000",
+      "1.004",
+      "1.005",
+    ]);
+    expect(formatAxisTickLabels("bytes", [100.2, 100.4, 100.6])).toEqual([
+      "100.20 B",
+      "100.40 B",
+      "100.60 B",
+    ]);
+    expect(formatAxisTickLabels("count", [0, 1.01, 1.04])).toEqual([
+      "0.00",
+      "1.01",
+      "1.04",
+    ]);
+  });
+
+  it("keeps a flat axis on its single repeated label", () => {
+    expect(formatAxisTickLabels("percentage", [0, 0, 0])).toEqual([
+      "0%",
+      "0%",
+      "0%",
+    ]);
   });
 });
 

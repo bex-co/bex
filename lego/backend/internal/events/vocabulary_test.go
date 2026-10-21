@@ -69,7 +69,6 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		"apps.TriggerCronRun":       "the run it requests IS the cron_job_run_started fact (scheduled and manual alike) — mapping the verb too would double-count",
 		"apps.CancelCronRun":        "the run it stops IS the cron_job_run_ended fact, which alone carries the canceled terminal status — mapping the verb too would double-count",
 		"apps.CancelCurrentCronRun": "same as apps.CancelCronRun, for the active run",
-		"deploys.Restart":           "a restart opens a deploys row on the live commit (w1/m148); that row IS the deploy_started event, as for Trigger",
 		"deploys.Rebuild":           "an environment save's rebuild opens a config_change deploys row (w4/347); that row IS the deploy_started event, as for Trigger",
 		"apps.ResolveSSHSession":    "the dedicated ssh_sessions row records the real stream start/end; authorization may succeed before a channel opens",
 		"apps.CreateShellSession":   "mints a Browser Web Shell exec ticket only; the gateway's ssh_sessions row records the real stream when (and if) the terminal connects — mirrors apps.ResolveSSHSession",

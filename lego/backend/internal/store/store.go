@@ -244,11 +244,19 @@ const (
 	// and roll back — spelled distinctly so the history still tells a settings
 	// save apart from a manual deploy (w6/m51).
 	TriggerConfigChange = "config_change"
+	// TriggerRestart is a rollout Restart opened against the live release
+	// (w4/379): neither an explicit deploy verb nor a config write. Render
+	// spells a restart roll "manual", so REST maps this onto "other", which
+	// is Render's own other-trigger value, and the bex surfaces label it
+	// Restart (see ADR018). Deliberately NOT "api" — a rollback of a restart
+	// roll and the Deploys tab must be able to tell a restart from a
+	// just-deploy deploy (w4/m106).
+	TriggerRestart = "restart"
 )
 
 // AllTriggers is every Trigger* value — the set REST conformance proves maps
 // onto Render's enum (w8/058). A guard test keeps it in step with the consts.
-var AllTriggers = []string{TriggerCreate, TriggerAPI, TriggerDeployHook, TriggerRollback, TriggerNewCommit, TriggerConfigChange}
+var AllTriggers = []string{TriggerCreate, TriggerAPI, TriggerDeployHook, TriggerRollback, TriggerNewCommit, TriggerConfigChange, TriggerRestart}
 
 // CommitInfo is the git commit a build-from-git deploy runs — the resolved
 // SHA, message, and author timestamp (w9/001 + w2/m42). Zero value = unknown:
@@ -2151,13 +2159,13 @@ func (s *PGStore) EnsureCheckedDeploy(ctx context.Context, appID string, generat
 	return d, nil
 }
 
-// CreateRestartDeploy opens a Restart's deploy row (trigger "api"). Unlike
-// CreateDeploy, a latest-pending row it replaces closes naming the restart and
-// the change it leaves undeployed (restartCanceledReason): a Restart
-// re-releases what is running and never carries that row's saved change
-// (w8/m119).
+// CreateRestartDeploy opens a Restart's deploy row (trigger "restart",
+// w4/379). Unlike CreateDeploy, a latest-pending row it replaces closes
+// naming the restart and the change it leaves undeployed
+// (restartCanceledReason): a Restart re-releases what is running and never
+// carries that row's saved change (w8/m119).
 func (s *PGStore) CreateRestartDeploy(ctx context.Context, appID, image string, generation int64, commit CommitInfo, triggeredBy string) (Deploy, error) {
-	return s.createDeploy(ctx, appID, TriggerAPI, image, generation, commit, triggeredBy, restartCanceledReason)
+	return s.createDeploy(ctx, appID, TriggerRestart, image, generation, commit, triggeredBy, restartCanceledReason)
 }
 
 // createDeploy inserts a deploy row; replaced names the cause stamped on a
