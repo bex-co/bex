@@ -37,6 +37,25 @@ export function formatMetricShort(unit: string, value: number): string {
 }
 
 /**
+ * Gridline values for an axis: min, midpoint, max (w4/382). Instances and
+ * requests are whole things, so a count axis snaps the midpoint to an integer
+ * and drops it when that collides with an end ("0, 1" not "0, 0.5, 1"). A flat
+ * axis keeps its repeated value so it still renders one label.
+ */
+export function axisTickValues(
+  unit: string,
+  min: number,
+  max: number,
+): number[] {
+  const mid = (min + max) / 2;
+  if (unit !== "count" || Number.isInteger(mid) || min === max) {
+    return [min, mid, max];
+  }
+  const snapped = Math.round(mid);
+  return snapped > min && snapped < max ? [min, snapped, max] : [min, max];
+}
+
+/**
  * Labels for one axis' tick values (w4/381). The compact formatter rounds
  * each tick independently, so a narrow range (midpoint ≈0.7%, max ≈1.4%)
  * labels two gridlines `1%`. Here the whole axis shares the smallest extra

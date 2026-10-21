@@ -1,6 +1,9 @@
 import { useMemo, useRef, useState } from "react";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { formatAxisTickLabels } from "@/features/metrics/lib/format";
+import {
+  axisTickValues,
+  formatAxisTickLabels,
+} from "@/features/metrics/lib/format";
 import {
   CHART_WIDTH as WIDTH,
   CHART_HEIGHT as HEIGHT,
@@ -352,7 +355,7 @@ function buildGeometry(
 
   // Round ticks: min, midpoint, max — enough for a compact PoC axis. Their
   // formatted widths size the left gutter every x below is measured from.
-  const tickValues = [minVal, (minVal + maxVal) / 2, maxVal];
+  const tickValues = axisTickValues(unit, minVal, maxVal);
   // One shared precision per axis so differing ticks never share a label
   // (w4/381); the final strings size the gutter.
   const tickLabels = formatAxisTickLabels(unit, tickValues);

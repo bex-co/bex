@@ -58,9 +58,9 @@ describe("DatastoreMetricsPanel", () => {
     mockUseDatastoreMetrics.mockReturnValue(errorResult());
     render(<DatastoreMetricsPanel kind="database" resource="dpg-abc" />);
     expect(screen.getAllByRole("alert").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Couldn't load this metric").length).toBeGreaterThan(
-      0,
-    );
+    expect(
+      screen.getAllByText("Couldn't load this metric").length,
+    ).toBeGreaterThan(0);
   });
 
   it("fetches disk usage for both database and keyvalue kinds, connections/lag only for database", () => {

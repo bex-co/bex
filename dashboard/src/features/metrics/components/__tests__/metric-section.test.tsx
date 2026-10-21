@@ -18,7 +18,10 @@ function result(over: Partial<UseMetricsResult> = {}): UseMetricsResult {
 }
 
 const CHILD = <div data-testid="chart">chart</div>;
-const aSeries = { label: "cpu", points: [{ t: 0, v: 1 }] } as unknown as ChartSeries;
+const aSeries = {
+  label: "cpu",
+  points: [{ t: 0, v: 1 }],
+} as unknown as ChartSeries;
 
 // w9/m63 t002: while a metric's first fetch is in flight (no series yet), the
 // section must show a loading shimmer — NOT its child chart, which would render
@@ -36,7 +39,10 @@ describe("MetricSection loading state", () => {
 
   it("renders the chart once resolved (even if empty)", () => {
     render(
-      <MetricSection title="CPU" result={result({ loading: false, series: [] })}>
+      <MetricSection
+        title="CPU"
+        result={result({ loading: false, series: [] })}
+      >
         {CHILD}
       </MetricSection>,
     );
@@ -134,7 +140,10 @@ describe("MetricSection error state", () => {
 describe("MetricSection throttled state", () => {
   it("renders a throttle-specific card on a cold shed (no cached series)", () => {
     render(
-      <MetricSection title="CPU" result={result({ throttled: true, series: [] })}>
+      <MetricSection
+        title="CPU"
+        result={result({ throttled: true, series: [] })}
+      >
         {CHILD}
       </MetricSection>,
     );

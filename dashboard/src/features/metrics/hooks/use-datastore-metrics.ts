@@ -77,7 +77,10 @@ export function useDatastoreMetrics(
     // state (w5/m58) never applies here.
     storeUnavailable: false,
     throttled: !unavailable && isThrottledError(error),
-    error: unavailable || (!unavailable && isThrottledError(error)) ? undefined : error,
+    error:
+      unavailable || (!unavailable && isThrottledError(error))
+        ? undefined
+        : error,
     // Datastore metrics never carry the bandwidth degraded_sources label.
     degradedSources: EMPTY_DEGRADED,
   };

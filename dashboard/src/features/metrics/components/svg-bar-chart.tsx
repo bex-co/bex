@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
+  axisTickValues,
   formatAxisTickLabels,
   formatMetricShort,
 } from "@/features/metrics/lib/format";
@@ -64,7 +65,7 @@ export function SvgBarChart({
   // The tick labels' widths size the gutter every slot is measured from.
   const { maxVal, yTicks, left } = useMemo(() => {
     const max = Math.max(...frames.map((f) => f.total), 0);
-    const ticks = [0, max / 2, max];
+    const ticks = axisTickValues(unit, 0, max);
     // One shared precision per axis so differing ticks never share a label
     // (w4/381); the final strings size the gutter.
     const labels = formatAxisTickLabels(unit, ticks);

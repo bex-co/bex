@@ -249,8 +249,7 @@ export function DatastoreMetricsPanel({
                 <EmptyChart message={t("metrics.replicationLagPendingHA")} />
               ) : replicationLag.unavailable ? (
                 <MetricUnavailable />
-              ) : replicationLag.error &&
-                replicationLag.series.length === 0 ? (
+              ) : replicationLag.error && replicationLag.series.length === 0 ? (
                 // This chart renders outside MetricSection, so it needs the same
                 // error-vs-empty distinction the shared seam gained (w9/m86).
                 <MetricError />
