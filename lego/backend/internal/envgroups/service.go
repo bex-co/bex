@@ -621,10 +621,7 @@ func (s *Service) persistCreate(
 	stamp := s.now()
 	for _, a := range services {
 		before := a.DeepCopy()
-		skipped, err := s.rollLinked(ctx, a, stamp, func(a *appv1alpha1.App) {
-			a.Spec.EnvFromSecrets = addString(a.Spec.EnvFromSecrets, envSecretName(gid))
-			a.Spec.FilesFromSecrets = addString(a.Spec.FilesFromSecrets, filesSecretName(gid))
-		})
+		skipped, err := s.rollLinked(ctx, a, stamp, gid, true)
 		if err != nil {
 			return nil, store.EnvGroup{}, rollback(err)
 		}
@@ -1056,10 +1053,7 @@ func (s *Service) linkFetched(ctx context.Context, gid string, a *appv1alpha1.Ap
 	if err := validateGroupServiceEnvironment(g.EnvironmentID, key, a.Labels); err != nil {
 		return err
 	}
-	if _, err := s.rollLinked(ctx, a, s.now(), func(a *appv1alpha1.App) {
-		a.Spec.EnvFromSecrets = addString(a.Spec.EnvFromSecrets, envSecretName(gid))
-		a.Spec.FilesFromSecrets = addString(a.Spec.FilesFromSecrets, filesSecretName(gid))
-	}); err != nil {
+	if _, err := s.rollLinked(ctx, a, s.now(), gid, true); err != nil {
 		return err
 	}
 	_, err = s.mutateGroup(ctx, gid, func(cur *store.EnvGroup) error {
@@ -1129,21 +1123,30 @@ func autoDeployGated(a *appv1alpha1.App) bool {
 	return a.Spec.Repo != "" && !a.Spec.AutoDeploy
 }
 
-// rollLinked is rollLinkedService behind the auto-deploy gate. For a gated
-// service the group's Secret refs still land — a link the caller asked for is
-// not silently dropped — but spec.restartedAt is left untouched and no deploy
-// row opens, so the pod keeps serving its current release and picks the values
-// up on the owner's next deploy. It reports whether it skipped, so callers can
-// name the untouched services back to the API client.
-func (s *Service) rollLinked(ctx context.Context, a *appv1alpha1.App, stamp string, mutate func(*appv1alpha1.App)) (bool, error) {
+// rollLinked links (or, with link false, unlinks) group gid on an
+// already-fetched service, behind the auto-deploy gate. A gated service's
+// change is only staged (rollout.StageGroupLink): the group's Secret refs are
+// release identity, so writing them would make the operator ship a release no
+// deploy row records. The pod keeps serving its current release, and the
+// owner's next deploy mints the release that carries the change. A service
+// that is not gated gets the refs and spec.restartedAt in one recorded
+// rollout. It reports whether it skipped, so callers can name the untouched
+// services back to the API client.
+func (s *Service) rollLinked(ctx context.Context, a *appv1alpha1.App, stamp, gid string, link bool) (bool, error) {
 	if autoDeployGated(a) {
 		return true, rollout.PatchAppLocked(ctx, s.Client, a, func(a *appv1alpha1.App) error {
-			mutate(a)
+			rollout.StageGroupLink(a, envSecretName(gid), filesSecretName(gid), link)
 			return nil
 		})
 	}
 	return false, s.rollLinkedService(ctx, a, func(a *appv1alpha1.App) {
-		mutate(a)
+		if link {
+			a.Spec.EnvFromSecrets = addString(a.Spec.EnvFromSecrets, envSecretName(gid))
+			a.Spec.FilesFromSecrets = addString(a.Spec.FilesFromSecrets, filesSecretName(gid))
+		} else {
+			a.Spec.EnvFromSecrets = removeString(a.Spec.EnvFromSecrets, envSecretName(gid))
+			a.Spec.FilesFromSecrets = removeString(a.Spec.FilesFromSecrets, filesSecretName(gid))
+		}
 		a.Spec.RestartedAt = stamp
 	})
 }
@@ -1245,10 +1248,7 @@ func (s *Service) detachOnce(ctx context.Context, gid, service string) error {
 // already holds the App it authorized — reusing it rather than fetching (and
 // authorizing, and auditing) a second time.
 func (s *Service) detachFetched(ctx context.Context, gid string, a *appv1alpha1.App) error {
-	_, err := s.rollLinked(ctx, a, s.now(), func(a *appv1alpha1.App) {
-		a.Spec.EnvFromSecrets = removeString(a.Spec.EnvFromSecrets, envSecretName(gid))
-		a.Spec.FilesFromSecrets = removeString(a.Spec.FilesFromSecrets, filesSecretName(gid))
-	})
+	_, err := s.rollLinked(ctx, a, s.now(), gid, false)
 	return err
 }
 
@@ -1350,8 +1350,9 @@ func (s *Service) LinkedGroupNames(ctx context.Context, a *appv1alpha1.App) ([]s
 	for name, gid := range ids {
 		bySecret[envSecretName(gid)] = name
 	}
-	names := make([]string, 0, len(a.Spec.EnvFromSecrets))
-	for _, ref := range a.Spec.EnvFromSecrets {
+	refs, _ := rollout.EffectiveGroupSecrets(a)
+	names := make([]string, 0, len(refs))
+	for _, ref := range refs {
 		name, ok := bySecret[ref]
 		if !ok {
 			name = ref // not a visible group: callers treat it as undeclared

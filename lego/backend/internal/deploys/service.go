@@ -795,6 +795,8 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	d, err := s.openRelease(ctx, a, appID, rowWrite, func(a *appv1alpha1.App, release int64) error {
 		stampReleaseGeneration(a, release)
 		stampClearCacheRelease(a, release, p.ClearCache)
+		// Env-group links an Auto-Deploy-off service was waiting on ship here.
+		rollout.FoldStagedGroupLinks(a)
 		a.Spec.ReleaseConfig = nil
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339Nano)
 		if a.Spec.Repo != "" {
