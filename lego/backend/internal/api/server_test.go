@@ -1247,7 +1247,7 @@ func sweepEveryVerb(t *testing.T, ctx context.Context, services []any, fn func(s
 // checks its walk against — shared so the sweeps' thresholds can't drift
 // apart (w4/087). Bump deliberately in the same commit that adds or removes a
 // verb; a loose floor would absorb silent filter regressions.
-const wantSweptVerbs = 355 // apps.SetDockerContext: Render's dockerDetailsPATCH.dockerContext (w8/m128)
+const wantSweptVerbs = 357 // apps.SetCacheProfile + apps.PurgeCache: Render's edge caching (w5/m151)
 
 func assertSweptVerbCount(t *testing.T, swept int) {
 	t.Helper()

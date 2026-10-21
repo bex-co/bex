@@ -57,11 +57,14 @@ type patchServiceRequest struct {
 		RenderSubdomainPolicy *string         `json:"renderSubdomainPolicy"`
 		EnvSpecific           json.RawMessage `json:"envSpecificDetails"`
 		Previews              json.RawMessage `json:"previews"`
-		// PullRequestPreviewsEnabled, Runtime and Cache are declared by
-		// Render's PATCH schema and refused by name (unsupportedField).
+		// PullRequestPreviewsEnabled and Runtime are declared by Render's
+		// PATCH schema and refused by name (unsupportedField).
 		PullRequestPreviewsEnabled json.RawMessage `json:"pullRequestPreviewsEnabled"`
 		Runtime                    json.RawMessage `json:"runtime"`
-		Cache                      json.RawMessage `json:"cache"`
+		// Cache is Render's edge caching, {profile} (w5/m151).
+		Cache *struct {
+			Profile string `json:"profile"`
+		} `json:"cache"`
 		MaintenanceMode            json.RawMessage `json:"maintenanceMode"`
 		IPAllowList                json.RawMessage `json:"ipAllowList"`
 		// IdleTTLSeconds is a bex extra (Render has no idle-timeout field) — the
@@ -358,14 +361,11 @@ func (r patchServiceRequest) unsupportedField() string {
 	if field := unsupportedPreviewsField(r.ServiceDetails.Previews, r.ServiceDetails.PullRequestPreviewsEnabled); field != "" {
 		return field
 	}
-	// Render's webServiceDetailsPATCH declares both (w5/m146): a runtime change
-	// is a rebuild bex does not run in place (the pinned CLI refuses it too), and
-	// cache.profile is Render's edge cache, which bex does not have (ADR018).
-	switch {
-	case len(r.ServiceDetails.Runtime) > 0:
+	// Render's webServiceDetailsPATCH declares runtime (w5/m146): a runtime
+	// change is a rebuild bex does not run in place (the pinned CLI refuses it
+	// too).
+	if len(r.ServiceDetails.Runtime) > 0 {
 		return "serviceDetails.runtime (changing a service's runtime)"
-	case len(r.ServiceDetails.Cache) > 0:
-		return "serviceDetails.cache (edge caching)"
 	}
 	return ""
 }
@@ -837,6 +837,11 @@ func (s *Service) registerServiceRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST "+servicesBase+"/{id}/resume", s.restVerb(http.StatusAccepted, s.Resume))
 	mux.HandleFunc("POST "+servicesBase+"/{id}/restart", s.restVerb(http.StatusOK, s.Restart)) // Render: restart => 200
 	mux.HandleFunc("POST "+servicesBase+"/{id}/scale", scale)                                  // Render: scale => 202
+	// Render's purge-cache (w5/m151): 202, no body.
+	mux.HandleFunc("POST "+servicesBase+"/{id}/cache/purge", core.HandleNoBody(http.StatusAccepted, func(r *http.Request) error {
+		_, err := s.PurgeCache(r.Context(), r.PathValue("id"))
+		return err
+	}))
 }
 
 // restVerb maps a Service action to a handler with a Render-accurate status
@@ -874,6 +879,7 @@ type patchFields struct {
 	healthCheckPath, preDeployCommand, schedule                            *string
 	renderSubdomainPolicy                                                  *string
 	displayName                                                            *string
+	cacheProfile                                                           *string
 	image, imageOwnerID                                                    *string
 	registryCredentialID                                                   *string
 	ipAllowList                                                            *[]core.IPAllowListEntry // nil = not provided (leave unchanged); non-nil = replace
@@ -914,6 +920,9 @@ func (req patchServiceRequest) resolveFields(r *http.Request) (patchFields, erro
 		}
 		if req.ServiceDetails.Port != nil {
 			f.port = req.ServiceDetails.Port
+		}
+		if c := req.ServiceDetails.Cache; c != nil {
+			f.cacheProfile = &c.Profile
 		}
 		f.publishPath = req.ServiceDetails.PublishPath
 		f.buildCommand = req.ServiceDetails.BuildCommand
@@ -1078,6 +1087,7 @@ func (req patchServiceRequest) toServicePatch(f patchFields, maintenanceMode *Ma
 		NotifyOnFail:                   req.NotifyOnFail,
 		RenderSubdomainPolicy:          f.renderSubdomainPolicy,
 		IPAllowList:                    f.ipAllowList,
+		CacheProfile:                   f.cacheProfile,
 		// MCP-only (divergence): NotificationsToSend and Autoscaling stay
 		// nil — Render's PATCH body has no spelling for either; only
 		// update_service fills them (mcp.go applyServicePatch).

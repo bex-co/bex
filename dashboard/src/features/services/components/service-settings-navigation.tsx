@@ -14,6 +14,7 @@ import {
   TriangleAlert,
   Webhook,
   Wrench,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 import { SectionNavigation } from "@/common/components/section-navigation";
@@ -74,6 +75,10 @@ const SECTION_ITEMS: Record<NavigableSettingsSectionId, SectionItem> = {
   "health-checks": {
     labelKey: "services.settingsHealthChecksTitle",
     icon: HeartPulse,
+  },
+  "edge-caching": {
+    labelKey: "services.edgeCachingTitle",
+    icon: Zap,
   },
   maintenance: {
     labelKey: "services.maintenanceModeTitle",

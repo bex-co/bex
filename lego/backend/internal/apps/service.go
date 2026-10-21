@@ -653,6 +653,9 @@ type AppView struct {
 	// view() reports Render/Kubernetes' shared 30-second default without mutating
 	// their spec. Zero means not applicable (cron_job/static_site).
 	MaxShutdownDelaySeconds int32 `json:"maxShutdownDelaySeconds,omitempty"`
+	// CacheProfile is a web service's edge caching profile (Render's
+	// serviceDetails.cache.profile; "no-cache" when unset, w5/m151).
+	CacheProfile string `json:"cacheProfile,omitempty"`
 	// PreDeployCommand is Render's Pre-Deploy Command (spec.preDeployCommand): a
 	// command run to completion against the new revision's image before it serves
 	// traffic (typically a DB migration); a non-zero exit fails the deploy. Empty
@@ -1113,6 +1116,7 @@ func view(a *appv1alpha1.App) AppView {
 		Name:                      name,
 		Slug:                      a.Spec.PlatformSubdomain(a.Name),
 		DisplayName:               a.Spec.DisplayName,
+		CacheProfile:              viewCacheProfile(a.Spec, svcType),
 		Type:                      svcType,
 		Phase:                     phase,
 		UndeployedChanges:         a.Status.UndeployedChanges,

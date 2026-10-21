@@ -56,6 +56,11 @@ func TestServicePatchFoldsMatchTheirVerbs(t *testing.T) {
 		}
 	}
 	cron := func() *appv1alpha1.App { return cronApp("web") }
+	paid := func() *appv1alpha1.App {
+		a := repo()
+		a.Spec.Tier = "standard"
+		return a
+	}
 	cases := []struct {
 		name  string
 		app   func() *appv1alpha1.App
@@ -66,6 +71,7 @@ func TestServicePatchFoldsMatchTheirVerbs(t *testing.T) {
 		{"plan", repo, ServicePatch{Plan: str("standard")}},
 		{"idle timeout", repo, ServicePatch{IdleTTLSeconds: i32(900)}},
 		{"shutdown delay", repo, ServicePatch{MaxShutdownDelaySeconds: i32(45)}},
+		{"cache profile", paid, ServicePatch{CacheProfile: str("origin-controlled")}},
 		{"root dir", repo, ServicePatch{RootDir: str("services/api")}},
 		{"build filter", repo, ServicePatch{BuildFilter: &BuildFilterView{Paths: []string{"src/**"}}}},
 		{"auto-deploy", repo, ServicePatch{AutoDeploy: new(bool)}},

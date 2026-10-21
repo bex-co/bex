@@ -156,6 +156,7 @@ const link = new ApolloLink(
               plan: "free",
               idleTTLSeconds: 0,
               maintenanceMode: null,
+              cacheProfile: "",
               repo: "",
               branch: "",
               imagePath: "docker.io/library/busybox:1.37.0",

@@ -94,6 +94,7 @@ type releaseIdentityInput struct {
 	FilesFromSecrets           []string                            `json:"filesFromSecrets,omitempty"`
 	HealthCheckPath            string                              `json:"healthCheckPath,omitempty"`
 	MaxShutdownDelaySeconds    *int32                              `json:"maxShutdownDelaySeconds,omitempty"`
+	CacheProfile               string                              `json:"cacheProfile,omitempty"`
 	PreDeployCommand           string                              `json:"preDeployCommand,omitempty"`
 	InitialDeployHook          string                              `json:"initialDeployHook,omitempty"`
 	RestartedAt                string                              `json:"restartedAt,omitempty"`
@@ -210,6 +211,7 @@ func appReleaseIdentityOf(spec appv1alpha1.AppSpec, version string) appReleaseId
 		FilesFromSecrets:           spec.FilesFromSecrets,
 		HealthCheckPath:            spec.HealthCheckPath,
 		MaxShutdownDelaySeconds:    spec.MaxShutdownDelaySeconds,
+		CacheProfile:               spec.CacheProfile,
 		PreDeployCommand:           spec.PreDeployCommand,
 		InitialDeployHook:          spec.InitialDeployHook,
 		RestartedAt:                spec.RestartedAt,

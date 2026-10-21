@@ -194,7 +194,7 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     [<DatabaseOverviewSkeleton key="database" />, 10],
     [<KeyValueOverviewSkeleton key="keyvalue" />, 7],
     [<WorkspaceSettingsPageSkeleton key="workspace" />, 3],
-    [<ServiceSettingsSkeleton key="service" />, 11],
+    [<ServiceSettingsSkeleton key="service" />, 12],
   ])(
     "keeps long-page section navigation at narrow and wide breakpoints",
     (component, count) => {

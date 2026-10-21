@@ -418,8 +418,11 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"blueprintId": gqlutil.OptionalStrField(func(a AppView) any { return a.BlueprintID }),
 		// rootDir is the subdirectory of the repo this App builds from (Render's
 		// Root Directory setting, monorepo support); empty is the repo root.
-		"rootDir":      gqlutil.StrField(func(a AppView) any { return a.RootDir }),
-		"runtime":      gqlutil.StrField(func(a AppView) any { return a.Runtime }),
+		"rootDir": gqlutil.StrField(func(a AppView) any { return a.RootDir }),
+		"runtime": gqlutil.StrField(func(a AppView) any { return a.Runtime }),
+		// cacheProfile is Render's serviceDetails.cache.profile on a web
+		// service (w5/m151); empty for other types.
+		"cacheProfile": gqlutil.StrField(func(a AppView) any { return a.CacheProfile }),
 		"buildCommand": gqlutil.StrField(func(a AppView) any { return a.BuildCommand }),
 		"startCommand": gqlutil.StrField(func(a AppView) any { return a.StartCommand }),
 		// dockerfilePath is Render's Dockerfile Path setting, relative to rootDir;
@@ -1498,7 +1501,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		// confirmIDArgs, not gqlutil.IDArg(): suspend can be blocked by w6/m19's
 		// protected-environment guard, armed via the optional confirm arg.
 		"suspendService": &graphql.Field{Type: serviceGQLType, Args: confirmIDArgs(), Resolve: verb(s.Suspend)},
-		"resumeService":  &graphql.Field{Type: serviceGQLType, Args: gqlutil.IDArg(), Resolve: verb(s.Resume)},
+		// setCacheProfile / purgeServiceCache: Render's edge caching for a
+		// web service (w5/m151), the same verbs REST's PATCH and
+		// POST …/cache/purge call.
+		"setCacheProfile":   gqlutil.ArgMutation(serviceGQLType, "profile", s.SetCacheProfile),
+		"purgeServiceCache": &graphql.Field{Type: serviceGQLType, Args: confirmIDArgs(), Resolve: verb(s.PurgeCache)},
+		"resumeService":     &graphql.Field{Type: serviceGQLType, Args: gqlutil.IDArg(), Resolve: verb(s.Resume)},
 		// restartServer moved to deploys.GraphQLMutation (w2/m30): routing through
 		// deploys.Restart ensures every restart opens a deploy-history row.
 		// updateServicePlan: a bex extension (naming unconfirmed against a live

@@ -121,6 +121,8 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     headers: "headers" in s ? toStaticHeaders(s.headers) : [],
     maintenanceMode:
       "maintenanceMode" in s ? toMaintenanceMode(s.maintenanceMode) : null,
+    // bex-api reports "" for a type with no edge cache; keep that as null.
+    cacheProfile: "cacheProfile" in s ? s.cacheProfile || null : null,
   };
 }
 

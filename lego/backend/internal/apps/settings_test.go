@@ -47,6 +47,7 @@ func TestServicePatchTableOrderIsRESTApplicationOrder(t *testing.T) {
 		{"Plan"},
 		{"IdleTTLSeconds"},
 		{"MaxShutdownDelaySeconds"},
+		{"CacheProfile"}, // w5/m151 — after Plan, so a paid plan in the same PATCH admits it
 		{"RootDir"},
 		{"BuildFilter"},
 		{"AutoDeploy", "AutoDeployChecksPass"},
