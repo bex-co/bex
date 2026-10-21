@@ -1,0 +1,5 @@
+# CLI sweep 1280 — deploy starvation status and the Deploy-to-Render entry point (2026-10-21)
+
+- **Deploy status.** Of the last 25 `deploy (bex via Argo)` runs, 18 were cancelled, 5 failed and 1 "succeeded" with `build` and `deploy` skipped as superseded. Production is still pinned to `9cace6b6e25d` (2026-10-20 11:48 UTC), so none of the w8 fixes since then are live. This is already filed by another session as w6/087 ("deploys starve under steady manifest-touching pushes"), so it is not re-filed.
+- **Deploy-to-Render button.** `https://dashboard.bex.co/deploy?repo=https://github.com/render-examples/express-hello-world` → "Page not found". `/blueprints/new?repo=…` → login redirect that keeps the query, then an empty wizard (no `validateSearch`). 103 READMEs in `render-examples` link `render.com/deploy`. Filed as [w8/163](../../163.md).
+- The other session's recent `main` commits overlap this loop's corpus work: w5/m150 (free-form Blueprint names, dotted env keys; "render-examples goes from 83 to 88 of 170 valid") and w5/m151 (paid edge caching). Neither is deployed yet, so re-check the sweep 1270 and 1276 corpora once the pin moves.
