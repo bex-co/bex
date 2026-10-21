@@ -260,18 +260,21 @@ var _ = Describe("Application container policy admission", func() {
 				}
 				if _, stateful := workload.(*appsv1.StatefulSet); stateful {
 					// Even a forged, internally consistent App profile cannot
-					// widen the StatefulSet resource family.
-					forged := workload.DeepCopyObject().(client.Object)
-					pod := admissionPodTemplate(forged)
-					pod.Labels["app.bex.co/container-policy"] = appv1alpha1.ContainerPolicyImageV1
-					pod.Labels["app.bex.co/app"] = "forged-app"
-					pod.Labels["app.bex.co/app-uid"] = "forged-uid"
-					forged.SetOwnerReferences([]metav1.OwnerReference{{APIVersion: appv1alpha1.SchemeGroupVersion.String(), Kind: "App", Name: "forged-app", UID: "forged-uid", Controller: new(true)}})
-					pod.Spec.Containers = pod.Spec.Containers[:1]
-					pod.Spec.Containers[0].Name = "app"
-					pod.Spec.Containers[0].SecurityContext = appSecCtx(appv1alpha1.AppSpec{ContainerPolicy: appv1alpha1.ContainerPolicyImageV1})
-					expectDenied(operator.Create(ctx, admissionFreshWorkload(forged), client.DryRunAll), scenario+" forged StatefulSet profile")
-					expectDenied(operator.Update(ctx, forged, client.DryRunAll), scenario+" forged StatefulSet profile update")
+					// widen the StatefulSet (datastore) resource family, under
+					// either widened policy.
+					for _, policy := range []string{appv1alpha1.ContainerPolicyImageV1, appv1alpha1.ContainerPolicyRenderV1} {
+						forged := workload.DeepCopyObject().(client.Object)
+						pod := admissionPodTemplate(forged)
+						pod.Labels["app.bex.co/container-policy"] = policy
+						pod.Labels["app.bex.co/app"] = "forged-app"
+						pod.Labels["app.bex.co/app-uid"] = "forged-uid"
+						forged.SetOwnerReferences([]metav1.OwnerReference{{APIVersion: appv1alpha1.SchemeGroupVersion.String(), Kind: "App", Name: "forged-app", UID: "forged-uid", Controller: new(true)}})
+						pod.Spec.Containers = pod.Spec.Containers[:1]
+						pod.Spec.Containers[0].Name = "app"
+						pod.Spec.Containers[0].SecurityContext = appSecCtx(appv1alpha1.AppSpec{ContainerPolicy: policy})
+						expectDenied(operator.Create(ctx, admissionFreshWorkload(forged), client.DryRunAll), scenario+" forged StatefulSet "+policy+" profile")
+						expectDenied(operator.Update(ctx, forged, client.DryRunAll), scenario+" forged StatefulSet "+policy+" profile update")
+					}
 				}
 
 				outside := admissionFreshWorkload(workload)

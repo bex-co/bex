@@ -1869,6 +1869,21 @@ func (s *PGStore) SetAppPort(ctx context.Context, id string, port int32, mode st
 	return nil
 }
 
+// SetAppContainerPolicy moves one row to a persisted container policy; only
+// the operator-run migration calls it (w6/m149 t008). The CHECK refuses an
+// unknown policy.
+func (s *PGStore) SetAppContainerPolicy(ctx context.Context, id, policy string) error {
+	tag, err := s.Pool.Exec(ctx,
+		`UPDATE apps SET container_policy = $2, updated_at = now() WHERE id = $1`, id, policy)
+	if err != nil {
+		return classify("app", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("app: %w", ErrNotFound)
+	}
+	return nil
+}
+
 // SetAppReplicas updates the row's replica count (the apps feature's scale
 // verb validates the bound before calling this). The projector carries it
 // onto spec.replicas the same way it carries suspended/tier.
