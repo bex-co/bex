@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Alert→panel coverage drift guard (ADR088 §6 "every alert gets a panel";
-# .pm/w5/done/054.md). Every alert rule in prometheus.yaml's embedded pack
-# (serverFiles.alerting_rules.yml) must have at least one backing metric series
+# .pm/w5/done/054.md). Every alert rule in the platform rule pack
+# (deploy/gitops/base/rules/alerting_rules.yml, w3/m177) must have at least one backing metric series
 # drawn on at least one committed Grafana dashboard
 # (deploy/gitops/base/values/grafana.values.yaml) — an alert only says
 # "broken"; the panel answers how bad / since when / trending which way.
@@ -38,7 +38,7 @@
 # whose expr yields no series, an alert backed ONLY by context series, or a
 # missing tool is a loud failure — never a silent pass. Called by
 # scripts/gitops-validate.sh; exit 0 = PASS. Fixture/test runs may override
-# the inputs via OBS_PROM_FILE / OBS_VALUES_FILE.
+# the inputs via OBS_RULES_FILE / OBS_VALUES_FILE.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -95,18 +95,15 @@ for tool in yq python3; do
   }
 done
 
-PROM_FILE="${OBS_PROM_FILE:-deploy/gitops/base/prometheus.yaml}"
+RULES_FILE="${OBS_RULES_FILE:-deploy/gitops/base/rules/alerting_rules.yml}"
 GRAFANA_FILE="${OBS_VALUES_FILE:-deploy/gitops/base/values/grafana.values.yaml}"
 
 tmp="$(mktemp -d)"
 # Paths originate from mktemp and are always task-scoped.
 trap 'rm -rf "$tmp"' EXIT
 
-# helm `values:` is a block-scalar string — from_yaml re-parses it in-process
-# (same extraction the promtool step in gitops-validate.sh uses).
-yq -o=json '.spec.source.helm.values | from_yaml | .serverFiles."alerting_rules.yml".groups' \
-  "$PROM_FILE" >"$tmp/rules.json" || {
-  echo "FAIL: could not extract alerting rule groups from $PROM_FILE" >&2
+yq -o=json '.groups' "$RULES_FILE" >"$tmp/rules.json" || {
+  echo "FAIL: could not read alerting rule groups from $RULES_FILE" >&2
   exit 2
 }
 yq -o=json '.dashboards' "$GRAFANA_FILE" >"$tmp/dashboards.json" || {
