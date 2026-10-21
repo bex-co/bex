@@ -1,0 +1,183 @@
+# w3/m174: the alert pipeline's own health, tenant disk-snapshot CronJobs,
+# Postgres base-backup age and tenant capacity — each failure mode fires and
+# its healthy twin stays quiet. Generated annotations match the rule templates.
+# Extract alerting_rules.yml from prometheus.yaml via scripts/gitops-validate.sh.
+rule_files:
+- alerting_rules.yml
+evaluation_interval: 1m
+tests:
+- name: Watchdog always fires
+  interval: 1m
+  input_series: []
+  alert_rule_test:
+  - eval_time: 1m
+    alertname: Watchdog
+    exp_alerts:
+    - exp_labels:
+        severity: none
+      exp_annotations:
+        summary: Alerting pipeline heartbeat (always firing)
+        description: 'Always fires; absent off-cluster means Prometheus or Alertmanager is down. Runbook: docs/ADR010-observability.md#alerting-heartbeat'
+- name: notification failures page; a quiet counter does not
+  interval: 1m
+  input_series:
+  - series: alertmanager_notifications_failed_total{job="alertmanager",integration="email",instance="am"}
+    values: 0+1x60
+  - series: alertmanager_notifications_failed_total{job="alertmanager",integration="webhook",instance="am"}
+    values: '0x60'
+  alert_rule_test:
+  - eval_time: 40m
+    alertname: AlertmanagerNotificationsFailing
+    exp_alerts:
+    - exp_labels:
+        integration: email
+        severity: critical
+      exp_annotations:
+        summary: Alertmanager failed to deliver email notifications
+        description: 'Other alerts may be firing unseen. Check the alertmanager-smtp Secret and SendGrid activity. Runbook: docs/ADR010-observability.md#alerting-heartbeat'
+- name: rule evaluation failures page
+  interval: 1m
+  input_series:
+  - series: prometheus_rule_evaluation_failures_total{job="prometheus",rule_group="/etc/config/alerting_rules.yml;platform",instance="p"}
+    values: 0+1x60
+  alert_rule_test:
+  - eval_time: 40m
+    alertname: PrometheusRuleEvaluationFailures
+    exp_alerts:
+    - exp_labels:
+        rule_group: /etc/config/alerting_rules.yml;platform
+        severity: critical
+      exp_annotations:
+        summary: Prometheus rule group /etc/config/alerting_rules.yml;platform is failing to evaluate
+        description: 'Alerts in this group cannot fire. See the group''s last error on the Prometheus /rules page. Runbook: docs/ADR010-observability.md#alerting-heartbeat'
+- name: dropped notifications page
+  interval: 1m
+  input_series:
+  - series: prometheus_notifications_dropped_total{job="prometheus",instance="p"}
+    values: 0+1x60
+  - series: prometheus_notifications_errors_total{job="prometheus",instance="p",alertmanager="am"}
+    values: '0x60'
+  alert_rule_test:
+  - eval_time: 40m
+    alertname: PrometheusNotificationsDropped
+    exp_alerts:
+    - exp_labels:
+        instance: p
+        job: prometheus
+        severity: critical
+      exp_annotations:
+        summary: Prometheus is failing to hand alerts to Alertmanager
+        description: 'Firing alerts are not reaching Alertmanager. Runbook: docs/ADR010-observability.md#alerting-heartbeat'
+- name: tenant disk-snapshot CronJobs are backups too
+  interval: 1m
+  input_series:
+  - series: kube_cronjob_status_last_successful_time{cronjob="dskbak-dsk-aaaa",namespace="tea-a"}
+    values: -95400x60
+  - series: kube_cronjob_spec_suspend{cronjob="dskbak-dsk-aaaa",namespace="tea-a"}
+    values: '0x60'
+  - series: kube_cronjob_status_last_successful_time{cronjob="dskbak-dsk-bbbb",namespace="tea-b"}
+    values: -88200x60
+  - series: kube_cronjob_spec_suspend{cronjob="dskbak-dsk-bbbb",namespace="tea-b"}
+    values: '0x60'
+  alert_rule_test:
+  - eval_time: 30m
+    alertname: BackupCronJobStale
+    exp_alerts:
+    - exp_labels:
+        cronjob: dskbak-dsk-aaaa
+        namespace: tea-a
+        severity: critical
+      exp_annotations:
+        summary: Backup tea-a/dskbak-dsk-aaaa has not succeeded in >26h
+        description: 'The nightly dskbak-dsk-aaaa has no successful backup in over 26h — silent backup rot is unrecoverable data loss. Debug: kubectl -n tea-a get cronjob dskbak-dsk-aaaa; kubectl -n tea-a get jobs -l batch.kubernetes.io/cronjob-name=dskbak-dsk-aaaa. Runbooks: docs/ADR011-etcd-backup-restore.md, docs/ADR015-openbao-backup-restore.md, docs/ADR021-keyvalue-management.md, docs/ADR082-persistent-disks.md (dskbak-*), docs/ADR031-platform-data-backup.md'
+- name: 'platform base backups: stale fires, fresh and archiving-only do not, missing fires'
+  interval: 1m
+  input_series:
+  - series: bex_cnpg_backup_stopped_at_seconds{name="backup-1",namespace="bex-system",cnpg_io_cluster="bex-db",phase="completed"}
+    values: -95400x90
+  - series: bex_cnpg_backup_stopped_at_seconds{name="backup-2",namespace="bex-system",cnpg_io_cluster="bex-db",phase="failed"}
+    values: '0x90'
+  - series: bex_cnpg_backup_stopped_at_seconds{name="backup-3",namespace="auth",cnpg_io_cluster="kratos-db",phase="completed"}
+    values: -1800x90
+  - series: bex_cnpg_backup_stopped_at_seconds{name="backup-4",namespace="auth",cnpg_io_cluster="hydra-db",phase="completed"}
+    values: -200000x90
+  - series: bex_cnpg_backup_stopped_at_seconds{name="backup-5",namespace="auth",cnpg_io_cluster="hydra-db",phase="completed"}
+    values: -1800x90
+  - series: bex_cnpg_backup_stopped_at_seconds{name="backup-6",namespace="auth",cnpg_io_cluster="openfga-db",phase="failed"}
+    values: '0x90'
+  alert_rule_test:
+  - eval_time: 45m
+    alertname: PostgresBaseBackupStale
+    exp_alerts:
+    - exp_labels:
+        namespace: bex-system
+        cnpg_io_cluster: bex-db
+        severity: critical
+      exp_annotations:
+        summary: bex-system/bex-db has no completed base backup in >26h
+        description: 'Newest completed CNPG Backup is over 26h old, or none is visible. Runbook: docs/ADR031-platform-data-backup.md#base-backup-age'
+    - exp_labels:
+        namespace: auth
+        cnpg_io_cluster: openfga-db
+        severity: critical
+      exp_annotations:
+        summary: auth/openfga-db has no completed base backup in >26h
+        description: 'Newest completed CNPG Backup is over 26h old, or none is visible. Runbook: docs/ADR031-platform-data-backup.md#base-backup-age'
+- name: 'tenant base backups: stale existing cluster warns; deleted cluster and platform clusters do not'
+  interval: 1m
+  input_series:
+  - series: bex_cnpg_backup_stopped_at_seconds{name="backup-7",namespace="tea-a",cnpg_io_cluster="dpg-a",phase="completed"}
+    values: -95400x90
+  - series: bex_cnpg_cluster_info{namespace="tea-a",cnpg_io_cluster="dpg-a"}
+    values: 1x90
+  - series: bex_cnpg_backup_stopped_at_seconds{name="backup-8",namespace="tea-b",cnpg_io_cluster="dpg-b",phase="completed"}
+    values: -95400x90
+  - series: bex_cnpg_backup_stopped_at_seconds{name="backup-9",namespace="tea-c",cnpg_io_cluster="dpg-c",phase="completed"}
+    values: -1800x90
+  - series: bex_cnpg_cluster_info{namespace="tea-c",cnpg_io_cluster="dpg-c"}
+    values: 1x90
+  - series: bex_cnpg_backup_stopped_at_seconds{name="backup-10",namespace="bex-system",cnpg_io_cluster="bex-db",phase="completed"}
+    values: -95400x90
+  - series: bex_cnpg_cluster_info{namespace="bex-system",cnpg_io_cluster="bex-db"}
+    values: 1x90
+  alert_rule_test:
+  - eval_time: 45m
+    alertname: TenantPostgresBaseBackupStale
+    exp_alerts:
+    - exp_labels:
+        namespace: tea-a
+        cnpg_io_cluster: dpg-a
+        severity: warning
+      exp_annotations:
+        summary: Tenant database tea-a/dpg-a has no completed base backup in >26h
+        description: 'No completed base backup in over 26h for a backed-up tenant database. Runbook: docs/ADR031-platform-data-backup.md#base-backup-age'
+- name: unschedulable tenant serving pods page; Job pods and short blips do not
+  interval: 1m
+  input_series:
+  - series: kube_pod_status_unschedulable{namespace="tea-a",pod="web-abc",uid="1"}
+    values: 1x30
+  - series: kube_pod_owner{namespace="tea-a",pod="web-abc",owner_kind="ReplicaSet",owner_name="web-rs",uid="1"}
+    values: 1x30
+  - series: kube_pod_status_unschedulable{namespace="tea-a",pod="web-build-xyz",uid="2"}
+    values: 1x30
+  - series: kube_pod_owner{namespace="tea-a",pod="web-build-xyz",owner_kind="Job",owner_name="web-build",uid="2"}
+    values: 1x30
+  - series: kube_pod_status_unschedulable{namespace="tea-b",pod="api-def",uid="3"}
+    values: 1x5 _x25
+  - series: kube_pod_owner{namespace="tea-b",pod="api-def",owner_kind="ReplicaSet",owner_name="api-rs",uid="3"}
+    values: 1x30
+  - series: kube_pod_status_unschedulable{namespace="bex-system",pod="bex-api-1",uid="4"}
+    values: 1x30
+  - series: kube_pod_owner{namespace="bex-system",pod="bex-api-1",owner_kind="ReplicaSet",owner_name="bex-api",uid="4"}
+    values: 1x30
+  alert_rule_test:
+  - eval_time: 20m
+    alertname: TenantPodUnschedulable
+    exp_alerts:
+    - exp_labels:
+        namespace: tea-a
+        pod: web-abc
+        severity: critical
+      exp_annotations:
+        summary: Tenant pod tea-a/web-abc cannot be scheduled
+        description: 'Tenant pools are full or the autoscaler cannot add a node. Debug: kubectl -n tea-a describe pod web-abc. Runbook: docs/ADR010-observability.md#tenant-capacity'

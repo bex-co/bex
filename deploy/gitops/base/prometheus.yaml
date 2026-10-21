@@ -103,6 +103,45 @@ spec:
           enabled: true
           metricLabelsAllowlist:
             - nodes=[bex.co/pool]
+          # CNPG Backup/Cluster objects for base-backup age (w3/m174, ADR031).
+          rbac:
+            extraRules:
+              - apiGroups: [postgresql.cnpg.io]
+                resources: [backups, clusters]
+                verbs: [list, watch]
+          customResourceState:
+            enabled: true
+            config:
+              spec:
+                resources:
+                  - groupVersionKind: { group: postgresql.cnpg.io, version: v1, kind: Backup }
+                    metricNamePrefix: bex_cnpg_backup
+                    labelsFromPath:
+                      name: [metadata, name]
+                      namespace: [metadata, namespace]
+                      cnpg_io_cluster: [spec, cluster, name]
+                    metrics:
+                      - name: stopped_at_seconds
+                        help: "CNPG Backup stoppedAt by phase."
+                        each:
+                          type: Gauge
+                          gauge:
+                            path: [status]
+                            valueFrom: [stoppedAt]
+                            labelsFromPath:
+                              phase: [phase]
+                  - groupVersionKind: { group: postgresql.cnpg.io, version: v1, kind: Cluster }
+                    metricNamePrefix: bex_cnpg_cluster
+                    labelsFromPath:
+                      namespace: [metadata, namespace]
+                      cnpg_io_cluster: [metadata, name]
+                    metrics:
+                      - name: info
+                        help: "Existing CNPG Clusters."
+                        each:
+                          type: Info
+                          info:
+                            labelsFromPath: {}
           nodeSelector:
             bex.co/pool: platform
           tolerations:
@@ -177,6 +216,10 @@ spec:
               group_interval: 5m
               repeat_interval: 4h
               routes:
+                # Read off-cluster by alerting-heartbeat.sh; never emails.
+                - matchers:
+                    - alertname="Watchdog"
+                  receiver: "null"
                 - matchers:
                     - severity="info"
                   receiver: "null"
@@ -418,6 +461,13 @@ spec:
                   - source_labels: [container]
                     regex: ""
                     action: drop
+              # The alert pipeline watches itself (w3/m174).
+              - job_name: prometheus
+                static_configs:
+                  - targets: [localhost:9090]
+              - job_name: alertmanager
+                static_configs:
+                  - targets: [prometheus-alertmanager.monitoring.svc:9093]
               # kube-state-metrics: object-state series (Deployment/Pod/Node/
               # CronJob/StatefulSet status) that back the rule pack. Its Service is
               # a stable ClusterIP — a static target is enough.
@@ -1686,22 +1736,22 @@ spec:
                   - alert: BackupCronJobStale
                     expr: |
                       (
-                        (time() - kube_cronjob_status_last_successful_time{cronjob=~"etcd-backup|openbao-backup|kvbak-.*"}) > (26 * 3600)
+                        (time() - kube_cronjob_status_last_successful_time{cronjob=~"etcd-backup|openbao-backup|kvbak-.*|dskbak-.*"}) > (26 * 3600)
                         or
                         (
-                          (time() - kube_cronjob_created{cronjob=~"etcd-backup|openbao-backup|kvbak-.*"}) > (26 * 3600)
+                          (time() - kube_cronjob_created{cronjob=~"etcd-backup|openbao-backup|kvbak-.*|dskbak-.*"}) > (26 * 3600)
                           unless on(namespace, cronjob)
-                            kube_cronjob_status_last_successful_time{cronjob=~"etcd-backup|openbao-backup|kvbak-.*"}
+                            kube_cronjob_status_last_successful_time{cronjob=~"etcd-backup|openbao-backup|kvbak-.*|dskbak-.*"}
                         )
                       )
                       and on(namespace, cronjob)
-                        (kube_cronjob_spec_suspend{cronjob=~"etcd-backup|openbao-backup|kvbak-.*"} == 0)
+                        (kube_cronjob_spec_suspend{cronjob=~"etcd-backup|openbao-backup|kvbak-.*|dskbak-.*"} == 0)
                     for: 0m
                     labels:
                       severity: critical
                     annotations:
                       summary: "Backup {{ $labels.namespace }}/{{ $labels.cronjob }} has not succeeded in >26h"
-                      description: "The nightly {{ $labels.cronjob }} has no successful backup in over 26h — silent backup rot is unrecoverable data loss. Debug: kubectl -n {{ $labels.namespace }} get cronjob {{ $labels.cronjob }}; kubectl -n {{ $labels.namespace }} get jobs -l batch.kubernetes.io/cronjob-name={{ $labels.cronjob }}. Runbooks: docs/ADR011-etcd-backup-restore.md, docs/ADR015-openbao-backup-restore.md, docs/ADR021-keyvalue-management.md, docs/ADR031-platform-data-backup.md"
+                      description: "The nightly {{ $labels.cronjob }} has no successful backup in over 26h — silent backup rot is unrecoverable data loss. Debug: kubectl -n {{ $labels.namespace }} get cronjob {{ $labels.cronjob }}; kubectl -n {{ $labels.namespace }} get jobs -l batch.kubernetes.io/cronjob-name={{ $labels.cronjob }}. Runbooks: docs/ADR011-etcd-backup-restore.md, docs/ADR015-openbao-backup-restore.md, docs/ADR021-keyvalue-management.md, docs/ADR082-persistent-disks.md (dskbak-*), docs/ADR031-platform-data-backup.md"
 
                   # Grafana reports a datasource error only when a panel queries it,
                   # so the analytics readers can fail for days unseen (a bex-db CA
@@ -1792,6 +1842,89 @@ spec:
                     annotations:
                       summary: "{{ $labels.namespace }}/{{ $labels.cnpg_io_cluster }} WAL archiving stalled (>26h)"
                       description: "{{ $labels.namespace }}/{{ $labels.cnpg_io_cluster }} has not archived a WAL segment in >26h — platform recovery data is at risk. Debug: inspect pg_stat_archiver, the cluster's Barman ObjectStore, the barman-cloud deployment and sidecar logs, then verify the referenced Secret exists without printing it. Runbook: docs/ADR031-platform-data-backup.md"
+
+                  # Alert-pipeline health (w3/m174, ADR010 §Alerting heartbeat).
+                  - alert: Watchdog
+                    expr: vector(1)
+                    labels:
+                      severity: none
+                    annotations:
+                      summary: "Alerting pipeline heartbeat (always firing)"
+                      description: "Always fires; absent off-cluster means Prometheus or Alertmanager is down. Runbook: docs/ADR010-observability.md#alerting-heartbeat"
+                  - alert: AlertmanagerNotificationsFailing
+                    expr: |
+                      sum by (integration) (increase(alertmanager_notifications_failed_total{job="alertmanager"}[15m])) > 0
+                    for: 15m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "Alertmanager failed to deliver {{ $labels.integration }} notifications"
+                      description: "Other alerts may be firing unseen. Check the alertmanager-smtp Secret and SendGrid activity. Runbook: docs/ADR010-observability.md#alerting-heartbeat"
+                  - alert: PrometheusRuleEvaluationFailures
+                    expr: |
+                      sum by (rule_group) (increase(prometheus_rule_evaluation_failures_total{job="prometheus"}[15m])) > 0
+                    for: 15m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "Prometheus rule group {{ $labels.rule_group }} is failing to evaluate"
+                      description: "Alerts in this group cannot fire. See the group's last error on the Prometheus /rules page. Runbook: docs/ADR010-observability.md#alerting-heartbeat"
+                  - alert: PrometheusNotificationsDropped
+                    expr: |
+                      increase(prometheus_notifications_dropped_total{job="prometheus"}[15m]) > 0
+                      or increase(prometheus_notifications_errors_total{job="prometheus"}[15m]) > 0
+                    for: 15m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "Prometheus is failing to hand alerts to Alertmanager"
+                      description: "Firing alerts are not reaching Alertmanager. Runbook: docs/ADR010-observability.md#alerting-heartbeat"
+
+                  # Tenant capacity (w3/m174); Job pods have their own alerts.
+                  - alert: TenantPodUnschedulable
+                    expr: |
+                      max by (namespace, pod) (kube_pod_status_unschedulable{namespace=~"tea-.*"})
+                      and on(namespace, pod)
+                        max by (namespace, pod) (kube_pod_owner{namespace=~"tea-.*", owner_kind=~"ReplicaSet|StatefulSet|Cluster"})
+                    for: 10m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "Tenant pod {{ $labels.namespace }}/{{ $labels.pod }} cannot be scheduled"
+                      description: "Tenant pools are full or the autoscaler cannot add a node. Debug: kubectl -n {{ $labels.namespace }} describe pod {{ $labels.pod }}. Runbook: docs/ADR010-observability.md#tenant-capacity"
+
+                  # Base-backup age (w3/m174, ADR031 §Base-backup age).
+                  - alert: PostgresBaseBackupStale
+                    expr: |
+                      (
+                        (time() - max by (namespace, cnpg_io_cluster) (bex_cnpg_backup_stopped_at_seconds{phase="completed"})) > (26 * 3600)
+                      )
+                      and on(namespace, cnpg_io_cluster) bex:platform_database_backup_expected
+                      or
+                      (
+                        bex:platform_database_backup_expected
+                        unless on(namespace, cnpg_io_cluster)
+                          bex_cnpg_backup_stopped_at_seconds{phase="completed"}
+                      )
+                    for: 30m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "{{ $labels.namespace }}/{{ $labels.cnpg_io_cluster }} has no completed base backup in >26h"
+                      description: "Newest completed CNPG Backup is over 26h old, or none is visible. Runbook: docs/ADR031-platform-data-backup.md#base-backup-age"
+                  - alert: TenantPostgresBaseBackupStale
+                    expr: |
+                      (
+                        (time() - max by (namespace, cnpg_io_cluster) (bex_cnpg_backup_stopped_at_seconds{phase="completed"})) > (26 * 3600)
+                      )
+                      unless on(namespace, cnpg_io_cluster) bex:platform_database_backup_expected
+                      and on(namespace, cnpg_io_cluster) bex_cnpg_cluster_info
+                    for: 30m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Tenant database {{ $labels.namespace }}/{{ $labels.cnpg_io_cluster }} has no completed base backup in >26h"
+                      description: "No completed base backup in over 26h for a backed-up tenant database. Runbook: docs/ADR031-platform-data-backup.md#base-backup-age"
 
                   # Per-MEMBER seal detection off the openbao per-pod telemetry
                   # scrape (vault_core_unsealed=0 ⇒ sealed). Not the round-robin
@@ -2035,7 +2168,7 @@ spec:
                       severity: warning
                     annotations:
                       summary: "Stripe billing export backlog is older than 72h"
-                      description: "A sealed usage row has remained pending for >24h beyond the 48h seal horizon. Inspect without replay: scripts/stripe-billing-reconcile.sh issues. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+                      description: "A sealed usage row has remained pending for >24h beyond the 48h seal horizon. Inspect without replay: scripts/stripe-billing-reconcile.sh issues. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
 
                   - alert: BillingPermanentReject
                     expr: |
@@ -2046,7 +2179,7 @@ spec:
                       severity: warning
                     annotations:
                       summary: "Stripe permanently rejected billing meter events"
-                      description: "One or more usage rows are held in the durable reject queue. Dry-run reconciliation before retry or acknowledgement: scripts/stripe-billing-reconcile.sh issues. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+                      description: "One or more usage rows are held in the durable reject queue. Dry-run reconciliation before retry or acknowledgement: scripts/stripe-billing-reconcile.sh issues. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
 
                   - alert: BillingExportAmbiguity
                     expr: |
@@ -2057,7 +2190,7 @@ spec:
                       severity: critical
                     annotations:
                       summary: "Stripe billing export has an old ambiguous provider outcome"
-                      description: "An attempted event exceeded Stripe's 24h identifier window without a local stamp and automatic replay stopped. Reconcile provider summaries, then explicitly mark repaired or acknowledge; never blind-retry. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+                      description: "An attempted event exceeded Stripe's 24h identifier window without a local stamp and automatic replay stopped. Reconcile provider summaries, then explicitly mark repaired or acknowledge; never blind-retry. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
 
                   - alert: BillingWebhookRejected
                     expr: |
@@ -2070,7 +2203,7 @@ spec:
                       severity: critical
                     annotations:
                       summary: "bex rejected or failed a Stripe webhook delivery"
-                      description: "checkout.session.completed is the only writer of payment_method_bound_at, which alone decides whether a workspace may create anything — so a dropped delivery locks a real customer out with no trace. A signature or livemode rejection is a permanent loss (Stripe never retries a 4xx); a handler error returns 503 and Stripe retries for up to three days, and persistent failure gets the endpoint disabled. Check the bex-api log for the matching 'billing: ...' line, which names the event id. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+                      description: "checkout.session.completed is the only writer of payment_method_bound_at, which alone decides whether a workspace may create anything — so a dropped delivery locks a real customer out with no trace. A signature or livemode rejection is a permanent loss (Stripe never retries a 4xx); a handler error returns 503 and Stripe retries for up to three days, and persistent failure gets the endpoint disabled. Check the bex-api log for the matching 'billing: ...' line, which names the event id. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
 
                   - alert: BillingWebhookSilent
                     expr: |
@@ -2082,7 +2215,7 @@ spec:
                       severity: warning
                     annotations:
                       summary: "No Stripe webhook has succeeded in over 72h"
-                      description: "Either Stripe stopped delivering (endpoint disabled or misconfigured) or nothing is happening. 72h comes from the observed delivery gaps on 2026-09-16: over a 6.7-day sample the largest real gap was 45.7h and p95 was 35.6h, so this clears the quiet periods with headroom. Volume is low, so treat this as a prompt to check the endpoint rather than as a page: bash scripts/stripe-webhook-drift.sh. The '> 0' filter inside max() drops replicas that have never received a webhook — a freshly restarted pod publishes 0, which is not silence — so the alert reads the freshest success across the fleet, not a restarted pod's zero. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+                      description: "Either Stripe stopped delivering (endpoint disabled or misconfigured) or nothing is happening. 72h comes from the observed delivery gaps on 2026-09-16: over a 6.7-day sample the largest real gap was 45.7h and p95 was 35.6h, so this clears the quiet periods with headroom. Volume is low, so treat this as a prompt to check the endpoint rather than as a page: bash scripts/stripe-webhook-drift.sh. The '> 0' filter inside max() drops replicas that have never received a webhook — a freshly restarted pod publishes 0, which is not silence — so the alert reads the freshest success across the fleet, not a restarted pod's zero. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
 
                   - alert: BillingLocalStampFailure
                     expr: |
@@ -2095,7 +2228,7 @@ spec:
                       severity: critical
                     annotations:
                       summary: "Stripe accepted usage but the local export stamp failed"
-                      description: "Provider acceptance may be ahead of local state. Restore Postgres and reconcile before the 24h identifier window expires. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+                      description: "Provider acceptance may be ahead of local state. Restore Postgres and reconcile before the 24h identifier window expires. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
 
                   - alert: BillingProviderDuplicate
                     expr: |
@@ -2108,7 +2241,7 @@ spec:
                       severity: critical
                     annotations:
                       summary: "Stripe billing found duplicate Customer or Subscription ownership"
-                      description: "The fail-closed ownership resolver found multiple provider objects for one workspace. Do not delete automatically; inspect metadata and subscription status under the test-mode guard. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+                      description: "The fail-closed ownership resolver found multiple provider objects for one workspace. Do not delete automatically; inspect metadata and subscription status under the test-mode guard. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
 
                   - alert: BillingInvoiceReadDegraded
                     expr: |
@@ -2121,7 +2254,7 @@ spec:
                       severity: warning
                     annotations:
                       summary: "Stripe invoice read-back is degraded"
-                      description: "Repeated invoice preview/history reads failed; the usage surface is falling back to estimates. Check restricted-key permissions and Stripe API health. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+                      description: "Repeated invoice preview/history reads failed; the usage surface is falling back to estimates. Check restricted-key permissions and Stripe API health. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
 
                   # Version/mode mismatches only come from Stripe itself (a SIGNED
                   # event carrying the wrong pinned API version or test/live mode),
@@ -2142,7 +2275,7 @@ spec:
                       severity: critical
                     annotations:
                       summary: "Stripe billing webhook API version or mode drifted"
-                      description: "Webhook intake rejected a signed Stripe event for its pinned API version or test/live mode. Verify the endpoint's API version and mode in the Stripe dashboard; never weaken verification. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+                      description: "Webhook intake rejected a signed Stripe event for its pinned API version or test/live mode. Verify the endpoint's API version and mode in the Stripe dashboard; never weaken verification. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
 
                   - alert: BillingWebhookSignatureRejects
                     expr: |
@@ -2155,7 +2288,7 @@ spec:
                       severity: warning
                     annotations:
                       summary: "Stripe billing webhook is rejecting signatures in a burst"
-                      description: "More than 5 webhook deliveries failed signature verification within 15 minutes. A few a day are unsigned scanner or replay POSTs to the public endpoint and are ignored; a burst means the endpoint secret no longer matches Stripe's and every real delivery is being rejected. Check the endpoint's recent deliveries in the Stripe dashboard, then rotate add→verify→revoke; never weaken verification. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+                      description: "More than 5 webhook deliveries failed signature verification within 15 minutes. A few a day are unsigned scanner or replay POSTs to the public endpoint and are ignored; a burst means the endpoint secret no longer matches Stripe's and every real delivery is being rejected. Check the endpoint's recent deliveries in the Stripe dashboard, then rotate add→verify→revoke; never weaken verification. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
 
                   - alert: BillingProvisioningFailure
                     expr: |
@@ -2168,7 +2301,7 @@ spec:
                       severity: warning
                     annotations:
                       summary: "Stripe Customer or Subscription provisioning is repeatedly failing"
-                      description: "Usage cannot export until the workspace's unique Customer and metered Subscription converge. Inspect catalog/key permissions and duplicate-object alerts. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+                      description: "Usage cannot export until the workspace's unique Customer and metered Subscription converge. Inspect catalog/key permissions and duplicate-object alerts. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
 
                   # Stranded node-local images: App images are node-local ctr imports
                   # (no registry — zot is empty), so a tenant-node replacement or an

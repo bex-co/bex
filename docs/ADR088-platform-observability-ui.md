@@ -29,7 +29,7 @@ Explicit non-choices:
 
 - **Not a bex-hosted customer App.** Our operations tooling must not depend on the product it exists to observe.
 - **Not folded into the product dashboard.** Customer service metrics remain ADR010's surface; platform operations is a different audience with different data.
-- **Not an outage-proof monitoring plane.** Grafana in the production cluster goes down with the cluster. The external uptime check remains the whole-cluster-outage detector; moving the observability stack (or a telemetry copy) outside the production cluster is deferred until blast-radius goals demand it.
+- **Not an outage-proof monitoring plane.** Grafana in the production cluster goes down with the cluster. The external uptime check — `.github/workflows/alerting-heartbeat.yml` (hourly, off-cluster: Watchdog active, no failed notifications, `api.bex.co`/`dashboard.bex.co` answering; one GitHub issue while it fails; w3/m174, [ADR010](ADR010-observability.md#alerting-heartbeat)) — remains the whole-cluster-outage detector; moving the observability stack (or a telemetry copy) outside the production cluster is deferred until blast-radius goals demand it.
 
 ### 2. Hostname: `obs.bex.co`
 
@@ -226,7 +226,7 @@ Two alert rules read these, both per surface with a traffic floor so a quiet sur
 
 Both land with panels on **bex-api + gateways** (origin p50/p95/p99 by surface, origin 5xx ratio + request rate, 5xx rate by route, slowest routes p95, GraphQL mutation fault ratio + p95, MCP tool p95 + outcomes, in-flight by surface) and with promtool fire/no-fire tests in `deploy/gitops/base/rules/alerts_test.yml`. The families reach Prometheus only because the bex-api scrape job's keep-list admits `bex_api_.*` — the m86 death-layer lesson: a rule that evaluates a never-scraped series is worse than no rule.
 
-Remaining, still recorded: per §1, whole-cluster outage detection stays with the external uptime check — this stack must never be its own only witness.
+Remaining, still recorded: per §1, whole-cluster outage detection stays with the external uptime check (`alerting-heartbeat.yml`, w3/m174) — this stack must never be its own only witness.
 
 ## Consequences
 
