@@ -1441,6 +1441,17 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Plan-picker section label separating the Free tier from paid tiers",
   },
+  "services.planPickerFreeSmtp": {
+    message: "免费服务无法通过 SMTP 端口 25、465 或 587 发送邮件。",
+    description:
+      "Plan picker note under the Free group: free instances are refused outbound SMTP, as on Render (w8/m127)",
+  },
+  "services.planPickerPaidSmtp": {
+    message:
+      "付费服务可以通过端口 587 或 2525（使用 STARTTLS）发送邮件。所有规格均无法使用端口 25 和 465。",
+    description:
+      "Plan picker note under the Paid group: outbound SMTP ports paid services may use (w8/m127)",
+  },
   "services.planPickerLegacyFreeWorker": {
     message:
       "此后台工作进程仍在使用免费套餐，后台工作进程现已不再提供该套餐。它会继续运行。改选付费实例类型后将无法切回免费套餐。",

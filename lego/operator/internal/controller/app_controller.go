@@ -6088,6 +6088,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 		ImagePullSecrets: pullSecrets,
 		SecurityContext:  appSecCtx(app.Spec),
 		ContainerPolicy:  app.Spec.ContainerPolicy,
+		FreePlan:         isFreeApp(app),
 		Resources:        resourcesForTier(app.Spec.Tier),
 		Volumes:          vols,
 		VolumeMounts:     mounts,
@@ -6389,9 +6390,10 @@ func (r *AppReconciler) convergeServingRoute(ctx context.Context, app *appv1alph
 	scaled := dep.Spec.Replicas == nil || *dep.Spec.Replicas != plan.replicas
 	base := dep.DeepCopy()
 	// The served template keeps its release, but its pods carry the App's
-	// current isolation label, which is what the protected policies select
-	// peers by; a boundary change must not wait for the held release (w4/m185).
-	relabeled := syncIsolationLabel(&dep.Spec.Template, app)
+	// current isolation and free-plan labels, which the protected policies and
+	// the free-plan SMTP deny select by; neither may wait for the held release
+	// (w4/m185, w8/m127).
+	relabeled := syncPolicyLabels(&dep.Spec.Template, app)
 	if scaled || relabeled {
 		dep.Spec.Replicas = &plan.replicas
 		if err := r.Patch(ctx, dep, client.MergeFrom(base)); err != nil {
@@ -6461,21 +6463,28 @@ func (r *AppReconciler) ingressRoutes(ctx context.Context, app *appv1alpha1.App,
 	return true, nil
 }
 
-// syncIsolationLabel sets the App's network-isolation label on tpl, or removes
-// it, and reports whether tpl changed.
-func syncIsolationLabel(tpl *corev1.PodTemplateSpec, app *appv1alpha1.App) bool {
-	want := app.Labels[labelNetworkIsolation]
-	if tpl.Labels[labelNetworkIsolation] == want {
+// syncPolicyLabels sets the App's network-isolation and free-plan labels on
+// tpl, or removes them, and reports whether tpl changed.
+func syncPolicyLabels(tpl *corev1.PodTemplateSpec, app *appv1alpha1.App) bool {
+	isolation := syncTemplateLabel(tpl, labelNetworkIsolation, app.Labels[labelNetworkIsolation])
+	plan := syncTemplateLabel(tpl, execution.LabelFreePlan, freePlanLabelValue(app))
+	return isolation || plan
+}
+
+// syncTemplateLabel sets key to want on tpl (removing it when want is empty)
+// and reports whether tpl changed.
+func syncTemplateLabel(tpl *corev1.PodTemplateSpec, key, want string) bool {
+	if tpl.Labels[key] == want {
 		return false
 	}
 	if want == "" {
-		delete(tpl.Labels, labelNetworkIsolation)
+		delete(tpl.Labels, key)
 		return true
 	}
 	if tpl.Labels == nil {
 		tpl.Labels = map[string]string{}
 	}
-	tpl.Labels[labelNetworkIsolation] = want
+	tpl.Labels[key] = want
 	return true
 }
 

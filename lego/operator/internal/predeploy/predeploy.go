@@ -113,6 +113,7 @@ type Options struct {
 	ImagePullSecrets []corev1.LocalObjectReference
 	SecurityContext  *corev1.SecurityContext
 	ContainerPolicy  string // persisted App policy, projected for workload admission
+	FreePlan         bool   // a free-plan App: the pod carries execution.LabelFreePlan (w8/m127)
 	Resources        corev1.ResourceRequirements
 	// Volumes/VolumeMounts carry the app pod's /etc/secrets projection so a
 	// migration can read the same secret files; nil when the app has none.
@@ -164,6 +165,9 @@ func Job(o Options) *batchv1.Job {
 	// strict pre-deploy pods stay unlabeled.
 	if len(appv1alpha1.ContainerPolicyCapabilities(o.ContainerPolicy)) > 0 {
 		podLabels[execution.LabelContainerPolicy] = o.ContainerPolicy
+	}
+	if o.FreePlan {
+		podLabels[execution.LabelFreePlan] = execution.FreePlanValue
 	}
 	var owners []metav1.OwnerReference
 	// App owner references are valid only for co-located Jobs. They also bind

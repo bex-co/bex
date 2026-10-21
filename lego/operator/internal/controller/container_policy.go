@@ -24,19 +24,38 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// freePlanLabelValue is the App's execution.LabelFreePlan value: set on a
+// free-plan App (isFreeApp: an empty tier is the free plan too), empty on a
+// paid one (w8/m127).
+func freePlanLabelValue(app *appv1alpha1.App) string {
+	if isFreeApp(app) {
+		return execution.FreePlanValue
+	}
+	return ""
+}
+
 // appPolicyLabels projects only persisted policy, never an App's arbitrary
-// labels. Keep strict templates byte-identical to avoid rolling legacy Apps.
+// labels: the widened container policy's admission marker, and the free-plan
+// label the SMTP egress deny selects (w8/m127). Keep strict paid templates
+// byte-identical to avoid rolling legacy Apps.
 func appPolicyLabels(app *appv1alpha1.App, labels map[string]string) map[string]string {
-	if len(appv1alpha1.ContainerPolicyCapabilities(app.Spec.ContainerPolicy)) == 0 {
+	widened := len(appv1alpha1.ContainerPolicyCapabilities(app.Spec.ContainerPolicy)) > 0
+	free := freePlanLabelValue(app)
+	if !widened && free == "" {
 		return labels
 	}
 	labels = maps.Clone(labels)
 	if labels == nil {
 		labels = make(map[string]string)
 	}
-	labels[execution.LabelContainerPolicy] = app.Spec.ContainerPolicy
-	labels[execution.LabelApp] = app.Name
-	labels[execution.LabelAppUID] = string(app.UID)
+	if widened {
+		labels[execution.LabelContainerPolicy] = app.Spec.ContainerPolicy
+		labels[execution.LabelApp] = app.Name
+		labels[execution.LabelAppUID] = string(app.UID)
+	}
+	if free != "" {
+		labels[execution.LabelFreePlan] = free
+	}
 	return labels
 }
 

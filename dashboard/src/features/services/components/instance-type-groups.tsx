@@ -18,9 +18,12 @@ const PAID_TIER_PLACEHOLDERS = 6;
 
 export function InstanceTypeGroup({
   label,
+  note,
   children,
 }: {
   label: ReactNode;
+  /** A line under the label: the group's outbound-SMTP rule (w8/m127). */
+  note?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -28,6 +31,7 @@ export function InstanceTypeGroup({
       <div className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
         {label}
       </div>
+      {note ? <p className="text-xs text-muted-foreground">{note}</p> : null}
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {children}
       </div>
@@ -75,9 +79,9 @@ function InstanceTypeCardSkeleton() {
   );
 }
 
-function GroupSkeleton({ cards }: { cards: number }) {
+function GroupSkeleton({ cards, note }: { cards: number; note: ReactNode }) {
   return (
-    <InstanceTypeGroup label={<Bar className="h-3 w-12" />}>
+    <InstanceTypeGroup label={<Bar className="h-3 w-12" />} note={note}>
       {Array.from({ length: cards }, (_, i) => (
         <InstanceTypeCardSkeleton key={i} />
       ))}
@@ -96,6 +100,9 @@ export function InstanceTypeGroupsSkeleton({
 }: {
   serviceType: string | null;
 }) {
+  const { t } = useTranslations();
+  // The SMTP notes are static copy, drawn here so the cards sit where the
+  // ready groups put them.
   return (
     <div
       aria-hidden="true"
@@ -103,9 +110,15 @@ export function InstanceTypeGroupsSkeleton({
       data-instance-type-groups-skeleton=""
     >
       {serviceType !== null && offersFreeTier(serviceType) && (
-        <GroupSkeleton cards={FREE_TIER_PLACEHOLDERS} />
+        <GroupSkeleton
+          cards={FREE_TIER_PLACEHOLDERS}
+          note={t("services.planPickerFreeSmtp")}
+        />
       )}
-      <GroupSkeleton cards={PAID_TIER_PLACEHOLDERS} />
+      <GroupSkeleton
+        cards={PAID_TIER_PLACEHOLDERS}
+        note={t("services.planPickerPaidSmtp")}
+      />
     </div>
   );
 }

@@ -345,3 +345,33 @@ describe("InstanceTypePicker", () => {
     expect(screen.queryByRole("radiogroup")).not.toBeInTheDocument();
   });
 });
+
+// w8/m127: each group states its outbound-SMTP rule, and the loading skeleton
+// draws the same lines so the cards do not move when the catalog arrives.
+describe("InstanceTypePicker SMTP rule", () => {
+  const FREE_NOTE =
+    "Free services can't send email over SMTP ports 25, 465 or 587.";
+  const PAID_NOTE =
+    "Paid services can send email over port 587 or 2525 with STARTTLS. Ports 25 and 465 are unavailable on every plan.";
+
+  it("notes the rule under the Free and Paid groups", async () => {
+    instanceTypesState.instanceTypes = [FREE, STANDARD, PRO];
+    instanceTypesState.loading = false;
+    renderPicker("free");
+    expect(await screen.findByText(FREE_NOTE)).toBeInTheDocument();
+    expect(screen.getByText(PAID_NOTE)).toBeInTheDocument();
+  });
+
+  it("draws the same notes while the catalog loads", async () => {
+    instanceTypesState.instanceTypes = [];
+    instanceTypesState.loading = true;
+    const { container } = renderPicker("free");
+    await screen.findByText(PAID_NOTE);
+    const skeleton = container.querySelector(
+      "[data-instance-type-groups-skeleton]",
+    );
+    expect(skeleton).not.toBeNull();
+    expect(skeleton).toHaveTextContent(FREE_NOTE);
+    expect(skeleton).toHaveTextContent(PAID_NOTE);
+  });
+});

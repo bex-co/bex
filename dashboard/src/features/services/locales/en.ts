@@ -1474,6 +1474,17 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Plan-picker section label separating the Free tier from paid tiers",
   },
+  "services.planPickerFreeSmtp": {
+    message: "Free services can't send email over SMTP ports 25, 465 or 587.",
+    description:
+      "Plan picker note under the Free group: free instances are refused outbound SMTP, as on Render (w8/m127)",
+  },
+  "services.planPickerPaidSmtp": {
+    message:
+      "Paid services can send email over port 587 or 2525 with STARTTLS. Ports 25 and 465 are unavailable on every plan.",
+    description:
+      "Plan picker note under the Paid group: outbound SMTP ports paid services may use (w8/m127)",
+  },
   "services.planPickerLegacyFreeWorker": {
     message:
       "This background worker is on Free, which background workers can no longer use. It keeps running. Choosing a paid instance type moves it off Free, and it cannot return.",

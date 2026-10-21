@@ -1642,6 +1642,19 @@ if [ -f "$EGRESS" ]; then
   [ -z "$obsolete_platform_allows" ] \
     || { echo "FAIL: obsolete egress allows remain after disabling metadata-policy default-deny: $obsolete_platform_allows" >&2; fail=1; }
 
+  echo "==> $EGRESS free-plan SMTP deny refuses exactly TCP 25/465/587 (w8/m127)"
+  smtp_deny_shape="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "deny-free-plan-smtp-egress") |
+      [.spec.endpointSelector.matchLabels."app.bex.co/free-plan",
+       (.spec.enableDefaultDeny.egress | tostring),
+       (.spec.egressDeny | length | tostring),
+       (.spec.egressDeny[0].toEntities | join(",")),
+       ([.spec.egressDeny[0].toPorts[].ports[] | .protocol + "/" + .port] | join(",")),
+       ((.spec.egress // []) | length | tostring)] | join(":")' \
+    "$EGRESS" | tr -d '\n')"
+  [ "$smtp_deny_shape" = "true:false:1:world:TCP/25,TCP/465,TCP/587:0" ] \
+    || { echo "FAIL: deny-free-plan-smtp-egress must select app.bex.co/free-plan=true, keep enableDefaultDeny.egress=false and deny only TCP 25/465/587 to world; got '$smtp_deny_shape'" >&2; fail=1; }
+
   echo "==> CNPG apiserver allow is additive (does not enable default-deny)"
   DSCTL="deploy/gitops/base/datastore-control-egress.yaml"
   cnpg_allow_shape="$(yq -N \
