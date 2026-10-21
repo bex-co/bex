@@ -1170,6 +1170,14 @@ func isVerbMethod(recv reflect.Type, m reflect.Method) bool {
 	if recv == reflect.TypeFor[*envgroups.Service]() && m.Name == "WithInitialEnvGroups" {
 		return false
 	}
+	// The operator-run container-policy migration (w6/m149 t008) is reached
+	// only through `/api migrate-container-policy` inside the bex-api pod, never
+	// a tenant transport, so it has no caller identity to authorize. Its
+	// dry-run, refusal and rollback contracts live in
+	// apps/container_policy_migration_test.go.
+	if recv == reflect.TypeFor[*apps.Service]() && m.Name == "MigrateContainerPolicy" {
+		return false
+	}
 	if !declaredMethodsOn(recv)[m.Name] {
 		return false
 	}
