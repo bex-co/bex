@@ -3028,6 +3028,13 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 	if err != nil {
 		return parsedDatabase{}, err
 	}
+	// Render: an omitted Blueprint ipAllowList "allows all IPs for a new
+	// database (all connections require valid credentials)"; an explicit []
+	// blocks external connections. Same dual-stack default as REST create
+	// (w8/157). A sync that omits the field preserves the saved list.
+	if d.IPAllowList == nil {
+		allow = []appv1alpha1.IPAllowEntry{{CIDR: "0.0.0.0/0"}, {CIDR: "::/0"}}
+	}
 	for _, r := range d.ReadReplicas {
 		if r.Name == "" {
 			return parsedDatabase{}, fmt.Errorf("%w: database %q has a readReplica without a name", core.ErrBadRequest, d.Name)

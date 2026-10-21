@@ -401,7 +401,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **158** — [Render's free-plan "migrate in the build command" recipe cannot work on bex: no `fromDatabase` variable in the build and no route to the database](158.md) ← `/qa-find-bugs-cli` sweep 1274 2026-10-21: decision needed (open a scoped build→datastore path, or keep the boundary and point to pre-deploy); major.
 
-- [ ] **157** — [A Blueprint database with no `ipAllowList` is private on bex, but Render documents it as open to all IPs](157.md) ← `/qa-find-bugs-cli` sweep 1273 2026-10-21: a real Blueprint's documented migrate-from-outside flow fails on import; major, ~45m (confirm against ADR009:238/261 first).
+- [x] **157** — [A Blueprint database with no `ipAllowList` is private on bex, but Render documents it as open to all IPs](done/157.md) — **DONE (2026-10-21)**: omitted Blueprint Postgres `ipAllowList` creates public, as Render; ← `/qa-find-bugs-cli` sweep 1273 2026-10-21: a real Blueprint's documented migrate-from-outside flow fails on import; major, ~45m (confirm against ADR009:238/261 first).
 
 - [x] **156** — [Blueprints that use YAML anchors and aliases are refused, although Render resolves them and real Render Blueprints depend on them](done/156.md) — **DONE (2026-10-21)**: aliases resolve under the walk budgets; ← `/qa-find-bugs-cli` sweep 1270 2026-10-21: RooCode Roomote and Lemma can't import; minor, ~45m.
 
