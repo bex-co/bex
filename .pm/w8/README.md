@@ -373,6 +373,44 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **171** — [`RENDER_CPU_COUNT` is rounded up to a whole number (free and starter both report `1`), where Render reports the plan's CPU, e.g. `"0.5"`](171.md) ← `/qa-find-bugs-cli` sweep 1290 2026-10-21: follow-up to w5/m148; minor, ~20m.
+
+- [ ] **170** — [An unusable `PORT` value (`abc`, `0`, `70000`) is accepted and shown, but the process silently receives `PORT=3000`](170.md) ← `/qa-find-bugs-cli` sweep 1289 2026-10-21: follow-up to w5/m149; minor, ~30m.
+
+- [ ] **169** — [A service created with a `PORT` env var reports `port: 3000` / `openPorts: [3000]` in its create response, then its real port on the next read](169.md) ← `/qa-find-bugs-cli` sweep 1288 2026-10-21: follow-up to w5/m149; minor, ~30m.
+
+- [ ] **168** — [A web service with no port set expects port 3000 on bex but 10000 on Render, so commands copied from Render's docs never pass the health check](168.md) ← `/qa-find-bugs-cli` sweep 1285 2026-10-21: 25 sampled Blueprints hardcode 10000; decision (adopt 10000 with backfill); major.
+
+- [x] **167** — [Prebuilt images from common public registries (cgr.dev, registry.gitlab.com, nvcr.io, docker.elastic.co, lscr.io, *.azurecr.io) are refused as "not trusted"](done/167.md) — **DUPLICATE (2026-10-21)** of w5/171: Duplicate of w5/171 ("Images from any public registry deploy, as on Render"), blocked on the user's DNS-rebinding risk decision. The probe table and the `render-examples/minio` evidence here feed that decision.
+
+- [ ] **166** — [`POST /v1/blueprints` answers 400 after it has already created the Blueprint, leaving an auto-syncing connection the caller never learns about](166.md) ← `/qa-find-bugs-cli` sweep 1283 2026-10-21: minor, ~45m.
+
+- [ ] **165** — [A root directory written with a trailing slash (`rootDir: ./`, `server/`) is refused as "a relative path with no '..' components"](165.md) ← `/qa-find-bugs-cli` sweep 1283 2026-10-21: Render's export writes `./`; minor, ~25m.
+
+- [ ] **164** — [Bex runs every Docker Command through its own `/bin/sh -c`: Render's documented `/bin/sh -c <commands>` form silently drops the first command's arguments, and shell-less images cannot start](164.md) ← `/qa-find-bugs-cli` sweeps 1281/1283 2026-10-21: Render's Django example would skip its migration; major, ~90m.
+
+- [ ] **163** — [Render's "Deploy to Render" button has no bex counterpart: `/deploy?repo=` is a 404 and the Blueprint wizard ignores `?repo=`](163.md) ← `/qa-find-bugs-cli` sweep 1280 2026-10-21: 103 render-examples READMEs use the button; minor, ~90m.
+
+- [ ] **162** — [Static-site redirects cannot point at another site (`destination: https://…`), although Render allows it and a redirect proxies nothing](162.md) ← `/qa-find-bugs-cli` sweep 1278 2026-10-21: split redirects from the local-only rewrite rule; minor, ~60m.
+
+- [x] **161** — [`bex blueprints validate` refuses a `fromService.envVarKey` copy of a `sync: false` variable, which Render's own AEO-analytics example uses](done/161.md) — **DONE (2026-10-21)**: Resolved by w5/170 (a service can copy a sibling's `sync: false` value): `syncref.yaml` (flat and nested) validates on pin `a3f66521f93d` (sweep 1286).
+
+- [ ] **160** — [A Blueprint database on Render's `pro-4gb` plan is refused as "not a supported Render Postgres plan", although it is one](160.md) ← `/qa-find-bugs-cli` sweep 1276 2026-10-21: wording, sibling of w8/054; minor, ~15m.
+
+- [x] **159** — [Render's official Django example cannot build on bex because bex sets no `RENDER` variable, and would run with `DEBUG=True` if it did](done/159.md) — **DONE (2026-10-21)**: Resolved by w5/m148: every service now carries Render's default variables (`RENDER`, `RENDER_EXTERNAL_HOSTNAME`, … at build and runtime), live on pin `a3f66521f93d` per w4/386's probe. The `RENDER_INSTANCE_ID` format follow-up is w4/386.
+
+- [ ] **158** — [Render's free-plan "migrate in the build command" recipe cannot work on bex: no `fromDatabase` variable in the build and no route to the database](158.md) ← `/qa-find-bugs-cli` sweep 1274 2026-10-21: decision needed (open a scoped build→datastore path, or keep the boundary and point to pre-deploy); major.
+
+- [ ] **157** — [A Blueprint database with no `ipAllowList` is private on bex, but Render documents it as open to all IPs](157.md) ← `/qa-find-bugs-cli` sweep 1273 2026-10-21: a real Blueprint's documented migrate-from-outside flow fails on import; major, ~45m (confirm against ADR009:238/261 first).
+
+- [ ] **156** — [Blueprints that use YAML anchors and aliases are refused, although Render resolves them and real Render Blueprints depend on them](156.md) ← `/qa-find-bugs-cli` sweep 1270 2026-10-21: RooCode Roomote and Lemma can't import; minor, ~45m.
+
+- [x] **155** — [Blueprint `fromService.envVarKey` cannot reference Render's default variables (`RENDER_EXTERNAL_URL`, `RENDER_EXTERNAL_HOSTNAME`, …)](done/155.md) — **DONE (2026-10-21)**: Resolved by w5/m148 (Render default variables, incl. `fromService.envVarKey: RENDER_*` references): `default-ref.yaml` validates on pin `a3f66521f93d`, and the four official examples now fail only on the QA workspace quota (sweep 1284).
+
+- [ ] **154** — [A Docker service with no `dockerfilePath` reads back `""`, where Render reports its default `./Dockerfile`](154.md) ← `/qa-find-bugs-cli` sweep 1269 2026-10-21: read projection beside w8/m128's context default; minor, ~20m.
+
+- [ ] **153** — [`bex services create --type static_site` without `--publish-directory` is refused, although Render's API defaults the publish path to `public`](153.md) ← `/qa-find-bugs-cli` sweep 1268 2026-10-21: REST create default; minor, ~30m.
+
 - [ ] **152** — [A Render region is silently normalized on create but refused in every Blueprint, so 75 of 100 real Render exports fail on `region` alone](blocked/152.md) ← `/qa-find-bugs-cli` sweep 1267 2026-10-20: decision needed (normalize everywhere vs refuse everywhere); major, ~60m once decided. — **BLOCKED (2026-10-20: needs the user to choose one `region` policy for every surface — (1, recommended) Blueprints normalize any Render region to `BEX_REGION` as create already does, so 75 of the 100 sampled Render exports validate unchanged; or (2) create refuses a region other than `BEX_REGION` with the Blueprint's actionable wording; ~60m once decided)**
 
 - [x] **151** — [`PATCH /v1/services/{id}` refuses Render's `envSpecificDetails.dockerContext` as an unknown field](done/151.md) ← `/qa-find-bugs-cli` sweep 1266 2026-10-20: no update path for the build context on any surface; minor, ~40m. — **PROMOTED (2026-10-20)** to `m128`.
