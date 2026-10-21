@@ -46,22 +46,6 @@ envValueFrom:
     secretKeyRef:
       name: grafana-cli-analytics
       key: password
-extraSecretMounts:
-  - name: product-analytics-ca
-    secretName: grafana-product-analytics
-    optional: true
-    mountPath: /etc/grafana/product-analytics
-    readOnly: true
-    items:
-      - key: ca.crt
-        path: ca.crt
-  - name: cli-analytics-ca
-    secretName: grafana-cli-analytics
-    mountPath: /etc/grafana/cli-analytics
-    readOnly: true
-    items:
-      - key: ca.crt
-        path: ca.crt
 
 grafana.ini:
   plugins:
@@ -118,9 +102,9 @@ datasources:
           password: $BEX_PRODUCT_ANALYTICS_PASSWORD
         jsonData:
           database: bex
-          sslmode: verify-full
-          tlsConfigurationMethod: file-path
-          sslRootCertFile: /etc/grafana/product-analytics/ca.crt
+          # Encrypted, not CA-verified: these internal, read-only readers
+          # follow every CNPG CA renewal without a reseal (w2/m170, ADR088).
+          sslmode: require
           postgresVersion: 1700
           timescaledb: false
           maxOpenConns: 4
@@ -140,9 +124,9 @@ datasources:
           password: $BEX_CLI_ANALYTICS_PASSWORD
         jsonData:
           database: bex
-          sslmode: verify-full
-          tlsConfigurationMethod: file-path
-          sslRootCertFile: /etc/grafana/cli-analytics/ca.crt
+          # Encrypted, not CA-verified: these internal, read-only readers
+          # follow every CNPG CA renewal without a reseal (w2/m170, ADR088).
+          sslmode: require
           postgresVersion: 1700
           timescaledb: false
           maxOpenConns: 4
@@ -5891,7 +5875,7 @@ dashboards:
              "id": 12,
              "type": "timeseries",
              "title": "Analytics datasource probe — age since success",
-             "description": "Time since monitoring/analytics-datasource-probe last connected to bex-db as both Grafana analytics readers with sslmode=verify-full (same Secrets Grafana mounts), the series AnalyticsDatasourceProbeStale alerts on (a probe that has never succeeded counts from its creation). Above the 30m line the Product/CLI analytics dashboards are failing — usually a sealed ca.crt left stale by a bex-db CA renewal.",
+             "description": "Time since monitoring/analytics-datasource-probe last connected to bex-db as both Grafana analytics readers, the same way Grafana does (same Secrets, sslmode=require) — the series AnalyticsDatasourceProbeStale alerts on (a probe that has never succeeded counts from its creation). Above the 30m line the Product/CLI analytics dashboards are failing: a wrong reader password, a lost grant, or a broken path.",
              "gridPos": { "h": 8, "w": 24, "x": 0, "y": 38 },
              "datasource": { "type": "prometheus", "uid": "prometheus" },
              "fieldConfig": {

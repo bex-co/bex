@@ -30,7 +30,7 @@ tests:
               namespace: monitoring
             exp_annotations:
               summary: "Grafana's analytics datasources have not passed a connection probe in >30m"
-              description: "monitoring/analytics-datasource-probe connects to bex-db as bex_product_analytics and bex_cli_analytics with sslmode=verify-full, using the same Secrets Grafana mounts, and has not succeeded in over 30 minutes — the Product/CLI analytics dashboards are failing. Debug: kubectl -n monitoring get jobs -l batch.kubernetes.io/cronjob-name=analytics-datasource-probe, then kubectl -n monitoring logs job/<latest>. 'certificate verify failed' means the sealed ca.crt no longer matches bex-system/bex-db-ca: reseal per scripts/lib/analytics-bootstrap.sh (SEAL_TO=deploy/gitops/overlays/prod/grafana-<profile>-analytics.sealedsecret.yaml). Runbook: docs/ADR088-platform-observability-ui.md § Analytics datasource custody"
+              description: "monitoring/analytics-datasource-probe connects to bex-db as bex_product_analytics and bex_cli_analytics the way Grafana does (same Secrets, sslmode=require) and has not succeeded in over 30 minutes — the Product/CLI analytics dashboards are failing. Debug: kubectl -n monitoring get jobs -l batch.kubernetes.io/cronjob-name=analytics-datasource-probe, then kubectl -n monitoring logs job/<latest>. An authentication failure means the sealed reader password and the bex_<profile>_analytics role disagree: rerun the profile bootstrap. Runbook: docs/ADR088-platform-observability-ui.md § Analytics datasource custody"
 
   - name: probe that never succeeded fires once 30m old, not while young
     interval: 1m
