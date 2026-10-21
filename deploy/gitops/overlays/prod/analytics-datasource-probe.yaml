@@ -1,6 +1,6 @@
 # Connects to bex-db as Grafana's two analytics readers, with the same mounted
-# Secrets and sslmode=verify-full, so a stale CA, wrong password, lost grant or
-# broken path fails here instead of only when someone opens a dashboard
+# Secrets and sslmode=require, so a wrong password, lost grant or broken path
+# fails here instead of only when someone opens a dashboard
 # (AnalyticsDatasourceProbeStale). No Kubernetes API access. Production-only,
 # like the sealed reader Secrets it mounts.
 apiVersion: batch/v1
@@ -44,16 +44,15 @@ spec:
                 - |
                   for profile in product cli; do
                     PGPASSWORD="$(cat "/readers/$profile/password")" \
-                    PGSSLROOTCERT="/readers/$profile/ca.crt" \
                     PGUSER="bex_${profile}_analytics" \
                       psql -X -c "SELECT 1 FROM ${profile}_analytics.events LIMIT 1" >/dev/null
-                    echo "ok: ${profile} analytics reader (verify-full)"
+                    echo "ok: ${profile} analytics reader"
                   done
               env:
                 - { name: PGHOST, value: bex-db-rw.bex-system.svc }
                 - { name: PGPORT, value: "5432" }
                 - { name: PGDATABASE, value: bex }
-                - { name: PGSSLMODE, value: verify-full }
+                - { name: PGSSLMODE, value: require }
                 - { name: PGCONNECT_TIMEOUT, value: "10" }
                 - { name: PGAPPNAME, value: analytics-datasource-probe }
               resources:

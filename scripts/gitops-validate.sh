@@ -1280,7 +1280,7 @@ fi
 echo "==> every platform alert's backing series has a Grafana panel (ADR088 §6)"
 bash scripts/obs-coverage-check.sh || fail=1
 
-echo "==> CLI analytics uses its restricted reader with verified TLS and bounded pooling"
+echo "==> CLI analytics uses its restricted reader with encrypted, CA-unpinned TLS and bounded pooling"
 if ! yq -e '."grafana.ini".plugins.preinstall_disabled == true' \
   deploy/gitops/base/values/grafana.values.yaml >/dev/null; then
   echo "FAIL: Grafana must keep its image-bundled plugins on the read-only root filesystem" >&2
@@ -1290,8 +1290,8 @@ if ! yq -e '
   (.datasources."datasources.yaml".datasources[] |
     select(.uid == "cli-analytics")) as $ds |
   (($ds.user == "bex_cli_analytics") and
-   ($ds.jsonData.sslmode == "verify-full") and
-   ($ds.jsonData.sslRootCertFile == "/etc/grafana/cli-analytics/ca.crt") and
+   ($ds.jsonData.sslmode == "require") and
+   ($ds.jsonData.sslRootCertFile == null) and
    ($ds.jsonData.maxOpenConns == 4) and ($ds.jsonData.maxIdleConns == 2) and
    ($ds.secureJsonData.password == "$BEX_CLI_ANALYTICS_PASSWORD"))
 ' deploy/gitops/base/values/grafana.values.yaml >/dev/null; then
@@ -1317,18 +1317,28 @@ for family in sandbox agent_session api billing webhooks push; do
   fi
 done
 
-echo "==> Product analytics uses its restricted reader with verified TLS and bounded pooling"
+echo "==> Product analytics uses its restricted reader with encrypted, CA-unpinned TLS and bounded pooling"
 if ! yq -e '
   (.datasources."datasources.yaml".datasources[] | select(.uid == "product-analytics")) as $ds |
   (($ds.user == "bex_product_analytics") and
-   ($ds.jsonData.sslmode == "verify-full") and
-   ($ds.jsonData.sslRootCertFile == "/etc/grafana/product-analytics/ca.crt") and
+   ($ds.jsonData.sslmode == "require") and
+   ($ds.jsonData.sslRootCertFile == null) and
    ($ds.jsonData.maxOpenConns == 4) and ($ds.jsonData.maxIdleConns == 2) and
    ($ds.secureJsonData.password == "$BEX_PRODUCT_ANALYTICS_PASSWORD"))
 ' deploy/gitops/base/values/grafana.values.yaml >/dev/null; then
   echo "FAIL: Product analytics datasource lost its restricted-reader contract" >&2
   fail=1
 fi
+# w2/m170: the analytics readers encrypt but do not pin bex-db's CNPG CA, which
+# renews about every 90 days; a pinned copy silently broke both dashboards once.
+echo "==> analytics reader Secrets carry no pinned bex-db CA"
+for profile in product cli; do
+  sealed=deploy/gitops/overlays/prod/grafana-$profile-analytics.sealedsecret.yaml
+  if [ "$(yq -N '.spec.encryptedData | keys | join(",")' "$sealed")" != password ]; then
+    echo "FAIL: $sealed must seal only 'password' — a pinned bex-db ca.crt breaks at the next CNPG CA renewal (w2/m170)" >&2
+    fail=1
+  fi
+done
 
 # etcd snapshot image guard (w7/m29 drill): the CronJob's snapshot image must be ≥3.6.x.
 # etcdutl (required for 'snapshot restore' in the runbook) ships only in 3.6.x+ images.

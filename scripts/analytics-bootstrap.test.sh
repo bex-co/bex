@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Custody contract of scripts/lib/analytics-bootstrap.sh (w7/m153): an unowned
 # Secret is applied and made adoptable, a SealedSecret-owned Secret is never
-# rewritten, CA drift under sealed custody fails closed, and SEAL_TO reseals.
+# rewritten, and SEAL_TO reseals. The Secret is password-only — Grafana connects
+# with sslmode=require, so no bex-db CA is ever read, applied or sealed (w2/m170).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -16,10 +17,8 @@ printf '%s\n' "$*" >>"$T/trace"
 b64() { printf '%s' "$1" | base64 | tr -d '\n'; }
 case "$*" in
   *"get clusters.postgresql.cnpg.io bex-db"*) printf 'bex-db-1' ;;
-  *"get secret bex-db-ca"*) b64 "$T_DB_CA" ;;
   *"get secret grafana-product-analytics"*ownerReferences*) printf '%s' "${T_OWNER:-}" ;;
   *"get secret grafana-product-analytics"*data.password*) [ -z "${T_PASSWORD:-}" ] || b64 "$T_PASSWORD" ;;
-  *"get secret grafana-product-analytics"*ca*) b64 "$T_SECRET_CA" ;;
   *"exec -i bex-db-1 -c postgres -- psql"*) cat >>"$T/psql" ;;
   "apply -f -") cat >>"$T/applied" ;;
   *"annotate --overwrite secret grafana-product-analytics sealedsecrets.bitnami.com/managed=true") ;;
@@ -48,35 +47,32 @@ run() {
   mkdir -p "$T"
   : >"$T/trace" >"$T/psql" >"$T/applied"
   rc=0
-  env PATH="$tmp/bin:$PATH" T="$T" T_DB_CA=ca-current "$@" \
+  env PATH="$tmp/bin:$PATH" T="$T" "$@" \
     bash scripts/lib/analytics-bootstrap.sh product >"$T/out" 2>"$T/err" || rc=$?
 }
 
 run fresh
 check "fresh install succeeds" '[ "$rc" = 0 ]'
-check "fresh install applies the Secret with the current CA" 'grep -qF "ca.crt: $(b64 ca-current)" "$T/applied"'
+check "fresh install applies a password-only Secret" 'grep -q "password:" "$T/applied" && ! grep -q "ca.crt" "$T/applied"'
 check "fresh install marks the Secret adoptable" 'grep -q "annotate --overwrite secret grafana-product-analytics sealedsecrets.bitnami.com/managed=true" "$T/trace"'
 minted="$(sed -n "s/^\\\\set analytics_password '\\(.*\\)'$/\\1/p" "$T/psql")"
 check "fresh install sets the role to the minted password" '[[ "$minted" =~ ^[a-f0-9]{64}$ ]] && grep -qF "password: $(b64 "$minted")" "$T/applied"'
 
-run unowned T_PASSWORD="$pw_old" T_SECRET_CA=ca-current
+run unowned T_PASSWORD="$pw_old"
 check "unowned Secret keeps its password and is re-applied" '[ "$rc" = 0 ] && grep -qF "password: $(b64 "$pw_old")" "$T/applied"'
 check "unowned Secret is marked adoptable" 'grep -q "sealedsecrets.bitnami.com/managed=true" "$T/trace"'
 
-run sealed T_OWNER=grafana-product-analytics T_PASSWORD="$pw_old" T_SECRET_CA=ca-current
+run sealed T_OWNER=grafana-product-analytics T_PASSWORD="$pw_old"
 check "sealed Secret succeeds" '[ "$rc" = 0 ]'
 check "sealed Secret is never rewritten or re-annotated" '[ ! -s "$T/applied" ] && ! grep -q annotate "$T/trace"'
 check "role password follows the sealed Secret" 'grep -qF "\\set analytics_password '"'"'$pw_old'"'"'" "$T/psql"'
 
-run drift T_OWNER=grafana-product-analytics T_PASSWORD="$pw_old" T_SECRET_CA=ca-stale
-check "sealed CA drift fails closed" '[ "$rc" != 0 ] && grep -q "SEAL_TO" "$T/err"'
-check "sealed CA drift touches neither database nor Secret" '[ ! -s "$T/psql" ] && [ ! -s "$T/applied" ]'
-
-run reseal T_OWNER=grafana-product-analytics T_PASSWORD="$pw_old" T_SECRET_CA=ca-stale SEAL_TO="$tmp/reseal/out.yaml"
-check "SEAL_TO reseals the current CA with the kept password" '[ "$rc" = 0 ] && grep -qF "ca.crt: $(b64 ca-current)" "$T/sealed-input" && grep -qF "password: $(b64 "$pw_old")" "$T/sealed-input"'
+run reseal T_OWNER=grafana-product-analytics T_PASSWORD="$pw_old" SEAL_TO="$tmp/reseal/out.yaml"
+check "SEAL_TO reseals the kept password and no CA" '[ "$rc" = 0 ] && grep -qF "password: $(b64 "$pw_old")" "$T/sealed-input" && ! grep -q "ca.crt" "$T/sealed-input"'
 check "SEAL_TO writes the manifest and leaves the owned Secret alone" 'grep -q "kind: SealedSecret" "$tmp/reseal/out.yaml" && [ ! -s "$T/applied" ]'
 
-for name in fresh unowned sealed drift reseal; do
+for name in fresh unowned sealed reseal; do
+  check "$name: never reads the bex-db CA" '! grep -q "bex-db-ca" "$tmp/$name/trace"'
   check "$name: no credential in argv or output" '! grep -qF "$pw_old" "$tmp/$name/trace" "$tmp/$name/out" "$tmp/$name/err"'
 done
 

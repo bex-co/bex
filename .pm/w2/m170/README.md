@@ -1,6 +1,6 @@
 # w2 · m170 — Grafana analytics keep trusting `bex-db` across CA renewals
 
-**Worker:** worker2 **Goal:** both Grafana analytics datasources are healthy again, a `bex-db` CA renewal reaches them with no human reseal, and a failing analytics datasource or stale CA copy raises an alert instead of going unnoticed. **Status:** todo — t001, t002, t004 done and live 2026-10-20; t003 next (user decision 2026-10-20: the analytics readers stop verifying the CA — `sslmode: require` — instead of changing `bex-db`'s TLS)
+**Worker:** worker2 **Goal:** both Grafana analytics datasources are healthy again, a `bex-db` CA renewal reaches them with no human reseal, and a failing analytics datasource or stale CA copy raises an alert instead of going unnoticed. **Status:** in progress — t001–t004 done; t003 shipped 2026-10-20 (`sslmode: require`, password-only reader Secrets, no pinned CA); t005 live check next
 
 ## Tasks (in order)
 
@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | t001 | Reseal both analytics readers now and confirm datasource health — **DONE** | 30m | — |
 | t002 | Inventory every pinned copy of `bex-db-ca` and CNPG's renewal cadence — **DONE** | 30m | — |
-| t003 | Analytics readers connect with `sslmode: require` and stop pinning the `bex-db` CA (Grafana values, password-only SealedSecrets, bootstrap, probe, ADR088) | 1h | t002 |
+| t003 | Analytics readers connect with `sslmode: require` and stop pinning the `bex-db` CA (Grafana values, password-only SealedSecrets, bootstrap, probe, ADR088) — **DONE** | 1h | t002 |
 | t004 | Alert on a failing analytics datasource and on CA-copy drift or approaching expiry — **DONE** (probe + alert + panel; the expiry-window warning moves to t003) | 45m | t002 |
 | t005 | Live check: Grafana and the probe connect with `require`, and no Secret in `monitoring` carries a `bex-db` CA | 20m | t003, t004 |
 | t006 | Simplify | 15m | t005 |
