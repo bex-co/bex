@@ -20,7 +20,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"slices"
 	"sort"
 	"strings"
 
@@ -68,15 +67,11 @@ type configKeyKind struct {
 	noun, code, field string
 	// identifier also holds the key to a C identifier, what a shell reads.
 	identifier bool
-	// reserved reports the names bex owns; nil when the kind has none.
-	reserved func(string) bool
 }
 
 var (
 	envVarKey = configKeyKind{noun: "environment variable", code: "ENVIRONMENT_VARIABLE_INVALID", field: "key",
-		identifier: true, reserved: IsReservedEnvKey}
-	// Secret files have no reserved names: a file called PORT is not an
-	// environment variable, and the operator never injects one.
+		identifier: true}
 	secretFileKey = configKeyKind{noun: "secret file", code: "SECRET_FILE_INVALID", field: "name"}
 )
 
@@ -130,62 +125,14 @@ func ValidEnvKey(k string) bool {
 	return envVarKey.problem(k) == ""
 }
 
-// ReservedEnvKeys are environment variable names bex owns, so a user write of
-// one is refused instead of stored-and-ignored.
-//
-// Today that is exactly PORT. The operator strips a user PORT out of spec.env
-// and appends its own container-level PORT entry, which wins over every envFrom
-// key (lego/operator/internal/controller/app_controller.go appEnv,
-// docs/ADR004-app-deployment.md). That injection happens for **every** App type,
-// not just web services, so the rule is reserved-everywhere: one rule, no
-// per-type exception to remember. Render diverges here — it lets you override
-// PORT — and docs/ADR018-render-parity.md records that.
-//
-// A reserved key is refused only on a **write**. Deleting one still works, so a
-// service or group that already stored a PORT before this rule can be cleaned
-// up through the ordinary delete verbs.
-var ReservedEnvKeys = []string{"PORT"}
-
-// IsReservedEnvKey reports whether k is a name bex owns. The match is exact and
-// case-sensitive: environment variables are case-sensitive, and a lowercase
-// "port" is an ordinary application variable the operator never touches.
-func IsReservedEnvKey(k string) bool {
-	return slices.Contains(ReservedEnvKeys, k)
-}
-
-// ReservedEnvKeySentence is the one wording for the refusal. Every surface —
-// REST, GraphQL, MCP, Blueprint validation, and the dashboard's inline hint —
-// renders this exact string, so a caller who learns it on one surface
-// recognizes it on the next.
-//
-// It now names WHERE. Until w4/m121 it ended at "change the service port
-// instead", and the service port was create-only: no update verb on any
-// surface, no dashboard control, and unreadable even on GraphQL. The sentence
-// sent every caller to a setting that did not exist. The port field and its
-// verb are named explicitly so the instruction is followable from the text
-// alone, on a surface that renders strings rather than links.
-func ReservedEnvKeySentence(k string) string {
-	return fmt.Sprintf("environment variable %q is reserved: bex sets it from the service port; change the service's port field instead (REST PATCH /v1/services/{id} port, GraphQL setPort, MCP update_service port, or Settings in the dashboard)", k)
-}
-
-// ReservedEnvKeyError is the coded refusal every environment write path
-// returns. The Blueprint parser is the one exception: it wraps the sentence
-// with the manifest location instead, because its validation surface renders
-// error strings rather than codes — see parseServiceEnv and parseEnvGroup.
-func ReservedEnvKeyError(k string) error {
-	return NewBadRequestError("ENVIRONMENT_VARIABLE_RESERVED", ReservedEnvKeySentence(k), nil)
-}
-
 // CheckEnvKey is the single gate for an environment variable name a caller
-// wants to set: it must be well-formed and must not be one bex owns. Every
-// write path funnels through it so the two refusals cannot drift apart.
+// wants to set: it must be well-formed. Every write path funnels through it.
+// No name is reserved: PORT, like on Render, is the service's to set
+// (w5/m149).
 func CheckEnvKey(k string) error {
 	if !ValidEnvKey(k) {
 		// Names only in the error — never the value (docs/ADR013-secrets.md).
 		return envVarKey.refuse(k)
-	}
-	if IsReservedEnvKey(k) {
-		return ReservedEnvKeyError(k)
 	}
 	return nil
 }

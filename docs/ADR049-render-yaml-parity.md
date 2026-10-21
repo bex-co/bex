@@ -382,7 +382,7 @@ The w8/m53 fence that kept booleans as "located schema refusals" was a reading o
 
 **Corpus guard.** `TestRenderExamplesCorpus` (opt-in: `BEX_RENDER_EXAMPLES_DIR`, files fetched with `scripts/render-examples-corpus.sh` because they are third-party) runs every render-examples `render.yaml` through `ValidateBlueprint`. A file may fail only for:
 
-- a deliberate divergence: region, previews and `previewValue`, workflows, the reserved `PORT`, `RENDER_*` references, the 10 GB disk minimum;
+- a deliberate divergence: region, previews and `previewValue`, workflows, the 10 GB disk minimum (the reserved `PORT` and `RENDER_*` references were removed by w5/m149 and w5/m148);
 - a refusal Render makes too: `sync: false` in an env group, the misspelled `dockerFilePath`, a free `private_service`, retired Postgres plans such as `pro-4gb`;
 - a gap already filed: free-form resource names and dotted env keys, both w5/169.
 

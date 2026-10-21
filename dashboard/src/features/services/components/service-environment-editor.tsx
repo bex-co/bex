@@ -97,7 +97,6 @@ import {
 } from "@/features/services/lib/dotenv-import";
 import { useSensitiveReveals } from "@/features/services/hooks/use-sensitive-reveals";
 import { EnvImportDialog } from "./env-import-dialog";
-import { ReservedEnvKeyNotice } from "./reserved-env-key-notice";
 import { SecretFileContentDialog } from "./secret-file-content-dialog";
 import { PermissionMenuItem } from "@/features/capabilities/components/permission-menu-item";
 
@@ -145,8 +144,6 @@ export function ServiceEnvironmentEditor({
       // A draft belongs to one service: another service starts a fresh editor.
       key={serviceId}
       resourceId={serviceId}
-      // The reserved-PORT refusal links to THIS service's port control.
-      portSettingsServiceId={serviceId}
       // A suspended service deploys nothing: the deploying save modes wait for
       // Resume, as Manual Deploy does (w4/m234).
       deployBlockedReason={
@@ -260,13 +257,6 @@ export interface EnvironmentEditorProps {
   /** Override section copy when the editor is hosted outside a service (w4/067). */
   copy?: EnvironmentEditorCopy;
   /**
-   * The service whose Settings → Port control the reserved-PORT refusal should
-   * open (w4/m121/t003). Set by the service Environment tab; left unset by the
-   * env-group editor, whose group can be linked to many services at once, so
-   * its notice links to the services list instead.
-   */
-  portSettingsServiceId?: string;
-  /**
    * Why the deploying save modes cannot run now — a suspended service
    * (w4/m234). Save only becomes the primary action, and the two deploying
    * items stay disabled with this reason.
@@ -295,7 +285,6 @@ export function EnvironmentEditor({
   saving,
   generateOnServer = false,
   copy,
-  portSettingsServiceId,
   deployBlockedReason,
 }: EnvironmentEditorProps) {
   const { t } = useTranslations();
@@ -833,7 +822,6 @@ export function EnvironmentEditor({
                 error={validation.env[row.id]}
                 disabled={createDenied}
                 permissionDescriptionID={writeReasonID}
-                portSettingsServiceId={portSettingsServiceId}
                 onChange={(update) => updateRow("envVars", row.id, update)}
               />
             ))
@@ -1300,15 +1288,12 @@ function EnvDraftItem({
   error,
   disabled,
   permissionDescriptionID,
-  portSettingsServiceId,
   onChange,
 }: {
   row: EnvDraftRow;
   error?: DraftValidation["env"][string];
   disabled: boolean;
   permissionDescriptionID?: string;
-  /** Service whose port control the reserved-key refusal links to (w4/m121). */
-  portSettingsServiceId?: string;
   onChange: (update: Partial<EnvDraftRow>) => void;
 }) {
   const { t } = useTranslations();
@@ -1359,13 +1344,7 @@ function EnvDraftItem({
           aria-invalid={Boolean(error)}
           placeholder={t("services.envKeyPlaceholder")}
         />
-        {error === "reserved" ? (
-          // The refusal that names the port control now reaches it (w4/m121).
-          <ReservedEnvKeyNotice
-            envKey={row.key.trim()}
-            serviceId={portSettingsServiceId}
-          />
-        ) : error ? (
+        {error ? (
           <p className="text-destructive text-xs" role="alert">
             {error === "duplicate"
               ? t("services.environmentDuplicateKey")

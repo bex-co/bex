@@ -34,9 +34,8 @@ import (
 var deliberateBlueprintDivergences = []string{
 	"preview environments are not available", // incl. previewValue
 	"per-resource region placement is not available on bex",
-	"Render Workflows",           // type: workflow and fromService workflow refs
-	"PORT",                       // reserved: bex sets PORT from the service's port (ADR018 row 133)
-	"sizeGB must be at least 10", // bex's 10 GB disk minimum (w1/078)
+	"Render Workflows",                              // type: workflow and fromService workflow refs
+	"sizeGB must be at least 10",                    // bex's 10 GB disk minimum (w1/078)
 	"sync:false is not allowed inside an env group", // Render forbids it too (blueprint-spec)
 	"a private_service requires a paid plan",        // Render has no free private service
 	"'dockerFilePath' not allowed",                  // Render's key is dockerfilePath
@@ -49,6 +48,8 @@ var knownBlueprintGaps = []string{
 	"name must use lowercase letters, digits, and hyphens", // w5/m150: Render's free-form resource names
 	"invalid environment variable name",                    // w5/m150: dotted env keys (discovery.type)
 	"which has no such plainly-defined variable",           // w5/170: copying a sibling's sync:false variable
+	"is not trusted",                        // w5/171: public registries outside the allowlist (cgr.dev)
+	"dockerContext must be a relative path", // w5/172: dockerContext "/" as the repo root
 }
 
 // TestRenderExamplesCorpus runs every render.yaml from github.com/render-examples

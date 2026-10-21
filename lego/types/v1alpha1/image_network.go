@@ -73,10 +73,20 @@ func (a *App) ActiveImageNetwork() *ImageNetworkStatus {
 	return a.Status.ImageNetwork
 }
 
+// ServingPort is the port a configured (non-image-port) service listens on:
+// the port its own PORT environment variable selected, as the operator
+// recorded it, else spec.port (w5/m149).
+func (a *App) ServingPort() int32 {
+	if a.Status.EnvPort > 0 && !a.Spec.UsesImagePorts() {
+		return a.Status.EnvPort
+	}
+	return a.Spec.EffectivePort()
+}
+
 // ServicePort is the published primary port; zero means discovery is pending.
 func (a *App) ServicePort() int32 {
 	if !a.Spec.UsesImagePorts() {
-		return a.Spec.EffectivePort()
+		return a.ServingPort()
 	}
 	if network := a.ActiveImageNetwork(); network != nil {
 		return network.PrimaryPort
@@ -94,7 +104,7 @@ func (a *App) OpenPorts() []int32 {
 		return nil
 	}
 	if !a.Spec.UsesImagePorts() {
-		return []int32{a.Spec.EffectivePort()}
+		return []int32{a.ServingPort()}
 	}
 	if network := a.ActiveImageNetwork(); network != nil {
 		return slices.Clone(network.Ports)

@@ -200,9 +200,6 @@ func applyMapPatch(m map[string]string, ops []mapPatchOp, wording mapPatchWordin
 		if _, stored := m[key]; wording.key.problem(key) != "" && !(op.remove && stored) {
 			return wording.key.refuse(key)
 		}
-		if wording.key.reserved != nil && wording.key.reserved(key) && !op.remove {
-			return ReservedEnvKeyError(key)
-		}
 		fromKey := strings.TrimSpace(op.fromKey)
 		if use, ok := used[key]; ok && !use.admits(key, fromKey, op.remove) {
 			return fmt.Errorf("%w: duplicate %s operation for %q", ErrBadRequest, wording.key.noun, key)

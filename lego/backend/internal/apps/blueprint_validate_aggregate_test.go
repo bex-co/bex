@@ -109,8 +109,8 @@ func TestValidateBlueprintAggregatesPerServiceErrorsWithLocations(t *testing.T) 
 	}
 }
 
-// A parse-stage refusal (reserved PORT) and a later service's own check (free
-// worker) are independent: both are reported.
+// A parse-stage refusal (a malformed env key) and a later service's own check
+// (free worker) are independent: both are reported.
 func TestValidateBlueprintReportsParseAndServiceErrorsTogether(t *testing.T) {
 	const manifest = `services:
   - type: web
@@ -119,7 +119,7 @@ func TestValidateBlueprintReportsParseAndServiceErrorsTogether(t *testing.T) {
     image:
       url: nginx:1
     envVars:
-      - key: PORT
+      - key: BAD-KEY
         value: "8080"
   - type: worker
     name: qa5-wrk
@@ -134,10 +134,10 @@ func TestValidateBlueprintReportsParseAndServiceErrorsTogether(t *testing.T) {
 		t.Fatalf("ValidateBlueprint: %v", err)
 	}
 	if v.Valid || len(v.Errors) != 2 {
-		t.Fatalf("want the PORT and the plan errors, got %+v", v.Errors)
+		t.Fatalf("want the env key and the plan errors, got %+v", v.Errors)
 	}
-	if e := v.Errors[0]; !strings.Contains(e.Error, "PORT") || e.Path == nil || *e.Path != "services[0].envVars[0]" || e.Line == nil || *e.Line != 8 {
-		t.Errorf("PORT entry = %q path=%v line=%v", e.Error, ptrValue(e.Path), ptrValue(e.Line))
+	if e := v.Errors[0]; !strings.Contains(e.Error, "BAD-KEY") || e.Path == nil || *e.Path != "services[0].envVars[0]" || e.Line == nil || *e.Line != 8 {
+		t.Errorf("env key entry = %q path=%v line=%v", e.Error, ptrValue(e.Path), ptrValue(e.Line))
 	}
 	if e := v.Errors[1]; e.Path == nil || *e.Path != "services[1].plan" || e.Line == nil || *e.Line != 15 {
 		t.Errorf("plan entry = %+v", e)

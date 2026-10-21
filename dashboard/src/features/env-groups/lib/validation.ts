@@ -1,5 +1,4 @@
 import {
-  isReservedEnvKey,
   isValidSecretFileName as isValidServiceSecretFileName,
   VALID_ENV_KEY,
 } from "@/features/services/lib/environment-draft";
@@ -9,15 +8,9 @@ export function isValidEnvGroupName(name: string): boolean {
   return name.trim().length > 0;
 }
 
-/**
- * Matches Kubernetes/Render environment-variable key syntax, and rejects the
- * names bex owns. A group PORT is refused by bex-api (w2/m95 t003) — the
- * operator injects its own for every linked service — so the create dialog
- * must not offer it either.
- */
+/** Matches Kubernetes/Render environment-variable key syntax. */
 export function isValidEnvVarKey(key: string): boolean {
-  const trimmed = key.trim();
-  return VALID_ENV_KEY.test(trimmed) && !isReservedEnvKey(trimmed);
+  return VALID_ENV_KEY.test(key.trim());
 }
 
 /** Matches the backend's Kubernetes Secret-key filename validation. */
