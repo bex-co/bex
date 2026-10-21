@@ -24,7 +24,7 @@ User decision 2026-10-20: all five items of the fifth `/pm-brainstorm for w5` pr
 - [x] **m152** — [Changing a service's runtime works (PATCH `serviceDetails.runtime`)](done/m152/README.md) (8 tasks; 6h30m total) ← round 5 item 5; replaces w5/m146's named refusal
 - [ ] **170** — [A Blueprint service can copy a sibling's `sync: false` variable](170.md) (~1h) ← found by w5/m148's corpus run
 - [ ] **171** — [Images from any public registry deploy, as on Render](171.md) (needs a security review; may promote) ← found by w5/m149's corpus run
-- [ ] **172** — [A Blueprint `dockerContext: /` means the repository root, as on Render](172.md) (~30m) ← found by w5/m149's corpus run
+- [x] **172** — [A Blueprint `dockerContext: /` means the repository root, as on Render](done/172.md) (~30m) ← found by w5/m149's corpus run
 - [ ] **173** — [A service, Postgres or Key Value created through the API can have a free-form name](173.md) (~1h+, may promote) ← found by w5/m150
 
 ## Approved queue — 2026-10-20 (parity-only set)

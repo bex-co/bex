@@ -99,6 +99,20 @@ func viewDockerContext(spec appv1alpha1.AppSpec) string {
 	return wireDockerContext(spec.RootDir, spec.DockerContext)
 }
 
+// repoRootRelative reads a Blueprint path that starts at the repository root,
+// as Render's templates write it ("/" for the root itself, "/docker" for a
+// directory), as the relative path bex stores: "." and "docker" (w5/172).
+// Any other path, and a ".." component, is left for the path rules to judge.
+func repoRootRelative(p string) string {
+	if !strings.HasPrefix(p, "/") {
+		return p
+	}
+	if p = strings.TrimLeft(p, "/"); p == "" {
+		return "."
+	}
+	return p
+}
+
 // checkDockerContextPath is create's and update's one rule for the wire value:
 // a relative path with no ".." component.
 func checkDockerContextPath(wire string) error {
