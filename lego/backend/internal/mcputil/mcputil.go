@@ -25,7 +25,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"runtime/debug"
+	"strconv"
+	"strings"
 
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -44,6 +47,7 @@ import (
 // error is readable. The signature mirrors mcp.AddTool, which every feature
 // calls instead of the SDK directly.
 func AddTool[In, Out any](s *mcp.Server, t *mcp.Tool, h mcp.ToolHandlerFor[In, Out]) {
+	annotate(t)
 	mcp.AddTool(s, t, func( //nolint:forbidigo // the seam itself: it wraps the handler, then delegates
 		ctx context.Context, req *mcp.CallToolRequest, in In) (res *mcp.CallToolResult, out Out, err error) {
 		// Transport-boundary panic isolation. REST (net/http's conn.serve) and
@@ -82,6 +86,7 @@ func AddTool[In, Out any](s *mcp.Server, t *mcp.Tool, h mcp.ToolHandlerFor[In, O
 // type, not from re-validating the bytes (which would reintroduce the float64
 // decode). Opt in only where exact numbers matter; ordinary tools stay typed.
 func AddExactJSONTool[In, Out any](s *mcp.Server, t *mcp.Tool, h func(context.Context, *mcp.CallToolRequest, In) (Out, error)) {
+	annotate(t)
 	tool := *t
 	if tool.OutputSchema == nil {
 		schema, err := jsonschema.For[Out](&jsonschema.ForOptions{})
@@ -125,3 +130,72 @@ func WithWarning(out any, warning string) *mcp.CallToolResult {
 		&mcp.TextContent{Text: warning},
 	}}
 }
+
+// BoolOrEnum reads an argument Render's MCP server types as a boolean while
+// bex's REST contract spells it as a two-value string enum (w5/m145): true and
+// false map onto ifTrue and ifFalse, the enum strings pass through, and
+// anything else is a named bad request. Absent is "".
+func BoolOrEnum(param string, v any, ifTrue, ifFalse string) (string, error) {
+	switch x := v.(type) {
+	case nil:
+		return "", nil
+	case bool:
+		if x {
+			return ifTrue, nil
+		}
+		return ifFalse, nil
+	case string:
+		return x, nil
+	default:
+		return "", fmt.Errorf("%w: %s must be a boolean (or %q/%q)", core.ErrBadRequest, param, ifTrue, ifFalse)
+	}
+}
+
+// NumberOrString reads an argument Render's MCP server types as a number
+// while bex's REST contract takes a string (a Postgres major version, say):
+// a whole number becomes its decimal text, a string passes through, and
+// anything else is a named bad request. Absent is "".
+func NumberOrString(param string, v any) (string, error) {
+	switch x := v.(type) {
+	case nil:
+		return "", nil
+	case float64:
+		if x != math.Trunc(x) {
+			return "", fmt.Errorf("%w: %s must be a whole number", core.ErrBadRequest, param)
+		}
+		return strconv.FormatInt(int64(x), 10), nil
+	case string:
+		return x, nil
+	default:
+		return "", fmt.Errorf("%w: %s must be a number", core.ErrBadRequest, param)
+	}
+}
+
+// annotate gives every tool the behavior hints an MCP client acts on
+// (w5/m145). Without them the spec's defaults apply: every tool may be
+// destructive and none is read-only, so a client prompts before each list or
+// get. A tool that sets its own Annotations keeps them; otherwise the verb in
+// its name decides, matching the values Render's MCP server sets on the tools
+// bex shares with it (TestMCPAnnotationsMatchUpstream).
+func annotate(t *mcp.Tool) {
+	if t.Annotations == nil {
+		t.Annotations = DefaultAnnotations(t.Name)
+	}
+}
+
+// DefaultAnnotations is the behavior hint set for a tool named by verb:
+// reads are read-only, idempotent and closed-world; creates are additive;
+// every other write may be destructive.
+func DefaultAnnotations(name string) *mcp.ToolAnnotations {
+	verb, _, _ := strings.Cut(name, "_")
+	switch verb {
+	case "get", "list", "query", "describe", "search", "preview", "estimate", "validate":
+		return &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true, DestructiveHint: boolPtr(false), OpenWorldHint: boolPtr(false)}
+	case "create", "add", "generate":
+		return &mcp.ToolAnnotations{DestructiveHint: boolPtr(false), OpenWorldHint: boolPtr(true)}
+	default:
+		return &mcp.ToolAnnotations{DestructiveHint: boolPtr(true), OpenWorldHint: boolPtr(true)}
+	}
+}
+
+func boolPtr(b bool) *bool { return &b }

@@ -1,6 +1,6 @@
 {
   "pin": {
-    "capturedAt": "2026-09-30",
+    "capturedAt": "2026-10-20",
     "capturedBy": "scripts/render-mcp-capture.py --ref main (MCP stdio tools/list)",
     "latestRelease": {
       "tag": "v0.3.0",
@@ -31,7 +31,8 @@
       "(9d1f2b8, #170), which bex implements; and create_web_service/create_cron_job gained",
       "dockerCommand/dockerContext/dockerfilePath while buildCommand/startCommand became",
       "optional (bc94f8d, #154, Dockerfile-based creation). The tools array is the capture",
-      "verbatim; only this 'pin' block and 'source' are hand-maintained."
+      "verbatim; only this 'pin' block and 'source' are hand-maintained.",
+      "w5/m145 (2026-10-20): re-captured at the same upstream commit with each argument's JSON type (and enum) and the tools' behavior hints (readOnly/destructive/idempotent/openWorld), which a client acts on; descriptions and annotation titles stay out."
     ]
   },
   "source": {
@@ -64,7 +65,103 @@
         "name",
         "runtime",
         "schedule"
-      ]
+      ],
+      "argTypes": {
+        "autoDeploy": {
+          "type": "string",
+          "enum": [
+            "no",
+            "yes"
+          ]
+        },
+        "branch": {
+          "type": "string"
+        },
+        "buildCommand": {
+          "type": "string"
+        },
+        "dockerCommand": {
+          "type": "string"
+        },
+        "dockerContext": {
+          "type": "string"
+        },
+        "dockerfilePath": {
+          "type": "string"
+        },
+        "envVars": {
+          "type": "array"
+        },
+        "name": {
+          "type": "string"
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "0.5c-512mb",
+            "12c-24g",
+            "12c-48g",
+            "12c-96g",
+            "1c-2g",
+            "2c-16g",
+            "2c-4g",
+            "2c-8g",
+            "4c-16g",
+            "4c-32g",
+            "4c-8g",
+            "8c-16g",
+            "8c-32g",
+            "8c-64g",
+            "free",
+            "pro",
+            "pro_max",
+            "pro_plus",
+            "pro_ultra",
+            "standard",
+            "starter"
+          ]
+        },
+        "region": {
+          "type": "string",
+          "enum": [
+            "frankfurt",
+            "ohio",
+            "oregon",
+            "singapore",
+            "virginia"
+          ]
+        },
+        "repo": {
+          "type": "string"
+        },
+        "runtime": {
+          "type": "string",
+          "enum": [
+            "docker",
+            "elixir",
+            "go",
+            "node",
+            "python",
+            "ruby",
+            "rust"
+          ]
+        },
+        "schedule": {
+          "type": "string"
+        },
+        "startCommand": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      }
     },
     {
       "name": "create_key_value",
@@ -78,7 +175,68 @@
       ],
       "required": [
         "name"
-      ]
+      ],
+      "argTypes": {
+        "maxmemoryPolicy": {
+          "type": "string",
+          "enum": [
+            "allkeys_lfu",
+            "allkeys_lru",
+            "allkeys_random",
+            "noeviction",
+            "volatile_lfu",
+            "volatile_lru",
+            "volatile_random",
+            "volatile_ttl"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "persistenceMode": {
+          "type": "string",
+          "enum": [
+            "journal_snapshot",
+            "off",
+            "snapshot"
+          ]
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "10g",
+            "1g",
+            "20g",
+            "256mb",
+            "40g",
+            "5g",
+            "free",
+            "pro",
+            "pro_plus",
+            "standard",
+            "starter"
+          ]
+        },
+        "region": {
+          "type": "string",
+          "enum": [
+            "frankfurt",
+            "ohio",
+            "oregon",
+            "singapore",
+            "virginia"
+          ]
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      }
     },
     {
       "name": "create_postgres",
@@ -92,7 +250,88 @@
       ],
       "required": [
         "name"
-      ]
+      ],
+      "argTypes": {
+        "diskSizeGb": {
+          "type": "number"
+        },
+        "name": {
+          "type": "string"
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "0.1c-256mb",
+            "0.5c-1g",
+            "128c-1024g",
+            "128c-512g",
+            "16c-128g",
+            "16c-64g",
+            "1c-2g",
+            "1c-4g",
+            "2c-16g",
+            "2c-4g",
+            "2c-8g",
+            "32c-128g",
+            "32c-256g",
+            "48c-192g",
+            "48c-384g",
+            "4c-16g",
+            "4c-32g",
+            "64c-256g",
+            "64c-512g",
+            "8c-32g",
+            "8c-64g",
+            "96c-384g",
+            "96c-768g",
+            "accelerated_1024gb",
+            "accelerated_128gb",
+            "accelerated_16gb",
+            "accelerated_256gb",
+            "accelerated_32gb",
+            "accelerated_384gb",
+            "accelerated_512gb",
+            "accelerated_64gb",
+            "accelerated_768gb",
+            "basic_1gb",
+            "basic_256mb",
+            "basic_4gb",
+            "free",
+            "pro_128gb",
+            "pro_16gb",
+            "pro_192gb",
+            "pro_256gb",
+            "pro_32gb",
+            "pro_384gb",
+            "pro_4gb",
+            "pro_512gb",
+            "pro_64gb",
+            "pro_8gb"
+          ]
+        },
+        "region": {
+          "type": "string",
+          "enum": [
+            "frankfurt",
+            "ohio",
+            "oregon",
+            "singapore",
+            "virginia"
+          ]
+        },
+        "version": {
+          "type": "number"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      }
     },
     {
       "name": "create_static_site",
@@ -109,7 +348,43 @@
       "required": [
         "buildCommand",
         "name"
-      ]
+      ],
+      "argTypes": {
+        "autoDeploy": {
+          "type": "string",
+          "enum": [
+            "no",
+            "yes"
+          ]
+        },
+        "branch": {
+          "type": "string"
+        },
+        "buildCommand": {
+          "type": "string"
+        },
+        "envVars": {
+          "type": "array"
+        },
+        "name": {
+          "type": "string"
+        },
+        "publishPath": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      }
     },
     {
       "name": "create_web_service",
@@ -132,7 +407,100 @@
       "required": [
         "name",
         "runtime"
-      ]
+      ],
+      "argTypes": {
+        "autoDeploy": {
+          "type": "string",
+          "enum": [
+            "no",
+            "yes"
+          ]
+        },
+        "branch": {
+          "type": "string"
+        },
+        "buildCommand": {
+          "type": "string"
+        },
+        "dockerCommand": {
+          "type": "string"
+        },
+        "dockerContext": {
+          "type": "string"
+        },
+        "dockerfilePath": {
+          "type": "string"
+        },
+        "envVars": {
+          "type": "array"
+        },
+        "name": {
+          "type": "string"
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "0.5c-512mb",
+            "12c-24g",
+            "12c-48g",
+            "12c-96g",
+            "1c-2g",
+            "2c-16g",
+            "2c-4g",
+            "2c-8g",
+            "4c-16g",
+            "4c-32g",
+            "4c-8g",
+            "8c-16g",
+            "8c-32g",
+            "8c-64g",
+            "free",
+            "pro",
+            "pro_max",
+            "pro_plus",
+            "pro_ultra",
+            "standard",
+            "starter"
+          ]
+        },
+        "region": {
+          "type": "string",
+          "enum": [
+            "frankfurt",
+            "ohio",
+            "oregon",
+            "singapore",
+            "virginia"
+          ]
+        },
+        "repo": {
+          "type": "string"
+        },
+        "runtime": {
+          "type": "string",
+          "enum": [
+            "docker",
+            "elixir",
+            "go",
+            "node",
+            "python",
+            "ruby",
+            "rust"
+          ]
+        },
+        "startCommand": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      }
     },
     {
       "name": "get_deploy",
@@ -144,7 +512,24 @@
       "required": [
         "deployId",
         "serviceId"
-      ]
+      ],
+      "argTypes": {
+        "deployId": {
+          "type": "string"
+        },
+        "serviceId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
     },
     {
       "name": "get_key_value",
@@ -154,7 +539,21 @@
       ],
       "required": [
         "keyValueId"
-      ]
+      ],
+      "argTypes": {
+        "keyValueId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
     },
     {
       "name": "get_metrics",
@@ -174,7 +573,56 @@
       "required": [
         "metricTypes",
         "resourceId"
-      ]
+      ],
+      "argTypes": {
+        "aggregateHttpRequestCountsBy": {
+          "type": "string",
+          "enum": [
+            "host",
+            "statusCode"
+          ]
+        },
+        "cpuUsageAggregationMethod": {
+          "type": "string",
+          "enum": [
+            "AVG",
+            "MAX",
+            "MIN"
+          ]
+        },
+        "endTime": {
+          "type": "string"
+        },
+        "httpHost": {
+          "type": "string"
+        },
+        "httpLatencyQuantile": {
+          "type": "number"
+        },
+        "httpPath": {
+          "type": "string"
+        },
+        "metricTypes": {
+          "type": "array"
+        },
+        "resolution": {
+          "type": "number"
+        },
+        "resourceId": {
+          "type": "string"
+        },
+        "startTime": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
     },
     {
       "name": "get_postgres",
@@ -184,12 +632,33 @@
       ],
       "required": [
         "postgresId"
-      ]
+      ],
+      "argTypes": {
+        "postgresId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
     },
     {
       "name": "get_selected_workspace",
       "args": [],
-      "required": []
+      "required": [],
+      "argTypes": {},
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
     },
     {
       "name": "get_service",
@@ -199,7 +668,20 @@
       ],
       "required": [
         "serviceId"
-      ]
+      ],
+      "argTypes": {
+        "serviceId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
     },
     {
       "name": "list_deploys",
@@ -211,7 +693,27 @@
       ],
       "required": [
         "serviceId"
-      ]
+      ],
+      "argTypes": {
+        "cursor": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "number"
+        },
+        "serviceId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
     },
     {
       "name": "list_events",
@@ -226,14 +728,54 @@
       ],
       "required": [
         "serviceId"
-      ]
+      ],
+      "argTypes": {
+        "cursor": {
+          "type": "string"
+        },
+        "endTime": {
+          "type": "string"
+        },
+        "eventTypes": {
+          "type": "array"
+        },
+        "limit": {
+          "type": "number"
+        },
+        "serviceId": {
+          "type": "string"
+        },
+        "startTime": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
     },
     {
       "name": "list_key_value",
       "args": [
         "workspaceId"
       ],
-      "required": []
+      "required": [],
+      "argTypes": {
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
     },
     {
       "name": "list_log_label_values",
@@ -256,7 +798,69 @@
       "required": [
         "label",
         "resource"
-      ]
+      ],
+      "argTypes": {
+        "direction": {
+          "type": "string",
+          "enum": [
+            "backward",
+            "forward"
+          ]
+        },
+        "endTime": {
+          "type": "string"
+        },
+        "host": {
+          "type": "array"
+        },
+        "instance": {
+          "type": "array"
+        },
+        "label": {
+          "type": "string",
+          "enum": [
+            "host",
+            "instance",
+            "level",
+            "method",
+            "statusCode",
+            "type"
+          ]
+        },
+        "level": {
+          "type": "array"
+        },
+        "method": {
+          "type": "array"
+        },
+        "path": {
+          "type": "array"
+        },
+        "resource": {
+          "type": "array"
+        },
+        "startTime": {
+          "type": "string"
+        },
+        "statusCode": {
+          "type": "array"
+        },
+        "text": {
+          "type": "array"
+        },
+        "type": {
+          "type": "array"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
     },
     {
       "name": "list_logs",
@@ -278,14 +882,79 @@
       ],
       "required": [
         "resource"
-      ]
+      ],
+      "argTypes": {
+        "direction": {
+          "type": "string",
+          "enum": [
+            "backward",
+            "forward"
+          ]
+        },
+        "endTime": {
+          "type": "string"
+        },
+        "host": {
+          "type": "array"
+        },
+        "instance": {
+          "type": "array"
+        },
+        "level": {
+          "type": "array"
+        },
+        "limit": {
+          "type": "number"
+        },
+        "method": {
+          "type": "array"
+        },
+        "path": {
+          "type": "array"
+        },
+        "resource": {
+          "type": "array"
+        },
+        "startTime": {
+          "type": "string"
+        },
+        "statusCode": {
+          "type": "array"
+        },
+        "text": {
+          "type": "array"
+        },
+        "type": {
+          "type": "array"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
     },
     {
       "name": "list_postgres_instances",
       "args": [
         "workspaceId"
       ],
-      "required": []
+      "required": [],
+      "argTypes": {
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
     },
     {
       "name": "list_services",
@@ -293,12 +962,32 @@
         "includePreviews",
         "workspaceId"
       ],
-      "required": []
+      "required": [],
+      "argTypes": {
+        "includePreviews": {
+          "type": "boolean"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
     },
     {
       "name": "list_workspaces",
       "args": [],
-      "required": []
+      "required": [],
+      "argTypes": {},
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
     },
     {
       "name": "query_render_postgres",
@@ -310,7 +999,24 @@
       "required": [
         "postgresId",
         "sql"
-      ]
+      ],
+      "argTypes": {
+        "postgresId": {
+          "type": "string"
+        },
+        "sql": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
     },
     {
       "name": "select_workspace",
@@ -319,7 +1025,18 @@
       ],
       "required": [
         "ownerID"
-      ]
+      ],
+      "argTypes": {
+        "ownerID": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      }
     },
     {
       "name": "trigger_deploy",
@@ -330,7 +1047,24 @@
       ],
       "required": [
         "serviceId"
-      ]
+      ],
+      "argTypes": {
+        "clearCache": {
+          "type": "boolean"
+        },
+        "serviceId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      }
     },
     {
       "name": "update_environment_variables",
@@ -343,7 +1077,26 @@
       "required": [
         "envVars",
         "serviceId"
-      ]
+      ],
+      "argTypes": {
+        "envVars": {
+          "type": "array"
+        },
+        "replace": {
+          "type": "boolean"
+        },
+        "serviceId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      }
     }
   ]
 }

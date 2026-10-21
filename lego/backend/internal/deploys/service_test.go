@@ -1047,3 +1047,48 @@ func decodeStructured(v any, out any) error {
 	}
 	return json.Unmarshal(b, out)
 }
+
+// TestMCPTriggerClearCacheAcceptsRendersBoolean is w5/m145: Render's MCP
+// server types trigger_deploy's clearCache as a boolean, so an agent written
+// against it sends true/false. bex accepts that and keeps the REST strings;
+// true stamps the release-scoped reset exactly as REST's "clear" does.
+func TestMCPTriggerClearCacheAcceptsRendersBoolean(t *testing.T) {
+	ds := newFakeStore()
+	svc, cl := newService(ds, sampleApp("svc", "srv-cc"))
+	call := func(v any) *mcp.CallToolResult {
+		t.Helper()
+		res, err := newMCPSession(t, svc).CallTool(context.Background(), &mcp.CallToolParams{
+			Name: "trigger_deploy", Arguments: map[string]any{"serviceId": "svc", "clearCache": v},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res
+	}
+	marker := func() (string, bool) {
+		var app appv1alpha1.App
+		if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "svc"}, &app); err != nil {
+			t.Fatal(err)
+		}
+		v, ok := app.Annotations[appv1alpha1.AnnotationClearCacheReleaseGeneration]
+		return v, ok
+	}
+	if res := call(true); res.IsError {
+		t.Fatalf("clearCache:true refused: %+v", res.Content)
+	}
+	if _, ok := marker(); !ok {
+		t.Fatal("clearCache:true did not stamp the cache reset")
+	}
+	if res := call(false); res.IsError {
+		t.Fatalf("clearCache:false refused: %+v", res.Content)
+	}
+	if _, ok := marker(); ok {
+		t.Fatal("clearCache:false must clear the reset marker, as do_not_clear does")
+	}
+	if res := call("clear"); res.IsError {
+		t.Fatalf("the REST string still works: %+v", res.Content)
+	}
+	if res := call(3); !res.IsError {
+		t.Fatal("a number clearCache should be refused")
+	}
+}

@@ -107,19 +107,38 @@ def capture(ref):
 
 
 def normalize(tools):
-    """Reduce tools/list to the stable parity surface: names and argument names.
+    """Reduce tools/list to the stable parity surface.
 
-    Descriptions and annotations are deliberately excluded -- they drift for
-    editorial reasons and would make the pin fire on non-contractual churn.
+    Kept: names, argument names, required arguments, each argument's JSON
+    type (and enum), and the behavior hints a client acts on
+    (readOnlyHint/destructiveHint/idempotentHint/openWorldHint) — w5/m145: a
+    type mismatch breaks a call as surely as a missing argument, and a missing
+    readOnlyHint makes a client prompt before every read. Descriptions and
+    annotation titles stay out: they drift editorially.
     """
     out = []
     for t in tools:
         schema = t.get("inputSchema") or {}
+        props = schema.get("properties") or {}
+        arg_types = {}
+        for name in sorted(props):
+            prop = props[name] or {}
+            entry = {"type": prop.get("type", "")}
+            if prop.get("enum"):
+                entry["enum"] = sorted(str(v) for v in prop["enum"])
+            arg_types[name] = entry
+        hints = {
+            k: v
+            for k, v in sorted((t.get("annotations") or {}).items())
+            if k in ("readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint")
+        }
         out.append(
             {
                 "name": t["name"],
-                "args": sorted((schema.get("properties") or {}).keys()),
+                "args": sorted(props.keys()),
                 "required": sorted(schema.get("required") or []),
+                "argTypes": arg_types,
+                "annotations": hints,
             }
         )
     return sorted(out, key=lambda t: t["name"])

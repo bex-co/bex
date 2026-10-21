@@ -35,6 +35,9 @@ type bexTool struct {
 	Name     string
 	Args     []string
 	Required []string
+	// Types is each argument's JSON type set (a Go pointer field is
+	// ["null","integer"], say), for the w5/m145 type check.
+	Types map[string][]string
 }
 
 // enumerateBexTools asks the fully-wired MCP server for its own tools/list —
@@ -61,8 +64,10 @@ func enumerateBexTools(t *testing.T) []bexTool {
 			if err := json.Unmarshal(raw, &sch); err != nil {
 				t.Fatalf("parse input schema for %s: %v", x.Name, err)
 			}
-			for k := range sch.Properties {
+			bt.Types = make(map[string][]string, len(sch.Properties))
+			for k, prop := range sch.Properties {
 				bt.Args = append(bt.Args, k)
+				bt.Types[k] = jsonSchemaTypes(prop)
 			}
 			bt.Required = append(bt.Required, sch.Required...)
 		}
@@ -359,4 +364,113 @@ func fullyWiredServer() *Server {
 		}
 	}
 	return srv
+}
+
+// jsonSchemaTypes reads a property's "type", which JSON Schema allows as a
+// string or an array of strings.
+func jsonSchemaTypes(prop json.RawMessage) []string {
+	var p struct {
+		Type json.RawMessage `json:"type"`
+	}
+	if json.Unmarshal(prop, &p) != nil || len(p.Type) == 0 {
+		return nil
+	}
+	var one string
+	if json.Unmarshal(p.Type, &one) == nil {
+		return []string{one}
+	}
+	var many []string
+	_ = json.Unmarshal(p.Type, &many)
+	return many
+}
+
+// TestMCPArgumentTypesMatchUpstream is w5/m145's type half of the parity
+// guard: a bex tool sharing an upstream name must accept each upstream
+// argument in upstream's JSON type (an integer is a number), or record why in
+// mcpAcceptedTypeDivergences. Argument names alone let clearCache:true and
+// version:16 ship broken.
+func TestMCPArgumentTypesMatchUpstream(t *testing.T) {
+	pin, err := loadRenderMCPContract()
+	if err != nil {
+		t.Fatalf("load pin: %v", err)
+	}
+	for _, bt := range enumerateBexTools(t) {
+		up, ok := pin.Tool(bt.Name)
+		if !ok {
+			continue
+		}
+		for _, arg := range mcpArgTypeMismatches(bt.Types, up) {
+			if _, accepted := mcpAcceptedTypeDivergences[bt.Name+"."+arg]; accepted {
+				continue
+			}
+			t.Errorf("%s.%s: bex accepts %v, upstream sends %q — fix the type or record the reason in mcpAcceptedTypeDivergences",
+				bt.Name, arg, bt.Types[arg], up.ArgTypes[arg].Type)
+		}
+	}
+	// Every accepted divergence must still be one, so the list cannot rot.
+	for key := range mcpAcceptedTypeDivergences {
+		name, arg, _ := strings.Cut(key, ".")
+		up, _ := pin.Tool(name)
+		var still bool
+		for _, bt := range enumerateBexTools(t) {
+			if bt.Name == name && slices.Contains(mcpArgTypeMismatches(bt.Types, up), arg) {
+				still = true
+			}
+		}
+		if !still {
+			t.Errorf("mcpAcceptedTypeDivergences[%q] no longer diverges; remove it", key)
+		}
+	}
+}
+
+func TestMCPArgTypeCompatibility(t *testing.T) {
+	up := renderMCPTool{ArgTypes: map[string]renderMCPArgType{
+		"flag": {Type: "boolean"}, "n": {Type: "number"}, "s": {Type: "string"}, "untyped": {},
+	}}
+	got := mcpArgTypeMismatches(map[string][]string{
+		"flag": {"string"}, "n": {"null", "integer"}, "s": {"string"}, "untyped": {"object"},
+	}, up)
+	if !slices.Equal(got, []string{"flag"}) {
+		t.Errorf("mismatches = %v, want [flag] (an integer is a number; an untyped upstream arg is unconstrained)", got)
+	}
+}
+
+// mcpAcceptedAnnotationDivergences records a shared tool whose behavior hints
+// deliberately differ from upstream's, with the reason (w5/m145).
+var mcpAcceptedAnnotationDivergences = map[string]string{
+	// Upstream marks list_workspaces readOnlyHint:false (its session-selection
+	// lineage); listing workspaces modifies nothing, and bex has no selection.
+	"list_workspaces": "a pure read in bex (no session selection); upstream's readOnlyHint:false is its select_workspace lineage",
+}
+
+// TestMCPAnnotationsMatchUpstream is w5/m145's annotation half of the parity
+// guard: every bex tool carries behavior hints (without them a client treats
+// list_services as a destructive write and prompts), and a tool sharing an
+// upstream name agrees with upstream's readOnly and destructive hints.
+func TestMCPAnnotationsMatchUpstream(t *testing.T) {
+	pin, err := loadRenderMCPContract()
+	if err != nil {
+		t.Fatalf("load pin: %v", err)
+	}
+	res := listBexTools(t, fullyWiredServer())
+	for _, x := range res.Tools {
+		if x.Annotations == nil {
+			t.Errorf("%s has no annotations", x.Name)
+			continue
+		}
+		up, ok := pin.Tool(x.Name)
+		if !ok || len(up.Annotations) == 0 {
+			continue
+		}
+		if _, accepted := mcpAcceptedAnnotationDivergences[x.Name]; accepted {
+			continue
+		}
+		destructive := x.Annotations.DestructiveHint == nil || *x.Annotations.DestructiveHint
+		if want, set := up.Annotations["readOnlyHint"]; set && x.Annotations.ReadOnlyHint != want {
+			t.Errorf("%s readOnlyHint = %v, upstream %v", x.Name, x.Annotations.ReadOnlyHint, want)
+		}
+		if want, set := up.Annotations["destructiveHint"]; set && !x.Annotations.ReadOnlyHint && destructive != want {
+			t.Errorf("%s destructiveHint = %v, upstream %v", x.Name, destructive, want)
+		}
+	}
 }

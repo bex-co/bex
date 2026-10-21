@@ -59,7 +59,9 @@ type createPostgresArgs struct {
 	DatabaseName  string `json:"databaseName,omitempty" jsonschema:"optional physical PostgreSQL database name; lowercase letters, digits, and underscores"`
 	DatabaseUser  string `json:"databaseUser,omitempty" jsonschema:"optional physical PostgreSQL owner role; lowercase letters, digits, and underscores"`
 	Plan          string `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, basic-256mb, basic-1gb"`
-	Version       string `json:"version,omitempty" jsonschema:"the PostgreSQL major version, e.g. 16 (omit for the default)"`
+	// Version is a number on Render's MCP server (w5/m145); bex also keeps
+	// accepting the string form.
+	Version any `json:"version,omitempty" jsonschema:"the PostgreSQL major version, e.g. 16 (a number, as Render's MCP server sends; \"16\" also accepted). Omit for the default."`
 	// DiskSizeGb is Render's MCP spelling. DiskSizeGB is the legacy bex alias
 	// (w2/m91); when both are set, DiskSizeGb wins.
 	DiskSizeGb            *int32             `json:"diskSizeGb,omitempty" jsonschema:"disk size in GB (omit for the plan default); Render's MCP spelling"`
@@ -127,6 +129,10 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "create_postgres",
 		Description: "Create a managed Postgres database. name is required; databaseName, databaseUser, plan, version, diskSizeGb (legacy alias diskSizeGB), public, ipAllowList/ipAllowListEntries, enableHighAvailability, readReplicas and connectionPool are optional. Free storage is fixed at 1 GB; autoscaling and connection pooling require paid plans. Pass dryRun:true to preview the resolved spec without any writes.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createPostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
+		version, err := mcputil.NumberOrString("version", in.Version)
+		if err != nil {
+			return nil, PostgresView{}, err
+		}
 		v, err := s.CreatePostgres(ctx, CreatePostgresRequest{
 			OwnerID:                core.NamedWorkspace(ctx),
 			EnvironmentID:          in.EnvironmentID,
@@ -134,7 +140,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			DatabaseName:           in.DatabaseName,
 			DatabaseUser:           in.DatabaseUser,
 			Plan:                   in.Plan,
-			Version:                in.Version,
+			Version:                version,
 			DiskSizeGB:             in.diskSizeGBValue(),
 			EnableDiskAutoscaling:  in.EnableDiskAutoscaling,
 			Public:                 in.Public,
