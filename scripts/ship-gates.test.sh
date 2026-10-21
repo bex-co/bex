@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# ship-gates.test.sh — ship-gates.sh's red-main gate against a stubbed `gh`
+# ship-gates.test.sh — ship-gates.sh's red-main report against a stubbed `gh`
 # that prints raw run JSON, so the gate's own selection of the newest
-# completed, non-cancelled run is what is tested (no network). The base ref is
-# HEAD, so the backend-suite gate has no changes to test and does not run.
+# completed, non-cancelled run is what is tested (no network). A red main is a
+# warning, never a stop (user decision 2026-10-21). The base ref is HEAD, so
+# the backend-suite gate has no changes to test and does not run.
 set -euo pipefail
 
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -20,9 +21,14 @@ stub() { # the JSON `gh run list --json conclusion,status,headSha,headBranch,url
 }
 run() { PATH="$tmp:$PATH" bash "$root/scripts/ship-gates.sh" "$@" 2>"$tmp/err"; }
 run_ok() { run "$@" || fail "$1: expected the ship to proceed: $(cat "$tmp/err")"; }
-run_blocked() {
-  if run "$@"; then fail "$1: expected the ship to stop"; fi
-  grep -q "main is red" "$tmp/err" || fail "red-main message missing: $(cat "$tmp/err")"
+# The ship proceeds and the red run is named, so the caller can fix CI first.
+run_warned() {
+  run "$@" || fail "$1: a red main must never stop the ship: $(cat "$tmp/err")"
+  grep -q "warning: main is red" "$tmp/err" || fail "red-main warning missing: $(cat "$tmp/err")"
+}
+run_quiet() {
+  run_ok "$@"
+  if grep -q "main is red" "$tmp/err"; then fail "$1: a green main reported red: $(cat "$tmp/err")"; fi
 }
 
 # One run as `gh run list` prints it: <conclusion> <status> <hour> [branch].
@@ -33,38 +39,39 @@ r() {
 }
 
 stub "[$(r failure completed 10)]"
-run_blocked HEAD
+run_warned HEAD
 stub "[$(r timed_out completed 10)]"
-run_blocked HEAD
+run_warned HEAD
 stub "[$(r startup_failure completed 10)]"
-run_blocked HEAD
+run_warned HEAD
 stub "[$(r failure completed 10)]"
-run_ok HEAD --fixes-red-main
-run_ok --fixes-red-main HEAD
+run_warned HEAD --fixes-red-main
+grep -q "marked as the fix" "$tmp/err" || fail "--fixes-red-main not acknowledged: $(cat "$tmp/err")"
+run_warned --fixes-red-main HEAD
 
 # A run still in progress or a cancelled one is not evidence of health: look
 # past it to the newest real verdict.
 stub "[$(r "" in_progress 12),$(r failure completed 11),$(r success completed 10)]"
-run_blocked HEAD
+run_warned HEAD
 stub "[$(r cancelled completed 12),$(r failure completed 11)]"
-run_blocked HEAD
+run_warned HEAD
 stub "[$(r skipped completed 13),$(r neutral completed 12),$(r failure completed 11)]"
-run_blocked HEAD
+run_warned HEAD
 stub "[$(r "" in_progress 13),$(r cancelled completed 12),$(r success completed 11),$(r failure completed 10)]"
-run_ok HEAD
+run_quiet HEAD
 
 # Whatever the listing order, the newest run decides.
 stub "[$(r failure completed 10),$(r success completed 11)]"
-run_ok HEAD
+run_quiet HEAD
 stub "[$(r success completed 10),$(r failure completed 11)]"
-run_blocked HEAD
+run_warned HEAD
 
 # Only main's runs judge main: a manual dispatch elsewhere does not.
 stub "[$(r failure completed 12 feature),$(r success completed 11)]"
-run_ok HEAD
+run_quiet HEAD
 stub "[$(r success completed 12 feature),$(r failure completed 11)]"
-run_blocked HEAD
-grep -q "(created 2026-10-05T11:00:00Z)" "$tmp/err" || fail "the block names no run date: $(cat "$tmp/err")"
+run_warned HEAD
+grep -q "(created 2026-10-05T11:00:00Z)" "$tmp/err" || fail "the warning names no run date: $(cat "$tmp/err")"
 
 stub "[]"
 run_ok HEAD
