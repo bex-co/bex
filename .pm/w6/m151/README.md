@@ -10,8 +10,8 @@
 | t002 | Admission: `render-v1` workloads may set `hostUsers: false`; when the switch is on, require it — **DONE** | 30m | t001 |
 | t003 | Hetzner proof: a disk-backed `render-v1` canary with the switch on in the `bex` workspace (idmapped `hcloud-volumes`, restart, snapshot/restore) — **DONE** | 45m | t002, w6/m149/t009 |
 | t004 | Turn the switch on in production; record the residual risk in ADR089/ADR022 — **DONE** | 20m | t003 |
-| t005 | Simplify | 15m | t004 |
-| t006 | Test coverage | 30m | t004, t005 |
+| t005 | Simplify — **DONE** | 15m | t004 |
+| t006 | Test coverage — **DONE** | 30m | t004, t005 |
 | t007 | Closeout | 10m | t006 |
 
 ## Definition of done
