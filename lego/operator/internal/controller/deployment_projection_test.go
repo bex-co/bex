@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"slices"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -338,8 +339,8 @@ func TestStartCommandOnlyOverridesOpaqueImages(t *testing.T) {
 			container := appContainerOf(t, project(app, webParams()))
 
 			if tc.wantOverride {
-				want := []string{"/bin/sh", "-c", "./server --port 8080"}
-				if len(container.Command) != 3 || container.Command[2] != want[2] {
+				want := []string{"./server", "--port", "8080"} // plain command: exec'd directly, no shell (w8/164)
+				if !slices.Equal(container.Command, want) {
 					t.Errorf("command = %v; want %v", container.Command, want)
 				}
 			} else if container.Command != nil {

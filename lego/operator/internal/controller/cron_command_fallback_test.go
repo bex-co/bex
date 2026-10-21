@@ -47,7 +47,7 @@ func TestCronCommandFallbackThroughTheCarryingRelease(t *testing.T) {
 		return (&AppReconciler{}).cronPodSpec(app, "busybox", 0, nil, launchUnknown, "").Spec.Containers[0].Command
 	}
 
-	if got := command(cron(nil)); !slices.Equal(got, []string{shellBinary, "-c", script}) {
+	if got := command(cron(nil)); !slices.Equal(got, shellCommand(script)) {
 		t.Errorf("unedited image cron command = %v, want its configured fallback", got)
 	}
 

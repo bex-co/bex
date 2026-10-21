@@ -223,11 +223,6 @@ const (
 	launchImage   launchMode = "image" // the image's own entrypoint, which a native/buildpack build bakes it into
 )
 
-// shellCommand is the app container's Command for a shell-launched command.
-func shellCommand(command string) []string {
-	return []string{shellBinary, "-c", command}
-}
-
 // shellRunsStartCommand reports whether the app container running image must
 // launch the saved StartCommand itself (the Docker Command override) rather
 // than keep the image's own entrypoint. A recorded launch decides first (a
