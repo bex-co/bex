@@ -830,7 +830,7 @@ func parseBlueprintSource(manifest string) (*BlueprintSource, []BlueprintSourceP
 // Structural budgets for Blueprint YAML materialization. The manifest byte
 // cap (blueprintMaxManifestBytes, checked before yaml.Decode) bounds input
 // bytes, but bytes do not bound the amplified in-memory shape: aliases are
-// already rejected, yet a small document can still spread into millions of
+// walked once per use, so a small document can spread into millions of
 // tiny nodes — each materializing a Go value plus one locations-map entry —
 // or nest pathologically deep. Every budget is checked during the walk,
 // before the allocation it guards, and the first breach refuses the whole
@@ -952,7 +952,9 @@ func yamlNodeToBlueprintValue(node *yaml.Node, path []string, locations map[stri
 		}
 		return yamlNodeToBlueprintValue(node.Content[0], path, locations, depth, budget)
 	case yaml.AliasNode:
-		return nil, []BlueprintSourceProblem{{Code: "BLUEPRINT_YAML_ALIAS", Path: pointer, Message: "YAML aliases are not supported in Blueprints", Line: node.Line, Column: node.Column}}
+		// An alias is its anchored node, walked in place under the same budgets,
+		// so an alias bomb fails on the node budget; locations come from the anchor.
+		return yamlNodeToBlueprintValue(node.Alias, path, locations, depth+1, budget)
 	case yaml.SequenceNode:
 		if breach := budget.countCollection(pointer, node, len(node.Content)); breach != nil {
 			return nil, breach

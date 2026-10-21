@@ -18,6 +18,7 @@ package apps
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -477,20 +478,6 @@ services:
 }
 
 func TestBlueprintCompilerRejectsAmbiguousYAMLValues(t *testing.T) {
-	_, aliasProblems := CompileBlueprintSource(`
-services:
-  - &service
-    type: web
-    name: api
-    runtime: image
-    image: {url: nginx:1.27}
-ungrouped:
-  services: [*service]
-`)
-	if findBlueprintProblem(aliasProblems, "BLUEPRINT_YAML_ALIAS") == nil {
-		t.Fatalf("alias problems = %+v", aliasProblems)
-	}
-
 	_, timestampProblems := CompileBlueprintSource(`
 services:
   - type: web
@@ -679,5 +666,54 @@ func TestBlueprintCompilerCapsAggregateResourceDeclarations(t *testing.T) {
 	}
 	if problem.Path != "#/services" || problem.Line == 0 {
 		t.Fatalf("resource-count problem = %+v, want source collection path and location", problem)
+	}
+}
+
+// Aliases resolve to their anchored node, as in any YAML parser (w8/156): the
+// shared envVars block compiles to the same value, errors point into the
+// anchor, and an alias bomb dies on the node budget, not on the alias.
+func TestBlueprintCompilerResolvesYAMLAliases(t *testing.T) {
+	source, problems := CompileBlueprintSource(`
+services:
+  - type: web
+    name: a1
+    runtime: image
+    image: {url: nginx:1.27}
+    plan: free
+    envVars: &shared
+      - key: LOG_LEVEL
+        value: info
+  - type: web
+    name: a2
+    runtime: image
+    image: {url: nginx:1.27}
+    plan: free
+    envVars: *shared
+`)
+	if len(problems) != 0 {
+		t.Fatalf("problems = %+v", problems)
+	}
+	services := source.Value.(map[string]any)["services"].([]any)
+	if !reflect.DeepEqual(services[0].(map[string]any)["envVars"], services[1].(map[string]any)["envVars"]) {
+		t.Fatalf("aliased envVars differ: %+v", services)
+	}
+	if loc := source.Locations["#/services/1/envVars"]; loc.Line != 8 {
+		t.Fatalf("aliased block location = %+v, want the anchor's line 8 (the alias is on line 17)", loc)
+	}
+
+	var bomb strings.Builder
+	bomb.WriteString("a: &a [x, x, x, x, x, x, x, x, x, x]\n")
+	prev := "a"
+	for i := 0; i < 8; i++ {
+		name := string(rune('b' + i))
+		fmt.Fprintf(&bomb, "%s: &%s [%s]\n", name, name, strings.TrimSuffix(strings.Repeat("*"+prev+", ", 10), ", "))
+		prev = name
+	}
+	_, bombProblems := CompileBlueprintSource(bomb.String())
+	if findBlueprintProblem(bombProblems, "BLUEPRINT_YAML_NODES") == nil && findBlueprintProblem(bombProblems, "BLUEPRINT_YAML_LOCATIONS") == nil {
+		t.Fatalf("alias bomb problems = %+v", bombProblems)
+	}
+	if findBlueprintProblem(bombProblems, "BLUEPRINT_YAML_ALIAS") != nil {
+		t.Fatalf("alias bomb was refused as an alias: %+v", bombProblems)
 	}
 }

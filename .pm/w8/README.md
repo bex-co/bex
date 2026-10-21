@@ -403,7 +403,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **157** — [A Blueprint database with no `ipAllowList` is private on bex, but Render documents it as open to all IPs](157.md) ← `/qa-find-bugs-cli` sweep 1273 2026-10-21: a real Blueprint's documented migrate-from-outside flow fails on import; major, ~45m (confirm against ADR009:238/261 first).
 
-- [ ] **156** — [Blueprints that use YAML anchors and aliases are refused, although Render resolves them and real Render Blueprints depend on them](156.md) ← `/qa-find-bugs-cli` sweep 1270 2026-10-21: RooCode Roomote and Lemma can't import; minor, ~45m.
+- [x] **156** — [Blueprints that use YAML anchors and aliases are refused, although Render resolves them and real Render Blueprints depend on them](done/156.md) — **DONE (2026-10-21)**: aliases resolve under the walk budgets; ← `/qa-find-bugs-cli` sweep 1270 2026-10-21: RooCode Roomote and Lemma can't import; minor, ~45m.
 
 - [x] **155** — [Blueprint `fromService.envVarKey` cannot reference Render's default variables (`RENDER_EXTERNAL_URL`, `RENDER_EXTERNAL_HOSTNAME`, …)](done/155.md) — **DONE (2026-10-21)**: Resolved by w5/m148 (Render default variables, incl. `fromService.envVarKey: RENDER_*` references): `default-ref.yaml` validates on pin `a3f66521f93d`, and the four official examples now fail only on the QA workspace quota (sweep 1284).
 
