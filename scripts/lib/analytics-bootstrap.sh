@@ -3,10 +3,11 @@
 # existing password; credentials travel over stdin and never appear in argv.
 #
 # Custody contract (w7/m153): a Secret owned by a SealedSecret is authoritative and
-# is never rewritten here — the role password follows it, and a drifted CNPG CA fails
-# closed until resealed. An unowned Secret is applied and marked adoptable by the
-# committed SealedSecret. SEAL_TO=<file> writes the desired Secret, sealed, to that
-# manifest (requires kubeseal) so Git custody can be created or refreshed.
+# is never rewritten here — the role password follows it. An unowned Secret is
+# applied and marked adoptable by the committed SealedSecret. SEAL_TO=<file> writes
+# the desired Secret, sealed, to that manifest (requires kubeseal) so Git custody can
+# be created or refreshed. The Secret holds only the password: Grafana connects with
+# sslmode=require, so CNPG CA renewals need no reseal (w2/m170).
 set -euo pipefail
 set +x
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -22,7 +23,7 @@ secret="grafana-${profile}-analytics"
 seal_to="${SEAL_TO:-}"
 if [ "${DRY_RUN:-0}" = "1" ]; then
   echo "would provision ${profile}_analytics.events and restricted bex_${profile}_analytics role in $system_ns/bex-db"
-  echo "would reuse or mint $monitoring_ns/$secret (password + CNPG CA); a SealedSecret-owned Secret is left unchanged"
+  echo "would reuse or mint $monitoring_ns/$secret (password only); a SealedSecret-owned Secret is left unchanged"
   [ -z "$seal_to" ] || echo "would seal $monitoring_ns/$secret into $seal_to"
   exit 0
 fi
@@ -44,17 +45,6 @@ if [[ ! "$password" =~ ^[a-f0-9]{64}$ ]]; then
   echo "error: existing analytics password is not in the bootstrap's expected format" >&2
   exit 1
 fi
-ca="$(kubectl -n "$system_ns" get secret bex-db-ca -o jsonpath='{.data.ca\.crt}' | base64 --decode)"
-[ -n "$ca" ] || { echo "error: bex-db CA is missing" >&2; exit 1; }
-if [ -n "$sealed_owner" ] && [ -z "$seal_to" ]; then
-  sealed_ca="$(kubectl -n "$monitoring_ns" get secret "$secret" -o jsonpath='{.data.ca\.crt}' | base64 --decode)"
-  if [ "$sealed_ca" != "$ca" ]; then
-    echo "error: $monitoring_ns/$secret is SealedSecret-managed and its ca.crt no longer matches bex-db-ca;" >&2
-    echo "       rerun with SEAL_TO=<its committed sealedsecret.yaml> and ship the reseal" >&2
-    exit 1
-  fi
-  unset sealed_ca
-fi
 
 kubectl -n "$system_ns" exec -i "$primary" -c postgres -- \
   psql -X -q -v ON_ERROR_STOP=1 -U postgres -d bex < "$script_dir/${profile}-analytics.sql"
@@ -67,15 +57,15 @@ kubectl -n "$system_ns" exec -i "$primary" -c postgres -- \
 if [ -n "$sealed_owner" ]; then
   echo "kept SealedSecret-managed $monitoring_ns/$secret unchanged"
 else
-  apply_secret "$monitoring_ns" "$secret" Opaque password "$password" ca.crt "$ca"
+  apply_secret "$monitoring_ns" "$secret" Opaque password "$password"
   # Lets the committed SealedSecret adopt this Secret instead of failing its sync.
   kubectl -n "$monitoring_ns" annotate --overwrite secret "$secret" sealedsecrets.bitnami.com/managed=true >/dev/null
 fi
 if [ -n "$seal_to" ]; then
-  secret_manifest "$monitoring_ns" "$secret" Opaque password "$password" ca.crt "$ca" |
+  secret_manifest "$monitoring_ns" "$secret" Opaque password "$password" |
     kubeseal --controller-namespace kube-system --controller-name sealed-secrets --format yaml >"$seal_to"
   echo "sealed $monitoring_ns/$secret into $seal_to; ship it so the controller applies it"
 fi
-unset password ca existing
+unset password existing
 echo "provisioned ${profile}_analytics.events and $monitoring_ns/$secret"
 echo "Grafana reads the Secret at startup: roll monitoring/deployment/grafana after its data changes."
