@@ -96,6 +96,7 @@ export const ROUTE_HEAD_INVENTORY: Record<
     "billing_.$first.$.tsx",
     "cron.$.tsx",
     "d.$.tsx",
+    "deploy.tsx",
     "login.tsx",
     "new.database.tsx",
     "new.project.tsx",

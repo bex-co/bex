@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { HydrationFieldset } from "@/common/components/hydration-fieldset";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  useNavigate,
+  useSearch,
+} from "@tanstack/react-router";
 import { BlueprintCreatePageSkeleton } from "@/common/components/route-skeletons";
 import { Loader2, RefreshCw } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
@@ -25,6 +29,7 @@ import { Label } from "@/common/components/ui/label";
 import { Combobox } from "@/common/components/ui/combobox";
 import { repoNameSlug, gitUrlSlug } from "@/common/lib/utils/slug";
 import { isValidGitUrl } from "@/common/lib/utils/git-url";
+import { parseDeployRepo } from "@/features/blueprints/lib/deploy-link";
 import type { RepoView } from "@/features/services/hooks/use-repos";
 import { useRepoBranches } from "@/features/services/hooks/use-repo-branches";
 import {
@@ -45,6 +50,15 @@ export const Route = createFileRoute("/blueprints/new")({
   staticData: { chrome: true },
   component: NewBlueprintPage,
   pendingComponent: BlueprintCreatePageSkeleton,
+  // The Deploy-to-bex button (/deploy?repo=…) prefills the public-URL source
+  // (w8/163).
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { repo?: string; branch?: string; path?: string } => ({
+    ...(typeof search.repo === "string" && { repo: search.repo }),
+    ...(typeof search.branch === "string" && { branch: search.branch }),
+    ...(typeof search.path === "string" && { path: search.path }),
+  }),
   beforeLoad: requireAuth(),
   head: ({ match }) => translatedTitleHead("blueprints.createTitle", match),
 });
@@ -54,19 +68,33 @@ export function NewBlueprintPage() {
   const navigate = useNavigate();
   const { create, busy } = useCreateBlueprint();
 
-  const [tab, setTab] = useState<SourceTab>("github");
+  const linked = parseDeployRepo(
+    (useSearch({ strict: false }) as { repo?: string }).repo,
+  );
+  const linkSearch = useSearch({ strict: false }) as {
+    branch?: string;
+    path?: string;
+  };
+  const [tab, setTab] = useState<SourceTab>(linked ? "git" : "github");
   const [selectedRepo, setSelectedRepo] = useState<RepoView | null>(null);
-  const [gitUrl, setGitUrl] = useState("");
+  const [gitUrl, setGitUrl] = useState(linked?.repo ?? "");
   const [name, setName] = useState("");
   const [nameEdited, setNameEdited] = useState(false);
-  const [branch, setBranch] = useState("");
+  // As on Render, a link without /tree/<branch> deploys the default branch;
+  // "main" is the first guess, corrected below once the branches load.
+  const [branch, setBranch] = useState(
+    linked ? (linked.branch ?? linkSearch.branch ?? "main") : "",
+  );
+  const branchGuessed = linked != null && !linked.branch && !linkSearch.branch;
   // A Public Git Branch left behind by a tab switch, bound to its URL: the same
   // URL restores it, any other starts blank (w4/331, as w4/240 for services).
   const [gitBranchDraft, setGitBranchDraft] = useState<{
     gitUrl: string;
     branch: string;
   } | null>(null);
-  const [path, setPath] = useState("render.yaml");
+  const [path, setPath] = useState(
+    linked && linkSearch.path ? linkSearch.path : "render.yaml",
+  );
   // The server's refusal awaiting its phrase: a protected environment, or a
   // Blueprint takeover that names what it replaces.
   const [pendingConfirmation, setPendingConfirmation] =
@@ -105,6 +133,16 @@ export function NewBlueprintPage() {
       if (slug) setName(slug);
     }
   }, [tab, selectedRepo, gitUrl, nameEdited]);
+
+  const [guessPending, setGuessPending] = useState(branchGuessed);
+  useEffect(() => {
+    if (!guessPending || branches.length === 0) return;
+    setGuessPending(false);
+    if (!branches.includes(branch)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setBranch(branches.includes("master") ? "master" : branches[0]);
+    }
+  }, [guessPending, branches, branch]);
 
   const branchOptions = useMemo(
     () => branches.map((b) => ({ value: b, label: b })),
