@@ -1,6 +1,6 @@
 # w2 · m169 — The forums run on bex as an ordinary tenant: uploads persist, nothing is hand-patched
 
-**Worker:** worker2 **Goal:** the three forums (beancount.io/forum, tianpan.co/forum, forum.bex.co/forum) are deployed purely through bex's product surfaces — Blueprint, custom domains, dashboard/API/CLI, `render ssh` — exactly as an unrelated Render user could; every recoverable upload is served again, and new uploads survive restarts and redeploys. **Status:** todo — t001–t002 done 2026-10-19; t003 next. t006 (the disk deploy) needs the user to pick a low-traffic window.
+**Worker:** worker2 **Goal:** the three forums (beancount.io/forum, tianpan.co/forum, forum.bex.co/forum) are deployed purely through bex's product surfaces — Blueprint, custom domains, dashboard/API/CLI, `render ssh` — exactly as an unrelated Render user could; every recoverable upload is served again, and new uploads survive restarts and redeploys. **Status:** blocked — t001–t003 done; t005 needs the user: (1) tenant-owned forum hostnames added as bex custom domains need DNS records in the user's Cloudflare, and (2) the main-site `/forum` proxies (outside bex, behind a Caddy hop) must be repointed from the hand-made `tianpan-forum.onbex.co` / `blockeden-forum.onbex.co` names; t004 deliberately rides t006's deploy window (the App rebuilds the whole Discourse image from `bex-co/discourse_docker` `main` on every push)
 
 ## Tasks (in order)
 
@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | t001 | Rebuild the missing-upload inventory from the three forum databases and match it to the recovered files — **DONE** | 45m | — |
 | t002 | Decide the mount path, size and on-disk layout from the running image — **DONE** | 30m | t001 |
-| t003 | Inventory every hand-made object and settle who serves beancount.io | 30m | t002 |
+| t003 | Inventory every hand-made object and settle who serves beancount.io — **DONE** | 30m | t002 |
 | t004 | Move the forum's `/` → `/forum` redirect into the application | 40m | t003 |
 | t005 | Serve every forum domain through bex custom domains, then delete the hand-built Ingresses and Middleware | 1h | t003, t004 |
 | t006 | Make the Blueprint the single source of truth — runtime, `fromDatabase` hosts, `disk`, domains — and sync it as a tenant (**STOP: the user picks the downtime window**) | 45m | t005 |
@@ -30,7 +30,7 @@
 ## Source + Goal linkage
 
 - **Source:** `/pm-brainstorm for w2` (2026-10-19), item 2, chosen by the user the same day. Promotes the `.pm/FUTURE-MAYBE.md` entry "Forum upload restore + durable disk" (from `w7/done/042.md`, deferred 2026-09-06), whose trigger — "`nvme4tbfish` is attached" — is met: this repository runs from that volume, and `/Volumes/nvme4tbfish/discourse_docker/data/{beancount,block-eden,tianpan}-forum/uploads` hold 14, 16 and 11 files (counted 2026-10-19).
-- **Goal linkage:** [ADR082](../../../docs/ADR082-persistent-disks.md) persistent disks, applied to the exact workload class it was re-opened for ("uploads directories"), on bex's own first-party forums — including forum.bex.co, bex's community forum (w2/m168 wired its OIDC login).
+- **Goal linkage:** [ADR082](../../../../docs/ADR082-persistent-disks.md) persistent disks, applied to the exact workload class it was re-opened for ("uploads directories"), on bex's own first-party forums — including forum.bex.co, bex's community forum (w2/m168 wired its OIDC login).
 - **Expected outcome:** missing forum images return, and uploads stop being lost on every restart and redeploy.
 - **Why now:** the loss is ongoing, not historical. The live multisite App `tea-d98210cbbpdc73dcrkvg-beancount-forum` has no disk and no S3 store (`bex-forums-multisite.yaml` declares neither), and its pod has no volumes; the current pod started 2026-10-19T00:56Z, so everything uploaded before that restart is already gone (read-only check, 2026-10-19). Forum content operations moved to `bex-co/obm` on 2026-10-18, so the forums are actively used.
 - **Direction (user decision 2026-10-20):** deploy the forums the regular way an ordinary bex.co tenant would, not as an internal service. The earlier plan to diff and re-apply hand `kubectl patch`es is withdrawn; any step a tenant cannot do through the product becomes a filed bex gap.
@@ -60,3 +60,17 @@
 - **Ownership:** puma and sidekiq run as UID 0 with `CapEff: 0` (`capabilities.drop: [ALL]`, no `DAC_OVERRIDE`), so they can write only where root is the owner. A fresh volume root is `root:root`, so no `fsGroup` is needed. Revisit if `w6/m149`'s privilege policy changes the runtime user.
 - **Target paths:** all 29 recoverable uploads are legacy single-site rows under `/forum/uploads/default/original/1X/<sha1>.<ext>` → `public/uploads/default/original/1X/`. Post-consolidation rows use per-site prefixes (`uploads/tianpan/…`, `uploads/blockeden/…`); the two such rows are among the unrecoverable ten.
 - **For the Blueprint task (t006):** the live App is Git-built (`spec.repo`, `spec.dockerfilePath`), not the `runtime: image` that `bex-forums-multisite.yaml` declares — reconcile that drift when declaring the disk, and diff the live Deployment for surviving manual patches before the `Recreate` deploy.
+
+## t003 findings (2026-10-20, read-only)
+
+| Public URL | Path today | bex object | Regular-tenant target |
+| --- | --- | --- | --- |
+| `beancount.io/forum` | Cloudflare → beancount.io main site (`via: 1.1 Caddy`, outside this App) → forwards `/forum` to the forum App | bex-managed Ingress `beancount-forum.onbex.co` (the App's own platform host) | already regular |
+| `tianpan.co/forum` | Cloudflare → tianpan.co main site (Caddy) → `/forum` to the forum App | hand-made Ingress `tianpan-forum.onbex.co` (hand-set ownerReference) | a tenant-owned host, e.g. `forum.tianpan.co`, added as a bex custom domain; main-site proxy repointed to it |
+| `blockeden.xyz/forum` | Cloudflare → blockeden.xyz main site (Caddy; `blockeden.xyz` is a verified bex custom domain on `block-eden-mono`) → `/forum` to the forum App | hand-made Ingress `blockeden-forum.onbex.co` | proxy to `forum.bex.co` (the site's canonical host) instead |
+| `forum.bex.co` | Cloudflare → bex directly; `/` → 301 `/forum` | hand-made Ingress `forum-bex-co` + Middleware `forum-bex-co-root` | `forum.bex.co` as a bex custom domain on the forum App; redirect in the app (t004) |
+| — | — | hand-made Ingress `beancount-forum-ms` (`beancount.io` + onbex host, no owner) | dead: `beancount.io` never reaches it (Cloudflare → main site); delete |
+
+- A Render tenant gets exactly **one** platform hostname per service, so the extra `*-forum.onbex.co` names cannot exist the regular way; each non-default site needs a tenant-owned hostname as a custom domain. Discourse multisite picks the site by `Host` (`multisite.yml` `host_names`: tianpan → `tianpan.co`, `tianpan-forum.onbex.co`; blockeden → `forum.bex.co`, `blockeden-forum.onbex.co`, `blockeden.xyz`), so the new hostnames are added to `host_names` too.
+- The bex domain store lists `beancount.io` / `www.beancount.io` as **pending** on `block-eden-mono-1` — the main-site migration, unrelated to the forums.
+- The main-site proxies are not in any local repo found (the `block-eden-mono/projects/reverse-proxy-mac/Caddyfile` routes are a legacy local setup).
