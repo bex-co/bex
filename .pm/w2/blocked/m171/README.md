@@ -1,13 +1,13 @@
 # w2 · m171 — Postgres plans large enough for high availability
 
-**Worker:** worker2 **Goal:** a tenant can create or upgrade a managed Postgres on a ≥1-CPU plan, enable high availability, and survive a primary failure with Render's `postgres_cluster_leader_changed` event — on REST, GraphQL, MCP, the pinned Render CLI and the dashboard. **Status:** todo — t001 done 2026-10-20 (user approved the three tiers and prices); t002 next; `w5/m138/t003` (t004's other dependency) is done
+**Worker:** worker2 **Goal:** a tenant can create or upgrade a managed Postgres on a ≥1-CPU plan, enable high availability, and survive a primary failure with Render's `postgres_cluster_leader_changed` event — on REST, GraphQL, MCP, the pinned Render CLI and the dashboard. **Status:** blocked — t001–t002 done; production cannot place the new tiers yet: the serving pool (`bex-tenant-0`, 3 × cx33, autoscaler max 3) has at most 734m CPU free per node, so even one 1-CPU instance is unschedulable. The user decides the serving-pool capacity (recommended: raise `bex-tenant-0` max 3 → 6, cost only when used) before t003
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | Fetch Render's live Postgres catalog and record which ≥1-CPU tiers bex adds, at Render × 0.70 — **DONE** | 40m | — |
-| t002 | Capacity and placement check: an HA pair of each chosen tier on production node types | 40m | t001 |
+| t002 | Capacity and placement check: an HA pair of each chosen tier on production node types — **DONE** | 40m | t001 |
 | t003 | Add the tiers to the catalog, pricing, Stripe catalog and schema enums, with Render's plan-change rules for HA | 1h | t002 |
 | t004 | Emit `postgres_cluster_leader_changed` when the primary changes | 1h | t003, w5/m138/t003 |
 | t005 | Dashboard: the new tiers in every plan picker, HA available on them, skeletons unchanged in geometry | 45m | t003 |
@@ -31,7 +31,7 @@
 
 - **Source:** `/pm-brainstorm for w2` (2026-10-19), item 4, chosen by the user the same day (parity-ledger sweep). `w8/done/m43` shipped the HA plan gate and called a larger plan "deferred product work" but filed nothing; `w5/m138` (read replicas, in progress) explicitly leaves `postgres_cluster_leader_changed` out "because HA needs a ≥1-CPU plan and none ships yet (ADR009 §5's larger plans are an open pricing decision)" — this milestone owns that decision and that event.
 - **Evidence:** the largest Postgres tier is `basic-1gb` (500m CPU, 1Gi, 5 GB) in `lego/types/tiers/tiers.yaml:78-104`; `CheckHighAvailabilityPlan` (`lego/backend/internal/postgres/tiers.go:115-140`) refuses HA below 1 CPU, and `PlanSupportsHighAvailability` is a variable "only so tests … can run while the shipped catalog has no ≥1-CPU Postgres plan". Render's pinned event list (`lego/backend/internal/api/openapi/render-public-api-1.json`) includes `postgres_cluster_leader_changed`; bex's event vocabulary does not. The operator already projects CNPG `status.currentPrimary` into `Database.status.CurrentPrimary` and `LastFailoverAt` (`lego/operator/internal/controller/database_controller.go:1503-1577`).
-- **Goal linkage:** [ADR008](../../../docs/ADR008-vision.md) pillar 1 (Render-compatible API) and [ADR009](../../../docs/ADR009-postgresql-management.md) managed Postgres — its §5 maps Render's Pro tier to "availability + PITR".
+- **Goal linkage:** [ADR008](../../../../docs/ADR008-vision.md) pillar 1 (Render-compatible API) and [ADR009](../../../../docs/ADR009-postgresql-management.md) managed Postgres — its §5 maps Render's Pro tier to "availability + PITR".
 - **Expected outcome:** a team on Render can move a production database that needs failover or more than 1 GiB of RAM; the HA and failover code bex already ships becomes reachable.
 - **Why now:** shipped capability (HA gate, failover verb, HA panel) is unreachable behind a ledger row that marks it ✅, and `w5/m138` is extending the same Postgres plan family right now — landing the plan decision while that context is fresh avoids a second pass over admission and events.
 - **Render parity included:** new plans and HA availability appear on REST, GraphQL, MCP, the CLI and the dashboard.
@@ -58,3 +58,10 @@ Render primary sources, fetched 2026-10-19: [high availability](https://render.c
 - **Side finding (filed separately as `w2/047`):** `pricing.yaml` records Render's small tiers at $7 and $20, but Render lists $6 and $19, so `basic-256mb` and `basic-1gb` are priced above bex's own Render × 0.70 rule.
 
 **047 absorbed (decision 2026-10-20).** The user delegated the call with "the end result must be correct (consistent)". Decision: the two small tiers move to Render × 0.70 of Render's current prices ($6 → **$4.20**, $19 → **$13.30**), and existing subscriptions move at their next billing period (a price cut, so no customer is harmed and bex stays consistent with its own rule). Its Stripe work rides the same single catalog change as the three new tiers: create five prices, retire two, then `scripts/stripe-billing-setup.py` must report the live catalog in sync with `pricing.yaml`. The live Stripe step needs the Stripe admin (`.pm/DO_NOT_DO.md`, ADR071 entry). Original note: [source-w2-047.md](source-w2-047.md).
+
+## Capacity (t002, read-only 2026-10-20)
+
+- Serving capacity is only `bex-tenant-0`: 3 × cx33 (4 vCPU / ~7.5 Gi allocatable), autoscaler **min 1 / max 3 — at max**. CPU requested 91% / 81% / 85% (free ≈ 324m / 734m / 584m). `bex-tenant-lg` (cx43, ~5.8 CPU free) and `bex-tenant-burst` carry `bex.co/build-only=true:NoSchedule` — Postgres cannot use them.
+- So a single `1c-2g` instance (1 CPU, Guaranteed) is unschedulable today, and the autoscaler cannot add a serving node. The same constraint left the `tenant-headroom` placeholder Pending (`w2/048`) and tenant QA pods Pending on 2026-10-20.
+- HA placement: the operator sets CNPG `enablePodAntiAffinity: true` with the default **preferred** type (`database_controller.go:476-480`), so with capacity a pair *could* co-locate on one node — not Render's guarantee. t003 should make HA anti-affinity **required**.
+- **Decision needed (user, spend):** raise `bex-tenant-0` `cluster-api-autoscaler-node-group-max-size` (`infra/clusterapi/overlays/hetzner-caph/cluster.yaml`) — recommended 3 → 6 so a 2c-4g HA pair plus rollout surge fit; nodes are added (and billed) only when pods need them. Applied by the `app-cluster.yml` workflow on merge.
