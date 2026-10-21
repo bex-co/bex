@@ -3,7 +3,7 @@ name: test (backend)
 # Run the backend and agent-driver suites on relevant PRs, and as a
 # reusable workflow called by deploy.yml to gate the build+push+deploy job.
 # Integration tests run against real ephemeral Postgres, OpenFGA, and OpenBao
-# service containers, all digest-pinned and enforced by scripts/image-pin-validate.sh.
+# containers started as steps, all digest-pinned and enforced by scripts/image-pin-validate.sh.
 # Main pushes run once through deploy.yml; avoid duplicate gates competing on
 # the shared Mac host. deploy.yml includes this workflow and all test inputs.
 on:
@@ -37,29 +37,41 @@ jobs:
       # so test with the workspace off, matching prod. Go version follows
       # lego/backend/go.mod (the 1.26 line); setup-go pins GOTOOLCHAIN=local.
       GOWORK: "off"
-    services:
-      postgres:
-        # Digest-pinned like every other image bex resolves (w7/m85): the
-        # integration suite runs real SQL against this container, so a retagged
-        # postgres:17 changes what the backend is certified against. Pinned to
-        # the linux/arm64/v8 manifest specifically, not the multi-arch index —
-        # this runner is self-hosted ARM64 (runs-on above), and GitHub Actions'
-        # `services:` container pull does not reliably resolve an OCI index to
-        # the host's own platform (it failed here with the entrypoint script
-        # exec-ing with EINVAL, the signature of a wrong-arch binary, even
-        # though the index digest we previously pinned did include an arm64/v8
-        # manifest). Pinning the platform-specific digest removes that
-        # resolution step entirely.
-        image: postgres:17@sha256:e2fddda1fea39c634dccdae58dba5448eb3efb85aaa4054cf45cbed28f35d296
-        env:
-          POSTGRES_PASSWORD: pw
-        options: >-
-          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
-
-        ports:
-          - 5432:5432
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The runner's Docker Hub pulls intermittently time out on
+      # registry-1.docker.io (run 39504771495: three postgres pulls in under a
+      # minute, then the job failed). A `services:` container is pulled before
+      # any step with only the runner's short retry, so every dependency image
+      # is pulled here with a longer backoff, and each one starts from the
+      # local cache.
+      - name: pull dependency images (with retries)
+        run: |
+          for image in \
+            postgres:17@sha256:e2fddda1fea39c634dccdae58dba5448eb3efb85aaa4054cf45cbed28f35d296 \
+            grafana/loki:3.6.7@sha256:3c8fd3570dd9219951a60d3f919c7f31923d10baee578b77bc26c4a0b32d092d \
+            openfga/openfga:latest@sha256:01a6000aa6040a4d0bde6ea1d3359ac3b9f21dc972ac6103a87b38659a836776 \
+            quay.io/openbao/openbao:2.5.5@sha256:6150c4a6b62067db6141c8da7a6a6b5763f4f47c315343d0c848b40fecdfd452; do
+            for i in 1 2 3 4 5; do
+              docker pull "$image" && break
+              [ "$i" -lt 5 ] || exit 1
+              echo "pull $image attempt $i failed, retrying in $((i * 20))s..."; sleep $((i * 20))
+            done
+          done
+      # Postgres runs as a step rather than a `services:` container so its pull
+      # gets the retries above. Digest-pinned like every other image bex
+      # resolves (w7/m85): the integration suite runs real SQL against it.
+      # Pinned to the linux/arm64/v8 manifest, not the multi-arch index: this
+      # runner is self-hosted ARM64, and a services: pull once resolved the
+      # index to a wrong-arch binary (entrypoint exec EINVAL).
+      - name: start Postgres
+        run: |
+          docker rm -f backend-test-postgres >/dev/null 2>&1 || true
+          docker run -d --name backend-test-postgres \
+            -e POSTGRES_PASSWORD=pw \
+            -p 127.0.0.1:5432:5432 \
+            postgres:17@sha256:e2fddda1fea39c634dccdae58dba5448eb3efb85aaa4054cf45cbed28f35d296
+          timeout 90 bash -c 'until docker exec backend-test-postgres pg_isready -U postgres -h 127.0.0.1; do sleep 2; done'
       # TestLokiRequestMetricsClipToWindowOnLoki runs the request-metrics LogQL in
       # the pinned Loki engine (w4/m175; 3.6.7 is production's version). Started
       # first so its ~20 s warm-up overlaps setup; readiness is awaited before go test.
@@ -165,6 +177,6 @@ jobs:
           scripts/test_stripe_billing_operations.py
           scripts/test_stripe_billing_reconcile.py
           scripts/test_stripe_orphan_audit.py
-      - name: stop test OpenBao and Loki
+      - name: stop test Postgres, OpenBao and Loki
         if: always()
-        run: docker rm -f backend-test-openbao backend-test-loki
+        run: docker rm -f backend-test-postgres backend-test-openbao backend-test-loki
