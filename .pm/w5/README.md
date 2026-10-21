@@ -17,11 +17,12 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 User decision 2026-10-20: all five items of the fifth `/pm-brainstorm for w5` proposal, in priority order, followed by `/loopx w5`. They follow `2163b27c7` (Render parity is the top principle; a divergence stands only with ADR018-recorded user sign-off). Render parity is included for m149–m152 and omitted for m148 (runtime/build environment only). w5/169 is promoted into m150.
 
-- [ ] **m148** — [Services see Render's platform environment variables (`RENDER_*`)](m148/README.md) (8 tasks; 6h10m total) ← round 5 item 1; w4/m123 t005 shipped a narrower set than Render
+- [x] **m148** — [Services see Render's platform environment variables (`RENDER_*`)](done/m148/README.md) (8 tasks; 6h10m total) ← round 5 item 1; w4/m123 t005 shipped a narrower set than Render
 - [ ] **m149** — [`PORT` is user-settable like on Render](m149/README.md) (8 tasks; 6h total) ← round 5 item 2; ADR018 row 138 unsigned divergence (w2/m95)
 - [ ] **m150** — [Render templates with free-form resource names or dotted env keys validate](m150/README.md) (7 tasks; 5h15m total) ← round 5 item 3; promoted from w5/169 (w5/m143 corpus)
 - [ ] **m151** — [Render edge caching: `serviceDetails.cache.profile`](m151/README.md) (8 tasks; 7h total) ← round 5 item 4; replaces w5/m146's unsigned `—` row
 - [ ] **m152** — [Changing a service's runtime works (PATCH `serviceDetails.runtime`)](m152/README.md) (8 tasks; 6h30m total) ← round 5 item 5; replaces w5/m146's named refusal
+- [ ] **170** — [A Blueprint service can copy a sibling's `sync: false` variable](170.md) (~1h) ← found by w5/m148's corpus run
 
 ## Approved queue — 2026-10-20 (parity-only set)
 

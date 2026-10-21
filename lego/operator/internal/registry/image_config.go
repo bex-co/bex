@@ -63,9 +63,45 @@ func imageRepoBase(registryHost, repo, reference, authorization string) (string,
 // and config digests, and never downloads layers. Redirects are refused so the
 // registry cannot redirect the operator's credentials or fetches elsewhere.
 func ReadImageConfig(ctx context.Context, httpClient *http.Client, registryHost, repo, reference, authorization string) (ImageConfig, error) {
-	base, err := imageRepoBase(registryHost, repo, reference, authorization)
+	digest, document, err := readImageConfigDocument(ctx, httpClient, registryHost, repo, reference, authorization)
 	if err != nil {
 		return ImageConfig{}, err
+	}
+	ports, err := privateTCPPorts(document.Config.ExposedPorts)
+	if err != nil {
+		return ImageConfig{}, err
+	}
+	return ImageConfig{Digest: digest, TCPPorts: ports}, nil
+}
+
+// RevisionLabel is the OCI annotation bex's builds stamp with the commit the
+// image was built from (w5/m148).
+const RevisionLabel = "org.opencontainers.image.revision"
+
+// ReadImageRevision is ReadImageConfig for the image's RevisionLabel: the
+// same authorized, digest-verified, layer-free read, without the port rules,
+// which say nothing about provenance. "" when the image carries no label.
+func ReadImageRevision(ctx context.Context, httpClient *http.Client, registryHost, repo, reference, authorization string) (string, error) {
+	_, document, err := readImageConfigDocument(ctx, httpClient, registryHost, repo, reference, authorization)
+	if err != nil {
+		return "", err
+	}
+	return document.Config.Labels[RevisionLabel], nil
+}
+
+type imageConfigDocument struct {
+	OS           string `json:"os"`
+	Architecture string `json:"architecture"`
+	Config       struct {
+		ExposedPorts map[string]json.RawMessage `json:"ExposedPorts"`
+		Labels       map[string]string          `json:"Labels"`
+	} `json:"config"`
+}
+
+func readImageConfigDocument(ctx context.Context, httpClient *http.Client, registryHost, repo, reference, authorization string) (string, imageConfigDocument, error) {
+	base, err := imageRepoBase(registryHost, repo, reference, authorization)
+	if err != nil {
+		return "", imageConfigDocument{}, err
 	}
 	ctx, cancel := boundedhttp.WithTimeout(ctx)
 	defer cancel()
@@ -108,7 +144,7 @@ func ReadImageConfig(ctx context.Context, httpClient *http.Client, registryHost,
 		}
 		body, digest, err := fetch("manifests/"+reference, expected)
 		if err != nil {
-			return ImageConfig{}, err
+			return "", imageConfigDocument{}, err
 		}
 		var manifest struct {
 			SchemaVersion int    `json:"schemaVersion"`
@@ -125,10 +161,10 @@ func ReadImageConfig(ctx context.Context, httpClient *http.Client, registryHost,
 			} `json:"manifests"`
 		}
 		if err := json.Unmarshal(body, &manifest); err != nil {
-			return ImageConfig{}, fmt.Errorf("decode image manifest: %w", err)
+			return "", imageConfigDocument{}, fmt.Errorf("decode image manifest: %w", err)
 		}
 		if manifest.SchemaVersion != 2 {
-			return ImageConfig{}, fmt.Errorf("unsupported image manifest schema")
+			return "", imageConfigDocument{}, fmt.Errorf("unsupported image manifest schema")
 		}
 		switch manifest.MediaType {
 		case "application/vnd.oci.image.index.v1+json", "application/vnd.docker.distribution.manifest.list.v2+json":
@@ -136,47 +172,37 @@ func ReadImageConfig(ctx context.Context, httpClient *http.Client, registryHost,
 			for _, child := range manifest.Manifests {
 				if child.Platform.OS == "linux" && child.Platform.Architecture == "amd64" {
 					if !imageDigestPattern.MatchString(child.Digest) {
-						return ImageConfig{}, fmt.Errorf("invalid image manifest digest")
+						return "", imageConfigDocument{}, fmt.Errorf("invalid image manifest digest")
 					}
 					reference = child.Digest
 					break
 				}
 			}
 			if reference == "" {
-				return ImageConfig{}, fmt.Errorf("image has no Linux/amd64 manifest")
+				return "", imageConfigDocument{}, fmt.Errorf("image has no Linux/amd64 manifest")
 			}
 			continue
 		case "application/vnd.oci.image.manifest.v1+json", "application/vnd.docker.distribution.manifest.v2+json":
 		default:
-			return ImageConfig{}, fmt.Errorf("unsupported image manifest media type")
+			return "", imageConfigDocument{}, fmt.Errorf("unsupported image manifest media type")
 		}
 		if !imageDigestPattern.MatchString(manifest.Config.Digest) {
-			return ImageConfig{}, fmt.Errorf("invalid image config digest")
+			return "", imageConfigDocument{}, fmt.Errorf("invalid image config digest")
 		}
 		config, _, err := fetch("blobs/"+manifest.Config.Digest, manifest.Config.Digest)
 		if err != nil {
-			return ImageConfig{}, err
+			return "", imageConfigDocument{}, err
 		}
-		var document struct {
-			OS           string `json:"os"`
-			Architecture string `json:"architecture"`
-			Config       struct {
-				ExposedPorts map[string]json.RawMessage `json:"ExposedPorts"`
-			} `json:"config"`
-		}
+		var document imageConfigDocument
 		if err := json.Unmarshal(config, &document); err != nil {
-			return ImageConfig{}, fmt.Errorf("decode image config: %w", err)
+			return "", imageConfigDocument{}, fmt.Errorf("decode image config: %w", err)
 		}
 		if document.OS != "linux" || document.Architecture != "amd64" {
-			return ImageConfig{}, fmt.Errorf("image config is not Linux/amd64")
+			return "", imageConfigDocument{}, fmt.Errorf("image config is not Linux/amd64")
 		}
-		ports, err := privateTCPPorts(document.Config.ExposedPorts)
-		if err != nil {
-			return ImageConfig{}, err
-		}
-		return ImageConfig{Digest: digest, TCPPorts: ports}, nil
+		return digest, document, nil
 	}
-	return ImageConfig{}, fmt.Errorf("image index nesting exceeds the supported limit")
+	return "", imageConfigDocument{}, fmt.Errorf("image index nesting exceeds the supported limit")
 }
 
 func privateTCPPorts(exposed map[string]json.RawMessage) ([]int32, error) {

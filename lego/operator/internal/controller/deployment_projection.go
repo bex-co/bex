@@ -174,6 +174,9 @@ type deploymentParams struct {
 	webConcurrency int
 	// userNamespaces is BEX_RENDER_V1_USER_NAMESPACES (appHostUsers).
 	userNamespaces bool
+	// platform carries the Render default variables' inputs that do not come
+	// from the App (platform_env.go).
+	platform platformEnvInputs
 }
 
 // appPodLabels builds the pod template's label set.
@@ -245,6 +248,14 @@ func shellRunsStartCommand(app *appv1alpha1.App, image string, recorded launchMo
 	return b != build.BuilderNative && b != build.BuilderBuildpack
 }
 
+// appContainerEnv is the app container's env: the user's literals, Render's
+// platform set, the WEB_CONCURRENCY default, then PORT.
+func appContainerEnv(app *appv1alpha1.App, p deploymentParams) []corev1.EnvVar {
+	in := p.platform
+	in.baseDomain = p.baseDomain
+	return withWebConcurrency(withPlatformEnv(appEnv(app, p.port), platformEnv(app, in)), p.webConcurrency)
+}
+
 // appContainer projects the App onto its single "app" container.
 // probeHost is the Host header its HTTP health probes send ("" for none).
 func appContainer(app *appv1alpha1.App, p deploymentParams, probeHost string) corev1.Container {
@@ -262,7 +273,7 @@ func appContainer(app *appv1alpha1.App, p deploymentParams, probeHost string) co
 		Name:            appContainerName,
 		Image:           p.image,
 		ImagePullPolicy: pullPolicyFor(p.image),
-		Env:             withWebConcurrency(appEnv(app, p.port), p.webConcurrency),
+		Env:             appContainerEnv(app, p),
 		EnvFrom:         envFromSources(app),
 		Ports:           ports,
 		Resources:       resourcesForTier(app.Spec.Tier),

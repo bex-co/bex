@@ -72,7 +72,7 @@ func TestFreePlanLabelOnCronAndPreDeployPods(t *testing.T) {
 			a.Spec.Type = appv1alpha1.TypeCronJob
 			a.Spec.Tier = tier
 		})
-		cron := r.cronPodSpec(app, "img:1", 0, map[string]string{labelApp: app.Name}, launchUnknown)
+		cron := r.cronPodSpec(app, "img:1", 0, map[string]string{labelApp: app.Name}, launchUnknown, "")
 		if got := cron.Labels[execution.LabelFreePlan] == execution.FreePlanValue; got != want {
 			t.Errorf("cron tier %q: label = %v, want %v", tier, got, want)
 		}

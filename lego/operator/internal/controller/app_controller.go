@@ -1051,6 +1051,9 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		// a Dockerfile build as build args and Render-id build secrets, as on
 		// Render (w1/m178). Its literals reach BuildKit directly, so they need
 		// no Secret, and only native builds use the cache revision they feed.
+		// Render's build-time platform variables ride along (w5/m148); the
+		// commit is added in the build pod, the only place that knows it.
+		buildLiterals = withBuildPlatformEnv(buildLiterals, app, r.BaseDomain)
 		projectLiterals := buildLiterals
 		if builder != build.BuilderNative {
 			projectLiterals = nil
@@ -2624,6 +2627,9 @@ func (r *AppReconciler) convergeSharedChildren(ctx context.Context, app *appv1al
 	// from web/private) gets it removed. One seam owns both halves, so no type
 	// path can forget the delete (docs/ADR041-service-addresses.md D2).
 	if err := r.reconcileSlugService(ctx, app, port); err != nil {
+		return &stepFailure{reason: "ServiceFailed", err: err}
+	}
+	if err := r.reconcileDiscoveryService(ctx, app); err != nil {
 		return &stepFailure{reason: "ServiceFailed", err: err}
 	}
 	// A command can be removed while the App is suspended or while its type is
@@ -4357,9 +4363,11 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	if err != nil {
 		return r.fail(ctx, app, "DeployFailed", err)
 	}
-	tmpl := r.cronPodSpec(effectiveApp, image, port, labels, launch)
+	var tmpl corev1.PodTemplateSpec
 	if restore != nil {
 		tmpl = *restore
+	} else {
+		tmpl = r.cronPodSpec(effectiveApp, image, port, labels, launch, r.imageCommit(ctx, app, image))
 	}
 	res, err := r.applyServingCronJob(ctx, app, tmpl, restore != nil)
 	if err != nil {
@@ -4897,12 +4905,13 @@ func toCronRun(job *batchv1.Job) appv1alpha1.CronRun {
 // the App's env. A cron container declares no port — it is not an HTTP server.
 // spec.command, when set, overrides the image's default entrypoint/cmd via a
 // shell (Render's cron "Command" field); empty leaves the image's own command.
-func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int, labels map[string]string, launch launchMode) corev1.PodTemplateSpec {
+func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int, labels map[string]string, launch launchMode, gitCommit string) corev1.PodTemplateSpec {
+	platform := platformEnv(app, platformEnvInputs{baseDomain: r.BaseDomain, gitCommit: gitCommit})
 	container := corev1.Container{
 		Name:            appContainerName,
 		Image:           image,
 		ImagePullPolicy: pullPolicyFor(image),
-		Env:             appEnv(app, port),
+		Env:             withPlatformEnv(appEnv(app, port), platform),
 		EnvFrom:         envFromSources(app),
 		Resources:       resourcesForTier(app.Spec.Tier),
 		SecurityContext: appSecCtx(app.Spec),
@@ -6088,7 +6097,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 		Command:          command,
 		Revision:         rev,
 		Generation:       gen,
-		Env:              appEnv(app, port),
+		Env:              withPlatformEnv(appEnv(app, port), platformEnv(app, platformEnvInputs{baseDomain: r.BaseDomain, gitCommit: r.imageCommit(ctx, app, image)})),
 		EnvFrom:          envFromSources(release),
 		ImagePullSecrets: pullSecrets,
 		SecurityContext:  appSecCtx(app.Spec),

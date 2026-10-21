@@ -32,16 +32,6 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-func TestPlanWebConcurrencyRoundsPlanCPUsUp(t *testing.T) {
-	for tier, want := range map[string]int{
-		"free": 1, "starter": 1, "standard": 1, "pro": 2, "pro-plus": 4, "pro-ultra": 8, "": 1, "no-such-plan": 1,
-	} {
-		if got := planWebConcurrency(tier); got != want {
-			t.Errorf("planWebConcurrency(%q) = %d, want %d", tier, got, want)
-		}
-	}
-}
-
 func TestWebConcurrencyEligibleOnlyForNewWebAndPrivateServices(t *testing.T) {
 	after := metav1.NewTime(webConcurrencyCutoff.Add(time.Hour))
 	before := metav1.NewTime(webConcurrencyCutoff.Add(-time.Hour))

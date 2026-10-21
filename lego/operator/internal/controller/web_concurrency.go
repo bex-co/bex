@@ -24,10 +24,9 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/bex-co/bex/lego/types/tiers"
+	"github.com/bex-co/bex/lego/types/renderenv"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -42,17 +41,6 @@ const webConcurrencyEnvName = "WEB_CONCURRENCY"
 // shipped get the default, so a running service's worker count (and memory)
 // never changes under it on an operator upgrade.
 var webConcurrencyCutoff = time.Date(2026, time.October, 21, 0, 0, 0, 0, time.UTC)
-
-// planWebConcurrency is max(1, ceil(plan CPUs)); a tier without a CPU count
-// (unset, best-effort) gets 1, like Render's smallest plans.
-func planWebConcurrency(tier string) int {
-	cpu, _, _, ok := tiers.Compute.Resources(tier)
-	if !ok {
-		return 1
-	}
-	q := resource.MustParse(cpu)
-	return max(1, int(q.Value())) // Value rounds up: 500m is 1
-}
 
 // webConcurrencyEligible is the type and cutoff half of the rule.
 func webConcurrencyEligible(app *appv1alpha1.App) bool {
@@ -90,7 +78,7 @@ func (r *AppReconciler) webConcurrency(ctx context.Context, app *appv1alpha1.App
 			return 0, nil
 		}
 	}
-	return planWebConcurrency(app.Spec.Tier), nil
+	return renderenv.PlanCPUCount(app.Spec.Tier), nil
 }
 
 // withWebConcurrency adds the default just before PORT, which appEnv always

@@ -383,8 +383,10 @@ func TestNativeSecretFilesTransport(t *testing.T) {
 	if !strings.Contains(dockerfile, want) {
 		t.Fatalf("Dockerfile missing file mounts %q:\n%s", want, dockerfile)
 	}
+	// The one ARG is Render's public RENDER_GIT_COMMIT (w5/m148), never a file.
+	unexempt := strings.Replace(dockerfile, "ARG RENDER_GIT_COMMIT\n", "", 1)
 	for _, reject := range []string{"COPY /native", "ARG ", "ENV QA", "/native/files"} {
-		if strings.Contains(dockerfile, reject) {
+		if strings.Contains(unexempt, reject) {
 			t.Fatalf("file transport must not use %q:\n%s", reject, dockerfile)
 		}
 	}

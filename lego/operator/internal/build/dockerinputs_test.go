@@ -239,7 +239,8 @@ func TestDockerfileBuildInputsOnlyWhenPresent(t *testing.T) {
 	}{{"no inputs", bare, false}, {"literals only", literalOnly, true}} {
 		job := BuildJob(tc.o, tc.o.ImageRef())
 		c := buildkitContainer(t, job)
-		script := strings.Join(c.Command, " ")
+		// The revision stamp's RENDER_GIT_COMMIT build-arg is on every build.
+		script := strings.Replace(strings.Join(c.Command, " "), revisionStamp, "", 1)
 		if got := strings.Contains(script, "build-arg:"); got != tc.wantScript {
 			t.Errorf("%s: input script present = %v, want %v", tc.name, got, tc.wantScript)
 		}

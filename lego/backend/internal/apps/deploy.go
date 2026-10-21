@@ -40,6 +40,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/resourcename"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/types/renderenv"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -610,13 +611,28 @@ type hostRef struct {
 	index    int
 }
 
+// platformVarForType reports whether a service of appType has the platform
+// variable at all; the git variables depend on the service's repo, which a
+// copy of an image service's leaves empty, as on Render.
+func platformVarForType(name, appType string) bool {
+	probe := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Type: appType, Expose: true, Repo: "https://example.invalid/o/r"}}
+	_, ok := renderenv.Value(probe, name, "example.invalid")
+	return ok
+}
+
 // carriesPort reports whether the reference's value includes the target's port.
-func (ref hostRef) carriesPort() bool { return ref.property != serviceRefPropertyHost }
+func (ref hostRef) carriesPort() bool {
+	return ref.property != serviceRefPropertyHost && !strings.HasPrefix(ref.property, platformEnvRefProperty)
+}
 
 // env materializes the reference from target's slug and serving port. ok is
 // false for a port-carrying reference whose target port is not known yet: the
 // variable is then omitted, never written with a guessed 3000 (ADR089 D4).
-func (ref hostRef) env(target *appv1alpha1.App) (appv1alpha1.EnvVar, bool) {
+func (ref hostRef) env(target *appv1alpha1.App, baseDomain string) (appv1alpha1.EnvVar, bool) {
+	if name, ok := strings.CutPrefix(ref.property, platformEnvRefProperty); ok {
+		value, ok := renderenv.Value(target, name, baseDomain)
+		return appv1alpha1.EnvVar{Name: ref.key, Value: value}, ok
+	}
 	slug, port := target.Spec.PlatformSubdomain(target.Name), target.ServicePort()
 	if ref.carriesPort() && port <= 0 {
 		return appv1alpha1.EnvVar{}, false
@@ -665,6 +681,10 @@ const (
 	serviceRefPropertyHost     = "host"
 	serviceRefPropertyPort     = "port"
 	serviceRefPropertyHostPort = "hostport"
+
+	// platformEnvRefProperty prefixes a hostRef that copies one of a sibling's
+	// Render platform variables (renderenv) through fromService.envVarKey.
+	platformEnvRefProperty = "renderenv:"
 )
 
 // dbPropertyKey maps a render.yaml fromDatabase property to the key in the CNPG
@@ -1001,7 +1021,7 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 		if err := requireDeployAuthority(ctx, s); err != nil {
 			return nil, err
 		}
-		laterRefs, err := resolveServiceRefs(&svc, databaseIDs, kvCRNames, lookupTarget)
+		laterRefs, err := resolveServiceRefs(&svc, databaseIDs, kvCRNames, lookupTarget, s.BaseDomain)
 		if err != nil {
 			return nil, err
 		}
@@ -1083,7 +1103,7 @@ func (s *Service) patchDeferredStackServices(ctx context.Context, deferred []def
 			if target == nil { // unreachable: deployParsedStack refused unknown targets before any write
 				return fmt.Errorf("blueprint apply: service %q: fromService target %q has no address after the create pass", d.req.Name, ref.target)
 			}
-			if env, ok := ref.env(target); ok {
+			if env, ok := ref.env(target, s.BaseDomain); ok {
 				d.req.Env = append(d.req.Env, env)
 			}
 		}
@@ -1099,7 +1119,7 @@ func (s *Service) patchDeferredStackServices(ctx context.Context, deferred []def
 // resolved database/key-value env vars and every already-resolvable host ref
 // are appended onto svc.req.Env; the forward host refs (sibling not created
 // yet) are returned for the post-create patch pass.
-func resolveServiceRefs(svc *parsedService, databaseIDs, kvCRNames map[string]string, lookupTarget func(string) *appv1alpha1.App) ([]hostRef, error) {
+func resolveServiceRefs(svc *parsedService, databaseIDs, kvCRNames map[string]string, lookupTarget func(string) *appv1alpha1.App, baseDomain string) ([]hostRef, error) {
 	for _, ref := range svc.databaseRefs {
 		ev, err := resolveDatabaseRef(ref, databaseIDs)
 		if err != nil {
@@ -1123,7 +1143,7 @@ func resolveServiceRefs(svc *parsedService, databaseIDs, kvCRNames map[string]st
 		}
 		// A known target whose port is not (yet) known leaves the variable
 		// out; serviceRefsAnnotation records it for the propagator.
-		if env, ok := ref.env(target); ok {
+		if env, ok := ref.env(target, baseDomain); ok {
 			svc.req.Env = append(svc.req.Env, env)
 		}
 	}
@@ -2352,6 +2372,26 @@ func (idx *stackIndex) classifyRef(svc *parsedService, r envRef) error {
 			refType: r.FromService.Type, index: r.index,
 		})
 		return nil
+	}
+	// A copy of one of a sibling's Render platform variables (its
+	// RENDER_EXTERNAL_HOSTNAME, say) resolves at apply from the sibling's App,
+	// as Render's templates expect (w5/m148). A variable the sibling defines
+	// itself is copied as written instead, and the per-deploy commit and
+	// per-instance id have no single value to copy.
+	if ref := r.FromService; ref != nil && ref.EnvVarKey != "" && declaredService && renderenv.IsPlatformName(ref.EnvVarKey) {
+		if _, defined := idx.serviceKnownEnv[ref.Name][ref.EnvVarKey]; !defined && !idx.serviceGenerated[ref.Name][ref.EnvVarKey] {
+			if ref.EnvVarKey == renderenv.GitCommit || ref.EnvVarKey == renderenv.InstanceID {
+				return envRefError(svc.req.Name, r.Key, fmt.Errorf("copies %s's %s, which differs per deploy or instance, so it has no single value to copy", ref.Name, ref.EnvVarKey))
+			}
+			if !platformVarForType(ref.EnvVarKey, idx.serviceTypes[ref.Name]) {
+				return envRefError(svc.req.Name, r.Key, fmt.Errorf("copies %s's %s, which a %s does not have", ref.Name, ref.EnvVarKey, idx.serviceTypes[ref.Name]))
+			}
+			svc.hostRefs = append(svc.hostRefs, hostRef{
+				key: r.Key, target: ref.Name, property: platformEnvRefProperty + ref.EnvVarKey,
+				refType: ref.Type, index: r.index,
+			})
+			return nil
+		}
 	}
 	// A copy of a sibling's generated value has no parse-time value: the apply
 	// mints the source, then writes the same value into this service's store,
