@@ -43,6 +43,8 @@ For application Blueprints, bex adopts Render's name and default:
 
 The alias is filename compatibility only. It is not a separate bex dialect and must not enable otherwise-invalid fields. Existing stored Blueprint records keep their explicit paths. New dashboard and API flows default to `render.yaml`; warnings and docs point legacy repositories to a plain rename.
 
+**YAML anchors and aliases (w8/156, 2026-10-21).** A Blueprint's `*alias` resolves to its `&anchor` node as in any YAML parser, because real Render Blueprints share one `envVars` block that way. The walk counts every materialized node against the same budgets, so an alias bomb fails on `BLUEPRINT_YAML_NODES`; locations point at the anchor. Merge keys (`<<:`) stay refused.
+
 There is no application-level `bex.yaml`. `deploy/gitops/base/bex.yaml` is an internal platform deployment manifest with a different purpose; reusing its name for tenant applications would make repository searches and operator instructions ambiguous.
 
 Existing wire fields such as MCP/GraphQL `bexYaml` remain decode aliases for client compatibility, but new descriptions call the value `manifest`. Renaming a transport field is not required to fix the manifest contract.
