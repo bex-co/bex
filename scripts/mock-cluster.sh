@@ -451,6 +451,18 @@ require "metrics-server availability" \
 require "build boundary (bex-build)" \
   env KUBECONFIG="$WL_KUBECONFIG" kubectl apply -f deploy/gitops/base/build-boundary.yaml
 
+# The render-v1 Localhost seccomp profile (w6/m150): bex-api creates every new
+# Docker/image service as render-v1 by default (w6/090), and those pods ask the
+# kubelet for profiles/bex-render-v1.json, so a node without the file fails
+# them with CreateContainerError. Production installs it through
+# deploy/gitops/base/seccomp-profiles.yaml; kustomize names the ConfigMap there,
+# so this mock creates it under the plain name the DaemonSet references.
+require "render-v1 seccomp profile" \
+  sh -c 'env KUBECONFIG="$1" kubectl -n kube-system create configmap seccomp-profiles \
+           --from-file=deploy/gitops/base/seccomp/bex-render-v1.json --dry-run=client -o yaml |
+         env KUBECONFIG="$1" kubectl apply -f - &&
+         env KUBECONFIG="$1" kubectl apply -f deploy/gitops/base/seccomp-profiles.yaml' _ "$WL_KUBECONFIG"
+
 # 5. cluster-autoscaler beside CAPI (w1/m3) — same installer as prod CI.
 #    Why on the mgmt cluster: infra/clusterapi/autoscaler-values.yaml.
 bash scripts/install-autoscaler.sh "$MGMT"

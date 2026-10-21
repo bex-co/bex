@@ -87,7 +87,7 @@ func TestLoadConfigDefaults(t *testing.T) {
 		{"AgentMaxLiveSandboxesPerWorkspace", cfg.AgentMaxLiveSandboxesPerWorkspace, 5},
 		{"AgentMaxPinnedSandboxesPerWorkspace", cfg.AgentMaxPinnedSandboxesPerWorkspace, 10},
 		{"MaxBlueprintGroupings", cfg.MaxBlueprintGroupings, 1000},
-		{"ImageCompatibilityWorkspaces (off)", len(cfg.ImageCompatibilityWorkspaces), 0},
+		{"ImageCompatibilityWorkspaces (every workspace)", cfg.ImageCompatibilityWorkspaces["*"], true},
 		{"PrivateImagePortsDisabled (default on)", cfg.PrivateImagePortsDisabled, false},
 		{"MaxEnvGroupsPerWorkspace", cfg.MaxEnvGroupsPerWorkspace, 100},
 		{"MaxGitConnectionsPerWorkspace", cfg.MaxGitConnectionsPerWorkspace, 10},
@@ -435,9 +435,13 @@ func TestLoadConfigImageCompatibilityWorkspaces(t *testing.T) {
 	if cfg, _, err = loadFor(t, map[string]string{"BEX_IMAGE_COMPATIBILITY_WORKSPACES": "*"}); err != nil || !cfg.ImageCompatibilityWorkspaces["*"] {
 		t.Fatalf("wildcard: %v %v", cfg.ImageCompatibilityWorkspaces, err)
 	}
+	// "off" is the only spelling of the strict policy; it is not a list entry.
+	if cfg, _, err = loadFor(t, map[string]string{"BEX_IMAGE_COMPATIBILITY_WORKSPACES": " off "}); err != nil || cfg.ImageCompatibilityWorkspaces != nil {
+		t.Fatalf("off: %v %v", cfg.ImageCompatibilityWorkspaces, err)
+	}
 	// The retired boolean spelling and non-workspace ids must refuse startup
 	// rather than silently admitting no workspace (or the wrong one).
-	for _, bad := range []string{"1", "srv-d98210cbbpdc73dcrkvg", "tea-ops"} {
+	for _, bad := range []string{"1", "srv-d98210cbbpdc73dcrkvg", "tea-ops", "off,tea-d98210cbbpdc73dcrkvg"} {
 		if _, _, err := loadFor(t, map[string]string{"BEX_IMAGE_COMPATIBILITY_WORKSPACES": bad}); err == nil ||
 			!strings.Contains(err.Error(), "BEX_IMAGE_COMPATIBILITY_WORKSPACES") {
 			t.Errorf("%q: err = %v, want a startup refusal", bad, err)
