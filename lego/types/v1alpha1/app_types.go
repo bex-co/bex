@@ -73,6 +73,14 @@ const AnnotationReleaseConfigScaled = "app.bex.co/release-config-scaled"
 // saved now; the next deploy consumes it.
 const AnnotationPendingSourceGeneration = "app.bex.co/pending-source-generation"
 
+// AnnotationPendingGroupLinks holds env-group links and unlinks an
+// Auto-Deploy-off service has been asked for but not yet shipped: JSON the
+// backend's rollout package reads and folds into spec.envFromSecrets and
+// spec.filesFromSecrets when the owner's next release is minted. It is
+// metadata only, so staging a link moves no release identity and the operator
+// keeps the running release serving until then (w4/m239).
+const AnnotationPendingGroupLinks = "app.bex.co/pending-env-group-links"
+
 // AnnotationCanceledReleaseGeneration records a release that was ended before
 // it served — by a user Cancel, or by a suspend that interrupted its rollout —
 // for repo- and image-backed sources alike. The operator keeps (or restores)

@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -41,14 +42,15 @@ func isServiceID(entry string) bool {
 // refs a link adds and an unlink removes. Only a service that mounts a group
 // is acted on as linked to it.
 func mountsGroup(a *appv1alpha1.App, gid string) bool {
-	return slices.Contains(a.Spec.EnvFromSecrets, envSecretName(gid)) ||
-		slices.Contains(a.Spec.FilesFromSecrets, filesSecretName(gid))
+	env, files := rollout.EffectiveGroupSecrets(a)
+	return slices.Contains(env, envSecretName(gid)) || slices.Contains(files, filesSecretName(gid))
 }
 
 // mountedGroups returns the ids of the groups a's spec references.
 func mountedGroups(a *appv1alpha1.App) []string {
 	var gids []string
-	for _, ref := range slices.Concat(a.Spec.EnvFromSecrets, a.Spec.FilesFromSecrets) {
+	env, files := rollout.EffectiveGroupSecrets(a)
+	for _, ref := range slices.Concat(env, files) {
 		for _, suffix := range []string{envSecretName(""), filesSecretName("")} {
 			gid, ok := strings.CutSuffix(ref, suffix)
 			if kind, group := id.KindOf(gid); ok && group && kind == id.EnvGroup {

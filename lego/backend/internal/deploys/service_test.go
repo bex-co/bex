@@ -37,6 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -514,6 +515,23 @@ func TestTriggerSetsCommitIDInSpec(t *testing.T) {
 	app := getApp(t, cl, "web")
 	if app.Spec.BuildCommit != "abc123" {
 		t.Errorf("spec.buildCommit = %q, want %q", app.Spec.BuildCommit, "abc123")
+	}
+}
+
+// TestTriggerShipsStagedGroupLinks (w4/m239): env-group links an Auto-Deploy-off
+// service was waiting on ride the owner's next deploy.
+func TestTriggerShipsStagedGroupLinks(t *testing.T) {
+	ds := newFakeStore()
+	app := repoApp("web", "srv-1", "main")
+	rollout.StageGroupLink(app, "evg-1-env", "evg-1-files", true)
+	svc, cl := newService(ds, app)
+
+	if _, err := svc.Trigger(context.Background(), "web", TriggerParams{}); err != nil {
+		t.Fatalf("Trigger: %v", err)
+	}
+	got := getApp(t, cl, "web")
+	if len(got.Spec.EnvFromSecrets) != 1 || len(got.Spec.FilesFromSecrets) != 1 || got.Annotations[appv1alpha1.AnnotationPendingGroupLinks] != "" {
+		t.Fatalf("deploy did not fold the staged link: %+v %v", got.Spec, got.Annotations)
 	}
 }
 
