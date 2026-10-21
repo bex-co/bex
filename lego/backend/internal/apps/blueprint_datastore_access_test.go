@@ -53,7 +53,6 @@ func TestBlueprintDatastoreCreateAccess(t *testing.T) {
 		keyValueList string
 		wantPublic   bool
 	}{
-		{"omitted Postgres retains private create default", "", "[]", false},
 		{"explicit empty creates private datastores", "    ipAllowList: []", "[]", false},
 		{"explicit rules publish datastores", "    ipAllowList: " + blueprintDatastoreRules, blueprintDatastoreRules, true},
 		// Render's Blueprint source is "the IP address or CIDR block" (w8/142).
@@ -77,6 +76,28 @@ func TestBlueprintDatastoreCreateAccess(t *testing.T) {
 			assertBlueprintDatastorePlan(t, svc, manifest, BlueprintPlanNoop)
 		})
 	}
+}
+
+// Render: an omitted Postgres ipAllowList "allows all IPs for a new database"
+// (credentials still required); Key Value requires the field, so its [] stays
+// private. A re-sync of the same manifest is a no-op (w8/157).
+func TestBlueprintOmittedPostgresAllowListCreatesPublic(t *testing.T) {
+	t.Parallel()
+	svc, _ := newService(nil)
+	manifest := blueprintDatastoreManifest("", "[]")
+	result, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: manifest})
+	if err != nil {
+		t.Fatal(err)
+	}
+	db := &appv1alpha1.Database{}
+	if err := svc.Client.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: result.Databases[0].ID}, db); err != nil {
+		t.Fatal(err)
+	}
+	want := []appv1alpha1.IPAllowEntry{{CIDR: "0.0.0.0/0"}, {CIDR: "::/0"}}
+	if !db.Spec.Public || !slices.Equal(db.Spec.IPAllowList, want) {
+		t.Errorf("Postgres access = public %v rules %+v, want public %+v", db.Spec.Public, db.Spec.IPAllowList, want)
+	}
+	assertBlueprintDatastorePlan(t, svc, manifest, BlueprintPlanNoop)
 }
 
 func TestBlueprintDatastoreAccessPlanAndApply(t *testing.T) {
