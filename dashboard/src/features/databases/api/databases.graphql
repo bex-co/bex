@@ -22,6 +22,8 @@ query Databases($ownerId: String) {
     suspended
     createdAt
     updatedAt
+    # Render's free-database expiry; null for a paid plan (w8/m126).
+    expiresAt
     region
     public
   }
@@ -59,6 +61,7 @@ query Database($id: String!) {
     suspended
     createdAt
     updatedAt
+    expiresAt
     externalHost
     public
     poolerEnabled

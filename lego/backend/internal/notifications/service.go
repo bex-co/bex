@@ -196,35 +196,44 @@ func (s *Service) notifyBilling(ctx context.Context, n store.BillingNotification
 		return nil
 	}
 	subject, msg := billingEmail(n, s.DashboardBaseURL)
+	return s.mailOwners(ctx, fmt.Sprintf("billing %s for %s", n.Status, n.WorkspaceID), pending, subject, msg,
+		func(owner string) error {
+			return owners.RecordBillingNotificationMailed(ctx, n.WorkspaceID, n.TransitionVersion, owner)
+		})
+}
+
+// mailOwners sends one message to each owner, resolving every address in one
+// batched read. An owner the lookup could not read is an error to retry; an
+// owner with no address, or one the server refused for good, is logged and
+// skipped, since a retry would only mail the others again (w5/153, w5/m136).
+// mailed, when set, records each owner the message reached.
+func (s *Service) mailOwners(ctx context.Context, what string, owners []string, subject string, msg email.Message, mailed func(owner string) error) error {
 	text, html := msg.Text(), msg.HTML()
-	emails, lookupErr := s.Identities.LookupEmails(ctx, pending)
+	emails, lookupErr := s.Identities.LookupEmails(ctx, owners)
 	var errs []error
 	unresolved := false
-	for _, owner := range pending {
+	for _, owner := range owners {
 		addr := emails[owner]
 		if addr == "" && lookupErr != nil {
-			// Unread, not addressless: retry this owner (w5/m136).
 			unresolved = true
 			continue
 		}
 		if addr == "" {
-			// Failing for this owner would retry without end, mailing the
-			// other owners again each time (w5/153).
-			log.Printf("notifications: billing %s for %s not emailed to owner %s (no address)", n.Status, n.WorkspaceID, owner)
+			log.Printf("notifications: %s not emailed to owner %s (no address)", what, owner)
 			continue
 		}
 		if err := s.Mailer.Send(ctx, addr, subject, text, html); err != nil {
 			if permanentRejection(err) {
-				// The server refused the address for good: a retry would
-				// only be refused again (w5/m136).
-				log.Printf("notifications: billing %s for %s not emailed to owner %s (address rejected: %v)", n.Status, n.WorkspaceID, owner, err)
+				log.Printf("notifications: %s not emailed to owner %s (address rejected: %v)", what, owner, err)
 				continue
 			}
 			errs = append(errs, err)
 			continue
 		}
-		if err := owners.RecordBillingNotificationMailed(ctx, n.WorkspaceID, n.TransitionVersion, owner); err != nil {
-			errs = append(errs, err)
+		if mailed != nil {
+			if err := mailed(owner); err != nil {
+				errs = append(errs, err)
+			}
 		}
 	}
 	if unresolved {

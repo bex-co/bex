@@ -3817,9 +3817,11 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 			return StackDatabaseView{}, err
 		}
 		if specChanged {
+			fromPlan := existing.Spec.Plan
 			if _, err := ApplyBlueprintDatabaseSpec(existing, db.spec, db.fields); err != nil {
 				return StackDatabaseView{}, fmt.Errorf("%w: database %q %v", core.ErrBadRequest, db.name, err)
 			}
+			postgres.SyncFreeClock(fromPlan, existing, s.Now())
 		}
 		if groupingChanged {
 			existing.Spec.EnvironmentIPAllowList = core.ApplyGrouping(existing, assignment)

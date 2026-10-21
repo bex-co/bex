@@ -749,6 +749,18 @@ func (b *Base) RecordDatabaseEffect(ctx context.Context, d *appv1alpha1.Database
 	b.recordAudit(ctx, ev)
 }
 
+// RecordDatabaseSystemEffect records a Postgres change bex-api made on its
+// own, with no caller identity — the free-expiry sweeper's stages (w8/m126).
+// caller names the worker, as the billing worker's rows do.
+func (b *Base) RecordDatabaseSystemEffect(ctx context.Context, d *appv1alpha1.Database, verb, caller string) {
+	ev, ok := b.databaseAuditEvent(WithActingTenant(ctx, d.Labels[LabelTenant]), d, verb)
+	if !ok {
+		return
+	}
+	ev.Caller, ev.CallerMethod = caller, "internal"
+	b.recordAudit(ctx, ev)
+}
+
 // RecordDatabasePlanChanged records a successful managed-Postgres SetPlan with
 // the typed from/to plan pair, exactly like apps' RecordPlanChanged. Following
 // that precedent it is recorded even when fromPlan == toPlan: the verb names
