@@ -1174,3 +1174,31 @@ func dockerBuildResolved(t *testing.T, o Options, env, src map[string]string, ta
 	cmd.Env = append(os.Environ(), "DOCKER_BUILDKIT=1")
 	return cmd.CombinedOutput()
 }
+
+// TestNativeGoBuildsCurrentAndOldModules is w5/m144's execution gate: the Go
+// line tracks Go's latest stable release, as Render builds with, so a module
+// declaring that release builds — the official image's GOTOOLCHAIN=local
+// refused it on the old 1.24 line — and so does an older one, per Go's
+// compatibility promise. Opt-in: needs Docker.
+func TestNativeGoBuildsCurrentAndOldModules(t *testing.T) {
+	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
+		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the generated image")
+	}
+	mainGo := "package main\n\nimport (\n\t\"fmt\"\n\t\"net/http\"\n\t\"os\"\n\t\"runtime\"\n)\n\nfunc main() {\n\thttp.HandleFunc(\"/\", func(w http.ResponseWriter, _ *http.Request) { fmt.Fprint(w, runtime.Version()) })\n\t_ = http.ListenAndServe(\":\"+os.Getenv(\"PORT\"), nil)\n}\n"
+	for i, goLine := range []string{nativeToolchains["go"].defaultLine, "1.21"} {
+		t.Run("go "+goLine, func(t *testing.T) {
+			o := nativeOptions()
+			o.Runtime, o.BuildEnv = "go", nil
+			o.BuildCommand = "go build -o app ."
+			o.StartCommand = "./app"
+			tag := buildResolvedImage(t, o, nil, map[string]string{
+				"go.mod":  "module example.com/m144\n\ngo " + goLine + "\n",
+				"main.go": mainGo,
+			}, fmt.Sprintf("bex-native-go-it-%d:%d", i, os.Getpid()))
+			body, _ := runServing(t, tag, fmt.Sprintf("bex-native-go-it-%d-%d", i, os.Getpid()), "http://127.0.0.1:10000/")
+			if !strings.HasPrefix(body, "go"+nativeToolchains["go"].defaultLine+".") {
+				t.Fatalf("served %q, want a go%s.x runtime", body, nativeToolchains["go"].defaultLine)
+			}
+		})
+	}
+}

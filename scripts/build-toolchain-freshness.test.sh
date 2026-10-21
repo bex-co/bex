@@ -274,6 +274,47 @@ else
   echo "ok: dockerignore admits the embedded freshness inventory"
 fi
 
+# Line staleness (w5/m144): a Go pin one minor behind upstream's newest line is
+# drift even when its own tag's digest has not moved; a current line is not.
+mkdir -p "$tmp/line"
+printf '{"schema":"bex.build-toolchain-freshness/v1","images":[{"id":"cnb-builder","kind":"builder","upstream":"docker.io/example/builder:latest","committed":"example/builder@%s","resolved_at":"2026-10-20T00:00:00Z","source":"x","files":["pin.go"]},{"id":"native-go","kind":"native-base","upstream":"docker.io/library/golang:1.27-bookworm","committed":"golang:1.27-bookworm@%s","resolved_at":"2026-10-20T00:00:00Z","source":"x","files":["pin.go"]}]}\n' "$DIGEST_A" "$DIGEST_B" >"$tmp/line/inv.json"
+printf 'a := "example/builder@%s"\nb := "golang:1.27-bookworm@%s"\n' "$DIGEST_A" "$DIGEST_B" >"$tmp/line/pin.go"
+printf '{"docker.io/example/builder:latest":"%s","docker.io/library/golang:1.27-bookworm":"%s"}\n' "$DIGEST_A" "$DIGEST_B" >"$tmp/line/digests.json"
+line_resolve() {
+  printf '{"native-go":"%s"}\n' "$1" >"$tmp/line/lines.json"
+  env FRESHNESS_ROOT="$tmp/line" FRESHNESS_INVENTORY="$tmp/line/inv.json" \
+      FRESHNESS_PIN_SITES="pin.go" FRESHNESS_DIGESTS="$tmp/line/digests.json" \
+      FRESHNESS_LATEST_LINES="$tmp/line/lines.json" "$SCRIPT" resolve
+}
+line_resolve 1.28 >"$tmp/line/behind.json"
+assert_stdout "a Go pin one minor behind is drift" '"newer_line": "1.28"' cat "$tmp/line/behind.json"
+assert_stdout "a Go pin one minor behind sets changed=true" '"changed": true' cat "$tmp/line/behind.json"
+line_resolve 1.27 >"$tmp/line/current.json"
+if grep -q '"changed": true' "$tmp/line/current.json"; then
+  echo "FAIL: a current Go line is not drift" >&2
+  fails=$((fails + 1))
+else
+  echo "ok: a current Go line is not drift"
+fi
+# Lines compare numerically: 1.3 is older than 1.27, not newer.
+line_resolve 1.3 >"$tmp/line/older.json"
+if grep -q '"changed": true' "$tmp/line/older.json"; then
+  echo "FAIL: an upstream line of 1.3 is not newer than a 1.27 pin" >&2
+  fails=$((fails + 1))
+else
+  echo "ok: lines compare numerically, not as strings"
+fi
+# A feed that answers the wrong shape is a warning, not a failed resolve.
+printf '{"native-go":["1.28"]}\n' >"$tmp/line/bad.json"
+if env FRESHNESS_ROOT="$tmp/line" FRESHNESS_INVENTORY="$tmp/line/inv.json" \
+    FRESHNESS_PIN_SITES="pin.go" FRESHNESS_DIGESTS="$tmp/line/digests.json" \
+    FRESHNESS_LATEST_LINES="$tmp/line/bad.json" "$SCRIPT" resolve >/dev/null 2>"$tmp/line/bad.err"; then
+  echo "ok: a malformed line feed does not fail the resolve"
+else
+  echo "FAIL: a malformed line feed failed the resolve: $(cat "$tmp/line/bad.err")" >&2
+  fails=$((fails + 1))
+fi
+
 if [ "$fails" -ne 0 ]; then
   echo "FAIL: $fails build-toolchain freshness checks" >&2
   exit 1

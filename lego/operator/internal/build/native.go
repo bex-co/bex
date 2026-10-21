@@ -89,9 +89,13 @@ var nativeToolchains = map[string]nativeToolchain{
 		{line: "1.18", version: "1.18.4", otp: "28", image: "elixir:1.18@sha256:a68defc35f664d1d02de0dc36b12e750bd558b594eed3d0909534317796df749"},
 		{line: "1.19", version: "1.19.6", otp: "28", image: "elixir:1.19@sha256:db1cbca0b49e26e65dd804c75f27ec5f01835f1d29f8b8e4cc8a51f01f986f9f"},
 	}},
-	// Render offers no Go version selection for native services; neither does bex.
-	"go": {label: "Go", defaultLine: "1.24", lines: []nativeLine{
-		{line: "1.24", image: "golang:1.24-bookworm@sha256:1a6d4452c65dea36aac2e2d606b01b4a029ec90cc1ae53890540ce6173ea77ac"},
+	// Render offers no Go version selection for native services; neither does
+	// bex. Render builds with Go's latest stable release, so this line tracks
+	// it (w5/m144): the image sets GOTOOLCHAIN=local, so a go.mod declaring a
+	// newer `go` than the line refuses to build. The freshness check flags the
+	// next release.
+	"go": {label: "Go", defaultLine: "1.27", lines: []nativeLine{
+		{line: "1.27", image: "golang:1.27-bookworm@sha256:5c3e9b43cfd3bb95c7937462e29d87ada57b481a96fa23ad0eb61778d7a00110"},
 	}},
 	nativeNodeRuntime: {label: "Node", defaultLine: "24", lines: []nativeLine{
 		{line: "22", version: "22.23.3", image: "node:22-bookworm@sha256:0e5f906573693feaa1e21057ebdcfdb5bd5021f050b2dc7c9deceb629c7da2a8"},
@@ -121,9 +125,10 @@ var nativeToolchains = map[string]nativeToolchain{
 // primary toolchain when the service opts in (BUN_VERSION, .bun-version or a
 // Bun lockfile; Render's Bun version contract, w8/m71). Its binary is copied
 // out of the pinned image, so build, pre-deploy and start all run with it.
-var nativeBun = nativeToolchain{label: "Bun", defaultLine: "1.3", lines: []nativeLine{
+var nativeBun = nativeToolchain{label: "Bun", defaultLine: "1.4", lines: []nativeLine{
 	{line: "1.2", version: "1.2.23", image: "oven/bun:1.2@sha256:6ebf306367da43ad75c4d5119563e24de9b66372929ad4fa31546be053a16f74"},
 	{line: "1.3", version: "1.3.14", image: "oven/bun:1.3@sha256:e10577f0db68676a7024391c6e5cb4b879ebd17188ab750cf10024a6d700e5c4"},
+	{line: "1.4", version: "1.4.3", image: "oven/bun:1.4@sha256:ec06c3b6cea04192ae6770c434f668ca41d343ad19fa6472216c7b48be39c598"},
 }}
 
 // nativeToolchain is one runtime's reviewed lines, ascending.

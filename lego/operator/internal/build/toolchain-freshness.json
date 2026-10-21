@@ -113,10 +113,10 @@
     {
       "id": "native-go",
       "kind": "native-base",
-      "upstream": "docker.io/library/golang:1.24-bookworm",
-      "committed": "golang:1.24-bookworm@sha256:1a6d4452c65dea36aac2e2d606b01b4a029ec90cc1ae53890540ce6173ea77ac",
-      "resolved_at": "2026-08-18T00:00:00Z",
-      "source": "Docker Hub library/golang:1.24-bookworm multi-arch index",
+      "upstream": "docker.io/library/golang:1.27-bookworm",
+      "committed": "golang:1.27-bookworm@sha256:5c3e9b43cfd3bb95c7937462e29d87ada57b481a96fa23ad0eb61778d7a00110",
+      "resolved_at": "2026-10-20T23:00:00Z",
+      "source": "Docker Hub library/golang:1.27-bookworm multi-arch index (Go's latest stable line, as Render builds with; w5/m144)",
       "files": ["lego/operator/internal/build/native.go"]
     },
     {
@@ -130,6 +130,15 @@
     },
     {
       "id": "native-bun",
+      "kind": "native-base",
+      "upstream": "docker.io/oven/bun:1.4",
+      "committed": "oven/bun:1.4@sha256:ec06c3b6cea04192ae6770c434f668ca41d343ad19fa6472216c7b48be39c598",
+      "resolved_at": "2026-10-20T23:00:00Z",
+      "source": "Docker Hub oven/bun:1.4 multi-arch index (linux/amd64 + linux/arm64), Bun 1.4.3, Render's default line (w5/m144); binary copied into the native toolchain image (w8/m71)",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-bun-1-3",
       "kind": "native-base",
       "upstream": "docker.io/oven/bun:1.3",
       "committed": "oven/bun:1.3@sha256:e10577f0db68676a7024391c6e5cb4b879ebd17188ab750cf10024a6d700e5c4",
