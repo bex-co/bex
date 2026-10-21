@@ -73,6 +73,7 @@ func TestServicePatchFoldsMatchTheirVerbs(t *testing.T) {
 		{"pre-deploy command", repo, ServicePatch{PreDeployCommand: str(" ./migrate ")}},
 		{"commands", repo, ServicePatch{BuildCommand: str(" make "), StartCommand: str(" ./serve ")}},
 		{"dockerfile path", docker, ServicePatch{DockerfilePath: str("docker/Dockerfile")}},
+		{"docker context", docker, ServicePatch{DockerContext: str("ctx")}},
 		{"port", repo, ServicePatch{Port: i32(9090)}},
 		{"notify on fail", repo, ServicePatch{NotifyOnFail: str("ignore")}},
 		{"notifications to send", repo, ServicePatch{NotificationsToSend: str("none")}},

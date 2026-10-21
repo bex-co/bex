@@ -220,7 +220,12 @@ var blueprintServiceFieldAppliers = []struct {
 		}
 	}},
 	{names: []string{"branch"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Branch = want.Branch }},
-	{names: []string{"rootDir"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.RootDir = want.RootDir }},
+	{names: []string{"rootDir"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
+		// A kept context moves with the root directory, as SetRootDir moves it
+		// (w8/m128); a declared dockerContext, applied below, replaces it.
+		dst.DockerContext = rebaseDockerContext(dst.RootDir, want.RootDir, dst.DockerContext)
+		dst.RootDir = want.RootDir
+	}},
 	{names: []string{"buildCommand"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.BuildCommand = want.BuildCommand }},
 	// A cron job's command lives in Spec.Command, not Spec.StartCommand —
 	// SetCommands has always known that, and so does the exporter, which writes
@@ -233,7 +238,12 @@ var blueprintServiceFieldAppliers = []struct {
 	{names: []string{"startCommand"}, apply: applyBlueprintCommand},
 	{names: []string{"dockerCommand"}, apply: applyBlueprintCommand},
 	{names: []string{"dockerfilePath"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.DockerfilePath = want.DockerfilePath }},
-	{names: []string{"dockerContext"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.DockerContext = want.DockerContext }},
+	{names: []string{"dockerContext"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
+		// want stored the file's context against the file's rootDir, which is
+		// empty when the file omits it and the service keeps its own; resolve
+		// the file's value against the root directory the service ends with.
+		dst.DockerContext = storedDockerContext(dst.RootDir, wireDockerContext(want.RootDir, want.DockerContext))
+	}},
 	{names: []string{"registryCredential"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 		dst.RegistryCredentialID = clonePtr(want.RegistryCredentialID)
 	}},

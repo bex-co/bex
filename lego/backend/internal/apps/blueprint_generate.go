@@ -390,8 +390,9 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 		if a.Spec.DockerfilePath != "" {
 			entry["dockerfilePath"] = a.Spec.DockerfilePath
 		}
-		if a.Spec.DockerContext != "" {
-			entry["dockerContext"] = a.Spec.DockerContext
+		// rootDir-relative, as render.yaml reads it (w8/m128).
+		if context := wireDockerContext(a.Spec.RootDir, a.Spec.DockerContext); context != "." {
+			entry["dockerContext"] = context
 		}
 	}
 	// Only a native build runs a build command, and render.yaml refuses one

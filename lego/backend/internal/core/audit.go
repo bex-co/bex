@@ -155,6 +155,7 @@ const (
 	AuditVerbSetSubdomainPolicy             = "apps.SetSubdomainPolicy"
 	AuditVerbSetRootDir                     = "apps.SetRootDir"
 	AuditVerbSetDockerfilePath              = "apps.SetDockerfilePath"
+	AuditVerbSetDockerContext               = "apps.SetDockerContext"
 	AuditVerbSetPort                        = "apps.SetPort"
 	AuditVerbSetBuildFilter                 = "apps.SetBuildFilter"
 	AuditVerbSetCommands                    = "apps.SetCommands"
@@ -512,7 +513,7 @@ func (b *Base) RecordDomainEffect(ctx context.Context, app *appv1alpha1.App, ver
 var appConfigVerbs = map[string]bool{
 	AuditVerbSuspend: true, AuditVerbResume: true,
 	AuditVerbSetSubdomainPolicy: true, AuditVerbSetRootDir: true,
-	AuditVerbSetDockerfilePath: true, AuditVerbSetPort: true,
+	AuditVerbSetDockerfilePath: true, AuditVerbSetDockerContext: true, AuditVerbSetPort: true,
 	AuditVerbSetBuildFilter: true, AuditVerbSetCommands: true,
 	AuditVerbSetSourceAndRegistryCredential: true,
 	AuditVerbSetPreDeployCommand:            true, AuditVerbSetMaxShutdownDelay: true,
