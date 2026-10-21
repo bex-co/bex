@@ -65,7 +65,8 @@ type serviceRefRecord struct {
 // env is the variable the record resolves to against target, and whether the
 // target's port is known yet.
 func (r serviceRefRecord) env(target *appv1alpha1.App) (appv1alpha1.EnvVar, bool) {
-	return hostRef{key: r.Key, property: r.Property}.env(target)
+	// Recorded references carry a port; platform copies never are recorded.
+	return hostRef{key: r.Key, property: r.Property}.env(target, "")
 }
 
 // serviceRefsOf reads a consumer's recorded references. A malformed annotation

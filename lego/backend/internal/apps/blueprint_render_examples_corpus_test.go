@@ -36,7 +36,6 @@ var deliberateBlueprintDivergences = []string{
 	"per-resource region placement is not available on bex",
 	"Render Workflows",           // type: workflow and fromService workflow refs
 	"PORT",                       // reserved: bex sets PORT from the service's port (ADR018 row 133)
-	"RENDER_",                    // bex injects no RENDER_* platform variables (w4/m123 t005)
 	"sizeGB must be at least 10", // bex's 10 GB disk minimum (w1/078)
 	"sync:false is not allowed inside an env group", // Render forbids it too (blueprint-spec)
 	"a private_service requires a paid plan",        // Render has no free private service
@@ -47,8 +46,9 @@ var deliberateBlueprintDivergences = []string{
 // knownBlueprintGaps are Render-accepted inputs bex still refuses, each owned
 // by a board item; remove an entry when its item ships.
 var knownBlueprintGaps = []string{
-	"name must use lowercase letters, digits, and hyphens", // w5/169: Render's free-form resource names
-	"invalid environment variable name",                    // w5/169: dotted env keys (discovery.type)
+	"name must use lowercase letters, digits, and hyphens", // w5/m150: Render's free-form resource names
+	"invalid environment variable name",                    // w5/m150: dotted env keys (discovery.type)
+	"which has no such plainly-defined variable",           // w5/170: copying a sibling's sync:false variable
 }
 
 // TestRenderExamplesCorpus runs every render.yaml from github.com/render-examples

@@ -1217,6 +1217,24 @@ spec:
                 - primaryPort
                 - revision
                 type: object
+              imageRevision:
+                description: |-
+                  ImageRevision caches the commit the serving image was built from, read
+                  once per image from its OCI revision label, so the projection can set
+                  Render's RENDER_GIT_COMMIT without a registry read every pass (w5/m148).
+                properties:
+                  commit:
+                    description: |-
+                      Commit is the image's org.opencontainers.image.revision label; empty
+                      when the image carries none.
+                    maxLength: 64
+                    type: string
+                  image:
+                    description: Image is the reference the commit was read for.
+                    type: string
+                required:
+                - image
+                type: object
               initialDeployHookCompleted:
                 description: |-
                   InitialDeployHookCompleted records that spec.initialDeployHook ran to

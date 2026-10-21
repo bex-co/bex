@@ -248,6 +248,17 @@ const (
 	dockerConfigMount = "/docker-config"
 	sourceMount       = "/source"
 	outputMount       = "/output"
+	// revisionFile is where the clone step leaves the fetched commit.
+	revisionFile = outputMount + "/commit"
+	// revisionLabel mirrors registry.RevisionLabel; build does not import
+	// registry.
+	revisionLabel = "org.opencontainers.image.revision"
+	// revisionStamp prefixes every BuildKit invocation.
+	revisionStamp = `if [ -s ` + revisionFile + ` ]; then
+  bex_commit="$(cat ` + revisionFile + `)"
+  set -- "$@" --opt "label:` + revisionLabel + `=$bex_commit" --opt "build-arg:RENDER_GIT_COMMIT=$bex_commit"
+fi
+`
 	// cacheInMount holds the layer cache skopeo restored from the registry, and
 	// cacheOutMount the one BuildKit exports for skopeo to store (docs/ADR060 D3).
 	// They are separate volumes on purpose: a half-written export must never be
@@ -1012,7 +1023,11 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	// fails — a full volume, a Zot hiccup — fails a build that had already
 	// succeeded, which is precisely the "cache changes only speed" invariant
 	// this feature is not allowed to break.
-	buildkitScript := `bex_run buildctl-daemonless.sh "$@"`
+	// The image carries the commit it was built from as its OCI revision label,
+	// which the operator reads back as RENDER_GIT_COMMIT for whichever image a
+	// release runs, and the build sees it as Render's build-time variable
+	// (w5/m148). It is a git object id, passed positionally.
+	buildkitScript := revisionStamp + `bex_run buildctl-daemonless.sh "$@"`
 	if o.BuildCache {
 		args = append(args, "--export-cache",
 			"type=local,dest="+cacheOutMount+",mode=max,image-manifest=true,compression=zstd,ignore-error=true")
@@ -1532,9 +1547,15 @@ bex_require() {
 if [ -n "${BEX_ROOT_DIR:-}" ]; then bex_require -d "$BEX_ROOT_DIR_PATH" "root directory" "$BEX_ROOT_DIR"; fi
 if [ -n "${BEX_DOCKER_CONTEXT:-}" ]; then bex_require -d "$BEX_DOCKER_CONTEXT_PATH" "Docker build context" "$BEX_DOCKER_CONTEXT"; fi
 if [ -n "${BEX_DOCKERFILE:-}" ]; then bex_require -f "$BEX_DOCKERFILE_PATH" "Dockerfile" "$BEX_DOCKERFILE"; fi
-rm -rf .git`},
-		Env:             env,
-		VolumeMounts:    []corev1.VolumeMount{{Name: "source", MountPath: sourceMount}},
+rm -rf .git
+if [ -d ` + outputMount + ` ]; then printf '%s' "$commit" > ` + revisionFile + `; fi`}, // the guard serves script tests run without the mount
+		Env: env,
+		VolumeMounts: []corev1.VolumeMount{
+			{Name: "source", MountPath: sourceMount},
+			// Outside the build context, so the commit never lands in an image
+			// layer; BuildKit reads it to stamp the image (w5/m148).
+			{Name: "output", MountPath: outputMount},
+		},
 		SecurityContext: restrictedContainerSecurityContext(),
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{

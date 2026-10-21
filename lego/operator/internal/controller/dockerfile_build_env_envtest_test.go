@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"slices"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -155,7 +156,17 @@ var _ = Describe("Dockerfile build env and secret files (w1/m178)", func() {
 		spec := job.Spec.Template.Spec
 		buildkit := findContainer(append(spec.InitContainers, spec.Containers...), "buildkit")
 		Expect(buildkit).NotTo(BeNil())
-		Expect(buildkit.Env).To(ContainElement(corev1.EnvVar{Name: "BEX_BUILD_ARG_KEYS", Value: "GREETING"}))
+		// The service's own literal and Render's build-time platform set (w5/m148).
+		var keys string
+		for _, e := range buildkit.Env {
+			if e.Name == "BEX_BUILD_ARG_KEYS" {
+				keys = e.Value
+			}
+		}
+		// Not exposed, so no RENDER_EXTERNAL_*; the commit is stamped in the pod.
+		Expect(strings.Split(keys, "\n")).To(ConsistOf("GREETING", "RENDER", "IS_PULL_REQUEST", "RENDER_CPU_COUNT",
+			"RENDER_SERVICE_ID", "RENDER_SERVICE_NAME", "RENDER_SERVICE_TYPE", "RENDER_DISCOVERY_SERVICE",
+			"RENDER_GIT_BRANCH", "RENDER_GIT_REPO_SLUG"))
 		Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: buildNS, Name: nativeEnvSecretName(litName)}, &corev1.Secret{})).NotTo(Succeed(),
 			"no merged env Secret is written for literals alone")
 	})

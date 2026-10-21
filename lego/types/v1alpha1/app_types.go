@@ -1462,11 +1462,28 @@ type DiskStatus struct {
 	CapacityGB int32 `json:"capacityGB,omitempty"`
 }
 
+// ImageRevisionStatus is the commit one image was built from.
+type ImageRevisionStatus struct {
+	// Image is the reference the commit was read for.
+	Image string `json:"image"`
+	// Commit is the image's org.opencontainers.image.revision label; empty
+	// when the image carries none.
+	// +optional
+	// +kubebuilder:validation:MaxLength=64
+	Commit string `json:"commit,omitempty"`
+}
+
 // AppStatus is the observed state of a App.
 type AppStatus struct {
 	// ImageNetwork is the verified private port set for the candidate image.
 	// +optional
 	ImageNetwork *ImageNetworkStatus `json:"imageNetwork,omitempty"`
+
+	// ImageRevision caches the commit the serving image was built from, read
+	// once per image from its OCI revision label, so the projection can set
+	// Render's RENDER_GIT_COMMIT without a registry read every pass (w5/m148).
+	// +optional
+	ImageRevision *ImageRevisionStatus `json:"imageRevision,omitempty"`
 	// ServingNetwork retains the active release's ports while a candidate starts.
 	// +optional
 	ServingNetwork *ImageNetworkStatus `json:"servingNetwork,omitempty"`
