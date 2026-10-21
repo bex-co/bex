@@ -1989,6 +1989,10 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (AppView, error
 		req.Name = blueprintResourceSlug(label)
 	}
 	v, err := s.create(ctx, req)
+	if err != nil && label != "" && err.Error() == errServiceNameInUse(req.Name).Error() {
+		// Name what the user typed as well as the resource name it maps to.
+		return v, core.NewConflictError("CONFLICT", fmt.Sprintf("name %q maps to resource name %q, which is already in use", label, req.Name), nil)
+	}
 	if err != nil || label == "" {
 		return v, err
 	}

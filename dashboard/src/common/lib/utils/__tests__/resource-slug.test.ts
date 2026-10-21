@@ -23,16 +23,26 @@ describe("resourceSlug (w5/m153, blueprintResourceSlug's rule)", () => {
     ["-invalid", "invalid"],
     ["web-", "web"],
     ["a  -  b", "a-b"],
-    ["Café Ünïcode", "caf-n-code"],
+    ["Café Ünïcode", "cafe-unicode"],
+    ["QA 20261021 Ünï Form!", "qa-20261021-uni-form"],
     ["İstanbul", "istanbul"],
     ["Kube", "kube"],
     ["A".repeat(30), "a".repeat(30)],
-    ["", "resource"],
-    ["!!!", "resource"],
-    ["日本語", "resource"],
   ])("maps %j to %j", async (name, want) => {
     expect(shortResourceSlug(name)).toBe(want);
     await expect(resourceSlug(name)).resolves.toBe(want);
+  });
+
+  it("gives a name with no Latin letters or digits its own stable resource name (w4/385)", async () => {
+    const names = ["日本語のみ", "中文名", "🚀🚀", "!!!"];
+    const slugs = new Set<string>();
+    for (const name of names) {
+      expect(shortResourceSlug(name)).toBeNull();
+      const slug = await resourceSlug(name);
+      expect(slug).toBe(`resource-${sum(name)}`);
+      slugs.add(slug);
+    }
+    expect(slugs.size).toBe(names.length);
   });
 
   it("caps a slug over 30 characters at 23 plus a sha256 suffix of the original", async () => {
@@ -62,7 +72,7 @@ describe("resourceSlug (w5/m153, blueprintResourceSlug's rule)", () => {
   it("hashes the name's UTF-8 bytes", async () => {
     const name = `Ünïcode ${"service ".repeat(4)}名前`;
     await expect(resourceSlug(name)).resolves.toBe(
-      `n-code-service-service-${sum(name)}`,
+      `unicode-service-service-${sum(name)}`,
     );
   });
 });
