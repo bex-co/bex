@@ -383,7 +383,7 @@ const enNotifications: Record<string, TranslationEntry> = {
     description: "Timezone validation",
   },
   "notifications.pushInvalidDeferral": {
-    message: "Maximum deferral must be between 1 second and 168 hours.",
+    message: "Maximum deferral must be between 0.5 and 168 hours.",
     description: "Deferral validation",
   },
   "notifications.pushInvalidEvents": {
