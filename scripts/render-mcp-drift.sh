@@ -15,7 +15,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 pinned="$repo_root/lego/backend/internal/api/openapi/render-mcp-tools.json"
 capture="$repo_root/scripts/render-mcp-capture.py"
-expected_sha256="8c044390d89fc2a2129714ba39e786de201af9d05deccb8f751e204c1c15ed2b"
+expected_sha256="8fae488ee06fec607baf19091e3206294e375f222ebafbd2d19625b907ea2b89"
 ref="${RENDER_MCP_REF:-main}"
 
 if [[ ! -f "$pinned" ]]; then

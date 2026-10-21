@@ -65,7 +65,9 @@ type triggerDeployArgs struct {
 	ImageURL   string `json:"imageUrl,omitempty" jsonschema:"image-backed services only: deploy this specific image tag or digest instead of the saved image; rejected for repo-backed services"`
 	CommitID   string `json:"commitId,omitempty" jsonschema:"repo-backed services only: build from this git ref instead of Branch HEAD; rejected for image-backed and cron_job services"`
 	DeployMode string `json:"deployMode,omitempty" jsonschema:"build_and_deploy (default) or deploy_only (image-backed only — skips rebuild, re-pulls current image)"`
-	ClearCache string `json:"clearCache,omitempty" jsonschema:"Render's clear|do_not_clear enum. With BEX_BUILD_CACHE=registry, clear rebuilds without importing prior layers and still exports a fresh cache; with the gate off both values are no-ops."`
+	// ClearCache is a boolean on Render's MCP server (w5/m145); bex also keeps
+	// accepting its REST clear|do_not_clear spelling.
+	ClearCache any    `json:"clearCache,omitempty" jsonschema:"true clears the build cache (Render's MCP boolean); the REST strings clear and do_not_clear are also accepted. With BEX_BUILD_CACHE=registry, clearing rebuilds without importing prior layers and still exports a fresh cache; with the gate off it is a no-op."`
 	Confirm    string `json:"confirm,omitempty" jsonschema:"the confirmation phrase, required only when the service belongs to a protected environment and imageUrl or commitId is set. Do not guess it: make the call without this argument first and copy the exact phrase back out of the refusal"`
 }
 
@@ -192,13 +194,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	// the same semantics as the REST body.
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "trigger_deploy",
-		Description: "Trigger a new deploy for a service. For image-backed services, imageUrl deploys another tag or digest of the configured image (host, repository and image name must match). For repo-backed services, commitId pins the build to a specific git ref (default: Branch HEAD). clearCache is Render's clear|do_not_clear enum: with registry build caching enabled, clear rebuilds without importing prior layers (and still exports a fresh cache); with caching off both values are no-ops. Returns the new deploy; poll with get_deploy until status is live.",
+		Description: "Trigger a new deploy for a service. For image-backed services, imageUrl deploys another tag or digest of the configured image (host, repository and image name must match). For repo-backed services, commitId pins the build to a specific git ref (default: Branch HEAD). clearCache: true (Render's MCP boolean, or the REST string clear) rebuilds without importing prior layers when registry build caching is enabled (and still exports a fresh cache); with caching off it is a no-op. Returns the new deploy; poll with get_deploy until status is live.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in triggerDeployArgs) (*mcp.CallToolResult, renderDeploy, error) {
+		clearCache, err := mcputil.BoolOrEnum("clearCache", in.ClearCache, "clear", "do_not_clear")
+		if err != nil {
+			return nil, renderDeploy{}, err
+		}
 		d, err := s.Trigger(core.WithConfirm(ctx, in.Confirm), in.ServiceID, TriggerParams{
 			ImageURL:   in.ImageURL,
 			CommitID:   in.CommitID,
 			DeployMode: in.DeployMode,
-			ClearCache: in.ClearCache,
+			ClearCache: clearCache,
 		})
 		if err != nil {
 			return nil, renderDeploy{}, err
