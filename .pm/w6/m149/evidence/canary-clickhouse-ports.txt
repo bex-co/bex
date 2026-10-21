@@ -1,0 +1,1 @@
+[{'port': 8123, 'protocol': 'TCP'}, {'port': 9000, 'protocol': 'TCP'}, {'port': 9009, 'protocol': 'TCP'}] clickhouse:8123
