@@ -621,7 +621,7 @@ func (s *Service) CreateWithACL(ctx context.Context, req CreateEnvironmentReques
 	}
 	req.Name = name
 	if req.ProjectID == "" {
-		return EnvironmentView{}, core.ErrBadRequest
+		return EnvironmentView{}, fmt.Errorf("%w: projectId: is required", core.ErrBadRequest)
 	}
 	if req.ProtectedStatus == "" {
 		req.ProtectedStatus = ProtectedStatusUnprotected
@@ -747,7 +747,7 @@ func (s *Service) Update(ctx context.Context, id string, patch EnvironmentPatch)
 		return EnvironmentView{}, err
 	}
 	if patch.Name == nil && !hasACL {
-		return EnvironmentView{}, core.ErrBadRequest
+		return EnvironmentView{}, fmt.Errorf("%w: nothing to update: set name or an access rule", core.ErrBadRequest)
 	}
 	name := ""
 	if patch.Name != nil {
@@ -1273,7 +1273,7 @@ func (s *Service) applyACL(ctx context.Context, e store.Environment, protectedSt
 func validateEnvironmentName(name string) (string, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return "", core.ErrBadRequest
+		return "", fmt.Errorf("%w: name: must not be blank", core.ErrBadRequest)
 	}
 	return name, nil
 }

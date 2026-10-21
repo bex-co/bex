@@ -17,6 +17,7 @@ limitations under the License.
 package notifications
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -142,7 +143,7 @@ func inboxLimit(r *http.Request) (int, error) {
 	}
 	limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
 	if err != nil || limit < 1 || limit > maxNotificationInboxLimit {
-		return 0, core.ErrBadRequest
+		return 0, fmt.Errorf("%w: query parameter \"limit\" must be between 1 and %d", core.ErrBadRequest, maxNotificationInboxLimit)
 	}
 	return limit, nil
 }

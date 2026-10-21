@@ -29,6 +29,7 @@ package clitelemetry
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -127,7 +128,7 @@ func (s *Service) Record(ctx context.Context, in EventInput) (string, error) {
 	}
 	command := strings.TrimSpace(in.Command)
 	if command == "" {
-		return "", core.ErrBadRequest
+		return "", fmt.Errorf("%w: command: must not be blank", core.ErrBadRequest)
 	}
 	var startedAt *time.Time
 	if t, err := time.Parse(time.RFC3339, in.StartedAt); err == nil {
