@@ -373,7 +373,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **152** — [A Render region is silently normalized on create but refused in every Blueprint, so 75 of 100 real Render exports fail on `region` alone](152.md) ← `/qa-find-bugs-cli` sweep 1267 2026-10-20: decision needed (normalize everywhere vs refuse everywhere); major, ~60m once decided.
+- [ ] **152** — [A Render region is silently normalized on create but refused in every Blueprint, so 75 of 100 real Render exports fail on `region` alone](blocked/152.md) ← `/qa-find-bugs-cli` sweep 1267 2026-10-20: decision needed (normalize everywhere vs refuse everywhere); major, ~60m once decided. — **BLOCKED (2026-10-20: needs the user to choose one `region` policy for every surface — (1, recommended) Blueprints normalize any Render region to `BEX_REGION` as create already does, so 75 of the 100 sampled Render exports validate unchanged; or (2) create refuses a region other than `BEX_REGION` with the Blueprint's actionable wording; ~60m once decided)**
 
 - [x] **151** — [`PATCH /v1/services/{id}` refuses Render's `envSpecificDetails.dockerContext` as an unknown field](done/151.md) ← `/qa-find-bugs-cli` sweep 1266 2026-10-20: no update path for the build context on any surface; minor, ~40m. — **PROMOTED (2026-10-20)** to `m128`.
 
