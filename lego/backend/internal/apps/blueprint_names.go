@@ -20,6 +20,9 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"strings"
+	"unicode"
+
+	"golang.org/x/text/unicode/norm"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -35,9 +38,41 @@ func blueprintResourceSlug(name string) string {
 	if appv1alpha1.ValidResourceName(name) {
 		return name
 	}
+	return capResourceSlug(name, foldedSlug(name), true)
+}
+
+// legacyBlueprintResourceSlug is the mapping before w4/385, which dropped
+// accented letters and gave every name with no a–z or 0–9 the one name
+// "resource". A service created under it keeps that name; the Blueprint plan
+// still finds it (workspaceSnapshot.services).
+func legacyBlueprintResourceSlug(name string) string {
+	if appv1alpha1.ValidResourceName(name) {
+		return name
+	}
+	slug := asciiSlug(strings.ToLower(name))
+	if slug == "" {
+		slug = "resource"
+	}
+	return capResourceSlug(name, slug, false)
+}
+
+// foldedSlug is name's slug with accents folded onto their base letters
+// (NFKD, combining marks dropped), so "Ünï" reads "uni" rather than "n".
+func foldedSlug(name string) string {
+	var folded strings.Builder
+	for _, r := range norm.NFKD.String(strings.ToLower(name)) {
+		if !unicode.IsMark(r) {
+			folded.WriteRune(r)
+		}
+	}
+	return asciiSlug(folded.String())
+}
+
+// asciiSlug keeps a–z and 0–9 and hyphenates every other run.
+func asciiSlug(lower string) string {
 	var b strings.Builder
 	dash := false
-	for _, r := range strings.ToLower(name) {
+	for _, r := range lower {
 		if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' {
 			b.WriteRune(r)
 			dash = false
@@ -46,13 +81,21 @@ func blueprintResourceSlug(name string) string {
 			dash = true
 		}
 	}
-	slug := strings.TrimRight(b.String(), "-")
-	if slug == "" {
-		slug = "resource"
+	return strings.TrimRight(b.String(), "-")
+}
+
+// capResourceSlug applies the name-specific fallbacks: a name with nothing
+// left takes "resource-<hash of the name>" so two different non-Latin names
+// stay distinct and one name stays stable, and a slug past the cap keeps its
+// start plus that hash.
+func capResourceSlug(name, slug string, hashEmpty bool) string {
+	sum := func() string { return fmt.Sprintf("%x", sha256.Sum256([]byte(name)))[:6] }
+	if slug == "" && hashEmpty {
+		return "resource-" + sum()
 	}
 	if len(slug) > appv1alpha1.MaxResourceNameLength {
-		sum := fmt.Sprintf("%x", sha256.Sum256([]byte(name)))[:6]
-		slug = strings.TrimRight(slug[:appv1alpha1.MaxResourceNameLength-len(sum)-1], "-") + "-" + sum
+		hash := sum()
+		slug = strings.TrimRight(slug[:appv1alpha1.MaxResourceNameLength-len(hash)-1], "-") + "-" + hash
 	}
 	return slug
 }
