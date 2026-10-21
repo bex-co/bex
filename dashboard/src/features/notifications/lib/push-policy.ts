@@ -54,6 +54,12 @@ function hasValidEvents(events: PushNotificationEvent[]): boolean {
   );
 }
 
+// The field is in hours and steps by half an hour, so its bounds are 0.5 h to
+// 168 h (w4/387). bex-api itself accepts any whole number of seconds up to the
+// same maximum; the panel keeps to what its own control can express.
+export const MIN_DEFERRAL_SECONDS = 30 * 60;
+export const MAX_DEFERRAL_SECONDS = 7 * 24 * 60 * 60;
+
 export function validatePushSettings(
   settings: PushNotificationSettingsInput,
 ): string | null {
@@ -71,8 +77,8 @@ export function validatePushSettings(
   }
   if (
     !Number.isInteger(settings.maxDeferralSeconds) ||
-    settings.maxDeferralSeconds <= 0 ||
-    settings.maxDeferralSeconds > 7 * 24 * 60 * 60
+    settings.maxDeferralSeconds < MIN_DEFERRAL_SECONDS ||
+    settings.maxDeferralSeconds > MAX_DEFERRAL_SECONDS
   ) {
     return "notifications.pushInvalidDeferral";
   }

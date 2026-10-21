@@ -33,6 +33,19 @@ function validSettings(): PushNotificationSettingsInput {
 }
 
 describe("validatePushSettings", () => {
+  it("bounds the max deferral at 0.5 and 168 hours (w4/387)", () => {
+    const at = (seconds: number) => {
+      const settings = validSettings();
+      settings.maxDeferralSeconds = seconds;
+      return validatePushSettings(settings);
+    };
+    expect(at(1800)).toBeNull();
+    expect(at(168 * 3600)).toBeNull();
+    for (const bad of [-5 * 3600, 0, 900, 1799, 168 * 3600 + 1]) {
+      expect(at(bad)).toBe("notifications.pushInvalidDeferral");
+    }
+  });
+
   it("accepts an IANA timezone and a DST-aware overnight range", () => {
     const settings = validSettings();
     settings.quietHours = [

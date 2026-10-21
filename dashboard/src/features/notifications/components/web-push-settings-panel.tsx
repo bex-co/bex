@@ -28,7 +28,9 @@ export function WebPushSettingsPanel() {
     <Card>
       <CardHeader>
         <CardTitle>{t("notifications.webPushTitle")}</CardTitle>
-        <CardDescription>{t("notifications.webPushDescription")}</CardDescription>
+        <CardDescription>
+          {t("notifications.webPushDescription")}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {status === "unsupported" ? (

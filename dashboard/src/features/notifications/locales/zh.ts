@@ -351,7 +351,7 @@ const zhNotifications: Record<string, TranslationEntry> = {
     description: "Validation",
   },
   "notifications.pushInvalidDeferral": {
-    message: "最长延迟必须介于 1 秒和 168 小时之间。",
+    message: "最长延迟必须介于 0.5 和 168 小时之间。",
     description: "Validation",
   },
   "notifications.pushInvalidEvents": {

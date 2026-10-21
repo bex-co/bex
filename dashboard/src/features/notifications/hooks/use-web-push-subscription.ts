@@ -50,15 +50,23 @@ async function probeWebPushStatus(
   if (!browserSupportsPush()) return "unsupported";
   if (!serverAvailable || !vapidPublicKey) return "unconfigured";
   if (Notification.permission === "denied") return "denied";
-  const registration = await navigator.serviceWorker.getRegistration("/push-sw.js");
+  const registration =
+    await navigator.serviceWorker.getRegistration("/push-sw.js");
   const sub = await registration?.pushManager.getSubscription();
   return sub ? "subscribed" : "prompt";
 }
 
-export function useWebPushSubscription(vapidPublicKey: string, serverAvailable: boolean) {
+export function useWebPushSubscription(
+  vapidPublicKey: string,
+  serverAvailable: boolean,
+) {
   const [status, setStatus] = useState<WebPushStatus>("busy");
-  const [register] = useMutation(RegisterNotificationWebPushSubscriptionDocument);
-  const [unregister] = useMutation(UnregisterNotificationWebPushSubscriptionDocument);
+  const [register] = useMutation(
+    RegisterNotificationWebPushSubscriptionDocument,
+  );
+  const [unregister] = useMutation(
+    UnregisterNotificationWebPushSubscriptionDocument,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -79,7 +87,8 @@ export function useWebPushSubscription(vapidPublicKey: string, serverAvailable: 
         setStatus(permission === "denied" ? "denied" : "prompt");
         return false;
       }
-      const registration = await navigator.serviceWorker.register("/push-sw.js");
+      const registration =
+        await navigator.serviceWorker.register("/push-sw.js");
       const key = urlBase64ToUint8Array(vapidPublicKey);
       const applicationServerKey = new ArrayBuffer(key.byteLength);
       new Uint8Array(applicationServerKey).set(key);
@@ -111,7 +120,8 @@ export function useWebPushSubscription(vapidPublicKey: string, serverAvailable: 
   const unsubscribe = useCallback(async () => {
     setStatus("busy");
     try {
-      const registration = await navigator.serviceWorker.getRegistration("/push-sw.js");
+      const registration =
+        await navigator.serviceWorker.getRegistration("/push-sw.js");
       const sub = await registration?.pushManager.getSubscription();
       await sub?.unsubscribe();
       await unregister({ variables: { browserId: readBrowserId() } });
