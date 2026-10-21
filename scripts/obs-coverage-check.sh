@@ -66,6 +66,10 @@ WAIVED_ALERTS=(
   # reason: up-only source-loss alert; Platform availability's "GitOps metrics
   # scrape health" panel shows the argocd-applications target including absence.
   "PlatformGitOpsMetricsMissing"
+  # reason: the always-firing heartbeat (expr vector(1)) has no series by
+  # design; its absence is observed outside the cluster by
+  # scripts/alerting-heartbeat.sh, not on a panel (w3/m174).
+  "Watchdog"
 )
 
 # ── Context series ───────────────────────────────────────────────────────────
@@ -438,6 +442,11 @@ for alert, expr in alerts:
         if occ[0] in records:
             backing.extend(records[occ[0]])  # recorded rule: name AND base series count
     if not backing:
+        # A waived heartbeat whose expr is a bare constant has no series by
+        # design; any other series-less expr is still an extractor failure.
+        if alert in waived and re.fullmatch(r"\s*vector\(\s*\d+\s*\)\s*", expr):
+            print(f"  waived    {alert:<44} -> constant heartbeat ({expr.strip()}); see waiver comment")
+            continue
         parse_errors.append(alert)
         print(f"  ERROR     {alert:<44} -> expr yielded no series (extractor parse failure)")
         continue

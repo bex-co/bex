@@ -544,6 +544,19 @@ scripts/seal-secret.sh monitoring alertmanager-smtp smtp-password="$BEX_SMTP_PAS
 
 On the **local** mock cluster the overlay disables Alertmanager entirely (`alertmanager.enabled=false`) — the disposable CAPD cluster has no SMTP cred, just as it has no backup S3 creds, so the workload is dropped rather than left pending on a missing secret (mirrors the `$patch: delete` of the backup CronJob Applications). The server still evaluates the rule pack (visible in the Prometheus UI), and `scripts/alerts-verify.sh` stands up its own throwaway Alertmanager with the email receiver swapped for an in-cluster capture webhook — so no committed secret and no real mail are needed to test the loop.
 
+### Alerting heartbeat
+
+Prometheus and Alertmanager cannot report their own death, and a notification path that silently fails looks exactly like a quiet night (a no-MX recipient once swallowed 512 alert emails, `w8/m30`). So the pipeline watches itself in two layers (w3/m174):
+
+- **In cluster:** Prometheus scrapes itself and Alertmanager. `AlertmanagerNotificationsFailing`, `PrometheusRuleEvaluationFailures` and `PrometheusNotificationsDropped` page on failures inside the path (they travel the same path, so they cover partial failures, not total ones).
+- **Out of cluster:** `Watchdog` always fires and is routed to the `null` receiver (it never emails). `scripts/alerting-heartbeat.sh`, run hourly by `.github/workflows/alerting-heartbeat.yml` on the self-hosted production pool, confirms the Watchdog is active in Alertmanager, that no notifications failed in the last hour, and that `api.bex.co` and `dashboard.bex.co` answer — and keeps one GitHub issue (label `alerting-heartbeat`) open while any of that fails. GitHub's own notifications deliver it, independent of SendGrid. This is the "external uptime check" ADR088 §1 relies on for whole-cluster outages.
+
+Responding: a heartbeat issue naming Watchdog means Prometheus or Alertmanager is down (`kubectl -n monitoring get pods`); naming notification failures means delivery is broken (check the `alertmanager-smtp` Secret and SendGrid activity); naming the API or dashboard means a public outage.
+
+### Tenant capacity
+
+`TenantPodUnschedulable` pages when a tenant serving or datastore pod (owned by a ReplicaSet, StatefulSet or CNPG Cluster in a `tea-*` namespace) has been unschedulable for 10m. Tenants only see their service stuck Deploying; the cause is a tenant pool at its cluster-autoscaler maximum (`infra/clusterapi/overlays/hetzner-caph/cluster.yaml`) or a failed scale-up. Job pods are excluded: builds have `BuildQueuedTooLong`, backups their staleness alerts. First checks: `kubectl -n <ns> describe pod <pod>` (the scheduler's reason), cluster-autoscaler logs, and the Cluster capacity dashboard's "Unschedulable tenant pods" panel.
+
 ### Rules are tested, not just linted
 
 The rule pack is the single source of truth embedded in `prometheus.yaml`. `scripts/gitops-validate.sh` (CI: `.github/workflows/gitops.yml`) extracts it and runs `promtool check rules` plus `promtool test rules` against `deploy/gitops/base/rules/alerts_test.yml` — unit tests pin the non-obvious expressions (backup-age fires at >26h not 25h; the 5xx ratio ignores tiny denominators; CrashLoop respects `for: 10m`). A regressed expression fails CI, not prod.

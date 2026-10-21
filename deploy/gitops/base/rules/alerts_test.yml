@@ -49,7 +49,7 @@ tests:
               severity: warning
             exp_annotations:
               summary: "Stripe billing export backlog is older than 72h"
-              description: "A sealed usage row has remained pending for >24h beyond the 48h seal horizon. Inspect without replay: scripts/stripe-billing-reconcile.sh issues. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+              description: "A sealed usage row has remained pending for >24h beyond the 48h seal horizon. Inspect without replay: scripts/stripe-billing-reconcile.sh issues. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
       - eval_time: 20m
         alertname: BillingPermanentReject
         exp_alerts:
@@ -57,7 +57,7 @@ tests:
               severity: warning
             exp_annotations:
               summary: "Stripe permanently rejected billing meter events"
-              description: "One or more usage rows are held in the durable reject queue. Dry-run reconciliation before retry or acknowledgement: scripts/stripe-billing-reconcile.sh issues. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+              description: "One or more usage rows are held in the durable reject queue. Dry-run reconciliation before retry or acknowledgement: scripts/stripe-billing-reconcile.sh issues. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
       - eval_time: 20m
         alertname: BillingExportAmbiguity
         exp_alerts:
@@ -65,7 +65,7 @@ tests:
               severity: critical
             exp_annotations:
               summary: "Stripe billing export has an old ambiguous provider outcome"
-              description: "An attempted event exceeded Stripe's 24h identifier window without a local stamp and automatic replay stopped. Reconcile provider summaries, then explicitly mark repaired or acknowledge; never blind-retry. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+              description: "An attempted event exceeded Stripe's 24h identifier window without a local stamp and automatic replay stopped. Reconcile provider summaries, then explicitly mark repaired or acknowledge; never blind-retry. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
 
   - name: billing operation failures are bounded and actionable
     interval: 1m
@@ -89,35 +89,35 @@ tests:
           - exp_labels: { severity: critical, job: bex-api, instance: prod }
             exp_annotations:
               summary: "Stripe accepted usage but the local export stamp failed"
-              description: "Provider acceptance may be ahead of local state. Restore Postgres and reconcile before the 24h identifier window expires. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+              description: "Provider acceptance may be ahead of local state. Restore Postgres and reconcile before the 24h identifier window expires. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
       - eval_time: 20m
         alertname: BillingProviderDuplicate
         exp_alerts:
           - exp_labels: { severity: critical, job: bex-api, instance: prod }
             exp_annotations:
               summary: "Stripe billing found duplicate Customer or Subscription ownership"
-              description: "The fail-closed ownership resolver found multiple provider objects for one workspace. Do not delete automatically; inspect metadata and subscription status under the test-mode guard. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+              description: "The fail-closed ownership resolver found multiple provider objects for one workspace. Do not delete automatically; inspect metadata and subscription status under the test-mode guard. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
       - eval_time: 20m
         alertname: BillingInvoiceReadDegraded
         exp_alerts:
           - exp_labels: { severity: warning, job: bex-api, instance: prod }
             exp_annotations:
               summary: "Stripe invoice read-back is degraded"
-              description: "Repeated invoice preview/history reads failed; the usage surface is falling back to estimates. Check restricted-key permissions and Stripe API health. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+              description: "Repeated invoice preview/history reads failed; the usage surface is falling back to estimates. Check restricted-key permissions and Stripe API health. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
       - eval_time: 20m
         alertname: BillingWebhookDrift
         exp_alerts:
           - exp_labels: { severity: critical, job: bex-api, instance: prod }
             exp_annotations:
               summary: "Stripe billing webhook API version or mode drifted"
-              description: "Webhook intake rejected a signed Stripe event for its pinned API version or test/live mode. Verify the endpoint's API version and mode in the Stripe dashboard; never weaken verification. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+              description: "Webhook intake rejected a signed Stripe event for its pinned API version or test/live mode. Verify the endpoint's API version and mode in the Stripe dashboard; never weaken verification. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
       - eval_time: 20m
         alertname: BillingProvisioningFailure
         exp_alerts:
           - exp_labels: { severity: warning, job: bex-api, instance: prod }
             exp_annotations:
               summary: "Stripe Customer or Subscription provisioning is repeatedly failing"
-              description: "Usage cannot export until the workspace's unique Customer and metered Subscription converge. Inspect catalog/key permissions and duplicate-object alerts. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+              description: "Usage cannot export until the workspace's unique Customer and metered Subscription converge. Inspect catalog/key permissions and duplicate-object alerts. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
 
   # The webhook endpoint is public: unsigned POSTs from scanners and replays
   # each count one signature reject. 13 of those over three days paged on-call
@@ -155,7 +155,7 @@ tests:
           - exp_labels: { severity: warning, job: bex-api, instance: prod }
             exp_annotations:
               summary: "Stripe billing webhook is rejecting signatures in a burst"
-              description: "More than 5 webhook deliveries failed signature verification within 15 minutes. A few a day are unsigned scanner or replay POSTs to the public endpoint and are ignored; a burst means the endpoint secret no longer matches Stripe's and every real delivery is being rejected. Check the endpoint's recent deliveries in the Stripe dashboard, then rotate add→verify→revoke; never weaken verification. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+              description: "More than 5 webhook deliveries failed signature verification within 15 minutes. A few a day are unsigned scanner or replay POSTs to the public endpoint and are ignored; a burst means the endpoint secret no longer matches Stripe's and every real delivery is being rejected. Check the endpoint's recent deliveries in the Stripe dashboard, then rotate add→verify→revoke; never weaken verification. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
 
   - name: disabled billing never alerts on stale retained series
     interval: 1m
@@ -497,7 +497,7 @@ tests:
               namespace: secrets
             exp_annotations:
               summary: "Backup secrets/openbao-backup has not succeeded in >26h"
-              description: "The nightly openbao-backup has no successful backup in over 26h — silent backup rot is unrecoverable data loss. Debug: kubectl -n secrets get cronjob openbao-backup; kubectl -n secrets get jobs -l batch.kubernetes.io/cronjob-name=openbao-backup. Runbooks: docs/ADR011-etcd-backup-restore.md, docs/ADR015-openbao-backup-restore.md, docs/ADR021-keyvalue-management.md, docs/ADR031-platform-data-backup.md"
+              description: "The nightly openbao-backup has no successful backup in over 26h — silent backup rot is unrecoverable data loss. Debug: kubectl -n secrets get cronjob openbao-backup; kubectl -n secrets get jobs -l batch.kubernetes.io/cronjob-name=openbao-backup. Runbooks: docs/ADR011-etcd-backup-restore.md, docs/ADR015-openbao-backup-restore.md, docs/ADR021-keyvalue-management.md, docs/ADR082-persistent-disks.md (dskbak-*), docs/ADR031-platform-data-backup.md"
 
   - name: KeyValue backup staleness includes never-successful and excludes suspended
     interval: 1m
@@ -527,7 +527,7 @@ tests:
               namespace: default
             exp_annotations:
               summary: "Backup default/kvbak-red-never has not succeeded in >26h"
-              description: "The nightly kvbak-red-never has no successful backup in over 26h — silent backup rot is unrecoverable data loss. Debug: kubectl -n default get cronjob kvbak-red-never; kubectl -n default get jobs -l batch.kubernetes.io/cronjob-name=kvbak-red-never. Runbooks: docs/ADR011-etcd-backup-restore.md, docs/ADR015-openbao-backup-restore.md, docs/ADR021-keyvalue-management.md, docs/ADR031-platform-data-backup.md"
+              description: "The nightly kvbak-red-never has no successful backup in over 26h — silent backup rot is unrecoverable data loss. Debug: kubectl -n default get cronjob kvbak-red-never; kubectl -n default get jobs -l batch.kubernetes.io/cronjob-name=kvbak-red-never. Runbooks: docs/ADR011-etcd-backup-restore.md, docs/ADR015-openbao-backup-restore.md, docs/ADR021-keyvalue-management.md, docs/ADR082-persistent-disks.md (dskbak-*), docs/ADR031-platform-data-backup.md"
 
   # TraefikHigh5xxRate: a tiny denominator (1 request total) must NOT fire even at
   # 100% 5xx — the traffic floor guards against alerting on noise.
@@ -1748,7 +1748,7 @@ tests:
           - exp_labels: { severity: critical, job: bex-api, instance: prod }
             exp_annotations:
               summary: "bex rejected or failed a Stripe webhook delivery"
-              description: "checkout.session.completed is the only writer of payment_method_bound_at, which alone decides whether a workspace may create anything — so a dropped delivery locks a real customer out with no trace. A signature or livemode rejection is a permanent loss (Stripe never retries a 4xx); a handler error returns 503 and Stripe retries for up to three days, and persistent failure gets the endpoint disabled. Check the bex-api log for the matching 'billing: ...' line, which names the event id. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+              description: "checkout.session.completed is the only writer of payment_method_bound_at, which alone decides whether a workspace may create anything — so a dropped delivery locks a real customer out with no trace. A signature or livemode rejection is a permanent loss (Stripe never retries a 4xx); a handler error returns 503 and Stripe retries for up to three days, and persistent failure gets the endpoint disabled. Check the bex-api log for the matching 'billing: ...' line, which names the event id. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
 
   # The series run at 1m to match this file's evaluation_interval — coarser
   # samples go stale between evaluations and `for:` never accumulates — and run
@@ -1777,7 +1777,7 @@ tests:
           - exp_labels: { severity: warning }
             exp_annotations:
               summary: "No Stripe webhook has succeeded in over 72h"
-              description: "Either Stripe stopped delivering (endpoint disabled or misconfigured) or nothing is happening. 72h comes from the observed delivery gaps on 2026-09-16: over a 6.7-day sample the largest real gap was 45.7h and p95 was 35.6h, so this clears the quiet periods with headroom. Volume is low, so treat this as a prompt to check the endpoint rather than as a page: bash scripts/stripe-webhook-drift.sh. The '> 0' filter inside max() drops replicas that have never received a webhook — a freshly restarted pod publishes 0, which is not silence — so the alert reads the freshest success across the fleet, not a restarted pod's zero. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+              description: "Either Stripe stopped delivering (endpoint disabled or misconfigured) or nothing is happening. 72h comes from the observed delivery gaps on 2026-09-16: over a 6.7-day sample the largest real gap was 45.7h and p95 was 35.6h, so this clears the quiet periods with headroom. Volume is low, so treat this as a prompt to check the endpoint rather than as a page: bash scripts/stripe-webhook-drift.sh. The '> 0' filter inside max() drops replicas that have never received a webhook — a freshly restarted pod publishes 0, which is not silence — so the alert reads the freshest success across the fleet, not a restarted pod's zero. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
 
   # w7/m159: sustained DiskPressure pages, a short episode stays diagnosable
   # for 6h after recovery, and missing telemetry is never read as healthy.

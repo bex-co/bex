@@ -4045,6 +4045,51 @@ dashboards:
                ]
               }
              }
+            },
+            {
+             "type": "timeseries",
+             "title": "Alert pipeline health",
+             "description": "Failures inside the alerting path itself (w3/m174): notifications Alertmanager could not deliver, rule groups Prometheus could not evaluate, and alerts Prometheus dropped or failed to hand to Alertmanager. Any non-zero line means other alerts may be firing unseen. Whole-pipeline death is caught outside the cluster by the Watchdog heartbeat check.",
+             "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 140
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "fieldConfig": {
+              "defaults": {
+               "unit": "short",
+               "min": 0
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "sum by (integration) (increase(alertmanager_notifications_failed_total{job=\"alertmanager\"}[15m]))",
+               "legendFormat": "failed notifications: {{integration}}"
+              },
+              {
+               "refId": "B",
+               "expr": "sum by (rule_group) (increase(prometheus_rule_evaluation_failures_total{job=\"prometheus\"}[15m]))",
+               "legendFormat": "rule eval failures: {{rule_group}}"
+              },
+              {
+               "refId": "C",
+               "expr": "increase(prometheus_notifications_dropped_total{job=\"prometheus\"}[15m])",
+               "legendFormat": "dropped alerts"
+              },
+              {
+               "refId": "D",
+               "expr": "increase(prometheus_notifications_errors_total{job=\"prometheus\"}[15m])",
+               "legendFormat": "alert hand-off errors: {{alertmanager}}"
+              }
+             ],
+             "id": 29
             }
           ]
         }
@@ -5544,7 +5589,7 @@ dashboards:
              "id": 5,
              "type": "timeseries",
              "title": "Backup CronJob age since success",
-             "description": "Time since the last successful etcd/openbao/kvbak-* backup run, mirroring BackupCronJobStale's full expression: a CronJob that has NEVER succeeded falls back to age since creation (so a 27h-old never-successful backup shows exactly when the alert fires), and suspended CronJobs are excluded exactly as the alert excludes them. Red line 26h — silent backup rot is unrecoverable data loss.",
+             "description": "Time since the last successful etcd/openbao/kvbak-*/dskbak-* backup run, mirroring BackupCronJobStale's full expression: a CronJob that has NEVER succeeded falls back to age since creation (so a 27h-old never-successful backup shows exactly when the alert fires), and suspended CronJobs are excluded exactly as the alert excludes them. Red line 26h — silent backup rot is unrecoverable data loss.",
              "gridPos": { "h": 9, "w": 8, "x": 16, "y": 9 },
              "datasource": { "type": "prometheus", "uid": "prometheus" },
              "fieldConfig": {
@@ -5565,7 +5610,7 @@ dashboards:
              "targets": [
                 {
                  "refId": "A",
-                 "expr": "((time() - kube_cronjob_status_last_successful_time{cronjob=~\"etcd-backup|openbao-backup|kvbak-.*\"}) or ((time() - kube_cronjob_created{cronjob=~\"etcd-backup|openbao-backup|kvbak-.*\"}) unless on (namespace, cronjob) kube_cronjob_status_last_successful_time{cronjob=~\"etcd-backup|openbao-backup|kvbak-.*\"})) and on (namespace, cronjob) (kube_cronjob_spec_suspend{cronjob=~\"etcd-backup|openbao-backup|kvbak-.*\"} == 0)",
+                 "expr": "((time() - kube_cronjob_status_last_successful_time{cronjob=~\"etcd-backup|openbao-backup|kvbak-.*|dskbak-.*\"}) or ((time() - kube_cronjob_created{cronjob=~\"etcd-backup|openbao-backup|kvbak-.*|dskbak-.*\"}) unless on (namespace, cronjob) kube_cronjob_status_last_successful_time{cronjob=~\"etcd-backup|openbao-backup|kvbak-.*|dskbak-.*\"})) and on (namespace, cronjob) (kube_cronjob_spec_suspend{cronjob=~\"etcd-backup|openbao-backup|kvbak-.*|dskbak-.*\"} == 0)",
                  "legendFormat": "{{namespace}}/{{cronjob}}"
                 }
               ]
@@ -5907,6 +5952,54 @@ dashboards:
                "targetBlank": true
               }
              ]
+            },
+            {
+             "type": "timeseries",
+             "title": "Postgres base-backup age",
+             "description": "Age of the newest completed CNPG Backup per cluster (kube-state-metrics' Backup export, w3/m174). WAL archiving can stay healthy while nightly base backups fail; PostgresBaseBackupStale (platform, critical — also when no completed Backup is visible) and TenantPostgresBaseBackupStale (warning, existing clusters only) fire above the 26h line.",
+             "gridPos": {
+              "h": 9,
+              "w": 12,
+              "x": 0,
+              "y": 46
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "fieldConfig": {
+              "defaults": {
+               "unit": "s",
+               "min": 0,
+               "custom": {
+                "thresholdsStyle": {
+                 "mode": "line"
+                }
+               },
+               "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                 {
+                  "color": "green",
+                  "value": null
+                 },
+                 {
+                  "color": "red",
+                  "value": 93600
+                 }
+                ]
+               }
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "time() - max by (namespace, cnpg_io_cluster) (bex_cnpg_backup_stopped_at_seconds{phase=\"completed\"})",
+               "legendFormat": "{{namespace}}/{{cnpg_io_cluster}}"
+              }
+             ],
+             "id": 13
             }
           ]
         }
@@ -7289,6 +7382,37 @@ dashboards:
                "range": false
               }
              ]
+            },
+            {
+             "type": "timeseries",
+             "title": "Unschedulable tenant pods",
+             "description": "Tenant serving and datastore pods (ReplicaSet, StatefulSet or CNPG Cluster owned) that cannot be placed. TenantPodUnschedulable pages after 10m: the tenant pools are at their autoscaler maximum or scale-up failed, and tenants only see Deploying. Builds, pre-deploy and backup Job pods are excluded (they have their own alerts).",
+             "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 116
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "fieldConfig": {
+              "defaults": {
+               "unit": "short",
+               "min": 0,
+               "decimals": 0
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "count by (namespace) (max by (namespace, pod) (kube_pod_status_unschedulable{namespace=~\"tea-.*\"}) and on (namespace, pod) max by (namespace, pod) (kube_pod_owner{namespace=~\"tea-.*\", owner_kind=~\"ReplicaSet|StatefulSet|Cluster\"}))",
+               "legendFormat": "{{namespace}}"
+              }
+             ],
+             "id": 25
             }
           ]
         }
