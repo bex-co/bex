@@ -83,6 +83,38 @@ const zh: Record<string, TranslationEntry> = {
     description:
       "Screen-reader status while the wall forwards a workspace that needs no payment step",
   },
+  "onboarding.gettingStartedTitle": {
+    message: "开始使用 bex",
+    description: "Getting-started checklist title on an empty workspace Overview",
+  },
+  "onboarding.gettingStartedSubtitle": {
+    message: "完成以下几步，即可进行首次部署。",
+    description: "Getting-started checklist subtitle",
+  },
+  "onboarding.gettingStartedDismiss": {
+    message: "关闭入门指引",
+    description: "Accessible label of the getting-started checklist's dismiss button",
+  },
+  "onboarding.gettingStartedDone": {
+    message: "已完成",
+    description: "Accessible label of a completed checklist item's icon",
+  },
+  "onboarding.gettingStartedPending": {
+    message: "尚未完成",
+    description: "Accessible label of a pending checklist item's icon",
+  },
+  "onboarding.gettingStarted.createService": {
+    message: "创建你的第一个服务",
+    description: "Checklist item linking to the new-service flow",
+  },
+  "onboarding.gettingStarted.connectGithub": {
+    message: "连接 GitHub，从代码仓库部署",
+    description: "Checklist item linking to Settings → Integrations",
+  },
+  "onboarding.gettingStarted.inviteTeammate": {
+    message: "邀请团队成员",
+    description: "Checklist item linking to workspace settings (team)",
+  },
 };
 
 export default zh;

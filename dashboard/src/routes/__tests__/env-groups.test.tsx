@@ -281,6 +281,18 @@ describe("EnvGroupsPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("opens the create dialog from the empty state (ADR075 D1)", async () => {
+    renderList();
+    const buttons = await screen.findAllByRole("button", {
+      name: "New Environment Group",
+    });
+    expect(buttons).toHaveLength(2); // header + empty state
+    await userEvent.click(buttons[1]);
+    expect(
+      await screen.findByRole("button", { name: "Create Environment Group" }),
+    ).toBeInTheDocument();
+  });
+
   it("renders distinct empty and error states", async () => {
     const view = renderList();
     expect(
@@ -343,7 +355,7 @@ describe("EnvGroupsPage", () => {
     const { router } = renderList();
 
     await user.click(
-      await screen.findByRole("button", { name: "New Environment Group" }),
+      (await screen.findAllByRole("button", { name: "New Environment Group" }))[0],
     );
     await user.type(screen.getByLabelText("Group name"), "Shared production");
     await user.click(
@@ -375,7 +387,7 @@ describe("EnvGroupsPage", () => {
       const user = userEvent.setup();
       renderList();
       await user.click(
-        await screen.findByRole("button", { name: "New Environment Group" }),
+        (await screen.findAllByRole("button", { name: "New Environment Group" }))[0],
       );
       expect(
         screen.queryByRole("checkbox", { name: /qa-service/ }),
@@ -411,7 +423,7 @@ describe("EnvGroupsPage", () => {
     const user = userEvent.setup();
     renderList();
     await user.click(
-      await screen.findByRole("button", { name: "New Environment Group" }),
+      (await screen.findAllByRole("button", { name: "New Environment Group" }))[0],
     );
     expect(screen.getByRole("alert")).toHaveTextContent("Couldn't load");
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
@@ -430,7 +442,7 @@ describe("EnvGroupsPage", () => {
     const { router } = renderList();
 
     await user.click(
-      await screen.findByRole("button", { name: "New Environment Group" }),
+      (await screen.findAllByRole("button", { name: "New Environment Group" }))[0],
     );
     await user.type(screen.getByLabelText("Group name"), "Shared production");
     await user.click(

@@ -109,6 +109,25 @@ const databasesState: {
   startPolling: vi.fn(),
   stopPolling: vi.fn(),
 };
+// The empty-workspace getting-started card (ADR075 D2) reads these.
+const gettingStarted = vi.hoisted(() => ({ gitConnected: false, members: 1 }));
+vi.mock("@/features/git/hooks/use-git-connection", () => ({
+  useGitConnections: () => ({
+    connections: [],
+    connected: gettingStarted.gitConnected,
+    loading: false,
+    error: undefined,
+    refetch: vi.fn(),
+  }),
+}));
+vi.mock("@/features/team/hooks/use-team", () => ({
+  useTeam: () => ({
+    members: Array.from({ length: gettingStarted.members }, (_, i) => ({ id: `m${i}` })),
+    invites: [],
+    loading: false,
+    canManage: true,
+  }),
+}));
 vi.mock("@/features/databases/hooks/use-databases", () => ({
   useDatabases: () => databasesState,
 }));
@@ -470,6 +489,16 @@ describe("HomePage", () => {
 
     expect(await screen.findByText("No resources yet")).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  // ADR075 D1+D2: the empty workspace offers its next step instead of dead text.
+  it("offers the create-service action and the getting-started card on an empty workspace", async () => {
+    renderHomePage();
+
+    expect(
+      await screen.findByRole("link", { name: "Create a service" }),
+    ).toHaveAttribute("href", "/services/new");
+    expect(screen.getByTestId("getting-started-card")).toBeInTheDocument();
   });
 });
 

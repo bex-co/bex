@@ -102,6 +102,10 @@ const zhProjects: Record<string, TranslationEntry> = {
     message: "创建一个服务、数据库或键值存储以开始使用。",
     description: "Empty state body on the unified Projects page",
   },
+  "projects.emptyCreateService": {
+    message: "创建服务",
+    description: "Primary action of the empty Projects page (ADR075 D1)",
+  },
   "projects.newButton": {
     message: "新建",
     description: "Button that opens the new-resource menu",
