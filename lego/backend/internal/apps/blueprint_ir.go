@@ -247,8 +247,10 @@ func normalizeBlueprintResourceLists(ir *BlueprintIR, problems *[]BlueprintSourc
 			}
 			// One resource name for every IR consumer (plan, preview, the
 			// resource list, error locations, the duplicate check): a free-form
-			// Blueprint name maps onto its resource name here (w5/m150).
-			if resource.Kind != BlueprintResourceEnvVarGroup && resource.Name != "" {
+			// Blueprint service name maps onto its resource name here
+			// (w5/m150). A Postgres or Key Value name is a free-form label
+			// already (w5/m153), so it stays as written.
+			if resource.Kind == BlueprintResourceService && resource.Name != "" {
 				resource.Name = blueprintResourceSlug(resource.Name)
 			}
 			if resource.Name == "" {

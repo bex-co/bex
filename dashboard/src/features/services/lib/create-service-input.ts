@@ -215,7 +215,8 @@ export function buildCreateServiceInput(
 
   return {
     ...source,
-    name: form.name,
+    // A free-form label (w5/m153); bex-api derives the resource name from it.
+    name: form.name.trim(),
     type: form.serviceType,
     environmentId: form.environmentId || undefined,
     registryCredentialId: shape.usesRegistryCredential

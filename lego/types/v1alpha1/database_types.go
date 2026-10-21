@@ -98,9 +98,9 @@ type DatabaseSpec struct {
 	// the immutable dpg-... resource id and the data-plane identity used for
 	// every CNPG/PVC/Secret/route name.
 	// +required
+	// A free-form label, as on Render (w5/m153); metadata.name is the identity.
 	// +kubebuilder:validation:MinLength=1
-	// +kubebuilder:validation:MaxLength=30
-	// +kubebuilder:validation:Pattern=`^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$`
+	// +kubebuilder:validation:MaxLength=100
 	Name string `json:"name"`
 
 	// DatabaseName is the optional create-time physical PostgreSQL database.

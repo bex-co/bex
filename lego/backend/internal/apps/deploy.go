@@ -2149,7 +2149,6 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 	idx := newStackIndex(len(services), len(databases))
 	for _, d := range databases {
 		decl := d.value
-		decl.Name = blueprintResourceSlug(decl.Name)
 		ds, err := parseDatabase(decl)
 		if err != nil {
 			problems = append(problems, blueprintResourceError{kind: BlueprintResourcePostgres, name: decl.Name, err: err})
@@ -2173,7 +2172,9 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 	pendings := make([]pending, 0, len(services))
 	for _, a := range services {
 		decl := a.value
-		decl.Name = blueprintResourceSlug(decl.Name)
+		if !isKeyValueType(a.value.Type) {
+			decl.Name = blueprintResourceSlug(decl.Name)
+		}
 		if isKeyValueType(a.value.Type) {
 			kv, err := parseKeyValue(decl)
 			if err != nil {

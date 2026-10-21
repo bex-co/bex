@@ -88,7 +88,7 @@ describe("useRenameDatabase", () => {
       await result.current.rename("dpg-stable", "Bad_Name");
     });
     expect(toastError).toHaveBeenLastCalledWith(
-      "Use lowercase letters, digits, and hyphens (up to 30 characters); don't start or end with a hyphen.",
+      "Enter a name of up to 100 characters, without line breaks or control characters, that isn't shaped like a resource ID (such as srv-…).",
     );
 
     await act(async () => {

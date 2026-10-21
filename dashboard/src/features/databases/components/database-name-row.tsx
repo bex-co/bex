@@ -1,5 +1,5 @@
 import { useTranslations } from "@/common/hooks/use-translations";
-import { isValidDnsLabel } from "@/common/lib/utils/dns-label";
+import { isValidLabel } from "@/common/lib/utils/resource-label";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import { useRenameDatabase } from "@/features/databases/hooks/use-rename-database";
 import type { DatabaseDetailView } from "@/features/databases/types";
@@ -28,7 +28,7 @@ export function DatabaseNameRow({ database, onRenamed }: DatabaseNameRowProps) {
       editLabel={t("databases.nameEdit")}
       busy={busy}
       validate={(draft) =>
-        isValidDnsLabel(draft.trim()) ? null : t("databases.nameInvalid")
+        isValidLabel(draft) ? null : t("databases.nameInvalid")
       }
       onSave={async (value) => {
         const ok = await rename(database.id, value);

@@ -21,6 +21,7 @@ limitations under the License.
 package apps
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -32,8 +33,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
-	"unicode/utf8"
 
 	"github.com/robfig/cron/v3"
 	"golang.org/x/net/http/httpguts"
@@ -1982,7 +1981,22 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (AppView, error
 			return AppView{}, core.ErrSecretsUnavailable
 		}
 	}
-	return s.create(ctx, req)
+	// Render's create takes a free-form name and derives the resource's slug;
+	// a name that is not a resource name becomes the service's label, mapped
+	// onto one as a Blueprint name is (w5/m153).
+	label := blueprintDisplayName(req.Name)
+	if label != "" {
+		req.Name = blueprintResourceSlug(label)
+	}
+	v, err := s.create(ctx, req)
+	if err != nil || label == "" {
+		return v, err
+	}
+	if req.DryRun {
+		v.DisplayName = label
+		return v, nil
+	}
+	return s.SetDisplayName(ctx, cmp.Or(v.ID, v.Name), label)
 }
 
 // create is the unauthorized core of Create — a same-workspace duplicate name
@@ -4922,16 +4936,9 @@ func checkDisplayName(a *appv1alpha1.App, value string) (string, error) {
 	if err := core.NotFoundIfDeleting(a); err != nil {
 		return "", err
 	}
-	// Check before trimming: an edge newline or tab is still an invalid label.
-	for _, c := range value {
-		if unicode.IsControl(c) || c == '\u2028' || c == '\u2029' {
-			return "", core.NewBadRequestError("DISPLAY_NAME_CONTROL_CHARACTER", "display name must not contain control characters or line separators", nil)
-		}
-	}
-	value = strings.TrimSpace(value)
-	const maxLength = 100
-	if utf8.RuneCountInString(value) > maxLength {
-		return "", core.NewBadRequestError("DISPLAY_NAME_TOO_LONG", fmt.Sprintf("display name must be at most %d Unicode code points", maxLength), map[string]any{"maxLength": maxLength})
+	value, err := core.CheckLabel(value)
+	if err != nil {
+		return "", err
 	}
 	if ids.LooksLikeResourceID(value) {
 		return "", core.NameResourceIDReservedError("displayName", value)

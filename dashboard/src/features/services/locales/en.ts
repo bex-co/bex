@@ -3351,8 +3351,13 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.createFieldNameError": {
     message:
-      "Use lowercase letters, digits, and hyphens (up to 30 characters); can't start or end with a hyphen.",
+      "Enter a name of up to 100 characters, without line breaks or control characters, that isn't shaped like a resource ID (such as srv-…).",
     description: "Create-wizard name validation message",
+  },
+  "services.createFieldNameResourceName": {
+    message: "Resource name: {name}",
+    description:
+      "Create-wizard preview of the resource name (slug) bex derives from a free-form service name (w5/m153)",
   },
   "services.createFieldNameTaken": {
     message: "Name is already in use",
