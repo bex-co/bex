@@ -247,6 +247,8 @@ jobs:
   # healthy sibling must never mask a dark pipeline.
   request-logs-liveness:
     runs-on: [self-hosted, Linux, ARM64, bex-production]
+    # Main-only and reviewer-free, so the schedule never waits for a human.
+    environment: production-observe
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -409,6 +411,8 @@ jobs:
   # incident, and a red run here must always mean "production is broken".
   tenant-view-liveness:
     runs-on: [self-hosted, Linux, ARM64, bex-production]
+    # Main-only and reviewer-free, so the schedule never waits for a human.
+    environment: production-observe
     env:
       GH_TOKEN: ${{ github.token }}
       BEX_API_URL: ${{ vars.BEX_API_URL || 'https://api.bex.co' }}

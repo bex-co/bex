@@ -253,6 +253,45 @@ else
   fails=$((fails + 1))
 fi
 
+# --- check 9: production-secret confinement (w3/m173, #ENV-REVIEWERS) ---------
+secrets_table="$tmp/production-secrets.txt"
+printf '%s\n' '# fixture table' 'PROD_TOKEN production-deploy,production-observe' >"$secrets_table"
+prod_job() { # <environment-line-or-empty> <secret-name>
+  printf 'jobs:\n  x:\n    runs-on: [self-hosted, Linux, ARM64, bex-production]\n%s    steps:\n      - run: echo ok\n        env:\n          T: ${{ secrets.%s }}' "$1" "$2"
+}
+export PRODUCTION_SECRETS_FILE="$secrets_table"
+# GREEN: the secret is read inside one of its assigned environments.
+assert "production secret in assigned environment passes" 0 "$(prod_job '    environment: production-observe
+' PROD_TOKEN)"
+# GREEN: the mapping form (environment: {name: …}) is understood.
+assert "production secret in mapping-form environment passes" 0 "$(prod_job '    environment:
+      name: production-deploy
+' PROD_TOKEN)"
+# GREEN: a secret absent from the table is not this check's business.
+assert "unlisted secret passes" 0 "$(prod_job '' OTHER_TOKEN)"
+# RED: no environment at all.
+assert "production secret without environment fails" 1 "$(prod_job '' PROD_TOKEN)" \
+  "reads production secret PROD_TOKEN outside a production environment"
+# RED: an environment the table does not assign to that secret.
+assert "production secret in wrong environment fails" 1 "$(prod_job '    environment: production-release
+' PROD_TOKEN)" "in environment production-release"
+# RED: workflow-level env exposes the secret to every job.
+assert "workflow-level production secret fails" 1 "$(printf 'env:\n  T: ${{ secrets.PROD_TOKEN }}\n%s' "$(prod_job '    environment: production-deploy
+' OTHER_TOKEN)")" "above jobs:"
+# GREEN: a commented-out reference is not a read.
+assert "commented production secret ignored" 0 "$(printf 'jobs:\n  x:\n    runs-on: [self-hosted, Linux, ARM64, bex-production]\n    steps:\n      # T: ${{ secrets.PROD_TOKEN }}\n      - run: echo ok')"
+# RED: a commented job header must not hand its secrets to the previous job's environment.
+assert "commented job header does not inherit the previous environment" 1 "$(printf 'jobs:\n  a:\n    runs-on: [self-hosted, Linux, ARM64, bex-production]\n    environment: production-deploy\n    steps:\n      - run: echo ok\n  b: # probe\n    runs-on: [self-hosted, Linux, ARM64, bex-production]\n    steps:\n      - run: echo ok\n        env:\n          T: ${{ secrets.PROD_TOKEN }}')" \
+  "b: reads production secret PROD_TOKEN outside a production environment"
+# GREEN: mapping form with a trailing comment on `environment:`.
+assert "commented mapping-form environment passes" 0 "$(prod_job '    environment: # gate
+      name: production-observe
+' PROD_TOKEN)"
+# GREEN: flow-mapping form.
+assert "flow-mapping environment passes" 0 "$(prod_job '    environment: { name: production-deploy, url: https://bex.co }
+' PROD_TOKEN)"
+unset PRODUCTION_SECRETS_FILE
+
 dependabot="$root/.github/dependabot.yml"
 # Every Go module that ships builds standalone (GOWORK=off), so each needs its
 # own Dependabot directory; one missing means its advisories never get a PR

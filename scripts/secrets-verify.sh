@@ -64,10 +64,7 @@ wait_http() { # url — wait until it answers at all (any HTTP status)
 
 # --- config from .env (never printed): OpenBao root token, OpenFGA key, bootstrap
 if [ -f .env ]; then
-  set -a
-  # shellcheck disable=SC1091
-  source ./.env
-  set +a
+  . scripts/lib/env-file.sh && bex_load_env ./.env || exit 1
 fi
 [ -n "${BAO_ROOT_TOKEN:-}" ] || fail "BAO_ROOT_TOKEN missing (.env) — run scripts/bao-init.sh first"
 

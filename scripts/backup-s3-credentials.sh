@@ -60,10 +60,7 @@ esac
 shift || true
 
 if [ -f .env ]; then
-  set -a
-  # shellcheck disable=SC1091
-  source ./.env
-  set +a
+  . scripts/lib/env-file.sh && bex_load_env ./.env || exit 1
 fi
 
 command -v docker >/dev/null || { echo "error: docker not found" >&2; exit 1; }

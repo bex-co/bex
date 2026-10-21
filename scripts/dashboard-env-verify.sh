@@ -58,10 +58,7 @@ wait_http() {
 }
 
 if [ -f .env ]; then
-  set -a
-  # shellcheck disable=SC1091
-  source ./.env
-  set +a
+  . scripts/lib/env-file.sh && bex_load_env ./.env || exit 1
 fi
 [ -n "${BAO_ROOT_TOKEN:-}" ] || fail "BAO_ROOT_TOKEN missing (.env) — run scripts/bao-init.sh first"
 

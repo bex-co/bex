@@ -46,10 +46,7 @@ cd "$(dirname "$0")/.."
 
 # Load .env when present (local use); in CI the keys arrive as environment vars.
 if [ -f .env ]; then
-  set -a
-  # shellcheck disable=SC1091
-  source ./.env
-  set +a
+  . scripts/lib/env-file.sh && bex_load_env ./.env || exit 1
 fi
 
 require() {

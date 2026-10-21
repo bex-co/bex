@@ -64,8 +64,7 @@ for url in "http://$KRATOS/health/ready" "http://$HYDRA_ADMIN/health/ready" "htt
 done
 
 if [ -z "${OPENFGA_PRESHARED_KEY:-}" ] && [ -f .env ]; then
-  set -a; # shellcheck disable=SC1091
-  source ./.env; set +a
+  . scripts/lib/env-file.sh && bex_load_env ./.env || exit 1
 fi
 [ -n "${OPENFGA_PRESHARED_KEY:-}" ] || fail "OPENFGA_PRESHARED_KEY not set (source .env)"
 OPENFGA_URL="http://$OPENFGA" bash scripts/authz-model.sh | tail -1

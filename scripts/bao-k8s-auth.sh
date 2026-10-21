@@ -42,10 +42,7 @@ POLICY_NAME=tenants-rw
 ROLE_NAME=bex-api
 
 if [ -z "${BAO_ROOT_TOKEN:-}" ] && [ -f .env ]; then
-  set -a
-  # shellcheck disable=SC1091
-  source ./.env
-  set +a
+  . scripts/lib/env-file.sh && bex_load_env ./.env || exit 1
 fi
 token="${BAO_ROOT_TOKEN:-}"
 [ -n "$token" ] || { echo "error: BAO_ROOT_TOKEN is missing or empty (.env or environment) — run scripts/bao-init.sh first" >&2; exit 1; }

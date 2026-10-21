@@ -1,0 +1,69 @@
+name: GitHub environment drift
+
+# The production-secret confinement in scripts/production-secrets.txt rests on a
+# repository setting no file in this tree can see: every production-* GitHub
+# environment must allow deployments from `main` only (w3/m173, ADR083
+# obligation 5 as rewritten, .pm/DO_NOT_DO.md #ENV-REVIEWERS). A settings change
+# that widens a branch policy or deletes an environment would silently reopen
+# every production credential to any branch's workflow. This reads the live
+# settings daily and keeps one tracking issue open while they drift.
+#
+# Not a gate, like ci-schedule-drift: an advisory reader of repository settings
+# must not be able to block releases.
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "17 9 * * *"
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+jobs:
+  drift:
+    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Self-test the drift rules
+        run: bash scripts/github-environments-drift.test.sh
+      - name: Check the production environments
+        id: check
+        run: |
+          if bash scripts/github-environments-drift.sh > drift.txt 2>&1; then
+            echo "drift=false" >> "$GITHUB_OUTPUT"
+          else
+            rc=$?
+            if [ "$rc" -eq 2 ]; then
+              cat drift.txt
+              exit 2 # unusable: never a silent pass
+            fi
+            echo "drift=true" >> "$GITHUB_OUTPUT"
+          fi
+          cat drift.txt
+      - name: Open or update the tracking issue
+        if: steps.check.outputs.drift == 'true'
+        run: |
+          gh label create github-environment-drift --repo "$GITHUB_REPOSITORY" \
+            --color B60205 --description "A production GitHub environment no longer allows main only" --force
+          body="$(printf '%s\n\n%s\n' "$(cat drift.txt)" "Fix in repository Settings → Environments, or with scripts/gh-secrets.sh after reviewing scripts/production-secrets.txt (w3/m173)." )"
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label github-environment-drift --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "A production GitHub environment is not restricted to main" \
+              --label github-environment-drift \
+              --body "$body"
+          fi
+      - name: Close the tracking issue once every environment is main-only
+        if: steps.check.outputs.drift == 'false'
+        run: |
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label github-environment-drift --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+              --comment "Every production environment allows deployments from main only again."
+          fi

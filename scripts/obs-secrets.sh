@@ -33,10 +33,7 @@ monitoring_ns="${BEX_MONITORING_NAMESPACE:-monitoring}"
 env_file="${BEX_OBS_ENV_FILE:-.env}"
 
 if [ -f "$env_file" ]; then
-  set -a
-  # shellcheck disable=SC1090,SC1091
-  source "$env_file"
-  set +a
+  . scripts/lib/env-file.sh && bex_load_env "$env_file" || exit 1
 fi
 
 if [ -z "${BEX_OPS_WORKSPACE:-}" ]; then

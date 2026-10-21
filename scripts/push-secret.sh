@@ -11,10 +11,7 @@ secret_name="${BEX_PUSH_SECRET_NAME:-bex-push}"
 env_file="${BEX_PUSH_ENV_FILE:-.env}"
 
 if [ -f "$env_file" ]; then
-  set -a
-  # shellcheck disable=SC1091
-  source "$env_file"
-  set +a
+  . scripts/lib/env-file.sh && bex_load_env "$env_file" || exit 1
 fi
 
 BEX_PUSH_PROVIDER="${BEX_PUSH_PROVIDER:-expo}"

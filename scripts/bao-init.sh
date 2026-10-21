@@ -58,10 +58,7 @@ main() {
   # (BAO_UNSEAL_KEY_1=, as `cp .env.example .env` leaves) would clobber real
   # values the caller exported. Mirrors bao-k8s-auth.sh's guarded load.
   if [ -z "${BAO_ROOT_TOKEN:-}" ] && [ -f .env ]; then
-    set -a
-    # shellcheck disable=SC1091
-    source ./.env
-    set +a
+    . scripts/lib/env-file.sh && bex_load_env ./.env || exit 1
   fi
 
   if [ "${DRY_RUN:-}" = "1" ]; then
@@ -100,9 +97,7 @@ main() {
     set_env_var BAO_UNSEAL_KEY_3 "$(printf '%s' "$init_resp" | yq '.keys_base64[2]' -)"
     set_env_var BAO_ROOT_TOKEN "$(printf '%s' "$init_resp" | yq '.root_token' -)"
     echo "initialized — unseal keys + root token written to .env (never printed)"
-    set -a
-    source ./.env
-    set +a
+    . scripts/lib/env-file.sh && bex_load_env ./.env || exit 1
   else
     echo "already initialized"
   fi

@@ -62,10 +62,7 @@ kubectl -n bex-system create serviceaccount bex-api --dry-run=client -o yaml | k
 echo "==> ensuring init/unseal/tenants mount (idempotent baseline)"
 bash scripts/bao-init.sh
 
-set -a
-# shellcheck disable=SC1091
-source ./.env
-set +a
+. scripts/lib/env-file.sh && bex_load_env ./.env || exit 1
 root_token="$BAO_ROOT_TOKEN"
 
 start_forward

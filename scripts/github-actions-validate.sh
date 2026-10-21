@@ -28,6 +28,13 @@
 #     reference no secret beyond the registry-push GITHUB_TOKEN and must not
 #     carry an `environment:` gate — deploy credentials belong to a separate
 #     environment-gated job consuming the build's digests.
+#  9. Production-secret confinement (w3/m173, ADR083 obligation 5,
+#     `.pm/DO_NOT_DO.md` #ENV-REVIEWERS): a job may read a secret listed in
+#     scripts/production-secrets.txt only while running in one of the
+#     environments that table assigns to it, and no workflow may reference one
+#     above `jobs:` (where it would reach every job). With every production-*
+#     environment main-only and the secrets in environment scope, a workflow on
+#     any other branch cannot obtain them.
 #
 # Setting WORKFLOWS_DIR overrides the scanned tree; the self-test
 # (github-actions-validate.test.sh) points it at fixtures to exercise the
@@ -389,10 +396,88 @@ if [ -n "$build_secret_violations" ]; then
   exit 1
 fi
 
+# 9. Production-secret confinement. The table is shared with scripts/gh-secrets.sh
+# so the environment that holds a secret and the job allowed to read it can
+# never disagree. The canonical tree always uses the real table; a fixture run
+# applies check 9 only when the self-test supplies PRODUCTION_SECRETS_FILE, so
+# fixtures written for the other checks may name real secrets freely.
+if [ "$canonical_tree" -eq 1 ]; then
+  PRODUCTION_SECRETS_FILE="scripts/production-secrets.txt"
+else
+  PRODUCTION_SECRETS_FILE="${PRODUCTION_SECRETS_FILE:-/dev/null}"
+fi
+production_secret_violations() {
+  local wf
+  for wf in $(collect_workflow_files); do
+    awk -v file="$wf" '
+      FNR == NR {
+        sub(/#.*/, "")
+        if (NF >= 2) allowed[$1] = "," $2 ","
+        next
+      }
+      function report(where, name, env) {
+        if (env == "") {
+          print file ":" where ": reads production secret " name " outside a production environment (allowed: " substr(allowed[name], 2, length(allowed[name]) - 2) ")"
+        } else {
+          print file ":" where ": reads production secret " name " in environment " env " (allowed: " substr(allowed[name], 2, length(allowed[name]) - 2) ")"
+        }
+      }
+      function check_job(   text, name) {
+        if (job == "") return
+        text = block
+        while (match(text, /secrets\.[A-Za-z0-9_]+/)) {
+          name = substr(text, RSTART + 8, RLENGTH - 8)
+          text = substr(text, RSTART + RLENGTH)
+          if (!(name in allowed) || seen[job SUBSEP name]++) continue
+          if (env == "" || index(allowed[name], "," env ",") == 0) report(job, name, env)
+        }
+      }
+      /^jobs:[[:space:]]*$/ { in_jobs = 1; next }
+      !in_jobs {
+        text = $0
+        while (match(text, /secrets\.[A-Za-z0-9_]+/)) {
+          name = substr(text, RSTART + 8, RLENGTH - 8)
+          text = substr(text, RSTART + RLENGTH)
+          if (name in allowed) print file ":(workflow-level): references production secret " name " above jobs:, which exposes it to every job"
+        }
+        next
+      }
+      # A job header may carry a trailing comment; missing it would charge
+      # the secrets of this job to the environment of the previous one.
+      /^  [A-Za-z0-9_-]+:[[:space:]]*(#.*)?$/ {
+        check_job()
+        job = $1; sub(/:.*$/, "", job); block = ""; env = ""; env_block = 0
+        next
+      }
+      /^    environment:/ {
+        value = $0; sub(/^    environment:[[:space:]]*/, "", value); sub(/[[:space:]]*#.*/, "", value)
+        if (value == "") { env_block = 1; next }
+        # Flow mapping `{ name: x, url: … }` or a scalar.
+        if (value ~ /^\{/) { if (match(value, /name:[[:space:]]*[^,}[:space:]]+/)) { value = substr(value, RSTART, RLENGTH); sub(/^name:[[:space:]]*/, "", value) } else value = "" }
+        gsub(/["\047]/, "", value); env = value
+      }
+      env_block && /^      name:[[:space:]]*/ {
+        env = $0; sub(/^      name:[[:space:]]*/, "", env); sub(/[[:space:]]*#.*/, "", env); gsub(/["\047]/, "", env)
+      }
+      env_block && !/^      / { env_block = 0 }
+      { line = $0; sub(/^[[:space:]]*#.*/, "", line); block = block "\n" line }
+      END { check_job() }
+    ' "$PRODUCTION_SECRETS_FILE" "$wf"
+  done
+}
+
+[ -r "$PRODUCTION_SECRETS_FILE" ] || { echo "FAIL: production-secret table missing: $PRODUCTION_SECRETS_FILE" >&2; exit 1; }
+production_violations="$(production_secret_violations)"
+if [ -n "$production_violations" ]; then
+  echo "FAIL: production secrets must be read only inside their assigned environment (check 9, w3/m173, scripts/production-secrets.txt):" >&2
+  printf '%s\n' "$production_violations" >&2
+  exit 1
+fi
+
 # The remaining checks pin the canonical tree's reviewed inventory + deploy.yml
 # wiring; they don't apply to a fixture dir, so stop here under an override.
 if [ "$canonical_tree" -eq 0 ]; then
-  echo "PASS: third-party refs SHA-pinned, Node 20 absent, self-hosted runner trust separation and public-fork isolation intact (fixture: $WORKFLOWS_DIR)"
+  echo "PASS: third-party refs SHA-pinned, Node 20 absent, self-hosted runner trust separation, public-fork isolation and production-secret confinement intact (fixture: $WORKFLOWS_DIR)"
   exit 0
 fi
 
@@ -474,4 +559,4 @@ if [ "$(grep -Rh 'self-hosted' .github/workflows lego/operator/.github/workflows
   exit 1
 fi
 
-echo "PASS: third-party actions SHA-pinned, reviewed inventory current, Node 20 absent, Gitleaks + supersession wiring intact, admin.conf fetchers host-key pinned with valid kubeconfig lifetimes, rootless self-hosted runner custody and public-fork isolation intact"
+echo "PASS: third-party actions SHA-pinned, reviewed inventory current, Node 20 absent, Gitleaks + supersession wiring intact, admin.conf fetchers host-key pinned with valid kubeconfig lifetimes, rootless self-hosted runner custody, public-fork isolation and production-secret confinement intact"

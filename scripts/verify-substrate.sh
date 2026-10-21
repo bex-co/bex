@@ -32,7 +32,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 if [ -z "${HCLOUD_TOKEN:-}" ] && [ -f .env ]; then
-  set -a; source ./.env; set +a
+  . scripts/lib/env-file.sh && bex_load_env ./.env || exit 1
 fi
 : "${HCLOUD_TOKEN:?HCLOUD_TOKEN required (env or .env)}"
 export BEX_SSH_KEY_PATH="${BEX_SSH_KEY_PATH:-$HOME/.ssh/bex}"

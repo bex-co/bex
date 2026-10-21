@@ -38,10 +38,7 @@ esac
 # assert. Operators never set it.
 ENV_FILE="${BEX_ENV_FILE:-.env}"
 if [ -f "$ENV_FILE" ]; then
-  set -a
-  # shellcheck disable=SC1090,SC1091
-  source "$ENV_FILE"
-  set +a
+  . scripts/lib/env-file.sh && bex_load_env "$ENV_FILE" || exit 1
 fi
 
 KUBE=(kubectl)
