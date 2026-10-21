@@ -77,4 +77,7 @@ func EnvVarsFrom(ctx context.Context) (EnvVarReader, bool) {
 // service From.
 type EnvVarCopy struct {
 	From, FromKey, ToKey string
+	// Optional skips a copy whose source key is not set yet (an unanswered
+	// sync:false value) instead of failing.
+	Optional bool
 }

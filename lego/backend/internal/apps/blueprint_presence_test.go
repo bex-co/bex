@@ -46,7 +46,7 @@ func TestBlueprintExplicitEmptyValueIsALiteral(t *testing.T) {
 		{"explicit empty seed copies", seededCopy(`,"value":""`), ""},
 		{"one-space seed copies", seededCopy(`,"value":" "`), ""},
 		{"numeric seed copies", seededCopy(`,"value":0`), ""},
-		{"omitted prompt cannot be copied", seededCopy(``), "no such plainly-defined variable"},
+		{"an omitted prompt is copied once answered (w5/170)", seededCopy(``), ""},
 		{"null is refused by the schema", seededCopy(`,"value":null`), "got null, want string"},
 		{"empty value beside generateValue", `{"services":[{"name":"api","type":"web",` + image + `,"envVars":[{"key":"V","value":"","generateValue":true}]}]}`, "sets both value and generateValue"},
 		{"group empty value beside generateValue", `{"services":[{"name":"api","type":"web",` + image + `}],"envVarGroups":[{"name":"g","envVars":[{"key":"V","value":"","generateValue":true}]}]}`, "sets both value and generateValue"},
