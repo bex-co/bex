@@ -24,7 +24,7 @@
 - [x] Late responses and pending confirmations from an obsolete identity/workspace/access generation cannot restore prior access or dispatch mutations. Confirmed loss clears affected sensitive cached/local state and stops its continued reads/streams.
 - [x] Existing role-gated controls use current affirmative access for actions and sensitive reads, with translated recovery copy. Stable navigation and previously authorized non-sensitive layout survive temporary refreshes; mutations are never queued for replay on reconnect.
 - [x] Mounted provider/request tests cover freshness, generation invalidation, empty-membership routing, and fail-closed grants. Desktop/narrow-mobile pending layouts for affected controls match ready geometry in unit coverage; dashboard typecheck/lint/test pass.
-- [ ] Two-session `dev-6` browser evidence for role change, last-workspace removal, focus/reconnect, failed refresh, and an open confirmation across a context change — deferred: local kind API server was unavailable this session (see Verification evidence).
+- [x] Two-session `dev-6` browser evidence for role change, last-workspace removal, focus/reconnect, failed refresh, and an open confirmation across a context change — verified 2026-10-21 (enforced OpenFGA), except network reconnect, which is covered only by mounted provider tests; see [m146 evidence](../m146/evidence.md).
 
 ## Source + Goal linkage
 
@@ -56,8 +56,8 @@ Still unverified: the authorized local recovery restored a verified kubeconfig a
 
 ### Resumed verification — 2026-10-02
 
-Dev-6 now has real Kratos sessions and isolated OpenFGA. The resumed follow-up found reproducible stale projection and asynchronous confirmation defects; [m146](../../blocked/m146/README.md) owns the fixes and remaining live acceptance. The live DoD box remains unchecked.
+Dev-6 now has real Kratos sessions and isolated OpenFGA. The resumed follow-up found reproducible stale projection and asynchronous confirmation defects; [m146](../m146/README.md) owns the fixes and remaining live acceptance. The live DoD box remains unchecked.
 
 ### Implementation follow-up and remaining live gate — 2026-10-02
 
-m146 fixes shared-workspace GraphQL action selection, stale/partial-error projections and confirmation races. Automated checks pass, including all 3,912 dashboard tests and the real-service backend suite. A real owner-driven Viewer downgrade and scoped denied action response were observed, but the full browser walkthrough and fixture cleanup remain blocked by local CAPD/auth database availability under host saturation. The live DoD box stays unchecked; [m146 evidence](../../blocked/m146/evidence.md) lists the remaining checks and fixture inventory.
+m146 fixes shared-workspace GraphQL action selection, stale/partial-error projections and confirmation races. Automated checks pass, including all 3,912 dashboard tests and the real-service backend suite. A real owner-driven Viewer downgrade and scoped denied action response were observed, but the full browser walkthrough and fixture cleanup remain blocked by local CAPD/auth database availability under host saturation. The live DoD box stays unchecked; [m146 evidence](../m146/evidence.md) lists the remaining checks and fixture inventory.

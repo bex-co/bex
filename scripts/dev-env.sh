@@ -19,6 +19,10 @@
 # drifted into eight distinct variants — see .pm/w1/done/m72/evidence/variants.md
 # for the union this implements and what was dropped.
 #
+# bex-api runs with fail-open authorization unless the agent leg is up. Set
+# DEV_OPENFGA_URL (and DEV_OPENFGA_TOKEN) before `up` to enforce a separately run
+# OpenFGA seeded by scripts/authz-model.sh, e.g. for role walkthroughs.
+#
 # Requires: kind, kubectl, helm, go, openssl.
 set -euo pipefail
 cd "$(dirname "$0")/.." # repo root
@@ -556,6 +560,12 @@ start_api() {
       BEX_SANDBOX_EXEC_SECRET="$(agent_secret sandbox-exec.secret)"
       BEX_SANDBOX_EXEC_URL="http://localhost:$SANDBOX_EXEC_PORT/sandbox-exec"
     )
+  elif [ -n "${DEV_OPENFGA_URL:-}" ]; then
+    # Opt-in enforced authorization without the agent-session leg, for
+    # multi-member permission walkthroughs (w6/m146): an OpenFGA seeded by
+    # scripts/authz-model.sh, keyed by DEV_OPENFGA_TOKEN. Fail-open authz would
+    # make every member admin-equivalent and void such a walkthrough.
+    env_args+=(BEX_CP_INSECURE="1" BEX_OPENFGA_URL="$DEV_OPENFGA_URL" BEX_OPENFGA_TOKEN="${DEV_OPENFGA_TOKEN:-}")
   else
     env_args+=(BEX_CP_INSECURE="1" BEX_ALLOW_INSECURE_AUTHZ="1")
   fi

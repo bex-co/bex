@@ -44,3 +44,26 @@ Cleanup blocked by auth/database availability; these fixtures remain and must be
 After syncing `origin/main` through `dab8227fa`, affected dashboard checks passed again (50 files / 480 tests), and backend API/apps/deploys/Postgres package tests passed. These post-merge package checks used ordinary unit configuration; the complete real-service backend run above preceded the sync. Shared GraphQL generated types merged without conflicts, preserving both workspace arguments and incoming Postgres fields.
 
 Full dashboard lint also passed on the merged tree, including both TypeScript projects, ESLint and unused-code checks.
+
+## Live walkthrough — 2026-10-21 (dev-6, enforced OpenFGA)
+
+- **Setup.** The host load was ~8 (the 2026-10-02 gate was load >120). dev-6 was recovered: the Kratos/Hydra Deployments and courier StatefulSet carrying the 10-02 hand pins were recreated, and `.env` was chmod 600 as `dev-env.sh` requires.
+- **Authorization was enforced.** dev-6's default bex-api runs fail-open (`BEX_ALLOW_INSECURE_AUTHZ=1`; a demoted Viewer still read `canOperate`/`canCreate` true and a REST restart returned 200). A fail-open run proves nothing about permissions, so the walkthrough ran against an isolated OpenFGA seeded by `scripts/authz-model.sh`, through the new opt-in `DEV_OPENFGA_URL`/`DEV_OPENFGA_TOKEN` in `scripts/dev-env.sh`. bex-api then logged no fail-open warning.
+- **Sessions and fixtures.** Three real Kratos identities (owner, member, member2) were created email-verified through the dev-6 Kratos admin API and signed in with `qa-login.sh` (`KRATOS_PUB`/`DASH` pointed at dev-6). The owner created the Scale workspace `m146-shared2` and an image web service. The members joined through real invite emails (Mailpit) as Contributor.
+
+| State | Result (desktop 1280×900 unless noted) |
+| --- | --- |
+| Contributor, allowed | `canOperate` true, `canCreate` false; Deploy latest image and Restart service enabled; a confirmed Restart sent `RestartServer` and succeeded |
+| Open confirmation, then demotion to Viewer | Restart dialog open; owner PATCH → viewer (`canOperate` false server-side). The access refresh dismissed the dialog and sent **zero** mutations |
+| Viewer, denied | Both actions `aria-disabled`; zero mutations |
+| Unavailable | Capability GraphQL requests aborted via route: both actions disabled (fail closed), zero mutations |
+| Re-promotion | owner PATCH → contributor; one window focus refresh re-enabled both actions without a reload |
+| Removal → personal fallback | owner DELETE member2: `bex.selectedWorkspaceId` moved to member2's personal workspace; a direct link to the removed workspace's service redirected to the personal overview; zero mutations |
+| Narrow mobile (390×844) | Viewer header and personal-fallback overview render with no overlap (`.playwright-mcp/m146-viewer-mobile.png`, `m146-personal-fallback-mobile.png`, local) |
+
+- **Not exercised live:** protected-retry dialogs, network reconnect, the late-response race (poll timing), and the injected empty-membership contract. Each is covered by the mounted regression suites recorded above (`resource-action-freshness.test.tsx` and the header/dialog component tests), not by this walkthrough.
+- **Bug found, filed as w6/091.** A service detail page evaluates capabilities against the *selected* workspace cookie rather than the service's own workspace. Opening a service in workspace B while A is selected shows B's Contributor as denied until the switcher is changed. It fails closed, so it is safe, but wrong; the same switcher mismatch was seen on production on 2026-10-20.
+- **Cleanup.**
+  - `dev-env.sh 6 down` removed dev-6-auth (all Kratos identities, including the 2026-10-02 ones) and dev-6 (bex-db).
+  - Every `app.bex.co/control-plane=dev-6` tenant namespace was deleted, including the 10-02 fixtures `tea-db01ldhjg4r41b7e7lng`, `tea-db01la1jg4r41b7e7lm0` and `tea-db01lkhjg4r41b7e7lpg`.
+  - The isolated OpenFGA container was removed.
