@@ -145,9 +145,18 @@ func TestGeneratedCopyTakesALiteralThatOverridesTheGeneratedKey(t *testing.T) {
 	}
 }
 
+// A sibling's sync:false value is copied store to store like a generated one
+// (w5/170), and skipped while the user has not answered it.
+func TestGeneratedCopyTakesASiblingsPromptValue(t *testing.T) {
+	manifest := strings.Replace(generatedCopyManifest, "{key: PASSWORD, generateValue: true}", "{key: PASSWORD, sync: false}", 1)
+	consumer := parsedStackService(t, manifest, "consumer")
+	if len(consumer.generatedCopies) != 1 || !consumer.generatedCopies[0].optional {
+		t.Fatalf("consumer copies = %+v, want one optional store copy of the prompt", consumer.generatedCopies)
+	}
+}
+
 func TestGeneratedCopyKeepsRefusingWhatItCannotCopy(t *testing.T) {
 	for _, tc := range []struct{ name, manifest, want string }{
-		{"an unanswered prompt", strings.Replace(generatedCopyManifest, "{key: PASSWORD, generateValue: true}", "{key: PASSWORD, sync: false}", 1), "no such plainly-defined variable"},
 		{"a copy of a copy", generatedCopyManifest + `  - name: third
     type: web
     runtime: image

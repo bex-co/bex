@@ -116,6 +116,20 @@ func TestEnvCopierReportsAMissingSourceKey(t *testing.T) {
 	}
 }
 
+// An optional copy (a sibling's unanswered sync:false value, w5/170) skips a
+// missing source instead of failing the sync, and writes nothing.
+func TestEnvCopierSkipsAnOptionalCopyWhoseSourceIsUnset(t *testing.T) {
+	svc, store := copyService(t)
+	before := len(store.m[envPath("web")])
+	err := NewEnvCopier(svc).CopyEnvVars(context.Background(), "web", []core.EnvVarCopy{{From: "database", FromKey: "ABSENT", ToKey: "X", Optional: true}})
+	if err != nil {
+		t.Fatalf("optional copy of an unset source = %v, want nil", err)
+	}
+	if _, wrote := store.m[envPath("web")]["X"]; wrote || len(store.m[envPath("web")]) != before {
+		t.Fatal("a skipped optional copy must write nothing")
+	}
+}
+
 // The same against a real OpenBao (CI and /ship's gate provide one): the
 // copy's read, compare and seed run over the store production writes to.
 func TestEnvCopierAgainstOpenBao(t *testing.T) {

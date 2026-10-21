@@ -45,7 +45,6 @@ var deliberateBlueprintDivergences = []string{
 // knownBlueprintGaps are Render-accepted inputs bex still refuses, each owned
 // by a board item; remove an entry when its item ships.
 var knownBlueprintGaps = []string{
-	"which has no such plainly-defined variable", // w5/170: copying a sibling's sync:false variable
 	"is not trusted", // w5/171: public registries outside the allowlist (cgr.dev)
 }
 

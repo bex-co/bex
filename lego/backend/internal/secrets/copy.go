@@ -47,6 +47,9 @@ func (c envCopier) CopyEnvVars(ctx context.Context, to string, copies []core.Env
 	missing := map[string]string{}
 	for _, want := range copies {
 		source, err := c.service.EnvVarValue(ctx, want.From, want.FromKey)
+		if want.Optional && errors.Is(err, core.ErrNotFound) {
+			continue
+		}
 		if err != nil {
 			return err
 		}
