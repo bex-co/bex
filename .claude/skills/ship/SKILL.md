@@ -104,12 +104,13 @@ Run the pre-push gates against what is about to be pushed. The backend suite can
 bash scripts/ship-gates.sh origin/main
 ```
 
-They fail the ship when either check fails:
+They report main's CI status and gate this push's own code:
 
-- **main is red.** The latest `deploy (bex via Argo)` run on `main` failed. Stacking more commits on a red main hides the break behind them. This is one read of CI status, not watching CI. If this push is the fix, say so in the commit and run the gate with `--fixes-red-main`.
-- **The real-DB backend suite fails.** For a push touching `lego/backend/**`, `lego/types/**` or the seeded authz model (markdown excluded), the gate brings up the CI-pinned Postgres + OpenFGA + OpenBao (`scripts/backend-test-deps.sh`) and runs `go test -p 1 ./...` with `BEX_TEST_REQUIRE_DEPS=1`. Locally those tests otherwise skip, and only CI ran them.
-
-A failed gate is not a conflict to push past: fix the failure, commit the fix, and run the gate again. If it cannot be fixed in this session, stop and report it.
+- **Main is red: a warning, never a stop** (user decision 2026-10-21; see `AGENTS.md` Rules). When the latest completed `deploy (bex via Argo)` run on `main` failed, the gate names it and still exits 0. Handle it this way, and never wait:
+  1. **Fix CI first if you can.** Pause the work in hand, diagnose the red run (`gh run view <id> --log-failed`), and make the smallest correct fix. Commit it alone as `fix(ci): …` saying it fixes red main, push it with `--fixes-red-main`, then resume and ship the paused work.
+  2. **If it cannot be fixed now, ship anyway.** That covers a fix that needs credentials, runner or host access, or a user decision; a red signal that is stale (already fixed, later runs cancelled); or an infra flake (rerun the failed jobs in the background, but do not wait for them). Say in the report what was red and what you tried.
+  3. **Never wait for CI and never hold commits locally because main is red.**
+- **The real-DB backend suite fails: a stop.** For a push touching `lego/backend/**`, `lego/types/**` or the seeded authz model (markdown excluded), the gate brings up the CI-pinned Postgres + OpenFGA + OpenBao (`scripts/backend-test-deps.sh`) and runs `go test -p 1 ./...` with `BEX_TEST_REQUIRE_DEPS=1`. Locally those tests otherwise skip, and only CI ran them. A failure here is this push's own defect: fix it properly, commit the fix, and run the gate again before pushing. If it cannot be fixed in this session, stop and report it.
 
 ```bash
 git push origin main
