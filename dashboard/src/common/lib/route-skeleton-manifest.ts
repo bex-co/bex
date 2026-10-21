@@ -96,6 +96,11 @@ export const ROUTE_SKELETON_MANIFEST = {
     shape: "invite",
     regions: ["opening"],
   },
+  "/deploy": {
+    kind: "redirect",
+    owner: "routes/deploy.tsx",
+    destination: "/blueprints/new",
+  },
   "/login": {
     kind: "redirect",
     owner: "routes/login.tsx",
