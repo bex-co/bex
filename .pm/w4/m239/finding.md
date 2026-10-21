@@ -64,11 +64,32 @@ The second link (06:26:55) reproduced the first half on an established site with
 - **D** (no link in flight) went `created → build_in_progress → live` with full events. Manual deploys are fine on their own.
 - **A**, the site's first deploy, recorded correctly. The link happened while it was queued, and its build did not see the group value (`grp=`).
 
+## Follow-up probe — a web service, link and unlink (run w7k2, 2026-10-21 UTC)
+
+Fixture: a Docker web service `qa-20261021-w7k2-web` (`srv-dbc6199v5vjs73b9hc30`).
+
+- Created from `https://github.com/bex-co/bex`, `rootDir: examples/hello-go`, `autoDeploy: "no"`, Free, own env `MESSAGE=own`.
+- The app logs `hello-go listening on …` once per process start.
+- Deploy `dep-dbc6199v5vjs73b9hc3g` went live at 06:54:55, at `rev-1`.
+
+What happened:
+
+- **Link.** At 06:55:14, `POST /v1/env-groups {name:qa-20261021-w7k2-grp, envVars:[QA_X=1], serviceIds:[web]}` → `201`, `pendingServiceIds:[web]`.
+  - At 06:55:18 a new instance `…-41rjqnbsl932rehmnf3b` logged `hello-go listening`.
+  - By 06:55:30 the service read `rev-2`.
+  - The deploy list still held one row. Events show nothing after `deploy_ended` at 06:54:55.
+- **Unlink.** At 06:58:53, `DELETE /v1/env-groups/<grp>/services/<web>` → `204`.
+  - At 06:58:55 another instance start was logged.
+  - The service read `rev-3`, and the deploy list still held one row.
+- Group and service were deleted; both read 404 by id.
+
+So the rowless release is not static-specific. It also covers unlink, which rolls the pods by design (`UnlinkService` "roll it") but records no deploy. Private, worker, cron and group delete (`detach`) remain unprobed.
+
 ## Unverified
 
 - Whether the value-only `PUT` (`rollOne`, `service.go:1264-1267`, returns early for a gated service and touches no CR) contributed. It changes no spec field, so the 06:28 republish is attributed to group 2's link. Both writes landed within seconds.
-- Web, private, worker and cron services with Auto-Deploy off. The release identity includes `EnvFromSecrets` for every type, so a pod rollout with no row is expected but was not probed.
-- The unlink path (`UnlinkService` "drop the group's Secret refs from the service, roll it") and group delete (`detach`) on a gated service.
+- Private, worker and cron services with Auto-Deploy off. Web and unlink are confirmed in the follow-up probe above.
+- Group delete (`detach`) on a gated service.
 - Where the `server_failed` event at 06:27:02 came from on a static site during the rowless release.
 - Render: "If you make changes to an environment group … Render kicks off a new deploy for every linked service that has autodeploys enabled". With Auto-Deploy off, nothing deploys until the owner deploys. This is quoted in `autoDeployGated`'s comment and was not re-fetched this run.
 

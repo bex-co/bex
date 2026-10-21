@@ -39,7 +39,9 @@ The DoD then holds:
 - **Auto-Deploy on is unchanged.** The same link on a twin site with `autoDeploy: "yes"` opens a recorded deploy and serves `grp=one`, exactly as today's rolled path does. `pendingServiceIds` is absent.
 - **Checks pass:** backend `go test ./...` and operator `make test` and `make lint`. Fixtures deleted (by-id reads 404), and only this run's session is revoked.
 
-t002 verifies the web, private, worker and cron services and the unlink and group-delete paths as work. The hunt did not probe them live, so they are not asserted here.
+- **Web and unlink.** The same holds for a repo-backed web service with Auto-Deploy off (finding follow-up): linking a group and unlinking it each leave `revision` and the instance unchanged, and add no deploy row, until the next deploy. If unlink is decided to roll immediately (t002), it opens a recorded deploy instead.
+
+t002 verifies the private, worker and cron services and the group-delete path as work. The hunt did not probe them live, so they are not asserted here.
 
 ## Source + Goal linkage
 
