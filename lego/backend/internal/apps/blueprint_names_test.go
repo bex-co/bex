@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -32,7 +33,7 @@ func TestBlueprintResourceSlugIsStableValidAndKeepsResourceNames(t *testing.T) {
 		"pgAdmin":   "pgadmin",
 		"AlphaClaw": "alphaclaw",
 		"My App!":   "my-app",
-		"__":        "resource",
+		"Ünï Form!": "uni-form",
 	} {
 		if got := blueprintResourceSlug(in); got != want {
 			t.Errorf("blueprintResourceSlug(%q) = %q, want %q", in, got, want)
@@ -130,5 +131,58 @@ func TestCreateMapsAFreeFormNameOntoASlugAndKeepsItAsTheLabel(t *testing.T) {
 	dry, err := svc.Create(context.Background(), CreateRequest{Name: "Other App", Image: "nginx:1", DryRun: true})
 	if err != nil || dry.DisplayName != "Other App" || dry.Name != "other-app" {
 		t.Fatalf("dry run = %+v, %v; want other-app labeled Other App", dry, err)
+	}
+}
+
+// w4/385: a name with nothing in a–z or 0–9 no longer collapses onto one fixed
+// resource name, so a workspace can hold several.
+func TestBlueprintResourceSlugGivesNonLatinNamesDistinctStableNames(t *testing.T) {
+	names := []string{"日本語のみ", "中文名", "🚀🚀", "__"}
+	seen := map[string]string{}
+	for _, name := range names {
+		slug := blueprintResourceSlug(name)
+		if !appv1alpha1.ValidResourceName(slug) || !strings.HasPrefix(slug, "resource-") {
+			t.Errorf("blueprintResourceSlug(%q) = %q, want a valid resource-<hash> name", name, slug)
+		}
+		if other, dup := seen[slug]; dup {
+			t.Errorf("%q and %q both map to %q", name, other, slug)
+		}
+		seen[slug] = name
+		if blueprintResourceSlug(name) != slug {
+			t.Errorf("blueprintResourceSlug(%q) is not stable", name)
+		}
+	}
+	if got := legacyBlueprintResourceSlug("中文名"); got != "resource" {
+		t.Errorf("legacy mapping = %q, want resource", got)
+	}
+}
+
+// A service created before the fix is labelled "resource" with its display
+// name; the plan must still find it under the name the manifest now maps to.
+func TestSnapshotFindsAServiceCreatedUnderTheLegacyName(t *testing.T) {
+	legacy := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{DisplayName: "中文名"}}
+	accent := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{DisplayName: "Ünï Form"}}
+	other := &appv1alpha1.App{}
+	byName := map[string]*appv1alpha1.App{"resource": legacy, "n-form": accent, "api": other}
+	aliasLegacyResourceNames(byName)
+	if byName[blueprintResourceSlug("中文名")] != legacy || byName[blueprintResourceSlug("Ünï Form")] != accent {
+		t.Fatalf("legacy services are not reachable under their new names: %v", byName)
+	}
+	if byName["api"] != other || len(byName) != 5 {
+		t.Fatalf("unrelated entries changed: %v", byName)
+	}
+}
+
+func TestCreateKeepsSeveralNonLatinNamesAndNamesTheTypedNameOnAConflict(t *testing.T) {
+	svc, _ := newService(nil)
+	ctx := context.Background()
+	for _, name := range []string{"日本語のみ", "中文名"} {
+		if _, err := svc.Create(ctx, CreateRequest{Name: name, Image: "nginx:1"}); err != nil {
+			t.Fatalf("Create(%q): %v", name, err)
+		}
+	}
+	_, err := svc.Create(ctx, CreateRequest{Name: "中文名", Image: "nginx:1"})
+	if err == nil || !strings.Contains(err.Error(), `"中文名"`) || !strings.Contains(err.Error(), "maps to resource name") {
+		t.Fatalf("duplicate create error = %v, want one naming the typed name and its resource name", err)
 	}
 }

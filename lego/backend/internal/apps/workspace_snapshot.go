@@ -19,6 +19,7 @@ package apps
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -125,6 +126,7 @@ func (snap *workspaceSnapshot) services(ctx context.Context) (map[string]*appv1a
 			byName[name] = app
 		}
 	}
+	aliasLegacyResourceNames(byName)
 	snap.serviceMap = byName
 	return byName, nil
 }
@@ -149,4 +151,22 @@ func (snap *workspaceSnapshot) keyValues(ctx context.Context) (*appv1alpha1.KeyV
 		snap.keyValueList = list
 	}
 	return snap.keyValueList, nil
+}
+
+// aliasLegacyResourceNames lets a Blueprint keep finding a service created
+// before w4/385 changed the name mapping: it is labelled with the old name
+// ("resource" for a name with no Latin letters, accents dropped otherwise),
+// while its display name now maps to a different one. Without the alias the
+// plan would create a second service and orphan the first. A name the new
+// mapping already owns is never displaced.
+func aliasLegacyResourceNames(byName map[string]*appv1alpha1.App) {
+	for name, app := range maps.Clone(byName) {
+		label := app.Spec.DisplayName
+		if label == "" || legacyBlueprintResourceSlug(label) != name {
+			continue
+		}
+		if current := blueprintResourceSlug(label); current != name && byName[current] == nil {
+			byName[current] = app
+		}
+	}
 }

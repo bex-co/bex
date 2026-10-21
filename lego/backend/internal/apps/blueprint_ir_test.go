@@ -168,3 +168,25 @@ func (f fakeBlueprintStateResolver) ResolveBlueprintResource(_ context.Context, 
 	row, ok := f.rows[string(kind)+":"+name]
 	return row, ok, nil
 }
+
+// w4/385: two services whose names share no Latin letters are distinct
+// resources, not a duplicate "resource".
+func TestNormalizeBlueprintIRAcceptsDistinctNonLatinServiceNames(t *testing.T) {
+	source, problems := CompileBlueprintSource(`
+services:
+  - type: web
+    name: 日本語サービス
+    runtime: image
+    image: {url: nginx:1.27}
+  - type: web
+    name: 中文服务
+    runtime: image
+    image: {url: nginx:1.27}
+`)
+	if len(problems) != 0 {
+		t.Fatalf("CompileBlueprintSource() problems = %+v", problems)
+	}
+	if _, problems = NormalizeBlueprintIR(source); len(problems) != 0 {
+		t.Fatalf("NormalizeBlueprintIR() problems = %+v", problems)
+	}
+}
