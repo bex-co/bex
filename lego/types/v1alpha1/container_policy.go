@@ -42,3 +42,15 @@ func ContainerPolicyCapabilities(policy string) []string {
 		return nil
 	}
 }
+
+// ContainerPolicySeccompProfile is the kubelet Localhost seccomp profile path a
+// policy runs under (relative to /var/lib/kubelet/seccomp), or "" for
+// RuntimeDefault. render-v1's profile is RuntimeDefault plus the
+// user-namespace and io_uring syscalls Render's unfiltered runtime permits
+// (ADR089 § Seccomp, w6/m150); the seccomp-profiles DaemonSet installs it.
+func ContainerPolicySeccompProfile(policy string) string {
+	if policy == ContainerPolicyRenderV1 {
+		return "profiles/bex-render-v1.json"
+	}
+	return ""
+}

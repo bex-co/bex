@@ -67,5 +67,8 @@ func appSecCtx(spec appv1alpha1.AppSpec) *corev1.SecurityContext {
 	for _, capability := range appv1alpha1.ContainerPolicyCapabilities(spec.ContainerPolicy) {
 		security.Capabilities.Add = append(security.Capabilities.Add, corev1.Capability(capability))
 	}
+	if profile := appv1alpha1.ContainerPolicySeccompProfile(spec.ContainerPolicy); profile != "" {
+		security.SeccompProfile = &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeLocalhost, LocalhostProfile: &profile}
+	}
 	return security
 }
