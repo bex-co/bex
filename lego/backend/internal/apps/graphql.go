@@ -1657,6 +1657,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		// setDockerfilePath changes Render's Dockerfile Path on an existing
 		// repo-backed Docker service. Empty restores the default Dockerfile.
 		"setDockerfilePath": gqlutil.ArgMutation(serviceGQLType, "dockerfilePath", s.SetDockerfilePath),
+		// setDockerContext changes the Docker build context, relative to the
+		// root directory as on Render (w8/m128). Empty restores the default.
+		"setDockerContext": gqlutil.ArgMutation(serviceGQLType, "dockerContext", s.SetDockerContext),
 		// setBuildFilter: the Settings → Build & Deploy Build Filters rows (w1/m34)
 		// write Render's Build Filters (spec.buildFilter) — the glob patterns gating
 		// git-push auto-deploys — on an existing App. Passing an all-empty object

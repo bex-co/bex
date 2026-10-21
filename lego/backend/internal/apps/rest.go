@@ -812,20 +812,20 @@ func (s *Service) getService(w http.ResponseWriter, r *http.Request) {
 // setting by resolveFields, so the ServicePatch fill (toServicePatch) reads a
 // single source of truth per field.
 type patchFields struct {
-	dryRun                                                  bool
-	plan                                                    string
-	idleTTL                                                 *int32
-	maxShutdownDelay                                        optionalInt32
-	publishPath, buildCommand, startCommand, dockerfilePath *string
-	healthCheckPath, preDeployCommand, schedule             *string
-	renderSubdomainPolicy                                   *string
-	displayName                                             *string
-	image, imageOwnerID                                     *string
-	registryCredentialID                                    *string
-	ipAllowList                                             *[]core.IPAllowListEntry // nil = not provided (leave unchanged); non-nil = replace
-	autoDeploy                                              *bool
-	autoDeployChecksPass                                    *bool
-	port                                                    *int32
+	dryRun                                                                 bool
+	plan                                                                   string
+	idleTTL                                                                *int32
+	maxShutdownDelay                                                       optionalInt32
+	publishPath, buildCommand, startCommand, dockerfilePath, dockerContext *string
+	healthCheckPath, preDeployCommand, schedule                            *string
+	renderSubdomainPolicy                                                  *string
+	displayName                                                            *string
+	image, imageOwnerID                                                    *string
+	registryCredentialID                                                   *string
+	ipAllowList                                                            *[]core.IPAllowListEntry // nil = not provided (leave unchanged); non-nil = replace
+	autoDeploy                                                             *bool
+	autoDeployChecksPass                                                   *bool
+	port                                                                   *int32
 }
 
 // resolveFields decodes and coalesces the wire fields into patchFields.
@@ -876,6 +876,7 @@ func (req patchServiceRequest) resolveFields(r *http.Request) (patchFields, erro
 				StartCommand         *string         `json:"startCommand"`
 				DockerCommand        *string         `json:"dockerCommand"`
 				DockerfilePath       *string         `json:"dockerfilePath"`
+				DockerContext        *string         `json:"dockerContext"`
 				RegistryCredentialID json.RawMessage `json:"registryCredentialId"`
 			}
 			if err := core.UnmarshalJSON(r.Context(), req.ServiceDetails.EnvSpecific, &envSpecific); err != nil {
@@ -894,6 +895,7 @@ func (req patchServiceRequest) resolveFields(r *http.Request) (patchFields, erro
 				f.startCommand = envSpecific.DockerCommand
 			}
 			f.dockerfilePath = envSpecific.DockerfilePath
+			f.dockerContext = envSpecific.DockerContext
 			nestedRegistryCredentialID = envSpecific.RegistryCredentialID
 		}
 	}
@@ -1017,6 +1019,7 @@ func (req patchServiceRequest) toServicePatch(f patchFields, maintenanceMode *Ma
 		BuildCommand:                   f.buildCommand,
 		StartCommand:                   f.startCommand,
 		DockerfilePath:                 f.dockerfilePath,
+		DockerContext:                  f.dockerContext,
 		Port:                           f.port,
 		NotifyOnFail:                   req.NotifyOnFail,
 		RenderSubdomainPolicy:          f.renderSubdomainPolicy,

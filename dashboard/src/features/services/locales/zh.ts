@@ -4199,6 +4199,11 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Events filter option for the dockerfile path changed event type",
   },
+  "services.eventsFilterType.dockerContextChanged": {
+    message: "Docker 构建上下文已更改",
+    description:
+      "Events filter option for the docker context changed event type (w8/m128)",
+  },
   "services.eventsFilterType.buildFilterChanged": {
     message: "构建过滤器已更改",
     description: "Events filter option for the build filter changed event type",

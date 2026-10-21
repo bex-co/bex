@@ -243,6 +243,9 @@ func applyCreateToSpecFieldSet(t *testing.T) map[string]bool {
 func applyBlueprintServiceSpecFieldSet(t *testing.T) map[string]bool {
 	t.Helper()
 	want := populatedAppSpec(t)
+	// A context equal to its rootDir is the default and stores empty
+	// (w8/m128), so give the probe one below it to see the field propagate.
+	want.DockerContext = want.RootDir + "/ctx"
 	allFields := map[string]BlueprintField{}
 	for _, policy := range BlueprintServiceFieldPolicies {
 		allFields[policy.Name] = BlueprintField{}

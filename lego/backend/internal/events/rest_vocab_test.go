@@ -62,6 +62,7 @@ func TestRESTEventTypesAreRenderOrDeclaredExtensions(t *testing.T) {
 		TypeIdleTimeoutChanged:                    config,
 		TypeRootDirectoryChanged:                  config,
 		TypeDockerfilePathChanged:                 config,
+		TypeDockerContextChanged:                  config,
 		TypePortChanged:                           config,
 		TypeBuildFilterChanged:                    config,
 		TypeCommandsChanged:                       config,

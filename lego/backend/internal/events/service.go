@@ -59,6 +59,7 @@ limitations under the License.
 //	idle_timeout_changed        apps.SetIdleTTL                 (a bex-only feature: "sleep = free")
 //	root_directory_changed      apps.SetRootDir
 //	dockerfile_path_changed     apps.SetDockerfilePath
+//	docker_context_changed      apps.SetDockerContext           (w8/m128)
 //	port_changed                apps.SetPort                    (a bex-only field: Render detects the bound port)
 //	build_filter_changed        apps.SetBuildFilter
 //	commands_changed            apps.SetCommands
@@ -265,6 +266,7 @@ const (
 	TypeIdleTimeoutChanged      = "idle_timeout_changed"
 	TypeRootDirectoryChanged    = "root_directory_changed"
 	TypeDockerfilePathChanged   = "dockerfile_path_changed"
+	TypeDockerContextChanged    = "docker_context_changed"
 	TypePortChanged             = "port_changed"
 	TypeBuildFilterChanged      = "build_filter_changed"
 	TypeCommandsChanged         = "commands_changed"
@@ -395,6 +397,7 @@ var eventTypes = map[string]string{
 	"apps.SetIdleTTL":             TypeIdleTimeoutChanged,
 	"apps.SetRootDir":             TypeRootDirectoryChanged,
 	"apps.SetDockerfilePath":      TypeDockerfilePathChanged,
+	"apps.SetDockerContext":       TypeDockerContextChanged,
 	// w4/m121: a port change rolls the pods and moves the Service, Ingress and
 	// probe with it — a config change the owner should be able to see in
 	// Activity, in the same class as the build-setting changes above.

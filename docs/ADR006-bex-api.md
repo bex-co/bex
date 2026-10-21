@@ -133,6 +133,8 @@ The Blueprint compiler refuses the same fields at their own paths (`BLUEPRINT_CA
 
 One of these settings was not fully inert in bex: the operator's native build used `dockerContext` as its BuildKit context. Render reads `dockerContext` for Docker builds only, so create now refuses it on a native build. Services created before keep the setting, and their builds keep using it.
 
+**`dockerContext` is relative to the root directory (w8/m128, 2026-10-20).** As on Render (its schema: "relative to rootDir"; its monorepo guide lists the Docker build context among the settings that operate relative to the root directory), every surface reads and writes `dockerContext` relative to `rootDir`, default `.`. One seam, `internal/apps/docker_context.go`, translates: create (REST, MCP, Blueprint, all through `specFromCreate`) stores the repository-root path the build reads in `spec.dockerContext` (empty when it equals `rootDir`), reads report it relative to `rootDir`, and a `rootDir` change rebases it. No stored App or build changed. A context can now be changed in place: REST `PATCH envSpecificDetails.dockerContext`, MCP `update_service.dockerContext`, GraphQL `setDockerContext` (`SetDockerContext`, Docker builds only, event `docker_context_changed`). Before, `dockerContext` meant the repository root, so Render's monorepo export (`rootDir: backend`, `dockerContext: .`) built against the wrong tree, and PATCH refused the field.
+
 **Shared validation vectors and codes (w5/m118).** Each validation rule with a dashboard twin has one vector file that both test suites read:
 
 - cron schedules, `lego/backend/internal/apps/testdata/cron-schedule-vectors.json`, where each row carries bex-api's refusal code;

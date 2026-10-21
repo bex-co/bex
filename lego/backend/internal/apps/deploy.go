@@ -341,7 +341,7 @@ type bexService struct {
 	StartCommand            string              `json:"startCommand"`
 	DockerCommand           string              `json:"dockerCommand"`
 	DockerfilePath          string              `json:"dockerfilePath"` // Render's Dockerfile Path, relative to rootDir; docker runtime only
-	DockerContext           string              `json:"dockerContext"`  // Render's Docker build context dir, repo-root-relative (w8/m19)
+	DockerContext           string              `json:"dockerContext"`  // Render's Docker build context dir, relative to rootDir (w8/m128)
 	Routes                  []StaticRouteView   `json:"routes"`
 	Headers                 []StaticHeaderView  `json:"headers"`
 	NumInstances            int32               `json:"numInstances"` // render.yaml manual instance count

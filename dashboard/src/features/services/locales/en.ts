@@ -4300,6 +4300,11 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Events filter option for the dockerfile path changed event type",
   },
+  "services.eventsFilterType.dockerContextChanged": {
+    message: "Docker build context changed",
+    description:
+      "Events filter option for the docker context changed event type (w8/m128)",
+  },
   "services.eventsFilterType.buildFilterChanged": {
     message: "Build filter changed",
     description: "Events filter option for the build filter changed event type",

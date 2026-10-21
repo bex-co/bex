@@ -84,6 +84,7 @@ export const SERVICE_EVENT_GROUPS: ServiceEventGroup[] = [
       "idle_timeout_changed",
       "root_directory_changed",
       "dockerfile_path_changed",
+      "docker_context_changed",
       "port_changed",
       "build_filter_changed",
       "commands_changed",
@@ -171,6 +172,7 @@ const LABEL_KEYS: Record<string, string> = {
   headers_changed: "services.eventsTypeStaticSiteChanged",
   root_directory_changed: "services.eventsTypeBuildSettingsChanged",
   dockerfile_path_changed: "services.eventsTypeBuildSettingsChanged",
+  docker_context_changed: "services.eventsTypeBuildSettingsChanged",
   // Its own label rather than the build-settings bucket: a port change moves
   // where the platform routes and health-checks, and it rolls the pods — the
   // one config change a reader diagnosing "my service answers nothing" most
@@ -202,6 +204,7 @@ const FILTER_LABEL_KEYS: Record<string, string> = {
   headers_changed: "services.eventsFilterType.headersChanged",
   root_directory_changed: "services.eventsFilterType.rootDirectoryChanged",
   dockerfile_path_changed: "services.eventsFilterType.dockerfilePathChanged",
+  docker_context_changed: "services.eventsFilterType.dockerContextChanged",
   build_filter_changed: "services.eventsFilterType.buildFilterChanged",
   commands_changed: "services.eventsFilterType.commandsChanged",
   source_changed: "services.eventsFilterType.sourceChanged",

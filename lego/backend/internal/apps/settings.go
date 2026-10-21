@@ -88,6 +88,9 @@ type ServicePatch struct {
 	BuildCommand                   *string
 	StartCommand                   *string
 	DockerfilePath                 *string
+	// DockerContext is Render's dockerDetailsPATCH.dockerContext, relative to
+	// rootDir (w8/m128).
+	DockerContext *string
 	// Port is the listening port (w4/m121). Before it, the port was
 	// create-only on every surface, so bex's own PORT refusal — "change the
 	// service port instead" — named a setting no caller could reach.
@@ -279,6 +282,7 @@ var servicePatchTable = []servicePatchOp{
 			if err := s.checkRootDir(ctx, probe, id, *p.RootDir); err != nil {
 				return err
 			}
+			probe.Spec.DockerContext = rebaseDockerContext(probe.Spec.RootDir, *p.RootDir, probe.Spec.DockerContext)
 			probe.Spec.RootDir = *p.RootDir
 			return nil
 		},
@@ -416,6 +420,21 @@ var servicePatchTable = []servicePatchOp{
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			return s.SetDockerfilePath(ctx, id, *p.DockerfilePath)
+		},
+	},
+	{
+		// After RootDir in this table, so a PATCH naming both resolves the
+		// context against the new root directory.
+		fields:   []string{"DockerContext"},
+		present:  func(p ServicePatch) bool { return p.DockerContext != nil },
+		relation: canCreate,
+		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, id string, p ServicePatch) error {
+			context, err := s.checkDockerContext(ctx, probe, id, *p.DockerContext)
+			probe.Spec.DockerContext = storedDockerContext(probe.Spec.RootDir, context)
+			return err
+		},
+		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
+			return s.SetDockerContext(ctx, id, *p.DockerContext)
 		},
 	},
 	{
