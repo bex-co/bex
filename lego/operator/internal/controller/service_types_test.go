@@ -130,9 +130,9 @@ var _ = Describe("Additional service types (kubernetes runtime)", func() {
 			Expect(cj.Spec.ConcurrencyPolicy).To(Equal(batchv1.ForbidConcurrent))
 			Expect(cj.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Image).To(Equal("busybox:gen-7"))
 			Expect(cj.Spec.JobTemplate.Spec.Template.Spec.Containers[0].ImagePullPolicy).To(Equal(corev1.PullAlways))
-			By("spec.command overrides the image's entrypoint via a shell")
+			By("spec.command overrides the image's entrypoint (exec'd directly: no shell syntax)")
 			Expect(cj.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Command).
-				To(Equal([]string{"/bin/sh", "-c", "npm run report"}))
+				To(Equal([]string{"npm", "run", "report"}))
 			Expect(errors.IsNotFound(k8sClient.Get(ctx, nn, &appsv1.Deployment{}))).To(BeTrue())
 			Expect(errors.IsNotFound(k8sClient.Get(ctx, nn, &corev1.Service{}))).To(BeTrue())
 			Expect(errors.IsNotFound(k8sClient.Get(ctx, nn, &networkingv1.Ingress{}))).To(BeTrue())

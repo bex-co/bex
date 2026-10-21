@@ -1,0 +1,53 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package controller
+
+import (
+	"slices"
+	"testing"
+)
+
+// A Docker Command runs as Render runs it (w8/164).
+func TestShellCommand(t *testing.T) {
+	for _, tc := range []struct {
+		name, command string
+		want          []string
+	}{
+		{"plain program with flags execs directly", "/whoami --port 8080 --name qa1281", []string{"/whoami", "--port", "8080", "--name", "qa1281"}},
+		{"quoted argument stays one word", `bin/server --msg "hello world" --x='a b'`, []string{"bin/server", "--msg", "hello world", "--x=a b"}},
+		{"escaped space", `bin/server a\ b`, []string{"bin/server", "a b"}},
+		{"shell operator keeps the shell", "npm run build && npm start", []string{"/bin/sh", "-c", "npm run build && npm start"}},
+		{"variable expansion keeps the shell", "./server --port $PORT", []string{"/bin/sh", "-c", "./server --port $PORT"}},
+		{"expansion inside double quotes keeps the shell", `echo "$HOME"`, []string{"/bin/sh", "-c", `echo "$HOME"`}},
+		{"quoted metacharacters are data", `echo '$HOME && x'`, []string{"echo", "$HOME && x"}},
+		{"glob keeps the shell", "ls *.txt", []string{"/bin/sh", "-c", "ls *.txt"}},
+		{"leading assignment keeps the shell", "FOO=1 ./server", []string{"/bin/sh", "-c", "FOO=1 ./server"}},
+		{"unterminated quote keeps the shell", `echo "oops`, []string{"/bin/sh", "-c", `echo "oops`}},
+		// Render's documented form passes everything after -c as one script.
+		{"documented unquoted multi-command form", "/bin/sh -c python manage.py migrate && gunicorn app.wsgi:application --bind 0.0.0.0:10000", []string{"/bin/sh", "-c", "python manage.py migrate && gunicorn app.wsgi:application --bind 0.0.0.0:10000"}},
+		{"minio example", "/bin/sh -c mkdir -p /data && exec minio server --address $HOST:$PORT /data", []string{"/bin/sh", "-c", "mkdir -p /data && exec minio server --address $HOST:$PORT /data"}},
+		{"quoted script is that word", `sh -c 'a && b'`, []string{"sh", "-c", "a && b"}},
+		{"bash with a double-quoted script", `/bin/bash -c "echo hi; echo bye"`, []string{"/bin/bash", "-c", "echo hi; echo bye"}},
+		{"unquoted simple script stays verbatim", "sh -c echo hi", []string{"sh", "-c", "echo hi"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := shellCommand(tc.command); !slices.Equal(got, tc.want) {
+				t.Errorf("shellCommand(%q) = %q, want %q", tc.command, got, tc.want)
+			}
+		})
+	}
+}
