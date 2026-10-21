@@ -1,6 +1,6 @@
 # w6 · m151 — `render-v1` runtime pods run in a pod user namespace (`hostUsers: false`)
 
-**Worker:** worker6 **Goal:** `render-v1` runtime pods (Deployment, CronJob, manual run, predeploy) run with `hostUsers: false`, so the wider capability set and the relaxed seccomp profile act inside a user namespace, never as host root. It ships behind a switch, is proven on Hetzner `hcloud-volumes` first, then turned on. **Status:** todo (t001–t004 done 2026-10-21; widened to every workspace, closeout after the widen deploys)
+**Worker:** worker6 **Goal:** `render-v1` runtime pods (Deployment, CronJob, manual run, predeploy) run with `hostUsers: false`, so the wider capability set and the relaxed seccomp profile act inside a user namespace, never as host root. It ships behind a switch, is proven on Hetzner `hcloud-volumes` first, then turned on. **Status:** done 2026-10-21 (live in every workspace; snapshot/restore check tracked as w6/089)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Turn the switch on in production; record the residual risk in ADR089/ADR022 — **DONE** | 20m | t003 |
 | t005 | Simplify — **DONE** | 15m | t004 |
 | t006 | Test coverage — **DONE** | 30m | t004, t005 |
-| t007 | Closeout | 10m | t006 |
+| t007 | Closeout — **DONE** | 10m | t006 |
 
 ## Definition of done
 
