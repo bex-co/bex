@@ -41,8 +41,8 @@ func TestImageCompatibilityCreationPolicy(t *testing.T) {
 		want       string
 	}{
 		{"disabled", nil, CreateRequest{Name: "app", Image: "nginx:1"}, ""},
-		{"image", map[string]bool{"*": true}, CreateRequest{Name: "app", Image: "nginx:1"}, appv1alpha1.ContainerPolicyImageV1},
-		{"docker", map[string]bool{"*": true}, CreateRequest{Name: "app", Repo: "https://github.com/example/app", Runtime: "docker"}, appv1alpha1.ContainerPolicyImageV1},
+		{"image", map[string]bool{"*": true}, CreateRequest{Name: "app", Image: "nginx:1"}, appv1alpha1.ContainerPolicyRenderV1},
+		{"docker", map[string]bool{"*": true}, CreateRequest{Name: "app", Repo: "https://github.com/example/app", Runtime: "docker"}, appv1alpha1.ContainerPolicyRenderV1},
 		{"native", map[string]bool{"*": true}, CreateRequest{Name: "app", Repo: "https://github.com/example/app", Runtime: "go", BuildCommand: "go build .", StartCommand: "./app"}, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -180,7 +180,7 @@ func TestClickHouseBlueprintCreatesDurablePrivateImagePolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	app := getTenantApp(t, client, "tea-qa", "clickhouse")
-	if app.Spec.ContainerPolicy != appv1alpha1.ContainerPolicyImageV1 || app.Spec.PortMode != appv1alpha1.PortModeImageV1 {
+	if app.Spec.ContainerPolicy != appv1alpha1.ContainerPolicyRenderV1 || app.Spec.PortMode != appv1alpha1.PortModeImageV1 {
 		t.Fatalf("compatibility policy not selected: %+v", app.Spec)
 	}
 	if app.Spec.Expose || app.Spec.Type != appv1alpha1.TypePrivateService || app.Spec.Replicas != 1 {
@@ -217,20 +217,21 @@ func TestImageCompatibilityIsScopedToListedWorkspaces(t *testing.T) {
 	}
 	// w6/m148 split the gate: image-derived private ports are the creation
 	// default in every workspace (rollback: BEX_PRIVATE_IMAGE_PORTS=off), while
-	// the image-v1 container policy stays scoped to the listed workspaces.
+	// the container policy (render-v1 since w6/m149) follows the listed
+	// workspaces.
 	for _, tc := range []struct {
 		workspaces    map[string]bool
 		portsDisabled bool
 		policy        string
 		mode          string
 	}{
-		{map[string]bool{"tea-qa": true}, false, appv1alpha1.ContainerPolicyImageV1, appv1alpha1.PortModeImageV1},
+		{map[string]bool{"tea-qa": true}, false, appv1alpha1.ContainerPolicyRenderV1, appv1alpha1.PortModeImageV1},
 		// Another workspace's admission grants this one no capabilities.
 		{map[string]bool{"tea-other": true}, false, "", appv1alpha1.PortModeImageV1},
 		{nil, false, "", appv1alpha1.PortModeImageV1},
 		// The rollback switch restores configured ports without touching policy.
 		{nil, true, "", ""},
-		{map[string]bool{"tea-qa": true}, true, appv1alpha1.ContainerPolicyImageV1, ""},
+		{map[string]bool{"tea-qa": true}, true, appv1alpha1.ContainerPolicyRenderV1, ""},
 	} {
 		st := &recordingStore{disks: map[string]store.Disk{}}
 		service, client := newTenantStoreService(fakeWorkspace{"qa": "tea-qa"}, st)

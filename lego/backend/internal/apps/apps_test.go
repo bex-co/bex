@@ -682,6 +682,7 @@ func TestCreateConflictsOnExistingUnmanagedApp(t *testing.T) {
 
 type recordingStore struct {
 	disks     map[string]store.Disk
+	policyCalls []string
 	portCalls []struct {
 		id   string
 		port int32
@@ -886,6 +887,14 @@ func (r *recordingStore) SetAppPort(_ context.Context, id string, port int32, mo
 		port int32
 		mode string
 	}{id, port, mode})
+	return nil
+}
+
+func (r *recordingStore) SetAppContainerPolicy(_ context.Context, id, policy string) error {
+	if r.err != nil {
+		return r.err
+	}
+	r.policyCalls = append(r.policyCalls, id+"="+policy)
 	return nil
 }
 

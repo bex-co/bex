@@ -380,7 +380,7 @@ type Deps struct {
 	// BLUEPRINT_GROUPING_LIMIT identically across REST/GraphQL/MCP.
 	MaxBlueprintGroupings int
 	// ImageCompatibilityWorkspaces opts newly created Docker/image apps in these
-	// workspaces ("*" for all) into ADR089's image-v1 container policy.
+	// workspaces ("*" for all) into the render-v1 container policy (w6/m149).
 	ImageCompatibilityWorkspaces map[string]bool
 	// PrivateImagePortsDisabled is BEX_PRIVATE_IMAGE_PORTS=off: the rollback
 	// switch for image-derived private ports (ADR089 § Port slice decisions).

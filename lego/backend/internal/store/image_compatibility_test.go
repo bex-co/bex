@@ -17,6 +17,7 @@ limitations under the License.
 package store
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -219,5 +220,34 @@ func TestPGRenderV1PolicyMigrationRoundTrip(t *testing.T) {
 	}
 	if err := exec(`UPDATE apps SET container_policy = 'docker-default' WHERE id = $1`, app.ID); err == nil {
 		t.Fatal("the CHECK accepted an unknown policy")
+	}
+}
+
+// The operator-run migration's row write (w6/m149 t008): it moves one row and
+// the CHECK still refuses a policy the control plane cannot project.
+func TestPGSetAppContainerPolicy(t *testing.T) {
+	st, ctx := newBillingTestStore(t)
+	tenant, err := st.CreateTenant(ctx, "policy-migration", "hobby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := st.CreateApp(ctx, App{
+		TenantID: tenant.ID, Name: "web", Image: "nginx:1", Port: 80, Replicas: 1, Tier: "starter",
+		ContainerPolicy: appv1alpha1.ContainerPolicyImageV1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.SetAppContainerPolicy(ctx, app.ID, appv1alpha1.ContainerPolicyRenderV1); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := st.GetApp(ctx, app.ID); err != nil || got.ContainerPolicy != appv1alpha1.ContainerPolicyRenderV1 {
+		t.Fatalf("policy = %q, %v", got.ContainerPolicy, err)
+	}
+	if err := st.SetAppContainerPolicy(ctx, app.ID, "docker-default"); err == nil {
+		t.Fatal("the CHECK accepted an unknown policy")
+	}
+	if err := st.SetAppContainerPolicy(ctx, "srv-missing", appv1alpha1.ContainerPolicyRenderV1); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("missing row: %v", err)
 	}
 }
