@@ -1095,7 +1095,7 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 		}
 		copies := make([]core.EnvVarCopy, 0, len(svc.generatedCopies))
 		for _, c := range svc.generatedCopies {
-			copies = append(copies, core.EnvVarCopy{From: targets[c.source].ref, FromKey: c.sourceKey, ToKey: c.key})
+			copies = append(copies, core.EnvVarCopy{From: targets[c.source].ref, FromKey: c.sourceKey, ToKey: c.key, Optional: c.optional})
 		}
 		to := targets[svc.req.Name]
 		if err := s.EnvCopier.CopyEnvVars(to.ctx, to.ref, copies); err != nil {
@@ -2200,6 +2200,7 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 			refVars: se.refVars,
 		})
 		idx.serviceKnownEnv[req.Name], idx.serviceGenerated[req.Name] = knownServiceEnv(se, st.envGroups)
+		idx.servicePrompts[req.Name] = promptOnly(se)
 		idx.serviceTypes[req.Name] = req.Type
 		if req.Type == appv1alpha1.TypeWebService || req.Type == appv1alpha1.TypePrivateService {
 			idx.addressableServices[req.Name] = true
@@ -2305,6 +2306,10 @@ type stackIndex struct {
 	// own generateValue (knownServiceEnv), which an envVarKey copy takes at
 	// apply rather than at parse (w1/m175).
 	serviceGenerated map[string]map[string]bool
+	// servicePrompts: name -> the sync:false keys that service's own store
+	// holds once the user answers them, which an envVarKey copy also takes
+	// at apply (w5/170).
+	servicePrompts map[string]map[string]bool
 	// serviceTypes: name -> the App type each declared service resolved to, so
 	// a fromService reference's own type can be checked against it (w8/096).
 	serviceTypes map[string]string
@@ -2328,6 +2333,7 @@ func newStackIndex(serviceCount, databaseCount int) *stackIndex {
 		addressableServices: make(map[string]bool, serviceCount),
 		serviceKnownEnv:     make(map[string]map[string]knownValue, serviceCount),
 		serviceGenerated:    make(map[string]map[string]bool, serviceCount),
+		servicePrompts:      make(map[string]map[string]bool, serviceCount),
 		serviceTypes:        make(map[string]string, serviceCount),
 	}
 }
@@ -2417,15 +2423,17 @@ func (idx *stackIndex) classifyRef(svc *parsedService, r envRef) error {
 	}
 	// A copy of a sibling's generated value has no parse-time value: the apply
 	// mints the source, then writes the same value into this service's store,
-	// on every sync, as Render re-copies (w1/m175).
-	if ref := r.FromService; ref != nil && ref.EnvVarKey != "" && idx.serviceGenerated[ref.Name][ref.EnvVarKey] {
+	// on every sync, as Render re-copies (w1/m175). A sibling's sync:false
+	// value is copied the same way once the user has answered it (w5/170).
+	prompt := r.FromService != nil && idx.servicePrompts[r.FromService.Name][r.FromService.EnvVarKey]
+	if ref := r.FromService; ref != nil && ref.EnvVarKey != "" && (idx.serviceGenerated[ref.Name][ref.EnvVarKey] || prompt) {
 		// The copy lives in this service's store, where any other declaration
 		// of the key would shadow it (container env wins) or be refused as
 		// manifest-owned when the copy is written.
 		if declaredElsewhere(svc.env, r) {
 			return envRefError(svc.req.Name, r.Key, fmt.Errorf("copies %s's generated %s, so it must be the only declaration of %s", ref.Name, ref.EnvVarKey, r.Key))
 		}
-		svc.generatedCopies = append(svc.generatedCopies, generatedCopy{key: r.Key, source: ref.Name, sourceKey: ref.EnvVarKey})
+		svc.generatedCopies = append(svc.generatedCopies, generatedCopy{key: r.Key, source: ref.Name, sourceKey: ref.EnvVarKey, optional: prompt})
 		svc.req.storeEnvKeys = append(svc.req.storeEnvKeys, r.Key)
 		return nil
 	}
@@ -2556,6 +2564,18 @@ func atEnvEntry(index int, err error) error { return &envEntryError{index: index
 // generated is the set of keys the process gets from the service's own
 // generateValue, decided by the same precedence: a value the copy can take
 // only after the apply mints it (w1/m175).
+// promptOnly is the service's sync:false keys that nothing else in its own
+// entries defines: the value lives only in its store.
+func promptOnly(se serviceEnv) map[string]bool {
+	out := map[string]bool{}
+	for _, k := range se.promptKeys {
+		if _, literal := se.literals[k]; !literal {
+			out[k] = true
+		}
+	}
+	return out
+}
+
 func knownServiceEnv(se serviceEnv, groups []parsedEnvGroup) (known map[string]knownValue, generated map[string]bool) {
 	byName := make(map[string]parsedEnvGroup, len(groups))
 	for _, g := range groups {
@@ -2651,6 +2671,9 @@ func declaredElsewhere(se serviceEnv, r envRef) bool {
 // consumer takes sourceKey's value from source once the apply has minted it.
 type generatedCopy struct {
 	key, source, sourceKey string
+	// optional: the source is a sync:false value the user may not have
+	// answered yet, so a missing one is skipped rather than refused.
+	optional bool
 }
 
 // stateCopy is an envVarKey copy whose value came from a seed or a linked
