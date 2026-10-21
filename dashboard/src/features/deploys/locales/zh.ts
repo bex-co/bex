@@ -155,6 +155,11 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploy row: trigger=config_change label (a Settings, env var, or env-group edit that forced a rebuild)",
   },
+  "deploys.triggerRestart": {
+    message: "重启",
+    description:
+      "Deploy row: trigger=restart label (a Restart roll of the live release, w4/379)",
+  },
   "deploys.logSearchPlaceholder": {
     message: "搜索日志…",
     description: "Deploy detail page: log search input placeholder",

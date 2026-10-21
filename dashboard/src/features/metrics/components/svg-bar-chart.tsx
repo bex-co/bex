@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { formatMetricShort } from "@/features/metrics/lib/format";
+import {
+  formatAxisTickLabels,
+  formatMetricShort,
+} from "@/features/metrics/lib/format";
 import {
   ChartTooltip,
   EmptyChart,
@@ -62,10 +65,13 @@ export function SvgBarChart({
   const { maxVal, yTicks, left } = useMemo(() => {
     const max = Math.max(...frames.map((f) => f.total), 0);
     const ticks = [0, max / 2, max];
+    // One shared precision per axis so differing ticks never share a label
+    // (w4/381); the final strings size the gutter.
+    const labels = formatAxisTickLabels(unit, ticks);
     return {
       maxVal: max,
-      yTicks: ticks,
-      left: axisLeftPad(ticks.map((v) => formatMetricShort(unit, v))),
+      yTicks: ticks.map((value, i) => ({ value, label: labels[i] })),
+      left: axisLeftPad(labels),
     };
   }, [frames, unit]);
 
@@ -115,7 +121,8 @@ export function SvgBarChart({
         aria-label={t("metrics.barChartLabel", { count: frames.length })}
       >
         {/* Keyed by position, not value — an all-zero series repeats 0 at every tick. */}
-        {yTicks.map((v, i) => {
+        {yTicks.map((tick, i) => {
+          const v = tick.value;
           const y = baseline - (maxVal === 0 ? 0 : (v / maxVal) * innerHeight);
           return (
             <g key={i}>
@@ -134,7 +141,7 @@ export function SvgBarChart({
                 dominantBaseline="middle"
                 className="fill-muted-foreground text-[9px]"
               >
-                {formatMetricShort(unit, v)}
+                {tick.label}
               </text>
             </g>
           );

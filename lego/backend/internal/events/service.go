@@ -350,13 +350,12 @@ const (
 //     authorizes (apps.SetIPAllowList, apps.SetNotifyOnFail,
 //     apps.SetNotificationsToSend).
 //
-//     One mapping is live only in a degraded mode, and that is correct rather
-//     than dead: apps.Restart maps to server_restarted, but with a control-plane
-//     store wired it delegates to deploys.Restart, whose row IS the
-//     deploy_started event (that verb is excused below for the same reason
-//     deploys.Trigger is). server_restarted therefore fires only on the
-//     store-less CR-only path, where no deploys row exists and it is the only
-//     signal a restart happened.
+//     server_restarted maps from BOTH restart entry points (w4/379):
+//     apps.Restart on the store-less CR-only path, and deploys.Restart when
+//     a control-plane store is wired (apps.Restart delegates to it, and the
+//     audit verb names the entry point that ran). Exactly one fires per
+//     restart; on the wired path the deploy row's deploy_started/deploy_ended
+//     still fire alongside, since bex models a restart as a release.
 //
 // Deliberately absent:
 //   - apps.Create — its first deploy already appears as deploy_started with
@@ -385,6 +384,12 @@ var eventTypes = map[string]string{
 	"apps.Suspend":                TypeSuspenderAdded,
 	"apps.Resume":                 TypeSuspenderRemoved,
 	"apps.Restart":                TypeServerRestarted,
+	// w4/379: with a control-plane store wired, apps.Restart delegates to
+	// deploys.Restart, whose audit verb is its own entry point — map it too
+	// or Server Restarted stays a dead choice in production. Exactly one of
+	// the two verbs fires per restart (one entry point runs), and the
+	// deploy row still carries deploy_started/deploy_ended alongside.
+	"deploys.Restart": TypeServerRestarted,
 	"apps.SetPlan":                TypePlanChanged,
 	"apps.Scale":                  TypeInstanceCountChanged,
 	"apps.SetAutoscaling":         TypeAutoscalingConfigChanged,

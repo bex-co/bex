@@ -173,6 +173,8 @@ const (
 var verbEvents = func() map[string]string {
 	types := eventvocab.DatastoreAuditTypes()
 	types["apps.Restart"] = TypeServerRestarted
+	// w4/379: the store-backed restart's audit verb is its own entry point.
+	types["deploys.Restart"] = TypeServerRestarted
 	types["apps.Scale"] = TypeInstanceCountChanged
 	types["apps.SetAutoscaling"] = TypeAutoscalingConfigChanged
 	types["apps.DeleteAutoscaling"] = TypeAutoscalingConfigChanged

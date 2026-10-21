@@ -148,6 +148,8 @@ export function deployTriggerKey(trigger: string): string | null {
       return "deploys.triggerNewCommit";
     case "config_change":
       return "deploys.triggerConfigChange";
+    case "restart":
+      return "deploys.triggerRestart";
     default:
       return null;
   }

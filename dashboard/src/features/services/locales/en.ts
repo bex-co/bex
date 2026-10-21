@@ -378,6 +378,12 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Suspend confirmation dialog body, for private services and background workers — neither has a public URL or certificates to keep",
   },
+  "services.confirmSuspendBodyStatic": {
+    message:
+      "The site stops serving and answers 503 while suspended. Its URL and certificates are kept, and you can resume it at any time.",
+    description:
+      "Suspend confirmation dialog body for a static site, which has no instances to scale to zero (w4/380)",
+  },
   "services.suspendCronDescription": {
     message:
       "Suspending this cron job pauses future scheduled runs. An active run continues. To stop it, select Cancel in Recent Runs.",

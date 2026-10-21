@@ -37,6 +37,50 @@ export function formatMetricShort(unit: string, value: number): string {
 }
 
 /**
+ * Labels for one axis' tick values (w4/381). The compact formatter rounds
+ * each tick independently, so a narrow range (midpoint ≈0.7%, max ≈1.4%)
+ * labels two gridlines `1%`. Here the whole axis shares the smallest extra
+ * precision that makes every differing value's label distinct; ordinary
+ * magnitudes keep the compact labels unchanged, and a flat axis (all
+ * values equal) keeps its single repeated label rather than inventing
+ * precision. Capped escalation: past a few extra digits the values are
+ * indistinguishable at chart scale anyway.
+ */
+export function formatAxisTickLabels(unit: string, values: number[]): string[] {
+  const base = values.map((v) => formatMetricShort(unit, v));
+  if (new Set(base).size === base.length || new Set(values).size <= 1) {
+    return base;
+  }
+  for (let extra = 1; extra <= 4; extra++) {
+    const labels = values.map((v) => formatShortExtra(unit, v, extra));
+    if (new Set(labels).size === labels.length) {
+      return labels;
+    }
+  }
+  return values.map((v) => formatShortExtra(unit, v, 4));
+}
+
+/** formatMetricShort with `extra` more fractional digits than the base. */
+function formatShortExtra(unit: string, value: number, extra: number): string {
+  switch (unit) {
+    case "cpu":
+      return toFixedNonzero(value, 2 + extra);
+    case "bytes":
+      return formatBytes(value, 1 + extra);
+    case "seconds":
+      return `${(value * 1000).toFixed(extra)}ms`;
+    case "percentage":
+      return `${toFixedNonzero(value, extra)}%`;
+    case "count":
+      return Math.abs(value) >= 1000
+        ? `${(value / 1000).toFixed(1 + extra)}K`
+        : value.toFixed(extra);
+    default:
+      return value.toFixed(extra);
+  }
+}
+
+/**
  * `value.toFixed(digits)`, except a nonzero value that would round to zero
  * keeps three significant digits instead (`0.000125`, `0.0710`; exponent
  * notation like `1.00e-9` below 1e-6 keeps the label bounded). A lightly used
@@ -64,7 +108,9 @@ function formatBytes(value: number, digits = 0): string {
     v /= 1024;
     i++;
   }
-  return `${v.toFixed(i === 0 ? 0 : digits)} ${units[i]}`;
+  // Whole bytes stay whole at the base precisions (digits ≤ 1); an axis
+  // asking for more (formatAxisTickLabels) gets decimals even in B (w4/381).
+  return `${v.toFixed(i === 0 && digits <= 1 ? 0 : digits)} ${units[i]}`;
 }
 
 function formatCount(value: number): string {

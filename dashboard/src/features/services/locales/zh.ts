@@ -368,6 +368,12 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Suspend confirmation dialog body, for private services and background workers — neither has a public URL or certificates to keep",
   },
+  "services.confirmSuspendBodyStatic": {
+    message:
+      "站点将停止服务，并在暂停期间返回 503。其 URL 与证书会保留，你可以随时恢复。",
+    description:
+      "Suspend confirmation dialog body for a static site, which has no instances to scale to zero (w4/380)",
+  },
   "services.suspendCronDescription": {
     message:
       "暂停此定时任务会暂停后续的计划运行。正在运行的任务会继续。如需停止它，请在“最近运行”中选择“取消”。",

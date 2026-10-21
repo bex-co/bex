@@ -88,8 +88,14 @@ func TestRestartPinsTheLiveCommitNotTheBranchHead(t *testing.T) {
 	if got := getApp(t, cl, "web").Spec.BuildCommit; got != runningCommit {
 		t.Errorf("spec.buildCommit = %q, want %q", got, runningCommit)
 	}
-	if d.Trigger != store.TriggerAPI {
-		t.Errorf("trigger = %q, want %q: a restart is a deploy-history row like any manual trigger", d.Trigger, store.TriggerAPI)
+	if d.Trigger != store.TriggerRestart {
+		t.Errorf("trigger = %q, want %q: a restart is its own cause, not a manual deploy (w4/379)", d.Trigger, store.TriggerRestart)
+	}
+	// Render has no restart spelling, so the REST enum answers "other"
+	// (Render's own other-trigger value) while the bex surfaces keep
+	// "restart" verbatim (w4/379).
+	if got := renderTrigger(d.Trigger); got != "other" {
+		t.Errorf("renderTrigger(restart) = %q, want %q", got, "other")
 	}
 
 	// Control: a deploy without commitId still builds the branch head.

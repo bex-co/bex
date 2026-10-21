@@ -77,6 +77,9 @@ function confirmBodyKey(
   if (action === "suspend" && isCron(service)) {
     return "services.suspendCronDescription";
   }
+  if (action === "suspend" && service.type === "static_site") {
+    return "services.confirmSuspendBodyStatic";
+  }
   if (
     body === "services.confirmRestartBody" &&
     service.type === "static_site"
