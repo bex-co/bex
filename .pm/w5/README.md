@@ -22,10 +22,10 @@ User decision 2026-10-20: all five items of the fifth `/pm-brainstorm for w5` pr
 - [x] **m150** — [Render templates with free-form resource names or dotted env keys validate](done/m150/README.md) (7 tasks; 5h15m total) ← round 5 item 3; promoted from w5/169 (w5/m143 corpus)
 - [x] **m151** — [Render edge caching: `serviceDetails.cache.profile`](done/m151/README.md) (8 tasks; 7h total) ← round 5 item 4; replaces w5/m146's unsigned `—` row
 - [x] **m152** — [Changing a service's runtime works (PATCH `serviceDetails.runtime`)](done/m152/README.md) (8 tasks; 6h30m total) ← round 5 item 5; replaces w5/m146's named refusal
+- [ ] **m153** — [Services, Postgres and Key Value created through the API can have a free-form name](m153/README.md) (8 tasks; 5h15m total) ← promoted from w5/173
 - [x] **170** — [A Blueprint service can copy a sibling's `sync: false` variable](done/170.md) (~1h) ← found by w5/m148's corpus run
-- [ ] **171** — [Images from any public registry deploy, as on Render](171.md) (needs a security review; may promote) ← found by w5/m149's corpus run
+- [ ] **171** — [Images from any public registry deploy, as on Render](blocked/171.md) (needs a security review; may promote) ← found by w5/m149's corpus run — **BLOCKED (user risk decision: accept the DNS-rebinding residual of letting the kubelet pull from any public registry host behind a validation-time public-IP check, or require a pull-through egress proxy first; the parity-sufficient code is ready to write once chosen)**
 - [x] **172** — [A Blueprint `dockerContext: /` means the repository root, as on Render](done/172.md) (~30m) ← found by w5/m149's corpus run
-- [ ] **173** — [A service, Postgres or Key Value created through the API can have a free-form name](173.md) (~1h+, may promote) ← found by w5/m150
 
 ## Approved queue — 2026-10-20 (parity-only set)
 
