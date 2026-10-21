@@ -203,9 +203,11 @@ export function SuspendServiceCard({
         description={t(
           isCronJob
             ? "services.suspendCronDescription"
-            : hasUrl
-              ? "services.confirmSuspendBody"
-              : "services.confirmSuspendBodyNoUrl",
+            : service.type === "static_site"
+              ? "services.confirmSuspendBodyStatic"
+              : hasUrl
+                ? "services.confirmSuspendBody"
+                : "services.confirmSuspendBodyNoUrl",
           { name: service.name },
         )}
         cancelLabel={t("services.confirmCancel")}

@@ -421,6 +421,8 @@ describe.each([
     cron: /pauses future scheduled runs\. An active run continues\. To stop it, select Cancel in Recent Runs\./,
     cronResume: "Resuming this cron job resumes scheduled runs.",
     publicConfirm: /stops serving traffic\. Its URL and certificates are kept/,
+    staticConfirm:
+      /stops serving and answers 503 while suspended\. Its URL and certificates are kept/,
     privateConfirm: /scales to zero and stops running/,
     publicCard: /shut it down and stop it from serving traffic/,
     privateCard: /shut it down and stop it from running/,
@@ -433,6 +435,7 @@ describe.each([
     cron: /暂停后续的计划运行。正在运行的任务会继续。如需停止它，请在“最近运行”中选择“取消”/,
     cronResume: "恢复此定时任务会恢复计划运行。",
     publicConfirm: /停止处理流量。其 URL 与证书会保留/,
+    staticConfirm: /停止服务，并在暂停期间返回 503。其 URL 与证书会保留/,
     privateConfirm: /缩容至零并停止运行/,
     publicCard: /关闭它并停止流量服务/,
     privateCard: /关闭它并停止运行/,
@@ -482,16 +485,14 @@ describe.each([
     });
 
     it.each([
-      ["web_service", true],
-      ["static_site", true],
-      ["private_service", false],
-      ["background_worker", false],
-    ] as const)("keeps %s suspension semantics", async (type, publicUrl) => {
+      ["web_service", true, "publicConfirm"],
+      ["static_site", true, "staticConfirm"],
+      ["private_service", false, "privateConfirm"],
+      ["background_worker", false, "privateConfirm"],
+    ] as const)("keeps %s suspension semantics", async (type, publicUrl, confirmCopy) => {
       const { dialog } = await openSuspend({ ...service, type });
       expect(
-        within(dialog).getByText(
-          publicUrl ? copy.publicConfirm : copy.privateConfirm,
-        ),
+        within(dialog).getByText(copy[confirmCopy]),
       ).toBeInTheDocument();
       if (surface === "settings") {
         expect(

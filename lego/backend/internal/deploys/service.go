@@ -601,7 +601,7 @@ func (s *Service) Restart(ctx context.Context, service string) (DeployView, erro
 			return DeployView{}, err
 		}
 	}
-	return s.triggerFetched(ctx, service, a, p, store.TriggerAPI)
+	return s.triggerFetched(ctx, service, a, p, store.TriggerRestart)
 }
 
 // liveCommit is the commit a repo-backed service's live release was built

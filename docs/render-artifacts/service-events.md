@@ -30,7 +30,7 @@ The result supports **19 of the 31 supplied labels** truthfully: 10 existing sou
 | Service Status | Resumed | `suspender_removed` | Existing: accepted user resume intent with actor |
 | Service Status | Suspended | `suspender_added` | Existing: accepted user suspend intent with actor |
 | Service Status | Instance Failed | `server_failed` | Added: previously healthy service gets a concrete readiness/container failure, including a failed new rollout instance; bounded reason only |
-| Service Status | Server Restarted | `server_restarted` | Existing: accepted restart with triggering user |
+| Service Status | Server Restarted | `server_restarted` | Existing: accepted restart with triggering user (w4/379: fires from both restart entry points — `apps.Restart` store-less, `deploys.Restart` store-backed; the restart deploy row's `deploy_started`/`deploy_ended` fire alongside) |
 | Service Status | Service Resumed | `service_resumed` | Added: operator-observed convergence from Hibernated to Running |
 | Service Status | Service Suspended | `service_suspended` | Added: operator-observed convergence to Hibernated |
 | Service Status | Service Recovered | `server_available` | Added: unhealthy-to-healthy observed edge |
