@@ -123,7 +123,10 @@ export function InstanceTypePicker({
             className="space-y-4"
           >
             {free.length > 0 && (
-              <InstanceTypeGroup label={t("services.planPickerFreeGroup")}>
+              <InstanceTypeGroup
+                label={t("services.planPickerFreeGroup")}
+                note={t("services.planPickerFreeSmtp")}
+              >
                 {free.map((it) => (
                   <InstanceTypeCard
                     key={it.id}
@@ -136,7 +139,10 @@ export function InstanceTypePicker({
               </InstanceTypeGroup>
             )}
             {paid.length > 0 && (
-              <InstanceTypeGroup label={t("services.planPickerPaidGroup")}>
+              <InstanceTypeGroup
+                label={t("services.planPickerPaidGroup")}
+                note={t("services.planPickerPaidSmtp")}
+              >
                 {paid.map((it) => (
                   <InstanceTypeCard
                     key={it.id}

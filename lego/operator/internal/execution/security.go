@@ -41,8 +41,15 @@ const (
 	LabelAppNamespace  = "app.bex.co/app-namespace"
 	LabelVerifyImage   = "app.bex.co/verify-image"
 	VerifyImageEnabled = "enabled"
-	NodePoolLabel      = "bex.co/pool"
-	UntrustedNodePool  = "tenant"
+	// LabelFreePlan marks the pods of a free-plan App. The platform's
+	// deny-free-plan-smtp-egress policy (deploy/gitops/base/tenant-node-egress.yaml)
+	// selects it to refuse outbound TCP 25/465/587, as Render does for free
+	// instances (w8/m127). Paid Apps carry no label, so their templates are
+	// unchanged.
+	LabelFreePlan     = "app.bex.co/free-plan"
+	FreePlanValue     = "true"
+	NodePoolLabel     = "bex.co/pool"
+	UntrustedNodePool = "tenant"
 
 	// BuildPoolTaintKey/Value name the taint the dedicated build node pools
 	// (bex-tenant-lg, bex-tenant-burst) register with at bootstrap

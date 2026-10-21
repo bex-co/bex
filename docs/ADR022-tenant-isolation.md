@@ -119,6 +119,15 @@ Two properties make this the right shape:
 
 **Local overlay.** The local CAPD mock cluster runs Calico, not Cilium, so the `cilium.io/v2` CRD is absent; the local kustomize overlay drops this manifest (`$patch: delete`). There, node IPs are Docker-network RFC1918 addresses already covered by the per-App `except`, and there is no cloud-metadata service, so the reachability matrix still holds without the CNP.
 
+## Free-plan SMTP egress (w8/m127)
+
+Render refuses outbound TCP 25, 465 and 587 from free instances ([render.com/docs/free](https://render.com/docs/free)); bex does the same, decided 2026-10-20.
+
+- **Label.** The operator stamps `app.bex.co/free-plan: "true"` (`execution.LabelFreePlan`) on every pod a free-plan App runs: the Deployment template (`appPodLabels` → `appPolicyLabels`), cron runs (`cronPodSpec`) and pre-deploy Jobs (`predeploy.Options.FreePlan`). A held release's served template follows a plan change too (`syncPolicyLabels`). An empty tier is the free plan, as for auto-hibernation (`isFreeApp`). Paid Apps carry no label, so their templates are byte-identical to before.
+- **Deny.** `deny-free-plan-smtp-egress` in `deploy/gitops/base/tenant-node-egress.yaml` is a `CiliumClusterwideNetworkPolicy` selecting that label, with `egressDeny` to entity `world` (the internet, so an in-cluster same-workspace relay stays reachable) on TCP 25/465/587. Deny precedence beats the namespace's `allow-internet-egress`. `enableDefaultDeny.egress: false` keeps it subtractive: DNS, 443, 2525 and same-workspace traffic behave as before. `scripts/gitops-validate.sh` pins its exact shape.
+- **Plan changes.** Upgrading drops the label and downgrading restores it; the pods roll with the new template, as a tier change already does for its resources. The operator rollout adds the label to existing free Apps once, rolling those Apps' pods; paid Apps do not roll.
+- **Paid plans.** 587 and 2525 are open. 25 and 465 stay blocked for every plan by the hosting provider; the user decided on 2026-10-20 not to request the unblock, and no bex config implies they could open ([ADR018](ADR018-render-parity.md) "Outbound SMTP ports").
+
 ## Platform-side lockdown (t004)
 
 Defense-in-depth: even if the tenant-side policy regresses, platform namespaces refuse traffic from the tenant apps namespace.
