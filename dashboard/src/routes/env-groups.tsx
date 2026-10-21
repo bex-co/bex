@@ -6,7 +6,7 @@ import {
   EnvGroupsContentSkeleton,
   EnvGroupsListPageSkeleton,
 } from "@/common/components/route-skeletons";
-import { AlertTriangle, Layers3, Search, X } from "lucide-react";
+import { AlertTriangle, Layers3, Plus, Search, X } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import {
   translatedTitleHead,
@@ -78,6 +78,8 @@ export const Route = createFileRoute("/env-groups")({
 export function EnvGroupsPage() {
   const hydrated = useIsHydrated();
   const { t } = useTranslations();
+  // The header button and the empty state both open the one create dialog.
+  const [createOpen, setCreateOpen] = useState(false);
   const { currentWorkspaceId } = useWorkspace();
   const navigate = useNavigate();
   const { groups, loading, error, refetch } = useEnvGroups();
@@ -121,8 +123,14 @@ export function EnvGroupsPage() {
             {t("envGroups.pageDescription")}
           </p>
         </div>
+        <Button size="sm" onClick={() => setCreateOpen(true)}>
+          <Plus />
+          {t("envGroups.newButton")}
+        </Button>
         <NewEnvGroupDialog
           key={currentWorkspaceId}
+          open={createOpen}
+          onOpenChange={setCreateOpen}
           refetch={refetch}
           services={services}
           servicesLoading={servicesLoading}
@@ -164,6 +172,14 @@ export function EnvGroupsPage() {
               <p className="max-w-md text-sm text-muted-foreground">
                 {t("envGroups.emptyBody")}
               </p>
+              <Button
+                size="sm"
+                className="mt-2"
+                onClick={() => setCreateOpen(true)}
+              >
+                <Plus />
+                {t("envGroups.newButton")}
+              </Button>
             </div>
           ) : (
             <div className="space-y-4">

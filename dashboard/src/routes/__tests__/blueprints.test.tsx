@@ -259,6 +259,16 @@ describe("BlueprintsPage (list)", () => {
     expect(screen.getByText(/auto-register/i)).toBeInTheDocument();
   });
 
+  it("offers New Blueprint from the empty state itself (ADR075 D1)", async () => {
+    const router = renderBlueprintsPage();
+    const buttons = await screen.findAllByRole("button", {
+      name: "New Blueprint",
+    });
+    expect(buttons).toHaveLength(2); // header + empty state
+    await userEvent.click(buttons[1]);
+    expect(router.state.location.pathname).toBe("/blueprints/new");
+  });
+
   it("shows an error state when the query fails", async () => {
     blueprintsState.error = new Error("network down");
     renderBlueprintsPage();
@@ -272,9 +282,11 @@ describe("BlueprintsPage (list)", () => {
   it("navigates to the New Blueprint page (Render-parity create flow)", async () => {
     const router = renderBlueprintsPage();
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: "New Blueprint" }),
-    );
+    // The header's button; an empty list also offers the empty-state one.
+    const [headerButton] = await screen.findAllByRole("button", {
+      name: "New Blueprint",
+    });
+    await userEvent.click(headerButton);
 
     expect(await screen.findByText("new blueprint page")).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/blueprints/new");
