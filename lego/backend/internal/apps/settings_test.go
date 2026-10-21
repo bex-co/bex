@@ -56,9 +56,10 @@ func TestServicePatchTableOrderIsRESTApplicationOrder(t *testing.T) {
 		{"PreDeployCommand"},
 		{"PublishPath"},
 		{"BuildCommand", "StartCommand"},
+		{"Runtime"}, // w5/m152 — after the commands a native runtime needs
 		{"DockerfilePath"},
 		{"DockerContext"}, // w8/m128 — after RootDir, so it resolves against the new root
-		{"Port"}, // w4/m121 — the port stopped being create-only
+		{"Port"},          // w4/m121 — the port stopped being create-only
 		{"NotifyOnFail"},
 		{"NotificationsToSend"}, // MCP-only fill
 		{"RenderSubdomainPolicy"},

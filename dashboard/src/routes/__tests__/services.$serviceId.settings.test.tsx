@@ -163,6 +163,12 @@ vi.mock("@/features/services/hooks/use-edge-cache", () => ({
   }),
 }));
 
+// Runtime section calls setRuntime via Apollo; mock it so section-presence
+// assertions don't need an Apollo client.
+vi.mock("@/features/services/hooks/use-runtime", () => ({
+  useRuntime: () => ({ setRuntime: vi.fn(async () => true), saving: false }),
+}));
+
 // Notifications row (w4/m21) calls setNotifyOnFail via Apollo; mock it so
 // section-presence assertions don't need an Apollo client.
 vi.mock("@/features/services/hooks/use-service-notifications", () => ({
@@ -431,6 +437,7 @@ describe("settings skeleton parity", () => {
       "repo",
       [
         ...W,
+        "runtime",
         "build",
         "domains",
         "networking",
@@ -466,6 +473,7 @@ describe("settings skeleton parity", () => {
       "repo",
       [
         ...W,
+        "runtime",
         "build",
         "outbound-ips",
         "notifications",
@@ -491,7 +499,7 @@ describe("settings skeleton parity", () => {
     [
       "background_worker",
       "repo",
-      [...W, "build", "outbound-ips", "notifications", ...END],
+      [...W, "runtime", "build", "outbound-ips", "notifications", ...END],
     ],
     [
       "background_worker",
@@ -508,7 +516,15 @@ describe("settings skeleton parity", () => {
     [
       "cron_job",
       "repo",
-      ["general", "deploy", "build", "notifications", "deploy-hook", ...END],
+      [
+        "general",
+        "deploy",
+        "runtime",
+        "build",
+        "notifications",
+        "deploy-hook",
+        ...END,
+      ],
     ],
     [
       "cron_job",
@@ -620,6 +636,7 @@ describe("ServiceSettingsPage", () => {
     expect(hrefs).toEqual([
       "#general",
       "#source",
+      "#runtime",
       "#build",
       "#domains",
       "#networking",
@@ -686,6 +703,34 @@ describe("ServiceSettingsPage", () => {
     expect(
       within(section).getByRole("radio", { name: /Common static files/ }),
     ).toHaveAttribute("aria-checked", "true");
+  });
+
+  // Render's Runtime picker is for a repo-backed service: bex-api's setRuntime
+  // refuses a static site (no runtime) and an image-backed service.
+  it.each([
+    ["a static site", { type: "static_site", repo: "https://github.com/a/b" }],
+    ["an image-backed service", { repo: null, runtime: "image" }],
+  ] as const)("offers no Runtime section to %s", async (_, overrides) => {
+    serverState.service = svc(overrides);
+    renderSettings();
+
+    expect(await sectionHrefs()).not.toContain("#runtime");
+    expect(document.getElementById("runtime")).toBeNull();
+  });
+
+  it("renders the Runtime section with the current runtime for a repo-backed service", async () => {
+    serverState.service = svc({
+      repo: "https://github.com/acme/app",
+      runtime: "python",
+      builder: "native",
+    });
+    renderSettings();
+
+    expect(await sectionHrefs()).toContain("#runtime");
+    const section = document.getElementById("runtime")!;
+    expect(
+      within(section).getByRole("combobox", { name: "Runtime" }),
+    ).toHaveTextContent("Python 3");
   });
 
   // static_site is the other publicly-routed type and has no coverage of this

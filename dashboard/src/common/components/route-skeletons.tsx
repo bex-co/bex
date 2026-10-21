@@ -1960,6 +1960,17 @@ function SettingsSectionSkeleton({
           className="h-[650px] sm:h-[530px]"
         />
       );
+    case "runtime":
+      // The Runtime select beside its rebuild note, then Save. Measured in
+      // Chromium (en): the select drops below the note under sm (294px at
+      // 390), sits beside it from sm (210px), and the md sidebar narrows the
+      // card until xl so the note wraps once more (230px at 768 and 1024).
+      return (
+        <SettingsFormCardSkeleton
+          fields={1}
+          className="h-[294px] sm:h-[210px] md:h-[230px] xl:h-[210px]"
+        />
+      );
     case "build": {
       // A cron job's Build card alone, with Auto-Deploy folded in. Every other
       // build shows Build and Deploy cards; a Dockerfile build shows Dockerfile
@@ -1999,16 +2010,19 @@ function SettingsSectionSkeleton({
       );
     }
     case "edge-caching":
-      // Three option cards, a note and Save/Purge. A free plan's note (edge
-      // caching unavailable) wraps to a second line at narrow mobile.
+      // Three option cards, a note and Save/Purge. Measured in Chromium (en):
+      // 520px at 390 (540px when a free plan's unavailable note wraps), 456px
+      // at sm, 488px from md through lg while the sidebar narrows the card,
+      // 436px at xl and 420px from 1440 where the option copy stops wrapping.
+      // That breakpoint is 90rem, not 1440px: Tailwind orders min-[...] among
+      // the named breakpoints only in their rem unit, so a px one lost to xl.
       return (
         <SettingsFormCardSkeleton
           fields={3}
-          className={
-            service.plan === "free"
-              ? "h-[540px] sm:h-[420px]"
-              : "h-[520px] sm:h-[420px]"
-          }
+          className={cn(
+            service.plan === "free" ? "h-[540px]" : "h-[520px]",
+            "sm:h-[456px] md:h-[488px] xl:h-[436px] min-[90rem]:h-[420px]",
+          )}
         />
       );
     case "suspend":
