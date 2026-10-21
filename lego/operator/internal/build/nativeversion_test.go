@@ -103,7 +103,7 @@ func TestResolveNativeVersion(t *testing.T) {
 		{"ruby file: directive falls through", "ruby", nil, map[string]string{"Gemfile": `ruby file: ".ruby-version"`, ".ruby-version": "3.3.1"}, "3.3", ".ruby-version"},
 		{"elixir env", "elixir", map[string]string{"ELIXIR_VERSION": "1.17.3"}, nil, "1.17", "ELIXIR_VERSION=1.17.3"},
 		{"elixir with matching erlang", "elixir", map[string]string{"ELIXIR_VERSION": "1.19", "ERLANG_VERSION": "28.1"}, nil, "1.19", "ELIXIR_VERSION=1.19, ERLANG_VERSION=28.1"},
-		{"go ignores go.mod (Render parity)", "go", nil, map[string]string{"go.mod": "module x\n\ngo 1.26\n"}, "1.24", ""},
+		{"go ignores go.mod (Render parity)", "go", nil, map[string]string{"go.mod": "module x\n\ngo 1.26\n"}, "1.27", ""},
 		{"rust stays on rustup", "rust", map[string]string{"RUSTUP_TOOLCHAIN": "1.80"}, nil, "1", ""},
 	}
 	for _, tc := range cases {
@@ -376,16 +376,17 @@ func TestResolveNativeBun(t *testing.T) {
 		wantErr string
 	}{
 		{"sweep306 BUN_VERSION", map[string]string{"BUN_VERSION": "1.3.4"}, nil, "1.3", "BUN_VERSION=1.3.4", ""},
+		{"Render's default line (w5/m144)", map[string]string{"BUN_VERSION": "1.4.3"}, nil, "1.4", "BUN_VERSION=1.4.3", ""},
 		{"BUN_VERSION wins over the file", map[string]string{"BUN_VERSION": "1.2.20"}, map[string]string{".bun-version": "1.3.0\n"}, "1.2", "BUN_VERSION=1.2.20", ""},
 		{".bun-version", nil, map[string]string{".bun-version": "# pinned\nv1.2.21\n"}, "1.2", ".bun-version", ""},
-		{"bare major", map[string]string{"BUN_VERSION": "1"}, nil, "1.3", "BUN_VERSION=1", ""},
-		{"latest", map[string]string{"BUN_VERSION": "latest"}, nil, "1.3", "BUN_VERSION=latest", ""},
+		{"bare major", map[string]string{"BUN_VERSION": "1"}, nil, "1.4", "BUN_VERSION=1", ""},
+		{"latest", map[string]string{"BUN_VERSION": "latest"}, nil, "1.4", "BUN_VERSION=latest", ""},
 		{"range", map[string]string{"BUN_VERSION": "~1.2.0"}, nil, "1.2", "BUN_VERSION=~1.2.0", ""},
-		{"text lockfile", nil, map[string]string{"bun.lock": "{}"}, "1.3", "bun.lock", ""},
-		{"binary lockfile", nil, map[string]string{"bun.lockb": "\x00"}, "1.3", "bun.lockb", ""},
+		{"text lockfile", nil, map[string]string{"bun.lock": "{}"}, "1.4", "bun.lock", ""},
+		{"binary lockfile", nil, map[string]string{"bun.lockb": "\x00"}, "1.4", "bun.lockb", ""},
 		{"file wins over a lockfile", nil, map[string]string{".bun-version": "1.2", "bun.lock": "{}"}, "1.2", ".bun-version", ""},
 		{"no opt-in", map[string]string{"NODE_VERSION": "22"}, map[string]string{"package.json": "{}"}, "", "", ""},
-		{"unsupported", map[string]string{"BUN_VERSION": "0.8.1"}, nil, "", "", "BUN_VERSION=0.8.1 is not a supported Bun version; supported Bun lines are 1.2, 1.3"},
+		{"unsupported", map[string]string{"BUN_VERSION": "0.8.1"}, nil, "", "", "BUN_VERSION=0.8.1 is not a supported Bun version; supported Bun lines are 1.2, 1.3, 1.4"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			readFile := func(name string) ([]byte, bool) {
