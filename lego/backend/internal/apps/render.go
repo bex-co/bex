@@ -469,6 +469,9 @@ func renderServiceDetails(a AppView, svcType, region string) map[string]any {
 		// pointer is unset, so legacy services read back exactly like Render.
 		details["maxShutdownDelaySeconds"] = a.MaxShutdownDelaySeconds
 	}
+	if a.CacheProfile != "" {
+		details["cache"] = map[string]any{"profile": a.CacheProfile} // w5/m151
+	}
 	if svcType == renderWebService {
 		// Render's maintenanceMode is required on webServiceDetails (never
 		// omitted), unlike the mostly-optional fields above — docs/render-

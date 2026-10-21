@@ -81,6 +81,7 @@ var AppSpecIdentityClasses = map[string]SpecIdentityClass{
 	"FilesFromSecrets":           IdentityArtifact | IdentityRelease,
 	"HealthCheckPath":            IdentityRelease,
 	"MaxShutdownDelaySeconds":    IdentityRelease,
+	"CacheProfile":               IdentityRelease,
 	"AutoDeploy":                 IdentityOperational,
 	"AutoDeployTrigger":          IdentityOperational,
 	"NotifyOnFail":               IdentityOperational,

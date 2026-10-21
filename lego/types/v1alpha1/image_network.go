@@ -37,7 +37,7 @@ const MaxImagePorts = 75
 // under the same image-compatibility policy.
 func IsReservedImagePort(port int32) bool {
 	switch port {
-	case 18012, 18013, 19099:
+	case 18012, 18013, 18014, 19099:
 		return true
 	default:
 		return false

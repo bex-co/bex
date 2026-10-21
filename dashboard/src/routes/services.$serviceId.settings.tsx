@@ -31,6 +31,7 @@ import { MaxShutdownDelayRow } from "@/features/services/components/max-shutdown
 import { ServiceNetworkingPanel } from "@/features/services/components/service-networking-panel";
 import { ServiceOutboundIpsPanel } from "@/features/services/components/service-outbound-ips-panel";
 import { MaintenanceModeSection } from "@/features/services/components/maintenance-mode-section";
+import { EdgeCachingSection } from "@/features/services/components/edge-caching-section";
 import { RegistryCredentialSection } from "@/features/services/components/registry-credential-section";
 import { ServiceSettingsNavigation } from "@/features/services/components/service-settings-navigation";
 import {
@@ -328,6 +329,16 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
               />
             </CardContent>
           </Card>
+        );
+      case "edge-caching":
+        if (!service) return null;
+        return (
+          <EdgeCachingSection
+            key={serviceId}
+            serviceId={serviceId}
+            plan={service.plan}
+            cacheProfile={service.cacheProfile}
+          />
         );
       case "maintenance":
         if (!service) return null;

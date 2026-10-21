@@ -51,6 +51,8 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 	// someone deletes the entry rather than the rationale.
 	excusedVerbs := map[string]string{
 		"apps.Create":                   "its first deploy already appears as deploy_started with trigger.firstBuild",
+		"apps.SetCacheProfile":          "Render's event vocabulary has no edge-cache event (w5/m151); the change is in the workspace audit log",
+		"apps.PurgeCache":               "Render's event vocabulary has no cache-purge event (w5/m151); the purge is in the workspace audit log",
 		"secrets.RestoreEnvironment":    "only ever called inside deploys.Rollback, whose rollback deploy is the event; the env it restores also lands through PatchEnvironment's own config-change record",
 		"apps.Delete":                   "the service and its feed are gone; the row stays in the workspace audit log",
 		"apps.Deploy":                   "maintenance-only Blueprint apply emits its typed field effects; other changes open deploy rows",

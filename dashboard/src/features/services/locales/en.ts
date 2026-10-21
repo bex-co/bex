@@ -1943,6 +1943,91 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Could not update maintenance mode. Try again.",
     description: "Toast on failed setMaintenanceMode mutation",
   },
+  "services.edgeCachingTitle": {
+    message: "Edge Caching",
+    description: "Settings tab edge-caching section title (Render parity)",
+  },
+  "services.edgeCachingDescription": {
+    message:
+      "Cache responses at the edge so repeat requests are served without reaching this service.",
+    description: "Settings tab edge-caching section description",
+  },
+  "services.edgeCachingFileTypesLabel": {
+    message: "Cacheable file types",
+    description: "Edge-caching radio group label",
+  },
+  "services.edgeCachingOptionNone": {
+    message: "None",
+    description: "Edge-caching option: no-cache profile",
+  },
+  "services.edgeCachingOptionNoneDesc": {
+    message: "Serve every response from your service.",
+    description: "Edge-caching no-cache option description",
+  },
+  "services.edgeCachingOptionStatic": {
+    message: "Common static files",
+    description: "Edge-caching option: origin-controlled profile",
+  },
+  "services.edgeCachingOptionStaticDesc": {
+    message:
+      "Cache common static file types such as CSS, JavaScript, images and fonts, unless the response's Cache-Control header says otherwise.",
+    description: "Edge-caching origin-controlled option description",
+  },
+  "services.edgeCachingOptionAll": {
+    message: "All files",
+    description: "Edge-caching option: origin-controlled-all profile",
+  },
+  "services.edgeCachingOptionAllDesc": {
+    message:
+      "Cache every eligible response unless its Cache-Control header says otherwise. Make sure dynamic content sets Cache-Control so it isn't cached.",
+    description:
+      "Edge-caching origin-controlled-all option description, with the dynamic-content warning",
+  },
+  "services.edgeCachingPurgeOnDeploy": {
+    message: "The cache is purged on every deploy.",
+    description: "Note under the edge-caching options",
+  },
+  "services.edgeCachingPaidOnly": {
+    message: "Edge caching is not available for free web services.",
+    description: "Edge-caching free-plan eligibility note",
+  },
+  "services.edgeCachingSave": {
+    message: "Save",
+    description: "Edge-caching save button",
+  },
+  "services.edgeCachingSaving": {
+    message: "Saving…",
+    description: "Edge-caching save button while the mutation is in flight",
+  },
+  "services.edgeCachingSaved": {
+    message: "Edge caching updated.",
+    description: "Toast on successful setCacheProfile mutation",
+  },
+  "services.edgeCachingError": {
+    message: "Could not update edge caching. Try again.",
+    description: "Toast on failed setCacheProfile mutation",
+  },
+  "services.edgeCachingPurgeAction": {
+    message: "Purge cache",
+    description: "Edge-caching purge button and confirm action",
+  },
+  "services.edgeCachingPurgeConfirmTitle": {
+    message: "Purge the edge cache?",
+    description: "Confirm-dialog title for purging the edge cache",
+  },
+  "services.edgeCachingPurgeConfirmBody": {
+    message:
+      "Every cached response is discarded. Until the cache warms up again, requests go to your service.",
+    description: "Confirm-dialog body for purging the edge cache",
+  },
+  "services.edgeCachingPurged": {
+    message: "Cache purged. It restarts with your service's instances.",
+    description: "Toast on successful purgeServiceCache mutation",
+  },
+  "services.edgeCachingPurgeError": {
+    message: "Could not purge the cache. Try again.",
+    description: "Toast on failed purgeServiceCache mutation",
+  },
   "services.maintenanceModeBannerTitle": {
     message: "Maintenance mode is on",
     description: "Service-detail header banner title while in maintenance",

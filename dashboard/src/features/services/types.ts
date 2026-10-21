@@ -287,6 +287,13 @@ export interface ServiceView {
    * `{enabled: false, uri: ""}` even when never configured).
    */
   maintenanceMode: MaintenanceModeView | null;
+  /**
+   * Render's edge cache profile (`serviceDetails.cache.profile`): "no-cache",
+   * "origin-controlled" or "origin-controlled-all" on a web_service, null on
+   * any other type or when not selected (only the detail `server` query
+   * selects it).
+   */
+  cacheProfile?: string | null;
 }
 
 /** Render's `serverPort`: one open port and its protocol (always "TCP" today). */

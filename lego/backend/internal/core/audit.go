@@ -162,6 +162,8 @@ const (
 	AuditVerbSetSourceAndRegistryCredential = "apps.SetSourceAndRegistryCredential"
 	AuditVerbSetPreDeployCommand            = "apps.SetPreDeployCommand"
 	AuditVerbSetMaxShutdownDelay            = "apps.SetMaxShutdownDelay"
+	AuditVerbSetCacheProfile                = "apps.SetCacheProfile"
+	AuditVerbPurgeCache                     = "apps.PurgeCache"
 	AuditVerbSetPublishPath                 = "apps.SetPublishPath"
 	AuditVerbSetRoutes                      = "apps.SetRoutes"
 	AuditVerbSetHeaders                     = "apps.SetHeaders"
@@ -517,6 +519,7 @@ var appConfigVerbs = map[string]bool{
 	AuditVerbSetBuildFilter: true, AuditVerbSetCommands: true,
 	AuditVerbSetSourceAndRegistryCredential: true,
 	AuditVerbSetPreDeployCommand:            true, AuditVerbSetMaxShutdownDelay: true,
+	AuditVerbSetCacheProfile: true, AuditVerbPurgeCache: true,
 	AuditVerbSetPublishPath: true, AuditVerbSetRoutes: true, AuditVerbSetHeaders: true,
 	AuditVerbSetIdleTTL: true, AuditVerbSetDisplayName: true,
 	AuditVerbRegenerateDeployHook: true,

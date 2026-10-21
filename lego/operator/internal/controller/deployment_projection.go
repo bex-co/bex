@@ -177,6 +177,8 @@ type deploymentParams struct {
 	// platform carries the Render default variables' inputs that do not come
 	// from the App (platform_env.go).
 	platform platformEnvInputs
+	// edgeCacheImage runs the edge-cache sidecar; "" for none (edge_cache.go).
+	edgeCacheImage string
 }
 
 // appPodLabels builds the pod template's label set.
@@ -554,6 +556,15 @@ func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymen
 	applyDiskProjection(dep, &container, app)
 	applyDrain(&dep.Spec.Template.Spec, &container, app.Spec.MaxShutdownDelaySeconds, drain)
 	dep.Spec.Template.Spec.Containers = []corev1.Container{container}
+	if p.edgeCacheImage != "" {
+		dep.Spec.Template.Spec.Containers = append(dep.Spec.Template.Spec.Containers, edgeCacheContainer(app, p.edgeCacheImage, p.port, drain))
+		if purged := app.Annotations[appv1alpha1.CachePurgedAtAnnotation]; purged != "" {
+			if dep.Spec.Template.Annotations == nil {
+				dep.Spec.Template.Annotations = map[string]string{}
+			}
+			dep.Spec.Template.Annotations[appv1alpha1.CachePurgedAtAnnotation] = purged
+		}
+	}
 	dep.Spec.Template.Spec.ImagePullSecrets = p.pullSecrets
 	dep.Spec.Template.Spec.AutomountServiceAccountToken = new(false)
 	dep.Spec.Template.Spec.HostUsers = appHostUsers(app.Spec, p.userNamespaces)

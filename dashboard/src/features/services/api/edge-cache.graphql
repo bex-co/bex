@@ -1,0 +1,18 @@
+# Render's Edge Caching for a web service: setCacheProfile picks which
+# responses the edge caches ("no-cache" | "origin-controlled" |
+# "origin-controlled-all"); bex-api refuses free plans and non-web types.
+mutation SetCacheProfile($id: String!, $profile: String!, $confirm: String) {
+  setCacheProfile(id: $id, profile: $profile, confirm: $confirm) {
+    id
+    cacheProfile
+  }
+}
+
+# purgeServiceCache empties the service's edge cache; bex-api refuses it while
+# caching is off.
+mutation PurgeServiceCache($id: String!, $confirm: String) {
+  purgeServiceCache(id: $id, confirm: $confirm) {
+    id
+    cacheProfile
+  }
+}

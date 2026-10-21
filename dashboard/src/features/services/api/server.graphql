@@ -170,6 +170,10 @@ query Server($id: String!) {
       type
       ips
     }
+    # cacheProfile is Render's serviceDetails.cache.profile: "no-cache",
+    # "origin-controlled" or "origin-controlled-all" on a web_service, empty on
+    # every other type. The Settings → Edge Caching section reads it.
+    cacheProfile
     # maintenanceMode is Render's maintenanceMode object (w1/m37): takes a
     # web_service offline behind an interstitial page without suspending it.
     # Always present (never null), even when never configured.

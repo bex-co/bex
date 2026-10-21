@@ -76,7 +76,7 @@ func TestRESTRefusesDeclaredButUnservedFieldsByName(t *testing.T) {
 			`{"name":"app","type":"web_service","image":{"imagePath":"nginx:v1"},"serviceDetails":{"pullRequestPreviewsEnabled":"yes"}}`,
 			"pullRequestPreviewsEnabled"},
 		{"patch runtime", http.MethodPatch, "/v1/services/app", `{"serviceDetails":{"runtime":"node"}}`, "serviceDetails.runtime"},
-		{"patch cache", http.MethodPatch, "/v1/services/app", `{"serviceDetails":{"cache":{"profile":"aggressive"}}}`, "serviceDetails.cache"},
+		{"patch an unknown cache profile", http.MethodPatch, "/v1/services/app", `{"serviceDetails":{"cache":{"profile":"aggressive"}}}`, "cache.profile"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc, _ := newService(nil, sampleApp("app"))

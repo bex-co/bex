@@ -1902,6 +1902,90 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法更新维护模式，请重试。",
     description: "Toast on failed setMaintenanceMode mutation",
   },
+  "services.edgeCachingTitle": {
+    message: "边缘缓存",
+    description: "Settings tab edge-caching section title (Render parity)",
+  },
+  "services.edgeCachingDescription": {
+    message: "在边缘缓存响应，重复请求无需到达此服务即可得到响应。",
+    description: "Settings tab edge-caching section description",
+  },
+  "services.edgeCachingFileTypesLabel": {
+    message: "可缓存的文件类型",
+    description: "Edge-caching radio group label",
+  },
+  "services.edgeCachingOptionNone": {
+    message: "无",
+    description: "Edge-caching option: no-cache profile",
+  },
+  "services.edgeCachingOptionNoneDesc": {
+    message: "每个响应都由你的服务提供。",
+    description: "Edge-caching no-cache option description",
+  },
+  "services.edgeCachingOptionStatic": {
+    message: "常见静态文件",
+    description: "Edge-caching option: origin-controlled profile",
+  },
+  "services.edgeCachingOptionStaticDesc": {
+    message:
+      "缓存 CSS、JavaScript、图片和字体等常见静态文件类型，除非响应的 Cache-Control 头另有指示。",
+    description: "Edge-caching origin-controlled option description",
+  },
+  "services.edgeCachingOptionAll": {
+    message: "所有文件",
+    description: "Edge-caching option: origin-controlled-all profile",
+  },
+  "services.edgeCachingOptionAllDesc": {
+    message:
+      "缓存所有符合条件的响应，除非其 Cache-Control 头另有指示。请确保动态内容设置了 Cache-Control，以免被缓存。",
+    description:
+      "Edge-caching origin-controlled-all option description, with the dynamic-content warning",
+  },
+  "services.edgeCachingPurgeOnDeploy": {
+    message: "每次部署都会清除缓存。",
+    description: "Note under the edge-caching options",
+  },
+  "services.edgeCachingPaidOnly": {
+    message: "免费 Web 服务不支持边缘缓存。",
+    description: "Edge-caching free-plan eligibility note",
+  },
+  "services.edgeCachingSave": {
+    message: "保存",
+    description: "Edge-caching save button",
+  },
+  "services.edgeCachingSaving": {
+    message: "正在保存…",
+    description: "Edge-caching save button while the mutation is in flight",
+  },
+  "services.edgeCachingSaved": {
+    message: "边缘缓存已更新。",
+    description: "Toast on successful setCacheProfile mutation",
+  },
+  "services.edgeCachingError": {
+    message: "无法更新边缘缓存，请重试。",
+    description: "Toast on failed setCacheProfile mutation",
+  },
+  "services.edgeCachingPurgeAction": {
+    message: "清除缓存",
+    description: "Edge-caching purge button and confirm action",
+  },
+  "services.edgeCachingPurgeConfirmTitle": {
+    message: "清除边缘缓存？",
+    description: "Confirm-dialog title for purging the edge cache",
+  },
+  "services.edgeCachingPurgeConfirmBody": {
+    message:
+      "所有已缓存的响应都将被丢弃。在缓存重新预热之前，请求将发送到你的服务。",
+    description: "Confirm-dialog body for purging the edge cache",
+  },
+  "services.edgeCachingPurged": {
+    message: "缓存已清除，它会随服务实例一起重新启动。",
+    description: "Toast on successful purgeServiceCache mutation",
+  },
+  "services.edgeCachingPurgeError": {
+    message: "无法清除缓存，请重试。",
+    description: "Toast on failed purgeServiceCache mutation",
+  },
   "services.maintenanceModeBannerTitle": {
     message: "维护模式已开启",
     description: "Service-detail header banner title while in maintenance",

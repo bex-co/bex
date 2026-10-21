@@ -20,7 +20,7 @@ User decision 2026-10-20: all five items of the fifth `/pm-brainstorm for w5` pr
 - [x] **m148** — [Services see Render's platform environment variables (`RENDER_*`)](done/m148/README.md) (8 tasks; 6h10m total) ← round 5 item 1; w4/m123 t005 shipped a narrower set than Render
 - [x] **m149** — [`PORT` is user-settable like on Render](done/m149/README.md) (8 tasks; 6h total) ← round 5 item 2; ADR018 row 138 unsigned divergence (w2/m95)
 - [x] **m150** — [Render templates with free-form resource names or dotted env keys validate](done/m150/README.md) (7 tasks; 5h15m total) ← round 5 item 3; promoted from w5/169 (w5/m143 corpus)
-- [ ] **m151** — [Render edge caching: `serviceDetails.cache.profile`](m151/README.md) (8 tasks; 7h total) ← round 5 item 4; replaces w5/m146's unsigned `—` row
+- [x] **m151** — [Render edge caching: `serviceDetails.cache.profile`](done/m151/README.md) (8 tasks; 7h total) ← round 5 item 4; replaces w5/m146's unsigned `—` row
 - [ ] **m152** — [Changing a service's runtime works (PATCH `serviceDetails.runtime`)](m152/README.md) (8 tasks; 6h30m total) ← round 5 item 5; replaces w5/m146's named refusal
 - [ ] **170** — [A Blueprint service can copy a sibling's `sync: false` variable](170.md) (~1h) ← found by w5/m148's corpus run
 - [ ] **171** — [Images from any public registry deploy, as on Render](171.md) (needs a security review; may promote) ← found by w5/m149's corpus run

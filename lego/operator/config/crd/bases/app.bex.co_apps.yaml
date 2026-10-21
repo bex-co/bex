@@ -189,6 +189,20 @@ spec:
                 - dockerfile
                 - native
                 type: string
+              cacheProfile:
+                description: |-
+                  CacheProfile is Render's web-service edge caching
+                  (serviceDetails.cache.profile; w5/m151): "no-cache" (the default when
+                  empty) serves every response from the service, "origin-controlled"
+                  caches Render's common static file types and "origin-controlled-all"
+                  every eligible response, each under the response's Cache-Control. Only
+                  a web_service on a paid plan caches; the operator puts a caching proxy
+                  in front of the app container (internal/edgecache).
+                enum:
+                - no-cache
+                - origin-controlled
+                - origin-controlled-all
+                type: string
               cancelRun:
                 description: |-
                   CancelRun requests cancellation of one in-flight cron_job run. The backend

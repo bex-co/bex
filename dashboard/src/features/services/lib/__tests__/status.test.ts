@@ -144,6 +144,7 @@ function server(overrides: Partial<ServerNode> = {}): ServerNode {
     publishPath: null,
     ipAllowList: null,
     maintenanceMode: { __typename: "MaintenanceMode", enabled: false, uri: "" },
+    cacheProfile: "no-cache",
     buildFilter: null,
     runs: null,
     routes: null,
@@ -230,6 +231,7 @@ describe("toServiceView", () => {
       ipAllowListProxiedDomains: null,
       outboundIps: null,
       maintenanceMode: null,
+      cacheProfile: null,
     });
   });
 
@@ -274,6 +276,14 @@ describe("toServiceView", () => {
     expect(
       toServiceView(server({ environmentId: "evm-staging" })).environmentId,
     ).toBe("evm-staging");
+  });
+
+  it("carries the edge cache profile, reading a non-web type's empty one as null", () => {
+    expect(
+      toServiceView(server({ cacheProfile: "origin-controlled" })).cacheProfile,
+    ).toBe("origin-controlled");
+    expect(toServiceView(server({ cacheProfile: "" })).cacheProfile).toBeNull();
+    expect(toServiceView(node()).cacheProfile).toBeNull();
   });
 
   it("carries push deliverability only from the detail query", () => {

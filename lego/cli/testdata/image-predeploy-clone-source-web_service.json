@@ -7,6 +7,9 @@
   "type": "web_service",
   "suspended": "not_suspended",
   "serviceDetails": {
+    "cache": {
+      "profile": "no-cache"
+    },
     "env": "image",
     "envSpecificDetails": {
       "preDeployCommand": "echo QA_PREDEPLOY_MARKER"

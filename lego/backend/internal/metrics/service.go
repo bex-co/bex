@@ -1188,12 +1188,19 @@ func requestUnit(metric string) string {
 
 // podResourceLimits reads each pod's CPU (cores) or memory (bytes) limit, summed
 // across containers, keyed by pod name. A pod with no limit is absent.
+// edgeCacheContainer is the operator's caching sidecar (w5/m151): its
+// resources are the platform's, never counted against the plan.
+const edgeCacheContainer = "edge-cache"
+
 func podResourceLimits(pods []corev1.Pod, metric string) map[string]float64 {
 	out := map[string]float64{}
 	for i := range pods {
 		var total float64
 		var found bool
 		for _, ctr := range pods[i].Spec.Containers {
+			if ctr.Name == edgeCacheContainer {
+				continue // the platform's caching sidecar, not the plan (w5/m151)
+			}
 			if metric == MetricMemory {
 				if v, has := ctr.Resources.Limits[corev1.ResourceMemory]; has {
 					total += float64(v.Value())

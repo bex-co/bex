@@ -1998,6 +1998,19 @@ function SettingsSectionSkeleton({
         </>
       );
     }
+    case "edge-caching":
+      // Three option cards, a note and Save/Purge. A free plan's note (edge
+      // caching unavailable) wraps to a second line at narrow mobile.
+      return (
+        <SettingsFormCardSkeleton
+          fields={3}
+          className={
+            service.plan === "free"
+              ? "h-[540px] sm:h-[420px]"
+              : "h-[520px] sm:h-[420px]"
+          }
+        />
+      );
     case "suspend":
       return <SettingsActionCardSkeleton className={suspendHeight(service)} />;
     case "danger-zone":

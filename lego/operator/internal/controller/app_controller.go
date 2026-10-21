@@ -3197,7 +3197,7 @@ func (r *AppReconciler) applyClusterIPService(ctx context.Context, app *appv1alp
 		return err
 	}
 	if !app.Spec.UsesImagePorts() {
-		target, err := r.servingTargetPort(ctx, app.Namespace, selector)
+		target, err := r.servingTargetPort(ctx, app.Namespace, selector, r.edgeCaches(app))
 		if err != nil {
 			return err
 		}
@@ -3216,15 +3216,24 @@ func (r *AppReconciler) applyClusterIPService(ctx context.Context, app *appv1alp
 // traffic with readiness instead of retargeting ready old pods to a port they
 // do not listen on (w4/m182). A live pod projected before the name existed
 // would drop out of a named Service, so its numeric port is kept until it is
-// gone.
-func (r *AppReconciler) servingTargetPort(ctx context.Context, namespace string, selector map[string]string) (intstr.IntOrString, error) {
+// gone. With edge caching (w5/m151) the target is the cache's listener, held
+// back the same way while a live pod has no cache yet, so turning caching on
+// never empties the Service mid-rollout.
+func (r *AppReconciler) servingTargetPort(ctx context.Context, namespace string, selector map[string]string, cached bool) (intstr.IntOrString, error) {
 	var pods corev1.PodList
 	if err := r.List(ctx, &pods, client.InNamespace(namespace), client.MatchingLabels(selector)); err != nil {
 		return intstr.IntOrString{}, err
 	}
+	target := servingPortName
+	if cached {
+		target = edgeCachePortName
+	}
 	for _, p := range pods.Items {
 		if p.DeletionTimestamp != nil {
 			continue
+		}
+		if target == edgeCachePortName && !podHasPortName(&p, edgeCachePortName) {
+			target = servingPortName
 		}
 		for _, c := range p.Spec.Containers {
 			if c.Name != appContainerName || len(c.Ports) == 0 {
@@ -3235,7 +3244,18 @@ func (r *AppReconciler) servingTargetPort(ctx context.Context, namespace string,
 			}
 		}
 	}
-	return intstr.FromString(servingPortName), nil
+	return intstr.FromString(target), nil
+}
+
+func podHasPortName(p *corev1.Pod, name string) bool {
+	for _, c := range p.Spec.Containers {
+		for _, cp := range c.Ports {
+			if cp.Name == name {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // reconcileSlugService converges the slug-named ClusterIP Service that gives an
