@@ -46,8 +46,7 @@ var deliberateBlueprintDivergences = []string{
 // by a board item; remove an entry when its item ships.
 var knownBlueprintGaps = []string{
 	"which has no such plainly-defined variable", // w5/170: copying a sibling's sync:false variable
-	"is not trusted",                        // w5/171: public registries outside the allowlist (cgr.dev)
-	"dockerContext must be a relative path", // w5/172: dockerContext "/" as the repo root
+	"is not trusted", // w5/171: public registries outside the allowlist (cgr.dev)
 }
 
 // TestRenderExamplesCorpus runs every render.yaml from github.com/render-examples
