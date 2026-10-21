@@ -107,7 +107,8 @@ type PostgresView struct {
 	Status  string `json:"status"` // Render databaseStatus enum
 	// StatusReason says why an unavailable database is unavailable (bex extra,
 	// w4/m170): a fixed sentence per operator failure, never raw error text.
-	// Omitted for every other status.
+	// A free database the expiry suspended says so too (w8/m126). Omitted for
+	// every other status.
 	StatusReason string `json:"statusReason,omitempty"`
 	// StatusReasonCode is the Ready-condition reason behind StatusReason (one
 	// of lego/types' Reason* constants, or one a client may not know yet), so
@@ -140,6 +141,9 @@ type PostgresView struct {
 	Role       string   `json:"role"`
 	CreatedAt  string   `json:"createdAt,omitempty"`
 	UpdatedAt  string   `json:"updatedAt,omitempty"`
+	// ExpiresAt is Render's free-database expiry (ADR009 §Free-plan expiry,
+	// w8/m126). Omitted for a paid plan.
+	ExpiresAt string `json:"expiresAt,omitempty"`
 
 	// Region / DashboardURL mirror the Render fields on services; populated by
 	// the Service.view wrapper (not pgView) so they flow through GraphQL/MCP.
@@ -539,6 +543,20 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 	if status == "unavailable" {
 		reason, reasonCode = core.DatastoreStatusReason(d.Status.Conditions, "database", unavailableReasons)
 	}
+	suspenders := core.Suspenders(d.Spec.Suspended)
+	expiresAt, free := FreeExpiresAt(d)
+	expires := ""
+	if free {
+		expires = expiresAt.Format(time.RFC3339)
+	}
+	if free && d.Spec.Suspended && recordedFreeExpiryStage(d, expiresAt) >= stageExpired {
+		if d.Annotations[annotationFreeExpirySuspended] != "" {
+			suspenders = []string{"billing"}
+		}
+		if status == "suspended" {
+			reason, reasonCode = freeExpiredReason(expiresAt), reasonCodeFreeExpired
+		}
+	}
 	// ipAllowList is required in Render's schema — an empty stored list
 	// serializes as [], never as an absent key (core.AllowListOrEmpty, w6/m109).
 	return PostgresView{
@@ -556,9 +574,10 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		HighAvailabilityEnabled: d.Status.HighAvailabilityEnabled,
 		ReadReplicas:            replicas,
 		Suspended:               core.SuspendedEnum(d.Spec.Suspended),
-		Suspenders:              core.Suspenders(d.Spec.Suspended),
+		Suspenders:              suspenders,
 		Role:                    "primary",
 		CreatedAt:               created,
+		ExpiresAt:               expires,
 		UpdatedAt:               resourcemeta.UpdatedAt(d),
 		ExternalHost:            d.Status.ExternalHost,
 		Public:                  d.Spec.Public,
@@ -842,6 +861,12 @@ func (s *Service) DeletePostgres(ctx context.Context, name string) error {
 	if err := s.AuthorizeDatabaseFresh(ctx, core.RelCanCreate, d); err != nil {
 		return err
 	}
+	return s.deleteDatabase(ctx, d)
+}
+
+// deleteDatabase is every Postgres delete after its authorization: the user's
+// DeletePostgres and the free-expiry sweeper's (w8/m126).
+func (s *Service) deleteDatabase(ctx context.Context, d *appv1alpha1.Database, opts ...client.DeleteOption) error {
 	// Recorded first, and required: once the CR is gone the meters cannot
 	// find the hours it still ran (w4/m173). A record for a delete that then
 	// fails only re-meters hours the live pass also writes, idempotently.
@@ -850,7 +875,7 @@ func (s *Service) DeletePostgres(ctx context.Context, name string) error {
 			return core.HideCause(fmt.Errorf("%w: could not retain %s's usage before deleting it; retry", core.ErrUnavailable, d.Name), err)
 		}
 	}
-	return s.Client.Delete(ctx, d)
+	return s.Client.Delete(ctx, d, opts...)
 }
 
 // PostgresConnectionInfo assembles the internal + external connection strings
@@ -1741,6 +1766,7 @@ func (s *Service) patchDatabaseObj(ctx context.Context, d *appv1alpha1.Database,
 	before := d.DeepCopy()
 	patch := client.MergeFrom(d.DeepCopy())
 	mutate(d)
+	SyncFreeClock(before.Spec.Plan, d, s.Now())
 	// The mark names the generation this write lands at (before+1). This is
 	// a plain merge patch, not KV's optimistic-locked one: a write that
 	// raced in between makes the mark name a stale generation, which

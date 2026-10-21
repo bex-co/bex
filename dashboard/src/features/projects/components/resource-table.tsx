@@ -16,6 +16,7 @@ import { ServiceStatusBadge } from "@/features/services/components/service-statu
 import { ServiceTypeBadge } from "@/features/services/components/service-type-badge";
 import { ServiceRowActions } from "@/features/services/components/service-row-actions";
 import { DatabaseStatusBadge } from "@/features/databases/components/database-status-badge";
+import { DatabaseExpiryHint } from "@/features/databases/components/database-expiry";
 import { DatabaseRowActionsWithCapabilities } from "@/features/databases/components/database-row-actions";
 import { KeyValueStatusBadge } from "@/features/keyvalue/components/key-value-status-badge";
 import { KeyValueRowActionsWithCapabilities } from "@/features/keyvalue/components/key-value-row-actions";
@@ -314,7 +315,14 @@ function ResourceStatus({ row }: { row: ResourceRow }) {
   if (row.kind === "service" && row.service)
     return <ServiceStatusBadge service={row.service} />;
   if (row.kind === "database" && row.database)
-    return <DatabaseStatusBadge database={row.database} />;
+    return (
+      <span className="inline-flex items-center gap-2">
+        <DatabaseStatusBadge database={row.database} />
+        {row.database.expiresAt ? (
+          <DatabaseExpiryHint expiresAt={row.database.expiresAt} />
+        ) : null}
+      </span>
+    );
   if (row.kind === "keyvalue" && row.keyValue)
     return <KeyValueStatusBadge keyValue={row.keyValue} />;
   return <UnknownValue />;

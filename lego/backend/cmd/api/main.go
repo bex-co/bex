@@ -426,6 +426,9 @@ func main() {
 	// The Blueprint recovery sweep settles sync runs abandoned by process
 	// loss (w8/m37 t004). No-op unless the control-plane store is wired.
 	go srv.BlueprintRecovery.Run(ctx)
+	// Free Postgres expiry (w8/m126): warn, suspend at expiresAt, delete after
+	// the grace period.
+	go srv.PostgresExpiry.Run(ctx)
 	// Durable Blueprint auto-sync worker (w8/m38): claims intents accepted at
 	// the signed git webhook. No-op unless Blueprints store is wired.
 	go srv.BlueprintAutoSync.Run(ctx)

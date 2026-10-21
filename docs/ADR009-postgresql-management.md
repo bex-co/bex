@@ -145,11 +145,29 @@ REST, GraphQL `createDatabase`, MCP `create_postgres`, Blueprint `databaseName`/
 
 Ship only what fits the current single `cx33` (8 GB) node — single-instance plans differing by resources + backup:
 
-- **free** — 256Mi/0.1CPU/1Gi, `instances:1`, no backup, **30-day TTL** (a control-plane sweeper — else "free forever" eats the cluster, which is why Render expires them).
+- **free** — 256Mi/0.1CPU/1Gi, `instances:1`, no backup, **30-day TTL** (a control-plane sweeper — else "free forever" eats the cluster, which is why Render expires them). The contract is [§Free-plan expiry](#free-plan-expiry-w8m126).
 - **basic-256mb** — 256Mi/0.1CPU, `instances:1`, daily `ScheduledBackup`.
 - **basic-1gb** — 1Gi/0.5CPU, `instances:1`, daily backup.
 
 The first cut included the external URL because it is central to the Render experience; the original Traefik TCP route was later replaced by the protocol-aware metered proxy in §3.
+
+### Free-plan expiry (w8/m126)
+
+Render's rules, from [render.com/docs/free](https://render.com/docs/free) (read 2026-10-20) and the pinned spec's `postgres.expiresAt` / `postgresDetail.expiresAt` ("The time at which the database will be expire. Applies to free tier databases only."):
+
+| Rule | Render | bex |
+| --- | --- | --- |
+| Clock | "Free Render Postgres databases expire 30 days after creation." | `expiresAt` = the free clock's start + 30 days. The start is the creation time, or the time of a change to `free` (`bex.co/free-since`). |
+| `expiresAt` field | Free databases only. | RFC 3339 UTC on REST, GraphQL and MCP for a `free` database; omitted for every paid plan. |
+| At expiry | "An expired Free database is inaccessible unless you upgrade it to a paid compute plan." | The sweeper suspends it (CNPG hibernation: compute stops, PVC and credentials kept). It reads `suspended` with suspenders `["billing"]` and a `statusReason`. Resume is refused (`POSTGRES_FREE_EXPIRED`) until the plan is paid. |
+| Grace | 14 days to upgrade, then Render deletes the database and its data. | Deleted at `expiresAt` + 14 days through the same path as a user delete: usage retirement recorded first, the CR delete cascades the cluster, PVC and Secret. |
+| Notifications | Email as expiry approaches and as the grace period's end approaches. | Workspace owners are emailed 7 days before `expiresAt`, at expiry, and 3 days before deletion. |
+| Upgrade | Any paid plan removes the expiry. | A change to a paid plan drops `expiresAt` and the expiry state, and resumes a database the expiry suspended. A database the user suspended stays suspended. |
+| Suspension | Not stated for databases. | A user suspension does not pause the clock. |
+
+**Once only.** Every stage (`warned`, `expired`, `final-warned`, `deleted`) is claimed by writing `bex.co/free-expiry: <stage>@<expiresAt>` with an optimistic-concurrency `Update` of the CR, then performed. A replica whose write conflicts skips the database, so a warning is mailed once and a delete runs once across bex-api replicas. The value names the `expiresAt` it belongs to, so a database whose clock restarts (a later change back to `free`) starts its stages again. Each stage writes an audit row (`postgres.FreeExpiry{Warned,Expired,FinalWarned,Deleted}`, caller `free-expiry-sweeper`).
+
+**Rollout window.** Free databases created before this rule existed are not expired early: the clock's start is clamped to the rollout date `2026-10-27T00:00:00Z`, so none expires before 2026-11-26 or is deleted before 2026-12-10. The 7-day warning is the announcement.
 
 ## Alternatives considered
 

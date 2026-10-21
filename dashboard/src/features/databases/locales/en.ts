@@ -470,6 +470,40 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Created",
     description: "Database detail metadata row label (relative age)",
   },
+  "databases.metaExpires": {
+    message: "Expires",
+    description:
+      "Details row: when a free database expires (Render's expiresAt, w8/m126)",
+  },
+  "databases.expirySoon": {
+    message:
+      "This free database expires on {expiresAt} and then stops serving.",
+    description: "Warning within 7 days of a free database's expiry",
+  },
+  "databases.expiryExpired": {
+    message:
+      "This free database has expired and is suspended. It and its data will be deleted on {deleteAt}.",
+    description:
+      "Warning on an expired free database during its 14-day grace period",
+  },
+  "databases.expiryUpgrade": {
+    message: "Upgrade to a paid plan",
+    description: "Link from the expiry warning to the Plan section",
+  },
+  "databases.expiryHintSoon": {
+    message: "Expires soon",
+    description: "List-row hint on a free database within 7 days of expiry",
+  },
+  "databases.expiryHintExpired": {
+    message: "Expired",
+    description: "List-row hint on an expired free database",
+  },
+  "databases.statusReasonFreeExpired": {
+    message:
+      "This free database has expired. Upgrade it to a paid plan to restore it.",
+    description:
+      "Why a suspended database is suspended: its free plan expired (bex-api statusReasonCode POSTGRES_FREE_EXPIRED, w8/m126)",
+  },
   "databases.yes": {
     message: "Yes",
     description: "Metadata value for a true boolean field",

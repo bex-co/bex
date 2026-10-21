@@ -461,6 +461,37 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "创建时间",
     description: "Database detail metadata row label (relative age)",
   },
+  "databases.metaExpires": {
+    message: "到期时间",
+    description:
+      "Details row: when a free database expires (Render's expiresAt, w8/m126)",
+  },
+  "databases.expirySoon": {
+    message: "该免费数据库将于 {expiresAt} 到期，届时将停止服务。",
+    description: "Warning within 7 days of a free database's expiry",
+  },
+  "databases.expiryExpired": {
+    message: "该免费数据库已到期并被暂停。它及其数据将于 {deleteAt} 被删除。",
+    description:
+      "Warning on an expired free database during its 14-day grace period",
+  },
+  "databases.expiryUpgrade": {
+    message: "升级到付费规格",
+    description: "Link from the expiry warning to the Plan section",
+  },
+  "databases.expiryHintSoon": {
+    message: "即将到期",
+    description: "List-row hint on a free database within 7 days of expiry",
+  },
+  "databases.expiryHintExpired": {
+    message: "已到期",
+    description: "List-row hint on an expired free database",
+  },
+  "databases.statusReasonFreeExpired": {
+    message: "该免费数据库已到期。升级到付费规格即可恢复。",
+    description:
+      "Why a suspended database is suspended: its free plan expired (bex-api statusReasonCode POSTGRES_FREE_EXPIRED, w8/m126)",
+  },
   "databases.yes": {
     message: "是",
     description: "Metadata value for a true boolean field",

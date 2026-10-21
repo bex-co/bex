@@ -458,6 +458,7 @@ export type Database = {
   diskAutoscalingEnabled: Maybe<Scalars['Boolean']['output']>;
   diskSizeGB: Maybe<Scalars['Int']['output']>;
   environmentId: Maybe<Scalars['String']['output']>;
+  expiresAt: Maybe<Scalars['String']['output']>;
   externalHost: Maybe<Scalars['String']['output']>;
   highAvailabilityEnabled: Maybe<Scalars['Boolean']['output']>;
   id: Maybe<Scalars['String']['output']>;
@@ -959,6 +960,7 @@ export type LogEntry = {
   level: Maybe<Scalars['String']['output']>;
   message: Maybe<Scalars['String']['output']>;
   method: Maybe<Scalars['String']['output']>;
+  requestId: Maybe<Scalars['String']['output']>;
   statusCode: Maybe<Scalars['String']['output']>;
   timestamp: Maybe<Scalars['String']['output']>;
   type: Maybe<Scalars['String']['output']>;
