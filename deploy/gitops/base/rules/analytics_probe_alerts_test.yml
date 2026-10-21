@@ -1,7 +1,7 @@
 # AnalyticsDatasourceProbeStale: three missed 10-minute probe runs (>30m) fire;
 # a recent success, a young never-successful probe, a suspended probe, a probe of
 # the same name elsewhere, and no probe at all (the local overlay) stay quiet.
-# Extract alerting_rules.yml from prometheus.yaml via scripts/gitops-validate.sh.
+# Runs against deploy/gitops/base/rules/alerting_rules.yml via scripts/gitops-validate.sh.
 rule_files:
   - alerting_rules.yml
 

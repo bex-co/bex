@@ -48,10 +48,8 @@ fail() { printf '\033[1;31mFAIL: %s\033[0m\n' "$*" >&2; exit 1; }
 # ── 1. Rule logic (offline) ──────────────────────────────────────────────────
 say "1. promtool: rule pack checks + unit tests"
 if command -v promtool >/dev/null 2>&1; then
-  # Same single-yq extraction gitops-validate.sh runs (from_yaml re-parses the
-  # helm block-scalar string in-process); keep the two in sync if the path moves.
-  yq '.spec.source.helm.values | from_yaml | {"groups": .serverFiles."alerting_rules.yml".groups}' \
-    deploy/gitops/base/prometheus.yaml >"$TMP/alerting_rules.yml"
+  # The rule pack's single source (w3/m177), same file gitops-validate.sh tests.
+  cp deploy/gitops/base/rules/alerting_rules.yml "$TMP/alerting_rules.yml"
   cp deploy/gitops/base/rules/alerts_test.yml "$TMP/alerts_test.yml"
   ( cd "$TMP" && promtool check rules alerting_rules.yml && promtool test rules alerts_test.yml ) \
     || fail "rule pack failed promtool"

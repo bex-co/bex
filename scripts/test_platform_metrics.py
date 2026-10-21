@@ -415,7 +415,33 @@ def main():
                 )
                 databases.extend(yaml_objects(clusters, 'select(.kind == "Cluster")'))
             assert databases, "Platform Cluster inventory must not be empty"
-            (temporary / "alerting_rules.yml").write_text(config["alerting_rules.yml"])
+            # The rule pack is a mounted ConfigMap, not chart values (w3/m177):
+            # Prometheus must load it from /etc/rules and the reloader must
+            # watch that directory, or rule edits silently stop applying.
+            # The chart always ships an empty default alerting_rules.yml key.
+            inline_rules = yaml_objects(config.get("alerting_rules.yml", "{}"))[0] or {}
+            assert not inline_rules.get("groups"), "rule pack must not return to the inline values"
+            assert "/etc/rules/alerting_rules.yml" in prometheus["rule_files"]
+            server = next(d for d in yaml_objects(resources, 'select(.kind == "Deployment")')
+                          if d["metadata"]["name"] == "prometheus-server")
+            pod = server["spec"]["template"]["spec"]
+            rule_volumes = {v["name"] for v in pod["volumes"]
+                            if v.get("configMap", {}).get("name") == "prometheus-alerting-rules"}
+            assert rule_volumes, "prometheus-alerting-rules ConfigMap is not mounted"
+            containers = {c["name"]: c for c in pod["containers"]}
+            assert any(m["mountPath"] == "/etc/rules" and m["name"] in rule_volumes
+                       for m in containers["prometheus-server"]["volumeMounts"]), "rule pack not mounted at /etc/rules"
+            reloader = next(c for name, c in containers.items() if "configmap-reload" in name)
+            assert "--watched-dir=/etc/rules" in reloader["args"], "configmap-reload does not watch /etc/rules"
+            assert any(m["mountPath"] == "/etc/rules" for m in reloader["volumeMounts"]), "reloader cannot see /etc/rules"
+            rendered_base = subprocess.check_output(["kubectl", "kustomize", "deploy/gitops/base"], text=True, cwd=ROOT)
+            generated = [cm for cm in yaml_objects(rendered_base, 'select(.kind == "ConfigMap")')
+                         if cm["metadata"]["name"] == "prometheus-alerting-rules"]
+            assert len(generated) == 1 and generated[0]["metadata"]["namespace"] == "monitoring", \
+                "base kustomization must generate monitoring/prometheus-alerting-rules"
+            pack = (ROOT / "deploy/gitops/base/rules/alerting_rules.yml").read_text()
+            assert generated[0]["data"]["alerting_rules.yml"] == pack, "generated ConfigMap differs from the rule file"
+            (temporary / "alerting_rules.yml").write_text(pack)
             fixture["rule_files"].append("alerting_rules.yml")
             fixture["tests"][0]["promql_expr_test"].append({
                 "expr": "bex:platform_database_backup_expected",
