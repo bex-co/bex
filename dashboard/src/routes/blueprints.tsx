@@ -117,6 +117,13 @@ function BlueprintsListPage() {
               <p className="mt-1 text-sm text-muted-foreground">
                 {t("blueprints.emptyBody")}
               </p>
+              <Button
+                size="sm"
+                className="mt-4"
+                onClick={() => void navigate({ to: "/blueprints/new" })}
+              >
+                {t("blueprints.createButton")}
+              </Button>
             </div>
           ) : (
             <Card>

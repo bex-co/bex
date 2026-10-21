@@ -83,6 +83,38 @@ const en: Record<string, TranslationEntry> = {
     description:
       "Screen-reader status while the wall forwards a workspace that needs no payment step",
   },
+  "onboarding.gettingStartedTitle": {
+    message: "Get started with bex",
+    description: "Getting-started checklist title on an empty workspace Overview",
+  },
+  "onboarding.gettingStartedSubtitle": {
+    message: "A few steps to your first deploy.",
+    description: "Getting-started checklist subtitle",
+  },
+  "onboarding.gettingStartedDismiss": {
+    message: "Dismiss getting started",
+    description: "Accessible label of the getting-started checklist's dismiss button",
+  },
+  "onboarding.gettingStartedDone": {
+    message: "Done",
+    description: "Accessible label of a completed checklist item's icon",
+  },
+  "onboarding.gettingStartedPending": {
+    message: "Not done yet",
+    description: "Accessible label of a pending checklist item's icon",
+  },
+  "onboarding.gettingStarted.createService": {
+    message: "Create your first service",
+    description: "Checklist item linking to the new-service flow",
+  },
+  "onboarding.gettingStarted.connectGithub": {
+    message: "Connect GitHub to deploy from a repository",
+    description: "Checklist item linking to Settings → Integrations",
+  },
+  "onboarding.gettingStarted.inviteTeammate": {
+    message: "Invite a teammate",
+    description: "Checklist item linking to workspace settings (team)",
+  },
 };
 
 export default en;

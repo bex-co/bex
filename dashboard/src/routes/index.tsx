@@ -15,6 +15,7 @@ import { RESOURCE_POLL_INTERVAL_MS } from "@/common/lib/polling";
 import { Plus } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
+import { GettingStartedCard } from "@/features/onboarding/components/getting-started-card";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Button } from "@/common/components/ui/button";
 import {
@@ -254,12 +255,21 @@ export function HomePage() {
               <AlertDescription>{t("projects.errorBody")}</AlertDescription>
             </Alert>
           ) : showEmpty ? (
-            <div className="py-8 text-center">
-              <p className="font-medium">{t("projects.emptyTitle")}</p>
-              <p className="text-sm text-muted-foreground">
-                {t("projects.emptyBody")}
-              </p>
-            </div>
+            <>
+              <GettingStartedCard />
+              <div className="py-8 text-center">
+                <p className="font-medium">{t("projects.emptyTitle")}</p>
+                <p className="text-sm text-muted-foreground">
+                  {t("projects.emptyBody")}
+                </p>
+                <Button asChild size="sm" className="mt-4">
+                  <Link to="/services/new">
+                    <Plus className="size-4" />
+                    {t("projects.emptyCreateService")}
+                  </Link>
+                </Button>
+              </div>
+            </>
           ) : (
             <>
               <section className="space-y-3">

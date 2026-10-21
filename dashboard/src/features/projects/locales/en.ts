@@ -111,6 +111,10 @@ const enProjects: Record<string, TranslationEntry> = {
     message: "Create a service, database, or key value store to get started.",
     description: "Empty state body on the unified Projects page",
   },
+  "projects.emptyCreateService": {
+    message: "Create a service",
+    description: "Primary action of the empty Projects page (ADR075 D1)",
+  },
   "projects.newButton": {
     message: "New",
     description: "Button that opens the new-resource menu",

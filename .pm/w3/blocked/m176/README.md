@@ -1,24 +1,24 @@
 # w3 · m176 — New workspaces get actionable empty states and a getting-started checklist (ADR075 D1+D2)
 
-**Worker:** worker3 **Goal:** a new account that clears the email and card gates lands on an Overview that tells it what to do next and lets it do it — every new-user-path empty state has a working primary action, and a dismissible checklist tracks verify → card → first service → GitHub → teammate **Status:** todo
+**Worker:** worker3 **Goal:** a new account that clears the email and card gates lands on an Overview that tells it what to do next and lets it do it — every new-user-path empty state has a working primary action, and a dismissible checklist tracks verify → card → first service → GitHub → teammate **Status:** blocked — t001–t003, t007, t008 done (shipped); t004 screenshots + t005 live walk need `dev-3` (mock cluster down), t006 Render comparison needs a render.com account; t009 closeout follows
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Give `EmptyState` an action slot and move the three new-user empties onto it | 30m | — |
-| t002 | Primary actions on the Overview, Blueprints and Env groups empty states | 45m | t001 |
-| t003 | Getting-started checklist on Overview for zero-resource workspaces | 1h30m | t001 |
+| t001 | Give `EmptyState` an action slot and move the three new-user empties onto it — **DONE** | 30m | — |
+| t002 | Primary actions on the Overview, Blueprints and Env groups empty states — **DONE** | 45m | t001 |
+| t003 | Getting-started checklist on Overview for zero-resource workspaces — **DONE** | 1h30m | t001 |
 | t004 | Pending state that matches the ready layout at desktop and narrow mobile | 40m | t003 |
 | t005 | Live first-run walk on dev-3 with a fresh account | 45m | t002, t004 |
 | t006 | Render parity | 20m | t005 |
-| t007 | Simplify | 15m | t006 |
-| t008 | Test coverage | 40m | t006 |
+| t007 | Simplify — **DONE** | 15m | t006 |
+| t008 | Test coverage — **DONE** | 40m | t006 |
 | t009 | Closeout | 10m | t007, t008 |
 
 ## Definition of done
 
-- On dev-3, a freshly registered account's Overview shows the checklist; each item's state is correct before and after its action (verify email, add card, create a service, connect GitHub, invite a teammate), and the card disappears once dismissed — persisted across reload, per workspace, with no backend state.
+- On dev-3, a freshly registered account's Overview shows the checklist; each item's state is correct before and after its action (create a service, connect GitHub, invite a teammate — verify-email/add-card/sample dropped, see ADR075 §D1 + D2 implementation), and the card disappears once dismissed — persisted across reload, per workspace, with no backend state.
 - The Overview, Blueprints and Env groups empty states each show a primary action that opens the right create flow (en and zh).
 - Pending and ready screenshots match at 1440 and 390 widths (AGENTS.md skeleton rule).
 - Component tests cover every checklist item state, dismissal persistence and the empty-state actions; `yarn typecheck && yarn lint && yarn test` pass.
