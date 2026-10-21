@@ -24,10 +24,7 @@ NS=auth
 PF_PID=""
 
 if [ -z "${OPENFGA_PRESHARED_KEY:-}" ] && [ -f .env ]; then
-  set -a
-  # shellcheck disable=SC1091
-  source ./.env
-  set +a
+  . scripts/lib/env-file.sh && bex_load_env ./.env || exit 1
 fi
 key="${OPENFGA_PRESHARED_KEY:-}"
 [ -n "$key" ] || { echo "error: OPENFGA_PRESHARED_KEY is missing or empty (.env or environment)" >&2; exit 1; }

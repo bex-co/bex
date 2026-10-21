@@ -49,10 +49,7 @@ PF_LOG=""
 env_bootstrap_secret="${BEX_BOOTSTRAP_CLIENT_SECRET:-}"
 env_obs_secret="${BEX_OBS_OAUTH_CLIENT_SECRET:-}"
 if { [ -z "$env_bootstrap_secret" ] || [ -z "$env_obs_secret" ]; } && [ -f .env ]; then
-  set -a
-  # shellcheck disable=SC1091
-  source ./.env
-  set +a
+  . scripts/lib/env-file.sh && bex_load_env ./.env || exit 1
 fi
 secret="${env_bootstrap_secret:-${BEX_BOOTSTRAP_CLIENT_SECRET:-}}"
 obs_secret="${env_obs_secret:-${BEX_OBS_OAUTH_CLIENT_SECRET:-}}"

@@ -1,25 +1,25 @@
 # w3 · m173 — Production credentials reach only main-branch production jobs
 
-**Worker:** worker3 **Goal:** no workflow on a non-main branch, and no job outside its `production-*` GitHub environment, can read a production credential; the environment gates ADR080 declared and ADR083 relies on actually hold; a group- or world-readable local `.env` is refused **Status:** todo
+**Worker:** worker3 **Goal:** no workflow on a non-main branch, and no job outside its `production-*` GitHub environment, can read a production credential; the environment gates ADR080 declared and ADR083 relies on actually hold; a group- or world-readable local `.env` is refused **Status:** blocked — t001–t004, t006, t008, t009 done; t005 live GitHub settings apply needs your authorization, t007 live proof and t010 closeout follow it
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Map every production secret to the jobs that read it | 30m | — |
-| t002 | Decide the gate shape; amend ADR083 obligation 5 and ADR019 §Decision 5 | 30m | t001 |
-| t003 | Move every production-secret job into its environment | 45m | t002 |
-| t004 | Fail closed on a production secret outside a production environment; scheduled drift check | 1h | t003 |
+| t001 | Map every production secret to the jobs that read it — **DONE** | 30m | — |
+| t002 | Decide the gate shape; amend ADR083 obligation 5 and ADR019 §Decision 5 — **DONE** | 30m | t001 |
+| t003 | Move every production-secret job into its environment — **DONE** | 45m | t002 |
+| t004 | Fail closed on a production secret outside a production environment; scheduled drift check — **DONE** | 1h | t003 |
 | t005 | Apply the GitHub settings: environments, branch policies, reviewers, secret scope (needs your authorization) | 45m | t003 |
-| t006 | Refuse a group- or world-readable `.env` in every loader | 40m | t002 |
+| t006 | Refuse a group- or world-readable `.env` in every loader — **DONE** | 40m | t002 |
 | t007 | Live proof: a branch probe sees no production secret; main stays green | 45m | t004, t005, t006 |
-| t008 | Simplify | 15m | t007 |
-| t009 | Test coverage | 30m | t007 |
+| t008 | Simplify — **DONE** | 15m | t007 |
+| t009 | Test coverage — **DONE** | 30m | t007 |
 | t010 | Closeout | 10m | t008, t009 |
 
 ## Definition of done
 
-- `gh api repos/bex-co/bex/environments` shows every `production-*` environment with a main-only deployment-branch policy and exactly the reviewer set t002 records; `production-snapshot` (referenced by `snapshot.yml:37`) exists.
+- `gh api repos/bex-co/bex/environments` shows every `production-*` environment in `scripts/production-secrets.txt` with a main-only deployment-branch policy (no reviewer requirement — t002, `#ENV-REVIEWERS`); `production-snapshot` and `production-observe` exist; `scripts/github-environments-drift.sh` exits 0 against the live repo.
 - No production-class secret (the t001/t002 list) remains at repository scope; a names-only listing of repository and environment secrets is recorded.
 - A `workflow_dispatch` probe on a throwaway branch evaluates `secrets.BAO_ROOT_TOKEN != ''` as `false` (boolean only, never the value); run id recorded, branch deleted.
 - `scripts/github-actions-validate.sh` fails on a fixture job that reads a production-class secret without a `production-*` environment, and the scheduled drift check opens one tracking issue on a fixture drift and closes it on recovery.

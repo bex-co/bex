@@ -26,11 +26,7 @@ restore_require_digest_image() {
 restore_load_dotenv() {
   local repo_root="$1"
   if [ "${RESTORE_SKIP_DOTENV:-0}" != "1" ] && [ -f "$repo_root/.env" ]; then
-    set -a
-    # Repository-local, gitignored operator config.
-    # shellcheck disable=SC1091
-    source "$repo_root/.env"
-    set +a
+    . "$repo_root/scripts/lib/env-file.sh" && bex_load_env "$repo_root/.env" || return 1
   fi
   # Repository config names the shared backup-plane identity TF_STATE_*;
   # AWS CLI consumes the conventional names. Export aliases without printing.

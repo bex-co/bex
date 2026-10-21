@@ -34,10 +34,7 @@ secret_name="${BEX_STRIPE_SECRET_NAME:-bex-stripe}"
 
 env_file="${BEX_STRIPE_ENV_FILE:-.env}"
 if [ -f "$env_file" ]; then
-  set -a
-  # shellcheck disable=SC1091
-  source "$env_file"
-  set +a
+  . scripts/lib/env-file.sh && bex_load_env "$env_file" || exit 1
 fi
 
 require() {
