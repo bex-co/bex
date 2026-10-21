@@ -165,9 +165,12 @@ func main() {
 			os.Exit(1)
 		}
 		resolver := staticserver.NewCachedResolver(apps, namespace, baseDomain)
-		go resolver.Run(ctx, resync, changed, func(err error) {
+		if err := resolver.Start(ctx, resync, changed, func(err error) {
 			setupLog.Error(err, "refresh static-site snapshot")
-		})
+		}); err != nil {
+			setupLog.Error(err, "build the first static-site snapshot")
+			os.Exit(1)
+		}
 		site = staticserver.New(resolver, origin, cacheBytes)
 	}
 

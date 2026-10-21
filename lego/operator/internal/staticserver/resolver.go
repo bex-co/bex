@@ -109,6 +109,19 @@ func (c *CachedResolver) Refresh(ctx context.Context) error {
 	return nil
 }
 
+// Start builds the first snapshot synchronously, then keeps it fresh in the
+// background (Run). The static-server's readiness is a TCP probe on the
+// serving port, so the first snapshot must exist before the listener opens;
+// otherwise a fresh replica (a roll, a drain, the second of two) answers live
+// hosts as unknown until its first background refresh lands (w3/m175).
+func (c *CachedResolver) Start(ctx context.Context, interval time.Duration, changed <-chan struct{}, onErr func(error)) error {
+	if err := c.Refresh(ctx); err != nil {
+		return err
+	}
+	go c.Run(ctx, interval, changed, onErr)
+	return nil
+}
+
 // Run refreshes the snapshot now, then on every changed signal and every
 // backstop interval until ctx is cancelled (appwatch.Loop). A refresh error is
 // non-fatal: the previous snapshot keeps serving until the next success.
