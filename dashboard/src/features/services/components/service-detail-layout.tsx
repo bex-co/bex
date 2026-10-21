@@ -15,6 +15,7 @@ import { useServer } from "@/features/services/hooks/use-server";
 import { useCachedServiceType } from "@/features/services/hooks/use-cached-service-type";
 import { useLatestDeploy } from "@/features/deploys/hooks/use-latest-deploy";
 import { useServiceLifecycle } from "@/features/services/hooks/use-service-lifecycle";
+import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt-resource-workspace";
 import {
   ServiceBaseProvider,
   type ServiceBase,
@@ -52,7 +53,9 @@ export function ServiceDetailLayout({
    */
   routePending?: boolean;
 }) {
-  const { service, loading, error, refetch } = useServer(serviceId);
+  const { service, loading, error, refetch, ownerId } = useServer(serviceId);
+  // Judge this page's permissions in the service's own workspace (w6/091).
+  useAdoptResourceWorkspace(serviceId, routePending ? null : ownerId);
   const { deploy: latestDeploy } = useLatestDeploy(serviceId);
   const { pending } = useServiceLifecycle({ refetch });
   const { t } = useTranslations();

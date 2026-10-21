@@ -16,6 +16,7 @@ function service(undeployedChanges: boolean): ServerQuery["server"] {
   return {
     __typename: "Service",
     id: "srv-save",
+    ownerId: null,
     name: "save-only",
     slug: null,
     immutableName: null,

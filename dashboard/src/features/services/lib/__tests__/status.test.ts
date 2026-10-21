@@ -94,6 +94,7 @@ function server(overrides: Partial<ServerNode> = {}): ServerNode {
   return {
     __typename: "Service",
     id: "app",
+    ownerId: null,
     name: "app",
     slug: null,
     immutableName: null,

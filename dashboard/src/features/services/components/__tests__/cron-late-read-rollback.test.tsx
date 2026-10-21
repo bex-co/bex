@@ -135,6 +135,7 @@ const link = new ApolloLink(
             server: {
               __typename: "Service",
               id: v.id,
+              ownerId: "tea-test",
               name: "nightly",
               immutableName: "nightly",
               slug: "nightly",
