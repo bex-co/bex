@@ -4,7 +4,9 @@ metadata:
   name: activator
   namespace: bex-system
 spec:
-  replicas: 1
+  # Two replicas behind a PodDisruptionBudget so a node drain, a roll or one
+  # crash never takes this platform-wide path down (w3/m175).
+  replicas: 2
   selector:
     matchLabels:
       app.bex.co/component: activator
@@ -14,6 +16,17 @@ spec:
         app.bex.co/component: activator
     spec:
       serviceAccountName: activator
+      # Preferred, not required: on three platform nodes a required rule
+      # strands the rollout surge pod (the w2/029 bex-api lesson).
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app.bex.co/component: activator
       securityContext:
         runAsNonRoot: true
         seccompProfile:

@@ -4,7 +4,9 @@ metadata:
   name: static-server
   namespace: bex-system
 spec:
-  replicas: 1
+  # Two replicas behind a PodDisruptionBudget so a node drain, a roll or one
+  # crash never takes this platform-wide path down (w3/m175).
+  replicas: 2
   selector:
     matchLabels:
       app.bex.co/component: static-server
@@ -14,6 +16,17 @@ spec:
         app.bex.co/component: static-server
     spec:
       serviceAccountName: static-server
+      # Preferred, not required: on three platform nodes a required rule
+      # strands the rollout surge pod (the w2/029 bex-api lesson).
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app.bex.co/component: static-server
       # Platform-pod hardening parity (w7/m58): bex-system is deliberately
       # privileged-PSS (egress-meter needs BPF caps), so there is no namespace
       # PodSecurity backstop — this per-pod context is the only control on the

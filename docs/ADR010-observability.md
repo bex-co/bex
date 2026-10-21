@@ -557,6 +557,10 @@ Responding: a heartbeat issue naming Watchdog means Prometheus or Alertmanager i
 
 `TenantPodUnschedulable` pages when a tenant serving or datastore pod (owned by a ReplicaSet, StatefulSet or CNPG Cluster in a `tea-*` namespace) has been unschedulable for 10m. Tenants only see their service stuck Deploying; the cause is a tenant pool at its cluster-autoscaler maximum (`infra/clusterapi/overlays/hetzner-caph/cluster.yaml`) or a failed scale-up. Job pods are excluded: builds have `BuildQueuedTooLong`, backups their staleness alerts. First checks: `kubectl -n <ns> describe pod <pod>` (the scheduler's reason), cluster-autoscaler logs, and the Cluster capacity dashboard's "Unschedulable tenant pods" panel.
 
+### Static hosting path
+
+The static-server serves every tenant static site and the activator answers every wake, first-deploy, suspended and maintenance response, so each runs two replicas on the platform pool behind a PodDisruptionBudget (`minAvailable: 1`) with preferred anti-affinity (w3/m175). `StaticHostingPathDown` pages when either Deployment has no available replica for 2m — a platform-wide outage of that path; one of two missing is `PlatformDeploymentNotReady`'s job. Both are scored from kube-state-metrics, so they cost no extra scrape. First checks: `kubectl -n bex-system get deploy,pdb,pods -l 'app.bex.co/component in (static-server,activator)' -o wide`; a static-server that exits at start logs "build the first static-site snapshot" when it cannot list Apps (it refuses to serve an empty host map).
+
 ### Rules are tested, not just linted
 
 The rule pack is the single source of truth embedded in `prometheus.yaml`. `scripts/gitops-validate.sh` (CI: `.github/workflows/gitops.yml`) extracts it and runs `promtool check rules` plus `promtool test rules` against `deploy/gitops/base/rules/alerts_test.yml` — unit tests pin the non-obvious expressions (backup-age fires at >26h not 25h; the 5xx ratio ignores tiny denominators; CrashLoop respects `for: 10m`). A regressed expression fails CI, not prod.

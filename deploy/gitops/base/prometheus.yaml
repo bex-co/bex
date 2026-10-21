@@ -1880,6 +1880,14 @@ spec:
                       summary: "Prometheus is failing to hand alerts to Alertmanager"
                       description: "Firing alerts are not reaching Alertmanager. Runbook: docs/ADR010-observability.md#alerting-heartbeat"
 
+                  - alert: StaticHostingPathDown
+                    expr: max by (deployment) (kube_deployment_status_replicas_available{namespace="bex-system",deployment=~"bex-static-server|bex-activator"}) < 1
+                    for: 2m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "{{ $labels.deployment }} has no available replica"
+                      description: "Every static site, or every wake/first-deploy/suspended response, is down. Runbook: docs/ADR010-observability.md#static-hosting-path"
                   # Tenant capacity (w3/m174); Job pods have their own alerts.
                   - alert: TenantPodUnschedulable
                     expr: |

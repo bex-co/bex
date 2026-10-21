@@ -1,5 +1,5 @@
 # w3/m174: the alert pipeline's own health, tenant disk-snapshot CronJobs,
-# Postgres base-backup age and tenant capacity — each failure mode fires and
+# Postgres base-backup age, tenant capacity and the static/activator path (w3/m175) — each failure mode fires and
 # its healthy twin stays quiet. Generated annotations match the rule templates.
 # Extract alerting_rules.yml from prometheus.yaml via scripts/gitops-validate.sh.
 rule_files:
@@ -181,3 +181,22 @@ tests:
       exp_annotations:
         summary: Tenant pod tea-a/web-abc cannot be scheduled
         description: 'Tenant pools are full or the autoscaler cannot add a node. Debug: kubectl -n tea-a describe pod web-abc. Runbook: docs/ADR010-observability.md#tenant-capacity'
+- name: 'static hosting path: zero available pages, one of two does not'
+  interval: 1m
+  input_series:
+  - series: kube_deployment_status_replicas_available{namespace="bex-system",deployment="bex-static-server"}
+    values: '0x10'
+  - series: kube_deployment_status_replicas_available{namespace="bex-system",deployment="bex-activator"}
+    values: 1x10
+  - series: kube_deployment_status_replicas_available{namespace="bex-system",deployment="bex-api"}
+    values: '0x10'
+  alert_rule_test:
+  - eval_time: 5m
+    alertname: StaticHostingPathDown
+    exp_alerts:
+    - exp_labels:
+        deployment: bex-static-server
+        severity: critical
+      exp_annotations:
+        summary: bex-static-server has no available replica
+        description: 'Every static site, or every wake/first-deploy/suspended response, is down. Runbook: docs/ADR010-observability.md#static-hosting-path'

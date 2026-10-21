@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: static-server
+  namespace: bex-system
+spec:
+  # A voluntary eviction (drain, CAPI Machine replacement) waits until the
+  # other replica serves (w3/m175).
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.bex.co/component: static-server
