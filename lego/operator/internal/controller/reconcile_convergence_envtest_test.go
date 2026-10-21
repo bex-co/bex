@@ -512,7 +512,9 @@ var _ = Describe("Reconcile convergence (w7/m84)", func() {
 		reconcileToFixedPoint(run)
 		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
 
-		params := deploymentParams{image: app.Spec.Image, port: 3000, replicas: 1}
+		webConcurrency, err := r.webConcurrency(ctx, app)
+		Expect(err).NotTo(HaveOccurred())
+		params := deploymentParams{image: app.Spec.Image, port: 3000, replicas: 1, webConcurrency: webConcurrency}
 
 		// The control: the shipped projection, through the very call the
 		// reconciler makes. OperationResultNone in so many words.
