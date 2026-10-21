@@ -335,9 +335,9 @@ A native build no longer has exactly one base per runtime. Each runtime offers a
 | Node | 22, **24**, 26 | `NODE_VERSION` → `.node-version` → `.nvmrc` → `package.json` `engines.node` |
 | Ruby | 3.3, **3.4**, 4.0 | `Gemfile.lock`/`gems.locked` `RUBY VERSION` → `.ruby-version` → `.tool-versions` `ruby` → `Gemfile` `ruby` directive (Render's order, w8/m85) |
 | Elixir | 1.17 (OTP 27), **1.18** (OTP 28), 1.19 (OTP 28) | `ELIXIR_VERSION`; `ERLANG_VERSION` must match the chosen line's OTP major |
-| Go | **1.24** | none (Render offers no native Go version selection) |
+| Go | **1.27** (latest stable, tracked) | none (Render offers no native Go version selection and builds with Go's latest stable release; the image's `GOTOOLCHAIN=local` means a `go.mod` newer than the line fails, so the line follows each release — w5/m144) |
 | Rust | **1** (stable) | none at the image level: rustup inside the image applies Render's `RUSTUP_TOOLCHAIN` / `rust-toolchain` signals itself |
-| Bun (companion, any native runtime) | 1.2, **1.3** | opt-in only: `BUN_VERSION` → `.bun-version` → a `bun.lock`/`bun.lockb` lockfile (default line); no signal adds no Bun |
+| Bun (companion, any native runtime) | 1.2, 1.3, **1.4** (Render's default, w5/m144) | opt-in only: `BUN_VERSION` → `.bun-version` → a `bun.lock`/`bun.lockb` lockfile (default line); no signal adds no Bun |
 | Poetry (Python companion, always) | **2.1.3** (any exact 1.x/2.x release) | `POETRY_VERSION` (exact release) → default; installed from PyPI, not an image |
 | uv (Python companion, uv projects) | **0.12.10** (any exact release) | opt-in only: a `uv.lock` in the service's root directory, then `UV_VERSION` (exact release) → default; installed from PyPI, not an image |
 | Node/npm/Yarn/pnpm (Ruby + Python companion, always) | Node **24** (22, 24, 26); Yarn 1.22.22; pnpm 10.34.7 | `NODE_VERSION` → `.node-version` → `.nvmrc` → `engines.node` → default; copied from the pinned node images (pnpm from its pinned tarball) |

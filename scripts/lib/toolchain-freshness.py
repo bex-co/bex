@@ -316,6 +316,49 @@ def resolve_upstream(ref: str) -> str:
     return http_digest(f"https://{api_host}/v2/{repo}/manifests/{tag}", headers)
 
 
+# LINE_SOURCES are the native toolchains whose pinned LINE (not just digest)
+# must keep up with upstream, because Render builds with the newest one (w5/m144):
+# Go with "latest stable", Bun with its newest release as the default line. A
+# same-tag digest check never notices a new line, which is how Go sat on 1.24
+# while go.mod files moved to 1.25+.
+LINE_SOURCES = {
+    "native-go": ("https://go.dev/dl/?mode=json", "go"),
+    "native-bun": ("https://api.github.com/repos/oven-sh/bun/releases/latest", "bun"),
+}
+
+
+def line_of(version: str) -> tuple[int, int] | None:
+    match = re.search(r"(\d+)\.(\d+)", version)
+    return (int(match.group(1)), int(match.group(2))) if match else None
+
+
+def latest_line(image_id: str) -> str | None:
+    """Upstream's newest major.minor for a LINE_SOURCES toolchain, or None."""
+    fixture = os.environ.get("FRESHNESS_LATEST_LINES")
+    if fixture:
+        try:
+            data = json.loads(Path(fixture).read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as err:
+            fail(f"FRESHNESS_LATEST_LINES is not readable JSON: {err}")
+        version = data.get(image_id) if isinstance(data, dict) else None
+        if version is None:
+            return None
+    else:
+        version = upstream_version(image_id)
+    if not isinstance(version, str):
+        raise RuntimeError(f"unexpected release feed shape: {version!r}")
+    line = line_of(version)
+    return f"{line[0]}.{line[1]}" if line else None
+
+
+def upstream_version(image_id: str) -> object:
+    url, kind = LINE_SOURCES[image_id]
+    # Unauthenticated GitHub API calls share a 60/hour budget per runner IP.
+    token = os.environ.get("GITHUB_TOKEN")
+    data = http_json(url, {"Authorization": f"Bearer {token}"} if token and "api.github.com" in url else None)
+    return data[0]["version"] if kind == "go" else data.get("tag_name", "")
+
+
 def resolve(path: Path) -> dict:
     inventory = validate(path)
     images = []
@@ -325,17 +368,28 @@ def resolve(path: Path) -> dict:
         except RuntimeError as err:
             fail(f"{image['id']}: resolve {image['upstream']}: {err}")
         committed = digest_of(image["committed"])
-        images.append(
-            {
-                "changed": observed != committed,
-                "committed": committed,
-                "files": list(image["files"]),
-                "id": image["id"],
-                "kind": image["kind"],
-                "observed": observed,
-                "upstream": image["upstream"],
-            }
-        )
+        entry = {
+            "changed": observed != committed,
+            "committed": committed,
+            "files": list(image["files"]),
+            "id": image["id"],
+            "kind": image["kind"],
+            "observed": observed,
+            "upstream": image["upstream"],
+        }
+        if image["id"] in LINE_SOURCES:
+            # Advisory: an unreachable release feed must not fail the digest
+            # check this resolve exists for.
+            try:
+                newest = latest_line(image["id"])
+            except (RuntimeError, KeyError, IndexError, TypeError, AttributeError) as err:
+                print(f"warning: {image['id']}: latest line unavailable: {err}", file=sys.stderr)
+                newest = None
+            pinned = line_of(split_name_tag(image["upstream"])[1])
+            if newest and pinned and line_of(newest) > pinned:
+                entry["changed"] = True
+                entry["newer_line"] = newest
+        images.append(entry)
     return {"images": images, "schema": SCHEMA}
 
 
@@ -358,18 +412,20 @@ def issue_body(report: dict) -> str:
     ]
     for image in drifted(report):
         files = "\n".join(f"  - `{path}`" for path in image["files"])
-        lines.extend(
-            [
-                f"### `{image['id']}`",
-                "",
-                f"- upstream: `{image['upstream']}`",
-                f"- committed: `{image['committed']}`",
-                f"- observed: `{image['observed']}`",
-                "- files:",
-                files,
-                "",
-            ]
-        )
+        section = [
+            f"### `{image['id']}`",
+            "",
+            f"- upstream: `{image['upstream']}`",
+            f"- committed: `{image['committed']}`",
+            f"- observed: `{image['observed']}`",
+        ]
+        if image.get("newer_line"):
+            section.append(
+                f"- **newer line upstream: `{image['newer_line']}`**: move the pin to that"
+                " line's tag and digest (Render builds with the newest), not to the observed digest"
+            )
+        section.extend(["- files:", files, ""])
+        lines.extend(section)
     lines.append("Resolver: `python3 scripts/lib/toolchain-freshness.py resolve`.")
     lines.append("")
     return "\n".join(lines)
