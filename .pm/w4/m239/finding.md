@@ -85,11 +85,21 @@ What happened:
 
 So the rowless release is not static-specific. It also covers unlink, which rolls the pods by design (`UnlinkService` "roll it") but records no deploy. Private, worker, cron and group delete (`detach`) remain unprobed.
 
+## Follow-up probe — group delete (run d9q4, 2026-10-21 UTC)
+
+Fixture: a Docker web service `qa-20261021-d9q4-web` (`srv-dbc6fq1v5vjs73b9hcb0`), set up the same way as w7k2 (hello-go, `autoDeploy: "no"`, Free). It was live at `rev-1` with its process start logged at 07:22:57.
+
+- **Link.** At 07:23:27, `POST /v1/env-groups {…, serviceIds:[web]}` (`evg-dbc6grpv5vjs73b9hccg`) → `201`. A process start was logged at 07:23:29, and the service read `rev-2`.
+- **Group delete.** At 07:24:09, `DELETE /v1/env-groups/<grp>` → `204`. A process start was logged at 07:24:15, and the service read `rev-3`.
+- Throughout, the deploy list held one row.
+- Service and group were deleted; both read 404.
+
+Group delete (`detach`) is therefore a third rowless writer. Private, worker and cron remain unprobed.
+
 ## Unverified
 
 - Whether the value-only `PUT` (`rollOne`, `service.go:1264-1267`, returns early for a gated service and touches no CR) contributed. It changes no spec field, so the 06:28 republish is attributed to group 2's link. Both writes landed within seconds.
 - Private, worker and cron services with Auto-Deploy off. Web and unlink are confirmed in the follow-up probe above.
-- Group delete (`detach`) on a gated service.
 - Where the `server_failed` event at 06:27:02 came from on a static site during the rowless release.
 - Render: "If you make changes to an environment group … Render kicks off a new deploy for every linked service that has autodeploys enabled". With Auto-Deploy off, nothing deploys until the owner deploys. This is quoted in `autoDeployGated`'s comment and was not re-fetched this run.
 
