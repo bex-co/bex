@@ -5622,7 +5622,8 @@ func (s *Service) DeleteAutoscaling(ctx context.Context, name string) error {
 // exactly what the caller needs to join against a group list it already has.
 func linkedEnvGroupIDs(a *appv1alpha1.App) []string {
 	var out []string
-	for _, name := range a.Spec.EnvFromSecrets {
+	refs, _ := rollout.EffectiveGroupSecrets(a)
+	for _, name := range refs {
 		if gid, ok := strings.CutSuffix(name, "-env"); ok && gid != "" {
 			out = append(out, gid)
 		}

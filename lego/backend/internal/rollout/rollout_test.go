@@ -260,3 +260,55 @@ func TestARollingWriteOnASuspendedServiceIsHeldForTheNextDeploy(t *testing.T) {
 		})
 	}
 }
+
+// TestStagedGroupLinksShipWithTheNextRollingWriteOnly (w4/m239): a staged link
+// changes no release-identity field, a write that does not roll leaves it
+// staged, and the write that rolls folds it into the spec under its own row.
+func TestStagedGroupLinksShipWithTheNextRollingWriteOnly(t *testing.T) {
+	cl, a := lockedPatchFixture(t, interceptor.Funcs{})
+	before := a.Spec.DeepCopy()
+	StageGroupLink(a, "evg-1-env", "evg-1-files", true)
+	if appv1alpha1.SpecRollsRelease(*before, a.Spec) {
+		t.Fatal("staging a link moved the release identity")
+	}
+	if env, files := EffectiveGroupSecrets(a); len(env) != 1 || len(files) != 1 {
+		t.Fatalf("effective refs = %v %v, want the staged link", env, files)
+	}
+	if err := cl.Update(context.Background(), a); err != nil {
+		t.Fatal(err)
+	}
+	ds := &fakeDeployStore{}
+	tr := &Tracker{Store: ds}
+
+	if err := tr.PatchLocked(context.Background(), cl, a, store.TriggerConfigChange, func(a *appv1alpha1.App) error {
+		a.Spec.Replicas = 2 // operational: not a release
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if len(ds.created) != 0 || len(a.Spec.EnvFromSecrets) != 0 || a.Annotations[appv1alpha1.AnnotationPendingGroupLinks] == "" {
+		t.Fatalf("a non-rolling write shipped the staged link: rows %d spec %v", len(ds.created), a.Spec.EnvFromSecrets)
+	}
+
+	if err := tr.PatchLocked(context.Background(), cl, a, store.TriggerConfigChange, func(a *appv1alpha1.App) error {
+		a.Spec.HealthCheckPath = "/healthz"
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if len(ds.created) != 1 || len(a.Spec.EnvFromSecrets) != 1 || len(a.Spec.FilesFromSecrets) != 1 || a.Annotations[appv1alpha1.AnnotationPendingGroupLinks] != "" {
+		t.Fatalf("the rolling write did not carry the link: rows %d spec %+v annotations %v", len(ds.created), a.Spec, a.Annotations)
+	}
+}
+
+func TestStagedGroupLinkRoundTrips(t *testing.T) {
+	a := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{EnvFromSecrets: []string{"evg-1-env"}, FilesFromSecrets: []string{"evg-1-files"}}}
+	StageGroupLink(a, "evg-1-env", "evg-1-files", false)
+	if env, _ := EffectiveGroupSecrets(a); len(env) != 0 || len(a.Spec.EnvFromSecrets) != 1 {
+		t.Fatalf("staged unlink: effective %v spec %v", env, a.Spec.EnvFromSecrets)
+	}
+	StageGroupLink(a, "evg-1-env", "evg-1-files", true)
+	if a.Annotations[appv1alpha1.AnnotationPendingGroupLinks] != "" {
+		t.Fatalf("unlink then relink of a mounted group left %v staged", a.Annotations)
+	}
+}

@@ -22,9 +22,11 @@ import (
 	"testing"
 
 	"github.com/graphql-go/graphql"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
+	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -152,8 +154,10 @@ func TestGroupWriteStillDeploysAnImageBackedService(t *testing.T) {
 	}
 }
 
-// Linking is still honored for a gated service — the refs land, so the group's
-// values are there for its next deploy — but it does not force a release.
+// Linking is still honored for a gated service, but only as a staged request:
+// the group's Secret refs are release identity, so writing them would make the
+// operator ship a release no deploy row records (w4/m239). The link reaches the
+// spec with the owner's next release.
 func TestLinkAndUnlinkSkipTheDeployOnAnAutoDeployOffService(t *testing.T) {
 	ctx := testCtx()
 	svc := newService(newFakeStore(), repoApp("off", false))
@@ -161,31 +165,59 @@ func TestLinkAndUnlinkSkipTheDeployOnAnAutoDeployOffService(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create group: %v", err)
 	}
-	before := restartedAt(t, svc, "off")
+	original := getApp(t, svc.Client, "off")
 
 	if err := svc.LinkService(ctx, group.ID, "off"); err != nil {
 		t.Fatalf("link: %v", err)
 	}
 	linked := getApp(t, svc.Client, "off")
-	if !slices.Contains(linked.Spec.EnvFromSecrets, envSecretName(group.ID)) {
-		t.Fatalf("link must still attach the group's env Secret: %v", linked.Spec.EnvFromSecrets)
+	if appv1alpha1.SpecRollsRelease(original.Spec, linked.Spec) || !apiequality.Semantic.DeepEqual(original.Spec, linked.Spec) {
+		t.Fatalf("link changed a gated service's spec (release identity): %+v -> %+v", original.Spec, linked.Spec)
 	}
-	if !slices.Contains(linked.Spec.FilesFromSecrets, filesSecretName(group.ID)) {
-		t.Fatalf("link must still attach the group's files Secret: %v", linked.Spec.FilesFromSecrets)
+	env, files := rollout.EffectiveGroupSecrets(linked)
+	if !slices.Contains(env, envSecretName(group.ID)) || !slices.Contains(files, filesSecretName(group.ID)) {
+		t.Fatalf("link must stay requested for the next deploy: env %v files %v", env, files)
 	}
-	if linked.Spec.RestartedAt != before {
-		t.Fatalf("link rolled an auto-deploy-off service: restartedAt %q -> %q", before, linked.Spec.RestartedAt)
+	if !mountsGroup(linked, group.ID) {
+		t.Fatal("a staged link must read as mounted so unlink and group writes still find the service")
 	}
 
 	if err := svc.UnlinkService(ctx, group.ID, "off"); err != nil {
 		t.Fatalf("unlink: %v", err)
 	}
 	unlinked := getApp(t, svc.Client, "off")
-	if slices.Contains(unlinked.Spec.EnvFromSecrets, envSecretName(group.ID)) {
-		t.Fatalf("unlink must still detach the group's env Secret: %v", unlinked.Spec.EnvFromSecrets)
+	if !apiequality.Semantic.DeepEqual(original.Spec, unlinked.Spec) {
+		t.Fatalf("unlink changed a gated service's spec: %+v -> %+v", original.Spec, unlinked.Spec)
 	}
-	if unlinked.Spec.RestartedAt != before {
-		t.Fatalf("unlink rolled an auto-deploy-off service: restartedAt %q -> %q", before, unlinked.Spec.RestartedAt)
+	if mountsGroup(unlinked, group.ID) || unlinked.Annotations[appv1alpha1.AnnotationPendingGroupLinks] != "" {
+		t.Fatalf("link then unlink must leave nothing staged: %v", unlinked.Annotations)
+	}
+}
+
+// Unlinking a group a gated service already runs with, and deleting the group,
+// wait for the next deploy too, and the next release then carries them.
+func TestUnlinkAndGroupDeleteOnARunningGatedServiceAreStaged(t *testing.T) {
+	ctx := testCtx()
+	app := repoApp("off", false)
+	app.Spec.EnvFromSecrets = []string{"evg-run-env"}
+	app.Spec.FilesFromSecrets = []string{"evg-run-files"}
+	svc := newService(newFakeStore(), app)
+	svc.Rollout = &rollout.Tracker{}
+	original := getApp(t, svc.Client, "off")
+
+	if err := svc.detach(ctx, "evg-run", "off"); err != nil {
+		t.Fatalf("detach: %v", err)
+	}
+	staged := getApp(t, svc.Client, "off")
+	if !apiequality.Semantic.DeepEqual(original.Spec, staged.Spec) {
+		t.Fatalf("detach changed a gated service's spec: %+v -> %+v", original.Spec, staged.Spec)
+	}
+	if mountsGroup(staged, "evg-run") {
+		t.Fatal("a staged removal must read as unmounted")
+	}
+	rollout.FoldStagedGroupLinks(staged)
+	if len(staged.Spec.EnvFromSecrets)+len(staged.Spec.FilesFromSecrets) != 0 || staged.Annotations[appv1alpha1.AnnotationPendingGroupLinks] != "" {
+		t.Fatalf("the next release must carry the removal: %+v %v", staged.Spec, staged.Annotations)
 	}
 }
 
