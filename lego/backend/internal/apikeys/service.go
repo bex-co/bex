@@ -250,7 +250,7 @@ func (s *Service) CreateAPIKey(ctx context.Context, ownerID, name string) (APIKe
 		return APIKey{}, core.ErrAPIKeysUnavailable
 	}
 	if strings.TrimSpace(name) == "" {
-		return APIKey{}, core.ErrBadRequest
+		return APIKey{}, fmt.Errorf("%w: name: must not be blank", core.ErrBadRequest)
 	}
 	createdBy := ""
 	if id, ok := core.IdentityFrom(ctx); ok {

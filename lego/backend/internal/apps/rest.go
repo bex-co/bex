@@ -1224,7 +1224,7 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 			return nil, fmt.Errorf("%w: %v", core.ErrBadRequest, err)
 		}
 		if req.Name == "" {
-			return nil, core.ErrBadRequest
+			return nil, fmt.Errorf("%w: name: must not be blank", core.ErrBadRequest)
 		}
 		d, sibling, err := s.addDomainPair(r.Context(), r.PathValue("id"), req.Name)
 		if err != nil {
@@ -1515,7 +1515,7 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 			return nil, fmt.Errorf("%w: %v", core.ErrBadRequest, err)
 		}
 		if strings.TrimSpace(body.BexYAML) == "" {
-			return nil, core.ErrBadRequest
+			return nil, fmt.Errorf("%w: bexYaml: must not be blank", core.ErrBadRequest)
 		}
 		return s.DeployStack(r.Context(), DeployRequest{
 			OwnerID: body.OwnerID, Repo: body.Repo, Branch: body.Branch, Manifest: body.BexYAML, Confirm: body.Confirm,

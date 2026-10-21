@@ -60,6 +60,9 @@ func TestNameValidation(t *testing.T) {
 					if !errors.Is(err, core.ErrBadRequest) {
 						t.Fatalf("got %v, want bad request", err)
 					}
+					if !strings.Contains(err.Error(), "name") {
+						t.Fatalf("blank-name refusal %q must name the field (w4/383)", err)
+					}
 					if len(st.envs) != 1 || st.envs["env-1"].Name != "original" {
 						t.Fatalf("rejected request changed state: %+v", st.envs)
 					}

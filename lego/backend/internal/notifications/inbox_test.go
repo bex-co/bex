@@ -190,3 +190,12 @@ func TestNotificationInboxGraphQLContract(t *testing.T) {
 		t.Fatalf("foreign/missing GraphQL reads differ: %s / %s", foreignWire, missingWire)
 	}
 }
+
+func TestInboxLimitRefusalNamesTheParameter(t *testing.T) {
+	for _, q := range []string{"limit=0", "limit=abc", "limit=101"} {
+		_, err := inboxLimit(httptest.NewRequest("GET", "/v1/notifications?"+q, nil))
+		if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), `"limit"`) {
+			t.Errorf("%s: error = %v, want a bad request naming the limit parameter", q, err)
+		}
+	}
+}

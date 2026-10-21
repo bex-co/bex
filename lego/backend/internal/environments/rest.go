@@ -127,7 +127,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		q := r.URL.Query()
 		projectIDs := core.QueryList(q, "projectId")
 		if len(projectIDs) == 0 {
-			return nil, core.ErrBadRequest
+			return nil, fmt.Errorf("%w: query parameter %q is required", core.ErrBadRequest, "projectId")
 		}
 		// Deduplicate (repeat query keys multiply the identical list run) and
 		// refuse past the fan-out cap before the first list runs.

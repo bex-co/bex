@@ -169,10 +169,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			if strings.HasPrefix(err.Error(), "request body contains unknown field ") {
 				return nil, fmt.Errorf("%w: %s", core.ErrBadRequest, err)
 			}
-			return nil, core.ErrBadRequest
+			return nil, fmt.Errorf("%w: invalid request body", core.ErrBadRequest)
 		}
 		if strings.TrimSpace(req.Name) == "" || req.OwnerID == "" {
-			return nil, core.ErrBadRequest
+			return nil, fmt.Errorf("%w: name and ownerId are required", core.ErrBadRequest)
 		}
 		p, err := s.CreateWithEnvironments(r.Context(), req.OwnerID, strings.TrimSpace(req.Name), req.Environments)
 		if err != nil {
@@ -193,8 +193,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		req, err := core.DecodeBody[struct {
 			Name string `json:"name"`
 		}](r)
-		if err != nil || strings.TrimSpace(req.Name) == "" {
-			return nil, core.ErrBadRequest
+		if err != nil {
+			return nil, err
+		}
+		if strings.TrimSpace(req.Name) == "" {
+			return nil, fmt.Errorf("%w: name: must not be blank", core.ErrBadRequest)
 		}
 		p, err := s.Rename(r.Context(), r.PathValue("id"), strings.TrimSpace(req.Name))
 		if err != nil {

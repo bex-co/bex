@@ -422,7 +422,7 @@ func (s *Service) CreateWithEnvironments(ctx context.Context, workspaceID, name 
 	}
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return ProjectView{}, core.ErrBadRequest
+		return ProjectView{}, fmt.Errorf("%w: name: must not be blank", core.ErrBadRequest)
 	}
 	for i := range environments {
 		e := &environments[i]
@@ -531,7 +531,7 @@ func (s *Service) Rename(ctx context.Context, id, name string) (ProjectView, err
 	}
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return ProjectView{}, core.ErrBadRequest
+		return ProjectView{}, fmt.Errorf("%w: name: must not be blank", core.ErrBadRequest)
 	}
 	if err := s.Store.RenameProject(ctx, id, name); err != nil {
 		// A rename onto a taken name answers like a create does (w4/155).
