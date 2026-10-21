@@ -387,7 +387,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **165** — [A root directory written with a trailing slash (`rootDir: ./`, `server/`) is refused as "a relative path with no '..' components"](165.md) ← `/qa-find-bugs-cli` sweep 1283 2026-10-21: Render's export writes `./`; minor, ~25m.
 
-- [ ] **164** — [Bex runs every Docker Command through its own `/bin/sh -c`: Render's documented `/bin/sh -c <commands>` form silently drops the first command's arguments, and shell-less images cannot start](164.md) ← `/qa-find-bugs-cli` sweeps 1281/1283 2026-10-21: Render's Django example would skip its migration; major, ~90m.
+- [x] **164** — [Bex runs every Docker Command through its own `/bin/sh -c`: Render's documented `/bin/sh -c <commands>` form silently drops the first command's arguments, and shell-less images cannot start](done/164.md) — **DONE (2026-10-21)**: Docker Command runs as on Render: shell-form passes the script verbatim, plain commands exec directly; ← `/qa-find-bugs-cli` sweeps 1281/1283 2026-10-21: Render's Django example would skip its migration; major, ~90m.
 
 - [x] **163** — [Render's "Deploy to Render" button has no bex counterpart: `/deploy?repo=` is a 404 and the Blueprint wizard ignores `?repo=`](done/163.md) — **DONE (2026-10-21)**: Deploy-to-bex button: /deploy?repo= prefills the Blueprint wizard; ← `/qa-find-bugs-cli` sweep 1280 2026-10-21: 103 render-examples READMEs use the button; minor, ~90m.
 

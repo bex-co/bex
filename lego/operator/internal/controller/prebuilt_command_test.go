@@ -38,7 +38,7 @@ const (
 	m202Explicit = "echo explicit"
 )
 
-var m202Shell = []string{shellBinary, "-c", m202Command}
+var m202Shell = shellCommand(m202Command)
 
 // m202Commands returns what the Deployment's and the cron job's app container
 // would execute for app running image with the given recorded launch.

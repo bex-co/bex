@@ -73,7 +73,7 @@ var _ = Describe("StartCommand override (kubernetes runtime)", func() {
 		Entry("runtime docker, startCommand set — overrides",
 			"docker-startcmd-app",
 			appv1alpha1.AppSpec{Runtime: "docker", StartCommand: "bin/server --flag"},
-			[]string{"/bin/sh", "-c", "bin/server --flag"}),
+			[]string{"bin/server", "--flag"}),
 		Entry("runtime docker, startCommand unset — image default",
 			"docker-nostartcmd-app",
 			appv1alpha1.AppSpec{Runtime: "docker"},
@@ -81,7 +81,7 @@ var _ = Describe("StartCommand override (kubernetes runtime)", func() {
 		Entry("legacy builder:dockerfile (no runtime), startCommand set — still overrides",
 			"legacy-dockerfile-startcmd-app",
 			appv1alpha1.AppSpec{Builder: "dockerfile", StartCommand: "bin/server --flag"},
-			[]string{"/bin/sh", "-c", "bin/server --flag"}),
+			[]string{"bin/server", "--flag"}),
 		// A prebuilt image never ran a native build, so retained native settings
 		// (a service switched from Git to an image keeps them) bake nothing into
 		// it: the saved command must run (w4/m202). The genuine native-build
@@ -89,6 +89,6 @@ var _ = Describe("StartCommand override (kubernetes runtime)", func() {
 		Entry("prebuilt image with retained native runtime, startCommand set — overrides",
 			"prebuilt-native-runtime-startcmd-app",
 			appv1alpha1.AppSpec{Runtime: "node", BuildCommand: "npm ci", StartCommand: "npm start"},
-			[]string{"/bin/sh", "-c", "npm start"}),
+			[]string{"npm", "start"}),
 	)
 })

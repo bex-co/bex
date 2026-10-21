@@ -127,7 +127,7 @@ func TestRollbackSelectionPreservesSavedConfiguration(t *testing.T) {
 	r, app := selectedReleaseFixture(t)
 	dep := materializeSelectedTestRelease(t, r, app)
 	c := dep.Spec.Template.Spec.Containers[0]
-	if c.Image != "image:A" || len(c.Command) != 3 || c.Command[2] != "echo A" {
+	if c.Image != "image:A" || strings.Join(c.Command, " ") != "echo A" {
 		t.Fatalf("runtime image/command = %s %v", c.Image, c.Command)
 	}
 	if c.ReadinessProbe.HTTPGet.Path != "/A" || *dep.Spec.Replicas != 2 {
@@ -163,7 +163,7 @@ func TestRollbackSelectionPreservesSavedConfiguration(t *testing.T) {
 		}
 	}
 	r = &AppReconciler{Client: r.Client, Scheme: r.Scheme, Mode: ModeKubernetes}
-	if again := materializeSelectedTestRelease(t, r, app); again.Spec.Template.Spec.Containers[0].Command[2] != "echo A" {
+	if again := materializeSelectedTestRelease(t, r, app); strings.Join(again.Spec.Template.Spec.Containers[0].Command, " ") != "echo A" {
 		t.Fatal("reconciliation lost the selected command")
 	}
 }
@@ -198,7 +198,7 @@ func TestRestartSelectionRetainsRunningGroupsThenNormalDeployUsesSavedValues(t *
 	app.Status.ReleaseGeneration = 5
 	dep := materializeSelectedTestRelease(t, r, app)
 	c := dep.Spec.Template.Spec.Containers[0]
-	if c.Image != "image:B" || c.Command[2] != "echo B" {
+	if c.Image != "image:B" || strings.Join(c.Command, " ") != "echo B" {
 		t.Fatalf("normal deploy retained rollback: %s %v", c.Image, c.Command)
 	}
 	if got := selectedTestValue(t, r, "api-env-r5"); got != "B" {
@@ -330,7 +330,7 @@ func TestSelectedReplicaCountAllowsLaterOperationalScale(t *testing.T) {
 	if *dep.Spec.Replicas != 4 {
 		t.Fatalf("explicit scale was overwritten by historical count: %d", *dep.Spec.Replicas)
 	}
-	if dep.Spec.Template.Spec.Containers[0].Command[2] != "echo A" {
+	if strings.Join(dep.Spec.Template.Spec.Containers[0].Command, " ") != "echo A" {
 		t.Fatal("scale expired historical runtime configuration")
 	}
 }
@@ -346,7 +346,7 @@ func TestSelectedReplicaCountAllowsExplicitAlreadySavedCount(t *testing.T) {
 	if *dep.Spec.Replicas != 3 {
 		t.Fatalf("same-saved scale left historical count %d", *dep.Spec.Replicas)
 	}
-	if dep.Spec.Template.Spec.Containers[0].Command[2] != "echo A" {
+	if strings.Join(dep.Spec.Template.Spec.Containers[0].Command, " ") != "echo A" {
 		t.Fatal("scale expired historical runtime configuration")
 	}
 }
@@ -403,7 +403,7 @@ func TestCancelAfterRollbackKeepsTheSelectedServingTemplate(t *testing.T) {
 	if err := r.applyServingDeployment(context.Background(), app, live, deploymentParams{image: "image:A", port: 3000, replicas: 2}, restore); err != nil {
 		t.Fatal(err)
 	}
-	if live.Spec.Template.Spec.Containers[0].Command[2] != "echo A" {
+	if strings.Join(live.Spec.Template.Spec.Containers[0].Command, " ") != "echo A" {
 		t.Fatal("cancel applied saved configuration over the serving rollback")
 	}
 	if app.Spec.StartCommand != "echo canceled" {
@@ -422,7 +422,7 @@ func TestImageOverrideUsesSavedConfigurationAndExpiresOnNextRelease(t *testing.T
 	}
 	dep := materializeSelectedTestRelease(t, r, app)
 	c := dep.Spec.Template.Spec.Containers[0]
-	if c.Image != "image:C" || c.Command[2] != "echo B" || c.ReadinessProbe.HTTPGet.Path != "/B" {
+	if c.Image != "image:C" || strings.Join(c.Command, " ") != "echo B" || c.ReadinessProbe.HTTPGet.Path != "/B" {
 		t.Fatalf("runtime = image %q, command %v, probe %q", c.Image, c.Command, c.ReadinessProbe.HTTPGet.Path)
 	}
 	if selectedTestValue(t, r, "api-env-r3") != "B" || selectedTestValue(t, r, "api-evg-shared-env-r3") != "group-B" {
