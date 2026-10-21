@@ -1,6 +1,6 @@
 # w4 · m239 — Linking an env group to an Auto-Deploy-off service waits for the owner's deploy
 
-**Worker:** worker4 **Goal:** when a service has Auto-Deploy off, linking, unlinking or deleting an environment group never ships a release on its own. The link waits, exactly as the API's `pendingServiceIds` already says, and reaches the service with the owner's next deploy. That deploy is recorded and reaches a terminal state on its own merits. Today the link changes the operator's release identity, the site is rebuilt and republished with no deploy row, and the next manual deploy is stranded at `created` and then recorded as `canceled`. **Status:** in progress — t001–t006 shipped; t007 (live DoD replay after the deploy) open
+**Worker:** worker4 **Goal:** when a service has Auto-Deploy off, linking, unlinking or deleting an environment group never ships a release on its own. The link waits, exactly as the API's `pendingServiceIds` already says, and reaches the service with the owner's next deploy. That deploy is recorded and reaches a terminal state on its own merits. Today the link changes the operator's release identity, the site is rebuilt and republished with no deploy row, and the next manual deploy is stranded at `created` and then recorded as `canceled`. **Status:** blocked — t001–t006 shipped (2026-10-21); t007 (live DoD replay) waits for the release pipeline to deploy bex-api
 
 ## Tasks (in order)
 
