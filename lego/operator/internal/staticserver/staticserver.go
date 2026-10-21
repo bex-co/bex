@@ -298,6 +298,18 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		serveSiteError(w, site, requestPath, http.StatusBadRequest, message)
 		return
 	}
+	// A directory requested without its trailing slash: an existing published
+	// <path>/index.html is an object hit like any other, so it wins over the
+	// ordered rules and the SPA fallback. Redirecting to the slash form keeps
+	// the page's relative links resolving beneath the directory (w4/384).
+	if !overlong && h.hasDirectoryIndex(r.Context(), site, requestPath) {
+		location := (&url.URL{Path: requestPath + "/", RawQuery: r.URL.RawQuery}).String()
+		if safeRedirectTarget(location) {
+			applyHeaders(w.Header(), site.Headers, requestPath)
+			http.Redirect(w, r, location, http.StatusMovedPermanently)
+			return
+		}
+	}
 	if act == actRedirect {
 		location := target.String()
 		if !safeRedirectTarget(location) {
@@ -331,6 +343,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			h.serveObject(w, r, site, obj, servedPath, requestPath)
 			return
+		}
+		// A rewrite to a directory serves that directory's index in place.
+		if h.hasDirectoryIndex(r.Context(), site, fallbackPath) {
+			dir := lookupPath(strings.TrimSuffix(fallbackPath, "/") + "/")
+			if obj, err = h.get(r.Context(), site, dir); err == nil {
+				h.serveObject(w, r, site, obj, dir, requestPath)
+				return
+			}
 		}
 	}
 
@@ -458,6 +478,22 @@ func lookupPath(reqPath string) string {
 		return strings.TrimSuffix(reqPath, "/") + "/index.html"
 	}
 	return reqPath
+}
+
+// hasDirectoryIndex reports whether reqPath, an extensionless path without a
+// trailing slash, names a directory whose index.html is published. Every
+// other outcome, origin errors included, is false: the caller's own miss
+// handling then decides, as it did before directories were resolved.
+func (h *Handler) hasDirectoryIndex(ctx context.Context, site Site, reqPath string) bool {
+	if reqPath == "/" || strings.HasSuffix(reqPath, "/") || path.Ext(reqPath) != "" {
+		return false
+	}
+	dir := reqPath + "/"
+	if overlongKey(site, dir) {
+		return false
+	}
+	_, err := h.get(ctx, site, lookupPath(dir))
+	return err == nil
 }
 
 // spaFallback fetches the site's root index.html for extension-less misses so a
