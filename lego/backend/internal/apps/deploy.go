@@ -2768,7 +2768,7 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 		Runtime:                 runtime,
 		BuildCommand:            a.BuildCommand,
 		StartCommand:            startCommand,
-		RootDir:                 repoRootRelative(a.RootDir),
+		RootDir:                 store.NormalizeRootDir(repoRootRelative(a.RootDir)),
 		BuildFilter:             a.BuildFilter,
 		DockerfilePath:          repoRootRelative(a.DockerfilePath),
 		DockerContext:           repoRootRelative(a.DockerContext),

@@ -261,3 +261,31 @@ func TestCreateWithRootDirConflictsOnExistingApp(t *testing.T) {
 		t.Errorf("a rejected create must not touch the existing App's rootDir: got %q", got)
 	}
 }
+
+// Render's export writes `rootDir: ./`; authors write `server/`. Both are
+// stored in one normalized spelling on every write path (w8/165).
+func TestRootDirSpellingsNormalize(t *testing.T) {
+	for _, tc := range []struct{ in, want string }{{"./", ""}, {"server/", "server"}, {"./server/", "server"}, {"a//b", "a/b"}} {
+		svc, cl := newService(nil)
+		if _, err := svc.Create(context.Background(), CreateRequest{Name: "web", Repo: "https://github.com/acme/mono", RootDir: tc.in}); err != nil {
+			t.Fatalf("Create rootDir %q: %v", tc.in, err)
+		}
+		if got := getApp(t, cl, "web").Spec.RootDir; got != tc.want {
+			t.Errorf("create rootDir %q stored %q, want %q", tc.in, got, tc.want)
+		}
+		if _, err := svc.SetRootDir(context.Background(), "web", "other/"); err != nil {
+			t.Fatalf("SetRootDir: %v", err)
+		}
+		if got := getApp(t, cl, "web").Spec.RootDir; got != "other" {
+			t.Errorf("SetRootDir stored %q, want other", got)
+		}
+	}
+	svc, _ := newService(nil)
+	for _, rootDir := range []string{"./", "server/", "./server"} {
+		manifest := "services:\n  - type: web\n    runtime: static\n    name: s\n    repo: https://github.com/acme/mono\n    staticPublishPath: public\n    rootDir: " + rootDir + "\n"
+		v, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
+		if err != nil || !v.Valid {
+			t.Errorf("Blueprint rootDir %q: valid=%v errs=%+v err=%v", rootDir, v.Valid, v.Errors, err)
+		}
+	}
+}

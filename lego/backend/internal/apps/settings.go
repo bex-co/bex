@@ -296,11 +296,12 @@ var servicePatchTable = []servicePatchOp{
 		present:  func(p ServicePatch) bool { return p.RootDir != nil },
 		relation: canCreate,
 		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, id string, p ServicePatch) error {
-			if err := s.checkRootDir(ctx, probe, id, *p.RootDir); err != nil {
+			rootDir := store.NormalizeRootDir(*p.RootDir)
+			if err := s.checkRootDir(ctx, probe, id, rootDir); err != nil {
 				return err
 			}
-			probe.Spec.DockerContext = rebaseDockerContext(probe.Spec.RootDir, *p.RootDir, probe.Spec.DockerContext)
-			probe.Spec.RootDir = *p.RootDir
+			probe.Spec.DockerContext = rebaseDockerContext(probe.Spec.RootDir, rootDir, probe.Spec.DockerContext)
+			probe.Spec.RootDir = rootDir
 			return nil
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
