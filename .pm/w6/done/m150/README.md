@@ -1,6 +1,6 @@
 # w6 · m150 — `render-v1` runs `io_uring` and unprivileged-userns workloads, as on Render (seccomp slice)
 
-**Worker:** worker6 **Goal:** a `render-v1` container can use `io_uring` and `unshare(CLONE_NEWUSER)`, as on Render (no seccomp filter). This is done with a bex-distributed Localhost seccomp profile instead of RuntimeDefault; every other syscall RuntimeDefault blocks stays blocked. **Status:** todo (t001–t004 done 2026-10-21; t005 live acceptance after deploy)
+**Worker:** worker6 **Goal:** a `render-v1` container can use `io_uring` and `unshare(CLONE_NEWUSER)`, as on Render (no seccomp filter). This is done with a bex-distributed Localhost seccomp profile instead of RuntimeDefault; every other syscall RuntimeDefault blocks stays blocked. **Status:** done 2026-10-21 (live in production)
 
 ## Tasks (in order)
 
@@ -10,10 +10,10 @@
 | t002 | Distribute the profile to every tenant node (platform DaemonSet or node bootstrap) — **DONE** | 1h | t001 |
 | t003 | Operator: project the Localhost profile onto every `render-v1` path, only where the profile is present — **DONE** | 45m | t002 |
 | t004 | Workload admission: admit exactly the bex profile for `render-v1` workloads — **DONE** | 45m | t003 |
-| t005 | Live acceptance: `io_uring` and `unshare` probes plus unchanged ClickHouse in a customer workspace | 45m | t004, w6/m149 |
-| t006 | Simplify | 15m | t005 |
-| t007 | Test coverage | 30m | t005, t006 |
-| t008 | Closeout | 10m | t007 |
+| t005 | Live acceptance: `io_uring` and `unshare` probes plus unchanged ClickHouse in a customer workspace — **DONE** | 45m | t004, w6/m149 |
+| t006 | Simplify — **DONE** | 15m | t005 |
+| t007 | Test coverage — **DONE** | 30m | t005, t006 |
+| t008 | Closeout — **DONE** | 10m | t007 |
 
 ## Definition of done
 
