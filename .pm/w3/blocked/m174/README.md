@@ -1,20 +1,20 @@
 # w3 · m174 — Alerting and backups stop failing silently
 
-**Worker:** worker3 **Goal:** when the alert path itself breaks, a tenant disk snapshot or a Postgres base backup stops, or tenant pods cannot be scheduled, a human is told — through a path that does not depend on the broken component **Status:** todo
+**Worker:** worker3 **Goal:** when the alert path itself breaks, a tenant disk snapshot or a Postgres base backup stops, or tenant pods cannot be scheduled, a human is told — through a path that does not depend on the broken component **Status:** blocked — t001–t006, t008, t009 done; t007 drill waits on a mock-cluster rebuild and the production rollout checks; t010 closeout follows
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Watchdog rule and self-monitoring for Prometheus and Alertmanager | 45m | — |
-| t002 | Out-of-cluster dead-man check that opens a GitHub tracking issue | 1h | t001 |
-| t003 | Watch the tenant disk-snapshot CronJobs (`dskbak-*`) | 30m | — |
-| t004 | Alert on Postgres base-backup age | 1h | — |
-| t005 | Alert on unschedulable tenant pods and a full serving pool | 40m | — |
-| t006 | Panels, coverage inventory and runbook links for the new alerts | 40m | t001, t003, t004, t005 |
+| t001 | Watchdog rule and self-monitoring for Prometheus and Alertmanager — **DONE** | 45m | — |
+| t002 | Out-of-cluster dead-man check that opens a GitHub tracking issue — **DONE** | 1h | t001 |
+| t003 | Watch the tenant disk-snapshot CronJobs (`dskbak-*`) — **DONE** | 30m | — |
+| t004 | Alert on Postgres base-backup age — **DONE** | 1h | — |
+| t005 | Alert on unschedulable tenant pods and a full serving pool — **DONE** | 40m | — |
+| t006 | Panels, coverage inventory and runbook links for the new alerts — **DONE** | 40m | t001, t003, t004, t005 |
 | t007 | Fault-injection proof on the mock cluster | 1h | t002, t006 |
-| t008 | Simplify | 15m | t007 |
-| t009 | Test coverage | 30m | t007 |
+| t008 | Simplify — **DONE** | 15m | t007 |
+| t009 | Test coverage — **DONE** | 30m | t007 |
 | t010 | Closeout | 10m | t008, t009 |
 
 ## Definition of done

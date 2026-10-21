@@ -1,0 +1,105 @@
+name: Alerting heartbeat
+
+# Prometheus and Alertmanager cannot report their own death, and a notification
+# path that fails silently looks like a quiet night (a no-MX recipient once
+# swallowed 512 alert emails, w8/m30). This checks the alert pipeline from
+# outside the cluster every hour — Watchdog active, no failed notifications,
+# public API and dashboard answering — and keeps one GitHub issue open while it
+# fails. GitHub's own notifications deliver it, independent of SendGrid
+# (w3/m174; docs/ADR010-observability.md#alerting-heartbeat).
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "23 * * * *"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: alerting-heartbeat
+  cancel-in-progress: false
+
+jobs:
+  heartbeat:
+    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    # Main-only and reviewer-free, so the schedule never waits for a human.
+    environment: production-observe
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
+        with:
+          version: v1.36.1
+      # Same not-every-host-has-gh guard as isolation-matrix.yml.
+      - name: Ensure gh CLI
+        run: |
+          command -v gh >/dev/null && exit 0
+          v=2.100.0
+          curl -fsSL -o "$RUNNER_TEMP/gh.tgz" "https://github.com/cli/cli/releases/download/v${v}/gh_${v}_linux_arm64.tar.gz"
+          echo "ea4e7a581a32ccad6cc7923cb1576ac5859ba4b9a16ab22eb8f8a96e78e2e961  $RUNNER_TEMP/gh.tgz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/gh.tgz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/gh_${v}_linux_arm64/bin" >> "$GITHUB_PATH"
+      # Same credential staging as isolation-matrix.yml, but a failed fetch is a
+      # heartbeat FAILURE (cluster unreachable), not a broken job: the check
+      # below reports it and the issue opens.
+      - name: Get app cluster kubeconfig
+        continue-on-error: true
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          BEX_SSH_PRIVATE_KEY: ${{ secrets.BEX_SSH_PRIVATE_KEY }}
+          BEX_SSH_KNOWN_HOSTS: ${{ secrets.BEX_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m700 -d "$RUNNER_TEMP/bex-ssh"
+          printf '%s\n' "$BEX_SSH_PRIVATE_KEY" > "$RUNNER_TEMP/bex-ssh/id_bex"
+          chmod 600 "$RUNNER_TEMP/bex-ssh/id_bex"
+          export BEX_SSH_KEY_PATH="$RUNNER_TEMP/bex-ssh/id_bex"
+          export BEX_SSH_REQUIRE_KNOWN_HOSTS=1
+          if [ -n "${BEX_SSH_KNOWN_HOSTS:-}" ]; then
+            printf '%s\n' "${BEX_SSH_KNOWN_HOSTS}" > "$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+            chmod 600 "$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+            export BEX_SSH_KNOWN_HOSTS_FILE="$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+          fi
+          bash scripts/fetch-app-kubeconfig.sh "$RUNNER_TEMP/app.kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/app.kubeconfig" >> "$GITHUB_ENV"
+      # The SSH key was only ever needed to fetch admin.conf.
+      - name: Scrub SSH credentials
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/bex-ssh"
+      - name: Check the alert pipeline from outside the cluster
+        id: check
+        run: |
+          code=0
+          bash scripts/alerting-heartbeat.sh > heartbeat.txt 2>&1 || code=$?
+          cat heartbeat.txt
+          if [ "$code" -eq 2 ]; then
+            exit 2 # unusable runner: never a silent pass
+          fi
+          echo "down=$([ "$code" -eq 0 ] && echo false || echo true)" >> "$GITHUB_OUTPUT"
+      - name: Open or update the heartbeat issue
+        if: steps.check.outputs.down == 'true'
+        run: |
+          gh label create alerting-heartbeat --repo "$GITHUB_REPOSITORY" \
+            --color B60205 --description "The alert pipeline or the public edge failed its out-of-cluster heartbeat" --force
+          body="$(printf '%s\n\n%s\n' "$(cat heartbeat.txt)" "While this is open, in-cluster alerts may not be reaching anyone. Runbook: docs/ADR010-observability.md#alerting-heartbeat")"
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label alerting-heartbeat --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "Alerting heartbeat failed: alerts may be firing unseen" \
+              --label alerting-heartbeat --body "$body"
+          fi
+      - name: Close the heartbeat issue after recovery
+        if: steps.check.outputs.down == 'false'
+        run: |
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label alerting-heartbeat --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+              --comment "The alert pipeline and public edge pass the heartbeat again."
+          fi
+      - name: Scrub app kubeconfig
+        if: always()
+        run: rm -f -- "$RUNNER_TEMP/app.kubeconfig"

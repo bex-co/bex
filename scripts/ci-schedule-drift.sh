@@ -59,6 +59,8 @@ set -euo pipefail
 WINDOWS="
 # w7/055's handoff. Requested every 6h; measured gaps 4h25m-9h30m since 09-05.
 ssh-edge-liveness.yml 12
+# w3/m174. Hourly; no history yet. Six missed hours must trip.
+alerting-heartbeat.yml 6
 # Daily. Worst measured 34h24m (infra); one skipped day (~48h) must still trip.
 infra.yml 40
 ci-red-streak.yml 40

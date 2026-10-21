@@ -67,6 +67,9 @@ jobs:
         run: bash scripts/env-file.test.sh
       - name: gh-secrets environment-scope self-test
         run: bash scripts/gh-secrets.test.sh
+      # w3/m174: the out-of-cluster alert-pipeline heartbeat.
+      - name: Alerting heartbeat self-test
+        run: bash scripts/alerting-heartbeat.test.sh
       # The daily CI-red-streak job is the thing that would have caught
       # `gitops (render)` shipping broken and staying red for five days. Its
       # arithmetic has one edge case that decides whether it reports anything at
