@@ -29,7 +29,7 @@ import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { Switch } from "@/common/components/ui/switch";
-import { isValidDnsLabel } from "@/common/lib/utils/dns-label";
+import { isValidLabel } from "@/common/lib/utils/resource-label";
 import type { en } from "@/i18n";
 import { useKeyValueInstanceTypes } from "@/features/keyvalue/hooks/use-key-value-instance-types";
 import { useCreateKeyValue } from "@/features/keyvalue/hooks/use-create-key-value";
@@ -111,14 +111,15 @@ export function NewKeyValuePage() {
 
   const plan = planOverride ?? instanceTypes[0]?.id ?? "";
 
-  const nameValid = isValidDnsLabel(name);
+  // A free-form label (w5/m153), sent trimmed.
+  const nameValid = isValidLabel(name);
   const showNameError = name.length > 0 && !nameValid;
   const canSubmit = nameValid && plan !== "" && !busy;
 
   async function handleSubmit() {
     if (!canSubmit) return;
     const id = await create({
-      name,
+      name: name.trim(),
       plan,
       version: version === VERSION_DEFAULT ? "" : version,
       public: isPublic,

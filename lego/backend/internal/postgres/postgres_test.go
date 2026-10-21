@@ -1151,7 +1151,8 @@ func TestRESTUpdatePostgresPartial(t *testing.T) {
 	}
 
 	// Invalid and colliding names fail specifically and leave the object alone.
-	if w = serveREST(svc, "PATCH", "/v1/postgres/upd-db", `{"name":"Bad Name"}`); w.Code != 400 || !strings.Contains(w.Body.String(), "lowercase") {
+	// A free-form label is fine (w5/m153); a padded one is not.
+	if w = serveREST(svc, "PATCH", "/v1/postgres/upd-db", `{"name":" padded"}`); w.Code != 400 || !strings.Contains(w.Body.String(), "label") {
 		t.Errorf("invalid rename => descriptive 400, got %d: %s", w.Code, w.Body.String())
 	}
 	other := &appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{Name: "other-db", Namespace: "default"}, Spec: appv1alpha1.DatabaseSpec{Name: "taken", Plan: "free"}}

@@ -112,3 +112,23 @@ func TestBlueprintNamesThatShareAResourceNameAreDuplicates(t *testing.T) {
 		t.Fatalf("validation = %+v, want BLUEPRINT_DUPLICATE_RESOURCE", v.Errors)
 	}
 }
+
+// Render's create takes a free-form name (w5/m153): bex creates the resource
+// under its slug and keeps the name as the label; a dry run shows the label.
+func TestCreateMapsAFreeFormNameOntoASlugAndKeepsItAsTheLabel(t *testing.T) {
+	svc, cl := newService(nil)
+	v, err := svc.Create(context.Background(), CreateRequest{Name: "My API", Image: "nginx:1"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if v.DisplayName != "My API" {
+		t.Errorf("view display name = %q, want My API", v.DisplayName)
+	}
+	if a := getApp(t, cl, "my-api"); a.Spec.DisplayName != "My API" {
+		t.Errorf("spec.displayName = %q, want My API", a.Spec.DisplayName)
+	}
+	dry, err := svc.Create(context.Background(), CreateRequest{Name: "Other App", Image: "nginx:1", DryRun: true})
+	if err != nil || dry.DisplayName != "Other App" || dry.Name != "other-app" {
+		t.Fatalf("dry run = %+v, %v; want other-app labeled Other App", dry, err)
+	}
+}

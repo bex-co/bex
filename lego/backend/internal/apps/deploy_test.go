@@ -109,7 +109,7 @@ func TestCreateValidation(t *testing.T) {
 		name string
 		req  CreateRequest
 	}{
-		{"bad name", CreateRequest{Name: "Not A Label", Image: "x"}},
+		{"bad name", CreateRequest{Name: "not\ta label", Image: "x"}}, // a control character is no label (w5/m153)
 		{"no repo or image", CreateRequest{Name: "web"}},
 		{"unknown plan", CreateRequest{Name: "web", Image: "x", Plan: "gold"}},
 		{"port too high", CreateRequest{Name: "web", Image: "x", Port: 70000}},

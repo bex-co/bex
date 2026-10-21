@@ -120,16 +120,14 @@ describe("NewKeyValuePage", () => {
     });
     expect(submit).toBeDisabled(); // empty name
 
-    // Invalid: can't start with a hyphen — the inline error shows, submit stays off.
-    await user.type(screen.getByLabelText("Name"), "-bad");
-    expect(
-      screen.getByText(/can't start or end with a hyphen/i),
-    ).toBeInTheDocument();
+    // Invalid: shaped like a resource ID — the inline error shows, submit stays off.
+    await user.type(screen.getByLabelText("Name"), "red-abcdefghij0123456789");
+    expect(screen.getByText(/shaped like a resource ID/i)).toBeInTheDocument();
     expect(submit).toBeDisabled();
 
-    // Valid name enables submit.
+    // A free-form label is accepted, as on Render (w5/m153).
     await user.clear(screen.getByLabelText("Name"));
-    await user.type(screen.getByLabelText("Name"), "cache-1");
+    await user.type(screen.getByLabelText("Name"), "My Cache_1");
     expect(submit).toBeEnabled();
   });
 
@@ -162,6 +160,20 @@ describe("NewKeyValuePage", () => {
       persistenceMode: "journal-snapshot",
       environmentId: undefined,
     });
+  });
+
+  it("submits a free-form name trimmed, as bex-api takes it (w5/m153)", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(await screen.findByLabelText("Name"), "  Session Cache  ");
+    await user.click(
+      screen.getByRole("button", { name: "Create Key Value Instance" }),
+    );
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Session Cache" }),
+    );
   });
 
   it("submits the selected environment so the backend auto-joins its project", async () => {

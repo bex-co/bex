@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { isValidDnsLabel } from "@/common/lib/utils/dns-label";
+import { isValidLabel } from "@/common/lib/utils/resource-label";
 import { repoNameSlug, gitUrlSlug, imageSlug } from "@/common/lib/utils/slug";
 import { useServiceNameAvailability } from "@/features/services/hooks/use-service-name-availability";
+import { useResourceSlug } from "@/features/services/hooks/use-resource-slug";
 import type { RepoView } from "@/features/services/hooks/use-repos";
 import type { SourceTab } from "@/features/services/components/service-source-picker";
 
@@ -64,12 +65,16 @@ export function useServiceNameDraft({
     }
   }
 
-  const nameValid = isValidDnsLabel(name);
+  // The name is a free-form label (w5/m153): bex-api derives the resource
+  // name from it, and availability is a property of that resource name.
+  const nameValid = isValidLabel(name);
+  const trimmedName = name.trim();
+  const resourceName = useResourceSlug(nameValid ? trimmedName : "");
   const {
     taken: nameTaken,
     suggestion: nameSuggestion,
     checking: checkingName,
-  } = useServiceNameAvailability(nameValid ? name : "");
+  } = useServiceNameAvailability(resourceName ?? "");
 
   // Same repo connected twice (or any other auto-filled slug that's already
   // taken): prefill the suggested free name instead of leaving the user to
@@ -100,6 +105,14 @@ export function useServiceNameDraft({
   return {
     name,
     nameValid,
+    /** The resource name bex-api derives from the name; `null` while unknown. */
+    resourceName,
+    /** The resource name, when it differs from the name as it will be sent —
+     *  the form's "Resource name: …" preview; `null` otherwise. */
+    resourceNamePreview:
+      resourceName !== null && resourceName !== trimmedName
+        ? resourceName
+        : null,
     nameTaken,
     nameSuggestion,
     checkingName,

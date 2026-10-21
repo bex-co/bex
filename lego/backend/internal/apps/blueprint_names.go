@@ -70,13 +70,11 @@ func blueprintDisplayName(name string) string {
 	return name
 }
 
-// slugRefNames maps a reference's target onto the same resource name its
-// declaration got, so fromService and fromDatabase resolve.
+// slugRefNames maps a reference to a service onto the resource name its
+// declaration got, so fromService resolves. A Postgres or Key Value keeps its
+// free-form name (w5/m153), so references to one stay as written.
 func slugRefNames(e *bexEnvVar) {
-	if e.FromService != nil {
+	if e.FromService != nil && !isKeyValueType(e.FromService.Type) {
 		e.FromService.Name = blueprintResourceSlug(e.FromService.Name)
-	}
-	if e.FromDatabase != nil {
-		e.FromDatabase.Name = blueprintResourceSlug(e.FromDatabase.Name)
 	}
 }

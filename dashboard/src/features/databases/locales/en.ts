@@ -161,7 +161,7 @@ const enDatabases: Record<string, TranslationEntry> = {
   },
   "databases.fieldNameError": {
     message:
-      "Use lowercase letters, digits, and hyphens (up to 30 characters); can't start or end with a hyphen.",
+      "Enter a name of up to 100 characters, without line breaks or control characters, that isn't shaped like a resource ID (such as srv-…).",
     description: "Create-database name validation message",
   },
   "databases.physicalNamesTitle": {
@@ -1246,7 +1246,7 @@ const enDatabases: Record<string, TranslationEntry> = {
   },
   "databases.nameInvalid": {
     message:
-      "Use lowercase letters, digits, and hyphens (up to 30 characters); don't start or end with a hyphen.",
+      "Enter a name of up to 100 characters, without line breaks or control characters, that isn't shaped like a resource ID (such as srv-…).",
     description: "Database rename validation message",
   },
   // --- Insights panel (w2/m25) ---
