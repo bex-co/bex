@@ -1504,7 +1504,10 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		// setCacheProfile / purgeServiceCache: Render's edge caching for a
 		// web service (w5/m151), the same verbs REST's PATCH and
 		// POST …/cache/purge call.
-		"setCacheProfile":   gqlutil.ArgMutation(serviceGQLType, "profile", s.SetCacheProfile),
+		"setCacheProfile": gqlutil.ArgMutation(serviceGQLType, "profile", s.SetCacheProfile),
+		// setRuntime: Render's runtime change (w5/m152), rebuilding the
+		// service with the builder the runtime selects.
+		"setRuntime":        gqlutil.ArgMutation(serviceGQLType, "runtime", s.SetRuntime),
 		"purgeServiceCache": &graphql.Field{Type: serviceGQLType, Args: confirmIDArgs(), Resolve: verb(s.PurgeCache)},
 		"resumeService":     &graphql.Field{Type: serviceGQLType, Args: gqlutil.IDArg(), Resolve: verb(s.Resume)},
 		// restartServer moved to deploys.GraphQLMutation (w2/m30): routing through

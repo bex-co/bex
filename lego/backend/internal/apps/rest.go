@@ -57,16 +57,17 @@ type patchServiceRequest struct {
 		RenderSubdomainPolicy *string         `json:"renderSubdomainPolicy"`
 		EnvSpecific           json.RawMessage `json:"envSpecificDetails"`
 		Previews              json.RawMessage `json:"previews"`
-		// PullRequestPreviewsEnabled and Runtime are declared by Render's
-		// PATCH schema and refused by name (unsupportedField).
+		// PullRequestPreviewsEnabled is declared by Render's PATCH schema and
+		// refused by name (unsupportedField).
 		PullRequestPreviewsEnabled json.RawMessage `json:"pullRequestPreviewsEnabled"`
-		Runtime                    json.RawMessage `json:"runtime"`
+		// Runtime is Render's runtime change (w5/m152).
+		Runtime *string `json:"runtime"`
 		// Cache is Render's edge caching, {profile} (w5/m151).
 		Cache *struct {
 			Profile string `json:"profile"`
 		} `json:"cache"`
-		MaintenanceMode            json.RawMessage `json:"maintenanceMode"`
-		IPAllowList                json.RawMessage `json:"ipAllowList"`
+		MaintenanceMode json.RawMessage `json:"maintenanceMode"`
+		IPAllowList     json.RawMessage `json:"ipAllowList"`
 		// IdleTTLSeconds is a bex extra (Render has no idle-timeout field) — the
 		// free-tier auto-sleep window. A pointer so "absent" (leave unchanged) is
 		// distinct from an explicit 0 (restore the controller default).
@@ -360,12 +361,6 @@ func (r patchServiceRequest) unsupportedField() string {
 	}
 	if field := unsupportedPreviewsField(r.ServiceDetails.Previews, r.ServiceDetails.PullRequestPreviewsEnabled); field != "" {
 		return field
-	}
-	// Render's webServiceDetailsPATCH declares runtime (w5/m146): a runtime
-	// change is a rebuild bex does not run in place (the pinned CLI refuses it
-	// too).
-	if len(r.ServiceDetails.Runtime) > 0 {
-		return "serviceDetails.runtime (changing a service's runtime)"
 	}
 	return ""
 }
@@ -880,6 +875,7 @@ type patchFields struct {
 	renderSubdomainPolicy                                                  *string
 	displayName                                                            *string
 	cacheProfile                                                           *string
+	runtime                                                                *string
 	image, imageOwnerID                                                    *string
 	registryCredentialID                                                   *string
 	ipAllowList                                                            *[]core.IPAllowListEntry // nil = not provided (leave unchanged); non-nil = replace
@@ -924,6 +920,7 @@ func (req patchServiceRequest) resolveFields(r *http.Request) (patchFields, erro
 		if c := req.ServiceDetails.Cache; c != nil {
 			f.cacheProfile = &c.Profile
 		}
+		f.runtime = req.ServiceDetails.Runtime
 		f.publishPath = req.ServiceDetails.PublishPath
 		f.buildCommand = req.ServiceDetails.BuildCommand
 		allowList, provided, err := decodeIPAllowList(r.Context(), req.ServiceDetails.IPAllowList)
@@ -1088,6 +1085,7 @@ func (req patchServiceRequest) toServicePatch(f patchFields, maintenanceMode *Ma
 		RenderSubdomainPolicy:          f.renderSubdomainPolicy,
 		IPAllowList:                    f.ipAllowList,
 		CacheProfile:                   f.cacheProfile,
+		Runtime:                        f.runtime,
 		// MCP-only (divergence): NotificationsToSend and Autoscaling stay
 		// nil — Render's PATCH body has no spelling for either; only
 		// update_service fills them (mcp.go applyServicePatch).

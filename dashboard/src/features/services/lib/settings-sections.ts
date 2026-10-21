@@ -12,6 +12,7 @@ export type ServiceSettingsSectionId =
   | "general"
   | "deploy"
   | "source"
+  | "runtime"
   | "build"
   | "static-site"
   | "domains"
@@ -56,16 +57,22 @@ export function serviceSettingsSections(
   const { type, repo } = service;
   const cron = isCronType(type);
   const staticSite = isStaticSiteType(type);
+  // Render's Runtime picker (w5/m152): a repo-backed service moves between
+  // docker and the native runtimes. bex-api's setRuntime refuses a static site
+  // (no runtime) and an image-backed one (a source change, not a runtime one).
+  const runtime = Boolean(repo) && !staticSite && service.runtime !== "image";
   const sections: ServiceSettingsSectionId[] = ["general"];
   if (cron) {
     // Its Deploy section holds the schedule and command. A git-sourced cron job
     // still builds, so it keeps Build (w2/m9, w5/010).
     sections.push("deploy");
+    if (runtime) sections.push("runtime");
     if (repo) sections.push("build");
   } else {
     if (!staticSite) sections.push("source");
     // An Existing Image service has no build: its Deploy card stands alone.
     if (!repo && !staticSite) sections.push("deploy");
+    if (runtime) sections.push("runtime");
     if (repo) sections.push("build");
     if (staticSite) sections.push("static-site");
     // Custom domains, the platform subdomain and the inbound IP allowlist exist
