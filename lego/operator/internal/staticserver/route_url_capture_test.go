@@ -137,10 +137,18 @@ func TestRouteCaptureDoesNotExpandQueryOrFragmentTokens(t *testing.T) {
 	}
 }
 
+// An absolute http(s) destination is valid for a redirect only (w8/162).
+func TestRouteRewriteRejectsAbsoluteDestination(t *testing.T) {
+	h, _ := newTestHandler(t, Site{Routes: []appv1alpha1.StaticRoute{{Type: "rewrite", Source: "/source.yaml", Destination: "https://external.example/file.yaml"}}}, nil)
+	if response := do(h, http.MethodGet, "/source.yaml"); response.Code != http.StatusBadRequest {
+		t.Fatalf("absolute rewrite response=%d", response.Code)
+	}
+}
+
 func TestRouteCaptureRejectsMalformedDirectCRDestinations(t *testing.T) {
 	for _, destination := range []string{
 		"/bad%", "/bad%2", "/local.yaml?q=%zz", "/local.yaml#bad%zz",
-		"https://external.example/file.yaml", "//external.example/file.yaml",
+		"//external.example/file.yaml",
 		"/%2fexternal.example/file.yaml", "/%5cexternal.example/file.yaml",
 		"/nested/%5cfile.yaml", "/%00file.yaml", "/%1ffile.yaml", "/%7ffile.yaml",
 	} {

@@ -391,7 +391,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **163** — [Render's "Deploy to Render" button has no bex counterpart: `/deploy?repo=` is a 404 and the Blueprint wizard ignores `?repo=`](163.md) ← `/qa-find-bugs-cli` sweep 1280 2026-10-21: 103 render-examples READMEs use the button; minor, ~90m.
 
-- [ ] **162** — [Static-site redirects cannot point at another site (`destination: https://…`), although Render allows it and a redirect proxies nothing](162.md) ← `/qa-find-bugs-cli` sweep 1278 2026-10-21: split redirects from the local-only rewrite rule; minor, ~60m.
+- [x] **162** — [Static-site redirects cannot point at another site (`destination: https://…`), although Render allows it and a redirect proxies nothing](done/162.md) — **DONE (2026-10-21)**: redirects may target an external http(s) host; ← `/qa-find-bugs-cli` sweep 1278 2026-10-21: split redirects from the local-only rewrite rule; minor, ~60m.
 
 - [x] **161** — [`bex blueprints validate` refuses a `fromService.envVarKey` copy of a `sync: false` variable, which Render's own AEO-analytics example uses](done/161.md) — **DONE (2026-10-21)**: Resolved by w5/170 (a service can copy a sibling's `sync: false` value): `syncref.yaml` (flat and nested) validates on pin `a3f66521f93d` (sweep 1286).
 
