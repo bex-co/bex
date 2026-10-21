@@ -271,6 +271,12 @@ var _ = Describe("Application container policy admission", func() {
 							expectDenied(operator.Update(ctx, bad, client.DryRunAll), label+" update")
 						}
 					}
+					// A widened workload may run in a pod user namespace
+					// (BEX_RENDER_V1_USER_NAMESPACES, w6/m151).
+					userns := admissionFreshWorkload(workload)
+					userns.SetName(workload.GetName() + "-userns")
+					admissionPodTemplate(userns).Spec.HostUsers = new(false)
+					Expect(operator.Create(ctx, userns, client.DryRunAll)).To(Succeed(), scenario+" pod user namespace")
 					// RuntimeDefault inherited from the pod is valid; an explicit
 					// container Unconfined override was refused above.
 					inherited := admissionFreshWorkload(workload)

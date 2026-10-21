@@ -35,6 +35,7 @@ Materialized from the three proposals in `$pm-brainstorm for w6`, approved by th
 
 ## Milestones
 
+- [ ] **m151** — [`render-v1` runtime pods run in a pod user namespace (`hostUsers: false`)](m151/README.md) (7 tasks) ← promoted from w6/086 (2026-10-21)
 - [ ] **m150** — [`render-v1` runs `io_uring` and unprivileged-userns workloads, as on Render (seccomp slice)](m150/README.md) (8 tasks) ← promoted from w6/085 (2026-10-20), ADR008 § Render parity first
 - [ ] **m149** — [Tenant containers run what Render runs: a Render-compatible privilege policy in every workspace (privilege slice of deploying `render-examples/clickhouse`)](m149/README.md) (14 tasks; t001, t002, t006 done; render-v1 value shipped; **unparked 2026-10-20** under Render parity first — RuntimeDefault seccomp, no `hostUsers`; follow-ups w6/085, w6/086) ← user decision 2026-10-17 ("render parity 比之前的 security hardening 重要，所以修改 adr，同时对应的实际改动，一并都 /pm for w6"). Amends ADR089 D2 (accepted), ADR022, ADR018; depends on m148 t002/t007.
 
