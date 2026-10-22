@@ -375,7 +375,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **193** — [Restrict environment-variable, secret-file and shell access to Admins in a protected environment](193.md) ← w8/187 2026-10-22: the rest of Render's protected-environment list; minor, ~2h.
+- [x] **193** — [Restrict environment-variable, secret-file and shell access to Admins in a protected environment](done/193.md) ← w8/187 2026-10-22: the rest of Render's protected-environment list; minor, ~2h. — **DONE (2026-10-22)**.
 
 - [ ] **192** — [Retire the implicit static-site SPA fallback for sites created before 2026-10-23](192.md) ← w8/183 2026-10-22 (due 2026-11-22)
 

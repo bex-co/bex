@@ -121,6 +121,18 @@ func (s *Service) appProtected(ctx context.Context, a *appv1alpha1.App) (bool, e
 	return protectedStatus == core.ProtectedStatusProtected, nil
 }
 
+// ProtectionGuard lends this predicate to the secrets feature (w8/193), which
+// restricts a protected service's environment variables and secret files to
+// Admins. A value, not Service methods, so the verb sweeps do not take it for
+// an authorized verb.
+func (s *Service) ProtectionGuard() protectionGuard { return protectionGuard{s} }
+
+type protectionGuard struct{ s *Service }
+
+func (g protectionGuard) AppProtected(ctx context.Context, a *appv1alpha1.App) (bool, error) {
+	return g.s.appProtected(ctx, a)
+}
+
 // requireUnprotected restricts the verbs Render reserves to Admins on a App
 // belonging to a protectedStatus=protected Environment (core.ProtectedVerbRestricted;
 // w8/187): the caller must pass a fresh workspace-manage check. Every other

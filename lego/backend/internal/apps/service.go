@@ -1587,6 +1587,11 @@ func (s *Service) ResolveSSHSession(ctx context.Context, username string) (SSHIn
 	if err := s.AuthorizeAppFresh(ctx, core.RelCanViewSensitive, a); err != nil {
 		return SSHInstanceTarget{}, err
 	}
+	// Render: shell access to a protected environment's service is an Admin's
+	// (w8/193).
+	if err := s.requireUnprotected(ctx, a, "shell"); err != nil {
+		return SSHInstanceTarget{}, err
+	}
 	if parseErr != nil {
 		return SSHInstanceTarget{}, parseErr
 	}
@@ -1654,6 +1659,11 @@ func (s *Service) CreateShellSession(ctx context.Context, name, instanceID strin
 	// so shell mint requires can_view_sensitive (developer and up).
 	a, err := s.AuthorizeApp(ctx, core.RelCanViewSensitive, name)
 	if err != nil {
+		return ShellSessionView{}, err
+	}
+	// Render: shell access to a protected environment's service is an Admin's
+	// (w8/193).
+	if err := s.requireUnprotected(ctx, a, "shell"); err != nil {
 		return ShellSessionView{}, err
 	}
 	if len(s.ShellTicketSecret) == 0 || strings.TrimSpace(s.ShellWSURL) == "" {
