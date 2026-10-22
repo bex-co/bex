@@ -97,9 +97,10 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		// target is. The environment-level action itself has no events feed
 		// of its own to join (environments is a grouping feature, like
 		// projects, neither of which has one yet).
-		"environments.Delete":      "fans AuthorizeApp out over member Apps to clear core.LabelNetworkIsolation; not itself a per-App verb",
-		"environments.SetServices": "fans AuthorizeApp out over member Apps to sync core.LabelNetworkIsolation; not itself a per-App verb",
-		"environments.SetACL":      "fans AuthorizeApp out over member Apps to sync core.LabelNetworkIsolation; not itself a per-App verb",
+		"environments.Delete":        "fans AuthorizeApp out over member Apps to clear core.LabelNetworkIsolation; not itself a per-App verb",
+		"environments.DeleteIfEmpty": "Delete's REST twin (w8/188): the same fan-out, after an occupancy check",
+		"environments.SetServices":   "fans AuthorizeApp out over member Apps to sync core.LabelNetworkIsolation; not itself a per-App verb",
+		"environments.SetACL":        "fans AuthorizeApp out over member Apps to sync core.LabelNetworkIsolation; not itself a per-App verb",
 		// w4/m28: the environment inbound-IP fan-out's member write paths —
 		// projection plumbing for an environment-level action (like the
 		// SetACL/SetServices fan-outs above); datastores have no events feed,
