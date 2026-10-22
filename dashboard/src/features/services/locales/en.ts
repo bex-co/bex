@@ -3872,6 +3872,27 @@ const enServices: Record<string, TranslationEntry> = {
     message: "The first snapshot is taken on the next nightly run.",
     description: "Snapshots empty state body",
   },
+  "services.diskSnapshotsOverdueTitle": {
+    message: "No recent snapshot",
+    description: "A disk's nightly snapshot did not arrive when expected",
+  },
+  "services.diskSnapshotsOverdueBody": {
+    message:
+      "The nightly snapshot expected by {dueBy} hasn't been taken, so recent changes to this disk aren't backed up. Existing snapshots are unaffected. If this persists, contact support.",
+    description:
+      "Explains an overdue nightly snapshot; {dueBy} is a local date/time",
+  },
+  "services.diskSnapshotsNotRunningTitle": {
+    message: "Snapshots aren't running",
+    description:
+      "The platform could not schedule this disk's nightly snapshots",
+  },
+  "services.diskSnapshotsNotRunningBody": {
+    message:
+      "bex couldn't schedule this disk's nightly snapshots, so new changes aren't being backed up. Existing snapshots are unaffected. Contact support.",
+    description:
+      "Explains that nightly snapshots cannot be scheduled and whom to contact",
+  },
   "services.diskSnapshotsUnavailableTitle": {
     message: "Snapshots are unavailable",
     description: "Snapshots error state title",

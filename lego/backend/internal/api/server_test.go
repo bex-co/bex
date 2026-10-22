@@ -1247,7 +1247,7 @@ func sweepEveryVerb(t *testing.T, ctx context.Context, services []any, fn func(s
 // checks its walk against — shared so the sweeps' thresholds can't drift
 // apart (w4/087). Bump deliberately in the same commit that adds or removes a
 // verb; a loose floor would absorb silent filter regressions.
-const wantSweptVerbs = 358 // apps.SetRuntime: Render's serviceDetails.runtime change (w5/m152)
+const wantSweptVerbs = 359 // apps.DiskSnapshotHealth: are nightly disk snapshots happening (w6/m152)
 
 func assertSweptVerbCount(t *testing.T, swept int) {
 	t.Helper()

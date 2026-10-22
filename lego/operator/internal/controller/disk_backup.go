@@ -53,7 +53,7 @@ const (
 	// diskBackupDeadlineSeconds bounds one run. A snapshot streams at network
 	// speed with no staging, but a large volume full of incompressible data can
 	// still take a while; six hours is generous and still finite.
-	diskBackupDeadlineSeconds = int64(6 * time.Hour / time.Second)
+	diskBackupDeadlineSeconds = int64(appv1alpha1.DiskBackupActiveDeadline / time.Second)
 	// diskSnapshotMountPath is where the Job mounts the tenant's volume. It is
 	// deliberately not the App's own mountPath: what is captured is the
 	// volume's contents, wherever the service happens to mount them.
@@ -125,7 +125,7 @@ func diskPurgeName(appName string) string {
 // same egress. The App name makes the minute stable across reconciles.
 func diskBackupSchedule(appName string) string {
 	sum := sha256.Sum256([]byte(appName))
-	return fmt.Sprintf("%d 2 * * *", int(sum[0])%60)
+	return fmt.Sprintf("%d %d * * *", int(sum[0])%60, appv1alpha1.DiskBackupHourUTC)
 }
 
 // reconcileDiskBackup converges the nightly snapshot CronJob for a disk-bearing
@@ -147,7 +147,7 @@ func (r *AppReconciler) reconcileDiskBackup(ctx context.Context, app *appv1alpha
 		// pass — an error loop that says nothing about the real problem. Fail
 		// closed and name it instead: the owner can see that snapshots are not
 		// running, which is the one thing a silent backup must never hide.
-		setDiskCondition(app, false, "SnapshotImageUnresolved",
+		setDiskCondition(app, false, appv1alpha1.DiskReasonSnapshotImageUnresolved,
 			"cannot schedule disk snapshots: the operator could not resolve its own image (POD_NAME/BEX_BACKUP_HELPER_IMAGE)")
 		return nil
 	}
@@ -157,7 +157,7 @@ func (r *AppReconciler) reconcileDiskBackup(ctx context.Context, app *appv1alpha
 		// a CronJob would only produce CreateContainerConfigError pods at 02:xx
 		// — the silent-unprotected-disk failure this projection exists to end.
 		// Name it and take no snapshot instead.
-		setDiskCondition(app, false, "SnapshotCredentialUnavailable",
+		setDiskCondition(app, false, appv1alpha1.DiskReasonSnapshotCredentialUnavailable,
 			fmt.Sprintf("cannot schedule disk snapshots: %v (run scripts/disk-snapshot-secret.sh install)", err))
 		return nil
 	case err != nil:
@@ -214,7 +214,7 @@ func (r *AppReconciler) diskBackupCronJobSpec(app *appv1alpha1.App) batchv1.Cron
 	spec := batchv1.CronJobSpec{
 		Schedule:                diskBackupSchedule(app.Name),
 		TimeZone:                &timeZone,
-		StartingDeadlineSeconds: ptr.To(int64(time.Hour / time.Second)),
+		StartingDeadlineSeconds: ptr.To(int64(appv1alpha1.DiskBackupStartingDeadline / time.Second)),
 		// A second run while one is still uploading would read the volume twice
 		// and race the retention sweep.
 		ConcurrencyPolicy:          batchv1.ForbidConcurrent,

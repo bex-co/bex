@@ -694,6 +694,15 @@ export type DiskSnapshot = {
   snapshotKey: Maybe<Scalars['String']['output']>;
 };
 
+/** Whether a disk's nightly snapshots are being taken (bex extension). */
+export type DiskSnapshotHealth = {
+  __typename: 'DiskSnapshotHealth';
+  dueBy: Maybe<Scalars['String']['output']>;
+  lastSnapshotAt: Maybe<Scalars['String']['output']>;
+  reason: Maybe<Scalars['String']['output']>;
+  state: Maybe<Scalars['String']['output']>;
+};
+
 export type EnvGroup = {
   __typename: 'EnvGroup';
   availability: Maybe<Scalars['String']['output']>;
@@ -2736,6 +2745,7 @@ export type Query = {
   deployHook: Maybe<DeployHook>;
   deploys: Maybe<Array<Maybe<Deploy>>>;
   disk: Maybe<Disk>;
+  diskSnapshotHealth: Maybe<DiskSnapshotHealth>;
   diskSnapshots: Maybe<Array<Maybe<DiskSnapshot>>>;
   disks: Maybe<Array<Maybe<Disk>>>;
   envGroup: Maybe<EnvGroup>;
@@ -3046,6 +3056,11 @@ export type QueryDeploysArgs = {
 
 
 export type QueryDiskArgs = {
+  id: Scalars['String']['input'];
+};
+
+
+export type QueryDiskSnapshotHealthArgs = {
   id: Scalars['String']['input'];
 };
 
