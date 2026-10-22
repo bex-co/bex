@@ -551,8 +551,8 @@ func TestDeployStackFromServiceHostResolvesToTheSlug(t *testing.T) {
 	if h := findEnv(t, web.Spec.Env, "API_HOST"); h.Value != apiSlug {
 		t.Errorf("fromService host = %q, want the sibling's slug %q", h.Value, apiSlug)
 	}
-	if p := findEnv(t, web.Spec.Env, "API_PORT"); p.Value != "3000" {
-		t.Errorf("fromService port = %q, want the platform default 3000", p.Value)
+	if p := findEnv(t, web.Spec.Env, "API_PORT"); p.Value != "10000" {
+		t.Errorf("fromService port = %q, want the platform default 10000", p.Value)
 	}
 
 	// Idempotence: a re-apply resolves every ref up front (all siblings exist)

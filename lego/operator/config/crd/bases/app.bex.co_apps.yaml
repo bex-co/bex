@@ -694,7 +694,7 @@ spec:
                 - ignore
                 type: string
               port:
-                default: 3000
+                default: 10000
                 description: Port the application listens on (PORT is injected).
                 format: int32
                 type: integer

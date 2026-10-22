@@ -282,3 +282,17 @@ func TestPortsBelow1024AreAccepted(t *testing.T) {
 	}
 }
 
+
+// Render's PORT default is 10000 for a web service created without a port
+// (w8/168); an explicit port is untouched.
+func TestCreateDefaultsPortToRendersDefault(t *testing.T) {
+	for _, tc := range []struct{ in, want int32 }{{0, 10000}, {8080, 8080}} {
+		svc, cl := newService(nil)
+		if _, err := svc.Create(context.Background(), CreateRequest{Name: "web", Image: "docker.io/library/nginx:1.27", Port: tc.in}); err != nil {
+			t.Fatalf("Create port %d: %v", tc.in, err)
+		}
+		if got := getApp(t, cl, "web").Spec.Port; got != tc.want {
+			t.Errorf("create with port %d stored %d, want %d", tc.in, got, tc.want)
+		}
+	}
+}

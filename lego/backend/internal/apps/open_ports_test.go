@@ -86,7 +86,7 @@ func TestRenderServiceDetailsOpenPorts(t *testing.T) {
 		want []any // nil = absent
 	}{
 		{"configured web", func() *appv1alpha1.App { a := sampleApp("web"); a.Spec.Port = 8080; return a }(), []any{8080}},
-		{"configured private", func() *appv1alpha1.App { a := sampleApp("p"); a.Spec.Type = appv1alpha1.TypePrivateService; return a }(), []any{3000}},
+		{"configured private", func() *appv1alpha1.App { a := sampleApp("p"); a.Spec.Type = appv1alpha1.TypePrivateService; return a }(), []any{10000}},
 		{"image pending", image(nil), []any{}},
 		{"image serving", image(func(a *appv1alpha1.App) { a.Status.ServingNetwork = serving }), []any{8123, 9000, 9009}},
 		{"image replacing keeps the serving set", image(func(a *appv1alpha1.App) {

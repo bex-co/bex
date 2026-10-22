@@ -103,7 +103,7 @@ func TestCreateTenantAndApp(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Zero values fall back to platform defaults.
-	if app.Port != 3000 || app.Replicas != 1 || app.Branch != "main" || app.Tier != "free" {
+	if app.Port != 10000 || app.Replicas != 1 || app.Branch != "main" || app.Tier != "free" {
 		t.Errorf("defaults not applied: %+v", app)
 	}
 	if *kicks != 1 {

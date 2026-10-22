@@ -128,7 +128,7 @@ describe("ServicePortRow", () => {
     const { unmount } = render(<ServicePortRow serviceId="web" port={null} />);
     expect(screen.getByRole("spinbutton", { name: "Port" })).toHaveAttribute(
       "placeholder",
-      "3000",
+      "10000",
     );
     unmount();
 
@@ -142,7 +142,7 @@ describe("ServicePortRow", () => {
     render(<ServicePortRow serviceId="web" port={8080} />);
 
     expect(
-      screen.getByText(/The port your container listens on \(default 3000\)/),
+      screen.getByText(/The port your container listens on \(default 10000\)/),
     ).toBeInTheDocument();
     expect(
       screen.queryByText(/other declared TCP ports/),
