@@ -126,6 +126,7 @@ Resolution: tenant-namespace Secret access moves to the **uncached** client, whi
 | ingress | `cnpg-system` | the CNPG operator reconciling its Cluster | `allow-datastore-control-ingress` |
 | ingress | `bex-system` | pg-/kv-sni-proxy public access + bex-api's direct query path (`postgres/query.go`) | `allow-datastore-control-ingress` |
 | ingress | `monitoring` | Prometheus scrape of datastore metrics | `allow-datastore-control-ingress` |
+| ingress | `bex-system` activator pods (`app.bex.co/component=activator`) | holds a non-browser request through a free service's cold start and proxies it to the woken Service (w8/178) | `allow-activator-ingress` (hosting regime only, namespace AND pod selector in one peer) |
 | egress | kube-apiserver | CNPG's instance manager; the w7/m33 lesson | `allow-cnpg-apiserver-egress` (GitOps) |
 
 The three ingress peers are one additive hosting-regime k8s NetworkPolicy in `allowNetworkPolicies`, scoped by peer rather than by port: these are platform namespaces that already carry their own default-deny ingress, so enumerating ports buys little, while getting the list wrong fails silently as a stalled bootstrap or an empty metrics series.
