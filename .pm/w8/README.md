@@ -397,7 +397,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **183** — [A static site never serves its `404.html`, and every extension-less miss returns the home page with 200: Render answers a miss with 404 and the site's own `404.html`](done/183.md) ← `/qa-find-bugs-cli` sweep 1315 2026-10-22: unsigned ADR029/ADR018 divergence; major, ~1h30m + migration decision. — **DONE (2026-10-22)**: new static sites 404 with their 404.html; retire-the-residual filed as 192.
 
-- [ ] **182** — [`GET /v1/env-groups/{id}` returns env vars without values (and secret files without contents), and the service secret-file list omits `content`, although Render's pinned schema requires both](182.md) ← `/qa-find-bugs-cli` sweep 1314 2026-10-22: unsigned ADR018 divergence; minor, ~1h30m.
+- [x] **182** — [`GET /v1/env-groups/{id}` returns env vars without values (and secret files without contents), and the service secret-file list omits `content`, although Render's pinned schema requires both](done/182.md) ← `/qa-find-bugs-cli` sweep 1314 2026-10-22: unsigned ADR018 divergence; minor, ~1h30m. — **DONE (2026-10-22)**: REST env-group and secret-file reads carry values.
 
 - [x] **181** — [`bex keyvalues update --ip-allow-list` on a Persistence Off store fails with 400 `KEY_VALUE_RESTART_CONFIRMATION_REQUIRED`: enabling external access restarts (and empties) the store on bex, where Render changes the allowlist without a restart](done/181.md) ← `/qa-find-bugs-cli` sweep 1313 2026-10-22: unsigned ADR018 divergence; minor, ~1h30m. — **DONE (2026-10-22)**: new Key Value stores start with the TLS listener.
 

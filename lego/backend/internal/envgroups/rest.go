@@ -54,10 +54,17 @@ type envGroupWithCursor struct {
 	Cursor   string         `json:"cursor"`
 }
 
-func envGroupList(groups []renderEnvGroup) []envGroupWithCursor {
-	out := make([]envGroupWithCursor, 0, len(groups))
+// revealedGroupWithCursor is the same envelope around the revealed group REST
+// answers with (render.go revealedEnvGroup).
+type revealedGroupWithCursor struct {
+	EnvGroup revealedEnvGroup `json:"envGroup"`
+	Cursor   string           `json:"cursor"`
+}
+
+func envGroupList(groups []revealedEnvGroup) []revealedGroupWithCursor {
+	out := make([]revealedGroupWithCursor, 0, len(groups))
 	for _, group := range groups {
-		out = append(out, envGroupWithCursor{EnvGroup: group, Cursor: group.ID})
+		out = append(out, revealedGroupWithCursor{EnvGroup: group, Cursor: group.ID})
 	}
 	return out
 }
@@ -85,17 +92,25 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		return envGroupList(page), nil
+		revealed, err := s.revealGroups(r.Context(), page)
+		if err != nil {
+			return nil, err
+		}
+		return envGroupList(revealed), nil
 	}))
 	mux.HandleFunc("POST /v1/env-groups", core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
 		req, err := core.DecodeBody[CreateEnvGroupRequest](r)
 		if err != nil {
 			return nil, err
 		}
-		return s.committed(r.Context())(s.CreateEnvGroup(r.Context(), req)) // Render: create => 201
+		return s.committedRevealed(r.Context())(s.CreateEnvGroup(r.Context(), req)) // Render: create => 201
 	}))
-	mux.HandleFunc("GET /v1/env-groups/{id}", core.HandleByID(func(ctx context.Context, id string) (renderEnvGroup, error) {
-		return s.rendered(ctx)(s.GetEnvGroup(ctx, id))
+	mux.HandleFunc("GET /v1/env-groups/{id}", core.HandleByID(func(ctx context.Context, id string) (any, error) {
+		group, err := s.rendered(ctx)(s.GetEnvGroup(ctx, id))
+		if err != nil {
+			return nil, err
+		}
+		return s.revealedOne(ctx, group, false)
 	}))
 	mux.HandleFunc("PATCH /v1/env-groups/{id}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		req, err := core.DecodeBody[struct {
@@ -104,7 +119,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		return s.committed(r.Context())(s.RenameEnvGroup(r.Context(), r.PathValue("id"), req.Name))
+		return s.committedRevealed(r.Context())(s.RenameEnvGroup(r.Context(), r.PathValue("id"), req.Name))
 	}))
 	mux.HandleFunc("DELETE /v1/env-groups/{id}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		return s.DeleteEnvGroup(r.Context(), r.PathValue("id"))
@@ -114,7 +129,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		return s.committed(r.Context())(s.CloneEnvGroup(r.Context(), r.PathValue("id"), request))
+		return s.committedRevealed(r.Context())(s.CloneEnvGroup(r.Context(), r.PathValue("id"), request))
 	}))
 	mux.HandleFunc("PATCH /v1/env-groups/{id}/contents", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		patch, err := core.DecodeBody[EnvironmentPatch](r)
@@ -130,7 +145,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		return s.committed(r.Context())(s.MoveEnvGroup(r.Context(), r.PathValue("id"), request.EnvironmentID))
+		return s.committedRevealed(r.Context())(s.MoveEnvGroup(r.Context(), r.PathValue("id"), request.EnvironmentID))
 	}))
 
 	// Group env vars: replace-all plus Render's per-key reveal/upsert/delete.
@@ -188,7 +203,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if err := s.LinkService(r.Context(), r.PathValue("id"), r.PathValue("serviceId")); err != nil {
 			return nil, err
 		}
-		return s.committed(r.Context())(s.GetEnvGroup(r.Context(), r.PathValue("id")))
+		return s.committedRevealed(r.Context())(s.GetEnvGroup(r.Context(), r.PathValue("id")))
 	}))
 	mux.HandleFunc("DELETE /v1/env-groups/{id}/services/{serviceId}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		return s.UnlinkService(r.Context(), r.PathValue("id"), r.PathValue("serviceId"))
