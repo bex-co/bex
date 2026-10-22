@@ -693,9 +693,8 @@ func (s *Service) MoveEnvGroup(ctx context.Context, gid, environmentID string) (
 
 // DetachEnvironment returns a group still scoped to expectedEnvironmentID to
 // workspace scope while that environment is torn down (w4/m187), keeping its
-// contents and links. Links to services in the deleted environment are
-// accepted — the same teardown removes them from it — while a link into any
-// other environment still refuses. The compare against the expected
+// contents and links. A workspace group links to any service (w8/179), so no
+// link blocks the detach. The compare against the expected
 // environment leaves a concurrently moved group alone and makes retry a no-op.
 func (s *Service) DetachEnvironment(ctx context.Context, gid, expectedEnvironmentID string) error {
 	expected := id.EnvironmentStorageID(expectedEnvironmentID)
@@ -709,9 +708,6 @@ func (s *Service) DetachEnvironment(ctx context.Context, gid, expectedEnvironmen
 	_, err = s.mutateGroup(ctx, gid, func(cur *store.EnvGroup) error {
 		if cur.EnvironmentID != expected {
 			return errMetaUnchanged
-		}
-		if err := s.validateLinkedServiceEnvironments(ctx, cur.ServiceLinks, "", expected); err != nil {
-			return err
 		}
 		cur.EnvironmentID = ""
 		cur.UpdatedAt = s.nowTime()
@@ -1275,9 +1271,13 @@ func (s *Service) rollOne(ctx context.Context, a *appv1alpha1.App, stamp string)
 	return a.Spec.Suspended, nil
 }
 
+// validateGroupServiceEnvironment is Render's scoping rule: a group with no
+// environment links to any service in the workspace, in an environment or not;
+// a group scoped to an environment links only to that environment's services
+// (w8/179).
 func validateGroupServiceEnvironment(groupEnvironment, serviceID string, labels map[string]string) error {
 	serviceEnvironment := labels[core.LabelEnvironment]
-	if serviceEnvironment == groupEnvironment {
+	if groupEnvironment == "" || serviceEnvironment == groupEnvironment {
 		return nil
 	}
 	return core.NewConflictError(
@@ -1291,9 +1291,13 @@ func validateGroupServiceEnvironment(groupEnvironment, serviceID string, labels 
 }
 
 // validateLinkedServiceEnvironments refuses a group scope change to
-// environmentID while any linked service sits elsewhere; departing names an
-// environment being torn down with the group, whose members count as compatible.
-func (s *Service) validateLinkedServiceEnvironments(ctx context.Context, links []string, environmentID string, departing ...string) error {
+// environmentID while any linked service sits elsewhere. A group without an
+// environment links to any service (w8/179), so a move to workspace scope
+// never strands a link.
+func (s *Service) validateLinkedServiceEnvironments(ctx context.Context, links []string, environmentID string) error {
+	if environmentID == "" {
+		return nil
+	}
 	var incompatible []string
 	for _, serviceID := range links {
 		a, err := s.GetApp(ctx, core.RelCanCreate, serviceID)
@@ -1303,7 +1307,7 @@ func (s *Service) validateLinkedServiceEnvironments(ctx context.Context, links [
 		if err != nil {
 			return err
 		}
-		if env := a.Labels[core.LabelEnvironment]; env != environmentID && !slices.Contains(departing, env) {
+		if env := a.Labels[core.LabelEnvironment]; env != environmentID {
 			incompatible = append(incompatible, serviceID)
 		}
 	}

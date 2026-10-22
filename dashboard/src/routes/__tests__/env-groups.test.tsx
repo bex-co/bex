@@ -376,7 +376,7 @@ describe("EnvGroupsPage", () => {
   });
 
   it.each([null, "env-qa"])(
-    "creates in list scope %s with only a visible compatible service",
+    "creates in list scope %s with only a compatible service offered (workspace offers all, w8/179)",
     async (environmentId) => {
       servicesState.services = [
         service("srv-ws", "workspace-service"),
@@ -389,9 +389,10 @@ describe("EnvGroupsPage", () => {
       await user.click(
         (await screen.findAllByRole("button", { name: "New Environment Group" }))[0],
       );
+      // A workspace group links to a service in an Environment too (w8/179).
       expect(
-        screen.queryByRole("checkbox", { name: /qa-service/ }),
-      ).not.toBeInTheDocument();
+        screen.getByRole("checkbox", { name: /qa-service/ }),
+      ).toBeInTheDocument();
       if (environmentId) {
         await user.click(screen.getByRole("combobox", { name: "Environment" }));
         await user.click(screen.getByRole("option", { name: "QA" }));
