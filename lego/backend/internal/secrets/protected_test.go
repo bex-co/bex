@@ -52,9 +52,12 @@ func (allowAllRelations) Check(context.Context, string, string, string) (bool, e
 // w8/193: Render restricts viewing and modifying a protected environment's
 // environment variables and secret files to Admins.
 func TestProtectedEnvironmentRestrictsVariablesAndFilesToAdmins(t *testing.T) {
-	store := newFakeSecretStore()
-	store.m[envPath("web")] = map[string]string{"KEY": "v"}
-	store.m[filesPath("web")] = map[string]string{"f": "x"}
+	newStore := func() *fakeSecretStore {
+		store := newFakeSecretStore()
+		store.m[envPath("web")] = map[string]string{"KEY": "v"}
+		store.m[filesPath("web")] = map[string]string{"f": "x"}
+		return store
+	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "session"})
 
 	calls := map[string]func(svc *Service) error{
@@ -76,7 +79,7 @@ func TestProtectedEnvironmentRestrictsVariablesAndFilesToAdmins(t *testing.T) {
 	}
 	for name, call := range calls {
 		t.Run(name, func(t *testing.T) {
-			svc := newService(store, sampleApp("web"))
+			svc := newService(newStore(), sampleApp("web"))
 			svc.Protection = protectionStub{protected: true}
 			svc.Authz = denyWorkspaceManage{}
 			if err := call(svc); !errors.Is(err, core.ErrForbidden) {
@@ -90,7 +93,7 @@ func TestProtectedEnvironmentRestrictsVariablesAndFilesToAdmins(t *testing.T) {
 	}
 
 	t.Run("an unprotected environment is open to a non-admin", func(t *testing.T) {
-		svc := newService(store, sampleApp("web"))
+		svc := newService(newStore(), sampleApp("web"))
 		svc.Protection = protectionStub{protected: false}
 		svc.Authz = denyWorkspaceManage{}
 		if _, err := svc.ListEnvVars(ctx, "web"); err != nil {
@@ -99,7 +102,7 @@ func TestProtectedEnvironmentRestrictsVariablesAndFilesToAdmins(t *testing.T) {
 	})
 
 	t.Run("a protection lookup that fails refuses", func(t *testing.T) {
-		svc := newService(store, sampleApp("web"))
+		svc := newService(newStore(), sampleApp("web"))
 		svc.Protection = protectionStub{err: errors.New("store down")}
 		svc.Authz = allowAllRelations{}
 		if _, err := svc.ListEnvVars(ctx, "web"); err == nil {
