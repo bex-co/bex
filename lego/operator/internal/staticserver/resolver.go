@@ -98,6 +98,8 @@ func (c *CachedResolver) Refresh(ctx context.Context) error {
 			Routes:      app.Spec.Routes,
 			Headers:     app.Spec.Headers,
 			Unavailable: app.Spec.Suspended,
+			// Render's miss handling for sites created after the cutoff (w8/183).
+			NoSPAFallback: !app.CreationTimestamp.Time.Before(SPAFallbackCutoff),
 		}
 		for _, h := range effectiveHosts(app, c.baseDomain) {
 			next[strings.ToLower(h)] = site
