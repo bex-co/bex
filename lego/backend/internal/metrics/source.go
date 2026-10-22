@@ -139,7 +139,7 @@ func NewPrometheusRequestSource(base string, hc *http.Client) RequestMetricsSour
 			// sources travel as the degraded_sources label so clients can
 			// annotate. The usage rollup keeps the strict gate.
 			seconds := int64(req.End.Sub(req.Start) / time.Second)
-			for _, spec := range egressquery.App(req.AppID, req.Routers, req.Direct) {
+			for _, spec := range bandwidthSpecs(req) {
 				health, err := egressquery.Instant(ctx, hc, base, egressquery.Health(spec, seconds), req.End)
 				if err != nil {
 					return nil, err
@@ -481,7 +481,7 @@ func promQueryFor(req RequestMetricsRequest) string {
 	if req.Metric == MetricBandwidth {
 		// Per-bucket bytes (increase over the step), matching month-to-date and
 		// usage metering — see docs/render-artifacts/metrics-page.md (w4/m108).
-		return egressquery.SumIncreases(egressquery.App(req.AppID, req.Routers, req.Direct), stepSeconds(req.Resolution))
+		return egressquery.SumIncreases(bandwidthSpecs(req), stepSeconds(req.Resolution))
 	}
 	counters, selector, ok := requestCounters(req)
 	if !ok {

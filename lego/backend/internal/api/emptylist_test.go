@@ -173,7 +173,7 @@ var unreachableArrayRoutes = map[string]string{
 	"GET /v1/postgres/{id}/parameter-overrides":  "live datastore connection; make([]ParameterOverrideView, 0, …) (postgres/insights.go)",
 	"GET /v1/metrics/kv-memory":                  "resolves a Key Value through the live datastore path this fixture cannot satisfy; shares metrics.toRenderMetrics with the proven series routes",
 	"GET /v1/metrics/kv-connections":             "same Key Value resolution; same toRenderMetrics",
-	"GET /v1/metrics/bandwidth-sources":          "deliberately 501 — bex serves month-to-date totals, not a series",
+	"GET /v1/metrics/bandwidth-sources":          "answers a {data: [...]} object, not a bare array (w8/190)",
 }
 
 // scalarRoutes are the GETs whose 200 body contains no JSON array at all.
