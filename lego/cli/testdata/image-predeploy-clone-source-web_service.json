@@ -14,7 +14,7 @@
     "envSpecificDetails": {
       "preDeployCommand": "echo QA_PREDEPLOY_MARKER"
     },
-    "internalAddress": "qa-image-predeploy:3000",
+    "internalAddress": "qa-image-predeploy:10000",
     "maintenanceMode": {
       "enabled": false,
       "uri": ""
@@ -23,12 +23,12 @@
     "numInstances": 1,
     "openPorts": [
       {
-        "port": 3000,
+        "port": 10000,
         "protocol": "TCP"
       }
     ],
     "plan": "starter",
-    "port": 3000,
+    "port": 10000,
     "preDeployCommand": "echo QA_PREDEPLOY_MARKER",
     "renderSubdomainPolicy": "enabled",
     "runtime": "image",

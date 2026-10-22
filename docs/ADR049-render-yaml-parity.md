@@ -272,7 +272,7 @@ Divergences from Render:
 
 - Render documents that `fromService` values "update to match the current value of the referenced property on each Blueprint sync. They do not update immediately whenever that property changes" (quoted under w1/m175 above). bex updates port references **without** a sync, within one propagator tick, as a deploy of the consumer. This is deliberate: an image-port target's port is first known after its build, not at any sync, so waiting for the next sync would leave the consumer without the variable. `host` and `envVarKey` copies keep Render's sync-time rule.
 - For a private service with several ports, the value is the primary bex selected (an explicit port, else 3000 if the image declares it, else the lowest declared TCP port). Render does not document which port it would use.
-- A web target with no port set resolves to `3000`, not Render's `10000` ([ADR018](ADR018-render-parity.md) `PORT` row).
+- A web target with no port set resolves to `10000`, as Render (w8/168; it was 3000, [ADR018](ADR018-render-parity.md) `PORT` row).
 - Before discovery the variable is absent, not set. An app that needs it at boot can fail its first release; the `config_change` deploy that follows carries the value.
 - Port discovery itself reads only the target image's declared `EXPOSE` ports and covers only Git-built Docker private services ([ADR018](ADR018-render-parity.md) Open ports row).
 

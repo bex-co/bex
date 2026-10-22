@@ -37,7 +37,7 @@ All tenant Apps share one namespace (`BEX_CP_APPS_NAMESPACE`, default `default`)
 2. **The internal hostname is not Render-shaped.** Render: `<slug>:<port>`. bex: `<tenant>-<name>.default.svc:<port>` (tenant-prefixed CR name, k8s FQDN when surfaced).
 3. **No internal-address surface.** Render shows Connect → Internal / Service Address / deploy-header internal address; bex's dashboard and API supply none (recorded in [deploy-detail-page.md](render-artifacts/deploy-detail-page.md) as deliberate scope at the time).
 4. **A private service's `serviceDetails.url` leaks a k8s implementation detail** (`http://….svc:3000`) where Render **omits the field entirely** (captured 2026-07-26, [service-addresses.md](render-artifacts/service-addresses.md) §3) — a structural divergence, not just a value one. The operator-side value fix is w9/m57 t005; whether bex's REST omits-vs-extends the field is w9/m58 t001's shape decision.
-5. **Default port differs** (3000 vs Render's 10000) — cosmetic; `PORT`-reading apps are unaffected.
+5. **Default port (w8/168, 2026-10-21):** a service created without a port gets Render's `10000`. Services created earlier carry their port explicitly (the CRD default stored 3000 on them), so none moved; a Render-documented command that binds `10000` literally now passes the health check on a new service.
 
 ## Decisions
 
@@ -80,7 +80,7 @@ The value is `PlatformSubdomain(name) + ":" + port` for addressable types — th
 
 | Divergence | Rationale |
 | --- | --- |
-| Default `PORT` stays **3000** (Render: 10000) | changing it rolls every existing tenant Deployment for a cosmetic default; `PORT`-reading apps see no difference |
+| Default `PORT` is **10000**, as Render (w8/168) | new services only: the CRD default always stored the port on existing Apps, so changing the constant rolls nothing; commands copied from Render's docs (`--port 10000`, `--bind 0.0.0.0:10000`) work |
 | ~~One addressable port per service~~ **Superseded by w6/m148 (2026-10-19):** an image-port private service publishes every TCP port its image declares under both stable hostnames, and `internalAddress` names the primary ([ADR089](ADR089-render-container-compatibility.md) D3). Configured-port services and web services keep one addressable port | web services expose one public port, as on Render; a configured private service publishes `spec.port` only |
 | No region axis | bex is one cluster; the private-network scope is workspace (+ environment isolation), never region |
 | Cross-workspace DNS **resolution** succeeds (connection denied) | shared cluster DNS; the enforced boundary is NetworkPolicy reachability, verified by `make verify-tenant-isolation` |

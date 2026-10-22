@@ -231,7 +231,7 @@ func TestInternalURL(t *testing.T) {
 	legacy := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{Name: "legacy-api", Namespace: "default"},
 	}
-	if got, want := internalURL(legacy), "http://legacy-api.default.svc:3000"; got != want {
+	if got, want := internalURL(legacy), "http://legacy-api.default.svc:10000"; got != want {
 		t.Errorf("legacy internalURL = %q, want %q", got, want)
 	}
 
@@ -242,7 +242,7 @@ func TestInternalURL(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "eden-cms-v2", Namespace: "default"},
 		Spec:       appv1alpha1.AppSpec{Subdomain: "eden-cms-v2"},
 	}
-	if got, want := internalURL(adopted), "http://eden-cms-v2.default.svc:3000"; got != want {
+	if got, want := internalURL(adopted), "http://eden-cms-v2.default.svc:10000"; got != want {
 		t.Errorf("adopted internalURL = %q, want %q", got, want)
 	}
 }

@@ -72,7 +72,7 @@ func TestBlueprintPortReferencesFollowAnEditedTargetPort(t *testing.T) {
 	api := getApp(t, client, "api")
 	slug := api.Spec.PlatformSubdomain(api.Name)
 	web := getApp(t, client, "web")
-	for key, want := range map[string]string{"API_HOST": slug, "API_HOSTPORT": slug + ":3000", "API_PORT": "3000"} {
+	for key, want := range map[string]string{"API_HOST": slug, "API_HOSTPORT": slug + ":10000", "API_PORT": "10000"} {
 		if got, _ := envValue(web, key); got != want {
 			t.Fatalf("first apply %s = %q, want %q", key, got, want)
 		}
@@ -130,7 +130,7 @@ services:
 	}
 	leftApp, rightApp := getApp(t, client, "left"), getApp(t, client, "right")
 	leftSlug, rightSlug := leftApp.Spec.PlatformSubdomain(leftApp.Name), rightApp.Spec.PlatformSubdomain(rightApp.Name)
-	if left, right := peers(); left != rightSlug+":3000" || right != leftSlug+":3000" {
+	if left, right := peers(); left != rightSlug+":10000" || right != leftSlug+":10000" {
 		t.Fatalf("first apply: left.PEER=%q right.PEER=%q", left, right)
 	}
 	if _, err := service.SetPort(ctx, "right", 8080); err != nil {
@@ -139,7 +139,7 @@ services:
 	if _, err := service.DeployStack(ctx, DeployRequest{Manifest: manifest}); err != nil {
 		t.Fatal(err)
 	}
-	if left, right := peers(); left != rightSlug+":8080" || right != leftSlug+":3000" {
+	if left, right := peers(); left != rightSlug+":8080" || right != leftSlug+":10000" {
 		t.Fatalf("after right's SetPort: left.PEER=%q right.PEER=%q", left, right)
 	}
 }
@@ -278,9 +278,9 @@ func TestServiceRefPropagatorFollowsSetPort(t *testing.T) {
 	target := sampleApp("api")
 	target.Spec.Type = appv1alpha1.TypePrivateService
 	p, cl, st := propagatorFixture(t, target,
-		appv1alpha1.EnvVar{Name: "API_HOSTPORT", Value: "api:3000"},
+		appv1alpha1.EnvVar{Name: "API_HOSTPORT", Value: "api:10000"},
 		appv1alpha1.EnvVar{Name: "APP_ENV", Value: "prod"},
-		appv1alpha1.EnvVar{Name: "API_PORT", Value: "3000"})
+		appv1alpha1.EnvVar{Name: "API_PORT", Value: "10000"})
 	if err := p.tick(ctx); err != nil || len(st.deployCalls) != 0 {
 		t.Fatalf("an unchanged target patched the consumer: %v / %d deploys", err, len(st.deployCalls))
 	}
