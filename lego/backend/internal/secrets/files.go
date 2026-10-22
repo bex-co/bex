@@ -683,6 +683,9 @@ func (s *Service) SecretFileContent(ctx context.Context, service, name string) (
 // Secret with any linked env-group file Secrets into the single /etc/secrets
 // projected volume (docs/ADR013-secrets.md).
 func (s *Service) materializeFiles(ctx context.Context, a *appv1alpha1.App, files map[string]string, revision sourceRevision) error {
+	if stagedWrite(ctx) {
+		return s.stageFilesWrite(ctx, a, files, revision)
+	}
 	return s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
 		if err := s.projectFiles(ctx, a, files, revision); err != nil {
 			return err

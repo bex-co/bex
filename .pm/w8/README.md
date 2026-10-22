@@ -385,7 +385,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **187** — [Protected environments demand a bex-only typed phrase (`confirm="sudo …"`) from every caller, admins included, so `bex services delete`, `bex deploys create --image` and a Render-shaped rollback all fail; Render restricts a fixed list of actions to Admins and never asks for a phrase](187.md) ← `/qa-find-bugs-cli` sweep 1321 2026-10-22: unsigned ADR032 divergence; major, ~3h.
 
-- [ ] **186** — [Every REST env-var write (`PUT /env-vars`, `PUT`/`DELETE /env-vars/{key}`) immediately redeploys the service; Render's API saves the change and deploys nothing until the caller triggers a deploy](186.md) ← `/qa-find-bugs-cli` sweep 1320 2026-10-22: unsigned ADR018 divergence; major, ~1h30m.
+- [x] **186** — [Every REST env-var write (`PUT /env-vars`, `PUT`/`DELETE /env-vars/{key}`) immediately redeploys the service; Render's API saves the change and deploys nothing until the caller triggers a deploy](done/186.md) ← `/qa-find-bugs-cli` sweep 1320 2026-10-22: unsigned ADR018 divergence; major, ~1h30m. — **DONE (2026-10-22)**: REST env-var and secret-file writes save without deploying.
 
 - [x] **185** — [A crawler's `GET /robots.txt` wakes a sleeping free web service and gets a 503; Render answers it with a "disallow all" robots file without spinning the service up](done/185.md) ← `/qa-find-bugs-cli` sweep 1317 2026-10-22: unsigned ADR018 difference; minor, ~45m. — **DONE (2026-10-22)**: a sleeping service's robots.txt is answered without a wake.
 

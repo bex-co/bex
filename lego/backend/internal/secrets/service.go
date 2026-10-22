@@ -524,14 +524,22 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 	original := a.DeepCopy()
 	// A whole-set replace also clears invalid-name debris from spec.Env, or
 	// `PUT []` answered [] while the list still showed it (w8/027).
-	if err := s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
-		if err := s.projectEnv(ctx, a, env, committedAt(envWrite.version)); err != nil {
-			return err
+	replaceAll := func() error {
+		if stagedWrite(ctx) {
+			return s.stageEnvWrite(ctx, a, env, committedAt(envWrite.version), func(a *appv1alpha1.App) {
+				dropInvalidSpecEnv(a, func(string) bool { return true })
+			})
 		}
-		dropInvalidSpecEnv(a, func(string) bool { return true })
-		s.bumpRestart(a)
-		return nil
-	}); err != nil {
+		return s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
+			if err := s.projectEnv(ctx, a, env, committedAt(envWrite.version)); err != nil {
+				return err
+			}
+			dropInvalidSpecEnv(a, func(string) bool { return true })
+			s.bumpRestart(a)
+			return nil
+		})
+	}
+	if err := replaceAll(); err != nil {
 		return nil, s.compensateEnvironment(ctx, envPatchTxn{service: service, originalApp: original, env: envWrite}, err)
 	}
 	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetEnvVars)
@@ -1079,6 +1087,9 @@ func envSecretName(service string) string { return service + "-env" }
 // the Deployment; bumping spec.restartedAt rolls the pods, since envFrom is read
 // only at pod creation — the same no-downtime mechanism as the restart verb.
 func (s *Service) materializeEnv(ctx context.Context, a *appv1alpha1.App, env map[string]string, revision sourceRevision) error {
+	if stagedWrite(ctx) {
+		return s.stageEnvWrite(ctx, a, env, revision, nil)
+	}
 	return s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
 		if err := s.projectEnv(ctx, a, env, revision); err != nil {
 			return err

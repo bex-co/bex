@@ -74,8 +74,8 @@ func toSecretFileList(files []SecretFileName) []secretFileWithCursor {
 // the Service returns core.ErrSecretsUnavailable => 503 on these routes only.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	const base = "/v1/services"
-	// Bex's coherent environment-save extension. Existing Render-compatible
-	// env-var and secret-file routes below retain their immediate-roll behavior.
+	// Bex's coherent environment-save extension. Render's env-var and secret-file
+	// routes below save without deploying, as Render's API does (w8/186).
 	mux.HandleFunc("PATCH "+base+"/{id}/environment", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		in, err := core.DecodeBody[EnvironmentPatch](r)
 		if err != nil {
@@ -96,7 +96,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		vars, err := s.SetEnvVars(r.Context(), r.PathValue("id"), in)
+		vars, err := s.SetEnvVars(WithStagedWrite(r.Context()), r.PathValue("id"), in)
 		if err != nil {
 			return nil, err
 		}
@@ -114,11 +114,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		return s.SetEnvVar(r.Context(), r.PathValue("id"), r.PathValue("key"), EnvVarWrite{Value: req.Value, GenerateValue: req.GenerateValue})
+		return s.SetEnvVar(WithStagedWrite(r.Context()), r.PathValue("id"), r.PathValue("key"), EnvVarWrite{Value: req.Value, GenerateValue: req.GenerateValue})
 	}))
 	// Render: delete => 204.
 	mux.HandleFunc("DELETE "+base+"/{id}/env-vars/{key}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
-		return s.DeleteEnvVar(r.Context(), r.PathValue("id"), r.PathValue("key"))
+		return s.DeleteEnvVar(WithStagedWrite(r.Context()), r.PathValue("id"), r.PathValue("key"))
 	}))
 
 	// Secret files (Render's /v1/services/{id}/secret-files) — names in the
@@ -136,7 +136,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		files, err := s.SetSecretFiles(r.Context(), r.PathValue("id"), in)
+		files, err := s.SetSecretFiles(WithStagedWrite(r.Context()), r.PathValue("id"), in)
 		if err != nil {
 			return nil, err
 		}
@@ -159,11 +159,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		return s.SetSecretFile(r.Context(), r.PathValue("id"), r.PathValue("name"), req.Content)
+		return s.SetSecretFile(WithStagedWrite(r.Context()), r.PathValue("id"), r.PathValue("name"), req.Content)
 	}))
 	// Render: delete => 204.
 	mux.HandleFunc("DELETE "+base+"/{id}/secret-files/{name}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
-		return s.DeleteSecretFile(r.Context(), r.PathValue("id"), r.PathValue("name"))
+		return s.DeleteSecretFile(WithStagedWrite(r.Context()), r.PathValue("id"), r.PathValue("name"))
 	}))
 }
 
