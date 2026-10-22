@@ -149,6 +149,16 @@ func TestBlueprintCronPlanFreeIsRefused(t *testing.T) {
 		!strings.Contains(problems[0].Message, "a cron_job requires a paid plan") {
 		t.Fatalf("cron plan: free problems = %+v, want the named paid-plan refusal at #/services/0/plan", problems)
 	}
+	// The hint lists only plans a Blueprint cron can write, in Blueprint
+	// spelling, and each of them compiles (w6/093).
+	if msg := problems[0].Message; !strings.HasSuffix(msg, "plan must be one of starter|standard|pro|pro plus") {
+		t.Errorf("hint = %q, want the cronPlan rungs in Blueprint spelling", msg)
+	}
+	for _, plan := range blueprintCronPlanNames() {
+		if _, problems := CompileBlueprintSource(strings.Replace(manifest, "plan: free", "plan: "+plan, 1)); len(problems) != 0 {
+			t.Errorf("hinted plan %q is refused: %+v", plan, problems)
+		}
+	}
 	st := parseBlueprintStackForTest(t, strings.Replace(manifest, "plan: free", "plan: starter", 1))
 	if tier, err := normalizeTierForType(effectiveType(st.services[0].req.Type), st.services[0].req.Plan); err != nil || tier != "starter" {
 		t.Fatalf("cron plan: starter => tier %q, %v; want starter", tier, err)

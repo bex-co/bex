@@ -1354,13 +1354,40 @@ func appendBlueprintSchemaProblems(validation *jsonschema.ValidationError, locat
 // blueprintServiceTypeValues is the union of services[] discriminators.
 const blueprintServiceTypeValues = "'web', 'worker', 'pserv', 'cron', 'keyvalue', 'redis'"
 
+// blueprintCronFreePlanMessage words a refused free cron plan as every other
+// paid-only type's refusal, but lists the named rungs of the pinned schema's
+// cronPlan enum in Blueprint spelling ("pro plus"): the API ladder's
+// pro_plus|pro_max|pro_ultra are not values a Blueprint cron can write (w6/093).
+func blueprintCronFreePlanMessage() string {
+	return fmt.Sprintf("a %s requires a paid plan; plan must be one of %s", appv1alpha1.TypeCronJob, strings.Join(blueprintCronPlanNames(), "|"))
+}
+
+// blueprintCronPlanNames is the cronPlan enum without its size ids.
+var blueprintCronPlanNames = sync.OnceValue(func() []string {
+	var document struct {
+		Definitions map[string]struct {
+			Enum []any `json:"enum"`
+		} `json:"definitions"`
+	}
+	if err := json.Unmarshal(renderBlueprintSchemaSource, &document); err != nil {
+		return nil
+	}
+	var names []string
+	for _, value := range document.Definitions["cronPlan"].Enum {
+		if plan, ok := value.(string); ok && !strings.ContainsAny(plan, "0123456789") {
+			names = append(names, plan)
+		}
+	}
+	return names
+})
+
 func blueprintSchemaLeafMessage(validation *jsonschema.ValidationError) string {
 	message := validation.Error()
 	// Only cronPlan lacks free among the service plan enums, so a refused free
 	// plan is a cron job's: word it as every other paid-only type's (w8/048).
 	if loc := validation.InstanceLocation; blueprintServicePlanLocation(loc) {
 		if got, ok := blueprintSchemaGotValue(validation.ErrorKind); ok && got == "free" {
-			return freePlanForTypeMessage(appv1alpha1.TypeCronJob)
+			return blueprintCronFreePlanMessage()
 		}
 	}
 	if loc := validation.InstanceLocation; blueprintServiceTypeLocation(loc) {
