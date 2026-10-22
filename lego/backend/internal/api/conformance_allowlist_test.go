@@ -103,14 +103,10 @@ var conformanceAllowlist = map[string][]conformanceDivergence{
 		`/owner: property "owner" is missing`,
 	),
 
-	// Secret-file list values are intentionally redacted; event details are a
-	// documented partial activity-feed projection. Custom domains conform
-	// fully since w5/m137 (Render's verificationStatus semantics + the
-	// required publicSuffix/createdAt/redirectForName keys) — no entry.
-	"list-secret-files-for-service": knownConformanceDivergences(
-		"ADR018 §Environment variables & secret files: list returns names without secret contents",
-		`secretFile/content: property "content" is missing`,
-	),
+	// Event details are a documented partial activity-feed projection. Custom
+	// domains conform fully since w5/m137 (Render's verificationStatus semantics
+	// + the required publicSuffix/createdAt/redirectForName keys), and the
+	// secret-file list conforms since w8/182 (it carries content) — no entry.
 	"list-events": knownConformanceDivergences(
 		"ADR018 §Services & lifecycle — Service events / activity feed: deliberate partial event-detail dialect",
 		`event/details: does not match the documented union`,

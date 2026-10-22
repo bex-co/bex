@@ -31,6 +31,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
+	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -205,7 +206,9 @@ func filterTestService(t *testing.T) *Service {
 		{"evg-02", "bravo", "tea-a", "env-two", "2026-07-15T12:00:00Z", "2026-07-15T13:00:00Z"},
 		{"evg-03", "charlie", "tea-b", "env-one", "2026-07-15T14:00:00Z", "2026-07-15T15:00:00Z"},
 	} {
-		groupsOf(store).Seed(storeRow(group.id, group.name, group.owner, group.environment, group.created, group.updated))
+		// Well-formed ids: the REST list reveals each group (w8/182), which
+		// authorizes it by id.
+		groupsOf(store).Seed(storeRow(id.New(id.EnvGroup), group.name, group.owner, group.environment, group.created, group.updated))
 	}
 	return withGroups(&Service{
 		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: coretest.Members{"filter-user": {"tea-a", "tea-b"}}},
@@ -285,9 +288,8 @@ func TestREST_EnvGroupListRejectsInvalidTimestampsByName(t *testing.T) {
 func TestREST_EnvGroupFiltersBeforePagination(t *testing.T) {
 	svc := filterTestService(t)
 	store := svc.Store.(*fakeStore)
-	for i, name := range []string{"delta", "echo", "foxtrot"} {
-		id := fmt.Sprintf("evg-%02d", i+4)
-		groupsOf(store).Seed(storeRow(id, name, "tea-a", "", "2026-07-15T16:00:00Z", "2026-07-15T16:00:00Z"))
+	for _, name := range []string{"delta", "echo", "foxtrot"} {
+		groupsOf(store).Seed(storeRow(id.New(id.EnvGroup), name, "tea-a", "", "2026-07-15T16:00:00Z", "2026-07-15T16:00:00Z"))
 	}
 	got := envGroupListNames(t, serveFilterREST(svc, "/v1/env-groups?name=delta,echo,foxtrot&limit=2"))
 	if !slices.Equal(got, []string{"delta", "echo"}) {
@@ -338,9 +340,12 @@ func TestREST_CreateEnvGroupAcceptsInitialContentsAndLinks(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &g); err != nil {
 		t.Fatal(err)
 	}
+	// The create response is Render's envGroup: every variable carries its value
+	// and every file its content (w8/182).
 	if !slices.Equal(g.ServiceLinks, []serviceLink{{ID: "web", Name: "web", Type: "web"}}) ||
-		!slices.Equal(g.EnvVars, []EnvVarView{{Key: "GENERATED"}, {Key: "LITERAL"}}) ||
-		!slices.Equal(g.SecretFiles, []SecretFileView{{Name: "rest.txt"}}) {
+		len(g.EnvVars) != 2 || g.EnvVars[0].Key != "GENERATED" || len(g.EnvVars[0].Value) != 44 ||
+		g.EnvVars[1] != (EnvVarView{Key: "LITERAL", Value: "rest", ValueSet: true}) ||
+		!slices.Equal(g.SecretFiles, []SecretFileView{{Name: "rest.txt", Content: "body"}}) {
 		t.Fatalf("populated create response: %+v", g)
 	}
 	if got, err := svc.GetEnvGroupVar(testCtx(), g.ID, "LITERAL"); err != nil || got.Value != "rest" {
@@ -476,8 +481,11 @@ func TestRevealedEmptyGroupFileCarriesItsContent(t *testing.T) {
 	if c := serveREST(svc, "GET", "/v1/env-groups/"+g.ID+"/secret-files/missing.txt", "").Code; c != 404 {
 		t.Fatalf("missing file => %d, want 404", c)
 	}
+	// The group read is Render's envGroup: each file carries its content, an
+	// empty file's "" included (w8/182).
 	detail := serveREST(svc, "GET", "/v1/env-groups/"+g.ID, "")
-	if detail.Code != 200 || strings.Contains(detail.Body.String(), `"content"`) {
-		t.Fatalf("group detail => %d %s, want names-only files", detail.Code, detail.Body.String())
+	if detail.Code != 200 || !strings.Contains(detail.Body.String(), `{"name":"qa-a725-empty.txt","content":""}`) ||
+		!strings.Contains(detail.Body.String(), `"content":"雪\n"`) {
+		t.Fatalf("group detail => %d %s, want files with their contents", detail.Code, detail.Body.String())
 	}
 }

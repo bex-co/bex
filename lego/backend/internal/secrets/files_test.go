@@ -330,12 +330,13 @@ func TestREST_SecretFiles(t *testing.T) {
 	if one.Name != "ca.pem" || one.Content != "X" {
 		t.Fatalf("PUT secret file shape: %+v", one)
 	}
-	// GET list => Render cursor envelope, names only.
-	var list []secretFileWithCursor
+	// GET list => Render cursor envelope; each file carries its content, which
+	// Render's secretFile schema requires (w8/182).
+	var list []secretFileContentWithCursor
 	listBody := serveREST(svc, "GET", "/v1/services/web/secret-files", "").Body.Bytes()
 	_ = json.Unmarshal(listBody, &list)
-	if len(list) != 1 || list[0].SecretFile.Name != "ca.pem" || list[0].Cursor == "" || strings.Contains(string(listBody), "content") {
-		t.Fatalf("list envelope names-only: %+v", list)
+	if len(list) != 1 || list[0].SecretFile.Name != "ca.pem" || list[0].SecretFile.Content != "X" || list[0].Cursor == "" {
+		t.Fatalf("list envelope with content: %+v", list)
 	}
 	// GET one => content; unknown => 404.
 	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/services/web/secret-files/ca.pem", "").Body.Bytes(), &one)
@@ -587,7 +588,7 @@ func TestSetSecretFilesReplacesTheWholeSet(t *testing.T) {
 
 // TestREST_EmptySecretFileKeepsContent: Render's secretFile schema requires
 // content, and "" is an empty file's real content — the item GET/PUT and the
-// replace-all PUT must emit it, while the list stays names-only (w8/073).
+// replace-all PUT and the list must emit it (w8/073, w8/182).
 func TestREST_EmptySecretFileKeepsContent(t *testing.T) {
 	svc := newService(newFakeSecretStore(), sampleApp("web"))
 	for _, tc := range []struct {
@@ -603,7 +604,7 @@ func TestREST_EmptySecretFileKeepsContent(t *testing.T) {
 			"PUT", "/v1/services/web/secret-files", `[{"name":"empty.txt","content":""},{"name":"text.txt","content":"hi\n"}]`, http.StatusOK,
 			`[{"secretFile":{"name":"empty.txt","content":""},"cursor":"empty.txt"},{"secretFile":{"name":"text.txt","content":"hi\n"},"cursor":"text.txt"}]`,
 		},
-		{"GET", "/v1/services/web/secret-files", "", http.StatusOK, `[{"secretFile":{"name":"empty.txt"},"cursor":"empty.txt"},{"secretFile":{"name":"text.txt"},"cursor":"text.txt"}]`},
+		{"GET", "/v1/services/web/secret-files", "", http.StatusOK, `[{"secretFile":{"name":"empty.txt","content":""},"cursor":"empty.txt"},{"secretFile":{"name":"text.txt","content":"hi\n"},"cursor":"text.txt"}]`},
 	} {
 		rec := serveREST(svc, tc.method, tc.path, tc.body)
 		if rec.Code != tc.code || strings.TrimSpace(rec.Body.String()) != tc.want {

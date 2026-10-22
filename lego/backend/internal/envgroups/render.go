@@ -18,10 +18,13 @@ package envgroups
 
 import (
 	"context"
+	"errors"
 	"log"
+	"slices"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -105,5 +108,81 @@ func (s *Service) committed(ctx context.Context) func(EnvGroupView, error) (rend
 			return renderEnvGroup{EnvGroupView: view, ServiceLinks: []serviceLink{}}, nil
 		}
 		return out[0], nil
+	}
+}
+
+// revealedEnvGroup is the group REST answers with: Render's envGroup requires
+// `value` on every envVar and `content` on every secretFile (w8/182), where the
+// shared view keeps them off (the dashboard, GraphQL and MCP reveal per key). The
+// outer SecretFiles shadows the embedded view's masked one so an empty file
+// reads `content:""`.
+type revealedEnvGroup struct {
+	renderEnvGroup
+	SecretFiles []SecretFileContent `json:"secretFiles"`
+}
+
+// revealGroups fills each group's values and file contents from the store, for
+// the REST read shapes. It is a sensitive read: every group is authorized for
+// can_view_sensitive and re-asserted uncached, like the per-key reveals, and a
+// caller without it is refused the whole read rather than served a masked body.
+func (s *Service) revealGroups(ctx context.Context, groups []renderEnvGroup) ([]revealedEnvGroup, error) {
+	out := make([]revealedEnvGroup, 0, len(groups))
+	for _, group := range groups {
+		g, err := s.authorizeGroup(ctx, core.RelCanViewSensitive, group.ID)
+		if err != nil {
+			return nil, err
+		}
+		if err := s.authorizeGroupSensitiveFresh(ctx, g); err != nil {
+			return nil, err
+		}
+		var contents groupContents
+		if err := s.withGroupContent(ctx, group.ID, func(ctx context.Context, g store.EnvGroup) error {
+			var err error
+			contents, err = s.readGroupContents(ctx, g)
+			// A group with nothing saved yet has no maps: it reveals as empty.
+			if errors.Is(err, core.ErrNotFound) {
+				contents, err = groupContents{}, nil
+			}
+			return err
+		}); err != nil {
+			return nil, err
+		}
+		revealed := revealedEnvGroup{renderEnvGroup: group, SecretFiles: make([]SecretFileContent, 0, len(group.SecretFiles))}
+		revealed.EnvVars = slices.Clone(group.EnvVars)
+		for i, v := range revealed.EnvVars {
+			revealed.EnvVars[i].Value, revealed.EnvVars[i].ValueSet = contents.env[v.Key], true
+		}
+		for _, f := range group.SecretFiles {
+			revealed.SecretFiles = append(revealed.SecretFiles, SecretFileContent{Name: f.Name, Content: contents.files[f.Name]})
+		}
+		out = append(out, revealed)
+	}
+	return out, nil
+}
+
+// revealedOne is revealGroups for the single-group shapes. A group a write has
+// already committed is answered masked, with the failure logged, when its values
+// cannot be revealed: a retry cannot repeat the write.
+func (s *Service) revealedOne(ctx context.Context, group renderEnvGroup, committed bool) (any, error) {
+	out, err := s.revealGroups(ctx, []renderEnvGroup{group})
+	if err != nil {
+		if committed {
+			log.Printf("envgroups: group %s: reveal values for the write response: %v", group.ID, err)
+			return group, nil
+		}
+		return nil, err
+	}
+	return out[0], nil
+}
+
+// committedRevealed is committed for a REST write response: the envGroup with
+// its values and file contents, as Render's schema requires (w8/182).
+func (s *Service) committedRevealed(ctx context.Context) func(EnvGroupView, error) (any, error) {
+	return func(view EnvGroupView, err error) (any, error) {
+		group, err := s.committed(ctx)(view, err)
+		if err != nil {
+			return nil, err
+		}
+		return s.revealedOne(ctx, group, true)
 	}
 }

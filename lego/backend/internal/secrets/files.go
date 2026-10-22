@@ -96,6 +96,30 @@ func (s *Service) ListSecretFilesPage(ctx context.Context, service, after string
 	return applyPageLimits(files, after, limit, func(f SecretFileName) string { return f.Name })
 }
 
+// ListSecretFilesWithContentPage is Render's GET .../secret-files page: its
+// schema requires `content` on every file (w8/182), so the REST list reveals them
+// where the dashboard's names-first list (ListSecretFiles) does not. The same
+// can_view_sensitive authorization the names list takes, re-asserted uncached as
+// every content reveal is.
+func (s *Service) ListSecretFilesWithContentPage(ctx context.Context, service, after string, limit int) ([]SecretFileView, error) {
+	a, ctx, service, err := s.scope(ctx, core.RelCanViewSensitive, service)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.AuthorizeAppFresh(ctx, core.RelCanViewSensitive, a); err != nil {
+		return nil, err
+	}
+	files, err := s.readMap(ctx, filesPath(service))
+	if err != nil {
+		return nil, err
+	}
+	views := make([]SecretFileView, 0, len(files))
+	for _, name := range core.SortedKeys(files) {
+		views = append(views, SecretFileView{Name: name, Content: files[name]})
+	}
+	return applyPageLimits(views, after, limit, func(f SecretFileView) string { return f.Name })
+}
+
 // GetSecretFile returns one file's name + content (Render's GET
 // .../secret-files/{name}). Unknown service or file => core.ErrNotFound. Sensitive.
 func (s *Service) GetSecretFile(ctx context.Context, service, name string) (SecretFileView, error) {

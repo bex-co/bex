@@ -124,11 +124,15 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// Secret files (Render's /v1/services/{id}/secret-files) — names in the
 	// list, contents on a single GET, same store + roll mechanism as env vars.
 	mux.HandleFunc("GET "+base+"/{id}/secret-files", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		files, err := listPaged(r, s.ListSecretFilesPage)
+		files, err := listPaged(r, s.ListSecretFilesWithContentPage)
 		if err != nil {
 			return nil, err
 		}
-		return toSecretFileList(files), nil
+		out := make([]secretFileContentWithCursor, 0, len(files))
+		for _, f := range files {
+			out = append(out, secretFileContentWithCursor{SecretFile: f, Cursor: f.Name})
+		}
+		return out, nil
 	}))
 	// Render's update-secret-files-for-service: replace the whole set.
 	mux.HandleFunc("PUT "+base+"/{id}/secret-files", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {

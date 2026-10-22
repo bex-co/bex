@@ -364,8 +364,9 @@ func TestRenderConformance(t *testing.T) {
 	})
 
 	t.Run("secret-files/list", func(t *testing.T) {
-		// The paged secret-files list (w9/m5) is Render's env-vars twin: names
-		// only, {secretFile,cursor} envelope — validated with no allowlist entry.
+		// The paged secret-files list (w9/m5) is Render's env-vars twin: the
+		// {secretFile,cursor} envelope with each file's content (w8/182) —
+		// validated with no allowlist entry.
 		check(t, "/v1/services/"+appName+"/secret-files", "list-secret-files-for-service")
 	})
 
