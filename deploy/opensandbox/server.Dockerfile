@@ -13,15 +13,14 @@
 #
 # NOTE (m32 t007): this image's sandbox path is validated on a real
 # containerd-CRI + gVisor node, NOT the OrbStack mock — see ADR042 D6.
-FROM python:3.12.14-slim-trixie@sha256:2fe5997d249a808b8eeea52c58a1dbffbba28754dc11699ef5c029f2d818ce79
+FROM python:3.12.15-slim-trixie@sha256:cb33f7f771ecec2ef1225cf39b159591a040391bd73e4c01f00fdfc4c47611d2
 
-# The base's perl-base 5.40.1-6 carries CVE-2026-13221, CVE-2026-42496 and
-# CVE-2026-8376 (CRITICAL; fixed in Debian trixie's 5.40.1-6+deb13u1), and no
-# python:3.12 slim-trixie build ships the fix yet, so deploy.yml's CRITICAL CVE
-# gate refused every image built from it. Take the fixed package from trixie;
-# drop this layer once the pinned base carries it.
+# Apply trixie's fixes while pinned Python images lag Debian security updates:
+# perl's critical CVEs plus gzip, PCRE2, SQLite and OpenSSL findings from the
+# image scan. Refresh system CA trust alongside certifi's compromised-CA fix.
 RUN apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends --only-upgrade perl-base \
+    && DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends --only-upgrade \
+        ca-certificates gzip libpcre2-8-0 libsqlite3-0 libssl3t64 openssl openssl-provider-legacy perl-base \
     && rm -rf /var/lib/apt/lists/*
 
 # Pin the server version; bump deliberately with a re-validation on k3s.
