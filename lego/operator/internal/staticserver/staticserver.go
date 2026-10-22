@@ -41,6 +41,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -140,7 +141,21 @@ type Site struct {
 	// across the suspend/resume Ingress handoff reads "try again", never the
 	// unknown-host 404 that says the site is gone (w4/307). It serves no bytes.
 	Unavailable bool
+	// NoSPAFallback is Render's miss handling (w8/183): a path that matches no
+	// file and no rule answers 404 with the site's own /404.html when it has
+	// one. Unset, a site keeps the implicit single-page-app fallback it was
+	// created with (ADR029 § Default SPA fallback); the resolver sets it for
+	// sites created on or after SPAFallbackCutoff.
+	NoSPAFallback bool
 }
+
+// SPAFallbackCutoff is when the static server stopped serving a site's root
+// index.html with 200 for every extension-less miss (w8/183). Render answers a
+// miss with 404 and the site's 404.html, and client-side routing is an explicit
+// `/* → /index.html` rewrite. Sites created before it keep the implicit
+// fallback, so a deploy never turns a running single-page app's deep links into
+// 404s; they opt in by adding the rewrite.
+var SPAFallbackCutoff = time.Date(2026, time.October, 23, 0, 0, 0, 0, time.UTC)
 
 // keyFor is the object-store key for a site-relative request path.
 func (s Site) keyFor(reqPath string) string {
@@ -324,7 +339,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if act == actNone && overlong {
 		// No rule claimed the over-long path; it can never be an object and is
 		// not plausibly an SPA route either.
-		serveSiteError(w, site, requestPath, http.StatusNotFound, "not found")
+		h.serveNotFound(w, r, site, requestPath)
 		return
 	}
 
@@ -332,7 +347,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if act == actRewrite {
 		fallbackPath = normalizePath(target.Path)
 		if overlongKey(site, fallbackPath) {
-			serveSiteError(w, site, requestPath, http.StatusNotFound, "not found")
+			h.serveNotFound(w, r, site, requestPath)
 			return
 		}
 		obj, servedPath, err = h.fetch(r.Context(), site, fallbackPath)
@@ -354,15 +369,50 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// SPA fallback: if the miss (after any rewrite) is a bare path with no
-	// extension and an index.html exists at the root, serve it so client-side
-	// routing works even without an explicit route. A missing asset (has an
-	// extension) stays a 404.
-	if fallback, fok := h.spaFallback(r.Context(), site, fallbackPath); fok {
-		h.serveObject(w, r, site, fallback, "/index.html", requestPath)
+	// Sites created before SPAFallbackCutoff keep the implicit SPA fallback: if
+	// the miss (after any rewrite) is a bare path with no extension and an
+	// index.html exists at the root, serve it so client-side routing works even
+	// without an explicit route. A missing asset (has an extension) stays a 404.
+	if !site.NoSPAFallback {
+		if fallback, fok := h.spaFallback(r.Context(), site, fallbackPath); fok {
+			h.serveObject(w, r, site, fallback, "/index.html", requestPath)
+			return
+		}
+	}
+	h.serveNotFound(w, r, site, requestPath)
+}
+
+// serveNotFound answers a miss as Render does: 404 with the site's root
+// /404.html when it publishes one, else a plain 404. The page is an error body:
+// custom error headers apply, and no validators or ranges (a conditional
+// request for it would read as a cache hit on a 404).
+func (h *Handler) serveNotFound(w http.ResponseWriter, r *http.Request, site Site, requestPath string) {
+	if !site.NoSPAFallback {
+		serveSiteError(w, site, requestPath, http.StatusNotFound, "not found")
 		return
 	}
-	serveSiteError(w, site, requestPath, http.StatusNotFound, "not found")
+	obj, err := h.get(r.Context(), site, "/404.html")
+	if err != nil {
+		serveSiteError(w, site, requestPath, http.StatusNotFound, "not found")
+		return
+	}
+	if r.Method != http.MethodHead {
+		lease := int64(len(obj.Body))
+		if !h.liveBodies.TryAcquire(lease) {
+			serveSiteBusy(w, site, requestPath)
+			return
+		}
+		defer h.liveBodies.Release(lease)
+	}
+	hdr := w.Header()
+	applyErrorHeaders(hdr, site.Headers, requestPath)
+	hdr.Set("Content-Type", contentType("/404.html", obj.ContentType))
+	hdr.Set("Content-Length", strconv.Itoa(len(obj.Body)))
+	hdr.Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(http.StatusNotFound)
+	if r.Method != http.MethodHead {
+		_, _ = w.Write(obj.Body)
+	}
 }
 
 // serveOriginError maps a non-miss fetch failure onto its response class:
