@@ -292,6 +292,48 @@ assert "flow-mapping environment passes" 0 "$(prod_job '    environment: { name:
 ' PROD_TOKEN)"
 unset PRODUCTION_SECRETS_FILE
 
+# Scan the patch actually present in the immutable release image, including
+# when its readable tag names only the major/minor line. A latest-release
+# lookup would pass over vulnerabilities still embedded in the pinned image.
+go_fixture="$tmp/release-go"
+mkdir -p "$go_fixture/bin" "$go_fixture/lego"
+resolver=$(yq -r '.jobs.govulncheck.steps[] | select(.id == "goline") | .run' "$root/.github/workflows/govulncheck.yml")
+cat >"$go_fixture/bin/docker" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$@" >"$DOCKER_ARGS"
+printf '%s\n' "$IMAGE_GO_VERSION"
+EOF
+chmod +x "$go_fixture/bin/docker"
+release_image="golang:1.26@sha256:$(printf '%064d' 1)"
+printf 'FROM %s AS builder\n' "$release_image" >"$go_fixture/lego/Dockerfile"
+if (cd "$go_fixture" && PATH="$go_fixture/bin:$PATH" \
+    DOCKER_ARGS="$go_fixture/docker-args" IMAGE_GO_VERSION=go1.26.8 \
+    GITHUB_OUTPUT="$go_fixture/output" bash -euo pipefail -c "$resolver") \
+  && grep -qx 'version=1.26.8' "$go_fixture/output" \
+  && grep -qxF "$release_image" "$go_fixture/docker-args" \
+  && [ "$(yq -r '.jobs.govulncheck.steps[] | select(.name == "Scan the Go platform modules (fail on any reachable vuln)") | .env.GOTOOLCHAIN' "$root/.github/workflows/govulncheck.yml")" = local ]; then
+  echo "ok: govulncheck scans the pinned image's patch without toolchain auto-upgrades"
+else
+  echo "FAIL: govulncheck toolchain differs from the release image" >&2
+  fails=$((fails + 1))
+fi
+for bad in unpinned malformed-version; do
+  printf 'FROM %s AS builder\n' "$release_image" >"$go_fixture/lego/Dockerfile"
+  image_version=not-a-go-version
+  if [ "$bad" = unpinned ]; then
+    printf 'FROM golang:1.26 AS builder\n' >"$go_fixture/lego/Dockerfile"
+    image_version=go1.26.8
+  fi
+  if (cd "$go_fixture" && PATH="$go_fixture/bin:$PATH" \
+      DOCKER_ARGS="$go_fixture/docker-args" IMAGE_GO_VERSION="$image_version" \
+      GITHUB_OUTPUT="$go_fixture/output" bash -euo pipefail -c "$resolver") >"$go_fixture/error" 2>&1; then
+    echo "FAIL: release Go resolver accepted $bad" >&2
+    fails=$((fails + 1))
+  else
+    echo "ok: release Go resolver rejects $bad"
+  fi
+done
+
 dependabot="$root/.github/dependabot.yml"
 # Every Go module that ships builds standalone (GOWORK=off), so each needs its
 # own Dependabot directory; one missing means its advisories never get a PR

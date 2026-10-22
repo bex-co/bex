@@ -98,9 +98,9 @@ var nativeToolchains = map[string]nativeToolchain{
 		{line: "1.27", image: "golang:1.27-bookworm@sha256:5c3e9b43cfd3bb95c7937462e29d87ada57b481a96fa23ad0eb61778d7a00110"},
 	}},
 	nativeNodeRuntime: {label: "Node", defaultLine: "24", lines: []nativeLine{
-		{line: "22", version: "22.23.3", image: "node:22-bookworm@sha256:0e5f906573693feaa1e21057ebdcfdb5bd5021f050b2dc7c9deceb629c7da2a8"},
-		{line: "24", version: "24.22.0", image: "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0"},
-		{line: "26", version: "26.12.0", image: "node:26-bookworm@sha256:a856ae5e25d498bbe5ec85fde88f00f5ed99908fda803ba39d7735ab8574f58c"},
+		{line: "22", version: "22.23.4", image: "node:22-bookworm@sha256:63538dfe497cc29dfafdda25ada09b46db68a3f4cc205abf1f5d6bf0913f3384"},
+		{line: "24", version: "24.22.1", image: "node:24-bookworm@sha256:6449e19d8184d84062525b6a7524def03146c2cb04a7f08b076680d0e8e4240a"},
+		{line: "26", version: "26.12.1", image: "node:26-bookworm@sha256:5c4012d11d9857c42713ba511fbc19645cac1706bb710d51d42b0d301dff7f88"},
 	}},
 	nativePythonRuntime: {label: "Python", defaultLine: "3.13", lines: []nativeLine{
 		{line: "3.10", version: "3.10.22", image: "python:3.10-bookworm@sha256:f72a86806f92fe13a49f49aeca1db0b19ea5cf4a0470b842a01b0e14314945b8"},

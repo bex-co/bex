@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1.7
 
-FROM golang:1.25.7-bookworm@sha256:564e366a28ad1d70f460a2b97d1d299a562f08707eb0ecb24b659e5bd6c108e1 AS go-toolchain
+FROM golang:1.26.10-bookworm@sha256:632dff7351799a5a9954a48dc06670ade72ee44e8c351cdc0e5a57af2fea21af AS go-toolchain
 
 # The driver is TypeScript; this stage compiles it to plain JS so devDependencies
 # (typescript) never reach the runtime image below.
-FROM node:22-bookworm-slim@sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436 AS driver-build
+FROM node:22.23.4-bookworm-slim@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d AS driver-build
 
 WORKDIR /opt/bex-agent-driver
 COPY agent-image/driver/package.json agent-image/driver/package-lock.json ./
@@ -14,7 +14,7 @@ COPY backend/internal/agentsession/agent-profiles.json ./agent-profiles.json
 COPY agent-image/driver/src ./src
 RUN npm run build
 
-FROM node:22-bookworm-slim@sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436
+FROM node:22.23.4-bookworm-slim@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d
 
 ARG NPM_VERSION=11.19.0
 

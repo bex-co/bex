@@ -262,6 +262,11 @@ spec:
                 target_matchers: [alertname=~"CertificateNotReady|CertificateExpiringSoon"]
                 equal: [namespace, name]
         server:
+          # 3.13 LTS security release: Go 1.26.10 and distrust compromised CAs.
+          # Keep the chart unchanged; explicitly select the reviewed server image.
+          image:
+            repository: quay.io/prometheus/prometheus
+            tag: v3.13.5@sha256:aafa9d694e6a883c02db516d9f6e5b84e14195f49a2a6456a4cca815edda72b9
           # Retention bounds stored history, not the memory required to replay
           # the WAL and evaluate queries. The production overlay owns its larger
           # memory budget; this baseline keeps the local stack small.

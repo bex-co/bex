@@ -49,8 +49,8 @@ func TestInstanceSecondsQueryMeasuresRunningTime(t *testing.T) {
 // on PATH). Series end the way a deleted pod's cAdvisor series do: with no
 // staleness marker, because cAdvisor samples carry their own timestamps
 // (w4/m110), so only the query's liveness window stops a terminated pod from
-// counting (w5/m111). Verified on v2.54.1 (closed ranges, the deployed line)
-// and v3.14.0 (left-open ranges): the same values on both.
+// counting (w5/m111). CI uses production's v3.13.5 LTS engine (left-open
+// ranges); the same values also passed on the previous v2.54.1 engine.
 func TestInstanceSecondsQueryOnPrometheus(t *testing.T) {
 	promtool, err := exec.LookPath("promtool")
 	if err != nil {
