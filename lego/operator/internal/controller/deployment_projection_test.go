@@ -612,3 +612,30 @@ func TestProjectionIsIdempotent(t *testing.T) {
 func equalPodTemplate(a, b corev1.PodTemplateSpec) bool {
 	return a.String() == b.String()
 }
+
+// w8/180: a template stored with the pre-w8/180 10 s drain keeps it until some
+// other change rolls the Deployment, then adopts Render's 60 s.
+func TestDrainLengthIsAdoptedLazilyFromTheOldDrain(t *testing.T) {
+	app := projectionApp()
+	p := webParams()
+	stored := project(app, p)
+	old := int64(10)
+	stored.Spec.Template.Spec.Containers[0].Lifecycle.PreStop.Sleep.Seconds = old
+	stored.Spec.Template.Spec.TerminationGracePeriodSeconds = new(old + defaultTerminationGracePeriodSeconds)
+
+	upgraded := stored.DeepCopy()
+	applyDeploymentSpec(upgraded, app, p)
+	if !equalPodTemplate(upgraded.Spec.Template, stored.Spec.Template) {
+		t.Fatal("an unchanged App's template changed on upgrade; that would roll every service at once")
+	}
+
+	restarted := projectionApp(func(a *appv1alpha1.App) { a.Spec.RestartedAt = "2026-10-22T00:00:00Z" })
+	next := stored.DeepCopy()
+	applyDeploymentSpec(next, restarted, p)
+	if got := storedDrain(next.Spec.Template.Spec); got != 60 {
+		t.Errorf("the rolling pass drain = %d; want Render's 60", got)
+	}
+	if got := next.Spec.Template.Spec.TerminationGracePeriodSeconds; got == nil || *got != 60+defaultTerminationGracePeriodSeconds {
+		t.Errorf("grace = %v; want 60 + %d", got, defaultTerminationGracePeriodSeconds)
+	}
+}

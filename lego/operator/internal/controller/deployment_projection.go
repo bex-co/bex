@@ -430,9 +430,10 @@ func retainedProbeHost(stored corev1.PodTemplateSpec, app *appv1alpha1.App) (hos
 // is marked for deletion, before it gets SIGTERM (w1/m154). Deleting a pod
 // sends SIGTERM at once while its endpoint leaves Traefik (and kube-proxy) a
 // moment later, so an app that exits on SIGTERM would fail the requests still
-// routed to it. The length and the divergence from Render's 60 s:
-// docs/ADR004-app-deployment.md § Rollout headroom, ADR018.
-const drainSeconds int64 = 10
+// routed to it. The length is Render's: the original instance keeps serving
+// its in-flight requests for 60 s after the switch (w8/180; it was 10 s,
+// w1/m154); docs/ADR004-app-deployment.md § Rollout headroom, ADR018.
+const drainSeconds int64 = 60
 
 // drainSecondsFor is the preStop drain this App's pods should carry, or 0. A
 // worker takes no inbound traffic, so it has nothing to drain. A disk-attached
@@ -445,13 +446,16 @@ func drainSecondsFor(app *appv1alpha1.App, p deploymentParams) int64 {
 	return drainSeconds
 }
 
-// podDrains reports whether a stored pod spec already carries the drain.
-func podDrains(spec corev1.PodSpec) bool {
+// storedDrain is the preStop drain a stored pod spec carries, 0 for none.
+func storedDrain(spec corev1.PodSpec) int64 {
 	if len(spec.Containers) == 0 {
-		return false
+		return 0
 	}
 	lifecycle := spec.Containers[0].Lifecycle
-	return lifecycle != nil && lifecycle.PreStop != nil && lifecycle.PreStop.Sleep != nil
+	if lifecycle == nil || lifecycle.PreStop == nil || lifecycle.PreStop.Sleep == nil {
+		return 0
+	}
+	return lifecycle.PreStop.Sleep.Seconds
 }
 
 // applyDrain sets the container's preStop drain and the pod's grace period
@@ -495,23 +499,25 @@ func terminationGracePeriodSeconds(seconds *int32, drain int64) *int64 {
 // rather than lingering from a previous revision.
 //
 // The preStop drain (w1/m154) is adopted lazily. A Deployment whose stored
-// template has no drain gets it on the pass that changes its template for any
-// other reason — a deploy, a config change, a restart — and not before. Adding
-// it eagerly would change every web and private service's template on the
-// same operator upgrade and roll them all at once, where the surge pods
-// outrun the tenant headroom and mint nodes (ADR004 § Rollout headroom). A new
-// Deployment, or one already drained, always gets it.
+// template carries a different drain (none, or the 10 s of before w8/180) gets
+// the current one on the pass that changes its template for any other reason —
+// a deploy, a config change, a restart — and not before. Changing it eagerly
+// would change every web and private service's template on the same operator
+// upgrade and roll them all at once, where the surge pods outrun the tenant
+// headroom and mint nodes (ADR004 § Rollout headroom). A new Deployment, or
+// one already on the current drain, always gets it.
 func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymentParams) {
 	probeHost, retained := retainedProbeHost(dep.Spec.Template, app)
 	if !retained {
 		probeHost = healthProbeHost(app, p.baseDomain)
 	}
 	drain := drainSecondsFor(app, p)
-	if stored := dep.Spec.Template; drain > 0 && len(stored.Spec.Containers) > 0 && !podDrains(stored.Spec) {
-		undrained := dep.DeepCopy()
-		projectDeployment(undrained, app, p, 0, probeHost)
-		if apiequality.Semantic.DeepEqual(undrained.Spec.Template, stored) {
-			drain = 0
+	if stored := dep.Spec.Template; drain > 0 && len(stored.Spec.Containers) > 0 && storedDrain(stored.Spec) != drain {
+		kept := storedDrain(stored.Spec)
+		unchanged := dep.DeepCopy()
+		projectDeployment(unchanged, app, p, kept, probeHost)
+		if apiequality.Semantic.DeepEqual(unchanged.Spec.Template, stored) {
+			drain = kept
 		}
 	}
 	projectDeployment(dep, app, p, drain, probeHost)
