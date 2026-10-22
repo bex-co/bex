@@ -277,13 +277,6 @@ func TestMCPGetMetricsAnswersForDatastores(t *testing.T) {
 	}
 }
 
-func TestRESTBandwidthSourcesIsACodedRefusal(t *testing.T) {
-	rec := serveREST(newService(nil, nil), "/v1/metrics/bandwidth-sources?resource=web")
-	if rec.Code != http.StatusNotImplemented || !strings.Contains(rec.Body.String(), "monthToDateBandwidth") {
-		t.Errorf("bandwidth-sources = %d %s, want a 501 naming the bex reads to use", rec.Code, rec.Body)
-	}
-}
-
 func TestMCPGetMetricsAcceptsRenderMetricTypes(t *testing.T) {
 	svc := newService(staticResourceMetrics(map[string]PodResourceUsage{
 		webInst: {CPUCores: 0.5, MemoryBytes: 512 << 20},

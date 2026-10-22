@@ -252,7 +252,7 @@ var callerScopedRoutes = map[string]bool{
 	"GET /v1/metrics/filters/application": true,
 	"GET /v1/metrics/filters/http":        true,
 	"GET /v1/metrics/filters/path":        true,
-	"GET /v1/metrics/bandwidth-sources":   true, // a coded 501, reads no resource
+	"GET /v1/metrics/bandwidth-sources":   true, // resource named in the query; Metrics authorizes it (w8/190)
 }
 
 // restMatrixFixture builds the mux from the guarded canonical service inventory

@@ -51,8 +51,8 @@ var renderMetricsParamVerdicts = map[string]map[string]string{
 	"/metrics/active-connections": {"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed},
 	"/metrics/bandwidth":          {"startTime": metricsParamServed, "endTime": metricsParamServed, "resource": metricsParamServed, "service": metricsParamServed},
 	"/metrics/bandwidth-sources": {
-		"startTime": "refused: the path answers 501 (ADR018 divergence)", "endTime": "refused: 501",
-		"resource": "refused: 501", "service": "refused: 501",
+		"startTime": "served: hourly points; an earlier start than 2025-03-09 is a 400", "endTime": metricsParamServed,
+		"resource": metricsParamServed, "service": metricsParamServed,
 	},
 	"/metrics/cpu": {
 		"startTime": metricsParamServed, "endTime": metricsParamServed, "resolutionSeconds": metricsParamServed, "resource": metricsParamServed, "service": metricsParamServed,
