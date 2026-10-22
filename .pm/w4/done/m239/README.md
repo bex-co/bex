@@ -1,6 +1,6 @@
 # w4 · m239 — Linking an env group to an Auto-Deploy-off service waits for the owner's deploy
 
-**Worker:** worker4 **Goal:** when a service has Auto-Deploy off, linking, unlinking or deleting an environment group never ships a release on its own. The link waits, exactly as the API's `pendingServiceIds` already says, and reaches the service with the owner's next deploy. That deploy is recorded and reaches a terminal state on its own merits. Today the link changes the operator's release identity, the site is rebuilt and republished with no deploy row, and the next manual deploy is stranded at `created` and then recorded as `canceled`. **Status:** blocked — t001–t006 shipped (2026-10-21); t007 (live DoD replay) waits for the release pipeline to deploy bex-api
+**Worker:** worker4 **Goal:** when a service has Auto-Deploy off, linking, unlinking or deleting an environment group never ships a release on its own. The link waits, exactly as the API's `pendingServiceIds` already says, and reaches the service with the owner's next deploy. That deploy is recorded and reaches a terminal state on its own merits. Today the link changes the operator's release identity, the site is rebuilt and republished with no deploy row, and the next manual deploy is stranded at `created` and then recorded as `canceled`. **Status:** done 2026-10-22 — live DoD replayed on pin `51e6dc76c8fe` ([t007](done/t007.md))
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | [t004](done/t004.md) | Render parity                                                                             — **DONE** | 20m | w4/m239/t002, w4/m239/t003 |
 | [t005](done/t005.md) | Simplify                                                                                  — **DONE** | 15m | w4/m239/t004               |
 | [t006](done/t006.md) | Test coverage                                                                             — **DONE** | 40m | w4/m239/t004               |
-| [t007](t007.md) | Closeout                                                                                  | 20m | w4/m239/t005, w4/m239/t006 |
+| [t007](done/t007.md) | Closeout — **DONE** | 20m | w4/m239/t005, w4/m239/t006 |
 
 Seven tasks, 245m (4h05m). One **major** finding, recorded with its complete timeline and probes in [finding.md](finding.md). This milestone schedules the work only.
 
