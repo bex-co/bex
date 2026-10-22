@@ -2223,6 +2223,27 @@ func checkSpecEnv(env []appv1alpha1.EnvVar) error {
 	return nil
 }
 
+// provisionalEnvPort is the port a new service's literal PORT variable will
+// select once the operator resolves it (env_port.go), 0 when it sets none or
+// serves image-detected ports. A PORT that only a linked group supplies stays
+// unknown until the operator runs.
+func provisionalEnvPort(a *appv1alpha1.App, seed createSeed) int32 {
+	if a.Spec.UsesImagePorts() {
+		return 0
+	}
+	value, set := seed.env["PORT"]
+	for _, item := range a.Spec.Env {
+		if item.Name == "PORT" && item.ValueFrom == nil {
+			value, set = item.Value, true
+		}
+	}
+	if !set || !core.ValidPortValue(value) {
+		return 0
+	}
+	port, _ := strconv.Atoi(value)
+	return int32(port)
+}
+
 // takeCreateEnvLiterals removes a newborn spec's literal env vars from spec.Env
 // and returns them as the map the create-time seeder writes into the mutable
 // env store. Moving rather than copying is the whole point (w6/m45): the store
@@ -2583,6 +2604,10 @@ func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *a
 	if s.Kick != nil {
 		s.Kick()
 	}
+	// The operator has not run yet, so the response would describe the default
+	// port; report the one a literal PORT selects, as the next read will
+	// (w8/169). Local to this response: status is the operator's to write.
+	a.Status.EnvPort = provisionalEnvPort(a, seed)
 	v := s.view(a)
 	v.LatestDeployID = firstDeployID
 	s.ObserveProductActivity(ctx, core.ProductActivity{WorkspaceID: tenantID, ResourceID: a.Labels[core.LabelAppID], ResourceType: effectiveType(a.Spec.Type), EventType: "created"})

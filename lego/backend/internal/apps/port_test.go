@@ -314,3 +314,26 @@ func TestCreateRefusesUnusablePortEnv(t *testing.T) {
 		_ = cl
 	}
 }
+
+// The create response reports the port a literal PORT selects, not the
+// default the operator has not yet replaced (w8/169).
+func TestCreateResponseReportsLiteralPortEnv(t *testing.T) {
+	svc, _ := newService(nil)
+	view, err := svc.Create(context.Background(), CreateRequest{
+		Name: "web", Image: "docker.io/library/nginx:1.27",
+		Env: []appv1alpha1.EnvVar{{Name: "PORT", Value: "8085"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.Port != 8085 || len(view.OpenPorts) != 1 || view.OpenPorts[0].Port != 8085 {
+		t.Fatalf("create response port %d openPorts %+v, want 8085", view.Port, view.OpenPorts)
+	}
+	plain, err := svc.Create(context.Background(), CreateRequest{Name: "plain", Image: "docker.io/library/nginx:1.27"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plain.Port != 10000 {
+		t.Fatalf("create without PORT reports %d, want the default 10000", plain.Port)
+	}
+}
