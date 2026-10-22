@@ -180,6 +180,9 @@ type MetricQuery struct {
 	// to one series holding the max value across instances — Render's dashboard
 	// GraphQL requests this via aggregateAllMethod:"MAX" (captured live).
 	AggregateMax bool
+	// BandwidthSource narrows a bandwidth read to one egress source ("http",
+	// "websocket" or "nat"); "" is every source summed (bandwidth_sources.go).
+	BandwidthSource string
 }
 
 func (q MetricQuery) normalized(now time.Time) MetricQuery {
@@ -259,11 +262,13 @@ type RequestMetricsRequest struct {
 	// selector names a platform Service and matches nothing for the App.
 	RouterScoped bool
 	Metric       string // http_requests | http_latency | bandwidth
-	Start, End   time.Time
-	Resolution   time.Duration
-	Quantile     float64
-	StatusCode   string
-	GroupBy      string
+	// BandwidthSource narrows a bandwidth read to one source, as MetricQuery's.
+	BandwidthSource string
+	Start, End      time.Time
+	Resolution      time.Duration
+	Quantile        float64
+	StatusCode      string
+	GroupBy         string
 	// Host/Path are the per-request filters served by the request-log backend
 	// (NewLokiRequestMetricsSource, w5/m58). The Prometheus source ignores them
 	// (a host/path read is never routed to it); the Loki source turns them into
@@ -1132,22 +1137,23 @@ func (s *Service) readRequestSeries(ctx context.Context, source RequestMetricsSo
 	series, err := source(ctx, RequestMetricsRequest{
 		// The App CR is in hand — its namespace is the per-tenant `<ws>` namespace
 		// under ADR043; use it directly rather than the shared s.Namespace.
-		Namespace:    app.Namespace,
-		App:          app.Name,
-		AppID:        appResourceID(app, q.App),
-		Port:         app.ServingPort(),
-		Direct:       app.Spec.Type != appv1alpha1.TypeStaticSite,
-		Routers:      routers,
-		RouterScoped: routerScopedRequests(app),
-		Metric:       q.Metric,
-		Start:        q.Start,
-		End:          q.End,
-		Resolution:   q.Resolution,
-		Quantile:     q.Quantile,
-		StatusCode:   q.StatusCode,
-		GroupBy:      q.GroupBy,
-		Host:         q.Host,
-		Path:         q.Path,
+		Namespace:       app.Namespace,
+		App:             app.Name,
+		AppID:           appResourceID(app, q.App),
+		Port:            app.ServingPort(),
+		Direct:          app.Spec.Type != appv1alpha1.TypeStaticSite,
+		Routers:         routers,
+		RouterScoped:    routerScopedRequests(app),
+		Metric:          q.Metric,
+		BandwidthSource: q.BandwidthSource,
+		Start:           q.Start,
+		End:             q.End,
+		Resolution:      q.Resolution,
+		Quantile:        q.Quantile,
+		StatusCode:      q.StatusCode,
+		GroupBy:         q.GroupBy,
+		Host:            q.Host,
+		Path:            q.Path,
 	})
 	if err != nil {
 		return nil, err

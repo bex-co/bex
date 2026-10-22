@@ -82,12 +82,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/metrics/filters/application", s.applicationFilters)
 	mux.HandleFunc("GET /v1/metrics/filters/http", s.httpFilters)
 	mux.HandleFunc("GET /v1/metrics/filters/path", s.pathFilters)
-	// A coded refusal, never a bare 404: the per-source time series does not
-	// exist in bex (ADR018 records the divergence).
-	mux.HandleFunc("GET /v1/metrics/bandwidth-sources", func(w http.ResponseWriter, _ *http.Request) {
-		core.WriteErrStatus(w, http.StatusNotImplemented,
-			"bandwidth-sources is not served: bex keeps its per-source bandwidth (http, nat, websocket) as month-to-date totals, not time series — read /v1/metrics/bandwidth for the all-sources series, or GraphQL monthToDateBandwidth for the per-source totals")
-	})
+	// Render's hourly bandwidth by traffic source (w8/190, bandwidth_sources.go).
+	mux.HandleFunc("GET /v1/metrics/bandwidth-sources", s.bandwidthSources)
 }
 
 // requestedResources is Render's `resource` list plus its `service` alias.
