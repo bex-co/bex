@@ -375,6 +375,46 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **191** — [List endpoints called without `limit` return the whole list unsorted instead of Render's default page of 20, so a cursor from that page continues a different order; unfiltered `GET /notification-settings/overrides` returns one workspace instead of all](191.md) ← `/qa-find-bugs-cli` sweep 1326 2026-10-22: unsigned ADR018 divergences; minor, ~1h30m.
+
+- [ ] **190** — [`GET /v1/metrics/bandwidth-sources` answers 501 for every resource; Render serves hourly bandwidth broken down by traffic source](190.md) ← `/qa-find-bugs-cli` sweep 1325 2026-10-22: unsigned ADR018 divergence; minor, ~1h30m.
+
+- [ ] **189** — [A failing instance keeps receiving traffic for ~30 s after its health check starts failing; Render stops routing to it after 15 s](189.md) ← `/qa-find-bugs-cli` sweep 1324 2026-10-22: unsigned ADR018 divergence; minor, ~30m.
+
+- [ ] **188** — [Render's environment-membership API is missing (`POST`/`DELETE /v1/environments/{id}/resources` → 404), and `DELETE` of a non-empty environment succeeds and silently detaches its services where Render's API answers 409](188.md) ← `/qa-find-bugs-cli` sweep 1323 2026-10-22: unsigned ADR032 difference; minor, ~2h.
+
+- [ ] **187** — [Protected environments demand a bex-only typed phrase (`confirm="sudo …"`) from every caller, admins included, so `bex services delete`, `bex deploys create --image` and a Render-shaped rollback all fail; Render restricts a fixed list of actions to Admins and never asks for a phrase](187.md) ← `/qa-find-bugs-cli` sweep 1321 2026-10-22: unsigned ADR032 divergence; major, ~3h.
+
+- [ ] **186** — [Every REST env-var write (`PUT /env-vars`, `PUT`/`DELETE /env-vars/{key}`) immediately redeploys the service; Render's API saves the change and deploys nothing until the caller triggers a deploy](186.md) ← `/qa-find-bugs-cli` sweep 1320 2026-10-22: unsigned ADR018 divergence; major, ~1h30m.
+
+- [ ] **185** — [A crawler's `GET /robots.txt` wakes a sleeping free web service and gets a 503; Render answers it with a "disallow all" robots file without spinning the service up](185.md) ← `/qa-find-bugs-cli` sweep 1317 2026-10-22: unsigned ADR018 difference; minor, ~45m.
+
+- [ ] **184** — [A static-site rewrite cannot proxy to another site (`/api/* → https://api.example.com/api/*`): bex refuses any non-local rewrite destination, where Render serves the external URL's content at the original path](184.md) ← `/qa-find-bugs-cli` sweep 1316 2026-10-22: unsigned ADR018 divergence kept by w8/162; major, ~3h.
+
+- [ ] **183** — [A static site never serves its `404.html`, and every extension-less miss returns the home page with 200: Render answers a miss with 404 and the site's own `404.html`](183.md) ← `/qa-find-bugs-cli` sweep 1315 2026-10-22: unsigned ADR029/ADR018 divergence; major, ~1h30m + migration decision.
+
+- [ ] **182** — [`GET /v1/env-groups/{id}` returns env vars without values (and secret files without contents), and the service secret-file list omits `content`, although Render's pinned schema requires both](182.md) ← `/qa-find-bugs-cli` sweep 1314 2026-10-22: unsigned ADR018 divergence; minor, ~1h30m.
+
+- [ ] **181** — [`bex keyvalues update --ip-allow-list` on a Persistence Off store fails with 400 `KEY_VALUE_RESTART_CONFIRMATION_REQUIRED`: enabling external access restarts (and empties) the store on bex, where Render changes the allowlist without a restart](181.md) ← `/qa-find-bugs-cli` sweep 1313 2026-10-22: unsigned ADR018 divergence; minor, ~1h30m.
+
+- [ ] **180** — [A request still in flight when a new instance goes live is cut after ~40 s with 502: bex drains the old instance 10 s before `SIGTERM`, Render waits 60 s](180.md) ← `/qa-find-bugs-cli` sweep 1311 2026-10-22: unsigned ADR018 divergence; major, ~1h.
+
+- [ ] **179** — [A workspace-level environment group cannot be linked to a service that belongs to a project environment (409 `ENV_GROUP_SERVICE_ENVIRONMENT_MISMATCH`); Render allows linking it to any service](179.md) ← `/qa-find-bugs-cli` sweep 1312 2026-10-22: unsigned ADR018 divergence (w4/m143); minor, ~1h30m.
+
+- [ ] **178** — [The first request to a sleeping free web service fails with an immediate 503 (`{"error":"service not ready"}`) where Render holds it through the spin-up and serves it; webhooks, bots and API clients lose that request](178.md) ← `/qa-find-bugs-cli` sweep 1309 2026-10-22: unsigned ADR007 divergence; major, ~3h.
+
+- [ ] **177** — [A native web service whose process listens on a port other than `PORT` never goes live (Render's own `fastapi-uv` example: uvicorn on 8000), because bex never detects the bound port; the image declared-port case is w4/388](177.md) ← `/qa-find-bugs-cli` sweep 1308 2026-10-22: Render detects the bound port; unsigned ADR018 divergence; major, ~4h.
+
+- [ ] **176** — [`bex logs --text 'GET*200'` and every `/regex/` search return nothing: Render's log filters accept `*` wildcards and RE2 regex, bex's `text` is literal-only and no filter takes regex](176.md) ← `/qa-find-bugs-cli` sweep 1310 2026-10-22: unsigned ADR010/ADR018 divergence; minor, ~1h30m.
+
+- [ ] **175** — [`PYTHON_VERSION=3.11.9` builds on Python 3.11.17: bex substitutes its pinned patch where Render installs the exact version requested](175.md) ← `/qa-find-bugs-cli` sweep 1307 2026-10-22: stricter follow-up to 173; minor, ~4h.
+
+- [ ] **174** — [A new Python service with no version signal builds on Python 3.13.16; Render's default for services created since 2026-10-12 is 3.14.8](174.md) ← `/qa-find-bugs-cli` sweep 1307 2026-10-22: unsigned ADR018 divergence; minor, ~45m.
+
+- [ ] **173** — [Runtime versions Render installs are refused at build time: Node 20/18/16/14, Python 3.7–3.9 and Ruby 3.2 (Render's own Rails examples) fail "not a supported version"](173.md) ← `/qa-find-bugs-cli` sweep 1307 2026-10-22: 63 of 79 real `NODE_VERSION` pins refused; unsigned ADR018 divergence; major, ~3h.
+
+- [ ] **172** — [The pre-deploy command still runs through bex's own `/bin/sh -c`: w8/164 fixed the Docker Command but not pre-deploy, so `sh -c <cmd>` silently runs nothing and shell-less images cannot pre-deploy](172.md) ← `/qa-find-bugs-cli` sweep 1304 2026-10-22: follow-up to w8/164; minor, ~45m.
+
 - [x] **171** — [`RENDER_CPU_COUNT` is rounded up to a whole number (free and starter both report `1`), where Render reports the plan's CPU, e.g. `"0.5"`](done/171.md) — **DONE (2026-10-21)**: RENDER_CPU_COUNT reports the plan's decimal CPU; ← `/qa-find-bugs-cli` sweep 1290 2026-10-21: follow-up to w5/m148; minor, ~20m.
 
 - [x] **170** — [An unusable `PORT` value (`abc`, `0`, `70000`) is accepted and shown, but the process silently receives `PORT=3000`](done/170.md) — **DONE (2026-10-21)**: an unusable PORT value is refused at write; ← `/qa-find-bugs-cli` sweep 1289 2026-10-21: follow-up to w5/m149; minor, ~30m.
