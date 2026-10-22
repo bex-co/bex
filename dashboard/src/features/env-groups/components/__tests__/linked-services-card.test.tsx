@@ -110,7 +110,8 @@ describe("LinkedServicesCard — w6/m48 workspace-scope compatibility", () => {
 
   it("still flags a genuinely cross-scope link and excludes it from available", async () => {
     renderCard({
-      group: WORKSPACE_GROUP, // workspace-scoped (no Environment)
+      // Environment-scoped: a workspace group links to any service (w8/179).
+      group: { ...WORKSPACE_GROUP, environmentId: "env-staging" },
       services: [service("web", "web"), service("api", "api")],
       serviceEnvironmentById: new Map([
         ["web", "env-prod"], // linked "web" is actually in env-prod: genuine mismatch
@@ -119,8 +120,8 @@ describe("LinkedServicesCard — w6/m48 workspace-scope compatibility", () => {
     });
 
     expect(await screen.findByText(/Linked outside/i)).toBeInTheDocument();
-    // "api" is environment-scoped while the group is workspace-scoped, so no
-    // compatible candidate exists — the Link Service control stays hidden.
+    // "api" is in another environment than the group, so no compatible
+    // candidate exists — the Link Service control stays hidden.
     expect(screen.queryByText("Select a service")).not.toBeInTheDocument();
   });
 });

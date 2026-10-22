@@ -31,12 +31,20 @@ describe("strandedGroupsForDestination (w4/m238)", () => {
     group("evg-unlinked", "evm-prod", []),
   ];
 
-  it("flags groups scoped anywhere but the destination", () => {
+  it("flags environment groups scoped anywhere but the destination", () => {
     expect(
       strandedGroupsForDestination(groups, ["srv-1"], "evm-staging").map(
         (g) => g.id,
       ),
-    ).toEqual(["evg-prod", "evg-workspace"]);
+    ).toEqual(["evg-prod"]);
+  });
+
+  it("never strands a workspace group (w8/179: it links to any service)", () => {
+    expect(
+      strandedGroupsForDestination(groups, ["srv-1"], "evm-prod").map(
+        (g) => g.id,
+      ),
+    ).not.toContain("evg-workspace");
   });
 
   it("treats leaving every environment as the null destination", () => {
