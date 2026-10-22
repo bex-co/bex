@@ -64,8 +64,14 @@ func stripServerPodDefaults(spec *corev1.PodSpec) {
 			}
 			p.SuccessThreshold = 0
 			if p == c.ReadinessProbe {
-				p.PeriodSeconds = 0
-				p.FailureThreshold = 0
+				// Only the server's own defaults: the 5s readiness period is
+				// authored by bex (w8/189).
+				if p.PeriodSeconds == defaultProbePeriodSeconds {
+					p.PeriodSeconds = 0
+				}
+				if p.FailureThreshold == defaultProbeFailureThreshold {
+					p.FailureThreshold = 0
+				}
 			}
 			if p.HTTPGet != nil {
 				p.HTTPGet.Scheme = ""
