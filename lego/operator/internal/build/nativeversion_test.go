@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -603,4 +604,45 @@ func TestResolveNativeBuildAddsJSToolsToNonNodeRuntimes(t *testing.T) {
 	if df, _ := os.ReadFile(dockerfile); strings.Contains(string(df), " /usr/local/bin/node /usr/local/bin/node\n") {
 		t.Fatalf("primary Node gained a second node binary:\n%s", df)
 	}
+}
+
+// w8/174: Render picks a Python service's default by its creation date, so a
+// service created after the cutoff defaults to 3.14, an older or unknown one
+// stays on 3.13, and any explicit signal still wins.
+func TestPythonDefaultFollowsCreationDate(t *testing.T) {
+	after := pythonCreationCutoff.Add(time.Hour)
+	before := pythonCreationCutoff.Add(-time.Hour)
+	for _, tc := range []struct {
+		name    string
+		created time.Time
+		env     map[string]string
+		line    string
+	}{
+		{"created after the cutoff", after, nil, "3.14"},
+		{"created exactly at the cutoff", pythonCreationCutoff, nil, "3.14"},
+		{"created before the cutoff", before, nil, "3.13"},
+		{"unknown creation keeps the legacy default", time.Time{}, nil, "3.13"},
+		{"explicit signal wins on a new service", after, map[string]string{"PYTHON_VERSION": "3.12"}, "3.12"},
+	} {
+		got, err := ResolveNativeVersionAt(tc.created, "python", tc.env, files(nil))
+		if err != nil || got.Line != tc.line {
+			t.Errorf("%s: line = %q, err = %v, want %q", tc.name, got.Line, err, tc.line)
+		}
+	}
+	// Other runtimes ignore the creation date.
+	if got, _ := ResolveNativeVersionAt(after, "node", nil, files(nil)); got.Line != "24" {
+		t.Errorf("node default = %q", got.Line)
+	}
+}
+
+func TestNativeResolverCarriesServiceCreationTime(t *testing.T) {
+	o := nativeInitOptions()
+	o.ServiceCreatedAt = time.Date(2026, 10, 23, 1, 2, 3, 0, time.UTC)
+	c := nativeVersionResolver(o)
+	for _, e := range c.Env {
+		if e.Name == NativeServiceCreatedEnv && e.Value == "2026-10-23T01:02:03Z" {
+			return
+		}
+	}
+	t.Errorf("resolver env = %v, want %s", c.Env, NativeServiceCreatedEnv)
 }

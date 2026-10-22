@@ -1112,6 +1112,7 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		// bex's own image runs the version resolver (w8/m51); unresolved, the
 		// build keeps its runtime's default line.
 		NativeResolverImage:  r.BackupHelperImage,
+		ServiceCreatedAt:     app.CreationTimestamp.Time,
 		Revision:             releaseBuildRevision(app),
 		Namespace:            buildNs,
 		AppNamespace:         app.Namespace,

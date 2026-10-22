@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -35,7 +36,10 @@ import (
 // source, picks the toolchain line, rewrites the generated Dockerfile's FROM
 // to that line's pin, and narrates the choice into the build log.
 const (
-	nativeResolveContainer = "resolve-native-runtime"
+	// NativeServiceCreatedEnv carries the App's creation time (RFC 3339) to the
+	// resolve phase, where Render's creation-date defaults need it (w8/174).
+	NativeServiceCreatedEnv = "BEX_SERVICE_CREATED_AT"
+	nativeResolveContainer  = "resolve-native-runtime"
 	// NativeResolveBinary is the entrypoint in bex's image (lego/Dockerfile).
 	NativeResolveBinary = "/native-resolve"
 	// maxVersionFileBytes bounds what a version file may make the resolver
@@ -52,12 +56,18 @@ const (
 // (w8/m77), a Gemfile static site's Ruby (w8/m105) and any opted-in companion
 // (Bun); an *UnsupportedVersionError is tenant input.
 func ResolveNativeBuild(runtime, bundlePath, dockerfilePath, sourceDir string) ([]NativeChoice, error) {
+	return ResolveNativeBuildAt(time.Time{}, runtime, bundlePath, dockerfilePath, sourceDir)
+}
+
+// ResolveNativeBuildAt is ResolveNativeBuild for a service created at created,
+// whose creation date picks the default Python line (w8/174).
+func ResolveNativeBuildAt(created time.Time, runtime, bundlePath, dockerfilePath, sourceDir string) ([]NativeChoice, error) {
 	env, err := readEnvBundle(bundlePath)
 	if err != nil {
 		return nil, err
 	}
 	readFile := func(name string) ([]byte, bool) { return readVersionFile(sourceDir, name) }
-	choice, err := ResolveNativeVersion(runtime, env, readFile)
+	choice, err := ResolveNativeVersionAt(created, runtime, env, readFile)
 	if err != nil {
 		return nil, err
 	}
@@ -321,6 +331,9 @@ func nativeVersionResolver(o Options) corev1.Container {
 	env := []corev1.EnvVar{
 		{Name: "BEX_NATIVE_RUNTIME", Value: nativeRuntime(o)},
 		{Name: "BEX_NATIVE_SOURCE_DIR", Value: boundedSourceDir(o.RootDir)},
+	}
+	if !o.ServiceCreatedAt.IsZero() {
+		env = append(env, corev1.EnvVar{Name: NativeServiceCreatedEnv, Value: o.ServiceCreatedAt.UTC().Format(time.RFC3339)})
 	}
 	if nativeServingInit(o) {
 		env = append(env, corev1.EnvVar{Name: NativeInitEnv, Value: nativeInitDir + "/" + nativeInitFile})

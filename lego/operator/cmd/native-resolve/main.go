@@ -34,12 +34,14 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/bex-co/bex/lego/operator/internal/build"
 )
 
 func main() {
-	code := run(os.Getenv("BEX_NATIVE_RUNTIME"), os.Getenv("BEX_NATIVE_SOURCE_DIR"),
+	created, _ := time.Parse(time.RFC3339, os.Getenv(build.NativeServiceCreatedEnv))
+	code := run(created, os.Getenv("BEX_NATIVE_RUNTIME"), os.Getenv("BEX_NATIVE_SOURCE_DIR"),
 		"/native/render-env", "/native/Dockerfile", os.Stdout, os.Stderr)
 	if dest := os.Getenv(build.NativeInitEnv); code == 0 && dest != "" {
 		if err := build.StageNativeInit(build.NativeInitBinary, dest); err != nil {
@@ -50,8 +52,8 @@ func main() {
 	os.Exit(code)
 }
 
-func run(runtime, sourceDir, bundle, dockerfile string, stdout, stderr io.Writer) int {
-	choices, err := build.ResolveNativeBuild(runtime, bundle, dockerfile, sourceDir)
+func run(created time.Time, runtime, sourceDir, bundle, dockerfile string, stdout, stderr io.Writer) int {
+	choices, err := build.ResolveNativeBuildAt(created, runtime, bundle, dockerfile, sourceDir)
 	var unsupported *build.UnsupportedVersionError
 	switch {
 	case errors.As(err, &unsupported):

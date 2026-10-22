@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bex-co/bex/lego/operator/internal/build"
 )
@@ -47,7 +48,7 @@ func TestRunNarratesOrRefusesAsTenantError(t *testing.T) {
 
 	write("3.11.9")
 	var out, errOut bytes.Buffer
-	if code := run("python", dir, bundle, dockerfile, &out, &errOut); code != 0 {
+	if code := run(time.Time{}, "python", dir, bundle, dockerfile, &out, &errOut); code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut.String())
 	}
 	const wantPython = "==> Using Python 3.11 (from PYTHON_VERSION=3.11.9)\n==> Using Poetry 2.1.3 (default)\n" +
@@ -59,11 +60,11 @@ func TestRunNarratesOrRefusesAsTenantError(t *testing.T) {
 	write("2.7.18")
 	out.Reset()
 	errOut.Reset()
-	if code := run("python", dir, bundle, dockerfile, &out, &errOut); code != build.ExitTenantError {
+	if code := run(time.Time{}, "python", dir, bundle, dockerfile, &out, &errOut); code != build.ExitTenantError {
 		t.Fatalf("unsupported exit = %d, want ExitTenantError", code)
 	}
 	const want = "PYTHON_VERSION=2.7.18 is not a supported Python version; " +
-		"supported Python lines are 3.10, 3.11, 3.12, 3.13, 3.14"
+		"supported Python lines are 3.7, 3.8, 3.9, 3.10, 3.11, 3.12, 3.13, 3.14"
 	if !strings.Contains(errOut.String(), want) {
 		t.Errorf("refusal = %q", errOut.String())
 	}
@@ -87,7 +88,7 @@ func TestRunNarratesAnOptedInBun(t *testing.T) {
 		t.Fatal(err)
 	}
 	var out, errOut bytes.Buffer
-	if code := run("node", dir, bundle, dockerfile, &out, &errOut); code != 0 {
+	if code := run(time.Time{}, "node", dir, bundle, dockerfile, &out, &errOut); code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut.String())
 	}
 	const want = "==> Using Node 24 (default)\n==> Using Bun 1.3 (from BUN_VERSION=1.3.4)"

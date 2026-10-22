@@ -409,7 +409,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **175** — [`PYTHON_VERSION=3.11.9` builds on Python 3.11.17: bex substitutes its pinned patch where Render installs the exact version requested](175.md) ← `/qa-find-bugs-cli` sweep 1307 2026-10-22: stricter follow-up to 173; minor, ~4h.
 
-- [ ] **174** — [A new Python service with no version signal builds on Python 3.13.16; Render's default for services created since 2026-10-12 is 3.14.8](174.md) ← `/qa-find-bugs-cli` sweep 1307 2026-10-22: unsigned ADR018 divergence; minor, ~45m.
+- [x] **174** — [A new Python service with no version signal builds on Python 3.13.16; Render's default for services created since 2026-10-12 is 3.14.8](done/174.md) ← `/qa-find-bugs-cli` sweep 1307 2026-10-22: unsigned ADR018 divergence; minor, ~45m. — **DONE (2026-10-22)**: new Python services default to 3.14 by creation date.
 
 - [x] **173** — [Runtime versions Render installs are refused at build time: Node 20/18/16/14, Python 3.7–3.9 and Ruby 3.2 (Render's own Rails examples) fail "not a supported version"](done/173.md) ← `/qa-find-bugs-cli` sweep 1307 2026-10-22: 63 of 79 real `NODE_VERSION` pins refused; unsigned ADR018 divergence; major, ~3h. — **DONE (2026-10-22)**: Render-supported Node/Python/Ruby/Elixir lines added.
 
