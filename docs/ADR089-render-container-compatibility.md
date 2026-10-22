@@ -113,7 +113,7 @@ Keep configured/default port intent distinct from resolved ports. The current CR
 
 Changing a release's port set must not send traffic to replicas that do not support it. Bind resolved metadata to the release/image, gate publication on the serving revision, and account for overlapping old/new replicas. Disk-backed replacement continues to use ADR082's stop/start lifecycle. Inability to resolve authorized metadata is an observable failure, not a successful deployment with guessed addresses.
 
-Out of scope for this first phase: undeclared-port discovery, UDP or arbitrary protocol parity, Render's special web-service port-10000 alias, and changing the public web-service ingress selection contract. Those limitations stay explicit in ADR018. The customer outcome here requires both ClickHouse TCP interfaces, not only its HTTP health check.
+Out of scope for this first phase (web-service runtime port detection shipped separately in w8/177, ADR018): undeclared-port discovery for private services, UDP or arbitrary protocol parity, Render's special web-service port-10000 alias, and changing the public web-service ingress selection contract. Those limitations stay explicit in ADR018. The customer outcome here requires both ClickHouse TCP interfaces, not only its HTTP health check.
 
 ### D4 — Addresses and Blueprint references follow the resolved primary port
 

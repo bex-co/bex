@@ -43,6 +43,7 @@ import (
 
 	"github.com/bex-co/bex/lego/operator/internal/controller"
 	"github.com/bex-co/bex/lego/operator/internal/hostingdomain"
+	"github.com/bex-co/bex/lego/operator/internal/portscan"
 	"github.com/bex-co/bex/lego/operator/internal/publish"
 	"github.com/bex-co/bex/lego/operator/internal/registry"
 	bexruntime "github.com/bex-co/bex/lego/operator/internal/runtime"
@@ -346,6 +347,7 @@ func setupAppReconciler(
 ) {
 	activatorPort := envInt("BEX_ACTIVATOR_PORT", 8888)
 	appReconciler := &controller.AppReconciler{
+		PortScanner:          portscan.Dialer{},
 		Client:               mgr.GetClient(),
 		BuildClient:          uncachedClient,
 		Scheme:               mgr.GetScheme(),

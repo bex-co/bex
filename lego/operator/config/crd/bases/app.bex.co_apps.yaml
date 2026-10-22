@@ -1153,6 +1153,18 @@ spec:
                   why flattening would breach Kubernetes' 1 MiB Secret ceiling.
                 format: int64
                 type: integer
+              detectedPort:
+                description: |-
+                  DetectedPort is the one TCP port a web service's process was found
+                  listening on when its health check failed on the default port (Render
+                  "is usually able to detect and use" a port other than PORT; w8/177).
+                  While it is set and neither spec.port nor a PORT variable names a port,
+                  the operator serves, routes and probes on it. Zero means nothing was
+                  detected.
+                format: int32
+                maximum: 65535
+                minimum: 0
+                type: integer
               disk:
                 description: |-
                   Disk is the observed state of the attached persistent disk; nil when
