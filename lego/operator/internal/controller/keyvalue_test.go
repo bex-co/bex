@@ -313,9 +313,12 @@ func TestKeyValueConnectionSecretRebuildKeepsAServingStoreReady(t *testing.T) {
 	}
 }
 
-// TestKeyValueFirstExternalEnableAddsTheListener: a store created private has
-// no listener, so its first enable must add one (the one toggle that restarts,
-// which bex-api announces), and the status says so before and after.
+// TestKeyValueFirstExternalEnableAddsTheListener: a store that predates
+// w8/181 was created private without a listener, so its first enable must add
+// one (the one toggle that restarts, which bex-api announces), and the status
+// says so before and after. A store created now starts with the listener
+// (TestKeyValueNewStoreStartsWithTheListener), so the legacy shape is built by
+// creating it on a cluster with no issuer, which keeps the lazy first enable.
 func TestKeyValueFirstExternalEnableAddsTheListener(t *testing.T) {
 	scheme := keyValueBackupTestScheme(t)
 	kv := &appv1alpha1.KeyValue{
@@ -324,7 +327,7 @@ func TestKeyValueFirstExternalEnableAddsTheListener(t *testing.T) {
 	}
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv).
 		WithStatusSubresource(&appv1alpha1.KeyValue{}).Build()
-	r := &KeyValueReconciler{Client: cl, Scheme: scheme, KvDomain: "kv.example.test", ClusterIssuer: "letsencrypt-prod"}
+	r := &KeyValueReconciler{Client: cl, Scheme: scheme, KvDomain: "kv.example.test"}
 	ctx := context.Background()
 	nn := types.NamespacedName{Name: "private-kv", Namespace: "default"}
 	reconcileTwice := func() {
@@ -345,6 +348,17 @@ func TestKeyValueFirstExternalEnableAddsTheListener(t *testing.T) {
 	}
 	if kv.Status.TLSListener || keyValueTemplateListens(&sts) {
 		t.Fatalf("a private store runs a TLS listener: status %v", kv.Status.TLSListener)
+	}
+
+	// The issuer arrives later; the legacy store still has no listener until
+	// it is enabled.
+	r.ClusterIssuer = "letsencrypt-prod"
+	reconcileTwice()
+	if err := cl.Get(ctx, nn, &sts); err != nil {
+		t.Fatal(err)
+	}
+	if kv.Status.TLSListener || keyValueTemplateListens(&sts) {
+		t.Fatalf("an existing private store gained a listener unasked (that restarts it): status %v", kv.Status.TLSListener)
 	}
 
 	kv.Spec.Public = true
@@ -1242,3 +1256,51 @@ var _ = Describe("KeyValue ipAllowList structural schema", func() {
 		// through the apiserver here.
 	})
 })
+
+// w8/181: Render changes an allowlist without a restart, so a store created now
+// runs the TLS listener from the start and turning external access on changes
+// nothing in its pod template.
+func TestKeyValueNewStoreStartsWithTheListener(t *testing.T) {
+	scheme := keyValueBackupTestScheme(t)
+	kv := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{Name: "fresh-kv", Namespace: "default", UID: "kv-fresh-test"},
+		Spec:       appv1alpha1.KeyValueSpec{Plan: "free", PersistenceMode: appv1alpha1.KeyValuePersistenceOff},
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv).
+		WithStatusSubresource(&appv1alpha1.KeyValue{}).Build()
+	r := &KeyValueReconciler{Client: cl, Scheme: scheme, KvDomain: "kv.example.test", ClusterIssuer: "letsencrypt-prod"}
+	ctx := context.Background()
+	nn := types.NamespacedName{Name: "fresh-kv", Namespace: "default"}
+	reconcileTwice := func() {
+		t.Helper()
+		for range 2 {
+			if _, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}); err != nil {
+				t.Fatalf("reconcile: %v", err)
+			}
+		}
+		if err := cl.Get(ctx, nn, kv); err != nil {
+			t.Fatal(err)
+		}
+	}
+	reconcileTwice()
+	var before appsv1.StatefulSet
+	if err := cl.Get(ctx, nn, &before); err != nil {
+		t.Fatal(err)
+	}
+	if !kv.Status.TLSListener || !keyValueTemplateListens(&before) {
+		t.Fatalf("a new private store has no listener: status %v", kv.Status.TLSListener)
+	}
+
+	kv.Spec.Public = true
+	if err := cl.Update(ctx, kv); err != nil {
+		t.Fatal(err)
+	}
+	reconcileTwice()
+	var after appsv1.StatefulSet
+	if err := cl.Get(ctx, nn, &after); err != nil {
+		t.Fatal(err)
+	}
+	if !equality.Semantic.DeepEqual(before.Spec.Template, after.Spec.Template) {
+		t.Fatalf("enabling external access changed the pod template, which restarts the store:\n%+v\n%+v", before.Spec.Template, after.Spec.Template)
+	}
+}
