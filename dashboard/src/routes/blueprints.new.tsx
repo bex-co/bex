@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { HydrationFieldset } from "@/common/components/hydration-fieldset";
 import {
   createFileRoute,
@@ -134,15 +134,16 @@ export function NewBlueprintPage() {
     }
   }, [tab, selectedRepo, gitUrl, nameEdited]);
 
-  const [guessPending, setGuessPending] = useState(branchGuessed);
+  // Corrects the "main" first guess once, when the branch list first loads.
+  const guessPending = useRef(branchGuessed);
   useEffect(() => {
-    if (!guessPending || branches.length === 0) return;
-    setGuessPending(false);
+    if (!guessPending.current || branches.length === 0) return;
+    guessPending.current = false;
     if (!branches.includes(branch)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setBranch(branches.includes("master") ? "master" : branches[0]);
     }
-  }, [guessPending, branches, branch]);
+  }, [branches, branch]);
 
   const branchOptions = useMemo(
     () => branches.map((b) => ({ value: b, label: b })),
