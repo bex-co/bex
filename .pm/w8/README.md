@@ -377,7 +377,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **192** — [Retire the implicit static-site SPA fallback for sites created before 2026-10-23](192.md) ← w8/183 2026-10-22 (due 2026-11-22)
 
-- [ ] **191** — [List endpoints called without `limit` return the whole list unsorted instead of Render's default page of 20, so a cursor from that page continues a different order; unfiltered `GET /notification-settings/overrides` returns one workspace instead of all](191.md) ← `/qa-find-bugs-cli` sweep 1326 2026-10-22: unsigned ADR018 divergences; minor, ~1h30m.
+- [x] **191** — [List endpoints called without `limit` return the whole list unsorted instead of Render's default page of 20, so a cursor from that page continues a different order; unfiltered `GET /notification-settings/overrides` returns one workspace instead of all](done/191.md) ← `/qa-find-bugs-cli` sweep 1326 2026-10-22: unsigned ADR018 divergences; minor, ~1h30m. — **DONE (2026-10-22)**: REST lists default to Render's first page; overrides span the caller's workspaces.
 
 - [x] **190** — [`GET /v1/metrics/bandwidth-sources` answers 501 for every resource; Render serves hourly bandwidth broken down by traffic source](done/190.md) ← `/qa-find-bugs-cli` sweep 1325 2026-10-22: unsigned ADR018 divergence; minor, ~1h30m. — **DONE (2026-10-22)**: bandwidth-sources serves hourly per-source series.
 
