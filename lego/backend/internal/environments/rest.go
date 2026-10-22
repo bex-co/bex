@@ -215,8 +215,26 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		})
 	}, toRenderEnvironment))
 
+	// Render requires an empty environment to delete it and answers 409
+	// otherwise (w8/188); the dashboard and GraphQL keep the confirmed
+	// detach-and-delete flow through s.Delete.
 	mux.HandleFunc("DELETE /v1/environments/{id}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
-		return s.Delete(r.Context(), r.PathValue("id"))
+		return s.DeleteIfEmpty(r.Context(), r.PathValue("id"))
+	}))
+
+	// Render's membership routes: add resources by id, remove them by id.
+	mux.HandleFunc("POST /v1/environments/{id}/resources", core.HandleMapped(http.StatusOK, func(r *http.Request) (EnvironmentView, error) {
+		req, err := core.DecodeBody[struct {
+			ResourceIDs []string `json:"resourceIds"`
+		}](r)
+		if err != nil {
+			return EnvironmentView{}, err
+		}
+		return s.ChangeResources(r.Context(), r.PathValue("id"), req.ResourceIDs, true)
+	}, toRenderEnvironment))
+	mux.HandleFunc("DELETE /v1/environments/{id}/resources", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
+		_, err := s.ChangeResources(r.Context(), r.PathValue("id"), core.QueryList(r.URL.Query(), "resourceIds"), false)
+		return err
 	}))
 
 	// The four link routes replace an environment's full membership list for

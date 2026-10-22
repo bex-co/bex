@@ -554,6 +554,11 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
+	return s.deleteProject(ctx, p)
+}
+
+func (s *Service) deleteProject(ctx context.Context, p store.Project) error {
+	id := p.ID
 	if s.Environments != nil {
 		if err := s.Environments.ClearMembersForProject(ctx, p.ID); err != nil {
 			return err
@@ -577,6 +582,30 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 		}
 	}
 	return store.MapError(s.Store.DeleteProject(ctx, id))
+}
+
+// DeleteIfEmpty is Render's project delete (w8/188): every environment of the
+// project must be empty, otherwise the caller gets a 409 and nothing changes.
+// Authorization is Delete's, ahead of the occupancy answer.
+func (s *Service) DeleteIfEmpty(ctx context.Context, id string) error {
+	p, err := s.authorizedProject(ctx, core.RelCanCreate, id)
+	if err != nil {
+		return err
+	}
+	if envs, ok := s.Environments.(interface {
+		EnvironmentsOccupied(context.Context, string) (bool, error)
+	}); ok {
+		occupied, err := envs.EnvironmentsOccupied(ctx, p.ID)
+		if err != nil {
+			return err
+		}
+		if occupied {
+			return core.NewConflictError("PROJECT_NOT_EMPTY",
+				"the project's environments still contain resources; move or delete them first, then delete the project",
+				map[string]any{"id": p.ID})
+		}
+	}
+	return s.deleteProject(ctx, p)
 }
 
 // SetServices replaces the full list of services in a project.

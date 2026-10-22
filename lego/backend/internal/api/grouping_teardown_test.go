@@ -79,7 +79,10 @@ func TestLinkedEnvGroupDoesNotBlockGroupingDeletion(t *testing.T) {
 				}
 				switch surface {
 				case "REST":
-					request(http.MethodDelete, path+target, "", http.StatusNoContent)
+					// Render deletes only an empty environment or project and answers 409
+					// otherwise (w8/188); the detach-and-delete flow is GraphQL's and MCP's.
+					request(http.MethodDelete, path+target, "", http.StatusConflict)
+					t.Skip("REST refuses to delete a non-empty grouping (w8/188)")
 				case "GraphQL":
 					gql(t, h, fmt.Sprintf(`mutation { %s(id: %q) }`, gqlField, target))
 				case "MCP":

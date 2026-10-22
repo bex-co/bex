@@ -829,6 +829,30 @@ func (c *ProjectMemberClearer) ClearMembersForProject(ctx context.Context, proje
 	return c.clearMembersForProject(ctx, projectID)
 }
 
+// EnvironmentsOccupied reports whether any environment under projectID holds a
+// resource — Render's precondition for deleting a project (w8/188). It reads
+// membership only; the caller (the REST delete) has already authorized the
+// project.
+func (c *ProjectMemberClearer) EnvironmentsOccupied(ctx context.Context, projectID string) (bool, error) {
+	if c.Store == nil {
+		return false, nil
+	}
+	envs, err := c.Store.ListEnvironments(ctx, projectID)
+	if err != nil {
+		return false, err
+	}
+	for _, e := range envs {
+		v, err := c.toFullView(ctx, e)
+		if err != nil {
+			return false, err
+		}
+		if EnvironmentOccupied(v) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (s *Service) clearMembersForProject(ctx context.Context, projectID string) error {
 	if s.Store == nil {
 		return nil
@@ -856,21 +880,48 @@ func (s *Service) clearMembersForProject(ctx context.Context, projectID string) 
 // Delete clears members' environment membership and inherited rules before
 // removing the environment. Their project membership and own rules survive.
 func (s *Service) Delete(ctx context.Context, id string) error {
+	ctx, e, err := s.authorizedForDelete(ctx, id)
+	if err != nil {
+		return err
+	}
+	return s.deleteEnvironment(ctx, e)
+}
+
+func (s *Service) authorizedForDelete(ctx context.Context, id string) (context.Context, store.Environment, error) {
 	ctx, err := s.scopeEnvironment(ctx, id)
 	if err != nil {
-		return err
+		return ctx, store.Environment{}, err
 	}
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
-		return err
+		return ctx, store.Environment{}, err
 	}
 	e, err := s.requireEnvironment(ctx, core.RelCanCreate, id)
-	if err != nil {
-		return err
-	}
+	return ctx, e, err
+}
+
+func (s *Service) deleteEnvironment(ctx context.Context, e store.Environment) error {
 	if err := s.clearEnvironmentMembers(ctx, e); err != nil {
 		return err
 	}
 	return store.MapError(s.Store.DeleteEnvironment(ctx, e.ID))
+}
+
+// DeleteIfEmpty is Render's delete (w8/188): the environment must hold no
+// resources, otherwise the caller gets a 409 and nothing changes. Authorization
+// is Delete's, ahead of the occupancy answer.
+func (s *Service) DeleteIfEmpty(ctx context.Context, id string) error {
+	ctx, e, err := s.authorizedForDelete(ctx, id)
+	if err != nil {
+		return err
+	}
+	v, err := s.toFullView(ctx, e)
+	if err != nil {
+		return err
+	}
+	if EnvironmentOccupied(v) {
+		return NotEmptyError("environment", v.ID)
+	}
+	return s.deleteEnvironment(ctx, e)
 }
 
 // aclBearing reports whether an environment carries protected-environment ACL

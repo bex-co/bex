@@ -100,14 +100,8 @@ func TestProjectDeleteSurvivesDatastoreLockConflicts(t *testing.T) {
 					t.Helper()
 					switch surface {
 					case "REST":
-						rec := do(t, h, http.MethodDelete, "/v1/projects/"+projectID, testToken, "")
-						if rec.Code == http.StatusNoContent {
-							return ""
-						}
-						if rec.Code != http.StatusConflict {
-							t.Fatalf("REST delete = %d %s, want 204 or 409", rec.Code, rec.Body.String())
-						}
-						return rec.Body.String()
+						t.Skip("REST refuses to delete a non-empty project (w8/188); the cascade runs through GraphQL and MCP")
+						return ""
 					case "GraphQL":
 						body, _ := json.Marshal(map[string]string{"query": fmt.Sprintf(`mutation { deleteProject(id: %q) }`, projectID)})
 						rec := do(t, h, http.MethodPost, "/graphql", testToken, string(body))

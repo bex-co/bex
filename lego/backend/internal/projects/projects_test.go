@@ -824,3 +824,41 @@ func TestCreateInlineEnvironmentValidationAndAuthorization(t *testing.T) {
 		})
 	}
 }
+
+// occupiedEnvironmentIndex adds the occupancy answer *environments.Service
+// gives the REST delete.
+type occupiedEnvironmentIndex struct {
+	recordingEnvironmentIndex
+	occupied bool
+}
+
+func (o *occupiedEnvironmentIndex) EnvironmentsOccupied(context.Context, string) (bool, error) {
+	return o.occupied, nil
+}
+
+// w8/188: Render deletes only a project whose environments are all empty and
+// answers 409 otherwise; the confirmed flow (Delete) still cascades.
+func TestDeleteIfEmptyRefusesAProjectWithOccupiedEnvironments(t *testing.T) {
+	for _, occupied := range []bool{true, false} {
+		st := newFakeProjectStore(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+		envIdx := &occupiedEnvironmentIndex{occupied: occupied}
+		svc := &Service{Base: &core.Base{Authz: allowChecker{}}, Store: st, Environments: envIdx}
+
+		err := svc.DeleteIfEmpty(ctxAs("user-a"), "prj-1")
+		if occupied {
+			if !errors.Is(err, core.ErrConflict) {
+				t.Fatalf("delete of an occupied project = %v, want a conflict", err)
+			}
+			if _, getErr := svc.Get(ctxAs("user-a"), "prj-1"); getErr != nil {
+				t.Fatalf("the refused delete removed the project: %v", getErr)
+			}
+			if len(envIdx.clearedProjects) != 0 {
+				t.Fatalf("the refused delete cleared members: %v", envIdx.clearedProjects)
+			}
+			continue
+		}
+		if err != nil {
+			t.Fatalf("delete of an empty project: %v", err)
+		}
+	}
+}

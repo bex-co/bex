@@ -206,8 +206,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		return s.renderProject(r.Context(), p)
 	}))
 
+	// Render requires every environment of a project to be empty and answers
+	// 409 otherwise (w8/188); the dashboard and GraphQL keep the confirmed
+	// detach-and-delete flow through s.Delete.
 	mux.HandleFunc("DELETE /v1/projects/{id}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
-		return s.Delete(r.Context(), r.PathValue("id"))
+		return s.DeleteIfEmpty(r.Context(), r.PathValue("id"))
 	}))
 
 	// The three link routes replace a project's full membership list for one
