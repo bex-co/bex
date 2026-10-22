@@ -186,9 +186,9 @@
       "id": "native-node",
       "kind": "native-base",
       "upstream": "docker.io/library/node:24-bookworm",
-      "committed": "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
-      "resolved_at": "2026-10-16T10:25:13Z",
-      "source": "Docker Hub library/node:24-bookworm multi-arch index",
+      "committed": "node:24-bookworm@sha256:6449e19d8184d84062525b6a7524def03146c2cb04a7f08b076680d0e8e4240a",
+      "resolved_at": "2026-10-22T05:57:14Z",
+      "source": "Docker Hub library/node:24.22.1-bookworm multi-arch index; 2026-10-21 security release",
       "files": ["lego/operator/internal/build/native.go"]
     },
     {
@@ -258,18 +258,18 @@
       "id": "native-node-22",
       "kind": "native-base",
       "upstream": "docker.io/library/node:22-bookworm",
-      "committed": "node:22-bookworm@sha256:0e5f906573693feaa1e21057ebdcfdb5bd5021f050b2dc7c9deceb629c7da2a8",
-      "resolved_at": "2026-10-11T02:05:00Z",
-      "source": "Docker Hub library/node:22-bookworm multi-arch index (w8/m51 version line)",
+      "committed": "node:22-bookworm@sha256:63538dfe497cc29dfafdda25ada09b46db68a3f4cc205abf1f5d6bf0913f3384",
+      "resolved_at": "2026-10-22T05:57:14Z",
+      "source": "Docker Hub library/node:22.23.4-bookworm multi-arch index; 2026-10-21 security release",
       "files": ["lego/operator/internal/build/native.go"]
     },
     {
       "id": "native-node-26",
       "kind": "native-base",
       "upstream": "docker.io/library/node:26-bookworm",
-      "committed": "node:26-bookworm@sha256:a856ae5e25d498bbe5ec85fde88f00f5ed99908fda803ba39d7735ab8574f58c",
-      "resolved_at": "2026-10-16T10:25:13Z",
-      "source": "Docker Hub library/node:26-bookworm multi-arch index (w8/m51 version line)",
+      "committed": "node:26-bookworm@sha256:5c4012d11d9857c42713ba511fbc19645cac1706bb710d51d42b0d301dff7f88",
+      "resolved_at": "2026-10-22T05:57:14Z",
+      "source": "Docker Hub library/node:26.12.1-bookworm multi-arch index; 2026-10-21 security release",
       "files": ["lego/operator/internal/build/native.go"]
     },
     {

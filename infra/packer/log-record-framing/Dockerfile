@@ -7,7 +7,7 @@
 # docker buildx build --platform linux/amd64 --output type=local,dest=out \
 #   infra/packer/log-record-framing   # CI: .github/workflows/kubelet-artifact.yml
 
-FROM --platform=$BUILDPLATFORM golang:1.25.11-bookworm@sha256:b96f24a8d7d010ea0acb9c3ba99064740f02b6b984612b28bd3c9c5ab9453e38 AS build
+FROM --platform=$BUILDPLATFORM golang:1.26.10-bookworm@sha256:632dff7351799a5a9954a48dc06670ade72ee44e8c351cdc0e5a57af2fea21af AS build
 ARG TARGETARCH
 # Tag v1.34.9; bump with release.conf's KUBERNETES_VERSION and re-prove the patch.
 ARG KUBERNETES_COMMIT=ad7c7374b74c04d07ea041d367ecb1a526bdf758

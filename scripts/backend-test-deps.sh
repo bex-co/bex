@@ -28,8 +28,8 @@ key=$(printf '%s' "$root" | shasum | cut -c1-8)
 prefix="bex-test-$key"
 shim_dir="${TMPDIR:-/tmp}/$prefix/bin"
 bao_token=backend-test-only
-# Used only when the host has no promtool: CI's 2.55.1 line, digest-pinned.
-promtool_image=prom/prometheus:v2.55.1@sha256:2659f4c2ebb718e7695cb9b25ffa7d6be64db013daba13e05c875451cf51b0d3
+# Used only when the host has no promtool: CI's 3.13.5 LTS line, digest-pinned.
+promtool_image=prom/prometheus:v3.13.5@sha256:aafa9d694e6a883c02db516d9f6e5b84e14195f49a2a6456a4cca815edda72b9
 
 pin() { # the first <pattern>@sha256 digest in backend-test.yml
   local image
