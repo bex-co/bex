@@ -617,7 +617,7 @@ type AppSpec struct {
 
 	// Port the application listens on (PORT is injected).
 	// +optional
-	// +kubebuilder:default=3000
+	// +kubebuilder:default=10000
 	Port int32 `json:"port,omitempty"`
 
 	// PortMode preserves whether a new private Docker service selected image
@@ -920,7 +920,11 @@ type AppSpec struct {
 // the same value the CRD marker on AppSpec.Port declares. Pre-spec call sites
 // (request builders that haven't materialized an AppSpec yet) use this const;
 // spec readers use EffectivePort.
-const DefaultPort = 3000
+//
+// It is Render's documented PORT default for web services (w8/168). Apps
+// created before the change carry their port explicitly (the CRD default stored
+// 3000 on them), so they keep it.
+const DefaultPort = 10000
 
 // MaxReplicas is the platform-wide ceiling on spec.replicas and on autoscaling
 // min/max. Shared by the API validators, the CRD schema, and the operator's

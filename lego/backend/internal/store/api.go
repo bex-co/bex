@@ -420,7 +420,7 @@ func appFromRequest(req CreateAppRequest) (App, error) {
 		return App{}, fmt.Errorf("%w: port must be 1-65535", ErrInvalid)
 	}
 	if req.Port == 0 {
-		req.Port = 3000
+		req.Port = 10000 // Render's PORT default; keep in step with appv1alpha1.DefaultPort
 	}
 	if req.Replicas < 0 || req.Replicas > MaxReplicas {
 		return App{}, fmt.Errorf("%w: replicas must be 0-%d", ErrInvalid, MaxReplicas)

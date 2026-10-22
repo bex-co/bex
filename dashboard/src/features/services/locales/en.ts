@@ -3276,7 +3276,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.createFieldPortImageHint": {
     message:
-      "Optional. bex publishes every TCP port the image declares (EXPOSE); 3000 if declared, else the lowest declared, else 3000, becomes $PORT and the health-checked primary. Set a port to choose the primary yourself.",
+      "Optional. bex publishes every TCP port the image declares (EXPOSE); 3000 if declared, else the lowest declared, else 10000, becomes $PORT and the health-checked primary. Set a port to choose the primary yourself.",
     description:
       "Create wizard: port hint for a Git-built Docker private service — blank publishes the image's declared ports (w6/m148)",
   },

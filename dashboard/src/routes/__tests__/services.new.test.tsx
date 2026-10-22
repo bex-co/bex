@@ -1287,16 +1287,16 @@ describe("NewServicePage", () => {
   // live 2026-09-21 pass got a 503 from a service created exactly this way.
   describe("service port", () => {
     it.each([/Web Service/i, /Private Service/i])(
-      "defaults the port to 3000 for %s, the types that bind one",
+      "defaults the port to 10000 for %s, the types that bind one",
       async (label) => {
         const user = userEvent.setup();
         renderPage();
         await screen.findAllByRole("radiogroup");
         await user.click(screen.getByRole("radio", { name: label }));
 
-        expect(screen.getByLabelText("Port")).toHaveValue("3000");
+        expect(screen.getByLabelText("Port")).toHaveValue("10000");
         expect(
-          screen.getByText(/container must listen on port 3000/i),
+          screen.getByText(/container must listen on port 10000/i),
         ).toBeInTheDocument();
       },
     );

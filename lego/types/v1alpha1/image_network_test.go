@@ -39,7 +39,7 @@ func TestOpenPortsFollowTheServingNetwork(t *testing.T) {
 		address string
 	}{
 		{"configured web", App{ObjectMeta: metav1.ObjectMeta{Name: "web"}, Spec: AppSpec{Type: TypeWebService, Port: 8080}}, []int32{8080}, 8080, "web:8080"},
-		{"configured default", App{ObjectMeta: metav1.ObjectMeta{Name: "pserv"}, Spec: AppSpec{Type: TypePrivateService}}, []int32{DefaultPort}, DefaultPort, "pserv:3000"},
+		{"configured default", App{ObjectMeta: metav1.ObjectMeta{Name: "pserv"}, Spec: AppSpec{Type: TypePrivateService}}, []int32{DefaultPort}, DefaultPort, "pserv:10000"},
 		{"image pending", App{ObjectMeta: metav1.ObjectMeta{Name: "ch"}, Spec: AppSpec{Type: TypePrivateService, PortMode: PortModeImageV1}}, []int32{}, 0, ""},
 		{"image first candidate", App{ObjectMeta: metav1.ObjectMeta{Name: "ch"}, Spec: AppSpec{Type: TypePrivateService, PortMode: PortModeImageV1},
 			Status: AppStatus{ImageNetwork: candidate}}, []int32{9000, 9100}, 9000, "ch:9000"},

@@ -397,10 +397,10 @@ describe("isSubmittable", () => {
       "an existing-image private service",
       { serviceType: "private_service", tab: "image", image: "nginx:1" },
     ],
-  ] as const)("still sends the pre-filled 3000 for %s", (_name, overrides) => {
+  ] as const)("still sends the pre-filled 10000 for %s", (_name, overrides) => {
     const draft = form({ ...overrides, port: null });
     expect(isSubmittable(draft)).toBe(true);
-    expect(buildCreateServiceInput(draft).port).toBe(3000);
+    expect(buildCreateServiceInput(draft).port).toBe(10000);
     expect(isSubmittable(form({ ...overrides, port: "" }))).toBe(false);
   });
 

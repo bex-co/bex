@@ -379,7 +379,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **169** — [A service created with a `PORT` env var reports `port: 3000` / `openPorts: [3000]` in its create response, then its real port on the next read](169.md) ← `/qa-find-bugs-cli` sweep 1288 2026-10-21: follow-up to w5/m149; minor, ~30m.
 
-- [ ] **168** — [A web service with no port set expects port 3000 on bex but 10000 on Render, so commands copied from Render's docs never pass the health check](168.md) ← `/qa-find-bugs-cli` sweep 1285 2026-10-21: 25 sampled Blueprints hardcode 10000; decision (adopt 10000 with backfill); major.
+- [x] **168** — [A web service with no port set expects port 3000 on bex but 10000 on Render, so commands copied from Render's docs never pass the health check](done/168.md) — **DONE (2026-10-21)**: web services default to Render's PORT 10000 (new services only); ← `/qa-find-bugs-cli` sweep 1285 2026-10-21: 25 sampled Blueprints hardcode 10000; decision (adopt 10000 with backfill); major.
 
 - [x] **167** — [Prebuilt images from common public registries (cgr.dev, registry.gitlab.com, nvcr.io, docker.elastic.co, lscr.io, *.azurecr.io) are refused as "not trusted"](done/167.md) — **DUPLICATE (2026-10-21)** of w5/171: Duplicate of w5/171 ("Images from any public registry deploy, as on Render"), blocked on the user's DNS-rebinding risk decision. The probe table and the `render-examples/minio` evidence here feed that decision.
 

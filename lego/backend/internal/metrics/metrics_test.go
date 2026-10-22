@@ -1514,7 +1514,7 @@ func TestComputeRequestMetricsKeepTheServiceSelector(t *testing.T) {
 	if got.Routers != nil {
 		t.Errorf("routers = %v, want none resolved for a compute request read", got.Routers)
 	}
-	if query := promQueryFor(got); !strings.Contains(query, `traefik_service_requests_total{service="default-web-3000@kubernetes"`) {
+	if query := promQueryFor(got); !strings.Contains(query, `traefik_service_requests_total{service="default-web-10000@kubernetes"`) {
 		t.Errorf("compute query changed: %q", query)
 	}
 }

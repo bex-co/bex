@@ -45,6 +45,9 @@ func (r *AppReconciler) ownImageReference(app *appv1alpha1.App, image string) (s
 	return strings.TrimPrefix(reference, ":"), true
 }
 
+// imagePortPreferred is the declared image port chosen as primary when present.
+const imagePortPreferred int32 = 3000
+
 // resolveImageNetwork is deliberately scoped to the App's own built repository.
 // An arbitrary image host can never receive platform registry credentials.
 func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha1.App, image string) (string, int, error) {
@@ -74,14 +77,16 @@ func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha
 	}
 	ports := metadata.TCPPorts
 	if len(ports) == 0 {
-		ports = []int32{appv1alpha1.DefaultPort}
+		ports = []int32{app.Spec.EffectivePort()}
 		if app.Spec.PortMode == appv1alpha1.PortModeImageConfiguredV1 {
 			ports = []int32{app.Spec.Port}
 		}
 	}
 	primary := ports[0]
-	if slices.Contains(ports, int32(appv1alpha1.DefaultPort)) {
-		primary = appv1alpha1.DefaultPort
+	// A declared 3000 stays the preferred primary (ADR089): the services that
+	// rely on it predate the Render PORT default.
+	if slices.Contains(ports, imagePortPreferred) {
+		primary = imagePortPreferred
 	}
 	if app.Spec.PortMode == appv1alpha1.PortModeImageConfiguredV1 {
 		primary = app.Spec.Port

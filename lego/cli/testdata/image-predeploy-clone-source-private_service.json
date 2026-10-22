@@ -11,17 +11,17 @@
     "envSpecificDetails": {
       "preDeployCommand": "echo QA_PREDEPLOY_MARKER"
     },
-    "internalAddress": "qa-image-predeploy:3000",
+    "internalAddress": "qa-image-predeploy:10000",
     "maxShutdownDelaySeconds": 30,
     "numInstances": 1,
     "openPorts": [
       {
-        "port": 3000,
+        "port": 10000,
         "protocol": "TCP"
       }
     ],
     "plan": "starter",
-    "port": 3000,
+    "port": 10000,
     "preDeployCommand": "echo QA_PREDEPLOY_MARKER",
     "runtime": "image"
   },

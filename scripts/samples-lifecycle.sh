@@ -247,10 +247,11 @@ load_spec() {
       # Prebuilt image (skips the build plane). traefik/whoami has no MESSAGE knob,
       # so verify-up asserts its own signature line instead of the run token.
       # It ignores $PORT and defaults to :80, while bex routes an image web service
-      # to its default 3000 (bex has no Render-style listening-port auto-detection
-      # for web services). So point whoami at 3000 via its own env knob.
+      # to its default 10000 (Render's PORT default; bex has no Render-style
+      # listening-port auto-detection for web services). So point whoami at
+      # 10000 via its own env knob.
       HEALTH_PATH="/"; EXPECTED_BODY="Hostname:"
-      CREATE_ARGS+=(--image traefik/whoami --plan "$PLAN" --env-var "WHOAMI_PORT_NUMBER=3000") ;;
+      CREATE_ARGS+=(--image traefik/whoami --plan "$PLAN" --env-var "WHOAMI_PORT_NUMBER=10000") ;;
     static-site)
       # ADR029: build → object-store origin → shared static-server. No MESSAGE;
       # verify-up asserts the shipped index.html content.
