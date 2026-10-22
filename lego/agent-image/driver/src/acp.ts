@@ -15,22 +15,28 @@
  */
 
 import { spawn, type ChildProcessByStdio } from "node:child_process";
+import { setTimeout as sleep } from "node:timers/promises";
 import { Readable, Writable } from "node:stream";
+// The unstable v1 entrypoint: the driver reads prompt `usage` and binds Codex
+// through `providers/set`, both outside the stable v1 schema (whose parsers
+// would strip them). It still speaks ACP v1 on the wire.
 import {
-  ClientSideConnection,
+  client,
+  methods,
   ndJsonStream,
   PROTOCOL_VERSION,
-  type Client,
   type PromptResponse,
   type RequestPermissionRequest,
   type RequestPermissionResponse,
-  type SessionNotification,
   type SessionUpdate,
-} from "@agentclientprotocol/sdk";
+} from "@agentclientprotocol/sdk/unstable";
 import type { AgentDriverConfig } from "./config.js";
 import { describeError } from "./errors.js";
 
 const maximumConnectTimeoutMs = 60_000;
+// How long a request rejected by connection close waits for the child's exit
+// diagnosis (exit code + redacted stderr) before surfacing the bare close.
+const exitDiagnosisGraceMs = 1_000;
 const openAIBaseURLEnv = "OPENAI_BASE_URL";
 
 // codex-acp 1.4 exposes provider failures through its typed session-failure
@@ -275,8 +281,8 @@ async function createSessionAttempt(
   options.abortSignal?.addEventListener("abort", onAbort, { once: true });
   if (options.abortSignal?.aborted) onAbort();
 
-  const client: Client = {
-    async sessionUpdate(params: SessionNotification): Promise<void> {
+  const app = client({ name: "bex-agent-driver" })
+    .onNotification(methods.client.session.update, ({ params }) => {
       // Native load replays the old conversation to ACP clients. bex already
       // owns that history; mapping it here would charge it to the new turn.
       if (loadingSession) return;
@@ -284,13 +290,10 @@ async function createSessionAttempt(
         promptFailure ??= typedSessionFailure(params.update, options.redact);
       }
       options.onUpdate(params.update);
-    },
-    async requestPermission(
-      params: RequestPermissionRequest,
-    ): Promise<RequestPermissionResponse> {
-      return autoApprove(params);
-    },
-  };
+    })
+    .onRequest(methods.client.session.requestPermission, ({ params }) =>
+      autoApprove(params),
+    );
 
   // Writable.toWeb logs some pipe-write failures without propagating them to
   // the ChildProcess stream's `error` event. Own each write callback so an
@@ -328,7 +331,21 @@ async function createSessionAttempt(
     protocolInput,
     Readable.toWeb(child.stdout) as ReadableStream<Uint8Array>,
   );
-  const connection = new ClientSideConnection(() => client, stream);
+  const connection = app.connect(stream);
+  const agent = connection.agent;
+  // SDK 2.x rejects in-flight requests ("ACP connection closed") the moment the
+  // agent's stdout ends, usually just before the child's `exit` event carries
+  // the actual cause. Prefer that diagnosis when it arrives promptly: if
+  // `terminal` rejects within the grace window, its error replaces the SDK's.
+  const raceTerminal = <T>(operation: Promise<T>): Promise<T> =>
+    Promise.race([operation, terminal]).catch(async (error: unknown) => {
+      if (!connection.signal.aborted) throw error;
+      await Promise.race([
+        terminal,
+        sleep(exitDiagnosisGraceMs, undefined, { ref: false }),
+      ]);
+      throw error;
+    });
   let loadingSession = false;
   let promptInFlight = false;
   let promptFailure: Error | undefined;
@@ -342,13 +359,13 @@ async function createSessionAttempt(
     phase: "connect" | "provider routing" | "session load" | "session create",
   ) =>
     withTimeout(
-      Promise.race([operation, terminal]),
+      raceTerminal(operation),
       connectTimeoutMs,
       `ACP ${phase} timed out after ${connectTimeoutMs}ms`,
     );
   try {
     const initialize = await setupCall(
-      connection.initialize({
+      agent.request(methods.agent.initialize, {
         protocolVersion: PROTOCOL_VERSION,
         clientCapabilities: {
           fs: { readTextFile: false, writeTextFile: false },
@@ -374,7 +391,7 @@ async function createSessionAttempt(
         throw new Error("Codex model proxy routing requires a placeholder");
       }
       await setupCall(
-        connection.extMethod("providers/set", {
+        agent.request(methods.agent.providers.set, {
           providerId: "openai",
           apiType: "openai",
           baseUrl: config.modelBaseUrl,
@@ -391,7 +408,7 @@ async function createSessionAttempt(
       loadingSession = true;
       try {
         await setupCall(
-          connection.loadSession({
+          agent.request(methods.agent.session.load, {
             sessionId: config.existingSessionId,
             cwd: config.cwd,
             mcpServers: [],
@@ -409,7 +426,7 @@ async function createSessionAttempt(
     } else {
       if (config.existingSessionId) resume = "unsupported";
       const created = await setupCall(
-        connection.newSession({
+        agent.request(methods.agent.session.new, {
           cwd: config.cwd,
           mcpServers: [],
         }),
@@ -425,13 +442,12 @@ async function createSessionAttempt(
         promptFailure = undefined;
         promptInFlight = true;
         try {
-          const response = await Promise.race([
-            connection.prompt({
+          const response = await raceTerminal(
+            agent.request(methods.agent.session.prompt, {
               sessionId,
               prompt: [{ type: "text", text }],
             }),
-            terminal,
-          ]);
+          );
           const failure =
             promptFailure ?? typedSessionFailure(response, options.redact);
           if (failure) throw failure;
@@ -441,7 +457,9 @@ async function createSessionAttempt(
         }
       },
       cancel() {
-        return connection.cancel({ sessionId }).catch(() => {});
+        return agent
+          .notify(methods.agent.session.cancel, { sessionId })
+          .catch(() => {});
       },
       cleanup,
     };

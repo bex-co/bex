@@ -20,7 +20,7 @@ Agent choice is configuration, not image logic:
 
 | variable | purpose |
 | --- | --- |
-| `BEX_AGENT_COMMAND` | ACP agent executable (default `claude-code-acp`) |
+| `BEX_AGENT_COMMAND` | ACP agent executable (default `claude-agent-acp`) |
 | `BEX_AGENT_ARGS` | JSON string array of arguments |
 | `BEX_AGENT_CWD` | working directory / repository checkout (default `/workspace`) |
 | `BEX_AGENT_PROMPT` | starts one headless ACP turn when non-empty |

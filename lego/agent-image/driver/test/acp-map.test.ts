@@ -16,7 +16,8 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { SessionUpdate } from "@agentclientprotocol/sdk";
+import type { SessionUpdate } from "@agentclientprotocol/sdk/unstable";
+import { readUIMessageStream, type UIMessage, type UIMessageChunk } from "ai";
 import { createUpdateMapper } from "../src/acp-map.js";
 import {
   existingSourceTime,
@@ -217,4 +218,130 @@ test("mapper stamps text, reasoning, tool, plan, diff, and terminal parts", () =
       `replay changed ${chunks[i].type}`,
     );
   }
+});
+
+// claude-agent-acp 0.94 (captured against a mock model): a Bash
+// call opens with a placeholder, its command arrives on a tool_call_update, and
+// the result is text content only — no rawOutput.
+const claudeAgentBash: SessionUpdate[] = [
+  {
+    sessionUpdate: "tool_call",
+    toolCallId: "toolu_15",
+    status: "pending",
+    title: "Terminal",
+    kind: "execute",
+    content: [],
+  },
+  {
+    sessionUpdate: "tool_call_update",
+    toolCallId: "toolu_15",
+    rawInput: {
+      command: "echo mock > mock.txt",
+      description: "Write mock file",
+    },
+    title: "echo mock > mock.txt",
+    content: [
+      { type: "content", content: { type: "text", text: "Write mock file" } },
+    ],
+  },
+  {
+    sessionUpdate: "tool_call_update",
+    toolCallId: "toolu_15",
+    status: "completed",
+    content: [
+      {
+        type: "content",
+        content: { type: "text", text: "```console\nmock\n```" },
+      },
+    ],
+  },
+];
+
+async function replay(chunks: UIMessageChunk[]): Promise<UIMessage> {
+  let last: UIMessage | undefined;
+  const stream = new ReadableStream<UIMessageChunk>({
+    start(controller) {
+      controller.enqueue({ type: "start" });
+      for (const chunk of chunks) controller.enqueue(chunk);
+      controller.enqueue({ type: "finish" });
+      controller.close();
+    },
+  });
+  for await (const message of readUIMessageStream({ stream })) last = message;
+  assert.ok(last);
+  return last;
+}
+
+test("a refined tool call keeps one durable part with the real input and text output", async () => {
+  const mapper = createUpdateMapper({ now: clock() });
+  const chunks = claudeAgentBash.flatMap((update) => mapper.map(update));
+  const tools = (await replay(chunks)).parts.filter(
+    (part) => part.type === "dynamic-tool",
+  );
+  assert.equal(tools.length, 1);
+  const [tool] = tools as Array<Record<string, unknown>>;
+  assert.equal(tool.toolCallId, "toolu_15");
+  assert.equal(tool.toolName, "Terminal");
+  assert.equal(tool.title, "echo mock > mock.txt");
+  assert.deepEqual(tool.input, {
+    command: "echo mock > mock.txt",
+    description: "Write mock file",
+  });
+  assert.equal(tool.state, "output-available");
+  assert.equal(tool.output, "```console\nmock\n```");
+});
+
+test("a failed text-only tool result becomes the error text", () => {
+  const mapper = createUpdateMapper();
+  mapper.map(claudeAgentBash[0]!);
+  const chunks = mapper.map({
+    sessionUpdate: "tool_call_update",
+    toolCallId: "toolu_15",
+    status: "failed",
+    content: [
+      { type: "content", content: { type: "text", text: "exit code 1" } },
+    ],
+  });
+  const error = chunks.find((chunk) => chunk.type === "tool-output-error");
+  assert.ok(error && "errorText" in error);
+  assert.equal(error.errorText, "exit code 1");
+});
+
+test("updates after a tool finishes never rewrite its input", () => {
+  const mapper = createUpdateMapper();
+  for (const update of claudeAgentBash) mapper.map(update);
+  const late = mapper.map({
+    sessionUpdate: "tool_call_update",
+    toolCallId: "toolu_15",
+    title: "late title",
+    rawInput: { command: "rm -rf /" },
+  });
+  assert.ok(!late.some((chunk) => chunk.type === "tool-input-available"));
+});
+
+test("a title-only refinement keeps the input already published", () => {
+  const mapper = createUpdateMapper();
+  mapper.map(claudeAgentBash[0]!);
+  mapper.map(claudeAgentBash[1]!);
+  const refined = mapper
+    .map({
+      sessionUpdate: "tool_call_update",
+      toolCallId: "toolu_15",
+      title: "Write mock",
+    })
+    .find((chunk) => chunk.type === "tool-input-available");
+  assert.ok(refined && "input" in refined);
+  assert.deepEqual(refined.input, {
+    command: "echo mock > mock.txt",
+    description: "Write mock file",
+  });
+  assert.equal(refined.title, "Write mock");
+});
+
+test("a repeated identical refinement publishes nothing new", () => {
+  const mapper = createUpdateMapper();
+  mapper.map(claudeAgentBash[0]!);
+  mapper.map(claudeAgentBash[1]!);
+  const repeat = mapper.map(claudeAgentBash[1]!);
+  assert.ok(!repeat.some((chunk) => chunk.type === "tool-input-available"));
 });

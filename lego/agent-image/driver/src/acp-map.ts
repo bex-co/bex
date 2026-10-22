@@ -15,7 +15,7 @@
  */
 
 import type { UIMessageChunk } from "ai";
-import type { SessionUpdate } from "@agentclientprotocol/sdk";
+import type { SessionUpdate } from "@agentclientprotocol/sdk/unstable";
 import { stampSourceTimestamp, utcNow } from "./timestamp.js";
 
 // The single ACP → UI-message-stream translation. Every `session/update` the
@@ -34,6 +34,20 @@ import { stampSourceTimestamp, utcNow } from "./timestamp.js";
 // A plan is a snapshot: reusing one stable data-part id makes useChat reconcile
 // (replace) successive plans into a single evolving block instead of appending.
 const PLAN_PART_ID = "acp-plan";
+
+// `name` is the part's identity from the opening update; `title` and `input`
+// follow refinements until the call publishes its output.
+interface ToolState {
+  name: string;
+  title: string;
+  input: unknown;
+  finished: boolean;
+}
+
+type ToolContent =
+  | ReadonlyArray<{ type: string; [key: string]: unknown }>
+  | null
+  | undefined;
 
 interface TextBlock {
   kind: "text" | "reasoning";
@@ -62,7 +76,7 @@ export function createUpdateMapper(
   const now = options.now ?? utcNow;
   let open: TextBlock | null = null;
   let sequence = 0;
-  const toolNames = new Map<string, string>();
+  const tools = new Map<string, ToolState>();
   // One publication instant per map()/flush() so start/delta/end in the same
   // ACP update share a clock reading; the fake test clock then advances per update.
   let publishedAt = "";
@@ -114,37 +128,49 @@ export function createUpdateMapper(
   };
 
   // ensureToolStarted opens a dynamic tool part (real ACP title/kind, no
-  // synthetic single-tool collapse) the first time a tool id is seen.
+  // synthetic single-tool collapse) the first time a tool id is seen. Adapters
+  // open a call before its input streams in (`rawInput: {}`, a generic title)
+  // and refine it later; a refinement re-publishes the input so the durable
+  // part carries the real command and title rather than the placeholder.
   const ensureToolStarted = (
     out: UIMessageChunk[],
     toolCallId: string,
-    title: string,
-    input: unknown,
+    rawTitle: string | null | undefined,
+    kind: string | null | undefined,
+    rawInput: unknown,
   ): void => {
-    if (toolNames.has(toolCallId)) return;
-    toolNames.set(toolCallId, title);
-    out.push({
-      type: "tool-input-start",
-      toolCallId,
-      toolName: title,
-      dynamic: true,
-      title,
-    });
+    const input = hasInput(rawInput) ? rawInput : undefined;
+    let tool = tools.get(toolCallId);
+    if (!tool) {
+      const title = rawTitle || kind || toolCallId;
+      tool = { name: title, title, input: rawInput ?? {}, finished: false };
+      tools.set(toolCallId, tool);
+      out.push({
+        type: "tool-input-start",
+        toolCallId,
+        toolName: title,
+        dynamic: true,
+        title,
+      });
+    } else {
+      const title = rawTitle || tool.title;
+      if (
+        tool.finished ||
+        (title === tool.title && (input === undefined || input === tool.input))
+      )
+        return;
+      tool.title = title;
+      if (input !== undefined) tool.input = input;
+    }
     out.push({
       type: "tool-input-available",
       toolCallId,
-      toolName: title,
-      input: input ?? {},
+      toolName: tool.name,
+      input: tool.input,
       dynamic: true,
-      title,
+      title: tool.title,
     });
   };
-
-  const toolTitle = (
-    toolCallId: string,
-    title?: string | null,
-    kind?: string | null,
-  ): string => title || toolNames.get(toolCallId) || kind || toolCallId;
 
   const map = (update: SessionUpdate): UIMessageChunk[] => {
     publishedAt = now();
@@ -183,7 +209,8 @@ export function createUpdateMapper(
         ensureToolStarted(
           out,
           update.toolCallId,
-          toolTitle(update.toolCallId, update.title, update.kind),
+          update.title,
+          update.kind,
           update.rawInput,
         );
         emitToolOutcome(
@@ -230,10 +257,7 @@ export function createUpdateMapper(
     toolCallId: string,
     status: string | null | undefined,
     rawOutput: unknown,
-    content:
-      | ReadonlyArray<{ type: string; [key: string]: unknown }>
-      | null
-      | undefined,
+    content: ToolContent,
   ): void => {
     for (const item of content ?? []) {
       if (item.type === "diff") {
@@ -262,6 +286,13 @@ export function createUpdateMapper(
           transient: true,
         });
       }
+    }
+    if (status === "completed" || status === "failed") {
+      // claude-agent-acp (0.94) reports a finished call's result only as text
+      // content, without `rawOutput`; that text is the output.
+      rawOutput ??= contentText(content);
+      const tool = tools.get(toolCallId);
+      if (tool) tool.finished = true;
     }
     if (status === "failed") {
       out.push({
@@ -301,6 +332,29 @@ export function createUpdateMapper(
       return stampAll(out);
     },
   };
+}
+
+function hasInput(rawInput: unknown): boolean {
+  if (rawInput === undefined || rawInput === null) return false;
+  if (typeof rawInput !== "object") return true;
+  return Object.keys(rawInput).length > 0;
+}
+
+// contentText joins a tool update's text content blocks, or undefined if none.
+function contentText(content: ToolContent): string | undefined {
+  const texts: string[] = [];
+  for (const item of content ?? []) {
+    const inner = item.content as
+      | { type?: unknown; text?: unknown }
+      | undefined;
+    if (
+      item.type === "content" &&
+      inner?.type === "text" &&
+      typeof inner.text === "string"
+    )
+      texts.push(inner.text);
+  }
+  return texts.length ? texts.join("\n") : undefined;
 }
 
 function toolErrorText(rawOutput: unknown): string {

@@ -17,6 +17,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { RequestError } from "@agentclientprotocol/sdk/unstable";
 import { describeError } from "../src/errors.js";
 
 // The regression this file exists for: the ACP SDK rejects a failed request with
@@ -32,16 +33,25 @@ test("describeError renders a rejected JSON-RPC error, never [object Object]", (
   assert.ok(!described.includes("[object Object]"), described);
   assert.ok(described.includes("Internal error"), described);
   assert.ok(described.includes("-32603"), described);
-  assert.ok(described.includes("403 model operation is not allowed"), described);
+  assert.ok(
+    described.includes("403 model operation is not allowed"),
+    described,
+  );
 });
 
 test("describeError keeps an Error's message", () => {
-  assert.equal(describeError(new Error("ACP turn exceeded 1800000ms")), "ACP turn exceeded 1800000ms");
+  assert.equal(
+    describeError(new Error("ACP turn exceeded 1800000ms")),
+    "ACP turn exceeded 1800000ms",
+  );
   assert.equal(describeError(new RangeError("")), "RangeError");
 });
 
 test("describeError falls back to the object's own fields, then to text", () => {
-  assert.equal(describeError({ reason: "sandbox gone" }), '{"reason":"sandbox gone"}');
+  assert.equal(
+    describeError({ reason: "sandbox gone" }),
+    '{"reason":"sandbox gone"}',
+  );
   assert.equal(describeError("plain failure"), "plain failure");
   assert.equal(describeError(undefined), "unknown error");
   assert.equal(describeError(null), "unknown error");
@@ -63,4 +73,16 @@ test("describeError bounds the description length", () => {
   const described = describeError(new Error("x".repeat(10_000)));
   assert.ok(described.length < 2100, `length ${described.length}`);
   assert.ok(described.endsWith("… (truncated)"), described);
+});
+
+test("describeError keeps the code and data of an SDK 2.x RequestError", () => {
+  const error = new RequestError(
+    -32603,
+    "Query closed before response received",
+    "provider authentication failed",
+  );
+  assert.equal(
+    describeError(error),
+    "Query closed before response received (code -32603) provider authentication failed",
+  );
 });

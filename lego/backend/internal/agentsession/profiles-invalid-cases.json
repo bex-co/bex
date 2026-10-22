@@ -51,7 +51,7 @@
   {
     "name": "unpinned package",
     "path": ["profiles", 0, "npmPackage"],
-    "value": "@zed-industries/claude-code-acp@latest"
+    "value": "@agentclientprotocol/claude-agent-acp@latest"
   },
   {
     "name": "unreviewed auth",

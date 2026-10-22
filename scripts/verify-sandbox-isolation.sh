@@ -579,7 +579,7 @@ git config user.email "bex-live-model-verifier@example.invalid"
 printf "real model substrate proof\n" > README.md
 git add README.md
 git commit -q -m initial
-export BEX_AGENT_COMMAND=/usr/local/bin/claude-code-acp
+export BEX_AGENT_COMMAND=/usr/local/bin/claude-agent-acp
 export BEX_AGENT_ARGS="[]"
 export BEX_AGENT_CWD="$repo"
 export BEX_AGENT_PROMPT="Create model-authenticated.txt containing exactly model authenticated, then commit all changes with message agent: real model proof."

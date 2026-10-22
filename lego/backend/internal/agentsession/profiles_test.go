@@ -32,7 +32,7 @@ func TestAgentProfilesManifestCoversLegacyAdapters(t *testing.T) {
 		}
 		switch id {
 		case "claude":
-			if profile.Executable != "/usr/local/bin/claude-code-acp" {
+			if profile.Executable != "/usr/local/bin/claude-agent-acp" {
 				t.Fatalf("claude executable = %q", profile.Executable)
 			}
 		case "codex":
