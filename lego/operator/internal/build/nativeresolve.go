@@ -18,6 +18,7 @@ package build
 
 import (
 	"bufio"
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -62,6 +63,12 @@ func ResolveNativeBuild(runtime, bundlePath, dockerfilePath, sourceDir string) (
 // ResolveNativeBuildAt is ResolveNativeBuild for a service created at created,
 // whose creation date picks the default Python line (w8/174).
 func ResolveNativeBuildAt(created time.Time, runtime, bundlePath, dockerfilePath, sourceDir string) ([]NativeChoice, error) {
+	return ResolveNativeBuildExact(context.Background(), NewDockerHubResolver(), created, runtime, bundlePath, dockerfilePath, sourceDir)
+}
+
+// ResolveNativeBuildExact is ResolveNativeBuildAt with the registry that
+// resolves a service's exact pinned version (w8/175).
+func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, created time.Time, runtime, bundlePath, dockerfilePath, sourceDir string) ([]NativeChoice, error) {
 	env, err := readEnvBundle(bundlePath)
 	if err != nil {
 		return nil, err
@@ -71,6 +78,7 @@ func ResolveNativeBuildAt(created time.Time, runtime, bundlePath, dockerfilePath
 	if err != nil {
 		return nil, err
 	}
+	choice = pinExactVersion(ctx, exact, choice)
 	bun, withBun, err := ResolveNativeBun(env, readFile)
 	if err != nil {
 		return nil, err
@@ -164,7 +172,7 @@ func addNativeBun(dockerfile, baseImage, bunImage string) (string, error) {
 // build and runtime: a Rails, Django, Phoenix or Go/Rust web app builds its
 // frontend assets with them (w8/m77 Ruby/Python, w4/m213 Go/Rust/Elixir).
 // Primary Node already has them.
-var nativeJSCompanionRuntimes = map[string]bool{nativeRubyRuntime: true, nativePythonRuntime: true, "go": true, "rust": true, "elixir": true}
+var nativeJSCompanionRuntimes = map[string]bool{nativeRubyRuntime: true, nativePythonRuntime: true, "go": true, "rust": true, nativeElixirRuntime: true}
 
 // nativeYarnDir is Yarn 1 as the official Node 22/24 images ship it.
 const nativeYarnDir = "/opt/yarn-v1.22.22"
@@ -366,4 +374,26 @@ func nativeVersionResolver(o Options) corev1.Container {
 			},
 		},
 	}
+}
+
+// pinExactVersion swaps the line's reviewed image for the official image of the
+// exact version the service pinned (w8/175), pinned by digest like the line's.
+// A tag that does not exist or a registry that cannot be reached keeps the
+// reviewed patch and says so in the build log; the build never fails on it.
+func pinExactVersion(ctx context.Context, exact ExactImageResolver, choice NativeChoice) NativeChoice {
+	repo, tag, ok := exactImage(choice)
+	if !ok {
+		return choice
+	}
+	digest, found, err := exact.ResolveOfficialTag(ctx, repo, tag)
+	switch {
+	case err != nil:
+		choice.note = fmt.Sprintf("==> Could not look up %s:%s (%v); using the reviewed %s %s image", repo, tag, err, choice.Label, choice.Line)
+	case !found:
+		choice.note = fmt.Sprintf("==> No official image %s:%s; using the reviewed %s %s image", repo, tag, choice.Label, choice.Line)
+	default:
+		choice.Image = repo + ":" + tag + "@" + digest
+		choice.Line = choice.Exact
+	}
+	return choice
 }

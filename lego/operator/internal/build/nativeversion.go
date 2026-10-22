@@ -36,6 +36,13 @@ type NativeChoice struct {
 	// declined, when set, says why an optional companion was left out; the
 	// choice then carries no line or image.
 	declined string
+	// Exact is the fully qualified version the service pinned within this line
+	// when it differs from the line's reviewed patch (w8/175); the resolve phase
+	// swaps in that version's official image, or says why it could not.
+	Exact string
+	// note is an extra build-log line (an exact version that fell back to the
+	// line's reviewed patch).
+	note string
 }
 
 // Narration is the build-log line that names the choice and its source.
@@ -47,7 +54,11 @@ func (c NativeChoice) Narration() string {
 	if c.Source != "" {
 		from = "from " + c.Source
 	}
-	return fmt.Sprintf("==> Using %s %s (%s)", c.Label, c.Line, from)
+	line := fmt.Sprintf("==> Using %s %s (%s)", c.Label, c.Line, from)
+	if c.note != "" {
+		line += "\n" + c.note
+	}
+	return line
 }
 
 // UnsupportedVersionError is a version request no reviewed line satisfies. It
@@ -96,6 +107,14 @@ func pythonDefaultLine(created time.Time) string {
 // ResolveNativeVersionAt is ResolveNativeVersion for a service created at
 // created, whose creation date picks the default line where Render's does.
 func ResolveNativeVersionAt(created time.Time, runtime string, env map[string]string, readFile func(string) ([]byte, bool)) (NativeChoice, error) {
+	choice, err := resolveNativeLine(created, runtime, env, readFile)
+	if err == nil {
+		choice.Exact = exactRequest(runtime, choice, readFile)
+	}
+	return choice, err
+}
+
+func resolveNativeLine(created time.Time, runtime string, env map[string]string, readFile func(string) ([]byte, bool)) (NativeChoice, error) {
 	t, ok := nativeToolchains[runtime]
 	if !ok {
 		return NativeChoice{}, fmt.Errorf("unsupported native runtime %q", runtime)
@@ -572,4 +591,43 @@ func (r resolver) elixir() (NativeChoice, error) {
 	}
 	choice.Source = strings.TrimPrefix(choice.Source+", ERLANG_VERSION="+erlang, ", ")
 	return choice, nil
+}
+
+var fullVersion = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
+
+// exactRequest returns the fully qualified version a service pinned within the
+// chosen line when it differs from the line's reviewed patch, else "". Only a
+// plain version signal counts (an env var or a single-version file); a range,
+// an alias or a lockfile keeps resolving to the line's reviewed patch.
+func exactRequest(runtime string, choice NativeChoice, readFile func(string) ([]byte, bool)) string {
+	signal, _, _ := strings.Cut(choice.Source, ", ")
+	var raw string
+	if key, value, isEnv := strings.Cut(signal, "="); isEnv {
+		if !strings.HasSuffix(key, "_VERSION") || key == "ERLANG_VERSION" {
+			return ""
+		}
+		raw = value
+	} else if strings.HasPrefix(signal, ".") && !strings.Contains(signal, "/") {
+		raw = firstLine(readFile, signal)
+	}
+	version := strings.ToLower(strings.TrimSpace(raw))
+	for _, prefix := range []string{"python-", "ruby-", "v"} {
+		version = strings.TrimPrefix(version, prefix)
+	}
+	line, ok := nativeToolchains[runtime].find(choice.Line)
+	if !ok || !fullVersion.MatchString(version) || version == line.version || !strings.HasPrefix(version, choice.Line+".") {
+		return ""
+	}
+	return version
+}
+
+// exactImage names the official tag for an exact version: the line's tag with
+// its line replaced by the version (python:3.11-bookworm → python:3.11.9-bookworm).
+func exactImage(choice NativeChoice) (repo, tag string, ok bool) {
+	ref, _, _ := strings.Cut(choice.Image, "@")
+	repo, lineTag, found := strings.Cut(ref, ":")
+	if !found || choice.Exact == "" || !strings.HasPrefix(lineTag, choice.Line) {
+		return "", "", false
+	}
+	return repo, choice.Exact + strings.TrimPrefix(lineTag, choice.Line), true
 }

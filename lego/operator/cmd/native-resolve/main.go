@@ -30,6 +30,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -52,8 +53,13 @@ func main() {
 	os.Exit(code)
 }
 
+// exactImages resolves a service's exact pinned version to an official image
+// (w8/175); tests replace it so no unit test reaches the registry.
+var exactImages build.ExactImageResolver = build.NewDockerHubResolver()
+
 func run(created time.Time, runtime, sourceDir, bundle, dockerfile string, stdout, stderr io.Writer) int {
-	choices, err := build.ResolveNativeBuildAt(created, runtime, bundle, dockerfile, sourceDir)
+	choices, err := build.ResolveNativeBuildExact(context.Background(), exactImages, created, runtime,
+		bundle, dockerfile, sourceDir)
 	var unsupported *build.UnsupportedVersionError
 	switch {
 	case errors.As(err, &unsupported):

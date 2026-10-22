@@ -18,6 +18,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"os"
 	"path/filepath"
@@ -27,6 +28,18 @@ import (
 
 	"github.com/bex-co/bex/lego/operator/internal/build"
 )
+
+// stubExact answers every tag with one digest, so no test reaches the registry.
+type stubExact struct{}
+
+func (stubExact) ResolveOfficialTag(context.Context, string, string) (string, bool, error) {
+	return "sha256:0000000000000000000000000000000000000000000000000000000000000001", true, nil
+}
+
+func TestMain(m *testing.M) {
+	exactImages = stubExact{}
+	os.Exit(m.Run())
+}
 
 func TestRunNarratesOrRefusesAsTenantError(t *testing.T) {
 	dir := t.TempDir()
@@ -51,7 +64,7 @@ func TestRunNarratesOrRefusesAsTenantError(t *testing.T) {
 	if code := run(time.Time{}, "python", dir, bundle, dockerfile, &out, &errOut); code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut.String())
 	}
-	const wantPython = "==> Using Python 3.11 (from PYTHON_VERSION=3.11.9)\n==> Using Poetry 2.1.3 (default)\n" +
+	const wantPython = "==> Using Python 3.11.9 (from PYTHON_VERSION=3.11.9)\n==> Using Poetry 2.1.3 (default)\n" +
 		"==> Using Node 24 (default)"
 	if got := strings.TrimSpace(out.String()); got != wantPython {
 		t.Errorf("narration = %q", got)
