@@ -75,9 +75,9 @@ test("driver resolves profile facts and rejects runtime overrides", () => {
     assert.throws(() => loadConfig(env));
 });
 
-// claude-code-acp 0.16.2 pins claude-agent-sdk 0.2.44. Its native transcript
-// writer batches for 100ms unless this flag makes the result await flush;
-// the driver terminates the process immediately after that result boundary.
+// claude-agent-acp 0.94.0 pins claude-agent-sdk 0.3.303 (Claude Code 2.1.303).
+// Its native transcript writer batches unless this flag makes the result await
+// flush; the driver terminates the process immediately after that result boundary.
 test("Claude native transcript flush stays enabled in the child environment", () => {
   const config = loadConfig({ BEX_AGENT_PROFILE: "claude" });
   const credentials = createCredentialManager(config, {});

@@ -3,7 +3,7 @@
   "profiles": [
     {
       "id": "claude",
-      "executable": "/usr/local/bin/claude-code-acp",
+      "executable": "/usr/local/bin/claude-agent-acp",
       "args": [],
       "env": {
         "CLAUDE_CODE_EAGER_FLUSH": "1"
@@ -15,7 +15,7 @@
         "credentialEnv": "ANTHROPIC_API_KEY"
       },
       "sessionState": [".claude", ".claude.json"],
-      "npmPackage": "@zed-industries/claude-code-acp@0.16.2",
+      "npmPackage": "@agentclientprotocol/claude-agent-acp@0.94.0",
       "authentication": "environment",
       "permissionPolicy": "sandbox-auto-approve"
     },

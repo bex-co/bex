@@ -76,7 +76,7 @@ func TestAgentSelectorIsClosedAndResolvesOnlyAbsoluteImagePaths(t *testing.T) {
 		t.Fatalf("advertised agents = %v, adapter contracts = %v", advertised, agentsession.AgentProfileIDs())
 	}
 	for id, want := range map[string]string{
-		"claude": "/usr/local/bin/claude-code-acp",
+		"claude": "/usr/local/bin/claude-agent-acp",
 		"codex":  "/usr/local/bin/codex-acp",
 		"gemini": "/usr/local/bin/gemini",
 	} {
@@ -96,7 +96,7 @@ func TestAgentSelectorIsClosedAndResolvesOnlyAbsoluteImagePaths(t *testing.T) {
 	if geminiArgs != `["--acp"]` || geminiEnv != "" {
 		t.Fatalf("gemini runtime config = args %q env %q", geminiArgs, geminiEnv)
 	}
-	for _, agent := range []string{"./adapter", "/workspace/adapter", "claude-code-acp", "unknown"} {
+	for _, agent := range []string{"./adapter", "/workspace/adapter", "claude-agent-acp", "unknown"} {
 		req := CreateRequest{Repo: "bex-co/example", Branch: "bex-agent/test", AgentConfig: AgentConfig{Agent: agent, Task: "test"}}
 		if err := validateCreate(&req); err == nil {
 			t.Errorf("validateCreate accepted unsupported agent %q", agent)

@@ -183,7 +183,7 @@ test("model proxy routes each adapter's base URL and lands the placeholder in it
   const proxy =
     "http://bex-ssh-gateway.bex-system.svc.cluster.local:8084/model/ns/sess";
   const claude = loadConfig({
-    BEX_AGENT_COMMAND: "/usr/local/bin/claude-code-acp",
+    BEX_AGENT_COMMAND: "/usr/local/bin/claude-agent-acp",
     BEX_AGENT_MODEL_PROXY_URL: proxy,
     BEX_AGENT_MODEL_API_KEY: "bex-model-proxy-placeholder-ags-1",
   });
@@ -233,7 +233,7 @@ test("model proxy with no base-URL routing for the adapter fails closed", () => 
 function modelProxyRoutesCovered(): boolean {
   const proxy = "http://gw:8084/model/ns/sess";
   for (const command of [
-    "/usr/local/bin/claude-code-acp",
+    "/usr/local/bin/claude-agent-acp",
     "/usr/local/bin/codex-acp",
     "/usr/local/bin/gemini",
   ]) {
