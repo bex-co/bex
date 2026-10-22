@@ -310,7 +310,7 @@ func (r resolver) minorLine(request string) (string, bool) {
 }
 
 // nodeLTSCodenames are the release codenames nvm-style `lts/<name>` names.
-var nodeLTSCodenames = map[string]string{"jod": "22", "krypton": "24"}
+var nodeLTSCodenames = map[string]string{"fermium": "14", "gallium": "16", "hydrogen": "18", "iron": "20", "jod": "22", "krypton": "24"}
 
 // nodeLTSLine is the current active LTS line (24 until 26 enters LTS).
 const nodeLTSLine = "24"
@@ -339,7 +339,10 @@ func (r resolver) nodeRequest(request string) (string, bool) {
 }
 
 // highestSatisfying resolves a semver range against each line's pinned
-// toolchain version, preferring the newest line.
+// toolchain version, preferring the newest line. A range the pinned patch
+// misses but another release of the line meets (`~16.13.0` against 16.20.2)
+// still selects that line: the pinned patch stands in for the requested one, as
+// it does for a plain version (w8/173).
 func (r resolver) highestSatisfying(rng string) (string, bool) {
 	c, err := semver.NewConstraint(rng)
 	if err != nil {
@@ -350,7 +353,38 @@ func (r resolver) highestSatisfying(rng string) (string, bool) {
 			return l.line, true
 		}
 	}
+	for _, l := range slices.Backward(r.t.lines) {
+		if lineHasRelease(l, c) {
+			return l.line, true
+		}
+	}
 	return "", false
+}
+
+// lineHasRelease reports whether some release up to the line's pinned version,
+// within the line's major (or major.minor) series, meets c. Releases are
+// probed by version number, so it answers for patch levels the line certainly
+// published, none newer than the pin.
+func lineHasRelease(l nativeLine, c *semver.Constraints) bool {
+	pin, err := semver.NewVersion(l.version)
+	if err != nil {
+		return false
+	}
+	for minor := range pin.Minor() + 1 {
+		if strings.Count(l.line, ".") == 1 && minor != pin.Minor() {
+			continue
+		}
+		maxPatch := uint64(60)
+		if minor == pin.Minor() {
+			maxPatch = pin.Patch()
+		}
+		for patch := range maxPatch + 1 {
+			if c.Check(semver.New(pin.Major(), minor, patch, "", "")) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (r resolver) fromPackageEngines() (string, string, bool, error) {

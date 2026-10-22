@@ -77,7 +77,7 @@
       "upstream": "docker.io/alpine/git:v2.52.0",
       "committed": "alpine/git:v2.52.0@sha256:4a0e72d49596a1f5d3701aeedafdadc5c0da4062be4657c7bdc4017387f591cc",
       "resolved_at": "2026-10-16T00:00:00Z",
-      "source": "Docker Hub alpine/git:v2.52.0 multi-arch index (git 2.52.0, past CVE-2025-48384, which submodule init exposes — w8/m89)",
+      "source": "Docker Hub alpine/git:v2.52.0 multi-arch index (git 2.52.0, past CVE-2025-48384, which submodule init exposes \u2014 w8/m89)",
       "files": [
         "lego/operator/internal/build/build.go",
         "lego/operator/internal/publish/publish.go"
@@ -306,6 +306,105 @@
       "committed": "elixir:1.19@sha256:db1cbca0b49e26e65dd804c75f27ec5f01835f1d29f8b8e4cc8a51f01f986f9f",
       "resolved_at": "2026-10-16T10:25:13Z",
       "source": "Docker Hub library/elixir:1.19 multi-arch index (w8/m51 version line)",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-node-14",
+      "kind": "native-base",
+      "upstream": "docker.io/library/node:14-bullseye",
+      "committed": "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e",
+      "resolved_at": "2026-10-22T20:10:00Z",
+      "source": "Docker Hub library/node:14-bullseye multi-arch index (14.21.3; w8/173 Render-supported version line)",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-node-16",
+      "kind": "native-base",
+      "upstream": "docker.io/library/node:16-bookworm",
+      "committed": "node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8aaadab22aab29ce6",
+      "resolved_at": "2026-10-22T20:10:00Z",
+      "source": "Docker Hub library/node:16-bookworm multi-arch index (16.20.2; w8/173 Render-supported version line)",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-node-18",
+      "kind": "native-base",
+      "upstream": "docker.io/library/node:18-bookworm",
+      "committed": "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783",
+      "resolved_at": "2026-10-22T20:10:00Z",
+      "source": "Docker Hub library/node:18-bookworm multi-arch index (18.20.8; w8/173 Render-supported version line)",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-node-20",
+      "kind": "native-base",
+      "upstream": "docker.io/library/node:20-bookworm",
+      "committed": "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5",
+      "resolved_at": "2026-10-22T20:10:00Z",
+      "source": "Docker Hub library/node:20-bookworm multi-arch index (20.20.2; w8/173 Render-supported version line)",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-python-3-7",
+      "kind": "native-base",
+      "upstream": "docker.io/library/python:3.7-bullseye",
+      "committed": "python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a",
+      "resolved_at": "2026-10-22T20:10:00Z",
+      "source": "Docker Hub library/python:3.7-bullseye multi-arch index (3.7.17; w8/173 Render-supported version line)",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-python-3-8",
+      "kind": "native-base",
+      "upstream": "docker.io/library/python:3.8-bookworm",
+      "committed": "python:3.8-bookworm@sha256:d411270700143fa2683cc8264d9fa5d3279fd3b6afff62ae81ea2f9d070e390c",
+      "resolved_at": "2026-10-22T20:10:00Z",
+      "source": "Docker Hub library/python:3.8-bookworm multi-arch index (3.8.20; w8/173 Render-supported version line)",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-python-3-9",
+      "kind": "native-base",
+      "upstream": "docker.io/library/python:3.9-bookworm",
+      "committed": "python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285",
+      "resolved_at": "2026-10-22T20:10:00Z",
+      "source": "Docker Hub library/python:3.9-bookworm multi-arch index (3.9.25; w8/173 Render-supported version line)",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-ruby-3-0",
+      "kind": "native-base",
+      "upstream": "docker.io/library/ruby:3.0-bullseye",
+      "committed": "ruby:3.0-bullseye@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72",
+      "resolved_at": "2026-10-22T20:10:00Z",
+      "source": "Docker Hub library/ruby:3.0-bullseye multi-arch index (3.0.7; w8/173 Render-supported version line)",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-ruby-3-1",
+      "kind": "native-base",
+      "upstream": "docker.io/library/ruby:3.1-bookworm",
+      "committed": "ruby:3.1-bookworm@sha256:91627f55e8969006aab67d15c92fb930500ff73948803da1330b8a853fecebb5",
+      "resolved_at": "2026-10-22T20:10:00Z",
+      "source": "Docker Hub library/ruby:3.1-bookworm multi-arch index (3.1.7; w8/173 Render-supported version line)",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-ruby-3-2",
+      "kind": "native-base",
+      "upstream": "docker.io/library/ruby:3.2-bookworm",
+      "committed": "ruby:3.2-bookworm@sha256:bf13a46a498fb4055d0e52495c351a2648c8bc8d41b473ee3f734041a74c7f56",
+      "resolved_at": "2026-10-22T20:10:00Z",
+      "source": "Docker Hub library/ruby:3.2-bookworm multi-arch index (3.2.11; w8/173 Render-supported version line)",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-elixir-1-20",
+      "kind": "native-base",
+      "upstream": "docker.io/library/elixir:1.20",
+      "committed": "elixir:1.20@sha256:0cb767622975ce9c77527bb3fe3f659c8ddde9b2dfc980dbbff7416c8d910987",
+      "resolved_at": "2026-10-22T20:10:00Z",
+      "source": "Docker Hub library/elixir:1.20 multi-arch index (1.20.4, OTP 29; w8/173 Render-supported version line)",
       "files": ["lego/operator/internal/build/native.go"]
     }
   ]

@@ -411,7 +411,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **174** — [A new Python service with no version signal builds on Python 3.13.16; Render's default for services created since 2026-10-12 is 3.14.8](174.md) ← `/qa-find-bugs-cli` sweep 1307 2026-10-22: unsigned ADR018 divergence; minor, ~45m.
 
-- [ ] **173** — [Runtime versions Render installs are refused at build time: Node 20/18/16/14, Python 3.7–3.9 and Ruby 3.2 (Render's own Rails examples) fail "not a supported version"](173.md) ← `/qa-find-bugs-cli` sweep 1307 2026-10-22: 63 of 79 real `NODE_VERSION` pins refused; unsigned ADR018 divergence; major, ~3h.
+- [x] **173** — [Runtime versions Render installs are refused at build time: Node 20/18/16/14, Python 3.7–3.9 and Ruby 3.2 (Render's own Rails examples) fail "not a supported version"](done/173.md) ← `/qa-find-bugs-cli` sweep 1307 2026-10-22: 63 of 79 real `NODE_VERSION` pins refused; unsigned ADR018 divergence; major, ~3h. — **DONE (2026-10-22)**: Render-supported Node/Python/Ruby/Elixir lines added.
 
 - [x] **172** — [The pre-deploy command still runs through bex's own `/bin/sh -c`: w8/164 fixed the Docker Command but not pre-deploy, so `sh -c <cmd>` silently runs nothing and shell-less images cannot pre-deploy](done/172.md) ← `/qa-find-bugs-cli` sweep 1304 2026-10-22: follow-up to w8/164; minor, ~45m. — **DONE (2026-10-22)**: pre-deploy launches by the Docker Command rule (`preDeployArgv`); a `StartError` names the program.
 
