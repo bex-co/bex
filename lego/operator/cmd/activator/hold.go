@@ -111,6 +111,11 @@ func (h *holder) deploymentReady(ctx context.Context, app *appv1alpha1.App) bool
 
 type deadlineKey struct{}
 
+// forwardedHeaders are the forwarding headers the trusted ingress sets.
+var forwardedHeaders = []string{
+	"X-Forwarded-For", "X-Forwarded-Proto", "X-Forwarded-Host", "X-Forwarded-Port", "X-Real-Ip",
+}
+
 // newProxy builds the reverse proxy to a woken App. The public host, and the
 // forwarding headers the trusted ingress set, reach the App unchanged. A
 // connection refused while the Service's endpoint propagates is retried until
@@ -123,7 +128,7 @@ func (h *holder) newProxy() *httputil.ReverseProxy {
 			app, _ := pr.In.Context().Value(appKey{}).(*appv1alpha1.App)
 			pr.SetURL(h.target(app))
 			pr.Out.Host = pr.In.Host
-			for _, name := range []string{"X-Forwarded-For", "X-Forwarded-Proto", "X-Forwarded-Host", "X-Forwarded-Port", "X-Real-Ip"} {
+			for _, name := range forwardedHeaders {
 				if v := pr.In.Header.Values(name); len(v) > 0 {
 					pr.Out.Header[name] = v
 				}
@@ -153,7 +158,8 @@ func (h *holder) newProxy() *httputil.ReverseProxy {
 		},
 		FlushInterval: -1,
 		ErrorHandler: func(w http.ResponseWriter, _ *http.Request, _ error) {
-			writeBody(w, &http.Request{Method: http.MethodGet}, http.StatusBadGateway, "application/json", `{"error":"bad gateway"}`)
+			writeBody(w, &http.Request{Method: http.MethodGet}, http.StatusBadGateway,
+				"application/json", `{"error":"bad gateway"}`)
 		},
 	}
 }

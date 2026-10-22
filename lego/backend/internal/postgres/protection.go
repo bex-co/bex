@@ -23,12 +23,6 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// ProtectedConfirmation is the exact phrase required to perform verb on a
-// database in a protected Environment.
-func ProtectedConfirmation(verb, name string) string {
-	return "sudo " + verb + " database " + name
-}
-
 // requireUnprotected restricts the verbs Render reserves to Admins on a member
 // of a protected environment (core.ProtectedVerbRestricted; w8/187).
 func (s *Service) requireUnprotected(ctx context.Context, database *appv1alpha1.Database, verb string) error {

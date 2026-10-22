@@ -27,13 +27,13 @@ import (
 // A listener on the scanned address is found; the closed ports around it are
 // refused, which is what proves the host reachable.
 func TestScanFindsTheListeningPorts(t *testing.T) {
-	var ports []int
+	ports := make([]int, 0, 2)
 	for range 2 {
 		l, err := net.Listen("tcp", "127.0.0.1:0")
 		if err != nil {
 			t.Skipf("no loopback listener: %v", err)
 		}
-		defer l.Close()
+		defer func() { _ = l.Close() }()
 		ports = append(ports, l.Addr().(*net.TCPAddr).Port)
 	}
 	slices.Sort(ports)

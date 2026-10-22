@@ -42,16 +42,6 @@ import (
 // Postgres, and Key Value now share the same transport-independent
 // confirmation mechanism (core.WithConfirm records the phrase).
 
-// ProtectedConfirmation is the exact phrase a caller must echo back (REST
-// ?confirm=, a GraphQL confirm arg, or an MCP confirm field) to act on a
-// service that belongs to a protectedStatus=protected Environment. Mirrors
-// workspaces.DeleteConfirmation's confirm-phrase shape exactly, parameterized
-// by the verb so delete/suspend/deploy each get their own distinct phrase (a
-// confirm typed for one destructive verb can't accidentally arm another).
-func ProtectedConfirmation(verb, name string) string {
-	return "sudo " + verb + " service " + name
-}
-
 // The guarded set and the rule that generates it (w4/m126, recorded in
 // ADR032): a protected environment guards a verb that can lose data, change
 // what the resource IS, or take it offline — the same rule w4/m127 applied to

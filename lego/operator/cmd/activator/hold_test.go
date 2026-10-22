@@ -38,7 +38,9 @@ import (
 
 // holdFixture wires a holding handler to an upstream that stands in for the
 // woken App's Service, which "becomes ready" after wakeDelay.
-func holdFixture(t *testing.T, wakeDelay time.Duration, bound time.Duration) (http.Handler, *atomic.Int32, *httptest.Server, *countingClient) {
+func holdFixture(
+	t *testing.T, wakeDelay time.Duration, bound time.Duration,
+) (http.Handler, *atomic.Int32, *countingClient) {
 	t.Helper()
 	app, dep := sleepingApp()
 	app.Status.Phase = appv1alpha1.PhaseHibernated
@@ -64,11 +66,11 @@ func holdFixture(t *testing.T, wakeDelay time.Duration, bound time.Duration) (ht
 	h.target = func(*appv1alpha1.App) *url.URL { return target }
 	woke := time.Now().Add(wakeDelay)
 	h.ready = func(context.Context, *appv1alpha1.App) bool { return time.Now().After(woke) }
-	return newHoldingHandler(cl, cache, logr.Discard(), h), &upstreamHits, upstream, cl
+	return newHoldingHandler(cl, cache, logr.Discard(), h), &upstreamHits, cl
 }
 
 func TestHeldRequestIsServedByTheWokenApp(t *testing.T) {
-	h, hits, _, cl := holdFixture(t, 150*time.Millisecond, 5*time.Second)
+	h, hits, cl := holdFixture(t, 150*time.Millisecond, 5*time.Second)
 	req := httptest.NewRequest(http.MethodPost, "https://sleeping.onbex.co/hooks/x?a=1", strings.NewReader("payload"))
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("X-Custom", "kept")
@@ -98,7 +100,7 @@ func TestHeldRequestIsServedByTheWokenApp(t *testing.T) {
 }
 
 func TestConcurrentHeldRequestsShareOneWake(t *testing.T) {
-	h, hits, _, cl := holdFixture(t, 150*time.Millisecond, 5*time.Second)
+	h, hits, cl := holdFixture(t, 150*time.Millisecond, 5*time.Second)
 	const n = 5
 	done := make(chan *httptest.ResponseRecorder, n)
 	for range n {
@@ -124,7 +126,7 @@ func TestConcurrentHeldRequestsShareOneWake(t *testing.T) {
 }
 
 func TestBrowsersKeepTheLoadingPage(t *testing.T) {
-	h, hits, _, _ := holdFixture(t, 0, 5*time.Second)
+	h, hits, _ := holdFixture(t, 0, 5*time.Second)
 	req := httptest.NewRequest(http.MethodGet, "https://sleeping.onbex.co/", nil)
 	req.Header.Set("Accept", "text/html,application/xhtml+xml")
 	rr := httptest.NewRecorder()
@@ -138,7 +140,7 @@ func TestBrowsersKeepTheLoadingPage(t *testing.T) {
 }
 
 func TestHoldIsBoundedAndAnswersAGatewayTimeout(t *testing.T) {
-	h, hits, _, _ := holdFixture(t, time.Hour, 200*time.Millisecond)
+	h, hits, _ := holdFixture(t, time.Hour, 200*time.Millisecond)
 	req := httptest.NewRequest(http.MethodGet, "https://sleeping.onbex.co/", nil)
 	rr := httptest.NewRecorder()
 	start := time.Now()
@@ -176,7 +178,7 @@ func TestAwakeUnreadyServiceIsNotHeld(t *testing.T) {
 }
 
 func TestHeldRequestLimitShedsToTheImmediateAnswer(t *testing.T) {
-	h, _, _, cl := holdFixture(t, time.Hour, 5*time.Second)
+	h, _, cl := holdFixture(t, time.Hour, 5*time.Second)
 	hold := newHolder(cl)
 	for range maxHeldPerApp {
 		release, ok := hold.admit("bex-system/sleeping")
