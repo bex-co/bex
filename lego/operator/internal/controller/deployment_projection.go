@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"cmp"
 	"context"
 	"slices"
 
@@ -83,15 +84,13 @@ func currentRevisionPodsReady(
 // Health-check timing. Every value here mirrors a number Render documents, so
 // an app Render deploys without complaint also deploys here.
 //
-// The one deliberate divergence is the *period*: Render pulls an instance from
-// rotation after 15s of consecutive failures, which would need a 5s period, and
-// we keep Kubernetes' 10s (so 10s × the default failureThreshold of 3 = 30s).
-// The probe targets a tenant-supplied path that is frequently an expensive
-// server-side render, so halving the interval doubles that cost for every
-// service on the platform; and the thing a faster removal buys — shifting
-// traffic to a healthy peer — does not exist at replicas: 1, which is the
-// common shape. Leave periodSeconds/failureThreshold at Kubernetes' defaults
-// unless that trade-off changes.
+// Render pulls an instance from rotation after 15s of consecutive failed
+// checks, so the readiness probe runs every 5s and fails after 3 (w8/189; it
+// kept Kubernetes' 10s period, a 30s removal, until then). Startup and liveness
+// stay on a 10s period: they spend the 15-minute rollout and 60-second restart
+// budgets, which their derived thresholds keep exact. Existing Deployments
+// adopt the 5s readiness period on the pass that changes their template for
+// another reason, not on operator upgrade (applyDeploymentSpec).
 const (
 	// healthCheckTimeoutSeconds is Render's budget: "Render considers a check
 	// successful if the instance responds with a 2xx or 3xx status code within
@@ -100,10 +99,16 @@ const (
 	// flapping pod rather than an honest failure.
 	healthCheckTimeoutSeconds int32 = 5
 
-	// healthCheckPeriodSeconds is how often a probe runs. It is set on the
-	// startup and liveness probes; the readiness probe takes the identical
-	// Kubernetes default from applyPodSpecServerDefaults.
+	// healthCheckPeriodSeconds is how often the startup and liveness probes run.
 	healthCheckPeriodSeconds int32 = 10
+
+	// healthCheckReadinessPeriodSeconds is how often the readiness probe runs.
+	// With Kubernetes' default failureThreshold of 3 an instance leaves rotation
+	// after 15s of consecutive failures, as on Render (w8/189).
+	healthCheckReadinessPeriodSeconds int32 = 5
+	// healthCheckReadinessFailureThreshold is Kubernetes' default, set explicitly
+	// so the 15s removal cannot drift with it.
+	healthCheckReadinessFailureThreshold int32 = 3
 
 	// rolloutBudgetSeconds is how long a new pod may take to first report
 	// healthy, matching Render: "If this condition is not met within 15
@@ -179,6 +184,9 @@ type deploymentParams struct {
 	platform platformEnvInputs
 	// edgeCacheImage runs the edge-cache sidecar; "" for none (edge_cache.go).
 	edgeCacheImage string
+	// readinessPeriod overrides the readiness probe period while a stored
+	// template still carries its previous one (applyDeploymentSpec); 0 = current.
+	readinessPeriod int32
 }
 
 // appPodLabels builds the pod template's label set.
@@ -319,8 +327,10 @@ func appContainer(app *appv1alpha1.App, p deploymentParams, probeHost string) co
 			FailureThreshold: healthCheckStartupFailureThreshold,
 		}
 		container.ReadinessProbe = &corev1.Probe{
-			ProbeHandler:   handler,
-			TimeoutSeconds: healthCheckTimeoutSeconds,
+			ProbeHandler:     handler,
+			TimeoutSeconds:   healthCheckTimeoutSeconds,
+			PeriodSeconds:    cmp.Or(p.readinessPeriod, healthCheckReadinessPeriodSeconds),
+			FailureThreshold: healthCheckReadinessFailureThreshold,
 		}
 		container.LivenessProbe = &corev1.Probe{
 			ProbeHandler:     handler,
@@ -458,6 +468,15 @@ func storedDrain(spec corev1.PodSpec) int64 {
 	return lifecycle.PreStop.Sleep.Seconds
 }
 
+// storedReadinessPeriod is the readiness probe period a stored pod spec
+// carries, 0 for none or an unset one (which the server defaults to 10s).
+func storedReadinessPeriod(spec corev1.PodSpec) int32 {
+	if len(spec.Containers) == 0 || spec.Containers[0].ReadinessProbe == nil {
+		return 0
+	}
+	return spec.Containers[0].ReadinessProbe.PeriodSeconds
+}
+
 // applyDrain sets the container's preStop drain and the pod's grace period
 // together, so they cannot drift apart. The drain is a native preStop.sleep,
 // which needs no shell or sleep binary in the tenant's image (scratch and
@@ -512,12 +531,24 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 		probeHost = healthProbeHost(app, p.baseDomain)
 	}
 	drain := drainSecondsFor(app, p)
-	if stored := dep.Spec.Template; drain > 0 && len(stored.Spec.Containers) > 0 && storedDrain(stored.Spec) != drain {
-		kept := storedDrain(stored.Spec)
-		unchanged := dep.DeepCopy()
-		projectDeployment(unchanged, app, p, kept, probeHost)
-		if apiequality.Semantic.DeepEqual(unchanged.Spec.Template, stored) {
-			drain = kept
+	if stored := dep.Spec.Template; len(stored.Spec.Containers) > 0 {
+		keptDrain, keptPeriod := storedDrain(stored.Spec), storedReadinessPeriod(stored.Spec)
+		drainStale := drain > 0 && keptDrain != drain
+		periodStale := !p.worker && keptPeriod != healthCheckReadinessPeriodSeconds
+		if drainStale || periodStale {
+			// Keep whatever the stored template carries when nothing else
+			// about it changes; any other change adopts the current values.
+			unchanged := dep.DeepCopy()
+			kept := p
+			kept.readinessPeriod = keptPeriod
+			keptDrainFor := drain
+			if drainStale {
+				keptDrainFor = keptDrain
+			}
+			projectDeployment(unchanged, app, kept, keptDrainFor, probeHost)
+			if apiequality.Semantic.DeepEqual(unchanged.Spec.Template, stored) {
+				drain, p = keptDrainFor, kept
+			}
 		}
 	}
 	projectDeployment(dep, app, p, drain, probeHost)

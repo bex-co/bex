@@ -379,7 +379,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **190** — [`GET /v1/metrics/bandwidth-sources` answers 501 for every resource; Render serves hourly bandwidth broken down by traffic source](190.md) ← `/qa-find-bugs-cli` sweep 1325 2026-10-22: unsigned ADR018 divergence; minor, ~1h30m.
 
-- [ ] **189** — [A failing instance keeps receiving traffic for ~30 s after its health check starts failing; Render stops routing to it after 15 s](189.md) ← `/qa-find-bugs-cli` sweep 1324 2026-10-22: unsigned ADR018 divergence; minor, ~30m.
+- [x] **189** — [A failing instance keeps receiving traffic for ~30 s after its health check starts failing; Render stops routing to it after 15 s](done/189.md) ← `/qa-find-bugs-cli` sweep 1324 2026-10-22: unsigned ADR018 divergence; minor, ~30m. — **DONE (2026-10-22)**: failing instances leave rotation after 15 s.
 
 - [ ] **188** — [Render's environment-membership API is missing (`POST`/`DELETE /v1/environments/{id}/resources` → 404), and `DELETE` of a non-empty environment succeeds and silently detaches its services where Render's API answers 409](188.md) ← `/qa-find-bugs-cli` sweep 1323 2026-10-22: unsigned ADR032 difference; minor, ~2h.
 
