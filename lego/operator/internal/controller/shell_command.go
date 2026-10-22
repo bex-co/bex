@@ -107,9 +107,10 @@ func isAssignment(word string) bool {
 		return false
 	}
 	for i, c := range name {
-		if !(c == '_' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || i > 0 && c >= '0' && c <= '9') {
-			return false
+		if c == '_' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || i > 0 && c >= '0' && c <= '9' {
+			continue
 		}
+		return false
 	}
 	return true
 }
