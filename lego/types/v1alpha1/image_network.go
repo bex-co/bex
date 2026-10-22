@@ -75,10 +75,14 @@ func (a *App) ActiveImageNetwork() *ImageNetworkStatus {
 
 // ServingPort is the port a configured (non-image-port) service listens on:
 // the port its own PORT environment variable selected, as the operator
-// recorded it, else spec.port (w5/m149).
+// recorded it, else spec.port (w5/m149), else — when neither names one — the
+// port the process was detected listening on (w8/177), else the default.
 func (a *App) ServingPort() int32 {
 	if a.Status.EnvPort > 0 && !a.Spec.UsesImagePorts() {
 		return a.Status.EnvPort
+	}
+	if a.Status.DetectedPort > 0 && a.Spec.Port <= 0 && !a.Spec.UsesImagePorts() {
+		return a.Status.DetectedPort
 	}
 	return a.Spec.EffectivePort()
 }

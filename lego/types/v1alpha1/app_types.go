@@ -1530,6 +1530,17 @@ type AppStatus struct {
 	// +kubebuilder:validation:Maximum=65535
 	EnvPort int32 `json:"envPort,omitempty"`
 
+	// DetectedPort is the one TCP port a web service's process was found
+	// listening on when its health check failed on the default port (Render
+	// "is usually able to detect and use" a port other than PORT; w8/177).
+	// While it is set and neither spec.port nor a PORT variable names a port,
+	// the operator serves, routes and probes on it. Zero means nothing was
+	// detected.
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=65535
+	DetectedPort int32 `json:"detectedPort,omitempty"`
+
 	// ImageRevision caches the commit the serving image was built from, read
 	// once per image from its OCI revision label, so the projection can set
 	// Render's RENDER_GIT_COMMIT without a registry read every pass (w5/m148).
