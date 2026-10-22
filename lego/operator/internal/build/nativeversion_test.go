@@ -17,6 +17,7 @@ limitations under the License.
 package build
 
 import (
+	"context"
 	"encoding/base64"
 	"errors"
 	"maps"
@@ -261,7 +262,9 @@ func TestResolveNativeBuildRewritesTheBase(t *testing.T) {
 	o.Runtime = "python"
 	bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"PYTHON_VERSION": "3.11.9", "OTHER": "x\ny"}, nil)
 	before, _ := os.ReadFile(dockerfile)
-	choices, err := ResolveNativeBuild("python", bundle, dockerfile, src)
+	// The exact 3.11.9 tag is looked up; here the registry has none, so the
+	// line's reviewed image is the base (the exact case: nativeexact_test.go).
+	choices, err := ResolveNativeBuildExact(context.Background(), &fakeExact{}, time.Time{}, "python", bundle, dockerfile, src)
 	if err != nil || len(choices) != 3 || choices[0].Line != "3.11" || choices[1].Label != "Poetry" || choices[2].Label != "Node" {
 		t.Fatalf("resolve = %+v, %v", choices, err)
 	}

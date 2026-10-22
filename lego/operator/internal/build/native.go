@@ -71,6 +71,7 @@ const (
 	nativeNodeRuntime   = "node"
 	nativePythonRuntime = "python"
 	nativeRubyRuntime   = "ruby"
+	nativeElixirRuntime = "elixir"
 	// nativeRubyGems is Render's BUNDLE_PATH, beside the source tree.
 	nativeRubyGems = "/opt/render/project/.gems"
 )
@@ -84,7 +85,7 @@ const (
 // line from the service's own version signal (nativeversion.go); nothing
 // outside this table is ever pulled.
 var nativeToolchains = map[string]nativeToolchain{
-	"elixir": {label: "Elixir", defaultLine: "1.18", lines: []nativeLine{
+	nativeElixirRuntime: {label: "Elixir", defaultLine: "1.18", lines: []nativeLine{
 		{line: "1.17", version: "1.17.3", otp: "27", image: "elixir:1.17@sha256:c65f0bdd8827df171963e3558a1461b04efc086d0d52ee7c6900fcddb4467e08"},
 		{line: "1.18", version: "1.18.4", otp: "28", image: "elixir:1.18@sha256:a68defc35f664d1d02de0dc36b12e750bd558b594eed3d0909534317796df749"},
 		{line: "1.19", version: "1.19.6", otp: "28", image: "elixir:1.19@sha256:db1cbca0b49e26e65dd804c75f27ec5f01835f1d29f8b8e4cc8a51f01f986f9f"},

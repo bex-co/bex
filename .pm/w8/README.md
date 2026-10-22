@@ -411,7 +411,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **176** — [`bex logs --text 'GET*200'` and every `/regex/` search return nothing: Render's log filters accept `*` wildcards and RE2 regex, bex's `text` is literal-only and no filter takes regex](done/176.md) ← `/qa-find-bugs-cli` sweep 1310 2026-10-22: unsigned ADR010/ADR018 divergence; minor, ~1h30m. — **DONE (2026-10-22)**: wildcard and regex log filters.
 
-- [ ] **175** — [`PYTHON_VERSION=3.11.9` builds on Python 3.11.17: bex substitutes its pinned patch where Render installs the exact version requested](175.md) ← `/qa-find-bugs-cli` sweep 1307 2026-10-22: stricter follow-up to 173; minor, ~4h.
+- [x] **175** — [`PYTHON_VERSION=3.11.9` builds on Python 3.11.17: bex substitutes its pinned patch where Render installs the exact version requested](done/175.md) ← `/qa-find-bugs-cli` sweep 1307 2026-10-22: stricter follow-up to 173; minor, ~4h. — **DONE (2026-10-22)**: a fully qualified version pin builds on that exact official image, digest-resolved from Docker Hub at the resolve phase (design 1); a missing tag or unreachable registry falls back to the line's reviewed patch with a build-log line. ADR060 D7 + ADR018 amended. Owed: live check that the fixture logs Python 3.11.9 and that the build namespace can reach Docker Hub.
 
 - [x] **174** — [A new Python service with no version signal builds on Python 3.13.16; Render's default for services created since 2026-10-12 is 3.14.8](done/174.md) ← `/qa-find-bugs-cli` sweep 1307 2026-10-22: unsigned ADR018 divergence; minor, ~45m. — **DONE (2026-10-22)**: new Python services default to 3.14 by creation date.
 
