@@ -377,7 +377,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **170** — [An unusable `PORT` value (`abc`, `0`, `70000`) is accepted and shown, but the process silently receives `PORT=3000`](done/170.md) — **DONE (2026-10-21)**: an unusable PORT value is refused at write; ← `/qa-find-bugs-cli` sweep 1289 2026-10-21: follow-up to w5/m149; minor, ~30m.
 
-- [ ] **169** — [A service created with a `PORT` env var reports `port: 3000` / `openPorts: [3000]` in its create response, then its real port on the next read](169.md) ← `/qa-find-bugs-cli` sweep 1288 2026-10-21: follow-up to w5/m149; minor, ~30m.
+- [x] **169** — [A service created with a `PORT` env var reports `port: 3000` / `openPorts: [3000]` in its create response, then its real port on the next read](done/169.md) — **DONE (2026-10-21)**: create response reports the literal PORT's port; ← `/qa-find-bugs-cli` sweep 1288 2026-10-21: follow-up to w5/m149; minor, ~30m.
 
 - [x] **168** — [A web service with no port set expects port 3000 on bex but 10000 on Render, so commands copied from Render's docs never pass the health check](done/168.md) — **DONE (2026-10-21)**: web services default to Render's PORT 10000 (new services only); ← `/qa-find-bugs-cli` sweep 1285 2026-10-21: 25 sampled Blueprints hardcode 10000; decision (adopt 10000 with backfill); major.
 
