@@ -106,9 +106,9 @@ func RepoSlug(repo string) string {
 	return parts[len(parts)-2] + "/" + parts[len(parts)-1]
 }
 
-// PlanCPUCount is max(1, ceil(plan CPUs)): Render's RENDER_CPU_COUNT and its
-// recommended web concurrency. A tier without a CPU count (unset,
-// best-effort) gets 1, like Render's smallest plans.
+// PlanCPUCount is max(1, ceil(plan CPUs)): the recommended web concurrency
+// (RENDER_WEB_CONCURRENCY). A tier without a CPU count (unset, best-effort)
+// gets 1, like Render's smallest plans.
 func PlanCPUCount(tier string) int {
 	cpu, _, _, ok := tiers.Compute.Resources(tier)
 	if !ok {
@@ -116,6 +116,22 @@ func PlanCPUCount(tier string) int {
 	}
 	q := resource.MustParse(cpu)
 	return max(1, int(q.Value())) // Value rounds up: 500m is 1
+}
+
+// PlanCPUs is the plan's CPU as a decimal string, Render's RENDER_CPU_COUNT
+// ("0.5", "1", "2"): the quantity itself, not rounded up. A tier without a CPU
+// count gets "1" (w8/171).
+func PlanCPUs(tier string) string {
+	cpu, _, _, ok := tiers.Compute.Resources(tier)
+	if !ok {
+		return "1"
+	}
+	q := resource.MustParse(cpu)
+	milli := q.MilliValue()
+	if milli%1000 == 0 {
+		return strconv.FormatInt(milli/1000, 10)
+	}
+	return strings.TrimRight(fmt.Sprintf("%d.%03d", milli/1000, milli%1000), "0")
 }
 
 const discoverySuffix = "-discovery"
@@ -142,11 +158,11 @@ func DiscoveryServiceName(app *appv1alpha1.App) string {
 // RENDER_INSTANCE_ID and the per-image RENDER_GIT_COMMIT.
 func Static(app *appv1alpha1.App, baseDomain string) []Var {
 	slug := app.Spec.PlatformSubdomain(app.Name)
-	cpus := strconv.Itoa(PlanCPUCount(app.Spec.Tier))
+	concurrency := strconv.Itoa(PlanCPUCount(app.Spec.Tier))
 	vars := []Var{
 		{Render, "true"},
 		{IsPullRequest, "false"},
-		{CPUCount, cpus},
+		{CPUCount, PlanCPUs(app.Spec.Tier)},
 		{ServiceID, cmp.Or(app.Labels[LabelAppID], app.Name)},
 		{ServiceName, slug},
 		{ServiceType, ServiceTypeOf(app.Spec.Type)},
@@ -168,7 +184,7 @@ func Static(app *appv1alpha1.App, baseDomain string) []Var {
 		}
 	}
 	if app.Spec.InternallyAddressable() {
-		vars = append(vars, Var{WebConcurrency, cpus})
+		vars = append(vars, Var{WebConcurrency, concurrency})
 	}
 	return vars
 }

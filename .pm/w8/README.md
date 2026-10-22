@@ -373,7 +373,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **171** — [`RENDER_CPU_COUNT` is rounded up to a whole number (free and starter both report `1`), where Render reports the plan's CPU, e.g. `"0.5"`](171.md) ← `/qa-find-bugs-cli` sweep 1290 2026-10-21: follow-up to w5/m148; minor, ~20m.
+- [x] **171** — [`RENDER_CPU_COUNT` is rounded up to a whole number (free and starter both report `1`), where Render reports the plan's CPU, e.g. `"0.5"`](done/171.md) — **DONE (2026-10-21)**: RENDER_CPU_COUNT reports the plan's decimal CPU; ← `/qa-find-bugs-cli` sweep 1290 2026-10-21: follow-up to w5/m148; minor, ~20m.
 
 - [ ] **170** — [An unusable `PORT` value (`abc`, `0`, `70000`) is accepted and shown, but the process silently receives `PORT=3000`](170.md) ← `/qa-find-bugs-cli` sweep 1289 2026-10-21: follow-up to w5/m149; minor, ~30m.
 
