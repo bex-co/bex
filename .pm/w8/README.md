@@ -393,7 +393,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **185** — [A crawler's `GET /robots.txt` wakes a sleeping free web service and gets a 503; Render answers it with a "disallow all" robots file without spinning the service up](done/185.md) ← `/qa-find-bugs-cli` sweep 1317 2026-10-22: unsigned ADR018 difference; minor, ~45m. — **DONE (2026-10-22)**: a sleeping service's robots.txt is answered without a wake.
 
-- [ ] **184** — [A static-site rewrite cannot proxy to another site (`/api/* → https://api.example.com/api/*`): bex refuses any non-local rewrite destination, where Render serves the external URL's content at the original path](184.md) ← `/qa-find-bugs-cli` sweep 1316 2026-10-22: unsigned ADR018 divergence kept by w8/162; major, ~3h.
+- [x] **184** — [A static-site rewrite cannot proxy to another site (`/api/* → https://api.example.com/api/*`): bex refuses any non-local rewrite destination, where Render serves the external URL's content at the original path](done/184.md) ← `/qa-find-bugs-cli` sweep 1316 2026-10-22: unsigned ADR018 divergence kept by w8/162; major, ~3h. — **DONE (2026-10-22)**: external rewrites proxied through an SSRF-guarded fetch.
 
 - [x] **183** — [A static site never serves its `404.html`, and every extension-less miss returns the home page with 200: Render answers a miss with 404 and the site's own `404.html`](done/183.md) ← `/qa-find-bugs-cli` sweep 1315 2026-10-22: unsigned ADR029/ADR018 divergence; major, ~1h30m + migration decision. — **DONE (2026-10-22)**: new static sites 404 with their 404.html; retire-the-residual filed as 192.
 
