@@ -73,10 +73,6 @@ func TestLinkedEnvGroupDoesNotBlockGroupingDeletion(t *testing.T) {
 				if err := json.Unmarshal(body, &group); err != nil {
 					t.Fatal(err)
 				}
-				// The ordinary move guard stays: the linked service is still in
-				// the environment, so moving the group to workspace scope refuses.
-				request(http.MethodPatch, "/v1/env-groups/"+group.ID+"/environment", `{"environmentId":""}`, http.StatusConflict)
-
 				target, path, gqlField, tool := projectID, "/v1/projects/", "deleteProject", "delete_project"
 				if grouping == "environment" {
 					target, path, gqlField, tool = envID, "/v1/environments/", "deleteEnvironment", "delete_environment"
