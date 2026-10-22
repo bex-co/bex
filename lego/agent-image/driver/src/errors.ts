@@ -21,8 +21,8 @@
 //
 // It exists because `String(error)` does not survive a rejected JSON-RPC call.
 // The ACP SDK rejects a failed request with the RAW protocol error OBJECT
-// (`{code, message, data}`, ClientSideConnection: `pendingResponse.reject(
-// response.error)`), not an Error — so the ubiquitous
+// (`{code, message, data}`; SDK 2.x wraps the same fields in a RequestError),
+// and `data` never reaches `.message` — so the ubiquitous
 // `error instanceof Error ? error.message : String(error)` collapsed every
 // agent-side failure to the literal string "[object Object]". A live session
 // whose model call was refused stored `failure_reason = "[object Object]"` and
@@ -46,8 +46,15 @@ export function describeError(error: unknown): string {
 function describe(error: unknown): string {
   if (error === undefined || error === null) return "unknown error";
   if (typeof error === "string") return error || "unknown error";
-  if (error instanceof Error) return error.message || error.name || "Error";
-  if (typeof error === "object") return describeObject(error as ProtocolErrorShape);
+  // ACP SDK 2.x rejects with a RequestError — an Error that still carries the
+  // JSON-RPC `code` and `data`; `data` is often the only place the cause is.
+  if (
+    error instanceof Error &&
+    typeof (error as ProtocolErrorShape).code !== "number"
+  )
+    return error.message || error.name || "Error";
+  if (typeof error === "object")
+    return describeObject(error as ProtocolErrorShape);
   return String(error);
 }
 
@@ -65,7 +72,8 @@ function describeObject(error: ProtocolErrorShape): string {
     parts.push(`(code ${error.code})`);
   }
   if (error.data !== undefined && error.data !== null) {
-    const data = typeof error.data === "string" ? error.data : stringify(error.data);
+    const data =
+      typeof error.data === "string" ? error.data : stringify(error.data);
     if (data) parts.push(data);
   }
   if (parts.length > 0) return parts.join(" ");
