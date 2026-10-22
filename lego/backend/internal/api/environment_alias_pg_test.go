@@ -34,7 +34,6 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/environments"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
-	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // Real SQL rows/FKs and the composed transports share the same legacy identity.
@@ -124,8 +123,12 @@ func TestEnvironmentAliasesPreserveDurableMembershipPG(t *testing.T) {
 		t.Fatalf("project refs: %+v", refs)
 	}
 	request(http.MethodPatch, "/v1/environments/"+canonical, `{"name":"renamed"}`, http.StatusOK)
-	request(http.MethodPost, "/v1/postgres/"+pg.Name+"/suspend", "", http.StatusBadRequest)
-	request(http.MethodPost, "/v1/key-value/"+kv.Name+"/suspend", "", http.StatusBadRequest)
+	// The caller is the workspace owner, an Admin, so suspending a member of the
+	// protected environment needs no phrase (w8/187); the protection lookup by
+	// the legacy spelling still resolves, which the non-admin refusal
+	// (postgres and keyvalue protection tests) pins.
+	request(http.MethodPost, "/v1/postgres/"+pg.Name+"/suspend", "", http.StatusAccepted)
+	request(http.MethodPost, "/v1/key-value/"+kv.Name+"/suspend", "", http.StatusAccepted)
 	placement, err := st.GetAppPlacements(ctx, []string{appRow.ID})
 	if err != nil || placement[appRow.ID].EnvironmentID != legacy {
 		t.Fatalf("FK changed: %+v %v", placement, err)
@@ -187,11 +190,6 @@ func TestEnvironmentAliasesPreserveDurableMembershipPG(t *testing.T) {
 	if err := pool.QueryRow(ctx, `SELECT environment_id FROM apps WHERE tenant_id=$1 AND name='blueprint-web'`, owner.ID).Scan(&blueprintEnv); err != nil || blueprintEnv == "" || blueprintEnv != ids.EnvironmentStorageID(blueprintEnv) {
 		t.Fatalf("Blueprint stored placement: %q %v", blueprintEnv, err)
 	}
-	var untouched appv1alpha1.Database
-	if err := base.Client.Get(ctx, client.ObjectKeyFromObject(pg), &untouched); err != nil || untouched.Spec.Suspended {
-		t.Fatalf("protected suspend changed resource: %+v %v", untouched.Spec, err)
-	}
-
 	// Simulate an imported pre-upgrade collision without changing the shared
 	// schema: every DDL/data change below rolls back in this transaction.
 	tx, err := pool.Begin(ctx)
