@@ -50,6 +50,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	"github.com/bex-co/bex/lego/backend/internal/shellticket"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/types/netutil"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -5258,6 +5259,36 @@ func validateExternalRedirect(i int, dest string) error {
 	return nil
 }
 
+// validatePublicRewriteHost refuses a rewrite destination whose literal host
+// can never be a public one: an IP in a non-public range, or a name that is a
+// single label or ends in a local, internal or cluster suffix. DNS names that
+// merely resolve to a non-public address are caught at fetch time.
+func validatePublicRewriteHost(i int, dest string) error {
+	parsed, err := url.Parse(dest)
+	if err != nil {
+		return fmt.Errorf("%w: routes[%d].destination must be a valid URL", core.ErrBadRequest, i)
+	}
+	host := strings.ToLower(strings.TrimSuffix(parsed.Hostname(), "."))
+	bad := func() error {
+		return fmt.Errorf("%w: routes[%d].destination must be a publicly accessible URL, not a private, loopback, link-local or cluster-internal address", core.ErrBadRequest, i)
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		if netutil.UnsafeOriginIP(ip) {
+			return bad()
+		}
+		return nil
+	}
+	if !strings.Contains(host, ".") {
+		return bad()
+	}
+	for _, suffix := range []string{".localhost", ".local", ".internal", ".lan", ".svc", ".cluster.local", ".home.arpa"} {
+		if host == strings.TrimPrefix(suffix, ".") || strings.HasSuffix(host, suffix) {
+			return bad()
+		}
+	}
+	return nil
+}
+
 // validateRoutes rejects a malformed redirect/rewrite list: each rule needs a
 // known type and a rooted source + destination path (Render's contract), and
 // the whole list stays inside the edge-rule budgets above.
@@ -5276,11 +5307,20 @@ func validateRoutes(routes []StaticRouteView) error {
 			return fmt.Errorf("%w: routes[%d].source must not exceed %d characters", core.ErrBadRequest, i, maxStaticPathLen)
 		}
 		dest := strings.TrimSpace(r.Destination)
-		// Render lets a redirect leave the site (a CDN, a moved domain); only a
-		// rewrite, which bex would have to fetch, stays local-only (w8/162).
-		if t == "redirect" && isHTTPURLPrefix(dest) {
+		// Render lets a redirect leave the site (a CDN, a moved domain, w8/162),
+		// and a rewrite serve a full, publicly accessible URL's content at the
+		// original path (w8/184). A rewrite's host must also be public: the
+		// static server fetches it, so a literal private, loopback, link-local
+		// or cluster-internal host is refused here and every resolved address
+		// again at fetch time (staticserver/proxy.go).
+		if isHTTPURLPrefix(dest) {
 			if err := validateExternalRedirect(i, dest); err != nil {
 				return err
+			}
+			if t == "rewrite" {
+				if err := validatePublicRewriteHost(i, dest); err != nil {
+					return err
+				}
 			}
 			continue
 		}

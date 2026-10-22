@@ -331,8 +331,9 @@ func TestToRenderServiceStaticDetails(t *testing.T) {
 	}
 }
 
-// A redirect may name a fixed external http(s) host, as on Render; a rewrite
-// may not, and no capture or placeholder can reach the host (w8/162).
+// A redirect may name a fixed external http(s) host, as on Render, and so may a
+// rewrite when the host is public (w8/184); no capture or placeholder can reach
+// the host (w8/162).
 func TestValidateRoutesExternalRedirect(t *testing.T) {
 	for _, dest := range []string{"https://cdn.example.com/maps/*", "http://example.org", "https://example.org:8443/new?x=1", "HTTPS://Example.org/x"} {
 		if err := validateRoutes([]StaticRouteView{{Type: "redirect", Source: "/a/*", Destination: dest}}); err != nil {
@@ -344,8 +345,25 @@ func TestValidateRoutesExternalRedirect(t *testing.T) {
 			t.Errorf("redirect to %q accepted: %v", dest, err)
 		}
 	}
-	err := validateRoutes([]StaticRouteView{{Type: "rewrite", Source: "/a", Destination: "https://cdn.example.com/x"}})
-	if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "must be a path starting with /") {
-		t.Errorf("absolute rewrite: %v", err)
+}
+
+// w8/184: an external rewrite is accepted for a public host and refused for any
+// literal host that can never be public.
+func TestValidateRoutesExternalRewrite(t *testing.T) {
+	for _, dest := range []string{"https://api.example.com/api/*", "https://api.example.com:8443/v1/:splat", "http://203.0.114.7/x", "https://service-x.onbex.co/*"} {
+		if err := validateRoutes([]StaticRouteView{{Type: "rewrite", Source: "/api/*", Destination: dest}}); err != nil {
+			t.Errorf("rewrite to %q refused: %v", dest, err)
+		}
+	}
+	for _, dest := range []string{
+		"http://10.0.0.1/*", "http://127.0.0.1/*", "http://169.254.169.254/latest/*", "http://192.168.1.2/*", "http://100.64.0.1/*",
+		"http://localhost/*", "http://app.localhost/*", "http://bex-api/*", "http://bex-api.bex-system.svc/*",
+		"http://kubernetes.default.svc.cluster.local/*", "https://printer.local/*", "https://db.internal/*",
+		"https://*.example.com/x", "https://user@host.example/x",
+	} {
+		err := validateRoutes([]StaticRouteView{{Type: "rewrite", Source: "/api/*", Destination: dest}})
+		if !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("rewrite to %q accepted: %v", dest, err)
+		}
 	}
 }

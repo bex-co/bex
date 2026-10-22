@@ -22,14 +22,14 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// A redirect may name a fixed external host, as on Render; a rewrite may not,
-// and a capture can never change the host (w8/162).
+// A redirect may name a fixed external host, as on Render, and a capture can
+// never change the host (w8/162). (A rewrite may too since w8/184; see
+// proxy_test.go.)
 func TestRedirectToExternalHost(t *testing.T) {
 	routes := []appv1alpha1.StaticRoute{
 		{Type: "redirect", Source: "/maps/*", Destination: "https://cdn.example.com/maps/*"},
 		{Type: "redirect", Source: "/old", Destination: "https://example.org/new?x=1"},
 		{Type: "redirect", Source: "/at/*", Destination: "https://cdn.example.com/:splat"},
-		{Type: "rewrite", Source: "/proxy", Destination: "https://example.org/x"},
 	}
 	for _, tc := range []struct {
 		path, location string
@@ -39,7 +39,6 @@ func TestRedirectToExternalHost(t *testing.T) {
 		{"/old", "https://example.org/new?x=1", http.StatusMovedPermanently},
 		{"/at/@evil.com/x", "https://cdn.example.com/@evil.com/x", http.StatusMovedPermanently},
 		{"/at//evil.com", "https://cdn.example.com/evil.com", http.StatusMovedPermanently},
-		{"/proxy", "", http.StatusBadRequest},
 	} {
 		h, _ := newTestHandler(t, Site{Routes: routes}, nil)
 		response := do(h, http.MethodGet, tc.path)
