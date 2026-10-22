@@ -49,6 +49,7 @@ import (
 	"golang.org/x/sync/singleflight"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/bex-co/bex/lego/types/netutil"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -228,6 +229,8 @@ type Handler struct {
 	// encodes bounds concurrent Brotli encodes (CPU), globally and per site;
 	// their working memory is leased from liveBodies (encoding.go).
 	encodes *fetchGate
+	// external fetches external rewrite destinations (proxy.go, w8/184).
+	external *externalProxy
 }
 
 // New builds a Handler over a Resolver and Origin. cacheBytes caps the in-memory
@@ -240,11 +243,18 @@ func New(resolver Resolver, origin Origin, cacheBytes int64) *Handler {
 		gate:       newFetchGate(defaultMaxConcurrentFetches, defaultMaxInflightBytes, defaultMaxSiteFetches),
 		liveBodies: semaphore.NewWeighted(defaultMaxLiveBodyBytes),
 		encodes:    newFetchGate(defaultMaxConcurrentEncodes, 0, defaultMaxSiteEncodes),
+		external:   newExternalProxy(netutil.UnsafeOriginIP),
 	}
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		// A site's objects are read with GET and HEAD; any other method is
+		// served only by an external rewrite, Render's way to reach an API from
+		// a static site (w8/184).
+		if h.serveExternalRewriteForMethod(w, r) {
+			return
+		}
 		w.Header().Set("Allow", "GET, HEAD")
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -344,6 +354,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fallbackPath := requestPath
+	if act == actRewrite && target.Host != "" {
+		// An external rewrite serves the destination URL's content here; Render
+		// does not rewrite the root path.
+		if requestPath == "/" {
+			h.serveNotFound(w, r, site, requestPath)
+			return
+		}
+		h.serveExternalRewrite(w, r, site, requestPath, target)
+		return
+	}
 	if act == actRewrite {
 		fallbackPath = normalizePath(target.Path)
 		if overlongKey(site, fallbackPath) {
@@ -692,7 +712,7 @@ func matchRoutes(routes []appv1alpha1.StaticRoute, reqPath string) (routeAction,
 		default:
 			continue
 		}
-		dest, err := expandDest(rt.Destination, splat, action == actRedirect)
+		dest, err := expandDest(rt.Destination, splat, true)
 		return action, dest, err
 	}
 	return actNone, nil, nil
@@ -731,7 +751,8 @@ func expandDest(dest, splat string, allowAbsolute bool) (*url.URL, error) {
 		return nil, errors.New("destination exceeds size limit")
 	}
 	// A redirect may leave the site for a fixed http(s) host, as Render allows
-	// (w8/162); a rewrite fetches its target, so it stays local-only.
+	// (w8/162), and so may a rewrite, which fetches it through the SSRF-guarded
+	// proxy (w8/184).
 	absolute := allowAbsolute && hasHTTPScheme(dest)
 	if !absolute && !safeRedirectTarget(dest) {
 		return nil, errors.New("destination must be local")
@@ -914,4 +935,21 @@ func drain(rc io.ReadCloser) ([]byte, error) {
 		return nil, ErrObjectTooLarge
 	}
 	return b, nil
+}
+
+// serveExternalRewriteForMethod serves a request whose method is neither GET
+// nor HEAD when an external rewrite rule claims its path. It reports whether it
+// answered; false leaves the caller's 405.
+func (h *Handler) serveExternalRewriteForMethod(w http.ResponseWriter, r *http.Request) bool {
+	site, ok := h.resolver.Resolve(hostOnly(r.Host))
+	if !ok || site.Unavailable {
+		return false
+	}
+	requestPath := normalizePath(r.URL.Path)
+	act, target, err := matchRoutes(site.Routes, requestPath)
+	if err != nil || act != actRewrite || target.Host == "" || requestPath == "/" {
+		return false
+	}
+	h.serveExternalRewrite(w, r, site, requestPath, target)
+	return true
 }
