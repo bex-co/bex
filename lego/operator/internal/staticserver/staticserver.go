@@ -481,9 +481,10 @@ func safeAbsoluteHost(u *url.URL) bool {
 		return false
 	}
 	for _, c := range host {
-		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '.') {
-			return false
+		if c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '.' {
+			continue
 		}
+		return false
 	}
 	for _, c := range u.Port() {
 		if c < '0' || c > '9' {
@@ -711,7 +712,7 @@ func expandDest(dest, splat string, allowAbsolute bool) (*url.URL, error) {
 		}
 		target.Path = strings.TrimSuffix(target.Path, "*") + splat
 	}
-	if !(absolute && target.Path == "") && !safeRedirectTarget(target.Path) {
+	if (!absolute || target.Path != "") && !safeRedirectTarget(target.Path) {
 		return nil, errors.New("expanded destination must be local")
 	}
 	target.RawPath = ""
