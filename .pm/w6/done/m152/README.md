@@ -1,6 +1,6 @@
 # w6 · m152 — A disk owner sees when nightly snapshots are not running
 
-**Worker:** worker6 **Goal:** the disk card says plainly when a disk's nightly snapshot could not be scheduled or is overdue, instead of showing an empty list that reads as "not yet" **Status:** todo (t001–t005 done; t006 awaits the production disk card)
+**Worker:** worker6 **Goal:** the disk card says plainly when a disk's nightly snapshot could not be scheduled or is overdue, instead of showing an empty list that reads as "not yet" **Status:** done
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 | Render parity — **DONE** | 15m | w6/m152/t002 |
 | t004 | Simplify — **DONE** | 15m | w6/m152/t003 |
 | t005 | Test coverage — **DONE** | 20m | w6/m152/t003 |
-| t006 | Closeout | 10m | w6/m152/t004, w6/m152/t005 |
+| t006 | Closeout — **DONE** | 10m | w6/m152/t004, w6/m152/t005 |
 
 ## Definition of done
 
@@ -35,3 +35,12 @@
 - **Shared code:** list and health use one gate (`authorizeDiskSnapshots`) and one listing (`diskSnapshotObjects`). GraphQL uses `IDVerb`/`TimeField`, and the card uses the shared `Alert` and `useLocalDateTime`.
 - **Not changed:** the card still makes two GraphQL resolver calls (list and health), each listing the prefix once per mount, so a backend without the field cannot break the list.
 - **Tests:** backend `disk_snapshot_health_test.go` covers window math, states, the reason set and listing failure. The dashboard card and hook tests pass. Totals: dashboard 5,508/5,508, operator disk tests, and lint in all three Go modules.
+
+## Live verification — 2026-10-22
+
+- **Deploy:** run 39729235754 (`09785d906`) was superseded before pinning (w6/087). m152 reached production through `802bb4e5a`, the pin for `216523647`.
+- **Before the deadline, 08:18 UTC:** production `diskSnapshotHealth` for the bex-canary ClickHouse disk `dsk-dbcd1t4iimkc73f6l0n0` returned `ok`, with `lastSnapshotAt: null` and `dueBy: 2026-10-22T10:00:00Z`.
+- **After it, 10:03 UTC:** the same query returned `overdue`.
+- **Disk tab** (`/services/srv-dbcd1t4iimkc73f6l0m0/disk`): a destructive alert, "没有最近的快照", with the due time in local time. No "no snapshots yet" empty state. Desktop 1280×900 and 390×844 render without horizontal overflow (`.playwright-mcp/m152-overdue-{desktop,mobile}.png`, local).
+- **Not exercised live:** `unavailable`. No production disk has an unschedulable reason; it is covered by unit and mounted tests.
+- **Note:** the due time is formatted by the shared `formatDateTime` in English month names even under the zh UI. That is existing helper behavior, not specific to this card.
