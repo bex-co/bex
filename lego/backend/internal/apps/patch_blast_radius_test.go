@@ -78,19 +78,6 @@ func TestLateRefusalClassesApplyNoEarlierField(t *testing.T) {
 			},
 		},
 		{
-			// Protected environment — redefining what the service builds needs
-			// a confirmation phrase the request does not carry.
-			name: "protected environment (root dir without confirmation)",
-			app:  func() *appv1alpha1.App { return managedRepoApp("web") },
-			store: func() IntentStore {
-				return &recordingStore{protectedStatus: map[string]string{"srv-test": core.ProtectedStatusProtected}}
-			},
-			patch: func() ServicePatch {
-				dir := "services/api"
-				return ServicePatch{DisplayName: &renamed, RootDir: &dir}
-			},
-		},
-		{
 			// Source — the row that owns repo/image/credential together, which
 			// still runs after the rename.
 			name: "source validation (malformed repo URL)",
@@ -357,29 +344,6 @@ func TestSourcePatchProbesOutboundCallsExactlyOnce(t *testing.T) {
 	// PATCH by TestRESTRegistryCredentialCreatePatchAndClear.
 	if rc.validateCalls > 1 {
 		t.Errorf("ValidatePullSecret called %d times, want at most 1", rc.validateCalls)
-	}
-}
-
-// Validating twice must not cost twice. Four of this patch's rows independently
-// ask "is this service in a protected environment?", and each pass asks again
-// — eight identical Postgres round trips for one request-invariant boolean
-// before the per-request memo collapsed them.
-func TestPatchAsksProtectedStatusOncePerRequest(t *testing.T) {
-	st := &recordingStore{protectedStatus: map[string]string{"srv-test": "unprotected"}}
-	svc, _ := newService(st, dockerRepoAppManaged("web"))
-
-	rootDir, dockerfile := "services/api", "docker/Dockerfile"
-	build, preDeploy := "make all", "bin/migrate"
-	if _, err := svc.ApplyServicePatch(context.Background(), "web", ServicePatch{
-		RootDir: &rootDir, DockerfilePath: &dockerfile,
-		BuildCommand: &build, PreDeployCommand: &preDeploy,
-	}); err != nil {
-		t.Fatalf("ApplyServicePatch: %v", err)
-	}
-
-	if st.protectedCalls != 1 {
-		t.Errorf("GetAppProtectedStatus called %d times for one patch, want 1 "+
-			"(4 guarded rows x 2 passes without the per-request memo)", st.protectedCalls)
 	}
 }
 

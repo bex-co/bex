@@ -68,7 +68,7 @@ type triggerDeployArgs struct {
 	// ClearCache is a boolean on Render's MCP server (w5/m145); bex also keeps
 	// accepting its REST clear|do_not_clear spelling.
 	ClearCache any    `json:"clearCache,omitempty" jsonschema:"true clears the build cache (Render's MCP boolean); the REST strings clear and do_not_clear are also accepted. With BEX_BUILD_CACHE=registry, clearing rebuilds without importing prior layers and still exports a fresh cache; with the gate off it is a no-op."`
-	Confirm    string `json:"confirm,omitempty" jsonschema:"the confirmation phrase, required only when the service belongs to a protected environment and imageUrl or commitId is set. Do not guess it: make the call without this argument first and copy the exact phrase back out of the refusal"`
+	Confirm    string `json:"confirm,omitempty" jsonschema:"accepted for compatibility and ignored: a protected environment restricts this to workspace Admins (w8/187) and needs no phrase"`
 }
 
 // rollbackDeployArgs is rollback_deploy's input: getDeployArgs plus the
@@ -76,7 +76,7 @@ type triggerDeployArgs struct {
 type rollbackDeployArgs struct {
 	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
 	DeployID  string `json:"deployId" jsonschema:"the deploy id (dep-…), as returned by list_deploys"`
-	Confirm   string `json:"confirm,omitempty" jsonschema:"the confirmation phrase, required only when the service belongs to a protected environment. Do not guess it: make the call without this argument first and copy the exact phrase back out of the refusal"`
+	Confirm   string `json:"confirm,omitempty" jsonschema:"accepted for compatibility and ignored: a protected environment restricts this to workspace Admins (w8/187) and needs no phrase"`
 }
 
 type serviceArgs struct {

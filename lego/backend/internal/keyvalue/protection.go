@@ -50,8 +50,10 @@ func protectedKeyValuePatchVerb(patch KeyValuePatch) string {
 	}
 }
 
+// requireUnprotected restricts the verbs Render reserves to Admins on a member
+// of a protected environment (core.ProtectedVerbRestricted; w8/187).
 func (s *Service) requireUnprotected(ctx context.Context, keyValue *appv1alpha1.KeyValue, verb string) error {
-	environmentID := keyValue.Labels[core.LabelEnvironment]
-	name := keyValue.Spec.Name
-	return core.RequireEnvironmentConfirmation(ctx, s.Protection, environmentID, name, verb, ProtectedConfirmation(verb, name))
+	return core.RequireEnvironmentAdmin(ctx, s.Protection, keyValue.Labels[core.LabelEnvironment], verb, func() error {
+		return s.AuthorizeKeyValueFresh(ctx, core.RelCanManage, keyValue)
+	})
 }

@@ -80,6 +80,40 @@ func EnvironmentProtectionPrecondition(ctx context.Context, store EnvironmentPro
 	return ProtectionPrecondition(EnvironmentProtected(ctx, store, environmentID))
 }
 
+// ProtectedVerbRestricted reports whether verb is one of the actions Render
+// restricts to workspace Admins in a protected environment
+// (render.com/docs/projects): deleting the environment's resources, suspending
+// or resuming services, and turning maintenance mode on ("take offline"). The
+// rest of a service's life — deploys, rollbacks, settings, queries — is open to
+// anyone who may do it elsewhere, and no verb asks for a typed phrase (w8/187;
+// the phrase gate of w4/m126 and w4/m127 is retired). The dashboard may still
+// confirm in its own UI.
+func ProtectedVerbRestricted(verb string) bool {
+	switch verb {
+	case "delete", "suspend", "resume", "take offline":
+		return true
+	}
+	return false
+}
+
+// RequireEnvironmentAdmin refuses a restricted verb on a member of a protected
+// environment unless admin (a fresh workspace-manage check) passes. Empty
+// environment/store are no-ops so DB-less and environment-less resources keep
+// their original behavior, as do verbs Render leaves open.
+func RequireEnvironmentAdmin(ctx context.Context, store EnvironmentProtectionStore, environmentID, verb string, admin func() error) error {
+	if !ProtectedVerbRestricted(verb) {
+		return nil
+	}
+	protected, err := EnvironmentProtected(ctx, store, environmentID)
+	if err != nil {
+		return err
+	}
+	if !protected {
+		return nil
+	}
+	return admin()
+}
+
 // RequireEnvironmentConfirmation enforces an exact server-issued phrase for a
 // resource in a protected Environment. Empty environment/store are no-ops so
 // DB-less and environment-less resources preserve their original behavior.

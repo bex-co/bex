@@ -29,10 +29,12 @@ func ProtectedConfirmation(verb, name string) string {
 	return "sudo " + verb + " database " + name
 }
 
+// requireUnprotected restricts the verbs Render reserves to Admins on a member
+// of a protected environment (core.ProtectedVerbRestricted; w8/187).
 func (s *Service) requireUnprotected(ctx context.Context, database *appv1alpha1.Database, verb string) error {
-	environmentID := database.Labels[core.LabelEnvironment]
-	name := database.Spec.Name
-	return core.RequireEnvironmentConfirmation(ctx, s.Protection, environmentID, name, verb, ProtectedConfirmation(verb, name))
+	return core.RequireEnvironmentAdmin(ctx, s.Protection, database.Labels[core.LabelEnvironment], verb, func() error {
+		return s.AuthorizeDatabaseFresh(ctx, core.RelCanManage, database)
+	})
 }
 
 // protectedDatabasePatchVerb names the confirmation a PATCH needs on a member of

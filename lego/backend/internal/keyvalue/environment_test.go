@@ -160,12 +160,13 @@ func TestLegacyEnvironmentDiscoveryKeepsKeyValuePlacementAndProtection(t *testin
 			t.Fatalf("list with %s = %d %s", selector, response.Code, response.Body.String())
 		}
 	}
-	if _, err := svc.Suspend(t.Context(), kv.Name); !errors.Is(err, core.ErrBadRequest) {
-		t.Fatalf("legacy protected environment allowed unconfirmed suspend: %v", err)
+	svc.Authz = denyWorkspaceManage{}
+	if _, err := svc.Suspend(ctxAsCaller(), kv.Name); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("legacy protected environment allowed a non-admin suspend: %v", err)
 	}
-	confirmed := core.WithConfirm(t.Context(), ProtectedConfirmation("suspend", kv.Spec.Name))
-	if _, err := svc.Suspend(confirmed, kv.Name); err != nil {
-		t.Fatalf("confirmed suspend: %v", err)
+	svc.Authz = allowAllRelations{}
+	if _, err := svc.Suspend(ctxAsCaller(), kv.Name); err != nil {
+		t.Fatalf("admin suspend: %v", err)
 	}
 	var persisted appv1alpha1.KeyValue
 	if err := cl.Get(t.Context(), client.ObjectKeyFromObject(kv), &persisted); err != nil {

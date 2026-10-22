@@ -18,15 +18,11 @@ package postgres
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
-	"net/url"
 	"strings"
 	"testing"
 
-	"github.com/graphql-go/graphql"
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -60,9 +56,7 @@ func databaseForProtection(id, name string, protected bool) *appv1alpha1.Databas
 }
 
 // queryableProtectedService is protectedPostgresService plus the connection
-// secret a query resolves, so a CONFIRMED write can be observed completing —
-// the refusal path never gets that far, and a test that could only show the
-// refusal would not prove the phrase actually unlocks anything.
+// secret a query resolves, so a write by a non-admin can be observed completing.
 func queryableProtectedService(db *appv1alpha1.Database) (*Service, []string) {
 	db.Status.Phase = appv1alpha1.DBPhaseReady
 	db.Status.SecretName = db.Name + "-app"
@@ -85,45 +79,85 @@ func protectedPostgresService(objects ...client.Object) (*Service, client.Client
 	return svc, cl, store
 }
 
-func TestProtectedDatabaseDeleteAndSuspend(t *testing.T) {
-	t.Run("delete blocks then accepts exact phrase", func(t *testing.T) {
+// denyWorkspaceManage allows every relation except the admin can_manage on a
+// workspace — a Developer in the role ladder. Other objects' checks (the
+// ordinary per-verb authorization) are untouched.
+type denyWorkspaceManage struct{}
+
+func (denyWorkspaceManage) Check(_ context.Context, _, relation, object string) (bool, error) {
+	return !(relation == core.RelCanManage && strings.HasPrefix(object, "workspace:")), nil
+}
+
+type allowAllRelations struct{}
+
+func (allowAllRelations) Check(context.Context, string, string, string) (bool, error) {
+	return true, nil
+}
+
+// ctxAsCaller is the identity every Authz-checked call needs.
+func ctxAsCaller() context.Context {
+	return core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "session"})
+}
+
+// The rule is Render's (w8/187): in a protected environment only a workspace
+// Admin may delete, suspend or resume a database, with no typed phrase;
+// everything else is open to anyone who may do it elsewhere.
+func TestProtectedDatabaseDeleteSuspendResumeNeedAdmin(t *testing.T) {
+	t.Run("a non-admin is refused and nothing moves", func(t *testing.T) {
 		db := databaseForProtection("dpg-orders", "orders", true)
 		svc, cl, _ := protectedPostgresService(db)
-		if err := svc.DeletePostgres(context.Background(), db.Name); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), `confirm="sudo delete database orders"`) {
-			t.Fatalf("blocked DeletePostgres = %v", err)
+		svc.Authz = denyWorkspaceManage{}
+		if err := svc.DeletePostgres(ctxAsCaller(), db.Name); !errors.Is(err, core.ErrForbidden) {
+			t.Fatalf("DeletePostgres by a non-admin = %v, want ErrForbidden", err)
 		}
-		if err := cl.Get(context.Background(), client.ObjectKeyFromObject(db), &appv1alpha1.Database{}); err != nil {
-			t.Fatalf("blocked delete removed Database: %v", err)
+		if _, err := svc.Suspend(ctxAsCaller(), db.Name); !errors.Is(err, core.ErrForbidden) {
+			t.Fatalf("Suspend by a non-admin = %v, want ErrForbidden", err)
 		}
-		ctx := core.WithConfirm(context.Background(), ProtectedConfirmation("delete", "orders"))
-		if err := svc.DeletePostgres(ctx, db.Name); err != nil {
-			t.Fatalf("confirmed DeletePostgres: %v", err)
+		var got appv1alpha1.Database
+		if err := cl.Get(context.Background(), client.ObjectKeyFromObject(db), &got); err != nil || got.Spec.Suspended {
+			t.Fatalf("a refused verb changed the database: suspended=%v err=%v", got.Spec.Suspended, err)
+		}
+		// The old phrase substitutes for nothing.
+		ctx := core.WithConfirm(ctxAsCaller(), "sudo delete database orders")
+		if err := svc.DeletePostgres(ctx, db.Name); !errors.Is(err, core.ErrForbidden) {
+			t.Fatalf("DeletePostgres with the old phrase = %v, want ErrForbidden", err)
 		}
 	})
 
-	t.Run("suspend blocks, confirms, and resume is exempt", func(t *testing.T) {
+	t.Run("an admin needs no phrase for delete, suspend or resume", func(t *testing.T) {
 		db := databaseForProtection("dpg-orders", "orders", true)
 		svc, cl, _ := protectedPostgresService(db)
-		if _, err := svc.Suspend(context.Background(), db.Name); !errors.Is(err, core.ErrBadRequest) {
-			t.Fatalf("blocked Suspend = %v", err)
-		}
-		ctx := core.WithConfirm(context.Background(), ProtectedConfirmation("suspend", "orders"))
-		if _, err := svc.Suspend(ctx, db.Name); err != nil {
-			t.Fatalf("confirmed Suspend: %v", err)
+		svc.Authz = allowAllRelations{}
+		if _, err := svc.Suspend(ctxAsCaller(), db.Name); err != nil {
+			t.Fatalf("Suspend by an admin: %v", err)
 		}
 		var got appv1alpha1.Database
 		if err := cl.Get(context.Background(), client.ObjectKeyFromObject(db), &got); err != nil || !got.Spec.Suspended {
 			t.Fatalf("Database not suspended: suspended=%v err=%v", got.Spec.Suspended, err)
 		}
-		if _, err := svc.Resume(context.Background(), db.Name); err != nil {
-			t.Fatalf("Resume must not be protected: %v", err)
+		if _, err := svc.Resume(ctxAsCaller(), db.Name); err != nil {
+			t.Fatalf("Resume by an admin: %v", err)
+		}
+		if err := svc.DeletePostgres(ctxAsCaller(), db.Name); err != nil {
+			t.Fatalf("DeletePostgres by an admin: %v", err)
+		}
+	})
+
+	t.Run("a non-admin cannot resume a protected database", func(t *testing.T) {
+		db := databaseForProtection("dpg-orders", "orders", true)
+		db.Spec.Suspended = true
+		svc, _, _ := protectedPostgresService(db)
+		svc.Authz = denyWorkspaceManage{}
+		if _, err := svc.Resume(ctxAsCaller(), db.Name); !errors.Is(err, core.ErrForbidden) {
+			t.Fatalf("Resume by a non-admin = %v, want ErrForbidden", err)
 		}
 	})
 
 	t.Run("environment-less resource skips store", func(t *testing.T) {
 		db := databaseForProtection("dpg-dev", "dev", false)
 		svc, _, store := protectedPostgresService(db)
-		if _, err := svc.Suspend(context.Background(), db.Name); err != nil {
+		svc.Authz = denyWorkspaceManage{}
+		if _, err := svc.Suspend(ctxAsCaller(), db.Name); err != nil {
 			t.Fatalf("environment-less Suspend: %v", err)
 		}
 		if store.calls != 0 {
@@ -134,240 +168,95 @@ func TestProtectedDatabaseDeleteAndSuspend(t *testing.T) {
 	t.Run("unwired protection store is a no-op", func(t *testing.T) {
 		db := databaseForProtection("dpg-hand-applied", "hand-applied", true)
 		svc, _ := newService(db)
-		if _, err := svc.Suspend(context.Background(), db.Name); err != nil {
+		svc.Authz = denyWorkspaceManage{}
+		if _, err := svc.Suspend(ctxAsCaller(), db.Name); err != nil {
 			t.Fatalf("DB-less Suspend: %v", err)
 		}
 	})
 
-	t.Run("unprotected environment needs no confirmation", func(t *testing.T) {
+	t.Run("unprotected environment needs no admin", func(t *testing.T) {
 		db := databaseForProtection("dpg-staging", "staging", true)
 		svc, _, store := protectedPostgresService(db)
 		store.statuses["env-production"] = core.ProtectedStatusUnprotected
-		if _, err := svc.Suspend(context.Background(), db.Name); err != nil {
+		svc.Authz = denyWorkspaceManage{}
+		if _, err := svc.Suspend(ctxAsCaller(), db.Name); err != nil {
 			t.Fatalf("unprotected Suspend: %v", err)
 		}
 	})
-}
 
-func TestProtectedDatabaseConfirmationAcrossAdapters(t *testing.T) {
-	t.Run("REST postgres", func(t *testing.T) {
-		const base = "/v1/postgres"
-		db := databaseForProtection("dpg-rest", "rest-db", true)
-		toDelete := databaseForProtection("dpg-rest-delete", "rest-delete", true)
-		svc, _, _ := protectedPostgresService(db, toDelete)
-		if got := serveREST(svc, http.MethodPost, base+"/dpg-rest/suspend", ""); got.Code != http.StatusBadRequest {
-			t.Fatalf("unconfirmed suspend status = %d: %s", got.Code, got.Body.String())
-		}
-		confirm := url.QueryEscape(ProtectedConfirmation("suspend", "rest-db"))
-		if got := serveREST(svc, http.MethodPost, base+"/dpg-rest/suspend?confirm="+confirm, ""); got.Code != http.StatusAccepted {
-			t.Fatalf("confirmed suspend status = %d: %s", got.Code, got.Body.String())
-		}
-		if got := serveREST(svc, http.MethodDelete, base+"/dpg-rest-delete", ""); got.Code != http.StatusBadRequest {
-			t.Fatalf("unconfirmed delete status = %d: %s", got.Code, got.Body.String())
-		}
-		deleteConfirm := url.QueryEscape(ProtectedConfirmation("delete", "rest-delete"))
-		if got := serveREST(svc, http.MethodDelete, base+"/dpg-rest-delete?confirm="+deleteConfirm, ""); got.Code != http.StatusNoContent {
-			t.Fatalf("confirmed delete status = %d: %s", got.Code, got.Body.String())
-		}
-	})
-
-	t.Run("GraphQL delete", func(t *testing.T) {
-		db := databaseForProtection("dpg-gql", "gql-db", true)
-		toSuspend := databaseForProtection("dpg-gql-suspend", "gql-suspend", true)
-		svc, _, _ := protectedPostgresService(db, toSuspend)
-		schema, err := graphql.NewSchema(graphql.SchemaConfig{
-			Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
-			Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		blocked := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: `mutation { deleteDatabase(id:"dpg-gql") }`})
-		if len(blocked.Errors) == 0 || !strings.Contains(blocked.Errors[0].Message, "sudo delete database gql-db") {
-			t.Fatalf("unconfirmed GraphQL errors = %v", blocked.Errors)
-		}
-		confirmed := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: `mutation { deleteDatabase(id:"dpg-gql", confirm:"sudo delete database gql-db") }`})
-		if len(confirmed.Errors) != 0 {
-			t.Fatalf("confirmed GraphQL errors = %v", confirmed.Errors)
-		}
-		blockedSuspend := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: `mutation { suspendDatabase(id:"dpg-gql-suspend") { id } }`})
-		if len(blockedSuspend.Errors) == 0 || !strings.Contains(blockedSuspend.Errors[0].Message, "sudo suspend database gql-suspend") {
-			t.Fatalf("unconfirmed GraphQL suspend errors = %v", blockedSuspend.Errors)
-		}
-		confirmedSuspend := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: `mutation { suspendDatabase(id:"dpg-gql-suspend", confirm:"sudo suspend database gql-suspend") { id } }`})
-		if len(confirmedSuspend.Errors) != 0 {
-			t.Fatalf("confirmed GraphQL suspend errors = %v", confirmedSuspend.Errors)
-		}
-	})
-
-	// w5/m116: update_postgres handed confirm to the real call only, so a
-	// confirmed dry-run of a guarded change was refused.
-	t.Run("MCP update dry-run carries confirm", func(t *testing.T) {
-		db := databaseForProtection("dpg-mcp-update", "mcp-update-db", true)
+	t.Run("a protection lookup that fails refuses the verb", func(t *testing.T) {
+		db := databaseForProtection("dpg-orders", "orders", true)
 		svc, _, _ := protectedPostgresService(db)
-		clientSession, closeSession := pgMCPSession(t, svc)
-		defer closeSession()
-		ctx := context.Background()
-		args := map[string]any{"postgresId": db.Name, "name": "renamed-db", "dryRun": true}
-		blocked, err := clientSession.CallTool(ctx, &mcp.CallToolParams{Name: "update_postgres", Arguments: args})
-		if err != nil || !blocked.IsError {
-			t.Fatalf("unconfirmed dry-run = %#v, %v; want the guard's refusal", blocked, err)
-		}
-		args["confirm"] = ProtectedConfirmation("rename", "mcp-update-db")
-		confirmed, err := clientSession.CallTool(ctx, &mcp.CallToolParams{Name: "update_postgres", Arguments: args})
-		if err != nil || confirmed.IsError {
-			t.Fatalf("confirmed dry-run = %#v, %v; want the preview", confirmed, err)
-		}
-	})
-
-	t.Run("MCP suspend", func(t *testing.T) {
-		db := databaseForProtection("dpg-mcp", "mcp-db", true)
-		svc, _, _ := protectedPostgresService(db)
-		srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
-		svc.RegisterMCP(srv)
-		ctx := context.Background()
-		serverTransport, clientTransport := mcp.NewInMemoryTransports()
-		if _, err := srv.Connect(ctx, serverTransport, nil); err != nil {
-			t.Fatal(err)
-		}
-		clientSession, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientTransport, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer clientSession.Close()
-		tools, err := clientSession.ListTools(ctx, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		var suspendSchema, getSchema string
-		for _, tool := range tools.Tools {
-			encoded, _ := json.Marshal(tool.InputSchema)
-			switch tool.Name {
-			case "suspend_postgres":
-				suspendSchema = string(encoded)
-			case "get_postgres":
-				getSchema = string(encoded)
-			}
-		}
-		if !strings.Contains(suspendSchema, `"confirm"`) || strings.Contains(getSchema, `"confirm"`) {
-			t.Fatalf("confirm schema scope: suspend=%s get=%s", suspendSchema, getSchema)
-		}
-		blocked, err := clientSession.CallTool(ctx, &mcp.CallToolParams{Name: "suspend_postgres", Arguments: map[string]any{"postgresId": db.Name}})
-		if err != nil || !blocked.IsError {
-			t.Fatalf("unconfirmed MCP = %#v, %v", blocked, err)
-		}
-		confirmed, err := clientSession.CallTool(ctx, &mcp.CallToolParams{Name: "suspend_postgres", Arguments: map[string]any{"postgresId": db.Name, "confirm": ProtectedConfirmation("suspend", "mcp-db")}})
-		if err != nil || confirmed.IsError {
-			t.Fatalf("confirmed MCP = %#v, %v", confirmed, err)
+		svc.Protection = failingProtection{}
+		if _, err := svc.Suspend(ctxAsCaller(), db.Name); err == nil {
+			t.Fatal("Suspend with an unreadable protection status succeeded")
 		}
 	})
 }
 
-// TestProtectedDatabaseDataPlaneAndTopology is w4/m127. A live matrix against a
-// free Postgres in a fresh protected environment found the guard covering
-// exactly two verbs — suspend and delete — while everything that can actually
-// lose the data went through:
-//
-//	suspendDatabase  → REFUSED        (the control: the guard was armed)
-//	deleteDatabase   → REFUSED
-//	executeDatabaseQuery allowWrites DROP TABLE → ACCEPTED
-//	failoverDatabase → ACCEPTED
-//	renameDatabase   → ACCEPTED
-//
-// So a protected environment refused to pause the database and permitted
-// DROP TABLE inside it. w6/m19 and w6/m37 had both asked which RESOURCES the
-// guard covers; this is the first time anyone asked which OPERATIONS.
-func TestProtectedDatabaseDataPlaneAndTopology(t *testing.T) {
-	// The console is the headline: the writable SQL path is already gated on a
-	// strictly stronger authorization pair than anything else in the product,
-	// and still ran DROP TABLE on a protected member without a word.
-	t.Run("writable console blocks then accepts exact phrase", func(t *testing.T) {
+type failingProtection struct{}
+
+func (failingProtection) GetEnvironmentProtectedStatus(context.Context, string) (string, error) {
+	return "", errors.New("store down")
+}
+
+// Over REST the Admin role is the whole rule: an admin suspends with no ?confirm=.
+func TestProtectedDatabaseOverREST(t *testing.T) {
+	db := databaseForProtection("dpg-rest", "rest-db", true)
+	svc, _, _ := protectedPostgresService(db)
+	svc.Authz = allowAllRelations{}
+	if got := serveREST(svc, http.MethodPost, "/v1/postgres/dpg-rest/suspend", ""); got.Code != http.StatusAccepted {
+		t.Fatalf("admin suspend status = %d: %s", got.Code, got.Body.String())
+	}
+}
+
+// The console, failover, renames and version upgrades are not among the actions
+// Render restricts in a protected environment (w4/m127 had gated them behind
+// phrases): a Developer runs them with no phrase.
+func TestProtectedDatabaseSettingsAndDataPlaneAreOpenToDevelopers(t *testing.T) {
+	t.Run("writable console", func(t *testing.T) {
 		db := databaseForProtection("dpg-orders", "orders", true)
 		svc, _ := queryableProtectedService(db)
+		svc.Authz = denyWorkspaceManage{}
 		var ran []string
 		svc.queryExecutor = func(_ context.Context, _, sql string, _ queryLimits, _ bool) (QueryResult, error) {
 			ran = append(ran, sql)
 			return QueryResult{}, nil
 		}
-
-		_, err := svc.ExecuteQuery(context.Background(), db.Name, "DROP TABLE qa_probe", true)
-		if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), `confirm="sudo write to database orders"`) {
-			t.Fatalf("DROP TABLE on a protected database = %v, want the confirmation refusal", err)
-		}
-		if len(ran) != 0 {
-			t.Fatalf("a refused write still reached the database: %v", ran)
-		}
-
-		ctx := core.WithConfirm(context.Background(), ProtectedConfirmation("write to", "orders"))
-		if _, err := svc.ExecuteQuery(ctx, db.Name, "DROP TABLE qa_probe", true); err != nil {
-			t.Fatalf("confirmed write: %v", err)
+		if _, err := svc.ExecuteQuery(ctxAsCaller(), db.Name, "DROP TABLE qa_probe", true); err != nil {
+			t.Fatalf("writable query by a non-admin on a protected database: %v", err)
 		}
 		if len(ran) != 1 {
-			t.Fatalf("confirmed write did not execute: %v", ran)
+			t.Fatalf("the write did not execute: %v", ran)
 		}
 	})
 
-	// A READ is not a destructive operation and must not acquire a ceremony —
-	// the console stays usable on a protected database for exactly the thing
-	// protection has no reason to stop.
-	t.Run("read-only console is never gated", func(t *testing.T) {
+	t.Run("failover", func(t *testing.T) {
 		db := databaseForProtection("dpg-orders", "orders", true)
-		svc, _ := queryableProtectedService(db)
-		if _, err := svc.ExecuteQuery(context.Background(), db.Name, "SELECT 1", false); err != nil {
-			t.Fatalf("read-only query on a protected database: %v", err)
+		svc, _, _ := protectedPostgresService(db)
+		svc.Authz = denyWorkspaceManage{}
+		if err := svc.Failover(ctxAsCaller(), db.Name); err != nil {
+			t.Fatalf("Failover by a non-admin on a protected database: %v", err)
 		}
 	})
 
-	t.Run("failover blocks then accepts exact phrase", func(t *testing.T) {
-		db := databaseForProtection("dpg-orders", "orders", true)
-		svc, cl, _ := protectedPostgresService(db)
-		if err := svc.Failover(context.Background(), db.Name); !errors.Is(err, core.ErrBadRequest) {
-			t.Fatalf("blocked Failover = %v", err)
-		}
-		var got appv1alpha1.Database
-		if err := cl.Get(context.Background(), client.ObjectKeyFromObject(db), &got); err != nil || got.Spec.FailoverAt != "" {
-			t.Fatalf("a refused failover still stamped the spec: %q err=%v", got.Spec.FailoverAt, err)
-		}
-		ctx := core.WithConfirm(context.Background(), ProtectedConfirmation("fail over", "orders"))
-		if err := svc.Failover(ctx, db.Name); err != nil {
-			t.Fatalf("confirmed Failover: %v", err)
-		}
-	})
-
-	t.Run("rename and version upgrade block then accept", func(t *testing.T) {
+	t.Run("rename and version upgrade", func(t *testing.T) {
 		for _, tc := range []struct {
 			name  string
-			verb  string
 			patch PostgresPatch
 		}{
-			{"rename", "rename", PostgresPatch{Name: ptrTo("renamed")}},
-			{"version upgrade", "upgrade", PostgresPatch{Version: ptrTo("17")}},
+			{"rename", PostgresPatch{Name: ptrTo("renamed")}},
+			{"version upgrade", PostgresPatch{Version: ptrTo("17")}},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
 				db := databaseForProtection("dpg-orders", "orders", true)
 				svc, _, _ := protectedPostgresService(db)
-				_, err := svc.UpdatePostgres(context.Background(), db.Name, tc.patch)
-				if !errors.Is(err, core.ErrBadRequest) ||
-					!strings.Contains(err.Error(), `confirm="sudo `+tc.verb+` database orders"`) {
-					t.Fatalf("blocked %s = %v", tc.name, err)
+				svc.Authz = denyWorkspaceManage{}
+				_, err := svc.UpdatePostgres(ctxAsCaller(), db.Name, tc.patch)
+				if errors.Is(err, core.ErrForbidden) || errors.Is(err, core.ErrBadRequest) && strings.Contains(err.Error(), "confirm=") {
+					t.Fatalf("%s by a non-admin on a protected database was refused for protection: %v", tc.name, err)
 				}
 			})
-		}
-	})
-
-	// An unprotected database gains no ceremony at all — the guard must cost
-	// nothing to everyone who did not ask for it.
-	t.Run("unprotected database is untouched", func(t *testing.T) {
-		db := databaseForProtection("dpg-plain", "plain", false)
-		svc, _ := queryableProtectedService(db)
-		if _, err := svc.ExecuteQuery(context.Background(), db.Name, "DROP TABLE t", true); err != nil {
-			t.Fatalf("writable query on an unprotected database: %v", err)
-		}
-		if err := svc.Failover(context.Background(), db.Name); err != nil {
-			t.Fatalf("failover on an unprotected database: %v", err)
-		}
-		if _, err := svc.UpdatePostgres(context.Background(), db.Name, PostgresPatch{Name: ptrTo("plain2")}); err != nil {
-			t.Fatalf("rename on an unprotected database: %v", err)
 		}
 	})
 }

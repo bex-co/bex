@@ -48,7 +48,7 @@ type postgresArgs struct {
 // and since w4/m127 failover — rather than advertised on every tool.
 type suspendPostgresArgs struct {
 	PostgresID string `json:"postgresId" jsonschema:"the immutable postgres id, as returned by list_postgres_instances"`
-	Confirm    string `json:"confirm,omitempty" jsonschema:"exact confirmation phrase returned when a protected environment blocks this verb"`
+	Confirm    string `json:"confirm,omitempty" jsonschema:"accepted for compatibility and ignored: a protected environment restricts this to workspace Admins (w8/187) and needs no phrase"`
 }
 
 // createPostgresArgs mirrors the create body the REST/GraphQL surfaces accept
@@ -328,7 +328,7 @@ type updatePostgresArgs struct {
 	ParameterOverrides    *map[string]string       `json:"parameterOverrides,omitempty" jsonschema:"replaces the postgresql.conf parameter overrides (key = parameter name, value = setting string); the operator projects them to the CNPG Cluster and rolls it if needed. This REPLACES the declared set, so send every parameter you want to keep — read the current set with list_postgres_parameters first, NOT list_postgres_parameter_overrides (that one is the observed config and is mostly the platform's). Pass {} to clear every override. shared_preload_libraries is silently dropped, and platform-managed settings (WAL archive/restore commands, TLS paths, replication and logging) are refused"`
 	// Confirm is the protected-environment phrase a rename or a version upgrade
 	// needs on a member of a protected environment (w4/m127).
-	Confirm string `json:"confirm,omitempty" jsonschema:"exact confirmation phrase returned when a protected environment blocks a rename or version upgrade"`
+	Confirm string `json:"confirm,omitempty" jsonschema:"accepted for compatibility and ignored: a protected environment restricts this to workspace Admins (w8/187) and needs no phrase"`
 	Public  *bool  `json:"public,omitempty" jsonschema:"expose (true) or withdraw (false) the external TLS endpoint; overrides publication inferred from ipAllowList in the same call. public:true with [] deliberately enables external access without resource-level IP restrictions; environment rules still apply"`
 	// ReadReplicas is REST's postgresPATCHInput.readReplicas (w5/m138).
 	ReadReplicas *[]ReadReplicaInput `json:"readReplicas,omitempty" jsonschema:"replaces the named read replica set with these {name} entries; [] removes every replica, omission leaves them unchanged"`

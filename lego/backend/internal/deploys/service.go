@@ -226,9 +226,6 @@ type Service struct {
 	// clone while webhook-triggered siblings built fine). nil ⇒ no refresh
 	// (GitHub integration off), prior behavior.
 	CloneSecrets store.CloneSecreter
-	// Protection is apps' protected-environment guard (ADR032, w4/m176); nil
-	// means no environments (DB-less), unguarded.
-	Protection ProtectionGuard
 	// PullSecrets resolves the pending image/Dockerfile credential at trigger
 	// time. Source-save validation is deliberately read-only so it cannot replace
 	// the active release's deterministic pull Secret before this point.
@@ -483,23 +480,6 @@ type TriggerParams struct {
 	restart bool
 }
 
-// ProtectionGuard is the apps-owned protected-environment predicate and guard.
-type ProtectionGuard interface {
-	RequireUnprotected(ctx context.Context, a *appv1alpha1.App, verb string) error
-	AppProtected(ctx context.Context, a *appv1alpha1.App) (bool, error)
-}
-
-// protectedRepointVerb is apps' "repoint" class (apps/protection.go): a deploy
-// that selects which code runs needs the image/repo/branch setters' phrase.
-const protectedRepointVerb = "repoint"
-
-func (s *Service) requireRepointConfirmation(ctx context.Context, a *appv1alpha1.App) error {
-	if s.Protection == nil {
-		return nil
-	}
-	return s.Protection.RequireUnprotected(ctx, a, protectedRepointVerb)
-}
-
 // Trigger starts a fresh deploy (Render's POST .../deploys): bumps
 // spec.RestartedAt to create a new release identity/generation — triggering the
 // operator to rebuild/restart — then opens a dep-… row (trigger "api") stamped
@@ -530,15 +510,8 @@ func (s *Service) Trigger(ctx context.Context, service string, p TriggerParams) 
 	if err != nil {
 		return DeployView{}, err
 	}
-	// The same selection swaps the running code on a protected member, now
-	// rather than on the next deploy, so it needs the setters' phrase (w4/m176).
-	// A bare redeploy runs the configured artifact, whose staging the setter
-	// already guarded.
-	if override {
-		if err := s.requireRepointConfirmation(ctx, a); err != nil {
-			return DeployView{}, err
-		}
-	}
+	// A deploy of a chosen image or commit is not one of the actions Render
+	// restricts in a protected environment, so it asks for no phrase (w8/187).
 	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
 		return DeployView{}, err
 	}
@@ -1092,11 +1065,6 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string, opts .
 	// deployActions gives and the answer this verb gives cannot drift (w4/110).
 	if !RollbackActionable(a, target) {
 		return DeployView{}, fmt.Errorf("%w: deploy %q is already live — nothing to roll back to", core.ErrConflict, deployID)
-	}
-	// Restoring an older artifact swaps the running code (w4/m176). Asked last,
-	// so nobody types the phrase for a rollback that would be refused anyway.
-	if err := s.requireRepointConfirmation(ctx, a); err != nil {
-		return DeployView{}, err
 	}
 	// A static site restores the target's retained publication, built or
 	// published straight from its repository (w4/m197): today's saved publish

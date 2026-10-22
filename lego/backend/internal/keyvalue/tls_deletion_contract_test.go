@@ -114,10 +114,10 @@ func TestRefusedKeyValueDeletePreservesTLSArtifacts(t *testing.T) {
 				Name: kv.Name + "-kv-tls", Namespace: kv.Namespace, UID: "issued-tls-uid",
 			}, Type: corev1.SecretTypeTLS}
 			svc, cl, _ := protectedKeyValueService(kv, secret)
-			want := core.ErrBadRequest
+			want := core.ErrForbidden
+			svc.Authz = denyWorkspaceManage{} // protection: only an Admin deletes (w8/187)
 			if refusal == "revocation" {
 				svc.Authz = staleAllowChecker{}
-				want = core.ErrForbidden
 			}
 			ctx := ctxAs("user-a")
 			if err := svc.DeleteKeyValue(ctx, kv.Name); !errors.Is(err, want) {

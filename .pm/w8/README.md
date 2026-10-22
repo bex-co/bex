@@ -375,6 +375,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **193** — [Restrict environment-variable, secret-file and shell access to Admins in a protected environment](193.md) ← w8/187 2026-10-22: the rest of Render's protected-environment list; minor, ~2h.
+
 - [ ] **192** — [Retire the implicit static-site SPA fallback for sites created before 2026-10-23](192.md) ← w8/183 2026-10-22 (due 2026-11-22)
 
 - [x] **191** — [List endpoints called without `limit` return the whole list unsorted instead of Render's default page of 20, so a cursor from that page continues a different order; unfiltered `GET /notification-settings/overrides` returns one workspace instead of all](done/191.md) ← `/qa-find-bugs-cli` sweep 1326 2026-10-22: unsigned ADR018 divergences; minor, ~1h30m. — **DONE (2026-10-22)**: REST lists default to Render's first page; overrides span the caller's workspaces.
@@ -385,7 +387,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **188** — [Render's environment-membership API is missing (`POST`/`DELETE /v1/environments/{id}/resources` → 404), and `DELETE` of a non-empty environment succeeds and silently detaches its services where Render's API answers 409](done/188.md) ← `/qa-find-bugs-cli` sweep 1323 2026-10-22: unsigned ADR032 difference; minor, ~2h. — **DONE (2026-10-22)**: resources routes served; REST delete requires an empty grouping.
 
-- [ ] **187** — [Protected environments demand a bex-only typed phrase (`confirm="sudo …"`) from every caller, admins included, so `bex services delete`, `bex deploys create --image` and a Render-shaped rollback all fail; Render restricts a fixed list of actions to Admins and never asks for a phrase](187.md) ← `/qa-find-bugs-cli` sweep 1321 2026-10-22: unsigned ADR032 divergence; major, ~3h.
+- [x] **187** — [Protected environments demand a bex-only typed phrase (`confirm="sudo …"`) from every caller, admins included, so `bex services delete`, `bex deploys create --image` and a Render-shaped rollback all fail; Render restricts a fixed list of actions to Admins and never asks for a phrase](done/187.md) ← `/qa-find-bugs-cli` sweep 1321 2026-10-22: unsigned ADR032 divergence; major, ~3h. — **DONE (2026-10-22)**: Admin role replaces the typed phrase; env-var/shell restriction filed as 193.
 
 - [x] **186** — [Every REST env-var write (`PUT /env-vars`, `PUT`/`DELETE /env-vars/{key}`) immediately redeploys the service; Render's API saves the change and deploys nothing until the caller triggers a deploy](done/186.md) ← `/qa-find-bugs-cli` sweep 1320 2026-10-22: unsigned ADR018 divergence; major, ~1h30m. — **DONE (2026-10-22)**: REST env-var and secret-file writes save without deploying.
 

@@ -197,6 +197,13 @@ func newParityFixture(authz core.Checker, protected bool) *parityFixture {
 	return f
 }
 
+// developerChecker allows everything except the admin can_manage on a workspace.
+type developerChecker struct{}
+
+func (developerChecker) Check(_ context.Context, _, relation, object string) (bool, error) {
+	return !(relation == core.RelCanManage && strings.HasPrefix(object, "workspace:")), nil
+}
+
 // TestDryRunAnswersExactlyTheRealCall is w5/m116's matrix: for each kind and
 // verb, under each condition the real call refuses, its dry-run refuses with
 // the identical error and persists nothing. The dry-run runs first, so it
@@ -233,8 +240,10 @@ func TestDryRunAnswersExactlyTheRealCall(t *testing.T) {
 		{"service update on an unpaid paid plan", false, false, func(f *parityFixture, dry bool) error {
 			return servicePatch(ctx, f, dry, apps.ServicePatch{Plan: strp("standard")})
 		}},
-		{"service update in a protected environment", false, true, func(f *parityFixture, dry bool) error {
-			return servicePatch(ctx, f, dry, apps.ServicePatch{StartCommand: strp("bin/other")})
+		// Only an Admin turns maintenance mode on in a protected environment
+		// (w8/187); the protected cases run as a Developer.
+		{"service maintenance mode in a protected environment", false, true, func(f *parityFixture, dry bool) error {
+			return servicePatch(ctx, f, dry, apps.ServicePatch{MaintenanceMode: &apps.MaintenanceModeView{Enabled: true}})
 		}},
 		{"service update with a CRD-invalid field", false, false, func(f *parityFixture, dry bool) error {
 			return servicePatch(ctx, f, dry, apps.ServicePatch{StartCommand: strp(crdInvalid)})
@@ -262,9 +271,6 @@ func TestDryRunAnswersExactlyTheRealCall(t *testing.T) {
 		{"Postgres update on an unpaid paid plan", false, false, func(f *parityFixture, dry bool) error {
 			return postgresPatch(ctx, f, dry, postgres.PostgresPatch{Plan: strp("basic-256mb")})
 		}},
-		{"Postgres update in a protected environment", false, true, func(f *parityFixture, dry bool) error {
-			return postgresPatch(ctx, f, dry, postgres.PostgresPatch{Name: strp("renamed")})
-		}},
 		{"Postgres update with a CRD-invalid field", false, false, func(f *parityFixture, dry bool) error {
 			return postgresPatch(ctx, f, dry, postgres.PostgresPatch{Name: strp(crdInvalid)})
 		}},
@@ -291,16 +297,17 @@ func TestDryRunAnswersExactlyTheRealCall(t *testing.T) {
 		{"Key Value update on an unpaid paid plan", false, false, func(f *parityFixture, dry bool) error {
 			return keyValuePatch(ctx, f, dry, keyvalue.KeyValuePatch{Plan: strp("starter")})
 		}},
-		{"Key Value update in a protected environment", false, true, func(f *parityFixture, dry bool) error {
-			return keyValuePatch(ctx, f, dry, keyvalue.KeyValuePatch{Name: strp("renamed")})
-		}},
 		{"Key Value update with a CRD-invalid field", false, false, func(f *parityFixture, dry bool) error {
 			return keyValuePatch(ctx, f, dry, keyvalue.KeyValuePatch{Name: strp(crdInvalid)})
 		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			f := newParityFixture(&fakeChecker{allow: true}, tc.protected)
+			var authz core.Checker = &fakeChecker{allow: true}
+			if tc.protected {
+				authz = developerChecker{}
+			}
+			f := newParityFixture(authz, tc.protected)
 			f.adm.atCap = tc.atCap
 			dryErr := tc.call(f, true)
 			if f.adm.persisted != 0 {
