@@ -22,6 +22,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 )
@@ -72,9 +73,35 @@ func (e *UnsupportedVersionError) Error() string { return e.msg }
 // pinned toolchain satisfies it. env is the build's effective environment;
 // readFile reads a file relative to the service's root directory.
 func ResolveNativeVersion(runtime string, env map[string]string, readFile func(string) ([]byte, bool)) (NativeChoice, error) {
+	return ResolveNativeVersionAt(time.Time{}, runtime, env, readFile)
+}
+
+// pythonCreationCutoff is when Python's default line moved to 3.14 for new
+// services (w8/174). Render picks a service's default Python by its creation
+// date and gives every service created since 2026-02-11 a 3.14 release; bex
+// applies it to services created after this change, so a running service's
+// toolchain never moves under an operator upgrade (the WEB_CONCURRENCY cutoff
+// pattern, w5/m147).
+var pythonCreationCutoff = time.Date(2026, time.October, 23, 0, 0, 0, 0, time.UTC)
+
+// pythonDefaultLine is the line a Python service created at created builds on
+// without a version signal. A zero created (unknown) keeps the legacy default.
+func pythonDefaultLine(created time.Time) string {
+	if !created.IsZero() && !created.Before(pythonCreationCutoff) {
+		return "3.14"
+	}
+	return nativeToolchains[nativePythonRuntime].defaultLine
+}
+
+// ResolveNativeVersionAt is ResolveNativeVersion for a service created at
+// created, whose creation date picks the default line where Render's does.
+func ResolveNativeVersionAt(created time.Time, runtime string, env map[string]string, readFile func(string) ([]byte, bool)) (NativeChoice, error) {
 	t, ok := nativeToolchains[runtime]
 	if !ok {
 		return NativeChoice{}, fmt.Errorf("unsupported native runtime %q", runtime)
+	}
+	if runtime == nativePythonRuntime {
+		t.defaultLine = pythonDefaultLine(created)
 	}
 	r := resolver{t: t, env: env, readFile: readFile}
 	switch runtime {

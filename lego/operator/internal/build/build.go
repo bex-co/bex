@@ -387,7 +387,10 @@ type Options struct {
 	// toolchain line a native build asked for (w8/m51). Empty skips the phase:
 	// the build runs on its runtime's default line, as before the resolver.
 	NativeResolverImage string
-	Namespace           string // namespace the build Job runs in
+	// ServiceCreatedAt is the App's creation time; the resolve phase derives
+	// Render's creation-date defaults from it (w8/174). Zero = unknown.
+	ServiceCreatedAt time.Time
+	Namespace        string // namespace the build Job runs in
 	// Workspace is the owning tenant id (app.bex.co/workspace label value) stamped
 	// on the build Job so per-workspace concurrent-build counting works (w7/m9).
 	// Empty = label omitted (legacy/hand-applied Apps without a workspace label).
