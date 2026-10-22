@@ -96,9 +96,9 @@ The public wildcard must be **DNS-only (gray-cloud)** — Cloudflare's proxy is 
 
 - `status.tlsListener` reports the listener.
 - The API's `externalAccessRestarts` (GraphQL; a bex REST/MCP extra) is true while the next enable would add it on a running store. Where `BEX_KV_DOMAIN` is unset no listener is ever added, so the flag over-reports there.
-- That first enable is the one restart left. The Networking card says so before Save.
+- **A store created from w8/181 on starts with the listener** (when `BEX_KV_DOMAIN` and `BEX_CLUSTER_ISSUER` are set), so even its first external access changes no pod template and restarts nothing, as on Render. The first enable of a store created before that, which has no listener, is the one restart left; the Networking card says so before Save. Those stores are not rolled to add it. They gain it on that first enable.
 - On a running store with persistence Off, REST PATCH/PUT, GraphQL `setKeyValueIpAllowList`/`setKeyValuePublic` and MCP `update_key_value` refuse it with 400 `KEY_VALUE_RESTART_CONFIRMATION_REQUIRED` unless `confirm` carries `sudo clear key value <name>`. That is the phrase the dashboard's persistence change uses for the same data loss. The dashboard asks for the phrase the refusal names and retries once, as it does for protected environments.
-- Render documents no restart for allowlist changes (render.com/docs/key-value, checked 2026-10-19), so the announced first-enable restart is a recorded divergence.
+- Render documents no restart for allowlist changes (render.com/docs/key-value, checked 2026-10-19), so the announced first-enable restart of a pre-w8/181 store is a recorded, shrinking divergence: it ends as those stores are recreated.
 - Blueprint `ipAllowList` writes bypass the update path and are tracked separately (w4/358).
 
 Connection-info makes that routing requirement explicit in its ready-to-run public command: `redis-cli --sni <externalHost> -u <rediss-uri>`. `redis-cli` enables TLS from the URI but does not derive a ClientHello server name from it, while the shared edge deliberately requires SNI to select one store. Private connection-info remains `redis-cli -u <redis-uri>` because it bypasses the public SNI router.
