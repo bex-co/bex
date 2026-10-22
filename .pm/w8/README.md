@@ -397,7 +397,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **181** — [`bex keyvalues update --ip-allow-list` on a Persistence Off store fails with 400 `KEY_VALUE_RESTART_CONFIRMATION_REQUIRED`: enabling external access restarts (and empties) the store on bex, where Render changes the allowlist without a restart](181.md) ← `/qa-find-bugs-cli` sweep 1313 2026-10-22: unsigned ADR018 divergence; minor, ~1h30m.
 
-- [ ] **180** — [A request still in flight when a new instance goes live is cut after ~40 s with 502: bex drains the old instance 10 s before `SIGTERM`, Render waits 60 s](180.md) ← `/qa-find-bugs-cli` sweep 1311 2026-10-22: unsigned ADR018 divergence; major, ~1h.
+- [x] **180** — [A request still in flight when a new instance goes live is cut after ~40 s with 502: bex drains the old instance 10 s before `SIGTERM`, Render waits 60 s](done/180.md) ← `/qa-find-bugs-cli` sweep 1311 2026-10-22: unsigned ADR018 divergence; major, ~1h. — **DONE (2026-10-22)**: web/private drain is 60 s.
 
 - [ ] **179** — [A workspace-level environment group cannot be linked to a service that belongs to a project environment (409 `ENV_GROUP_SERVICE_ENVIRONMENT_MISMATCH`); Render allows linking it to any service](179.md) ← `/qa-find-bugs-cli` sweep 1312 2026-10-22: unsigned ADR018 divergence (w4/m143); minor, ~1h30m.
 

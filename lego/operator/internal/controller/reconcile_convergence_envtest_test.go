@@ -531,7 +531,10 @@ var _ = Describe("Reconcile convergence (w7/m84)", func() {
 			regress func(*corev1.PodSpec)
 		}{
 			{"pod terminationGracePeriodSeconds", func(s *corev1.PodSpec) {
+				// The 60 s drain would make a nil grace period invalid (Kubernetes
+				// defaults it to 30), so the regression drops the drain with it.
 				s.TerminationGracePeriodSeconds = nil
+				s.Containers[0].Lifecycle = nil
 			}},
 			{"container terminationMessagePath/Policy", func(s *corev1.PodSpec) {
 				s.Containers[0].TerminationMessagePath = ""
