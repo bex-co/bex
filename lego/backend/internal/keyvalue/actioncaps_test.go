@@ -57,9 +57,11 @@ func TestActionCapabilities_SuspendResumeOnly(t *testing.T) {
 	if s := actionByID(t, acts, core.ActionSuspend); s.Precondition != core.PrecondProtectedConfirmation {
 		t.Fatalf("protected suspend = %+v, want protected_confirmation_required", s)
 	}
-	// The execute path enforces exactly what was projected.
-	if _, err := svc.Suspend(context.Background(), kv.Name); !errors.Is(err, core.ErrBadRequest) {
-		t.Fatalf("unconfirmed Suspend on a protected store = %v, want ErrBadRequest", err)
+	// The execute path asks for the Admin role, not a phrase (w8/187); the
+	// precondition is the hint to confirm with the user first.
+	svc.Authz = denyWorkspaceManage{}
+	if _, err := svc.Suspend(ctxAsCaller(), kv.Name); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("Suspend on a protected store by a non-admin = %v, want ErrForbidden", err)
 	}
 
 	plain := keyValueForProtection("red-scratch", "scratch", false)

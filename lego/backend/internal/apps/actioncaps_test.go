@@ -47,9 +47,10 @@ func hasAction(acts []core.ActionDecision, id string) bool {
 
 // TestActionCapabilities_SuspendPreconditionMatchesGuard (ADR087, w6/m136):
 // the projection reports protected_confirmation_required for suspend exactly
-// when the execute path blocks an unconfirmed Suspend — both sides of the one
-// shared appProtected predicate, asserted against each other so the
-// projection cannot drift from enforcement.
+// for the members of a protected environment, the same appProtected predicate
+// the execute path consults. Since w8/187 the server enforces Render's rule
+// (only an Admin may suspend there, no phrase), and the precondition is the
+// hint a client uses to confirm with its user before sending the request.
 func TestActionCapabilities_SuspendPreconditionMatchesGuard(t *testing.T) {
 	rec := &recordingStore{protectedStatus: map[string]string{"srv-1": "protected"}}
 	svc, _ := newService(rec, managedApp("web", "srv-1"))
@@ -65,9 +66,14 @@ func TestActionCapabilities_SuspendPreconditionMatchesGuard(t *testing.T) {
 	if restart := actionByID(t, acts, core.ActionRestart); restart.Precondition != "" {
 		t.Fatalf("restart is not protection-guarded, got precondition %q", restart.Precondition)
 	}
-	// The execute path enforces exactly what the projection reported.
-	if _, err := svc.Suspend(context.Background(), "web"); !errors.Is(err, core.ErrBadRequest) {
-		t.Fatalf("unconfirmed Suspend on a protected member = %v, want ErrBadRequest", err)
+	// The execute path asks for the Admin role, not a phrase.
+	asNonAdmin(svc)
+	if _, err := svc.Suspend(ctxAs("user-a"), "web"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("Suspend on a protected member by a non-admin = %v, want ErrForbidden", err)
+	}
+	asAdmin(svc)
+	if _, err := svc.Suspend(ctxAs("user-a"), "web"); err != nil {
+		t.Fatalf("Suspend on a protected member by an admin: %v", err)
 	}
 
 	// Unprotected: the precondition clears and the same verb passes.

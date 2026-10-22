@@ -103,19 +103,12 @@ func (want codedRefusal) carries(got map[string]any) bool {
 // rewording a message can no longer change what the dashboard shows. Render CLI
 // users read the messages, so they are unchanged, except that a coded refusal
 // drops the sentinel prefix every coded error drops (`bad request: `,
-// `conflict: `), and MCP's text gains the `CODE: ` prefix. The protected
-// refusal is made in two places, the service guard and the datastores', and
-// both are pinned.
+// `conflict: `), and MCP's text gains the `CODE: ` prefix. (The typed-phrase
+// protected-environment refusal is gone since w8/187: a protected environment
+// asks for the Admin role, an ordinary 403.)
 func TestTheDashboardsRefusalsAreCodedOnEverySurface(t *testing.T) {
 	unavailable := func(code, msg string) codedRefusal {
 		return codedRefusal{status: http.StatusServiceUnavailable, code: code, msg: msg}
-	}
-	protected := func(name, confirm string) codedRefusal {
-		return codedRefusal{
-			status: http.StatusBadRequest, code: "PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED",
-			msg:    `"` + name + `" is a member of a protected environment; retry with confirm="` + confirm + `" to suspend it`,
-			params: map[string]any{"confirm": confirm, "verb": "suspend", "name": name},
-		}
 	}
 	for _, tc := range []struct {
 		name         string
@@ -166,22 +159,6 @@ func TestTheDashboardsRefusalsAreCodedOnEverySurface(t *testing.T) {
 		want:  codedRefusal{status: http.StatusForbidden, code: "FORBIDDEN", msg: "forbidden"},
 		query: `{ services { id } }`,
 		tool:  "list_services", args: map[string]any{},
-	}, {
-		name:   "protected service",
-		setup:  func(srv *Server) { srv.Apps.Store = protectedServices{status: core.ProtectedStatusProtected} },
-		method: http.MethodPost, path: "/v1/services/web/suspend",
-		want:  protected("web", "sudo suspend service web"),
-		query: `mutation { suspendService(id: "web") { id } }`,
-		tool:  "suspend_service", args: map[string]any{"serviceId": "web"},
-	}, {
-		name: "protected Postgres",
-		setup: func(srv *Server) {
-			srv.Postgres.Protection = protectedEnvironments{"env-1": core.ProtectedStatusProtected}
-		},
-		method: http.MethodPost, path: "/v1/postgres/dpg-orders/suspend",
-		want:  protected("orders", "sudo suspend database orders"),
-		query: `mutation { suspendDatabase(id: "dpg-orders") { id } }`,
-		tool:  "suspend_postgres", args: map[string]any{"postgresId": "dpg-orders"},
 	}, {
 		name: "Postgres name taken", method: http.MethodPost, path: "/v1/postgres", body: `{"name":"orders","plan":"free"}`,
 		want: codedRefusal{

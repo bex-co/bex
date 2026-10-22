@@ -47,7 +47,7 @@ type keyValueArgs struct {
 // scoped to suspend_keyvalue instead of advertising it on get_key_value.
 type suspendKeyValueArgs struct {
 	KeyValueID string `json:"keyValueId" jsonschema:"the immutable key-value id (red-...), as returned by list_key_value"`
-	Confirm    string `json:"confirm,omitempty" jsonschema:"exact confirmation phrase returned when a protected environment blocks suspend"`
+	Confirm    string `json:"confirm,omitempty" jsonschema:"accepted for compatibility and ignored: a protected environment restricts this to workspace Admins (w8/187) and needs no phrase"`
 }
 
 // createKeyValueArgs mirrors the create body the REST/GraphQL surfaces accept

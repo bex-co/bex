@@ -157,12 +157,13 @@ func TestLegacyEnvironmentDiscoveryKeepsDatabasePlacementAndProtection(t *testin
 			t.Fatalf("list with %s = %d %s", selector, response.Code, response.Body.String())
 		}
 	}
-	if _, err := svc.Suspend(t.Context(), db.Name); !errors.Is(err, core.ErrBadRequest) {
-		t.Fatalf("legacy protected environment allowed unconfirmed suspend: %v", err)
+	svc.Authz = denyWorkspaceManage{}
+	if _, err := svc.Suspend(ctxAsCaller(), db.Name); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("legacy protected environment allowed a non-admin suspend: %v", err)
 	}
-	confirmed := core.WithConfirm(t.Context(), ProtectedConfirmation("suspend", db.Spec.Name))
-	if _, err := svc.Suspend(confirmed, db.Name); err != nil {
-		t.Fatalf("confirmed suspend: %v", err)
+	svc.Authz = allowAllRelations{}
+	if _, err := svc.Suspend(ctxAsCaller(), db.Name); err != nil {
+		t.Fatalf("admin suspend: %v", err)
 	}
 	var persisted appv1alpha1.Database
 	if err := cl.Get(t.Context(), client.ObjectKeyFromObject(db), &persisted); err != nil {

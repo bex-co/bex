@@ -61,9 +61,11 @@ func TestActionCapabilities_SuspendPreconditionMatchesGuard(t *testing.T) {
 	if r := actionByID(t, acts, core.ActionRestart); r.Precondition != "" {
 		t.Fatalf("restart is not protection-guarded, got %q", r.Precondition)
 	}
-	// The execute path enforces exactly what was projected.
-	if _, err := svc.Suspend(context.Background(), db.Name); !errors.Is(err, core.ErrBadRequest) {
-		t.Fatalf("unconfirmed Suspend on a protected database = %v, want ErrBadRequest", err)
+	// The execute path asks for the Admin role, not a phrase (w8/187); the
+	// precondition is the hint to confirm with the user first.
+	svc.Authz = denyWorkspaceManage{}
+	if _, err := svc.Suspend(ctxAsCaller(), db.Name); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("Suspend on a protected database by a non-admin = %v, want ErrForbidden", err)
 	}
 
 	// Unprotected database: the precondition clears.
