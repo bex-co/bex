@@ -16,7 +16,7 @@ vi.mock("@/common/hooks/use-translations", () => ({
   useTranslations: () => ({ t: (k: string) => k }),
 }));
 
-import { useDisk, useDiskSnapshots } from "@/features/services/hooks/use-disks";
+import { useDisk, useDiskSnapshotWarning, useDiskSnapshots } from "@/features/services/hooks/use-disks";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -112,5 +112,38 @@ describe("useDiskSnapshots loading semantics", () => {
     // snapshotKey is the argument to restore; a row without one is a button
     // that cannot work.
     expect(result.current.snapshots).toEqual([]);
+  });
+});
+
+// w6/m152: the card warns only on a verdict it can render. Anything else —
+// on schedule, loading, an error, an unknown state from another server
+// version, or overdue with no due time — shows the list alone.
+describe("useDiskSnapshotWarning", () => {
+  const reply = (diskSnapshotHealth: unknown) =>
+    mockUseQuery.mockReturnValue({ data: { diskSnapshotHealth }, loading: false, error: undefined });
+  const warningFor = () => renderHook(() => useDiskSnapshotWarning("dsk-1")).result.current;
+
+  it("passes overdue and unavailable through", () => {
+    reply({ state: "overdue", dueBy: "2026-10-22T10:00:00Z" });
+    expect(warningFor()).toEqual({ state: "overdue", dueBy: "2026-10-22T10:00:00Z" });
+    reply({ state: "unavailable", dueBy: null });
+    expect(warningFor()).toEqual({ state: "unavailable" });
+  });
+
+  it("is null when on schedule, unknown, overdue without a due time, or unanswered", () => {
+    for (const health of [
+      { state: "ok", dueBy: "2026-10-22T10:00:00Z" },
+      { state: "paused", dueBy: "" },
+      { state: "overdue", dueBy: null },
+      null,
+    ]) {
+      reply(health);
+      expect(warningFor()).toBeNull();
+    }
+  });
+
+  it("does not ask for a diskless service", () => {
+    renderHook(() => useDiskSnapshotWarning(null));
+    expect(mockUseQuery).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ skip: true }));
   });
 });

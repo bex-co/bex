@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockUseDisk = vi.fn();
 const mockUseDiskSnapshots = vi.fn();
+const mockUseDiskSnapshotWarning = vi.fn();
 const mockAddDisk = vi.fn();
 const mockGrowDisk = vi.fn();
 const mockDeleteDisk = vi.fn();
@@ -13,6 +14,7 @@ const mockRestoreSnapshot = vi.fn();
 vi.mock("@/features/services/hooks/use-disks", () => ({
   useDisk: (...args: unknown[]) => mockUseDisk(...args),
   useDiskSnapshots: (...args: unknown[]) => mockUseDiskSnapshots(...args),
+  useDiskSnapshotWarning: (...args: unknown[]) => mockUseDiskSnapshotWarning(...args),
   useDiskMutations: () => ({
     addDisk: mockAddDisk,
     growDisk: mockGrowDisk,
@@ -33,6 +35,7 @@ vi.mock("@/features/metrics/hooks/use-datastore-metrics", () => ({
 }));
 
 import { DiskSection } from "@/features/services/components/disk-section";
+import { formatDateTime } from "@/common/lib/format";
 
 const noDisk = { disk: null, loading: false, error: undefined, refetch: vi.fn() };
 const attached = {
@@ -47,6 +50,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockUseDisk.mockReturnValue(noDisk);
   mockUseDiskSnapshots.mockReturnValue(noSnapshots);
+  mockUseDiskSnapshotWarning.mockReturnValue(null);
   mockAddDisk.mockResolvedValue(true);
   mockUseDatastoreMetrics.mockReturnValue({
     series: [],
@@ -350,5 +354,46 @@ describe("DiskSection", () => {
     // bex-api redacts an outage's cause; the panel says so in its own words.
     expect(screen.getByText(/something went wrong while loading/i)).toBeInTheDocument();
     expect(screen.queryByText(/aren't set up/i)).not.toBeInTheDocument();
+  });
+
+  // w6/m152: an empty list cannot tell "not due yet" from "not running".
+  describe("snapshot health", () => {
+    const due = "2026-10-22T10:00:00Z";
+    const snapshot = {
+      createdAt: "2026-10-20T02:40:00Z",
+      snapshotKey: "key-1",
+      instanceId: "srv-1",
+    };
+
+    it("says nothing extra while snapshots are on schedule", () => {
+      mockUseDisk.mockReturnValue(attached);
+      mockUseDiskSnapshotWarning.mockReturnValue(null);
+      render(<DiskSection serviceId="srv-1" plan="starter" serviceType="web_service" />);
+
+      expect(screen.getByText(/no snapshots yet/i)).toBeInTheDocument();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    it("warns when a nightly snapshot is overdue, instead of 'not yet'", () => {
+      mockUseDisk.mockReturnValue(attached);
+      mockUseDiskSnapshotWarning.mockReturnValue({ state: "overdue", dueBy: due });
+      render(<DiskSection serviceId="srv-1" plan="starter" serviceType="web_service" />);
+
+      const alert = screen.getByRole("alert");
+      expect(alert).toHaveTextContent(/no recent snapshot/i);
+      expect(alert).toHaveTextContent(formatDateTime(due) ?? "");
+      expect(screen.queryByText(/no snapshots yet/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/next nightly run/i)).not.toBeInTheDocument();
+    });
+
+    it("warns that snapshots aren't running, and keeps existing ones restorable", () => {
+      mockUseDisk.mockReturnValue(attached);
+      mockUseDiskSnapshots.mockReturnValue({ ...noSnapshots, snapshots: [snapshot] });
+      mockUseDiskSnapshotWarning.mockReturnValue({ state: "unavailable" });
+      render(<DiskSection serviceId="srv-1" plan="starter" serviceType="web_service" />);
+
+      expect(screen.getByRole("alert")).toHaveTextContent(/snapshots aren't running/i);
+      expect(screen.getByRole("button", { name: /restore/i })).toBeInTheDocument();
+    });
   });
 });

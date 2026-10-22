@@ -1,6 +1,7 @@
-import { HardDrive, Pencil } from "lucide-react";
+import { HardDrive, Pencil, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 
+import { Alert, AlertDescription, AlertTitle } from "@/common/components/ui/alert";
 import { Button } from "@/common/components/ui/button";
 import {
   Card,
@@ -19,11 +20,13 @@ import {
   type DiskView,
   useDisk,
   useDiskMutations,
+  useDiskSnapshotWarning,
   useDiskSnapshots,
 } from "@/features/services/hooks/use-disks";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useLocalDateTime } from "@/common/hooks/use-local-date";
 import {
   hasGraphQLErrorCode,
   mutationErrorMessage,
@@ -554,6 +557,9 @@ function SnapshotsCard({
 }) {
   const { t } = useTranslations();
   const { snapshots, loading, error } = useDiskSnapshots(disk.id);
+  // Snapshots that should exist but don't (w6/m152): never read as "not yet".
+  const warning = useDiskSnapshotWarning(disk.id);
+  const dueBy = useLocalDateTime(warning?.state === "overdue" ? warning.dueBy : null);
   // Branch on the server's code, never on its prose: the message can be
   // sanitized in transit, and "not configured" must stay distinguishable from a
   // real outage no matter what words survive.
@@ -571,6 +577,24 @@ function SnapshotsCard({
         <p className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm text-muted-foreground">
           {t("services.diskRestoreDatabaseWarning")}
         </p>
+        {warning ? (
+          <Alert variant="destructive">
+            <TriangleAlert />
+            {warning.state === "unavailable" ? (
+              <>
+                <AlertTitle>{t("services.diskSnapshotsNotRunningTitle")}</AlertTitle>
+                <AlertDescription>{t("services.diskSnapshotsNotRunningBody")}</AlertDescription>
+              </>
+            ) : (
+              <>
+                <AlertTitle>{t("services.diskSnapshotsOverdueTitle")}</AlertTitle>
+                <AlertDescription>
+                  {t("services.diskSnapshotsOverdueBody", { dueBy: dueBy ?? "" })}
+                </AlertDescription>
+              </>
+            )}
+          </Alert>
+        ) : null}
         {loading && snapshots.length === 0 ? (
           <CardSkeleton />
         ) : notConfigured ? (
@@ -590,11 +614,13 @@ function SnapshotsCard({
             body={mutationErrorMessage(error, t("common.loadErrorRetry"))}
           />
         ) : snapshots.length === 0 ? (
-          <PanelCenteredState
-            icon={<HardDrive className="size-6" />}
-            title={t("services.diskSnapshotsEmptyTitle")}
-            body={t("services.diskSnapshotsEmptyBody")}
-          />
+          warning ? null : (
+            <PanelCenteredState
+              icon={<HardDrive className="size-6" />}
+              title={t("services.diskSnapshotsEmptyTitle")}
+              body={t("services.diskSnapshotsEmptyBody")}
+            />
+          )
         ) : (
           <ul className="divide-y">
             {snapshots.map((snapshot) => (

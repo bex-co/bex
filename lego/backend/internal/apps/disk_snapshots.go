@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -34,6 +35,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 	"github.com/bex-co/bex/lego/backend/internal/snapshotticket"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -103,22 +105,16 @@ type DiskSnapshotObject struct {
 // ListDiskSnapshots returns a disk's snapshots, newest first, each with a
 // freshly signed 24-hour key.
 func (s *Service) ListDiskSnapshots(ctx context.Context, diskID string) ([]DiskSnapshotView, error) {
-	disk, a, err := s.authorizeDisk(ctx, core.RelCanView, diskID)
+	disk, a, err := s.authorizeDiskSnapshots(ctx, diskID)
 	if err != nil {
 		return nil, err
 	}
-	if s.DiskSnapshots == nil || len(s.SnapshotSecret) == 0 {
-		return nil, errDiskSnapshotsNotConfigured()
-	}
-	objects, err := s.DiskSnapshots.ListSnapshots(ctx, diskSnapshotPrefix(a))
+	objects, err := s.diskSnapshotObjects(ctx, a)
 	if err != nil {
-		return nil, fmt.Errorf("list snapshots: %w", err)
+		return nil, err
 	}
 	views := make([]DiskSnapshotView, 0, len(objects))
 	for _, obj := range objects {
-		if !strings.HasSuffix(obj.Key, diskSnapshotSuffix) {
-			continue
-		}
 		key, err := snapshotticket.Mint(s.SnapshotSecret, disk.ID, obj.Key, s.Now())
 		if err != nil {
 			return nil, err
@@ -132,6 +128,31 @@ func (s *Service) ListDiskSnapshots(ctx context.Context, diskID string) ([]DiskS
 	// Newest first: the snapshot a caller almost always wants is the last one.
 	sort.Slice(views, func(i, j int) bool { return views[i].CreatedAt.After(views[j].CreatedAt) })
 	return views, nil
+}
+
+// authorizeDiskSnapshots is the view gate every snapshot read shares: the disk
+// must be visible and this deployment must have a snapshot store.
+func (s *Service) authorizeDiskSnapshots(ctx context.Context, diskID string) (store.Disk, *appv1alpha1.App, error) {
+	disk, a, err := s.authorizeDisk(ctx, core.RelCanView, diskID)
+	if err != nil {
+		return store.Disk{}, nil, err
+	}
+	if s.DiskSnapshots == nil || len(s.SnapshotSecret) == 0 {
+		return store.Disk{}, nil, errDiskSnapshotsNotConfigured()
+	}
+	return disk, a, nil
+}
+
+// diskSnapshotObjects lists a disk's snapshot objects, skipping anything else
+// in its prefix, which must never be offered as restorable.
+func (s *Service) diskSnapshotObjects(ctx context.Context, a *appv1alpha1.App) ([]DiskSnapshotObject, error) {
+	objects, err := s.DiskSnapshots.ListSnapshots(ctx, diskSnapshotPrefix(a))
+	if err != nil {
+		return nil, fmt.Errorf("list snapshots: %w", err)
+	}
+	return slices.DeleteFunc(objects, func(obj DiskSnapshotObject) bool {
+		return !strings.HasSuffix(obj.Key, diskSnapshotSuffix)
+	}), nil
 }
 
 // snapshotCreatedAt prefers the timestamp encoded in the object name over the
@@ -257,6 +278,7 @@ func (s *Service) diskSnapshotGQLQueryFields() graphql.Fields {
 				return s.ListDiskSnapshots(p.Context, p.Args["id"].(string))
 			},
 		},
+		"diskSnapshotHealth": gqlutil.IDVerb(diskSnapshotHealthGQLType, s.DiskSnapshotHealth),
 	}
 }
 
