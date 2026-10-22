@@ -56,3 +56,15 @@ func TestPlanCPUCountRoundsPlanCPUsUp(t *testing.T) {
 		}
 	}
 }
+
+// RENDER_CPU_COUNT is the plan's CPU, not a rounded-up count (w8/171).
+func TestPlanCPUsIsTheDecimalPlanQuantity(t *testing.T) {
+	for tier, want := range map[string]string{"starter": "0.5", "standard": "1", "pro": "2", "pro-plus": "4", "": "1", "no-such-plan": "1"} {
+		if got := PlanCPUs(tier); got != want {
+			t.Errorf("PlanCPUs(%q) = %q, want %q", tier, got, want)
+		}
+	}
+	if got, ok := Value(&appv1alpha1.App{Spec: appv1alpha1.AppSpec{Tier: "starter"}}, CPUCount, ""); !ok || got != "0.5" {
+		t.Errorf("RENDER_CPU_COUNT for starter = %q, %v; want 0.5", got, ok)
+	}
+}
