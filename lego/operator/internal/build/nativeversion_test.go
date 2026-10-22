@@ -61,6 +61,17 @@ func TestResolveNativeVersion(t *testing.T) {
 		{"python env beats file", "python", map[string]string{"PYTHON_VERSION": "3.12"}, map[string]string{".python-version": "3.10"}, "3.12", "PYTHON_VERSION=3.12"},
 		{"python file", "python", nil, map[string]string{".python-version": "# pinned\n3.10.4\n"}, "3.10", ".python-version"},
 		{"node default", "node", nil, nil, "24", ""},
+		// Versions Render still installs (w8/173).
+		{"node 20", "node", map[string]string{"NODE_VERSION": "20"}, nil, "20", "NODE_VERSION=20"},
+		{"node 14 default-table pin", "node", map[string]string{"NODE_VERSION": "14.17.0"}, nil, "14", "NODE_VERSION=14.17.0"},
+		{"node .nvmrc 18", "node", nil, map[string]string{".nvmrc": "18"}, "18", ".nvmrc"},
+		{"node tilde engines", "node", nil, map[string]string{"package.json": `{"engines":{"node":"~16.13.0"}}`}, "16", "package.json engines.node"},
+		{"node bounded old range", "node", nil, map[string]string{"package.json": `{"engines":{"node":">=16 <21"}}`}, "20", "package.json engines.node"},
+		{"python 3.9", "python", map[string]string{"PYTHON_VERSION": "3.9.18"}, nil, "3.9", "PYTHON_VERSION=3.9.18"},
+		{"python 3.7 floor", "python", map[string]string{"PYTHON_VERSION": "3.7.3"}, nil, "3.7", "PYTHON_VERSION=3.7.3"},
+		{"ruby 3.2 Render rails example", "ruby", nil, map[string]string{".ruby-version": "ruby-3.2.0"}, "3.2", ".ruby-version"},
+		{"ruby 3.2 Gemfile", "ruby", nil, map[string]string{"Gemfile": "ruby '3.2.0'"}, "3.2", "Gemfile"},
+		{"elixir 1.20", "elixir", map[string]string{"ELIXIR_VERSION": "1.20.4"}, nil, "1.20", "ELIXIR_VERSION=1.20.4"},
 		{"node env major", "node", map[string]string{"NODE_VERSION": "22"}, nil, "22", "NODE_VERSION=22"},
 		{"node env full", "node", map[string]string{"NODE_VERSION": "v22.11.0"}, nil, "22", "NODE_VERSION=v22.11.0"},
 		{"node .node-version beats .nvmrc", "node", nil, map[string]string{".node-version": "26", ".nvmrc": "22"}, "26", ".node-version"},
@@ -85,7 +96,7 @@ func TestResolveNativeVersion(t *testing.T) {
 			"gems.locked": "GEM\n  remote: https://rubygems.org/\n", "Gemfile.lock": discourseLock}, "3.4", "Gemfile.lock"},
 		{"ruby Bundler 4 lockfile without patchlevel, CRLF", "ruby", nil, map[string]string{"Gemfile.lock": "RUBY VERSION\r\n  ruby 3.3.6\r\n"}, "3.3", "Gemfile.lock"},
 		{"ruby stale unsupported lock defers to the Gemfile", "ruby", nil, map[string]string{
-			"Gemfile.lock": "RUBY VERSION\n   ruby 3.2.2p53\n", "Gemfile": "ruby '~> 3.2'"}, "3.4", "Gemfile"},
+			"Gemfile.lock": "RUBY VERSION\n   ruby 2.6.10p210\n", "Gemfile": "ruby '~> 3.2'"}, "3.4", "Gemfile"},
 		{"ruby stale unsupported lock and no other signal keeps the default", "ruby", nil, map[string]string{
 			"Gemfile.lock": "RUBY VERSION\n   ruby 2.7.8p225\n"}, "3.4", ""},
 		{"ruby .tool-versions system defers", "ruby", nil, map[string]string{".tool-versions": "ruby system\n", "Gemfile": "ruby '3.3.6'"}, "3.3", "Gemfile"},
@@ -128,10 +139,11 @@ func TestResolveNativeVersionRefusesUnsupportedByName(t *testing.T) {
 		env, files map[string]string
 		want       string
 	}{
-		{"python", map[string]string{"PYTHON_VERSION": "2.7.18"}, nil, `PYTHON_VERSION=2.7.18 is not a supported Python version; supported Python lines are 3.10, 3.11, 3.12, 3.13, 3.14`},
+		{"python", map[string]string{"PYTHON_VERSION": "2.7.18"}, nil, `PYTHON_VERSION=2.7.18 is not a supported Python version; supported Python lines are 3.7, 3.8, 3.9, 3.10, 3.11, 3.12, 3.13, 3.14`},
+		{"python", map[string]string{"PYTHON_VERSION": "3.6.15"}, nil, `PYTHON_VERSION=3.6.15 is not a supported Python version`},
 		{"python", nil, map[string]string{".python-version": "pypy3.10"}, `.python-version "pypy3.10"`},
-		{"node", map[string]string{"NODE_VERSION": "18"}, nil, "supported Node lines are 22, 24, 26"},
-		{"node", nil, map[string]string{"package.json": `{"engines":{"node":"<20"}}`}, `package.json engines.node "<20"`},
+		{"node", map[string]string{"NODE_VERSION": "8"}, nil, "supported Node lines are 14, 16, 18, 20, 22, 24, 26"},
+		{"node", nil, map[string]string{"package.json": `{"engines":{"node":"<14"}}`}, `package.json engines.node "<14"`},
 		{"ruby", nil, map[string]string{"Gemfile": `ruby "2.7.8"`}, `Gemfile ruby "2.7.8"`},
 		{"ruby", nil, map[string]string{".tool-versions": "ruby 2.7.8\n"}, `.tool-versions ruby "2.7.8"`},
 		{"elixir", map[string]string{"ELIXIR_VERSION": "1.18", "ERLANG_VERSION": "26.2"}, nil, "runs on Erlang/OTP 28"},
