@@ -639,3 +639,42 @@ func TestDrainLengthIsAdoptedLazilyFromTheOldDrain(t *testing.T) {
 		t.Errorf("grace = %v; want 60 + %d", got, defaultTerminationGracePeriodSeconds)
 	}
 }
+
+// w8/189: a failing instance leaves rotation after 15s, as on Render. The
+// readiness probe runs every 5s (3 failures); startup and liveness keep their
+// 10s period, so the 60s restart and 15-minute rollout budgets are unchanged.
+func TestReadinessProbeRemovesAFailingInstanceAfterFifteenSeconds(t *testing.T) {
+	c := appContainerOf(t, project(projectionApp(), webParams()))
+	r := c.ReadinessProbe
+	if r.PeriodSeconds*r.FailureThreshold != 15 {
+		t.Errorf("readiness = %ds × %d, want 15s to leave rotation", r.PeriodSeconds, r.FailureThreshold)
+	}
+	if got := c.LivenessProbe.PeriodSeconds * c.LivenessProbe.FailureThreshold; got != livenessRestartWindowSeconds {
+		t.Errorf("liveness window = %ds, want %d", got, livenessRestartWindowSeconds)
+	}
+	if got := c.StartupProbe.PeriodSeconds * c.StartupProbe.FailureThreshold; got != rolloutBudgetSeconds {
+		t.Errorf("startup budget = %ds, want %d", got, rolloutBudgetSeconds)
+	}
+}
+
+// A Deployment stored with the previous 10s readiness period keeps it until
+// another change rolls it, so an operator upgrade does not roll every service.
+func TestReadinessPeriodIsAdoptedLazily(t *testing.T) {
+	app := projectionApp()
+	p := webParams()
+	stored := project(app, p)
+	stored.Spec.Template.Spec.Containers[0].ReadinessProbe.PeriodSeconds = 10
+
+	upgraded := stored.DeepCopy()
+	applyDeploymentSpec(upgraded, app, p)
+	if !equalPodTemplate(upgraded.Spec.Template, stored.Spec.Template) {
+		t.Fatal("an unchanged App's template changed on upgrade; that would roll every service at once")
+	}
+
+	restarted := projectionApp(func(a *appv1alpha1.App) { a.Spec.RestartedAt = "2026-10-22T00:00:00Z" })
+	next := stored.DeepCopy()
+	applyDeploymentSpec(next, restarted, p)
+	if got := appContainerOf(t, next).ReadinessProbe.PeriodSeconds; got != healthCheckReadinessPeriodSeconds {
+		t.Errorf("the rolling pass readiness period = %d, want %d", got, healthCheckReadinessPeriodSeconds)
+	}
+}
