@@ -458,7 +458,7 @@ func (s *Service) registerDiskRoutes(mux *http.ServeMux) {
 		})
 
 		after, limit := core.PageParams(q)
-		disks = core.StablePage(disks, after, limit, q.Has("cursor") || q.Has("limit"),
+		disks = core.StablePage(disks, after, limit, true,
 			func(d DiskView) string { return d.ID })
 		return toDiskList(disks), nil
 	}))

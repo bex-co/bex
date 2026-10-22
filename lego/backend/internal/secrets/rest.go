@@ -85,7 +85,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	}))
 
 	mux.HandleFunc("GET "+base+"/{id}/env-vars", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		vars, err := listPagedOrAll(r, s.ListEnvVarsPage, s.ListEnvVars)
+		vars, err := listPaged(r, s.ListEnvVarsPage)
 		if err != nil {
 			return nil, err
 		}
@@ -124,7 +124,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// Secret files (Render's /v1/services/{id}/secret-files) — names in the
 	// list, contents on a single GET, same store + roll mechanism as env vars.
 	mux.HandleFunc("GET "+base+"/{id}/secret-files", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		files, err := listPagedOrAll(r, s.ListSecretFilesPage, s.ListSecretFiles)
+		files, err := listPaged(r, s.ListSecretFilesPage)
 		if err != nil {
 			return nil, err
 		}
@@ -167,14 +167,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	}))
 }
 
-// listPagedOrAll routes a list read to its paged or unpaged verb. Callers that
-// omit both cursor and limit predate pagination and still get the complete
-// list, so the absence of the parameters — not their values — picks the verb.
-func listPagedOrAll[T any](r *http.Request, page func(context.Context, string, string, int) ([]T, error), all func(context.Context, string) ([]T, error)) ([]T, error) {
-	q := r.URL.Query()
-	if !q.Has("cursor") && !q.Has("limit") {
-		return all(r.Context(), r.PathValue("id"))
-	}
-	after, limit := core.PageParams(q)
+// listPaged reads one page of a list. Render pages by default (a limit of 20),
+// so an omitted cursor and limit is the first page, not the whole list
+// (w8/191).
+func listPaged[T any](r *http.Request, page func(context.Context, string, string, int) ([]T, error)) ([]T, error) {
+	after, limit := core.PageParams(r.URL.Query())
 	return page(r.Context(), r.PathValue("id"), after, limit)
 }
