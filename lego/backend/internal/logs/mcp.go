@@ -44,14 +44,14 @@ import (
 // filters are arrays). Embedded so the two tools can never drift apart.
 type logFilters struct {
 	Resource   []string `json:"resource" jsonschema:"service, managed Postgres (dpg-), or Key Value (red-) ids to read logs for; all must belong to the same owner"`
-	Level      []string `json:"level,omitempty" jsonschema:"filter logs by severity level (debug|info|warn|error|unknown); * wildcards supported"`
+	Level      []string `json:"level,omitempty" jsonschema:"filter logs by severity level (debug|info|warn|error|unknown); * wildcards and /regex/ supported"`
 	Type       []string `json:"type,omitempty" jsonschema:"filter logs by type: app (the service's own output) | request (edge access logs) | build (build output)"`
 	Instance   []string `json:"instance,omitempty" jsonschema:"filter logs by the instance (replica) they were emitted from; applies to app logs"`
-	Host       []string `json:"host,omitempty" jsonschema:"filter request logs by their host; * wildcards supported"`
-	StatusCode []string `json:"statusCode,omitempty" jsonschema:"filter request logs by status code (e.g. 404 or the class 4xx); * wildcards supported"`
-	Method     []string `json:"method,omitempty" jsonschema:"filter request logs by HTTP method; * wildcards supported"`
-	Path       []string `json:"path,omitempty" jsonschema:"filter request logs by their path; * wildcards supported"`
-	Text       []string `json:"text,omitempty" jsonschema:"case-insensitive literal substrings; match any nonempty value"`
+	Host       []string `json:"host,omitempty" jsonschema:"filter request logs by their host; * wildcards and /regex/ supported"`
+	StatusCode []string `json:"statusCode,omitempty" jsonschema:"filter request logs by status code (e.g. 404 or the class 4xx); * wildcards and /regex/ supported"`
+	Method     []string `json:"method,omitempty" jsonschema:"filter request logs by HTTP method; * wildcards and /regex/ supported"`
+	Path       []string `json:"path,omitempty" jsonschema:"filter request logs by their path; * wildcards and /regex/ supported"`
+	Text       []string `json:"text,omitempty" jsonschema:"case-insensitive literal substrings, * wildcards or /regex/ (RE2); match any nonempty value"`
 	TextMode   string   `json:"textMode,omitempty" jsonschema:"bex extension — what text matches: raw (default, the stored message bytes) | display (the text a terminal shows, ANSI styling and overwritten text excluded); returned messages stay raw either way"`
 	StartTime  string   `json:"startTime,omitempty" jsonschema:"RFC3339 lower time bound (inclusive)"`
 	EndTime    string   `json:"endTime,omitempty" jsonschema:"RFC3339 upper time bound (inclusive)"`

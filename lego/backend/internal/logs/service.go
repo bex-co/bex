@@ -268,7 +268,7 @@ type LogQuery struct {
 	// in App on input); callers cannot set this selector directly.
 	KeyValue string
 	Types    []string // empty == all types; values: app | request | build
-	Search   []string // case-insensitive literal substrings, OR within Render's `text`
+	Search   []string // `text` terms, OR within the filter: case-insensitive literals, `*` wildcards, or `/…/` RE2 (filterpattern.go)
 	// TextMode picks what Search compares against: TextModeRaw ("" — the
 	// default) the stored message bytes, TextModeDisplay the terminal-display
 	// text a log row shows (displayText). A Bex extension; see display.go.
@@ -298,6 +298,8 @@ type LogQuery struct {
 	notBefore time.Time
 
 	levelFilter *regexp.Regexp // datastore pod severity matcher, compiled once per query
+	// textMatchers are Search's compiled terms, built by normalized().
+	textMatchers []func(original, lower string) bool
 	// probe lets a page read one line past the caller's (clamped) Limit, so the
 	// page can tell whether any line lies beyond it (queryLogPage).
 	probe bool
@@ -317,6 +319,9 @@ func (q LogQuery) validate() error {
 	}
 	if q.TextMode != "" && q.TextMode != TextModeRaw && q.TextMode != TextModeDisplay {
 		return fmt.Errorf("%w: unknown textMode %q (want %s|%s)", core.ErrBadRequest, q.TextMode, TextModeRaw, TextModeDisplay)
+	}
+	if err := q.validateFilterPatterns(); err != nil {
+		return err
 	}
 	for _, t := range q.Types {
 		if t != LogTypeApp && t != LogTypeRequest && t != LogTypeBuild && t != LogTypePreDeploy {
@@ -352,15 +357,29 @@ func (q LogQuery) normalized() LogQuery {
 		q.Direction = DirectionBackward
 	}
 	q.Search = normalizeLogText(q.Search)
+	q.textMatchers = compileTextMatchers(q.Search)
 	return q
+}
+
+func compileTextMatchers(terms []string) []func(original, lower string) bool {
+	matchers := make([]func(original, lower string) bool, len(terms))
+	for i, t := range terms {
+		matchers[i] = textMatcher(t)
+	}
+	return matchers
 }
 
 func normalizeLogText(values []string) []string {
 	terms := make([]string, 0, len(values))
 	for _, term := range values {
-		if term != "" {
-			terms = append(terms, strings.ToLower(term))
+		if term == "" {
+			continue
 		}
+		// A regex is matched as written: lowercasing would turn \D into \d.
+		if _, regex := regexFilterBody(term); !regex {
+			term = strings.ToLower(term)
+		}
+		terms = append(terms, term)
 	}
 	slices.Sort(terms)
 	return slices.Compact(terms)
@@ -530,8 +549,12 @@ func (q LogQuery) matchesText(message string) bool {
 	if q.TextMode == TextModeDisplay {
 		message = displayText(message)
 	}
-	message = strings.ToLower(message)
-	return slices.ContainsFunc(q.Search, func(term string) bool { return strings.Contains(message, term) })
+	lower := strings.ToLower(message)
+	matchers := q.textMatchers
+	if len(matchers) != len(q.Search) {
+		matchers = compileTextMatchers(q.Search)
+	}
+	return slices.ContainsFunc(matchers, func(m func(original, lower string) bool) bool { return m(message, lower) })
 }
 
 // keep reports whether an entry satisfies the search/time/level filters. Assumes

@@ -405,7 +405,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **177** — [A native web service whose process listens on a port other than `PORT` never goes live (Render's own `fastapi-uv` example: uvicorn on 8000), because bex never detects the bound port; the image declared-port case is w4/388](177.md) ← `/qa-find-bugs-cli` sweep 1308 2026-10-22: Render detects the bound port; unsigned ADR018 divergence; major, ~4h.
 
-- [ ] **176** — [`bex logs --text 'GET*200'` and every `/regex/` search return nothing: Render's log filters accept `*` wildcards and RE2 regex, bex's `text` is literal-only and no filter takes regex](176.md) ← `/qa-find-bugs-cli` sweep 1310 2026-10-22: unsigned ADR010/ADR018 divergence; minor, ~1h30m.
+- [x] **176** — [`bex logs --text 'GET*200'` and every `/regex/` search return nothing: Render's log filters accept `*` wildcards and RE2 regex, bex's `text` is literal-only and no filter takes regex](done/176.md) ← `/qa-find-bugs-cli` sweep 1310 2026-10-22: unsigned ADR010/ADR018 divergence; minor, ~1h30m. — **DONE (2026-10-22)**: wildcard and regex log filters.
 
 - [ ] **175** — [`PYTHON_VERSION=3.11.9` builds on Python 3.11.17: bex substitutes its pinned patch where Render installs the exact version requested](175.md) ← `/qa-find-bugs-cli` sweep 1307 2026-10-22: stricter follow-up to 173; minor, ~4h.
 
