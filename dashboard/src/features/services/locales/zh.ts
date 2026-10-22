@@ -3791,6 +3791,27 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "第一个快照将在下一次夜间任务中生成。",
     description: "Snapshots empty state body",
   },
+  "services.diskSnapshotsOverdueTitle": {
+    message: "没有最近的快照",
+    description: "A disk's nightly snapshot did not arrive when expected",
+  },
+  "services.diskSnapshotsOverdueBody": {
+    message:
+      "预计在 {dueBy} 之前生成的夜间快照尚未生成，此磁盘最近的更改未被备份。已有快照不受影响。如果持续出现，请联系支持。",
+    description:
+      "Explains an overdue nightly snapshot; {dueBy} is a local date/time",
+  },
+  "services.diskSnapshotsNotRunningTitle": {
+    message: "快照未在运行",
+    description:
+      "The platform could not schedule this disk's nightly snapshots",
+  },
+  "services.diskSnapshotsNotRunningBody": {
+    message:
+      "bex 无法为此磁盘安排夜间快照，新的更改未被备份。已有快照不受影响。请联系支持。",
+    description:
+      "Explains that nightly snapshots cannot be scheduled and whom to contact",
+  },
   "services.diskSnapshotsUnavailableTitle": {
     message: "快照不可用",
     description: "Snapshots error state title",

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import {
   AddDiskDocument,
   DeleteDiskDocument,
+  DiskSnapshotHealthDocument,
   DiskSnapshotsDocument,
   DisksDocument,
   RestoreDiskSnapshotDocument,
@@ -241,4 +242,32 @@ export function useDiskMutations(
     clearAddError: useCallback(() => setAddError(null), []),
     busy,
   };
+}
+
+/** A disk whose nightly snapshots should exist but don't (w6/m152). */
+export type DiskSnapshotWarning =
+  | { state: "overdue"; dueBy: string }
+  | { state: "unavailable" };
+
+/**
+ * The disk's snapshot warning, if any. Null when snapshots are on schedule,
+ * while loading, on any error, and for a verdict this client cannot render
+ * (an unknown state, or overdue without a due time): the card then shows the
+ * list alone, as before this check existed.
+ */
+export function useDiskSnapshotWarning(
+  diskId: string | null,
+): DiskSnapshotWarning | null {
+  const { data } = useQuery(DiskSnapshotHealthDocument, {
+    variables: { id: diskId ?? "" },
+    skip: !diskId,
+    fetchPolicy: "cache-and-network",
+    errorPolicy: "all",
+  });
+  const health = data?.diskSnapshotHealth;
+  if (health?.state === "unavailable") return { state: "unavailable" };
+  if (health?.state === "overdue" && health.dueBy) {
+    return { state: "overdue", dueBy: health.dueBy };
+  }
+  return null;
 }

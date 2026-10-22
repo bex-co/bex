@@ -22,6 +22,16 @@ query DiskSnapshots($id: String!) {
   }
 }
 
+# Whether nightly snapshots are being taken (bex extension, w6/m152): an empty
+# list alone cannot tell "not due yet" from "not running". A separate query so a
+# backend without the field never breaks the snapshot list itself.
+query DiskSnapshotHealth($id: String!) {
+  diskSnapshotHealth(id: $id) {
+    state
+    dueBy
+  }
+}
+
 mutation AddDisk($serviceId: String!, $name: String!, $mountPath: String!, $sizeGB: Int) {
   addDisk(serviceId: $serviceId, name: $name, mountPath: $mountPath, sizeGB: $sizeGB) {
     ...DiskFields
