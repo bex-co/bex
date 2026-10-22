@@ -276,7 +276,18 @@ func TestDatastorePlacementAcrossComposedSurfaces(t *testing.T) {
 				if remove {
 					switch surface {
 					case "REST":
-						request(http.MethodDelete, "/v1/"+kind+"s/"+target, "", http.StatusNoContent)
+						// Render deletes only an empty environment or project and answers
+						// 409 otherwise (w8/188), so the detach-and-delete cascade this case
+						// checks runs through GraphQL and MCP, the confirmed-teardown flows.
+						if operation == "delete-project-without-environment" {
+							// No environment means nothing to hold it back: Render's rule is
+							// about the project's environments, and the project's own
+							// datastores are detached as before.
+							request(http.MethodDelete, "/v1/"+kind+"s/"+target, "", http.StatusNoContent)
+							break
+						}
+						request(http.MethodDelete, "/v1/"+kind+"s/"+target, "", http.StatusConflict)
+						t.Skip("REST refuses to delete a non-empty " + kind + " (w8/188)")
 					case "GraphQL":
 						field := "deleteProject"
 						if kind == "environment" {

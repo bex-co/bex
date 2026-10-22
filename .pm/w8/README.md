@@ -383,7 +383,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **189** — [A failing instance keeps receiving traffic for ~30 s after its health check starts failing; Render stops routing to it after 15 s](done/189.md) ← `/qa-find-bugs-cli` sweep 1324 2026-10-22: unsigned ADR018 divergence; minor, ~30m. — **DONE (2026-10-22)**: failing instances leave rotation after 15 s.
 
-- [ ] **188** — [Render's environment-membership API is missing (`POST`/`DELETE /v1/environments/{id}/resources` → 404), and `DELETE` of a non-empty environment succeeds and silently detaches its services where Render's API answers 409](188.md) ← `/qa-find-bugs-cli` sweep 1323 2026-10-22: unsigned ADR032 difference; minor, ~2h.
+- [x] **188** — [Render's environment-membership API is missing (`POST`/`DELETE /v1/environments/{id}/resources` → 404), and `DELETE` of a non-empty environment succeeds and silently detaches its services where Render's API answers 409](done/188.md) ← `/qa-find-bugs-cli` sweep 1323 2026-10-22: unsigned ADR032 difference; minor, ~2h. — **DONE (2026-10-22)**: resources routes served; REST delete requires an empty grouping.
 
 - [ ] **187** — [Protected environments demand a bex-only typed phrase (`confirm="sudo …"`) from every caller, admins included, so `bex services delete`, `bex deploys create --image` and a Render-shaped rollback all fail; Render restricts a fixed list of actions to Admins and never asks for a phrase](187.md) ← `/qa-find-bugs-cli` sweep 1321 2026-10-22: unsigned ADR032 divergence; major, ~3h.
 

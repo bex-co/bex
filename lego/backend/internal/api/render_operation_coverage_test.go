@@ -26,7 +26,6 @@ import (
 // Every absent Render operation is a named, documented omission; new upstream
 // operations cannot silently fall out of the route intersection inventory.
 var renderOperationOmissions = map[string]string{
-	"add-resources-to-environment":         "ADR018 \u00a7 Render operation omissions \u2014 Environment resource mutation paths",
 	"cancelTaskRun":                        "ADR018 \u00a7 Render operation omissions \u2014 Render Workflows",
 	"create-dedicated-ip":                  "ADR018 \u00a7 Render operation omissions \u2014 Dedicated outbound IPs",
 	"create-postgres-user":                 "ADR018 \u00a7 Render operation omissions \u2014 Postgres default credential rotation",
@@ -59,7 +58,6 @@ var renderOperationOmissions = map[string]string{
 	"listWorkflowVersions":                 "ADR018 \u00a7 Render operation omissions \u2014 Render Workflows",
 	"patch-owner-notification-settings":    "ADR018 \u00a7 Render operation omissions \u2014 Owner notification policy",
 	"preview-service":                      "ADR018 \u00a7 Render operation omissions \u2014 PR previews",
-	"remove-resources-from-environment":    "ADR018 \u00a7 Render operation omissions \u2014 Environment resource mutation paths",
 	"remove-workspace-member":              "ADR018 \u00a7 Render operation omissions \u2014 Render member mutation paths",
 	"resume-redis":                         "ADR018 \u00a7 Render operation omissions \u2014 Legacy Redis spelling",
 	"retrieve-dedicated-ip":                "ADR018 \u00a7 Render operation omissions \u2014 Dedicated outbound IPs",
