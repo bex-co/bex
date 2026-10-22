@@ -347,17 +347,6 @@ func TestSourcePatchProbesOutboundCallsExactlyOnce(t *testing.T) {
 	}
 }
 
-// dockerRepoAppManaged is dockerRepoApp with the control-plane labels, so the
-// protection lookup has an app id to key on.
-func dockerRepoAppManaged(name string) *appv1alpha1.App {
-	a := dockerRepoApp(name)
-	a.Labels = map[string]string{
-		store.LabelManagedBy: store.ManagedByValue,
-		store.LabelAppID:     "srv-test",
-	}
-	return a
-}
-
 // A name conflict is raised by the STORE during the write (w8/m47), not by a
 // check the preflight can run — so it is the one patch refusal that still lands
 // mid-apply. It is harmless only because displayName owns the FIRST table row:

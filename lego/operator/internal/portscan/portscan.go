@@ -74,9 +74,7 @@ func (d Dialer) Scan(ctx context.Context, ip string) ([]int, error) {
 	var wg sync.WaitGroup
 	var sawRefusal bool
 	for range workers {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			var dialer net.Dialer
 			for port := range ports {
 				dctx, cancel := context.WithTimeout(ctx, dialTimeout)
@@ -94,7 +92,7 @@ func (d Dialer) Scan(ctx context.Context, ip string) ([]int, error) {
 					mu.Unlock()
 				}
 			}
-		}()
+		})
 	}
 feed:
 	for port := low; port <= high; port++ {

@@ -18,7 +18,6 @@ package core
 
 import (
 	"context"
-	"fmt"
 )
 
 type confirmationKey struct{}
@@ -114,35 +113,6 @@ func RequireEnvironmentAdmin(ctx context.Context, store EnvironmentProtectionSto
 		return nil
 	}
 	return admin()
-}
-
-// RequireEnvironmentConfirmation enforces an exact server-issued phrase for a
-// resource in a protected Environment. Empty environment/store are no-ops so
-// DB-less and environment-less resources preserve their original behavior.
-func RequireEnvironmentConfirmation(
-	ctx context.Context,
-	store EnvironmentProtectionStore,
-	environmentID, name, verb, required string,
-) error {
-	protected, err := EnvironmentProtected(ctx, store, environmentID)
-	if err != nil {
-		return err
-	}
-	if !protected {
-		return nil
-	}
-	return RequireProtectedConfirmation(ctx, name, verb, required)
-}
-
-// RequireProtectedConfirmation refuses verb on name, a member of a protected
-// environment, unless the caller sent confirm. The refusal is 400
-// PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED with params confirm (the phrase a
-// retry must send), verb and name, so a client asks for the phrase without
-// parsing the message (w5/m128).
-func RequireProtectedConfirmation(ctx context.Context, name, verb, confirm string) error {
-	return RequireConfirmation(ctx, confirm, "PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED",
-		fmt.Sprintf("%q is a member of a protected environment; retry with confirm=%q to %s it", name, confirm, verb),
-		map[string]any{"verb": verb, "name": name})
 }
 
 // RequireConfirmation passes when the caller sent confirm, and otherwise refuses
