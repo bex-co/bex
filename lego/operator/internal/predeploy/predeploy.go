@@ -21,8 +21,8 @@ limitations under the License.
 // purpose:
 //
 //   - The Job's container IS the new image (the same env/secrets/pull secrets as
-//     the app pod), so a migration runs against exactly what will serve — wrapped
-//     in a shell ("sh -c <command>") so an arbitrary command string works.
+//     the app pod), so a migration runs against exactly what will serve — launched
+//     the way the app's Docker Command is (the controller picks the argv).
 //   - It NEVER retries (BackoffLimit 0): re-running a partially applied migration
 //     can corrupt data, so a failed pre-deploy is terminal until the user pushes a
 //     new revision.
@@ -40,6 +40,7 @@ package predeploy
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -97,16 +98,16 @@ const (
 // volume) are supplied by the controller so a migration runs with exactly the
 // app pod's configuration.
 type Options struct {
-	Name         string // service name (image repo name / label value)
-	AppUID       string // immutable App UID; prevents same-name recreation from reusing stale artifacts
-	Namespace    string // namespace the pre-deploy Job runs in
-	Workspace    string // owning tenant id (app.bex.co/workspace label); empty = omitted
-	AppNamespace string // namespace the App CR lives in; used for log attribution
-	VerifyImage  bool   // select the Pod for signature admission when signing is enabled
-	Image        string // the new revision's image (same ref the Deployment will run)
-	Command      string // App.spec.preDeployCommand, run as `sh -c <Command>`
-	Revision     string // deterministic per-revision tag, e.g. "gen-7" (names the Job)
-	Generation   int64  // release generation this step gates (stamped on the pod for traceability)
+	Name         string   // service name (image repo name / label value)
+	AppUID       string   // immutable App UID; prevents same-name recreation from reusing stale artifacts
+	Namespace    string   // namespace the pre-deploy Job runs in
+	Workspace    string   // owning tenant id (app.bex.co/workspace label); empty = omitted
+	AppNamespace string   // namespace the App CR lives in; used for log attribution
+	VerifyImage  bool     // select the Pod for signature admission when signing is enabled
+	Image        string   // the new revision's image (same ref the Deployment will run)
+	Command      []string // argv the controller chose for App.spec.preDeployCommand (shell launch rule: w8/172)
+	Revision     string   // deterministic per-revision tag, e.g. "gen-7" (names the Job)
+	Generation   int64    // release generation this step gates (stamped on the pod for traceability)
 
 	Env              []corev1.EnvVar
 	EnvFrom          []corev1.EnvFromSource
@@ -133,10 +134,10 @@ func JobName(name, revision string) string {
 
 // Job constructs the pre-deploy Job for o (a pure function — no cluster access —
 // so the Job shape is unit-testable). The single container is the new image with
-// the app pod's env/secrets, running `/bin/sh -c <Command>`; it never restarts or
-// retries and is bounded by predeployTimeout. The shell is absolute because the
-// runtime resolves a bare program against the app's own PATH, which may be empty
-// or narrow (w8/m61).
+// the app pod's env/secrets, running the argv the controller chose; it never
+// restarts or retries and is bounded by predeployTimeout. The controller keeps
+// any shell it names absolute because the runtime resolves a bare program
+// against the app's own PATH, which may be empty or narrow (w8/m61).
 func Job(o Options) *batchv1.Job {
 	deadline := int64(predeployTimeout / time.Second)
 	backoff := int32(0) // never retry a migration — a partial re-run can corrupt data
@@ -145,7 +146,7 @@ func Job(o Options) *batchv1.Job {
 	container := corev1.Container{
 		Name:            containerName,
 		Image:           o.Image,
-		Command:         []string{"/bin/sh", "-c", o.Command},
+		Command:         o.Command,
 		Env:             o.Env,
 		EnvFrom:         o.EnvFrom,
 		Resources:       o.Resources,
@@ -258,6 +259,8 @@ func FailureMessage(ctx context.Context, cl client.Reader, j *batchv1.Job) strin
 	}
 	if t := terminatedContainer(ctx, cl, j); t != nil {
 		switch {
+		case t.Reason == "StartError":
+			return startErrorMessage(t.Message)
 		case t.Reason == "OOMKilled":
 			return fmt.Sprintf("the pre-deploy command ran out of memory (exit code %d)%s", t.ExitCode, logs)
 		case t.ExitCode != 0:
@@ -265,6 +268,28 @@ func FailureMessage(ctx context.Context, cl client.Reader, j *batchv1.Job) strin
 		}
 	}
 	return "the pre-deploy command failed" + logs
+}
+
+// startExecFailure matches runc's exec failure inside a StartError message:
+// `exec: "/bin/sh": stat /bin/sh: no such file or directory`.
+var startExecFailure = regexp.MustCompile(`exec: "([A-Za-z0-9._/+-]{1,256})": (.*)$`)
+
+// startErrorMessage names the program the runtime could not launch, so the
+// owner is not pointed at logs a command that never ran cannot have written.
+func startErrorMessage(runtimeMsg string) string {
+	const neverRan = "; the program never ran, so there are no pre-deploy logs"
+	m := startExecFailure.FindStringSubmatch(runtimeMsg)
+	if m == nil {
+		return "the pre-deploy command could not start: the container runtime could not launch its program" + neverRan
+	}
+	program, cause := m[1], m[2]
+	switch {
+	case strings.Contains(cause, "no such file or directory"), strings.Contains(cause, "executable file not found"):
+		return fmt.Sprintf("the pre-deploy command could not start: the program %q does not exist in this image%s", program, neverRan)
+	case strings.Contains(cause, "permission denied"):
+		return fmt.Sprintf("the pre-deploy command could not start: the program %q is not executable in this image%s", program, neverRan)
+	}
+	return fmt.Sprintf("the pre-deploy command could not start: the container runtime could not execute %q%s", program, neverRan)
 }
 
 // imagePullGrace is how long the Job's pod may wait on a failing image pull

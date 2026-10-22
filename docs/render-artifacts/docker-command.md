@@ -24,7 +24,7 @@ Rules inferred from these results:
 
 ## bex's behavior
 
-The operator runs the Docker Command as `sh -c <command>` (`shellCommand`, `lego/operator/internal/controller/deployment_projection.go:217`; pre-deploy commands too, ADR004 `:268`). The whole string is shell syntax.
+The operator launches the Docker Command through `shellCommand` (`lego/operator/internal/controller/shell_command.go`; w8/164): `sh -c <script>` runs its script, a plain command is exec'd directly, and anything with shell syntax keeps `/bin/sh -c`. Pre-deploy commands on Docker and image services use the same rule (`preDeployArgv`, w8/172). The table below predates w8/164 and describes the `sh -c` baseline.
 
 | Command | Render | bex |
 | --- | --- | --- |

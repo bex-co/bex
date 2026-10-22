@@ -17,6 +17,7 @@ package controller
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -68,7 +69,7 @@ func TestPreDeployRunsTheInitialHookOnlyUntilItCompletes(t *testing.T) {
 		if err != nil {
 			return "", false
 		}
-		return job.Spec.Template.Spec.Containers[0].Command[2], true
+		return strings.TrimPrefix(strings.Join(job.Spec.Template.Spec.Containers[0].Command, " "), "/bin/sh -c "), true
 	}
 	succeeded := func(gen int64) *appv1alpha1.PreDeployStatus {
 		return &appv1alpha1.PreDeployStatus{Generation: gen, Status: appv1alpha1.PreDeploySucceeded}

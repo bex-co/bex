@@ -236,3 +236,19 @@ func TestInvalidImageNameFailsOnlyTheOwningPreDeployJob(t *testing.T) {
 		})
 	}
 }
+
+// w8/172: a program the runtime could not launch names itself instead of
+// pointing at logs that cannot exist.
+func TestFailureMessageNamesTheProgramThatNeverStarted(t *testing.T) {
+	job := failedJob("BackoffLimitExceeded")
+	state := corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{
+		ExitCode: 128, Reason: "StartError",
+		Message: `failed to create containerd task: exec: "/bin/sh": stat /bin/sh: no such file or directory`,
+	}}
+	cl := fakeClient(job, jobPod(jobUID, job.Namespace, state))
+
+	got := FailureMessage(context.Background(), cl, job)
+	if !strings.Contains(got, `"/bin/sh" does not exist in this image`) || strings.Contains(got, "check the pre-deploy logs") {
+		t.Fatalf("message = %q", got)
+	}
+}
