@@ -558,15 +558,15 @@ func lokiQueryFor(namespace string, q LogQuery) string {
 //
 // Every value is regexp.QuoteMeta'd before `*` is restored as `.*`, so a `.` stays
 // a literal dot and no caller-supplied metacharacter (or quote) can escape the
-// matcher. Render also documents full regex support; bex honors the wildcard
-// subset and treats the rest as literals — a documented divergence, not a silent
-// one (docs/ADR010-observability.md § Log filters). An empty set matches nothing
+// matcher. A `/…/` value is an RE2 regular expression, matched unanchored as
+// Render's are (w8/176; docs/ADR010-observability.md § Log filters); validate()
+// has already refused one that does not compile. An empty set matches nothing
 // and renders as "" (no matcher at all).
 func labelMatcher(name string, values []string) string {
 	if len(values) == 0 {
 		return ""
 	}
-	if len(values) == 1 && !strings.Contains(values[0], "*") {
+	if _, regex := regexFilterBody(values[0]); len(values) == 1 && !regex && !strings.Contains(values[0], "*") {
 		return fmt.Sprintf("%s=%q", name, values[0])
 	}
 	return fmt.Sprintf("%s=~%q", name, labelValuePattern(values))
@@ -577,7 +577,7 @@ func labelMatcher(name string, values []string) string {
 func labelValuePattern(values []string) string {
 	alts := make([]string, 0, len(values))
 	for _, v := range values {
-		alts = append(alts, strings.ReplaceAll(regexp.QuoteMeta(v), `\*`, ".*"))
+		alts = append(alts, labelValueAlternative(v))
 	}
 	return "^(" + strings.Join(alts, "|") + ")$"
 }

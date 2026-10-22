@@ -99,7 +99,7 @@ Historical line queries use Render's logs filter vocabulary, with the supported 
 | `statusCode` | label matcher (`status`) | exact (`404`) or class (`4xx`) |
 | `method` | label matcher | request logs |
 | `path`, `host` | `\| json` line filter | request logs; unbounded, so never labels (above) |
-| `text` | line filter | case-insensitive literal substrings; OR across all supplied values |
+| `text` | line filter | case-insensitive literal substrings, `*` wildcards (anywhere in the line) or `/…/` RE2 regexes (case-sensitive as written); OR across all supplied values |
 | `textMode` | Bex extension | `raw` (default) matches stored bytes; `display` matches the terminal-display text (below) |
 | `startTime`/`endTime` | query range |  |
 | `direction` | `backward` (default) / `forward` | which end of the window `limit` keeps, and the page's order: backward lists the most recent first, forward the oldest first (Render's List logs contract, w8/m116). `hasMore` says whether a line lies beyond the page: each page reads one line past `limit`, and when a shared-timestamp group kept whole absorbs that line, one more past the page, so a cursor walk does not land on an empty page. The bex mobile app and the dashboard order what they show by time, not by page order |
@@ -122,7 +122,7 @@ The [Render CLI reference](https://render.com/docs/cli-reference#logs) documents
 
 **One case fold, server and deploy panel (w4/m216).** The server lowercases terms and messages with Go's `strings.ToLower`, which maps one rune at a time (`unicode.ToLower`). The deploy log panel filters lines it has already loaded in the browser, where JavaScript's `toLowerCase` behaves differently: it folds a word-final `Σ` to `ς`, and `İ` to two code points. So `οσ` missed an uppercase `ΟΣ` line, and `ος` wrongly matched it. The panel now folds through `goLowercase`, a compact runs table of Go's mapping. `lego/backend/internal/logs/testdata/lowercase-runs.json` is pinned to `unicode.ToLower` over every scalar value by a Go test (regenerate with `GOWORK=off BEX_UPDATE_LOWERCASE_RUNS=1`, the toolchain bex-api is built with, after a Go upgrade), and the dashboard's copy is pinned to that file. Other dashboard searches and every server contract are unchanged.
 
-Render also documents [wildcard and regex searches](https://render.com/docs/logging#wildcards-and-regular-expressions). **Bex text search is literal**, while structured level/status/method and request path/host matching supports the `*` wildcard subset. Other metacharacters stay literal. Loki's text predicate escapes each term before joining the alternatives, and every interpolated value is escaped (`%q` + `regexp.QuoteMeta`), so a term cannot inject a selector or pipeline stage.
+Render documents [wildcard and regex searches](https://render.com/docs/logging#wildcards-and-regular-expressions) for every filter, and bex honors them (w8/176). A value enclosed in `/…/` is an RE2 regular expression matched unanchored; a value containing `*` is a wildcard pattern (`*` is any run of characters; anchored for the structured filters, anywhere in the line for `text`); anything else is a literal. A regex that does not compile, or a value over 1024 bytes, is a `400` naming the filter and the value, never a silent empty result. Regex `text` is case-sensitive as written (`/(?i)get/` folds case); literal and wildcard `text` stay case-insensitive. No interpolated value can inject a selector or pipeline stage: Loki receives each value as a `%q` string inside an anchored alternation, and `text` is matched in Go.
 
 **Source limits and refusals:**
 
@@ -193,7 +193,7 @@ Shapes verified against `render-public-api-1.json` and `render-oss/render-mcp-se
 
 - **subscribe transport** — Render-compatible WebSocket (`101` upgrade), with SSE and NDJSON alternatives for browser and terminal clients.
 - **`ownerId`** — Render requires it; bex is single-tenant and omits it.
-- **text is literal; structured wildcards are a subset** — Render documents wildcard/regex text search; bex ORs case-insensitive literal text terms and supports `*` in the structured filters named above (see [Log filters](#log-filters)).
+- **Wildcards and regex (w8/176)** — every filter takes `*` wildcards and `/…/` RE2 as Render documents; the open detail is case sensitivity of regex `text`, which bex takes as written (see [Log filters](#log-filters)).
 - **`textMode` (Bex extension)** — Render documents no ANSI-aware search option; `textMode=display` is bex-only and opt-in, and omitting it keeps Render's raw literal contract (see [Log filters](#log-filters)).
 - **`type=build`** — requires the durable store (`BEX_LOKI_URL`); without it returns 503 (w7/m28 — the same honesty rule as `type=request`).
 - **request-line message** — the raw JSON access line, not a rendered request summary.
