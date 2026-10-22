@@ -220,11 +220,14 @@ func TestPostgresListPaginationAcrossRESTAndGraphQL(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantBody, _ := json.Marshal(svc.toPostgresList(ctx, all))
+	// Render pages by default: omitted params are the first page of 20 in the
+	// stable id order every page continues (w8/191), not the whole list.
+	slices.SortFunc(all, func(a, b PostgresView) int { return strings.Compare(a.ID, b.ID) })
+	wantBody, _ := json.Marshal(svc.toPostgresList(ctx, all[:core.DefaultPageLimit]))
 	wantBody = append(wantBody, '\n')
 	omitted := serveREST(svc, http.MethodGet, "/v1/postgres", "")
 	if !bytes.Equal(omitted.Body.Bytes(), wantBody) {
-		t.Fatalf("omitted params changed full-list body\ngot:  %s\nwant: %s", omitted.Body.Bytes(), wantBody)
+		t.Fatalf("omitted params are not the first default page\ngot:  %.400s\nwant: %.400s", omitted.Body.Bytes(), wantBody)
 	}
 	var walked []string
 	cursor := ""

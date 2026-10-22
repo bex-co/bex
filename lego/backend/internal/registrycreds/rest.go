@@ -150,7 +150,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				created.Contains(v.CreatedAt) && updated.Contains(v.UpdatedAt)
 		})
 		after, limit := core.PageParams(q)
-		views = core.StablePage(views, after, limit, q.Has("cursor") || q.Has("limit"),
+		views = core.StablePage(views, after, limit, true,
 			func(v CredentialView) string { return v.ID })
 		return toWireList(views), nil
 	}))

@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -440,7 +441,30 @@ func TestREST_EnvVars(t *testing.T) {
 	var unpaged []envVarWithCursor
 	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/services/web/env-vars", "").Body.Bytes(), &unpaged)
 	if len(unpaged) != 2 {
-		t.Fatalf("unpaged list = %+v, want the complete two-item set", unpaged)
+		t.Fatalf("unpaged list = %+v, want the complete two-item set (fewer than a default page)", unpaged)
+	}
+}
+
+// w8/191: Render pages by default (a limit of 20), so a service with more
+// variables answers its first sorted page without params, and that page's last
+// cursor continues the same order.
+func TestEnvVarListDefaultsToRendersFirstPage(t *testing.T) {
+	store := newFakeSecretStore()
+	svc := newService(store, sampleApp("web"))
+	env := map[string]string{}
+	for i := 0; i < 25; i++ {
+		env[fmt.Sprintf("KEY_%02d", i)] = "v"
+	}
+	store.m[envPath("web")] = env
+
+	var first, rest []envVarWithCursor
+	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/services/web/env-vars", "").Body.Bytes(), &first)
+	if len(first) != core.DefaultPageLimit || first[0].EnvVar.Key != "KEY_00" || first[19].EnvVar.Key != "KEY_19" {
+		t.Fatalf("first page = %d items %v…, want the first 20 in key order", len(first), first[0].EnvVar.Key)
+	}
+	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/services/web/env-vars?cursor="+first[19].Cursor, "").Body.Bytes(), &rest)
+	if len(rest) != 5 || rest[0].EnvVar.Key != "KEY_20" {
+		t.Fatalf("continuation = %d items from %v, want the last 5", len(rest), rest[0].EnvVar.Key)
 	}
 }
 

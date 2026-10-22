@@ -272,10 +272,10 @@ func (s *Service) handleListKeyValues(w http.ResponseWriter, r *http.Request) {
 	})
 	// Render's cursor-pagination envelope — a bare array breaks the official
 	// CLI's list decode (ListKeyValueResponse.JSON200 is *[]KeyValueWithCursor).
-	// Omission preserves the original complete-list behavior; requested pages
-	// use stable id order so a full walk has no gaps or duplicates.
+	// Like Render, omitted params are the first page of 20 (w8/191); pages use
+	// stable id order so a full walk has no gaps or duplicates.
 	after, limit := core.PageParams(q)
-	page := core.StablePage(out, after, limit, q.Has("cursor") || q.Has("limit"), func(kv KeyValueView) string { return kv.ID })
+	page := core.StablePage(out, after, limit, true, func(kv KeyValueView) string { return kv.ID })
 	core.WriteJSON(w, http.StatusOK, s.toKeyValueList(r.Context(), page)) // [{keyValue, cursor}, ...]
 }
 
