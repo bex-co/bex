@@ -128,8 +128,7 @@ func (h *Handler) serveExternalRewrite(w http.ResponseWriter, r *http.Request, s
 
 	resp, err := h.external.client.Do(out)
 	if err != nil {
-		var tooLarge *http.MaxBytesError
-		if errors.As(err, &tooLarge) {
+		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
 			serveSiteError(w, site, requestPath, http.StatusRequestEntityTooLarge, "request body too large")
 			return
 		}
@@ -167,7 +166,7 @@ func proxyURL(target *url.URL, visitorQuery string) *url.URL {
 func stripHopByHop(h http.Header) {
 	// Names the Connection header lists are hop-by-hop too.
 	for _, value := range h.Values("Connection") {
-		for _, name := range strings.Split(value, ",") {
+		for name := range strings.SplitSeq(value, ",") {
 			if name = strings.TrimSpace(name); name != "" {
 				h.Del(name)
 			}

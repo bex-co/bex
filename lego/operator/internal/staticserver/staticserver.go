@@ -327,13 +327,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// <path>/index.html is an object hit like any other, so it wins over the
 	// ordered rules and the SPA fallback. Redirecting to the slash form keeps
 	// the page's relative links resolving beneath the directory (w4/384).
-	if !overlong && h.hasDirectoryIndex(r.Context(), site, requestPath) {
-		location := (&url.URL{Path: requestPath + "/", RawQuery: r.URL.RawQuery}).String()
-		if safeRedirectTarget(location) {
-			applyHeaders(w.Header(), site.Headers, requestPath)
-			http.Redirect(w, r, location, http.StatusMovedPermanently)
-			return
-		}
+	if !overlong && h.redirectToDirectory(w, r, site, requestPath) {
+		return
 	}
 	if act == actRedirect {
 		location := target.String()
@@ -400,6 +395,21 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	h.serveNotFound(w, r, site, requestPath)
+}
+
+// redirectToDirectory answers a directory requested without its trailing slash
+// and holding a published index.html with a 301 to the slash form.
+func (h *Handler) redirectToDirectory(w http.ResponseWriter, r *http.Request, site Site, requestPath string) bool {
+	if !h.hasDirectoryIndex(r.Context(), site, requestPath) {
+		return false
+	}
+	location := (&url.URL{Path: requestPath + "/", RawQuery: r.URL.RawQuery}).String()
+	if !safeRedirectTarget(location) {
+		return false
+	}
+	applyHeaders(w.Header(), site.Headers, requestPath)
+	http.Redirect(w, r, location, http.StatusMovedPermanently)
+	return true
 }
 
 // serveNotFound answers a miss as Render does: 404 with the site's root
