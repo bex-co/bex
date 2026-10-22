@@ -413,7 +413,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **173** — [Runtime versions Render installs are refused at build time: Node 20/18/16/14, Python 3.7–3.9 and Ruby 3.2 (Render's own Rails examples) fail "not a supported version"](173.md) ← `/qa-find-bugs-cli` sweep 1307 2026-10-22: 63 of 79 real `NODE_VERSION` pins refused; unsigned ADR018 divergence; major, ~3h.
 
-- [ ] **172** — [The pre-deploy command still runs through bex's own `/bin/sh -c`: w8/164 fixed the Docker Command but not pre-deploy, so `sh -c <cmd>` silently runs nothing and shell-less images cannot pre-deploy](172.md) ← `/qa-find-bugs-cli` sweep 1304 2026-10-22: follow-up to w8/164; minor, ~45m.
+- [x] **172** — [The pre-deploy command still runs through bex's own `/bin/sh -c`: w8/164 fixed the Docker Command but not pre-deploy, so `sh -c <cmd>` silently runs nothing and shell-less images cannot pre-deploy](done/172.md) ← `/qa-find-bugs-cli` sweep 1304 2026-10-22: follow-up to w8/164; minor, ~45m. — **DONE (2026-10-22)**: pre-deploy launches by the Docker Command rule (`preDeployArgv`); a `StartError` names the program.
 
 - [x] **171** — [`RENDER_CPU_COUNT` is rounded up to a whole number (free and starter both report `1`), where Render reports the plan's CPU, e.g. `"0.5"`](done/171.md) — **DONE (2026-10-21)**: RENDER_CPU_COUNT reports the plan's decimal CPU; ← `/qa-find-bugs-cli` sweep 1290 2026-10-21: follow-up to w5/m148; minor, ~20m.
 

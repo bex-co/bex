@@ -19,6 +19,9 @@ package controller
 import (
 	"slices"
 	"testing"
+
+	"github.com/bex-co/bex/lego/operator/internal/build"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // A Docker Command runs as Render runs it (w8/164).
@@ -47,6 +50,29 @@ func TestShellCommand(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := shellCommand(tc.command); !slices.Equal(got, tc.want) {
 				t.Errorf("shellCommand(%q) = %q, want %q", tc.command, got, tc.want)
+			}
+		})
+	}
+}
+
+// A pre-deploy command launches like its service's Docker Command (w8/172).
+func TestPreDeployArgv(t *testing.T) {
+	docker := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Repo: "r", Builder: build.BuilderDockerfile}}
+	native := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Repo: "r", Builder: build.BuilderNative}}
+	for _, tc := range []struct {
+		name string
+		app  *appv1alpha1.App
+		cmd  string
+		want []string
+	}{
+		{"docker sh -c runs its script", docker, "/bin/sh -c echo x", []string{"/bin/sh", "-c", "echo x"}},
+		{"docker plain command is exec'd", docker, "/whoami --help", []string{"/whoami", "--help"}},
+		{"docker shell syntax keeps the shell", docker, "a && b", []string{"/bin/sh", "-c", "a && b"}},
+		{"native keeps the shell", native, "/whoami --help", []string{"/bin/sh", "-c", "/whoami --help"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := preDeployArgv(tc.app, "img:1", tc.cmd); !slices.Equal(got, tc.want) {
+				t.Errorf("argv = %q, want %q", got, tc.want)
 			}
 		})
 	}
