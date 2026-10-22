@@ -66,6 +66,7 @@ import (
 	"github.com/bex-co/bex/lego/operator/internal/execution"
 	boundedhttp "github.com/bex-co/bex/lego/operator/internal/httpclient"
 	"github.com/bex-co/bex/lego/operator/internal/identity"
+	"github.com/bex-co/bex/lego/operator/internal/portscan"
 	"github.com/bex-co/bex/lego/operator/internal/predeploy"
 	"github.com/bex-co/bex/lego/operator/internal/publish"
 	"github.com/bex-co/bex/lego/operator/internal/registry"
@@ -286,6 +287,15 @@ const (
 // and run it as a revision on the selected runtime, recording status.
 type AppReconciler struct {
 	client.Client
+	// PortScanner finds the port a web service's process listens on when its
+	// health check keeps failing on the default port (w8/177); nil disables
+	// detection.
+	PortScanner portscan.Scanner
+	portScanned sync.Map // "<ns>/<name>" -> time.Time of the last scan
+	// portCandidate remembers the lone port a scan found until a second scan agrees.
+	portCandidate sync.Map // "<ns>/<name>" -> int
+	// portDetectEvery overrides the scan spacing (tests); zero uses the default.
+	portDetectEvery time.Duration
 	// BuildClient bypasses controller-runtime's shared cache for build-plane
 	// objects. Secrets and ServiceAccounts are authorized only in build/app
 	// namespaces; a cached client would try to establish forbidden cluster-wide
@@ -646,6 +656,10 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	} else if port, err = r.envPort(ctx, &app, port); err != nil {
 		return ctrl.Result{}, err
 	}
+
+	// A port the process was found listening on stands in for the default when
+	// the service names none (w8/177).
+	port = detectedServingPort(&app, port)
 
 	// The desired spec was classified before the validation/convergence gates so
 	// their failure status is attributable to the release that requested it.
@@ -5315,6 +5329,7 @@ func (r *AppReconciler) rolloutStallDiagnosis(ctx context.Context, app *appv1alp
 	reason, msg := r.stuckPodMessage(ctx, dep, port)
 	if reason == reasonHealthCheckFailing {
 		msg += imagePortStallHint(app, port)
+		msg += r.detectBoundPort(ctx, app, dep, port)
 	}
 	return reason, msg
 }

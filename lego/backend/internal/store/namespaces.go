@@ -570,6 +570,7 @@ func allowNetworkPolicies(namespace, regime string) []*networkingv1.NetworkPolic
 			dnsEgressNetworkPolicy(namespace),
 			traefikIngressNetworkPolicy(namespace),
 			activatorIngressNetworkPolicy(namespace),
+			operatorProbeIngressNetworkPolicy(namespace),
 			internetEgressNetworkPolicy(namespace),
 			datastoreControlIngressNetworkPolicy(namespace),
 		}
@@ -678,6 +679,31 @@ func activatorIngressNetworkPolicy(namespace string) *networkingv1.NetworkPolicy
 					},
 					PodSelector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{"app.bex.co/component": "activator"},
+					},
+				}},
+			}},
+		},
+	}
+}
+
+// operatorProbeIngressNetworkPolicy lets the operator manager pods reach a
+// hosting namespace's pods, so the operator can find the port a web service's
+// process listens on when its health check fails on the default port (w8/177):
+// it connects to the pod IP, as Render's own port scan does. Peer-scoped like
+// the activator's: the manager pods of bex-system only.
+func operatorProbeIngressNetworkPolicy(namespace string) *networkingv1.NetworkPolicy {
+	return &networkingv1.NetworkPolicy{
+		ObjectMeta: npMeta(namespace, "allow-operator-probe-ingress"),
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
+			Ingress: []networkingv1.NetworkPolicyIngressRule{{
+				From: []networkingv1.NetworkPolicyPeer{{
+					NamespaceSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{"kubernetes.io/metadata.name": "bex-system"},
+					},
+					PodSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{"control-plane": "controller-manager"},
 					},
 				}},
 			}},
