@@ -387,7 +387,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **186** — [Every REST env-var write (`PUT /env-vars`, `PUT`/`DELETE /env-vars/{key}`) immediately redeploys the service; Render's API saves the change and deploys nothing until the caller triggers a deploy](186.md) ← `/qa-find-bugs-cli` sweep 1320 2026-10-22: unsigned ADR018 divergence; major, ~1h30m.
 
-- [ ] **185** — [A crawler's `GET /robots.txt` wakes a sleeping free web service and gets a 503; Render answers it with a "disallow all" robots file without spinning the service up](185.md) ← `/qa-find-bugs-cli` sweep 1317 2026-10-22: unsigned ADR018 difference; minor, ~45m.
+- [x] **185** — [A crawler's `GET /robots.txt` wakes a sleeping free web service and gets a 503; Render answers it with a "disallow all" robots file without spinning the service up](done/185.md) ← `/qa-find-bugs-cli` sweep 1317 2026-10-22: unsigned ADR018 difference; minor, ~45m. — **DONE (2026-10-22)**: a sleeping service's robots.txt is answered without a wake.
 
 - [ ] **184** — [A static-site rewrite cannot proxy to another site (`/api/* → https://api.example.com/api/*`): bex refuses any non-local rewrite destination, where Render serves the external URL's content at the original path](184.md) ← `/qa-find-bugs-cli` sweep 1316 2026-10-22: unsigned ADR018 divergence kept by w8/162; major, ~3h.
 
