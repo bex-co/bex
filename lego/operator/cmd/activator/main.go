@@ -122,7 +122,7 @@ func main() {
 	cache.refreshOnce(context.Background())
 	go appwatch.Loop(context.Background(), hostCacheRefresh, changed, func() { cache.refreshOnce(context.Background()) })
 
-	http.Handle("/", newHandler(c, cache, log))
+	http.Handle("/", newHoldingHandler(c, cache, log, newHolder(c)))
 
 	log.Info("listening", "addr", addr)
 	srv := &http.Server{
@@ -139,7 +139,15 @@ func main() {
 	}
 }
 
+// newHandler is the activator without request holding: a wake is answered at
+// once with the not-ready response. main serves newHoldingHandler.
 func newHandler(c client.Client, cache *hostCache, log logr.Logger) http.Handler {
+	return newHoldingHandler(c, cache, log, nil)
+}
+
+// newHoldingHandler holds a non-browser request that triggers or joins a wake
+// until the App can serve it (w8/178); hold nil answers every wake at once.
+func newHoldingHandler(c client.Client, cache *hostCache, log logr.Logger, hold *holder) http.Handler {
 	var wakeGroup singleflight.Group
 	// Every path — /healthz included — belongs to the tenant: no path is
 	// answered before host resolution, maintenance, suspension, or wake. The
@@ -216,10 +224,20 @@ func newHandler(c client.Client, cache *hostCache, log logr.Logger) http.Handler
 		// Coalesce concurrent wake requests per App so a retry flood issues one
 		// last-active patch + scale-up instead of N.
 		key := app.Namespace + "/" + app.Name
+		// A client that is not a browser has no loading page to poll, so its
+		// request is held through the cold start and then served (w8/178).
+		// Decided before the wake: afterwards the cached phase is stale.
+		holdable := hold != nil && !acceptsHTML(r.Header.Values("Accept")) && hold.holding(app, key)
 		_, _, _ = wakeGroup.Do(key, func() (any, error) {
 			wakeApp(logf.IntoContext(ctx, log), c, app, host)
+			if hold != nil && app.Status.Phase == appv1alpha1.PhaseHibernated {
+				hold.markWaking(key) // a real cold start, not the readiness hold of an awake App
+			}
 			return nil, nil
 		})
+		if holdable && hold.serve(w, r, app, key) {
+			return
+		}
 		writeWakeResponse(w, r)
 	})
 }

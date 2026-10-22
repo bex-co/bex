@@ -569,6 +569,7 @@ func allowNetworkPolicies(namespace, regime string) []*networkingv1.NetworkPolic
 			sameNamespaceNetworkPolicy(namespace),
 			dnsEgressNetworkPolicy(namespace),
 			traefikIngressNetworkPolicy(namespace),
+			activatorIngressNetworkPolicy(namespace),
 			internetEgressNetworkPolicy(namespace),
 			datastoreControlIngressNetworkPolicy(namespace),
 		}
@@ -650,6 +651,33 @@ func traefikIngressNetworkPolicy(namespace string) *networkingv1.NetworkPolicy {
 				From: []networkingv1.NetworkPolicyPeer{{
 					NamespaceSelector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{"kubernetes.io/metadata.name": "traefik"},
+					},
+				}},
+			}},
+		},
+	}
+}
+
+// activatorIngressNetworkPolicy lets the bex activator pods reach a hosting
+// namespace's pods. The activator holds a non-browser request through a free
+// service's cold start and then proxies it to the woken Service (w8/178), so
+// like Traefik it must be able to open connections to tenant pods. The peer is
+// the activator pods of bex-system only (namespace AND pod selector in one
+// peer), not the namespace: bex-api, the ssh gateway and the rest of the
+// control plane gain no new path into tenant pods.
+func activatorIngressNetworkPolicy(namespace string) *networkingv1.NetworkPolicy {
+	return &networkingv1.NetworkPolicy{
+		ObjectMeta: npMeta(namespace, "allow-activator-ingress"),
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
+			Ingress: []networkingv1.NetworkPolicyIngressRule{{
+				From: []networkingv1.NetworkPolicyPeer{{
+					NamespaceSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{"kubernetes.io/metadata.name": "bex-system"},
+					},
+					PodSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{"app.bex.co/component": "activator"},
 					},
 				}},
 			}},

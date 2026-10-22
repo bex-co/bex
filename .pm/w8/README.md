@@ -405,7 +405,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **179** — [A workspace-level environment group cannot be linked to a service that belongs to a project environment (409 `ENV_GROUP_SERVICE_ENVIRONMENT_MISMATCH`); Render allows linking it to any service](done/179.md) ← `/qa-find-bugs-cli` sweep 1312 2026-10-22: unsigned ADR018 divergence (w4/m143); minor, ~1h30m. — **DONE (2026-10-22)**: a workspace group links to any service.
 
-- [ ] **178** — [The first request to a sleeping free web service fails with an immediate 503 (`{"error":"service not ready"}`) where Render holds it through the spin-up and serves it; webhooks, bots and API clients lose that request](178.md) ← `/qa-find-bugs-cli` sweep 1309 2026-10-22: unsigned ADR007 divergence; major, ~3h.
+- [x] **178** — [The first request to a sleeping free web service fails with an immediate 503 (`{"error":"service not ready"}`) where Render holds it through the spin-up and serves it; webhooks, bots and API clients lose that request](done/178.md) ← `/qa-find-bugs-cli` sweep 1309 2026-10-22: unsigned ADR007 divergence; major, ~3h. — **DONE (2026-10-22)**: the first request to a sleeping service is held and served.
 
 - [ ] **177** — [A native web service whose process listens on a port other than `PORT` never goes live (Render's own `fastapi-uv` example: uvicorn on 8000), because bex never detects the bound port; the image declared-port case is w4/388](177.md) ← `/qa-find-bugs-cli` sweep 1308 2026-10-22: Render detects the bound port; unsigned ADR018 divergence; major, ~4h.
 
