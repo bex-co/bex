@@ -399,3 +399,23 @@ func TestGuardedMutationsKeepTheirConfirmArgument(t *testing.T) {
 	}
 }
 
+
+// Shell access to a protected environment's service is an Admin's (w8/193), on
+// both transports: the browser terminal ticket and native SSH.
+func TestProtectedMemberShellNeedsAdmin(t *testing.T) {
+	rec := &recordingStore{protectedStatus: map[string]string{"srv-1": "protected"}}
+	svc, _ := newService(rec, managedApp("web", "srv-1"))
+	asNonAdmin(svc)
+
+	if _, err := svc.CreateShellSession(ctxAs("user-a"), "web", ""); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("CreateShellSession by a non-admin = %v, want ErrForbidden", err)
+	}
+	if _, err := svc.ResolveSSHSession(ctxAs("user-a"), "web"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("ResolveSSHSession by a non-admin = %v, want ErrForbidden", err)
+	}
+
+	asAdmin(svc)
+	if _, err := svc.CreateShellSession(ctxAs("user-a"), "web", ""); errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("CreateShellSession by an admin was refused for protection: %v", err)
+	}
+}

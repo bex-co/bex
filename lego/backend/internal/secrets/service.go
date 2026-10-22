@@ -96,6 +96,14 @@ type Service struct {
 	// returns that deploy's Render JSON (nil when unknown). Nil makes that save
 	// mode unavailable while save_only/deploy still work.
 	RebuildService func(ctx context.Context, serviceID string) (json.RawMessage, error)
+	// Protection is apps' protected-environment predicate (w8/193); nil means no
+	// environments (DB-less), so no service is protected.
+	Protection ProtectionReader
+}
+
+// ProtectionReader answers whether an App belongs to a protected environment.
+type ProtectionReader interface {
+	AppProtected(ctx context.Context, a *appv1alpha1.App) (bool, error)
 }
 
 // rollApp applies mutate to an already-fetched App and merge-patches it,
@@ -197,6 +205,19 @@ func (s *Service) scope(ctx context.Context, relation, service string) (*appv1al
 	}
 	if s.Store == nil {
 		return nil, nil, "", core.ErrSecretsUnavailable
+	}
+	// Render: in a protected environment only Admins view or modify the
+	// environment variables and secret files (w8/193). A failed lookup refuses.
+	if s.Protection != nil {
+		protected, err := s.Protection.AppProtected(ctx, a)
+		if err != nil {
+			return nil, nil, "", err
+		}
+		if protected {
+			if err := s.AuthorizeAppFresh(ctx, core.RelCanManage, a); err != nil {
+				return nil, nil, "", err
+			}
+		}
 	}
 	ctx, service = scopeApp(ctx, a, service)
 	return a, ctx, service, nil

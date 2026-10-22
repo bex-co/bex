@@ -83,14 +83,16 @@ func EnvironmentProtectionPrecondition(ctx context.Context, store EnvironmentPro
 // ProtectedVerbRestricted reports whether verb is one of the actions Render
 // restricts to workspace Admins in a protected environment
 // (render.com/docs/projects): deleting the environment's resources, suspending
-// or resuming services, and turning maintenance mode on ("take offline"). The
+// or resuming services, turning maintenance mode on ("take offline") and shell
+// access ("shell"; environment variables and secret files are the secrets
+// package's, w8/193). The
 // rest of a service's life — deploys, rollbacks, settings, queries — is open to
 // anyone who may do it elsewhere, and no verb asks for a typed phrase (w8/187;
 // the phrase gate of w4/m126 and w4/m127 is retired). The dashboard may still
 // confirm in its own UI.
 func ProtectedVerbRestricted(verb string) bool {
 	switch verb {
-	case "delete", "suspend", "resume", "take offline":
+	case "delete", "suspend", "resume", "take offline", "shell":
 		return true
 	}
 	return false
