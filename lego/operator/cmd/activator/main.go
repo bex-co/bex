@@ -203,6 +203,16 @@ func newHandler(c client.Client, cache *hostCache, log logr.Logger) http.Handler
 			return
 		}
 
+		// A crawler's robots.txt must not spin a sleeping free service up: Render
+		// answers it with a disallow-all file while the service is spun down and
+		// the request never reaches the service (w8/185). Only a hibernated App
+		// qualifies; once it is waking or awake the path reaches the app as any
+		// other does.
+		if app.Status.Phase == appv1alpha1.PhaseHibernated && isRobotsRequest(r) {
+			writeRobotsResponse(w, r)
+			return
+		}
+
 		// Coalesce concurrent wake requests per App so a retry flood issues one
 		// last-active patch + scale-up instead of N.
 		key := app.Namespace + "/" + app.Name
@@ -212,6 +222,20 @@ func newHandler(c client.Client, cache *hostCache, log logr.Logger) http.Handler
 		})
 		writeWakeResponse(w, r)
 	})
+}
+
+// robotsDisallowAll is Render's standard answer for a spun-down service.
+const robotsDisallowAll = "User-agent: *\nDisallow: /\n"
+
+// isRobotsRequest reports a GET or HEAD for exactly /robots.txt (any query).
+func isRobotsRequest(r *http.Request) bool {
+	return (r.Method == http.MethodGet || r.Method == http.MethodHead) && r.URL.Path == "/robots.txt"
+}
+
+// writeRobotsResponse answers a sleeping service's robots.txt without waking it.
+func writeRobotsResponse(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	writeBody(w, r, http.StatusOK, "text/plain; charset=utf-8", robotsDisallowAll)
 }
 
 // wakeApp patches last-active and scales the Deployment to 1 so the operator

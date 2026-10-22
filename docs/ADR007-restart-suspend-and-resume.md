@@ -86,6 +86,8 @@ A public web service or static site is reachable at its URL from creation, and t
 
 **No path is reserved from the tenant (w4/m162).** The activator used to answer `/healthz` (and anything decoding to it, such as `/health%7a` or `/healthz?x`) with an empty 200 before host resolution, so a suspended service passed a status-only monitor and a sleeping one never woke on health-path traffic. That platform readiness path is retired: every path on every routed host now reaches the maintenance → suspended → wake decision above, and the activator's own readiness probe is a TCP check on its serving port 8888 (`config/activator/deployment.yaml`). That probe was only ever a listener check, and the host cache is primed before the listener opens, so nothing about readiness changed but the transport.
 
+**The one exception: `/robots.txt` of a spun-down service (w8/185).** Render answers `GET`/`HEAD /robots.txt` while a free service is spun down with a standard disallow-all file, and the request neither reaches the service nor spins it up ([render.com/docs/free](https://render.com/docs/free)). The activator does the same for an App in phase `Hibernated`: after the maintenance, suspended and first-deploy decisions and before the wake, it answers `200 text/plain` `User-agent: *` / `Disallow: /` (`Cache-Control: no-store`), with no replica patch and no last-active write. A waking or awake service gets `/robots.txt` from the app like any path.
+
 ### Who writes the fields
 
 Two ways, same field write:
