@@ -21,9 +21,12 @@ import (
 	"encoding/base64"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/util/validation"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // config.go holds the validation rules shared by the two config features
@@ -159,7 +162,26 @@ func CheckEnvValue(k, value string) error {
 	if !ValidEnvValue(value) {
 		return NewBadRequestError("ENVIRONMENT_VARIABLE_VALUE_INVALID", EnvValueSentence(k), map[string]any{"key": k})
 	}
+	if k == portEnvKey && !ValidPortValue(value) {
+		return NewBadRequestError("ENVIRONMENT_VARIABLE_PORT_INVALID", PortValueSentence, map[string]any{"key": k})
+	}
 	return nil
+}
+
+// portEnvKey is the variable that selects a service's serving port (Render
+// lets a service set it, w5/m149).
+const portEnvKey = "PORT"
+
+// PortValueSentence is the one wording for a PORT value ValidPortValue rejects.
+// It never echoes the value.
+const PortValueSentence = "PORT must be an integer from 1 to 65535 (not 18012, 18013, 18014 or 19099, which the platform reserves); the operator would otherwise ignore it and serve the service's own port"
+
+// ValidPortValue reports whether v is a PORT the operator will serve on:
+// digits only, 1-65535, not a platform-reserved port (the operator's own rule,
+// env_port.go).
+func ValidPortValue(v string) bool {
+	port, err := strconv.Atoi(v)
+	return err == nil && port >= 1 && port <= 65535 && !appv1alpha1.IsReservedImagePort(int32(port))
 }
 
 // ValidSecretFileName reports whether name is a legal Kubernetes Secret key:

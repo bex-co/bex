@@ -2536,6 +2536,9 @@ func parseEnvGroup(g bexEnvGroup) (parsedEnvGroup, error) {
 				return parsedEnvGroup{}, atEnvEntry(i, fmt.Errorf("%w: env group %q envVars[%q]: %s",
 					core.ErrBadRequest, name, e.Key, core.EnvValueSentence(e.Key)))
 			}
+			if err := core.CheckEnvValue(e.Key, e.Value); err != nil {
+				return parsedEnvGroup{}, atEnvEntry(i, fmt.Errorf("%w: env group %q envVars[%q]: %s", core.ErrBadRequest, name, e.Key, err))
+			}
 			pg.literals[e.Key] = e.Value
 		}
 	}
@@ -2925,6 +2928,13 @@ func classifyServiceEnv(overrides blueprintParseOverrides, a bexService) ([]appv
 		if !core.ValidEnvValue(value) {
 			return nil, serviceEnv{}, atEnvEntry(i, fmt.Errorf("%w: %s envVars[%q]: %s",
 				core.ErrBadRequest, a.Name, e.Key, core.EnvValueSentence(e.Key)))
+		}
+		// A sync:false key without an answer yet is checked when the prompt is
+		// answered; only a value in hand is judged here.
+		if value != "" {
+			if err := core.CheckEnvValue(e.Key, value); err != nil {
+				return nil, serviceEnv{}, atEnvEntry(i, fmt.Errorf("%w: %s envVars[%q]: %s", core.ErrBadRequest, a.Name, e.Key, err))
+			}
 		}
 		switch {
 		case e.FromDatabase != nil, e.FromService != nil:

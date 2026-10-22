@@ -375,7 +375,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **171** — [`RENDER_CPU_COUNT` is rounded up to a whole number (free and starter both report `1`), where Render reports the plan's CPU, e.g. `"0.5"`](done/171.md) — **DONE (2026-10-21)**: RENDER_CPU_COUNT reports the plan's decimal CPU; ← `/qa-find-bugs-cli` sweep 1290 2026-10-21: follow-up to w5/m148; minor, ~20m.
 
-- [ ] **170** — [An unusable `PORT` value (`abc`, `0`, `70000`) is accepted and shown, but the process silently receives `PORT=3000`](170.md) ← `/qa-find-bugs-cli` sweep 1289 2026-10-21: follow-up to w5/m149; minor, ~30m.
+- [x] **170** — [An unusable `PORT` value (`abc`, `0`, `70000`) is accepted and shown, but the process silently receives `PORT=3000`](done/170.md) — **DONE (2026-10-21)**: an unusable PORT value is refused at write; ← `/qa-find-bugs-cli` sweep 1289 2026-10-21: follow-up to w5/m149; minor, ~30m.
 
 - [ ] **169** — [A service created with a `PORT` env var reports `port: 3000` / `openPorts: [3000]` in its create response, then its real port on the next read](169.md) ← `/qa-find-bugs-cli` sweep 1288 2026-10-21: follow-up to w5/m149; minor, ~30m.
 

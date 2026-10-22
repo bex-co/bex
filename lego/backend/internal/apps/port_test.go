@@ -296,3 +296,21 @@ func TestCreateDefaultsPortToRendersDefault(t *testing.T) {
 		}
 	}
 }
+
+// A literal PORT the operator would ignore is refused at create (w8/170).
+func TestCreateRefusesUnusablePortEnv(t *testing.T) {
+	for _, value := range []string{"abc", "0", "70000"} {
+		svc, cl := newService(nil)
+		_, err := svc.Create(context.Background(), CreateRequest{
+			Name: "web", Image: "docker.io/library/nginx:1.27",
+			Env: []appv1alpha1.EnvVar{{Name: "PORT", Value: value}},
+		})
+		if !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("PORT=%s: create = %v, want a bad request", value, err)
+		}
+		if _, getErr := svc.Get(context.Background(), "web"); getErr == nil {
+			t.Errorf("PORT=%s: a refused create left a service", value)
+		}
+		_ = cl
+	}
+}
