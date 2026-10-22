@@ -91,7 +91,7 @@ func TestPreDeployShellStartsWithApplicationPATH(t *testing.T) {
 				env = append(env, corev1.EnvVar{Name: "PATH", Value: *tc.path})
 			}
 			env = append(env, corev1.EnvVar{Name: "NOTE", Value: note})
-			c := Job(Options{Name: "api", Image: "app:1", Command: command, Env: env}).Spec.Template.Spec.Containers[0]
+			c := Job(Options{Name: "api", Image: "app:1", Command: []string{"/bin/sh", "-c", command}, Env: env}).Spec.Template.Spec.Containers[0]
 
 			out, err := runLikeContainer(t, c)
 			if err != nil {

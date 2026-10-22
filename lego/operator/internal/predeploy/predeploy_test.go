@@ -48,7 +48,7 @@ func TestJobShape(t *testing.T) {
 	j := Job(Options{
 		Name: "api", AppUID: "uid-api", Namespace: "builds", Workspace: "tea-1",
 		AppNamespace: "default", VerifyImage: true,
-		Image: "zot/api:gen-3", Command: "npm run migrate", Revision: "gen-3", Generation: 3,
+		Image: "zot/api:gen-3", Command: []string{"/bin/sh", "-c", "npm run migrate"}, Revision: "gen-3", Generation: 3,
 		Env:              []corev1.EnvVar{{Name: "FOO", Value: "bar"}},
 		EnvFrom:          []corev1.EnvFromSource{{SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: "api-env"}}}},
 		ImagePullSecrets: []corev1.LocalObjectReference{{Name: "pull"}},
@@ -131,7 +131,7 @@ func assertExecutionPodDefaults(t *testing.T, pod corev1.PodSpec) {
 }
 
 func TestJobOmitsWorkspaceLabelWhenAbsent(t *testing.T) {
-	j := Job(Options{Name: "api", Namespace: "builds", Command: "echo", Revision: "gen-1"})
+	j := Job(Options{Name: "api", Namespace: "builds", Command: []string{"/bin/sh", "-c", "echo"}, Revision: "gen-1"})
 	if _, ok := j.Labels[labelWorkspace]; ok {
 		t.Error("workspace label must be omitted when Workspace is empty")
 	}
@@ -141,7 +141,7 @@ func TestJobOmitsWorkspaceLabelWhenAbsent(t *testing.T) {
 // in the App's own namespace (ADR043 D8), so the app-namespace disambiguation
 // label — only meaningful when the two differ — is omitted.
 func TestJobCoLocatedOmitsAppNamespaceLabel(t *testing.T) {
-	j := Job(Options{Name: "api", Namespace: "default", AppNamespace: "default", Command: "echo", Revision: "gen-1"})
+	j := Job(Options{Name: "api", Namespace: "default", AppNamespace: "default", Command: []string{"/bin/sh", "-c", "echo"}, Revision: "gen-1"})
 	if j.Namespace != "default" {
 		t.Errorf("job namespace = %q, want the App's own namespace", j.Namespace)
 	}
@@ -160,7 +160,7 @@ func TestJobLabelsWidenedContainerPolicies(t *testing.T) {
 		appv1alpha1.ContainerPolicyImageV1:  appv1alpha1.ContainerPolicyImageV1,
 		appv1alpha1.ContainerPolicyRenderV1: appv1alpha1.ContainerPolicyRenderV1,
 	} {
-		j := Job(Options{Name: "api", Namespace: "default", AppNamespace: "default", AppUID: "uid", Command: "echo", Revision: "gen-1", ContainerPolicy: policy})
+		j := Job(Options{Name: "api", Namespace: "default", AppNamespace: "default", AppUID: "uid", Command: []string{"/bin/sh", "-c", "echo"}, Revision: "gen-1", ContainerPolicy: policy})
 		if got := j.Spec.Template.Labels[execution.LabelContainerPolicy]; got != want {
 			t.Errorf("%q: pod policy label = %q, want %q", policy, got, want)
 		}
@@ -198,7 +198,7 @@ func fakeClient(objs ...client.Object) client.Client {
 func TestEnsureRejectsExistingJobWithoutAppUID(t *testing.T) {
 	o := Options{
 		Name: "api", AppUID: "uid-api", Namespace: "builds",
-		Image: "zot/api:gen-3", Command: "echo migrate", Revision: "gen-3", Client: nil,
+		Image: "zot/api:gen-3", Command: []string{"/bin/sh", "-c", "echo migrate"}, Revision: "gen-3", Client: nil,
 	}
 	job := Job(o)
 	delete(job.Labels, "app.bex.co/app-uid")
@@ -219,7 +219,7 @@ func TestEnsureRejectsExistingJobWithoutAppUID(t *testing.T) {
 func TestEnsureRequiresAppUID(t *testing.T) {
 	o := Options{
 		Name: "api", Namespace: "builds", Image: "zot/api:gen-3",
-		Command: "echo migrate", Revision: "gen-3", Client: fakeClient(),
+		Command: []string{"/bin/sh", "-c", "echo migrate"}, Revision: "gen-3", Client: fakeClient(),
 	}
 	if _, err := Ensure(context.Background(), o); err == nil || !strings.Contains(err.Error(), "empty App UID") {
 		t.Fatalf("Ensure error = %v, want missing-identity rejection", err)
@@ -279,7 +279,7 @@ func TestCancelSupersededDeletesOtherActiveRunsButKeepsCurrent(t *testing.T) {
 // applied migration is worse than a failed deploy. The reliability cliff here is
 // accepted and documented, not an oversight to be smoothed over.
 func TestPreDeployKeepsZeroRetriesAndNoDisruptionIgnore(t *testing.T) {
-	j := Job(Options{Name: "app", Namespace: "default", Generation: 3, Image: "img:1", Command: "./migrate.sh"})
+	j := Job(Options{Name: "app", Namespace: "default", Generation: 3, Image: "img:1", Command: []string{"/bin/sh", "-c", "./migrate.sh"}})
 	if j.Spec.BackoffLimit == nil || *j.Spec.BackoffLimit != 0 {
 		t.Errorf("pre-deploy backoffLimit = %v, want 0: a re-run could re-apply a partial migration", j.Spec.BackoffLimit)
 	}

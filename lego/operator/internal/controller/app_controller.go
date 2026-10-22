@@ -6123,7 +6123,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 		AppNamespace:     app.Namespace,
 		VerifyImage:      r.TenantSignKeySecret != "",
 		Image:            image,
-		Command:          command,
+		Command:          preDeployArgv(app, image, command),
 		Revision:         rev,
 		Generation:       gen,
 		Env:              withPlatformEnv(appEnv(app, port), platformEnv(app, platformEnvInputs{baseDomain: r.BaseDomain, gitCommit: r.imageCommit(ctx, app, image)})),
@@ -6236,6 +6236,17 @@ func preDeployNotStarted(err error) string {
 func hasPreDeployStep(app *appv1alpha1.App) bool {
 	command, _ := preDeployStepCommand(app)
 	return strings.TrimSpace(command) != "" && scalableRuntime(app) && !canceledOverServed(app)
+}
+
+// preDeployArgv launches a pre-deploy command the way its service launches a
+// Docker Command (w8/172): through shellCommand where the image's own program
+// is overridden, so `sh -c <script>` runs its script and a plain command runs
+// on a shell-less image. A native or buildpack build keeps /bin/sh -c.
+func preDeployArgv(app *appv1alpha1.App, image, command string) []string {
+	if shellRunsStartCommand(app, image, launchUnknown) {
+		return shellCommand(command)
+	}
+	return legacyShellCommand(command)
 }
 
 // preDeployStepCommand is the command a release's pre-deploy step runs: the
