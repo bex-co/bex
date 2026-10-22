@@ -1203,3 +1203,66 @@ func TestAHibernatedAppWithoutARevisionStillWakes(t *testing.T) {
 			rr.Code, rr.Header().Get("Retry-After"), cl.patches.Load())
 	}
 }
+
+// w8/185: Render answers a spun-down free service's /robots.txt with a
+// disallow-all file and never wakes it; once the service is awake or waking,
+// the path is like any other, and every other path still wakes.
+func TestRobotsTxtOfASleepingServiceDoesNotWakeIt(t *testing.T) {
+	for _, host := range []string{"sleeping.onbex.co", "a.onbex.co"} {
+		for _, target := range []string{"/robots.txt", "/robots.txt?x=1"} {
+			for _, method := range []string{http.MethodGet, http.MethodHead} {
+				t.Run(host+target+method, func(t *testing.T) {
+					app, dep := sleepingApp()
+					app.Status.Phase = appv1alpha1.PhaseHibernated
+					cache, base := primedHostCache(t, app, dep)
+					cl := &countingClient{Client: base}
+
+					rr := httptest.NewRecorder()
+					newHandler(cl, cache, logr.Discard()).ServeHTTP(rr, httptest.NewRequest(method, "https://"+host+target, nil))
+
+					if rr.Code != http.StatusOK || !strings.HasPrefix(rr.Header().Get("Content-Type"), "text/plain") {
+						t.Fatalf("response = %d %q", rr.Code, rr.Header().Get("Content-Type"))
+					}
+					wantBody := "User-agent: *\nDisallow: /\n"
+					if method == http.MethodHead {
+						wantBody = ""
+					}
+					if rr.Body.String() != wantBody {
+						t.Fatalf("body = %q, want %q", rr.Body.String(), wantBody)
+					}
+					if n := cl.patches.Load(); n != 0 {
+						t.Fatalf("robots.txt issued %d patches, want 0 (no wake, no last-active)", n)
+					}
+				})
+			}
+		}
+	}
+}
+
+func TestRobotsTxtExceptionIsOnlyForTheHibernatedGetPath(t *testing.T) {
+	for _, tc := range []struct {
+		name, method, target string
+		phase                appv1alpha1.AppPhase
+	}{
+		{"waking service", http.MethodGet, "/robots.txt", appv1alpha1.PhaseDeploying},
+		{"other path", http.MethodGet, "/robots.txt/x", appv1alpha1.PhaseHibernated},
+		{"nested robots", http.MethodGet, "/a/robots.txt", appv1alpha1.PhaseHibernated},
+		{"POST", http.MethodPost, "/robots.txt", appv1alpha1.PhaseHibernated},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app, dep := sleepingApp()
+			app.Status.Phase = tc.phase
+			cache, base := primedHostCache(t, app, dep)
+			cl := &countingClient{Client: base}
+
+			rr := httptest.NewRecorder()
+			req := httptest.NewRequest(tc.method, "https://sleeping.onbex.co"+tc.target, nil)
+			req.Header.Set("Accept", "application/json")
+			newHandler(cl, cache, logr.Discard()).ServeHTTP(rr, req)
+
+			if rr.Code != http.StatusServiceUnavailable || cl.patches.Load() == 0 {
+				t.Fatalf("response = %d with %d patches; want the ordinary wake", rr.Code, cl.patches.Load())
+			}
+		})
+	}
+}
