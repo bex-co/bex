@@ -67,18 +67,23 @@ export function scopeEnvironmentId(value: string): string | null {
 }
 
 /**
- * Whether a service may be linked to a group in `environmentId`. bex-api
- * refuses a cross-scope link (`ENV_GROUP_SERVICE_ENVIRONMENT_MISMATCH`), so
- * every surface that offers a link — the detail page's picker and, since
- * w4/m111, the create dialog's checkbox list — filters on exactly this rule.
- * A service in no environment is workspace-scoped, which is `null`.
+ * Whether a service may be linked to a group in `environmentId`. Render's
+ * rule, which bex-api enforces (`ENV_GROUP_SERVICE_ENVIRONMENT_MISMATCH`): a
+ * workspace-scoped group (`null`) links to any service, an environment-scoped
+ * one only to that environment's services. Every surface that offers a link —
+ * the detail page's picker and, since w4/m111, the create dialog's checkbox
+ * list — filters on exactly this rule. A service in no environment is
+ * workspace-scoped, which is `null`.
  */
 export function serviceMatchesScope(
   serviceEnvironmentById: ReadonlyMap<string, string>,
   serviceId: string,
   environmentId: string | null,
 ): boolean {
-  return (serviceEnvironmentById.get(serviceId) ?? null) === environmentId;
+  return (
+    environmentId === null ||
+    (serviceEnvironmentById.get(serviceId) ?? null) === environmentId
+  );
 }
 
 /** `serviceMatchesScope` bound to a group's own scope. */

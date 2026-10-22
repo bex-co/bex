@@ -4,10 +4,9 @@ import type { EnvGroupView } from "@/features/env-groups/types";
  * The groups a service move would strand: linked to one of the moving
  * services, but scoped somewhere other than the destination (w4/m238).
  *
- * Scope is exact equality, workspace included — a group scoped to an
- * environment (`environmentId` set) strands when the service lands anywhere
- * else, and a workspace-scoped group (`null`) strands when the service lands
- * in an environment. This is `serviceMatchesGroupScope` with the service's
+ * A group scoped to an environment (`environmentId` set) strands when the
+ * service lands anywhere else; a workspace-scoped group (`null`) links to any
+ * service, so it never strands (w8/179). This is `serviceMatchesGroupScope` with the service's
  * post-move environment substituted for its current one. Moves stay allowed —
  * the group-side guard's own remedy depends on them — so callers confirm
  * rather than refuse.
@@ -20,6 +19,7 @@ export function strandedGroupsForDestination(
   const moving = new Set(serviceIds);
   return groups.filter(
     (group) =>
+      group.environmentId !== null &&
       group.environmentId !== destinationEnvironmentId &&
       group.serviceLinks.some((serviceId) => moving.has(serviceId)),
   );

@@ -506,7 +506,7 @@ describe("EnvGroupsPanel group-vs-group precedence", () => {
         secretFileNames: [],
       }) as unknown as EnvGroupView;
 
-    it("offers only groups in the service's own environment", async () => {
+    it("offers the service's own environment's groups and workspace groups (w8/179)", async () => {
       scopeState.serviceEnvironmentById = new Map([["web", "evm-source"]]);
       scopeState.environments = [
         { id: "evm-source", name: "source" },
@@ -525,8 +525,8 @@ describe("EnvGroupsPanel group-vs-group precedence", () => {
       render(<EnvGroupsPanel serviceId="web" />);
       expect(await screen.findByText("evg-source")).toBeInTheDocument();
       expect(screen.queryByText("evg-target")).toBeNull();
-      expect(screen.queryByText("evg-workspace")).toBeNull();
-      expect(screen.getByText("Available to link (1)")).toBeInTheDocument();
+      expect(screen.getByText("evg-workspace")).toBeInTheDocument();
+      expect(screen.getByText("Available to link (2)")).toBeInTheDocument();
     });
 
     it("says no group shares the environment, not that every group is linked", async () => {
@@ -668,7 +668,7 @@ describe("EnvGroupsPanel authoritative service environment (w4/220)", () => {
     );
   }
 
-  it("offers only the staging group and creates in staging when Server reports staging", async () => {
+  it("offers the staging and workspace groups and creates in staging when Server reports staging", async () => {
     primeIndexWithoutCurrentService();
     mockServiceEnvironmentId = "evm-staging";
     threeScopes();
@@ -677,10 +677,11 @@ describe("EnvGroupsPanel authoritative service environment (w4/220)", () => {
     render(<EnvGroupsPanel serviceId="web" />);
 
     expect(screen.getByText("evg-staging")).toBeInTheDocument();
-    expect(screen.queryByText("evg-clone")).toBeNull();
+    // A workspace group links to a service in an Environment too (w8/179).
+    expect(screen.getByText("evg-clone")).toBeInTheDocument();
     expect(screen.queryByText("evg-production")).toBeNull();
-    expect(screen.getByText("Available to link (1)")).toBeInTheDocument();
-    const link = screen.getByRole("button", { name: /^Link$/ });
+    expect(screen.getByText("Available to link (2)")).toBeInTheDocument();
+    const link = screen.getAllByRole("button", { name: /^Link$/ })[0];
     expect(link).toBeEnabled();
     await user.click(link);
     expect(mockLinkGroup).toHaveBeenCalledWith("evg-staging", "web");

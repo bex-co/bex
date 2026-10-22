@@ -73,8 +73,39 @@ func TestEnvGroupScopeConstrainsLinksAndMoveIsAtomic(t *testing.T) {
 	if err != nil || moved.EnvironmentID != "env-b" || len(moved.ServiceLinks) != 1 {
 		t.Fatalf("compatible move = %+v err=%v", moved, err)
 	}
-	if _, err := svc.MoveEnvGroup(ctx, group.ID, ""); !errors.Is(err, core.ErrConflict) {
-		t.Fatalf("scoped service should block workspace move: %v", err)
+	// A workspace group links to any service (w8/179), so leaving the
+	// environment strands nothing.
+	if g, err := svc.MoveEnvGroup(ctx, group.ID, ""); err != nil || g.EnvironmentID != "" || len(g.ServiceLinks) != 1 {
+		t.Fatalf("workspace move = %+v, %v", g, err)
+	}
+}
+
+// w8/179: Render links a group with no environment to any service in the
+// workspace, in a project environment or not.
+func TestWorkspaceEnvGroupLinksServicesInAnyEnvironment(t *testing.T) {
+	ctx := testCtx()
+	inEnv := sampleApp("in-env")
+	inEnv.Labels = map[string]string{core.LabelEnvironment: "env-a"}
+	standalone := sampleApp("standalone")
+	svc := newService(newFakeStore(), inEnv, standalone)
+	svc.EnvironmentWorkspace = environmentResolver("env-a", "env-b")
+	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared", ServiceIDs: []string{"standalone"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.LinkService(ctx, group.ID, "in-env"); err != nil {
+		t.Fatalf("workspace group → environment service = %v", err)
+	}
+	// Scoping the group into an environment still requires every link to be in it.
+	if _, err := svc.MoveEnvGroup(ctx, group.ID, "env-a"); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("scoping a group with an outside link = %v", err)
+	}
+	scoped, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "scoped", EnvironmentID: "env-b"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.LinkService(ctx, scoped.ID, "in-env"); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("env-b group → env-a service = %v", err)
 	}
 }
 
@@ -208,10 +239,10 @@ func TestEnvironmentAliasesPreserveGroupMetadataLinksAndWorkspace(t *testing.T) 
 	}
 }
 
-// w4/m187: grouping teardown detaches a group whose linked services are
-// leaving the same deleted environment, while the standalone move to workspace
-// scope still refuses. A link into another environment still refuses the
-// detach, and a group a concurrent writer already moved is left alone.
+// w4/m187: grouping teardown detaches a group, keeping its contents and links;
+// a group a concurrent writer already moved is left alone. A workspace group
+// links to any service, so a link into another environment no longer blocks
+// the detach (w8/179).
 func TestDetachEnvironmentKeepsContentAndOnlyAcceptsDepartingLinks(t *testing.T) {
 	ctx := testCtx()
 	web := sampleApp("web")
@@ -230,9 +261,6 @@ func TestDetachEnvironmentKeepsContentAndOnlyAcceptsDepartingLinks(t *testing.T)
 	before, err := svc.GetEnvGroup(ctx, group.ID)
 	if err != nil {
 		t.Fatal(err)
-	}
-	if _, err := svc.MoveEnvGroup(ctx, group.ID, ""); !errors.Is(err, core.ErrConflict) {
-		t.Fatalf("standalone move to workspace scope = %v, want the incompatible-services conflict", err)
 	}
 	// A different expected environment (a concurrent move already happened)
 	// is a no-op, not a clear.
@@ -261,21 +289,15 @@ func TestDetachEnvironmentKeepsContentAndOnlyAcceptsDepartingLinks(t *testing.T)
 		t.Fatalf("retry detach: %v", err)
 	}
 
-	// A link into ANOTHER environment is not a planned departure.
+	// A link into ANOTHER environment stays valid for a workspace group.
 	foreign, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "foreign-link", EnvironmentID: "env-b", ServiceIDs: []string{"other"}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	app := getApp(t, svc.Client, "other")
-	base := client.MergeFrom(app.DeepCopy())
-	app.Labels[core.LabelEnvironment] = "env-a"
-	if err := svc.Client.Patch(ctx, app, base); err != nil {
-		t.Fatal(err)
+	if err := svc.DetachEnvironment(ctx, foreign.ID, "env-b"); err != nil {
+		t.Fatalf("detach with a link into another environment = %v", err)
 	}
-	if err := svc.DetachEnvironment(ctx, foreign.ID, "env-b"); !errors.Is(err, core.ErrConflict) {
-		t.Fatalf("detach with a link into another environment = %v, want conflict", err)
-	}
-	if got, _ := svc.GetEnvGroup(ctx, foreign.ID); got.EnvironmentID != "env-b" || len(got.ServiceLinks) != 1 {
-		t.Fatalf("refused detach mutated the group: %+v", got)
+	if got, _ := svc.GetEnvGroup(ctx, foreign.ID); got.EnvironmentID != "" || len(got.ServiceLinks) != 1 {
+		t.Fatalf("detached group = %+v, want workspace scope with its link", got)
 	}
 }

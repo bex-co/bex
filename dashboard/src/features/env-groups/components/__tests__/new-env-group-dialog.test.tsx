@@ -306,14 +306,14 @@ describe("NewEnvGroupDialog", () => {
     );
   }
 
-  it("offers only workspace-scoped services under Workspace scope", () => {
+  it("offers every service under Workspace scope (w8/179)", () => {
     renderScoped();
 
     expect(
       screen.getByRole("checkbox", { name: /workspace-svc/ }),
     ).toBeTruthy();
-    // The in-Environment service is the one the backend would refuse.
-    expect(screen.queryByRole("checkbox", { name: /qa-svc/ })).toBeNull();
+    // A workspace group links to a service in an Environment too, as on Render.
+    expect(screen.getByRole("checkbox", { name: /qa-svc/ })).toBeTruthy();
   });
 
   it("offers only that Environment's services once one is picked", async () => {
@@ -488,7 +488,9 @@ describe("NewEnvGroupDialog", () => {
       expect.objectContaining({
         name: "edited-draft",
         environmentId: null,
-        serviceIds: ["srv-ws"],
+        // The Environment's service stays selected: a workspace group links
+        // to it too (w8/179).
+        serviceIds: expect.arrayContaining(["srv-qa", "srv-ws"]),
         envVars: [
           { key: "TOKEN", value: "draft-value", generateValue: undefined },
         ],
@@ -642,9 +644,9 @@ describe("NewEnvGroupDialog", () => {
     expect(
       screen.getByRole("combobox", { name: "Environment" }),
     ).toHaveTextContent("Workspace");
-    expect(
-      screen.queryByRole("checkbox", { name: /qa-svc/ }),
-    ).not.toBeInTheDocument();
+    // The reset draft starts unselected; the Environment's service is offered
+    // under Workspace scope (w8/179).
+    expect(screen.getByRole("checkbox", { name: /qa-svc/ })).not.toBeChecked();
     await user.type(screen.getByLabelText("Group name"), "workspace-group");
     await user.click(screen.getByRole("checkbox", { name: /workspace-svc/ }));
     await user.click(
