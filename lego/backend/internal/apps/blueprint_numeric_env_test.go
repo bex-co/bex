@@ -216,3 +216,46 @@ func TestBlueprintUnsignedOutsideEnvValueStillRefused(t *testing.T) {
 		})
 	}
 }
+
+// A whole number past uint64 resolves as a YAML float, which the integer
+// schema then accepted because it is integral (w6/092). It is still an invalid
+// integer for a bounded setting, and an env value keeps every digit.
+func TestBlueprintWholeNumberPastUnsigned64(t *testing.T) {
+	const past = "18446744073709551616"
+	manifest := strings.Replace(numericEnvService(`      - key: A
+        value: 1
+`), "    plan: free\n", "    plan: free\n    numInstances: "+past+"\n", 1)
+	_, _, problems := CompileBlueprintIR(manifest)
+	if len(problems) == 0 || !strings.Contains(problems[0].Message, "invalid integer") || problems[0].Line == 0 {
+		t.Fatalf("numInstances %s: problems = %+v, want a located invalid-integer refusal", past, problems)
+	}
+
+	const huge = "123456789012345678901234567890"
+	stack := compileNumericEnvStack(t, numericEnvService(`      - key: PAST
+        value: `+past+`
+      - key: HUGE
+        value: +`+huge+`
+`))
+	got := map[string]string{}
+	for _, svc := range stack.services {
+		for _, e := range svc.req.Env {
+			got[e.Name] = e.Value
+		}
+	}
+	if got["PAST"] != past || got["HUGE"] != huge {
+		t.Errorf("env = %+v, want PAST=%s HUGE=%s", got, past, huge)
+	}
+}
+
+// An alias to an undefined anchor is located at its `*name` token rather than
+// at line 0 (w6/092): yaml.v3's error names the anchor but not its position.
+func TestBlueprintUnknownAnchorIsLocated(t *testing.T) {
+	manifest := "services:\n  - type: web\n    name: a\n    runtime: go\n    plan: *missing\n"
+	_, _, problems := CompileBlueprintIR(manifest)
+	if len(problems) != 1 || problems[0].Code != "BLUEPRINT_YAML_SYNTAX" {
+		t.Fatalf("problems = %+v, want one syntax refusal", problems)
+	}
+	if problems[0].Line != 5 || problems[0].Column != 11 {
+		t.Errorf("location = %d:%d, want 5:11", problems[0].Line, problems[0].Column)
+	}
+}

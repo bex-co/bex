@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"regexp"
 	"sort"
 	"strconv"
@@ -806,7 +807,7 @@ func parseBlueprintSource(manifest string) (*BlueprintSource, []BlueprintSourceP
 				Code: "BLUEPRINT_YAML_EMPTY", Path: "#", Message: "Blueprint must contain one YAML document",
 			}}
 		}
-		line, column := yamlSyntaxLocation(err)
+		line, column := yamlSyntaxLocation(err, manifest)
 		return &BlueprintSource{Locations: map[string]BlueprintSourceLocation{}}, []BlueprintSourceProblem{{
 			Code: "BLUEPRINT_YAML_SYNTAX", Path: "#", Message: "Blueprint is not valid YAML", Line: line, Column: column,
 		}}
@@ -921,9 +922,20 @@ func (b *blueprintWalkBudget) countResources(path []string, pointer string, node
 
 var yamlSyntaxLine = regexp.MustCompile(`(?i)line\s+(\d+)`)
 
-func yamlSyntaxLocation(err error) (line, column int) {
+var yamlUnknownAnchor = regexp.MustCompile(`unknown anchor '([^']+)' referenced`)
+
+func yamlSyntaxLocation(err error, manifest string) (line, column int) {
 	match := yamlSyntaxLine.FindStringSubmatch(err.Error())
 	if len(match) != 2 {
+		// yaml.v3 reports an alias to an undefined anchor without a position,
+		// so point at the first `*name` token in the source (w6/092).
+		if anchor := yamlUnknownAnchor.FindStringSubmatch(err.Error()); anchor != nil {
+			alias := regexp.MustCompile(`(?:^|[\s\[{,:-])(\*` + regexp.QuoteMeta(anchor[1]) + `)(?:$|[\s\]},])`)
+			if at := alias.FindStringSubmatchIndex(manifest); at != nil {
+				before := manifest[:at[2]]
+				return strings.Count(before, "\n") + 1, at[2] - strings.LastIndex(before, "\n")
+			}
+		}
 		return 0, 0
 	}
 	line, _ = strconv.Atoi(match[1])
@@ -1095,6 +1107,15 @@ func blueprintJSONScalar(node *yaml.Node, pointer string) (any, []BlueprintSourc
 		return integer, nil
 	case "!!float":
 		value := strings.ReplaceAll(node.Value, "_", "")
+		// A whole number too wide for 64 bits resolves as a YAML float, which
+		// an integer schema would then accept because it is integral (w6/092).
+		// It is an invalid integer, except that an env value keeps its digits.
+		if whole, ok := new(big.Int).SetString(value, 10); ok {
+			if blueprintEnvValuePath.MatchString(pointer) {
+				return json.Number(whole.String()), nil
+			}
+			return problem("BLUEPRINT_YAML_SCALAR", "Blueprint contains an invalid integer")
+		}
 		if strings.EqualFold(value, ".nan") || strings.Contains(strings.ToLower(value), "inf") {
 			return problem("BLUEPRINT_YAML_SCALAR", "Blueprint numbers must be finite JSON numbers")
 		}
