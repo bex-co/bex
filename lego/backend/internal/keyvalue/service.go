@@ -625,6 +625,8 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 		if err := s.requireUnprotected(ctx, kv, "suspend"); err != nil {
 			return KeyValueView{}, err
 		}
+	} else if err := s.requireUnprotected(ctx, kv, "resume"); err != nil {
+		return KeyValueView{}, err
 	} else if err := s.RequireBillingMutation(ctx, kv.Labels[core.LabelTenant]); err != nil {
 		return KeyValueView{}, err
 	}

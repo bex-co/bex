@@ -27,34 +27,57 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// protection_test.go exercises w6/m19's protected-environment guard
-// (protection.go): a member App of a protectedStatus=protected Environment
-// refuses Delete/Suspend/an existing-service DeployStack override without a
-// matching ProtectedConfirmation phrase — enforcement, not just the storage
-// round-trip environments' own tests cover.
+// protection_test.go exercises the protected-environment rule (protection.go).
+// It is Render's (w8/187, render.com/docs/projects): in a protectedStatus=protected
+// Environment only a workspace Admin may delete, suspend or resume a service or
+// turn maintenance mode on; everything else — deploys, rollbacks, settings — is
+// open to anyone who may do it elsewhere, and no verb asks for a typed phrase.
+// (Before w8/187 w6/m19, w4/m126 and w4/m127 gated a wider set behind
+// ProtectedConfirmation phrases for every caller.)
 
-func TestDelete_BlockedWhenProtectedWithoutConfirm(t *testing.T) {
+// denyWorkspaceManage allows every relation except the admin can_manage on a
+// workspace — a Developer in the role ladder. Other objects' can_manage checks
+// (the ordinary per-verb authorization) are untouched.
+type denyWorkspaceManage struct{}
+
+func (denyWorkspaceManage) Check(_ context.Context, _, relation, object string) (bool, error) {
+	return !(relation == core.RelCanManage && strings.HasPrefix(object, "workspace:")), nil
+}
+
+// allowAllRelations is an admin caller.
+type allowAllRelations struct{}
+
+func (allowAllRelations) Check(context.Context, string, string, string) (bool, error) {
+	return true, nil
+}
+
+// asNonAdmin makes svc's caller a non-admin; asAdmin an admin (the identity both
+// need is ctxAs).
+func asNonAdmin(svc *Service) { svc.Authz = denyWorkspaceManage{} }
+func asAdmin(svc *Service)    { svc.Authz = allowAllRelations{} }
+
+func TestDelete_NonAdminBlockedWhenProtected(t *testing.T) {
 	rec := &recordingStore{protectedStatus: map[string]string{"srv-1": "protected"}}
 	svc, cl := newService(rec, managedApp("web", "srv-1"))
+	asNonAdmin(svc)
 
-	if err := svc.Delete(context.Background(), "web"); !errors.Is(err, core.ErrBadRequest) {
-		t.Fatalf("Delete on a protected member: got %v, want ErrBadRequest", err)
+	if err := svc.Delete(ctxAs("user-a"), "web"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("Delete on a protected member by a non-admin: got %v, want ErrForbidden", err)
 	}
-	// The App must survive an unconfirmed, blocked delete.
+	// The App must survive a blocked delete.
 	getApp(t, cl, "web")
 }
 
-func TestDelete_SucceedsWithCorrectConfirm(t *testing.T) {
+func TestDelete_AdminSucceedsWithNoPhrase(t *testing.T) {
 	rec := &recordingStore{protectedStatus: map[string]string{"srv-1": "protected"}}
 	svc, cl := newService(rec, managedApp("web", "srv-1"))
+	asAdmin(svc)
 
-	want := ProtectedConfirmation("delete", "web")
-	ctx := core.WithConfirm(context.Background(), want)
-	if err := svc.Delete(ctx, "web"); err != nil {
-		t.Fatalf("Delete with correct confirm: %v", err)
+	if err := svc.Delete(ctxAs("user-a"), "web"); err != nil {
+		t.Fatalf("Delete by an admin: %v", err)
 	}
 	var got appv1alpha1.AppList
-	if err := cl.List(context.Background(), &got); err != nil {
+	if err := cl.List(ctxAs("user-a"), &got); err != nil {
 		t.Fatalf("list: %v", err)
 	}
 	if len(got.Items) != 0 {
@@ -62,21 +85,24 @@ func TestDelete_SucceedsWithCorrectConfirm(t *testing.T) {
 	}
 }
 
-func TestDelete_WrongConfirmStillBlocked(t *testing.T) {
+// A typed phrase no longer clears anything for a non-admin.
+func TestDelete_ConfirmPhraseDoesNotSubstituteForTheAdminRole(t *testing.T) {
 	rec := &recordingStore{protectedStatus: map[string]string{"srv-1": "protected"}}
 	svc, _ := newService(rec, managedApp("web", "srv-1"))
+	asNonAdmin(svc)
 
-	ctx := core.WithConfirm(context.Background(), "sudo delete service someone-else")
-	if err := svc.Delete(ctx, "web"); !errors.Is(err, core.ErrBadRequest) {
-		t.Fatalf("Delete with wrong confirm: got %v, want ErrBadRequest", err)
+	ctx := core.WithConfirm(ctxAs("user-a"), "sudo delete service web")
+	if err := svc.Delete(ctx, "web"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("Delete with the old phrase by a non-admin: got %v, want ErrForbidden", err)
 	}
 }
 
-func TestDelete_UnprotectedNeedsNoConfirm(t *testing.T) {
+func TestDelete_UnprotectedNeedsNoAdmin(t *testing.T) {
 	rec := &recordingStore{protectedStatus: map[string]string{"srv-1": "unprotected"}}
 	svc, _ := newService(rec, managedApp("web", "srv-1"))
+	asNonAdmin(svc)
 
-	if err := svc.Delete(context.Background(), "web"); err != nil {
+	if err := svc.Delete(ctxAs("user-a"), "web"); err != nil {
 		t.Fatalf("Delete on an unprotected member: %v", err)
 	}
 }
@@ -85,106 +111,86 @@ func TestDelete_RetryRemovesCRAfterSourceRowIsGone(t *testing.T) {
 	rec := &recordingStore{err: store.ErrNotFound}
 	svc, cl := newService(rec, managedApp("web", "srv-1"))
 
-	if err := svc.Delete(context.Background(), "web"); err != nil {
+	if err := svc.Delete(ctxAs("user-a"), "web"); err != nil {
 		t.Fatalf("Delete after row-first interruption: %v", err)
 	}
 	gone(t, cl, "web")
 }
 
-func TestSuspend_BlockedWhenProtectedWithoutConfirm(t *testing.T) {
+func TestSuspendAndResume_NonAdminBlockedWhenProtected(t *testing.T) {
 	rec := &recordingStore{protectedStatus: map[string]string{"srv-1": "protected"}}
-	svc, cl := newService(rec, managedApp("web", "srv-1"))
+	running := managedApp("web", "srv-1")
+	stopped := managedApp("idle", "srv-1")
+	stopped.Spec.Suspended = true
+	svc, cl := newService(rec, running, stopped)
+	asNonAdmin(svc)
 
-	if _, err := svc.Suspend(context.Background(), "web"); !errors.Is(err, core.ErrBadRequest) {
-		t.Fatalf("Suspend on a protected member: got %v, want ErrBadRequest", err)
+	if _, err := svc.Suspend(ctxAs("user-a"), "web"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("Suspend on a protected member by a non-admin: got %v, want ErrForbidden", err)
 	}
 	if getApp(t, cl, "web").Spec.Suspended {
 		t.Fatal("a blocked suspend must not patch the CR")
 	}
+	if _, err := svc.Resume(ctxAs("user-a"), "idle"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("Resume on a protected member by a non-admin: got %v, want ErrForbidden", err)
+	}
+	if !getApp(t, cl, "idle").Spec.Suspended {
+		t.Fatal("a blocked resume must not patch the CR")
+	}
 }
 
-func TestSuspend_SucceedsWithCorrectConfirm(t *testing.T) {
+func TestSuspendAndResume_AdminSucceedsWithNoPhrase(t *testing.T) {
 	rec := &recordingStore{protectedStatus: map[string]string{"srv-1": "protected"}}
-	svc, cl := newService(rec, managedApp("web", "srv-1"))
+	app := managedApp("web", "srv-1")
+	svc, cl := newService(rec, app)
+	asAdmin(svc)
 
-	want := ProtectedConfirmation("suspend", "web")
-	ctx := core.WithConfirm(context.Background(), want)
-	if _, err := svc.Suspend(ctx, "web"); err != nil {
-		t.Fatalf("Suspend with correct confirm: %v", err)
+	if _, err := svc.Suspend(ctxAs("user-a"), "web"); err != nil {
+		t.Fatalf("Suspend by an admin: %v", err)
 	}
 	if !getApp(t, cl, "web").Spec.Suspended {
 		t.Fatal("App should be suspended")
 	}
-}
-
-// TestResume_NeverBlockedEvenWhenProtected proves Resume is exempt: a
-// protected environment blocks taking availability AWAY, not restoring it.
-func TestResume_NeverBlockedEvenWhenProtected(t *testing.T) {
-	rec := &recordingStore{protectedStatus: map[string]string{"srv-1": "protected"}}
-	app := managedApp("web", "srv-1")
-	app.Spec.Suspended = true
-	svc, cl := newService(rec, app)
-
-	if _, err := svc.Resume(context.Background(), "web"); err != nil {
-		t.Fatalf("Resume on a protected member must never be blocked: %v", err)
+	if _, err := svc.Resume(ctxAs("user-a"), "web"); err != nil {
+		t.Fatalf("Resume by an admin: %v", err)
 	}
 	if getApp(t, cl, "web").Spec.Suspended {
 		t.Fatal("App should be resumed")
 	}
 }
 
-func TestDeployStack_DirectOverrideBlockedWhenProtected(t *testing.T) {
+// A deploy of a different image is not one of the actions Render restricts,
+// so a Developer may run it in a protected environment with no phrase.
+func TestDeployStack_OverrideNeedsNoPhraseOrAdmin(t *testing.T) {
 	rec := &recordingStore{protectedStatus: map[string]string{"srv-1": "protected"}}
 	existing := managedApp("web", "srv-1")
 	existing.Spec.Image = "old:1"
 	svc, cl := newService(rec, existing)
+	asNonAdmin(svc)
 
 	changed := "services:\n  - {name: web, type: web, runtime: image, image: {url: new:1}}\n"
-	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: changed}); !errors.Is(err, core.ErrBadRequest) {
-		t.Fatalf("DeployStack override on a protected member: got %v, want ErrBadRequest", err)
-	}
-	if got := getApp(t, cl, "web").Spec.Image; got != "old:1" {
-		t.Fatalf("image must not change on a blocked override, got %q", got)
-	}
-}
-
-func TestDeployStack_DirectOverrideSucceedsWithConfirm(t *testing.T) {
-	rec := &recordingStore{protectedStatus: map[string]string{"srv-1": "protected"}}
-	existing := managedApp("web", "srv-1")
-	existing.Spec.Image = "old:1"
-	svc, cl := newService(rec, existing)
-
-	changed := "services:\n  - {name: web, type: web, runtime: image, image: {url: new:1}}\n"
-	confirm := ProtectedConfirmation("deploy", "web")
-	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: changed, Confirm: confirm}); err != nil {
-		t.Fatalf("DeployStack override with correct confirm: %v", err)
+	if _, err := svc.DeployStack(ctxAs("user-a"), DeployRequest{Manifest: changed}); err != nil {
+		t.Fatalf("DeployStack override on a protected member by a non-admin: %v", err)
 	}
 	if got := getApp(t, cl, "web").Spec.Image; got != "new:1" {
 		t.Fatalf("image = %q, want new:1", got)
 	}
 }
 
-func TestSyncBlueprint_ProtectedOverrideSucceedsWithConfirm(t *testing.T) {
+func TestSyncBlueprint_ProtectedOverrideNeedsNoPhrase(t *testing.T) {
 	rec := &recordingStore{protectedStatus: map[string]string{"srv-1": "protected"}}
 	existing := managedApp("web", "srv-1")
 	existing.Spec.Image = "old:1"
 	svc, cl := newService(rec, existing)
+	asNonAdmin(svc)
 	svc.Blueprints = newFakeBlueprintStore(store.Blueprint{
 		ID:       "blp-1",
 		Manifest: "services:\n  - {name: web, type: web, runtime: image, image: {url: new:1}}\n",
 		Status:   "active",
 	})
 
-	if _, err := svc.SyncBlueprint(context.Background(), "blp-1", "", "", "", nil); !errors.Is(err, core.ErrBadRequest) {
-		t.Fatalf("SyncBlueprint override on a protected member: got %v, want ErrBadRequest", err)
-	}
-	if got := getApp(t, cl, "web").Spec.Image; got != "old:1" {
-		t.Fatalf("blocked sync changed image to %q", got)
-	}
-
-	confirm := ProtectedConfirmation("deploy", "web")
-	if _, err := svc.SyncBlueprint(context.Background(), "blp-1", "", "", confirm, nil); err != nil {
-		t.Fatalf("SyncBlueprint with correct confirm: %v", err)
+	if _, err := svc.SyncBlueprint(ctxAs("user-a"), "blp-1", "", "", "", nil); err != nil {
+		t.Fatalf("SyncBlueprint override on a protected member: %v", err)
 	}
 	if got := getApp(t, cl, "web").Spec.Image; got != "new:1" {
 		t.Fatalf("image = %q, want new:1", got)
@@ -192,39 +198,30 @@ func TestSyncBlueprint_ProtectedOverrideSucceedsWithConfirm(t *testing.T) {
 }
 
 // TestDeployStack_NewServiceNeverBlocked proves a brand-new service (no
-// existing App to override) is exempt — only an override of something
-// already running is guarded.
+// existing App to override) is exempt.
 func TestDeployStack_NewServiceNeverBlocked(t *testing.T) {
 	rec := &recordingStore{}
 	svc, cl := newService(rec)
 
 	manifest := "services:\n  - {name: web, type: web, runtime: image, image: {url: new:1}}\n"
-	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: manifest}); err != nil {
+	if _, err := svc.DeployStack(ctxAs("user-a"), DeployRequest{Manifest: manifest}); err != nil {
 		t.Fatalf("DeployStack for a brand-new service: %v", err)
 	}
 	getApp(t, cl, "web")
 }
 
-// --- w4/m126: the guard covers the verbs that redefine or take offline -------
-//
-// The milestone's finding: a protected environment refused suspend and delete
-// while setImage was accepted, changing which executable the service runs on
-// its next deploy with no confirmation asked and no confirm argument to give.
-// These are the service-layer half — one case per verb class, each asserting
-// the refusal, the phrase that clears it, and that an unprotected member is
-// untouched.
+// --- the verbs Render leaves open ---------------------------------------------
 
-// protectedCall is one guarded verb bound to a fixture: build the App, run the
-// verb against a Service, and report whether the spec actually changed.
+// protectedCall is one verb bound to a fixture: build the App, run the verb
+// against a Service, and report whether the spec actually changed.
 type protectedCall struct {
 	name    string
-	verb    string // the word inside ProtectedConfirmation
 	app     func() *appv1alpha1.App
 	call    func(ctx context.Context, svc *Service, name string) error
 	applied func(a *appv1alpha1.App) bool
 }
 
-func m126Calls() []protectedCall {
+func openVerbCalls() []protectedCall {
 	str := func(s string) *string { return &s }
 	docker := func() *appv1alpha1.App {
 		a := managedRepoApp("web")
@@ -234,7 +231,6 @@ func m126Calls() []protectedCall {
 	}
 	return []protectedCall{{
 		name: "setImage",
-		verb: "repoint",
 		app:  func() *appv1alpha1.App { return managedApp("web", "srv-test") },
 		call: func(ctx context.Context, svc *Service, n string) error {
 			_, err := svc.SetSourceAndRegistryCredential(ctx, n, sourcePatch{Image: str("mendhak/http-https-echo:35")})
@@ -243,7 +239,6 @@ func m126Calls() []protectedCall {
 		applied: func(a *appv1alpha1.App) bool { return a.Spec.Image == "mendhak/http-https-echo:35" },
 	}, {
 		name: "setBranch",
-		verb: "repoint",
 		app:  func() *appv1alpha1.App { return managedRepoApp("web") },
 		call: func(ctx context.Context, svc *Service, n string) error {
 			_, err := svc.SetSourceAndRegistryCredential(ctx, n, sourcePatch{Branch: str("release")})
@@ -252,7 +247,6 @@ func m126Calls() []protectedCall {
 		applied: func(a *appv1alpha1.App) bool { return a.Spec.Branch == "release" },
 	}, {
 		name: "setStartCommand",
-		verb: "redefine",
 		app:  func() *appv1alpha1.App { return managedRepoApp("web") },
 		call: func(ctx context.Context, svc *Service, n string) error {
 			_, err := svc.SetCommands(ctx, n, nil, str("./app --serve"))
@@ -261,7 +255,6 @@ func m126Calls() []protectedCall {
 		applied: func(a *appv1alpha1.App) bool { return a.Spec.StartCommand == "./app --serve" },
 	}, {
 		name: "setRootDir",
-		verb: "redefine",
 		app:  func() *appv1alpha1.App { return managedRepoApp("web") },
 		call: func(ctx context.Context, svc *Service, n string) error {
 			_, err := svc.SetRootDir(ctx, n, "services/api")
@@ -270,7 +263,6 @@ func m126Calls() []protectedCall {
 		applied: func(a *appv1alpha1.App) bool { return a.Spec.RootDir == "services/api" },
 	}, {
 		name: "setDockerfilePath",
-		verb: "redefine",
 		app:  docker,
 		call: func(ctx context.Context, svc *Service, n string) error {
 			_, err := svc.SetDockerfilePath(ctx, n, "ops/Dockerfile")
@@ -279,7 +271,6 @@ func m126Calls() []protectedCall {
 		applied: func(a *appv1alpha1.App) bool { return a.Spec.DockerfilePath == "ops/Dockerfile" },
 	}, {
 		name: "setPreDeployCommand",
-		verb: "redefine",
 		app:  func() *appv1alpha1.App { return managedRepoApp("web") },
 		call: func(ctx context.Context, svc *Service, n string) error {
 			_, err := svc.SetPreDeployCommand(ctx, n, "./migrate")
@@ -288,7 +279,6 @@ func m126Calls() []protectedCall {
 		applied: func(a *appv1alpha1.App) bool { return a.Spec.PreDeployCommand == "./migrate" },
 	}, {
 		name: "updateCronJob command",
-		verb: "redefine",
 		app: func() *appv1alpha1.App {
 			a := managedRepoApp("web")
 			a.Spec.Type = appv1alpha1.TypeCronJob
@@ -296,197 +286,116 @@ func m126Calls() []protectedCall {
 			return a
 		},
 		call: func(ctx context.Context, svc *Service, n string) error {
-			_, err := svc.SetCronJob(ctx, n, str("0 0 * * *"), str("/bin/exfiltrate"))
+			_, err := svc.SetCronJob(ctx, n, str("0 0 * * *"), str("/bin/run"))
 			return err
 		},
-		applied: func(a *appv1alpha1.App) bool { return a.Spec.Command == "/bin/exfiltrate" },
-	}, {
-		name: "enable maintenance mode",
-		verb: "take offline",
-		app: func() *appv1alpha1.App {
-			a := managedApp("web", "srv-test")
-			a.Spec.Type = appv1alpha1.TypeWebService
-			a.Spec.Tier = "standard"
-			return a
-		},
-		call: func(ctx context.Context, svc *Service, n string) error {
-			_, err := svc.SetMaintenanceMode(ctx, n, MaintenanceModeView{Enabled: true})
-			return err
-		},
-		applied: func(a *appv1alpha1.App) bool {
-			return a.Spec.MaintenanceMode != nil && a.Spec.MaintenanceMode.Enabled
-		},
+		applied: func(a *appv1alpha1.App) bool { return a.Spec.Command == "/bin/run" },
 	}}
 }
 
-func TestM126_ProtectedMemberRefusesWithoutConfirm(t *testing.T) {
-	for _, c := range m126Calls() {
-		t.Run(c.name, func(t *testing.T) {
-			rec := &recordingStore{protectedStatus: map[string]string{"srv-test": "protected"}}
-			svc, cl := newService(rec, c.app())
-
-			err := c.call(context.Background(), svc, "web")
-			if !errors.Is(err, core.ErrBadRequest) {
-				t.Fatalf("on a protected member: got %v, want ErrBadRequest", err)
-			}
-			// The refusal has to carry the phrase — a caller with no way to
-			// learn it is refused permanently, which is the bug one level down.
-			if want := ProtectedConfirmation(c.verb, "web"); !strings.Contains(err.Error(), want) {
-				t.Fatalf("error %q must name the phrase %q", err, want)
-			}
-			if c.applied(getApp(t, cl, "web")) {
-				t.Fatal("a refused verb must not have changed the spec")
-			}
-		})
-	}
-}
-
-func TestM126_ProtectedMemberProceedsWithConfirm(t *testing.T) {
-	for _, c := range m126Calls() {
-		t.Run(c.name, func(t *testing.T) {
-			rec := &recordingStore{protectedStatus: map[string]string{"srv-test": "protected"}}
-			svc, cl := newService(rec, c.app())
-
-			ctx := core.WithConfirm(context.Background(), ProtectedConfirmation(c.verb, "web"))
-			if err := c.call(ctx, svc, "web"); err != nil {
-				t.Fatalf("with the confirmation phrase: %v", err)
-			}
-			if !c.applied(getApp(t, cl, "web")) {
-				t.Fatal("a confirmed verb must have applied")
-			}
-		})
-	}
-}
-
-func TestM126_UnprotectedMemberNeedsNoConfirm(t *testing.T) {
-	for _, c := range m126Calls() {
-		t.Run(c.name, func(t *testing.T) {
-			// No protectedStatus entry at all: the store's default, an App in
-			// no environment or an unprotected one.
-			svc, cl := newService(&recordingStore{}, c.app())
-
-			if err := c.call(context.Background(), svc, "web"); err != nil {
-				t.Fatalf("unprotected member: %v", err)
-			}
-			if !c.applied(getApp(t, cl, "web")) {
-				t.Fatal("an unprotected verb must have applied unchanged")
-			}
-		})
-	}
-}
-
-// TestM126_WrongVerbPhraseDoesNotArmAnother is why the phrase is per class and
-// not per resource: a confirm the user typed to repoint a service must not
-// silently authorize taking it offline.
-func TestM126_WrongVerbPhraseDoesNotArmAnother(t *testing.T) {
-	rec := &recordingStore{protectedStatus: map[string]string{"srv-test": "protected"}}
+func maintenanceApp() *appv1alpha1.App {
 	a := managedApp("web", "srv-test")
 	a.Spec.Type = appv1alpha1.TypeWebService
 	a.Spec.Tier = "standard"
-	svc, _ := newService(rec, a)
+	return a
+}
 
-	ctx := core.WithConfirm(context.Background(), ProtectedConfirmation("repoint", "web"))
-	if _, err := svc.SetMaintenanceMode(ctx, "web", MaintenanceModeView{Enabled: true}); !errors.Is(err, core.ErrBadRequest) {
-		t.Fatalf("repoint's phrase must not arm take-offline: got %v", err)
+// Render restricts only delete, suspend/resume and maintenance mode: a
+// Developer changes the code a protected service runs, with no phrase.
+func TestProtectedMemberSettingsNeedNeitherPhraseNorAdmin(t *testing.T) {
+	for _, c := range openVerbCalls() {
+		t.Run(c.name, func(t *testing.T) {
+			rec := &recordingStore{protectedStatus: map[string]string{"srv-test": "protected"}}
+			svc, cl := newService(rec, c.app())
+			asNonAdmin(svc)
+
+			if err := c.call(ctxAs("user-a"), svc, "web"); err != nil {
+				t.Fatalf("on a protected member by a non-admin: %v", err)
+			}
+			if !c.applied(getApp(t, cl, "web")) {
+				t.Fatal("the verb must have applied")
+			}
+		})
 	}
 }
 
-// TestM126_RestoringVerbsStayUngated mirrors Resume's exclusion: a protected
-// environment blocks taking availability away, not giving it back, and a cron
-// reschedule changes when the job runs rather than what it runs.
-func TestM126_RestoringVerbsStayUngated(t *testing.T) {
+func TestProtectedMemberMaintenanceModeNeedsAdmin(t *testing.T) {
+	rec := &recordingStore{protectedStatus: map[string]string{"srv-test": "protected"}}
+	svc, cl := newService(rec, maintenanceApp())
+	asNonAdmin(svc)
+
+	if _, err := svc.SetMaintenanceMode(ctxAs("user-a"), "web", MaintenanceModeView{Enabled: true}); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("maintenance on by a non-admin: got %v, want ErrForbidden", err)
+	}
+	if m := getApp(t, cl, "web").Spec.MaintenanceMode; m != nil && m.Enabled {
+		t.Fatal("a refused verb must not have changed the spec")
+	}
+
+	asAdmin(svc)
+	if _, err := svc.SetMaintenanceMode(ctxAs("user-a"), "web", MaintenanceModeView{Enabled: true}); err != nil {
+		t.Fatalf("maintenance on by an admin: %v", err)
+	}
+	if m := getApp(t, cl, "web").Spec.MaintenanceMode; m == nil || !m.Enabled {
+		t.Fatal("maintenance mode should be on")
+	}
+}
+
+// Turning maintenance mode off restores availability; a cron reschedule changes
+// when the job runs rather than what it runs.
+func TestProtectedRestoringVerbsStayOpen(t *testing.T) {
 	t.Run("disable maintenance mode", func(t *testing.T) {
 		rec := &recordingStore{protectedStatus: map[string]string{"srv-test": "protected"}}
-		a := managedApp("web", "srv-test")
-		a.Spec.Type = appv1alpha1.TypeWebService
-		a.Spec.Tier = "standard"
+		a := maintenanceApp()
 		a.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{Enabled: true}
 		svc, cl := newService(rec, a)
+		asNonAdmin(svc)
 
-		if _, err := svc.SetMaintenanceMode(context.Background(), "web", MaintenanceModeView{}); err != nil {
-			t.Fatalf("turning maintenance mode off must not need a confirmation: %v", err)
+		if _, err := svc.SetMaintenanceMode(ctxAs("user-a"), "web", MaintenanceModeView{}); err != nil {
+			t.Fatalf("turning maintenance mode off: %v", err)
 		}
 		if m := getApp(t, cl, "web").Spec.MaintenanceMode; m != nil && m.Enabled {
 			t.Fatal("maintenance mode should be off")
 		}
 	})
-
-	t.Run("cron reschedule only", func(t *testing.T) {
-		rec := &recordingStore{protectedStatus: map[string]string{"srv-test": "protected"}}
-		a := managedRepoApp("web")
-		a.Spec.Type = appv1alpha1.TypeCronJob
-		a.Spec.Schedule = "0 0 * * *"
-		svc, cl := newService(rec, a)
-
-		sched := "*/5 * * * *"
-		if _, err := svc.SetCronJob(context.Background(), "web", &sched, nil); err != nil {
-			t.Fatalf("rescheduling must not need a confirmation: %v", err)
-		}
-		if got := getApp(t, cl, "web").Spec.Schedule; got != sched {
-			t.Fatalf("schedule = %q, want %q", got, sched)
-		}
-	})
 }
 
-// TestM126_ProtectionLookupFailureFailsClosed: the guard is only as good as the
-// lookup behind it, so a control-plane outage must refuse the verb rather than
-// wave it through. Delete and suspend already behave this way.
-func TestM126_ProtectionLookupFailureFailsClosed(t *testing.T) {
+func TestUnprotectedMemberNeedsNoAdmin(t *testing.T) {
+	svc, _ := newService(&recordingStore{}, maintenanceApp())
+	asNonAdmin(svc)
+	if _, err := svc.SetMaintenanceMode(ctxAs("user-a"), "web", MaintenanceModeView{Enabled: true}); err != nil {
+		t.Fatalf("unprotected member: %v", err)
+	}
+}
+
+// TestProtectionLookupFailureFailsClosed: the rule is only as good as the lookup
+// behind it, so a control-plane outage must refuse a restricted verb rather than
+// wave it through.
+func TestProtectionLookupFailureFailsClosed(t *testing.T) {
 	rec := &recordingStore{protectedErr: errors.New("control plane unavailable")}
 	svc, cl := newService(rec, managedApp("web", "srv-test"))
 
-	image := "mendhak/http-https-echo:35"
-	if _, err := svc.SetSourceAndRegistryCredential(context.Background(), "web", sourcePatch{Image: &image}); err == nil {
+	if _, err := svc.Suspend(ctxAs("user-a"), "web"); err == nil {
 		t.Fatal("want an error when the protection lookup fails")
 	}
-	if got := getApp(t, cl, "web").Spec.Image; got == image {
-		t.Fatal("the image must not have changed when protection could not be read")
+	if getApp(t, cl, "web").Spec.Suspended {
+		t.Fatal("the service must not be suspended when protection could not be read")
 	}
 }
 
-// TestM126_GuardedMutationsAcceptConfirm is the milestone's second finding, and
-// the one a service-layer test cannot catch: the guard was not merely absent on
-// these verbs, it was *unreachable*, because none of them had a `confirm`
-// argument for a caller who wanted to supply the phrase. A guarded verb with no
-// way to confirm it is a verb permanently refused on a protected member.
-func TestM126_GuardedMutationsAcceptConfirm(t *testing.T) {
+// The GraphQL mutations keep their confirm argument for clients written against
+// the phrase (it is now ignored), so a refactor must not drop it.
+func TestGuardedMutationsKeepTheirConfirmArgument(t *testing.T) {
 	svc := &Service{}
 	mutations := svc.GraphQLMutation()
-	for _, name := range []string{
-		// w6/m19's originals, so a refactor cannot quietly drop them.
-		"deleteService", "suspendService",
-		// w4/m126's additions.
-		"setImage", "setRepo", "setBranch", "setRegistryCredential",
-		"setBuildCommand", "setStartCommand", "setPreDeployCommand",
-		"setRootDir", "setDockerfilePath",
-		"updateCronJob", "setMaintenanceMode",
-	} {
+	for _, name := range []string{"deleteService", "suspendService", "setImage", "setMaintenanceMode"} {
 		field, ok := mutations[name]
 		if !ok {
 			t.Errorf("mutation %s is missing", name)
 			continue
 		}
 		if _, ok := field.Args["confirm"]; !ok {
-			t.Errorf("mutation %s has no confirm argument, so its protected-environment refusal cannot be cleared", name)
+			t.Errorf("mutation %s lost its confirm argument", name)
 		}
 	}
 }
 
-// TestProtectionGuardIsTheServiceGuard: the adapter deploys uses (w4/m176) is
-// the same predicate and phrase as apps' own verbs.
-func TestProtectionGuardIsTheServiceGuard(t *testing.T) {
-	rec := &recordingStore{protectedStatus: map[string]string{"srv-1": "protected"}}
-	svc, _ := newService(rec, managedApp("web", "srv-1"))
-	a := managedApp("web", "srv-1")
-	guard := svc.ProtectionGuard()
-	if protected, err := guard.AppProtected(context.Background(), a); err != nil || !protected {
-		t.Fatalf("AppProtected = %v, %v", protected, err)
-	}
-	if err := guard.RequireUnprotected(context.Background(), a, "repoint"); !errors.Is(err, core.ErrBadRequest) {
-		t.Fatalf("unconfirmed = %v", err)
-	}
-	ctx := core.WithConfirm(context.Background(), ProtectedConfirmation("repoint", "web"))
-	if err := guard.RequireUnprotected(ctx, a, "repoint"); err != nil {
-		t.Fatalf("confirmed = %v", err)
-	}
-}

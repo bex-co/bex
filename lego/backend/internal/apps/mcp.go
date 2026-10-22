@@ -114,7 +114,7 @@ type updateServiceArgs struct {
 	IPAllowList             *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the inbound allowlist for a web service or static site with these {cidrBlock, description} entries; pass [] to clear it"`
 	IPAllowListCidrs        *[]string                `json:"ipAllowListCidrs,omitempty" jsonschema:"the plain-CIDR-string form of ipAllowList, for callers with no descriptions to keep; setting both to conflicting values is rejected"`
 	Autoscaling             *autoscalingArg          `json:"autoscaling,omitempty" jsonschema:"enable or update autoscaling: the operator holds the target utilization by moving replicas within [minInstances, maxInstances]. Use disable_autoscaling to turn it off"`
-	Confirm                 string                   `json:"confirm,omitempty" jsonschema:"the confirmation phrase, required only when the service belongs to a protected environment and the change repoints its source, redefines how it is built or started, or takes it offline. Do not guess it: make the call without this argument first and copy the exact phrase back out of the refusal"`
+	Confirm                 string                   `json:"confirm,omitempty" jsonschema:"accepted for compatibility and ignored: a protected environment restricts this to workspace Admins (w8/187) and needs no phrase"`
 }
 
 // autoscalingArg is the autoscaling object update_service accepts. It is the
@@ -381,7 +381,7 @@ type deployArgs struct {
 	Repo    string `json:"repo,omitempty" jsonschema:"git repository URL to deploy (overrides the repo in bexYaml, if any)"`
 	Branch  string `json:"branch,omitempty" jsonschema:"branch to deploy (overrides the branch in bexYaml, if any)"`
 	BexYAML string `json:"bexYaml" jsonschema:"the project's render.yaml Blueprint manifest. May declare a whole stack: services: (web/worker/cron) + databases:, wired by fromDatabase env references. One call converges all of it; validation is all-or-nothing; re-applying an unchanged file is a no-op"`
-	Confirm string `json:"confirm,omitempty" jsonschema:"required only when this call would change an EXISTING service that belongs to a protectedStatus=protected Environment (w6/m19): the exact phrase from the error message of a first, unconfirmed call"`
+	Confirm string `json:"confirm,omitempty" jsonschema:"accepted for compatibility and ignored: a protected environment restricts this to workspace Admins (w8/187) and needs no phrase"`
 }
 
 // renderStack is the deploy tool's result for a multi-resource render.yaml: the
@@ -644,7 +644,7 @@ type deletedResult struct {
 // Environment.
 type serviceConfirmArgs struct {
 	ServiceID string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	Confirm   string `json:"confirm,omitempty" jsonschema:"required only if this service belongs to a protectedStatus=protected Environment: the exact phrase from the error message of a first, unconfirmed call"`
+	Confirm   string `json:"confirm,omitempty" jsonschema:"accepted for compatibility and ignored: a protected environment restricts this to workspace Admins (w8/187) and needs no phrase"`
 }
 
 // RegisterMCP adds the service and custom-domain tools to the shared MCP server.
@@ -780,7 +780,7 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "delete_service",
-		Description: "Delete a service permanently, cascading everything the operator derived from it (Deployment, Service, Ingress). This is irreversible. A member of a protectedStatus=protected Environment (w6/m19) refuses without confirm — retry with the phrase from the error message. bex extension over Render's MCP (Render's official server ships no delete tool), named after the REST delete verb.",
+		Description: "Delete a service permanently, cascading everything the operator derived from it (Deployment, Service, Ingress). This is irreversible. In a protectedStatus=protected Environment only a workspace Admin may delete (w8/187); no confirm phrase is needed. bex extension over Render's MCP (Render's official server ships no delete tool), named after the REST delete verb.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceConfirmArgs) (*mcp.CallToolResult, deletedResult, error) {
 		err := s.Delete(core.WithConfirm(ctx, in.Confirm), in.ServiceID)
 		return nil, deletedResult{Deleted: err == nil}, err
@@ -793,7 +793,7 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "suspend_service",
-		Description: "Suspend a service: scale to zero, keeping host and certificates. A member of a protectedStatus=protected Environment (w6/m19) refuses without confirm — retry with the phrase from the error message. bex extension over Render's MCP.",
+		Description: "Suspend a service: scale to zero, keeping host and certificates. In a protectedStatus=protected Environment only a workspace Admin may suspend (w8/187); no confirm phrase is needed. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceConfirmArgs) (*mcp.CallToolResult, renderService, error) {
 		return renderServiceResult(s.Suspend(core.WithConfirm(ctx, in.Confirm), in.ServiceID))
 	})

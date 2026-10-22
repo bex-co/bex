@@ -191,9 +191,8 @@ func (s *Service) deployPreconditions(ctx context.Context, a *appv1alpha1.App) (
 			}
 		}
 	}
-	// Last, as in Rollback: the phrase is only asked for once there is a target.
-	if rollbackPre == "" && s.Protection != nil {
-		rollbackPre = core.ProtectionPrecondition(s.Protection.AppProtected(ctx, a))
-	}
+	// A rollback is not one of the actions Render restricts in a protected
+	// environment, and none asks for a typed phrase (w8/187), so protection adds
+	// no precondition here.
 	return deployPre, cancelPre, rollbackPre
 }

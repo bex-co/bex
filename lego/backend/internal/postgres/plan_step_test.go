@@ -19,7 +19,6 @@ package postgres
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,16 +27,10 @@ import (
 )
 
 // TestSetVersionRunsTheUpdateChecks (w5/m116): GraphQL's updateDatabaseVersion
-// runs UpdatePostgres's checks, so a protected database's major upgrade needs
-// the "upgrade" phrase a PATCH does, and the dunning gate applies. Before, it
-// skipped both.
+// runs UpdatePostgres's checks, so the dunning gate applies. Before, it skipped
+// them. (A version upgrade on a protected database asked for an "upgrade"
+// phrase until w8/187; it is not an action Render restricts there.)
 func TestSetVersionRunsTheUpdateChecks(t *testing.T) {
-	db := databaseForProtection("dpg-orders", "orders", true)
-	svc, _, _ := protectedPostgresService(db)
-	if _, err := svc.SetVersion(context.Background(), db.Name, "17"); !errors.Is(err, core.ErrBadRequest) ||
-		!strings.Contains(err.Error(), ProtectedConfirmation("upgrade", "orders")) {
-		t.Fatalf("SetVersion on a protected database = %v, want the upgrade confirmation", err)
-	}
 
 	ledger := databaseForProtection("dpg-ledger", "ledger", false)
 	ledger.Labels[core.LabelTenant] = "tea-a"

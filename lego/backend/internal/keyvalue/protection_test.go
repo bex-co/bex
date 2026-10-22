@@ -18,15 +18,11 @@ package keyvalue
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
-	"net/url"
 	"strings"
 	"testing"
 
-	"github.com/graphql-go/graphql"
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -65,45 +61,85 @@ func protectedKeyValueService(objects ...client.Object) (*Service, client.Client
 	return svc, cl, store
 }
 
-func TestProtectedKeyValueDeleteAndSuspend(t *testing.T) {
-	t.Run("delete blocks then accepts exact phrase", func(t *testing.T) {
+// denyWorkspaceManage allows every relation except the admin can_manage on a
+// workspace — a Developer in the role ladder. Other objects' checks (the
+// ordinary per-verb authorization) are untouched.
+type denyWorkspaceManage struct{}
+
+func (denyWorkspaceManage) Check(_ context.Context, _, relation, object string) (bool, error) {
+	return !(relation == core.RelCanManage && strings.HasPrefix(object, "workspace:")), nil
+}
+
+type allowAllRelations struct{}
+
+func (allowAllRelations) Check(context.Context, string, string, string) (bool, error) {
+	return true, nil
+}
+
+// ctxAsCaller is the identity every Authz-checked call needs.
+func ctxAsCaller() context.Context {
+	return core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "session"})
+}
+
+// The rule is Render's (w8/187): in a protected environment only a workspace
+// Admin may delete, suspend or resume a Key Value, with no typed phrase;
+// everything else is open to anyone who may do it elsewhere.
+func TestProtectedKeyValueDeleteSuspendResumeNeedAdmin(t *testing.T) {
+	t.Run("a non-admin is refused and nothing moves", func(t *testing.T) {
 		kv := keyValueForProtection("red-sessions", "sessions", true)
 		svc, cl, _ := protectedKeyValueService(kv)
-		if err := svc.DeleteKeyValue(context.Background(), kv.Name); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), `confirm="sudo delete key value sessions"`) {
-			t.Fatalf("blocked DeleteKeyValue = %v", err)
+		svc.Authz = denyWorkspaceManage{}
+		if err := svc.DeleteKeyValue(ctxAsCaller(), kv.Name); !errors.Is(err, core.ErrForbidden) {
+			t.Fatalf("DeleteKeyValue by a non-admin = %v, want ErrForbidden", err)
 		}
-		if err := cl.Get(context.Background(), client.ObjectKeyFromObject(kv), &appv1alpha1.KeyValue{}); err != nil {
-			t.Fatalf("blocked delete removed KeyValue: %v", err)
+		if _, err := svc.Suspend(ctxAsCaller(), kv.Name); !errors.Is(err, core.ErrForbidden) {
+			t.Fatalf("Suspend by a non-admin = %v, want ErrForbidden", err)
 		}
-		ctx := core.WithConfirm(context.Background(), ProtectedConfirmation("delete", "sessions"))
-		if err := svc.DeleteKeyValue(ctx, kv.Name); err != nil {
-			t.Fatalf("confirmed DeleteKeyValue: %v", err)
+		var got appv1alpha1.KeyValue
+		if err := cl.Get(context.Background(), client.ObjectKeyFromObject(kv), &got); err != nil || got.Spec.Suspended {
+			t.Fatalf("a refused verb changed the store: suspended=%v err=%v", got.Spec.Suspended, err)
+		}
+		// The old phrase substitutes for nothing.
+		ctx := core.WithConfirm(ctxAsCaller(), "sudo delete key value sessions")
+		if err := svc.DeleteKeyValue(ctx, kv.Name); !errors.Is(err, core.ErrForbidden) {
+			t.Fatalf("DeleteKeyValue with the old phrase = %v, want ErrForbidden", err)
 		}
 	})
 
-	t.Run("suspend blocks, confirms, and resume is exempt", func(t *testing.T) {
+	t.Run("an admin needs no phrase for delete, suspend or resume", func(t *testing.T) {
 		kv := keyValueForProtection("red-sessions", "sessions", true)
 		svc, cl, _ := protectedKeyValueService(kv)
-		if _, err := svc.Suspend(context.Background(), kv.Name); !errors.Is(err, core.ErrBadRequest) {
-			t.Fatalf("blocked Suspend = %v", err)
-		}
-		ctx := core.WithConfirm(context.Background(), ProtectedConfirmation("suspend", "sessions"))
-		if _, err := svc.Suspend(ctx, kv.Name); err != nil {
-			t.Fatalf("confirmed Suspend: %v", err)
+		svc.Authz = allowAllRelations{}
+		if _, err := svc.Suspend(ctxAsCaller(), kv.Name); err != nil {
+			t.Fatalf("Suspend by an admin: %v", err)
 		}
 		var got appv1alpha1.KeyValue
 		if err := cl.Get(context.Background(), client.ObjectKeyFromObject(kv), &got); err != nil || !got.Spec.Suspended {
 			t.Fatalf("KeyValue not suspended: suspended=%v err=%v", got.Spec.Suspended, err)
 		}
-		if _, err := svc.Resume(context.Background(), kv.Name); err != nil {
-			t.Fatalf("Resume must not be protected: %v", err)
+		if _, err := svc.Resume(ctxAsCaller(), kv.Name); err != nil {
+			t.Fatalf("Resume by an admin: %v", err)
+		}
+		if err := svc.DeleteKeyValue(ctxAsCaller(), kv.Name); err != nil {
+			t.Fatalf("DeleteKeyValue by an admin: %v", err)
+		}
+	})
+
+	t.Run("a non-admin cannot resume a protected store", func(t *testing.T) {
+		kv := keyValueForProtection("red-sessions", "sessions", true)
+		kv.Spec.Suspended = true
+		svc, _, _ := protectedKeyValueService(kv)
+		svc.Authz = denyWorkspaceManage{}
+		if _, err := svc.Resume(ctxAsCaller(), kv.Name); !errors.Is(err, core.ErrForbidden) {
+			t.Fatalf("Resume by a non-admin = %v, want ErrForbidden", err)
 		}
 	})
 
 	t.Run("environment-less resource skips store", func(t *testing.T) {
 		kv := keyValueForProtection("red-dev", "dev", false)
 		svc, _, store := protectedKeyValueService(kv)
-		if _, err := svc.Suspend(context.Background(), kv.Name); err != nil {
+		svc.Authz = denyWorkspaceManage{}
+		if _, err := svc.Suspend(ctxAsCaller(), kv.Name); err != nil {
 			t.Fatalf("environment-less Suspend: %v", err)
 		}
 		if store.calls != 0 {
@@ -114,229 +150,69 @@ func TestProtectedKeyValueDeleteAndSuspend(t *testing.T) {
 	t.Run("unwired protection store is a no-op", func(t *testing.T) {
 		kv := keyValueForProtection("red-hand-applied", "hand-applied", true)
 		svc, _ := newService(kv)
-		if _, err := svc.Suspend(context.Background(), kv.Name); err != nil {
+		svc.Authz = denyWorkspaceManage{}
+		if _, err := svc.Suspend(ctxAsCaller(), kv.Name); err != nil {
 			t.Fatalf("DB-less Suspend: %v", err)
 		}
 	})
 
-	t.Run("unprotected environment needs no confirmation", func(t *testing.T) {
+	t.Run("unprotected environment needs no admin", func(t *testing.T) {
 		kv := keyValueForProtection("red-staging", "staging", true)
 		svc, _, store := protectedKeyValueService(kv)
 		store.statuses["env-production"] = core.ProtectedStatusUnprotected
-		if _, err := svc.Suspend(context.Background(), kv.Name); err != nil {
+		svc.Authz = denyWorkspaceManage{}
+		if _, err := svc.Suspend(ctxAsCaller(), kv.Name); err != nil {
 			t.Fatalf("unprotected Suspend: %v", err)
 		}
 	})
-}
 
-func TestProtectedKeyValueConfirmationAcrossAdapters(t *testing.T) {
-	t.Run("REST delete and suspend", func(t *testing.T) {
-		kv := keyValueForProtection("red-rest", "rest-kv", true)
-		toDelete := keyValueForProtection("red-rest-delete", "rest-delete", true)
-		svc, _, _ := protectedKeyValueService(kv, toDelete)
-		if got := serveREST(svc, http.MethodPost, "/v1/key-value/red-rest/suspend", ""); got.Code != http.StatusBadRequest {
-			t.Fatalf("unconfirmed suspend status = %d: %s", got.Code, got.Body.String())
-		}
-		confirm := url.QueryEscape(ProtectedConfirmation("suspend", "rest-kv"))
-		if got := serveREST(svc, http.MethodPost, "/v1/key-value/red-rest/suspend?confirm="+confirm, ""); got.Code != http.StatusAccepted {
-			t.Fatalf("confirmed suspend status = %d: %s", got.Code, got.Body.String())
-		}
-		if got := serveREST(svc, http.MethodDelete, "/v1/key-value/red-rest-delete", ""); got.Code != http.StatusBadRequest {
-			t.Fatalf("unconfirmed delete status = %d: %s", got.Code, got.Body.String())
-		}
-		deleteConfirm := url.QueryEscape(ProtectedConfirmation("delete", "rest-delete"))
-		if got := serveREST(svc, http.MethodDelete, "/v1/key-value/red-rest-delete?confirm="+deleteConfirm, ""); got.Code != http.StatusNoContent {
-			t.Fatalf("confirmed delete status = %d: %s", got.Code, got.Body.String())
-		}
-	})
-
-	t.Run("GraphQL delete", func(t *testing.T) {
-		kv := keyValueForProtection("red-gql", "gql-kv", true)
-		toSuspend := keyValueForProtection("red-gql-suspend", "gql-suspend", true)
-		svc, _, _ := protectedKeyValueService(kv, toSuspend)
-		schema, err := graphql.NewSchema(graphql.SchemaConfig{
-			Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
-			Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		blocked := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: `mutation { deleteKeyValue(id:"red-gql") }`})
-		if len(blocked.Errors) == 0 || !strings.Contains(blocked.Errors[0].Message, "sudo delete key value gql-kv") {
-			t.Fatalf("unconfirmed GraphQL errors = %v", blocked.Errors)
-		}
-		confirmed := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: `mutation { deleteKeyValue(id:"red-gql", confirm:"sudo delete key value gql-kv") }`})
-		if len(confirmed.Errors) != 0 {
-			t.Fatalf("confirmed GraphQL errors = %v", confirmed.Errors)
-		}
-		blockedSuspend := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: `mutation { suspendKeyValue(id:"red-gql-suspend") { id } }`})
-		if len(blockedSuspend.Errors) == 0 || !strings.Contains(blockedSuspend.Errors[0].Message, "sudo suspend key value gql-suspend") {
-			t.Fatalf("unconfirmed GraphQL suspend errors = %v", blockedSuspend.Errors)
-		}
-		confirmedSuspend := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: `mutation { suspendKeyValue(id:"red-gql-suspend", confirm:"sudo suspend key value gql-suspend") { id } }`})
-		if len(confirmedSuspend.Errors) != 0 {
-			t.Fatalf("confirmed GraphQL suspend errors = %v", confirmedSuspend.Errors)
-		}
-	})
-
-	// w5/m116: the REST PATCH read no ?confirm= at all, so a protected store
-	// could not be renamed over REST; and a dry-run meets the same guard.
-	t.Run("REST rename and its dry-run", func(t *testing.T) {
-		kv := keyValueForProtection("red-rename", "rename-kv", true)
-		svc, cl, _ := protectedKeyValueService(kv)
-		body := `{"name":"renamed-kv"}`
-		for _, path := range []string{"/v1/key-value/red-rename", "/v1/key-value/red-rename?dryRun=true"} {
-			if got := serveREST(svc, http.MethodPatch, path, body); got.Code != http.StatusBadRequest {
-				t.Fatalf("unconfirmed PATCH %s = %d %s, want 400", path, got.Code, got.Body.String())
-			}
-		}
-		confirm := url.QueryEscape(ProtectedConfirmation("rename", "rename-kv"))
-		if got := serveREST(svc, http.MethodPatch, "/v1/key-value/red-rename?dryRun=true&confirm="+confirm, body); got.Code != http.StatusOK {
-			t.Fatalf("confirmed dry-run PATCH = %d %s, want 200", got.Code, got.Body.String())
-		}
-		var stored appv1alpha1.KeyValue
-		if err := cl.Get(context.Background(), client.ObjectKeyFromObject(kv), &stored); err != nil || stored.Spec.Name != "rename-kv" {
-			t.Fatalf("after the dry-run the store is named %q (%v), want it untouched", stored.Spec.Name, err)
-		}
-		if got := serveREST(svc, http.MethodPatch, "/v1/key-value/red-rename?confirm="+confirm, body); got.Code != http.StatusOK {
-			t.Fatalf("confirmed PATCH = %d %s, want 200", got.Code, got.Body.String())
-		}
-		if err := cl.Get(context.Background(), client.ObjectKeyFromObject(kv), &stored); err != nil || stored.Spec.Name != "renamed-kv" {
-			t.Fatalf("after the confirmed PATCH the store is named %q (%v)", stored.Spec.Name, err)
-		}
-	})
-
-	t.Run("MCP update dry-run carries confirm", func(t *testing.T) {
-		kv := keyValueForProtection("red-mcp-update", "mcp-update-kv", true)
+	t.Run("a protection lookup that fails refuses the verb", func(t *testing.T) {
+		kv := keyValueForProtection("red-sessions", "sessions", true)
 		svc, _, _ := protectedKeyValueService(kv)
-		srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
-		svc.RegisterMCP(srv)
-		ctx := context.Background()
-		serverTransport, clientTransport := mcp.NewInMemoryTransports()
-		if _, err := srv.Connect(ctx, serverTransport, nil); err != nil {
-			t.Fatal(err)
-		}
-		clientSession, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientTransport, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer clientSession.Close()
-		args := map[string]any{"keyValueId": kv.Name, "name": "renamed-kv", "dryRun": true}
-		blocked, err := clientSession.CallTool(ctx, &mcp.CallToolParams{Name: "update_key_value", Arguments: args})
-		if err != nil || !blocked.IsError {
-			t.Fatalf("unconfirmed dry-run = %#v, %v; want the guard's refusal", blocked, err)
-		}
-		args["confirm"] = ProtectedConfirmation("rename", "mcp-update-kv")
-		confirmed, err := clientSession.CallTool(ctx, &mcp.CallToolParams{Name: "update_key_value", Arguments: args})
-		if err != nil || confirmed.IsError {
-			t.Fatalf("confirmed dry-run = %#v, %v; want the preview", confirmed, err)
-		}
-	})
-
-	t.Run("MCP suspend", func(t *testing.T) {
-		kv := keyValueForProtection("red-mcp", "mcp-kv", true)
-		svc, _, _ := protectedKeyValueService(kv)
-		srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
-		svc.RegisterMCP(srv)
-		ctx := context.Background()
-		serverTransport, clientTransport := mcp.NewInMemoryTransports()
-		if _, err := srv.Connect(ctx, serverTransport, nil); err != nil {
-			t.Fatal(err)
-		}
-		clientSession, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientTransport, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer clientSession.Close()
-		tools, err := clientSession.ListTools(ctx, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		var suspendSchema, getSchema string
-		for _, tool := range tools.Tools {
-			encoded, _ := json.Marshal(tool.InputSchema)
-			switch tool.Name {
-			case "suspend_keyvalue":
-				suspendSchema = string(encoded)
-			case "get_key_value":
-				getSchema = string(encoded)
-			}
-		}
-		if !strings.Contains(suspendSchema, `"confirm"`) || strings.Contains(getSchema, `"confirm"`) {
-			t.Fatalf("confirm schema scope: suspend=%s get=%s", suspendSchema, getSchema)
-		}
-		blocked, err := clientSession.CallTool(ctx, &mcp.CallToolParams{Name: "suspend_keyvalue", Arguments: map[string]any{"keyValueId": kv.Name}})
-		if err != nil || !blocked.IsError {
-			t.Fatalf("unconfirmed MCP = %#v, %v", blocked, err)
-		}
-		confirmed, err := clientSession.CallTool(ctx, &mcp.CallToolParams{Name: "suspend_keyvalue", Arguments: map[string]any{"keyValueId": kv.Name, "confirm": ProtectedConfirmation("suspend", "mcp-kv")}})
-		if err != nil || confirmed.IsError {
-			t.Fatalf("confirmed MCP = %#v, %v", confirmed, err)
+		svc.Protection = failingProtection{}
+		if _, err := svc.Suspend(ctxAsCaller(), kv.Name); err == nil {
+			t.Fatal("Suspend with an unreadable protection status succeeded")
 		}
 	})
 }
 
-// TestProtectedKeyValueDurabilityEvictionAndIdentity is the Key Value half of
-// w4/m127. On the same instance whose suspend was refused, the live matrix
-// found these accepted:
-//
-//	setKeyValuePersistenceMode("off")         → ACCEPTED
-//	setKeyValueMaxmemoryPolicy("allkeys_lru") → ACCEPTED
-//
-// Turning persistence off makes every key in the store ephemeral, and an
-// eviction policy decides which keys the server may throw away under memory
-// pressure. Both lose data on a member the tenant marked protected, and both
-// went through without a word while "pause it" did not.
-func TestProtectedKeyValueDurabilityEvictionAndIdentity(t *testing.T) {
+type failingProtection struct{}
+
+func (failingProtection) GetEnvironmentProtectedStatus(context.Context, string) (string, error) {
+	return "", errors.New("store down")
+}
+
+// Over REST the Admin role is the whole rule: a non-admin gets 403 and an admin
+// succeeds with no ?confirm=.
+func TestProtectedKeyValueOverREST(t *testing.T) {
+	kv := keyValueForProtection("red-rest", "rest-kv", true)
+	svc, _, _ := protectedKeyValueService(kv)
+	svc.Authz = allowAllRelations{}
+	if got := serveREST(svc, http.MethodPost, "/v1/key-value/red-rest/suspend", ""); got.Code != http.StatusAccepted {
+		t.Fatalf("admin suspend status = %d: %s", got.Code, got.Body.String())
+	}
+}
+
+// Renames, durability and eviction changes are not among the actions Render
+// restricts in a protected environment (w4/m127 had gated them behind phrases).
+func TestProtectedKeyValueSettingsAreOpenToDevelopers(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
-		verb  string
 		patch KeyValuePatch
 	}{
-		{"durability off", "change durability of", KeyValuePatch{PersistenceMode: strPtr("off")}},
-		{"eviction policy", "change eviction on", KeyValuePatch{MaxmemoryPolicy: strPtr("allkeys-lru")}},
-		{"rename", "rename", KeyValuePatch{Name: strPtr("renamed")}},
+		{"durability off", KeyValuePatch{PersistenceMode: strPtr("off")}},
+		{"eviction policy", KeyValuePatch{MaxmemoryPolicy: strPtr("allkeys-lru")}},
+		{"rename", KeyValuePatch{Name: strPtr("renamed")}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			kv := keyValueForProtection("red-cache", "cache", true)
-			svc, cl, _ := protectedKeyValueService(kv)
-
-			_, err := svc.UpdateKeyValue(context.Background(), kv.Name, tc.patch)
-			if !errors.Is(err, core.ErrBadRequest) ||
-				!strings.Contains(err.Error(), `confirm="sudo `+tc.verb+` key value cache"`) {
-				t.Fatalf("blocked %s = %v", tc.name, err)
-			}
-			// Nothing may have moved on the way to the refusal.
-			var got appv1alpha1.KeyValue
-			if err := cl.Get(context.Background(), client.ObjectKeyFromObject(kv), &got); err != nil {
-				t.Fatalf("get: %v", err)
-			}
-			if got.Spec.PersistenceMode != kv.Spec.PersistenceMode || got.Spec.MaxmemoryPolicy != kv.Spec.MaxmemoryPolicy || got.Spec.Name != "cache" {
-				t.Fatalf("a refused %s still mutated the spec: %+v", tc.name, got.Spec)
-			}
-
-			ctx := core.WithConfirm(context.Background(), ProtectedConfirmation(tc.verb, "cache"))
-			if _, err := svc.UpdateKeyValue(ctx, kv.Name, tc.patch); err != nil {
-				t.Fatalf("confirmed %s: %v", tc.name, err)
+			svc, _, _ := protectedKeyValueService(kv)
+			svc.Authz = denyWorkspaceManage{}
+			if _, err := svc.UpdateKeyValue(ctxAsCaller(), kv.Name, tc.patch); err != nil {
+				t.Fatalf("%s by a non-admin on a protected store: %v", tc.name, err)
 			}
 		})
 	}
-
-	// A plan change is billing, not durability — it must not acquire a
-	// ceremony, and neither may an unprotected store.
-	t.Run("unguarded fields and unprotected stores are untouched", func(t *testing.T) {
-		kv := keyValueForProtection("red-cache", "cache", true)
-		svc, _, _ := protectedKeyValueService(kv)
-		if _, err := svc.UpdateKeyValue(context.Background(), kv.Name, KeyValuePatch{IPAllowList: &[]core.IPAllowListEntry{}}); err != nil {
-			t.Fatalf("allow-list change on a protected store: %v", err)
-		}
-
-		plain := keyValueForProtection("red-plain", "plain", false)
-		svcPlain, _, _ := protectedKeyValueService(plain)
-		if _, err := svcPlain.UpdateKeyValue(context.Background(), plain.Name, KeyValuePatch{PersistenceMode: strPtr("off")}); err != nil {
-			t.Fatalf("durability change on an unprotected store: %v", err)
-		}
-	})
 }
 
 func strPtr(v string) *string { return &v }

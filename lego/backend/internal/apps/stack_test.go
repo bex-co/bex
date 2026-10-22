@@ -1273,12 +1273,13 @@ func (s *movingEnvironmentStore) GetAppProtectedStatus(_ context.Context, id str
 	return "unprotected", nil
 }
 
-// TestABlueprintApplyRechecksProtectionAfterAMove (w5/142): only the host
-// index is shared across an apply. An existing service the apply moves into a
-// protected environment, and patches again for a reference to a service
-// created after it, is refused on that second write: its first write's
-// protection answer must not outlive the move.
-func TestABlueprintApplyRechecksProtectionAfterAMove(t *testing.T) {
+// TestABlueprintApplyIntoAProtectedEnvironmentNeedsNoPhrase (w5/142, w8/187):
+// an existing service a Blueprint apply moves into a protected environment, and
+// patches again for a reference to a service created after it, is not one of
+// the actions Render restricts there, so the apply needs neither a phrase nor
+// the Admin role. (Before w8/187 the second write was refused for a missing
+// confirmation.)
+func TestABlueprintApplyIntoAProtectedEnvironmentNeedsNoPhrase(t *testing.T) {
 	inner, _ := seededProtectedEnvironmentStore()
 	st := &movingEnvironmentStore{blueprintGroupingTestStore: inner, appEnv: map[string]string{}}
 	web := webApp("tea-a", "web", "nginx:alpine")
@@ -1302,9 +1303,8 @@ projects:
             runtime: image
             image: {url: nginx:alpine}
 `
-	_, err := svc.DeployStack(ctxAs("id-a"), DeployRequest{OwnerID: "tea-a", Manifest: manifest})
-	if err == nil || !strings.Contains(err.Error(), `confirm="sudo deploy service web"`) {
-		t.Fatalf("DeployStack = %v, want the protected environment's confirmation for web", err)
+	if _, err := svc.DeployStack(ctxAs("id-a"), DeployRequest{OwnerID: "tea-a", Manifest: manifest}); err != nil {
+		t.Fatalf("DeployStack into a protected environment: %v", err)
 	}
 }
 

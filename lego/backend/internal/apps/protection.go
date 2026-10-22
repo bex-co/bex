@@ -121,25 +121,14 @@ func (s *Service) appProtected(ctx context.Context, a *appv1alpha1.App) (bool, e
 	return protectedStatus == core.ProtectedStatusProtected, nil
 }
 
-// ProtectionGuard lends this predicate and guard to deploys' override Trigger
-// and Rollback (w4/m176). A value, not Service methods, so the verb sweeps do
-// not take it for an authorized verb.
-func (s *Service) ProtectionGuard() protectionGuard { return protectionGuard{s} }
-
-type protectionGuard struct{ s *Service }
-
-func (g protectionGuard) RequireUnprotected(ctx context.Context, a *appv1alpha1.App, verb string) error {
-	return g.s.requireUnprotected(ctx, a, verb)
-}
-
-func (g protectionGuard) AppProtected(ctx context.Context, a *appv1alpha1.App) (bool, error) {
-	return g.s.appProtected(ctx, a)
-}
-
-// requireUnprotected blocks verb on a App belonging to a
-// protectedStatus=protected Environment unless the context carries the
-// matching ProtectedConfirmation phrase.
+// requireUnprotected restricts the verbs Render reserves to Admins on a App
+// belonging to a protectedStatus=protected Environment (core.ProtectedVerbRestricted;
+// w8/187): the caller must pass a fresh workspace-manage check. Every other
+// verb passes, and none asks for a typed phrase.
 func (s *Service) requireUnprotected(ctx context.Context, a *appv1alpha1.App, verb string) error {
+	if !core.ProtectedVerbRestricted(verb) {
+		return nil
+	}
 	protected, err := s.appProtected(ctx, a)
 	if err != nil {
 		return err
@@ -147,6 +136,5 @@ func (s *Service) requireUnprotected(ctx context.Context, a *appv1alpha1.App, ve
 	if !protected {
 		return nil
 	}
-	name := core.AppPublicName(a)
-	return core.RequireProtectedConfirmation(ctx, name, verb, ProtectedConfirmation(verb, name))
+	return s.AuthorizeAppFresh(ctx, core.RelCanManage, a)
 }
