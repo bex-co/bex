@@ -179,7 +179,9 @@ describe("edge-rule editors adopt the accepted rows (w4/136)", () => {
 // w4/145: an invalid rule is marked in its row before Save, instead of a toast
 // naming it by its zero-based wire index after the round trip.
 describe("edge-rule row validation (w4/145)", () => {
-  it("marks the second redirect's absolute destination in its row and holds Save", async () => {
+  // A full http(s) URL is a valid redirect or rewrite destination since
+  // w8/162 and w8/184, so the invalid case is a destination with no leading /.
+  it("marks the second rule's slashless destination in its row and holds Save", async () => {
     const user = userEvent.setup();
     const onSave = vi.fn(async () => ({ ok: true }));
     render(
@@ -198,7 +200,7 @@ describe("edge-rule row validation (w4/145)", () => {
       name: "Destination",
     });
     await user.type(sources[1], "/old");
-    await user.type(destinations[1], "https://example.org/landing");
+    await user.type(destinations[1], "landing");
 
     expect(destinations[1]).toHaveAttribute("aria-invalid", "true");
     expect(destinations[1]).toHaveAccessibleDescription(
