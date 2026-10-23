@@ -2944,6 +2944,9 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}
+	if err := checkPreDeployPlan(tier, req.PreDeployCommand); err != nil {
+		return appv1alpha1.AppSpec{}, err
+	}
 	if err := validateMaintenanceEligibility(svcType, tier, req.MaintenanceMode); err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}
@@ -4241,7 +4244,7 @@ func (s *Service) SetPreDeployCommand(ctx context.Context, name, command string)
 	if err != nil {
 		return AppView{}, err
 	}
-	if err := s.checkPreDeployCommand(ctx, a); err != nil {
+	if err := s.checkPreDeployCommand(ctx, a, command); err != nil {
 		return AppView{}, err
 	}
 	return s.recordedPatch(ctx, core.AuditVerbSetPreDeployCommand, a, func(a *appv1alpha1.App) {

@@ -67,6 +67,8 @@ export interface BuildDeploySectionProps {
    * the backend rejects setPreDeployCommand for them).
    */
   showPreDeployCommand: boolean;
+  /** Free plan: the pre-deploy field is disabled (w8/m131). */
+  freePlan?: boolean;
   /** False for cron/static services, which have no service start command here. */
   showStartCommand?: boolean;
   /** False for cron/static services, whose Docker build settings live elsewhere. */
@@ -140,6 +142,7 @@ export function BuildDeploySection({
   pushDeliveryMethod = null,
   preDeployCommand,
   showPreDeployCommand,
+  freePlan,
   showStartCommand = false,
   showDockerfilePath = true,
   buildCommand = null,
@@ -309,6 +312,7 @@ export function BuildDeploySection({
           rootDir={rootDir}
           preDeployCommand={preDeployCommand}
           showPreDeployCommand={showPreDeployCommand}
+          freePlan={freePlan}
           showCommand={showStartCommand}
           autoDeploy={autoDeployRow}
         />

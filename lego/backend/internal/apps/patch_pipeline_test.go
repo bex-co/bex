@@ -63,7 +63,9 @@ func TestRESTPatchNestedHealthCheckPathWinsOverTopLevel(t *testing.T) {
 }
 
 func TestRESTPatchNestedPreDeployCommandWinsOverTopLevel(t *testing.T) {
-	svc, cl := newService(nil, sampleApp("web"))
+	app := sampleApp("web")
+	app.Spec.Tier = "starter" // a pre-deploy command is a paid-plan feature (w8/m131)
+	svc, cl := newService(nil, app)
 	body := `{"preDeployCommand":"top.sh","serviceDetails":{"preDeployCommand":"nested.sh"}}`
 	rec := serveRESTPatch(t, svc, "web", body)
 	if rec.Code != http.StatusOK {

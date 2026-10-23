@@ -121,7 +121,7 @@ func TestServicePatchFoldsMatchTheirVerbs(t *testing.T) {
 		for _, f := range row.fields {
 			// Rows whose fields ride along with another's (the image's owner,
 			// the reorder flag) are covered by their trigger field.
-			if !covered[f] && f != "ImageOwnerID" && f != "Image" && f != "Branch" && f != "RegistryCredentialID" && f != "MaintenanceBeforeFreeDowngrade" {
+			if !covered[f] && f != "ImageOwnerID" && f != "Image" && f != "Branch" && f != "RegistryCredentialID" && f != "MaintenanceBeforeFreeDowngrade" && f != "PreDeployBeforeFreeDowngrade" {
 				t.Errorf("no case patches %s: its fold is unchecked", f)
 			}
 		}

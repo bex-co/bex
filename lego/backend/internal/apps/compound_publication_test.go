@@ -392,7 +392,7 @@ func TestEveryRowWritesThroughTheStage(t *testing.T) {
 			a.Spec.Replicas = 1
 			return a
 		}(), ServicePatch{
-			MaintenanceBeforeFreeDowngrade: true, MaintenanceMode: &MaintenanceModeView{}, Plan: str("free"),
+			MaintenanceBeforeFreeDowngrade: true, PreDeployBeforeFreeDowngrade: true, MaintenanceMode: &MaintenanceModeView{}, Plan: str("free"),
 			IdleTTLSeconds: i32(600), PreDeployCommand: str(""),
 		}},
 		{"cron schedule and command", cron(), ServicePatch{Schedule: str("*/5 * * * *"), Command: str("./job --all"), BuildCommand: str("make")}},

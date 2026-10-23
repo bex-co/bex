@@ -112,6 +112,39 @@ async function confirmSave(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("BuildDeploySection", () => {
+  it.each([
+    ["a Free service with no command", true, null, false],
+    ["a Free service with a legacy command", true, "npm run migrate", true],
+    ["a paid service", false, null, true],
+  ])(
+    "gates the Pre-Deploy Command on the plan for %s (w8/m131)",
+    (_name, freePlan, command, editable) => {
+      render(
+        <BuildDeploySection
+          serviceId="app"
+          repo="https://github.com/x/mono"
+          branch="main"
+          rootDir={null}
+          autoDeploy={false}
+          preDeployCommand={command}
+          showPreDeployCommand={true}
+          freePlan={freePlan}
+        />,
+      );
+      const edit = screen.queryByRole("button", {
+        name: "Edit Pre-Deploy Command",
+      });
+      if (editable) {
+        expect(edit).toBeInTheDocument();
+      } else {
+        expect(edit).not.toBeInTheDocument();
+        expect(
+          screen.getByText("Pre-deploy commands are available on paid plans."),
+        ).toBeInTheDocument();
+      }
+    },
+  );
+
   it("gates the create-only build config for a contributor, but not Auto-Deploy (w9/m84)", () => {
     vi.mocked(useCapabilities).mockReturnValue(
       mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
