@@ -440,15 +440,15 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if err := validateCreate(&req); err != nil {
 		return View{}, err
 	}
-	modelEndpoint, egressAllowlist, err := createEgress(req.AgentConfig, req.EgressAllowlist)
-	if err != nil {
-		return View{}, err
-	}
-	req.AgentConfig.ModelEndpoint = modelEndpoint
 	workspaceID, ok := s.Tenant(ctx)
 	if !ok {
 		return View{}, core.ErrForbidden
 	}
+	modelEndpoint, egressAllowlist, err := createEgress(workspaceID, req.AgentConfig, req.EgressAllowlist)
+	if err != nil {
+		return View{}, err
+	}
+	req.AgentConfig.ModelEndpoint = modelEndpoint
 	if err := s.admitDispatch(ctx, workspaceID); err != nil {
 		return View{}, err
 	}
@@ -609,11 +609,16 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 	var key string
 	var connection github.Connection
 	var group errgroup.Group
-	group.Go(func() error {
-		var err error
-		key, err = s.modelAPIKey(ctx, workspaceID)
-		return err
-	})
+	// A workspace on the platform model route (ADR090) is ready through the
+	// platform key; its BYO key is not consulted.
+	platformKey := agentsession.PlatformModelKeyReady(workspaceID)
+	if !platformKey {
+		group.Go(func() error {
+			var err error
+			key, err = s.modelAPIKey(ctx, workspaceID)
+			return err
+		})
+	}
 	if s.GitHub != nil {
 		group.Go(func() error {
 			var err error
@@ -628,7 +633,7 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 	if err := group.Wait(); err != nil {
 		return Capabilities{}, err
 	}
-	caps.ModelKeyReady = key != ""
+	caps.ModelKeyReady = platformKey || key != ""
 	if s.GitHub != nil {
 		caps.GitHub = GitHubReadinessView{
 			Connected:    connection.Connected,
@@ -1046,7 +1051,7 @@ func (s *Service) rehydrate(ctx context.Context, record store.AgentSession, stee
 	if err != nil {
 		return View{}, err
 	}
-	modelEndpoint, egressAllowlist, err := createEgress(config, nil)
+	modelEndpoint, egressAllowlist, err := createEgress(record.WorkspaceID, config, nil)
 	if err != nil {
 		return View{}, err
 	}
@@ -1356,10 +1361,11 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession) map[s
 	// a hung model call or a runaway tool loop would hold the sandbox for hours.
 	// Always inject a positive millisecond bound; <= 0 ⇒ the 30m default.
 	env["BEX_AGENT_TURN_TIMEOUT_MS"] = fmt.Sprintf("%d", s.turnTimeout().Milliseconds())
-	// Dev-only model route (ADR090): the model id Claude Code must ask the
-	// OpenRouter endpoint for. Pod env, not BEX_AGENT_ENV_JSON, because the
-	// driver requires that to equal the release profile's env exactly.
-	for name, value := range agentsession.DevModelRouteEnv(config.Agent) {
+	// Model route (ADR090, dev or workspace-allowlisted platform): the model id
+	// Claude Code must ask the OpenRouter endpoint for. Pod env, not
+	// BEX_AGENT_ENV_JSON, because the driver requires that to equal the release
+	// profile's env exactly.
+	for name, value := range agentsession.ModelRouteEnv(record.WorkspaceID, config.Agent) {
 		env[name] = value
 	}
 	return env
@@ -1444,7 +1450,7 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
-	modelEndpoint, egressAllowlist, err := createEgress(config, req.EgressAllowlist)
+	modelEndpoint, egressAllowlist, err := createEgress(record.WorkspaceID, config, req.EgressAllowlist)
 	if err != nil {
 		return View{}, err
 	}

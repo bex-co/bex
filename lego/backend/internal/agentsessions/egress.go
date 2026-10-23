@@ -21,8 +21,11 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 )
 
-func createEgress(config AgentConfig, requested []string) (string, []string, error) {
-	endpoint, err := agentsession.RegisteredModelEndpoint(config.Agent, config.ModelEndpoint)
+// createEgress resolves the session's model endpoint for workspaceID (whose
+// model route, if any, decides it now) and validates the requested extra
+// egress destinations.
+func createEgress(workspaceID string, config AgentConfig, requested []string) (string, []string, error) {
+	endpoint, err := agentsession.RegisteredModelEndpoint(workspaceID, config.Agent, config.ModelEndpoint)
 	if err != nil {
 		return "", nil, err
 	}

@@ -27,7 +27,7 @@ import (
 func TestCreateEgressDerivesProviderAndCanonicalizesTenantInput(t *testing.T) {
 	t.Parallel()
 
-	endpoint, allowlist, err := createEgress(AgentConfig{Agent: "codex"}, []string{"Z.example.com", "a.example.com"})
+	endpoint, allowlist, err := createEgress("tea-a", AgentConfig{Agent: "codex"}, []string{"Z.example.com", "a.example.com"})
 	if err != nil {
 		t.Fatalf("createEgress: %v", err)
 	}
@@ -53,7 +53,7 @@ func TestCreateEgressReturnsNamedBadRequests(t *testing.T) {
 		{name: "invalid widening", config: AgentConfig{Agent: "codex"}, extra: []string{"https://example.com"}, code: "AGENT_SESSION_EGRESS_ALLOWLIST_INVALID"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, _, err := createEgress(tc.config, tc.extra)
+			_, _, err := createEgress("tea-a", tc.config, tc.extra)
 			if !errors.Is(err, core.ErrBadRequest) {
 				t.Fatalf("error = %v, want bad request", err)
 			}
