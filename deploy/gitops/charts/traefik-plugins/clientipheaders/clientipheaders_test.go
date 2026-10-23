@@ -19,8 +19,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 func forged() http.Header {
@@ -163,5 +165,37 @@ func TestRndrID(t *testing.T) {
 	}
 	if seen[0] == seen[1] {
 		t.Errorf("two requests shared Rndr-Id %q", seen[0])
+	}
+}
+
+// TestRequestStart (w8/196): every request reaches the app with Render's
+// X-Request-Start, in microseconds since the epoch and taken at the edge; a
+// caller's value, in either spelling, is replaced.
+func TestRequestStart(t *testing.T) {
+	var seen string
+	h, err := New(context.Background(), http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		seen = r.Header.Get("X-Request-Start")
+		if len(r.Header.Values("X-Request-Start")) != 1 || r.Header.Get("X_Request_Start") != "" {
+			t.Errorf("app saw X-Request-Start %q and underscore %q, want one value", r.Header.Values("X-Request-Start"), r.Header.Get("X_Request_Start"))
+		}
+	}), CreateConfig(), "client-ip-headers")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, forged := range map[string]http.Header{
+		"absent":     {},
+		"forged":     {"X-Request-Start": {"1"}},
+		"underscore": {"X_request_start": {"1"}, "X-Request-Start": {"t=1"}},
+	} {
+		before := time.Now().UnixMicro()
+		req := httptest.NewRequest(http.MethodGet, "https://web.onbex.co/", nil)
+		req.RemoteAddr = "198.51.100.20:1"
+		req.Header = forged
+		h.ServeHTTP(httptest.NewRecorder(), req)
+		after := time.Now().UnixMicro()
+		got, err := strconv.ParseInt(seen, 10, 64)
+		if err != nil || len(seen) != 16 || got < before || got > after {
+			t.Errorf("%s: X-Request-Start %q, want 16 digits of microseconds in [%d, %d]", name, seen, before, after)
+		}
 	}
 }

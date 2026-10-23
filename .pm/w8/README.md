@@ -389,11 +389,11 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **193** — [Restrict environment-variable, secret-file and shell access to Admins in a protected environment](done/193.md) ← w8/187 2026-10-22: the rest of Render's protected-environment list; minor, ~2h. — **DONE (2026-10-22)**.
 
-- [ ] **196** — [Requests reach the app without Render's `X-Request-Start`, so APM queue time and queue-time autoscalers read nothing](196.md) (~30m) ← `/qa-find-bugs-cli` loop sweep 7d1f 2026-10-23 (minor)
+- [x] **196** — [Requests reach the app without Render's `X-Request-Start`, so APM queue time and queue-time autoscalers read nothing](done/196.md) (~30m) ← `/qa-find-bugs-cli` loop sweep 7d1f 2026-10-23 (minor) — DONE 2026-10-23 (code shipped; live header check pending the GitOps sync)
 
-- [ ] **195** — [Pino/bunyan numeric JSON levels are labelled `unknown`, so no `--level` filter returns them](195.md) (~40m) ← `/qa-find-bugs-cli` loop sweep 5e2a 2026-10-23 (minor)
+- [x] **195** — [Pino/bunyan numeric JSON levels are labelled `unknown`, so no `--level` filter returns them](done/195.md) (~40m) ← `/qa-find-bugs-cli` loop sweep 5e2a 2026-10-23 (minor) — DONE 2026-10-23 (code shipped; live level check pending the GitOps sync)
 
-- [ ] **194** — [Static-site responses carry no `Strict-Transport-Security` or `nosniff`, unlike Render's](194.md) (~45m) ← `/qa-find-bugs-cli` loop sweep 64af 2026-10-23 (minor)
+- [x] **194** — [Static-site responses carry no `Strict-Transport-Security` or `nosniff`, unlike Render's](done/194.md) (~45m) ← `/qa-find-bugs-cli` loop sweep 64af 2026-10-23 (minor) — DONE 2026-10-23 (code shipped; live header check pending the operator deploy)
 
 - [ ] **192** — [Retire the implicit static-site SPA fallback for sites created before 2026-10-23](blocked/192.md) ← w8/183 2026-10-22 (due 2026-11-22) — **BLOCKED (needs a production operator to list pre-cutoff static sites and add the `/* → /index.html` rewrite to the SPAs before the code step removes `SPAFallbackCutoff`; removing it first would break running single-page apps)**; no code is done yet.
 

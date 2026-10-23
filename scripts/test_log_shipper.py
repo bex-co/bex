@@ -284,6 +284,17 @@ class AppLogLevelsTest(unittest.TestCase):
             'ts=2026-09-28T06:09:24Z level=warn msg="spaced \\"escaped\\" quotes"': "warning",
             '{"level":"alert","message":"json alert"}': "error",
             '{"severity":"EMERGENCY","message":"json severity emergency"}': "error",
+            # pino (Fastify, nestjs-pino) and bunyan: numeric JSON levels (w8/195).
+            '{"level":10,"msg":"pino trace"}': "debug",
+            '{"level":20,"msg":"pino debug"}': "debug",
+            '{"level":30,"msg":"pino info"}': "info",
+            '{"level":40,"msg":"pino warn"}': "warning",
+            '{"level":50,"msg":"pino error"}': "error",
+            '{"level":60,"msg":"pino fatal"}': "error",
+            '{"level":"30","msg":"numeric level as a string"}': "info",
+            '{"level":35,"msg":"between the scale\'s steps"}': "unknown",
+            '{"level":0,"msg":"zero is no level"}': "unknown",
+            '{"level":70,"msg":"above the scale"}': "unknown",
         }
         # Render's level names (w8/031): warnings ship as `warning`, the value
         # the pinned CLI's --level sends.
@@ -294,6 +305,9 @@ class AppLogLevelsTest(unittest.TestCase):
             "DEBUG": "debug", "trace": "debug",
             # The pinned CLI's --level alert/emergency (w8/097).
             "alert": "error", "emergency": "error", "ALERT": "error", "EMERGENCY": "error",
+            # pino and bunyan write the level as a number (w8/195).
+            "10": "debug", "20": "debug", "30": "info", "40": "warning",
+            "50": "error", "60": "error",
         }.items():
             for key in ("level", "severity"):
                 cases[f'{key}={value} msg="normalization"'] = expected

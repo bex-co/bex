@@ -26,6 +26,11 @@
 // request to the app and on the response, which the access log keeps, so a
 // request line and the app lines that log the header share one searchable
 // value. A caller's Rndr-Id is replaced, never trusted.
+//
+// And Render's X-Request-Start (w8/196): the time the request reached the edge,
+// in microseconds since the Unix epoch, which New Relic, AppSignal, Scout and
+// Judoscale read to report request-queue time (Judoscale autoscales on it). A
+// caller's value is replaced, never trusted.
 package bex_client_ip_headers
 
 import (
@@ -34,7 +39,9 @@ import (
 	"encoding/hex"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // cloudflareRanges is Cloudflare's published edge address space. It must equal
@@ -58,9 +65,9 @@ var cloudflareHeaders = map[string]bool{
 	"cf-ray": true, "cf-visitor": true, "cf-worker": true,
 }
 
-// alwaysStripped never comes from a party bex trusts; True-Client-IP and
-// Rndr-Id are rewritten below.
-var alwaysStripped = map[string]bool{"x-client-ip": true, "true-client-ip": true, "rndr-id": true}
+// alwaysStripped never comes from a party bex trusts; True-Client-IP, Rndr-Id
+// and X-Request-Start are rewritten below.
+var alwaysStripped = map[string]bool{"x-client-ip": true, "true-client-ip": true, "rndr-id": true, "x-request-start": true}
 
 type Config struct{}
 
@@ -110,6 +117,10 @@ func (s *sanitizer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	id := requestID()
 	h.Set("Rndr-Id", id)
 	w.Header().Set("Rndr-Id", id)
+	// Render's format: bare microseconds since the epoch, no "t=" prefix. Taken
+	// at the edge, before any activator wake, so queue time includes the
+	// spin-up, as on Render.
+	h.Set("X-Request-Start", strconv.FormatInt(time.Now().UnixMicro(), 10))
 	s.next.ServeHTTP(w, r)
 }
 
