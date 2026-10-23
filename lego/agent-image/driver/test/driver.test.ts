@@ -15,236 +15,130 @@
  */
 
 import assert from "node:assert/strict";
-import { generateKeyPairSync, randomUUID, sign } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import {
-  chmod,
-  mkdtemp,
-  mkdir,
-  open,
-  readFile,
-  writeFile,
-} from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
-import { fileURLToPath } from "node:url";
-import { loadConfig, type AgentDriverConfig } from "../src/config.js";
-import {
-  createCredentialManager,
-  type CredentialManager,
-} from "../src/credentials.js";
+import { loadConfig } from "../src/config.js";
+import { agentEnvironment } from "../src/credentials.js";
 import { runHeadlessTurn } from "../src/session.js";
 import { createSessionProvider } from "../src/acp.js";
 import { startDriverServer } from "../src/server.js";
 import { UIMessageStreamHub } from "../src/stream-hub.js";
 import { TurnLogSink } from "../src/turn-log.js";
 import { isUtcTimestamp } from "../src/timestamp.js";
+import { childEnv, tempConfig, turnGrant } from "./helpers.js";
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const fixture = path.join(here, "..", "fixtures", "acp-agent.mjs");
-const grantKeys = generateKeyPairSync("ed25519");
-const grantPublicKey = (
-  grantKeys.publicKey.export({ format: "jwk" }) as JsonWebKey
-).x!;
+const proxy =
+  "http://bex-ssh-gateway.bex-system.svc.cluster.local:8084/model/ns/ags-1";
 
-function driverGrant(
-  action: "turn" | "snapshot",
-  sessionID = "ags-test",
-): string {
-  const now = Math.floor(Date.now() / 1000);
-  const body = Buffer.from(
-    JSON.stringify({
-      ses: sessionID,
-      act: action,
-      iat: now,
-      exp: now + 30,
-      jti: randomUUID(),
-    }),
-  ).toString("base64url");
-  return `${body}.${sign(null, Buffer.from(body), grantKeys.privateKey).toString("base64url")}`;
-}
-
-function turnGrant(sessionID = "ags-test"): string {
-  return driverGrant("turn", sessionID);
-}
-
-type TestConfig = AgentDriverConfig & { root: string };
-
-async function tempConfig(
-  overrides: Partial<TestConfig> = {},
-): Promise<TestConfig> {
-  const root = await mkdtemp(path.join(tmpdir(), "bex-agent-driver-"));
-  const workspace = path.join(root, "workspace");
-  await mkdir(workspace);
+// hosted is the minimum environment bex-api provisions: the mandatory model
+// proxy URL plus the session-bound placeholder credential.
+function hosted(env: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
   return {
-    command: process.execPath,
-    args: [fixture],
-    cwd: workspace,
-    prompt: "Make the requested change and commit it.",
-    branch: "",
-    repoUrl: "",
-    baseBranch: "",
-    deliver: false,
-    gitName: "bex agent",
-    gitEmail: "agent@bex.co",
-    existingSessionId: "",
-    persistSession: true,
-    listenHost: "127.0.0.1",
-    listenPort: 0,
-    sessionLogPath: path.join(root, "session.jsonl"),
-    statusPath: path.join(root, "status.json"),
-    exitAfterTurn: false,
-    turnTimeoutMs: 1_000,
-    credentialEnvName: "ANTHROPIC_API_KEY",
-    modelCredential: "test-model-key-never-log",
-    sessionID: "ags-test",
-    grantPublicKey,
-    agentEnv: {},
-    scrubRoots: [workspace],
-    modelBaseUrl: "",
-    modelBaseUrlEnvName: "",
-    root,
-    ...overrides,
+    BEX_AGENT_MODEL_PROXY_URL: proxy,
+    BEX_AGENT_SESSION_ID: "ags-1",
+    BEX_AGENT_MODEL_API_KEY: "bex-model-proxy-placeholder-ags-1",
+    ...env,
   };
 }
 
-function manager(config: AgentDriverConfig): CredentialManager {
-  return createCredentialManager(config, {});
-}
-
 test("configuration accepts only operator-owned adapter paths", () => {
-  const config = loadConfig({
-    BEX_AGENT_COMMAND: "/usr/local/bin/gemini",
-    BEX_AGENT_ARGS: '["--acp"]',
-    BEX_AGENT_CWD: "/tmp/repo",
-    BEX_AGENT_LISTEN_PORT: "9000",
-    BEX_AGENT_ENV_JSON: "{}",
-  });
+  const config = loadConfig(
+    hosted({
+      BEX_AGENT_COMMAND: "/usr/local/bin/gemini",
+      BEX_AGENT_ARGS: '["--acp"]',
+      BEX_AGENT_CWD: "/tmp/repo",
+      BEX_AGENT_LISTEN_PORT: "9000",
+      BEX_AGENT_ENV_JSON: "{}",
+    }),
+  );
   assert.equal(config.command, "/usr/local/bin/gemini");
+  assert.equal(config.profile, "gemini");
   assert.deepEqual(config.args, ["--acp"]);
   assert.deepEqual(config.agentEnv, {});
-  assert.deepEqual(config.scrubRoots, [
-    "/tmp/repo",
-    "/home/bex",
-    "/tmp",
-    "/var/tmp",
-    "/var/log/bex-agent",
-    "/var/run/bex-agent",
-  ]);
-  assert.throws(() => loadConfig({ BEX_AGENT_ARGS: "--flag" }), /JSON array/);
+  assert.equal(config.prRecordPath, "/var/run/bex-agent/pull-request.json");
   assert.throws(
-    () => loadConfig({ BEX_AGENT_COMMAND: "./tenant-adapter" }),
-    /installed agent adapter path/,
+    () => loadConfig(hosted({ BEX_AGENT_ARGS: "--flag" })),
+    /JSON array/,
   );
   assert.throws(
-    () => loadConfig({ BEX_AGENT_COMMAND: "/workspace/tenant-adapter" }),
+    () => loadConfig(hosted({ BEX_AGENT_COMMAND: "./tenant-adapter" })),
     /installed agent adapter path/,
   );
   assert.throws(
     () =>
-      loadConfig({
-        BEX_AGENT_ENV_JSON: '{"ANTHROPIC_API_KEY":"bypass"}',
-      }),
+      loadConfig(hosted({ BEX_AGENT_COMMAND: "/workspace/tenant-adapter" })),
+    /installed agent adapter path/,
+  );
+  assert.throws(
+    () =>
+      loadConfig(
+        hosted({ BEX_AGENT_ENV_JSON: '{"ANTHROPIC_API_KEY":"bypass"}' }),
+      ),
     /model credentials must use BEX_AGENT_MODEL_API_KEY/,
   );
 });
 
-test("model credential routes to the agent-native env var by shape", () => {
-  // An Anthropic OAuth token (`sk-ant-oat…`, from `claude setup-token`) must
-  // reach claude-code as CLAUDE_CODE_OAUTH_TOKEN — delivering it as the x-api-key
-  // ANTHROPIC_API_KEY is rejected upstream as "Invalid API key".
-  assert.equal(
-    loadConfig({ BEX_AGENT_MODEL_API_KEY: "sk-ant-oat01-abc" })
-      .credentialEnvName,
-    "CLAUDE_CODE_OAUTH_TOKEN",
+test("the driver refuses to start without the model proxy or with a real key", () => {
+  // ADR062 / ADR090: there is no standalone direct-to-vendor mode.
+  assert.throws(
+    () => loadConfig(hosted({ BEX_AGENT_MODEL_PROXY_URL: "" })),
+    /BEX_AGENT_MODEL_PROXY_URL is required/,
   );
-  // A conventional API key keeps the x-api-key default.
-  assert.equal(
-    loadConfig({ BEX_AGENT_MODEL_API_KEY: "sk-ant-api03-abc" })
-      .credentialEnvName,
-    "ANTHROPIC_API_KEY",
+  assert.throws(
+    () => loadConfig(hosted({ BEX_AGENT_SESSION_ID: "" })),
+    /BEX_AGENT_SESSION_ID is required/,
   );
-  assert.equal(loadConfig({}).credentialEnvName, "ANTHROPIC_API_KEY");
-  // An explicit override always wins over shape detection.
-  assert.equal(
-    loadConfig({
-      BEX_AGENT_MODEL_API_KEY: "sk-ant-oat01-abc",
-      BEX_AGENT_MODEL_API_KEY_ENV: "GEMINI_API_KEY",
-    }).credentialEnvName,
-    "GEMINI_API_KEY",
-  );
+  for (const credential of [
+    "",
+    "sk-ant-api03-real-looking-key",
+    "sk-ant-oat01-oauth-token",
+    "bex-model-proxy-placeholder-ags-other",
+  ]) {
+    assert.throws(
+      () => loadConfig(hosted({ BEX_AGENT_MODEL_API_KEY: credential })),
+      /model-proxy placeholder/,
+    );
+  }
 });
 
 test("model proxy routes each adapter's base URL and lands the placeholder in its native var", () => {
-  // ADR062 D5: with the proxy on, each adapter is pointed at the gateway proxy via
-  // its provider base-URL env (with the provider's path suffix) and the credential
-  // env is the one that adapter reads, so the agent attempts the request.
-  const proxy =
-    "http://bex-ssh-gateway.bex-system.svc.cluster.local:8084/model/ns/sess";
-  const claude = loadConfig({
-    BEX_AGENT_COMMAND: "/usr/local/bin/claude-agent-acp",
-    BEX_AGENT_MODEL_PROXY_URL: proxy,
-    BEX_AGENT_MODEL_API_KEY: "bex-model-proxy-placeholder-ags-1",
-  });
+  // ADR062 D5: each adapter is pointed at the gateway proxy via its provider
+  // base-URL env (with the provider's path suffix) and the placeholder lands
+  // in the credential env that adapter reads.
+  const claude = loadConfig(
+    hosted({ BEX_AGENT_COMMAND: "/usr/local/bin/claude-agent-acp" }),
+  );
   assert.equal(claude.modelBaseUrlEnvName, "ANTHROPIC_BASE_URL");
   assert.equal(claude.modelBaseUrl, proxy); // Anthropic base is the root: no suffix
   assert.equal(claude.credentialEnvName, "ANTHROPIC_API_KEY");
 
-  const codex = loadConfig({
-    BEX_AGENT_COMMAND: "/usr/local/bin/codex-acp",
-    BEX_AGENT_MODEL_PROXY_URL: proxy,
-  });
+  const codex = loadConfig(
+    hosted({ BEX_AGENT_COMMAND: "/usr/local/bin/codex-acp" }),
+  );
   assert.equal(codex.modelBaseUrlEnvName, "OPENAI_BASE_URL");
   assert.equal(codex.modelBaseUrl, proxy + "/v1"); // OpenAI base includes /v1
   assert.equal(codex.credentialEnvName, "OPENAI_API_KEY");
 
-  const gemini = loadConfig({
-    BEX_AGENT_COMMAND: "/usr/local/bin/gemini",
-    BEX_AGENT_MODEL_PROXY_URL: proxy,
-  });
+  const gemini = loadConfig(
+    hosted({ BEX_AGENT_COMMAND: "/usr/local/bin/gemini" }),
+  );
   assert.equal(gemini.modelBaseUrlEnvName, "GOOGLE_GEMINI_BASE_URL");
   assert.equal(gemini.credentialEnvName, "GEMINI_API_KEY");
 
-  // The base-URL env is surfaced to the agent child alongside the placeholder.
-  const codexConfig = loadConfig({
-    BEX_AGENT_COMMAND: "/usr/local/bin/codex-acp",
-    BEX_AGENT_MODEL_PROXY_URL: proxy,
-    BEX_AGENT_MODEL_API_KEY: "placeholder-only",
-  });
-  const env = manager(codexConfig).agentEnvironment();
+  // The base-URL env is surfaced to the agent child alongside the placeholder,
+  // and both injection names leave the driver's own environment.
+  const parent: NodeJS.ProcessEnv = {
+    BEX_AGENT_MODEL_API_KEY: "bex-model-proxy-placeholder-ags-1",
+    OPENAI_API_KEY: "bex-model-proxy-placeholder-ags-1",
+  };
+  const env = agentEnvironment(codex, parent);
   assert.equal(env.OPENAI_BASE_URL, proxy + "/v1");
-  assert.equal(env.OPENAI_API_KEY, "placeholder-only");
+  assert.equal(env.OPENAI_API_KEY, "bex-model-proxy-placeholder-ags-1");
+  assert.equal(parent.BEX_AGENT_MODEL_API_KEY, undefined);
+  assert.equal(parent.OPENAI_API_KEY, undefined);
 });
-
-test("model proxy with no base-URL routing for the adapter fails closed", () => {
-  // A hypothetical adapter absent from the routing table must abort rather than
-  // connect straight to the vendor with the placeholder. The allowlist currently
-  // covers exactly the three routed adapters; assert the fail-closed guard by
-  // pinning that BEX_AGENT_MODEL_API_KEY_ENV cannot substitute for routing.
-  assert.ok(modelProxyRoutesCovered());
-});
-
-// modelProxyRoutesCovered documents that every command the allowlist admits also
-// has a proxy route, so proxy mode never silently degrades to a direct vendor
-// connection for a supported adapter. If a new adapter is added to the allowlist
-// without a route, loadConfig throws under BEX_AGENT_MODEL_PROXY_URL — proving the
-// fail-closed contract holds for it too.
-function modelProxyRoutesCovered(): boolean {
-  const proxy = "http://gw:8084/model/ns/sess";
-  for (const command of [
-    "/usr/local/bin/claude-agent-acp",
-    "/usr/local/bin/codex-acp",
-    "/usr/local/bin/gemini",
-  ]) {
-    const cfg = loadConfig({
-      BEX_AGENT_COMMAND: command,
-      BEX_AGENT_MODEL_PROXY_URL: proxy,
-    });
-    if (!cfg.modelBaseUrl || !cfg.modelBaseUrlEnvName) return false;
-  }
-  return true;
-}
 
 test("one headless turn maps every fixture update and commits in the worktree", async () => {
   const config = await tempConfig();
@@ -262,7 +156,7 @@ test("one headless turn maps every fixture update and commits in the worktree", 
   };
 
   const hub = new UIMessageStreamHub();
-  const result = await runHeadlessTurn(config, manager(config), hub);
+  const result = await runHeadlessTurn(config, childEnv(config), hub);
   assert.equal(result.state, "succeeded");
   assert.match(
     execFileSync("git", ["log", "-1", "--format=%s"], {
@@ -321,7 +215,6 @@ test("one headless turn maps every fixture update and commits in the worktree", 
   assert.doesNotMatch(serialized, /acp_provider_agent_dynamic_tool/);
   const log = await readFile(config.sessionLogPath, "utf8");
   assert.match(log, /ui-message/);
-  assert.doesNotMatch(log, /test-model-key-never-log/);
   const logRecords = log
     .trim()
     .split("\n")
@@ -354,10 +247,9 @@ test("Codex binds its provider to the session proxy and fails on typed transport
     ACP_FIXTURE_REQUIRE_TYPED_FAILURE: "1",
     ACP_FIXTURE_TYPED_FAILURE: "1",
   };
-  const credentials = manager(config);
   await assert.rejects(
-    runHeadlessTurn(config, credentials, new UIMessageStreamHub()),
-    /ACP session failed \(transport_lost\): model proxy transport failed: near \[REDACTED\]/,
+    runHeadlessTurn(config, childEnv(config), new UIMessageStreamHub()),
+    /ACP session failed \(transport_lost\): model proxy transport failed/,
   );
   const calls = (await readFile(callLog, "utf8")).trim().split("\n");
   assert.ok(calls.indexOf("providers/set") > calls.indexOf("initialize"));
@@ -365,62 +257,6 @@ test("Codex binds its provider to the session proxy and fails on typed transport
   const status = JSON.parse(await readFile(config.statusPath, "utf8"));
   assert.equal(status.state, "failed");
   assert.match(status.error, /transport_lost/);
-  assert.doesNotMatch(status.error, /test-model-key-never-log/);
-  assert.equal(credentials.configured(), false);
-});
-
-// codex r7 #4 — the model credential must be redacted BEFORE the first
-// fan-out: hub history (GET /stream attachers), the onPart mirror (the POST
-// /turn response the gateway tees into the durable transcript), and the
-// session log must all carry the sanitized representation.
-test("credential emitted by the agent never reaches hub, mirror, or log", async () => {
-  const config = await tempConfig();
-  config.agentEnv = { ACP_FIXTURE_LEAK_CREDENTIAL: "1" };
-  const hub = new UIMessageStreamHub();
-  const mirrored: string[] = [];
-  const result = await runHeadlessTurn(config, manager(config), hub, {
-    onPart: (part) => mirrored.push(JSON.stringify(part)),
-  });
-  assert.equal(result.state, "succeeded");
-  for (const [sink, text] of [
-    ["hub history", JSON.stringify(hub.history)],
-    ["turn mirror", mirrored.join("\n")],
-    ["session log", await readFile(config.sessionLogPath, "utf8")],
-  ]) {
-    assert.doesNotMatch(
-      text,
-      /test-model-key-never-log/,
-      `${sink} leaked the credential`,
-    );
-    // The leak must have actually happened for the assertion above to mean
-    // anything — the sanitized marker proves the fixture emitted the key.
-    assert.match(text, /\[REDACTED\]/, `${sink} shows no redaction marker`);
-  }
-});
-
-test("redactPart sanitizes nested structured parts and fails closed", async () => {
-  const config = await tempConfig();
-  const credentials = manager(config);
-  const part = {
-    type: "data-acp",
-    data: { rawOutput: { stdout: `key=${config.modelCredential}` } },
-  };
-  const sanitized = credentials.redactPart(part);
-  assert.doesNotMatch(JSON.stringify(sanitized), /test-model-key-never-log/);
-  assert.match(JSON.stringify(sanitized), /\[REDACTED\]/);
-  assert.doesNotMatch(
-    JSON.stringify(part),
-    /REDACTED/,
-    "input part must not be mutated",
-  );
-  // A clean part passes through untouched (same reference, no re-parse cost).
-  const clean = { type: "text", text: "no secrets here" };
-  assert.equal(credentials.redactPart(clean), clean);
-  // A secret whose removal would corrupt the JSON document (here it overlaps
-  // the structural `":"` between key and value) fails closed to a placeholder
-  // part rather than ever returning the raw representation.
-  const hostile = manager(await tempConfig({ modelCredential: '":"' }));
-  assert.deepEqual(hostile.redactPart({ a: "x" }), { type: "data-redacted" });
 });
 
 test("stream hub bounds oversized parts and retained history", () => {
@@ -450,7 +286,7 @@ for (const loadSession of [false, true]) {
     };
     const result = await runHeadlessTurn(
       config,
-      manager(config),
+      childEnv(config),
       new UIMessageStreamHub(),
     );
     const calls = (await readFile(callLog, "utf8")).trim().split("\n");
@@ -465,7 +301,7 @@ for (const loadSession of [false, true]) {
   });
 }
 
-// w3/m42 t003 — resume after hibernation: a restarted driver on a restored
+// ADR059 resume after hibernation: a restarted driver on a restored
 // rootfs adopts the prior turn's persisted ACP session id and re-attaches via
 // session/load only when the agent advertises loadSession.
 for (const loadSession of [false, true]) {
@@ -482,7 +318,7 @@ for (const loadSession of [false, true]) {
     };
     const result = await runHeadlessTurn(
       config,
-      manager(config),
+      childEnv(config),
       new UIMessageStreamHub(),
     );
     const calls = (await readFile(callLog, "utf8")).trim().split("\n");
@@ -503,7 +339,7 @@ test("environment session id takes precedence over the rootfs status file", asyn
   config.agentEnv = { ACP_FIXTURE_LOAD_SESSION: "1" };
   const result = await runHeadlessTurn(
     config,
-    manager(config),
+    childEnv(config),
     new UIMessageStreamHub(),
   );
   assert.equal(result.resume, "loaded");
@@ -524,7 +360,7 @@ test("a failed prior turn adopts nothing and starts a fresh session", async () =
   };
   const result = await runHeadlessTurn(
     config,
-    manager(config),
+    childEnv(config),
     new UIMessageStreamHub(),
   );
   const calls = (await readFile(callLog, "utf8")).trim().split("\n");
@@ -539,7 +375,7 @@ test("a corrupt status file adopts nothing", async () => {
   await writeFile(config.statusPath, "not-json{");
   const result = await runHeadlessTurn(
     config,
-    manager(config),
+    childEnv(config),
     new UIMessageStreamHub(),
   );
   assert.equal(result.resume, "new");
@@ -547,24 +383,17 @@ test("a corrupt status file adopts nothing", async () => {
 });
 
 test("agent crash becomes a failed status instead of hanging", async () => {
-  const config = await tempConfig({
-    agentEnv: {
-      ACP_FIXTURE_CRASH: "1",
-      ACP_FIXTURE_CRASH_WITH_CREDENTIAL: "1",
-    },
-  });
+  const config = await tempConfig({ agentEnv: { ACP_FIXTURE_CRASH: "1" } });
   let failure: unknown;
   try {
-    await runHeadlessTurn(config, manager(config), new UIMessageStreamHub());
+    await runHeadlessTurn(config, childEnv(config), new UIMessageStreamHub());
   } catch (error) {
     failure = error;
   }
   assert.ok(failure instanceof Error);
-  assert.doesNotMatch(failure.message, /test-model-key-never-log/);
-  assert.match(failure.message, /\[REDACTED\]/);
+  assert.match(failure.message, /ACP agent exited \(code=23.*fixture crashed/);
   const status = JSON.parse(await readFile(config.statusPath, "utf8"));
   assert.equal(status.state, "failed");
-  assert.doesNotMatch(JSON.stringify(status), /test-model-key-never-log/);
 });
 
 test("agent input loss fails promptly instead of leaving a running turn", async () => {
@@ -573,7 +402,7 @@ test("agent input loss fails promptly instead of leaving a running turn", async 
     turnTimeoutMs: 5_000,
   });
   await assert.rejects(
-    runHeadlessTurn(config, manager(config), new UIMessageStreamHub()),
+    runHeadlessTurn(config, childEnv(config), new UIMessageStreamHub()),
     /ACP agent stdin failed:/,
   );
   const status = JSON.parse(await readFile(config.statusPath, "utf8"));
@@ -586,7 +415,7 @@ test("agent initialize stall is bounded by the turn timeout", async () => {
     turnTimeoutMs: 50,
   });
   await assert.rejects(
-    runHeadlessTurn(config, manager(config), new UIMessageStreamHub()),
+    runHeadlessTurn(config, childEnv(config), new UIMessageStreamHub()),
     /turn exceeded|connect timed out/,
   );
   const status = JSON.parse(await readFile(config.statusPath, "utf8"));
@@ -595,11 +424,10 @@ test("agent initialize stall is bounded by the turn timeout", async () => {
 
 test("SSE replays the standard UI-message stream and headless needs no client", async () => {
   const config = await tempConfig();
-  const credentials = manager(config);
   const hub = new UIMessageStreamHub();
-  const listener = await startDriverServer(config, credentials, hub);
+  const listener = await startDriverServer(config, hub);
   try {
-    await runHeadlessTurn(config, credentials, hub);
+    await runHeadlessTurn(config, childEnv(config), hub);
     const response = await fetch(
       `http://127.0.0.1:${(listener.address as { port: number }).port}/stream`,
     );
@@ -614,29 +442,26 @@ test("SSE replays the standard UI-message stream and headless needs no client", 
 
 test("POST /turn runs a live turn, streams its parts, and single-flights", async () => {
   const config = await tempConfig();
-  const credentials = manager(config);
   const hub = new UIMessageStreamHub();
   const runTurn = (
     prompt: string,
     onPart: (part: Record<string, unknown>) => void,
   ) =>
-    runHeadlessTurn(config, credentials, hub, {
+    runHeadlessTurn(config, childEnv(config), hub, {
       prompt,
       closeHub: false,
       onPart,
     });
-  const listener = await startDriverServer(config, credentials, hub, {
-    runTurn,
-  });
+  const listener = await startDriverServer(config, hub, { runTurn });
   try {
     const turnURL = `http://127.0.0.1:${(listener.address as { port: number }).port}/turn`;
 
-    // Same-Pod code can reach localhost but cannot launch a model-key-bearing
-    // agent without the gateway's signed, action-bound grant.
+    // Same-Pod code can reach localhost but cannot launch an agent turn
+    // without the gateway's signed, action-bound grant.
     const unauthorized = await fetch(turnURL, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ prompt: "steal the model key" }),
+      body: JSON.stringify({ prompt: "run without a grant" }),
     });
     assert.equal(unauthorized.status, 401);
     await unauthorized.text();
@@ -715,318 +540,41 @@ test("POST /turn runs a live turn, streams its parts, and single-flights", async
 
 test("raw ACP launch route is absent", async () => {
   const config = await tempConfig();
-  const listener = await startDriverServer(
-    config,
-    manager(config),
-    new UIMessageStreamHub(),
-  );
+  const listener = await startDriverServer(config, new UIMessageStreamHub());
   try {
-    const response = await fetch(
-      `http://127.0.0.1:${(listener.address as { port: number }).port}/acp`,
-      { method: "POST" },
-    );
+    const port = (listener.address as { port: number }).port;
+    const response = await fetch(`http://127.0.0.1:${port}/acp`, {
+      method: "POST",
+    });
     assert.equal(response.status, 404);
   } finally {
     await listener.close();
   }
 });
 
-test("snapshot scrub removes an injected key from persisted files and parent env", async () => {
+test("turn log flush precedes the succeeded status", async () => {
   const config = await tempConfig();
-  const leaked = path.join(config.cwd, "accidental-agent-cache");
-  await writeFile(leaked, `prefix ${config.modelCredential} suffix`);
-  const env: NodeJS.ProcessEnv = {
-    BEX_AGENT_MODEL_API_KEY: config.modelCredential,
-    ANTHROPIC_API_KEY: config.modelCredential,
-  };
-  const credentials = createCredentialManager(config, env);
-  assert.equal(env.BEX_AGENT_MODEL_API_KEY, undefined);
-  assert.equal(env.ANTHROPIC_API_KEY, undefined);
-  assert.equal(
-    credentials.redact(`error: ${config.modelCredential}`),
-    "error: [REDACTED]",
-  );
-  assert.deepEqual(await credentials.scrubPersistedState(), [leaked]);
-  assert.equal(
-    (await readFile(leaked, "utf8")).includes(config.modelCredential),
-    false,
-  );
-  assert.match(await readFile(leaked, "utf8"), /\[REDACTED\]/);
-});
-
-test("snapshot scrub preserves binary bytes and blocks an oversized credential leak", async () => {
-  const config = await tempConfig();
-  const binaryLeak = path.join(config.cwd, "binary-cache");
-  await writeFile(
-    binaryLeak,
-    Buffer.concat([
-      Buffer.from([0xff, 0x00]),
-      Buffer.from(config.modelCredential),
-      Buffer.from([0xfe, 0x01]),
-    ]),
-  );
-  const credentials = manager(config);
-  assert.deepEqual(await credentials.scrubPersistedState(), [binaryLeak]);
-  const scrubbed = await readFile(binaryLeak);
-  assert.deepEqual(scrubbed.subarray(0, 2), Buffer.from([0xff, 0x00]));
-  assert.deepEqual(scrubbed.subarray(-2), Buffer.from([0xfe, 0x01]));
-
-  const oversizedLeak = path.join(config.cwd, "oversized-cache");
-  const file = await open(oversizedLeak, "w");
-  try {
-    const offset = 33 * 1024 * 1024;
-    const needle = Buffer.from(config.modelCredential);
-    await file.truncate(offset);
-    await file.write(needle, 0, needle.length, offset);
-  } finally {
-    await file.close();
-  }
-  await assert.rejects(
-    credentials.scrubPersistedState(),
-    /credential found in oversized persisted file/,
-  );
-  await writeFile(oversizedLeak, "safe");
-
-  const inaccessibleLeak = path.join(config.cwd, "inaccessible-cache");
-  await writeFile(inaccessibleLeak, config.modelCredential, { mode: 0o600 });
-  await chmod(inaccessibleLeak, 0o000);
-  await assert.rejects(
-    credentials.scrubPersistedState(),
-    /cannot inspect agent-writable persisted path/,
-  );
-});
-
-test("persisted credential scan fails closed on aggregate, depth, and cancellation bounds", async () => {
-  const config = await tempConfig();
-  const credentials = manager(config);
-  await writeFile(path.join(config.cwd, "one"), "1");
-  await writeFile(path.join(config.cwd, "two"), "2");
-  await assert.rejects(
-    credentials.scrubPersistedState(undefined, { maxFiles: 1 }),
-    /file limit/,
-  );
-  await assert.rejects(
-    credentials.scrubPersistedState(undefined, { maxEntries: 1 }),
-    /entry limit/,
-  );
-  await assert.rejects(
-    credentials.scrubPersistedState(undefined, { maxBytes: 1 }),
-    /byte limit/,
-  );
-  const nested = path.join(config.cwd, "a", "b", "c");
-  await mkdir(nested, { recursive: true });
-  await assert.rejects(
-    credentials.scrubPersistedState(undefined, { maxDepth: 1 }),
-    /depth limit/,
-  );
-  const controller = new AbortController();
-  controller.abort();
-  await assert.rejects(
-    credentials.scrubPersistedState(undefined, { signal: controller.signal }),
-    /aborted/,
-  );
-});
-
-test("persisted credential scan accepts a safe sparse repository larger than 1 GiB", async () => {
-  const config = await tempConfig();
-  const large = path.join(config.cwd, "large-safe-fixture");
-  const file = await open(large, "w");
-  try {
-    await file.truncate((1 << 30) + 1);
-  } finally {
-    await file.close();
-  }
-  await assert.doesNotReject(
-    manager(config).scrubPersistedState(undefined, { timeoutMs: 120_000 }),
-  );
-});
-
-for (const reachable of [true, false]) {
-  test(`persisted credential scan fails closed on a ${reachable ? "reachable" : "unreachable"} Git object`, async () => {
-    const config = await tempConfig();
-    execFileSync("git", ["init", "-q"], { cwd: config.cwd });
-    execFileSync("git", ["config", "user.name", "bex test"], {
-      cwd: config.cwd,
-    });
-    execFileSync("git", ["config", "user.email", "bex-test@example.invalid"], {
-      cwd: config.cwd,
-    });
-    const leaked = path.join(config.cwd, "credential-object");
-    await writeFile(leaked, `key=${config.modelCredential}\n`);
-    if (reachable) {
-      execFileSync("git", ["add", "credential-object"], { cwd: config.cwd });
-      execFileSync("git", ["commit", "-q", "-m", "credential fixture"], {
-        cwd: config.cwd,
-      });
-      await writeFile(leaked, "safe working tree\n");
-    } else {
-      execFileSync("git", ["hash-object", "-w", "credential-object"], {
-        cwd: config.cwd,
-      });
-      await writeFile(leaked, "safe working tree\n");
-    }
-    await assert.rejects(
-      manager(config).scrubPersistedState(),
-      /credential found in persisted Git object database/,
-    );
-  });
-}
-
-test("Git metadata paths are scrubbed after the decompressed object proof", async () => {
-  const config = await tempConfig();
-  execFileSync("git", ["init", "-q"], { cwd: config.cwd });
-  const targets = [
-    path.join(config.cwd, ".git", "config"),
-    path.join(config.cwd, ".git", "logs", "credential-fixture"),
-    path.join(config.cwd, ".git", "refs", "credential-fixture"),
-    path.join(config.cwd, ".git", "index"),
-  ];
-  await mkdir(path.dirname(targets[1]), { recursive: true });
-  await mkdir(path.dirname(targets[2]), { recursive: true });
-  for (const target of targets) {
-    await writeFile(target, `metadata=${config.modelCredential}\n`);
-  }
-  const scrubbed = await manager(config).scrubPersistedState();
-  for (const target of targets) {
-    assert.ok(scrubbed.includes(target));
-    assert.doesNotMatch(await readFile(target, "utf8"), /never-log/);
-  }
-});
-
-test("a scrub failure records one safe failed verdict and forgets credentials", async () => {
-  const config = await tempConfig();
-  const credentials = manager(config);
-  let scrubs = 0;
-  const failing: CredentialManager = {
-    ...credentials,
-    async scrubPersistedState() {
-      scrubs += 1;
-      throw new Error(`scan failed near ${config.modelCredential}`);
-    },
-  };
-  await assert.rejects(
-    runHeadlessTurn(config, failing, new UIMessageStreamHub()),
-    /persisted credential cleanup failed/,
-  );
-  assert.equal(
-    scrubs,
-    1,
-    "the failed scrub must not be retried in a catch path",
-  );
-  assert.equal(credentials.configured(), false);
-  const status = JSON.parse(await readFile(config.statusPath, "utf8"));
-  assert.equal(status.state, "failed");
-  assert.match(status.error, /persisted credential cleanup failed/);
-  assert.doesNotMatch(status.error, /test-model-key-never-log/);
-});
-
-test("snapshot hook requires an action-bound grant, terminalizes, scrubs, and forgets", async () => {
-  const config = await tempConfig();
-  const leaked = path.join(config.cwd, "agent-cache");
-  await writeFile(leaked, `cached=${config.modelCredential}\n`);
-  const credentials = manager(config);
-  let terminalized = false;
-  const listener = await startDriverServer(
-    config,
-    credentials,
-    new UIMessageStreamHub(),
-    {
-      terminalize: async () => {
-        terminalized = true;
-      },
-    },
-  );
-  try {
-    const url = `http://127.0.0.1:${(listener.address as { port: number }).port}/snapshot/scrub`;
-    const unauthorized = await fetch(url, { method: "POST" });
-    assert.equal(unauthorized.status, 401);
-    await unauthorized.text();
-    const wrongAction = await fetch(url, {
-      method: "POST",
-      headers: { "x-bex-driver-grant": turnGrant() },
-    });
-    assert.equal(wrongAction.status, 401);
-    await wrongAction.text();
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "x-bex-driver-grant": driverGrant("snapshot") },
-    });
-    assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { scrubbedFiles: 1 });
-    assert.equal(terminalized, true);
-    assert.equal(credentials.configured(), false);
-    assert.doesNotMatch(
-      await readFile(leaked, "utf8"),
-      /test-model-key-never-log/,
-    );
-  } finally {
-    await listener.close();
-  }
-});
-
-test("snapshot scrub forgets credentials even when persisted cleanup fails", async () => {
-  const config = await tempConfig();
-  const credentials = manager(config);
-  const failing: CredentialManager = {
-    ...credentials,
-    async scrubPersistedState() {
-      throw new Error(`snapshot scrub failed for ${config.modelCredential}`);
-    },
-  };
-  const listener = await startDriverServer(
-    config,
-    failing,
-    new UIMessageStreamHub(),
-    { terminalize: async () => undefined },
-  );
-  try {
-    const url = `http://127.0.0.1:${(listener.address as { port: number }).port}/snapshot/scrub`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "x-bex-driver-grant": driverGrant("snapshot") },
-    });
-    assert.equal(response.status, 500);
-    const body = await response.text();
-    assert.match(body, /snapshot scrub failed/);
-    assert.doesNotMatch(body, /test-model-key-never-log/);
-    assert.equal(credentials.configured(), false);
-  } finally {
-    await listener.close();
-  }
-});
-
-test("turn log flush precedes scrub, evidence and succeeded status", async (t) => {
-  const config = await tempConfig();
-  const credentials = manager(config);
-  const originalScrub = credentials.scrubPersistedState.bind(credentials);
-  let sawCompleteLog = false;
-  t.mock.method(credentials, "scrubPersistedState", async () => {
-    const records = (await readFile(config.sessionLogPath, "utf8"))
-      .trim()
-      .split("\n")
-      .map((line) => JSON.parse(line));
-    assert.equal(records.at(-1).part.type, "finish");
-    assert.equal(
-      JSON.parse(await readFile(config.statusPath, "utf8")).state,
-      "running",
-    );
-    sawCompleteLog = true;
-    return originalScrub();
-  });
   const frames: string[] = [];
   const hub = new UIMessageStreamHub();
-  await runHeadlessTurn(config, credentials, hub, {
+  await runHeadlessTurn(config, childEnv(config), hub, {
     onPart: (part, frame) => {
       assert.equal(frame, `data: ${JSON.stringify(part)}\n\n`);
       frames.push(frame!);
     },
   });
-  assert.equal(sawCompleteLog, true);
+  const records = (await readFile(config.sessionLogPath, "utf8"))
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line));
+  assert.equal(records.at(-1).part.type, "finish");
   assert.equal(frames.length, hub.history.length);
-  assert.equal(
-    JSON.parse(await readFile(config.statusPath, "utf8")).state,
-    "succeeded",
-  );
+  const status = JSON.parse(await readFile(config.statusPath, "utf8"));
+  assert.equal(status.state, "succeeded");
+  // A repo-less turn carries no git facts and no driver-owned delivery fields
+  // (ADR090).
+  for (const removed of ["delivery", "evidence", "scrubbedFiles", "git"]) {
+    assert.equal(status[removed], undefined, removed);
+  }
 });
 
 test("log open and terminal close failures persist failed status", async (t) => {
@@ -1047,7 +595,7 @@ test("log open and terminal close failures persist failed status", async (t) => 
         );
       }
       await assert.rejects(
-        runHeadlessTurn(config, manager(config), new UIMessageStreamHub()),
+        runHeadlessTurn(config, childEnv(config), new UIMessageStreamHub()),
       );
       const status = JSON.parse(await readFile(config.statusPath, "utf8"));
       assert.equal(status.state, "failed");
@@ -1086,7 +634,7 @@ for (const mode of ["missing", "missingLocalized", "corrupt", "closed"]) {
       diagnostics.push(args.join(" "));
     });
     const hub = new UIMessageStreamHub();
-    const result = await runHeadlessTurn(config, manager(config), hub, {
+    const result = await runHeadlessTurn(config, childEnv(config), hub, {
       prompt: "What was the codeword?",
     });
     assert.equal(result.resume, "load-failed");
@@ -1123,8 +671,6 @@ for (const mode of ["missing", "missingLocalized", "corrupt", "closed"]) {
     );
     assert.equal(diagnostics.length, 1);
     assert.match(diagnostics[0], /rebuilding continuity in a fresh process/);
-    assert.doesNotMatch(diagnostics[0], /test-model-key-never-log/);
-    if (mode === "corrupt") assert.match(diagnostics[0], /REDACTED/);
     const pids = (await readFile(pidPath, "utf8"))
       .trim()
       .split("\n")
@@ -1154,16 +700,13 @@ for (const mode of [
       ACP_FIXTURE_LOAD_ERROR: mode,
       ACP_FIXTURE_LOG: callsPath,
     };
-    const credentials = manager(config);
     const diagnostics: unknown[] = [];
     t.mock.method(console, "warn", (...args: unknown[]) => {
       diagnostics.push(args);
     });
     await assert.rejects(
-      createSessionProvider(config, credentials.agentEnvironment(), {
+      createSessionProvider(config, childEnv(config), {
         onUpdate: () => {},
-        redact: (value) =>
-          credentials.redact(typeof value === "string" ? value : String(value)),
       }).then((provider) => provider.cleanup()),
     );
     const calls = (await readFile(callsPath, "utf8")).trim().split("\n");
@@ -1184,11 +727,9 @@ test("an abort between failed load and replacement spawn stays aborted", async (
   const controller = new AbortController();
   const reason = new Error("fixture cancellation");
   t.mock.method(console, "warn", () => controller.abort(reason));
-  const credentials = manager(config);
   await assert.rejects(
-    createSessionProvider(config, credentials.agentEnvironment(), {
+    createSessionProvider(config, childEnv(config), {
       onUpdate: () => {},
-      redact: (value) => String(value),
       abortSignal: controller.signal,
     }).then((provider) => provider.cleanup()),
     reason,
@@ -1209,7 +750,7 @@ test("replacement session/new failure is not retried recursively", async (t) => 
   };
   t.mock.method(console, "warn", () => {});
   await assert.rejects(
-    runHeadlessTurn(config, manager(config), new UIMessageStreamHub()),
+    runHeadlessTurn(config, childEnv(config), new UIMessageStreamHub()),
   );
   const calls = (await readFile(callsPath, "utf8")).trim().split("\n");
   assert.equal(calls.filter((method) => method === "initialize").length, 2);
@@ -1243,11 +784,9 @@ test(
           } catch {}
       }
     });
-    const credentials = manager(config);
     await assert.rejects(
-      createSessionProvider(config, credentials.agentEnvironment(), {
+      createSessionProvider(config, childEnv(config), {
         onUpdate: () => {},
-        redact: (value) => String(value),
       }).then((provider) => provider.cleanup()),
       /ACP agent exited/,
     );
@@ -1279,7 +818,7 @@ for (const failsLoad of [false, true]) {
     t.mock.method(console, "warn", () => {});
     const hub = new UIMessageStreamHub();
     const mirror: Record<string, unknown>[] = [];
-    const result = await runHeadlessTurn(config, manager(config), hub, {
+    const result = await runHeadlessTurn(config, childEnv(config), hub, {
       onPart: (part) => {
         mirror.push(part);
       },

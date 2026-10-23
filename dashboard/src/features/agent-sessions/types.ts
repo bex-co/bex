@@ -118,6 +118,12 @@ export interface AgentSessionView {
    * `SANDBOX_CAPACITY_LIMIT` (w5/m132). Decide by this, never by the wording.
    */
   failureReasonCode: string | null;
+  /**
+   * Set on a completed session whose work the agent left undelivered — an
+   * uncommitted tree, unpushed commits, or a pushed branch with no PR (ADR090
+   * D5). The work stays in the retained sandbox for a follow-up turn.
+   */
+  deliveryNote: string | null;
   createdAt: string;
   updatedAt: string;
   canceledAt: string | null;

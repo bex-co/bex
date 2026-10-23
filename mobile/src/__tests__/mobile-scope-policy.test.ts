@@ -78,7 +78,7 @@ const allowedGraphqlOperations: Record<string, string> = {
     "mutation|token|acceptWorkspaceInvite,role,workspaceId,workspaceName",
   MobileAgentRepos: "query|ownerId|defaultBranch,fullName,private,repos",
   MobileAgentSession:
-    "query|id|agentSession,branch,canceledAt,createdAt,deliveryMode,failureReason,headSha,id,phase,prNumber,prUrl,repo,status,turns,updatedAt",
+    "query|id|agentSession,branch,canceledAt,createdAt,deliveryMode,deliveryNote,failureReason,headSha,id,phase,prNumber,prUrl,repo,status,turns,updatedAt",
   MobileAgentSessionCapabilities:
     "query|ownerId|accountLogin,agentSessionCapabilities,agents,connected,enabled,github,id,installUrl,label,modelKeyReady,ready",
   MobileAgentSessions:

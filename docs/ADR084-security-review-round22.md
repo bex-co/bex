@@ -28,7 +28,7 @@ Two real risks remain explicitly accepted: the standing `onbex.co` Public Suffix
 | 14 | Bootstrap k3s kubeconfig is world-readable | low | **Fixed** — explicit `--write-kubeconfig-mode 600` |
 | 15 | Repository links hide an attacker-chosen forge hostname | low | **Fixed** — self-hosted forges remain supported while the hostname is visible beside owner/repo and commit SHA |
 | 16 | Contributor can create a managed Postgres export | low | **Rejected** — intentionally pinned `can_operate` lifecycle action; retrieval/presigning remains `can_view_sensitive` plus fresh authorization |
-| 17 | Agent can bypass the driver's pre-push credential scan | low | **Rejected** — model proxy is mandatory, the real BYO key never enters the sandbox, and writes remain confined to the session branch |
+| 17 | Agent can bypass the driver's pre-push credential scan | low | **Rejected** — model proxy is mandatory, the real BYO key never enters the sandbox, and writes remain confined to the session branch. [ADR090](ADR090-agent-owned-delivery.md) deletes the scan on this basis |
 
 ## Fixes
 
@@ -54,7 +54,7 @@ Adding into an ACL-bearing environment stays `can_create`, except env `SetServic
 
 ### Findings 4, 8, 11, 12, and 13 — boundary hardening
 
-- Every driver Git invocation forces `core.hooksPath=/dev/null`, disables fsmonitor/external diff helpers, ignores system/global config, disables terminal prompts, and uses `--no-verify` for commit/push. A real executable pre-commit hook proves delivery does not run it.
+- Every driver Git invocation forces `core.hooksPath=/dev/null`, disables fsmonitor/external diff helpers, ignores system/global config, disables terminal prompts, and uses `--no-verify` for commit/push. A real executable pre-commit hook proves delivery does not run it. _Forward pointer: [ADR090](ADR090-agent-owned-delivery.md) (2026-10-22) removes driver commit/push; the agent's own commits run repo hooks by design._
 - The push service worker resolves a candidate route and compares origins before navigation. The Go producer rejects backslashes, authorities, malformed request URIs, and oversized routes.
 - The OpenSandbox client path-escapes every id and uses `http.ErrUseLastResponse`, so the workspace tenant key never follows an upstream redirect.
 - Disk extraction uses Go's rooted filesystem handle for directory, symlink, and file writes. Absolute and `..`-escaping symlink targets fail before any later entry can traverse them.

@@ -34,7 +34,7 @@ func TestCompleterTurnDurationIgnoresPinRewrite(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	metrics := NewCompletionMetrics(reg)
 
-	c, st, _, _, id := completerFixture(succeededStatus(true), nil)
+	c, st, _, id := completerFixture(succeededStatus(true), nil)
 	c.Metrics = metrics
 	base := st.now
 	started := base.Add(-90 * time.Second)
@@ -84,7 +84,7 @@ func TestCompleterDoubleFinalizeObservesOnce(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	metrics := NewCompletionMetrics(reg)
 	raw, _ := json.Marshal(statusReport{State: "failed", Error: "race"})
-	c, st, _, _, id := completerFixture(string(raw), nil)
+	c, st, _, id := completerFixture(string(raw), nil)
 	c.Metrics = metrics
 	base := st.now
 	c.Now = func() time.Time { return base.Add(5 * time.Second) }

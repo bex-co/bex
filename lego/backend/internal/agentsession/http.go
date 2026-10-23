@@ -71,39 +71,9 @@ func serveSignedMint[Req, Resp any](w http.ResponseWriter, r *http.Request, secr
 		http.Error(w, "agent credentials unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	body, err := io.ReadAll(io.LimitReader(r.Body, maxCredentialBody+1))
-	if err != nil || len(body) > maxCredentialBody {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+	req, ok := readSignedRequest(w, r, secret, now, claimer, maxCredentialBody, nonceOf)
+	if !ok {
 		return
-	}
-	if err := Verify(secret, body, r.Header.Get(TimestampHeader), r.Header.Get(SignatureHeader), now, mintClockSkew); err != nil {
-		http.Error(w, "invalid signature", http.StatusUnauthorized)
-		return
-	}
-	var req Req
-	if err := json.Unmarshal(body, &req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
-		return
-	}
-	// Single-use claim closes the replay window: a captured (timestamp,
-	// signature, body) presented again within ±skew carries the same body-bound
-	// nonce, so the second claim loses. Fail closed — an absent nonce (a
-	// pre-nonce caller) or a store error is rejected, never let through, so an
-	// on-path attacker cannot bypass by stripping the nonce. Only enforced when a
-	// claimer is wired (store present); nil is byte-identical to before.
-	if claimer != nil {
-		nonce := nonceOf(req)
-		if nonce == "" {
-			http.Error(w, "invalid signature", http.StatusUnauthorized)
-			return
-		}
-		claimCtx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
-		claimed, claimErr := claimer.ClaimShellNonce(claimCtx, "agent-mint:"+nonce, now.Add(2*mintClockSkew))
-		cancel()
-		if claimErr != nil || !claimed {
-			http.Error(w, "invalid signature", http.StatusUnauthorized)
-			return
-		}
 	}
 	response, err := mint(r.Context(), req)
 	if err != nil {
@@ -123,9 +93,49 @@ func serveSignedMint[Req, Resp any](w http.ResponseWriter, r *http.Request, secr
 		http.Error(w, http.StatusText(status), status)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store")
-	_ = json.NewEncoder(w).Encode(response)
+	WriteNoStoreJSON(w, http.StatusOK, response)
+}
+
+// readSignedRequest is the verification half of every signed gateway→bex-api
+// verb: it bounds the body, checks the HMAC within the clock skew, decodes
+// Req, and claims its body-bound nonce once. On any failure it writes the
+// response itself and reports false.
+func readSignedRequest[Req any](w http.ResponseWriter, r *http.Request, secret []byte, now time.Time, claimer NonceClaimer, maxBody int64, nonceOf func(Req) string) (Req, bool) {
+	var req Req
+	body, err := io.ReadAll(io.LimitReader(r.Body, maxBody+1))
+	if err != nil || int64(len(body)) > maxBody {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return req, false
+	}
+	if err := Verify(secret, body, r.Header.Get(TimestampHeader), r.Header.Get(SignatureHeader), now, mintClockSkew); err != nil {
+		http.Error(w, "invalid signature", http.StatusUnauthorized)
+		return req, false
+	}
+	if err := json.Unmarshal(body, &req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return req, false
+	}
+	// Single-use claim closes the replay window: a captured (timestamp,
+	// signature, body) presented again within ±skew carries the same body-bound
+	// nonce, so the second claim loses. Fail closed — an absent nonce (a
+	// pre-nonce caller) or a store error is rejected, never let through, so an
+	// on-path attacker cannot bypass by stripping the nonce. Only enforced when a
+	// claimer is wired (store present); nil is byte-identical to before.
+	if claimer != nil {
+		nonce := nonceOf(req)
+		if nonce == "" {
+			http.Error(w, "invalid signature", http.StatusUnauthorized)
+			return req, false
+		}
+		claimCtx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		claimed, claimErr := claimer.ClaimShellNonce(claimCtx, "agent-mint:"+nonce, now.Add(2*mintClockSkew))
+		cancel()
+		if claimErr != nil || !claimed {
+			http.Error(w, "invalid signature", http.StatusUnauthorized)
+			return req, false
+		}
+	}
+	return req, true
 }
 
 // postSignedMint is the shared client half: sign the request, POST it, and
@@ -133,24 +143,9 @@ func serveSignedMint[Req, Resp any](w http.ResponseWriter, r *http.Request, secr
 // a broker bug can't hand back a credential-less body.
 func postSignedMint[Req, Resp any](ctx context.Context, url string, secret []byte, now time.Time, httpClient *http.Client, req Req, valid func(Resp) bool) (Resp, error) {
 	var zero Resp
-	body, err := json.Marshal(req)
+	resp, err := signedPost(ctx, url, secret, now, httpClient, req)
 	if err != nil {
 		return zero, err
-	}
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
-	if err != nil {
-		return zero, err
-	}
-	timestamp, signature := Sign(secret, body, now)
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set(TimestampHeader, timestamp)
-	httpReq.Header.Set(SignatureHeader, signature)
-	if httpClient == nil {
-		httpClient = &http.Client{Timeout: 30 * time.Second}
-	}
-	resp, err := httpClient.Do(httpReq)
-	if err != nil {
-		return zero, fmt.Errorf("agent credential broker unavailable")
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -173,6 +168,31 @@ func postSignedMint[Req, Resp any](ctx context.Context, url string, secret []byt
 		return zero, fmt.Errorf("agent credential broker returned an invalid response")
 	}
 	return out, nil
+}
+
+// signedPost marshals req, signs it with the shared gateway HMAC, and POSTs it.
+// The caller owns the response body.
+func signedPost(ctx context.Context, url string, secret []byte, now time.Time, httpClient *http.Client, req any) (*http.Response, error) {
+	body, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	timestamp, signature := Sign(secret, body, now)
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set(TimestampHeader, timestamp)
+	httpReq.Header.Set(SignatureHeader, signature)
+	if httpClient == nil {
+		httpClient = &http.Client{Timeout: 30 * time.Second}
+	}
+	resp, err := httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("agent credential broker unavailable")
+	}
+	return resp, nil
 }
 
 // Handler authenticates the gateway→bex-api internal mint request. It is

@@ -46,8 +46,8 @@ interface AgentSessionDetailSearch {
 // Devin-style chat (w3/m44): a left sessions sidebar + a chat column whose whole
 // main pane is the scrollable conversation, with the header on top and the
 // state-routed composer docked at the bottom. The conversation IS the page
-// (w5/m65) — the evidence side panel and the inline PR card were removed, and a
-// session's draft PR (when one was requested) is the header's `#N` badge.
+// (w5/m65) — there is no side panel or inline PR card, and a session's draft
+// PR (when the agent opened one) is the header's `#N` badge.
 // Metadata (header/PR/failure) comes from phase-aware GraphQL polling and the
 // conversation rides the m43 stream — the two degrade independently.
 export const Route = createFileRoute("/agents_/$agentSessionId")({

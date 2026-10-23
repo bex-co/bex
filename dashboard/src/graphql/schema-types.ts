@@ -52,7 +52,7 @@ export type AgentSession = {
   canceledAt: Maybe<Scalars['String']['output']>;
   createdAt: Scalars['String']['output'];
   deliveryMode: Maybe<Scalars['String']['output']>;
-  evidence: Maybe<AgentSessionEvidence>;
+  deliveryNote: Maybe<Scalars['String']['output']>;
   expiresAt: Maybe<Scalars['String']['output']>;
   failureReason: Maybe<Scalars['String']['output']>;
   failureReasonCode: Maybe<Scalars['String']['output']>;
@@ -101,16 +101,6 @@ export type AgentSessionConfigInput = {
   modelEndpoint?: InputMaybe<Scalars['String']['input']>;
   task: Scalars['String']['input'];
   template?: InputMaybe<Scalars['String']['input']>;
-};
-
-export type AgentSessionEvidence = {
-  __typename: 'AgentSessionEvidence';
-  changedFiles: Maybe<Array<Scalars['String']['output']>>;
-  commandLog: Maybe<Array<Scalars['String']['output']>>;
-  commits: Maybe<Scalars['Int']['output']>;
-  outputTail: Maybe<Scalars['String']['output']>;
-  testOutput: Maybe<Array<Scalars['String']['output']>>;
-  truncated: Maybe<Scalars['Boolean']['output']>;
 };
 
 export type AgentSessionGitHubReadiness = {

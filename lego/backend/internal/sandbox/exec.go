@@ -41,9 +41,6 @@ import (
 type ExecConfig struct {
 	// Secret is the HMAC key shared ONLY with the gateway (BEX_SANDBOX_EXEC_SECRET).
 	Secret []byte
-	// DriverGrantSecret signs action-bound calls into the in-sandbox driver.
-	// It is the gateway trust secret, never injected into the sandbox.
-	DriverGrantSecret []byte
 	// GatewayURL is the gateway's internal sandbox-exec endpoint
 	// (e.g. http://bex-ssh-gateway.bex-system.svc:8081/sandbox-exec).
 	GatewayURL string
@@ -260,27 +257,6 @@ func (f flushingWriter) Write(p []byte) (int, error) {
 		f.flush()
 	}
 	return n, err
-}
-
-// systemBufferedExec runs ONE platform-fixed command in a sandbox through the
-// gateway boundary without the caller-facing exec gate (dialGateway). It exists
-// for trusted lifecycle mechanics — the agent-session pre-snapshot credential
-// scrub (clientSuspend) — whose command is assembled entirely platform-side
-// (agentSnapshotCommand); the caller controls only that it runs, never its
-// bytes, and the output is checked for exit code alone, never returned. The
-// agent-session can_view_sensitive gate in dialGateway must not reach this
-// path: a contributor (can_operate) may suspend a session sandbox, and the
-// scrub is what makes that suspend safe (round-13 #1 keeps the boundary on
-// CALLER-chosen commands, not platform-chosen ones). Unexported on purpose: it
-// is mechanics, not an API verb — the relation-guard sweep treats every
-// exported Service method as a verb.
-func (s *Service) systemBufferedExec(ctx context.Context, workspace, sandboxID, agentSessionID, command string) (ExecResult, error) {
-	resp, err := s.mintAndDial(ctx, workspace, sandboxID, agentSessionID, []string{"/bin/sh", "-c", command})
-	if err != nil {
-		return ExecResult{}, err
-	}
-	defer func() { _ = resp.Body.Close() }()
-	return bufferExec(resp)
 }
 
 // ExecResult is the buffered outcome of a sandbox exec (MCP surface): the full

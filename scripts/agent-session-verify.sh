@@ -2,10 +2,11 @@
 set -euo pipefail
 
 # Live end-to-end verification of the ADR047 cloud coding-agent session path:
-#   phase-1 (w3/m41): create a session on a real disposable repo -> the agent
-#     commits -> bex-api opens a draft PR with Codex-style evidence -> a steering
-#     turn produces a follow-up commit -> failure paths surface as failed
-#     sessions, never hangs.
+#   phase-1 (w3/m41, ADR090): create a session on a real disposable repo -> the
+#     agent commits, pushes its bex-agent/* branch and opens its own draft PR
+#     through the gateway PR verb (bex appends the footer) -> a steering turn
+#     produces a follow-up commit and updates the SAME PR -> failure paths
+#     surface as failed sessions, never hangs.
 #   conversation API (w3/m43, ADR047 D9): mint an attach ticket -> the stream
 #     endpoint replays the transcript + terminates with [DONE] (attach+replay);
 #     the fire-and-forget session's replay is NON-EMPTY (ADR051 headless recorder,
@@ -42,7 +43,8 @@ set -euo pipefail
 #   BEX_VERIFY_MODEL_ENDPOINT=https://api.openai.com/v1
 #   BEX_VERIFY_OWNER_ID=<workspace id to bill/scope to>
 #   BEX_VERIFY_STREAM_URL=http://localhost:62030 # local gateway; defaults to API origin
-#   BEX_GITHUB_TOKEN=<token to independently confirm the PR on GitHub>
+#   BEX_GITHUB_TOKEN=<token to independently confirm the PR on GitHub: draft,
+#                     body ending with the bex footer>
 #   BEX_VERIFY_TIMEOUT=1800          # seconds to wait for a turn (default 30m)
 #   BEX_VERIFY_CRASH_TIMEOUT=180      # terminal convergence bound for crash leg
 #   BEX_VERIFY_EGRESS_PROFILE=<label recorded in the log for the m40 policy in effect>
@@ -141,9 +143,9 @@ echo "== agent-session live verify =="
 echo "   repo=${BEX_VERIFY_REPO} agent=${agent} branch=${branch} egress-profile=${egress_profile}"
 
 # ---------------------------------------------------------------------------
-# 1. Happy path: create -> completed -> draft PR + evidence.
+# 1. Happy path: create -> completed -> the agent's own draft PR.
 # ---------------------------------------------------------------------------
-resp="$(create_session "$branch" "Add a file named VERIFY-${stamp}.md describing this run, then commit it.")"
+resp="$(create_session "$branch" "Add a file named VERIFY-${stamp}.md describing this run, commit it, push the branch, and open the draft pull request.")"
 sid="$(jq -r '.id // empty' <<<"$resp")"
 [ -n "$sid" ] || fail "create returned no session id: $resp"
 created_sessions+=("$sid")
@@ -154,24 +156,37 @@ phase="$(jq -r '.phase' <<<"$final")"
 [ "$phase" = completed ] || fail "expected completed, got ${phase} (reason=$(jq -r '.failureReason // ""' <<<"$final"))"
 pr_url="$(jq -r '.prUrl // empty' <<<"$final")"
 head_sha="$(jq -r '.headSha // empty' <<<"$final")"
-[ -n "$pr_url" ] || fail "completed session has no prUrl"
+pr_number="$(jq -r '.prNumber // empty' <<<"$final")"
+[ -n "$pr_url" ] || fail "completed session has no prUrl (the agent did not open its PR; deliveryNote=$(jq -r '.deliveryNote // ""' <<<"$final"))"
+[ -n "$pr_number" ] || fail "completed session has no prNumber"
 [ -n "$head_sha" ] || fail "completed session has no headSha"
-jq -e '.evidence and ((.evidence.commandLog|length)>0 or (.evidence.testOutput|length)>0 or (.evidence.changedFiles|length)>0 or (.evidence.outputTail|length)>0 or (.evidence.commits // 0)>0)' <<<"$final" >/dev/null \
-  || fail "completed session carries no evidence"
-ok "draft PR ${pr_url} opened with evidence (head ${head_sha})"
+ok "agent-opened draft PR ${pr_url} recorded (head ${head_sha})"
 
+# github_pr NUMBER -> the PR's GitHub JSON (needs BEX_GITHUB_TOKEN).
+github_pr() {
+  curl -sS -H "Authorization: token ${BEX_GITHUB_TOKEN}" \
+    "https://api.github.com/repos/${BEX_VERIFY_REPO}/pulls/$1"
+}
+# assert_pr_shape NUMBER: a draft whose body ends with exactly one bex footer.
+assert_pr_shape() {
+  local pr
+  pr="$(github_pr "$1")"
+  [ "$(jq -r '.draft' <<<"$pr")" = true ] || fail "GitHub reports PR #$1 is not a draft"
+  jq -e '(.body // "") as $b
+    | ($b | test("<!-- bex-agent-footer -->\n---\n🤖 Opened by a bex agent session \\([a-z-]+\\) · [^\n]+$"))
+      and (($b | [scan("<!-- bex-agent-footer -->")] | length) == 1)' <<<"$pr" >/dev/null \
+    || fail "PR #$1 body does not end with exactly one bex footer"
+}
 if [ -n "${BEX_GITHUB_TOKEN:-}" ]; then
-  pr_number="$(jq -r '.prNumber' <<<"$final")"
-  draft="$(curl -sS -H "Authorization: token ${BEX_GITHUB_TOKEN}" \
-    "https://api.github.com/repos/${BEX_VERIFY_REPO}/pulls/${pr_number}" | jq -r '.draft')"
-  [ "$draft" = true ] || fail "GitHub reports PR #${pr_number} is not a draft"
-  ok "GitHub confirms PR #${pr_number} is a draft"
+  assert_pr_shape "$pr_number"
+  ok "GitHub confirms PR #${pr_number} is a draft ending with the bex footer"
 fi
 
 # ---------------------------------------------------------------------------
-# 2. Steering: a new prompt turn produces a follow-up commit on the same branch.
+# 2. Steering: a new prompt turn produces a follow-up commit on the same branch
+#    and updates the same PR.
 # ---------------------------------------------------------------------------
-steer_body="$(jq -n --arg p "Append a STEERED line to VERIFY-${stamp}.md and commit." '{prompt:$p}')"
+steer_body="$(jq -n --arg p "Append a STEERED line to VERIFY-${stamp}.md, commit, push, and update the pull request description." '{prompt:$p}')"
 api POST "/v1/agent-sessions/${sid}/steer" "$steer_body" >/dev/null \
   || fail "steer request failed"
 steered="$(poll_terminal "$sid")"
@@ -182,7 +197,12 @@ new_head="$(jq -r '.headSha' <<<"$steered")"
 if [ -z "$new_head" ] || [ "$new_head" = "$head_sha" ]; then
   fail "steering produced no follow-up commit (head unchanged)"
 fi
-ok "steering produced follow-up commit ${new_head} (turns=$(jq -r '.turns' <<<"$steered"))"
+[ "$(jq -r '.prNumber // empty' <<<"$steered")" = "$pr_number" ] \
+  || fail "steering did not keep PR #${pr_number} (prNumber=$(jq -r '.prNumber // ""' <<<"$steered"))"
+if [ -n "${BEX_GITHUB_TOKEN:-}" ]; then
+  assert_pr_shape "$pr_number"
+fi
+ok "steering produced follow-up commit ${new_head} on PR #${pr_number} (turns=$(jq -r '.turns' <<<"$steered"))"
 
 # ---------------------------------------------------------------------------
 # 3. Failure path A: a non-bex-agent/* branch is refused at create (mint gate).

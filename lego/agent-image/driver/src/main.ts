@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-import { createCredentialManager } from "./credentials.js";
+import { agentEnvironment } from "./credentials.js";
 import { loadConfig } from "./config.js";
-import { ensureRepo, restoreWorkspace } from "./delivery.js";
+import { ensureRepo, restoreWorkspace } from "./git-setup.js";
 import { describeError } from "./errors.js";
 import { markTurnFailed, runHeadlessTurn } from "./session.js";
 import { startDriverServer } from "./server.js";
@@ -25,17 +25,16 @@ import { UIMessageStreamHub } from "./stream-hub.js";
 
 async function main(): Promise<void> {
   const config = loadConfig();
-  const credentials = createCredentialManager(config);
+  const agentEnv = agentEnvironment(config);
   const hub = new UIMessageStreamHub();
   let terminalized = false;
   let activeAbort: AbortController | undefined;
   let nextTurn = config.turn;
   let initialTurnOwned = false;
   let activeTurn:
-    | Promise<Awaited<ReturnType<typeof runHeadlessTurn>>>
-    | undefined;
-  // Capture the control-plane Git proxy's immutable base/session OIDs before a
-  // tenant process can run. Live POST /turn calls await the same setup promise.
+    Promise<Awaited<ReturnType<typeof runHeadlessTurn>>> | undefined;
+  // Restore, clone and configure the session checkout before a tenant process
+  // can run. Live POST /turn calls await the same setup promise.
   const setup = (async () => {
     await restoreWorkspace(config);
     if (config.deliver) await ensureRepo(config);
@@ -56,7 +55,7 @@ async function main(): Promise<void> {
     const turnNumber = nextTurn;
     nextTurn += 1;
     activeAbort = controller;
-    const turn = runHeadlessTurn(config, credentials, hub, {
+    const turn = runHeadlessTurn(config, agentEnv, hub, {
       prompt,
       turn: turnNumber,
       closeHub,
@@ -90,21 +89,16 @@ async function main(): Promise<void> {
     try {
       await activeTurn;
     } catch {
-      // Expected when snapshot preparation interrupts an active agent. The
-      // turn's finally block reaps the child before this promise settles.
+      // Expected when shutdown interrupts an active agent. The turn's finally
+      // block reaps the child before this promise settles.
     }
   };
-  const listener = await startDriverServer(config, credentials, hub, {
-    runTurn,
-    terminalize,
-  });
+  const listener = await startDriverServer(config, hub, { runTurn });
 
-  const shutdown = async (scrub = true) => {
+  const shutdown = async () => {
     try {
       await terminalize();
-      if (scrub) await credentials.scrubPersistedState();
     } finally {
-      credentials.forget();
       await listener.close();
     }
   };
@@ -132,20 +126,18 @@ async function main(): Promise<void> {
     initialTurnOwned = true;
     await controlledTurn(config.prompt, () => undefined, true);
     listener.setTurnInFlight(false);
-    // runHeadlessTurn already stopped the provider and scrubbed immediately
-    // before delivery, so a one-shot success can reuse that clean verdict.
-    if (config.exitAfterTurn) await shutdown(false);
+    if (config.exitAfterTurn) await shutdown();
   } catch (error) {
     // Release the single-flight guard on any error so the server can accept
     // subsequent turns (codex #9).
     listener.setTurnInFlight(false);
     terminalized = true;
-    console.error(credentials.redact(describeError(error)));
-    // Setup failures need the shared scrub/status/forget path. Once a turn owns
-    // the failure, runHeadlessTurn has already persisted that single verdict.
+    console.error(describeError(error));
+    // Setup failures need a persisted verdict. Once a turn owns the failure,
+    // runHeadlessTurn has already persisted that single verdict.
     if (!initialTurnOwned) {
       try {
-        await markTurnFailed(config, credentials, error);
+        await markTurnFailed(config, error);
       } catch {
         /* status best-effort; do not mask the original error */
       }

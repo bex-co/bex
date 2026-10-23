@@ -2306,14 +2306,13 @@ for required_probe in \
 done
 for required_agent_probe in \
   'BEX_VERIFY_AGENT_DRIVER' \
-  'BEX_VERIFY_AGENT_MODEL' \
   '\"template\":\"agent\"' \
   'peer sandbox to agent driver' \
   'gateway label spoof on the default ServiceAccount to agent driver' \
   'gateway workload identity to agent driver health endpoint' \
   'gateway workload identity to agent driver UI-message SSE endpoint' \
   'gateway workload identity cannot access a raw ACP launch route' \
-  'agent: real model proof' \
+  'agent driver refuses a standalone real-key launch' \
   'agent driver exposes no raw ACP launcher'; do
   grep -qF "$required_agent_probe" scripts/verify-sandbox-isolation.sh \
     || { echo "FAIL: sandbox isolation verifier lost m37 probe: $required_agent_probe" >&2; fail=1; }

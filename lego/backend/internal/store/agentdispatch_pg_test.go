@@ -149,7 +149,7 @@ func TestPGAgentDispatchRecovery(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		row, _, err = s.FinalizeAgentSession(ctx, row.ID, "completed", "", "", 0, nil, "")
+		row, _, err = s.FinalizeAgentSession(ctx, row.ID, "completed", "", "", "")
 		if err != nil {
 			t.Fatal(err)
 		}

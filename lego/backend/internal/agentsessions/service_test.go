@@ -675,7 +675,7 @@ func (f *fakeStore) RecordAgentSessionDispatch(_ context.Context, id, sandboxID,
 	}
 	return row, nil
 }
-func (f *fakeStore) FinalizeAgentSession(_ context.Context, id, phase, headSHA, prURL string, prNumber int, evidence json.RawMessage, failureReason string) (store.AgentSession, store.TerminalTurnFact, error) {
+func (f *fakeStore) FinalizeAgentSession(_ context.Context, id, phase, headSHA, deliveryNote, failureReason string) (store.AgentSession, store.TerminalTurnFact, error) {
 	row, ok := f.rows[id]
 	if !ok {
 		return store.AgentSession{}, store.TerminalTurnFact{}, store.ErrNotFound
@@ -689,15 +689,7 @@ func (f *fakeStore) FinalizeAgentSession(_ context.Context, id, phase, headSHA, 
 	if headSHA != "" {
 		row.HeadSHA = headSHA
 	}
-	if prURL != "" {
-		row.PRURL = prURL
-	}
-	if prNumber != 0 {
-		row.PRNumber = prNumber
-	}
-	if evidence != nil {
-		row.Evidence = evidence
-	}
+	row.DeliveryNote = deliveryNote
 	row.UpdatedAt = row.UpdatedAt.Add(time.Second)
 	f.rows[id] = row
 	fact := store.TerminalTurnFact{Turn: row.Turns, AcceptedAt: row.CreatedAt, TerminalAt: row.UpdatedAt}
@@ -2153,18 +2145,18 @@ func TestCapabilitiesUnavailableWhenNotWired(t *testing.T) {
 	}
 }
 
-// The evidence digest lost its renderers in w5/m65 but deliberately kept its
-// wire field, so API consumers still receive it.
-func TestEvidenceRemainsOnTheWire(t *testing.T) {
+// ADR090: the delivery note is part of the one cross-surface View.
+func TestViewCarriesDeliveryNote(t *testing.T) {
 	view, err := viewOf(store.AgentSession{
-		AgentConfig: []byte(`{"agent":"codex","task":"t"}`),
-		Evidence:    []byte(`{"commandLog":["go test ./..."],"commits":2}`),
+		AgentConfig:  []byte(`{"agent":"codex","task":"t"}`),
+		DeliveryNote: "The agent left uncommitted changes in the sandbox",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if view.Evidence == nil || len(view.Evidence.CommandLog) != 1 || view.Evidence.Commits != 2 {
-		t.Fatalf("evidence dropped from the wire view: %+v", view.Evidence)
+	raw, _ := json.Marshal(view)
+	if view.DeliveryNote == "" || !strings.Contains(string(raw), `"deliveryNote":"The agent left uncommitted changes in the sandbox"`) {
+		t.Fatalf("view wire shape = %s", raw)
 	}
 }
 

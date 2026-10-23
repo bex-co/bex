@@ -367,6 +367,7 @@ export const zh = {
       unavailable: "该会话不可用。",
       notFound: "未找到会话。",
       failure: "失败原因",
+      deliveryNote: "改动尚未完全交付",
       pullRequest: "拉取请求",
       draftPr: "草稿拉取请求",
       openPr: "在 GitHub 中打开",

@@ -385,6 +385,7 @@ export const en = {
       unavailable: "This session is unavailable.",
       notFound: "Session not found.",
       failure: "Failure",
+      deliveryNote: "Changes not fully delivered",
       pullRequest: "Pull request",
       draftPr: "Draft pull request",
       openPr: "Open in GitHub",

@@ -215,6 +215,14 @@ export function SessionDetailScreen({ sessionId }: { sessionId: string }) {
               </DashboardCard>
             ) : null}
 
+            {session.phase !== "failed" && session.deliveryNote ? (
+              <DashboardCard title={t("agentSessions.detail.deliveryNote")}>
+                <Text style={[styles.body, { color: theme.warning }]}>
+                  {session.deliveryNote}
+                </Text>
+              </DashboardCard>
+            ) : null}
+
             {isGitHubPrUrl(session.prUrl) ? (
               <DashboardCard title={t("agentSessions.detail.pullRequest")}>
                 <Text style={[styles.body, { color: theme.mutedForeground }]}>

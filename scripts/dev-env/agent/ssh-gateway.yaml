@@ -142,6 +142,10 @@ spec:
               value: ":8082"
             - name: BEX_AGENT_CREDENTIAL_API_URL
               value: http://__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/agent-session-credentials
+            # ADR090: the agent's own draft-PR verb (the `pull-request` segment
+            # of its Git proxy URL) on the same host control-plane listener.
+            - name: BEX_AGENT_PULL_REQUEST_API_URL
+              value: http://__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/agent-session-pull-requests
             - name: BEX_AGENT_MODEL_PROXY_ADDR
               value: ":8084"
             - name: BEX_AGENT_MODEL_CREDENTIAL_API_URL

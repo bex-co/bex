@@ -60,20 +60,6 @@ const (
 	driverStateFailed    = "failed"
 )
 
-// Evidence is the bounded, Codex-style verifiable extract the driver captures
-// from the session log at turn completion (ADR047 D4). It is a size-capped
-// subset of the (wave-2) full transcript: the command log, test output tails,
-// and a trailing output window. Truncated is set whenever any cap dropped
-// content, so truncation is explicit, never silent.
-type Evidence struct {
-	CommandLog   []string `json:"commandLog,omitempty"`
-	TestOutput   []string `json:"testOutput,omitempty"`
-	OutputTail   string   `json:"outputTail,omitempty"`
-	ChangedFiles []string `json:"changedFiles,omitempty"`
-	Commits      int      `json:"commits,omitempty"`
-	Truncated    bool     `json:"truncated,omitempty"`
-}
-
 // AgentConfig is the stable cross-surface driver contract. Agent selects the
 // installed ACP adapter, Model is passed to that driver, Task is the initial
 // fire-and-forget prompt, and Template selects a platform-registered agent
@@ -154,21 +140,25 @@ type SteerRequest struct {
 // MCP. Ticket/URL/ExpiresAt are present only on create/resume/steer; list/get
 // never mint ambient attach authority.
 type View struct {
-	ID            string      `json:"id"`
-	OwnerID       string      `json:"ownerId"`
-	Repo          string      `json:"repo"`
-	Branch        string      `json:"branch"`
-	AgentConfig   AgentConfig `json:"agentConfig"`
-	SandboxID     string      `json:"sandboxId,omitempty"`
-	Phase         string      `json:"phase"`
-	Status        string      `json:"status"`
-	HeadSHA       string      `json:"headSha,omitempty"`
-	PRURL         string      `json:"prUrl,omitempty"`
-	PRNumber      int         `json:"prNumber,omitempty"`
-	Evidence      *Evidence   `json:"evidence,omitempty"`
-	Turns         int         `json:"turns,omitempty"`
-	DeliveryMode  string      `json:"deliveryMode,omitempty"`
-	FailureReason string      `json:"failureReason,omitempty"`
+	ID           string      `json:"id"`
+	OwnerID      string      `json:"ownerId"`
+	Repo         string      `json:"repo"`
+	Branch       string      `json:"branch"`
+	AgentConfig  AgentConfig `json:"agentConfig"`
+	SandboxID    string      `json:"sandboxId,omitempty"`
+	Phase        string      `json:"phase"`
+	Status       string      `json:"status"`
+	HeadSHA      string      `json:"headSha,omitempty"`
+	PRURL        string      `json:"prUrl,omitempty"`
+	PRNumber     int         `json:"prNumber,omitempty"`
+	Turns        int         `json:"turns,omitempty"`
+	DeliveryMode string      `json:"deliveryMode,omitempty"`
+	// DeliveryNote is the driver's plain-language account of what a completed
+	// turn left undelivered (ADR090): uncommitted changes, unpushed commits, or
+	// a pushed branch with no pull request. The work stays in the retained
+	// sandbox for steering. Empty when the agent delivered.
+	DeliveryNote  string `json:"deliveryNote,omitempty"`
+	FailureReason string `json:"failureReason,omitempty"`
 	// FailureReasonCode is a stable code for the failure's cause when a client
 	// acts on it: SANDBOX_CAPACITY_LIMIT for a dispatch refused at the
 	// workspace's sandbox limit (w5/m132). Clients decide by it, never by the

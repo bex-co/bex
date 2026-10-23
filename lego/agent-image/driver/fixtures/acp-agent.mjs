@@ -21,7 +21,7 @@ import readline from "node:readline";
 
 if (
   process.env.ACP_FIXTURE_REQUIRE_MODEL_KEY === "1" &&
-  process.env.ANTHROPIC_API_KEY !== "test-model-key-never-log"
+  process.env.ANTHROPIC_API_KEY !== "bex-model-proxy-placeholder-ags-test"
 ) {
   throw new Error(
     "expected model credential was not isolated to the ACP child",
@@ -63,6 +63,75 @@ function update(sessionId, value) {
   });
 }
 
+function git(repo, args) {
+  const result = spawnSync("git", args, { cwd: repo });
+  if (result.status !== 0) throw new Error(result.stderr.toString());
+  return result.stdout.toString().trim();
+}
+
+// bexServer is the `bex` MCP server registration the driver sent, if any.
+let bexServer;
+function rememberSession(method, params) {
+  if (process.env.ACP_FIXTURE_SESSION_LOG) {
+    appendFileSync(
+      process.env.ACP_FIXTURE_SESSION_LOG,
+      `${JSON.stringify({ method, params })}\n`,
+    );
+  }
+  bexServer = (params.mcpServers || []).find((server) => server.name === "bex");
+}
+
+function bexEnv(name) {
+  return bexServer?.env?.find((entry) => entry.name === name)?.value;
+}
+
+// Agent-owned delivery stand-ins (ADR090): the fixture behaves like an agent
+// that edits, commits, pushes its branch and calls the bex PR tool (simulated
+// by writing the tool's driver-owned record file).
+function editFixture(repo, name) {
+  writeFileSync(`${repo}/${name}`, `${name} by the ACP fixture\n`);
+}
+function deliverFixture(repo) {
+  git(repo, ["add", "-A"]);
+  if (git(repo, ["status", "--porcelain"])) {
+    git(repo, ["commit", "-m", "fixture: agent-authored change"]);
+  }
+  git(repo, ["push", "origin", "HEAD"]);
+  const record = bexEnv("BEX_PR_RECORD_PATH");
+  if (!record) throw new Error("bex MCP server was not registered");
+  writeFileSync(
+    record,
+    JSON.stringify({
+      url: "https://github.com/acme/widgets/pull/7",
+      number: 7,
+      created: true,
+      headSha: git(repo, ["rev-parse", "HEAD"]),
+    }),
+  );
+}
+function deliveryBehavior(promptIndex) {
+  const repo = process.env.ACP_FIXTURE_DELIVERY_REPO;
+  const mode = process.env.ACP_FIXTURE_DELIVERY;
+  if (!repo || !mode) return;
+  if (promptIndex === 0) {
+    if (mode === "deliver") {
+      editFixture(repo, "delivered.txt");
+      deliverFixture(repo);
+    } else if (mode === "push-no-pr") {
+      editFixture(repo, "pushed.txt");
+      git(repo, ["add", "-A"]);
+      git(repo, ["commit", "-m", "fixture: pushed without a PR"]);
+      git(repo, ["push", "origin", "HEAD"]);
+    } else {
+      editFixture(repo, "left-dirty.txt");
+    }
+  } else if (mode === "dirty-then-deliver") {
+    deliverFixture(repo);
+  }
+}
+
+let promptCount = 0;
+
 function commitFixture() {
   const repo = process.env.ACP_FIXTURE_COMMIT_REPO;
   if (!repo) return;
@@ -96,10 +165,19 @@ lines.on("line", async (line) => {
           throw new Error("expected typed session-failure capability");
         }
       }
+      if (process.env.ACP_FIXTURE_ENV_LOG) {
+        writeFileSync(
+          process.env.ACP_FIXTURE_ENV_LOG,
+          JSON.stringify({ CODEX_CONFIG: process.env.CODEX_CONFIG ?? null }),
+        );
+      }
       result(message.id, {
         protocolVersion: 1,
         agentCapabilities: {
           loadSession: process.env.ACP_FIXTURE_LOAD_SESSION === "1",
+          ...(process.env.ACP_FIXTURE_SYSTEM_PROMPT === "1"
+            ? { sessionCapabilities: { systemPrompt: {} } }
+            : {}),
         },
         agentInfo: { name: "bex-test-acp-agent", version: "1" },
       });
@@ -120,6 +198,18 @@ lines.on("line", async (line) => {
       break;
     }
     case "session/new":
+      rememberSession("session/new", message.params);
+      if (
+        process.env.ACP_FIXTURE_REJECT_SYSTEM_PROMPT === "1" &&
+        message.params.systemPrompt
+      ) {
+        send({
+          jsonrpc: "2.0",
+          id: message.id,
+          error: { code: -32602, message: "Invalid params: systemPrompt" },
+        });
+        break;
+      }
       if (process.env.ACP_FIXTURE_SETUP_METADATA === "1") {
         update("fixture-session", {
           sessionUpdate: "available_commands_update",
@@ -164,6 +254,7 @@ lines.on("line", async (line) => {
       result(message.id, { sessionId: "fixture-session" });
       break;
     case "session/load": {
+      rememberSession("session/load", message.params);
       if (process.env.ACP_FIXTURE_REPLAY_LOAD === "1") {
         update(message.params.sessionId, {
           sessionUpdate: "agent_message_chunk",
@@ -193,7 +284,7 @@ lines.on("line", async (line) => {
           corrupt: {
             code: -32603,
             message: "Saved session state is corrupt",
-            data: `near ${process.env.ANTHROPIC_API_KEY}`,
+            data: "near the saved transcript",
           },
           closed: {
             code: -32603,
@@ -218,6 +309,13 @@ lines.on("line", async (line) => {
     case "session/cancel":
       break; // Notification: no JSON-RPC response.
     case "session/prompt": {
+      const promptIndex = promptCount++;
+      if (process.env.ACP_FIXTURE_PROMPTS_LOG) {
+        appendFileSync(
+          process.env.ACP_FIXTURE_PROMPTS_LOG,
+          `${JSON.stringify(message.params.prompt)}\n`,
+        );
+      }
       if (process.env.ACP_FIXTURE_PROMPT_LOG) {
         writeFileSync(
           process.env.ACP_FIXTURE_PROMPT_LOG,
@@ -225,9 +323,7 @@ lines.on("line", async (line) => {
         );
       }
       if (process.env.ACP_FIXTURE_CRASH === "1") {
-        if (process.env.ACP_FIXTURE_CRASH_WITH_CREDENTIAL === "1") {
-          console.error(process.env.ANTHROPIC_API_KEY);
-        }
+        console.error("fixture crashed on purpose");
         process.exit(23);
       }
       const sessionId = message.params.sessionId;
@@ -269,6 +365,16 @@ lines.on("line", async (line) => {
             },
           },
         });
+        break;
+      }
+      if (promptIndex > 0) {
+        // A follow-up prompt on the same session (the driver's delivery nudge).
+        deliveryBehavior(promptIndex);
+        update(sessionId, {
+          sessionUpdate: "agent_message_chunk",
+          content: { type: "text", text: "Follow-up handled." },
+        });
+        result(message.id, { stopReason: "end_turn" });
         break;
       }
       const delay = Number(process.env.ACP_FIXTURE_DELAY_MS || 0);
@@ -320,26 +426,7 @@ lines.on("line", async (line) => {
         ],
       });
       commitFixture();
-      if (process.env.ACP_FIXTURE_LEAK_CREDENTIAL === "1") {
-        // Simulate an agent echoing its environment (e.g. a tool running
-        // `printenv`): the model key appears in tool output AND in a plain
-        // message chunk, exercising both the raw-ACP and UI stream paths.
-        update(sessionId, {
-          sessionUpdate: "tool_call_update",
-          toolCallId: "tool-1",
-          status: "in_progress",
-          rawOutput: {
-            stdout: `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY}`,
-          },
-        });
-        update(sessionId, {
-          sessionUpdate: "agent_message_chunk",
-          content: {
-            type: "text",
-            text: `the key is ${process.env.ANTHROPIC_API_KEY}`,
-          },
-        });
-      }
+      deliveryBehavior(promptIndex);
       update(sessionId, {
         sessionUpdate: "agent_message_chunk",
         content: { type: "text", text: "Task committed." },

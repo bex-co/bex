@@ -35,7 +35,7 @@ func (l *recoveryLifecycle) CleanupAgentDispatches(ctx context.Context, d []stor
 }
 
 func TestDispatchRecoverySurvivesRestartAndLateRemoteCreate(t *testing.T) {
-	c, st, lc, _, _ := completerFixture("", nil)
+	c, st, lc, _ := completerFixture("", nil)
 	row, _ := st.CreateAgentSession(context.Background(), store.AgentSession{WorkspaceID: "tea-a", InitialPrompt: "keep my task"})
 	now := st.now.Add(dispatchTimeout - time.Second)
 	c.Now = func() time.Time { return now }
@@ -81,7 +81,7 @@ func TestDispatchRecoverySurvivesRestartAndLateRemoteCreate(t *testing.T) {
 }
 
 func TestDispatchRecoveryGroupsWorkspaceDiscoveryAndRotatesBeforeIO(t *testing.T) {
-	c, st, lc, _, _ := completerFixture("", nil)
+	c, st, lc, _ := completerFixture("", nil)
 	for range 3 {
 		_, _ = st.CreateAgentSession(context.Background(), store.AgentSession{WorkspaceID: "tea-a", InitialPrompt: "task"})
 	}

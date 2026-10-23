@@ -26,10 +26,7 @@
 import type { SessionProvider } from "./acp.js";
 
 export type ContinuityRung =
-  | "session-load"
-  | "transcript-reprime"
-  | "task-redelivery"
-  | "none";
+  "session-load" | "transcript-reprime" | "task-redelivery" | "none";
 
 export interface ContinuityResult {
   rung: ContinuityRung;
@@ -84,7 +81,10 @@ function renderExchange(entry: ContextTurn): string {
 // wrapSessionContext frames priming material so the agent reads it as context
 // rather than an instruction; both rungs share the exact tags so they cannot
 // drift.
-function wrapSessionContext(intro: string, trailer: string): {
+function wrapSessionContext(
+  intro: string,
+  trailer: string,
+): {
   header: string;
   footer: string;
 } {
@@ -123,22 +123,37 @@ export function renderPreamble(
   return header + kept.join("\n\n") + footer;
 }
 
+// overlayPreamble frames the bex platform overlay for adapters without a
+// native system-prompt channel. It rides only the ACP prompt, never the
+// published stream.
+export function overlayPreamble(overlay: string): string {
+  if (!overlay.trim()) return "";
+  return `<bex-platform-context>\n${overlay.trim()}\n</bex-platform-context>\n\n`;
+}
+
 // resolveContinuity picks the rung for this turn and composes the effective
 // ACP prompt. Rung 1 wins whenever session/load actually succeeded — the agent
 // already remembers, so injecting a preamble would only duplicate history.
+// overlay (the preamble-channel platform overlay) is prepended exactly once to
+// the first prompt of a fresh ACP session; a loaded session already carries it.
 export function resolveContinuity(
   // Partial on purpose: hand-built configs (tests, standalone launches) may
   // predate the continuity fields.
   config: { contextJson?: string; originalTask?: string },
   resume: SessionProvider["resume"],
   userPrompt: string,
+  overlay = "",
 ): ContinuityResult {
   if (resume === "loaded") {
     return { rung: "session-load", prompt: userPrompt };
   }
+  const platform = overlayPreamble(overlay);
   const preamble = renderPreamble(config.contextJson ?? "");
   if (preamble) {
-    return { rung: "transcript-reprime", prompt: preamble + userPrompt };
+    return {
+      rung: "transcript-reprime",
+      prompt: platform + preamble + userPrompt,
+    };
   }
   const task = (config.originalTask ?? "").trim();
   if (task && task !== userPrompt.trim()) {
@@ -149,8 +164,8 @@ export function resolveContinuity(
     );
     return {
       rung: "task-redelivery",
-      prompt: header.trimEnd() + footer + userPrompt,
+      prompt: platform + header.trimEnd() + footer + userPrompt,
     };
   }
-  return { rung: "none", prompt: userPrompt };
+  return { rung: "none", prompt: platform + userPrompt };
 }

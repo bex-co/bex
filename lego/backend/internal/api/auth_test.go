@@ -219,10 +219,6 @@ func (callbackGitHubClient) MintChecksToken(context.Context, int64) (github.Inst
 func (callbackGitHubClient) ListCheckRuns(context.Context, string, string, string, string) ([]github.CheckRun, error) {
 	return nil, nil
 }
-func (callbackGitHubClient) OpenDraftPullRequest(context.Context, int64, string, string, string, string, string, string) (github.PullRequest, error) {
-	return github.PullRequest{}, nil
-}
-
 func (callbackGitHubClient) VerifyInstallationAdmin(context.Context, string, int64) (bool, error) {
 	return true, nil
 }

@@ -78,8 +78,7 @@ export interface SessionDetailHeaderProps {
  * while the session is non-terminal; once terminal it pins to the session's own
  * end timestamp (via the mapper). Cancel is offered only while the session can
  * still be stopped and is disabled with a reason once canceling/canceled — the
- * confirm copy states pushed work is preserved. The evidence-panel toggle that
- * sat beside the PR badge was removed in w5/m65 along with the panel itself.
+ * confirm copy states pushed work is preserved.
  */
 export function SessionDetailHeader({
   session,

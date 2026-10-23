@@ -135,6 +135,12 @@ func TestLoadConfigFatalKnobs(t *testing.T) {
 			"BEX_OPENSANDBOX_URL":       "http://sandbox",
 			"BEX_AGENT_MODEL_PROXY_URL": "not a url at all\x7f",
 		}, "bad BEX_AGENT_MODEL_PROXY_URL"},
+		// ADR090: the dev-only model route never starts on a production control
+		// plane (BEX_CP_IDENTITY unset or "production"), with or without a store.
+		{"dev model route without control plane", map[string]string{"BEX_AGENT_DEV_MODEL_ROUTE": "openrouter"}, "dev-only"},
+		{"dev model route on production", cpEnv(map[string]string{"BEX_AGENT_DEV_MODEL_ROUTE": "openrouter"}), "dev-only"},
+		{"dev model route on explicit production", cpEnv(map[string]string{"BEX_AGENT_DEV_MODEL_ROUTE": "openrouter", "BEX_CP_IDENTITY": "production"}), "dev-only"},
+		{"unknown dev model route", cpEnv(map[string]string{"BEX_AGENT_DEV_MODEL_ROUTE": "anthropic", "BEX_CP_IDENTITY": "dev-10"}), "not supported"},
 		{"model proxy port", map[string]string{
 			"BEX_OPENSANDBOX_URL":       "http://sandbox",
 			"BEX_AGENT_MODEL_PROXY_URL": "http://gw:0",
@@ -505,5 +511,17 @@ func TestLoadConfigReservedDomains(t *testing.T) {
 		if _, _, err := loadFor(t, map[string]string{"BEX_RESERVED_DOMAINS": bad}); err == nil || !strings.Contains(err.Error(), "BEX_RESERVED_DOMAINS") {
 			t.Errorf("BEX_RESERVED_DOMAINS=%q = %v, want a startup error naming it", bad, err)
 		}
+	}
+}
+
+// TestLoadConfigDevModelRouteOnDevControlPlane: a dev-N identity admits the
+// route, defaulting the model to the pinned DeepSeek flash id.
+func TestLoadConfigDevModelRouteOnDevControlPlane(t *testing.T) {
+	cfg, _, err := loadFor(t, cpEnv(map[string]string{"BEX_AGENT_DEV_MODEL_ROUTE": "openrouter", "BEX_CP_IDENTITY": "dev-10"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.AgentDevModelRoute != "openrouter" || cfg.AgentDevModel != "" {
+		t.Fatalf("dev route config = %q / %q", cfg.AgentDevModelRoute, cfg.AgentDevModel)
 	}
 }

@@ -369,6 +369,16 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Session failed",
     description: "Detail page — heading over a failed session's reason",
   },
+  "agentSessions.deliveryNoteTitle": {
+    message: "Changes not fully delivered",
+    description:
+      "Detail page — heading over a completed session's note that the agent left work uncommitted, unpushed or without a pull request",
+  },
+  "agentSessions.deliveryNoteHint": {
+    message: "Send a follow-up message asking the agent to finish committing, pushing and updating the pull request.",
+    description:
+      "Detail page — the next step shown under an undelivered-work note",
+  },
   "agentSessions.failureReasonFallback": {
     message: "The session failed to start.",
     description:

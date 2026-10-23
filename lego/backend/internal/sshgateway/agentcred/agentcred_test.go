@@ -37,10 +37,20 @@ func (credentialConnections) GetGitConnectionByOwner(_ context.Context, workspac
 	return store.GitConnection{WorkspaceID: workspace, InstallationID: 42, AccountLogin: accountLogin}, nil
 }
 
+// credentialSessions is the durable record: session ags-one on octo/repo,
+// bound to bex-agent/task-1, live in sandbox sbx-a.
 type credentialSessions struct{}
 
 func (credentialSessions) GetAgentSession(_ context.Context, id string) (store.AgentSession, error) {
-	return store.AgentSession{ID: id, WorkspaceID: "tea-a", SandboxID: "sbx-a", Phase: "running"}, nil
+	if id != "ags-one" {
+		return store.AgentSession{}, store.ErrNotFound
+	}
+	return store.AgentSession{ID: id, WorkspaceID: "tea-a", SandboxID: "sbx-a", Phase: "running",
+		Repo: "octo/repo", Branch: "bex-agent/task-1", AgentConfig: []byte(`{"agent":"claude"}`)}, nil
+}
+
+func (credentialSessions) RecordAgentSessionPullRequest(context.Context, string, string, int, string) error {
+	return nil
 }
 
 type credentialGitHub struct{ calls int }
@@ -57,9 +67,11 @@ func (a *credentialAudit) Record(_ context.Context, event core.AuditEvent) error
 	return nil
 }
 
-func credentialLabels(t *testing.T, workspace string) map[string]string {
+// credentialLabels are the Pod labels binding session to octo/repo@branch in
+// workspace.
+func credentialLabels(t *testing.T, workspace, session, branch string) map[string]string {
 	t.Helper()
-	labels, err := agentsession.BindingLabels("ags-one", "octo/repo", "bex-agent/task-1")
+	labels, err := agentsession.BindingLabels(session, "octo/repo", branch)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,8 +101,8 @@ func TestGitProxyKeepsTokenOutOfSandboxAndBindsSourcePod(t *testing.T) {
 	broker := &Broker{
 		Metrics: sshgateway.NewMetrics(prometheus.NewRegistry()),
 		Pods: credentialPodResolver{pods: map[string]SessionPod{
-			"10.0.0.1": {Name: "sbx-a-0", UID: "uid-a", Labels: credentialLabels(t, "tea-a")},
-			"10.0.0.2": {Name: "sbx-a-0", UID: "uid-b", Labels: credentialLabels(t, "tea-b")},
+			"10.0.0.1": {Name: "sbx-a-0", UID: "uid-a", Labels: credentialLabels(t, "tea-a", "ags-one", "bex-agent/task-1")},
+			"10.0.0.2": {Name: "sbx-a-0", UID: "uid-b", Labels: credentialLabels(t, "tea-b", "ags-one", "bex-agent/task-1")},
 		}},
 		API:   &agentsession.Client{URL: apiServer.URL, Secret: secret, HTTP: apiServer.Client()},
 		Audit: audit, UpstreamOrigin: upstream.URL, HTTP: upstream.Client(),
@@ -142,7 +154,7 @@ func gitProxyHarness(t *testing.T, upstreamHandler http.HandlerFunc) (*Broker, s
 	// The session pod answers under the synthetic 10.0.0.1 (httptest.NewRequest
 	// callers) and under loopback (tests that must ride a REAL server, e.g. the
 	// abort paths, whose ErrAbortHandler only the server machinery recovers).
-	pod := SessionPod{Name: "sbx-a-0", UID: "uid-a", Labels: credentialLabels(t, "tea-a")}
+	pod := SessionPod{Name: "sbx-a-0", UID: "uid-a", Labels: credentialLabels(t, "tea-a", "ags-one", "bex-agent/task-1")}
 	broker := &Broker{
 		Metrics: sshgateway.NewMetrics(prometheus.NewRegistry()),
 		Pods: credentialPodResolver{pods: map[string]SessionPod{
@@ -228,7 +240,7 @@ func TestGitProxyReceivePackAllowsOnlyBoundBranch(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { upstreamCalls++; _, _ = io.WriteString(w, "0000") }))
 	defer upstream.Close()
 	broker := &Broker{Metrics: sshgateway.NewMetrics(prometheus.NewRegistry()),
-		Pods: credentialPodResolver{pods: map[string]SessionPod{"10.0.0.1": {Name: "sbx-a-0", UID: "uid-a", Labels: credentialLabels(t, "tea-a")}}},
+		Pods: credentialPodResolver{pods: map[string]SessionPod{"10.0.0.1": {Name: "sbx-a-0", UID: "uid-a", Labels: credentialLabels(t, "tea-a", "ags-one", "bex-agent/task-1")}}},
 		API:  &agentsession.Client{URL: apiServer.URL, Secret: secret, HTTP: apiServer.Client()}, UpstreamOrigin: upstream.URL, HTTP: upstream.Client()}
 	base, _ := agentsession.ProxyRepositoryURL("http://gateway", "tea-a-sandbox", "ags-one", "octo/repo", "bex-agent/task-1")
 	push := func(ref string) int {

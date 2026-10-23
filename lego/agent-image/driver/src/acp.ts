@@ -15,8 +15,10 @@
  */
 
 import { spawn, type ChildProcessByStdio } from "node:child_process";
+import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { Readable, Writable } from "node:stream";
+import { fileURLToPath } from "node:url";
 // The unstable v1 entrypoint: the driver reads prompt `usage` and binds Codex
 // through `providers/set`, both outside the stable v1 schema (whose parsers
 // would strip them). It still speaks ACP v1 on the wire.
@@ -25,6 +27,8 @@ import {
   methods,
   ndJsonStream,
   PROTOCOL_VERSION,
+  type McpServer,
+  type NewSessionRequest,
   type PromptResponse,
   type RequestPermissionRequest,
   type RequestPermissionResponse,
@@ -35,7 +39,7 @@ import { describeError } from "./errors.js";
 
 const maximumConnectTimeoutMs = 60_000;
 // How long a request rejected by connection close waits for the child's exit
-// diagnosis (exit code + redacted stderr) before surfacing the bare close.
+// diagnosis (exit code + stderr tail) before surfacing the bare close.
 const exitDiagnosisGraceMs = 1_000;
 const openAIBaseURLEnv = "OPENAI_BASE_URL";
 
@@ -51,6 +55,13 @@ const typedSessionFailureCapabilities = {
 
 type ACPChildProcess = ChildProcessByStdio<Writable, Readable, Readable>;
 
+// OverlayChannel is how the bex platform overlay (overlay.ts) reached the
+// agent: the ACP systemPrompt append field, Codex developer_instructions via
+// CODEX_CONFIG, or (for any other adapter) a first-prompt preamble that the
+// turn runner prepends and never publishes to the stream.
+export type OverlayChannel =
+  "system-prompt" | "developer-instructions" | "preamble" | "none";
+
 // SessionProvider is the driver's handle on one ACP turn: it owns the agent
 // child process + JSON-RPC connection, and exposes exactly the verbs the turn
 // runner needs. Replaces the old fake-LanguageModel provider — the driver now
@@ -58,6 +69,7 @@ type ACPChildProcess = ChildProcessByStdio<Writable, Readable, Readable>;
 export interface SessionProvider {
   sessionId: string;
   resume: "new" | "loaded" | "unsupported" | "load-failed";
+  overlayChannel: OverlayChannel;
   prompt(text: string): Promise<PromptResponse>;
   cancel(): Promise<void>;
   cleanup(): Promise<void>;
@@ -70,16 +82,104 @@ export interface CreateSessionOptions {
   // abortSignal, when aborted (turn timeout), SIGKILLs the child even if we are
   // still mid-connect — so a hung `initialize` cannot leak the process.
   abortSignal?: AbortSignal;
-  // Child stderr can contain the injected model credential. Sanitize it while
-  // the credential manager still holds its needles; the caller deliberately
-  // forgets them after persisting a terminal verdict.
-  redact: (value: unknown) => string;
+  // overlay is the rendered bex platform overlay; empty sends none.
+  overlay?: string;
 }
 
-function typedSessionFailure(
-  value: { _meta?: unknown },
-  redact: (value: unknown) => string,
-): Error | undefined {
+// bexMcpServerScript is the compiled `bex` MCP server next to this module
+// (dist/mcp-bex.js in the image; the .ts source under the test loader).
+export function bexMcpServerScript(): string {
+  const here = fileURLToPath(import.meta.url);
+  return path.join(path.dirname(here), `mcp-bex${path.extname(here)}`);
+}
+
+// bexMcpServers registers the `bex` stdio MCP server (open_or_update_draft_pr)
+// for repo sessions only. Its endpoint is the session's Pod-bound Git proxy
+// path plus /pull-request; the gateway authenticates the source Pod, so no
+// secret is passed.
+export function bexMcpServers(
+  config: Pick<AgentDriverConfig, "deliver" | "repoUrl" | "prRecordPath">,
+): McpServer[] {
+  if (!config.deliver || !config.repoUrl) return [];
+  return [
+    {
+      name: "bex",
+      command: process.execPath,
+      args: [bexMcpServerScript()],
+      env: [
+        {
+          name: "BEX_PR_ENDPOINT",
+          value: `${config.repoUrl.replace(/\/+$/, "")}/pull-request`,
+        },
+        { name: "BEX_PR_RECORD_PATH", value: config.prRecordPath },
+      ],
+    },
+  ];
+}
+
+// claudeSessionMeta disables Claude Code's built-in commit/PR workflow
+// instructions (their "only commit when asked" and `gh pr create` steps
+// contradict the overlay) and its commit/PR attribution text (bex appends its
+// own footer server-side). Field names verified against claude-agent-acp
+// 0.94.0 (`_meta.claudeCode.options` spread into the SDK options) and
+// claude-agent-sdk 0.3.303 `Settings.includeGitInstructions` / `attribution`.
+function claudeSessionMeta(): Record<string, unknown> {
+  return {
+    claudeCode: {
+      options: {
+        settings: {
+          includeGitInstructions: false,
+          attribution: { commit: "", pr: "" },
+        },
+        env: { CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS: "1" },
+      },
+    },
+  };
+}
+
+// codexOverlayEnv carries the overlay as Codex `developer_instructions`.
+// codex-acp 1.4.0 merges the CODEX_CONFIG JSON object into the thread config
+// of every thread/start and thread/resume; developer_instructions is a Codex
+// ConfigToml key. A pre-existing CODEX_CONFIG object is preserved.
+function codexOverlayEnv(
+  overlay: string,
+  inherited: string | undefined,
+): Record<string, string> {
+  let base: Record<string, unknown> = {};
+  if (inherited) {
+    try {
+      const parsed = JSON.parse(inherited) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        base = parsed as Record<string, unknown>;
+      }
+    } catch {
+      // An unparsable inherited value would break the adapter anyway.
+    }
+  }
+  return {
+    CODEX_CONFIG: JSON.stringify({ ...base, developer_instructions: overlay }),
+  };
+}
+
+// overlayRejection names an invalid_params reply to a lifecycle request that
+// carried the overlay: the turn fails rather than silently continuing without
+// the platform contract.
+function overlayRejection(error: unknown, sentOverlay: boolean): unknown {
+  if (
+    !sentOverlay ||
+    !error ||
+    typeof error !== "object" ||
+    !("code" in error) ||
+    error.code !== -32602
+  ) {
+    return error;
+  }
+  return new Error(
+    `ACP agent rejected the bex platform overlay (systemPrompt invalid_params): ${describeError(error)}`,
+  );
+}
+
+function typedSessionFailure(value: { _meta?: unknown }): Error | undefined {
   const meta = value._meta;
   if (!meta || typeof meta !== "object" || Array.isArray(meta)) return;
   const jetbrains = (meta as Record<string, unknown>).jetbrains;
@@ -101,7 +201,7 @@ function typedSessionFailure(
     typeof record.details === "string" && record.details.trim()
       ? `: ${record.details.trim().slice(0, 2_048)}`
       : "";
-  return new Error(redact(`ACP session failed${category}: ${title}${details}`));
+  return new Error(`ACP session failed${category}: ${title}${details}`);
 }
 
 function withTimeout<T>(
@@ -185,9 +285,17 @@ async function createSessionAttempt(
   options: CreateSessionOptions,
 ): Promise<SessionProvider> {
   options.abortSignal?.throwIfAborted();
+  const overlay = options.overlay ?? "";
+  // Codex has no ACP systemPrompt capability in the pinned adapter; its
+  // channel is decided before spawn because CODEX_CONFIG is read at startup.
+  const codexOverlay = overlay !== "" && config.profile === "codex";
+  const childEnv = { ...process.env, ...agentEnv };
+  const spawnEnv = codexOverlay
+    ? { ...childEnv, ...codexOverlayEnv(overlay, childEnv.CODEX_CONFIG) }
+    : childEnv;
   const child: ACPChildProcess = spawn(config.command, config.args, {
     cwd: config.cwd,
-    env: { ...process.env, ...agentEnv },
+    env: spawnEnv,
     stdio: ["pipe", "pipe", "pipe"],
     // ACP adapters may launch their provider CLI as a child. A distinct Unix
     // process group lets cleanup terminate the whole tree so descendants cannot
@@ -221,7 +329,7 @@ async function createSessionAttempt(
     rejectTerminal(error);
   };
   const exitError = (code: number | null, signal: NodeJS.Signals | null) => {
-    const detail = options.redact(stderr.toString().trim());
+    const detail = stderr.toString().trim();
     return new Error(
       `ACP agent exited (code=${code}, signal=${signal})${detail ? `: ${detail}` : ""}`,
     );
@@ -287,7 +395,7 @@ async function createSessionAttempt(
       // owns that history; mapping it here would charge it to the new turn.
       if (loadingSession) return;
       if (promptInFlight) {
-        promptFailure ??= typedSessionFailure(params.update, options.redact);
+        promptFailure ??= typedSessionFailure(params.update);
       }
       options.onUpdate(params.update);
     })
@@ -401,6 +509,32 @@ async function createSessionAttempt(
       );
     }
 
+    // Overlay channel: the ACP systemPrompt append field when advertised
+    // (claude-agent-acp >= 0.92), re-sent on every lifecycle call per the RFD;
+    // Codex developer_instructions (decided at spawn); otherwise a first-prompt
+    // preamble the turn runner adds.
+    let overlayChannel: OverlayChannel = "none";
+    if (overlay) {
+      if (codexOverlay) overlayChannel = "developer-instructions";
+      else if (initialize.agentCapabilities?.sessionCapabilities?.systemPrompt)
+        overlayChannel = "system-prompt";
+      else overlayChannel = "preamble";
+    }
+    const sentOverlay = overlayChannel === "system-prompt";
+    const lifecycleParams: NewSessionRequest = {
+      cwd: config.cwd,
+      mcpServers: bexMcpServers(config),
+      ...(sentOverlay
+        ? {
+            systemPrompt: {
+              mode: "append",
+              content: [{ type: "text", text: overlay }],
+            },
+          }
+        : {}),
+      ...(config.profile === "claude" ? { _meta: claudeSessionMeta() } : {}),
+    };
+
     let sessionId: string;
     let resume: SessionProvider["resume"] = "new";
     const loadSupported = initialize.agentCapabilities?.loadSession === true;
@@ -410,15 +544,16 @@ async function createSessionAttempt(
         await setupCall(
           agent.request(methods.agent.session.load, {
             sessionId: config.existingSessionId,
-            cwd: config.cwd,
-            mcpServers: [],
+            ...lifecycleParams,
           }),
           "session load",
         );
       } catch (error) {
         options.abortSignal?.throwIfAborted();
+        const rejected = overlayRejection(error, sentOverlay);
+        if (rejected !== error) throw rejected;
         if (!canRebuildSession(error)) throw error;
-        throw new SessionStateUnavailable(options.redact(describeError(error)));
+        throw new SessionStateUnavailable(describeError(error));
       }
       loadingSession = false;
       sessionId = config.existingSessionId;
@@ -426,18 +561,18 @@ async function createSessionAttempt(
     } else {
       if (config.existingSessionId) resume = "unsupported";
       const created = await setupCall(
-        agent.request(methods.agent.session.new, {
-          cwd: config.cwd,
-          mcpServers: [],
-        }),
+        agent.request(methods.agent.session.new, lifecycleParams),
         "session create",
-      );
+      ).catch((error: unknown): never => {
+        throw overlayRejection(error, sentOverlay);
+      });
       sessionId = created.sessionId;
     }
 
     return {
       sessionId,
       resume,
+      overlayChannel,
       async prompt(text: string) {
         promptFailure = undefined;
         promptInFlight = true;
@@ -448,8 +583,7 @@ async function createSessionAttempt(
               prompt: [{ type: "text", text }],
             }),
           );
-          const failure =
-            promptFailure ?? typedSessionFailure(response, options.redact);
+          const failure = promptFailure ?? typedSessionFailure(response);
           if (failure) throw failure;
           return response;
         } finally {

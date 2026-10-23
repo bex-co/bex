@@ -195,16 +195,31 @@ func assertAgentSessions(ctx context.Context, t *testing.T, s *PGStore, tenant T
 	if err != nil || len(running) != 1 || running[0].ID != record.ID {
 		t.Fatalf("list-by-phases = %+v err=%v", running, err)
 	}
-	record, _, err = s.FinalizeAgentSession(ctx, record.ID, "completed", "abc123",
-		"https://github.com/bex-co/example/pull/7", 7, []byte(`{"commandLog":["go test"]}`), "")
-	if err != nil || record.Phase != "completed" || record.HeadSHA != "abc123" || record.PRNumber != 7 {
+	// ADR090: the agent's PR verb records the PR mid-turn, without touching the
+	// lifecycle; the Completer later finalizes with what is already stored.
+	if err := s.RecordAgentSessionPullRequest(ctx, record.ID, "https://github.com/bex-co/example/pull/7", 7, "abc123"); err != nil {
+		t.Fatalf("record pull request mid-turn: %v", err)
+	}
+	// A repeat sync of the same PR is a no-op write.
+	if err := s.RecordAgentSessionPullRequest(ctx, record.ID, "https://github.com/bex-co/example/pull/7", 7, ""); err != nil {
+		t.Fatalf("repeat record pull request: %v", err)
+	}
+	mid, err := s.GetAgentSession(ctx, record.ID)
+	if err != nil || mid.Phase != record.Phase || mid.PRNumber != 7 || mid.HeadSHA != "abc123" || !mid.UpdatedAt.Equal(record.UpdatedAt) {
+		t.Fatalf("record pull request mid-turn = %+v err=%v", mid, err)
+	}
+	record, _, err = s.FinalizeAgentSession(ctx, record.ID, "completed", "", "1 commit is not pushed", "")
+	if err != nil || record.Phase != "completed" || record.HeadSHA != "abc123" || record.PRNumber != 7 || record.DeliveryNote != "1 commit is not pushed" {
 		t.Fatalf("finalize agent session = %+v err=%v", record, err)
 	}
-	if _, _, err := s.FinalizeAgentSession(ctx, record.ID, "failed", "", "", 0, nil, "stale observer"); !errors.Is(err, ErrNotFound) {
+	if _, _, err := s.FinalizeAgentSession(ctx, record.ID, "failed", "", "", "stale observer"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("second terminal finalize = %v, want CAS ErrNotFound", err)
 	}
+	if err := s.RecordAgentSessionPullRequest(ctx, record.ID, "https://github.com/bex-co/example/pull/8", 8, ""); err != nil {
+		t.Fatalf("record pull request after finalize: %v", err)
+	}
 	got, err = s.GetAgentSession(ctx, record.ID)
-	if err != nil || got.PRURL == "" || string(got.Evidence) == "{}" || got.Turns != 1 {
+	if err != nil || got.PRURL != "https://github.com/bex-co/example/pull/7" || got.DeliveryNote == "" || got.Turns != 1 {
 		t.Fatalf("finalized read-back = %+v err=%v", got, err)
 	}
 	if none, err := s.ListAgentSessionsByPhases(ctx, []string{"running"}); err != nil || len(none) != 0 {
@@ -236,7 +251,7 @@ func assertAgentSessionRetryClearsFailure(ctx context.Context, t *testing.T, s *
 	if _, err := s.SetAgentSessionLifecycle(ctx, record.ID, "sandbox-1", "running", "running", false); err != nil {
 		t.Fatalf("start retry session: %v", err)
 	}
-	if _, _, err := s.FinalizeAgentSession(ctx, record.ID, "failed", "", "", 0, nil, "old push failure"); err != nil {
+	if _, _, err := s.FinalizeAgentSession(ctx, record.ID, "failed", "", "", "old push failure"); err != nil {
 		t.Fatalf("fail retry session: %v", err)
 	}
 	record, err = s.BeginAgentSessionTurn(ctx, record.ID, "retry", "redispatch", "redispatching", "redispatching")

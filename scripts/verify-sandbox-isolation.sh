@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# A caller may supply the paid-verification credential as one environment entry,
-# but no verifier subprocess should inherit it. Keep only a non-exported shell
-# copy; the authorized ACP turn receives that copy over stdin below.
-live_agent_model_api_key="${BEX_LIVE_AGENT_MODEL_API_KEY:-}"
-unset BEX_LIVE_AGENT_MODEL_API_KEY
-
 # Adversarial verification for ADR042 / w3/m35. This intentionally uses the
 # public sandbox API to create real OpenSandbox resources, then executes probes
 # inside their gVisor workload containers with kubectl. It requires a
@@ -20,10 +14,9 @@ unset BEX_LIVE_AGENT_MODEL_API_KEY
 #
 # Set BEX_VERIFY_AGENT_DRIVER=1 after deploying w3/m37 to add a fourth sandbox
 # from the `agent` template. That leg proves the real image's headless ACP turn,
-# raw WebSocket bridge, and port-8787 gateway-only identity policy.
-# BEX_VERIFY_AGENT_MODEL=1 additionally authorizes one paid turn with the bundled
-# agent and requires BEX_LIVE_AGENT_MODEL_API_KEY. The key enters kubectl exec on
-# stdin, never argv or a file; source it from the tenant's approved OpenBao path.
+# raw WebSocket bridge, and port-8787 gateway-only identity policy. It also
+# proves the image's driver refuses a standalone real-key launch: hosted agent
+# sandboxes only ever hold the model-proxy placeholder (ADR062, ADR090).
 #
 # No credential is printed. Every API-created sandbox and Kubernetes fixture is
 # removed by the EXIT trap, including on a failed assertion.
@@ -58,25 +51,10 @@ namespace_b="${BEX_WORKSPACE_B}-sandbox"
 run_id="m35-$(date -u +%Y%m%d%H%M%S)-$$"
 started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 verify_agent_driver="${BEX_VERIFY_AGENT_DRIVER:-0}"
-verify_agent_model="${BEX_VERIFY_AGENT_MODEL:-0}"
 case "$verify_agent_driver" in
   0 | 1) ;;
   *) echo "error: BEX_VERIFY_AGENT_DRIVER must be 0 or 1" >&2; exit 2 ;;
 esac
-case "$verify_agent_model" in
-  0 | 1) ;;
-  *) echo "error: BEX_VERIFY_AGENT_MODEL must be 0 or 1" >&2; exit 2 ;;
-esac
-if [ "$verify_agent_model" = 1 ]; then
-  [ "$verify_agent_driver" = 1 ] \
-    || { echo "error: BEX_VERIFY_AGENT_MODEL=1 requires BEX_VERIFY_AGENT_DRIVER=1" >&2; exit 2; }
-  [ -n "$live_agent_model_api_key" ] \
-    || { echo "error: set BEX_LIVE_AGENT_MODEL_API_KEY from the approved tenant secret" >&2; exit 2; }
-  if [[ "$live_agent_model_api_key" == *$'\n'* || "$live_agent_model_api_key" == *$'\r'* ]]; then
-    echo "error: BEX_LIVE_AGENT_MODEL_API_KEY must be a single line" >&2
-    exit 2
-  fi
-fi
 fixture_dir="$(mktemp -d)"
 hosting_pod="${run_id}-hosting"
 platform_pod="${run_id}-platform"
@@ -561,50 +539,28 @@ else:
     raise AssertionError("raw ACP launch route is exposed")' \
       "http://$pod_agent_ip:8787/acp"
 
-  if [ "$verify_agent_model" = 1 ]; then
-    echo "==> run one explicitly authorized model-authenticated ACP turn"
-    if ! printf '%s\n' "$live_agent_model_api_key" | \
-      kubectl -n "$namespace_a" exec -i "$pod_agent" -c "$container_agent" -- \
-        /bin/sh -c '
-set -eu
-IFS= read -r BEX_AGENT_MODEL_API_KEY
-test -n "$BEX_AGENT_MODEL_API_KEY"
-export BEX_AGENT_MODEL_API_KEY
-repo=/workspace/.m37-real-model-proof
-mkdir -p "$repo"
-cd "$repo"
-git init -q
-git config user.name "bex live model verifier"
-git config user.email "bex-live-model-verifier@example.invalid"
-printf "real model substrate proof\n" > README.md
-git add README.md
-git commit -q -m initial
-export BEX_AGENT_COMMAND=/usr/local/bin/claude-agent-acp
-export BEX_AGENT_ARGS="[]"
-export BEX_AGENT_CWD="$repo"
-export BEX_AGENT_PROMPT="Create model-authenticated.txt containing exactly model authenticated, then commit all changes with message agent: real model proof."
-export BEX_AGENT_LISTEN_HOST=127.0.0.1
-export BEX_AGENT_LISTEN_PORT=8789
-export BEX_AGENT_STATUS_FILE="$repo/.proof/status.json"
-export BEX_AGENT_SESSION_LOG="$repo/.proof/session.jsonl"
-export BEX_AGENT_TURN_TIMEOUT_MS=900000
-export BEX_AGENT_EXIT_AFTER_TURN=1
-bex-agent-driver
-grep -q "\"state\":\"succeeded\"" .proof/status.json
-test -f model-authenticated.txt
-test "$(git log -1 --format=%s)" = "agent: real model proof"
-leak_report="$repo/.proof/model-key-leaks"
-find /workspace /home/bex /tmp /var/tmp /var/log/bex-agent /var/run/bex-agent \
-  -type f -readable -exec grep -a -l -F -- "$BEX_AGENT_MODEL_API_KEY" {} + \
-  > "$leak_report" 2>/dev/null || true
-test ! -s "$leak_report"
-unset BEX_AGENT_MODEL_API_KEY
-' >"$fixture_dir/agent-model-turn.log" 2>&1; then
-      fail "model-authenticated ACP turn failed inside the real agent sandbox"
-    fi
-    live_agent_model_api_key=""
-    pass "tenant model credential authenticated the bundled ACP agent and was scrubbed"
+  echo "==> prove the agent driver refuses a standalone real-key launch"
+  # Hosted sessions get only the model-proxy placeholder. Without the proxy URL,
+  # or with anything other than the exact placeholder, the driver must refuse
+  # to start before any agent runs (ADR090). The key below is a fixed,
+  # obviously fake literal: no credential is involved.
+  if ! kubectl -n "$namespace_a" exec "$pod_agent" -c "$container_agent" -- /bin/sh -c '
+set -u
+launch() {
+  env -i PATH="$PATH" HOME=/tmp BEX_AGENT_SESSION_ID=ags-verify \
+    BEX_AGENT_LISTEN_HOST=127.0.0.1 BEX_AGENT_LISTEN_PORT=8789 \
+    BEX_AGENT_STATUS_FILE=/tmp/m37-refusal/status.json \
+    BEX_AGENT_SESSION_LOG=/tmp/m37-refusal/session.jsonl \
+    BEX_AGENT_MODEL_API_KEY=sk-ant-api03-not-a-real-key "$@" bex-agent-driver 2>&1
+}
+if out="$(launch)"; then exit 1; fi
+printf "%s" "$out" | grep -q "BEX_AGENT_MODEL_PROXY_URL is required" || exit 1
+if out="$(launch env BEX_AGENT_MODEL_PROXY_URL=http://127.0.0.1:9/model)"; then exit 1; fi
+printf "%s" "$out" | grep -q "must be the session.s model-proxy placeholder" || exit 1
+' >"$fixture_dir/agent-standalone-refusal.log" 2>&1; then
+    fail "agent driver refuses a standalone real-key launch"
   fi
+  pass "agent driver refuses a standalone real-key launch"
   pass "agent driver exposes no raw ACP launcher; gateway SSE ingress is identity-scoped"
 fi
 

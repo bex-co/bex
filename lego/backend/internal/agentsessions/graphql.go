@@ -62,18 +62,6 @@ var agentCapabilitiesGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-var evidenceGQLType = graphql.NewObject(graphql.ObjectConfig{
-	Name: "AgentSessionEvidence",
-	Fields: graphql.Fields{
-		"commandLog":   gqlutil.Typed(graphql.NewList(graphql.NewNonNull(graphql.String)), func(v Evidence) any { return v.CommandLog }),
-		"testOutput":   gqlutil.Typed(graphql.NewList(graphql.NewNonNull(graphql.String)), func(v Evidence) any { return v.TestOutput }),
-		"outputTail":   gqlutil.StrField(func(v Evidence) any { return v.OutputTail }),
-		"changedFiles": gqlutil.Typed(graphql.NewList(graphql.NewNonNull(graphql.String)), func(v Evidence) any { return v.ChangedFiles }),
-		"commits":      gqlutil.IntField(func(v Evidence) any { return v.Commits }),
-		"truncated":    gqlutil.BoolField(func(v Evidence) any { return v.Truncated }),
-	},
-})
-
 var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentSession",
 	Fields: graphql.Fields{
@@ -94,14 +82,9 @@ var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 			}
 			return v.PRNumber
 		})},
-		"evidence": &graphql.Field{Type: evidenceGQLType, Resolve: gqlutil.Field(func(v View) any {
-			if v.Evidence == nil {
-				return nil
-			}
-			return *v.Evidence
-		})},
 		"turns":             gqlutil.IntField(func(v View) any { return v.Turns }),
 		"deliveryMode":      gqlutil.StrField(func(v View) any { return v.DeliveryMode }),
+		"deliveryNote":      gqlutil.OptionalStrField(func(v View) any { return v.DeliveryNote }),
 		"failureReason":     gqlutil.StrField(func(v View) any { return v.FailureReason }),
 		"failureReasonCode": gqlutil.OptionalStrField(func(v View) any { return v.FailureReasonCode }),
 		"createdAt":         gqlutil.ReqStrField(func(v View) any { return gqlTime(v.CreatedAt) }),

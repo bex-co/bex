@@ -60,7 +60,7 @@ type Store interface {
 	SetAgentSessionArchived(context.Context, string, bool) (store.AgentSession, error)
 	BeginAgentSessionTurn(context.Context, string, string, string, string, string) (store.AgentSession, error)
 	RecordAgentSessionDispatch(context.Context, string, string, string, string, string, int) (store.AgentSession, error)
-	FinalizeAgentSession(context.Context, string, string, string, string, int, json.RawMessage, string) (store.AgentSession, store.TerminalTurnFact, error)
+	FinalizeAgentSession(ctx context.Context, id, phase, headSHA, deliveryNote, failureReason string) (store.AgentSession, store.TerminalTurnFact, error)
 	DeleteAgentSession(context.Context, string) error
 	// Deferred-teardown reaping (ADR054 D6, generalized by ADR059 D2 / w2/m67):
 	// the Completer defers a finished session's sandbox teardown while an editor
@@ -127,26 +127,10 @@ type SandboxLifecycle interface {
 	// running so the caller can fall back to Terminate.
 	HibernateAgentSessionSandbox(ctx context.Context, workspaceID, sessionID, sandboxID, putURL string) (sandbox.SnapshotResult, error)
 	ReadSessionStatus(ctx context.Context, workspaceID, sessionID, sandboxID string) (string, error)
-	// ReadSessionTranscript returns the driver's redacted per-part session log
-	// (JSONL) over the same pods/exec boundary as ReadSessionStatus, so the
+	// ReadSessionTranscript returns the driver's per-part session log (JSONL)
+	// over the same pods/exec boundary as ReadSessionStatus, so the
 	// Completer can persist the conversation before teardown (ADR051).
 	ReadSessionTranscript(ctx context.Context, workspaceID, sessionID, sandboxID string) (string, error)
-}
-
-// PullRequestOpener opens (or idempotently reuses) the session's draft PR. The
-// production GitHub App client satisfies it; keeping the seam here lets the
-// completion tests stub GitHub at the client boundary (ADR047 D4).
-type PullRequestOpener interface {
-	OpenDraftPullRequest(ctx context.Context, installationID int64, owner, repo, head, base, title, body string) (github.PullRequest, error)
-}
-
-// ConnectionStore resolves a workspace's GitHub App installation for a repo's
-// account, so the Completer can open a PR under the same installation the session
-// token was minted for (ADR026/ADR047 D2). Since ADR075 a workspace may hold
-// several connections, so this resolves by the repo's owner, not the workspace
-// alone.
-type ConnectionStore interface {
-	GetGitConnectionByOwner(ctx context.Context, workspaceID, accountLogin string) (store.GitConnection, error)
 }
 
 // modelKeySecretPath delegates to the one shared definition in the agentsession
@@ -168,8 +152,7 @@ type Service struct {
 	TicketSecret []byte
 	GatewayURL   string
 	// APIPublicURL (BEX_API_PUBLIC_URL) is the externally reachable API origin
-	// (e.g. https://api.bex.co) this Service builds View.StreamURL from — the
-	// same coordinate Completer.APIPublicURL uses for copy-ready PR body links.
+	// (e.g. https://api.bex.co) this Service builds View.StreamURL from.
 	// Empty => View.StreamURL is omitted (w3/013).
 	APIPublicURL string
 	// SSHHost, when set (BEX_SSH_HOST, same activation gates as ADR035), is the
@@ -1348,6 +1331,13 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession) map[s
 		"BEX_AGENT_GRANT_PUBLIC_KEY": s.driverGrantPublicKey(),
 		"BEX_AGENT_TURN":             fmt.Sprintf("%d", max(1, record.Turns)),
 	}
+	// A steering turn re-dispatches a fresh sandbox: name the PR earlier turns
+	// opened so the agent updates it for the whole branch and the driver's
+	// delivery check does not mistake it for missing (ADR090 D5).
+	if deliver == "1" && record.PRURL != "" {
+		env["BEX_AGENT_PR_URL"] = record.PRURL
+		env["BEX_AGENT_PR_NUMBER"] = fmt.Sprintf("%d", record.PRNumber)
+	}
 	argsJSON, childEnvJSON := agentRuntimeConfig(config.Agent)
 	if argsJSON != "" {
 		env["BEX_AGENT_ARGS"] = argsJSON
@@ -1366,6 +1356,12 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession) map[s
 	// a hung model call or a runaway tool loop would hold the sandbox for hours.
 	// Always inject a positive millisecond bound; <= 0 ⇒ the 30m default.
 	env["BEX_AGENT_TURN_TIMEOUT_MS"] = fmt.Sprintf("%d", s.turnTimeout().Milliseconds())
+	// Dev-only model route (ADR090): the model id Claude Code must ask the
+	// OpenRouter endpoint for. Pod env, not BEX_AGENT_ENV_JSON, because the
+	// driver requires that to equal the release profile's env exactly.
+	for name, value := range agentsession.DevModelRouteEnv(config.Agent) {
+		env[name] = value
+	}
 	return env
 }
 
@@ -1672,18 +1668,10 @@ func viewOf(record store.AgentSession) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
-	var evidence *Evidence
-	if len(record.Evidence) > 0 && string(record.Evidence) != "{}" {
-		var e Evidence
-		if err := json.Unmarshal(record.Evidence, &e); err != nil {
-			return View{}, fmt.Errorf("decode persisted evidence: %w", err)
-		}
-		evidence = &e
-	}
 	return View{ID: record.ID, OwnerID: record.WorkspaceID, Repo: record.Repo, Branch: record.Branch,
 		AgentConfig: config, SandboxID: record.SandboxID, Phase: record.Phase, Status: record.Status,
-		HeadSHA: record.HeadSHA, PRURL: record.PRURL, PRNumber: record.PRNumber, Evidence: evidence,
-		Turns: record.Turns, DeliveryMode: record.DeliveryMode,
+		HeadSHA: record.HeadSHA, PRURL: record.PRURL, PRNumber: record.PRNumber,
+		Turns: record.Turns, DeliveryMode: record.DeliveryMode, DeliveryNote: record.DeliveryNote,
 		FailureReason: record.FailureReason, FailureReasonCode: record.FailureReasonCode,
 		CreatedAt: record.CreatedAt, UpdatedAt: record.UpdatedAt, CanceledAt: record.CanceledAt,
 		Pinned: record.Pinned, SnapshotBytes: record.SnapshotBytes,

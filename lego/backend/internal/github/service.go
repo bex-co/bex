@@ -83,7 +83,6 @@ type APIClient interface {
 	GetCommit(ctx context.Context, token, owner, repo, ref string) (Commit, error)
 	GetFileContents(ctx context.Context, token, owner, repo, path, ref string) (FileContents, error)
 	GetRepoCommitSHA(ctx context.Context, token, owner, repo, branch string) (string, error)
-	OpenDraftPullRequest(ctx context.Context, installationID int64, owner, repo, head, base, title, body string) (PullRequest, error)
 	MintChecksToken(ctx context.Context, installationID int64) (InstallationToken, bool, error)
 	ListCheckRuns(ctx context.Context, token, owner, repo, sha string) ([]CheckRun, error)
 }

@@ -32,9 +32,9 @@ func TestGrantUsesDerivedPublicKeyAndBindsAction(t *testing.T) {
 	}
 }
 
-func TestSnapshotGrantIsActionBound(t *testing.T) {
+func TestGrantIsBoundToTheTurnAction(t *testing.T) {
 	secret := []byte("gateway-ticket-secret")
-	token, err := MintAction(secret, "ags-one", ActionSnapshot, time.Unix(1000, 0), 30*time.Second)
+	token, err := Mint(secret, "ags-one", time.Unix(1000, 0), 30*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,10 +43,16 @@ func TestSnapshotGrantIsActionBound(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(payload), `"act":"snapshot"`) {
-		t.Fatalf("snapshot action missing from claims: %s", payload)
+	if !strings.Contains(string(payload), `"act":"turn"`) || !strings.Contains(string(payload), `"ses":"ags-one"`) {
+		t.Fatalf("turn action or session missing from claims: %s", payload)
 	}
-	if _, err := MintAction(secret, "ags-one", "arbitrary", time.Unix(1000, 0), time.Second); err == nil {
-		t.Fatal("arbitrary driver action was accepted")
+	for _, bad := range []struct {
+		secret  []byte
+		session string
+		ttl     time.Duration
+	}{{nil, "ags-one", time.Second}, {secret, "", time.Second}, {secret, "ags-one", 0}} {
+		if _, err := Mint(bad.secret, bad.session, time.Unix(1000, 0), bad.ttl); err == nil {
+			t.Fatalf("invalid grant configuration %+v was accepted", bad)
+		}
 	}
 }

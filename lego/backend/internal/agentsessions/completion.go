@@ -20,71 +20,53 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
-// Evidence bounds, mirrored from the driver's own caps
-// (lego/agent-image/driver/src/delivery.mjs) as defense-in-depth: a misbehaving
-// or forward-version driver must not store an unbounded blob. Keep the two sets
-// in sync. Truncation past these caps is always marked on Evidence.Truncated.
-const (
-	maxEvidenceCommands   = 40
-	maxEvidenceTestLines  = 40
-	maxEvidenceLineLen    = 2000
-	maxEvidenceOutputTail = 8000
-	maxEvidenceChanged    = 100
-)
-
-// statusReport is the driver's machine-readable status file (lego/agent-image/
-// driver/src/session.mjs + delivery.mjs). Only these fields are consumed; the
-// driver may add more without breaking the reader.
+// statusReport is the driver's machine-readable status file
+// (lego/agent-image/driver). Only these fields are consumed; the driver may add
+// more without breaking the reader. The file is written by the untrusted
+// sandbox, so nothing in it is believed beyond describing that sandbox's own
+// working tree: the PR the session finalizes with is the one bex-api itself
+// recorded when the agent opened it (ADR090).
 type statusReport struct {
-	State    string         `json:"state"` // one of the driverState* constants
-	Error    string         `json:"error"`
-	Delivery statusDelivery `json:"delivery"`
-	Evidence statusEvidence `json:"evidence"`
+	State string    `json:"state"` // one of the driverState* constants
+	Error string    `json:"error"`
+	Git   statusGit `json:"git"`
 }
 
-type statusDelivery struct {
-	Branch       string   `json:"branch"`
-	BaseBranch   string   `json:"baseBranch"`
-	HeadSHA      string   `json:"headSha"`
-	Pushed       bool     `json:"pushed"`
-	Commits      int      `json:"commits"`
-	ChangedFiles []string `json:"changedFiles"`
-}
-
-type statusEvidence struct {
-	CommandLog []string `json:"commandLog"`
-	TestOutput []string `json:"testOutput"`
-	OutputTail string   `json:"outputTail"`
-	Truncated  bool     `json:"truncated"`
+// statusGit is the driver's post-turn view of the session's Git checkout.
+// Undelivered is the driver's plain-language list of reasons the turn's work is
+// not in a reviewable PR (empty when delivered) — the single source of the
+// delivery note (ADR090).
+type statusGit struct {
+	Dirty           bool     `json:"dirty"`
+	UnpushedCommits int      `json:"unpushedCommits"`
+	RemoteHead      string   `json:"remoteHead"`
+	Undelivered     []string `json:"undelivered"`
 }
 
 // Completer is the trusted background loop that finalizes fire-and-forget
-// sessions (ADR047 D4). Each tick it reads every running session's
-// driver status file through the gateway exec boundary and, on a pushed
-// successful turn, opens/updates the draft PR, records the result + bounded
-// evidence, and tears the sandbox down. A failed turn, a lost sandbox, or a
-// failed PR-open surfaces as a failed session with a named reason — never a
-// hang. It performs NO tenant authorization: it acts only on durable sessions
-// the platform owns.
+// sessions (ADR047 D4). Each tick it reads every running session's driver
+// status file through the gateway exec boundary and, on a successful turn,
+// records the outcome — the PR the agent opened itself through the gateway PR
+// verb (ADR090), or a readable note on what it left undelivered — and tears the
+// sandbox down. It never calls GitHub. A failed turn or a lost sandbox surfaces
+// as a failed session with a named reason — never a hang. It performs NO tenant
+// authorization: it acts only on durable sessions the platform owns.
 type Completer struct {
-	Store        Store
-	Sandbox      SandboxLifecycle
-	GitHub       PullRequestOpener
-	Connections  ConnectionStore
-	APIPublicURL string
-	Interval     time.Duration
-	Now          func() time.Time
+	Store    Store
+	Sandbox  SandboxLifecycle
+	Interval time.Duration
+	Now      func() time.Time
 	// MaxTranscriptBytes overrides the per-session cumulative transcript quota
 	// (store.MaxAgentSessionTranscriptBytes); zero => the platform default.
 	// Tests set it small to exercise the quota without 64 MiB payloads.
@@ -240,11 +222,11 @@ func (c *Completer) now() time.Time {
 }
 
 func (c *Completer) enabled() bool {
-	return c != nil && c.Store != nil && c.Sandbox != nil && c.GitHub != nil && c.Connections != nil
+	return c != nil && c.Store != nil && c.Sandbox != nil
 }
 
 // Run drives the loop until ctx is canceled. It is a no-op (returns immediately)
-// when any dependency is unwired, keeping store-off/GitHub-off builds unchanged.
+// when any dependency is unwired, keeping store-off/sandbox-off builds unchanged.
 func (c *Completer) Run(ctx context.Context) {
 	if !c.enabled() {
 		return
@@ -456,67 +438,63 @@ func (c *Completer) finalize(ctx context.Context, record store.AgentSession) {
 	}
 }
 
+// complete finalizes a successful turn from what the agent itself delivered
+// (ADR090). The PR is the one bex-api recorded when the agent opened it through
+// the gateway PR verb; the driver's report only contributes the remote head and
+// its reasons the work is undelivered. Undelivered work never
+// fails the turn — the agent answered, and the work stays in the retained
+// sandbox for a steering turn — it is named in the delivery note instead.
 func (c *Completer) complete(ctx context.Context, record store.AgentSession, report statusReport) {
-	evidenceJSON, _ := json.Marshal(buildEvidence(report)) // Evidence is plain data; marshal cannot fail
-
-	// The config supplies the PR title; an unreadable one yields an untitled PR
-	// rather than blocking the completion (the branch is already pushed).
-	config, err := decodeAgentConfig(record)
-	if err != nil {
-		log.Printf("agent-session completer: agent config unreadable (session=%s): %v", record.ID, err)
+	headSHA := ""
+	if core.ValidCommitSHA(report.Git.RemoteHead) {
+		headSHA = report.Git.RemoteHead
 	}
-
-	// A turn that pushed nothing is an honest no-op completion: record it (with
-	// evidence) but open no PR — there is nothing to review.
-	if !report.Delivery.Pushed || report.Delivery.HeadSHA == "" {
-		if final, fact, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseCompleted, "", "", 0, evidenceJSON, ""); err == nil {
-			c.Metrics.observeTerminalTurn(turnOutcomeCompleted, fact)
-			log.Printf("agent-session completer: completed session=%s (no-op, nothing pushed)", record.ID)
-			c.teardown(ctx, final)
-		} else {
-			log.Printf("agent-session completer: finalize no-op failed (session=%s): %v", record.ID, err)
+	note := deliveryNote(report.Git)
+	final, fact, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseCompleted, headSHA, note, "")
+	if err != nil {
+		if !errors.Is(err, store.ErrNotFound) {
+			log.Printf("agent-session completer: finalize failed (session=%s): %v", record.ID, err)
 		}
-		return
-	}
-
-	base := strings.TrimSpace(report.Delivery.BaseBranch)
-	if base == "" {
-		c.fail(ctx, record, "delivery reported no base branch for the pull request")
-		return
-	}
-	owner, name, ok := strings.Cut(record.Repo, "/")
-	if !ok {
-		c.fail(ctx, record, "session repository is not owner/name")
-		return
-	}
-	conn, err := c.Connections.GetGitConnectionByOwner(ctx, record.WorkspaceID, owner)
-	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			c.fail(ctx, record, "workspace has no GitHub App installation for this repository's account to open a pull request")
-		} else {
-			log.Printf("agent-session completer: git connection lookup failed (session=%s ws=%s): %v", record.ID, record.WorkspaceID, err)
-		}
-		return // transient store error: retry next tick
-	}
-	pr, err := c.GitHub.OpenDraftPullRequest(ctx, conn.InstallationID, owner, name,
-		record.Branch, base, prTitle(config, record.ID), prBody(record, report, c.APIPublicURL))
-	if err != nil {
-		log.Printf("agent-session completer: open draft PR failed (session=%s repo=%s branch=%s base=%s): %v", record.ID, record.Repo, record.Branch, base, err)
-		c.fail(ctx, record, "draft pull request could not be opened")
-		return
-	}
-	final, fact, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseCompleted,
-		report.Delivery.HeadSHA, pr.HTMLURL, pr.Number, evidenceJSON, "")
-	if err != nil {
-		log.Printf("agent-session completer: finalize failed (session=%s pr=%s): %v", record.ID, pr.HTMLURL, err)
 		return // retry next tick; the sandbox stays until the row is finalized
 	}
 	c.Metrics.observeTerminalTurn(turnOutcomeCompleted, fact)
-	log.Printf("agent-session completer: completed session=%s pr=%s head=%s", record.ID, pr.HTMLURL, report.Delivery.HeadSHA)
+	log.Printf("agent-session completer: completed session=%s pr=%s head=%s dirty=%t unpushed=%d undelivered=%t", record.ID, final.PRURL, final.HeadSHA, report.Git.Dirty, report.Git.UnpushedCommits, note != "")
 	// Tear down against the FINALIZED row so the idle clock (record.UpdatedAt) is
 	// the turn-end time, not the stale pre-finalize timestamp; SandboxID survives
 	// finalize, so it is still present here.
 	c.teardown(ctx, final)
+}
+
+// Bounds on the driver-supplied delivery reasons: the sandbox is untrusted, so
+// its text is capped and stripped of control characters before it is stored
+// and shown to the user.
+const (
+	maxDeliveryReasons     = 5
+	maxDeliveryReasonRunes = 300
+)
+
+// deliveryNote joins the driver's undelivered reasons into the note a completed
+// turn records. "" when the driver reported the work delivered.
+func deliveryNote(git statusGit) string {
+	reasons := make([]string, 0, min(len(git.Undelivered), maxDeliveryReasons))
+	for _, raw := range git.Undelivered {
+		if len(reasons) == maxDeliveryReasons {
+			break
+		}
+		reason := strings.TrimSpace(strings.Map(func(r rune) rune {
+			if unicode.IsControl(r) {
+				return ' '
+			}
+			return r
+		}, raw))
+		if r := []rune(reason); len(r) > maxDeliveryReasonRunes {
+			reason = strings.TrimSpace(string(r[:maxDeliveryReasonRunes])) + "…"
+		}
+		if reason != "" {
+			reasons = append(reasons, reason)
+		}
+	}
+	return strings.Join(reasons, " ")
 }
 
 func (c *Completer) fail(ctx context.Context, record store.AgentSession, reason string) {
@@ -547,7 +525,7 @@ func (c *Completer) failLostSandbox(ctx context.Context, record store.AgentSessi
 }
 
 func (c *Completer) finalizeFailure(ctx context.Context, record store.AgentSession, reason string) (store.AgentSession, store.TerminalTurnFact, bool) {
-	final, fact, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseFailed, "", "", 0, nil, reason)
+	final, fact, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseFailed, "", "", reason)
 	if err != nil {
 		if !errors.Is(err, store.ErrNotFound) {
 			log.Printf("agent-session completer: finalize failed-state write errored (session=%s reason=%q): %v", record.ID, reason, err)
@@ -681,8 +659,10 @@ func (c *Completer) hibernate(ctx context.Context, record store.AgentSession) bo
 	// The snapshot is durable in object storage AND the pod is still alive. Record
 	// it on the row FIRST (keeping sandbox_id), so a crash here leaves a live pod
 	// for the fallback reap — never a stranded row with a lost pod handle. A dirty
-	// git tree (uncommitted work) extends the retention window (ADR059 D5).
-	retainUntil := c.now().Add(c.retentionWindow(snap.DirtyGit))
+	// git tree (uncommitted work) extends the retention window (ADR059 D5); so
+	// does any work the turn left undelivered (ADR090's delivery note), which is
+	// exactly what a user returns to steer.
+	retainUntil := c.now().Add(c.retentionWindow(snap.DirtyGit || record.DeliveryNote != ""))
 	if _, err := c.Store.HibernateAgentSession(ctx, claimed.ID, ref, snap.Bytes, snap.SHA256, retainUntil); err != nil {
 		log.Printf("agent-session completer: hibernate row write failed (session=%s ref=%s): %v", claimed.ID, ref, err)
 		_ = c.Snapshots.Delete(ctx, ref) // orphaned blob; the pod stays for the fallback
@@ -704,7 +684,7 @@ func (c *Completer) hibernate(ctx context.Context, record store.AgentSession) bo
 // terminal phase so the fallback Terminate — or a later retry — proceeds. A
 // failure is only logged (the reaper retries next tick).
 func (c *Completer) unclaimHibernation(ctx context.Context, claimed store.AgentSession, originalPhase string) {
-	if _, _, err := c.Store.FinalizeAgentSession(ctx, claimed.ID, originalPhase, "", "", 0, nil, claimed.FailureReason); err != nil {
+	if _, _, err := c.Store.FinalizeAgentSession(ctx, claimed.ID, originalPhase, "", claimed.DeliveryNote, claimed.FailureReason); err != nil {
 		log.Printf("agent-session completer: unclaim hibernation failed (session=%s): %v", claimed.ID, err)
 	}
 }
@@ -735,12 +715,16 @@ func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSes
 		return
 	}
 	parts, parseTruncated := parseTranscriptLog(raw, record.Turns)
+	driverTruncated := driverLogTruncated(raw, parts)
 	if len(parts) == 0 {
 		reason := ""
 		if parseTruncated {
 			reason = reasonParseTruncated
+		} else if driverTruncated {
+			reason = reasonDriverTruncated
 		}
-		c.markTurnTranscript(ctx, record, !parseTruncated, parseTruncated, reason)
+		truncated := parseTruncated || driverTruncated
+		c.markTurnTranscript(ctx, record, !truncated, truncated, reason)
 		return
 	}
 	// Charge only missing identities. Historical concurrent batch writers could
@@ -777,15 +761,13 @@ func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSes
 		c.markTurnTranscript(ctx, record, false, true, reasonTranscriptStoreFailed)
 		return
 	}
-	// Compute final truncation state. Cache the evidence check to avoid redundant JSON unmarshal.
-	evidenceTruncated := transcriptEvidenceTruncated(record.Evidence)
-	truncated := parseTruncated || quotaTruncated || evidenceTruncated
+	truncated := parseTruncated || quotaTruncated || driverTruncated
 	reason := ""
 	if parseTruncated {
 		reason = reasonParseTruncated
 	} else if quotaTruncated {
 		reason = reasonQuotaExceeded
-	} else if evidenceTruncated {
+	} else if driverTruncated {
 		reason = reasonDriverTruncated
 	}
 	c.markTurnTranscript(ctx, record, !truncated, truncated, reason)
@@ -813,16 +795,36 @@ func (c *Completer) markTurnTranscript(ctx context.Context, record store.AgentSe
 	}
 }
 
-func transcriptEvidenceTruncated(raw json.RawMessage) bool {
-	var evidence struct {
-		Truncated bool `json:"truncated"`
+// driverSessionLogMaxBytes mirrors the driver's cumulative session-log cap
+// (lego/agent-image/driver/src/session.ts maxSessionLogBytes). The driver
+// refuses every part that no longer fits, so a log this close to the cap has
+// dropped the rest of its turn.
+const (
+	driverSessionLogMaxBytes  = 16 << 20
+	driverSessionLogFullSlack = 64 << 10
+)
+
+// driverLogTruncated reports that the driver dropped parts of this turn from
+// its log (the driver's status file carries no such flag since ADR090): the
+// turn's part indexes have a gap — the driver numbers every part,
+// written or refused — or the log has reached the driver's byte cap, which
+// silently drops the tail of a turn.
+func driverLogTruncated(raw string, parts []store.AgentSessionTranscriptPart) bool {
+	if len(raw) >= driverSessionLogMaxBytes-driverSessionLogFullSlack {
+		return true
 	}
-	return json.Unmarshal(raw, &evidence) == nil && evidence.Truncated
+	seen := make(map[int64]struct{}, len(parts))
+	maxIndex := int64(-1)
+	for _, p := range parts {
+		seen[p.PartIndex] = struct{}{}
+		maxIndex = max(maxIndex, p.PartIndex)
+	}
+	return int64(len(seen)) < maxIndex+1
 }
 
-// parseTranscriptLog extracts the UI-message parts from the driver's redacted
-// JSONL log (one `{"at":…,"type":"ui-message","part":{…}}` record per line, plus
-// the raw data-acp lines). It keeps only the `.part` payload — the exact shape
+// parseTranscriptLog extracts the UI-message parts from the driver's JSONL log
+// (one `{"at":…,"type":"ui-message","part":{…}}` record per line, plus the raw
+// data-acp lines). It keeps only the `.part` payload — the exact shape
 // the GET /stream replay re-frames for a Vercel AI SDK client — stamping the turn;
 // Seq is assigned by the caller. Unparseable lines (e.g. a partial leading line
 // from the byte-capped tail) are skipped.
@@ -857,83 +859,4 @@ func parseTranscriptLog(raw string, turn int) ([]store.AgentSessionTranscriptPar
 		}
 	}
 	return out, truncated
-}
-
-func prTitle(config AgentConfig, sessionID string) string {
-	task := firstLine(config.Task)
-	if task == "" {
-		return "bex agent session " + sessionID
-	}
-	if len(task) > 72 {
-		task = task[:72]
-	}
-	return "bex agent: " + task
-}
-
-// prBody is the draft PR's description: session metadata only (w5/m65). The
-// evidence digest it used to inline was a lossy re-derivation of what the PR
-// already shows better — GitHub renders the real diff and commit list, and the
-// "test output" was whatever tool call happened to emit stdout (the driver's
-// extractor cannot tell a test run from a grep).
-func prBody(record store.AgentSession, report statusReport, apiURL string) string {
-	var b strings.Builder
-	b.WriteString("Opened by a bex cloud coding-agent session.\n\n")
-	fmt.Fprintf(&b, "- Session: `%s`\n- Branch: `%s`\n- Head: `%s`\n",
-		record.ID, record.Branch, report.Delivery.HeadSHA)
-	if report.Delivery.Commits > 0 {
-		fmt.Fprintf(&b, "- Commits: %d\n", report.Delivery.Commits)
-	}
-	if apiURL != "" {
-		fmt.Fprintf(&b, "- API: %s/v1/agent-sessions/%s\n", strings.TrimRight(apiURL, "/"), record.ID)
-	}
-	return b.String()
-}
-
-// buildEvidence bounds the driver-reported evidence a second time on the server
-// so a misbehaving or forward-version driver cannot store an unbounded blob.
-// Any cap that drops content marks Truncated.
-func buildEvidence(report statusReport) Evidence {
-	truncated := report.Evidence.Truncated
-	commands, t1 := capLines(report.Evidence.CommandLog, maxEvidenceCommands)
-	tests, t2 := capLines(report.Evidence.TestOutput, maxEvidenceTestLines)
-	changed, t3 := capLines(report.Delivery.ChangedFiles, maxEvidenceChanged)
-	tail := report.Evidence.OutputTail
-	if len(tail) > maxEvidenceOutputTail {
-		tail = tail[len(tail)-maxEvidenceOutputTail:]
-		truncated = true
-	}
-	return Evidence{
-		CommandLog:   commands,
-		TestOutput:   tests,
-		OutputTail:   tail,
-		ChangedFiles: changed,
-		Commits:      report.Delivery.Commits,
-		Truncated:    truncated || t1 || t2 || t3,
-	}
-}
-
-// capLines caps a slice's length and each element's length, reporting whether
-// anything was dropped.
-func capLines(in []string, max int) ([]string, bool) {
-	truncated := false
-	if len(in) > max {
-		in = in[:max]
-		truncated = true
-	}
-	out := make([]string, 0, len(in))
-	for _, line := range in {
-		if len(line) > maxEvidenceLineLen {
-			line = line[:maxEvidenceLineLen]
-			truncated = true
-		}
-		out = append(out, line)
-	}
-	return out, truncated
-}
-
-func firstLine(s string) string {
-	if i := strings.IndexByte(s, '\n'); i >= 0 {
-		s = s[:i]
-	}
-	return strings.TrimSpace(s)
 }

@@ -16,7 +16,6 @@
 
 import { mkdir, open, type FileHandle } from "node:fs/promises";
 import path from "node:path";
-import type { CredentialManager } from "./credentials.js";
 import type { UIMessagePart } from "./stream-hub.js";
 
 async function ensureParent(filename: string): Promise<void> {
@@ -27,7 +26,6 @@ const bufferBytes = 64 << 10;
 
 export class TurnLogSink {
   readonly #path: string;
-  readonly #credentialManager: CredentialManager;
   readonly #turn: number;
   #handle: FileHandle | null = null;
   #remaining: number;
@@ -44,11 +42,9 @@ export class TurnLogSink {
     initialBytes: number,
     maxBytes: number,
     turn: number,
-    credentialManager: CredentialManager,
   ) {
     this.#path = path;
     this.#turn = turn;
-    this.#credentialManager = credentialManager;
     this.#remaining = Math.max(0, maxBytes - initialBytes);
   }
 
@@ -78,7 +74,7 @@ export class TurnLogSink {
       partIndex,
       part,
     });
-    const line = `${this.#credentialManager.redact(record)}\n`;
+    const line = `${record}\n`;
     const bytes = Buffer.byteLength(line);
     if (bytes > this.#remaining) return 0;
     this.#remaining -= bytes;

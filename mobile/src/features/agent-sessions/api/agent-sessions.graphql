@@ -70,6 +70,7 @@ query MobileAgentSession($id: String!) {
     prUrl
     prNumber
     failureReason
+    deliveryNote
     turns
     deliveryMode
     createdAt
