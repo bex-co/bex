@@ -184,6 +184,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
             command={service.startCommand ?? null}
             preDeployCommand={service.preDeployCommand ?? null}
             showPreDeployCommand
+            freePlan={service.plan === "free"}
             showCommand
           />
         );
@@ -234,6 +235,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
             showDeployCard={!cron}
             showSourceFields={cron}
             showPreDeployCommand={!cron && !staticSite}
+            freePlan={service.plan === "free"}
             showStartCommand={!cron && !staticSite}
             showDockerfilePath={!cron && !staticSite}
             // Build Command shows for every native build — static sites (w7/m41)

@@ -76,22 +76,26 @@ type ServicePatch struct {
 	// (w1/073) so a multi-field update_service cannot hit SetPlan's
 	// paid-feature refusal.
 	MaintenanceBeforeFreeDowngrade bool
-	MaintenanceMode                *MaintenanceModeView
-	Plan                           *string
-	IdleTTLSeconds                 *int32
-	MaxShutdownDelaySeconds        *int32
-	RootDir                        *string
-	BuildFilter                    *BuildFilterView
-	AutoDeploy                     *bool
-	AutoDeployChecksPass           *bool
-	Schedule                       *string
-	Command                        *string
-	HealthCheckPath                *string
-	PreDeployCommand               *string
-	PublishPath                    *string
-	BuildCommand                   *string
-	StartCommand                   *string
-	DockerfilePath                 *string
+	// PreDeployBeforeFreeDowngrade arms the same reorder for the pre-deploy
+	// command (w8/m131): a simultaneous "clear the command + downgrade to
+	// free" applies the clear BEFORE the plan write. Both fills set it true.
+	PreDeployBeforeFreeDowngrade bool
+	MaintenanceMode              *MaintenanceModeView
+	Plan                         *string
+	IdleTTLSeconds               *int32
+	MaxShutdownDelaySeconds      *int32
+	RootDir                      *string
+	BuildFilter                  *BuildFilterView
+	AutoDeploy                   *bool
+	AutoDeployChecksPass         *bool
+	Schedule                     *string
+	Command                      *string
+	HealthCheckPath              *string
+	PreDeployCommand             *string
+	PublishPath                  *string
+	BuildCommand                 *string
+	StartCommand                 *string
+	DockerfilePath               *string
 	// DockerContext is Render's dockerDetailsPATCH.dockerContext, relative to
 	// rootDir (w8/m128).
 	DockerContext *string
@@ -119,6 +123,31 @@ func (p ServicePatch) maintenanceBeforePlan() bool {
 	return p.MaintenanceBeforeFreeDowngrade &&
 		p.MaintenanceMode != nil && !p.MaintenanceMode.Enabled &&
 		p.Plan != nil && *p.Plan == "free"
+}
+
+// preDeployBeforePlan reports whether the pre-deploy write must run BEFORE
+// the plan write: a simultaneous downgrade to free must clear the command
+// first (SetPlan refuses a free plan while one is set). Every other
+// combination applies the plan first so the command validates against the
+// final plan.
+func (p ServicePatch) preDeployBeforePlan() bool {
+	return p.PreDeployBeforeFreeDowngrade &&
+		p.PreDeployCommand != nil && strings.TrimSpace(*p.PreDeployCommand) == "" &&
+		p.Plan != nil && *p.Plan == "free"
+}
+
+// checkPreDeployRow is shared by the two pre-deploy rows — the armed
+// before-plan position and the normal one. Exactly one of them ever queues.
+func checkPreDeployRow(ctx context.Context, s *Service, probe *appv1alpha1.App, p ServicePatch) error {
+	if err := s.checkPreDeployCommand(ctx, probe, *p.PreDeployCommand); err != nil {
+		return err
+	}
+	probe.Spec.PreDeployCommand = commandText(*p.PreDeployCommand)
+	return nil
+}
+
+func applyPreDeployRow(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
+	return s.SetPreDeployCommand(ctx, id, *p.PreDeployCommand)
 }
 
 // servicePatchOp is one row of the ordered service-patch table: the
@@ -231,6 +260,18 @@ var servicePatchTable = []servicePatchOp{
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			return s.ConfigureMaintenanceMode(ctx, id, *p.MaintenanceMode)
 		},
+	},
+	{
+		// The pre-deploy twin of the maintenance reorder above: when armed
+		// and the patch clears the command while downgrading to free, the
+		// clear runs here, ahead of the plan write.
+		fields:   []string{"PreDeployBeforeFreeDowngrade"},
+		present:  ServicePatch.preDeployBeforePlan,
+		relation: canCreate,
+		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
+			return checkPreDeployRow(ctx, s, probe, p)
+		},
+		apply: applyPreDeployRow,
 	},
 	{
 		fields:   []string{"Plan"},
@@ -376,18 +417,12 @@ var servicePatchTable = []servicePatchOp{
 	},
 	{
 		fields:   []string{"PreDeployCommand"},
-		present:  func(p ServicePatch) bool { return p.PreDeployCommand != nil },
+		present:  func(p ServicePatch) bool { return p.PreDeployCommand != nil && !p.preDeployBeforePlan() },
 		relation: canCreate,
 		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
-			if err := s.checkPreDeployCommand(ctx, probe); err != nil {
-				return err
-			}
-			probe.Spec.PreDeployCommand = commandText(*p.PreDeployCommand)
-			return nil
+			return checkPreDeployRow(ctx, s, probe, p)
 		},
-		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
-			return s.SetPreDeployCommand(ctx, id, *p.PreDeployCommand)
-		},
+		apply: applyPreDeployRow,
 	},
 	{
 		fields:   []string{"PublishPath"},

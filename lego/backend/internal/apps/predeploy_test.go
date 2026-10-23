@@ -28,6 +28,7 @@ import (
 	"github.com/graphql-go/graphql"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // predeploy_test.go covers App.spec.preDeployCommand (Render's Pre-Deploy
@@ -128,10 +129,18 @@ func TestDeployManifestThreadsPreDeployCommand(t *testing.T) {
 	}
 }
 
+// paidRepoApp is a Git-backed web service on a paid plan: a pre-deploy command
+// is a paid-plan feature (w8/m131).
+func paidRepoApp(name string) *appv1alpha1.App {
+	a := repoApp(name, "https://github.com/x/mono", "main")
+	a.Spec.Tier = "starter"
+	return a
+}
+
 // --- SetPreDeployCommand (update-after-create) ---
 
 func TestSetPreDeployCommandSetsAndClears(t *testing.T) {
-	svc, cl := newService(nil, repoApp("web", "https://github.com/x/mono", "main"))
+	svc, cl := newService(nil, paidRepoApp("web"))
 
 	v, err := svc.SetPreDeployCommand(context.Background(), "web", "  npm run migrate  ")
 	if err != nil {
@@ -170,7 +179,7 @@ func TestSetPreDeployCommandRejectsCronAndStatic(t *testing.T) {
 }
 
 func TestRESTPatchServicePreDeployCommand(t *testing.T) {
-	svc, cl := newService(nil, repoApp("web", "https://github.com/x/mono", "main"))
+	svc, cl := newService(nil, paidRepoApp("web"))
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
@@ -182,4 +191,106 @@ func TestRESTPatchServicePreDeployCommand(t *testing.T) {
 	if got := getApp(t, cl, "web").Spec.PreDeployCommand; got != "npm run migrate" {
 		t.Errorf("PATCH did not set spec.preDeployCommand, got %q", got)
 	}
+}
+
+// A pre-deploy command is a paid-plan feature, as on Render (w8/m131): every
+// writer refuses a command on the free tier with one message, clearing is
+// allowed on any plan, a paid service must clear the command before moving to
+// free (in the same PATCH too), and a legacy free service that already carries
+// a command keeps accepting unrelated writes.
+func TestPreDeployCommandIsAPaidPlanFeature(t *testing.T) {
+	const refused = "pre-deploy command is available only for paid web services, private services, and background workers"
+	ctx := context.Background()
+	freeApp := func() *appv1alpha1.App {
+		a := repoApp("web", "https://github.com/x/mono", "main")
+		a.Spec.Tier, a.Spec.Replicas = "free", 1
+		return a
+	}
+
+	t.Run("create on free is refused and creates nothing", func(t *testing.T) {
+		svc, cl := newService(nil)
+		_, err := svc.Create(ctx, CreateRequest{Name: "web", Type: appv1alpha1.TypeWebService, Repo: "https://github.com/x/mono", Plan: "free", PreDeployCommand: "echo x"})
+		if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), refused) {
+			t.Fatalf("Create = %v, want a 400 naming the paid-plan rule", err)
+		}
+		var apps appv1alpha1.AppList
+		if err := cl.List(ctx, &apps); err != nil || len(apps.Items) != 0 {
+			t.Fatalf("refused create left %d Apps (%v)", len(apps.Items), err)
+		}
+		if _, err := svc.Create(ctx, CreateRequest{Name: "web", Type: appv1alpha1.TypeWebService, Repo: "https://github.com/x/mono", Plan: "starter", PreDeployCommand: "echo x"}); err != nil {
+			t.Fatalf("Create on starter: %v", err)
+		}
+	})
+
+	t.Run("update on free is refused, clearing is allowed", func(t *testing.T) {
+		svc, cl := newService(nil, freeApp())
+		if _, err := svc.SetPreDeployCommand(ctx, "web", "echo x"); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), refused) {
+			t.Fatalf("SetPreDeployCommand = %v, want the paid-plan refusal", err)
+		}
+		if got := getApp(t, cl, "web").Spec.PreDeployCommand; got != "" {
+			t.Fatalf("refused write stored %q", got)
+		}
+		if _, err := svc.ApplyServicePatch(ctx, "web", ServicePatch{PreDeployCommand: new("echo x")}); !errors.Is(err, core.ErrBadRequest) {
+			t.Fatalf("ApplyServicePatch on free = %v, want a 400", err)
+		}
+	})
+
+	t.Run("legacy free command: unrelated write succeeds, clearing succeeds", func(t *testing.T) {
+		a := freeApp()
+		a.Spec.PreDeployCommand = "echo legacy"
+		svc, cl := newService(nil, a)
+		if _, err := svc.ApplyServicePatch(ctx, "web", ServicePatch{Plan: new("free"), HealthCheckPath: new("/up")}); err != nil {
+			t.Fatalf("unrelated write on a legacy free service: %v", err)
+		}
+		if got := getApp(t, cl, "web").Spec.PreDeployCommand; got != "echo legacy" {
+			t.Fatalf("command = %q, want the legacy command kept", got)
+		}
+		if _, err := svc.SetPreDeployCommand(ctx, "web", ""); err != nil {
+			t.Fatalf("clearing on free: %v", err)
+		}
+	})
+
+	t.Run("downgrade needs the command cleared first", func(t *testing.T) {
+		a := paidRepoApp("web")
+		a.Spec.Replicas = 1
+		a.Spec.PreDeployCommand = "echo x"
+		svc, cl := newService(nil, a)
+		if _, err := svc.ApplyServicePatch(ctx, "web", ServicePatch{Plan: new("free")}); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "clear the pre-deploy command before changing to the free plan") {
+			t.Fatalf("downgrade with a command = %v, want the clear-first refusal", err)
+		}
+		if got := getApp(t, cl, "web").Spec.Tier; got != "starter" {
+			t.Fatalf("refused downgrade moved the tier to %q", got)
+		}
+		if _, err := svc.ApplyServicePatch(ctx, "web", ServicePatch{Plan: new("free"), PreDeployCommand: new(""), PreDeployBeforeFreeDowngrade: true}); err != nil {
+			t.Fatalf("clear + downgrade in one PATCH: %v", err)
+		}
+		got := getApp(t, cl, "web").Spec
+		if got.Tier != "free" || got.PreDeployCommand != "" {
+			t.Fatalf("after clear + downgrade: tier %q command %q", got.Tier, got.PreDeployCommand)
+		}
+	})
+
+	t.Run("set + upgrade in one PATCH validates against the final plan", func(t *testing.T) {
+		svc, cl := newService(nil, freeApp())
+		if _, err := svc.ApplyServicePatch(ctx, "web", ServicePatch{Plan: new("starter"), PreDeployCommand: new("echo x"), PreDeployBeforeFreeDowngrade: true}); err != nil {
+			t.Fatalf("upgrade + set: %v", err)
+		}
+		if got := getApp(t, cl, "web").Spec.PreDeployCommand; got != "echo x" {
+			t.Fatalf("command = %q", got)
+		}
+	})
+
+	t.Run("blueprint refuses it at the field and accepts it on starter", func(t *testing.T) {
+		svc := workspaceValidator(t)
+		doc := func(plan string) string {
+			return "services:\n  - {type: web, name: a, runtime: image, image: {url: nginx:1.27}, plan: " + plan + ", preDeployCommand: echo migrate}\n"
+		}
+		v, err := svc.ValidateBlueprint(ownershipCtx(), connOwner, doc("free"), "")
+		if err != nil || v.Valid || len(v.Errors) != 1 || v.Errors[0].Path == nil || *v.Errors[0].Path != "services[0].preDeployCommand" || !strings.Contains(v.Errors[0].Error, refused) {
+			t.Fatalf("free = %+v (%v), want one refusal at services[0].preDeployCommand", v, err)
+		}
+		if v, err := svc.ValidateBlueprint(ownershipCtx(), connOwner, doc("starter"), ""); err != nil || !v.Valid {
+			t.Fatalf("starter = %+v (%v), want valid", v, err)
+		}
+	})
 }

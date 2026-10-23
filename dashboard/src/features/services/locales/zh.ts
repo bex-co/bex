@@ -2526,6 +2526,11 @@ const zhServices: Record<string, TranslationEntry> = {
       "在新镜像开始接收流量前运行一次（例如数据库迁移）。非零退出会使部署失败，并保持上一个版本继续运行。",
     description: "Build & Deploy: help text for the pre-deploy command field",
   },
+  "services.preDeployPaidOnly": {
+    message: "付费套餐才可使用部署前命令。",
+    description:
+      "Build & Deploy: why the pre-deploy command field is disabled on a Free service (Render: paid web services, private services and background workers; w8/m131)",
+  },
   "services.preDeployPlaceholder": {
     message: "例如 npm run migrate",
     description: "Build & Deploy: placeholder for the pre-deploy command input",

@@ -63,6 +63,25 @@ func errPreDeployCommandNotApplicable(svcType string) error {
 	return fmt.Errorf("%w: a pre-deploy command does not apply to a %s", core.ErrBadRequest, svcType)
 }
 
+// errPreDeployCommandFreePlan is Render's rule: "The pre-deploy command is
+// available for paid web services, private services, and background workers"
+// (render.com/docs/deploys; w8/m131).
+var errPreDeployCommandFreePlan = fmt.Errorf("%w: pre-deploy command is available only for paid web services, private services, and background workers; choose a paid plan first", core.ErrBadRequest)
+
+// checkPreDeployPlan refuses a non-empty pre-deploy command on the free tier.
+// An empty command clears the step and is allowed on any plan, so a free
+// service can always remove one. An empty tier is the free tier.
+func checkPreDeployPlan(tier, command string) error {
+	if strings.TrimSpace(command) != "" && !core.PaidPlan(tier) {
+		return errPreDeployCommandFreePlan
+	}
+	return nil
+}
+
+// errClearPreDeployBeforeFree refuses a paid service's downgrade to free while
+// a pre-deploy command is still set, as maintenance mode does.
+var errClearPreDeployBeforeFree = fmt.Errorf("%w: clear the pre-deploy command before changing to the free plan", core.ErrBadRequest)
+
 // startCommandApplies: a static site serves files and runs no start command
 // (create used to store one, w5/090).
 func startCommandApplies(svcType string) bool {
@@ -187,7 +206,7 @@ func checkBuildFilter(a *appv1alpha1.App, name string, filter *BuildFilterView) 
 	return normalizeBuildFilter(filter)
 }
 
-func (s *Service) checkPreDeployCommand(ctx context.Context, a *appv1alpha1.App) error {
+func (s *Service) checkPreDeployCommand(ctx context.Context, a *appv1alpha1.App, command string) error {
 	// Same class as the build/start commands: attacker-chosen code the service
 	// runs with its own identity, so a protected environment asks (w4/m126).
 	if err := s.requireUnprotected(ctx, a, "redefine"); err != nil {
@@ -196,7 +215,7 @@ func (s *Service) checkPreDeployCommand(ctx context.Context, a *appv1alpha1.App)
 	if !preDeployCommandApplies(a.Spec.Type) {
 		return errPreDeployCommandNotApplicable(a.Spec.Type)
 	}
-	return nil
+	return checkPreDeployPlan(a.Spec.Tier, command)
 }
 
 func (s *Service) checkCommands(ctx context.Context, a *appv1alpha1.App, startCommand *string) error {
@@ -310,6 +329,11 @@ func (s *Service) checkPlan(ctx context.Context, a *appv1alpha1.App, plan string
 	}
 	if tier == "free" && a.Spec.MaintenanceMode != nil && a.Spec.MaintenanceMode.Enabled {
 		return "", fmt.Errorf("%w: disable maintenance mode before changing to the free plan", core.ErrBadRequest)
+	}
+	// A legacy free service that already carries a command is not refused on
+	// a free-to-free write: only a paid service moving down must clear it.
+	if tier == "free" && core.PaidPlan(a.Spec.Tier) && strings.TrimSpace(a.Spec.PreDeployCommand) != "" {
+		return "", errClearPreDeployBeforeFree
 	}
 	if err := planDowngradeError(a, tier, plan); err != nil {
 		return "", err

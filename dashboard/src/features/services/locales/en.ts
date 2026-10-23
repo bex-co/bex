@@ -2581,6 +2581,11 @@ const enServices: Record<string, TranslationEntry> = {
       "Runs once against the new image before it serves traffic (e.g. a database migration). A non-zero exit fails the deploy and keeps the previous version live.",
     description: "Build & Deploy: help text for the pre-deploy command field",
   },
+  "services.preDeployPaidOnly": {
+    message: "Pre-deploy commands are available on paid plans.",
+    description:
+      "Build & Deploy: why the pre-deploy command field is disabled on a Free service (Render: paid web services, private services and background workers; w8/m131)",
+  },
   "services.preDeployPlaceholder": {
     message: "e.g. npm run migrate",
     description: "Build & Deploy: placeholder for the pre-deploy command input",

@@ -44,6 +44,7 @@ func TestServicePatchTableOrderIsRESTApplicationOrder(t *testing.T) {
 		{"DisplayName"},
 		{"Repo", "Image", "ImageOwnerID", "Branch", "RegistryCredentialID"},
 		{"MaintenanceBeforeFreeDowngrade"}, // early maintenance on a free-downgrade (both surfaces)
+		{"PreDeployBeforeFreeDowngrade"},   // early pre-deploy clear on a free-downgrade (w8/m131)
 		{"Plan"},
 		{"IdleTTLSeconds"},
 		{"MaxShutdownDelaySeconds"},

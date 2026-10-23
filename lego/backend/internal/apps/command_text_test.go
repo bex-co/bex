@@ -70,7 +70,7 @@ func (f commandField) restFixture(t *testing.T, command *string) (*Service, *htt
 	svc.RegisterREST(mux)
 	kind, name := "web_service", "web"
 	env := map[string]any{"buildCommand": "npm ci", "startCommand": "node server.js"}
-	details := map[string]any{"runtime": "node", "plan": "free", "envSpecificDetails": env}
+	details := map[string]any{"runtime": "node", "plan": "starter", "envSpecificDetails": env}
 	if f.cron {
 		kind, name = "cron_job", "nightly"
 		details["schedule"] = "0 0 1 1 *"

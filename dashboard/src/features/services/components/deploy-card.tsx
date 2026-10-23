@@ -72,6 +72,7 @@ export function DeployCard({
   rootDir = null,
   preDeployCommand,
   showPreDeployCommand,
+  freePlan = false,
   showCommand,
   autoDeploy,
 }: {
@@ -85,6 +86,12 @@ export function DeployCard({
   preDeployCommand: string | null;
   /** False for a static site, which runs no container. */
   showPreDeployCommand: boolean;
+  /**
+   * Render's pre-deploy command is a paid-plan feature (w8/m131): on Free the
+   * field is disabled with the plan hint. A legacy value stays visible and
+   * clearable.
+   */
+  freePlan?: boolean;
   /** False for a static site, which runs no container. */
   showCommand: boolean;
   /** The Auto-Deploy row of a repo-backed service. */
@@ -101,6 +108,7 @@ export function DeployCard({
   const { setStartCommand, busy: commandBusy } = useStartCommand(copy.toasts);
   const { setPreDeployCommand, busy: preDeployBusy } = usePreDeployCommand();
   const startCommand = commandKind === "start";
+  const preDeployPaidOnly = freePlan && !preDeployCommand;
 
   return (
     <Card>
@@ -124,8 +132,10 @@ export function DeployCard({
             mono
             normalize={commandText}
             busy={preDeployBusy}
-            disabled={createDisabled}
-            disabledReason={createReason}
+            disabled={createDisabled || preDeployPaidOnly}
+            disabledReason={
+              createDisabled ? createReason : t("services.preDeployPaidOnly")
+            }
             onSave={(value) => setPreDeployCommand(serviceId, value)}
           />
         )}

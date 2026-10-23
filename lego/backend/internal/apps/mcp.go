@@ -847,6 +847,7 @@ func (s *Service) applyServicePatch(ctx context.Context, in updateServiceArgs) (
 		// apply maintenance first (SetPlan refuses a free plan while
 		// maintenance is still on). The condition lives in the core table.
 		MaintenanceBeforeFreeDowngrade: true,
+		PreDeployBeforeFreeDowngrade:   true,
 		MaintenanceMode:                in.MaintenanceMode.toView(),
 		Plan:                           in.Plan,
 		IdleTTLSeconds:                 in.IdleTTLSeconds,

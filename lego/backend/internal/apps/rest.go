@@ -1072,6 +1072,7 @@ func (req patchServiceRequest) toServicePatch(f patchFields, maintenanceMode *Ma
 		// condition itself lives in the core table; MCP's fill sets the
 		// same flag (w1/073) so both surfaces apply maintenance first.
 		MaintenanceBeforeFreeDowngrade: true,
+		PreDeployBeforeFreeDowngrade:   true,
 		IdleTTLSeconds:                 f.idleTTL,
 		RootDir:                        req.RootDir,
 		BuildFilter:                    req.BuildFilter,
