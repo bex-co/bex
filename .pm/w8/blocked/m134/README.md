@@ -71,3 +71,7 @@ Every Key Value created without an allowlist since the `eaaccb6f6fd4` pin, every
 ## Dedupe
 
 Regression of w8/181 (done 2026-10-22). Its DoD covered the first enable on a store created after the change but not that the store becomes available while private. Searched open `.pm` items across workstreams and the last 6 h of `origin/main` for Key Value / TLS listener / stuck `creating`: no other filing.
+
+## Partial live evidence (2026-10-23 11:13–11:18 UTC, platform pin `29d63e1f7bea`, bex v0.3.3, `bex-canary`, `/qa-find-bugs-cli` sweep d4e8)
+
+`bex kv create --name qa-20261023-d4e8-kv --plan free --confirm -o json` (no allowlist) → `red-dbdk2kr17lic73al6nc0` created 11:13:23, `available` by 11:14:18 (< 55 s; before t001 it stayed `creating` 18 m 38 s). Not covered: first enable restart-free (t003, parked), t002 inventory. DoD (t007) still open.

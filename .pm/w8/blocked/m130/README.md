@@ -80,3 +80,7 @@ A's create response read back `serviceDetails.plan: "free"`, and `bex services u
 ## Dedupe
 
 Searched `.pm` open and done, ADR018, DO_NOT_DO for "private network", "receive private", "internal address" + free, ADR041: only w4/252 (copy fix that kept the behavior). No open item.
+
+## Partial live evidence (2026-10-23 11:13–11:18 UTC, platform pin `29d63e1f7bea`, bex v0.3.3, `bex-canary`, `/qa-find-bugs-cli` sweep d4e8)
+
+Free web A `srv-dbdk2l1f0c2s738fsdqg` (echo-server) and free busybox probe B `srv-dbdk2lr17lic73al6ne0` looping `wget -T 5 http://qa-20261023-d4e8-echo:80/privprobe-d4e8`: B logged 5× `PRIVFAIL`, no `PRIVOK`; `curl https://qa-20261023-d4e8-echo.onbex.co/` → 200. Not covered: upgrade/downgrade flip, paid controls, sleep/wake through the activator, Blueprint/dashboard copy (t003). DoD (t007) still open.

@@ -79,3 +79,7 @@ deflate / zstd     (none)            119346
 ## Dedupe
 
 Searched `.pm` open and done for gzip/compression/Accept-Encoding: w8/m79 (done, Brotli only by scope), w8/m83 (blocked, web services), w9/m61 and w9/044 (bex-api gzip). No item covers static gzip.
+
+## Partial live evidence (2026-10-23 11:13–11:18 UTC, platform pin `29d63e1f7bea`, bex v0.3.3, `bex-canary`, `/qa-find-bugs-cli` sweep d4e8)
+
+Fresh free static site `srv-dbdk2lhf0c2s738fsdsg` (200 000-byte `big.js`): `curl -H 'Accept-Encoding: gzip' …/big.js` → `content-encoding: gzip`, 232 bytes on the wire. Not covered: br/q-value/Range/ETag neighbors. DoD (t006) still open.

@@ -79,3 +79,9 @@ Every web and private service with a Health Check Path, in every workspace. Serv
 ## Dedupe
 
 Searched `.pm` open and done, ADR004/ADR018 and DO_NOT_DO for health + redirect/3xx/follow: no item. w4/m190 and w4/388 own stall-reason wording and port detection, not redirect scoring.
+
+## Partial live evidence (2026-10-23 11:13–11:18 UTC, platform pin `29d63e1f7bea`, bex v0.3.3, `bex-canary`, `/qa-find-bugs-cli` sweep d4e8)
+
+Fresh free echo-server web `srv-dbdk2l1f0c2s738fsdqg` with `--health-check-path "/hc?echo_code=302&echo_header=Location:/elsewhere?echo_code=500"` reached `live` within ~3 minutes of create (sweep 9c1e's identical fixture never went live and failed at 15 m 17 s). Not covered: the absolute-redirect, 404/500 and no-path controls, app-log check for `/elsewhere`. DoD (t007) still open.
+
+Additional (sweep e9a1, same pin): a scratch-based image with no shell (`traefik/whoami:v1.10.3`, `--health-check-path /health`, `srv-dbdkk09f0c2s738fse80`) went `live` and served 200; a TCP-probe control (no path) went `live`; `--health-check-path "/hc?echo_code=404"` stayed `update_in_progress` with the stall reason naming the path. Fixtures deleted, 404.
