@@ -2205,6 +2205,9 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 		idx.serviceTypes[req.Name] = req.Type
 		if req.Type == appv1alpha1.TypeWebService || req.Type == appv1alpha1.TypePrivateService {
 			idx.addressableServices[req.Name] = true
+			if tier, err := normalizeTierForType(effectiveType(req.Type), req.Plan); err == nil && !core.PaidPlan(tier) {
+				idx.freeServices[req.Name] = true
+			}
 		}
 	}
 
@@ -2298,6 +2301,9 @@ type stackIndex struct {
 	// fromService reference to them has no DNS name to resolve). Their ports are
 	// read at apply, from the applied App (w6/m148).
 	addressableServices map[string]bool
+	// freeServices: the addressable services declared on the free plan, which
+	// cannot receive private network traffic (w8/m130).
+	freeServices map[string]bool
 	// serviceKnownEnv: name -> the statically-known env of that service (its
 	// linked in-file groups' literals under its own literals and sync:false
 	// seeds, knownServiceEnv), the resolvable target set for a
@@ -2332,6 +2338,7 @@ func newStackIndex(serviceCount, databaseCount int) *stackIndex {
 		databaseNames:       make(map[string]bool, databaseCount),
 		databasePoolers:     make(map[string]bool, databaseCount),
 		addressableServices: make(map[string]bool, serviceCount),
+		freeServices:        make(map[string]bool, serviceCount),
 		serviceKnownEnv:     make(map[string]map[string]knownValue, serviceCount),
 		serviceGenerated:    make(map[string]map[string]bool, serviceCount),
 		servicePrompts:      make(map[string]map[string]bool, serviceCount),
@@ -2395,6 +2402,9 @@ func (idx *stackIndex) classifyRef(svc *parsedService, r envRef) error {
 	if r.FromService != nil && r.FromService.EnvVarKey == "" && serviceRefProperty[r.FromService.Property] {
 		if declaredService && !idx.addressableServices[r.FromService.Name] {
 			return serviceRefUnaddressable(svc.req.Name, r.Key, r.FromService.Property, r.FromService.Name)
+		}
+		if declaredService && r.FromService.Name != svc.req.Name && idx.freeServices[r.FromService.Name] && refersToPrivateAddress(r.FromService.Property) {
+			return serviceRefFreePlan(svc.req.Name, r.Key, r.FromService.Property, r.FromService.Name)
 		}
 		svc.hostRefs = append(svc.hostRefs, hostRef{
 			key: r.Key, target: r.FromService.Name, property: r.FromService.Property,
@@ -2649,6 +2659,20 @@ func serviceRefTypeError(service, key, refType, target, targetType string) error
 // no Service: only web/private services are addressable (ADR041 D1, w8/081).
 func serviceRefUnaddressable(service, key, property, target string) error {
 	return fmt.Errorf("%w: service %q: envVars[%q] fromService %s references %q which has no network address (only web/private services are addressable)", core.ErrBadRequest, service, key, property, target)
+}
+
+// refersToPrivateAddress reports whether a fromService property names the
+// target's private network address (host, hostport), as opposed to its port
+// alone or a copied platform variable.
+func refersToPrivateAddress(property string) bool {
+	return property == serviceRefPropertyHost || property == serviceRefPropertyHostPort
+}
+
+// serviceRefFreePlan refuses a private-address reference to a free service:
+// Render's Free plan does not support receiving private network traffic, so the
+// address would never answer (w8/m130).
+func serviceRefFreePlan(service, key, property, target string) error {
+	return fmt.Errorf("%w: service %q: envVars[%q] fromService %s references %q: %s", core.ErrBadRequest, service, key, property, target, core.FreePrivateTrafficMessage)
 }
 
 // knownValue is one plainly-known source value and where it comes from: the

@@ -472,7 +472,7 @@ func TestDeployStackResolvesExistingWorkspaceServiceHostRef(t *testing.T) {
 	ctx := context.Background()
 	api := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{Name: "api", Namespace: "default"},
-		Spec:       appv1alpha1.AppSpec{Type: appv1alpha1.TypePrivateService, Image: "nginx:1.27"},
+		Spec:       appv1alpha1.AppSpec{Type: appv1alpha1.TypePrivateService, Tier: "starter", Image: "nginx:1.27"},
 	}
 	if err := cl.Create(ctx, api); err != nil {
 		t.Fatal(err)

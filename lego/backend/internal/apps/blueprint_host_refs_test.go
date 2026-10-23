@@ -241,7 +241,7 @@ func TestValidateBlueprintLocatesEveryMissingHostReference(t *testing.T) {
   runtime: image
   image:
     url: nginx:1.27
-  plan: free
+  plan: starter
   envVars:
   - key: MISSING_HOST
     fromService:
@@ -349,7 +349,7 @@ func existingHostService(t *testing.T) *Service {
 	for name, appType := range existingHostTargets {
 		apps = append(apps, &appv1alpha1.App{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default", Labels: map[string]string{core.LabelTenant: connOwner, core.LabelServiceName: name}},
-			Spec:       appv1alpha1.AppSpec{Type: appType, Image: "nginx:1.27", Port: 3000, Subdomain: name + "-slug"},
+			Spec:       appv1alpha1.AppSpec{Type: appType, Tier: "starter", Image: "nginx:1.27", Port: 3000, Subdomain: name + "-slug"},
 		})
 	}
 	return workspaceValidator(t, apps...)
@@ -629,5 +629,66 @@ func validationSurfaces(t *testing.T, svc *Service) func(*testing.T, string) (su
 		raw, _ = json.Marshal(call.StructuredContent)
 		surfaces["MCP"] = decode(t, raw)
 		return direct, surfaces
+	}
+}
+
+// TestBlueprintRefusesPrivateAddressOfFreeServices (w8/m130): Render's Free
+// plan does not support receiving private network traffic, so a host or
+// hostport reference to a free web service — declared in the manifest or
+// already in the workspace — is refused with the one shared sentence in every
+// workspace, while the same reference to a paid target, a port-only reference
+// and a service's reference to itself stay valid.
+func TestBlueprintRefusesPrivateAddressOfFreeServices(t *testing.T) {
+	free := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "ex-free", Namespace: "default", Labels: map[string]string{core.LabelTenant: connOwner, core.LabelServiceName: "ex-free"}},
+		Spec:       appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Tier: "free", Image: "nginx:1.27", Port: 3000, Subdomain: "ex-free-slug"},
+	}
+	paid := free.DeepCopy()
+	paid.Name, paid.Labels[core.LabelServiceName], paid.Spec.Tier = "ex-paid", "ex-paid", "starter"
+	const refused = "free web services can't receive private network traffic"
+	manifest := func(property, plan, target string, declared bool) string {
+		doc := fmt.Sprintf(`services:
+  - {type: web, name: consumer, runtime: image, image: {url: nginx:1.27}, plan: starter, envVars: [{key: UPSTREAM, fromService: {type: web, name: %s, property: %s}}]}
+`, target, property)
+		if declared {
+			doc += fmt.Sprintf("  - {type: web, name: %s, runtime: image, image: {url: nginx:1.27}, plan: %s}\n", target, plan)
+		}
+		return doc
+	}
+	for _, tc := range []struct {
+		name     string
+		property string
+		plan     string
+		target   string
+		declared bool
+		refused  bool
+	}{
+		{"declared free host", "host", "free", "dec", true, true},
+		{"declared free hostport", "hostport", "free", "dec", true, true},
+		{"declared free port only", "port", "free", "dec", true, false},
+		{"declared starter host", "host", "starter", "dec", true, false},
+		{"existing free host", "host", "", "ex-free", false, true},
+		{"existing paid host", "host", "", "ex-paid", false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := workspaceValidator(t, free.DeepCopy(), paid.DeepCopy())
+			doc := manifest(tc.property, tc.plan, tc.target, tc.declared)
+			v, err := svc.ValidateBlueprint(ownershipCtx(), connOwner, doc, "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !tc.refused {
+				if !v.Valid {
+					t.Fatalf("errors = %+v, want valid", v.Errors)
+				}
+				return
+			}
+			if v.Valid || len(v.Errors) != 1 || !strings.Contains(v.Errors[0].Error, refused) || !strings.Contains(v.Errors[0].Error, `envVars["UPSTREAM"]`) {
+				t.Fatalf("validation = %+v, want one free-plan refusal at the envVars entry", v)
+			}
+			if _, err := svc.DeployStack(ownershipCtx(), DeployRequest{OwnerID: connOwner, Manifest: doc}); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), refused) {
+				t.Fatalf("DeployStack = %v, want the same 400", err)
+			}
+		})
 	}
 }
