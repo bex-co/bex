@@ -420,21 +420,6 @@ func (r *KeyValueReconciler) keyValueStorageIntent(
 	return sts, effectiveGB, ctrl.Result{}, false, nil
 }
 
-// keyValueIsNew reports whether the store has no StatefulSet yet, so adding
-// the TLS listener restarts nothing. A missing cached object is confirmed with
-// an uncached read: a lagging informer must never add the listener to a
-// running store, whose restart empties a Persistence Off one.
-//
-// Without an issuer the listener's certificate never appears and its volume
-// would hold the pod, so a cluster with no issuer keeps the lazy first enable.
-func (r *KeyValueReconciler) keyValueIsNew(ctx context.Context, sts *appsv1.StatefulSet) bool {
-	if !sts.CreationTimestamp.IsZero() || r.ClusterIssuer == "" {
-		return false
-	}
-	err := cmp.Or(r.APIReader, client.Reader(r.Client)).Get(ctx, client.ObjectKeyFromObject(sts), &appsv1.StatefulSet{})
-	return apierrors.IsNotFound(err)
-}
-
 // keyValueTemplateListens reports whether sts's pod template already runs the
 // TLS listener.
 func keyValueTemplateListens(sts *appsv1.StatefulSet) bool {
@@ -1018,11 +1003,12 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return result, err
 	}
 	// The status counts too: a cached StatefulSet read can lag a first enable,
-	// and dropping a running listener would restart the store unconfirmed. A
-	// store with no StatefulSet yet starts with the listener, so its first
-	// external access changes no template and restarts nothing (w8/181).
+	// and dropping a running listener would restart the store unconfirmed.
+	// A private newborn store starts WITHOUT the listener: its pod would mount
+	// a TLS Secret whose Certificate is only requested for a public store, and
+	// never start (w8/m134; w8/181's birth listener did exactly that).
 	intent := keyValueIntentFor(&kv, plan, storageGB, r.KvDomain,
-		keyValueTemplateListens(sts) || kv.Status.TLSListener || r.keyValueIsNew(ctx, sts))
+		keyValueTemplateListens(sts) || kv.Status.TLSListener)
 	// Validate public TLS before updating the workload. A missing issuer must
 	// fail closed without publishing a public host.
 	if reason, err := r.reconcileKeyValueTLS(ctx, &kv, intent.public, intent.tlsListener, intent.tlsSecretName); err != nil {

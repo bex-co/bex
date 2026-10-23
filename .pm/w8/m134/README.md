@@ -4,15 +4,15 @@
 
 ## Tasks (in order)
 
-| id   | title                                                                        | est | depends_on                 |
-| ---- | ---------------------------------------------------------------------------- | --- | -------------------------- |
-| t001 | Hotfix: a new store starts with the TLS listener only when its Certificate can exist | 30m | —                          |
-| t002 | Unstick stores created since the regression                                    | 20m | w8/m134/t001               |
-| t003 | Restart-free first enable without a birth listener (w8/181's goal)             | 60m | w8/m134/t001               |
-| t004 | Render parity: ADR021/ADR018 and create/enable timings on every surface        | 15m | w8/m134/t003               |
-| t005 | Simplify the changed code                                                     | 15m | w8/m134/t004               |
-| t006 | Test coverage: private create becomes Ready; public create; first enable       | 40m | w8/m134/t004               |
-| t007 | Close out the milestone                                                       | 30m | w8/m134/t005, w8/m134/t006 |
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 — **DONE** | Hotfix: a new store starts with the TLS listener only when its Certificate can exist | 30m | — |
+| t002 | Unstick stores created since the regression | 20m | w8/m134/t001 |
+| t003 | Restart-free first enable without a birth listener (w8/181's goal) | 60m | w8/m134/t001 |
+| t004 | Render parity: ADR021/ADR018 and create/enable timings on every surface | 15m | w8/m134/t003 |
+| t005 | Simplify the changed code | 15m | w8/m134/t004 |
+| t006 | Test coverage: private create becomes Ready; public create; first enable | 40m | w8/m134/t004 |
+| t007 | Close out the milestone | 30m | w8/m134/t005, w8/m134/t006 |
 
 ## Definition of done
 
