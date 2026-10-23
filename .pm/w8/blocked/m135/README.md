@@ -1,6 +1,6 @@
 # w8 · m135 — `PATCH /services/{id}` saves settings without deploying, as on Render
 
-**Worker:** worker8 **Goal:** A Render-shaped service update (`bex services update`, REST `PATCH /v1/services/{id}`) saves the change and deploys nothing. The service reports `undeployedChanges: true` until the caller deploys, as Render's API documents and as bex already does for env vars (w8/186) and image/source changes. **Status:** todo
+**Worker:** worker8 **Goal:** A Render-shaped service update (`bex services update`, REST `PATCH /v1/services/{id}`) saves the change and deploys nothing. The service reports `undeployedChanges: true` until the caller deploys, as Render's API documents and as bex already does for env vars (w8/186) and image/source changes. **Status:** blocked — needs your decision before work: the recorded runtime config holds only start command, health path, replicas, env and sources, so staging pre-deploy, shutdown delay, build commands or plan means extending the held-release record, diff and selection (w8/m119–m121) in lego/types and the operator — see the milestone's Triage section; approve that scoped design as a multi-task milestone, or sign off the w6/m51 tracked-rollout behavior as an ADR018 divergence
 
 ## Tasks (in order)
 
@@ -72,3 +72,13 @@ Control (sweep 3b7d, 2026-10-23): `bex services update <id> --image docker.io/ea
 ## Dedupe
 
 Searched `.pm` open and done for PATCH + deploy/rollout/automatic: w6/m51 (done; introduced the deploy rows deliberately, before the 2026-10-17 parity rule), w8/186 (done; env vars only), w4/m184 (applying notice copy), w4/369 (PATCH shape). No item covers settings PATCH auto-deploys.
+
+## Triage 2026-10-23 (loopx w8): why this is parked, not worked
+
+Reading the code before starting showed the milestone is several times its 225m estimate, and a partial version would be worse than none:
+
+- **The staging machinery covers only some fields.** "Undeployed changes" is the saved `spec` compared with the serving release's recorded runtime config (`lego/operator/internal/controller/saved_configuration.go`, `release_config_selection.go` `runtimeConfigRecord.projectRuntimeApp`). That record captures only `StartCommand`, `Command`, `HealthCheckPath`, `Replicas`, `Env` and the sources. It does **not** capture `PreDeployCommand`, `MaxShutdownDelaySeconds`, build commands, Dockerfile path/context, root dir, plan or disks, so a PATCH of those cannot be left "saved but unapplied": the operator projects the Deployment straight from `spec`, so the pods would still roll (without the deploy row).
+- **So t001 is not a backend-only switch.** It needs the release config record (`lego/types` + operator snapshot writer + selection + the diff + cancel/rollback/restart/held-release rules from w8/m119–m121) extended to every release-relevant field, then backend staging per setter. A half measure (stage only the two record-backed fields) would leave PATCH inconsistent: some fields save-only, the rest still rolling, which keeps the harm this milestone names (half-applied intermediate configurations).
+- **What is unblocked once decided:** t003 (`envUpdated` only for env rollouts) is independent and small; t004's surface decisions follow t001.
+
+**Needs your call:** approve the scoped design (extend the recorded runtime config to all release-relevant fields, then stage them on REST/MCP) as its own multi-task milestone, or keep the w6/m51 "every settings change is a tracked rollout" behavior and record it in ADR018 as a divergence with your sign-off (the only way it may stand under the parity rule).
