@@ -38,6 +38,8 @@ RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go
 RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/egress-meter ./cmd/egress-meter
 RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/edge-cache ./cmd/edge-cache
 RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/backup-encrypt ./cmd/backup-encrypt
+# The no-redirect health probe a service's init container installs into its pod (w8/m133).
+RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -trimpath -ldflags='-s -w' -o /workspace/health-probe ./cmd/health-probe
 RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/native-resolve ./cmd/native-resolve
 # native-init ships inside every native Node tenant image (w8/m88): stripped
 # and path-free so each release adds one small, reproducible layer.
@@ -61,6 +63,7 @@ COPY --from=builder /workspace/kv-sni-proxy /kv-sni-proxy
 COPY --from=builder /workspace/egress-meter /egress-meter
 COPY --from=builder /workspace/edge-cache /edge-cache
 COPY --from=builder /workspace/backup-encrypt /backup-encrypt
+COPY --from=builder /workspace/health-probe /health-probe
 COPY --from=builder /workspace/native-resolve /native-resolve
 COPY --from=builder /workspace/native-init /native-init
 COPY --from=builder /workspace/disk-snapshot /disk-snapshot

@@ -708,6 +708,7 @@ func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1al
 		if r.edgeCaches(runtime) {
 			params.edgeCacheImage = r.BackupHelperImage
 		}
+		params.healthProbeImage = r.BackupHelperImage
 	}
 	var prior *corev1.PodTemplateSpec
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, dep, func() error {

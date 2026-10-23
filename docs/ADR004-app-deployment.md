@@ -143,7 +143,7 @@ services:
     image: { url: my-app:<sha> }
     # For a git build, use runtime: docker plus repo/branch instead of image.
     numInstances: 1
-    healthCheckPath: /healthz # optional. Set => HTTP GET, 2xx/3xx is ready. Omit => TCP probe on the port (no default path)
+    healthCheckPath: /healthz # optional. Set => one HTTP GET that follows no redirect, 2xx/3xx is ready (w8/m133). Omit => TCP probe on the port (no default path)
 
     envVars: # literal (non-secret) config -> App.spec.env (PORT is operator-owned)
       - key: LOG_LEVEL
@@ -459,3 +459,11 @@ Scope, stated plainly: this removes the **deploy-correlated** eviction. It does 
 - **The edge IP is the node IP** (traefik on hostNetwork) — the `*.sslip.io` host is tied to it and changes if the node is replaced.
 - **Server IPs drift** — reread them from `hcloud`/the kubeconfig rather than trusting old notes; the kubeconfig's API endpoint is also distinct from the node IP.
 - Day-0 cluster creation lives in [`infra/`](../infra/README.md); Argo-reconciled platform apps in [`deploy/gitops/`](../deploy/gitops/README.md). This doc is day-N **app**-level deployment only.
+
+## Health checks answer 3xx without following it (w8/m133)
+
+Render: "a check is successful if the instance responds with a `2xx` or `3xx` status code within five seconds" ([render.com/docs/health-checks](https://render.com/docs/health-checks)). The kubelet's `HTTPGetAction` follows every same-host redirect (every relative `Location`) up to ten hops and scores the final response, with no field to stop it; a health path that answered `302 → /login` (or `/elsewhere` → 500) never became Ready, and the stall reason told the user the 3xx they returned was acceptable.
+
+**Decision (spike on kind v1.36, 2026-10-23):** a service with a Health Check Path probes by **exec of bex's static `health-probe` binary** (`lego/operator/cmd/health-probe`, `internal/healthprobe`) on the startup, readiness and liveness probes, keeping the periods, thresholds and 5 s timeout. It makes one GET to the pod's address on the service port with the Render `Host` header, never follows a redirect, and exits 0 for 200–399. An init container (`bex-health-probe-install`, bex's own image, non-root, read-only root, 20m/32Mi) copies the binary into a 32 MiB `emptyDir` mounted read-only at `/bex-health` in the app container, so the check works for any tenant image, shell-less and distroless ones included. The spike ran a hardened `hostUsers: false` pod: the exec probe made the `302 → 500` path Ready with no `/elsewhere` request and the app saw `Host: app.onbex.co`, a plain `500` stayed unready, and the same path under an `HTTPGet` probe stayed unready while the kubelet requested `/elsewhere` eight times. A service with no path keeps the TCP probe; a worker has no probe.
+
+**Adoption.** Like the preStop drain, the probe is adopted lazily: a running release keeps its `HTTPGet` probe, or the helper image it was installed from, until its pod template changes for another reason (a deploy, a config change, a restart). An operator upgrade never rolls the fleet and a new operator image never re-rolls installed helpers. When the operator does not know its own image (`BackupHelperImage` empty, as under `make run`) services keep the `HTTPGet` probe. Rejected: a platform-side checker driving a readiness gate (liveness semantics would be reimplemented), and rewriting the user's path or proxying through a sidecar (changes what the app sees).
