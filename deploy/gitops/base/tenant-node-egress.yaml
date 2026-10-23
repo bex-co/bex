@@ -145,6 +145,34 @@ spec:
             - port: "587"
               protocol: TCP
 ---
+# Free-plan private-network ingress deny (w8/m130; ADR022 §Free-plan private
+# ingress, ADR041). Render's Free plan does not support "Receiving private
+# network traffic" (render.com/docs/free): a free web service is reachable only
+# through its public onbex.co URL and custom domains. The operator labels every
+# pod of a free-plan App app.bex.co/free-plan=true and drops the label when the
+# App moves to a paid plan (w8/m127), so the deny follows plan changes with no
+# manual restart. The deny names every workspace-labeled pod in any namespace:
+# Traefik, the activator, kubelet probes (`host`) and platform scrapers carry no
+# app.bex.co/workspace label and stay allowed, so the public route, the
+# free-tier wake and health checks are untouched. Deny precedence beats the
+# per-namespace same-workspace allow. enableDefaultDeny.ingress is false: this
+# policy only subtracts tenant sources and must never narrow anything else.
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: deny-free-plan-private-ingress
+spec:
+  endpointSelector:
+    matchLabels:
+      app.bex.co/free-plan: "true"
+  enableDefaultDeny:
+    ingress: false
+  ingressDeny:
+    - fromEndpoints:
+        - matchExpressions:
+            - key: app.bex.co/workspace
+              operator: Exists
+---
 # Structural sandbox egress posture (w3/m35, phase split w3/m40): every
 # OpenSandbox workload is labeled app.bex.co/regime=sandbox by both bex create
 # metadata and the BatchSandbox template. This policy carries only the denies
