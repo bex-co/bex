@@ -15,6 +15,18 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m135** — [`PATCH /services/{id}` saves settings without deploying, as on Render](m135/README.md) (7 tasks;225m) ← `/qa-find-bugs-cli` loop sweep 6e1b 2026-10-23: health check path, shutdown delay, Docker command and pre-deploy PATCHes each start an unrequested deploy; Render: "Changes will not be deployed automatically"
+
+- [ ] **m134** — [New private Key Value stores never become available (regression from w8/181)](m134/README.md) (7 tasks;210m) ← `/qa-find-bugs-cli` loop sweep 8b3c 2026-10-23: **blocker** — a store created without an allowlist stays `creating` (18m38s observed) until external access is enabled; `db739b089` mounts a TLS Secret whose Certificate is only created for public stores
+
+- [ ] **m133** — [A health check that answers 3xx passes, as on Render, instead of following the redirect](m133/README.md) (7 tasks;235m) ← `/qa-find-bugs-cli` loop sweep 9c1e 2026-10-23: a health path answering `302` to a `500` page never goes live; the kubelet follows the relative redirect
+
+- [ ] **m132** — [Static sites answer gzip-only clients with gzip, as on Render](m132/README.md) (6 tasks;170m) ← `/qa-find-bugs-cli` loop sweep 64af 2026-10-23: a gzip-only `Accept-Encoding` gets a 300 kB identity body where Render's static sites send gzip
+
+- [ ] **m131** — [The pre-deploy command is a paid-plan feature, as on Render](m131/README.md) (9 tasks;260m) ← `/qa-find-bugs-cli` loop sweep 8004 2026-10-22: a free web service accepts and runs a pre-deploy command; Render: "available for paid web services, private services, and background workers"
+
+- [ ] **m130** — [Free web services cannot receive private-network traffic, as on Render](m130/README.md) (7 tasks;230m) ← `/qa-find-bugs-cli` loop sweep 8004 2026-10-22: a free web service answers same-workspace requests at its internal address; render.com/docs/free lists "Receiving private network traffic" as unsupported
+
 - [ ] **m129** — [Render's free-plan "migrate in the build command" recipe works on bex](blocked/m129/README.md) (10 tasks;340m) ← promoted from `158` on 2026-10-21 — **BLOCKED (2026-10-21: needs the user's sign-off on the threat review for letting a tenant's build reach that workspace's own datastores (ADR022:239 default-deny); no divergence is allowed without ADR018 sign-off)**
 
 - [ ] **m128** — [`dockerContext` is relative to `rootDir`, as on Render](blocked/m128/README.md) (9 tasks;200m) ← promoted from `150` + `151` on 2026-10-20 (`/qa-find-bugs-cli` sweep 1266) — **BLOCKED (2026-10-20: release pipeline deploys bex-api and the dashboard; QA runs t009: a free Docker service with `rootDir: example-pserv`, `dockerContext: .` builds (`COPY index.html` → `DONE`), the control reads back `.` on REST/GraphQL/MCP, PATCH `envSpecificDetails.dockerContext` → 200 and the next deploy uses it; delete fixtures by ID with 404 proofs)**. t001–t008 done: one translation seam (`docker_context.go`) with repo-root storage unchanged, create/read/export/Blueprint/rootDir-rebase, `SetDockerContext` on REST/MCP/GraphQL with event `docker_context_changed`; ADR006/ADR018/ADR049.
@@ -376,6 +388,12 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 ## Inbox
 
 - [x] **193** — [Restrict environment-variable, secret-file and shell access to Admins in a protected environment](done/193.md) ← w8/187 2026-10-22: the rest of Render's protected-environment list; minor, ~2h. — **DONE (2026-10-22)**.
+
+- [ ] **196** — [Requests reach the app without Render's `X-Request-Start`, so APM queue time and queue-time autoscalers read nothing](196.md) (~30m) ← `/qa-find-bugs-cli` loop sweep 7d1f 2026-10-23 (minor)
+
+- [ ] **195** — [Pino/bunyan numeric JSON levels are labelled `unknown`, so no `--level` filter returns them](195.md) (~40m) ← `/qa-find-bugs-cli` loop sweep 5e2a 2026-10-23 (minor)
+
+- [ ] **194** — [Static-site responses carry no `Strict-Transport-Security` or `nosniff`, unlike Render's](194.md) (~45m) ← `/qa-find-bugs-cli` loop sweep 64af 2026-10-23 (minor)
 
 - [ ] **192** — [Retire the implicit static-site SPA fallback for sites created before 2026-10-23](blocked/192.md) ← w8/183 2026-10-22 (due 2026-11-22) — **BLOCKED (needs a production operator to list pre-cutoff static sites and add the `/* → /index.html` rewrite to the SPAs before the code step removes `SPAFallbackCutoff`; removing it first would break running single-page apps)**; no code is done yet.
 
