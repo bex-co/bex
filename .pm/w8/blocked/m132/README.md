@@ -1,16 +1,16 @@
 # w8 · m132 — Static sites answer gzip-only clients with gzip, as on Render
 
-**Worker:** worker8 **Goal:** A static-site asset requested with `Accept-Encoding: gzip` (no `br`) is served gzip-compressed, as Render serves it. Brotli stays preferred when offered. **Status:** todo
+**Worker:** worker8 **Goal:** A static-site asset requested with `Accept-Encoding: gzip` (no `br`) is served gzip-compressed, as Render serves it. Brotli stays preferred when offered. **Status:** blocked — t001, t002, t003, t004, t005 done 2026-10-23; the release pipeline deploys the operator (static server); QA runs t006: on a fresh owned Free static site whose build writes a ≥100 kB big.js, `Accept-Encoding: gzip` and `gzip, deflate` return gzip that decodes to the original bytes, `br`/`gzip, br` return br, `gzip;q=0`/`identity`/`deflate`/`zstd` return identity, ETag → 304 and Range work on gzip; delete the fixture by ID with 404 proofs
 
 ## Tasks (in order)
 
 | id   | title                                                                 | est | depends_on                 |
 | ---- | --------------------------------------------------------------------- | --- | -------------------------- |
-| t001 | Negotiate br then gzip in the static server, one variant cache/budget  | 50m | —                          |
-| t002 | Neighbors: q-values, ranges, HEAD, ETag, authored encodings, no-transform | 30m | w8/m132/t001               |
-| t003 | Render parity: ADR029/ADR018 and every static serving caller          | 15m | w8/m132/t002               |
-| t004 | Simplify the changed code                                             | 15m | w8/m132/t003               |
-| t005 | Test coverage: negotiation table, decode-exact, budget fallback       | 30m | w8/m132/t003               |
+| t001 — **DONE** | Negotiate br then gzip in the static server, one variant cache/budget  | 50m | —                          |
+| t002 — **DONE** | Neighbors: q-values, ranges, HEAD, ETag, authored encodings, no-transform | 30m | w8/m132/t001               |
+| t003 — **DONE** | Render parity: ADR029/ADR018 and every static serving caller          | 15m | w8/m132/t002               |
+| t004 — **DONE** | Simplify the changed code                                             | 15m | w8/m132/t003               |
+| t005 — **DONE** | Test coverage: negotiation table, decode-exact, budget fallback       | 30m | w8/m132/t003               |
 | t006 | Close out the milestone                                               | 30m | w8/m132/t004, w8/m132/t005 |
 
 ## Definition of done

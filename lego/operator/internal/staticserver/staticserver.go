@@ -491,16 +491,16 @@ func (h *Handler) serveObject(w http.ResponseWriter, r *http.Request, site Site,
 	// so a saved ETag rule replaces the generated one (w4/272).
 	applyHeaders(hdr, site.Headers, requestPath)
 
-	// Automatic Brotli (w8/m79). The representation is chosen before
+	// Automatic Brotli and gzip (w8/m79, w8/m132). The representation is chosen before
 	// ServeContent, so its preconditions and byte ranges apply to the bytes
 	// actually sent. An eligible object varies by Accept-Encoding whichever
 	// coding this request gets; anything short of a ready, useful variant
 	// within budget falls back to identity.
 	body := obj.Body
-	if brotliCandidate(hdr, len(obj.Body)) {
+	if encodingCandidate(hdr, len(obj.Body)) {
 		varyAcceptEncoding(hdr)
-		if acceptsBrotli(r.Header) {
-			if encoded, ok := h.brotliVariant(site.AppID, site.cacheKey(servedPath), obj.Body); ok {
+		if coding := negotiateCoding(r.Header); coding != "" {
+			if encoded, ok := h.encodedVariant(coding, site.AppID, site.cacheKey(servedPath), obj.Body); ok {
 				// The encoded body leases its own bytes on top of the identity
 				// lease (the identity body stays referenced); HEAD writes none.
 				// Without room, serve identity rather than shed.
@@ -511,9 +511,9 @@ func (h *Handler) serveObject(w http.ResponseWriter, r *http.Request, site Site,
 				if h.liveBodies.TryAcquire(lease) {
 					defer h.liveBodies.Release(lease)
 					body = encoded
-					hdr.Set("Content-Encoding", "br")
+					hdr.Set("Content-Encoding", coding)
 					weakenETag(hdr)
-					w = &brotliResponseWriter{ResponseWriter: w, size: len(encoded)}
+					w = &encodedResponseWriter{ResponseWriter: w, size: len(encoded)}
 				}
 			}
 		}
