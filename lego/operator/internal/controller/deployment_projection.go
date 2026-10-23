@@ -184,9 +184,19 @@ type deploymentParams struct {
 	platform platformEnvInputs
 	// edgeCacheImage runs the edge-cache sidecar; "" for none (edge_cache.go).
 	edgeCacheImage string
+	// healthProbeImage is the image the no-redirect health probe is installed
+	// from; "" probes with the kubelet's HTTP check instead (health_probe.go).
+	healthProbeImage string
 	// readinessPeriod overrides the readiness probe period while a stored
 	// template still carries its previous one (applyDeploymentSpec); 0 = current.
 	readinessPeriod int32
+}
+
+// usesHealthProbeBinary reports whether the App's HTTP health check runs as the
+// no-redirect exec probe: a web or private service with a Health Check Path,
+// on an operator that knows its own image.
+func (p deploymentParams) usesHealthProbeBinary(app *appv1alpha1.App) bool {
+	return !p.worker && app.Spec.HealthCheckPath != "" && p.healthProbeImage != ""
 }
 
 // appPodLabels builds the pod template's label set.
@@ -320,6 +330,11 @@ func appContainer(app *appv1alpha1.App, p deploymentParams, probeHost string) co
 	// never have to learn.
 	if !p.worker {
 		handler := healthCheckHandler(app.Spec.HealthCheckPath, p.port, probeHost)
+		if p.usesHealthProbeBinary(app) {
+			handler = healthProbeExecHandler(app.Spec.HealthCheckPath, p.port, probeHost)
+			container.VolumeMounts = append(container.VolumeMounts,
+				corev1.VolumeMount{Name: healthProbeVolumeName, MountPath: healthProbeMountPath, ReadOnly: true})
+		}
 		container.StartupProbe = &corev1.Probe{
 			ProbeHandler:     handler,
 			TimeoutSeconds:   healthCheckTimeoutSeconds,
@@ -431,6 +446,11 @@ func retainedProbeHost(stored corev1.PodTemplateSpec, app *appv1alpha1.App) (hos
 				}
 			}
 		}
+		if c.StartupProbe != nil {
+			if _, host, _, ok := healthProbeExecArgs(c.StartupProbe.Exec); ok {
+				return host, true
+			}
+		}
 		return "", true
 	}
 	return "", false
@@ -533,14 +553,21 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 	drain := drainSecondsFor(app, p)
 	if stored := dep.Spec.Template; len(stored.Spec.Containers) > 0 {
 		keptDrain, keptPeriod := storedDrain(stored.Spec), storedReadinessPeriod(stored.Spec)
+		keptProbeImage := storedHealthProbeImage(stored.Spec)
 		drainStale := drain > 0 && keptDrain != drain
 		periodStale := !p.worker && keptPeriod != healthCheckReadinessPeriodSeconds
-		if drainStale || periodStale {
+		// The no-redirect probe (w8/m133) is adopted the same lazy way: a
+		// running release keeps its HTTP probe, or the helper image it was
+		// installed from, until its template changes for another reason, so
+		// an operator upgrade never rolls the fleet.
+		probeStale := !p.worker && app.Spec.HealthCheckPath != "" && keptProbeImage != p.healthProbeImage
+		if drainStale || periodStale || probeStale {
 			// Keep whatever the stored template carries when nothing else
 			// about it changes; any other change adopts the current values.
 			unchanged := dep.DeepCopy()
 			kept := p
 			kept.readinessPeriod = keptPeriod
+			kept.healthProbeImage = keptProbeImage
 			keptDrainFor := drain
 			if drainStale {
 				keptDrainFor = keptDrain
@@ -588,6 +615,11 @@ func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymen
 	applyDiskProjection(dep, &container, app)
 	applyDrain(&dep.Spec.Template.Spec, &container, app.Spec.MaxShutdownDelaySeconds, drain)
 	dep.Spec.Template.Spec.Containers = []corev1.Container{container}
+	dep.Spec.Template.Spec.InitContainers = nil
+	if p.usesHealthProbeBinary(app) {
+		dep.Spec.Template.Spec.Volumes = append(dep.Spec.Template.Spec.Volumes, healthProbeVolume())
+		dep.Spec.Template.Spec.InitContainers = []corev1.Container{healthProbeInstallContainer(p.healthProbeImage)}
+	}
 	if p.edgeCacheImage != "" {
 		dep.Spec.Template.Spec.Containers = append(dep.Spec.Template.Spec.Containers, edgeCacheContainer(app, p.edgeCacheImage, p.port, drain))
 		if purged := app.Annotations[appv1alpha1.CachePurgedAtAnnotation]; purged != "" {
