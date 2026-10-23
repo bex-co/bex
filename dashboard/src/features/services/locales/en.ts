@@ -33,11 +33,11 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Internal-address section label in the service connection menu (Render's Connect → Internal tab)",
   },
-  "services.connectInternalSleepNote": {
+  "services.connectInternalFreeNote": {
     message:
-      "Free web services sleep when idle, and internal requests can't wake them. If this service is asleep, request its public URL first.",
+      "Free web services can't receive private network traffic. Upgrade to use the internal address.",
     description:
-      "Connect → Internal note for a free public web service: only public traffic wakes it (ADR003), so a sibling's internal call fails while it sleeps (w4/252)",
+      "Connect → Internal note for a free public web service: Render's Free plan does not support receiving private network traffic, so a sibling's internal call never reaches it (w8/m130)",
   },
   "services.headerServiceAddress": {
     message: "Service Address",

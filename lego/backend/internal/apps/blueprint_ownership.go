@@ -676,6 +676,9 @@ func existingHostTargetError(service string, ref hostRef, target *appv1alpha1.Ap
 	if !target.Spec.InternallyAddressable() {
 		return serviceRefUnaddressable(service, ref.key, serviceRefPropertyHost, ref.target)
 	}
+	if refersToPrivateAddress(ref.property) && !target.Spec.ReceivesPrivateTraffic() {
+		return serviceRefFreePlan(service, ref.key, ref.property, ref.target)
+	}
 	return nil
 }
 

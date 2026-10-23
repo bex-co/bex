@@ -81,3 +81,23 @@ func TestServingPortPrefersTheServicesOwnPORT(t *testing.T) {
 		t.Fatalf("InternalAddress = %q, want the PORT", app.InternalAddress())
 	}
 }
+
+// ReceivesPrivateTraffic is false for every free-plan App (an empty tier is
+// free) and for types with no internal address (w8/m130).
+func TestReceivesPrivateTraffic(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		spec AppSpec
+		want bool
+	}{
+		{"free web", AppSpec{Type: TypeWebService, Tier: "free"}, false},
+		{"empty tier is free", AppSpec{Type: TypeWebService}, false},
+		{"paid web", AppSpec{Type: TypeWebService, Tier: "starter"}, true},
+		{"paid private", AppSpec{Type: TypePrivateService, Tier: "standard"}, true},
+		{"paid worker", AppSpec{Type: TypeBackgroundWorker, Tier: "starter"}, false},
+	} {
+		if got := tc.spec.ReceivesPrivateTraffic(); got != tc.want {
+			t.Errorf("%s: ReceivesPrivateTraffic = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}

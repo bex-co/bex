@@ -336,6 +336,11 @@ func NewBadRequestError(code, msg string, params map[string]any) *CodedError {
 
 // ResourceNameRule is the one wording of what a service, Postgres, Key Value
 // or workspace may be named (appv1alpha1.ValidResourceName).
+// FreePrivateTrafficMessage is the one sentence every surface uses for a free
+// service's internal address: Render's Free plan does not support receiving
+// private network traffic (w8/m130).
+const FreePrivateTrafficMessage = "free web services can't receive private network traffic; upgrade to a paid plan to use the internal address"
+
 var ResourceNameRule = fmt.Sprintf("must use lowercase letters, digits, and hyphens, be at most %d characters, and not start or end with a hyphen", appv1alpha1.MaxResourceNameLength)
 
 // CheckResourceName refuses a name outside the resource-name rule with 400

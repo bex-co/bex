@@ -1672,6 +1672,19 @@ if [ -f "$EGRESS" ]; then
   [ "$smtp_deny_shape" = "true:false:1:world:TCP/25,TCP/465,TCP/587:0" ] \
     || { echo "FAIL: deny-free-plan-smtp-egress must select app.bex.co/free-plan=true, keep enableDefaultDeny.egress=false and deny only TCP 25/465/587 to world; got '$smtp_deny_shape'" >&2; fail=1; }
 
+  echo "==> $EGRESS free-plan private-ingress deny refuses only workspace-labeled tenant sources (w8/m130)"
+  ingress_deny_shape="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "deny-free-plan-private-ingress") |
+      [.spec.endpointSelector.matchLabels."app.bex.co/free-plan",
+       (.spec.enableDefaultDeny.ingress | tostring),
+       (.spec.ingressDeny | length | tostring),
+       (.spec.ingressDeny[0].fromEndpoints | length | tostring),
+       (.spec.ingressDeny[0].fromEndpoints[0].matchExpressions[0] | .key + "/" + .operator),
+       ((.spec.ingress // []) | length | tostring)] | join(":")' \
+    "$EGRESS" | tr -d '\n')"
+  [ "$ingress_deny_shape" = "true:false:1:1:app.bex.co/workspace/Exists:0" ] \
+    || { echo "FAIL: deny-free-plan-private-ingress must select app.bex.co/free-plan=true, keep enableDefaultDeny.ingress=false and deny only fromEndpoints with app.bex.co/workspace Exists (Traefik, the activator and probes carry no workspace label); got '$ingress_deny_shape'" >&2; fail=1; }
+
   echo "==> CNPG apiserver allow is additive (does not enable default-deny)"
   DSCTL="deploy/gitops/base/datastore-control-egress.yaml"
   cnpg_allow_shape="$(yq -N \

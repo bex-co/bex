@@ -952,6 +952,15 @@ func (s AppSpec) InternallyAddressable() bool {
 	return s.Type == "" || s.Type == TypeWebService || s.Type == TypePrivateService
 }
 
+// ReceivesPrivateTraffic reports whether other services may dial the App's
+// internal address: an addressable type on a paid tier. Render's Free plan does
+// not support "Receiving private network traffic" (render.com/docs/free), so
+// the platform's deny-free-plan-private-ingress policy drops tenant traffic to
+// every free-plan pod (w8/m130). An empty tier is the free tier.
+func (s AppSpec) ReceivesPrivateTraffic() bool {
+	return s.InternallyAddressable() && s.Tier != "" && s.Tier != "free"
+}
+
 // PlatformSubdomain returns the slug the platform hostname is built from:
 // Subdomain when the control plane minted one, else name (typically the CR's
 // own Name) — the single fallback rule every reader of Subdomain (the

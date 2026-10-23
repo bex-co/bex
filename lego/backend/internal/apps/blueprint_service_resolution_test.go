@@ -57,6 +57,7 @@ func tenantStackService(apps ...*appv1alpha1.App) (*Service, client.Client, cont
 // displayed as "web".
 func renamedTwins() (web, api *appv1alpha1.App) {
 	web = webApp("tea-a", "web", "nginx:1")
+	web.Spec.Tier = "starter"
 	web.Spec.DisplayName, web.Spec.Subdomain = "frontend", "web-slug"
 	api = webApp("tea-a", "api", "nginx:1")
 	api.Spec.DisplayName, api.Spec.Subdomain = "web", "api-slug"

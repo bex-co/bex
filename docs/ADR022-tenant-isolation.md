@@ -128,6 +128,14 @@ Render refuses outbound TCP 25, 465 and 587 from free instances ([render.com/doc
 - **Plan changes.** Upgrading drops the label and downgrading restores it; the pods roll with the new template, as a tier change already does for its resources. The operator rollout adds the label to existing free Apps once, rolling those Apps' pods; paid Apps do not roll.
 - **Paid plans.** 587 and 2525 are open. 25 and 465 stay blocked for every plan by the hosting provider; the user decided on 2026-10-20 not to request the unblock, and no bex config implies they could open ([ADR018](ADR018-render-parity.md) "Outbound SMTP ports").
 
+## Free-plan private-network ingress (w8/m130)
+
+Render's Free plan does not support "Receiving private network traffic" ([render.com/docs/free](https://render.com/docs/free)); bex does the same, in every workspace.
+
+- **Deny.** `deny-free-plan-private-ingress` in `deploy/gitops/base/tenant-node-egress.yaml` is a `CiliumClusterwideNetworkPolicy` selecting the `app.bex.co/free-plan: "true"` label (see above) with `ingressDeny` from every endpoint carrying `app.bex.co/workspace` (any namespace). Deny precedence beats the per-namespace same-workspace allow. Traefik, the activator, kubelet probes (`host`) and platform scrapers carry no workspace label and stay allowed, so the public URL, custom domains, the free-tier wake and health checks are untouched. `enableDefaultDeny.ingress: false` keeps it subtractive. `scripts/gitops-validate.sh` pins its exact shape.
+- **Plan changes.** The label follows the plan (`syncPolicyLabels`), so an upgrade opens the internal address and a downgrade closes it with the pod roll a tier change already causes. No allowlist or canary: the rule applies to every workspace at once.
+- **Surfaces.** [ADR041](ADR041-service-addresses.md) D5 and [ADR018](ADR018-render-parity.md) record that `internalAddress` stays readable on a free web service while the dashboard Connect → Internal section and Blueprint `fromService` `host`/`hostport` say the Free plan takes no private traffic.
+
 ## Platform-side lockdown (t004)
 
 Defense-in-depth: even if the tenant-side policy regresses, platform namespaces refuse traffic from the tenant apps namespace.

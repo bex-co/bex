@@ -400,15 +400,13 @@ function ServiceConnectButton({
               />
             ) : null}
             <OpenPortsFact className="mb-2" openPorts={openPorts} />
-            {/* Only public traffic reaches the activator that wakes a
-                sleeping Free web service (ADR003), so a sibling's internal
-                call fails while it sleeps. Shown while awake too: it will
-                sleep again. A suspended service needs Resume instead. */}
-            {!service.suspended &&
-            service.url &&
-            autoSleepEligible(service.type, service.plan) ? (
+            {/* Render's Free plan does not support receiving private network
+                traffic, and the platform drops tenant traffic to a free
+                web service's pod (w8/m130). The address stays readable, as
+                Render derives it from the slug. */}
+            {service.url && autoSleepEligible(service.type, service.plan) ? (
               <p className="text-muted-foreground mb-2 text-xs">
-                {t("services.connectInternalSleepNote")}
+                {t("services.connectInternalFreeNote")}
               </p>
             ) : null}
           </>

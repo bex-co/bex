@@ -33,11 +33,10 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Internal-address section label in the service connection menu (Render's Connect → Internal tab)",
   },
-  "services.connectInternalSleepNote": {
-    message:
-      "免费 Web 服务空闲时会休眠，内部请求无法将其唤醒。如果该服务正在休眠，请先访问其公开 URL。",
+  "services.connectInternalFreeNote": {
+    message: "免费 Web 服务无法接收私有网络流量。升级后即可使用内部地址。",
     description:
-      "Connect → Internal note for a free public web service: only public traffic wakes it (ADR003), so a sibling's internal call fails while it sleeps (w4/252)",
+      "Connect → Internal note for a free public web service: Render's Free plan does not support receiving private network traffic, so a sibling's internal call never reaches it (w8/m130)",
   },
   "services.headerServiceAddress": {
     message: "服务地址",

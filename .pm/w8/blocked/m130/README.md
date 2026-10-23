@@ -1,17 +1,17 @@
 # w8 · m130 — Free web services cannot receive private-network traffic, as on Render
 
-**Worker:** worker8 **Goal:** A free web service is reachable only through its public `onbex.co` URL (and custom domains), as on Render. Other services in the workspace can no longer reach it at its internal address. Paid web and private services keep their internal address. **Status:** todo
+**Worker:** worker8 **Goal:** A free web service is reachable only through its public `onbex.co` URL (and custom domains), as on Render. Other services in the workspace can no longer reach it at its internal address. Paid web and private services keep their internal address. **Status:** blocked — t001, t002, t003, t004, t005, t006 done 2026-10-23; GitOps syncs deny-free-plan-private-ingress and the release pipeline deploys the operator, the backend and the dashboard; QA runs t007: free web A and free probe B — B's wget to A's internal address fails and A still serves its public URL; upgrade A and B's wget succeeds, downgrade blocks it again; paid web/private controls stay reachable; delete fixtures by ID with 404 proofs
 
 ## Tasks (in order)
 
 | id   | title                                                                       | est | depends_on                 |
 | ---- | --------------------------------------------------------------------------- | --- | -------------------------- |
-| t001 | Platform policy: deny tenant-to-free-web ingress, keep edge/activator/probes | 60m | —                          |
-| t002 | Plan changes: upgrade opens the internal address, downgrade closes it        | 30m | w8/m130/t001               |
-| t003 | Surfaces: internal address, Blueprint `fromService` and Connect copy on Free | 45m | w8/m130/t001               |
-| t004 | Render parity: ADR018/ADR041/ADR022 and every surface agree                  | 20m | w8/m130/t002, w8/m130/t003 |
-| t005 | Simplify the changed code                                                   | 15m | w8/m130/t004               |
-| t006 | Test coverage: free vs paid ingress, plan changes, edge paths untouched     | 30m | w8/m130/t004               |
+| t001 — **DONE** | Platform policy: deny tenant-to-free-web ingress, keep edge/activator/probes | 60m | —                          |
+| t002 — **DONE** | Plan changes: upgrade opens the internal address, downgrade closes it        | 30m | w8/m130/t001               |
+| t003 — **DONE** | Surfaces: internal address, Blueprint `fromService` and Connect copy on Free | 45m | w8/m130/t001               |
+| t004 — **DONE** | Render parity: ADR018/ADR041/ADR022 and every surface agree                  | 20m | w8/m130/t002, w8/m130/t003 |
+| t005 — **DONE** | Simplify the changed code                                                   | 15m | w8/m130/t004               |
+| t006 — **DONE** | Test coverage: free vs paid ingress, plan changes, edge paths untouched     | 30m | w8/m130/t004               |
 | t007 | Close out the milestone                                                     | 30m | w8/m130/t005, w8/m130/t006 |
 
 ## Definition of done

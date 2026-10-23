@@ -268,9 +268,9 @@ describe("ServiceDetailHeader", () => {
     ).toBeInTheDocument();
   });
 
-  describe("sleeping Free web service wake guidance (w4/252)", () => {
+  describe("Free web service private-network guidance (w4/252, w8/m130)", () => {
     const note =
-      "Free web services sleep when idle, and internal requests can't wake them. If this service is asleep, request its public URL first.";
+      "Free web services can't receive private network traffic. Upgrade to use the internal address.";
     const free = {
       plan: "free",
       phase: "Hibernated",
@@ -286,7 +286,7 @@ describe("ServiceDetailHeader", () => {
       ).toBeInTheDocument();
     });
 
-    it("explains next to the internal address that internal calls can't wake it", async () => {
+    it("explains next to the internal address that a Free service takes no private traffic", async () => {
       const user = userEvent.setup();
       renderHeader(svc(free));
       await user.click(await screen.findByRole("button", { name: "Connect" }));
@@ -296,7 +296,6 @@ describe("ServiceDetailHeader", () => {
 
     it.each([
       ["a paid web service", { plan: "starter", phase: "Running" }],
-      ["a suspended Free web service", { suspended: true }],
       [
         "a private service",
         { type: "private_service", url: null, phase: "Running" },

@@ -68,7 +68,7 @@ func TestValidateBlueprintChecksOutOfFileServiceHosts(t *testing.T) {
 	peer := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{Name: "tea-a-qa33-nope-anywhere", Namespace: "tea-a",
 			Labels: map[string]string{core.LabelTenant: "tea-a", core.LabelServiceName: "qa33-nope-anywhere"}},
-		Spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypePrivateService, Image: "nginx:1", Port: 8080},
+		Spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypePrivateService, Tier: "starter", Image: "nginx:1", Port: 8080},
 	}
 	if err := svc.Client.Create(ctx, peer); err != nil {
 		t.Fatal(err)
