@@ -129,6 +129,11 @@ func probedHealthCheckPath(c corev1.Container) *string {
 		return nil
 	case c.ReadinessProbe.HTTPGet != nil:
 		return new(c.ReadinessProbe.HTTPGet.Path)
+	case c.ReadinessProbe.Exec != nil:
+		if path, _, _, ok := healthProbeExecArgs(c.ReadinessProbe.Exec); ok {
+			return new(path)
+		}
+		return nil
 	case c.ReadinessProbe.TCPSocket != nil:
 		return new("")
 	}

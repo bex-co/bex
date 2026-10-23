@@ -1,17 +1,17 @@
 # w8 · m133 — A health check that answers 3xx passes, as on Render, instead of following the redirect
 
-**Worker:** worker8 **Goal:** An HTTP health check counts a `2xx` or `3xx` response from the instance as healthy, as on Render ("a `2xx` or `3xx` status code within five seconds"), and never follows the redirect. A service whose health path redirects goes live. **Status:** todo
+**Worker:** worker8 **Goal:** An HTTP health check counts a `2xx` or `3xx` response from the instance as healthy, as on Render ("a `2xx` or `3xx` status code within five seconds"), and never follows the redirect. A service whose health path redirects goes live. **Status:** blocked — t001, t002, t003, t004, t005, t006 done 2026-10-23; the release pipeline builds the new health-probe binary into the bex image and deploys the operator, and a service's next roll adopts the exec probe; QA runs t007 with owned Free echo-server fixtures: a 302→/elsewhere?echo_code=500 health path and a 301→absolute-URL path go live within 2 minutes with no /elsewhere request in the app logs, 404 and 500 paths never go live, /healthz (200) is the control, a path-less service keeps the TCP probe, the probe sends the platform Host; confirm the init container pulls bex's image on the tenant pool; delete fixtures by ID with 404 proofs
 
 ## Tasks (in order)
 
 | id   | title                                                                      | est | depends_on                 |
 | ---- | -------------------------------------------------------------------------- | --- | -------------------------- |
-| t001 | Design + spike: a no-redirect HTTP probe that works for any image          | 45m | —                          |
-| t002 | Operator: project the no-redirect probe for startup/readiness/liveness      | 60m | w8/m133/t001               |
-| t003 | Rollout and blast radius: existing services, stall/failure copy, timeouts   | 30m | w8/m133/t002               |
-| t004 | Render parity: ADR004/ADR018 and the deploy messages agree                 | 15m | w8/m133/t003               |
-| t005 | Simplify the changed code                                                  | 15m | w8/m133/t004               |
-| t006 | Test coverage: 2xx/3xx/4xx/5xx, relative/absolute redirects, timeout, Host  | 40m | w8/m133/t004               |
+| t001 — **DONE** | Design + spike: a no-redirect HTTP probe that works for any image          | 45m | —                          |
+| t002 — **DONE** | Operator: project the no-redirect probe for startup/readiness/liveness      | 60m | w8/m133/t001               |
+| t003 — **DONE** | Rollout and blast radius: existing services, stall/failure copy, timeouts   | 30m | w8/m133/t002               |
+| t004 — **DONE** | Render parity: ADR004/ADR018 and the deploy messages agree                 | 15m | w8/m133/t003               |
+| t005 — **DONE** | Simplify the changed code                                                  | 15m | w8/m133/t004               |
+| t006 — **DONE** | Test coverage: 2xx/3xx/4xx/5xx, relative/absolute redirects, timeout, Host  | 40m | w8/m133/t004               |
 | t007 | Close out the milestone                                                    | 30m | w8/m133/t005, w8/m133/t006 |
 
 ## Definition of done

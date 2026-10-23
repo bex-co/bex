@@ -5675,6 +5675,9 @@ func probeTargetDescription(probe *corev1.Probe) string {
 	if t := probe.TCPSocket; t != nil {
 		return fmt.Sprintf("a TCP connect to port %s", t.Port.String())
 	}
+	if path, _, port, ok := healthProbeExecArgs(probe.Exec); ok {
+		return fmt.Sprintf("GET %s on port %d", path, port)
+	}
 	return "the configured health check"
 }
 
