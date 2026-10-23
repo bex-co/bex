@@ -122,13 +122,81 @@ func TestAutomaticBrotliForEligibleAssets(t *testing.T) {
 		for _, offer := range []string{"br", "gzip, deflate, br, zstd", "br;q=1, gzip;q=0.5", "BR", "*"} {
 			assertBrotli(t, tc.name+" offered "+offer, doWith(h, http.MethodGet, tc.path, brHeader(offer)), body)
 		}
-		for _, offer := range []string{"", "identity", "gzip", "br;q=0", "br;q=0, *", "*;q=0", "br;q=bogus", "br;q=2"} {
+		for _, offer := range []string{"", "identity", "deflate", "zstd", "br;q=0", "br;q=0, gzip;q=0", "*;q=0", "br;q=bogus", "br;q=2"} {
 			rec := doWith(h, http.MethodGet, tc.path, brHeader(offer))
 			assertIdentity(t, tc.name+" offered "+strconv.Quote(offer), rec, body)
 			if !hasVaryAcceptEncoding(rec.Header()) {
 				t.Fatalf("%s identity response for an encodable asset lacks Vary: Accept-Encoding", tc.name)
 			}
 		}
+	}
+}
+
+// assertGzip checks a gzip response decodes to want and is honestly framed.
+func assertGzip(t *testing.T, label string, rec *httptest.ResponseRecorder, want []byte) {
+	t.Helper()
+	if rec.Code != http.StatusOK {
+		t.Fatalf("%s => %d, want 200", label, rec.Code)
+	}
+	if got := rec.Header().Get("Content-Encoding"); got != "gzip" {
+		t.Fatalf("%s Content-Encoding = %q, want gzip (%d bytes sent)", label, got, rec.Body.Len())
+	}
+	if !hasVaryAcceptEncoding(rec.Header()) {
+		t.Fatalf("%s Vary = %q, want Accept-Encoding", label, rec.Header().Values("Vary"))
+	}
+	if rec.Body.Len() >= len(want) {
+		t.Fatalf("%s sent %d gzip bytes for %d identity bytes, want smaller", label, rec.Body.Len(), len(want))
+	}
+	if got := rec.Header().Get("Content-Length"); got != strconv.Itoa(rec.Body.Len()) {
+		t.Fatalf("%s Content-Length = %q, want the encoded length %d", label, got, rec.Body.Len())
+	}
+	zr, err := gzip.NewReader(bytes.NewReader(rec.Body.Bytes()))
+	if err != nil {
+		t.Fatalf("%s gzip header: %v", label, err)
+	}
+	decoded, err := io.ReadAll(zr)
+	if err != nil || !bytes.Equal(decoded, want) {
+		t.Fatalf("%s gzip body does not decode to the published bytes (err %v)", label, err)
+	}
+	if tag := rec.Header().Get("Etag"); !strings.HasPrefix(tag, "W/") {
+		t.Fatalf("%s Etag = %q, want a weak validator on the encoded bytes", label, tag)
+	}
+}
+
+// TestGzipForGzipOnlyClients (w8/m132, Render serves gzip to a client that
+// does not offer br): gzip is chosen when br is not accepted, br stays
+// preferred at equal weight, the br and gzip variants are cached apart, and a
+// gzip response revalidates and ranges against its own encoded bytes.
+func TestGzipForGzipOnlyClients(t *testing.T) {
+	body := repeated("console.log('hello');\n")
+	h, _ := newTestHandler(t, Site{}, map[string]Object{key("big.js"): {Body: body, ContentType: "application/javascript"}})
+	for _, offer := range []string{"gzip", "gzip, deflate", "GZIP", "gzip;q=0.5, br;q=0.1", "br;q=0, gzip", "*;q=0.2, br;q=0"} {
+		assertGzip(t, "offered "+offer, doWith(h, http.MethodGet, "/big.js", brHeader(offer)), body)
+	}
+	for _, offer := range []string{"gzip, br", "br, gzip;q=0.5", "*"} {
+		assertBrotli(t, "offered "+offer, doWith(h, http.MethodGet, "/big.js", brHeader(offer)), body)
+	}
+	for _, offer := range []string{"gzip;q=0", "deflate", "zstd", "identity"} {
+		assertIdentity(t, "offered "+offer, doWith(h, http.MethodGet, "/big.js", brHeader(offer)), body)
+	}
+	for _, coding := range []string{codingBrotli, codingGzip} {
+		if v, ok := h.cache.get(variantKey(coding, cachedKey("big.js"))); !ok || v.negative {
+			t.Fatalf("%s variant not cached apart from the other coding (hit %v)", coding, ok)
+		}
+	}
+
+	first := doWith(h, http.MethodGet, "/big.js", brHeader("gzip"))
+	etag := first.Header().Get("Etag")
+	if rec := doWith(h, http.MethodGet, "/big.js", http.Header{"Accept-Encoding": {"gzip"}, "If-None-Match": {etag}}); rec.Code != http.StatusNotModified {
+		t.Fatalf("If-None-Match %s => %d, want 304", etag, rec.Code)
+	}
+	rec := doWith(h, http.MethodGet, "/big.js", http.Header{"Accept-Encoding": {"gzip"}, "Range": {"bytes=0-9"}})
+	if rec.Code != http.StatusPartialContent || !bytes.Equal(rec.Body.Bytes(), first.Body.Bytes()[:10]) {
+		t.Fatalf("Range on gzip => %d %d bytes, want 206 over the encoded bytes", rec.Code, rec.Body.Len())
+	}
+	head := doWith(h, http.MethodHead, "/big.js", brHeader("gzip"))
+	if head.Header().Get("Content-Encoding") != "gzip" || head.Body.Len() != 0 {
+		t.Fatalf("HEAD gzip = %q with %d body bytes", head.Header().Get("Content-Encoding"), head.Body.Len())
 	}
 }
 
@@ -199,6 +267,10 @@ func TestBrotliIneligibleResponsesStayExact(t *testing.T) {
 	}
 	for _, tc := range cases {
 		for _, method := range []string{http.MethodGet, http.MethodHead} {
+			// "gzip" alone must not re-encode either (w8/m132).
+			if rec := doWith(h, method, tc.path, brHeader("gzip")); rec.Header().Get("Content-Encoding") != tc.encoding || hasVaryAcceptEncoding(rec.Header()) {
+				t.Fatalf("%s %s offered gzip => Content-Encoding %q Vary %v, want the fixed representation", method, tc.path, rec.Header().Get("Content-Encoding"), rec.Header().Values("Vary"))
+			}
 			rec := doWith(h, method, tc.path, brHeader("br, gzip"))
 			if rec.Code != http.StatusOK || rec.Header().Get("Content-Encoding") != tc.encoding {
 				t.Fatalf("%s %s => %d Content-Encoding %q, want 200 %q", method, tc.path, rec.Code, rec.Header().Get("Content-Encoding"), tc.encoding)
@@ -555,19 +627,25 @@ func TestBrotliFramingOverHTTP(t *testing.T) {
 	}
 }
 
-func TestAcceptsBrotli(t *testing.T) {
-	for offer, want := range map[string]bool{
-		"br": true, " br ": true, "Br": true, "gzip, br": true, "br;q=0.001": true, "br; q=1.0": true,
-		"br;level=1;q=0.5": true, "*": true, "gzip, *;q=0.1": true,
-		"": false, "identity": false, "gzip, deflate": false, "br;q=0": false, "br;Q=0.000": false,
-		"br;q=0, *": false, "*;q=0": false, "br;q=": false, "br;q=NaN": false, "br;q=-1": false, "brotli": false,
+func TestNegotiateCoding(t *testing.T) {
+	for offer, want := range map[string]string{
+		"br": "br", " br ": "br", "Br": "br", "gzip, br": "br", "br;q=0.001": "br", "br; q=1.0": "br",
+		"br;level=1;q=0.5": "br", "*": "br", "gzip;q=0.5, br;q=0.4": "gzip", "gzip, br;q=0.9": "gzip",
+		"gzip": "gzip", "GZIP": "gzip", "x-gzip": "gzip", "gzip, deflate": "gzip", "gzip;q=0.001": "gzip",
+		"br;q=0, gzip": "gzip", "br;q=0, *": "gzip", "gzip, *;q=0.1": "gzip", "deflate, gzip;q=0.8": "gzip",
+		"": "", "identity": "", "deflate": "", "zstd": "", "br;q=0": "", "br;Q=0.000": "", "gzip;q=0": "",
+		"*;q=0": "", "br;q=": "", "br;q=NaN": "", "br;q=-1": "", "gzip;q=NaN": "", "brotli": "",
+		"br;q=0, gzip;q=0": "", "gzip;q=0, *": "br", "gzip;q=0, deflate": "",
 	} {
-		if got := acceptsBrotli(http.Header{"Accept-Encoding": {offer}}); got != want {
-			t.Errorf("acceptsBrotli(%q) = %v, want %v", offer, got, want)
+		if got := negotiateCoding(http.Header{"Accept-Encoding": {offer}}); got != want {
+			t.Errorf("negotiateCoding(%q) = %q, want %q", offer, got, want)
 		}
 	}
-	if !acceptsBrotli(http.Header{"Accept-Encoding": {"gzip", "br"}}) {
-		t.Error("br offered on a second Accept-Encoding line was ignored")
+	if got := negotiateCoding(http.Header{"Accept-Encoding": {"deflate", "gzip"}}); got != "gzip" {
+		t.Errorf("gzip offered on a second Accept-Encoding line = %q, want gzip", got)
+	}
+	if got := negotiateCoding(http.Header{"Accept-Encoding": {"gzip", "br"}}); got != "br" {
+		t.Errorf("br offered on a second Accept-Encoding line = %q, want br", got)
 	}
 }
 
