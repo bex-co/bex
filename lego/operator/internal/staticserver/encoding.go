@@ -17,6 +17,7 @@ limitations under the License.
 package staticserver
 
 import (
+	"compress/gzip"
 	"errors"
 	"net/http"
 	"strconv"
@@ -26,8 +27,10 @@ import (
 	"golang.org/x/net/http/httpguts"
 )
 
-// Automatic Brotli (w8/m79, Render's documented static-site behavior): an
-// eligible text-like object is served br-encoded to a visitor that accepts br.
+// Automatic Brotli (w8/m79, Render's documented static-site behavior) and gzip
+// (w8/m132, what Render's live static sites also serve to a client that
+// accepts gzip but not br): an eligible text-like object is served br-encoded
+// to a visitor that accepts br, else gzip-encoded to one that accepts gzip.
 // The encoded variant is computed once per immutable object key and cached
 // beside the identity object under the same shared byte budget, so the CPU cost
 // is paid per published object, not per request. Everything here degrades to
@@ -50,6 +53,8 @@ const (
 	// that finds no slot is served identity, not queued.
 	defaultMaxConcurrentEncodes = 2
 	defaultMaxSiteEncodes       = 1
+	// gzipLevel is the usual on-the-fly speed/ratio balance (stdlib default 6).
+	gzipLevel = 6
 	// brotliEncoderStateBytes is the encoder's ring buffer + hash tables at
 	// brotliQuality/brotliWindowBits, with headroom over the ~14 MiB measured
 	// for an 8 MiB input (TestBrotliEncoderStateBound).
@@ -62,6 +67,12 @@ const (
 // of its own.
 func encodeLease(n int) int64 { return 2*int64(n) + brotliEncoderStateBytes }
 
+// Content codings a static object can be served in, in server preference order.
+const (
+	codingBrotli = "br"
+	codingGzip   = "gzip"
+)
+
 // errEncodeBusy reports that no encode slot or live-body capacity was free; the
 // caller serves identity and does not cache the outcome.
 var errEncodeBusy = errors.New("staticserver: brotli encode capacity reached")
@@ -69,14 +80,17 @@ var errEncodeBusy = errors.New("staticserver: brotli encode capacity reached")
 // brotliVariantKey names the cached br variant of an object key. The leading
 // NUL can never begin a key built by Site.keyFor, so no request path can name
 // (and be served) a variant's bytes as if they were an identity object.
-func brotliVariantKey(key string) string { return "\x00br\x00" + key }
+func brotliVariantKey(key string) string { return variantKey(codingBrotli, key) }
 
-// brotliCandidate reports whether the response being prepared in hdr could be
+// variantKey names the cached variant of key in coding (same NUL-prefix rule).
+func variantKey(coding, key string) string { return "\x00" + coding + "\x00" + key }
+
+// encodingCandidate reports whether the response being prepared in hdr could be
 // served br-encoded: an eligible media type and size, no authored
 // Content-Encoding (a precompressed asset is served exactly as published, w4/204)
 // and no Cache-Control: no-transform. It depends only on the object and its
 // header rules — not on the request — so it also decides Vary.
-func brotliCandidate(hdr http.Header, size int) bool {
+func encodingCandidate(hdr http.Header, size int) bool {
 	if size < minBrotliBytes || size > maxBrotliBytes {
 		return false
 	}
@@ -109,27 +123,39 @@ func compressibleType(contentType string) bool {
 	return false
 }
 
-// acceptsBrotli reports whether the request's Accept-Encoding (RFC 9110
-// §12.5.3) admits br with a nonzero weight: an explicit br entry decides; else
+// negotiateCoding picks the content coding for the request's Accept-Encoding
+// (RFC 9110 §12.5.3): br or gzip, whichever the client weights higher, br at
+// equal weight; "" for identity. An explicit entry decides for its coding; else
 // a "*" entry does. An unparseable weight counts as zero, so a malformed offer
 // gets the always-acceptable identity representation.
-func acceptsBrotli(header http.Header) bool {
-	brQ, starQ := -1.0, -1.0 // -1: not listed
+func negotiateCoding(header http.Header) string {
+	brQ, gzipQ, starQ := -1.0, -1.0, -1.0 // -1: not listed
 	for _, line := range header.Values("Accept-Encoding") {
 		for member := range strings.SplitSeq(line, ",") {
 			coding, params, _ := strings.Cut(member, ";")
 			switch strings.ToLower(strings.TrimSpace(coding)) {
-			case "br":
+			case codingBrotli:
 				brQ = qvalue(params)
+			case codingGzip, "x-gzip":
+				gzipQ = qvalue(params)
 			case "*":
 				starQ = qvalue(params)
 			}
 		}
 	}
-	if brQ >= 0 {
-		return brQ > 0
+	if brQ < 0 {
+		brQ = starQ
 	}
-	return starQ > 0
+	if gzipQ < 0 {
+		gzipQ = starQ
+	}
+	switch {
+	case brQ > 0 && brQ >= gzipQ:
+		return codingBrotli
+	case gzipQ > 0:
+		return codingGzip
+	}
+	return ""
 }
 
 // qvalue extracts the weight from an Accept-Encoding member's parameters:
@@ -170,13 +196,13 @@ func weakenETag(hdr http.Header) {
 	}
 }
 
-// brotliVariant returns the useful br encoding of the identity body stored
-// under key, computing it at most once per key: concurrent requests collapse
-// onto one encode (singleflight) and the result — including "not useful", so an
-// incompressible asset is not re-tried every request — is cached against the
-// site's budget. ok=false means serve identity.
-func (h *Handler) brotliVariant(appID, key string, body []byte) (encoded []byte, ok bool) {
-	vkey := brotliVariantKey(key)
+// encodedVariant returns the useful coding encoding of the identity body
+// stored under key, computing it at most once per key and coding: concurrent
+// requests collapse onto one encode (singleflight) and the result — including
+// "not useful", so an incompressible asset is not re-tried every request — is
+// cached against the site's budget. ok=false means serve identity.
+func (h *Handler) encodedVariant(coding, appID, key string, body []byte) (encoded []byte, ok bool) {
+	vkey := variantKey(coding, key)
 	if v, hit := h.cache.get(vkey); hit {
 		return v.Body, !v.negative
 	}
@@ -193,7 +219,11 @@ func (h *Handler) brotliVariant(appID, key string, body []byte) (encoded []byte,
 			return nil, errEncodeBusy
 		}
 		defer h.liveBodies.Release(lease)
-		enc, useful := encodeBrotli(body)
+		encode := encodeBrotli
+		if coding == codingGzip {
+			encode = encodeGzip
+		}
+		enc, useful := encode(body)
 		variant := Object{Body: enc, negative: !useful}
 		h.cache.put(appID, vkey, variant)
 		return variant, nil
@@ -223,6 +253,23 @@ func encodeBrotli(src []byte) (encoded []byte, useful bool) {
 	return append([]byte(nil), out.buf...), true
 }
 
+// encodeGzip is encodeBrotli for gzip: the same usefulness threshold and
+// capped output, so an incompressible input stops early.
+func encodeGzip(src []byte) (encoded []byte, useful bool) {
+	out := &cappedBuffer{buf: make([]byte, 0, len(src)-len(src)/16)}
+	w, err := gzip.NewWriterLevel(out, gzipLevel)
+	if err != nil {
+		return nil, false
+	}
+	if _, err := w.Write(src); err != nil {
+		return nil, false
+	}
+	if err := w.Close(); err != nil {
+		return nil, false
+	}
+	return append([]byte(nil), out.buf...), true
+}
+
 // errBufferFull aborts an encode whose output would not be useful.
 var errBufferFull = errors.New("staticserver: encoded output not smaller")
 
@@ -237,18 +284,18 @@ func (b *cappedBuffer) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-// brotliResponseWriter frames a br body that http.ServeContent serves.
+// encodedResponseWriter frames a br or gzip body that http.ServeContent serves.
 // ServeContent omits Content-Length on a full response whenever
 // Content-Encoding is set (it assumes an on-the-fly compressing wrapper); this
 // body is fully encoded up front, so the exact length is known and sent. A
-// status other than 200/206 carries no br body, so the coding is dropped (304
+// status other than 200/206 carries no encoded body, so the coding is dropped (304
 // and 416 already strip it; this covers the bodyless 412).
-type brotliResponseWriter struct {
+type encodedResponseWriter struct {
 	http.ResponseWriter
 	size int
 }
 
-func (w *brotliResponseWriter) WriteHeader(code int) {
+func (w *encodedResponseWriter) WriteHeader(code int) {
 	hdr := w.Header()
 	switch code {
 	case http.StatusOK:
@@ -262,4 +309,4 @@ func (w *brotliResponseWriter) WriteHeader(code int) {
 }
 
 // Unwrap exposes the underlying writer to http.ResponseController.
-func (w *brotliResponseWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+func (w *encodedResponseWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
