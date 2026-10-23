@@ -76,3 +76,7 @@ Controls that already follow Render on Free: `bex services update <free> --maint
 ## Dedupe
 
 Searched `.pm` open and done, ADR018 and DO_NOT_DO for pre-deploy + free/paid: only the unfiled remark in w8/172. No open item.
+
+## Partial live evidence (2026-10-23 11:13–11:18 UTC, platform pin `29d63e1f7bea`, bex v0.3.3, `bex-canary`, `/qa-find-bugs-cli` sweep d4e8)
+
+`bex services update srv-dbdk2l1f0c2s738fsdqg --pre-deploy-command "echo pd" --confirm -o json` on a free web service → exit 1, `received response code 400: bad request: pre-deploy command is available only for paid web services, private services, and background workers; choose a paid plan first`. Not covered: create, Blueprint validate, downgrade refusal, GraphQL/MCP/dashboard. DoD (t009) still open.
