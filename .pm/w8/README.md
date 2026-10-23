@@ -389,6 +389,10 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **193** — [Restrict environment-variable, secret-file and shell access to Admins in a protected environment](done/193.md) ← w8/187 2026-10-22: the rest of Render's protected-environment list; minor, ~2h. — **DONE (2026-10-22)**.
 
+- [ ] **198** — [A new Ruby service with no version signal builds on 3.4.11; Render's default is exactly 3.4.4 (Bun 1.4.3 vs 1.4.4 too)](198.md) (~45m) ← `/qa-find-bugs-cli` loop sweep c7e2 2026-10-23 (minor)
+
+- [ ] **197** — [`ERLANG_VERSION=28.3` builds on the Elixir image's OTP (28.5.0.6) while the log says it was honored](197.md) (~50m) ← `/qa-find-bugs-cli` loop sweep a5c0 2026-10-23 (minor)
+
 - [x] **196** — [Requests reach the app without Render's `X-Request-Start`, so APM queue time and queue-time autoscalers read nothing](done/196.md) (~30m) ← `/qa-find-bugs-cli` loop sweep 7d1f 2026-10-23 (minor) — DONE 2026-10-23 (code shipped; live header check pending the GitOps sync)
 
 - [x] **195** — [Pino/bunyan numeric JSON levels are labelled `unknown`, so no `--level` filter returns them](done/195.md) (~40m) ← `/qa-find-bugs-cli` loop sweep 5e2a 2026-10-23 (minor) — DONE 2026-10-23 (code shipped; live level check pending the GitOps sync)
