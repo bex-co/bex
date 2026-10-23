@@ -1,6 +1,6 @@
 # w8 · m134 — New private Key Value stores never become available (regression from w8/181)
 
-**Worker:** worker8 **Goal:** A Key Value store created without an IP allowlist (the default on every surface) is `available` within about a minute, as before w8/181. Its first external-access enable still restarts nothing. **Status:** todo
+**Worker:** worker8 **Goal:** A Key Value store created without an IP allowlist (the default on every surface) is `available` within about a minute, as before w8/181. Its first external-access enable still restarts nothing. **Status:** blocked — t004, t005, t006 done 2026-10-23; t001 (the blocker hotfix) shipped in db4f548e1 and needs the release pipeline to deploy the operator; then QA runs t002/t007 live: a fresh `bex kv create --plan free` is available within 90 s, inventory and roll any store created since 2026-10-23 02:28 UTC still `creating`, a store created with an allowlist is reachable over TLS. t003 (restart-free first enable without a birth listener) is NOT done and needs your sign-off on the design: Valkey 7.2.14 and 8.1.9 both accept `CONFIG SET tls-cert-file/tls-key-file/tls-ca-cert-file` then `tls-port` at runtime and `tls-port 0` turns it off (verified in Docker 2026-10-23), but using it means an optional Secret mount plus either a sh wrapper that adds `--tls-port` when the cert files exist or an operator re-apply after every pod restart, inside the live-handoff engine that guards customer data
 
 ## Tasks (in order)
 
@@ -9,9 +9,9 @@
 | t001 — **DONE** | Hotfix: a new store starts with the TLS listener only when its Certificate can exist | 30m | — |
 | t002 | Unstick stores created since the regression | 20m | w8/m134/t001 |
 | t003 | Restart-free first enable without a birth listener (w8/181's goal) | 60m | w8/m134/t001 |
-| t004 | Render parity: ADR021/ADR018 and create/enable timings on every surface | 15m | w8/m134/t003 |
-| t005 | Simplify the changed code | 15m | w8/m134/t004 |
-| t006 | Test coverage: private create becomes Ready; public create; first enable | 40m | w8/m134/t004 |
+| t004 — **DONE** | Render parity: ADR021/ADR018 and create/enable timings on every surface | 15m | w8/m134/t003 |
+| t005 — **DONE** | Simplify the changed code | 15m | w8/m134/t004 |
+| t006 — **DONE** | Test coverage: private create becomes Ready; public create; first enable | 40m | w8/m134/t004 |
 | t007 | Close out the milestone | 30m | w8/m134/t005, w8/m134/t006 |
 
 ## Definition of done
