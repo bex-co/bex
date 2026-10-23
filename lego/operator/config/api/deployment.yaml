@@ -560,6 +560,27 @@ spec:
                   name: bex-agent-snapshot
                   key: BEX_AGENT_SNAPSHOT_S3_SECRET_KEY
                   optional: true
+            # ADR090 platform model route (2026-10-23): the claude profile of
+            # each allowlisted workspace runs on OpenRouter with a platform-owned
+            # key, model pinned by the gateway. The key arrives from the
+            # out-of-band bex-agent-platform-model Secret installed by
+            # scripts/agent-platform-model-secret.sh; the reference is optional
+            # and a missing key only DISABLES the route (loud startup log), so
+            # bex-api never crash-loops on it. Every other workspace keeps its
+            # own BYO key on api.anthropic.com. Widening past this allowlist is
+            # a tracked follow-up, not a config edit.
+            - name: BEX_AGENT_PLATFORM_MODEL_ROUTE
+              value: openrouter
+            - name: BEX_AGENT_PLATFORM_MODEL_WORKSPACES
+              value: tea-d98210cbbpdc73dcrkvg
+            - name: BEX_AGENT_PLATFORM_MODEL
+              value: deepseek/deepseek-v4.1-flash-1017
+            - name: BEX_AGENT_PLATFORM_MODEL_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: bex-agent-platform-model
+                  key: openrouter-api-key
+                  optional: true
             # Login-time invite redemption requires a Kratos-VERIFIED email
             # (w1/040, closing w1/m53's V1 window: an attacker who registered
             # with a victim's not-yet-signed-up invited address could otherwise

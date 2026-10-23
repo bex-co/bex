@@ -63,22 +63,25 @@ const (
 	ModelKeyField = "BEX_AGENT_MODEL_API_KEY"
 )
 
-// RegisteredModelEndpoint resolves a supported agent profile server-side and
-// rejects caller-supplied endpoint overrides. It is shared by create/rehydrate
-// and the credential minter, so legacy rows cannot bypass the registration
-// boundary after a new-create check is deployed.
-func RegisteredModelEndpoint(agent, requested string) (string, error) {
+// RegisteredModelEndpoint resolves a supported agent profile server-side for
+// workspaceID and rejects caller-supplied endpoint overrides. It is shared by
+// create/rehydrate and the credential minter, so legacy rows cannot bypass the
+// registration boundary after a new-create check is deployed. The result is
+// decided by the workspace's model route NOW, not by the requested (stored)
+// endpoint.
+func RegisteredModelEndpoint(workspaceID, agent, requested string) (string, error) {
 	profile, ok := LookupAgentProfile(agent)
 	if !ok {
 		return "", core.NewBadRequestError(
 			"AGENT_SESSION_MODEL_ENDPOINT_INVALID",
 			"agentConfig.agent has no registered model provider", nil)
 	}
-	expected := registeredEndpoint(profile)
+	expected := registeredEndpoint(workspaceID, profile)
 	requested = strings.TrimRight(strings.TrimSpace(requested), "/")
-	// The release endpoint stays accepted while the dev route overrides it, so a
-	// session created before the route was switched on keeps steering; it then
-	// resolves to the route's endpoint like every other session.
+	// The release endpoint stays accepted while a route overrides it, so a
+	// session created before the route covered its workspace keeps steering; it
+	// then resolves to the route's endpoint like every other session. A route
+	// endpoint is accepted only while a route covers the workspace.
 	if requested != "" && requested != expected && requested != profile.ModelEndpoint {
 		return "", core.NewBadRequestError(
 			"AGENT_SESSION_MODEL_ENDPOINT_INVALID",
@@ -199,9 +202,14 @@ type ModelMintResponse struct {
 	EndpointHost string `json:"endpointHost"`
 	Scheme       string `json:"scheme"`
 	// PathPrefix, when set, is prepended to the agent's request path on the
-	// upstream hop. Only the dev model route uses it (OpenRouter serves its
+	// upstream hop. Only the model routes use it (OpenRouter serves its
 	// Anthropic-compatible API under /api); release endpoints leave it empty.
 	PathPrefix string `json:"pathPrefix,omitempty"`
+	// PinnedModel, when set, means Credential is the PLATFORM route's key: the
+	// gateway must refuse any request whose JSON body's top-level "model" is not
+	// exactly this id, so a tenant sandbox cannot spend the platform key on a
+	// different (more expensive) model. Empty for every workspace BYO key.
+	PinnedModel string `json:"pinnedModel,omitempty"`
 }
 
 // ModelAuthFailureResponse acknowledges a reported vendor auth rejection. The
@@ -275,7 +283,7 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 			TargetName: auditHost, Outcome: outcome, At: m.now(),
 		})
 	}()
-	if m.Keys == nil || m.Sessions == nil {
+	if m.Sessions == nil {
 		return ModelMintResponse{}, fmt.Errorf("agent model credentials unavailable")
 	}
 	if req.Workspace == "" || req.SessionID == "" || req.PodName == "" || req.PodUID == "" {
@@ -295,11 +303,28 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 	if !currentSandboxCaller(session, req.Workspace, req.PodName, req.PodUID) {
 		return ModelMintResponse{}, ErrForbidden
 	}
-	host, err := modelEndpointHostOf(session.AgentConfig)
+	agent, host, err := modelEndpointHostOf(req.Workspace, session.AgentConfig)
 	if err != nil {
 		return ModelMintResponse{}, err
 	}
 	auditHost = host
+	pathPrefix := ""
+	if host == OpenRouterHost {
+		pathPrefix = openRouterPathPrefix
+	}
+	// The platform route (ADR090) injects its own key for an allowlisted
+	// workspace: the workspace's BYO key is not read, and the model is pinned.
+	// The route is resolved for the workspace now, the same decision
+	// modelEndpointHostOf just made, so the host is OpenRouter here.
+	if route := routeFor(req.Workspace, agent); route != nil && route.platformKey != "" && host == OpenRouterHost {
+		return ModelMintResponse{
+			Credential: route.platformKey, EndpointHost: host, Scheme: AuthSchemeBearer,
+			PathPrefix: pathPrefix, PinnedModel: route.model,
+		}, nil
+	}
+	if m.Keys == nil {
+		return ModelMintResponse{}, fmt.Errorf("agent model credentials unavailable")
+	}
 	data, err := m.Keys.Get(ctx, ModelKeySecretPath(req.Workspace))
 	if err != nil {
 		return ModelMintResponse{}, fmt.Errorf("%w: read agent session model key: %v", core.ErrSecretsUnavailable, err)
@@ -316,7 +341,7 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 		// CLI retrying into a raw JSON-RPC error (w1/m136).
 		return ModelMintResponse{}, ErrModelKeyMissing
 	}
-	return ModelMintResponse{Credential: credential, EndpointHost: host, Scheme: ResolveAuthScheme(host, credential), PathPrefix: upstreamPathPrefix(host)}, nil
+	return ModelMintResponse{Credential: credential, EndpointHost: host, Scheme: ResolveAuthScheme(host, credential), PathPrefix: pathPrefix}, nil
 }
 
 func (m *ModelMinter) now() time.Time {
@@ -404,30 +429,31 @@ func (f *ModelAuthFailer) now() time.Time {
 	return time.Now().UTC()
 }
 
-// modelEndpointHostOf extracts and re-validates the vendor host from a session's
-// stored AgentConfig. Create/Steer/resume always persist the resolved endpoint
-// (never empty), so a minimal decode suffices; ModelEndpointHost re-applies the
-// SSRF guards (no IP literals, no private/cluster-local names) as defense in
-// depth at credential-release time.
-func modelEndpointHostOf(config json.RawMessage) (string, error) {
+// modelEndpointHostOf extracts the agent and re-validates the vendor host for
+// a session's stored AgentConfig in workspaceID. The host comes from the
+// workspace's current route (RegisteredModelEndpoint), the stored endpoint only
+// has to be one the profile accepts; ModelEndpointHost re-applies the SSRF
+// guards (no IP literals, no private/cluster-local names) as defense in depth
+// at credential-release time.
+func modelEndpointHostOf(workspaceID string, config json.RawMessage) (agent, host string, err error) {
 	var decoded struct {
 		Agent         string `json:"agent"`
 		ModelEndpoint string `json:"modelEndpoint"`
 	}
 	if len(config) > 0 {
 		if err := json.Unmarshal(config, &decoded); err != nil {
-			return "", fmt.Errorf("%w: decode agent config", ErrInvalidRequest)
+			return "", "", fmt.Errorf("%w: decode agent config", ErrInvalidRequest)
 		}
 	}
-	endpoint, err := RegisteredModelEndpoint(decoded.Agent, decoded.ModelEndpoint)
+	endpoint, err := RegisteredModelEndpoint(workspaceID, decoded.Agent, decoded.ModelEndpoint)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	host, err := sessionegress.ModelEndpointHost(endpoint)
+	host, err = sessionegress.ModelEndpointHost(endpoint)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return host, nil
+	return decoded.Agent, host, nil
 }
 
 // ResolveAuthScheme picks the injection scheme from the credential shape and the

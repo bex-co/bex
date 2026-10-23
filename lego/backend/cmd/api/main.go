@@ -34,6 +34,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -160,6 +161,15 @@ func main() {
 	}
 	if cfg.AgentDevModelRoute != "" {
 		log.Printf("bex-api: DEV model route %q active for the claude agent profile (dev control plane %q)", cfg.AgentDevModelRoute, cfg.CPIdentity)
+	}
+	// loadConfig already validated the route and cleared it when the key is
+	// missing; the key itself is never logged.
+	if err := agentsession.EnablePlatformModelRoute(cfg.AgentPlatformModelRoute, cfg.AgentPlatformModel, cfg.AgentPlatformModelWorkspaces, cfg.AgentPlatformModelKey); err != nil {
+		log.Fatalf("bex-api: %v", err)
+	}
+	if cfg.AgentPlatformModelRoute != "" {
+		log.Printf("bex-api: PLATFORM model route %q active for the claude agent profile in %d allowlisted workspace(s): %s",
+			cfg.AgentPlatformModelRoute, len(cfg.AgentPlatformModelWorkspaces), strings.Join(cfg.AgentPlatformModelWorkspaces, ","))
 	}
 	cpDBURI := cfg.CPDBURI
 	dashboardURL := cfg.DashboardURL

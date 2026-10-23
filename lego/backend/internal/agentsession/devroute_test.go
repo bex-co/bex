@@ -37,10 +37,10 @@ func TestDevModelRouteIsRefusedInProduction(t *testing.T) {
 		t.Fatal("malformed model id accepted")
 	}
 	// Every refusal left the route off: the release endpoint is the only one.
-	if _, err := RegisteredModelEndpoint("claude", openRouterEndpoint); err == nil {
+	if _, err := RegisteredModelEndpoint("tea-a", "claude", openRouterEndpoint); err == nil {
 		t.Fatal("OpenRouter endpoint accepted with the route off")
 	}
-	if env := DevModelRouteEnv("claude"); env != nil {
+	if env := ModelRouteEnv("tea-a", "claude"); env != nil {
 		t.Fatalf("route env with the route off: %v", env)
 	}
 }
@@ -52,28 +52,28 @@ func TestDevModelRouteSwapsOnlyTheClaudeEndpoint(t *testing.T) {
 	t.Cleanup(func() { _ = EnableDevModelRoute("", "", "") })
 
 	for _, requested := range []string{"", openRouterEndpoint, "https://api.anthropic.com/v1"} {
-		got, err := RegisteredModelEndpoint("claude", requested)
+		got, err := RegisteredModelEndpoint("tea-a", "claude", requested)
 		if err != nil || got != "https://openrouter.ai/api" {
 			t.Fatalf("claude endpoint for %q = %q err=%v", requested, got, err)
 		}
 	}
-	if _, err := RegisteredModelEndpoint("claude", "https://evil.example/v1"); err == nil {
+	if _, err := RegisteredModelEndpoint("tea-a", "claude", "https://evil.example/v1"); err == nil {
 		t.Fatal("an arbitrary endpoint was accepted")
 	}
-	if got, err := RegisteredModelEndpoint("codex", ""); err != nil || got != "https://api.openai.com/v1" {
+	if got, err := RegisteredModelEndpoint("tea-a", "codex", ""); err != nil || got != "https://api.openai.com/v1" {
 		t.Fatalf("codex endpoint = %q err=%v, want the release endpoint", got, err)
 	}
 	// The release manifest itself is untouched.
 	if profile, _ := LookupAgentProfile("claude"); profile.ModelEndpoint != "https://api.anthropic.com/v1" {
 		t.Fatalf("release claude profile endpoint = %q", profile.ModelEndpoint)
 	}
-	env := DevModelRouteEnv(" Claude ")
+	env := ModelRouteEnv("tea-a", " Claude ")
 	for _, name := range []string{"ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_HAIKU_MODEL"} {
 		if env[name] != DefaultDevModel {
 			t.Fatalf("%s = %q, want %q", name, env[name], DefaultDevModel)
 		}
 	}
-	if DevModelRouteEnv("codex") != nil {
+	if ModelRouteEnv("tea-a", "codex") != nil {
 		t.Fatal("route env leaked to another profile")
 	}
 
@@ -100,7 +100,7 @@ func TestDevModelRouteHonorsAnExplicitModel(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = EnableDevModelRoute("", "", "") })
-	if got := DevModelRouteEnv("claude")["ANTHROPIC_MODEL"]; got != "deepseek/deepseek-v4.1-flash" {
+	if got := ModelRouteEnv("tea-a", "claude")["ANTHROPIC_MODEL"]; got != "deepseek/deepseek-v4.1-flash" {
 		t.Fatalf("ANTHROPIC_MODEL = %q", got)
 	}
 }

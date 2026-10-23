@@ -116,11 +116,20 @@ The controls that still bound a sandbox are unchanged: default-deny egress, the 
 - A tenant per-session instruction field, with the D2 layer-4 wrapper (not yet implemented).
 - Requester `Co-authored-by` on agent commits.
 - Override-mode system prompts (`mode: "override"`).
-- Making OpenRouter a customer-selectable provider (see the dev route below).
+- Making OpenRouter a customer-selectable provider (see the dev route and the allowlisted platform route below).
 
 ## Dev-only OpenRouter route for live verification
 
 Live verification (`w10/m13` t016) uses a dev-only route. It is env-gated and refused in production. It points the Claude profile at OpenRouter's Anthropic-compatible endpoint with a DeepSeek model. The release profiles in `agent-profiles.json` are unchanged. A DeepSeek miss is ambiguous between the overlay and the model, so final acceptance also needs one run on a real Claude model.
+
+## Platform OpenRouter route for an allowlisted workspace (2026-10-23)
+
+**User decision 2026-10-23** (tracked in `w10/m14`): ship agent sessions on a bex-owned OpenRouter key now, but only for workspace `tea-d98210cbbpdc73dcrkvg`, and keep every other tenant off it until the economics are in place.
+
+- **Scope.** bex-api's `BEX_AGENT_PLATFORM_MODEL_ROUTE=openrouter` applies only to the `tea-` ids in `BEX_AGENT_PLATFORM_MODEL_WORKSPACES`, and only to the claude profile. Unlike the dev route it runs on the production control plane. The route is resolved per workspace at create, steer, rehydrate and mint time, not from the endpoint a session stored, so an existing session moves onto it on its next dispatch. Every other workspace is unchanged: `api.anthropic.com` with its own BYO key, and an explicit OpenRouter endpoint is refused. Allowlisted workspaces report `modelKeyReady` through the platform key.
+- **Key custody.** The key lives in the `bex-system` Secret `bex-agent-platform-model` and flows to bex-api's env, then to the internal mint, then to the gateway's upstream hop. It never enters the sandbox, which still holds only `ModelKeyPlaceholder`, nor any API response, log, audit event or error. A missing Secret disables the route with a loud startup log rather than crash-looping bex-api.
+- **Model pin.** The mint returns `pinnedModel`. The gateway refuses with 403 any request whose JSON top-level `model` is not exactly that id, appears twice, or carries OpenRouter's `models` fallback list or paid `plugins`. A tenant sandbox therefore cannot spend the platform key on a different model. Workspace BYO routes are not pinned.
+- **Follow-ups (not in this step).** Per-workspace token metering and pricing, plan quotas plus an OpenRouter-side spend cap, and a data policy for platform-key traffic. Widening the route to every workspace is dated in `w10/m14` t007.
 
 ## Prior art
 

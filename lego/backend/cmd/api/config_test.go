@@ -20,6 +20,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 )
 
 func loadFor(t *testing.T, env map[string]string) (*Config, []string, error) {
@@ -523,5 +525,75 @@ func TestLoadConfigDevModelRouteOnDevControlPlane(t *testing.T) {
 	}
 	if cfg.AgentDevModelRoute != "openrouter" || cfg.AgentDevModel != "" {
 		t.Fatalf("dev route config = %q / %q", cfg.AgentDevModelRoute, cfg.AgentDevModel)
+	}
+}
+
+// TestLoadConfigPlatformModelRoute pins the workspace-allowlisted platform
+// model route's startup contract (ADR090): route + allowlist + key enable it
+// on a production control plane; a malformed route, model, empty allowlist or
+// non-workspace id refuses startup; a missing key only disables the route with
+// a loud warning (the Secret is optional, so bex-api must not crash-loop), and
+// the key's value never appears in any message.
+func TestLoadConfigPlatformModelRoute(t *testing.T) {
+	const key = "sk-or-v1-PLATFORM-SECRET"
+	base := func(extra map[string]string) map[string]string {
+		env := map[string]string{
+			"BEX_AGENT_PLATFORM_MODEL_ROUTE":      "openrouter",
+			"BEX_AGENT_PLATFORM_MODEL_WORKSPACES": " tea-d98210cbbpdc73dcrkvg ,",
+			"BEX_AGENT_PLATFORM_MODEL_KEY":        key,
+		}
+		for k, v := range extra {
+			env[k] = v
+		}
+		return cpEnv(env)
+	}
+	cfg, warnings, err := loadFor(t, base(nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.AgentPlatformModelRoute != "openrouter" || cfg.AgentPlatformModelKey != key ||
+		strings.Join(cfg.AgentPlatformModelWorkspaces, ",") != "tea-d98210cbbpdc73dcrkvg" {
+		t.Fatalf("route = %q workspaces = %v keySet=%v", cfg.AgentPlatformModelRoute, cfg.AgentPlatformModelWorkspaces, cfg.AgentPlatformModelKey != "")
+	}
+	if strings.Contains(strings.Join(warnings, "\n"), key) {
+		t.Fatal("a warning carries the platform key")
+	}
+
+	for name, extra := range map[string]map[string]string{
+		"unknown route":   {"BEX_AGENT_PLATFORM_MODEL_ROUTE": "bedrock"},
+		"empty allowlist": {"BEX_AGENT_PLATFORM_MODEL_WORKSPACES": " , "},
+		"non-workspace":   {"BEX_AGENT_PLATFORM_MODEL_WORKSPACES": "tea-d98210cbbpdc73dcrkvg,srv-d98210cbbpdc73dcrkvg"},
+		"malformed id":    {"BEX_AGENT_PLATFORM_MODEL_WORKSPACES": "tea_d98210cbbpdc73dcrkvg"},
+		"bad model":       {"BEX_AGENT_PLATFORM_MODEL": "claude opus; rm"},
+	} {
+		_, _, err := loadFor(t, base(extra))
+		if err == nil || !strings.Contains(err.Error(), "BEX_AGENT_PLATFORM_MODEL") {
+			t.Errorf("%s: err = %v, want a startup refusal naming the platform route", name, err)
+		} else if strings.Contains(err.Error(), key) {
+			t.Errorf("%s: the startup error carries the platform key", name)
+		}
+	}
+
+	cfg, warnings, err = loadFor(t, base(map[string]string{"BEX_AGENT_PLATFORM_MODEL_KEY": ""}))
+	if err != nil {
+		t.Fatalf("missing key refused startup: %v", err)
+	}
+	if cfg.AgentPlatformModelRoute != "" {
+		t.Fatalf("route = %q with no key, want disabled", cfg.AgentPlatformModelRoute)
+	}
+	if !strings.Contains(strings.Join(warnings, "\n"), "platform model route is DISABLED") {
+		t.Fatalf("warnings = %q, want a loud disabled-route warning", warnings)
+	}
+	// Enabling exactly what loadConfig produced succeeds (route cleared ⇒ off).
+	if err := agentsession.EnablePlatformModelRoute(cfg.AgentPlatformModelRoute, cfg.AgentPlatformModel, cfg.AgentPlatformModelWorkspaces, cfg.AgentPlatformModelKey); err != nil {
+		t.Fatalf("enable after a disabled route: %v", err)
+	}
+	if agentsession.PlatformModelKeyReady("tea-d98210cbbpdc73dcrkvg") {
+		t.Fatal("route active without a key")
+	}
+
+	// Unset route: nothing is required.
+	if cfg, _, err := loadFor(t, cpEnv(nil)); err != nil || cfg.AgentPlatformModelRoute != "" {
+		t.Fatalf("unset route: %v / %q", err, cfg.AgentPlatformModelRoute)
 	}
 }
