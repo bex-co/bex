@@ -19,7 +19,7 @@ deployment:
     - name: bex-client-ip-headers-plugin
       configMap:
         # Content-hashed like the egress plugin above (w8/m123).
-        name: bex-client-ip-headers-plugin-9dc8tc9kkd
+        name: bex-client-ip-headers-plugin-g25d92dmgt
 # A second pod cannot bind the same host ports on the pinned edge node, so a
 # rolling update deadlocks with the new pod Pending. Recreate gives restarts
 # a deterministic metering-counter reset and a brief, explicit edge
