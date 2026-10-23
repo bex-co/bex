@@ -25,6 +25,7 @@ package modelproxy
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"log"
@@ -188,7 +189,14 @@ func (b *Broker) serveModel(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "model operation is not allowed", http.StatusForbidden)
 		return
 	}
-	// A mint-supplied path prefix (the dev model route's OpenRouter `/api`) is
+	// The platform model route (ADR090) pins the model its platform-owned key
+	// may be spent on. body is the already-bounded buffer forwarded below, so
+	// the check reads exactly the bytes the vendor will see.
+	if credential.PinnedModel != "" && !pinnedModelRequest(body, credential.PinnedModel) {
+		http.Error(w, "model not allowed: this workspace's platform model route only serves model "+credential.PinnedModel, http.StatusForbidden)
+		return
+	}
+	// A mint-supplied path prefix (a model route's OpenRouter `/api`) is
 	// trusted like the host, but still shape-checked so it can only ever add
 	// plain path segments in front of the agent's own path.
 	if !pathPrefixPattern.MatchString(credential.PathPrefix) {
@@ -466,6 +474,51 @@ func mergeBeta(existing, flag string) string {
 	return existing + "," + flag
 }
 
+// pinnedModelRequest reports whether body is one JSON object whose top-level
+// "model" member appears exactly once and equals pinned. Duplicate "model"
+// keys are refused (parsers disagree on which one wins), as are OpenRouter's
+// body-level routing/billing extensions that could reach a different model or
+// a paid add-on with the platform key ("models" fallback lists, "plugins").
+func pinnedModelRequest(body []byte, pinned string) bool {
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	if token, err := decoder.Token(); err != nil || token != json.Delim('{') {
+		return false
+	}
+	matched := 0
+	for decoder.More() {
+		token, err := decoder.Token()
+		if err != nil {
+			return false
+		}
+		key, ok := token.(string)
+		if !ok {
+			return false
+		}
+		switch key {
+		case "model":
+			var model string
+			if err := decoder.Decode(&model); err != nil || model != pinned {
+				return false
+			}
+			matched++
+		case "models", "plugins":
+			return false
+		default:
+			var skip json.RawMessage
+			if err := decoder.Decode(&skip); err != nil {
+				return false
+			}
+		}
+	}
+	if token, err := decoder.Token(); err != nil || token != json.Delim('}') {
+		return false
+	}
+	if _, err := decoder.Token(); err != io.EOF {
+		return false // trailing data after the object
+	}
+	return matched == 1
+}
+
 // pathPrefixPattern bounds ModelMintResponse.PathPrefix to zero or more plain
 // path segments.
 var pathPrefixPattern = regexp.MustCompile(`^(?:/[A-Za-z0-9_-]+)*$`)
@@ -483,10 +536,11 @@ func allowedProviderOperation(host, method, path, rawQuery, contentType string) 
 	switch strings.ToLower(host) {
 	case "api.openai.com":
 		return rawQuery == "" && (path == "/v1/responses" || path == "/v1/responses/compact" || path == "/v1/chat/completions")
-	// OpenRouter is reachable only through bex-api's dev model route
-	// (agentsession.EnableDevModelRoute refuses production): the mint alone
-	// decides the host, and Claude Code speaks the same Anthropic Messages
-	// operations to it, which the gateway relays under OpenRouter's /api prefix.
+	// OpenRouter is reachable only through a bex-api model route (the dev
+	// route, refused in production, or the workspace-allowlisted platform
+	// route, ADR090): the mint alone decides the host, and Claude Code speaks
+	// the same Anthropic Messages operations to it, which the gateway relays
+	// under OpenRouter's /api prefix.
 	case "api.anthropic.com", agentsession.OpenRouterHost:
 		if path != "/v1/messages" && path != "/v1/messages/count_tokens" {
 			return false
