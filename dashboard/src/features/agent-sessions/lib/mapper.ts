@@ -75,6 +75,7 @@ export function toAgentSessionView(
       (wire.deliveryMode as AgentSessionDeliveryMode | null) ?? null,
     failureReason: wire.failureReason ?? null,
     failureReasonCode: wire.failureReasonCode ?? null,
+    deliveryNote: wire.deliveryNote || null,
     createdAt: wire.createdAt,
     updatedAt: wire.updatedAt,
     canceledAt: wire.canceledAt ?? null,

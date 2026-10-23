@@ -110,7 +110,7 @@ func TestPGAgentSessionFailureCode(t *testing.T) {
 		// sandbox a claim needs, so the phase is set by hand.
 		row := refused(t)
 		setPhase(t, row.ID, "hibernating")
-		row, _, err := s.FinalizeAgentSession(ctx, row.ID, "failed", "", "", 0, nil, capacity.Reason)
+		row, _, err := s.FinalizeAgentSession(ctx, row.ID, "failed", "", "", capacity.Reason)
 		if err != nil {
 			t.Fatal(err)
 		}

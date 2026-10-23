@@ -188,7 +188,14 @@ func (b *Broker) serveModel(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "model operation is not allowed", http.StatusForbidden)
 		return
 	}
-	upstream, err := upstreamURL(credential.EndpointHost, upstreamPath, r.URL.RawQuery, credential.Scheme)
+	// A mint-supplied path prefix (the dev model route's OpenRouter `/api`) is
+	// trusted like the host, but still shape-checked so it can only ever add
+	// plain path segments in front of the agent's own path.
+	if !pathPrefixPattern.MatchString(credential.PathPrefix) {
+		http.Error(w, "model proxy unavailable", http.StatusBadGateway)
+		return
+	}
+	upstream, err := upstreamURL(credential.EndpointHost, credential.PathPrefix+upstreamPath, r.URL.RawQuery, credential.Scheme)
 	if err != nil {
 		http.Error(w, "model proxy unavailable", http.StatusBadGateway)
 		return
@@ -459,6 +466,10 @@ func mergeBeta(existing, flag string) string {
 	return existing + "," + flag
 }
 
+// pathPrefixPattern bounds ModelMintResponse.PathPrefix to zero or more plain
+// path segments.
+var pathPrefixPattern = regexp.MustCompile(`^(?:/[A-Za-z0-9_-]+)*$`)
+
 var googleInferencePath = regexp.MustCompile(`^/v1beta/models/[A-Za-z0-9._:-]+:(generateContent|streamGenerateContent|countTokens)$`)
 
 // allowedProviderOperation is the confused-deputy boundary: the sandbox can
@@ -472,7 +483,11 @@ func allowedProviderOperation(host, method, path, rawQuery, contentType string) 
 	switch strings.ToLower(host) {
 	case "api.openai.com":
 		return rawQuery == "" && (path == "/v1/responses" || path == "/v1/responses/compact" || path == "/v1/chat/completions")
-	case "api.anthropic.com":
+	// OpenRouter is reachable only through bex-api's dev model route
+	// (agentsession.EnableDevModelRoute refuses production): the mint alone
+	// decides the host, and Claude Code speaks the same Anthropic Messages
+	// operations to it, which the gateway relays under OpenRouter's /api prefix.
+	case "api.anthropic.com", agentsession.OpenRouterHost:
 		if path != "/v1/messages" && path != "/v1/messages/count_tokens" {
 			return false
 		}

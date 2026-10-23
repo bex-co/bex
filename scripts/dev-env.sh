@@ -8,6 +8,7 @@
 #   bash scripts/dev-env.sh <N> env       # print the derived per-N values
 #   bash scripts/dev-env.sh <N> agent-up  # add the ADR047 agent-session leg (opt-in)
 #   bash scripts/dev-env.sh <N> agent-down # remove it, leaving the base stack up
+#   bash scripts/dev-env.sh <N> agent-openrouter <ws> # dev-only: claude → OpenRouter, key from .env
 #
 # dev-N is workstream wN's isolated stack on the shared local kind/CAPD cluster
 # ("bex"): its own Kratos + Hydra + Mailpit in namespace dev-N-auth, its own app
@@ -33,7 +34,7 @@ AGENT_TEMPLATES="scripts/dev-env/agent"
 
 usage() {
   cat >&2 <<'EOF'
-usage: bash scripts/dev-env.sh <N> {up|down|status|clean|env|agent-up|agent-down|agent-netpol|agent-stub|agent-stub-off}
+usage: bash scripts/dev-env.sh <N> {up|down|status|clean|env|agent-up|agent-down|agent-netpol|agent-stub|agent-stub-off|agent-openrouter|agent-openrouter-off}
   N   workstream number 1-10 (dev-N under .pm/wN/dev-N)
 
 agent-up adds the ADR047 cloud coding-agent-session leg on top of `up`:
@@ -339,7 +340,7 @@ refresh_kubeconfig() {
         "$KUBECONFIG_FILE"
     # Repair the shared file too, so the next harness (and mock-cluster.sh's own
     # consumers) do not each rediscover the same drift — but atomically, and
-    # never while a bring-up owns it (w7/m148 t002). An in-place `sed -i` on a
+    # never while a bring-up owns it. An in-place `sed -i` on a
     # file other sessions are reading can be observed half-written, and racing
     # mock-cluster.sh would fight its own publication.
     if [ -f infra/local/bex.kubeconfig ]; then
@@ -560,6 +561,15 @@ start_api() {
       BEX_SANDBOX_EXEC_SECRET="$(agent_secret sandbox-exec.secret)"
       BEX_SANDBOX_EXEC_URL="http://localhost:$SANDBOX_EXEC_PORT/sandbox-exec"
     )
+    # Dev-only OpenRouter model route (ADR090), switched on by
+    # `agent-openrouter`. bex-api refuses it unless BEX_CP_IDENTITY is a dev
+    # identity, which it always is here. DEV_AGENT_MODEL overrides the model.
+    if [ -f "$AGENTDIR/dev-model-route" ]; then
+      env_args+=(BEX_AGENT_DEV_MODEL_ROUTE="$(cat "$AGENTDIR/dev-model-route")")
+      if [ -n "${DEV_AGENT_MODEL:-}" ]; then
+        env_args+=(BEX_AGENT_DEV_MODEL="$DEV_AGENT_MODEL")
+      fi
+    fi
   elif [ -n "${DEV_OPENFGA_URL:-}" ]; then
     # Opt-in enforced authorization without the agent-session leg, for
     # multi-member permission walkthroughs (w6/m146): an OpenFGA seeded by
@@ -1106,6 +1116,8 @@ Still required before a real repository session can run (per workspace):
   2. the BYO model key (ADR062):
      bao kv put tenants/default/agent-sessions/<workspaceId>/model-key \\
        BEX_AGENT_MODEL_API_KEY=<key>
+     or, dev-only, run claude on OpenRouter with the .env OPENROUTER_API_KEY:
+     bash scripts/dev-env.sh $N agent-openrouter <workspaceId>
   3. per sandbox namespace, the local stand-in for the Cilium allows:
      bash scripts/dev-env.sh $N agent-netpol <workspaceId>
 
@@ -1307,6 +1319,21 @@ agent_build_images() {
   fi
 }
 
+# agent_bao [-i] CMD... — run CMD in the dev OpenBao pod with the dev root
+# token. -i forwards this script's stdin (for `bao kv put field=-`).
+agent_bao() {
+  local stdin=()
+  if [ "${1:-}" = "-i" ]; then
+    stdin=(-i)
+    shift
+  fi
+  local pod
+  pod=$(kubectl -n "$DEV_AUTH_NS" get pod -l app.kubernetes.io/name=openbao \
+    -o jsonpath='{.items[0].metadata.name}')
+  kubectl -n "$DEV_AUTH_NS" exec ${stdin[@]+"${stdin[@]}"} "$pod" -- env \
+    BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN="$(agent_secret bao.token)" "$@"
+}
+
 # agent_seed_openbao — dev-mode OpenBao needs no init/unseal, only the kubernetes
 # auth method plus the tenants/ mount, policy and role bex-api logs in with.
 #
@@ -1315,21 +1342,16 @@ agent_build_images() {
 # PRODUCTION OpenBao credentials. Pointing it at a disposable local cluster would
 # overwrite them.
 agent_seed_openbao() {
-  local pod
-  pod=$(kubectl -n "$DEV_AUTH_NS" get pod -l app.kubernetes.io/name=openbao \
-    -o jsonpath='{.items[0].metadata.name}')
-  local -a bx=(kubectl -n "$DEV_AUTH_NS" exec "$pod" -- env
-    BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN="$BAO_DEV_TOKEN")
-  "${bx[@]}" bao auth enable kubernetes >/dev/null 2>&1 || true
-  "${bx[@]}" bao write auth/kubernetes/config \
+  agent_bao bao auth enable kubernetes >/dev/null 2>&1 || true
+  agent_bao bao write auth/kubernetes/config \
     kubernetes_host=https://kubernetes.default.svc >/dev/null
-  "${bx[@]}" bao secrets enable -path=tenants -version=2 kv >/dev/null 2>&1 || true
-  "${bx[@]}" sh -c 'bao policy write tenants-rw - <<EOF
+  agent_bao bao secrets enable -path=tenants -version=2 kv >/dev/null 2>&1 || true
+  agent_bao sh -c 'bao policy write tenants-rw - <<EOF
 path "tenants/*" {
   capabilities = ["create", "read", "update", "delete", "list"]
 }
 EOF' >/dev/null
-  "${bx[@]}" bao write auth/kubernetes/role/bex-api \
+  agent_bao bao write auth/kubernetes/role/bex-api \
     bound_service_account_names=bex-api \
     bound_service_account_namespaces=bex-system \
     policies=tenants-rw ttl=1h >/dev/null
@@ -1372,6 +1394,57 @@ cmd_agent_netpol() {
     exit 1
   }
   render "$AGENT_TEMPLATES/sandbox-netpol.yaml" | kubectl apply -f -
+}
+
+# cmd_agent_openrouter WORKSPACE — run claude sessions on OpenRouter (ADR090):
+# seed WORKSPACE's BYO model key from the repo .env OPENROUTER_API_KEY and
+# restart bex-api with BEX_AGENT_DEV_MODEL_ROUTE=openrouter. The key is read and
+# piped into OpenBao on stdin; it is never echoed, logged, or put on a command
+# line. `agent-openrouter-off` switches the route off (the key stays seeded).
+cmd_agent_openrouter() {
+  local ws="${1:-}"
+  case "$ws" in
+  tea-*) ;;
+  *)
+    echo "usage: bash scripts/dev-env.sh $N agent-openrouter <workspaceId (tea-...)>" >&2
+    exit 2
+    ;;
+  esac
+  agent_enabled || {
+    echo "error: the agent-session leg is not up — run: bash scripts/dev-env.sh $N agent-up" >&2
+    exit 1
+  }
+  [ -f .env ] || {
+    echo "error: no .env at the repo root" >&2
+    exit 1
+  }
+  . scripts/lib/env-file.sh && bex_env_file_guard ./.env || exit 1
+  local key
+  key="$(sed -n 's/^OPENROUTER_API_KEY=//p' .env | tail -n 1)"
+  key="${key%\"}"
+  key="${key#\"}"
+  key="${key%\'}"
+  key="${key#\'}"
+  [ -n "$key" ] || {
+    echo "error: OPENROUTER_API_KEY is empty in .env" >&2
+    exit 1
+  }
+  refresh_kubeconfig
+  # `field=-` makes bao read the value from stdin, so the key never appears in
+  # argv (ps, kubectl audit) or in this script's output.
+  printf '%s' "$key" | agent_bao -i \
+    bao kv put "tenants/default/agent-sessions/$ws/model-key" BEX_AGENT_MODEL_API_KEY=- >/dev/null
+  unset key
+  echo openrouter >"$AGENTDIR/dev-model-route"
+  echo "==> seeded $ws's model key from .env OPENROUTER_API_KEY; restarting bex-api on the OpenRouter route"
+  start_api
+  echo "claude sessions in dev-$N now run on OpenRouter (model: ${DEV_AGENT_MODEL:-the bex-api default})."
+}
+
+cmd_agent_openrouter_off() {
+  rm -f "$AGENTDIR/dev-model-route"
+  echo "==> restarting bex-api without the OpenRouter route"
+  start_api
 }
 
 # cmd_agent_stub — stand up the local model stub and point the gateway's upstream
@@ -1532,6 +1605,11 @@ env) print_env ;;
 agent-up) cmd_agent_up ;;
 agent-down) cmd_agent_down ;;
 agent-stub) cmd_agent_stub ;;
+agent-openrouter)
+  shift
+  cmd_agent_openrouter "${1:-}"
+  ;;
+agent-openrouter-off) cmd_agent_openrouter_off ;;
 agent-stub-off) cmd_agent_stub_off ;;
 agent-netpol)
   shift

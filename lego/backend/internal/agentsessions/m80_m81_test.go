@@ -53,11 +53,29 @@ func TestDriverEnvInjectsTurnTimeout(t *testing.T) {
 	}
 }
 
+// ADR090 D5: a re-dispatched steering sandbox learns the PR earlier turns
+// opened; turn 1 and repo-less sessions carry none.
+func TestDriverEnvNamesTheExistingPullRequest(t *testing.T) {
+	svc := &Service{}
+	fresh := svc.driverEnv(AgentConfig{Agent: "claude"}, store.AgentSession{ID: "ags-x", WorkspaceID: "tea-a", Repo: "acme/widgets", Branch: "bex-agent/ags-x", Turns: 1})
+	if _, ok := fresh["BEX_AGENT_PR_URL"]; ok {
+		t.Fatal("turn 1 must not name a pull request")
+	}
+	steer := svc.driverEnv(AgentConfig{Agent: "claude"}, store.AgentSession{ID: "ags-x", WorkspaceID: "tea-a", Repo: "acme/widgets", Branch: "bex-agent/ags-x", Turns: 2, PRURL: "https://github.com/acme/widgets/pull/7", PRNumber: 7})
+	if steer["BEX_AGENT_PR_URL"] != "https://github.com/acme/widgets/pull/7" || steer["BEX_AGENT_PR_NUMBER"] != "7" {
+		t.Fatalf("steering env = %q #%q, want the recorded PR", steer["BEX_AGENT_PR_URL"], steer["BEX_AGENT_PR_NUMBER"])
+	}
+	chat := svc.driverEnv(AgentConfig{Agent: "claude"}, store.AgentSession{ID: "ags-y", WorkspaceID: "tea-a", Turns: 2, PRURL: "https://github.com/acme/widgets/pull/7", PRNumber: 7})
+	if _, ok := chat["BEX_AGENT_PR_URL"]; ok {
+		t.Fatal("a repo-less session must not name a pull request")
+	}
+}
+
 // --- w5/m80 t004: a failed session skips the completed-result idle grace ------
 
 func TestCompleterFailedSessionSkipsIdleGrace(t *testing.T) {
 	raw, _ := json.Marshal(statusReport{State: "failed", Error: "agent crashed"})
-	c, st, lc, _, id := completerFixture(string(raw), nil)
+	c, st, lc, id := completerFixture(string(raw), nil)
 	c.IdleTTL = 30 * time.Minute // a live grace that a COMPLETED session would defer under
 	base := st.now
 	c.Now = func() time.Time { return base }
@@ -76,7 +94,7 @@ func TestCompleterFailedSessionSkipsIdleGrace(t *testing.T) {
 // An open editor SSH still pins even a FAILED session — never kill a live edit.
 func TestCompleterFailedSessionPinnedByOpenSSH(t *testing.T) {
 	raw, _ := json.Marshal(statusReport{State: "failed", Error: "agent crashed"})
-	c, st, lc, _, id := completerFixture(string(raw), nil)
+	c, st, lc, id := completerFixture(string(raw), nil)
 	c.IdleTTL = 30 * time.Minute
 	base := st.now
 	c.Now = func() time.Time { return base }
@@ -99,7 +117,7 @@ func TestCompleterObservesTurnAndProvisionMetrics(t *testing.T) {
 	metrics := NewCompletionMetrics(reg)
 
 	// A completed turn observes the turn-duration histogram under outcome=completed.
-	c, st, _, _, id := completerFixture(succeededStatus(true), nil)
+	c, st, _, id := completerFixture(succeededStatus(true), nil)
 	c.Metrics = metrics
 	base := st.now
 	c.Now = func() time.Time { return base.Add(42 * time.Second) } // 42s after the running transition
@@ -114,7 +132,7 @@ func TestCompleterObservesTurnAndProvisionMetrics(t *testing.T) {
 
 	// A failed turn observes under outcome=failed — a distinct second series.
 	rawFail, _ := json.Marshal(statusReport{State: "failed", Error: "boom"})
-	cf, _, _, _, _ := completerFixture(string(rawFail), nil)
+	cf, _, _, _ := completerFixture(string(rawFail), nil)
 	cf.Metrics = metrics
 	cf.Now = func() time.Time { return base.Add(9 * time.Second) }
 	cf.Reconcile(context.Background())

@@ -258,6 +258,13 @@ func main() {
 		credentials.MaxRequestsPerSession = intEnv("BEX_AGENT_GIT_MAX_REQUESTS_PER_SESSION", 1000)
 		credentials.MaxRequestsPerWorkspace = intEnv("BEX_AGENT_GIT_MAX_REQUESTS_PER_WORKSPACE", 5000)
 		credentials.MaxResponseBytes = int64(intEnv("BEX_AGENT_GIT_MAX_RESPONSE_BYTES", 4<<30))
+		// ADR090: the agent opens/updates its own draft PR through the fifth
+		// `pull-request` segment of its Git proxy URL; bex-api resolves every
+		// target from the durable session and holds the GitHub token.
+		credentials.PullRequests = &agentsession.PullRequestClient{
+			URL:    envOr("BEX_AGENT_PULL_REQUEST_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalPullRequestPath),
+			Secret: []byte(secret),
+		}
 
 		modelAPIURL := envOr("BEX_AGENT_MODEL_CREDENTIAL_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalModelMintPath)
 		model.Pods = agentcred.KubeSessionPodResolver{Client: clientset}

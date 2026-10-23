@@ -357,7 +357,7 @@ func TestTranscriptPagesVerbatimParts(t *testing.T) {
 // An archived finished session skips the idle grace: the reaper reclaims it at
 // the very next tick, while an unarchived twin would still be deferred.
 func TestCompleterReclaimsArchivedImmediately(t *testing.T) {
-	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	c, st, lc, id := completerFixture(succeededStatus(true), nil)
 	c.IdleTTL = 30 * time.Minute
 	base := st.now
 	c.Now = func() time.Time { return base }

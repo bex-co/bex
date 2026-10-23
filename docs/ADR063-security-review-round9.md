@@ -36,7 +36,7 @@ Fixed at both layers (`lego/agent-image/driver/src/credentials.ts`, `delivery.ts
 
 Tests (`test/delivery.test.ts`): a base64-encoded credential in a text file and the raw key between NUL bytes in a binary blob both refuse the push and leave the remote untouched; a clean branch with the full needle set active pushes unchanged.
 
-**Residual:** pattern DLP remains defense-in-depth. The finding's full remediation landed in [ADR062-sandbox-credential-vault.md](ADR062-sandbox-credential-vault.md); [ADR064](ADR064-security-review-round10.md) subsequently made the proxy mandatory and removed the direct-key path entirely.
+**Residual:** pattern DLP remains defense-in-depth. The finding's full remediation landed in [ADR062-sandbox-credential-vault.md](ADR062-sandbox-credential-vault.md); [ADR064](ADR064-security-review-round10.md) subsequently made the proxy mandatory and removed the direct-key path entirely. _Forward pointer: [ADR090](ADR090-agent-owned-delivery.md) (2026-10-22) deletes the needle set and object scan along with driver-owned delivery._
 
 ## 2 — Routine operator `jobs:create` (high): fixed in place
 

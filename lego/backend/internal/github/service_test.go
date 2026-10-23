@@ -392,9 +392,6 @@ func (c *fakeClient) GetRepoCommitSHA(_ context.Context, _, _, _, _ string) (str
 	}
 	return c.commitSHA, nil
 }
-func (c *fakeClient) OpenDraftPullRequest(_ context.Context, _ int64, _, _, _, _, _, _ string) (PullRequest, error) {
-	return PullRequest{}, nil
-}
 func (c *fakeClient) MintChecksToken(_ context.Context, _ int64) (InstallationToken, bool, error) {
 	if c.tokenErr != nil {
 		return InstallationToken{}, false, c.tokenErr

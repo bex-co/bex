@@ -14,22 +14,22 @@
  * limitations under the License.
  */
 
-import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { readFile, stat } from "node:fs/promises";
 import { createUIMessageStream } from "ai";
 import { createSessionProvider, type SessionProvider } from "./acp.js";
 import { createUpdateMapper } from "./acp-map.js";
 import { resolveContinuity, type ContinuityRung } from "./continuity.js";
-import { stampSourceTimestamp } from "./timestamp.js";
 import {
-  deliverBranch,
-  extractEvidence,
-  type DeliveryResult,
-  type EvidenceResult,
-} from "./delivery.js";
+  deliveryNudge,
+  readGitFacts,
+  undeliveredFacts,
+  type DeliveryStatus,
+} from "./delivery-check.js";
+import { stampSourceTimestamp } from "./timestamp.js";
 import { describeError } from "./errors.js";
+import { writeJsonAtomic } from "./fs-util.js";
 import type { AgentDriverConfig } from "./config.js";
-import type { CredentialManager } from "./credentials.js";
+import { platformOverlay } from "./overlay.js";
 import type { UIMessageStreamHub, UIMessagePart } from "./stream-hub.js";
 import { TurnLogSink } from "./turn-log.js";
 
@@ -53,60 +53,33 @@ export interface TurnResult extends StatusRecord {
   sessionId: string | null;
   resume: SessionProvider["resume"];
   usage: unknown;
-}
-
-async function ensureParent(filename: string): Promise<void> {
-  await mkdir(path.dirname(filename), { recursive: true });
+  git?: DeliveryStatus;
 }
 
 async function writeStatus(
   filename: string,
   status: StatusRecord,
 ): Promise<void> {
-  await ensureParent(filename);
-  const temporary = `${filename}.tmp`;
-  await writeFile(temporary, `${JSON.stringify(status)}\n`, { mode: 0o600 });
-  await rename(temporary, filename);
+  await writeJsonAtomic(filename, status);
 }
 
 function cleanupFailure(original: unknown, cleanup: unknown): Error {
   return new Error(
-    `${describeError(original)}; persisted credential cleanup failed: ${describeError(cleanup)}`,
+    `${describeError(original)}; agent cleanup failed: ${describeError(cleanup)}`,
   );
 }
 
-async function writeFailedStatusAndForget(
-  config: AgentDriverConfig,
-  credentialManager: CredentialManager,
-  error: unknown,
-): Promise<void> {
-  try {
-    await writeStatus(config.statusPath, {
-      state: "failed",
-      error: credentialManager.redact(describeError(error)),
-    });
-  } finally {
-    credentialManager.forget();
-  }
-}
-
-// markTurnFailed handles a fatal failure that happened BEFORE runHeadlessTurn
-// owns the turn (for example the setup clone). It gets exactly one persisted
-// scrub verdict, records that verdict in the status file, and always drops the
-// in-memory credential. Turn failures use the same sequence below without
-// returning through main.ts for a second cleanup attempt.
+// markTurnFailed records a fatal failure that happened BEFORE runHeadlessTurn
+// owns the turn (for example the setup clone). Turn failures persist their own
+// verdict below without returning through main.ts for a second write.
 export async function markTurnFailed(
   config: AgentDriverConfig,
-  credentialManager: CredentialManager,
   error: unknown,
 ): Promise<void> {
-  let terminalError = error;
-  try {
-    await credentialManager.scrubPersistedState();
-  } catch (cleanupError) {
-    terminalError = cleanupFailure(error, cleanupError);
-  }
-  await writeFailedStatusAndForget(config, credentialManager, terminalError);
+  await writeStatus(config.statusPath, {
+    state: "failed",
+    error: describeError(error),
+  });
 }
 
 // A resumed sandbox restarts the driver on the restored rootfs, where the
@@ -138,8 +111,8 @@ export async function adoptPersistedSession(
   return "";
 }
 
-// runHeadlessTurn runs one agent turn. options let a live turn (ADR047 D9 t004)
-// reuse the identical timeout/delivery/evidence/scrub machinery:
+// runHeadlessTurn runs one agent turn. options let a live turn (ADR047 D9)
+// reuse the identical timeout/delivery-check machinery:
 //   - prompt   overrides config.prompt (the steering prompt on a POST /turn)
 //   - closeHub false keeps the UI-message stream open so the session accepts
 //     further turns and later attachers (a fire-and-forget turn closes it so
@@ -148,13 +121,16 @@ export async function adoptPersistedSession(
 //     response) in addition to the hub's fan-out to attached GET clients
 //
 // The turn speaks ACP directly (acp.ts) and maps every session/update into typed
-// UI-message chunks (acp-map.ts), written into one createUIMessageStream. There
-// is no fake-LanguageModel provider, no streamText, and no lossy raw re-wrap:
-// plans/diffs/terminals arrive as `data-acp-*` parts and tool calls as real
-// dynamic tool parts.
+// UI-message chunks (acp-map.ts), written into one createUIMessageStream.
+//
+// The turn ends when the agent ends it (ADR090). For a repo session the driver
+// then reads Git state; if work is left undelivered it sends exactly one
+// follow-up prompt on the same ACP session, re-reads the facts and records
+// them, with what is still undelivered, as `git` in the status file. The
+// driver never commits or pushes.
 export async function runHeadlessTurn(
   config: AgentDriverConfig,
-  credentialManager: CredentialManager,
+  agentEnv: Record<string, string>,
   hub: UIMessageStreamHub,
   options: RunTurnOptions = {},
 ): Promise<TurnResult> {
@@ -163,7 +139,6 @@ export async function runHeadlessTurn(
   const onPart = options.onPart;
   const turn = options.turn ?? config.turn;
   let logBytes = 0;
-  let logTruncated = false;
   try {
     logBytes = (await stat(config.sessionLogPath)).size;
   } catch {
@@ -174,19 +149,17 @@ export async function runHeadlessTurn(
     logBytes,
     maxSessionLogBytes,
     turn,
-    credentialManager,
   );
-  // Sanitize at the single publication choke point (codex r7 #4): the hub
-  // history, attached GET /stream clients, the POST /turn mirror — the
-  // gateway's byte-transparent durable transcript tee — and the turn log all
-  // carry the same sanitized part.
+  // One publication choke point: the hub history, attached GET /stream
+  // clients, the POST /turn mirror (the gateway's durable transcript tee) and
+  // the turn log all carry the same timestamped part.
   const publish = (part: UIMessagePart): UIMessagePart => {
-    const sanitized = stampSourceTimestamp(
-      credentialManager.redactPart(part) as Record<string, unknown>,
+    const stamped = stampSourceTimestamp(
+      part as Record<string, unknown>,
     ) as UIMessagePart;
-    const frame = hub.publish(sanitized);
-    if (onPart) onPart(sanitized, frame);
-    return sanitized;
+    const frame = hub.publish(stamped);
+    if (onPart) onPart(stamped, frame);
+    return stamped;
   };
   // Read the prior turn's persisted identity BEFORE the running-state write
   // below replaces the status file.
@@ -194,7 +167,6 @@ export async function runHeadlessTurn(
 
   let provider: SessionProvider | undefined;
   let providerStopped = false;
-  let scrubPromise: Promise<string[]> | undefined;
   const stopProvider = async (): Promise<void> => {
     if (providerStopped || !provider) return;
     providerStopped = true;
@@ -211,17 +183,9 @@ export async function runHeadlessTurn(
     }
     if (stopError !== undefined) throw stopError;
   };
-  const scrubOnce = async (): Promise<string[]> => {
-    scrubPromise ??= credentialManager.scrubPersistedState().catch((error) => {
-      throw new Error(
-        `persisted credential cleanup failed: ${describeError(error)}`,
-      );
-    });
-    return scrubPromise;
-  };
   let promptResponse:
-    | Awaited<ReturnType<SessionProvider["prompt"]>>
-    | undefined;
+    Awaited<ReturnType<SessionProvider["prompt"]>> | undefined;
+  let delivery: DeliveryStatus | undefined;
   const turnAbort = new AbortController();
   let rejectDeadline!: (error: Error) => void;
   const deadline = new Promise<never>((_, reject) => {
@@ -253,33 +217,31 @@ export async function runHeadlessTurn(
     // agent crash. Capture the error and re-raise it after the stream drains.
     let turnError: unknown;
     let continuityRung: ContinuityRung = "none";
+    const overlay = platformOverlay(config);
     const execute = async () => {
       const mapper = createUpdateMapper();
       const stream = createUIMessageStream({
         execute: async ({ writer }) => {
           try {
             writer.write({ type: "start" });
-            provider = await createSessionProvider(
-              config,
-              credentialManager.agentEnvironment(),
-              {
-                onUpdate: (update) => {
-                  for (const chunk of mapper.map(update)) writer.write(chunk);
-                },
-                abortSignal: turnAbort.signal,
-                redact: (value) => credentialManager.redact(value),
+            provider = await createSessionProvider(config, agentEnv, {
+              onUpdate: (update) => {
+                for (const chunk of mapper.map(update)) writer.write(chunk);
               },
-            );
+              abortSignal: turnAbort.signal,
+              overlay,
+            });
             // Continuity ladder (ADR047 D3, w5/m84): the rung depends on
             // whether session/load actually happened, known only now. The
             // annotation is a durable (non-transient) part so replay shows the
             // same restored-vs-rebuilt hint the live stream carried; the
-            // preamble itself rides only the ACP prompt, never the stream, so
-            // history is never double-rendered.
+            // preamble (and a preamble-channel overlay) rides only the ACP
+            // prompt, never the stream, so history is never double-rendered.
             const continuity = resolveContinuity(
               config,
               provider.resume,
               prompt,
+              provider.overlayChannel === "preamble" ? overlay : "",
             );
             continuityRung = continuity.rung;
             if (continuity.rung !== "none") {
@@ -289,6 +251,21 @@ export async function runHeadlessTurn(
               });
             }
             promptResponse = await provider.prompt(continuity.prompt);
+            if (config.deliver) {
+              // Delivery check before the provider stops, so the one nudge
+              // continues the same ACP session with the agent's full context.
+              let facts = await readGitFacts(config);
+              let reasons = undeliveredFacts(facts, config);
+              if (reasons.length > 0) {
+                for (const chunk of mapper.flush()) writer.write(chunk);
+                promptResponse = await provider.prompt(
+                  deliveryNudge(reasons, config.branch),
+                );
+                facts = await readGitFacts(config);
+                reasons = undeliveredFacts(facts, config);
+              }
+              delivery = { ...facts, undelivered: reasons };
+            }
             for (const chunk of mapper.flush()) writer.write(chunk);
             writer.write({ type: "finish" });
           } catch (error) {
@@ -296,53 +273,30 @@ export async function runHeadlessTurn(
             throw error; // also surfaces an error chunk to attached clients
           }
         },
-        onError: (error) => credentialManager.redact(describeError(error)),
+        onError: (error) => describeError(error),
       });
       for await (const chunk of stream) {
-        const sanitized = publish(chunk as UIMessagePart);
-        const written = await turnLog.appendPart(sanitized);
-        if (written === 0) logTruncated = true;
+        const published = publish(chunk as UIMessagePart);
+        await turnLog.appendPart(published);
       }
       if (turnError) throw turnError;
     };
     await Promise.race([execute(), deadline]);
     if (closeHub) hub.close();
 
-    // The agent must be dead before credential scrubbing, Git scanning/push, or
-    // snapshot preparation. Otherwise same-sandbox code can keep rewriting
-    // files/refs after inspection or re-persist a forgotten credential.
+    // The agent must be dead before the terminal verdict is written, so
+    // same-sandbox code cannot keep changing the facts after they were read.
     await stopProvider();
     if (turnAbort.signal.aborted) throw turnAbort.signal.reason;
-    // Harvest and persisted-state scrubbing must see all accepted log records.
     await turnLog.close();
 
-    // Scrub the model credential out of persisted state BEFORE delivery, so a
-    // credential the agent wrote into a workspace file is redacted in the pushed
-    // commit instead of published to the connected repository (round-5 finding
-    // 6). deliverBranch additionally fails the push closed if the credential is
-    // already in the branch's commit history (a byte-scrub cannot reach a
-    // compressed git object). Evidence comes from the already-redacted session
-    // log, so scrub order does not affect it. A delivery (push) failure — including
-    // the fail-closed refusal — throws here and is recorded as a failed turn.
-    const scrubbed = await scrubOnce();
-    const delivery: DeliveryResult | null = config.deliver
-      ? await deliverBranch({
-          ...config,
-          containsSecret: (text) => credentialManager.containsSecret(text),
-          secretNeedles: () => credentialManager.secretNeedles(),
-        })
-      : null;
-    const evidence: EvidenceResult = await extractEvidence(config);
-    if (logTruncated) evidence.truncated = true;
     const status: StatusRecord = {
       state: "succeeded",
       sessionId: provider!.sessionId,
       resume: provider!.resume,
       ...(continuityRung !== "none" ? { continuity: continuityRung } : {}),
       ...(resumedFrom ? { resumedFrom } : {}),
-      ...(delivery ? { delivery } : {}),
-      evidence,
-      scrubbedFiles: scrubbed.length,
+      ...(delivery ? { git: delivery } : {}),
     };
     await writeStatus(config.statusPath, status);
     return { ...status, usage: promptResponse?.usage ?? {} } as TurnResult;
@@ -363,16 +317,10 @@ export async function runHeadlessTurn(
         );
       }
     }
-    try {
-      await scrubOnce();
-    } catch (cleanupError) {
-      // A memoized scrub rejection is the original turn error when the success
-      // path first discovered it. Do not append the same verdict to itself.
-      if (cleanupError !== error) {
-        terminalError = cleanupFailure(terminalError, cleanupError);
-      }
-    }
-    await writeFailedStatusAndForget(config, credentialManager, terminalError);
+    await writeStatus(config.statusPath, {
+      state: "failed",
+      error: describeError(terminalError),
+    });
     throw terminalError;
   } finally {
     clearTimeout(turnTimer);

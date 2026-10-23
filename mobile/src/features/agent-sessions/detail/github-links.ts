@@ -1,7 +1,6 @@
 // Off-platform GitHub link guards for the agent-session screens (w11/m6 t004):
 // validate a URL before it can leave the app for GitHub Mobile. Kept render-free
-// for the jest-lite runner. (The evidence helpers this module also carried were
-// removed with the evidence surface in w5/m65.)
+// for the jest-lite runner.
 
 // A link may open externally ONLY when it is an https://github.com/ URL — the
 // shared guard for every off-platform GitHub link (composer setup CTA + detail

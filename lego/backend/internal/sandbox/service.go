@@ -25,11 +25,9 @@ import (
 	"log"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
-	"github.com/bex-co/bex/lego/backend/internal/drivergrant"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -768,7 +766,7 @@ func (l *AgentSessionLifecycle) ReadSessionStatus(ctx context.Context, workspace
 	return result.Stdout, nil
 }
 
-// agentSessionLogPath is the driver's redacted per-part conversation log inside
+// agentSessionLogPath is the driver's per-part conversation log inside
 // the sandbox (BEX_AGENT_SESSION_LOG default, lego/agent-image/driver/src/config.mjs).
 const agentSessionLogPath = "/var/log/bex-agent/session.jsonl"
 
@@ -777,7 +775,7 @@ const agentSessionLogPath = "/var/log/bex-agent/session.jsonl"
 // smaller in practice; this only guards a pathological driver.
 const maxTranscriptLogBytes = 16 << 20
 
-// ReadSessionTranscript returns the driver's session log (redacted JSONL, one
+// ReadSessionTranscript returns the driver's session log (JSONL, one
 // UI-message part per line) from the exact session sandbox through the SAME
 // gateway pods/exec boundary the Completer already uses for ReadSessionStatus
 // (ADR051). Harvesting the on-disk log rides the proven status-read path instead
@@ -806,7 +804,7 @@ func (l *AgentSessionLifecycle) ReadSessionTranscript(ctx context.Context, works
 		return "", err
 	}
 	defer func() { _ = resp.Body.Close() }()
-	// The public buffered-exec cap is 2 MiB, but the driver's own redacted log is
+	// The public buffered-exec cap is 2 MiB, but the driver's own log is
 	// bounded at 16 MiB. Collect that full trusted artifact with framing headroom
 	// and fail explicitly if even this bound truncates it.
 	result, err := bufferExecWithLimit(resp, maxTranscriptLogBytes+1<<20)
@@ -820,17 +818,19 @@ func (l *AgentSessionLifecycle) ReadSessionTranscript(ctx context.Context, works
 }
 
 // hibernateScript is the ADR059 D3 snapshot pipeline, run once via the trusted
-// gateway exec boundary (stdout-only, signed argv). It scrubs credentials (the
-// same bex-pre-snapshot hook Suspend uses), tars the mutable workspace state
-// (`/workspace`, `~/.zed_server`, each agent profile's session-state dirs, and
-// the driver's `/var/run/bex-agent` status dir — the state ADR047 D3's
-// `session/load` resume rung depends on; ADR059 D3 continuity amendment,
-// w5/m84 — the per-profile dirs are declared in agent-profiles.json
-// `sessionState` and guard-tested against this script) preserving ownership,
-// prints the
-// digest + byte count on stdout (the only channel back), then streams the
-// archive straight to the create-once presigned PUT URL — so **no durable
-// credential ever enters the sandbox**, only a single-object time-boxed URL.
+// gateway exec boundary (stdout-only, signed argv). It tars the mutable
+// workspace state (`/workspace`, `~/.zed_server`, each agent profile's
+// session-state dirs, and the driver's `/var/run/bex-agent` status dir — the
+// state ADR047 D3's `session/load` resume rung depends on; ADR059 D3
+// continuity amendment, w5/m84 — the per-profile dirs are declared in
+// agent-profiles.json `sessionState` and guard-tested against this script)
+// preserving ownership, prints the digest + byte count on stdout (the only
+// channel back), then streams the archive straight to the create-once
+// presigned PUT URL — so **no durable credential ever enters the sandbox**,
+// only a single-object time-boxed URL. There is no pre-snapshot credential
+// scrub (ADR090, ADR062): the sandbox holds only the session-bound model-proxy
+// placeholder and a credential-free Git proxy remote, so the snapshot has
+// nothing secret to remove.
 // `If-None-Match: *` must match PrepareUpload's signed precondition so a
 // retained argv URL cannot overwrite an already-written snapshot (round-16 #9).
 // `set -e` + curl `-f` make any failure a non-zero exit the caller treats as
@@ -840,7 +840,6 @@ func (l *AgentSessionLifecycle) ReadSessionTranscript(ctx context.Context, works
 // of the shell no matter what bytes it carries, so the snapshot pipeline no
 // longer depends on the presigned URL being single-quote-free.
 const hibernateScript = `set -e
-%s
 SNAP=/tmp/bex-hibernate.tgz
 HOME_DIR="${HOME:-/home/bex}"
 MEMBERS="/workspace"
@@ -885,15 +884,10 @@ func (l *AgentSessionLifecycle) HibernateAgentSessionSandbox(ctx context.Context
 	case StatusTerminated, StatusErrored:
 		return SnapshotResult{}, sandboxNotFound(sandboxID)
 	}
-	snapshotCommand, err := s.agentSnapshotCommand(sessionID)
-	if err != nil {
-		return SnapshotResult{}, err
-	}
-	command := fmt.Sprintf(hibernateScript, snapshotCommand)
 	// putURL rides as $1 (a real argv element), not interpolated into the script
 	// body — see hibernateScript (codex-security target #6). "$0" is a label.
 	resp, err := s.mintAndDial(ctx, workspaceID, sandboxID, sessionID,
-		[]string{"/bin/sh", "-c", command, "bex-hibernate", putURL})
+		[]string{"/bin/sh", "-c", hibernateScript, "bex-hibernate", putURL})
 	if err != nil {
 		return SnapshotResult{}, err
 	}
@@ -1057,49 +1051,7 @@ func (s *Service) Terminate(ctx context.Context, id string) error {
 }
 
 func (s *Service) clientSuspend(ctx context.Context, key string, raw osSandbox) error {
-	// Agent sessions are the only sandbox class carrying this binding. Fail the
-	// snapshot closed unless the image's hygiene hook runs successfully through
-	// the already-authorized gateway exec boundary. Generic EA sandboxes retain
-	// byte-identical suspend behavior.
-	if raw.Metadata[agentsession.LabelSession] != "" {
-		sessionID := raw.Metadata[agentsession.LabelSession]
-		command, err := s.agentSnapshotCommand(sessionID)
-		if err != nil {
-			return fmt.Errorf("pre-snapshot credential scrub: %w", err)
-		}
-		// systemBufferedExec (not ExecBuffered): the scrub command is
-		// platform-fixed, so it deliberately does NOT pass through dialGateway's
-		// caller gate — a contributor (can_operate) may suspend a session
-		// sandbox, and dialGateway now requires can_view_sensitive for
-		// agent-session sandboxes on CALLER-chosen commands (round-13 #1).
-		result, err := s.systemBufferedExec(ctx, raw.Metadata[metadataWorkspace], raw.ID, sessionID, command)
-		if err != nil {
-			return fmt.Errorf("pre-snapshot credential scrub: %w", err)
-		}
-		if result.ExitCode != 0 {
-			return fmt.Errorf("pre-snapshot credential scrub failed with exit code %d", result.ExitCode)
-		}
-	}
 	return s.Client.Suspend(ctx, key, raw.ID)
-}
-
-func (s *Service) agentSnapshotCommand(sessionID string) (string, error) {
-	if s.Exec == nil || len(s.Exec.DriverGrantSecret) == 0 || sessionID == "" {
-		return "", errors.New("snapshot driver grant unavailable")
-	}
-	grant, err := drivergrant.MintAction(
-		s.Exec.DriverGrantSecret,
-		sessionID,
-		drivergrant.ActionSnapshot,
-		s.Now(),
-		60*time.Second,
-	)
-	if err != nil {
-		return "", err
-	}
-	// Ed25519 grant tokens contain only base64url bytes and a dot, so this
-	// environment assignment has no shell metacharacters or quoting ambiguity.
-	return "BEX_AGENT_SNAPSHOT_GRANT=" + grant + " /usr/local/bin/bex-pre-snapshot", nil
 }
 func (s *Service) clientResume(ctx context.Context, key string, raw osSandbox) error {
 	return s.Client.Resume(ctx, key, raw.ID)

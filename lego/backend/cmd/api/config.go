@@ -26,6 +26,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/validation"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/agentsessions"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/audit"
@@ -191,6 +192,11 @@ type Config struct {
 	// Hosted agent sandboxes + sessions (ADR042/ADR047/ADR059/ADR062).
 	AgentModelProxyURL string
 	OpenSandboxURL     string
+	// Dev-only model route (ADR090): BEX_AGENT_DEV_MODEL_ROUTE=openrouter
+	// points the claude profile at OpenRouter with BEX_AGENT_DEV_MODEL. Refused
+	// unless BEX_CP_IDENTITY names a non-production control plane.
+	AgentDevModelRoute string
+	AgentDevModel      string
 	// Derived from AgentModelProxyURL's origin (ADR062) so egress narrowing and
 	// the agentsessions Service always agree on the port; validated only when
 	// the OpenSandbox leg is on, like the inline parse it replaced.
@@ -475,6 +481,9 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 
 	// Hosted sandboxes (ADR042/ADR047/ADR062).
 	cfg.AgentModelProxyURL = getenv("BEX_AGENT_MODEL_PROXY_URL")
+	cfg.AgentDevModelRoute = strings.TrimSpace(getenv("BEX_AGENT_DEV_MODEL_ROUTE"))
+	cfg.AgentDevModel = strings.TrimSpace(getenv("BEX_AGENT_DEV_MODEL"))
+	p.err(agentsession.ValidateDevModelRoute(cfg.AgentDevModelRoute, cfg.AgentDevModel, cfg.CPIdentity))
 	cfg.OpenSandboxURL = getenv("BEX_OPENSANDBOX_URL")
 	if cfg.OpenSandboxURL != "" {
 		// Both defaults are digest-pinned (w7/m85): a sandbox template names an

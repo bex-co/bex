@@ -998,7 +998,6 @@ func NewServer(base *core.Base, d Deps) *Server {
 		ServiceRefs:        &apps.ServiceRefPropagator{Svc: appsSvc},
 		AgentSessionCompleter: &agentsessions.Completer{
 			Store: d.AgentSessionStore, Sandbox: agentLifecycle,
-			GitHub: d.GitHubClient, Connections: d.GitHubStore, APIPublicURL: d.DeployHookBaseURL,
 			IdleTTL:           d.AgentSandboxIdleTTL,
 			Snapshots:         d.AgentSnapshotStore,
 			RetentionTTL:      d.AgentSnapshotRetentionTTL,

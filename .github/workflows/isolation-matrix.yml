@@ -17,13 +17,9 @@ name: Isolation matrix (weekly)
 # it. Cadence is weekly because the probes create pods and (for the sandbox leg)
 # real workspaces and OpenFGA tuples.
 #
-# The sandbox leg's model-key check is NOT run here. scripts/verify-sandbox-isolation.sh
-# gates it behind BEX_VERIFY_AGENT_DRIVER=1 + BEX_VERIFY_AGENT_MODEL=1 (both
-# default 0), and it costs real model tokens on every run. The other ~40 boundary
-# checks — the ones that would catch an admission regression — do not need it, so
-# the weekly run stays free and the paid turn remains an explicit manual
-# invocation. Wiring it later means setting those two flags plus
-# BEX_LIVE_AGENT_MODEL_API_KEY on this job; no script change is required.
+# No paid model turn runs here: the agent sandbox never holds a real model key
+# (ADR062/ADR090), so a paid turn is proven through a real agent session on the
+# gateway model proxy (scripts/agent-session-verify.sh), not this matrix.
 
 on:
   workflow_dispatch:

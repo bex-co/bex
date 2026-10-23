@@ -65,13 +65,6 @@ describe("SessionDetailHeader", () => {
     deleteMock.mockClear();
   });
 
-  // w5/m65 removed the evidence side panel; the header must not offer a way back
-  // to a surface that no longer exists.
-  it("offers no evidence toggle", () => {
-    render(<SessionDetailHeader session={view()} />);
-    expect(screen.queryByText("Evidence")).not.toBeInTheDocument();
-  });
-
   it("preserves the originating list filters in the Back link", () => {
     render(
       <SessionDetailHeader

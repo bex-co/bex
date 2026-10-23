@@ -65,6 +65,7 @@ Docs live here — one file per topic. Root [AGENTS.md](../AGENTS.md) points her
 - [ADR059-agent-sandbox-hibernation.md](ADR059-agent-sandbox-hibernation.md) — Active/Hibernated/Deleted + object-storage snapshots
 - [ADR062-sandbox-credential-vault.md](ADR062-sandbox-credential-vault.md) — BYO key via gateway proxy (mandatory)
 - [ADR065-agent-session-archive.md](ADR065-agent-session-archive.md) — archive/unarchive/delete, replay-only tickets
+- [ADR090-agent-owned-delivery.md](ADR090-agent-owned-delivery.md) — accepted (2026-10-22) agent-owned delivery: the agent commits, pushes and opens its draft PR (gateway `pull-request` verb + `bex` stdio MCP tool), platform system-prompt overlay, evidence + credential-scrub machinery deleted
 - [ADR048-mobile.md](ADR048-mobile.md) — supervision-first PWA + push, phone as mission control
 - [ADR087-mobile-role-views.md](ADR087-mobile-role-views.md) — proposed native views for five workspace roles; capability gates, notifications, and access changes
 - [bex-cli.md](bex-cli.md) — CLI launcher release train (`bex-cli/v*`)

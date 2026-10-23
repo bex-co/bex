@@ -20,92 +20,184 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
+	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
+	"unicode"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
-	"github.com/bex-co/bex/lego/backend/internal/github"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
-type fakePR struct {
-	calls int
-	last  struct{ owner, repo, head, base, title, body string }
-	pr    github.PullRequest
-	err   error
-}
-
-func (f *fakePR) OpenDraftPullRequest(_ context.Context, _ int64, owner, repo, head, base, title, body string) (github.PullRequest, error) {
-	f.calls++
-	f.last.owner, f.last.repo, f.last.head, f.last.base, f.last.title, f.last.body = owner, repo, head, base, title, body
-	if f.err != nil {
-		return github.PullRequest{}, f.err
-	}
-	return f.pr, nil
-}
-
-type fakeConn struct {
-	conn store.GitConnection
-	err  error
-}
-
-func (f fakeConn) GetGitConnectionByOwner(_ context.Context, _ string, _ string) (store.GitConnection, error) {
-	return f.conn, f.err
-}
-
 // completerFixture builds a Completer over a fake store holding one running
 // session with a live sandbox id, ready for a status-driven finalize.
-func completerFixture(status string, statusErr error) (*Completer, *fakeStore, *fakeLifecycle, *fakePR, string) {
+func completerFixture(status string, statusErr error) (*Completer, *fakeStore, *fakeLifecycle, string) {
 	st := newFakeStore()
 	config, _ := json.Marshal(AgentConfig{Agent: "codex", Task: "fix the tests"})
 	row, _ := st.CreateAgentSession(context.Background(), store.AgentSession{WorkspaceID: "tea-a", Repo: "bex-co/example", Branch: "bex-agent/s1", AgentConfig: config})
 	row, _ = st.RecordAgentSessionDispatch(context.Background(), row.ID, "sandbox-1", PhaseRunning, "running", "", row.Turns)
 	lc := &fakeLifecycle{status: status, statusErr: statusErr}
-	pr := &fakePR{pr: github.PullRequest{Number: 7, HTMLURL: "https://github.com/bex-co/example/pull/7", State: "open", Draft: true}}
-	c := &Completer{Store: st, Sandbox: lc, GitHub: pr, Connections: fakeConn{conn: store.GitConnection{InstallationID: 42, AccountLogin: "bex-co"}}, APIPublicURL: "https://api.bex.co"}
-	return c, st, lc, pr, row.ID
+	c := &Completer{Store: st, Sandbox: lc}
+	return c, st, lc, row.ID
 }
 
-func succeededStatus(pushed bool) string {
-	d := statusDelivery{Branch: "bex-agent/s1", BaseBranch: "main", HeadSHA: "abc123", Pushed: pushed, Commits: 1, ChangedFiles: []string{"fix.txt"}}
-	if !pushed {
-		d = statusDelivery{Branch: "bex-agent/s1", BaseBranch: "main"}
-	}
-	raw, _ := json.Marshal(statusReport{State: "succeeded", Delivery: d, Evidence: statusEvidence{CommandLog: []string{"go test ./..."}, TestOutput: []string{"ok pkg"}, OutputTail: "done"}})
+// remoteHead is a well-formed pushed head for status fixtures.
+const remoteHead = "0123456789abcdef0123456789abcdef01234567"
+
+// gitStatus renders a succeeded driver status carrying git.
+func gitStatus(git statusGit) string {
+	raw, _ := json.Marshal(statusReport{State: "succeeded", Git: git})
 	return string(raw)
 }
 
-func TestCompleterOpensDraftPRAndRecordsEvidence(t *testing.T) {
-	c, st, lc, pr, id := completerFixture(succeededStatus(true), nil)
+// succeededStatus is a clean turn: pushed (with the PR already opened by the
+// agent and recorded by bex-api) or nothing changed at all.
+func succeededStatus(pushed bool) string {
+	if !pushed {
+		return gitStatus(statusGit{})
+	}
+	return gitStatus(statusGit{RemoteHead: remoteHead})
+}
+
+// recordAgentPR stands in for the gateway PR verb having recorded the agent's
+// draft PR on the session mid-turn (ADR090).
+func recordAgentPR(st *fakeStore, id string) {
+	row := st.rows[id]
+	row.PRURL, row.PRNumber, row.HeadSHA = "https://github.com/bex-co/example/pull/7", 7, remoteHead
+	st.rows[id] = row
+}
+
+// ADR090: the session finalizes with the PR the agent opened itself; the
+// Completer contributes only the remote head and no delivery note.
+func TestCompleterFinalizesWithTheAgentOpenedPR(t *testing.T) {
+	c, st, lc, id := completerFixture(succeededStatus(true), nil)
+	recordAgentPR(st, id)
 	c.Reconcile(context.Background())
 
-	if pr.calls != 1 || pr.last.head != "bex-agent/s1" || pr.last.base != "main" || pr.last.owner != "bex-co" || pr.last.repo != "example" {
-		t.Fatalf("PR open = %+v (calls=%d)", pr.last, pr.calls)
-	}
-	// The body is session metadata only (w5/m65) — the diff and commit list are
-	// what GitHub already renders, and the "test output" the digest used to inline
-	// was any tool call that happened to write stdout.
-	if !strings.Contains(pr.last.body, id) || !strings.Contains(pr.last.body, "bex-agent/s1") || !strings.Contains(pr.last.body, "abc123") {
-		t.Fatalf("PR body missing session metadata: %s", pr.last.body)
-	}
-	for _, banned := range []string{"go test ./...", "fix.txt", "Changed files", "Commands run", "Test output", "truncated"} {
-		if strings.Contains(pr.last.body, banned) {
-			t.Fatalf("PR body still carries the evidence digest (%q): %s", banned, pr.last.body)
-		}
-	}
 	row := st.rows[id]
-	if row.Phase != PhaseCompleted || row.HeadSHA != "abc123" || row.PRURL == "" || row.PRNumber != 7 {
+	if row.Phase != PhaseCompleted || row.HeadSHA != remoteHead || row.PRURL != "https://github.com/bex-co/example/pull/7" || row.PRNumber != 7 || row.DeliveryNote != "" {
 		t.Fatalf("completed row = %+v", row)
-	}
-	var ev Evidence
-	if err := json.Unmarshal(row.Evidence, &ev); err != nil || len(ev.CommandLog) == 0 || len(ev.ChangedFiles) == 0 {
-		t.Fatalf("evidence = %s err=%v", row.Evidence, err)
 	}
 	if lc.canceled != 1 {
 		t.Fatalf("sandbox not torn down: canceled=%d", lc.canceled)
+	}
+}
+
+// The Completer has no way to reach GitHub at all: no field of it is a GitHub
+// client or connection store, so it can never open or edit a PR (ADR090).
+func TestCompleterHasNoGitHubDependency(t *testing.T) {
+	typ := reflect.TypeOf(Completer{})
+	for i := range typ.NumField() {
+		field := typ.Field(i)
+		for _, banned := range []string{"github", "GitHub", "PullRequest", "Connection"} {
+			if strings.Contains(field.Name, banned) || strings.Contains(field.Type.String(), banned) || strings.Contains(field.Type.PkgPath(), "/github") {
+				t.Fatalf("Completer.%s (%s) reintroduces a GitHub path", field.Name, field.Type)
+			}
+		}
+	}
+}
+
+// dirtyReason is a driver-worded undelivered reason for fixtures.
+const dirtyReason = "The agent left uncommitted changes in the sandbox; they are not on bex-agent/s1."
+
+// Undelivered work never fails the turn: the session completes, records the
+// driver's own reasons as the delivery note, and keeps no stale PR it did not
+// open.
+func TestCompleterUndeliveredWorkCompletesWithANote(t *testing.T) {
+	pushedReason := "The agent pushed bex-agent/s1 but did not open a pull request."
+	for _, tc := range []struct {
+		name string
+		git  statusGit
+		want string
+	}{
+		{name: "one reason", git: statusGit{Dirty: true, Undelivered: []string{dirtyReason}}, want: dirtyReason},
+		{name: "reasons joined", git: statusGit{RemoteHead: remoteHead, Undelivered: []string{dirtyReason, pushedReason}}, want: dirtyReason + " " + pushedReason},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c, st, lc, id := completerFixture(gitStatus(tc.git), nil)
+			c.Reconcile(context.Background())
+			row := st.rows[id]
+			if row.Phase != PhaseCompleted || row.FailureReason != "" || row.PRURL != "" || lc.canceled != 1 {
+				t.Fatalf("undelivered turn = %+v canceled=%d", row, lc.canceled)
+			}
+			if row.DeliveryNote != tc.want {
+				t.Fatalf("delivery note = %q, want %q", row.DeliveryNote, tc.want)
+			}
+			view, err := viewOf(row)
+			if err != nil || view.DeliveryNote != row.DeliveryNote {
+				t.Fatalf("view delivery note = %q err=%v, want %q", view.DeliveryNote, err, row.DeliveryNote)
+			}
+		})
+	}
+}
+
+// The driver is the single source of the note: dirty/unpushed flags without
+// reasons record no note of the backend's own.
+func TestCompleterDerivesNoNoteOfItsOwn(t *testing.T) {
+	c, st, _, id := completerFixture(gitStatus(statusGit{Dirty: true, UnpushedCommits: 2}), nil)
+	c.Reconcile(context.Background())
+	if row := st.rows[id]; row.Phase != PhaseCompleted || row.DeliveryNote != "" {
+		t.Fatalf("row = %+v, want no backend-derived note", row)
+	}
+}
+
+// The untrusted driver's reasons are bounded: control characters stripped,
+// each reason capped, at most maxDeliveryReasons kept, blanks dropped.
+func TestDeliveryNoteBoundsDriverReasons(t *testing.T) {
+	long := strings.Repeat("x", maxDeliveryReasonRunes+50)
+	reasons := []string{"a\x1b[31mb\nc", "  ", long}
+	for i := range maxDeliveryReasons + 3 {
+		reasons = append(reasons, "r"+strconv.Itoa(i))
+	}
+	note := deliveryNote(statusGit{Undelivered: reasons})
+	if strings.ContainsFunc(note, unicode.IsControl) {
+		t.Fatalf("note kept control characters: %q", note)
+	}
+	if !strings.HasPrefix(note, "a [31mb c ") {
+		t.Fatalf("note = %q, want control characters replaced", note)
+	}
+	if !strings.Contains(note, strings.Repeat("x", maxDeliveryReasonRunes)+"…") || strings.Contains(note, strings.Repeat("x", maxDeliveryReasonRunes+1)) {
+		t.Fatal("long reason not capped")
+	}
+	// The blank is dropped, so "a…", the long one and r0..r2 fill the cap.
+	if strings.Contains(note, "r3") || !strings.HasSuffix(note, "r2") {
+		t.Fatalf("note = %q, want at most %d reasons", note, maxDeliveryReasons)
+	}
+	if deliveryNote(statusGit{}) != "" {
+		t.Fatal("delivered turn produced a note")
+	}
+}
+
+// A steering turn that delivers clears the previous turn's note; the PR the
+// agent recorded earlier survives a later turn that pushed nothing new.
+func TestCompleterNoteTracksTheLatestTurn(t *testing.T) {
+	c, st, lc, id := completerFixture(gitStatus(statusGit{Dirty: true, Undelivered: []string{dirtyReason}}), nil)
+	c.Reconcile(context.Background())
+	if st.rows[id].DeliveryNote == "" {
+		t.Fatal("dirty turn recorded no note")
+	}
+	row := st.rows[id]
+	row.Phase, row.Turns, row.SandboxID = PhaseRedispatching, 2, "sandbox-2"
+	st.rows[id] = row
+	st.recordTurn(id, 2, "deliver it", DeliveryRedispatch)
+	recordAgentPR(st, id)
+	lc.status = succeededStatus(true)
+	c.Reconcile(context.Background())
+	if row := st.rows[id]; row.Phase != PhaseCompleted || row.DeliveryNote != "" || row.PRNumber != 7 {
+		t.Fatalf("delivered steering turn = %+v", row)
+	}
+}
+
+// A malformed remote head from the untrusted status file is never recorded.
+func TestCompleterIgnoresMalformedRemoteHead(t *testing.T) {
+	c, st, _, id := completerFixture(gitStatus(statusGit{RemoteHead: "not-a-sha; rm -rf /"}), nil)
+	recordAgentPR(st, id)
+	c.Reconcile(context.Background())
+	if row := st.rows[id]; row.HeadSHA != remoteHead || row.Phase != PhaseCompleted {
+		t.Fatalf("row = %+v, want the recorded head kept", row)
 	}
 }
 
@@ -113,7 +205,7 @@ func TestCompleterOpensDraftPRAndRecordsEvidence(t *testing.T) {
 // transcript BEFORE tearing the sandbox down (the log dies with the pod), scoped
 // to the session's current turn.
 func TestCompleterHarvestsTranscriptBeforeTeardown(t *testing.T) {
-	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	c, st, lc, id := completerFixture(succeededStatus(true), nil)
 	lc.transcriptLog = `{"at":"t","type":"ui-message","part":{"type":"text","text":"hello"}}
 {"at":"t","type":"ui-message","part":{"type":"data-acp","data":{"type":"plan"}}}`
 	c.Reconcile(context.Background())
@@ -146,7 +238,7 @@ func TestCompleterHarvestsTranscriptBeforeTeardown(t *testing.T) {
 // A redispatched (steered) turn's harvest concatenates after the prior turn's
 // parts rather than colliding.
 func TestCompleterHarvestConcatenatesTurns(t *testing.T) {
-	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	c, st, lc, id := completerFixture(succeededStatus(true), nil)
 	// Pretend turn 1 was already recorded (seq 0,1).
 	_ = st.AppendAgentSessionTranscript(context.Background(), id, []store.AgentSessionTranscriptPart{
 		{Seq: 0, Turn: 1, Part: []byte(`{"type":"text","text":"t1"}`)},
@@ -172,7 +264,7 @@ func TestCompleterHarvestConcatenatesTurns(t *testing.T) {
 // merge the driver's full log by turn-local part index; the old any-row guard
 // permanently lost the suffix.
 func TestCompleterHarvestMergesAfterPartialLiveTee(t *testing.T) {
-	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	c, st, lc, id := completerFixture(succeededStatus(true), nil)
 	_ = st.AppendAgentSessionTranscript(context.Background(), id, []store.AgentSessionTranscriptPart{
 		{Turn: 1, PartIndex: 0, Part: []byte(`{"type":"start"}`)},
 	})
@@ -201,7 +293,7 @@ func TestCompleterHarvestMergesAfterPartialLiveTee(t *testing.T) {
 // tee (w1/m65 F10): seeded near the cap, only the parts that still fit are
 // stored — never a per-harvest fresh budget.
 func TestCompleterHarvestRespectsCumulativeQuota(t *testing.T) {
-	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	c, st, lc, id := completerFixture(succeededStatus(true), nil)
 	c.MaxTranscriptBytes = 100 // small quota so the test needs no 64 MiB payloads
 	// Turn 1 already stored 80 bytes; this reconcile finalizes turn 2.
 	_ = st.AppendAgentSessionTranscript(context.Background(), id, []store.AgentSessionTranscriptPart{
@@ -236,10 +328,38 @@ func TestCompleterHarvestRespectsCumulativeQuota(t *testing.T) {
 	}
 }
 
+// The driver numbers every part it produced, written or refused, so a gap in
+// the turn's indexes — or a log at the driver's byte cap, which drops the tail
+// of a turn — marks the transcript truncated; the status file no longer says so.
+func TestCompleterMarksTranscriptTruncatedWhenTheDriverDroppedParts(t *testing.T) {
+	for name, log := range map[string]string{
+		"index gap": `{"turn":1,"partIndex":0,"part":{"type":"start"}}
+{"turn":1,"partIndex":2,"part":{"type":"finish"}}`,
+		"log at the driver cap": `{"turn":1,"partIndex":0,"part":{"type":"text","text":"` + strings.Repeat("x", driverSessionLogMaxBytes-driverSessionLogFullSlack) + `"}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			c, st, lc, id := completerFixture(succeededStatus(true), nil)
+			lc.transcriptLog = log
+			c.Reconcile(context.Background())
+			turn := st.turns[id][1]
+			if turn.TranscriptComplete || !turn.TranscriptTruncated || turn.TruncationReason != reasonDriverTruncated {
+				t.Fatalf("turn completeness = %+v, want truncated (%s)", turn, reasonDriverTruncated)
+			}
+		})
+	}
+	c, st, lc, id := completerFixture(succeededStatus(true), nil)
+	lc.transcriptLog = `{"turn":1,"partIndex":0,"part":{"type":"start"}}
+{"turn":1,"partIndex":1,"part":{"type":"finish"}}`
+	c.Reconcile(context.Background())
+	if turn := st.turns[id][1]; !turn.TranscriptComplete || turn.TranscriptTruncated {
+		t.Fatalf("contiguous turn completeness = %+v, want complete", turn)
+	}
+}
+
 // Harvest is best-effort: a read failure must not strand the session or block
 // teardown.
 func TestCompleterHarvestFailureDoesNotBlockTeardown(t *testing.T) {
-	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	c, st, lc, id := completerFixture(succeededStatus(true), nil)
 	lc.transcriptErr = errors.New("exec unreachable")
 	c.Reconcile(context.Background())
 	if st.rows[id].Phase != PhaseCompleted || lc.canceled != 1 {
@@ -248,56 +368,24 @@ func TestCompleterHarvestFailureDoesNotBlockTeardown(t *testing.T) {
 }
 
 func TestCompleterNoChangeCompletesWithoutPR(t *testing.T) {
-	c, st, lc, pr, id := completerFixture(succeededStatus(false), nil)
+	c, st, lc, id := completerFixture(succeededStatus(false), nil)
 	c.Reconcile(context.Background())
-	if pr.calls != 0 {
-		t.Fatalf("no-op turn opened a PR: %d", pr.calls)
-	}
-	if st.rows[id].Phase != PhaseCompleted || st.rows[id].PRURL != "" || lc.canceled != 1 {
-		t.Fatalf("no-op completion = %+v", st.rows[id])
-	}
-}
-
-// An unreadable config must not block completion: the branch is already pushed,
-// so the Completer still opens the draft PR — with an untitled fallback title.
-func TestCompleterUnreadableConfigStillOpensPR(t *testing.T) {
-	c, st, _, pr, id := completerFixture(succeededStatus(true), nil)
-	row := st.rows[id]
-	row.AgentConfig = []byte("{not json")
-	st.rows[id] = row
-	c.Reconcile(context.Background())
-
-	if pr.calls != 1 {
-		t.Fatalf("unreadable config did not open a PR: calls=%d", pr.calls)
-	}
-	if pr.last.title != "bex agent session "+id {
-		t.Fatalf("unreadable config PR title = %q, want the untitled fallback", pr.last.title)
-	}
-	if st.rows[id].Phase != PhaseCompleted {
-		t.Fatalf("unreadable config blocked completion: %+v", st.rows[id])
+	if row := st.rows[id]; row.Phase != PhaseCompleted || row.PRURL != "" || row.DeliveryNote != "" || lc.canceled != 1 {
+		t.Fatalf("no-op completion = %+v", row)
 	}
 }
 
 func TestCompleterFailedTurnRecordsReason(t *testing.T) {
 	raw, _ := json.Marshal(statusReport{State: "failed", Error: "agent crashed"})
-	c, st, lc, pr, id := completerFixture(string(raw), nil)
+	c, st, lc, id := completerFixture(string(raw), nil)
 	c.Reconcile(context.Background())
-	if pr.calls != 0 || st.rows[id].Phase != PhaseFailed || st.rows[id].FailureReason != "agent crashed" || lc.canceled != 1 {
-		t.Fatalf("failed row = %+v pr=%d", st.rows[id], pr.calls)
-	}
-}
-
-func TestCompleterPROpenFailureFailsSession(t *testing.T) {
-	c, st, lc, pr, id := completerFixture(succeededStatus(true), nil)
-	pr.err = &github.APIError{Status: 500}
-	c.Reconcile(context.Background())
-	if st.rows[id].Phase != PhaseFailed || st.rows[id].FailureReason == "" || lc.canceled != 1 {
-		t.Fatalf("pr-failure row = %+v", st.rows[id])
+	if st.rows[id].Phase != PhaseFailed || st.rows[id].FailureReason != "agent crashed" || lc.canceled != 1 {
+		t.Fatalf("failed row = %+v", st.rows[id])
 	}
 }
 
 func TestCompleterLostSandboxFailsSession(t *testing.T) {
-	c, st, lc, _, id := completerFixture("", core.ErrNotFound)
+	c, st, lc, id := completerFixture("", core.ErrNotFound)
 	c.Reconcile(context.Background())
 	if st.rows[id].Phase != PhaseFailed || !strings.Contains(st.rows[id].FailureReason, "terminated") {
 		t.Fatalf("lost-sandbox row = %+v", st.rows[id])
@@ -312,7 +400,7 @@ func TestCompleterLostSandboxFailsSession(t *testing.T) {
 }
 
 func TestCompleterBoundsContinuousAmbiguousStatusFailure(t *testing.T) {
-	c, st, lc, _, id := completerFixture("", core.ErrSandboxesUnavailable)
+	c, st, lc, id := completerFixture("", core.ErrSandboxesUnavailable)
 	now := time.Date(2026, 8, 17, 12, 0, 0, 0, time.UTC)
 	c.Now = func() time.Time { return now }
 	c.StatusReadFailureTTL = time.Minute
@@ -331,7 +419,7 @@ func TestCompleterBoundsContinuousAmbiguousStatusFailure(t *testing.T) {
 }
 
 func TestCompleterPrunesStatusFailureForSessionThatLeftActiveSet(t *testing.T) {
-	c, st, _, _, id := completerFixture("", core.ErrSandboxesUnavailable)
+	c, st, _, id := completerFixture("", core.ErrSandboxesUnavailable)
 	c.Reconcile(context.Background())
 	if len(c.statusFailures) != 1 {
 		t.Fatalf("status failure streaks=%d, want 1", len(c.statusFailures))
@@ -348,7 +436,7 @@ func TestCompleterPrunesStatusFailureForSessionThatLeftActiveSet(t *testing.T) {
 
 func TestCompleterTerminalTransitionIsCASAcrossStaleObservers(t *testing.T) {
 	raw, _ := json.Marshal(statusReport{State: "failed", Error: "agent crashed"})
-	c, st, lc, _, id := completerFixture(string(raw), nil)
+	c, st, lc, id := completerFixture(string(raw), nil)
 	stale := st.rows[id]
 	c.finalize(context.Background(), stale)
 	c.finalize(context.Background(), stale) // a second replica's stale read
@@ -361,33 +449,18 @@ func TestCompleterTerminalTransitionIsCASAcrossStaleObservers(t *testing.T) {
 }
 
 func TestCompleterStillRunningIsLeftAlone(t *testing.T) {
-	c, st, pr, _, id := completerFixtureRunning()
-	_ = pr
+	c, st, _, id := completerFixtureRunning()
 	c.Reconcile(context.Background())
 	if st.rows[id].Phase != PhaseRunning {
 		t.Fatalf("running session was finalized prematurely: %+v", st.rows[id])
 	}
 }
 
-func completerFixtureRunning() (*Completer, *fakeStore, *fakeLifecycle, *fakePR, string) {
+func completerFixtureRunning() (*Completer, *fakeStore, *fakeLifecycle, string) {
 	// Empty status file (turn still starting) and a running-state report both mean
 	// "not ready"; use the running-state report here.
 	raw, _ := json.Marshal(statusReport{State: "running"})
 	return completerFixture(string(raw), nil)
-}
-
-func TestBuildEvidenceBoundsAndMarksTruncation(t *testing.T) {
-	commands := make([]string, maxEvidenceCommands+5)
-	for i := range commands {
-		commands[i] = fmt.Sprintf("cmd-%d", i)
-	}
-	ev := buildEvidence(statusReport{
-		Evidence: statusEvidence{CommandLog: commands, OutputTail: strings.Repeat("x", maxEvidenceOutputTail+100)},
-		Delivery: statusDelivery{Commits: 2},
-	})
-	if len(ev.CommandLog) != maxEvidenceCommands || len(ev.OutputTail) != maxEvidenceOutputTail || !ev.Truncated {
-		t.Fatalf("evidence not bounded: cmds=%d tail=%d trunc=%v", len(ev.CommandLog), len(ev.OutputTail), ev.Truncated)
-	}
 }
 
 // --- Steering ---
@@ -471,7 +544,7 @@ func isCode(err error, code string) bool {
 // its transcript but leaves the sandbox alive; once the connection closes, the
 // reaper reclaims it and clears the sandbox id.
 func TestCompleterDefersTeardownWhileEditorSSHOpen(t *testing.T) {
-	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	c, st, lc, id := completerFixture(succeededStatus(true), nil)
 	lc.transcriptLog = `{"at":"t","type":"ui-message","part":{"type":"text","text":"hi"}}`
 	st.openSSH[id] = time.Now() // a live "Open in Zed" session
 
@@ -505,7 +578,7 @@ func TestCompleterDefersTeardownWhileEditorSSHOpen(t *testing.T) {
 // A leaked ssh_sessions row (older than the SSH session cap — a crashed gateway
 // replica) must not pin a sandbox forever: teardown proceeds normally.
 func TestCompleterStaleSSHRowDoesNotPinSandbox(t *testing.T) {
-	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	c, st, lc, id := completerFixture(succeededStatus(true), nil)
 	st.openSSH[id] = time.Now().Add(-5 * time.Hour) // older than the 4h grace
 
 	c.Reconcile(context.Background())
@@ -524,7 +597,7 @@ func TestCompleterStaleSSHRowDoesNotPinSandbox(t *testing.T) {
 // sandbox until the idle window elapses since the turn end, then the reaper
 // reclaims it. This is the Active-tier generalization of the D6 immediate reap.
 func TestCompleterIdleGraceDefersUntilElapsed(t *testing.T) {
-	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	c, st, lc, id := completerFixture(succeededStatus(true), nil)
 	c.IdleTTL = 30 * time.Minute
 	base := st.now
 	c.Now = func() time.Time { return base }
@@ -557,7 +630,7 @@ func TestCompleterIdleGraceDefersUntilElapsed(t *testing.T) {
 // disconnect restarts it past the turn-end, so a reconnect-then-disconnect keeps
 // the sandbox alive well after the turn itself finished.
 func TestCompleterIdleGraceMeasuredFromLastSSHDisconnect(t *testing.T) {
-	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	c, st, lc, id := completerFixture(succeededStatus(true), nil)
 	c.IdleTTL = 30 * time.Minute
 	base := st.now
 	c.Now = func() time.Time { return base }
@@ -589,7 +662,8 @@ func TestCompleterIdleGraceMeasuredFromLastSSHDisconnect(t *testing.T) {
 // object-storage snapshot (phase → hibernated, snapshot ref + size recorded, pod
 // terminated) instead of being torn down.
 func TestCompleterHibernatesIdleSessionWhenEnabled(t *testing.T) {
-	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	c, st, lc, id := completerFixture(succeededStatus(true), nil)
+	recordAgentPR(st, id) // delivered: nothing extends the base window
 	snaps := newFakeSnapshots()
 	c.Snapshots = snaps
 	c.RetentionTTL = 7 * 24 * time.Hour
@@ -622,7 +696,8 @@ func TestCompleterHibernatesIdleSessionWhenEnabled(t *testing.T) {
 // A dirty git tree at hibernation doubles the retention window so unpushed work
 // survives longer (ADR059 D5 dirty-git extension).
 func TestCompleterDirtyGitExtendsRetention(t *testing.T) {
-	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	c, st, lc, id := completerFixture(succeededStatus(true), nil)
+	recordAgentPR(st, id)
 	c.Snapshots = newFakeSnapshots()
 	c.RetentionTTL = 24 * time.Hour
 	lc.snapshot = sandbox.SnapshotResult{Bytes: 2048, SHA256: shaStub(), DirtyGit: true}
@@ -637,10 +712,30 @@ func TestCompleterDirtyGitExtendsRetention(t *testing.T) {
 	}
 }
 
+// ADR090: a turn the driver reported undelivered feeds the same extension, even
+// when the snapshot script saw a clean tree (the note survives on the row).
+func TestCompleterUndeliveredTurnExtendsRetention(t *testing.T) {
+	c, st, _, id := completerFixture(gitStatus(statusGit{Undelivered: []string{dirtyReason}}), nil)
+	c.Snapshots = newFakeSnapshots()
+	c.RetentionTTL = 24 * time.Hour
+	base := st.now
+	c.Now = func() time.Time { return base }
+
+	c.Reconcile(context.Background())
+
+	row := st.rows[id]
+	if row.Phase != PhaseHibernated || row.DeliveryNote == "" {
+		t.Fatalf("dirty turn row = %+v", row)
+	}
+	if row.RetainUntil == nil || !row.RetainUntil.Equal(base.Add(48*time.Hour)) {
+		t.Fatalf("undelivered retain_until = %v, want base+48h (2x)", row.RetainUntil)
+	}
+}
+
 // A snapshot failure must not strand the sandbox: hibernation falls back to the
 // plain Terminate reap and the row stays terminal (not hibernated).
 func TestCompleterHibernationFailureFallsBackToTerminate(t *testing.T) {
-	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	c, st, lc, id := completerFixture(succeededStatus(true), nil)
 	snaps := newFakeSnapshots()
 	c.Snapshots = snaps
 	lc.hibernateErr = errors.New("curl upload failed")
@@ -665,7 +760,7 @@ func TestCompleterHibernationFailureFallsBackToTerminate(t *testing.T) {
 // The retention sweep deletes the snapshot + expires the row of an unpinned
 // hibernated session past its deadline, and never touches a pinned one.
 func TestCompleterRetentionSweepExpiresUnpinnedOnly(t *testing.T) {
-	c, st, _, _, id := completerFixture(succeededStatus(true), nil)
+	c, st, _, id := completerFixture(succeededStatus(true), nil)
 	snaps := newFakeSnapshots()
 	c.Snapshots = snaps
 	base := st.now
@@ -697,7 +792,7 @@ func shaStub() string { return strings.Repeat("a", 64) }
 // An OPEN editor session pins idle at zero regardless of how far past the grace
 // the clock has moved: a live edit is never killed by the idle reaper.
 func TestCompleterOpenSSHPinsIdleRegardlessOfGrace(t *testing.T) {
-	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	c, st, lc, id := completerFixture(succeededStatus(true), nil)
 	c.IdleTTL = 30 * time.Minute
 	base := st.now
 	st.openSSH[id] = base.Add(time.Minute) // a live editor within the SSH cap window
@@ -715,7 +810,7 @@ func TestCompleterOpenSSHPinsIdleRegardlessOfGrace(t *testing.T) {
 // w5/m99 t002: a terminal session aged far past the old 8h30m now-window is
 // still eligible — eligibility is per-row, not a recency floor.
 func TestCompleterReapsTerminalSessionAgedThirtyDays(t *testing.T) {
-	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	c, st, lc, id := completerFixture(succeededStatus(true), nil)
 	c.Reconcile(context.Background()) // finalize
 	row := st.rows[id]
 	row.UpdatedAt = st.now.Add(-30 * 24 * time.Hour)
@@ -735,7 +830,7 @@ func TestCompleterReapsTerminalSessionAgedThirtyDays(t *testing.T) {
 
 // w5/m99 t002: repeated terminate failures schedule backoff and keep retrying.
 func TestCompleterRetriesFailedTerminateWithBackoff(t *testing.T) {
-	c, st, lc, _, id := completerFixture("", nil)
+	c, st, lc, id := completerFixture("", nil)
 	row := st.rows[id]
 	row.Phase, row.Status, row.SandboxID = PhaseCompleted, PhaseCompleted, "sandbox-retry"
 	row.UpdatedAt = st.now
@@ -780,7 +875,7 @@ func TestCompleterRetriesFailedTerminateWithBackoff(t *testing.T) {
 
 // w5/m99 t003: Completer inventory tick walks tenant keys and classifies.
 func TestCompleterInventoryReclaimsBlankedTerminalSandbox(t *testing.T) {
-	c, st, lc, _, id := completerFixture("", nil)
+	c, st, lc, id := completerFixture("", nil)
 	row := st.rows[id]
 	row.Phase, row.Status, row.SandboxID = PhaseCanceled, PhaseCanceled, ""
 	st.rows[id] = row
@@ -803,7 +898,7 @@ func TestCompleterInventoryReclaimsBlankedTerminalSandbox(t *testing.T) {
 // w5/m99 t004: a failed previous-sandbox teardown leaves a durable intent that
 // a later tick retries successfully.
 func TestCompleterRetriesPreviousSandboxTeardown(t *testing.T) {
-	c, st, lc, _, id := completerFixture("", nil)
+	c, st, lc, id := completerFixture("", nil)
 	d := store.AgentDispatch{
 		SessionID: id, Turn: 2, WorkspaceID: "tea-a",
 		PreviousSandboxID: "sandbox-prev",

@@ -365,6 +365,16 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "会话失败",
     description: "Detail page — heading over a failed session's reason",
   },
+  "agentSessions.deliveryNoteTitle": {
+    message: "改动尚未完全交付",
+    description:
+      "Detail page — heading over a completed session's note that the agent left work uncommitted, unpushed or without a pull request",
+  },
+  "agentSessions.deliveryNoteHint": {
+    message: "发送一条跟进消息，让 agent 完成提交、推送并更新 pull request。",
+    description:
+      "Detail page — the next step shown under an undelivered-work note",
+  },
   "agentSessions.failureReasonFallback": {
     message: "会话启动失败。",
     description:

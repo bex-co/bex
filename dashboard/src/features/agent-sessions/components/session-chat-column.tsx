@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { SessionDetailHeader } from "@/features/agent-sessions/components/session-detail-header";
+import { DeliveryNoteCallout } from "@/features/agent-sessions/components/delivery-note-callout";
 import { FailureCallout } from "@/features/agent-sessions/components/failure-callout";
 import { SteeringComposer } from "@/features/agent-sessions/components/steering-composer";
 import { SessionConversation } from "@/features/agent-sessions/components/session-conversation";
@@ -82,6 +83,7 @@ export function SessionChatColumn({
         <OptimisticUserBubble text={pendingSteer.prompt} />
       ) : null}
       <FailureCallout session={session} onRetried={onChanged} />
+      <DeliveryNoteCallout session={session} />
     </>
   );
 

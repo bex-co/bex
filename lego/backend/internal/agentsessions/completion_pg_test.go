@@ -76,7 +76,7 @@ func TestCompleterPGRecoversTranscriptWithinExactQuota(t *testing.T) {
 			if _, err := pg.RecordAgentSessionDispatch(ctx, session.ID, "sandbox-1", PhaseRunning, "running", "", session.Turns); err != nil {
 				t.Fatal(err)
 			}
-			c, _, lifecycle, _, _ := completerFixture(succeededStatus(true), nil)
+			c, _, lifecycle, _ := completerFixture(succeededStatus(true), nil)
 			c.Store = pg
 			payloads := []string{`{"type":"start"}`, `{"type":"text-delta","id":"text","delta":"recovered"}`, `{"type":"finish"}`}
 			parts := make([]store.AgentSessionTranscriptPart, len(payloads))
@@ -118,4 +118,71 @@ func TestCompleterPGRecoversTranscriptWithinExactQuota(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestCompleterPGFinalizesFromTheAgentPRAndNotesUndeliveredWork (ADR090): the
+// Completer finalizes with the PR the agent's verb already recorded on the row,
+// and a dirty tree completes with a delivery note — never failed, never a call
+// to GitHub (the Completer holds no GitHub client at all).
+func TestCompleterPGFinalizesFromTheAgentPRAndNotesUndeliveredWork(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := store.Migrate(uri); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	pg := store.NewPGStore(pool)
+	tenant, err := pg.CreateTenant(ctx, "completer-agent-pr-test", store.PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = pg.DeleteTenant(ctx, tenant.ID) }()
+	running := func(t *testing.T) store.AgentSession {
+		t.Helper()
+		session, err := pg.CreateAgentSession(ctx, store.AgentSession{
+			WorkspaceID: tenant.ID, Repo: "bex-co/example", Branch: "bex-agent/s1",
+			AgentConfig: []byte(`{"agent":"codex","task":"fix the tests"}`), InitialPrompt: "fix the tests",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pg.RecordAgentSessionDispatch(ctx, session.ID, "sandbox-1", PhaseRunning, "running", "", session.Turns); err != nil {
+			t.Fatal(err)
+		}
+		return session
+	}
+
+	t.Run("agent-opened PR", func(t *testing.T) {
+		session := running(t)
+		if err := pg.RecordAgentSessionPullRequest(ctx, session.ID, "https://github.com/bex-co/example/pull/9", 9, remoteHead); err != nil {
+			t.Fatal(err)
+		}
+		c, _, lifecycle, _ := completerFixture(succeededStatus(true), nil)
+		c.Store = pg
+		c.Reconcile(ctx)
+		row, err := pg.GetAgentSession(ctx, session.ID)
+		if err != nil || row.Phase != PhaseCompleted || row.PRURL != "https://github.com/bex-co/example/pull/9" || row.PRNumber != 9 || row.HeadSHA != remoteHead || row.DeliveryNote != "" {
+			t.Fatalf("finalized row = %+v err=%v", row, err)
+		}
+		if lifecycle.canceled != 1 {
+			t.Fatalf("sandbox not reclaimed: canceled=%d", lifecycle.canceled)
+		}
+	})
+	t.Run("dirty tree", func(t *testing.T) {
+		session := running(t)
+		c, _, _, _ := completerFixture(gitStatus(statusGit{Dirty: true, UnpushedCommits: 1, Undelivered: []string{dirtyReason}}), nil)
+		c.Store = pg
+		c.Reconcile(ctx)
+		row, err := pg.GetAgentSession(ctx, session.ID)
+		if err != nil || row.Phase != PhaseCompleted || row.FailureReason != "" || row.PRURL != "" || row.DeliveryNote != dirtyReason {
+			t.Fatalf("dirty row = %+v err=%v", row, err)
+		}
+	})
 }
