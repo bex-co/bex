@@ -313,12 +313,11 @@ func TestKeyValueConnectionSecretRebuildKeepsAServingStoreReady(t *testing.T) {
 	}
 }
 
-// TestKeyValueFirstExternalEnableAddsTheListener: a store that predates
-// w8/181 was created private without a listener, so its first enable must add
-// one (the one toggle that restarts, which bex-api announces), and the status
-// says so before and after. A store created now starts with the listener
-// (TestKeyValueNewStoreStartsWithTheListener), so the legacy shape is built by
-// creating it on a cluster with no issuer, which keeps the lazy first enable.
+// TestKeyValueFirstExternalEnableAddsTheListener: a store created private has
+// no listener, so its first enable must add one (the one toggle that restarts,
+// which bex-api announces), and the status says so before and after. A newborn
+// private store cannot start with the listener: its Certificate is requested
+// only for a public store (w8/m134).
 func TestKeyValueFirstExternalEnableAddsTheListener(t *testing.T) {
 	scheme := keyValueBackupTestScheme(t)
 	kv := &appv1alpha1.KeyValue{
@@ -1257,10 +1256,11 @@ var _ = Describe("KeyValue ipAllowList structural schema", func() {
 	})
 })
 
-// w8/181: Render changes an allowlist without a restart, so a store created now
-// runs the TLS listener from the start and turning external access on changes
-// nothing in its pod template.
-func TestKeyValueNewStoreStartsWithTheListener(t *testing.T) {
+// w8/m134: a private store's pod must be able to start. A newborn private store
+// runs no TLS listener and mounts no TLS Secret (its Certificate is requested
+// only for a public store), so w8/181's birth listener, which mounted a Secret
+// nothing would create, left every default `bex kv create` in `creating`.
+func TestKeyValueNewPrivateStoreMountsNoCertificateItNeverRequests(t *testing.T) {
 	scheme := keyValueBackupTestScheme(t)
 	kv := &appv1alpha1.KeyValue{
 		ObjectMeta: metav1.ObjectMeta{Name: "fresh-kv", Namespace: "default", UID: "kv-fresh-test"},
@@ -1271,36 +1271,61 @@ func TestKeyValueNewStoreStartsWithTheListener(t *testing.T) {
 	r := &KeyValueReconciler{Client: cl, Scheme: scheme, KvDomain: "kv.example.test", ClusterIssuer: "letsencrypt-prod"}
 	ctx := context.Background()
 	nn := types.NamespacedName{Name: "fresh-kv", Namespace: "default"}
-	reconcileTwice := func() {
-		t.Helper()
-		for range 2 {
-			if _, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}); err != nil {
-				t.Fatalf("reconcile: %v", err)
+	for range 2 {
+		if _, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}); err != nil {
+			t.Fatalf("reconcile: %v", err)
+		}
+	}
+	var sts appsv1.StatefulSet
+	if err := cl.Get(ctx, nn, &sts); err != nil {
+		t.Fatal(err)
+	}
+	if keyValueTemplateListens(&sts) {
+		t.Fatalf("a private newborn store mounts a TLS Secret that is never created, so its pod can never start: volumes %+v", sts.Spec.Template.Spec.Volumes)
+	}
+	for _, c := range sts.Spec.Template.Spec.Containers {
+		for _, arg := range c.Args {
+			if arg == "--tls-port" {
+				t.Fatalf("a private newborn store starts the TLS listener (args %v)", c.Args)
 			}
 		}
-		if err := cl.Get(ctx, nn, kv); err != nil {
-			t.Fatal(err)
+	}
+	if err := cl.Get(ctx, nn, kv); err != nil {
+		t.Fatal(err)
+	}
+	if kv.Status.TLSListener {
+		t.Fatal("status claims a TLS listener on a private newborn store")
+	}
+}
+
+// A store created public starts with the listener, and its Certificate is
+// requested in the same reconcile, so the Secret its pod mounts can exist.
+func TestKeyValueNewPublicStoreRequestsTheCertificateItMounts(t *testing.T) {
+	scheme := keyValueBackupTestScheme(t)
+	kv := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{Name: "pub-kv", Namespace: "default", UID: "kv-pub-test"},
+		Spec:       appv1alpha1.KeyValueSpec{Plan: "free", PersistenceMode: appv1alpha1.KeyValuePersistenceOff, Public: true},
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv).
+		WithStatusSubresource(&appv1alpha1.KeyValue{}).Build()
+	r := &KeyValueReconciler{Client: cl, Scheme: scheme, KvDomain: "kv.example.test", ClusterIssuer: "letsencrypt-prod"}
+	ctx := context.Background()
+	nn := types.NamespacedName{Name: "pub-kv", Namespace: "default"}
+	for range 2 {
+		if _, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}); err != nil {
+			t.Fatalf("reconcile: %v", err)
 		}
 	}
-	reconcileTwice()
-	var before appsv1.StatefulSet
-	if err := cl.Get(ctx, nn, &before); err != nil {
+	var sts appsv1.StatefulSet
+	if err := cl.Get(ctx, nn, &sts); err != nil {
 		t.Fatal(err)
 	}
-	if !kv.Status.TLSListener || !keyValueTemplateListens(&before) {
-		t.Fatalf("a new private store has no listener: status %v", kv.Status.TLSListener)
+	if !keyValueTemplateListens(&sts) {
+		t.Fatal("a public newborn store has no TLS listener")
 	}
-
-	kv.Spec.Public = true
-	if err := cl.Update(ctx, kv); err != nil {
-		t.Fatal(err)
-	}
-	reconcileTwice()
-	var after appsv1.StatefulSet
-	if err := cl.Get(ctx, nn, &after); err != nil {
-		t.Fatal(err)
-	}
-	if !equality.Semantic.DeepEqual(before.Spec.Template, after.Spec.Template) {
-		t.Fatalf("enabling external access changed the pod template, which restarts the store:\n%+v\n%+v", before.Spec.Template, after.Spec.Template)
+	certificate := &unstructured.Unstructured{}
+	certificate.SetGroupVersionKind(certManagerCertificateGVK)
+	if err := cl.Get(ctx, types.NamespacedName{Name: keyValueTLSName(kv), Namespace: "default"}, certificate); err != nil {
+		t.Fatalf("the Secret the pod mounts has no Certificate to create it: %v", err)
 	}
 }
