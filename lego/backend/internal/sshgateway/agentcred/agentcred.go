@@ -139,6 +139,9 @@ type Broker struct {
 	MaxDuration             time.Duration
 	MaxRequestsPerSession   int
 	MaxRequestsPerWorkspace int
+	// PullRequests is the bex-api PR verb (ADR090) behind the fifth path
+	// segment `pull-request`. nil answers that route 503.
+	PullRequests PullRequestSyncer
 	// MaxResponseBytes bounds one streamed upstream response body; 0 means
 	// defaultMaxResponseBodyBytes. Exceeding it aborts the exchange loudly.
 	MaxResponseBytes int64
@@ -172,58 +175,114 @@ func (b *Broker) limiter() *sshgateway.SessionLimiter {
 func (b *Broker) Enabled() bool         { return b != nil && b.Pods != nil && b.API != nil }
 func (b *Broker) Handler() http.Handler { return http.HandlerFunc(b.serveGit) }
 
+// admissionRefusal names why admit turned a request away, so each route can
+// answer in its own error shape.
+type admissionRefusal int
+
+const (
+	refusedSource admissionRefusal = iota
+	refusedConcurrency
+	refusedPod
+	refusedTarget
+	refusedSessionBudget
+	refusedWorkspaceBudget
+)
+
+// admission is an admitted request: r carries the bounded context, verified is
+// the label-authorized target, and release frees the concurrency slot and the
+// timeout — callers defer it.
+type admission struct {
+	r        *http.Request
+	pod      SessionPod
+	verified agentsession.MintRequest
+	release  func()
+}
+
+// admit is the shared gate in front of every sandbox route (Git and the PR
+// verb): admission before any stateful work (codex round-9 #4) — the
+// concurrency slot is held across the Pod lookup and everything after it, under
+// one timeout — then the source-IP Pod binding, label-digest authorization, and
+// the per-session/workspace budgets. On refusal it records the metric, calls
+// refuse, and reports false.
+func (b *Broker) admit(r *http.Request, namespace string, claimed agentsession.MintRequest, refuse func(admissionRefusal)) (admission, bool) {
+	sourceIP, err := RemoteIP(r.RemoteAddr)
+	if err != nil {
+		refuse(refusedSource)
+		return admission{}, false
+	}
+	limiter := b.limiter()
+	if ok, scope := limiter.Acquire(sourceIP); !ok {
+		b.Metrics.LimitRejected(scope)
+		refuse(refusedConcurrency)
+		return admission{}, false
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), b.maxDuration())
+	release := func() {
+		cancel()
+		limiter.Release(sourceIP)
+	}
+	r = r.WithContext(ctx)
+	pod, err := b.Pods.ResolveSessionPod(ctx, namespace, sourceIP)
+	if err != nil {
+		b.Metrics.Authentication("rejected_key")
+		refuse(refusedPod)
+		release()
+		return admission{}, false
+	}
+	verified, err := agentsession.AuthorizePod(namespace, pod.Name, pod.UID, pod.Labels, claimed)
+	if err != nil {
+		b.Metrics.Authentication("rejected_target")
+		refuse(refusedTarget)
+		release()
+		return admission{}, false
+	}
+	if !b.budgets().chargeSession(namespace, verified.SessionID) {
+		b.Metrics.LimitRejected("git_session_budget")
+		refuse(refusedSessionBudget)
+		release()
+		return admission{}, false
+	}
+	if !b.budgets().chargeWorkspace(namespace) {
+		b.Metrics.LimitRejected("git_workspace_budget")
+		refuse(refusedWorkspaceBudget)
+		release()
+		return admission{}, false
+	}
+	return admission{r: r, pod: pod, verified: verified, release: release}, true
+}
+
 func (b *Broker) serveGit(w http.ResponseWriter, r *http.Request) {
 	if !b.Enabled() {
 		http.Error(w, "git proxy unavailable", http.StatusServiceUnavailable)
 		return
 	}
 	namespace, mintRequest, service, err := parseProxyPath(r.URL.Path)
+	if err == nil && service == agentsession.PullRequestProxySegment {
+		b.servePullRequest(w, r, namespace, mintRequest)
+		return
+	}
 	if err != nil || !validGitRequest(r, service) {
 		http.Error(w, "invalid git request", http.StatusBadRequest)
 		return
 	}
-	sourceIP, err := RemoteIP(r.RemoteAddr)
-	if err != nil {
-		http.Error(w, "forbidden", http.StatusForbidden)
+	admitted, ok := b.admit(r, namespace, mintRequest, func(refusal admissionRefusal) {
+		switch refusal {
+		case refusedConcurrency:
+			http.Error(w, "too many concurrent git requests from this sandbox", http.StatusTooManyRequests)
+		case refusedSessionBudget:
+			http.Error(w, "git request budget exhausted for this session", http.StatusTooManyRequests)
+		case refusedWorkspaceBudget:
+			http.Error(w, "git request budget exhausted for this workspace", http.StatusTooManyRequests)
+		default:
+			http.Error(w, "forbidden", http.StatusForbidden)
+		}
+	})
+	if !ok {
 		return
 	}
-	// Admission before any stateful work (codex round-9 #4): the concurrency
-	// slot is held across the Pod lookup, credential mint, pkt-line
-	// validation, and the upstream exchange, and the body is byte-capped, so
-	// slow or stacked requests cost at most one bounded slot each.
-	limiter := b.limiter()
-	if ok, scope := limiter.Acquire(sourceIP); !ok {
-		b.Metrics.LimitRejected(scope)
-		http.Error(w, "too many concurrent git requests from this sandbox", http.StatusTooManyRequests)
-		return
-	}
-	defer limiter.Release(sourceIP)
-	ctx, cancel := context.WithTimeout(r.Context(), b.maxDuration())
-	defer cancel()
-	r = r.WithContext(ctx)
+	defer admitted.release()
+	r, pod, verified := admitted.r, admitted.pod, admitted.verified
 	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)
-	pod, err := b.Pods.ResolveSessionPod(r.Context(), namespace, sourceIP)
-	if err != nil {
-		b.Metrics.Authentication("rejected_key")
-		http.Error(w, "forbidden", http.StatusForbidden)
-		return
-	}
-	verified, err := agentsession.AuthorizePod(namespace, pod.Name, pod.UID, pod.Labels, mintRequest)
-	if err != nil {
-		b.Metrics.Authentication("rejected_target")
-		http.Error(w, "forbidden", http.StatusForbidden)
-		return
-	}
-	if !b.budgets().chargeSession(namespace, verified.SessionID) {
-		b.Metrics.LimitRejected("git_session_budget")
-		http.Error(w, "git request budget exhausted for this session", http.StatusTooManyRequests)
-		return
-	}
-	if !b.budgets().chargeWorkspace(namespace) {
-		b.Metrics.LimitRejected("git_workspace_budget")
-		http.Error(w, "git request budget exhausted for this workspace", http.StatusTooManyRequests)
-		return
-	}
 	body := io.Reader(r.Body)
 	// contentLength is what the upstream request advertises. A gzipped
 	// receive-pack body is decompressed below, so its wire Content-Length no
@@ -462,7 +521,7 @@ func parseProxyPath(path string) (string, agentsession.MintRequest, string, erro
 	switch parts[4] {
 	case "info/refs":
 		service = "info/refs"
-	case "git-upload-pack", "git-receive-pack":
+	case "git-upload-pack", "git-receive-pack", agentsession.PullRequestProxySegment:
 		service = parts[4]
 	default:
 		return "", agentsession.MintRequest{}, "", agentsession.ErrInvalidRequest

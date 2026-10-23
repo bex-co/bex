@@ -16,7 +16,6 @@
 
 import http, { type IncomingMessage, type ServerResponse } from "node:http";
 import type { AgentDriverConfig } from "./config.js";
-import type { CredentialManager } from "./credentials.js";
 import { describeError } from "./errors.js";
 import { DriverGrantVerifier } from "./grant.js";
 import {
@@ -32,9 +31,6 @@ export type RunTurn = (
 
 export interface DriverServerOptions {
   runTurn?: RunTurn;
-  // terminalize permanently closes turn authority, kills/reaps an active ACP
-  // child, and waits for the turn pipeline to stop before snapshot scrubbing.
-  terminalize?: () => Promise<void>;
 }
 
 export interface DriverServer {
@@ -55,14 +51,6 @@ function streamHeaders(response: ServerResponse): void {
     "x-vercel-ai-ui-message-stream": "v1",
   });
   response.flushHeaders();
-}
-
-function isLoopback(address: string | undefined): boolean {
-  return (
-    address === "127.0.0.1" ||
-    address === "::1" ||
-    address === "::ffff:127.0.0.1"
-  );
 }
 
 async function readJSONBody(
@@ -107,11 +95,10 @@ function promptFromBody(body: Record<string, unknown>): string {
 
 export async function startDriverServer(
   config: AgentDriverConfig,
-  credentialManager: CredentialManager,
   hub: UIMessageStreamHub,
   options: DriverServerOptions = {},
 ): Promise<DriverServer> {
-  // runTurn (ADR047 D9 t004) runs one live prompt turn on the persistent
+  // runTurn (ADR047 D9) runs one live prompt turn on the persistent
   // session, mirroring its parts to the given sink; when unset, POST /turn 501s
   // (the fire-and-forget path serves only GET /stream). turnInFlight enforces
   // single-flight: the agent runs one turn at a time.
@@ -172,48 +159,13 @@ export async function startDriverServer(
           if (!response.headersSent) {
             response.writeHead(500, { "content-type": "application/json" });
             response.end(
-              `${JSON.stringify({ error: credentialManager.redact(describeError(error)) })}\n`,
+              `${JSON.stringify({ error: describeError(error) })}\n`,
             );
           } else {
             response.end("data: [DONE]\n\n");
           }
         } finally {
           turnInFlight = false;
-        }
-      })();
-      return;
-    }
-    if (request.method === "POST" && url.pathname === "/snapshot/scrub") {
-      if (!isLoopback(request.socket.remoteAddress)) {
-        response.writeHead(403, { "content-type": "application/json" });
-        response.end('{"error":"loopback only"}\n');
-        return;
-      }
-      if (!grants.consume(request, "snapshot")) {
-        response.writeHead(401, { "content-type": "application/json" });
-        response.end('{"error":"valid single-use snapshot grant required"}\n');
-        return;
-      }
-      if (!options.terminalize) {
-        response.writeHead(503, { "content-type": "application/json" });
-        response.end('{"error":"snapshot terminalization unavailable"}\n');
-        return;
-      }
-      void (async () => {
-        try {
-          await options.terminalize!();
-          const scrubbed = await credentialManager.scrubPersistedState();
-          response.writeHead(200, { "content-type": "application/json" });
-          response.end(
-            `${JSON.stringify({ scrubbedFiles: scrubbed.length })}\n`,
-          );
-        } catch (error) {
-          response.writeHead(500, { "content-type": "application/json" });
-          response.end(
-            `${JSON.stringify({ error: credentialManager.redact(describeError(error)) })}\n`,
-          );
-        } finally {
-          credentialManager.forget();
         }
       })();
       return;

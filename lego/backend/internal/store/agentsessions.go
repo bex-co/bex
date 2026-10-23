@@ -83,20 +83,23 @@ type TerminalTurnFact struct {
 // knobs evolve independently of the lifecycle contract; callers validate its
 // public shape before persistence.
 type AgentSession struct {
-	ID            string
-	WorkspaceID   string
-	Repo          string
-	Branch        string
-	AgentConfig   json.RawMessage
-	SandboxID     string
-	Phase         string
-	Status        string
-	HeadSHA       string
-	PRURL         string
-	PRNumber      int
-	Evidence      json.RawMessage
-	Turns         int
-	DeliveryMode  string
+	ID           string
+	WorkspaceID  string
+	Repo         string
+	Branch       string
+	AgentConfig  json.RawMessage
+	SandboxID    string
+	Phase        string
+	Status       string
+	HeadSHA      string
+	PRURL        string
+	PRNumber     int
+	Turns        int
+	DeliveryMode string
+	// DeliveryNote is the readable reason a completed turn left work the agent
+	// did not deliver (ADR090: a dirty tree, unpushed commits, or a pushed branch
+	// with no PR). Empty when there is nothing to report.
+	DeliveryNote  string
 	FailureReason string
 	// FailureReasonCode is a stable code for the failure's cause when a client
 	// acts on it, such as SANDBOX_CAPACITY_LIMIT; empty otherwise (w5/m132). Only
@@ -125,7 +128,7 @@ type AgentSession struct {
 }
 
 const agentSessionColumns = `id, workspace_id, repo, branch, agent_config, sandbox_id,
-	phase, status, head_sha, pr_url, pr_number, evidence, turns, delivery_mode,
+	phase, status, head_sha, pr_url, pr_number, turns, delivery_mode, delivery_note,
 	failure_reason, failure_reason_code, created_at, updated_at, canceled_at,
 	pinned, snapshot_ref, snapshot_bytes, snapshot_sha, hibernated_at, retain_until,
 	archived_at`
@@ -134,7 +137,7 @@ func scanAgentSession(row pgx.Row) (AgentSession, error) {
 	var s AgentSession
 	err := row.Scan(&s.ID, &s.WorkspaceID, &s.Repo, &s.Branch, &s.AgentConfig,
 		&s.SandboxID, &s.Phase, &s.Status, &s.HeadSHA, &s.PRURL, &s.PRNumber,
-		&s.Evidence, &s.Turns, &s.DeliveryMode, &s.FailureReason, &s.FailureReasonCode,
+		&s.Turns, &s.DeliveryMode, &s.DeliveryNote, &s.FailureReason, &s.FailureReasonCode,
 		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt,
 		&s.Pinned, &s.SnapshotRef, &s.SnapshotBytes, &s.SnapshotSHA,
 		&s.HibernatedAt, &s.RetainUntil, &s.ArchivedAt)
@@ -867,17 +870,19 @@ func (s *PGStore) RecordAgentSessionDispatch(ctx context.Context, id, sandboxID,
 	return out, nil
 }
 
-// FinalizeAgentSession records a terminal turn outcome. On success it stores the
-// pushed head SHA, the opened draft PR, and the bounded evidence extract; on
-// failure it stores a named reason. Evidence is left untouched when nil so a
-// failure does not erase a prior successful turn's evidence. The phase guard is
-// the cross-replica CAS: two Completers may observe the same running row, but
-// only one can own its terminal transition. `hibernating` is admitted solely so
-// the snapshot reaper can unclaim its own transient phase.
+// FinalizeAgentSession records a terminal turn outcome: the phase, the remote
+// head, the turn's delivery note on success, or a named reason on failure. It
+// never writes the pull request — that is RecordAgentSessionPullRequest's
+// alone, mid-turn (ADR090) — so a later failed or no-op turn never erases a
+// delivered PR. An empty head leaves the stored one untouched; the delivery
+// note always reflects THIS turn. The phase guard is the cross-replica CAS: two
+// Completers may observe the same running row, but only one can own its
+// terminal transition. `hibernating` is admitted solely so the snapshot reaper
+// can unclaim its own transient phase.
 //
 // The returned TerminalTurnFact carries the current turn's durable timing for
 // metrics (w5/m88). Callers must observe only when err == nil.
-func (s *PGStore) FinalizeAgentSession(ctx context.Context, id, phase, headSHA, prURL string, prNumber int, evidence json.RawMessage, failureReason string) (AgentSession, TerminalTurnFact, error) {
+func (s *PGStore) FinalizeAgentSession(ctx context.Context, id, phase, headSHA, deliveryNote, failureReason string) (AgentSession, TerminalTurnFact, error) {
 	var out AgentSession
 	var fact TerminalTurnFact
 	err := s.withTx(ctx, func(tx pgx.Tx) error {
@@ -886,13 +891,11 @@ func (s *PGStore) FinalizeAgentSession(ctx context.Context, id, phase, headSHA, 
 			UPDATE agent_sessions
 			SET phase=$2, status=$3,
 			    head_sha = CASE WHEN $4 <> '' THEN $4 ELSE head_sha END,
-			    pr_url   = CASE WHEN $5 <> '' THEN $5 ELSE pr_url END,
-			    pr_number = CASE WHEN $6 <> 0 THEN $6 ELSE pr_number END,
-			    evidence = CASE WHEN $7::jsonb IS NOT NULL THEN $7::jsonb ELSE evidence END,
-			    failure_reason=$8, failure_reason_code='', updated_at=now()
+			    delivery_note=$5,
+			    failure_reason=$6, failure_reason_code='', updated_at=now()
 			WHERE id=$1 AND phase IN ('creating','running','resuming','redispatching','hibernating')
 			RETURNING `+agentSessionColumns,
-			id, phase, phase, headSHA, prURL, prNumber, nullableJSON(evidence), failureReason))
+			id, phase, phase, headSHA, deliveryNote, failureReason))
 		if err != nil {
 			return err
 		}
@@ -903,6 +906,27 @@ func (s *PGStore) FinalizeAgentSession(ctx context.Context, id, phase, headSHA, 
 		return AgentSession{}, TerminalTurnFact{}, classify("agent session", err)
 	}
 	return out, fact, nil
+}
+
+// RecordAgentSessionPullRequest persists the draft PR the agent just opened or
+// updated through the gateway PR verb (ADR090), mid-turn, so REST/GraphQL/MCP
+// show it before the Completer finalizes. It writes only while the session is
+// in a credential-eligible live phase (the verb's own gate) and never touches
+// phase, status or updated_at: the turn's lifecycle stays the Completer's. A
+// repeat sync of the same PR and head writes nothing, and neither does a
+// session that already left its live phase (the PR exists on GitHub either way).
+func (s *PGStore) RecordAgentSessionPullRequest(ctx context.Context, id, prURL string, prNumber int, headSHA string) error {
+	_, err := s.Pool.Exec(ctx, `
+		UPDATE agent_sessions
+		SET pr_url=$2, pr_number=$3,
+		    head_sha = CASE WHEN $4 <> '' THEN $4 ELSE head_sha END
+		WHERE id=$1 AND phase IN ('creating','running','resuming','redispatching')
+		  AND (pr_url IS DISTINCT FROM $2 OR pr_number IS DISTINCT FROM $3
+		       OR ($4 <> '' AND head_sha IS DISTINCT FROM $4))`, id, prURL, prNumber, headSHA)
+	if err != nil {
+		return classify("agent session", err)
+	}
+	return nil
 }
 
 // SetAgentSessionCanceled is the Cancel verb's terminal CAS (w5/m88): first
@@ -950,13 +974,6 @@ func stampTerminalTurn(ctx context.Context, tx pgx.Tx, sessionID string, turn in
 		return TerminalTurnFact{}, err
 	}
 	return fact, nil
-}
-
-func nullableJSON(v json.RawMessage) any {
-	if len(v) == 0 {
-		return nil
-	}
-	return []byte(v)
 }
 
 // MaxAgentSessionTranscriptBytes caps the total payload bytes one session's

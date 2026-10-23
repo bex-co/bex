@@ -3,8 +3,7 @@ import type { AgentSessionView } from "@/features/agent-sessions/types";
 /**
  * Builds an `AgentSessionView` for tests. Seven near-identical copies of this
  * literal used to live in the agent-session test files; when w5/m65 changed the
- * shape (dropping `evidence`) one copy was missed
- * and rotted silently — `tsconfig.app.json` excludes tests from `tsc -b` and
+ * shape one copy was missed and rotted silently — `tsconfig.app.json` excludes tests from `tsc -b` and
  * vitest does not typecheck, so nothing catches it.
  *
  * `isTerminal`/`isSteerable` default to what the mapper derives from `phase`, so
@@ -46,6 +45,7 @@ export function agentSessionView({
     deliveryMode: null,
     failureReason: null,
     failureReasonCode: null,
+    deliveryNote: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     canceledAt: null,

@@ -19,7 +19,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { loadAgentProfiles, validateAgentProfiles } from "../src/profiles.js";
 import { loadConfig } from "../src/config.js";
-import { createCredentialManager } from "../src/credentials.js";
+import { agentEnvironment } from "../src/credentials.js";
 
 const cases = JSON.parse(
   readFileSync(
@@ -46,12 +46,16 @@ for (const key of ["id", "executable"] as const) {
     assert.throws(() => validateAgentProfiles(manifest));
   });
 }
+const hosted = {
+  BEX_AGENT_MODEL_PROXY_URL: "http://gateway/model/ns/session",
+  BEX_AGENT_SESSION_ID: "session",
+  BEX_AGENT_MODEL_API_KEY: "bex-model-proxy-placeholder-session",
+};
+
 test("driver resolves profile facts and rejects runtime overrides", () => {
   for (const profile of loadAgentProfiles().profiles) {
-    const config = loadConfig({
-      BEX_AGENT_PROFILE: profile.id,
-      BEX_AGENT_MODEL_PROXY_URL: "http://gateway/model/ns/session",
-    });
+    const config = loadConfig({ ...hosted, BEX_AGENT_PROFILE: profile.id });
+    assert.equal(config.profile, profile.id);
     assert.equal(config.command, profile.executable);
     assert.deepEqual(config.args, profile.args);
     assert.deepEqual(config.agentEnv, profile.env);
@@ -67,25 +71,22 @@ test("driver resolves profile facts and rejects runtime overrides", () => {
     { BEX_AGENT_PROFILE: "codex", BEX_AGENT_COMMAND: "/usr/local/bin/gemini" },
     { BEX_AGENT_ARGS: '["--arbitrary"]' },
     { BEX_AGENT_ENV_JSON: '{"NODE_OPTIONS":"--require=/workspace/evil.js"}' },
-    {
-      BEX_AGENT_MODEL_PROXY_URL: "http://gateway",
-      BEX_AGENT_MODEL_API_KEY_ENV: "OTHER_KEY",
-    },
+    { BEX_AGENT_ENV_JSON: '{"OPENAI_BASE_URL":"https://api.openai.com"}' },
   ])
-    assert.throws(() => loadConfig(env));
+    assert.throws(() => loadConfig({ ...hosted, ...env }));
 });
 
 // claude-agent-acp 0.94.0 pins claude-agent-sdk 0.3.303 (Claude Code 2.1.303).
 // Its native transcript writer batches unless this flag makes the result await
 // flush; the driver terminates the process immediately after that result boundary.
 test("Claude native transcript flush stays enabled in the child environment", () => {
-  const config = loadConfig({ BEX_AGENT_PROFILE: "claude" });
-  const credentials = createCredentialManager(config, {});
-  assert.equal(credentials.agentEnvironment().CLAUDE_CODE_EAGER_FLUSH, "1");
+  const config = loadConfig({ ...hosted, BEX_AGENT_PROFILE: "claude" });
+  assert.equal(agentEnvironment(config, {}).CLAUDE_CODE_EAGER_FLUSH, "1");
   for (const env of [{}, { CLAUDE_CODE_EAGER_FLUSH: "0" }]) {
     assert.throws(
       () =>
         loadConfig({
+          ...hosted,
           BEX_AGENT_PROFILE: "claude",
           BEX_AGENT_ENV_JSON: JSON.stringify(env),
         }),

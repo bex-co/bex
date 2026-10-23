@@ -103,7 +103,7 @@ Optionally, the agent image may bake a pinned `zed-remote-server` (the musl stat
 Fire-and-forget semantics create a footgun: the Completer tears the sandbox down within ~15s of the driver reporting a finished turn — which would kill a user's live Zed session mid-edit. Rather than a new keep-alive channel, the Completer reuses the audit table the gateway already writes: before tearing down a finalized session, it checks `ssh_sessions` for an open row (no end time) targeting that `ags-…` id and defers teardown while one exists. Guards:
 
 - Rows older than `BEX_SSH_SESSION_TIMEOUT` are ignored (a crashed gateway replica cannot pin a sandbox forever); deferral is therefore bounded by the 4-hour cap.
-- Deferral affects **teardown only** — the session still finalizes (`completed`/`failed`), the transcript is still captured (ADR051), delivery still happens. The sandbox lingers for the editor; `sandbox_id` is cleared when teardown eventually runs.
+- Deferral affects **teardown only** — the session still finalizes (`completed`/`failed`), the transcript is still captured (ADR051), delivery still happens (since [ADR090](ADR090-agent-owned-delivery.md), 2026-10-22, delivery is the agent's own commit, push and draft PR; the Completer only records it). The sandbox lingers for the editor; `sandbox_id` is cleared when teardown eventually runs.
 - Explicit `Cancel` overrides deferral: the user asking to kill the session wins over an open editor.
 
 Compute-seconds metering (ADR047 D7) keeps running while the sandbox lingers — editor time is sandbox time, and it is the caller's own workspace paying for its own open editor.

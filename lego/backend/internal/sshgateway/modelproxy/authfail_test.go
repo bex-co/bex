@@ -18,7 +18,6 @@ package modelproxy_test
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -55,7 +54,7 @@ func (s *authFailStore) GetAgentSession(context.Context, string) (store.AgentSes
 	return store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "running"}, nil
 }
 
-func (s *authFailStore) FinalizeAgentSession(_ context.Context, _, _, _, _ string, _ int, _ json.RawMessage, reason string) (store.AgentSession, store.TerminalTurnFact, error) {
+func (s *authFailStore) FinalizeAgentSession(_ context.Context, _, _, _, _, reason string) (store.AgentSession, store.TerminalTurnFact, error) {
 	s.mu.Lock()
 	s.finalized, s.reason = true, reason
 	s.mu.Unlock()

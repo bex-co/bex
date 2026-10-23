@@ -154,6 +154,13 @@ func main() {
 	for _, w := range warnings {
 		log.Print(w)
 	}
+	// loadConfig already refused this route on a production control plane.
+	if err := agentsession.EnableDevModelRoute(cfg.AgentDevModelRoute, cfg.AgentDevModel, cfg.CPIdentity); err != nil {
+		log.Fatalf("bex-api: %v", err)
+	}
+	if cfg.AgentDevModelRoute != "" {
+		log.Printf("bex-api: DEV model route %q active for the claude agent profile (dev control plane %q)", cfg.AgentDevModelRoute, cfg.CPIdentity)
+	}
 	cpDBURI := cfg.CPDBURI
 	dashboardURL := cfg.DashboardURL
 	mobilePush, err := pushtransport.New(pushtransport.Config{
@@ -422,9 +429,9 @@ func main() {
 	// downgrade survives transient OpenFGA failures and process restarts.
 	go srv.Members.RunRoleReconciler(ctx)
 	go srv.Accounts.Run(ctx)
-	// The agent-session Completer finalizes fire-and-forget sessions: it opens the
-	// draft PR + records evidence for completed turns (ADR047 D4, w3/m41). It is a
-	// no-op unless the store, OpenSandbox, and GitHub App are all wired.
+	// The agent-session Completer finalizes fire-and-forget sessions from the
+	// driver's status file and the PR the agent already opened (ADR090). It is a
+	// no-op unless the store and OpenSandbox are wired.
 	go srv.AgentSessionCompleter.Run(ctx)
 	// The Blueprint recovery sweep settles sync runs abandoned by process
 	// loss (w8/m37 t004). No-op unless the control-plane store is wired.
@@ -950,6 +957,19 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 			Minter: &agentsession.Minter{GitHub: ghClient, Connections: st, Sessions: st, Audit: st},
 			Nonce:  st,
 		})
+		// ADR090: the agent's own draft-PR verb. Same gateway-only HMAC and
+		// internal-only listener; owner/repo/base/head come from the durable
+		// session, never the request. Unwired without the GitHub App.
+		if ghClient != nil {
+			internalRoot.Handle(agentsession.InternalPullRequestPath, &agentsession.PullRequestHandler{
+				Secret: []byte(cfg.SandboxExecSecret),
+				PullRequests: &agentsession.PullRequester{
+					GitHub: ghClient, Connections: st, Sessions: st, Audit: st,
+					DashboardURL: cfg.DashboardURL,
+				},
+				Nonce: st,
+			})
+		}
 		// w2/m168: native public-key SSH never passes the auth middleware, so the
 		// gateway asks here whether a key owner's email is verified. Unwired
 		// Kratos admin leaves Resolve nil, so the verb answers 503 and the
@@ -1195,9 +1215,6 @@ func wireAgentSessions(deps *api.Deps, cfg *Config) {
 		// DB-backed nonce design. The claims are a distinct ticket type and bind
 		// the session sandbox pod/workspace instead of a service instance.
 		deps.AgentSessionTicketSecret = []byte(secret)
-		if deps.SandboxExec != nil {
-			deps.SandboxExec.DriverGrantSecret = []byte(secret)
-		}
 	}
 	deps.ShellWSURL = cfg.ShellWSURL
 	deps.AgentSessionGatewayURL = cfg.AgentSessionGatewayURL

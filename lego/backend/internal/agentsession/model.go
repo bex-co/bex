@@ -74,9 +74,12 @@ func RegisteredModelEndpoint(agent, requested string) (string, error) {
 			"AGENT_SESSION_MODEL_ENDPOINT_INVALID",
 			"agentConfig.agent has no registered model provider", nil)
 	}
-	expected := profile.ModelEndpoint
+	expected := registeredEndpoint(profile)
 	requested = strings.TrimRight(strings.TrimSpace(requested), "/")
-	if requested != "" && requested != expected {
+	// The release endpoint stays accepted while the dev route overrides it, so a
+	// session created before the route was switched on keeps steering; it then
+	// resolves to the route's endpoint like every other session.
+	if requested != "" && requested != expected && requested != profile.ModelEndpoint {
 		return "", core.NewBadRequestError(
 			"AGENT_SESSION_MODEL_ENDPOINT_INVALID",
 			"agentConfig.modelEndpoint must match the selected agent's registered provider", nil)
@@ -195,6 +198,10 @@ type ModelMintResponse struct {
 	Credential   string `json:"credential"`
 	EndpointHost string `json:"endpointHost"`
 	Scheme       string `json:"scheme"`
+	// PathPrefix, when set, is prepended to the agent's request path on the
+	// upstream hop. Only the dev model route uses it (OpenRouter serves its
+	// Anthropic-compatible API under /api); release endpoints leave it empty.
+	PathPrefix string `json:"pathPrefix,omitempty"`
 }
 
 // ModelAuthFailureResponse acknowledges a reported vendor auth rejection. The
@@ -309,7 +316,7 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 		// CLI retrying into a raw JSON-RPC error (w1/m136).
 		return ModelMintResponse{}, ErrModelKeyMissing
 	}
-	return ModelMintResponse{Credential: credential, EndpointHost: host, Scheme: ResolveAuthScheme(host, credential)}, nil
+	return ModelMintResponse{Credential: credential, EndpointHost: host, Scheme: ResolveAuthScheme(host, credential), PathPrefix: upstreamPathPrefix(host)}, nil
 }
 
 func (m *ModelMinter) now() time.Time {
@@ -323,7 +330,7 @@ func (m *ModelMinter) now() time.Time {
 // the reported session and CAS a live one to failed. *store.PGStore satisfies it.
 type ModelSessionFailer interface {
 	GetAgentSession(context.Context, string) (store.AgentSession, error)
-	FinalizeAgentSession(ctx context.Context, id, phase, headSHA, prURL string, prNumber int, evidence json.RawMessage, failureReason string) (store.AgentSession, store.TerminalTurnFact, error)
+	FinalizeAgentSession(ctx context.Context, id, phase, headSHA, deliveryNote, failureReason string) (store.AgentSession, store.TerminalTurnFact, error)
 }
 
 // ModelAuthFailer terminalizes a live session whose workspace BYO model key the
@@ -380,7 +387,7 @@ func (f *ModelAuthFailer) Fail(ctx context.Context, req ModelMintRequest) (respo
 	// where two reports both read `running`: the loser's CAS matches no live row and
 	// returns ErrNotFound, which we acknowledge rather than surface — the desired end
 	// state (failed) already holds.
-	if _, fact, finErr := f.Sessions.FinalizeAgentSession(ctx, req.SessionID, modelFailedPhase, "", "", 0, nil, ModelAuthFailureReason); finErr != nil {
+	if _, fact, finErr := f.Sessions.FinalizeAgentSession(ctx, req.SessionID, modelFailedPhase, "", "", ModelAuthFailureReason); finErr != nil {
 		if !errors.Is(finErr, store.ErrNotFound) {
 			return ModelAuthFailureResponse{}, finErr
 		}

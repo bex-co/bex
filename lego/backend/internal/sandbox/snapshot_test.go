@@ -17,6 +17,7 @@ limitations under the License.
 package sandbox
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -30,56 +31,102 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/sandboxexec"
 )
 
-func TestAgentSuspendScrubsBeforeSnapshotAndFailsClosed(t *testing.T) {
-	for _, exitCode := range []int{0, 17} {
-		t.Run(map[int]string{0: "success pauses", 17: "scrub failure blocks pause"}[exitCode], func(t *testing.T) {
+// agentSandboxUpstream serves one agent-session sandbox and counts pauses.
+func agentSandboxUpstream(t *testing.T, pauseCalls *int) *httptest.Server {
+	t.Helper()
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/sandboxes/os-agent":
+			sb := osSandbox{ID: "os-agent", Metadata: map[string]string{
+				metadataOwner: "id-a", metadataWorkspace: "tea-a", metadataRegime: metadataSandboxRegime,
+				metadataNetworkPolicy: string(NetworkPolicyDenyAll), agentsession.LabelSession: "ags-one",
+			}}
+			sb.Status.State = "Running"
+			_ = json.NewEncoder(w).Encode(sb)
+		case r.Method == http.MethodPost && r.URL.Path == "/sandboxes/os-agent/pause":
+			*pauseCalls++
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(upstream.Close)
+	return upstream
+}
+
+// An agent-session sandbox suspends directly: the sandbox holds only the
+// model-proxy placeholder and a credential-free Git remote, so there is no
+// pre-snapshot exec hop (ADR090, ADR062) — for an admin or a contributor.
+func TestAgentSuspendSnapshotsWithoutPreSnapshotExec(t *testing.T) {
+	for name, authz := range map[string]core.Checker{"owner": nil, "contributor": contributorChecker{}} {
+		t.Run(name, func(t *testing.T) {
 			pauseCalls := 0
-			upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				switch {
-				case r.Method == http.MethodGet && r.URL.Path == "/sandboxes/os-agent":
-					_ = json.NewEncoder(w).Encode(osSandbox{ID: "os-agent", Metadata: map[string]string{
-						metadataOwner: "id-a", metadataWorkspace: "tea-a", metadataRegime: metadataSandboxRegime,
-						metadataNetworkPolicy: string(NetworkPolicyDenyAll), agentsession.LabelSession: "ags-one",
-					}})
-				case r.Method == http.MethodPost && r.URL.Path == "/sandboxes/os-agent/pause":
-					pauseCalls++
-					w.WriteHeader(http.StatusNoContent)
-				default:
-					http.NotFound(w, r)
-				}
+			upstream := agentSandboxUpstream(t, &pauseCalls)
+			gateway := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+				t.Error("suspend must not exec into the agent sandbox")
 			}))
-			defer upstream.Close()
-
-			secret := []byte("exec-secret")
-			execCalls := 0
-			gateway := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				claims, err := sandboxexec.Verify(secret, r.Header.Get(sandboxexec.TicketHeader), time.Now())
-				if err != nil || len(claims.Command) != 3 || !strings.Contains(claims.Command[2], "BEX_AGENT_SNAPSHOT_GRANT=") || !strings.HasSuffix(claims.Command[2], " /usr/local/bin/bex-pre-snapshot") {
-					t.Fatalf("scrub ticket claims=%+v err=%v", claims, err)
-				}
-				execCalls++
-				w.Header().Set("Content-Type", "text/event-stream")
-				_, _ = w.Write([]byte("event: exit\ndata: {\"exitCode\":" + map[int]string{0: "0", 17: "17"}[exitCode] + "}\n\n"))
-			}))
-			defer gateway.Close()
-
+			t.Cleanup(gateway.Close)
+			base := &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}}
+			if authz != nil {
+				base.Authz = authz
+			}
 			service := &Service{
-				Base:   &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}},
+				Base:   base,
 				Client: NewClient(upstream.URL),
-				Exec:   &ExecConfig{Secret: secret, DriverGrantSecret: []byte("driver-secret"), GatewayURL: gateway.URL, Client: gateway.Client()},
+				Exec:   &ExecConfig{Secret: []byte("s"), GatewayURL: gateway.URL, Client: gateway.Client()},
 			}
-			err := service.Suspend(callerCtx(), "os-agent")
-			if execCalls != 1 {
-				t.Fatalf("scrub calls = %d, want 1", execCalls)
+			if err := service.Suspend(callerCtx(), "os-agent"); err != nil {
+				t.Fatalf("suspend: %v", err)
 			}
-			if exitCode == 0 {
-				if err != nil || pauseCalls != 1 {
-					t.Fatalf("successful scrub err=%v pauseCalls=%d", err, pauseCalls)
-				}
-			} else if err == nil || pauseCalls != 0 {
-				t.Fatalf("failed scrub err=%v pauseCalls=%d", err, pauseCalls)
+			if pauseCalls != 1 {
+				t.Fatalf("pause calls = %d, want 1", pauseCalls)
 			}
 		})
+	}
+}
+
+// Hibernation runs exactly the snapshot script (no scrub hook) with the PUT URL
+// as a verbatim argv tail, and keeps the dirty-git signal for retention.
+func TestHibernateRunsSnapshotScriptDirectlyAndReportsDirtyGit(t *testing.T) {
+	pauseCalls := 0
+	upstream := agentSandboxUpstream(t, &pauseCalls)
+	const putURL = "https://s3.example.com/snap?X-Amz-Signature=abc"
+	sha := strings.Repeat("ab", 32)
+	secret := []byte("exec-secret")
+	execCalls := 0
+	gateway := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		claims, err := sandboxexec.Verify(secret, r.Header.Get(sandboxexec.TicketHeader), time.Now())
+		if err != nil {
+			t.Fatalf("ticket: %v", err)
+		}
+		want := []string{"/bin/sh", "-c", hibernateScript, "bex-hibernate", putURL}
+		if strings.Join(claims.Command, "\x00") != strings.Join(want, "\x00") {
+			t.Fatalf("hibernate command = %q", claims.Command)
+		}
+		if claims.AgentSessionID != "ags-one" {
+			t.Fatalf("agent-session claim = %q", claims.AgentSessionID)
+		}
+		execCalls++
+		w.Header().Set("Content-Type", "text/event-stream")
+		out, _ := json.Marshal(map[string]string{"stream": "stdout", "data": sha + "\n4096\ndirty\n"})
+		_, _ = fmt.Fprintf(w, "event: output\ndata: %s\n\nevent: exit\ndata: {\"exit_code\":0}\n\n", out)
+	}))
+	t.Cleanup(gateway.Close)
+	service := &Service{
+		Base:   &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}},
+		Client: NewClient(upstream.URL),
+		Exec:   &ExecConfig{Secret: secret, GatewayURL: gateway.URL, Client: gateway.Client()},
+	}
+	lifecycle := NewAgentSessionLifecycle(service)
+	got, err := lifecycle.HibernateAgentSessionSandbox(context.Background(), "tea-a", "ags-one", "os-agent", putURL)
+	if err != nil {
+		t.Fatalf("hibernate: %v", err)
+	}
+	if execCalls != 1 || got.Bytes != 4096 || got.SHA256 != sha || !got.DirtyGit {
+		t.Fatalf("hibernate result=%+v execCalls=%d", got, execCalls)
+	}
+	if pauseCalls != 0 {
+		t.Fatal("hibernation must not pause; the Completer terminates after recording")
 	}
 }
 
@@ -146,13 +193,13 @@ func TestHibernateScriptTakesURLFromArgv(t *testing.T) {
 	if !strings.Contains(hibernateScript, `--upload-file "$SNAP" "$1"`) {
 		t.Fatal(`hibernate script must PUT to "$1" (the argv-supplied URL), not an interpolated value`)
 	}
-	// Exactly one %s remains — the credential-scrub hook. The URL slot is gone.
-	if n := strings.Count(hibernateScript, "%s"); n != 1 {
-		t.Fatalf("hibernate script must have exactly one %%s (the scrub hook), got %d", n)
+	// No format verbs remain: neither the URL nor a scrub hook is spliced in.
+	if strings.Contains(hibernateScript, "%s") || strings.Contains(hibernateScript, "snapshot-grant") {
+		t.Fatal("hibernate script must be a fixed string with no interpolation slots")
 	}
 	// A hostile URL never lands in the script text; it stays a verbatim argv tail.
 	hostile := "https://s3.example.com/o'; rm -rf / #"
-	command := fmt.Sprintf(hibernateScript, "SCRUB_HOOK")
+	command := hibernateScript
 	if strings.Contains(command, hostile) || strings.Contains(command, "rm -rf") {
 		t.Fatal("URL must not be interpolated into the hibernate script body")
 	}

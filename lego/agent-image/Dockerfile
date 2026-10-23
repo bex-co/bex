@@ -48,10 +48,9 @@ RUN chmod 0755 dist/main.js \
     && ln -s /opt/bex-agent-driver/dist/main.js /usr/local/bin/bex-agent-driver \
     && node dist/install-profiles.js
 
-COPY --chmod=0755 agent-image/bex-pre-snapshot /usr/local/bin/bex-pre-snapshot
 RUN useradd --create-home --home-dir /home/bex --uid 10001 --shell /bin/bash bex \
-    && mkdir -p /workspace /run/bex-agent /tmp/bex-agent-credentials /var/log/bex-agent /var/run/bex-agent \
-    && chown -R bex:bex /workspace /run/bex-agent /tmp/bex-agent-credentials /var/log/bex-agent /var/run/bex-agent /home/bex
+    && mkdir -p /workspace /run/bex-agent /var/log/bex-agent /var/run/bex-agent \
+    && chown -R bex:bex /workspace /run/bex-agent /var/log/bex-agent /var/run/bex-agent /home/bex
 
 # Neither listener has an edge route. OpenSandbox supplies the remaining
 # non-secret BEX_AGENT_* session binding values per sandbox.

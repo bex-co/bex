@@ -35,6 +35,9 @@ vi.mock("@/features/agent-sessions/components/steering-composer", () => ({
 vi.mock("@/features/agent-sessions/components/failure-callout", () => ({
   FailureCallout: () => null,
 }));
+vi.mock("@/features/agent-sessions/components/delivery-note-callout", () => ({
+  DeliveryNoteCallout: () => null,
+}));
 
 function view(
   phase: AgentSessionPhase,

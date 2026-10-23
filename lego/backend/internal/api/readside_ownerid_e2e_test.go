@@ -316,6 +316,3 @@ func (f *fakeGitHubAPIClient) MintChecksToken(context.Context, int64) (github.In
 func (f *fakeGitHubAPIClient) ListCheckRuns(context.Context, string, string, string, string) ([]github.CheckRun, error) {
 	return nil, nil
 }
-func (f *fakeGitHubAPIClient) OpenDraftPullRequest(context.Context, int64, string, string, string, string, string, string) (github.PullRequest, error) {
-	return github.PullRequest{}, nil
-}

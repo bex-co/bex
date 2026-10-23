@@ -93,7 +93,7 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: lego/agent-image/driver/package-lock.json
-      - name: test agent session driver (ACP spawn, streams, resume gate, scrub)
+      - name: test agent session driver (ACP spawn, streams, resume gate, overlay, delivery check, bex MCP)
         working-directory: lego/agent-image/driver
         run: npm ci --ignore-scripts && npm test
       # OpenFGA runs as a step, not a `services:` container: its image entrypoint
@@ -171,8 +171,6 @@ jobs:
         # package test binaries so those resets cannot erase another package's
         # live rows; tests within each package remain normally parallelizable.
         run: go test -p 1 ./...
-      - name: test agent credential snapshot scrub
-        run: bash lego/agent-image/credential-scrub-test.sh
       - name: test Stripe billing operations (offline guards + reconciliation)
         run: >-
           python3 -m unittest

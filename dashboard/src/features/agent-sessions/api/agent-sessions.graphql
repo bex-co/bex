@@ -3,10 +3,6 @@
 # metadata (phase, PR, turns); the live conversation column is NOT polled — it
 # rides the same-origin stream endpoint (w3/m43), never GraphQL.
 #
-# The `evidence` field is deliberately NOT selected (w5/m65): the digest is a
-# phase-1 artifact superseded by the ADR051 durable transcript, and nothing in
-# the dashboard renders it. It remains on the wire for API consumers.
-#
 # Key off `phase` (creating/running/resuming/redispatching/completed/failed/
 # canceling/canceled), not the free-text `status`. The mint fields
 # (ticket/url/expiresAt) are selected ONLY on the mint ops (create/steer/resume/
@@ -35,6 +31,7 @@ fragment AgentSessionFields on AgentSession {
   deliveryMode
   failureReason
   failureReasonCode
+  deliveryNote
   createdAt
   updatedAt
   canceledAt

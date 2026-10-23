@@ -519,53 +519,6 @@ func TestExecAgentSessionSandboxSignsSessionClaimForDeveloper(t *testing.T) {
 	}
 }
 
-// The pre-snapshot scrub runs a PLATFORM-fixed command (SystemBufferedExec, not
-// dialGateway), so a contributor suspending an agent-session sandbox still
-// completes the scrub — round-13 #1 narrows the gate to caller-chosen commands.
-func TestSuspendRunsPlatformScrubUnderContributor(t *testing.T) {
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodGet && r.URL.Path == "/sandboxes/os-agent":
-			_ = json.NewEncoder(w).Encode(osSandbox{ID: "os-agent", Metadata: map[string]string{
-				metadataOwner: "id-a", metadataWorkspace: "tea-a", metadataRegime: metadataSandboxRegime,
-				metadataNetworkPolicy: string(NetworkPolicyDenyAll), agentsession.LabelSession: "ags-one",
-			}})
-		case r.Method == http.MethodPost && r.URL.Path == "/sandboxes/os-agent/pause":
-			w.WriteHeader(http.StatusNoContent)
-		default:
-			http.NotFound(w, r)
-		}
-	}))
-	t.Cleanup(upstream.Close)
-
-	execCalls := 0
-	gateway := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		claims, err := sandboxexec.Verify([]byte("s"), r.Header.Get(sandboxexec.TicketHeader), time.Now())
-		if err != nil || len(claims.Command) != 3 || !strings.Contains(claims.Command[2], "BEX_AGENT_SNAPSHOT_GRANT=") {
-			t.Fatalf("scrub ticket claims=%+v err=%v", claims, err)
-		}
-		if claims.AgentSessionID != "ags-one" {
-			t.Fatalf("scrub ticket agent-session claim = %q, want ags-one", claims.AgentSessionID)
-		}
-		execCalls++
-		w.Header().Set("Content-Type", "text/event-stream")
-		_, _ = w.Write([]byte("event: exit\ndata: {\"exit_code\":0}\n\n"))
-	}))
-	t.Cleanup(gateway.Close)
-
-	service := &Service{
-		Base:   &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}, Authz: contributorChecker{}},
-		Client: NewClient(upstream.URL),
-		Exec:   &ExecConfig{Secret: []byte("s"), DriverGrantSecret: []byte("driver-secret"), GatewayURL: gateway.URL, Client: gateway.Client()},
-	}
-	if err := service.Suspend(callerCtx(), "os-agent"); err != nil {
-		t.Fatalf("contributor suspend with platform scrub: %v", err)
-	}
-	if execCalls != 1 {
-		t.Fatalf("scrub calls = %d, want 1", execCalls)
-	}
-}
-
 // A sandbox whose OpenSandbox state is terminal/errored (its pod exited) can
 // never report a success status; ReadSessionStatus must surface NotFound so the
 // Completer finalizes the session as failed instead of exec-ing into a dead pod

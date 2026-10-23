@@ -42,7 +42,7 @@ export class DriverGrantVerifier {
 
   consume(
     request: IncomingMessage,
-    action: "turn" | "snapshot",
+    action: "turn",
     now = Math.floor(Date.now() / 1000),
   ): boolean {
     const token = request.headers[grantHeader];

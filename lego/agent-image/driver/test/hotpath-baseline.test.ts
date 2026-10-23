@@ -23,14 +23,10 @@ import type { ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
-import type { CredentialManager } from "../src/credentials.js";
 import { encodeUIMessageFrame, UIMessageStreamHub } from "../src/stream-hub.js";
 import { TurnLogSink } from "../src/turn-log.js";
 import { representativeParts as parts } from "./fixtures/hotpath-parts.mjs";
 
-const credentials = {
-  redact: (value: string) => value.replaceAll("secret", "[REDACTED]"),
-} as CredentialManager;
 class Client extends EventEmitter {
   frames: string[] = [];
   ended = "";
@@ -57,7 +53,7 @@ test("representative hot path batches writes and reuses identical live/replay by
   const root = await mkdtemp(path.join(tmpdir(), "bex-hotpath-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const logPath = path.join(root, "session.jsonl");
-  const sink = new TurnLogSink(logPath, 0, 16 << 20, 1, credentials);
+  const sink = new TurnLogSink(logPath, 0, 16 << 20, 1);
   const hub = new UIMessageStreamHub({ maxHistoryParts: 2 });
   const clients = [new Client(), new Client()];
   for (const client of clients) hub.attach(client.response());
@@ -184,16 +180,16 @@ test("slow live and replay clients detach without blocking healthy clients", () 
   assert.equal(slow.ended, "");
 });
 
-test("turn log bounds buffers and preserves redaction, cap and skipped indexes", async (t) => {
+test("turn log bounds buffers and preserves cap and skipped indexes", async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), "bex-log-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const filename = path.join(root, "session.jsonl"),
-    sink = new TurnLogSink(filename, 0, 150_000, 3, credentials);
+    sink = new TurnLogSink(filename, 0, 150_000, 3);
   await sink.open();
   for (let i = 0; i < 100; i++)
     await sink.appendPart({
       type: "text-delta",
-      delta: "secret" + "x".repeat(1000),
+      delta: "marker" + "x".repeat(1000),
     });
   assert.ok(
     sink.writeCount > 0,
@@ -208,7 +204,7 @@ test("turn log bounds buffers and preserves redaction, cap and skipped indexes",
   await sink.close();
   await sink.close();
   const body = await readFile(filename, "utf8");
-  assert.doesNotMatch(body, /secret/);
+  assert.match(body, /marker/);
   const records = body
     .trim()
     .split("\n")
@@ -246,7 +242,7 @@ test("write and close failures reject flush and release the handle", async (t) =
         t.mock.restoreAll();
         syncBuiltinESMExports();
       });
-      const sink = new TurnLogSink(filename, 0, 16 << 20, 1, credentials);
+      const sink = new TurnLogSink(filename, 0, 16 << 20, 1);
       await sink.open();
       await sink.appendPart({ type: "finish" });
       await assert.rejects(sink.close(), /injected/);
@@ -260,7 +256,7 @@ test("a large accepted record bypasses buffering without a partial JSONL write",
   const root = await mkdtemp(path.join(tmpdir(), "bex-large-log-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const filename = path.join(root, "session.jsonl");
-  const sink = new TurnLogSink(filename, 0, 16 << 20, 1, credentials);
+  const sink = new TurnLogSink(filename, 0, 16 << 20, 1);
   const part = { type: "text-delta", delta: "x".repeat(80 << 10) };
   await sink.open();
   assert.ok(await sink.appendPart(part));

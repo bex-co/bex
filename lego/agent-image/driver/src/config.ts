@@ -22,16 +22,23 @@ import { isDeepStrictEqual } from "node:util";
 export interface AgentDriverConfig {
   command: string;
   args: string[];
+  // Release-profile id (agent-profiles.json): selects the overlay channel for
+  // adapters without the ACP systemPrompt capability (Codex reads
+  // developer_instructions from CODEX_CONFIG).
+  profile: string;
   cwd: string;
   prompt: string;
-  // Delivery (ADR047 D4): the branch the driver commits + pushes, the repo it
-  // clones when the workspace is empty, the PR base branch, and the delivery
-  // toggle. Deliver defaults off so a bare `run one turn` stays unchanged.
+  // Repo session (ADR090): the bound bex-agent/* branch the agent pushes, the
+  // Pod-bound Git proxy URL the setup phase clones, the PR base branch, and the
+  // repo-session toggle (setup clone + post-turn delivery check + PR tool).
+  // The driver itself never commits or pushes.
   branch: string;
   repoUrl: string;
   baseBranch: string;
-  // Captured from the control-plane Git proxy before any tenant agent process
-  // runs. Delivery uses only these immutable OIDs; local refs are sandbox state.
+  // owner/name of the bound repository (display only, for the overlay).
+  repository: string;
+  // Captured from the control-plane Git proxy during setup, before any tenant
+  // agent process runs. The delivery check compares the remote head to baseOid.
   deliveryBaseline?: {
     baseBranch: string;
     baseOid: string;
@@ -63,22 +70,34 @@ export interface AgentDriverConfig {
   listenPort: number;
   sessionLogPath: string;
   statusPath: string;
+  // Driver-owned file (outside the repo) where the bex MCP server records the
+  // last successful open_or_update_draft_pr result.
+  prRecordPath: string;
+  // The draft PR earlier turns of this session opened (empty on turn 1), so a
+  // re-dispatched sandbox updates it rather than describing only its own turn.
+  existingPrUrl: string;
+  existingPrNumber: number | null;
   exitAfterTurn: boolean;
   turnTimeoutMs: number;
   credentialEnvName: string;
+  // Only the session-bound model-proxy placeholder (ADR062); never a real key.
   modelCredential: string;
   sessionID: string;
   /** Control-plane turn number stamped into every durable log record. */
   turn: number;
   grantPublicKey: string;
   agentEnv: Record<string, string>;
-  scrubRoots: string[];
-  // ADR062 model proxy: the hosted agent-session path points the provider base URL
-  // at the gateway (per-agent env name + composed URL), and the credential env
-  // holds only a placeholder. Empty remains supported by the standalone driver,
-  // but the control-plane service does not provision hosted sessions that way.
+  // ADR062 model proxy (mandatory): the provider base URL points at the
+  // gateway (per-agent env name + composed URL), and the credential env holds
+  // only the placeholder the gateway swaps for the real key upstream.
   modelBaseUrl: string;
   modelBaseUrlEnvName: string;
+}
+
+// modelProxyPlaceholder mirrors agentsession.ModelKeyPlaceholder (Go). The
+// placeholder is useless off-pod: the proxy authenticates the source Pod.
+export function modelProxyPlaceholder(sessionID: string): string {
+  return `bex-model-proxy-placeholder-${sessionID}`;
 }
 
 const envNamePattern = /^[A-Z_][A-Z0-9_]*$/;
@@ -131,8 +150,8 @@ function positivePort(value: string | undefined): number {
 }
 
 function positiveMilliseconds(value: string | undefined): number {
-  // bex-api always injects BEX_AGENT_TURN_TIMEOUT_MS (w5/m80 t002). This fallback
-  // is the safety net for a directly-launched driver: 30m — a sane bound, not the
+  // bex-api always injects BEX_AGENT_TURN_TIMEOUT_MS. This fallback is the
+  // safety net for a directly-launched driver: 30m — a sane bound, not the
   // former 4h, so a hung turn converges in tens of minutes rather than hours.
   const milliseconds = Number(value || 30 * 60 * 1000);
   if (!Number.isInteger(milliseconds) || milliseconds < 1) {
@@ -151,17 +170,6 @@ function optionalNonNegativeInt(
     throw new Error(`${name} must be a non-negative integer`);
   }
   return n;
-}
-
-// Anthropic OAuth tokens (minted by `claude setup-token`, prefix `sk-ant-oat`)
-// authenticate claude-code through CLAUDE_CODE_OAUTH_TOKEN (Bearer + the oauth
-// beta header), not the x-api-key ANTHROPIC_API_KEY path — which rejects them as
-// "Invalid API key". Route a BYO credential to the agent-native variable by its
-// shape when BEX_AGENT_MODEL_API_KEY_ENV isn't pinned explicitly.
-function defaultCredentialEnvName(credential: string): string {
-  return credential.startsWith("sk-ant-oat")
-    ? "CLAUDE_CODE_OAUTH_TOKEN"
-    : "ANTHROPIC_API_KEY";
 }
 
 // model proxy routing is release-locked in agent-profiles.json (w5/m77).
@@ -195,29 +203,29 @@ export function loadConfig(
 
   const command = profile.executable;
 
-  // ADR062 model proxy: when a proxy base URL is present, route the selected
-  // adapter's provider SDK at it and land the placeholder credential in the var
-  // that adapter reads. An adapter with no known routing fails closed here rather
-  // than silently connecting straight to the vendor with the placeholder.
+  // ADR062 model proxy (mandatory): route the selected adapter's provider SDK
+  // at the gateway and land the placeholder in the var that adapter reads.
+  // There is no direct-to-vendor mode: a missing proxy URL or anything other
+  // than the exact session-bound placeholder refuses to start.
   const modelProxyUrl = env.BEX_AGENT_MODEL_PROXY_URL || "";
-  let modelBaseUrl = "";
-  let modelBaseUrlEnvName = "";
-  let routedCredentialEnv = "";
-  if (modelProxyUrl) {
-    const route = profile.modelProxy;
-    modelBaseUrlEnvName = route.baseUrlEnv;
-    modelBaseUrl = modelProxyUrl.replace(/\/+$/, "") + route.baseUrlSuffix;
-    routedCredentialEnv = route.credentialEnv;
-  }
-
-  const credentialEnvName =
-    env.BEX_AGENT_MODEL_API_KEY_ENV ||
-    routedCredentialEnv ||
-    defaultCredentialEnvName(modelCredential);
-  if (!envNamePattern.test(credentialEnvName)) {
+  if (!modelProxyUrl) {
     throw new Error(
-      "BEX_AGENT_MODEL_API_KEY_ENV must be a valid environment variable name",
+      "BEX_AGENT_MODEL_PROXY_URL is required: the driver only runs behind the bex model proxy",
     );
+  }
+  const sessionID = env.BEX_AGENT_SESSION_ID || "";
+  if (!sessionID) throw new Error("BEX_AGENT_SESSION_ID is required");
+  if (modelCredential !== modelProxyPlaceholder(sessionID)) {
+    throw new Error(
+      "BEX_AGENT_MODEL_API_KEY must be the session's model-proxy placeholder",
+    );
+  }
+  const route = profile.modelProxy;
+  const modelBaseUrlEnvName = route.baseUrlEnv;
+  const modelBaseUrl = modelProxyUrl.replace(/\/+$/, "") + route.baseUrlSuffix;
+  const credentialEnvName = route.credentialEnv;
+  if (!envNamePattern.test(credentialEnvName)) {
+    throw new Error("model proxy credential environment name is invalid");
   }
   if (env.BEX_AGENT_DELIVER === "1" && !(env.BEX_AGENT_BRANCH || "")) {
     throw new Error("BEX_AGENT_DELIVER=1 requires BEX_AGENT_BRANCH");
@@ -228,7 +236,7 @@ export function loadConfig(
   if (
     Object.hasOwn(agentEnv, "BEX_AGENT_MODEL_API_KEY") ||
     Object.hasOwn(agentEnv, credentialEnvName) ||
-    (modelBaseUrlEnvName && Object.hasOwn(agentEnv, modelBaseUrlEnvName))
+    Object.hasOwn(agentEnv, modelBaseUrlEnvName)
   ) {
     throw new Error(
       "model credentials must use BEX_AGENT_MODEL_API_KEY, not BEX_AGENT_ENV_JSON",
@@ -246,20 +254,16 @@ export function loadConfig(
       "BEX_AGENT_ARGS and BEX_AGENT_ENV_JSON must match the selected release profile",
     );
   }
-  if (modelProxyUrl && credentialEnvName !== profile.modelProxy.credentialEnv) {
-    throw new Error(
-      "model proxy credential environment must match the selected release profile",
-    );
-  }
-
   return {
     command,
     args,
+    profile: profile.id,
     cwd,
     prompt: env.BEX_AGENT_PROMPT || "",
     branch: env.BEX_AGENT_BRANCH || "",
     repoUrl: env.BEX_AGENT_REPO_URL || "",
     baseBranch: env.BEX_AGENT_BASE_BRANCH || "",
+    repository: env.BEX_AGENT_REPOSITORY || "",
     restoreUrl: env.BEX_AGENT_RESTORE_URL || "",
     restoreSha: env.BEX_AGENT_RESTORE_SHA || "",
     restoreBytes: optionalNonNegativeInt(
@@ -277,33 +281,19 @@ export function loadConfig(
     listenPort: positivePort(env.BEX_AGENT_LISTEN_PORT),
     sessionLogPath,
     statusPath,
+    prRecordPath: path.join(path.dirname(statusPath), "pull-request.json"),
+    existingPrUrl: env.BEX_AGENT_PR_URL || "",
+    existingPrNumber:
+      optionalNonNegativeInt(env.BEX_AGENT_PR_NUMBER, "BEX_AGENT_PR_NUMBER") ||
+      null,
     exitAfterTurn: env.BEX_AGENT_EXIT_AFTER_TURN === "1",
     turnTimeoutMs: positiveMilliseconds(env.BEX_AGENT_TURN_TIMEOUT_MS),
     credentialEnvName,
     modelCredential,
-    sessionID: env.BEX_AGENT_SESSION_ID || "",
+    sessionID,
     turn: Math.max(1, Number.parseInt(env.BEX_AGENT_TURN || "1", 10) || 1),
     grantPublicKey: env.BEX_AGENT_GRANT_PUBLIC_KEY || "",
     agentEnv,
-    scrubRoots: [
-      ...new Set(
-        (
-          env.BEX_AGENT_SCRUB_ROOTS ||
-          [
-            cwd,
-            env.HOME || "/home/bex",
-            "/tmp",
-            "/var/tmp",
-            path.dirname(sessionLogPath),
-            path.dirname(statusPath),
-          ].join(",")
-        )
-          .split(",")
-          .map((item) => item.trim())
-          .filter(Boolean)
-          .map((item) => path.resolve(item)),
-      ),
-    ],
     modelBaseUrl,
     modelBaseUrlEnvName,
   };

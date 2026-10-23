@@ -18,7 +18,6 @@ package agentsession
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"testing"
 
@@ -45,7 +44,7 @@ func (f *failerStore) GetAgentSession(_ context.Context, id string) (store.Agent
 	return f.session, nil
 }
 
-func (f *failerStore) FinalizeAgentSession(_ context.Context, _, phase, _, _ string, _ int, _ json.RawMessage, reason string) (store.AgentSession, store.TerminalTurnFact, error) {
+func (f *failerStore) FinalizeAgentSession(_ context.Context, _, phase, _, _, reason string) (store.AgentSession, store.TerminalTurnFact, error) {
 	f.finalized = true
 	f.finPhase, f.finReason = phase, reason
 	if f.finErr != nil {
