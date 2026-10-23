@@ -2124,6 +2124,9 @@ func blueprintErrorField(message string) string {
 	if strings.Contains(message, "health check path") {
 		return ".healthCheckPath"
 	}
+	if strings.Contains(message, "pre-deploy command") {
+		return ".preDeployCommand"
+	}
 	// Hostname refusals contain "name"; they belong to domains (w8/055).
 	for _, marker := range []string{"hostname", "wildcard", "this domain", "custom domains"} {
 		if strings.Contains(strings.ToLower(message), marker) {

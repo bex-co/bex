@@ -1,19 +1,19 @@
 # w8 · m131 — The pre-deploy command is a paid-plan feature, as on Render
 
-**Worker:** worker8 **Goal:** Setting a pre-deploy command on a free web service is refused on every surface with Render's rule ("The pre-deploy command is available for paid web services, private services, and background workers"), and a free downgrade is refused while one is set, the way maintenance mode already is. **Status:** todo
+**Worker:** worker8 **Goal:** Setting a pre-deploy command on a free web service is refused on every surface with Render's rule ("The pre-deploy command is available for paid web services, private services, and background workers"), and a free downgrade is refused while one is set, the way maintenance mode already is. **Status:** blocked — t001, t002, t003, t004, t005, t006, t007, t008 done 2026-10-23; release pipeline deploys bex-api and the dashboard; QA runs t009: on a free web fixture `bex services update --pre-deploy-command` and `services create --plan free --pre-deploy-command` exit 1 (service unchanged / nothing created), `blueprints validate` fails at services[0].preDeployCommand, starter variants validate; inventory live free services that carry a legacy command (count into ADR018 row); delete fixtures by ID with 404 proofs
 
 ## Tasks (in order)
 
 | id   | title                                                                   | est | depends_on                 |
 | ---- | ----------------------------------------------------------------------- | --- | -------------------------- |
-| t001 | Admission: refuse a pre-deploy command on Free (create, update, clone)   | 45m | —                          |
-| t002 | Blueprint: `preDeployCommand` on a free service fails validate and apply | 30m | w8/m131/t001               |
-| t003 | Plan change: refuse a free downgrade while a pre-deploy command is set  | 30m | w8/m131/t001               |
-| t004 | Existing free services that already carry one                           | 30m | w8/m131/t001               |
-| t005 | Dashboard: the pre-deploy field on a free service                       | 30m | w8/m131/t001               |
-| t006 | Render parity: REST/GraphQL/MCP/dashboard and ADR018 agree              | 20m | w8/m131/t002, w8/m131/t003, w8/m131/t004, w8/m131/t005 |
-| t007 | Simplify the changed code                                               | 15m | w8/m131/t006               |
-| t008 | Test coverage: free vs paid, every writer, downgrade, Blueprint         | 30m | w8/m131/t006               |
+| t001 — **DONE** | Admission: refuse a pre-deploy command on Free (create, update, clone)   | 45m | —                          |
+| t002 — **DONE** | Blueprint: `preDeployCommand` on a free service fails validate and apply | 30m | w8/m131/t001               |
+| t003 — **DONE** | Plan change: refuse a free downgrade while a pre-deploy command is set  | 30m | w8/m131/t001               |
+| t004 — **DONE** | Existing free services that already carry one                           | 30m | w8/m131/t001               |
+| t005 — **DONE** | Dashboard: the pre-deploy field on a free service                       | 30m | w8/m131/t001               |
+| t006 — **DONE** | Render parity: REST/GraphQL/MCP/dashboard and ADR018 agree              | 20m | w8/m131/t002, w8/m131/t003, w8/m131/t004, w8/m131/t005 |
+| t007 — **DONE** | Simplify the changed code                                               | 15m | w8/m131/t006               |
+| t008 — **DONE** | Test coverage: free vs paid, every writer, downgrade, Blueprint         | 30m | w8/m131/t006               |
 | t009 | Close out the milestone                                                 | 30m | w8/m131/t007, w8/m131/t008 |
 
 ## Definition of done
