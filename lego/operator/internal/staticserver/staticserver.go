@@ -484,6 +484,10 @@ func (h *Handler) serveObject(w http.ResponseWriter, r *http.Request, site Site,
 	hdr := w.Header()
 	hdr.Set("Content-Type", contentType(servedPath, obj.ContentType))
 	hdr.Set("Cache-Control", defaultCacheControl)
+	// Render's static-site security defaults (w8/194). A saved header rule
+	// still replaces either (applyHeaders below).
+	hdr.Set("Strict-Transport-Security", defaultStrictTransportSecurity)
+	hdr.Set("X-Content-Type-Options", "nosniff")
 	if obj.etag != "" {
 		hdr.Set("Etag", obj.etag)
 	}
@@ -932,6 +936,10 @@ func contentType(servedPath, originType string) string {
 // immutable policy are not recalled: they stay until eviction, a forced reload,
 // or a new asset URL.
 const defaultCacheControl = "public, max-age=0, must-revalidate"
+
+// defaultStrictTransportSecurity is what Render's static sites send on every
+// successful response (w8/194): HTTPS only, ten years, subdomains, preloadable.
+const defaultStrictTransportSecurity = "max-age=315360000; includeSubdomains; preload"
 
 // drain fully reads and closes an origin body (used by the S3 origin), bounded by
 // maxOriginObjectBytes so a tenant object can't force an unbounded allocation.

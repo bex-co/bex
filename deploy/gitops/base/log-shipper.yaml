@@ -309,8 +309,9 @@ spec:
                   values = ["filename", "stream"]
                 }
 
-                // Both spellings seen in the wild: `level` (slog/zap/logrus/bunyan
-                // via "level", pino numeric aside) and `severity` (OTel/GCP).
+                // Both spellings seen in the wild: `level` (slog/zap/logrus, and
+                // pino and bunyan, which write the number 10..60) and `severity`
+                // (OTel/GCP).
                 stage.json {
                   expressions = {
                     level    = "level",
@@ -331,7 +332,9 @@ spec:
                   }
                 }
 
-                // Normalize the vocabulary to Render's five buckets. Anything not
+                // Normalize the vocabulary to Render's five buckets, including
+                // pino's and bunyan's identical numeric scale (10 trace, 20 debug,
+                // 30 info, 40 warn, 50 error, 60 fatal; w8/195). Anything not
                 // recognized collapses to `unknown` rather than minting an unbounded
                 // label value per typo — the cardinality budget above holds because
                 // this template can only ever emit those 5 values.
@@ -339,7 +342,7 @@ spec:
                   source   = "level"
                   // Escaped for Helm's tpl pass — see the HELM TPL ESCAPING
                   // note at the top of this file for why.
-                  template = "{{ "{{" }} $l := ToLower (or .Value .severity) {{ "}}" }}{{ "{{" }} if or (eq $l \"error\") (eq $l \"err\") (eq $l \"fatal\") (eq $l \"panic\") (eq $l \"critical\") (eq $l \"crit\") (eq $l \"alert\") (eq $l \"emergency\") {{ "}}" }}error{{ "{{" }} else if or (eq $l \"warn\") (eq $l \"warning\") {{ "}}" }}warning{{ "{{" }} else if or (eq $l \"info\") (eq $l \"notice\") {{ "}}" }}info{{ "{{" }} else if or (eq $l \"debug\") (eq $l \"trace\") {{ "}}" }}debug{{ "{{" }} else {{ "}}" }}unknown{{ "{{" }} end {{ "}}" }}"
+                  template = "{{ "{{" }} $l := ToLower (or .Value .severity) {{ "}}" }}{{ "{{" }} if or (eq $l \"error\") (eq $l \"err\") (eq $l \"fatal\") (eq $l \"panic\") (eq $l \"critical\") (eq $l \"crit\") (eq $l \"alert\") (eq $l \"emergency\") (eq $l \"50\") (eq $l \"60\") {{ "}}" }}error{{ "{{" }} else if or (eq $l \"warn\") (eq $l \"warning\") (eq $l \"40\") {{ "}}" }}warning{{ "{{" }} else if or (eq $l \"info\") (eq $l \"notice\") (eq $l \"30\") {{ "}}" }}info{{ "{{" }} else if or (eq $l \"debug\") (eq $l \"trace\") (eq $l \"10\") (eq $l \"20\") {{ "}}" }}debug{{ "{{" }} else {{ "}}" }}unknown{{ "{{" }} end {{ "}}" }}"
                 }
 
                 // The `unknown` bucket, and Render's type vocabulary (app | request
