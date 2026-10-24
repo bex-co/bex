@@ -64,7 +64,7 @@ func Check(ctx context.Context, addr string, port int, path, host string, timeou
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 64<<10))
 	if !Healthy(resp.StatusCode) {
 		return fmt.Errorf("health check answered %d", resp.StatusCode)
@@ -107,18 +107,19 @@ func Install(dest string) error {
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 	tmp, err := os.CreateTemp(filepath.Dir(dest), ".health-probe-*")
 	if err != nil {
 		return err
 	}
-	defer os.Remove(tmp.Name())
+	// Removing the temporary name after a successful rename is a no-op.
+	defer func() { _ = os.Remove(tmp.Name()) }()
 	if _, err := io.Copy(tmp, in); err != nil {
-		tmp.Close()
+		_ = tmp.Close()
 		return err
 	}
 	if err := tmp.Chmod(0o555); err != nil {
-		tmp.Close()
+		_ = tmp.Close()
 		return err
 	}
 	if err := tmp.Close(); err != nil {
