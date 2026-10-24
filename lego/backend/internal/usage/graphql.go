@@ -198,6 +198,14 @@ var billingGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var freeInstanceHoursGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "FreeInstanceHours",
+	Fields: graphql.Fields{
+		"used":     gqlutil.FloatField(func(h FreeInstanceHours) any { return h.Used }),
+		"included": gqlutil.FloatField(func(h FreeInstanceHours) any { return h.Included }),
+	},
+})
+
 var usageSummaryGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "UsageSummary",
 	Fields: graphql.Fields{
@@ -206,6 +214,8 @@ var usageSummaryGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"services":      gqlutil.Typed(graphql.NewList(serviceUsageGQLType), func(s Summary) any { return s.Services }),
 		"estimatedCost": gqlutil.Typed(estimatedCostGQLType, func(s Summary) any { return s.EstimatedCost }),
 		"coverage":      gqlutil.Typed(graphql.NewNonNull(usageCoverageGQLType), func(s Summary) any { return s.Coverage }),
+		// freeInstanceHours is the monthly included Free instance hours (w8/m139).
+		"freeInstanceHours": gqlutil.Typed(graphql.NewNonNull(freeInstanceHoursGQLType), func(s Summary) any { return s.FreeInstanceHours }),
 		// billing is the real Stripe cost/invoices (m48/m50); null ⇒ estimate-only.
 		"billing": &graphql.Field{Type: billingGQLType, Resolve: gqlutil.Field(func(s Summary) any {
 			if s.Billing == nil {

@@ -346,6 +346,7 @@ func main() {
 		// manager's own BEX_BUILD_NAMESPACE, the same way Cancel's Job identity
 		// does (deps.DeployBuildNamespace below).
 		usageSvc.BuildNamespace = cfg.BuildNamespace
+		usageSvc.FreeInstanceHours = cfg.FreeInstanceHours
 		deps.Usage = usageSvc
 
 		stripeLifecycleWorker, stripeLifecycleReconciler, stripeBillingAdmin = wireStripeBilling(ctx, cfg, &deps, base, cl, st, appsNS, usageSvc, billingMetrics)
@@ -449,6 +450,9 @@ func main() {
 	// Free Postgres expiry (w8/m126): warn, suspend at expiresAt, delete after
 	// the grace period.
 	go srv.PostgresExpiry.Run(ctx)
+	// Monthly Free instance hours (w8/m139): warn at 80%, suspend Free web
+	// services when spent, resume at the month boundary.
+	go srv.FreeHours.Run(ctx)
 	// Durable Blueprint auto-sync worker (w8/m38): claims intents accepted at
 	// the signed git webhook. No-op unless Blueprints store is wired.
 	go srv.BlueprintAutoSync.Run(ctx)
@@ -1245,6 +1249,7 @@ func wireAgentSessions(deps *api.Deps, cfg *Config) {
 	// Service's 30m default (the bound is never disabled — that is the 4h-hang bug
 	// this fixes).
 	deps.AgentTurnTimeout = cfg.AgentTurnTimeout
+	deps.FreeInstanceHours = cfg.FreeInstanceHours
 	deps.AgentMaxLiveSandboxesPerWorkspace = cfg.AgentMaxLiveSandboxesPerWorkspace
 	deps.MaxBlueprintGroupings = cfg.MaxBlueprintGroupings
 	deps.ImageCompatibilityWorkspaces = cfg.ImageCompatibilityWorkspaces

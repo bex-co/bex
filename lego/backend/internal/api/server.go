@@ -57,6 +57,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
 	"github.com/bex-co/bex/lego/backend/internal/environments"
 	"github.com/bex-co/bex/lego/backend/internal/events"
+	"github.com/bex-co/bex/lego/backend/internal/freehours"
 	"github.com/bex-co/bex/lego/backend/internal/github"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 	"github.com/bex-co/bex/lego/backend/internal/jobs"
@@ -126,24 +127,28 @@ type Server struct {
 	// PostgresExpiry expires and deletes free Postgres databases (ADR009
 	// §Free-plan expiry, w8/m126). main.go starts it with the serve context.
 	PostgresExpiry *postgres.FreeExpirySweeper
-	KeyValue       *keyvalue.Service
-	Secrets        *secrets.Service
-	EnvGroups      *envgroups.Service
-	Workspaces     *workspaces.Service
-	Members        *members.Service
-	Billing        *billing.Service
-	Usage          *usage.Service
-	Deploys        *deploys.Service
-	Events         *events.Service
-	Audit          *audit.Service
-	GitHub         *github.Service
-	Notifications  *notifications.Service
-	Projects       *projects.Service
-	Environments   *environments.Service
-	RegistryCreds  *registrycreds.Service
-	Webhooks       *webhooks.Service
-	Jobs           *jobs.Service
-	CLITelemetry   *clitelemetry.Service
+	// FreeHours suspends Free web services once a workspace has used its
+	// monthly Free instance hours (w8/m139). main.go starts it with the serve
+	// context.
+	FreeHours     *freehours.Sweeper
+	KeyValue      *keyvalue.Service
+	Secrets       *secrets.Service
+	EnvGroups     *envgroups.Service
+	Workspaces    *workspaces.Service
+	Members       *members.Service
+	Billing       *billing.Service
+	Usage         *usage.Service
+	Deploys       *deploys.Service
+	Events        *events.Service
+	Audit         *audit.Service
+	GitHub        *github.Service
+	Notifications *notifications.Service
+	Projects      *projects.Service
+	Environments  *environments.Service
+	RegistryCreds *registrycreds.Service
+	Webhooks      *webhooks.Service
+	Jobs          *jobs.Service
+	CLITelemetry  *clitelemetry.Service
 	// StripeWebhook is the signature-verifying public billing callback. It is
 	// nil unless BEX_STRIPE_WEBHOOK_SECRET is configured.
 	StripeWebhook http.Handler
@@ -374,6 +379,9 @@ type Deps struct {
 	// Injected into the sandbox as BEX_AGENT_TURN_TIMEOUT_MS so a hung turn is
 	// bounded here, not by the driver's 4h fallback. Zero ⇒ the 30m default.
 	AgentTurnTimeout time.Duration
+	// FreeInstanceHours overrides the monthly Free instance-hours allowance
+	// (BEX_FREE_INSTANCE_HOURS, w8/m139); 0 means 750.
+	FreeInstanceHours float64
 	// MaxBlueprintGroupings caps a workspace's durable Blueprint project and
 	// environment counts (BEX_MAX_BLUEPRINT_GROUPINGS, default 1000; 0
 	// disables) — the w1/049 #5 abuse bound, refused with
@@ -992,6 +1000,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		},
 		BlueprintRecovery:  &apps.BlueprintRecoverer{Store: d.BlueprintsStore},
 		PostgresExpiry:     &postgres.FreeExpirySweeper{Service: pg, Notifier: notifications.DatabaseExpiryNotifier{Service: notificationsSvc}},
+		FreeHours:          newFreeHours(appsSvc, d, notificationsSvc),
 		BlueprintAutoSync:  &apps.BlueprintAutoSyncWorker{Svc: appsSvc},
 		CheckedDeploys:     &apps.CheckedDeployWorker{Svc: appsSvc},
 		DomainVerification: &apps.DomainVerificationWorker{Svc: appsSvc},
