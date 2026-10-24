@@ -326,6 +326,22 @@ func Suspenders(suspended bool) []string {
 	return []string{}
 }
 
+// AnnotFreeHoursSuspended marks an App the workspace's monthly Free instance
+// hours suspended (w8/m139); its value is the UTC month ("2006-01") the budget
+// ran out in. Such an App reports the "billing" suspender, cannot be resumed
+// by hand while the budget is spent, and resumes when the month ends or the
+// App leaves the free plan.
+const AnnotFreeHoursSuspended = "app.bex.co/free-hours-suspended"
+
+// SuspendersFor is Suspenders for an App that may be suspended by the Free
+// instance-hours budget rather than by its owner.
+func SuspendersFor(suspended, freeHours bool) []string {
+	if suspended && freeHours {
+		return []string{"billing"}
+	}
+	return Suspenders(suspended)
+}
+
 // Base is the shared kernel every feature service embeds: the apiserver-thin
 // client, the watched namespace, an injectable clock, and the authorization
 // gate. Feature services embed *Base and call Authorize / Now / GetApp / AppPods.

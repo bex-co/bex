@@ -228,6 +228,9 @@ type Config struct {
 	AgentGitProxyURL       string
 	AgentSandboxIdleTTL    time.Duration
 	AgentTurnTimeout       time.Duration
+	// FreeInstanceHours is the monthly Free instance-hours allowance per
+	// workspace (BEX_FREE_INSTANCE_HOURS, w8/m139); 0 means Render's 750.
+	FreeInstanceHours float64
 
 	AgentMaxLiveSandboxesPerWorkspace  int
 	MaxBlueprintGroupings              int
@@ -541,6 +544,9 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	// w5/m80 t002: one turn's wall-clock bound. A 0/invalid value falls back to
 	// the Service's 30m default (the bound is never disabled — that is the
 	// 4h-hang bug this fixes).
+	if hours, err := strconv.ParseFloat(strings.TrimSpace(getenv("BEX_FREE_INSTANCE_HOURS")), 64); err == nil && hours > 0 {
+		cfg.FreeInstanceHours = hours
+	}
 	cfg.AgentTurnTimeout = p.zeroableDuration("BEX_AGENT_TURN_TIMEOUT", 30*time.Minute)
 	cfg.AgentMaxLiveSandboxesPerWorkspace = p.zeroableInt("BEX_AGENT_MAX_LIVE_SANDBOXES_PER_WORKSPACE", 5)
 	cfg.MaxBlueprintGroupings = p.zeroableInt("BEX_MAX_BLUEPRINT_GROUPINGS", 1000)

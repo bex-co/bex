@@ -129,10 +129,17 @@ export interface Coverage {
   degradedSources: string[];
 }
 
+/** Hours Free web services ran this period against the monthly allowance. */
+export interface FreeInstanceHours {
+  used: number;
+  included: number;
+}
+
 export interface UsageSummary {
   workspaceId: string;
   period: string; // "YYYY-MM"
   coverage: Coverage;
+  freeInstanceHours: FreeInstanceHours;
   estimatedCost: EstimatedCost | null;
   billing: Billing | null;
 }
@@ -175,6 +182,10 @@ export function useUsage(period?: string): UseUsageResult {
               degradedSources: (raw.coverage?.degradedSources ?? []).filter(
                 Boolean,
               ),
+            },
+            freeInstanceHours: {
+              used: raw.freeInstanceHours?.used ?? 0,
+              included: raw.freeInstanceHours?.included ?? 750,
             },
             estimatedCost: raw.estimatedCost
               ? {

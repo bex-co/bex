@@ -31,6 +31,7 @@ import {
 import { periodFor, periodLabel } from "@/features/usage/lib/period";
 import { useUsage } from "../hooks/use-usage";
 import { WorkspaceResourceCaps } from "./resource-caps";
+import { FreeHoursCard } from "./free-hours-card";
 import { PlanCard } from "./plan-card";
 import { PaymentMethodCard } from "./payment-method-card";
 import { ChargesCard } from "./charges-card";
@@ -136,6 +137,7 @@ export function UsagePage() {
               className={SECTION_NAVIGATION_TARGET_CLASS}
             >
               <WorkspaceResourceCaps />
+              <FreeHoursCard hours={summary?.freeInstanceHours ?? null} />
             </section>
             <section id="charges" className={SECTION_NAVIGATION_TARGET_CLASS}>
               <ChargesCard

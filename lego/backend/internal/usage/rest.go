@@ -59,6 +59,15 @@ type usageResponse struct {
 	// estimate-only — no contract, comped/excluded, billing off, or degraded.
 	Billing  *billing.Billing `json:"billing,omitempty"`
 	Coverage usageCoverage    `json:"coverage"`
+	// FreeInstanceHours is the workspace's monthly included Free instance hours
+	// (w8/m139): hours used against the allowance, as Render's Billing page
+	// shows it.
+	FreeInstanceHours usageFreeHours `json:"freeInstanceHours"`
+}
+
+type usageFreeHours struct {
+	Used     float64 `json:"used"`
+	Included float64 `json:"included"`
 }
 
 type usageCoverage struct {
@@ -110,11 +119,12 @@ func toUsageResponse(sum Summary) usageResponse {
 		coverage.Through = sum.Coverage.Through.UTC().Format(time.RFC3339)
 	}
 	return usageResponse{
-		WorkspaceID:   sum.WorkspaceID,
-		Period:        period,
-		Services:      svcs,
-		EstimatedCost: sum.EstimatedCost,
-		Billing:       sum.Billing,
-		Coverage:      coverage,
+		WorkspaceID:       sum.WorkspaceID,
+		Period:            period,
+		Services:          svcs,
+		EstimatedCost:     sum.EstimatedCost,
+		Billing:           sum.Billing,
+		Coverage:          coverage,
+		FreeInstanceHours: usageFreeHours{Used: sum.FreeInstanceHours.Used, Included: sum.FreeInstanceHours.Included},
 	}
 }

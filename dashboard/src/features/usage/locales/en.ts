@@ -26,6 +26,33 @@ const enUsage: Record<string, TranslationEntry> = {
     message: "Key Value",
     description: "Key Value count label in the resource-cap card",
   },
+  "usage.freeHoursTitle": {
+    message: "Monthly included usage",
+    description:
+      "Title of the Free instance hours card on the usage page (w8/m139)",
+  },
+  "usage.freeHoursDescription": {
+    message:
+      "Free web services share a monthly allowance of instance hours per workspace. Time spent spun down does not count.",
+    description: "Explains the monthly Free instance hours allowance (w8/m139)",
+  },
+  "usage.freeHoursUsed": {
+    message: "{used} of {included} Free instance hours used this month",
+    description:
+      "Free instance hours used against the monthly allowance (w8/m139)",
+  },
+  "usage.freeHoursNear": {
+    message:
+      "You are close to the allowance. When it is spent, your Free web services are suspended until the start of next month.",
+    description:
+      "Warning once Free instance hours reach 80 percent of the allowance (w8/m139)",
+  },
+  "usage.freeHoursSpent": {
+    message:
+      "The allowance is spent. Free web services are suspended until the start of next month; upgrade a service to a paid plan to run it now.",
+    description:
+      "Notice once the monthly Free instance hours are spent (w8/m139)",
+  },
   "usage.resourceCapsNearLimit": {
     message: "Near limit",
     description:

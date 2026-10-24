@@ -1,18 +1,18 @@
 # w8 · m139 — Free web services share 750 instance hours per workspace per month, as on Render
 
-**Worker:** worker8 **Goal:** Each workspace gets Render's 750 Free instance hours per calendar month, counted only while a Free web service is running (spun-down time is free). When they run out, the workspace's Free web services are suspended until the start of the next month, with warning and exhaustion emails and a "Monthly included usage" readout, as on Render. **Status:** todo
+**Worker:** worker8 **Goal:** Each workspace gets Render's 750 Free instance hours per calendar month, counted only while a Free web service is running (spun-down time is free). When they run out, the workspace's Free web services are suspended until the start of the next month, with warning and exhaustion emails and a "Monthly included usage" readout, as on Render. **Status:** blocked — t001, t002, t003, t004, t005, t006, t007 done 2026-10-23; release pipeline deploys bex-api (migration 0161) and the dashboard; QA runs t008: read side on production — GET /v1/usage / GraphQL usage / MCP get_usage for bex-canary shows freeInstanceHours {used, included: 750} matching the instance-seconds meter, the Usage page shows the Monthly included usage card; exhaustion on a dev environment with BEX_FREE_INSTANCE_HOURS=0.05 (two Free web services accrue, a slept one does not, crossing suspends Free web only with suspender billing, one warning + one exhausted email, manual resume refused, upgrade runs at once, next month resumes); delete fixtures by ID with 404 proofs; before enabling widely, announce (existing heavy Free users are suspended the first month)
 
 ## Tasks (in order)
 
 | id   | title                                                                         | est | depends_on                 |
 | ---- | ----------------------------------------------------------------------------- | --- | -------------------------- |
-| t001 | Month-to-date Free instance hours per workspace from the existing usage meter  | 40m | —                          |
-| t002 | Exhaustion: suspend Free web services until the month starts; resume on reset  | 60m | w8/m139/t001               |
-| t003 | Notifications: approaching (e.g. 80%) and exhausted emails                     | 30m | w8/m139/t001               |
-| t004 | Surfaces: monthly included usage on REST/GraphQL/MCP and the Usage page        | 40m | w8/m139/t001               |
-| t005 | Render parity: ADR030/ADR018, suspension reason and resume rules               | 20m | w8/m139/t002, w8/m139/t003, w8/m139/t004 |
-| t006 | Simplify the changed code                                                     | 15m | w8/m139/t005               |
-| t007 | Test coverage: accrual, sleep exclusion, exhaustion, month rollover, upgrade   | 40m | w8/m139/t005               |
+| t001 — **DONE** | Month-to-date Free instance hours per workspace from the existing usage meter  | 40m | —                          |
+| t002 — **DONE** | Exhaustion: suspend Free web services until the month starts; resume on reset  | 60m | w8/m139/t001               |
+| t003 — **DONE** | Notifications: approaching (e.g. 80%) and exhausted emails                     | 30m | w8/m139/t001               |
+| t004 — **DONE** | Surfaces: monthly included usage on REST/GraphQL/MCP and the Usage page        | 40m | w8/m139/t001               |
+| t005 — **DONE** | Render parity: ADR030/ADR018, suspension reason and resume rules               | 20m | w8/m139/t002, w8/m139/t003, w8/m139/t004 |
+| t006 — **DONE** | Simplify the changed code                                                     | 15m | w8/m139/t005               |
+| t007 — **DONE** | Test coverage: accrual, sleep exclusion, exhaustion, month rollover, upgrade   | 40m | w8/m139/t005               |
 | t008 | Close out the milestone                                                       | 30m | w8/m139/t006, w8/m139/t007 |
 
 ## Definition of done

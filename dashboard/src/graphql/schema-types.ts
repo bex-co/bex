@@ -835,6 +835,12 @@ export type EstimatedCost = {
   totalUsd: Maybe<Scalars['String']['output']>;
 };
 
+export type FreeInstanceHours = {
+  __typename: 'FreeInstanceHours';
+  included: Maybe<Scalars['Float']['output']>;
+  used: Maybe<Scalars['Float']['output']>;
+};
+
 export type GeneratedBlueprint = {
   __typename: 'GeneratedBlueprint';
   filename: Maybe<Scalars['String']['output']>;
@@ -3886,6 +3892,7 @@ export type UsageSummary = {
   billing: Maybe<Billing>;
   coverage: UsageCoverage;
   estimatedCost: Maybe<EstimatedCost>;
+  freeInstanceHours: FreeInstanceHours;
   period: Maybe<Scalars['String']['output']>;
   services: Maybe<Array<Maybe<ServiceUsage>>>;
   workspaceId: Maybe<Scalars['String']['output']>;

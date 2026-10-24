@@ -491,6 +491,9 @@ type AppView struct {
 	Builder   string `json:"builder,omitempty"`
 	Replicas  int32  `json:"replicas"`
 	Suspended bool   `json:"suspended"`
+	// FreeHoursSuspended: the suspension is the workspace's spent monthly Free
+	// instance hours (w8/m139), reported as the "billing" suspender.
+	FreeHoursSuspended bool `json:"-"`
 	// Schedule is the cron expression for a cron_job (spec.schedule), empty otherwise.
 	Schedule string `json:"schedule,omitempty"`
 	// Command overrides a cron_job's default entrypoint (spec.command), empty
@@ -1139,6 +1142,7 @@ func view(a *appv1alpha1.App) AppView {
 		Builder:              a.Spec.Builder,
 		Replicas:             a.Spec.Replicas,
 		Suspended:            a.Spec.Suspended,
+		FreeHoursSuspended:   a.Annotations[core.AnnotFreeHoursSuspended] != "",
 		Schedule:             a.Spec.Schedule,
 		Command:              cronCommand(a.Spec),
 		Runs:                 cronRunViews(a.Status.Runs),
@@ -3935,6 +3939,13 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 	if ft, ok := tiers.Compute.ByID(a.Spec.Tier); ok {
 		fromPlan = ft.RenderPlan
 	}
+	// Upgrading a service the monthly Free instance hours suspended lets it run
+	// at once (w8/m139).
+	if core.PaidPlan(tier) {
+		if err := s.resumeFromFreeHours(ctx, a); err != nil {
+			return AppView{}, err
+		}
+	}
 	result, err := s.writeThroughStoreFetched(ctx, a,
 		func(ctx context.Context, id string) error { return s.Store.SetAppTier(ctx, id, tier) },
 		func(a *appv1alpha1.App) { a.Spec.Tier = tier })
@@ -5020,6 +5031,8 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 		return AppView{}, err
 	} else if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
 		return AppView{}, err
+	} else if err := s.requireFreeHoursAvailable(a); err != nil {
+		return AppView{}, err
 	}
 	verb := core.AuditVerbResume
 	if suspended {
@@ -5027,7 +5040,12 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 	}
 	view, err := s.writeThroughStoreFetched(ctx, a,
 		func(ctx context.Context, id string) error { return s.Store.SetAppSuspended(ctx, id, suspended) },
-		func(a *appv1alpha1.App) { a.Spec.Suspended = suspended })
+		func(a *appv1alpha1.App) {
+			a.Spec.Suspended = suspended
+			if !suspended {
+				delete(a.Annotations, core.AnnotFreeHoursSuspended)
+			}
+		})
 	if err != nil {
 		return AppView{}, err
 	}

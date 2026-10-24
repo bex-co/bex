@@ -89,6 +89,7 @@ describe("useUsage", () => {
       period: "",
       // coverage absent from the response ⇒ the honest "unknown" default (w4/048).
       coverage: { state: "unknown", through: "", degradedSources: [] },
+      freeInstanceHours: { used: 0, included: 750 },
       estimatedCost: {
         totalUsd: "4.92",
         resources: [
