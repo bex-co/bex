@@ -79,5 +79,5 @@ Searched `.pm` open and done and `docs/` for each feature with Hobby/Pro/plan ga
 - `POST /v1/projects` with three environments → 400 `environments: a Hobby workspace is limited to 2 environments per project; upgrade the plan to add more`; two → 201.
 - `PATCH /v1/environments/{id} {"networkIsolationEnabled":true}` → 400 `network-isolated environments require the Pro plan or higher; this workspace is on Hobby`.
 - `POST /v1/webhooks` → 400 `WEBHOOK_PLAN_LIMIT` `webhooks require the Pro plan or higher; this workspace is on Hobby`.
-- `bex logs -r <id> --type request` → 400 `type: HTTP request logs require the Pro plan or higher; this workspace is on Hobby`; `--type build` works. **But** an unfiltered `bex logs -r <id>` still returned 3 request entries: filed as [w8/199](../../199.md).
+- `bex logs -r <id> --type request` → 400 `type: HTTP request logs require the Pro plan or higher; this workspace is on Hobby`; `--type build` works. **But** an unfiltered `bex logs -r <id>` still returned 3 request entries: see [t012](t012.md) (also found as w8/199, folded in).
 - Not covered: Pro-workspace controls, legacy state, dashboard copy. DoD (t010) still open.
