@@ -309,8 +309,8 @@ func TestZotConfigStorageMigration(t *testing.T) {
 		t.Fatal("storage migration removed the builder admin policy")
 	}
 	migrated, _ := data["storage"].(map[string]any)
-	if migrated["gcInterval"] != "1h" || migrated["dedupe"] != true {
-		t.Errorf("migrated storage = %v; want hourly GC with dedupe", migrated)
+	if migrated["gcInterval"] != "3h" || migrated["dedupe"] != true {
+		t.Errorf("migrated storage = %v; want 3-hourly GC with dedupe", migrated)
 	}
 	extensions, _ := data["extensions"].(map[string]any)
 	if extensions["sentinel"] != true {
@@ -499,7 +499,7 @@ func TestBaseZotConfigBuilderAdminPolicy(t *testing.T) {
 // config, so this is the one place a field rename or an omitempty change would
 // otherwise slip through to a running registry unnoticed.
 func TestBaseZotConfigIsByteStable(t *testing.T) {
-	const want = `{"distSpecVersion":"1.1.0","storage":{"rootDirectory":"/var/lib/registry","dedupe":true,"gc":true,"gcDelay":"1h","gcInterval":"1h","retention":{"dryRun":false,"policies":[{"repositories":["**"],"deleteUntagged":true,"keepTags":[{"patterns":[".*"],"mostRecentlyPushedCount":5}]}]}},"http":{"address":"0.0.0.0","port":"5000","compat":["docker2s2"],"readTimeout":"60s","writeTimeout":"60s","auth":{"htpasswd":{"path":"/secret/htpasswd"}},"accessControl":{"repositories":{"**":{"policies":[{"users":["bex-builder"],"actions":["read","create","update","delete"]}]},"bex-cnb-builder":{"policies":null,"defaultPolicy":["read"]}},"adminPolicy":{"users":["bex-builder"],"actions":["read","create","update","delete"]}}},"log":{"level":"info"},"extensions":{"scrub":{"enable":true,"interval":"24h"}}}`
+	const want = `{"distSpecVersion":"1.1.0","storage":{"rootDirectory":"/var/lib/registry","dedupe":true,"gc":true,"gcDelay":"3h","gcInterval":"3h","retention":{"dryRun":false,"policies":[{"repositories":["**"],"deleteUntagged":true,"keepTags":[{"patterns":[".*"],"mostRecentlyPushedCount":5}]}]}},"http":{"address":"0.0.0.0","port":"5000","compat":["docker2s2"],"readTimeout":"60s","writeTimeout":"60s","auth":{"htpasswd":{"path":"/secret/htpasswd"}},"accessControl":{"repositories":{"**":{"policies":[{"users":["bex-builder"],"actions":["read","create","update","delete"]}]},"bex-cnb-builder":{"policies":null,"defaultPolicy":["read"]}},"adminPolicy":{"users":["bex-builder"],"actions":["read","create","update","delete"]}}},"log":{"level":"info"},"extensions":{"scrub":{"enable":true,"interval":"24h"}}}`
 	if got := string((&Creds{}).baseZotConfig()); got != want {
 		t.Errorf("canonical zot config drifted.\n got: %s\nwant: %s", got, want)
 	}
@@ -557,11 +557,11 @@ func TestBaseZotConfigContractValues(t *testing.T) {
 	if gc, _ := storage["gc"].(bool); !gc {
 		t.Error("storage.gc must be true")
 	}
-	if delay, _ := storage["gcDelay"].(string); delay != "1h" {
-		t.Errorf("storage.gcDelay = %q; want 1h", delay)
+	if delay, _ := storage["gcDelay"].(string); delay != "3h" {
+		t.Errorf("storage.gcDelay = %q; want 3h", delay)
 	}
-	if interval, _ := storage["gcInterval"].(string); interval != "1h" {
-		t.Errorf("storage.gcInterval = %q; want 1h", interval)
+	if interval, _ := storage["gcInterval"].(string); interval != "3h" {
+		t.Errorf("storage.gcInterval = %q; want 3h", interval)
 	}
 	if got := retentionCount(t, data); got != defaultRetentionCount {
 		t.Errorf("default mostRecentlyPushedCount = %d; want %d", got, defaultRetentionCount)

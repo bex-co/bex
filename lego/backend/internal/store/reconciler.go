@@ -82,7 +82,7 @@ const (
 	defaultResyncPeriod = 30 * time.Second
 	// Phase-specific gate timeouts bound how long a deploy may sit open before
 	// recordDeploy gives up on it and calls it failed. BuildKit Jobs have a
-	// 30-minute active deadline and pre-deploy Jobs have a 10-minute deadline,
+	// 120-minute active deadline (Render's build timeout) and pre-deploy Jobs have a 10-minute deadline,
 	// so their control-plane budgets must be longer than the mechanism they
 	// observe. Each budget starts from the deploy row's last phase transition.
 	// The shorter rollout budget is needed because a bad image
@@ -91,7 +91,7 @@ const (
 	// PhaseFailed once the Deployment reports ProgressDeadlineExceeded with no
 	// prior ActiveRevision, so the row can close from the phase; the gate remains
 	// the backstop when the CR has not yet observed that verdict.
-	defaultBuildGateTimeout     = 35 * time.Minute
+	defaultBuildGateTimeout     = 125 * time.Minute
 	defaultPreDeployGateTimeout = 12 * time.Minute
 	// defaultDeployGateTimeout observes the rollout the same way the two gates
 	// above observe their Jobs, so it follows the same rule: a control-plane

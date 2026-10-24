@@ -507,7 +507,7 @@ func TestBuildCacheKeepsThePodDiskCeilingBounded(t *testing.T) {
 func TestBuildCacheTransfersCannotHangPastTheirOwnBudget(t *testing.T) {
 	// A hung registry connection is not a failure the best-effort wrapper can
 	// catch — it never exits. Without a bound, a stuck transfer consumes the
-	// Job's whole 30-minute deadline and then fails a build whose image was
+	// Job's whole deadline and then fails a build whose image was
 	// already pushed, which is precisely what "the cache affects speed, never
 	// results" forbids.
 	o := cacheOpts()
