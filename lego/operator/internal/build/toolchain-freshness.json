@@ -5,9 +5,9 @@
       "id": "cnb-builder",
       "kind": "builder",
       "upstream": "docker.io/paketobuildpacks/builder-jammy-base:latest",
-      "committed": "paketobuildpacks/builder-jammy-base@sha256:c0642791404793f276f92c926c4fe910c0fa5f9dce6b3de8b693323a5962236b",
-      "resolved_at": "2026-10-16T10:25:13Z",
-      "source": "Docker Hub paketobuildpacks/builder-jammy-base:latest single-platform linux/amd64 Docker manifest (stack io.buildpacks.stacks.jammy; not an index)",
+      "committed": "paketobuildpacks/builder-jammy-base@sha256:48318490d77731d2c474de6625d35144fdd23f8ca603a2d42cda023faff962d7",
+      "resolved_at": "2026-10-24T06:28:18Z",
+      "source": "Docker Hub paketobuildpacks/builder-jammy-base:latest = 0.4.669 single-platform linux/amd64 Docker manifest (stack io.buildpacks.stacks.jammy; not an index); nodejs 10.14.1 → node-engine 8.11.0 ships Node 22.23.4/24.22.1/26.12.1 (CVE-2026-111497)",
       "files": [
         "lego/operator/cmd/manager/main.go",
         "lego/operator/config/manager/manager.yaml",
