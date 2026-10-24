@@ -425,3 +425,54 @@ func keys(m map[string]string) []string {
 	}
 	return out
 }
+
+// A live application deletes files while the snapshot walks its volume
+// (ClickHouse merges and drops data parts continuously). An entry that vanishes
+// between the directory listing and its read is skipped, not fatal, and the
+// rest of the tree is still captured (w6/089).
+func TestBackupSkipsEntriesThatVanishMidWalk(t *testing.T) {
+	recipient, identity := newKeypair(t)
+	volume := t.TempDir()
+	mustWrite(t, filepath.Join(volume, "keep.txt"), []byte("kept"), 0o644)
+	mustWrite(t, filepath.Join(volume, "merged.bin"), []byte("gone"), 0o644)
+	mustWrite(t, filepath.Join(volume, "part_1", "data.bin"), []byte("gone too"), 0o644)
+	mustWrite(t, filepath.Join(volume, "store", "part_2", "data.bin"), []byte("dropped dir"), 0o644)
+	mustWrite(t, filepath.Join(volume, "store", "stable.bin"), []byte("stable"), 0o644)
+	if err := os.Symlink("keep.txt", filepath.Join(volume, "link")); err != nil {
+		t.Fatal(err)
+	}
+
+	// After each directory is listed, delete the entries a merge would drop:
+	// a file, a symlink, a whole directory, and one nested a level down.
+	testHookAfterReadDir = func(dir string) {
+		switch dir {
+		case ".":
+			for _, name := range []string{"merged.bin", "link", "part_1"} {
+				if err := os.RemoveAll(filepath.Join(volume, name)); err != nil {
+					t.Error(err)
+				}
+			}
+		case "store":
+			if err := os.RemoveAll(filepath.Join(volume, "store", "part_2")); err != nil {
+				t.Error(err)
+			}
+		}
+	}
+	t.Cleanup(func() { testHookAfterReadDir = nil })
+
+	var archive bytes.Buffer
+	if err := Backup(volume, &archive, recipient); err != nil {
+		t.Fatalf("Backup: %v (a vanished entry must not fail the snapshot)", err)
+	}
+	entries := readArchive(t, archive.Bytes(), identity)
+	for _, name := range []string{"keep.txt", "store/stable.bin"} {
+		if _, ok := entries[name]; !ok {
+			t.Errorf("%s missing: a vanished sibling must not drop the rest of the tree", name)
+		}
+	}
+	for _, name := range []string{"merged.bin", "link", "part_1", "part_1/data.bin", "store/part_2", "store/part_2/data.bin"} {
+		if _, ok := entries[name]; ok {
+			t.Errorf("%s was archived although it vanished before it was read", name)
+		}
+	}
+}
