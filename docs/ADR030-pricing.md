@@ -106,6 +106,20 @@ The dashboard mirrors this as presentation only (`offeredInstanceTypes` in `dash
 
 ---
 
+### 9. Workspace plans gate Render's plan features (w8/m137, w8/m138)
+
+Render's [features-by-plan page](https://render.com/docs/platform-features-by-plan) is the source of truth, implemented as one table in `core/plan_gate.go` (`PlanAllows(plan, feature)`, one refusal sentence per feature) read through `core.Base.Plans`:
+
+| Feature | Minimum plan | Notes |
+| --- | --- | --- |
+| Environments per project | Hobby: 2 | Pro and higher: unlimited |
+| Network-isolated environments | Pro | turning it on is refused; an isolated environment can turn it off |
+| Webhooks | Pro | one destination on Pro, up to 100 on Scale and Enterprise |
+| HTTP request logs | Pro | explicit `type=request` refused; all-types queries drop request lines |
+| Inbound IP rules on services, static sites and environments | Scale | Postgres and Key Value rules stay on every plan |
+
+Existing state is never silently removed: a Hobby workspace keeps its third environment, isolated environments, webhook endpoints and IP rules working, and only new uses are refused. An unreadable plan fails the write; an unwired plan reader (store-off) leaves every feature open. Render's exact refusal wording and its request-log behavior on Hobby are unverified (no Render account); bex takes the documented 400 with the plan named.
+
 ## Consequences
 
 - **Backend:** `internal/pricing` is an operator-independent package. `internal/usage.Service.monthToDateAt` calls `pricing.Default.Estimate` and attaches the result to `Summary.EstimatedCost`; `storage_gb_seconds` contributes at the embedded per-GB-second rate for Postgres and Key Value rows.

@@ -473,6 +473,9 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (EndpointView, 
 	if s.Store == nil {
 		return EndpointView{}, core.ErrWebhooksUnavailable
 	}
+	if err := s.requireWebhookPlan(ctx); err != nil {
+		return EndpointView{}, err
+	}
 	name, err := normalizeName(req.Name)
 	if err != nil {
 		return EndpointView{}, err
@@ -499,6 +502,35 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (EndpointView, 
 	}
 	return toView(e, true), nil // Create is admin-gated: echo the exact destination
 }
+
+// requireWebhookPlan applies the workspace plan's webhook rule (w8/m138):
+// Render offers webhooks on Pro and higher, one destination on Pro and up to
+// 100 on Scale. Endpoints that already exist keep delivering.
+func (s *Service) requireWebhookPlan(ctx context.Context) error {
+	workspaceID := s.WorkspaceOrDefault(ctx)
+	plan, ok, err := s.WorkspacePlanOf(ctx, workspaceID)
+	if err != nil || !ok {
+		return err
+	}
+	if !core.PlanAllows(plan, core.FeatureWebhooks) {
+		return core.NewBadRequestError(PlanLimitCode, core.PlanFeatureMessage(plan, core.FeatureWebhooks), map[string]any{"plan": plan})
+	}
+	limit := core.WebhookDestinationLimit(plan)
+	existing, err := s.Store.ListWebhookEndpoints(ctx, []string{workspaceID}, time.Time{}, "", limit)
+	if err != nil {
+		return mapStoreErr(err)
+	}
+	if len(existing) >= limit {
+		return core.NewBadRequestError(PlanLimitCode,
+			fmt.Sprintf("the %s plan allows %d webhook destination(s); delete one or upgrade the plan before adding another", plan, limit),
+			map[string]any{"plan": plan, "limit": limit})
+	}
+	return nil
+}
+
+// PlanLimitCode is the refusal for a webhook the workspace plan does not allow
+// (w8/m138), on REST, GraphQL and MCP alike.
+const PlanLimitCode = "WEBHOOK_PLAN_LIMIT"
 
 // EndpointLimitCode is the machine-readable refusal a caller sees when the
 // workspace is already at the endpoint cap (w1/m67 F2). Named so REST, GraphQL,

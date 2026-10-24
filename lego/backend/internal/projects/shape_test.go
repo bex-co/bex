@@ -277,3 +277,46 @@ func TestCreateAcceptsRenderEnvironmentsInputUnderStrictDecode(t *testing.T) {
 		t.Fatalf("POST with unknown field = %d, want 400 — strict decoding must stay active", rec2.Code)
 	}
 }
+
+// TestCreateWithEnvironmentsFollowsThePlan (w8/m138): the inline environments a
+// project is created with obey the same Hobby limits as separate creates.
+func TestCreateWithEnvironmentsFollowsThePlan(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := store.Migrate(uri); err != nil {
+		t.Fatal(err)
+	}
+	ctx := ctxAs("user-a")
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	st := store.NewPGStore(pool)
+	workspace, err := st.CreateWorkspace(ctx, "project-inline-plan", store.PlanHobby, "user-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _, _ = pool.Exec(ctx, "DELETE FROM tenants WHERE id = $1", workspace.ID) }()
+	svc := &Service{Base: &core.Base{Authz: allowChecker{}}, Store: st}
+	svc.Plans = core.WorkspacePlanFunc(func(ctx context.Context, id string) (string, error) {
+		tenant, err := st.GetTenant(ctx, id)
+		return tenant.Plan, err
+	})
+
+	if _, err := svc.CreateWithEnvironments(ctx, workspace.ID, "three", []EnvironmentInput{{Name: "a"}, {Name: "b"}, {Name: "c"}}); err == nil || !strings.Contains(err.Error(), "limited to 2 environments per project") {
+		t.Fatalf("three environments on Hobby: err = %v", err)
+	}
+	if _, err := svc.CreateWithEnvironments(ctx, workspace.ID, "isolated", []EnvironmentInput{{Name: "a", NetworkIsolationEnabled: true}}); err == nil || !strings.Contains(err.Error(), "network-isolated environments require the Pro plan") {
+		t.Fatalf("isolated environment on Hobby: err = %v", err)
+	}
+	projects, err := st.ListProjects(ctx, workspace.ID)
+	if err != nil || len(projects) != 0 {
+		t.Fatalf("a refused create left %d projects (%v)", len(projects), err)
+	}
+	if _, err := svc.CreateWithEnvironments(ctx, workspace.ID, "two", []EnvironmentInput{{Name: "production"}, {Name: "staging"}}); err != nil {
+		t.Fatalf("two environments on Hobby: %v", err)
+	}
+}

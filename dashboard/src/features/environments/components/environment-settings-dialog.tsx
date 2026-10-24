@@ -17,7 +17,10 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import { useSetEnvironmentACL } from "@/features/environments/hooks/use-set-environment-acl";
 import { useWorkspace } from "@/features/workspaces/context";
-import { inboundIpRulesPlan } from "@/features/workspaces/types";
+import {
+  inboundIpRulesPlan,
+  proFeaturesPlan,
+} from "@/features/workspaces/types";
 
 export interface EnvironmentSettingsDialogProps {
   environment: EnvironmentView;
@@ -78,6 +81,11 @@ function EnvironmentSettingsForm({
   const { saveACL, saving } = useSetEnvironmentACL();
   const { currentWorkspace } = useWorkspace();
   const belowScale = !inboundIpRulesPlan(currentWorkspace?.plan);
+  // Isolation cannot be turned on below Pro; an environment that already has it
+  // can still turn it off.
+  const isolationLocked =
+    !proFeaturesPlan(currentWorkspace?.plan) &&
+    !environment.networkIsolationEnabled;
   const [isProtected, setIsProtected] = useState(
     environment.protectedStatus === "protected",
   );
@@ -175,14 +183,16 @@ function EnvironmentSettingsForm({
               {t("environments.isolationLabel")}
             </Label>
             <p className="text-sm text-muted-foreground">
-              {t("environments.isolationHint")}
+              {isolationLocked
+                ? t("environments.isolationProOnly")
+                : t("environments.isolationHint")}
             </p>
           </div>
           <Switch
             id={`environment-isolation-${environment.id}`}
             checked={networkIsolationEnabled}
             onCheckedChange={setNetworkIsolationEnabled}
-            disabled={saving}
+            disabled={saving || isolationLocked}
           />
         </section>
 

@@ -424,6 +424,11 @@ func (s *Service) CreateWithEnvironments(ctx context.Context, workspaceID, name 
 	if name == "" {
 		return ProjectView{}, fmt.Errorf("%w: name: must not be blank", core.ErrBadRequest)
 	}
+	if len(environments) > 0 {
+		if err := s.RequireEnvironmentCapacity(ctx, workspaceID, len(environments)-1); err != nil {
+			return ProjectView{}, fmt.Errorf("invalid request body at /environments: %w", err)
+		}
+	}
 	for i := range environments {
 		e := &environments[i]
 		e.Name = strings.TrimSpace(e.Name)
@@ -439,6 +444,9 @@ func (s *Service) CreateWithEnvironments(ctx context.Context, workspaceID, name 
 			}
 			if err := core.ValidateAllowList(e.IPAllowList); err != nil {
 				return ProjectView{}, fmt.Errorf("%w: invalid request body at /environments/%d/ipAllowList", core.ErrBadRequest, i)
+			}
+			if err := s.RequireNetworkIsolation(ctx, workspaceID, e.NetworkIsolationEnabled, false); err != nil {
+				return ProjectView{}, fmt.Errorf("invalid request body at /environments/%d/networkIsolationEnabled: %w", i, err)
 			}
 			if e.IPAllowList != nil {
 				if err := s.RequireInboundIPRules(ctx, workspaceID, e.IPAllowList, core.DefaultEnvironmentAllowList(), true); err != nil {

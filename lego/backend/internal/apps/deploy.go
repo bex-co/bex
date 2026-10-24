@@ -1779,6 +1779,9 @@ func (s *Service) applyBlueprintGroupingsWith(ctx context.Context, groups Bluepr
 			if err := s.blueprintGroupingQuota(projectCount, environmentCount+1); err != nil {
 				return nil, nil, err
 			}
+			if err := s.RequireEnvironmentCapacity(ctx, tenantID, len(environmentsByProject[project.ID])); err != nil {
+				return nil, nil, fmt.Errorf("creating Blueprint environment %q: %w", grouping.environmentName, err)
+			}
 			environment, err = groups.CreateEnvironment(ctx, project.ID, tenantID, grouping.environmentName)
 			if err != nil {
 				return nil, nil, fmt.Errorf("creating Blueprint environment %q: %w", grouping.environmentName, err)
@@ -1804,6 +1807,9 @@ func (s *Service) applyBlueprintGroupingsWith(ctx context.Context, groups Bluepr
 		desiredIsolation := environment.NetworkIsolationEnabled
 		if grouping.isolationSpecified {
 			desiredIsolation = grouping.networkIsolationEnabled
+		}
+		if err := s.RequireNetworkIsolation(ctx, tenantID, desiredIsolation, environment.NetworkIsolationEnabled); err != nil {
+			return nil, nil, fmt.Errorf("applying Blueprint environment %q controls: %w", grouping.environmentName, err)
 		}
 		aclChanged := environment.ProtectedStatus != desiredProtected || environment.NetworkIsolationEnabled != desiredIsolation
 		// The protected-environment ACL is an admin-classified control

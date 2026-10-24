@@ -63,6 +63,11 @@ const enWebhooks: Record<string, TranslationEntry> = {
     message: "Something went wrong. Please try again.",
     description: "Webhooks generic error body",
   },
+  "webhooks.proOnly": {
+    message:
+      "Webhooks require the Pro plan or higher. Existing endpoints keep delivering.",
+    description: "Webhooks card description on a Hobby workspace (w8/m138)",
+  },
   "webhooks.create": {
     message: "Add webhook",
     description: "Button that opens the create dialog",

@@ -62,6 +62,10 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     message: "出了点问题，请重试。",
     description: "Webhooks generic error body",
   },
+  "webhooks.proOnly": {
+    message: "Webhook 需要 Pro 或更高套餐。现有端点继续投递。",
+    description: "Webhooks card description on a Hobby workspace (w8/m138)",
+  },
   "webhooks.create": {
     message: "添加 Webhook",
     description: "Button that opens the create dialog",

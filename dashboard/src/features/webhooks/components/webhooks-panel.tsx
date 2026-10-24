@@ -25,6 +25,8 @@ import { WebhooksTableHeader } from "@/features/webhooks/components/webhooks-tab
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { useWorkspace } from "@/features/workspaces/context";
+import { proFeaturesPlan } from "@/features/workspaces/types";
 import { eventLabelKey } from "@/features/webhooks/event-catalog";
 
 /**
@@ -39,7 +41,9 @@ export function WebhooksPanel() {
   const { setEnabled, toggling } = useSetWebhookEnabled();
   const { canManage } = useCapabilities();
   // Fail-closed: only show create when affirmatively allowed.
-  const showCreate = canManage;
+  const { currentWorkspace } = useWorkspace();
+  const proPlan = proFeaturesPlan(currentWorkspace?.plan);
+  const showCreate = canManage && proPlan;
   const hydrated = useIsHydrated();
   const [search, setSearch] = useState("");
 
@@ -79,7 +83,9 @@ export function WebhooksPanel() {
     <Card>
       <CardHeader>
         <CardTitle>{t("webhooks.title")}</CardTitle>
-        <CardDescription>{t("webhooks.description")}</CardDescription>
+        <CardDescription>
+          {proPlan ? t("webhooks.description") : t("webhooks.proOnly")}
+        </CardDescription>
         <CardAction>
           {/* Render's create flow is a page, not a dialog (w1/m49/t003). */}
           {showCreate ? (
