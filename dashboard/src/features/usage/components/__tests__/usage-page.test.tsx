@@ -67,6 +67,7 @@ function summary(over: Partial<UsageSummary> = {}): UsageSummary {
     workspaceId: "ws",
     period: "2026-07",
     coverage: { state: "complete", through: "", degradedSources: [] },
+    freeInstanceHours: { used: 0, included: 750 },
     estimatedCost: { totalUsd: "0.00", resources: [] },
     billing: null,
     ...over,
