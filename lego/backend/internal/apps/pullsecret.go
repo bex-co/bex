@@ -82,7 +82,7 @@ func (s *Service) registryCredentialApplies(a *appv1alpha1.App) (bool, error) {
 	if a.Spec.Image == "" && !credentialSet {
 		return false, nil
 	}
-	if a.Spec.Image == "" && !isDockerfileBuild(a.Spec) {
+	if a.Spec.Image == "" && !core.IsDockerfileBuild(a.Spec) {
 		return false, fmt.Errorf("%w: registryCredentialId only applies to an image-backed or Dockerfile-built service", core.ErrBadRequest)
 	}
 	if s.RegistryCreds == nil {
@@ -119,18 +119,6 @@ func (s *Service) ensureExternalRegistryPullSecret(ctx context.Context, a *appv1
 		return "", nil
 	}
 	return name, nil
-}
-
-func isDockerfileBuild(spec appv1alpha1.AppSpec) bool {
-	if spec.Repo == "" || spec.Type == appv1alpha1.TypeStaticSite {
-		return false
-	}
-	runtime := strings.ToLower(strings.TrimSpace(spec.Runtime))
-	if runtime != "" {
-		return runtime == "docker"
-	}
-	builder := strings.ToLower(strings.TrimSpace(spec.Builder))
-	return builder == "" || builder == "auto" || builder == "dockerfile"
 }
 
 // deployPullSecretBridge gives deploys.Service the deploy-time materialization

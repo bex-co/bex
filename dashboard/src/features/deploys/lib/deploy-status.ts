@@ -150,6 +150,8 @@ export function deployTriggerKey(trigger: string): string | null {
       return "deploys.triggerConfigChange";
     case "restart":
       return "deploys.triggerRestart";
+    case "deployed_by_render":
+      return "deploys.triggerDeployedByRender";
     default:
       return null;
   }

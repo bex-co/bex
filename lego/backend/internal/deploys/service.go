@@ -995,7 +995,7 @@ func (s *Service) cancelSurvivor(ctx context.Context, a *appv1alpha1.App, appID 
 }
 
 // sourceOnlyTriggers open deploys that change nothing but the source to build.
-var sourceOnlyTriggers = []string{store.TriggerAPI, store.TriggerDeployHook, store.TriggerNewCommit}
+var sourceOnlyTriggers = []string{store.TriggerAPI, store.TriggerDeployHook, store.TriggerNewCommit, store.TriggerDeployedByRender}
 
 // Rollback creates a fresh deploy restoring a previously-live deploy's exact
 // image (Render's POST .../rollback {deployId}, w2/m10) — never a history
