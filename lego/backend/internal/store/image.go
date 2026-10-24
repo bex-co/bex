@@ -32,9 +32,13 @@ import (
 
 // ValidateImage checks an OCI image reference's grammar and registry policy.
 // Short Docker Hub names and tag+digest references are accepted without rewriting
-// the stored value. The kubelet pulls from the node network, outside pod egress
-// policy: private/reserved IPs and untrusted registry hosts must stay blocked.
-// Checking DNS here would not protect the kubelet's later resolution from rebinding.
+// the stored value. Like Render, any public registry is accepted (w5/171). The
+// kubelet pulls from the node network, outside pod egress policy, so a host that
+// names the platform's own network is refused: a private/reserved IP, localhost,
+// a single-label name, or a cluster/local-network suffix. DNS is not resolved
+// here (the kubelet's later lookup could rebind); the node bootstrap instead
+// denies containerd's own cgroup any link-local destination, which covers the
+// instance-metadata service (infra/clusterapi bootstrap, ADR022).
 func ValidateImage(v string) error {
 	if v == "" {
 		return fmt.Errorf("image reference is required")
@@ -66,7 +70,10 @@ func ValidateImage(v string) error {
 	if ip := net.ParseIP(host); ip != nil && netutil.UnsafeOriginIP(ip) {
 		return fmt.Errorf("image registry host %q is private or reserved", host)
 	}
-	if !trustedImageRegistry(host) {
+	switch {
+	case PublicImageRegistries && !publicImageRegistry(host):
+		return fmt.Errorf("image registry host %q is not a public registry", host)
+	case !PublicImageRegistries && !trustedImageRegistry(host):
 		return fmt.Errorf("image registry host %q is not trusted", host)
 	}
 	return nil
@@ -124,6 +131,13 @@ func normalizeRegistryHost(host string) string {
 	return strings.ToLower(strings.TrimSuffix(host, "."))
 }
 
+// PublicImageRegistries selects the registry policy: any public registry, as on
+// Render (the default), or the fixed allowlist a cluster keeps until every node
+// carries the containerd link-local deny (BEX_PUBLIC_IMAGE_REGISTRIES=false).
+// Set once at startup.
+var PublicImageRegistries = true
+
+// trustedImageRegistry is the fixed allowlist PublicImageRegistries=false keeps.
 func trustedImageRegistry(host string) bool {
 	host = normalizeRegistryHost(host)
 	switch host {
@@ -133,4 +147,31 @@ func trustedImageRegistry(host string) bool {
 		return true
 	}
 	return strings.HasSuffix(host, ".pkg.dev")
+}
+
+// internalRegistrySuffixes name cluster and local networks, never a public
+// registry.
+var internalRegistrySuffixes = []string{".svc", ".cluster.local", ".local", ".localhost", ".internal", ".home.arpa", ".lan"}
+
+// publicImageRegistry reports whether host names a public registry: any
+// dotted DNS name or public IP outside the platform's own networks, plus the
+// platform's own Zot, which the node bootstrap maps to a loopback NodePort.
+func publicImageRegistry(host string) bool {
+	host = normalizeRegistryHost(host)
+	switch host {
+	case "zot.bex-registry.svc", "zot.bex-registry.svc.cluster.local":
+		return true
+	}
+	if net.ParseIP(host) != nil {
+		return true // private and reserved addresses were refused already
+	}
+	if !strings.Contains(host, ".") {
+		return false
+	}
+	for _, suffix := range internalRegistrySuffixes {
+		if strings.HasSuffix(host, suffix) {
+			return false
+		}
+	}
+	return true
 }

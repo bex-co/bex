@@ -119,6 +119,10 @@ Two properties make this the right shape:
 
 **Local overlay.** The local CAPD mock cluster runs Calico, not Cilium, so the `cilium.io/v2` CRD is absent; the local kustomize overlay drops this manifest (`$patch: delete`). There, node IPs are Docker-network RFC1918 addresses already covered by the per-App `except`, and there is no cloud-metadata service, so the reachability matrix still holds without the CNP.
 
+### Image pulls from the node network (w5/171)
+
+A tenant image may come from any public registry, as on Render (`store.ValidateImage` refuses only private and reserved addresses, localhost, single-label names and cluster or local-network suffixes such as `.svc`, `.cluster.local`, `.local` and `.internal`). containerd pulls on the node network, where none of the pod egress policies above apply. A tenant-chosen registry name could therefore resolve, at pull time, to the metadata service, and a validation-time DNS check cannot stop that rebinding. So every node bootstrap (`infra/clusterapi`) loads an nftables table that rejects link-local (`169.254.0.0/16`) destinations from containerd's own cgroup (`system.slice/containerd.service`) only. Pod traffic, CSI, kubelet and cloud-init, which may read the metadata service, are unaffected. A containerd drop-in re-applies the table on every start, because the rule binds the cgroup of the start that loaded it, and a failed load fails the start. `scripts/clusterapi-validate.sh` refuses a bootstrap without it. containerd also uses HTTPS for any registry without its own `hosts.toml`, and only bex's Zot has one, so a plain-HTTP endpoint such as the metadata service fails at the TLS handshake even before this rule. Because CAPI applies a bootstrap only to new machines, bex-api keeps the fixed allowlist (`BEX_PUBLIC_IMAGE_REGISTRIES=false`) until every node pool has rolled onto it (w5/174).
+
 ## Free-plan SMTP egress (w8/m127)
 
 Render refuses outbound TCP 25, 465 and 587 from free instances ([render.com/docs/free](https://render.com/docs/free)); bex does the same, decided 2026-10-20.

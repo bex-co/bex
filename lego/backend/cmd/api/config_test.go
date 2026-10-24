@@ -70,6 +70,7 @@ func TestLoadConfigDefaults(t *testing.T) {
 		{"CPAddr (CP off)", cfg.CPAddr, ""},
 		{"MCPStdio", cfg.MCPStdio, false},
 		{"RequireVerifiedInviteEmail", cfg.RequireVerifiedInviteEmail, true},
+		{"PublicImageRegistries", cfg.PublicImageRegistries, true},
 		{"MaxBodyBytes", cfg.MaxBodyBytes, int64(2097152)},
 		{"MaxQueryHours", cfg.MaxQueryHours, 720},
 		{"MaxSSEConns", cfg.MaxSSEConns, int64(100)},
@@ -595,5 +596,12 @@ func TestLoadConfigPlatformModelRoute(t *testing.T) {
 	// Unset route: nothing is required.
 	if cfg, _, err := loadFor(t, cpEnv(nil)); err != nil || cfg.AgentPlatformModelRoute != "" {
 		t.Fatalf("unset route: %v / %q", err, cfg.AgentPlatformModelRoute)
+	}
+}
+
+func TestLoadConfigPublicImageRegistriesTurnsOffOnlyOnFalse(t *testing.T) {
+	cfg, _, err := loadFor(t, map[string]string{"BEX_PUBLIC_IMAGE_REGISTRIES": "false"})
+	if err != nil || cfg.PublicImageRegistries {
+		t.Fatalf("BEX_PUBLIC_IMAGE_REGISTRIES=false => %v, %v; want the allowlist", cfg.PublicImageRegistries, err)
 	}
 }
