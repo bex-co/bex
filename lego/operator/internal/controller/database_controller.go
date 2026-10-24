@@ -833,7 +833,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return r.dbFail(ctx, &db, appv1alpha1.ReasonClusterFailed, err)
 	}
 	r.reconcileApplicationDatabase(ctx, &db, dbname, owner)
-	if err := reconcileEnvironmentPeerPolicy(ctx, r.Client, r.Scheme, &db, db.Labels[labelEnvironment], "-environment-ingress", map[string]string{"app.bex.co/component": "database"}); err != nil {
+	if err := reconcileEnvironmentPeerPolicy(ctx, r.Client, r.Scheme, &db, db.Labels[labelNetworkIsolation], "-environment-ingress", map[string]string{cnpgClusterLabel: db.Name}, &metav1.LabelSelector{MatchLabels: map[string]string{logicalExportDBLabel: db.Name}}); err != nil {
 		return r.dbFail(ctx, &db, appv1alpha1.ReasonNetworkPolicyFailed, err)
 	}
 
@@ -950,6 +950,11 @@ func (r *DatabaseReconciler) reconcileCluster(ctx context.Context, db *appv1alph
 		}
 		if env := db.Labels[labelEnvironment]; env != "" {
 			inheritedLabels[labelEnvironment] = env
+		}
+		// CNPG relabels live pods from inheritedMetadata without a rollout, so
+		// toggling an environment's isolation never restarts the database.
+		if env := db.Labels[labelNetworkIsolation]; env != "" {
+			inheritedLabels[labelNetworkIsolation] = env
 		}
 		spec["inheritedMetadata"] = map[string]any{"labels": inheritedLabels}
 		if err := projectUnstructuredSpec(cluster, spec); err != nil {

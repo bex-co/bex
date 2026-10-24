@@ -490,3 +490,43 @@ func TestPlacementInheritedRulesConflictWithConcurrentDeparture(t *testing.T) {
 		})
 	}
 }
+
+// w8/m136: an isolated environment stamps core.LabelNetworkIsolation on its
+// member; a stale fan-out, a departure and a move all drop it again.
+func TestPlacementEnvironmentIsolationLabel(t *testing.T) {
+	svc, cl := newService(placementResource())
+	ctx := ctxAs("user-a")
+	if err := svc.SetEnvironmentIsolation(ctx, "placement", "env-a", true); err != nil {
+		t.Fatal(err)
+	}
+	if got := readPlacement(t, cl).Labels[core.LabelNetworkIsolation]; got != "env-a" {
+		t.Fatalf("isolation label = %q, want env-a", got)
+	}
+	// A delayed fan-out for an environment the member has left is a no-op.
+	if err := svc.SetEnvironmentIsolation(ctx, "placement", "env-former", false); err != nil {
+		t.Fatal(err)
+	}
+	if got := readPlacement(t, cl).Labels[core.LabelNetworkIsolation]; got != "env-a" {
+		t.Fatalf("stale fan-out changed the label to %q", got)
+	}
+	if err := svc.SetEnvironmentIsolation(ctx, "placement", "env-a", false); err != nil {
+		t.Fatal(err)
+	}
+	if core.HasNetworkIsolation(readPlacement(t, cl).Labels) {
+		t.Fatal("isolation off left the label")
+	}
+	for _, next := range []string{"", "env-b"} {
+		if err := svc.SetEnvironmentIsolation(ctx, "placement", "env-a", true); err != nil {
+			t.Fatal(err)
+		}
+		if err := svc.SetEnvironmentID(ctx, "placement", "env-a", next); err != nil {
+			t.Fatal(err)
+		}
+		if core.HasNetworkIsolation(readPlacement(t, cl).Labels) {
+			t.Fatalf("leaving env-a for %q kept the isolation label", next)
+		}
+		if err := svc.SetEnvironmentID(ctx, "placement", next, "env-a"); err != nil {
+			t.Fatal(err)
+		}
+	}
+}

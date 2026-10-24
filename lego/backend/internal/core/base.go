@@ -254,6 +254,21 @@ const LabelBlueprint = "bex.co/blueprint-id"
 // LabelProject); m19's is conditional on a policy flag and, today, App-only.
 const LabelNetworkIsolation = "app.bex.co/network-isolation"
 
+// HasNetworkIsolation reports whether labels carry LabelNetworkIsolation.
+func HasNetworkIsolation(labels map[string]string) bool {
+	_, ok := labels[LabelNetworkIsolation]
+	return ok
+}
+
+// WithNetworkIsolation returns the isolation label value a member of
+// environmentID carries: environmentID while isolated, "" (absent) otherwise.
+func WithNetworkIsolation(environmentID string, isolated bool) string {
+	if isolated {
+		return environmentID
+	}
+	return ""
+}
+
 // Render's protectedStatus enum on an Environment (w6/m19). Live in this
 // shared leaf, not the environments feature package, because apps.Service's
 // destructive-verb guard (apps/protection.go) needs to compare against it too

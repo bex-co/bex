@@ -324,7 +324,8 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     description: "Private-network isolation setting label",
   },
   "environments.isolationHint": {
-    message: "阻止私有网络流量跨越此环境边界。",
+    message:
+      "阻止私有网络流量跨越此环境边界，包括流向其中 Postgres 和 Key Value 实例的流量。它们的外部 URL 仍遵循各自的 IP 规则。",
     description: "Private-network isolation setting explanation",
   },
   "environments.ipAllowListLabel": {

@@ -1856,6 +1856,30 @@ func (s *Service) SetEnvironmentIPAllowList(ctx context.Context, name, expectedE
 	return s.Client.Patch(ctx, d, patch)
 }
 
+// SetEnvironmentIsolation stamps (or, with isolated=false, clears)
+// core.LabelNetworkIsolation on this Database (w8/m136): the operator keeps an
+// isolated environment's Postgres out of the same-namespace allow and admits
+// only that environment's members. Like SetEnvironmentIPAllowList, a departed
+// member never inherits state from a delayed fan-out.
+func (s *Service) SetEnvironmentIsolation(ctx context.Context, name, expectedEnvironmentID string, isolated bool) error {
+	d, err := s.AuthorizeDatabase(ctx, core.RelCanCreate, name)
+	if err != nil {
+		return err
+	}
+	want := core.WithNetworkIsolation(expectedEnvironmentID, isolated)
+	if d.Labels[core.LabelEnvironment] != expectedEnvironmentID || d.Labels[core.LabelNetworkIsolation] == want {
+		return nil
+	}
+	patch := client.MergeFromWithOptions(d.DeepCopy(), client.MergeFromWithOptimisticLock{})
+	if want == "" {
+		delete(d.Labels, core.LabelNetworkIsolation)
+	} else {
+		d.Labels[core.LabelNetworkIsolation] = want
+	}
+	resourcemeta.Touch(d, s.Now())
+	return s.Client.Patch(ctx, d, patch)
+}
+
 // SetEnvironmentID changes the environment without retaining rules inherited
 // from its predecessor. The parent project and resource-owned rules stay intact.
 // expectedEnvironmentID is the environment the caller observed and authorized
@@ -1887,7 +1911,7 @@ func (s *Service) ClearEnvironmentID(ctx context.Context, name, expectedEnvironm
 }
 
 func (s *Service) setEnvironmentID(ctx context.Context, d *appv1alpha1.Database, environmentID string) error {
-	if d.Labels[core.LabelEnvironment] == environmentID && (environmentID != "" || len(d.Spec.EnvironmentIPAllowList) == 0) {
+	if d.Labels[core.LabelEnvironment] == environmentID && (environmentID != "" || (len(d.Spec.EnvironmentIPAllowList) == 0 && !core.HasNetworkIsolation(d.Labels))) {
 		return nil
 	}
 	patch := client.MergeFromWithOptions(d.DeepCopy(), client.MergeFromWithOptimisticLock{})
@@ -1899,6 +1923,7 @@ func (s *Service) setEnvironmentID(ctx context.Context, d *appv1alpha1.Database,
 		}
 		d.Labels[core.LabelEnvironment] = environmentID
 	}
+	delete(d.Labels, core.LabelNetworkIsolation)
 	d.Spec.EnvironmentIPAllowList = nil
 	resourcemeta.Touch(d, s.Now())
 	return s.Client.Patch(ctx, d, patch)

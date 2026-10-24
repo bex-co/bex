@@ -387,6 +387,7 @@ func (r *KeyValueReconciler) secretClient() client.Client {
 // +kubebuilder:rbac:groups=app.bex.co,resources=keyvalues/finalizers,verbs=update
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;patch
 // +kubebuilder:rbac:groups=storage.k8s.io,resources=storageclasses,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=traefik.io,resources=ingressroutetcps;middlewaretcps,verbs=get;list;watch;create;update;patch;delete
@@ -824,6 +825,7 @@ func (r *KeyValueReconciler) reconcileKeyValueWorkload(ctx context.Context, kv *
 // function of (sts, kv, intent) so the workload shape is testable without a
 // client.
 func applyKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue, intent keyValueIntent) {
+	before := sts.Spec.Template.DeepCopy()
 	// Capture legacy authority before replacing the old flags; never change this
 	// fallback on subsequent edits (including edits while suspended). The PVC
 	// marker takes over after the first initializer runs.
@@ -876,6 +878,7 @@ func applyKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue,
 		sts.Spec.Template.Spec.InitContainers = []corev1.Container{keyValuePersistenceInit(kv, intent, sourceMode)}
 	}
 	applyValkeyPodSpec(&sts.Spec.Template.Spec, kv, intent)
+	holdIsolationLabel(sts, before, kv.Labels[labelNetworkIsolation])
 }
 
 // applyValkeyPodSpec writes the Valkey server + metrics-exporter template onto
@@ -1037,7 +1040,10 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if err := r.reconcileKeyValueWorkload(ctx, &kv, sts, intent); err != nil {
 		return r.kvFail(ctx, &kv, appv1alpha1.ReasonStatefulSetFailed, err)
 	}
-	if err := reconcileEnvironmentPeerPolicy(ctx, r.Client, r.Scheme, &kv, kv.Labels[labelEnvironment], "-environment-ingress", map[string]string{labelKeyValue: kv.Name}); err != nil {
+	if err := reconcileEnvironmentPeerPolicy(ctx, r.Client, r.Scheme, &kv, kv.Labels[labelNetworkIsolation], "-environment-ingress", map[string]string{labelKeyValue: kv.Name}, keyValueJobPeer(&kv)); err != nil {
+		return r.kvFail(ctx, &kv, appv1alpha1.ReasonNetworkPolicyFailed, err)
+	}
+	if err := r.syncKeyValuePodIsolation(ctx, &kv); err != nil {
 		return r.kvFail(ctx, &kv, appv1alpha1.ReasonNetworkPolicyFailed, err)
 	}
 

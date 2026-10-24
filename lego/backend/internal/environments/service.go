@@ -83,6 +83,8 @@ type DatabaseIndex interface {
 	// SetDatabases).
 	SetProjectID(ctx context.Context, name, expectedEnvironmentID, projectID string) error
 	SetEnvironmentIPAllowList(ctx context.Context, name, expectedEnvironmentID string, cidrs []string) error
+	// SetEnvironmentIsolation stamps or clears core.LabelNetworkIsolation (w8/m136).
+	SetEnvironmentIsolation(ctx context.Context, name, expectedEnvironmentID string, isolated bool) error
 }
 
 // KeyValueIndex is DatabaseIndex's KeyValue-CR counterpart. *keyvalue.Service
@@ -93,6 +95,8 @@ type KeyValueIndex interface {
 	ClearEnvironmentID(ctx context.Context, name, expectedEnvironmentID string) error
 	SetProjectID(ctx context.Context, name, expectedEnvironmentID, projectID string) error
 	SetEnvironmentIPAllowList(ctx context.Context, name, expectedEnvironmentID string, cidrs []string) error
+	// SetEnvironmentIsolation stamps or clears core.LabelNetworkIsolation (w8/m136).
+	SetEnvironmentIsolation(ctx context.Context, name, expectedEnvironmentID string, isolated bool) error
 }
 
 // EnvGroupIndex is the narrow cross-feature contract environments needs to
@@ -289,6 +293,9 @@ type resourceIndex interface {
 type layeredIndex interface {
 	resourceIndex
 	setIPLayer(ctx context.Context, id, expectedEnvironmentID string, cidrs []string) error
+	// setIsolation mirrors the environment's network isolation onto the member
+	// (w8/m136): an isolated environment's datastore admits only its own members.
+	setIsolation(ctx context.Context, id, expectedEnvironmentID string, isolated bool) error
 }
 
 type databaseResources struct{ DatabaseIndex }
@@ -317,7 +324,10 @@ func (d databaseResources) join(ctx context.Context, e store.Environment, id, ob
 	if err := d.SetEnvironmentID(ctx, id, observedEnvironmentID, e.ID); err != nil {
 		return err
 	}
-	return d.SetEnvironmentIPAllowList(ctx, id, e.ID, core.EnvironmentLayerCIDRs(e.IPAllowList))
+	if err := d.SetEnvironmentIPAllowList(ctx, id, e.ID, core.EnvironmentLayerCIDRs(e.IPAllowList)); err != nil {
+		return err
+	}
+	return d.SetEnvironmentIsolation(ctx, id, e.ID, e.NetworkIsolationEnabled)
 }
 
 // leave drops the environment label and the environment's inbound-IP layer,
@@ -329,6 +339,10 @@ func (d databaseResources) leave(ctx context.Context, id, expectedEnvironmentID 
 
 func (d databaseResources) setIPLayer(ctx context.Context, id, expectedEnvironmentID string, cidrs []string) error {
 	return d.SetEnvironmentIPAllowList(ctx, id, expectedEnvironmentID, cidrs)
+}
+
+func (d databaseResources) setIsolation(ctx context.Context, id, expectedEnvironmentID string, isolated bool) error {
+	return d.SetEnvironmentIsolation(ctx, id, expectedEnvironmentID, isolated)
 }
 
 // keyValueResources is databaseResources' KeyValue-CR counterpart.
@@ -353,7 +367,10 @@ func (k keyValueResources) join(ctx context.Context, e store.Environment, id, ob
 	if err := k.SetEnvironmentID(ctx, id, observedEnvironmentID, e.ID); err != nil {
 		return err
 	}
-	return k.SetEnvironmentIPAllowList(ctx, id, e.ID, core.EnvironmentLayerCIDRs(e.IPAllowList))
+	if err := k.SetEnvironmentIPAllowList(ctx, id, e.ID, core.EnvironmentLayerCIDRs(e.IPAllowList)); err != nil {
+		return err
+	}
+	return k.SetEnvironmentIsolation(ctx, id, e.ID, e.NetworkIsolationEnabled)
 }
 
 func (k keyValueResources) leave(ctx context.Context, id, expectedEnvironmentID string) error {
@@ -362,6 +379,10 @@ func (k keyValueResources) leave(ctx context.Context, id, expectedEnvironmentID 
 
 func (k keyValueResources) setIPLayer(ctx context.Context, id, expectedEnvironmentID string, cidrs []string) error {
 	return k.SetEnvironmentIPAllowList(ctx, id, expectedEnvironmentID, cidrs)
+}
+
+func (k keyValueResources) setIsolation(ctx context.Context, id, expectedEnvironmentID string, isolated bool) error {
+	return k.SetEnvironmentIsolation(ctx, id, expectedEnvironmentID, isolated)
 }
 
 // envGroupResources is the env-group member kind: membership is the whole of
@@ -1265,7 +1286,7 @@ func (s *Service) authorizeACLBearingMutation(ctx context.Context, e store.Envir
 //     (t004).
 //   - ipAllowList is fanned out to every Database/KeyValue whose
 //     core.LabelEnvironment (w6/m20) names this environment
-//     (propagateIPAllowList).
+//     (propagateEnvironmentLayer).
 func (s *Service) SetACL(ctx context.Context, id, protectedStatus string, networkIsolationEnabled bool, ipAllowList []core.IPAllowListEntry) (EnvironmentView, error) {
 	ctx, err := s.scopeEnvironment(ctx, id)
 	if err != nil {
@@ -1312,7 +1333,7 @@ func (s *Service) applyACL(ctx context.Context, e store.Environment, protectedSt
 	if err := s.applyAppEnvironmentLabels(ctx, sids, e.ID, e.NetworkIsolationEnabled); err != nil {
 		return EnvironmentView{}, err
 	}
-	if err := s.propagateIPAllowList(ctx, e.TenantID, e.ID, sids, core.EnvironmentLayerCIDRs(ipAllowList)); err != nil {
+	if err := s.propagateEnvironmentLayer(ctx, e.TenantID, e.ID, sids, core.EnvironmentLayerCIDRs(ipAllowList), e.NetworkIsolationEnabled); err != nil {
 		return EnvironmentView{}, err
 	}
 	return s.view(ctx, e, sids)
@@ -1628,7 +1649,7 @@ func (s *Service) applyAppEnvironmentLabels(ctx context.Context, names []string,
 	})
 }
 
-// propagateIPAllowList fans an environment's inbound-IP layer out to every
+// propagateEnvironmentLayer fans an environment's inbound-IP layer out to every
 // member: Databases/KeyValues whose core.LabelEnvironment (w6/m20) names this
 // environment, and (w4/m28) the member Apps' spec.environmentIPAllowList —
 // each member keeps its OWN spec.ipAllowList untouched (pre-m28 this verb
@@ -1639,7 +1660,7 @@ func (s *Service) applyAppEnvironmentLabels(ctx context.Context, names []string,
 // the layer (environment deleted / member leaving). serviceNames are the
 // member Apps. Databases/KeyValues nil (unwired) => datastore half no-ops,
 // matching internal/projects' own degrade.
-func (s *Service) propagateIPAllowList(ctx context.Context, tenantID, environmentID string, serviceNames, cidrs []string) error {
+func (s *Service) propagateEnvironmentLayer(ctx context.Context, tenantID, environmentID string, serviceNames, cidrs []string, isolated bool) error {
 	if err := s.applyAppAllowLists(ctx, serviceNames, cidrs); err != nil {
 		return err
 	}
@@ -1660,6 +1681,9 @@ func (s *Service) propagateIPAllowList(ctx context.Context, tenantID, environmen
 			if err := idx.setIPLayer(ctx, m.id, environmentID, cidrs); err != nil {
 				return err
 			}
+			if err := idx.setIsolation(ctx, m.id, environmentID, isolated); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -1668,7 +1692,7 @@ func (s *Service) propagateIPAllowList(ctx context.Context, tenantID, environmen
 // applyAppAllowLists fans one projected layer over a set of member Apps —
 // applyAppEnvironmentLabels' inbound-IP sibling (w4/m28), patching
 // spec.environmentIPAllowList to the projected layer (nil clears it). Shared by
-// SetServices and propagateIPAllowList so the per-App loop exists once.
+// SetServices and propagateEnvironmentLayer so the per-App loop exists once.
 func (s *Service) applyAppAllowLists(ctx context.Context, names []string, cidrs []string) error {
 	return s.patchApps(ctx, names, func(a *appv1alpha1.App) bool {
 		if slices.Equal(a.Spec.EnvironmentIPAllowList, cidrs) {

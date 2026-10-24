@@ -1,17 +1,17 @@
 # w8 · m136 — Environment network isolation also closes its Postgres and Key Value to other environments, as on Render
 
-**Worker:** worker8 **Goal:** With `networkIsolationEnabled: true`, a Key Value or Postgres in that environment refuses private-network connections from services in any other environment, as on Render ("blocks private network traffic from crossing its boundary"). Its external URL (allowlist-governed) and same-environment traffic keep working. **Status:** todo
+**Worker:** worker8 **Goal:** With `networkIsolationEnabled: true`, a Key Value or Postgres in that environment refuses private-network connections from services in any other environment, as on Render ("blocks private network traffic from crossing its boundary"). Its external URL (allowlist-governed) and same-environment traffic keep working. **Status:** blocked — t001, t002, t003, t004, t005, t006 done 2026-10-23; release pipeline deploys bex-api, the operator and GitOps (new pod-label admission policy); QA runs t007: probe in staging vs a Free Key Value in production — TCPOK with isolation off, TCPFAIL within 60s after PATCH networkIsolationEnabled:true, same-environment probe still TCPOK, external allowlisted PING→PONG, TCPOK again after off; Postgres matrix when a slot is free; delete fixtures by ID with 404 proofs
 
 ## Tasks (in order)
 
 | id   | title                                                                          | est | depends_on                 |
 | ---- | ------------------------------------------------------------------------------ | --- | -------------------------- |
-| t001 | Policy: isolated-environment datastores admit only same-environment peers       | 60m | —                          |
-| t002 | Toggle, membership moves and environment delete converge promptly               | 30m | w8/m136/t001               |
-| t003 | Keep external access, backups, metrics and platform users working               | 30m | w8/m136/t001               |
-| t004 | Render parity: ADR032/ADR018 and the dashboard isolation copy                   | 15m | w8/m136/t002, w8/m136/t003 |
-| t005 | Simplify the changed code                                                      | 15m | w8/m136/t004               |
-| t006 | Test coverage: isolated vs not, cross-env vs same-env, KV and Postgres          | 40m | w8/m136/t004               |
+| t001 — **DONE** | Policy: isolated-environment datastores admit only same-environment peers       | 60m | —                          |
+| t002 — **DONE** | Toggle, membership moves and environment delete converge promptly               | 30m | w8/m136/t001               |
+| t003 — **DONE** | Keep external access, backups, metrics and platform users working               | 30m | w8/m136/t001               |
+| t004 — **DONE** | Render parity: ADR032/ADR018 and the dashboard isolation copy                   | 15m | w8/m136/t002, w8/m136/t003 |
+| t005 — **DONE** | Simplify the changed code                                                      | 15m | w8/m136/t004               |
+| t006 — **DONE** | Test coverage: isolated vs not, cross-env vs same-env, KV and Postgres          | 40m | w8/m136/t004               |
 | t007 | Close out the milestone                                                        | 30m | w8/m136/t005, w8/m136/t006 |
 
 ## Definition of done
