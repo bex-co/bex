@@ -2142,7 +2142,7 @@ for required_guard in \
   "rule.toPorts[0].ports[0].port == '443'" \
   "rule.toPorts[0].ports[0].port == '8082'" \
   "rule.toPorts[0].ports[0].port == '8084'" \
-  "variables.model in ['api.anthropic.com', 'api.openai.com', 'generativelanguage.googleapis.com']" \
+  "variables.model in ['api.anthropic.com', 'api.openai.com', 'generativelanguage.googleapis.com', 'openrouter.ai']" \
   "request.resource.resource != 'rolebindings'" \
   "request.operation == 'DELETE'" \
   "variables.target.metadata.name == variables.target.roleRef.name" \
