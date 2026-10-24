@@ -32,7 +32,7 @@ Cross-check checkboxes against on-disk state (`ls .pm/<wN>/m*/ .pm/<wN>/*.md .pm
 
 **Urgency may reorder, and never stops the loop.** You may pull a security or data-loss item ahead of the prescribed order — name the reason in one line and take it. What you must not do is stop to ask which to work first: an item further down the queue looking more important than the one in front of you is a reordering decision you are equipped to make, not a question for the user. They can always reorder by interrupting.
 
-If the queue is empty, go to **Exit**.
+**Empty queue → sync before concluding.** If the queue has no pending milestones and no open inbox notes, other sessions may have filed work that only exists on the remote. Before going to **Exit**, get the latest remote main: `git fetch origin main`, then `git pull --rebase --autostash origin main` (never discard local or teammate changes; if the rebase conflicts, treat it as a run-level block). Then rebuild the queue once. If it is still empty, go to **Exit**; if the sync brought in open items, drain them like any other. Do this at most once per empty refresh, so a genuinely drained workstream still exits.
 
 ## The loop
 
