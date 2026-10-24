@@ -65,3 +65,10 @@ App and environment allowlist writers on REST, GraphQL, MCP, dashboard and Bluep
 ## Dedupe
 
 Searched `.pm` open and done, ADR018:154, ADR030 and ADR032 for allowlist + Scale/Enterprise/workspace plan: none. w8/m115 and w1/m150/m171 concern enforcement and logging, not plan eligibility.
+
+## Partial live evidence (2026-10-24 09:33–09:36 UTC, platform pin `ba5ad0e65498`, bex v0.3.3, `bex-canary` (Hobby), `/qa-find-bugs-cli` sweep q9r2)
+
+- `PATCH /v1/environments/{id} {"ipAllowList":[{"cidrBlock":"203.0.113.0/24"…}]}` → 400 `ipAllowList: inbound IP rules for web services, static sites and environments require the Scale plan or higher`.
+- `bex services create --type web_service --plan free … --ip-allow-list "cidr=203.0.113.0/24,description=x"` → exit 1, same 400; nothing created.
+- First ~8 minutes after the pin landed (09:24) the old bex-api still accepted both (rollout lag, not a defect).
+- Not covered: Key Value control, Blueprint, dashboard copy, legacy rules. DoD (t008) still open.

@@ -717,3 +717,6 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [x] **104** — [Blueprint numeric env values reject unsigned 64-bit integers](done/104.md) — **DONE 2026-10-15:** compiler809472bdc; sweep286 passes all16 two-client production validation targets/controls, completing the parked gate.
 
 - [x] **105** — [CLI compatibility checklist advertises cross-repository image overrides](done/105.md) — **DONE 2026-10-14** (checklist `--image` row corrected to the same-repository rule)
+
+- [ ] **199** — [On Hobby, an unfiltered `bex logs -r <id>` still returns HTTP request lines; only `--type request` is refused (w8/m138 gate incomplete)](199.md) (~30m) ← `/qa-find-bugs-cli` loop sweep q9r2 2026-10-24 (minor)
+
