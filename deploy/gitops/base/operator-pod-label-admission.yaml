@@ -1,0 +1,55 @@
+# The operator may relabel a running datastore pod with the network-isolation
+# label and nothing else (w8/m136). Toggling an environment's isolation must
+# take effect without restarting a Valkey pod, so the operator needs Pod
+# `patch` RBAC; RBAC cannot narrow a patch to one label, and an unrestricted pod
+# patch would also let compromised controller code rewrite a running container's
+# image. This policy closes that: for the exact operator identity a Pod UPDATE
+# must leave spec, annotations, owner references and finalizers untouched and
+# change no label except app.bex.co/network-isolation. (Pod status is the
+# separate pods/status resource and is not matched.) Pod CREATE and DELETE are
+# not granted by RBAC at all. See ADR032 §Datastores under network isolation.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: bex-operator-pod-labels
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["UPDATE"]
+        resources: ["pods"]
+  matchConditions:
+    - name: bex-operator-service-account
+      expression: request.userInfo.username == 'system:serviceaccount:bex-system:bex-controller-manager'
+  variables:
+    - name: labels
+      expression: object.metadata.?labels.orValue({})
+    - name: oldLabels
+      expression: oldObject.metadata.?labels.orValue({})
+  validations:
+    - expression: object.spec == oldObject.spec
+      message: the operator may relabel a pod but never change its spec
+    - expression: >-
+        object.metadata.?annotations.orValue({}) == oldObject.metadata.?annotations.orValue({}) && object.metadata.?ownerReferences.orValue([]) == oldObject.metadata.?ownerReferences.orValue([]) && object.metadata.?finalizers.orValue([]) == oldObject.metadata.?finalizers.orValue([])
+
+      message: the operator may relabel a pod but never change its annotations, owners or finalizers
+    - expression: >-
+        variables.labels.all(k, k == 'app.bex.co/network-isolation' ||
+          (k in variables.oldLabels && variables.oldLabels[k] == variables.labels[k])) &&
+        variables.oldLabels.all(k, k == 'app.bex.co/network-isolation' || k in variables.labels)
+
+      message: the operator may change only the app.bex.co/network-isolation label on a pod
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: bex-operator-pod-labels
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  policyName: bex-operator-pod-labels
+  validationActions: [Deny, Audit]

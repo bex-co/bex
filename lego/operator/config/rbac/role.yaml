@@ -16,7 +16,6 @@ rules:
   - ""
   resources:
   - namespaces
-  - pods
   - resourcequotas
   verbs:
   - get
@@ -34,6 +33,15 @@ rules:
   - list
   - patch
   - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - patch
   - watch
 - apiGroups:
   - app.bex.co

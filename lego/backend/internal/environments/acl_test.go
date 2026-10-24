@@ -382,7 +382,7 @@ func TestACLBearingMembershipTeardownRequiresCanManage(t *testing.T) {
 // Reuses fakeDatabaseIndex/fakeKeyValueIndex (databases_test.go, w6/m20) —
 // the same fakes SetDatabases/SetKeyValues are tested against — rather than a
 // second, narrower pair of fakes: since w6/m20 gave Database/KeyValue real
-// EnvironmentID membership, propagateIPAllowList targets by EnvironmentID
+// EnvironmentID membership, propagateEnvironmentLayer targets by EnvironmentID
 // (not ProjectID, an earlier draft's assumption before m20 landed).
 
 func TestSetACL_PropagatesIPAllowListToEnvironmentMembers(t *testing.T) {
@@ -420,6 +420,37 @@ func TestSetACL_PropagatesIPAllowListToEnvironmentMembers(t *testing.T) {
 	}
 	if _, touched := kvs.envLayers["outkv"]; touched {
 		t.Errorf("outkv (member of a different environment) must not be touched")
+	}
+}
+
+// w8/m136: SetACL mirrors networkIsolationEnabled onto the environment's own
+// Database and KeyValue members only, in both directions.
+func TestSetACL_MirrorsNetworkIsolationOntoDatastoreMembers(t *testing.T) {
+	st := newFakeStore()
+	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+	svc, _ := newServiceWithClient(st)
+	e, _ := svc.Create(ctxAs("user-a"), "prj-1", "production")
+
+	dbs := newDatabaseIndex()
+	dbs.add(postgres.PostgresView{ID: "indb", OwnerID: "tea-a", EnvironmentID: e.ID})
+	dbs.add(postgres.PostgresView{ID: "outdb", OwnerID: "tea-a", EnvironmentID: "env-other"})
+	kvs := newKeyValueIndex()
+	kvs.add(keyvalue.KeyValueView{ID: "inkv", OwnerID: "tea-a", EnvironmentID: e.ID})
+	svc.Databases, svc.KeyValues = dbs, kvs
+
+	for _, isolated := range []bool{true, false} {
+		if _, err := svc.SetACL(ctxAs("user-a"), e.ID, ProtectedStatusUnprotected, isolated, nil); err != nil {
+			t.Fatalf("SetACL(isolated=%v): %v", isolated, err)
+		}
+		if got, ok := dbs.isolation["indb"]; !ok || got != isolated {
+			t.Errorf("isolated=%v: indb isolation = %v (set %v)", isolated, got, ok)
+		}
+		if got, ok := kvs.isolation["inkv"]; !ok || got != isolated {
+			t.Errorf("isolated=%v: inkv isolation = %v (set %v)", isolated, got, ok)
+		}
+		if _, touched := dbs.isolation["outdb"]; touched {
+			t.Errorf("isolated=%v: a member of another environment was touched", isolated)
+		}
 	}
 }
 

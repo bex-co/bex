@@ -107,6 +107,8 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		// and the environment-level ACL change is already audited once.
 		"postgres.SetEnvironmentIPAllowList": "environment inbound-IP layer projection; postgres has no events feed integration",
 		"keyvalue.SetEnvironmentIPAllowList": "environment inbound-IP layer projection; keyvalue has no events feed integration",
+		"postgres.SetEnvironmentIsolation":   "environment network-isolation projection; postgres has no events feed integration",
+		"keyvalue.SetEnvironmentIsolation":   "environment network-isolation projection; keyvalue has no events feed integration",
 		"environments.CreateWithACL":         "may fan AuthorizeApp out over member Apps while applying the initial ACL; not itself a per-App verb",
 		// w4/m30: Update rides the same applyACL fan-out as SetACL/CreateWithACL
 		// above whenever the patch touches the ACL triple; same reasoning.

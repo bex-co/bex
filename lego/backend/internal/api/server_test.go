@@ -1247,7 +1247,7 @@ func sweepEveryVerb(t *testing.T, ctx context.Context, services []any, fn func(s
 // checks its walk against — shared so the sweeps' thresholds can't drift
 // apart (w4/087). Bump deliberately in the same commit that adds or removes a
 // verb; a loose floor would absorb silent filter regressions.
-const wantSweptVerbs = 363 // secrets.ListSecretFilesWithContentPage (w8/182); before it environments.ChangeResources + DeleteIfEmpty and projects.DeleteIfEmpty (w8/188); before them apps.DiskSnapshotHealth: are nightly disk snapshots happening (w6/m152)
+const wantSweptVerbs = 365 // postgres + keyvalue SetEnvironmentIsolation (w8/m136); before them secrets.ListSecretFilesWithContentPage (w8/182); before it environments.ChangeResources + DeleteIfEmpty and projects.DeleteIfEmpty (w8/188); before them apps.DiskSnapshotHealth: are nightly disk snapshots happening (w6/m152)
 
 func assertSweptVerbCount(t *testing.T, swept int) {
 	t.Helper()
