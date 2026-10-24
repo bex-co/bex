@@ -428,6 +428,7 @@ spec:
         # docs/ADR053) — this repoint is what rolls the pool onto the new shape.
         name: bex-tenant-0-k134-cx33
       version: v1.34.9
+  rolloutAfter: "2026-10-24T05:54:33Z" # w5/171: roll every machine onto the containerd link-local deny bootstrap
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
@@ -477,6 +478,7 @@ spec:
         kind: HCloudMachineTemplate
         name: bex-tenant-burst-k134-cx33
       version: v1.34.9
+  rolloutAfter: "2026-10-24T05:54:33Z" # w5/171: roll every machine onto the containerd link-local deny bootstrap
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
@@ -539,6 +541,7 @@ spec:
         kind: HCloudMachineTemplate
         name: bex-tenant-lg-k134-cx43
       version: v1.34.9
+  rolloutAfter: "2026-10-24T05:54:33Z" # w5/171: roll every machine onto the containerd link-local deny bootstrap
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineHealthCheck
@@ -1341,6 +1344,7 @@ spec:
         kind: HCloudMachineTemplate
         name: bex-platform-k134-cx33
       version: v1.34.9
+  rolloutAfter: "2026-10-24T05:54:33Z" # w5/171: roll every machine onto the containerd link-local deny bootstrap
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
