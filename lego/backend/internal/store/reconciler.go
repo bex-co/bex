@@ -2213,7 +2213,7 @@ func projectSpec(d DesiredApp) appv1alpha1.AppSpec {
 
 // applyOwnedSpec copies the control-plane-owned fields of want onto dst and
 // reports whether anything changed. Fields it doesn't own (Builder,
-// HealthCheckPath, AutoDeploy, RestartedAt, …) are left untouched so
+// HealthCheckPath, AutoDeploy, RestartedAt, Disk.RestoreSnapshot, …) are left untouched so
 // bex-api's lifecycle verbs and server-side defaulting survive a resync.
 //
 // Expose and Type are deliberately NOT in the owned set (w6/m46 t001), even
@@ -2275,8 +2275,18 @@ func applyOwnedSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) bool {
 	// The disk is projector-owned in both directions: attaching one has to
 	// reach an existing CR, and detaching one has to clear it, or the operator
 	// would keep a volume the control plane no longer knows about.
-	if !equalDiskSpecs(dst.Disk, want.Disk) {
-		dst.Disk, changed = want.Disk.DeepCopy(), true
+	//
+	// Its restoreSnapshot is not: it is a lifecycle verb (RestoreDiskSnapshot)
+	// with no row column, like RestartedAt. Erasing it on resync told the
+	// operator no restore was pending two seconds into one, so it scaled the
+	// service back up over the volume the restore Job was rewriting, and the
+	// failed restore was then reported as a healthy disk (w6/089).
+	wantDisk := want.Disk.DeepCopy()
+	if wantDisk != nil && dst.Disk != nil {
+		wantDisk.RestoreSnapshot = dst.Disk.RestoreSnapshot
+	}
+	if !equalDiskSpecs(dst.Disk, wantDisk) {
+		dst.Disk, changed = wantDisk, true
 	}
 	return changed
 }
