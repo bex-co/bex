@@ -1,0 +1,105 @@
+name: Platform rebuild (manual)
+
+# Ship a re-pinned runtime to services that are already running. A container
+# keeps the toolchain it was built on until it is rebuilt, so a toolchain
+# security patch (CVE-2026-111497: Node's Brotli decoder) reaches running
+# services only through this rebuild. Each eligible service — built from source
+# on a bex-pinned toolchain, not by a Dockerfile, not a static site — is
+# rebuilt at its live commit as a deployed_by_render deploy.
+#
+# plan is read-only. apply opens at most `limit` deploys per run; re-run it
+# until the plan shows nothing pending (services rebuilt since `since` are
+# skipped, so re-runs never rebuild twice).
+on:
+  workflow_dispatch:
+    inputs:
+      since:
+        description: RFC 3339 time the patched operator finished rolling out
+        required: true
+        type: string
+      mode:
+        description: plan (read-only) or apply (open deploys)
+        required: true
+        default: plan
+        type: choice
+        options: [plan, apply]
+      limit:
+        description: Most deploys one apply run opens
+        required: false
+        default: "10"
+        type: string
+      confirm:
+        description: For apply, type "rebuild" to authorize the deploys
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: platform-rebuild
+  cancel-in-progress: false
+
+jobs:
+  rebuild:
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    timeout-minutes: 30
+    environment: production-restore
+    steps:
+      - name: Validate inputs
+        env:
+          SINCE: ${{ inputs.since }}
+          MODE: ${{ inputs.mode }}
+          LIMIT: ${{ inputs.limit }}
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          [[ "$SINCE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(Z|[+-][0-9]{2}:[0-9]{2})$ ]] || { echo "since must be RFC 3339" >&2; exit 1; }
+          [[ "$LIMIT" =~ ^[1-9][0-9]{0,2}$ ]] || { echo "limit must be 1-999" >&2; exit 1; }
+          if [ "$MODE" = apply ] && [ "$CONFIRM" != rebuild ]; then
+            echo 'apply requires confirm = "rebuild"' >&2
+            exit 1
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
+        with:
+          version: v1.36.1
+
+      - name: Fetch production kubeconfig
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          BEX_SSH_PRIVATE_KEY: ${{ secrets.BEX_SSH_PRIVATE_KEY }}
+          BEX_SSH_KNOWN_HOSTS: ${{ secrets.BEX_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m700 -d "$RUNNER_TEMP/bex-ssh"
+          printf '%s\n' "$BEX_SSH_PRIVATE_KEY" >"$RUNNER_TEMP/bex-ssh/id_bex"
+          chmod 600 "$RUNNER_TEMP/bex-ssh/id_bex"
+          export BEX_SSH_KEY_PATH="$RUNNER_TEMP/bex-ssh/id_bex"
+          export BEX_SSH_REQUIRE_KNOWN_HOSTS=1
+          if [ -n "${BEX_SSH_KNOWN_HOSTS:-}" ]; then
+            printf '%s\n' "$BEX_SSH_KNOWN_HOSTS" >"$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+            chmod 600 "$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+            export BEX_SSH_KNOWN_HOSTS_FILE="$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+          fi
+          bash scripts/fetch-app-kubeconfig.sh "$RUNNER_TEMP/app.kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/app.kubeconfig" >>"$GITHUB_ENV"
+
+      - name: scrub SSH credentials
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/bex-ssh"
+
+      - name: Rebuild
+        env:
+          SINCE: ${{ inputs.since }}
+          MODE: ${{ inputs.mode }}
+          LIMIT: ${{ inputs.limit }}
+        run: |
+          args=(--since "$SINCE" --limit "$LIMIT")
+          [ "$MODE" = apply ] && args+=(--apply)
+          kubectl -n bex-system exec deploy/bex-api -c api -- /api platform-rebuild "${args[@]}" | tee "$RUNNER_TEMP/rebuild.json"
+          jq -r '"applied=\(.applied) done=\(.done) pending=\(.planned|length) triggered=\(.triggered|length) failed=\(.failed|length)"' "$RUNNER_TEMP/rebuild.json" >>"$GITHUB_STEP_SUMMARY"
+
+      - name: scrub kubeconfig
+        if: always()
+        run: rm -f -- "$RUNNER_TEMP/app.kubeconfig"

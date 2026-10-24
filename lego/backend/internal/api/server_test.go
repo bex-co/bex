@@ -1178,6 +1178,14 @@ func isVerbMethod(recv reflect.Type, m reflect.Method) bool {
 	if recv == reflect.TypeFor[*apps.Service]() && m.Name == "MigrateContainerPolicy" {
 		return false
 	}
+	// The fleet rebuild (`/api platform-rebuild`) is the platform's own action,
+	// served only on the cluster-internal :8091 listener behind the
+	// control-plane bearer, so it has no caller identity to authorize either.
+	// Its bearer, selection and idempotency contracts live in
+	// deploys/platform_rebuild_test.go.
+	if recv == reflect.TypeFor[*deploys.Service]() && m.Name == "PlatformRebuild" {
+		return false
+	}
 	if !declaredMethodsOn(recv)[m.Name] {
 		return false
 	}

@@ -87,6 +87,7 @@ describe("deployTriggerKey", () => {
     ["new_commit", "deploys.triggerNewCommit"],
     ["config_change", "deploys.triggerConfigChange"],
     ["restart", "deploys.triggerRestart"],
+    ["deployed_by_render", "deploys.triggerDeployedByRender"],
   ] as const)("maps trigger=%s to %s", (trigger, key) => {
     expect(deployTriggerKey(trigger)).toBe(key);
   });
