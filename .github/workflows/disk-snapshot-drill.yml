@@ -1,0 +1,93 @@
+name: Disk snapshot drill (manual)
+
+# Diagnose a managed disk's nightly snapshot from the production cluster, or
+# take one now (w6/089). Production has no other on-demand snapshot, and the
+# operator's backup CronJob/Job/Pod state is visible only here: bex-api reports
+# the outcome (diskSnapshotHealth, w6/m152), not the cause.
+#
+# diagnose is read-only. snapshot runs exactly one Job from the App's own
+# dskbak- CronJob template, so it carries the operator-authored, admission-
+# validated pod spec rather than anything written here.
+on:
+  workflow_dispatch:
+    inputs:
+      namespace:
+        description: Tenant namespace (tea-...)
+        required: true
+        type: string
+      service_id:
+        description: Service id (srv-...) whose disk to inspect
+        required: true
+        type: string
+      mode:
+        description: diagnose (read-only) or snapshot (run one backup Job now)
+        required: true
+        default: diagnose
+        type: choice
+        options: [diagnose, snapshot]
+      confirm:
+        description: For snapshot, retype the service id to authorize the Job
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: disk-snapshot-drill
+  cancel-in-progress: false
+
+jobs:
+  drill:
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    timeout-minutes: 120
+    environment: production-restore
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
+        with:
+          version: v1.36.1
+
+      - name: Fetch production kubeconfig
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          BEX_SSH_PRIVATE_KEY: ${{ secrets.BEX_SSH_PRIVATE_KEY }}
+          BEX_SSH_KNOWN_HOSTS: ${{ secrets.BEX_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m700 -d "$RUNNER_TEMP/bex-ssh"
+          printf '%s\n' "$BEX_SSH_PRIVATE_KEY" >"$RUNNER_TEMP/bex-ssh/id_bex"
+          chmod 600 "$RUNNER_TEMP/bex-ssh/id_bex"
+          export BEX_SSH_KEY_PATH="$RUNNER_TEMP/bex-ssh/id_bex"
+          export BEX_SSH_REQUIRE_KNOWN_HOSTS=1
+          if [ -n "${BEX_SSH_KNOWN_HOSTS:-}" ]; then
+            printf '%s\n' "$BEX_SSH_KNOWN_HOSTS" >"$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+            chmod 600 "$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+            export BEX_SSH_KNOWN_HOSTS_FILE="$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+          fi
+          bash scripts/fetch-app-kubeconfig.sh "$RUNNER_TEMP/app.kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/app.kubeconfig" >>"$GITHUB_ENV"
+
+      - name: scrub SSH credentials
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/bex-ssh"
+
+      - name: Diagnose
+        env:
+          NS: ${{ inputs.namespace }}
+          SERVICE_ID: ${{ inputs.service_id }}
+        run: bash scripts/disk-snapshot-drill.sh diagnose
+
+      - name: Snapshot now
+        if: inputs.mode == 'snapshot'
+        env:
+          NS: ${{ inputs.namespace }}
+          SERVICE_ID: ${{ inputs.service_id }}
+          CONFIRM: ${{ inputs.confirm }}
+        run: bash scripts/disk-snapshot-drill.sh snapshot
+
+      - name: final credential scrub
+        if: always()
+        run: |
+          rm -rf -- "$RUNNER_TEMP/bex-ssh"
+          rm -f -- "$RUNNER_TEMP/app.kubeconfig"
