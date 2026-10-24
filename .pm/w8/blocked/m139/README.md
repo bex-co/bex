@@ -55,3 +55,7 @@ Every workspace's Free web services. Paid services, static sites (Render's Free 
 ## Dedupe
 
 Searched `.pm` open and done, `docs/` (ADR030, ADR040, ADR018) and DO_NOT_DO for free instance hours / 750 / included usage: none. w8/m126 (free Postgres 30-day expiry) is the closest precedent for a free-tier sweeper.
+
+## Partial live evidence (2026-10-24 10:07 UTC, platform pin `ba5ad0e65498`, `/qa-find-bugs-cli` sweep r3s5)
+
+GraphQL `usage(ownerId:"tea-daif693dqjvc73e7as3g") { period freeInstanceHours { used included } }` → `{"period":"2026-10","freeInstanceHours":{"used":516.41,"included":750}}` for `bex-canary`. Note for QA: this shared QA workspace has used ~69% with 7 days left. At the month-to-date rate it ends near 666 h, but the 80% warning (600 h) will fire, and heavy fixture churn could exhaust it and suspend every Free web service there until November, other runs' fixtures included. Not covered: exhaustion/suspension, emails, REST/MCP readouts, sleep exclusion.
