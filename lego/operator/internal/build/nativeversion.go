@@ -104,14 +104,38 @@ func pythonDefaultLine(created time.Time) string {
 	return nativeToolchains[nativePythonRuntime].defaultLine
 }
 
+// rubyDefaultCutoff and rubyDefaultVersion: Render's default Ruby for services
+// created since 2025-06-12 is exactly 3.4.4, not the newest 3.4 patch (w8/198).
+// bex applies it to services created after this change, so a running service's
+// toolchain never moves under an operator upgrade (the pythonCreationCutoff
+// pattern).
+var rubyDefaultCutoff = time.Date(2026, time.October, 23, 0, 0, 0, 0, time.UTC)
+
+const rubyDefaultVersion = "3.4.4"
+
 // ResolveNativeVersionAt is ResolveNativeVersion for a service created at
 // created, whose creation date picks the default line where Render's does.
 func ResolveNativeVersionAt(created time.Time, runtime string, env map[string]string, readFile func(string) ([]byte, bool)) (NativeChoice, error) {
 	choice, err := resolveNativeLine(created, runtime, env, readFile)
 	if err == nil {
 		choice.Exact = exactRequest(runtime, choice, readFile)
+		if choice.Exact == "" {
+			choice.Exact = defaultExact(created, runtime, choice)
+		}
 	}
 	return choice, err
+}
+
+// defaultExact is the exact version a service with no version signal builds on
+// where Render's default is a specific patch: Ruby's 3.4.4 for services created
+// since the cutoff. The resolve phase swaps in that version's official image and
+// falls back to the line's reviewed patch, saying so, when it cannot.
+func defaultExact(created time.Time, runtime string, choice NativeChoice) string {
+	if runtime == nativeRubyRuntime && choice.Source == "" && choice.Line == "3.4" &&
+		!created.IsZero() && !created.Before(rubyDefaultCutoff) {
+		return rubyDefaultVersion
+	}
+	return ""
 }
 
 func resolveNativeLine(created time.Time, runtime string, env map[string]string, readFile func(string) ([]byte, bool)) (NativeChoice, error) {
