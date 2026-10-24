@@ -163,3 +163,44 @@ func TestDockerHubResolver(t *testing.T) {
 		}
 	}
 }
+
+// w8/198: a Ruby service created since the cutoff with no version signal builds
+// on Render's default 3.4.4, and the log names it; an older or unknown-age
+// service, and any explicit signal, keep the line's reviewed patch.
+func TestRubyDefaultIsRendersExactPatch(t *testing.T) {
+	fake := &fakeExact{digests: map[string]string{"ruby:3.4.4-bookworm": exactDigest}}
+	run := func(created time.Time, files map[string]string) NativeChoice {
+		t.Helper()
+		o := nativeOptions()
+		o.Runtime = "ruby"
+		bundle, dockerfile, src := writeResolveFixture(t, o, nil, files)
+		choices, err := ResolveNativeBuildExact(context.Background(), fake, created, "ruby", bundle, dockerfile, src)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return choices[0]
+	}
+
+	got := run(rubyDefaultCutoff.Add(time.Hour), nil)
+	if got.Line != "3.4.4" || !strings.Contains(got.Image, "ruby:3.4.4-bookworm@"+exactDigest) || got.Narration() != "==> Using Ruby 3.4.4 (default)" {
+		t.Errorf("new service: %+v narration %q", got, got.Narration())
+	}
+	for name, c := range map[string]NativeChoice{
+		"older service":   run(rubyDefaultCutoff.Add(-time.Hour), nil),
+		"unknown age":     run(time.Time{}, nil),
+		"explicit signal": run(rubyDefaultCutoff.Add(time.Hour), map[string]string{".ruby-version": "3.4\n"}),
+	} {
+		if c.Line != "3.4" && c.Line != "3.4.4" || strings.Contains(c.Image, "ruby:3.4.4-bookworm@") {
+			t.Errorf("%s must keep the reviewed 3.4 patch: %+v", name, c)
+		}
+	}
+
+	missing := &fakeExact{digests: map[string]string{}}
+	o := nativeOptions()
+	o.Runtime = "ruby"
+	bundle, dockerfile, src := writeResolveFixture(t, o, nil, nil)
+	choices, err := ResolveNativeBuildExact(context.Background(), missing, rubyDefaultCutoff.Add(time.Hour), "ruby", bundle, dockerfile, src)
+	if err != nil || choices[0].Line != "3.4" || !strings.Contains(choices[0].Narration(), "No official image ruby:3.4.4-bookworm") {
+		t.Errorf("a missing tag must fall back to the reviewed patch and say so: %+v %v", choices[0], err)
+	}
+}
