@@ -22,6 +22,6 @@
       "Bash(clusterctl describe:*)",
       "Bash(yq:*)"
     ],
-    "deny": ["Read(.env)", "Read(**/*.kubeconfig)"]
+    "deny": ["Read(**/*.kubeconfig)"]
   }
 }
