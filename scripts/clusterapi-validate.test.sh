@@ -70,6 +70,13 @@ d="$(fixture unprivileged-ports-override)"
 yq -i '(select(.kind=="KubeadmConfigTemplate" and .metadata.name=="bex-tenant-0") | .spec.template.spec.preKubeadmCommands) += ["sed -i s/enable_unprivileged_ports = true/enable_unprivileged_ports = false/ /etc/containerd/config.toml"]' "$d/cluster.yaml"
 assert "a bootstrap that disables unprivileged ports" 1 "$d" "KubeadmConfigTemplate/bex-tenant-0 overrides containerd's enable_unprivileged_ports"
 
+# w5/171: tenants pull from any public registry, so a bootstrap that drops the
+# containerd link-local deny would reopen the instance-metadata service to
+# tenant-chosen registry hosts.
+d="$(fixture containerd-egress-dropped)"
+yq -i '(select(.kind=="KubeadmConfigTemplate" and .metadata.name=="bex-tenant-0") | .spec.template.spec.preKubeadmCommands) |= map(select(test("bex-containerd-egress") | not))' "$d/cluster.yaml"
+assert "a bootstrap without the containerd metadata deny" 1 "$d" "KubeadmConfigTemplate/bex-tenant-0 must deny containerd's cgroup link-local egress"
+
 d="$(fixture containerd-1x)"
 sed -i.bak -E '/variable "containerd_version"/,/}/ s/default[[:space:]]*=[[:space:]]*"[^"]+"/default = "1.7.22"/' "$d/bex-worker.pkr.hcl"
 assert "a containerd 1.x bake" 1 "$d" "packer containerd_version '1.7.22' is not 2.x"

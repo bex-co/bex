@@ -71,8 +71,12 @@ type Config struct {
 	// domain at or under; unset reserves each platform host's registrable
 	// domain other than BEX_BASE_DOMAIN's (docs/ADR005-custom-domain.md).
 	ReservedDomains []string
-	RouterURL       string
-	RouterSecret    string
+	// BEX_PUBLIC_IMAGE_REGISTRIES ("true" unless "false") accepts images from
+	// any public registry, as on Render (w5/171). A cluster whose nodes do not
+	// all carry the containerd link-local deny yet pins it false.
+	PublicImageRegistries bool
+	RouterURL             string
+	RouterSecret          string
 	// BEX_REGION is the explicit platform placement surfaced in Render resource
 	// metadata. Empty is honestly omitted.
 	Region       string
@@ -301,6 +305,7 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	} else {
 		cfg.ReservedDomains = zones
 	}
+	cfg.PublicImageRegistries = getenv("BEX_PUBLIC_IMAGE_REGISTRIES") != "false"
 	cfg.RouterURL = getenv("BEX_ROUTER_URL")
 	cfg.RouterSecret = getenv("BEX_ROUTER_ASSERTION_SECRET")
 	if cfg.RouterURL != "" {
