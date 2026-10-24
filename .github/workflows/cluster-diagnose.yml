@@ -25,6 +25,9 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: [self-hosted, Linux, ARM64, bex-production]
     timeout-minutes: 15
+    # The production-cluster environment scopes the control-plane host-key pin
+    # (BEX_SSH_KNOWN_HOSTS), as for app-cluster.yml.
+    environment: production-cluster
     steps:
       - name: Validate input
         env:
