@@ -31,11 +31,15 @@ import (
 
 const labelEnvironment = "app.bex.co/environment-id"
 
-// reconcileEnvironmentPeerPolicy gives an environment-assigned datastore an
-// ingress exception for protected App pods in the same immutable environment.
-// The namespace-wide policy continues to serve ordinary (unisolated) traffic;
-// this additive policy is what lets an isolated App reach its own datastore.
-func reconcileEnvironmentPeerPolicy(ctx context.Context, cl client.Client, scheme *runtime.Scheme, owner client.Object, env, suffix string, selector map[string]string) error {
+// reconcileEnvironmentPeerPolicy gives a datastore in an isolated environment
+// (env = its labelNetworkIsolation, "" otherwise) the only private ingress it
+// accepts: protected App pods of the same immutable environment, plus the
+// store's own Jobs (jobs: backup, purge, logical export), which carry no
+// isolation label. The namespace-wide allow-same-namespace policy excludes pods
+// carrying labelNetworkIsolation, so an isolated store admits nothing else from
+// the workspace (w8/m136); platform namespaces (SNI proxies, CNPG, Prometheus)
+// keep their own namespace-scoped allows. Not isolated: the policy is removed.
+func reconcileEnvironmentPeerPolicy(ctx context.Context, cl client.Client, scheme *runtime.Scheme, owner client.Object, env, suffix string, selector map[string]string, jobs ...*metav1.LabelSelector) error {
 	name := owner.GetName() + suffix
 	np := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: owner.GetNamespace()}}
 	if env == "" {
@@ -58,12 +62,16 @@ func reconcileEnvironmentPeerPolicy(ctx context.Context, cl client.Client, schem
 	}
 	_, err := controllerutil.CreateOrUpdate(ctx, cl, np, func() error {
 		np.Labels = map[string]string{"app.bex.co/managed-by": "bex-operator"}
+		peers := []networkingv1.NetworkPolicyPeer{{
+			PodSelector: &metav1.LabelSelector{MatchLabels: map[string]string{labelNetworkIsolation: env}},
+		}}
+		for _, job := range jobs {
+			peers = append(peers, networkingv1.NetworkPolicyPeer{PodSelector: job})
+		}
 		np.Spec = networkingv1.NetworkPolicySpec{
 			PodSelector: metav1.LabelSelector{MatchLabels: selector},
 			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
-			Ingress: []networkingv1.NetworkPolicyIngressRule{{From: []networkingv1.NetworkPolicyPeer{{
-				PodSelector: &metav1.LabelSelector{MatchLabels: map[string]string{labelNetworkIsolation: env}},
-			}}}},
+			Ingress:     []networkingv1.NetworkPolicyIngressRule{{From: peers}},
 		}
 		return controllerutil.SetControllerReference(owner, np, scheme)
 	})

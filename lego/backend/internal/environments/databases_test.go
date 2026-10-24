@@ -39,6 +39,7 @@ import (
 // ListPostgres projects the public environment ID just like the real service.
 type fakeDatabaseIndex struct {
 	envLayers map[string][]string
+	isolation map[string]bool
 	mu        sync.Mutex
 	dbs       map[string]postgres.PostgresView
 	listCalls int
@@ -132,9 +133,24 @@ func (f *fakeDatabaseIndex) SetEnvironmentIPAllowList(_ context.Context, name, e
 	return nil
 }
 
+// SetEnvironmentIsolation (w8/m136) records the mirrored isolation flag.
+func (f *fakeDatabaseIndex) SetEnvironmentIsolation(_ context.Context, name, expectedEnvironmentID string, isolated bool) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.dbs[name].EnvironmentID != expectedEnvironmentID {
+		return nil
+	}
+	if f.isolation == nil {
+		f.isolation = map[string]bool{}
+	}
+	f.isolation[name] = isolated
+	return nil
+}
+
 // fakeKeyValueIndex is fakeDatabaseIndex's KeyValue-CR counterpart.
 type fakeKeyValueIndex struct {
 	envLayers   map[string][]string
+	isolation   map[string]bool
 	mu          sync.Mutex
 	kvs         map[string]keyvalue.KeyValueView
 	listCalls   int
@@ -224,6 +240,20 @@ func (f *fakeKeyValueIndex) SetEnvironmentIPAllowList(_ context.Context, name, e
 		f.envLayers = map[string][]string{}
 	}
 	f.envLayers[name] = cidrs
+	return nil
+}
+
+// SetEnvironmentIsolation (w8/m136) records the mirrored isolation flag.
+func (f *fakeKeyValueIndex) SetEnvironmentIsolation(_ context.Context, name, expectedEnvironmentID string, isolated bool) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.kvs[name].EnvironmentID != expectedEnvironmentID {
+		return nil
+	}
+	if f.isolation == nil {
+		f.isolation = map[string]bool{}
+	}
+	f.isolation[name] = isolated
 	return nil
 }
 

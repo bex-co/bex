@@ -340,7 +340,7 @@ const enEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.isolationHint": {
     message:
-      "Prevent private network traffic from crossing this environment boundary.",
+      "Prevent private network traffic from crossing this environment boundary, including to its Postgres and Key Value instances. Their external URLs still follow their IP rules.",
     description: "Private-network isolation setting explanation",
   },
   "environments.ipAllowListLabel": {

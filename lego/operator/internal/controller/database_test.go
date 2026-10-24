@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -634,7 +635,7 @@ func TestCNPGWorkspaceLabelPropagated(t *testing.T) {
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "dpg-wstest", Namespace: "default",
-			Labels: map[string]string{labelWorkspace: ws, labelEnvironment: env},
+			Labels: map[string]string{labelWorkspace: ws, labelEnvironment: env, labelNetworkIsolation: env},
 		},
 		Spec: appv1alpha1.DatabaseSpec{Plan: "basic-1gb"},
 	}
@@ -667,6 +668,20 @@ func TestCNPGWorkspaceLabelPropagated(t *testing.T) {
 	}
 	if got := meta["app.bex.co/component"]; got != "database" {
 		t.Errorf("inheritedMetadata.labels[app.bex.co/component] = %q, want database — the log shipper must distinguish tenant databases from platform CNPG clusters", got)
+	}
+	// w8/m136: an isolated environment's database leaves allow-same-namespace.
+	if got := meta[labelNetworkIsolation]; got != env {
+		t.Errorf("inheritedMetadata.labels[%q] = %q, want %q — an isolated environment's database must carry the isolation label", labelNetworkIsolation, got, env)
+	}
+	np := &networkingv1.NetworkPolicy{}
+	if err := cl.Get(ctx, types.NamespacedName{Name: db.Name + "-environment-ingress", Namespace: db.Namespace}, np); err != nil {
+		t.Fatalf("isolated database has no peer policy: %v", err)
+	}
+	if got := np.Spec.PodSelector.MatchLabels; len(got) != 1 || got[cnpgClusterLabel] != db.Name {
+		t.Errorf("peer policy selects %v, want only this database's own pods (a shared selector would admit another environment's Apps to it)", got)
+	}
+	if peers := np.Spec.Ingress[0].From; len(peers) != 2 || peers[0].PodSelector.MatchLabels[labelNetworkIsolation] != env || peers[1].PodSelector.MatchLabels[logicalExportDBLabel] != db.Name {
+		t.Errorf("peers = %+v, want the environment's Apps and this database's export Jobs", peers)
 	}
 }
 

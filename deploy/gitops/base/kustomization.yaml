@@ -3,61 +3,62 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - appproject.yaml              # source/destination boundary for every child Application
-  - sealed-secrets.yaml          # encrypt infra creds at rest -> committable SealedSecrets (docs/ADR016-sealed-secrets.md)
-  - zot.yaml                     # OCI registry (build -> registry -> deploy)
-  - kpack.yaml                   # CNB build controller + Paketo ClusterBuilder (spec.builder=buildpack)
-  - opensandbox-controller.yaml  # OpenSandbox BatchSandbox/Pool/SandboxSnapshot CRDs + controller
-  - opensandbox-server.yaml      # GitOps-owned lifecycle server + gVisor RuntimeClass/config/RBAC
-  - bex.yaml                     # the bex control plane (operator + gateway)
-  - dashboard.yaml                # the bex dashboard (Render-style human UI, docs/ADR012-auth.md §5)
-  - cluster-api.yaml             # Cluster API + provider controllers (the node-provisioning engine)
-  - autoscaler.yaml              # Cluster Autoscaler, in-cluster post-pivot (w1/m19; bootstrap phase uses scripts/install-autoscaler.sh)
-  - traefik.yaml                 # edge / ingress controller (Hetzner LB front door)
-  - traefik-plugins.yaml         # exact-router WebSocket downstream-byte middleware source (wave 0)
-  - kubelet-csr-approver.yaml    # auto-approves kubernetes.io/kubelet-serving CSRs (w2/m81, docs/ADR072 #5)
-  - metrics-server.yaml          # resource-metrics backend (metrics.k8s.io) for bex-api metrics
-  - prometheus.yaml              # request-metrics backend (scrapes Traefik) for bex-api metrics
-  - loki.yaml                    # durable log-history backend (single-binary, filesystem PVC) for bex-api logs
-  - log-shipper.yaml             # Alloy DaemonSet: tails App pod logs -> Loki (after loki)
-  - grafana.yaml                 # platform observability UI over prometheus+loki; obs.bex.co in prod (docs/ADR088-platform-observability-ui.md)
-  - build-image-prewarm.yaml     # DaemonSet: keeps the BuildKit image warm on every worker (w1/030)
-  - seccomp-profiles.yaml        # DaemonSet: installs bex's Localhost seccomp profiles (render-v1, w6/m150) on every node
-  - tenant-headroom.yaml         # negative-priority placeholder holding one standard slot warm, so rollout surge never mints a node the autoscaler then evicts it from (docs/ADR004-app-deployment.md § Rollout headroom)
-  - cert-manager.yaml            # automated Let's Encrypt TLS
-  - cert-manager-issuers.yaml    # letsencrypt-staging + -prod ClusterIssuers (after cert-manager)
-  - cnpg-operator.yaml           # CloudNativePG operator (Postgres)
-  - barman-cloud-plugin.yaml     # supported CNPG-I object-store backup/restore plugin
+  - appproject.yaml # source/destination boundary for every child Application
+  - sealed-secrets.yaml # encrypt infra creds at rest -> committable SealedSecrets (docs/ADR016-sealed-secrets.md)
+  - zot.yaml # OCI registry (build -> registry -> deploy)
+  - kpack.yaml # CNB build controller + Paketo ClusterBuilder (spec.builder=buildpack)
+  - opensandbox-controller.yaml # OpenSandbox BatchSandbox/Pool/SandboxSnapshot CRDs + controller
+  - opensandbox-server.yaml # GitOps-owned lifecycle server + gVisor RuntimeClass/config/RBAC
+  - bex.yaml # the bex control plane (operator + gateway)
+  - dashboard.yaml # the bex dashboard (Render-style human UI, docs/ADR012-auth.md §5)
+  - cluster-api.yaml # Cluster API + provider controllers (the node-provisioning engine)
+  - autoscaler.yaml # Cluster Autoscaler, in-cluster post-pivot (w1/m19; bootstrap phase uses scripts/install-autoscaler.sh)
+  - traefik.yaml # edge / ingress controller (Hetzner LB front door)
+  - traefik-plugins.yaml # exact-router WebSocket downstream-byte middleware source (wave 0)
+  - kubelet-csr-approver.yaml # auto-approves kubernetes.io/kubelet-serving CSRs (w2/m81, docs/ADR072 #5)
+  - metrics-server.yaml # resource-metrics backend (metrics.k8s.io) for bex-api metrics
+  - prometheus.yaml # request-metrics backend (scrapes Traefik) for bex-api metrics
+  - loki.yaml # durable log-history backend (single-binary, filesystem PVC) for bex-api logs
+  - log-shipper.yaml # Alloy DaemonSet: tails App pod logs -> Loki (after loki)
+  - grafana.yaml # platform observability UI over prometheus+loki; obs.bex.co in prod (docs/ADR088-platform-observability-ui.md)
+  - build-image-prewarm.yaml # DaemonSet: keeps the BuildKit image warm on every worker (w1/030)
+  - seccomp-profiles.yaml # DaemonSet: installs bex's Localhost seccomp profiles (render-v1, w6/m150) on every node
+  - tenant-headroom.yaml # negative-priority placeholder holding one standard slot warm, so rollout surge never mints a node the autoscaler then evicts it from (docs/ADR004-app-deployment.md § Rollout headroom)
+  - cert-manager.yaml # automated Let's Encrypt TLS
+  - cert-manager-issuers.yaml # letsencrypt-staging + -prod ClusterIssuers (after cert-manager)
+  - cnpg-operator.yaml # CloudNativePG operator (Postgres)
+  - barman-cloud-plugin.yaml # supported CNPG-I object-store backup/restore plugin
   - barman-cloud-objectstores.yaml # prod backup transports; local overlay excludes (no S3 creds)
-  - bex-postgres.yaml            # the control-plane DB Cluster (db `bex`), after CNPG
-  - etcd-backup.yaml             # nightly etcd snapshot -> object storage (local overlay excludes)
-  - etcd-metrics.yaml            # per-member etcd metrics behind kube-rbac-proxy on each control-plane node (w7/m160)
-  - auth-dbs.yaml                # kratos-db + hydra-db CNPG Clusters, after CNPG
-  - kratos.yaml                  # Ory Kratos — platform identity (docs/ADR012-auth.md)
-  - hydra.yaml                   # Ory Hydra — platform OAuth2/OIDC (docs/ADR012-auth.md)
-  - openfga.yaml                 # OpenFGA — platform authorization (ReBAC, docs/ADR012-auth.md)
-  - openbao.yaml                 # OpenBao — platform tenant-credential secret store (docs/ADR013-secrets.md)
-  - openbao-backup.yaml          # nightly OpenBao Raft snapshot -> object storage (local overlay excludes)
-  - network-policies.yaml        # platform-side tenant isolation: deny tenant pods from bex-system/registry/secrets/monitoring (docs/ADR022-tenant-isolation.md)
-  - build-boundary.yaml          # isolated namespace/RBAC/network boundary for tenant-controlled build/publish execution (pre-deploy is co-located with the App, ADR043 D8)
-  - tenant-node-egress.yaml      # Cilium egressDeny: tenant pods -> node (host/remote-node) + link-local metadata (docs/ADR022-tenant-isolation.md); local overlay drops it (Calico CNI)
+  - bex-postgres.yaml # the control-plane DB Cluster (db `bex`), after CNPG
+  - etcd-backup.yaml # nightly etcd snapshot -> object storage (local overlay excludes)
+  - etcd-metrics.yaml # per-member etcd metrics behind kube-rbac-proxy on each control-plane node (w7/m160)
+  - auth-dbs.yaml # kratos-db + hydra-db CNPG Clusters, after CNPG
+  - kratos.yaml # Ory Kratos — platform identity (docs/ADR012-auth.md)
+  - hydra.yaml # Ory Hydra — platform OAuth2/OIDC (docs/ADR012-auth.md)
+  - openfga.yaml # OpenFGA — platform authorization (ReBAC, docs/ADR012-auth.md)
+  - openbao.yaml # OpenBao — platform tenant-credential secret store (docs/ADR013-secrets.md)
+  - openbao-backup.yaml # nightly OpenBao Raft snapshot -> object storage (local overlay excludes)
+  - network-policies.yaml # platform-side tenant isolation: deny tenant pods from bex-system/registry/secrets/monitoring (docs/ADR022-tenant-isolation.md)
+  - build-boundary.yaml # isolated namespace/RBAC/network boundary for tenant-controlled build/publish execution (pre-deploy is co-located with the App, ADR043 D8)
+  - tenant-node-egress.yaml # Cilium egressDeny: tenant pods -> node (host/remote-node) + link-local metadata (docs/ADR022-tenant-isolation.md); local overlay drops it (Calico CNI)
   - datastore-control-egress.yaml # Cilium allow: CNPG instance managers -> kube-apiserver from any tenant namespace (ADR043 D8.3); local overlay drops it (Calico CNI)
-  - platform-namespaces.yaml     # monitoring + secrets namespaces the raw resources above land in (from-scratch ordering, w1/m19 t006)
-  - tenant-namespace.yaml        # PSS baseline + restricted warn/audit on the tenant apps namespace (w7/m2/t001)
-  - tenant-quotas.yaml           # ResourceQuota + LimitRange for the tenant apps namespace (w7/m2/t003)
-  - bex-api-apps-rbac.yaml       # bex-api's apps-namespace-scoped secrets/pods/logs/metrics grants (w6/002)
-  - bex-ssh-apps-rbac.yaml       # SSH gateway's namespace-scoped pod read + exec grant
-  - operator-apps-rbac.yaml       # operator's apps-namespace-scoped secrets grants (w7/m7)
-  - operator-registry-rbac.yaml  # operator's bex-registry-namespace secrets grants for per-App pull creds (w7/m36)
-  - operator-daytoday-rbac.yaml  # scoped (non-system:masters) operator SA + ClusterRole for day-to-day ops (w7/m37, docs/ADR019-infra-credentials.md)
-  - disk-storageclass.yaml       # LUKS-encrypted class for persistent service disks (ADR082); prod operator overlay names it via BEX_DISK_STORAGE_CLASS (w2/m86)
-  - tenant-namespace-clusterroles.yaml  # per-tenant-namespace ClusterRoles bound per-<ws> by the NamespaceReconciler (w3/m31 t003, ADR043)
-  - bex-api-namespace-rbac.yaml  # cluster authority for bex-api's NamespaceReconciler to create/prune <ws> namespaces + quota/policy/rolebinding (w3/m31 t001-t003); namespace mgmt only, no secrets
+  - platform-namespaces.yaml # monitoring + secrets namespaces the raw resources above land in (from-scratch ordering, w1/m19 t006)
+  - tenant-namespace.yaml # PSS baseline + restricted warn/audit on the tenant apps namespace (w7/m2/t001)
+  - tenant-quotas.yaml # ResourceQuota + LimitRange for the tenant apps namespace (w7/m2/t003)
+  - bex-api-apps-rbac.yaml # bex-api's apps-namespace-scoped secrets/pods/logs/metrics grants (w6/002)
+  - bex-ssh-apps-rbac.yaml # SSH gateway's namespace-scoped pod read + exec grant
+  - operator-apps-rbac.yaml # operator's apps-namespace-scoped secrets grants (w7/m7)
+  - operator-registry-rbac.yaml # operator's bex-registry-namespace secrets grants for per-App pull creds (w7/m36)
+  - operator-daytoday-rbac.yaml # scoped (non-system:masters) operator SA + ClusterRole for day-to-day ops (w7/m37, docs/ADR019-infra-credentials.md)
+  - disk-storageclass.yaml # LUKS-encrypted class for persistent service disks (ADR082); prod operator overlay names it via BEX_DISK_STORAGE_CLASS (w2/m86)
+  - tenant-namespace-clusterroles.yaml # per-tenant-namespace ClusterRoles bound per-<ws> by the NamespaceReconciler (w3/m31 t003, ADR043)
+  - bex-api-namespace-rbac.yaml # cluster authority for bex-api's NamespaceReconciler to create/prune <ws> namespaces + quota/policy/rolebinding (w3/m31 t001-t003); namespace mgmt only, no secrets
   - bex-api-namespace-admission.yaml # API-server CEL guard: confine the reconciler SA's cluster verbs to canonical managed tenant namespaces/bindings (w3/m35)
-  - bex-api-app-admission.yaml   # API-server CEL guard: confine bex-api's cluster-wide App writes to the App's own tea-<id> namespace or the bootstrap namespace (codex #4)
+  - bex-api-app-admission.yaml # API-server CEL guard: confine bex-api's cluster-wide App writes to the App's own tea-<id> namespace or the bootstrap namespace (codex #4)
   - operator-workload-admission.yaml # API-server CEL guard: confine operator-created workloads to hardened tenant/build Pod grammar
+  - operator-pod-label-admission.yaml # API-server CEL guard: the operator may relabel a pod's network-isolation label and nothing else (w8/m136)
   - operator-alias-admission.yaml # API-server CEL guard: only exact App-owned static/maintenance ExternalName aliases may exist in tenant namespaces (w7/m54)
-  - sandbox-pod-admission.yaml   # API-server guard: every sandbox Pod must retain gVisor/placement/token invariants (w3/m35)
+  - sandbox-pod-admission.yaml # API-server guard: every sandbox Pod must retain gVisor/placement/token invariants (w3/m35)
 
 # The render-v1 seccomp profile (w6/m150), installed by seccomp-profiles.yaml.
 # Generated by scripts/seccomp-render-v1/generate.sh. The content hash in the

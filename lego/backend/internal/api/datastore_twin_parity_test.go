@@ -98,6 +98,15 @@ func TestDatastoreTwinsShareWriteMechanics(t *testing.T) {
 				return s.SetEnvironmentIPAllowList(t.Context(), name, "evm-existing", []string{"10.0.0.0/8"})
 			},
 		},
+		{
+			verb: "SetEnvironmentIsolation",
+			pg: func(s *postgres.Service) error {
+				return s.SetEnvironmentIsolation(t.Context(), name, "evm-existing", true)
+			},
+			kv: func(s *keyvalue.Service) error {
+				return s.SetEnvironmentIsolation(t.Context(), name, "evm-existing", true)
+			},
+		},
 	}
 
 	for _, c := range cases {
