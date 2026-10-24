@@ -252,11 +252,14 @@ const (
 	// roll and the Deploys tab must be able to tell a restart from a
 	// just-deploy deploy (w4/m106).
 	TriggerRestart = "restart"
+	// TriggerDeployedByRender is a deploy the platform itself started (the
+	// platform-rebuild fleet rebuild), in Render's own spelling.
+	TriggerDeployedByRender = "deployed_by_render"
 )
 
 // AllTriggers is every Trigger* value — the set REST conformance proves maps
 // onto Render's enum (w8/058). A guard test keeps it in step with the consts.
-var AllTriggers = []string{TriggerCreate, TriggerAPI, TriggerDeployHook, TriggerRollback, TriggerNewCommit, TriggerConfigChange, TriggerRestart}
+var AllTriggers = []string{TriggerCreate, TriggerAPI, TriggerDeployHook, TriggerRollback, TriggerNewCommit, TriggerConfigChange, TriggerRestart, TriggerDeployedByRender}
 
 // CommitInfo is the git commit a build-from-git deploy runs — the resolved
 // SHA, message, and author timestamp (w9/001 + w2/m42). Zero value = unknown:

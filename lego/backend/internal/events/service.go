@@ -940,6 +940,7 @@ func view(r store.ServiceEventRow, service string) Event {
 				Manual:     r.Trigger == store.TriggerAPI,
 				DeployHook: r.Trigger == store.TriggerDeployHook,
 				Rollback:   r.Trigger == store.TriggerRollback,
+				DeployedByRender: r.Trigger == store.TriggerDeployedByRender,
 			}
 			// w4/m112: while this deploy is still open, say why it is not
 			// progressing — the same column the deploy detail page reads, so

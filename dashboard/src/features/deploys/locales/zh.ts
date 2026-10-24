@@ -160,6 +160,11 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploy row: trigger=restart label (a Restart roll of the live release, w4/379)",
   },
+  "deploys.triggerDeployedByRender": {
+    message: "平台重建",
+    description:
+      "Deploy row: trigger=deployed_by_render label (the platform rebuilt the live commit, e.g. to ship a runtime security patch)",
+  },
   "deploys.logSearchPlaceholder": {
     message: "搜索日志…",
     description: "Deploy detail page: log search input placeholder",

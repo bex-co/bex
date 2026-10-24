@@ -27,6 +27,7 @@ One package per feature: service (business logic) + models + REST/GraphQL/MCP fr
 - Target always recorded (`ServiceTarget/DatabaseTarget/KeyValueTarget`) for events feed; write relations always emit, read only on denial. `TestEveryTargetedVerbIsNamedOrExcused` enforces vocabulary.
 - **Workspace from request context** (REST `ownerId`, GraphQL `ownerId`, MCP `workspaceId`). Empty → the default workspace for `List`, the resource's own for a by-id verb (ADR072's by-id matrix); non-member → `ErrForbidden`.
 - Store opt-in `BEX_CP_DB_URI`; unset → bex-api alone.
+- **Operator-run verbs** carry no caller identity, so they never mount on :8090 and are excused from the authz/audit sweeps: `/api migrate-container-policy <srv> [--apply]` (one service onto `render-v1`) and `/api platform-rebuild --since <RFC3339> [--apply] [--limit N]`. The second rebuilds every source-built, non-Dockerfile, non-static service at its live commit as a `deployed_by_render` deploy, so a re-pinned toolchain (a runtime security patch) reaches running services. It is a client of the :8091 `POST /internal/platform-rebuild` verb behind `BEX_CP_TOKEN`. Run it through `.github/workflows/platform-rebuild.yml`: `plan` first, then `apply` in batches.
 
 ## Environment variables — compact reference
 
