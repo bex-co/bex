@@ -1,0 +1,96 @@
+name: Cluster diagnose (manual, read-only)
+
+# Read-only production view for an incident: why a service's pod is not
+# running, whether the cluster autoscaler is adding nodes, and how full each
+# node is. Production kubectl lives only in CI, so this is the operator's eyes
+# during an outage (2026-10-24: beancount-cms-v2's pod stayed Pending after a
+# node roll). It only gets/describes/reads logs — it never mutates anything.
+on:
+  workflow_dispatch:
+    inputs:
+      service_id:
+        description: Service id (srv-...) whose pods to inspect
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cluster-diagnose
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    timeout-minutes: 15
+    steps:
+      - name: Validate input
+        env:
+          SERVICE_ID: ${{ inputs.service_id }}
+        run: '[[ "$SERVICE_ID" =~ ^srv-[a-z0-9]{20}$ ]] || { echo "service_id must be srv-<20 chars>" >&2; exit 1; }'
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
+        with:
+          version: v1.36.1
+
+      - name: Fetch production kubeconfig
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          BEX_SSH_PRIVATE_KEY: ${{ secrets.BEX_SSH_PRIVATE_KEY }}
+          BEX_SSH_KNOWN_HOSTS: ${{ secrets.BEX_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m700 -d "$RUNNER_TEMP/bex-ssh"
+          printf '%s\n' "$BEX_SSH_PRIVATE_KEY" >"$RUNNER_TEMP/bex-ssh/id_bex"
+          chmod 600 "$RUNNER_TEMP/bex-ssh/id_bex"
+          export BEX_SSH_KEY_PATH="$RUNNER_TEMP/bex-ssh/id_bex"
+          export BEX_SSH_REQUIRE_KNOWN_HOSTS=1
+          if [ -n "${BEX_SSH_KNOWN_HOSTS:-}" ]; then
+            printf '%s\n' "$BEX_SSH_KNOWN_HOSTS" >"$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+            chmod 600 "$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+            export BEX_SSH_KNOWN_HOSTS_FILE="$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+          fi
+          bash scripts/fetch-app-kubeconfig.sh "$RUNNER_TEMP/app.kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/app.kubeconfig" >>"$GITHUB_ENV"
+
+      - name: scrub SSH credentials
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/bex-ssh"
+
+      - name: Service pods
+        env:
+          SERVICE_ID: ${{ inputs.service_id }}
+        run: |
+          set +e
+          kubectl get pods -A -l "bex.co/app-id=$SERVICE_ID" -o wide
+          for p in $(kubectl get pods -A -l "bex.co/app-id=$SERVICE_ID" -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{"\n"}{end}'); do
+            echo "===== $p"
+            kubectl describe pod -n "${p%%/*}" "${p##*/}" | sed -n '/^Status:/,/^Events:/p;/^Events:/,$p' | tail -60
+          done
+          kubectl get deploy,rs -A -l "bex.co/app-id=$SERVICE_ID" -o wide
+
+      - name: Pending pods cluster-wide
+        run: kubectl get pods -A --field-selector=status.phase=Pending -o wide || true
+
+      - name: Nodes and allocation
+        run: |
+          set +e
+          kubectl get nodes -L nodepool,bex.co/pool -o wide
+          kubectl describe nodes | grep -E '^Name:|^Taints:|Allocated resources' -A0
+          kubectl describe nodes | awk '/^Name:/{n=$2} /Allocated resources/{p=1;next} p&&/^Events:/{p=0} p{print n": "$0}' | grep -E 'cpu|memory'
+          kubectl get machinedeployments,machines -n bex-capi -o wide
+
+      - name: Cluster autoscaler
+        run: |
+          set +e
+          kubectl get configmap -A --field-selector=metadata.name=cluster-autoscaler-status -o jsonpath='{range .items[*]}{.data.status}{"\n"}{end}' | head -80
+          for p in $(kubectl get pods -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{"\n"}{end}' | grep -i autoscaler); do
+            echo "===== $p"
+            kubectl logs -n "${p%%/*}" "${p##*/}" --tail=400 | grep -i -E 'scale.?up|unschedulable|max node|no node group|error|predicate|skipping|pod .* is unschedulable' | tail -60
+          done
+
+      - name: scrub kubeconfig
+        if: always()
+        run: rm -f -- "$RUNNER_TEMP/app.kubeconfig"
