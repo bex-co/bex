@@ -346,6 +346,26 @@ func TestModelProxyNarrowingDropsVendorHostAndAddsGatewayPort(t *testing.T) {
 	}
 }
 
+// ADR090 platform model route: an OpenRouter session's policy records
+// openrouter.ai as its model target (the cluster admission policy admits that
+// annotation), never opens it directly, and a tenant cannot add it as a widening.
+func TestModelProxyNarrowingCoversTheOpenRouterRoute(t *testing.T) {
+	proxied := &Manager{Config: Config{ModelProxyPort: 8084}}
+	agent, err := proxied.policy("tea-test-sandbox", "ags-test", PhaseAgent, "https://openrouter.ai/api", nil)
+	if err != nil {
+		t.Fatalf("openrouter policy: %v", err)
+	}
+	if got := agent.GetAnnotations()[modelAnnotation]; got != "openrouter.ai" {
+		t.Fatalf("model annotation = %q, want openrouter.ai", got)
+	}
+	if slices.Contains(fqdnNames(t, agent), "openrouter.ai") || slices.Contains(dnsNames(t, agent), "openrouter.ai") {
+		t.Fatal("openrouter.ai is directly reachable; it must go through the model proxy")
+	}
+	if _, err := proxied.policy("tea-test-sandbox", "ags-test", PhaseAgent, "https://api.anthropic.com/v1", []string{"openrouter.ai"}); err == nil {
+		t.Fatal("a tenant added openrouter.ai as an extra destination")
+	}
+}
+
 func TestSnapshotEndpointHostParsesPublicOrigin(t *testing.T) {
 	host, err := SnapshotEndpointHost("https://s3.eu-central-2.wasabisys.com")
 	if err != nil || host != "s3.eu-central-2.wasabisys.com" {

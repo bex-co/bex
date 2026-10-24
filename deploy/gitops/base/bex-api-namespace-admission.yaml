@@ -235,7 +235,7 @@ spec:
         !variables.model.endsWith('.localhost') && !variables.model.endsWith('.local') &&
         !variables.model.endsWith('.internal') && !variables.model.endsWith('.cluster.local') &&
         (request.operation == 'DELETE' ||
-         variables.model in ['api.anthropic.com', 'api.openai.com', 'generativelanguage.googleapis.com']) &&
+         variables.model in ['api.anthropic.com', 'api.openai.com', 'generativelanguage.googleapis.com', 'openrouter.ai']) &&
         has(variables.target.spec.endpointSelector.matchLabels) &&
         size(variables.target.spec.endpointSelector.matchLabels) == 1 &&
         variables.target.spec.endpointSelector.matchLabels['bex.co/agent-session'] == variables.session &&
@@ -261,7 +261,7 @@ spec:
              fqdn.matchName.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)+$') &&
              !fqdn.matchName.endsWith('.localhost') && !fqdn.matchName.endsWith('.local') &&
              !fqdn.matchName.endsWith('.internal') && !fqdn.matchName.endsWith('.cluster.local') &&
-             !(fqdn.matchName in ['api.anthropic.com', 'api.openai.com', 'generativelanguage.googleapis.com'])) &&
+             !(fqdn.matchName in ['api.anthropic.com', 'api.openai.com', 'generativelanguage.googleapis.com', 'openrouter.ai'])) &&
            has(rule.toPorts) && rule.toPorts.size() == 1 &&
            rule.toPorts[0].ports.size() == 1 &&
            rule.toPorts[0].ports[0].port == '443' && rule.toPorts[0].ports[0].protocol == 'TCP' &&
@@ -270,7 +270,7 @@ spec:
              name.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)+$') &&
              !name.endsWith('.localhost') && !name.endsWith('.local') &&
              !name.endsWith('.internal') && !name.endsWith('.cluster.local') &&
-             !(name in ['api.anthropic.com', 'api.openai.com', 'generativelanguage.googleapis.com'])) &&
+             !(name in ['api.anthropic.com', 'api.openai.com', 'generativelanguage.googleapis.com', 'openrouter.ai'])) &&
            rule.toFQDNs.all(fqdn, rule.toPorts[0].serverNames.exists(name, name == fqdn.matchName)) &&
            rule.toPorts[0].serverNames.all(name, rule.toFQDNs.exists(fqdn, fqdn.matchName == name))))
       reason: Forbidden

@@ -56,7 +56,9 @@ var (
 	// Registered model-provider API hosts are never tenant widening destinations:
 	// model traffic must traverse the credential proxy even when the selected
 	// profile uses a different provider.
-	modelProviderDomains = []string{"api.anthropic.com", "api.openai.com", "generativelanguage.googleapis.com"}
+	// openrouter.ai is the platform model route's host (ADR090); like the
+	// others it is reached only through the gateway model proxy.
+	modelProviderDomains = []string{"api.anthropic.com", "api.openai.com", "generativelanguage.googleapis.com", "openrouter.ai"}
 )
 
 // Phase is the network posture of an agent session. A phase transition is
