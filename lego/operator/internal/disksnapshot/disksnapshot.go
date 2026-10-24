@@ -110,13 +110,22 @@ func writeTree(archive *tar.Writer, root string) error {
 // the disk does not own into the disk's own snapshot" contract.
 func walkTree(archive *tar.Writer, root *os.Root, dir string) error {
 	d, err := root.Open(dir)
+	if vanished(err) {
+		return nil
+	}
 	if err != nil {
 		return err
 	}
 	entries, err := d.ReadDir(-1)
 	_ = d.Close()
+	if vanished(err) {
+		return nil
+	}
 	if err != nil {
 		return err
+	}
+	if testHookAfterReadDir != nil {
+		testHookAfterReadDir(dir)
 	}
 	// Stable order keeps snapshots of the same tree byte-reproducible, the way
 	// filepath.Walk's lexical order did.
@@ -129,12 +138,18 @@ func walkTree(archive *tar.Writer, root *os.Root, dir string) error {
 		// Lstat, not Stat: the final component is described as itself, so a
 		// symlink is seen as a symlink rather than resolved.
 		info, err := root.Lstat(name)
+		if vanished(err) {
+			continue
+		}
 		if err != nil {
 			return err
 		}
 		switch {
 		case info.Mode()&os.ModeSymlink != 0:
 			link, err := root.Readlink(name)
+			if vanished(err) {
+				continue
+			}
 			if err != nil {
 				return err
 			}
@@ -163,11 +178,27 @@ func walkTree(archive *tar.Writer, root *os.Root, dir string) error {
 	return nil
 }
 
+// vanished reports an entry deleted between the directory listing and the read
+// of it. A live application keeps writing the volume while the snapshot runs —
+// ClickHouse merges and drops data parts continuously — so such an entry is
+// skipped, as GNU tar skips a "file removed before we read it", rather than
+// failing the whole night's snapshot (w6/089: three nights of dskbak- Jobs
+// died on statat ENOENT). An escaping symlink is a different error and still
+// fails the snapshot.
+func vanished(err error) bool { return errors.Is(err, fs.ErrNotExist) }
+
+// testHookAfterReadDir lets tests delete entries between a directory listing
+// and their reads, the race a live volume produces.
+var testHookAfterReadDir func(dir string)
+
 // writeRegularFile opens name through the root, builds the tar header from the
 // opened descriptor (not the earlier Lstat), and copies exactly the header's
 // worth of bytes.
 func writeRegularFile(archive *tar.Writer, root *os.Root, name string) error {
 	file, err := root.Open(name)
+	if vanished(err) {
+		return nil
+	}
 	if err != nil {
 		// An escaping symlink raced in after the Lstat above resolves outside the
 		// root and lands here as an error — fail the snapshot loudly rather than
