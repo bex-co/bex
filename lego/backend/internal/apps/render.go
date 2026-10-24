@@ -369,7 +369,7 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		ServiceDetails:            renderServiceDetails(a, svcType, region),
 		ImagePath:                 a.SourceImage,
 		RegistryCredentialID:      registryCredentialID,
-		Suspenders:                core.Suspenders(a.Suspended),
+		Suspenders:                core.SuspendersFor(a.Suspended, a.FreeHoursSuspended),
 		OwnerID:                   a.OwnerID,
 		ProjectID:                 a.ProjectID,
 		EnvironmentID:             a.EnvironmentID,

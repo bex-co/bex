@@ -88,6 +88,9 @@ type Service struct {
 	// into usage_monthly (BEX_USAGE_RETENTION_MONTHS). Values < 1 mean
 	// DefaultRetentionMonths.
 	RetentionMonths int
+	// FreeInstanceHours overrides the monthly Free instance-hours allowance the
+	// summary reports; non-positive means DefaultFreeInstanceHours.
+	FreeInstanceHours float64
 	// Billing reads real Stripe cost/invoices to surface beside the advisory
 	// estimate (m48, ADR040 Phase 2). nil ⇒ billing surface off: every summary is
 	// estimate-only, byte-identical to ADR030. A read failure degrades to
@@ -147,6 +150,20 @@ type Summary struct {
 	// degraded Stripe read — clients show EstimatedCost alone.
 	Billing  *billing.Billing
 	Coverage Coverage
+	// FreeInstanceHours is the workspace's Render-style "Monthly included
+	// usage" for the period (w8/m139): hours its Free web services ran against
+	// the monthly allowance.
+	FreeInstanceHours FreeInstanceHours
+}
+
+// DefaultFreeInstanceHours is Render's monthly Free instance-hours allowance
+// per workspace.
+const DefaultFreeInstanceHours = 750
+
+// FreeInstanceHours is Free instance hours used against the allowance.
+type FreeInstanceHours struct {
+	Used     float64
+	Included float64
 }
 
 const (
@@ -211,6 +228,7 @@ func (s *Service) monthToDateAt(ctx context.Context, ownerID string, now time.Ti
 	sum := summarise(tenantID, rows)
 	s.resolveServiceNames(ctx, tenantID, sum.Services)
 	sum.Period = now.Format(periodLayout)
+	sum.FreeInstanceHours = s.freeInstanceHours(rows)
 	sum.EstimatedCost = pricing.Default.Estimate(rows)
 	nameResourceEstimates(&sum.EstimatedCost, sum.Services)
 	// The Stripe projection (real cost, invoices, credit grants) is a billing
@@ -1567,4 +1585,20 @@ func (s *Service) meterDiskWindow(ctx context.Context, window time.Time) error {
 		}
 	}
 	return nil
+}
+
+// freeInstanceHours sums the Free service instance-seconds in rows against the
+// allowance, the same measure the freehours sweeper enforces.
+func (s *Service) freeInstanceHours(rows []store.UsageSummaryRow) FreeInstanceHours {
+	included := s.FreeInstanceHours
+	if included <= 0 {
+		included = DefaultFreeInstanceHours
+	}
+	var seconds int64
+	for _, r := range rows {
+		if r.Kind == store.UsageKindInstanceSeconds && r.Tier == "free" && store.NormalizeResourceKind(r.ResourceKind) == store.ResourceKindService {
+			seconds += r.Total
+		}
+	}
+	return FreeInstanceHours{Used: float64(seconds) / 3600, Included: included}
 }

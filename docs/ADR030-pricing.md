@@ -120,6 +120,16 @@ Render's [features-by-plan page](https://render.com/docs/platform-features-by-pl
 
 Existing state is never silently removed: a Hobby workspace keeps its third environment, isolated environments, webhook endpoints and IP rules working, and only new uses are refused. An unreadable plan fails the write; an unwired plan reader (store-off) leaves every feature open. Render's exact refusal wording and its request-log behavior on Hobby are unverified (no Render account); bex takes the documented 400 with the plan named.
 
+### 10. Free web services share 750 instance hours per workspace per month (w8/m139)
+
+[Render's Free plan](https://render.com/docs/free) grants each workspace 750 Free instance hours per calendar month, consumed only while a Free web service runs (spun-down time is free); once spent, "Render suspends all of your Free web services until the start of the next month". bex matches it:
+
+- **Accounting.** Hours are month-to-date `instance_seconds` rows of tier `free` for service resources, from the running-pod meter (so hibernated time does not count). Postgres, Key Value, static sites and paid tiers do not count. The meter rolls up hourly, so enforcement lags by up to an hour plus the sweep interval.
+- **Enforcement.** `freehours.Sweeper` (every five minutes, replica-safe) suspends every Free web service of a workspace at 750 h. The suspension is the App's `spec.suspended` with the `app.bex.co/free-hours-suspended: <YYYY-MM>` annotation, and the service reports the `billing` suspender. A service its owner suspended is never touched. Manual resume is refused (`FREE_INSTANCE_HOURS_EXHAUSTED`, 400) that month while the service is still free; moving it to a paid plan lifts the suspension immediately, and the sweeper lifts all of them at the start of the next UTC month.
+- **Emails.** The workspace's billing owners get one warning at 80% and one when the hours are spent, each at most once per month (`free_hours_notices` claims the stage before sending).
+- **Surfaces.** `freeInstanceHours {used, included}` on REST `GET /v1/usage`, GraphQL `usage` and MCP `get_usage`, and a "Monthly included usage" card on the dashboard Usage page.
+- **Unverified.** Whether Render resumes automatically at the month start or needs a manual resume (bex resumes automatically, the parity-sufficient reading), the exact emails, and Render's `billing` suspender mapping. `BEX_FREE_INSTANCE_HOURS` overrides the allowance for dev and tests.
+
 ## Consequences
 
 - **Backend:** `internal/pricing` is an operator-independent package. `internal/usage.Service.monthToDateAt` calls `pricing.Default.Estimate` and attaches the result to `Summary.EstimatedCost`; `storage_gb_seconds` contributes at the embedded per-GB-second rate for Postgres and Key Value rows.

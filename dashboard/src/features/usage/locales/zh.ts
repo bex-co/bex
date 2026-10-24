@@ -26,6 +26,32 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "Key Value",
     description: "Key Value count label in the resource-cap card",
   },
+  "usage.freeHoursTitle": {
+    message: "每月包含用量",
+    description:
+      "Title of the Free instance hours card on the usage page (w8/m139)",
+  },
+  "usage.freeHoursDescription": {
+    message:
+      "每个工作区的免费 Web 服务共享每月的实例小时额度。休眠时间不计入。",
+    description: "Explains the monthly Free instance hours allowance (w8/m139)",
+  },
+  "usage.freeHoursUsed": {
+    message: "本月已使用 {used} / {included} 免费实例小时",
+    description:
+      "Free instance hours used against the monthly allowance (w8/m139)",
+  },
+  "usage.freeHoursNear": {
+    message: "额度即将用尽。用尽后，您的免费 Web 服务将暂停，直到下月初。",
+    description:
+      "Warning once Free instance hours reach 80 percent of the allowance (w8/m139)",
+  },
+  "usage.freeHoursSpent": {
+    message:
+      "额度已用尽。免费 Web 服务暂停至下月初；将服务升级到付费套餐即可立即运行。",
+    description:
+      "Notice once the monthly Free instance hours are spent (w8/m139)",
+  },
   "usage.resourceCapsNearLimit": {
     message: "接近上限",
     description:

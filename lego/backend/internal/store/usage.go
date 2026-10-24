@@ -554,3 +554,51 @@ func (s *PGStore) CompactUsage(ctx context.Context, before time.Time) (UsageComp
 	).Scan(&res.HourlyRows, &res.Months)
 	return res, err
 }
+
+// FreeInstanceSecondsByWorkspace is the month-to-date instance-seconds every
+// workspace's Free services have run since monthStart (w8/m139): the input to
+// the 750 Free-instance-hours budget. Only service meter rows of tier free
+// count; datastores and paid tiers do not. Hibernated time is absent because
+// the meter measures running pods.
+func (s *PGStore) FreeInstanceSecondsByWorkspace(ctx context.Context, monthStart, now time.Time) (map[string]int64, error) {
+	rows, err := s.Pool.Query(ctx, `
+		SELECT workspace_id, SUM(quantity)
+		FROM (
+			SELECT workspace_id, quantity FROM usage_hourly
+			WHERE kind = 'instance_seconds' AND tier = 'free' AND resource_kind = 'service'
+			  AND window_start >= $1 AND window_start < $2
+			UNION ALL
+			SELECT workspace_id, quantity FROM usage_monthly
+			WHERE kind = 'instance_seconds' AND tier = 'free' AND resource_kind = 'service'
+			  AND month = ($1::timestamptz AT TIME ZONE 'UTC')::date
+		) u
+		GROUP BY workspace_id`, monthStart, now)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]int64{}
+	for rows.Next() {
+		var workspaceID string
+		var total int64
+		if err := rows.Scan(&workspaceID, &total); err != nil {
+			return nil, err
+		}
+		out[workspaceID] = total
+	}
+	return out, rows.Err()
+}
+
+// ClaimFreeHoursNotice records that stage ('warned' or 'exhausted') has been
+// claimed for workspaceID's month and reports whether this caller won the
+// claim; exactly one replica sends each email each month.
+func (s *PGStore) ClaimFreeHoursNotice(ctx context.Context, workspaceID string, month time.Time, stage string) (bool, error) {
+	tag, err := s.Pool.Exec(ctx, `
+		INSERT INTO free_hours_notices (workspace_id, month, stage)
+		VALUES ($1, $2::date, $3)
+		ON CONFLICT DO NOTHING`, workspaceID, month.UTC().Format("2006-01-02"), stage)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() == 1, nil
+}

@@ -24,6 +24,12 @@ query Usage($period: String, $ownerId: String) {
       through
       degradedSources
     }
+    # freeInstanceHours: Render's "Monthly included usage" for Free web
+    # services — hours used against the workspace's monthly allowance (750).
+    freeInstanceHours {
+      used
+      included
+    }
     estimatedCost {
       totalUsd
       # resources is the same total grouped by the resource that incurred it,
