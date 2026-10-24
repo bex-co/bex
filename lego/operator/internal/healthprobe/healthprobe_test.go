@@ -121,7 +121,9 @@ func TestCheckTimeoutAndRefused(t *testing.T) {
 		t.Fatal(err)
 	}
 	closedPort := l.Addr().(*net.TCPAddr).Port
-	l.Close()
+	if err := l.Close(); err != nil {
+		t.Fatal(err)
+	}
 	if err := Check(context.Background(), "127.0.0.1", closedPort, "/", "", time.Second); err == nil {
 		t.Fatal("a refused connection passed")
 	}
