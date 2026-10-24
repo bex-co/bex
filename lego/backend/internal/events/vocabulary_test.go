@@ -285,6 +285,12 @@ func targetedVerbsIn(t *testing.T, dir, pkg string) map[string]bool {
 		for _, file := range p.Files {
 			for _, decl := range file.Decls {
 				if fn, ok := decl.(*ast.FuncDecl); ok && fn.Recv != nil && fn.Body != nil {
+					// Verbs live on Service. Another receiver may reuse a verb's
+					// name (apps.FreeHoursWorker.Suspend/Resume); p.Files is a map,
+					// so letting the last-parsed one win made this test flaky.
+					if prev, dup := methods[fn.Name.Name]; dup && receiverName(prev) == "Service" {
+						continue
+					}
 					methods[fn.Name.Name] = fn
 				}
 			}
@@ -424,4 +430,16 @@ func targetsReadOnly(call *ast.CallExpr, binding map[string]string) bool {
 	default:
 		return false
 	}
+}
+
+// receiverName is fn's receiver type name, pointer or not.
+func receiverName(fn *ast.FuncDecl) string {
+	t := fn.Recv.List[0].Type
+	if star, ok := t.(*ast.StarExpr); ok {
+		t = star.X
+	}
+	if id, ok := t.(*ast.Ident); ok {
+		return id.Name
+	}
+	return ""
 }
