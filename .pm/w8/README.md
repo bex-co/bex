@@ -15,6 +15,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m138** — [Hobby workspaces get Render's Hobby limits; Pro features start at Pro](m138/README.md) (10 tasks;290m) ← `/qa-find-bugs-cli` loop sweeps b1c3/j3k5 2026-10-24: a Hobby workspace creates 3 environments per project, webhooks and network isolation, and reads HTTP request logs — all Pro-and-higher or capped on Render
+
 - [ ] **m137** — [Inbound IP rules for web services, static sites and environments are a Scale/Enterprise workspace feature, as on Render](m137/README.md) (8 tasks;225m) ← `/qa-find-bugs-cli` loop sweep g7h2 2026-10-23: a Free web service in a Hobby workspace accepts and enforces `--ip-allow-list`
 
 - [ ] **m136** — [Environment network isolation also closes its Postgres and Key Value to other environments, as on Render](m136/README.md) (7 tasks;220m) ← `/qa-find-bugs-cli` loop sweep b1c3 2026-10-23: with `networkIsolationEnabled: true` a staging service still connects to production's Key Value over the private network (16× TCPOK over 3 min)
