@@ -41,7 +41,7 @@ func TestTriggerInputRefusalsAcrossAdapters(t *testing.T) {
 		{"uppercase repository", "imageUrl", "ghcr.io/ACME/web:v1", "must be lowercase"},
 		{"short digest", "imageUrl", "nginx@sha256:deadbeef", "image digest is invalid"},
 		{"private registry", "imageUrl", "127.0.0.1:5000/web:v1", "private or reserved"},
-		{"untrusted registry", "imageUrl", "registry.example.com/web:v1", "not trusted"},
+		{"internal registry", "imageUrl", "registry.default.svc/web:v1", "not a public registry"},
 		{"other repository", "imageUrl", "docker.io/library/nginx:1.27", "configured image docker.io/library/web (got docker.io/library/nginx)"},
 		{"other registry", "imageUrl", "ghcr.io/library/web:v1", "configured image docker.io/library/web (got ghcr.io/library/web)"},
 		{"malformed reference", "imageUrl", "docker.io/library/web:not a tag", "image reference is malformed"},

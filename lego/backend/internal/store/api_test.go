@@ -213,7 +213,7 @@ func TestCreateImageValidationBeforePersistence(t *testing.T) {
 		{"uppercase repository", "ghcr.io/Org/repo:tag", "must be lowercase"},
 		{"short digest", "nginx@sha256:deadbeef", "digest length"},
 		{"private registry", "127.0.0.1:5000/app:tag", "private or reserved"},
-		{"untrusted registry", "registry.attacker.example/app:tag", "not trusted"},
+		{"internal registry", "metadata.google.internal/app:tag", "not a public registry"},
 		{"short valid reference", "nginx:1.27", ""},
 		{"tag and digest", "ghcr.io/org/repo:Release@sha256:" + strings.Repeat("a", 64), ""},
 		{"sha512", "ghcr.io/org/repo@sha512:" + strings.Repeat("b", 128), ""},

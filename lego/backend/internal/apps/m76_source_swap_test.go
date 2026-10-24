@@ -115,7 +115,7 @@ func TestGraphQLSetImageRejectsInvalidRef(t *testing.T) {
 		{"nginx; rm -rf /", "malformed"},
 		{"ghcr.io/Org/repo:tag", "must be lowercase"},
 		{"nginx@sha256:deadbeef", "digest length"},
-		{"registry.attacker.example/app:tag", "not trusted"},
+		{"metadata.google.internal/app:tag", "not a public registry"},
 	} {
 		t.Run(tc.image, func(t *testing.T) {
 			svc, cl := newService(nil, repoApp("web", "https://github.com/x/mono", "main"))

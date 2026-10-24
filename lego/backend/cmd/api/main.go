@@ -228,6 +228,8 @@ func main() {
 	// liveness stays on /healthz, which never flips.
 	ready := &serve.Readiness{}
 
+	// Before any request is served: which registries an image may name (w5/171).
+	store.PublicImageRegistries = cfg.PublicImageRegistries
 	deps := api.Deps{
 		RouterURL:        cfg.RouterURL,
 		RouterSecret:     cfg.RouterSecret,

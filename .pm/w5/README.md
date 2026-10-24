@@ -24,7 +24,8 @@ User decision 2026-10-20: all five items of the fifth `/pm-brainstorm for w5` pr
 - [x] **m152** — [Changing a service's runtime works (PATCH `serviceDetails.runtime`)](done/m152/README.md) (8 tasks; 6h30m total) ← round 5 item 5; replaces w5/m146's named refusal
 - [x] **m153** — [Services, Postgres and Key Value created through the API can have a free-form name](done/m153/README.md) (8 tasks; 5h15m total) ← promoted from w5/173
 - [x] **170** — [A Blueprint service can copy a sibling's `sync: false` variable](done/170.md) (~1h) ← found by w5/m148's corpus run
-- [ ] **171** — [Images from any public registry deploy, as on Render](blocked/171.md) (needs a security review; may promote) ← found by w5/m149's corpus run — **BLOCKED (user risk decision: accept the DNS-rebinding residual of letting the kubelet pull from any public registry host behind a validation-time public-IP check, or require a pull-through egress proxy first; the parity-sufficient code is ready to write once chosen)**
+- [x] **171** — [Images from any public registry deploy, as on Render](done/171.md) ← found by w5/m149's corpus run
+- [ ] **174** — [Widen public image registries to every workspace once the node pools carry the containerd deny](174.md) (~1h + a node-pool rollout; by 2026-10-30) ← w5/171's production gate
 - [x] **172** — [A Blueprint `dockerContext: /` means the repository root, as on Render](done/172.md) (~30m) ← found by w5/m149's corpus run
 
 ## Approved queue — 2026-10-20 (parity-only set)

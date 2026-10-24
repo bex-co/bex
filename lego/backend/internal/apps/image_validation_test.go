@@ -34,7 +34,7 @@ func TestImageValidationRefusesBeforeMutation(t *testing.T) {
 		{"uppercase repository", "ghcr.io/Org/repo:tag", "must be lowercase"},
 		{"short digest", "nginx@sha256:deadbeef", "digest length"},
 		{"private registry", "127.0.0.1:5000/app:tag", "private or reserved"},
-		{"untrusted registry", "registry.attacker.example/app:tag", "not trusted"},
+		{"internal registry", "metadata.google.internal/app:tag", "not a public registry"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			st := &recordingStore{}

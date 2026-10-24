@@ -184,6 +184,14 @@ while read -r kind name; do
     echo "FAIL: $kind/$name overrides containerd's enable_unprivileged_ports; tenant services bind ports below 1024 through its default" >&2
     fail=1
   fi
+  # w5/171: tenants may pull from any public registry, so containerd itself
+  # must never reach the instance-metadata service from the node network.
+  if ! echo "$prek" | grep -q 'socket cgroupv2 level 2 "system.slice/containerd.service" ip daddr 169.254.0.0/16 counter reject' \
+    || ! echo "$prek" | grep -q 'ExecStartPost=/usr/sbin/nft -f /etc/bex-containerd-egress.nft' \
+    || ! echo "$prek" | grep -q "nft list table inet bex_containerd_egress"; then
+    echo "FAIL: $kind/$name must deny containerd's cgroup link-local egress (w5/171) and verify the table after restarting containerd" >&2
+    fail=1
+  fi
 done < <(yq -N 'select(.kind=="KubeadmControlPlane" or .kind=="KubeadmConfigTemplate") | .kind + " " + .metadata.name' "$OVERLAY")
 
 # Kubernetes 1.33 removed kube-apiserver's cloud-provider flag. The external
@@ -578,6 +586,11 @@ fi
 # together), so the same-origin .sha256/.sha512 download must never return.
 echo "==> $SANDBOX_OVERLAY verifies gVisor against repository-pinned digests"
 sandbox_prek="$(yq -N 'select(.kind=="KubeadmConfigTemplate" and .metadata.name=="bex-sandbox") | .spec.template.spec.preKubeadmCommands[]' "$SANDBOX_OVERLAY")"
+if ! echo "$sandbox_prek" | grep -q 'ExecStartPost=/usr/sbin/nft -f /etc/bex-containerd-egress.nft' \
+  || ! echo "$sandbox_prek" | grep -q "nft list table inet bex_containerd_egress"; then
+  echo "FAIL: bex-sandbox must deny containerd's cgroup link-local egress (w5/171)" >&2
+  fail=1
+fi
 if echo "$sandbox_prek" | grep -Eq 'wget.*\.sha(256|512)'; then
   echo "FAIL: sandbox bootstrap must not co-fetch gVisor checksum files — the repository-pinned digest is the trust anchor" >&2
   fail=1

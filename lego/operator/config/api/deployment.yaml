@@ -72,6 +72,12 @@ spec:
             # #PSL), and an empty value here reports a null URL for every App.
             - name: BEX_BASE_DOMAIN
               value: onbex.co
+            # Fixed registry allowlist until every node carries the containerd
+            # link-local deny (w5/171): existing nodes predate that bootstrap.
+            # Widen to every workspace (remove this entry) once the node pools
+            # have rolled — tracked by w5/174.
+            - name: BEX_PUBLIC_IMAGE_REGISTRIES
+              value: "false"
             - name: BEX_REGION # explicit platform placement for Render resource metadata
               value: fsn1
             - name: BEX_API_NAMESPACE # Apps live in the default namespace

@@ -147,11 +147,16 @@ func TestValidateImage(t *testing.T) {
 		{"cgnat-host-rejected", "100.64.0.9:5000/myapp", "private or reserved"},
 		{"linklocal-v6-rejected", "[fe80::1]:5000/myapp", "private or reserved"},
 		{"loopback-v6-rejected", "[::1]/myapp", "private or reserved"},
-		{"public-ip-literal-rejected", "1.2.3.4:5000/myapp", "not trusted"},
-		{"arbitrary-dns-rejected", "registry.attacker.example/myapp", "not trusted"},
-		{"metadata-dns-rejected", "metadata.google.internal/myapp", "not trusted"},
-		{"normalization-does-not-widen-trust", "index.docker.io/library/nginx:latest", "not trusted"},
-		{"trusted-host-lookalike", "ghcr.io.attacker.example/myapp", "not trusted"},
+		// Like Render, any public registry is accepted (w5/171); names of the
+		// platform's own networks are not.
+		{"public-ip-literal-allowed", "1.2.3.4:5000/myapp", ""},
+		{"any-public-registry-allowed", "cgr.dev/chainguard/minio:latest", ""},
+		{"index-docker-io-allowed", "index.docker.io/library/nginx:latest", ""},
+		{"metadata-dns-rejected", "metadata.google.internal/myapp", "not a public registry"},
+		{"cluster-service-rejected", "registry.default.svc:5000/myapp", "not a public registry"},
+		{"cluster-local-rejected", "registry.default.svc.cluster.local/myapp", "not a public registry"},
+		{"mdns-rejected", "nas.local:5000/myapp", "not a public registry"},
+		{"single-label-rejected", "registry:5000/myapp", "not a public registry"},
 		{"platform-registry-allowed", "zot.bex-registry.svc:5000/myapp", ""},
 		{"artifact-registry-allowed", "us-central1-docker.pkg.dev/org/repo/image:tag", ""},
 	}
@@ -277,5 +282,21 @@ func TestRedactRepoURL(t *testing.T) {
 		if got := RedactRepoURL(tc.in); got != tc.want {
 			t.Errorf("RedactRepoURL(%q) = %q, want %q", tc.in, got, tc.want)
 		}
+	}
+}
+
+// A cluster whose nodes predate the containerd link-local deny keeps the fixed
+// allowlist (BEX_PUBLIC_IMAGE_REGISTRIES=false, w5/171).
+func TestValidateImageKeepsTheAllowlistWhenPublicRegistriesAreOff(t *testing.T) {
+	PublicImageRegistries = false
+	t.Cleanup(func() { PublicImageRegistries = true })
+	if err := ValidateImage("cgr.dev/chainguard/minio:latest"); err == nil || !strings.Contains(err.Error(), "not trusted") {
+		t.Fatalf("allowlist mode accepted cgr.dev: %v", err)
+	}
+	if err := ValidateImage("ghcr.io/acme/web:1"); err != nil {
+		t.Fatalf("allowlist mode refused ghcr.io: %v", err)
+	}
+	if err := ValidateImage("10.0.0.5:5000/x"); err == nil || !strings.Contains(err.Error(), "private or reserved") {
+		t.Fatalf("a private address must be refused in either mode: %v", err)
 	}
 }

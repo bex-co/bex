@@ -44,9 +44,7 @@ var deliberateBlueprintDivergences = []string{
 
 // knownBlueprintGaps are Render-accepted inputs bex still refuses, each owned
 // by a board item; remove an entry when its item ships.
-var knownBlueprintGaps = []string{
-	"is not trusted", // w5/171: public registries outside the allowlist (cgr.dev)
-}
+var knownBlueprintGaps = []string{}
 
 // TestRenderExamplesCorpus runs every render.yaml from github.com/render-examples
 // through ValidateBlueprint (fetch them with scripts/render-examples-corpus.sh;
