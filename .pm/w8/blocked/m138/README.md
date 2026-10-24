@@ -72,3 +72,11 @@ Every Hobby workspace on REST, GraphQL, MCP, dashboard and Blueprints (Blueprint
 ## Dedupe
 
 Searched `.pm` open and done and `docs/` for each feature with Hobby/Pro/plan gate: none. w6/m3 (workspaces) researched the limits without gating them; w8/m137 covers Scale-only inbound IP rules; the member gate exists.
+
+## Partial live evidence (2026-10-24 09:33–09:36 UTC, platform pin `ba5ad0e65498`, bex v0.3.3, `bex-canary` (Hobby), `/qa-find-bugs-cli` sweep q9r2)
+
+- `POST /v1/projects` with three environments → 400 `environments: a Hobby workspace is limited to 2 environments per project; upgrade the plan to add more`; two → 201.
+- `PATCH /v1/environments/{id} {"networkIsolationEnabled":true}` → 400 `network-isolated environments require the Pro plan or higher; this workspace is on Hobby`.
+- `POST /v1/webhooks` → 400 `WEBHOOK_PLAN_LIMIT` `webhooks require the Pro plan or higher; this workspace is on Hobby`.
+- `bex logs -r <id> --type request` → 400 `type: HTTP request logs require the Pro plan or higher; this workspace is on Hobby`; `--type build` works. **But** an unfiltered `bex logs -r <id>` still returned 3 request entries: filed as [w8/199](../../199.md).
+- Not covered: Pro-workspace controls, legacy state, dashboard copy. DoD (t010) still open.
