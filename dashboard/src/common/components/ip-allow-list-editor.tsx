@@ -50,6 +50,7 @@ export function IPAllowListEditor({
   saving,
   onSave,
   allowUnchangedSave = false,
+  clearOnly,
 }: {
   entries: IPAllowListEntryDraft[];
   labels: IPAllowListEditorLabels;
@@ -57,6 +58,11 @@ export function IPAllowListEditor({
   onSave: (entries: IPAllowListEntryDraft[]) => Promise<boolean>;
   /** Datastore writes can change external access even when entries match. */
   allowUnchangedSave?: boolean;
+  /**
+   * The workspace plan cannot set inbound rules (below Scale). Existing rules
+   * stay listed and enforced; the only write offered is clearing them all.
+   */
+  clearOnly?: { hint: string; clearAll: string };
 }) {
   // Keep keys independent of editable values and positions so typing, moving
   // and removing rows preserve the surviving inputs' focus and caret.
@@ -117,6 +123,43 @@ export function IPAllowListEditor({
     const next = [...draft];
     [next[index], next[destination]] = [next[destination], next[index]];
     setDraft(next);
+  }
+
+  if (clearOnly) {
+    return (
+      <section className="space-y-2">
+        <p className="text-xs text-muted-foreground">{clearOnly.hint}</p>
+        {entries.length === 0 ? (
+          <span className="text-sm text-muted-foreground">{labels.empty}</span>
+        ) : (
+          <>
+            <ul className="space-y-1 font-mono text-sm">
+              {entries.map((entry) => (
+                <li key={entry.cidrBlock}>
+                  {entry.cidrBlock}
+                  {entry.description ? (
+                    <span className="font-sans text-muted-foreground">
+                      {" "}
+                      · {entry.description}
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void onSave([])}
+              disabled={saving}
+            >
+              {saving ? <Loader2 className="animate-spin" /> : <Trash2 />}
+              {clearOnly.clearAll}
+            </Button>
+          </>
+        )}
+      </section>
+    );
   }
 
   return (

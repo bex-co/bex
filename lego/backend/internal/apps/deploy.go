@@ -1583,6 +1583,9 @@ func (s *Service) validateBlueprintService(ctx context.Context, svc parsedServic
 	if err := s.validateNewSpecMaintenanceMode(ctx, svc.req.Name, desired); err != nil {
 		return fmt.Errorf("service %q: %w", svc.req.Name, err)
 	}
+	if err := s.requireServiceInboundRules(ctx, s.resolveTenantID(ctx), svc.req.IPAllowList, appsByName[svc.req.Name]); err != nil {
+		return fmt.Errorf("service %q: %w", svc.req.Name, err)
+	}
 	if err := s.previewBlueprintHosts(ctx, svc.req.Name, desired, appsByName[svc.req.Name]); err != nil {
 		return fmt.Errorf("service %q: %w", svc.req.Name, err)
 	}
@@ -3356,6 +3359,9 @@ func (s *Service) applyStackService(ctx context.Context, req CreateRequest, fiel
 	}
 	existing, err := s.currentStackService(ctx, appsByName[req.Name])
 	if err != nil {
+		return AppView{}, nil, err
+	}
+	if err := s.requireServiceInboundRules(ctx, s.resolveTenantID(ctx), req.IPAllowList, existing); err != nil {
 		return AppView{}, nil, err
 	}
 	if existing == nil {

@@ -98,6 +98,17 @@ func errSubdomainPolicyNotApplicable(svcType string) error {
 	return fmt.Errorf("%w: renderSubdomainPolicy applies only to web services and static sites; a %s has no platform subdomain to toggle", core.ErrBadRequest, svcType)
 }
 
+// requireServiceInboundRules refuses a restricting inbound IP rule set below the
+// Scale plan (w8/m137). current is the App the write changes, nil on create:
+// a legacy list stays enforced, may be cleared, and may be re-sent unchanged.
+func (s *Service) requireServiceInboundRules(ctx context.Context, tenantID string, entries []core.IPAllowListEntry, current *appv1alpha1.App) error {
+	var existing []core.IPAllowListEntry
+	if current != nil {
+		existing = core.AllowListFromSpec(current.Spec.EffectiveIPAllowListEntries())
+	}
+	return s.RequireInboundIPRules(ctx, tenantID, entries, existing, false)
+}
+
 func errIPAllowListNotApplicable(svcType string) error {
 	return fmt.Errorf("%w: ipAllowList applies only to web services and static sites; a %s has no public endpoint to restrict", core.ErrBadRequest, svcType)
 }

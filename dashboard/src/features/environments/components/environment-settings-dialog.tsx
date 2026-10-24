@@ -16,11 +16,28 @@ import { Switch } from "@/common/components/ui/switch";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import { useSetEnvironmentACL } from "@/features/environments/hooks/use-set-environment-acl";
+import { useWorkspace } from "@/features/workspaces/context";
+import { inboundIpRulesPlan } from "@/features/workspaces/types";
 
 export interface EnvironmentSettingsDialogProps {
   environment: EnvironmentView;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+}
+
+const ALLOW_ALL_ENTRIES = [
+  { cidrBlock: "0.0.0.0/0", description: "Allow all (default)" },
+  { cidrBlock: "::/0", description: "Allow all (default)" },
+];
+
+/** Anything but the seeded allow-all pair restricts who may connect. */
+function restrictsInbound(entries: Array<{ cidrBlock: string }>): boolean {
+  return (
+    entries.length === 0 ||
+    entries.some(
+      (entry) => entry.cidrBlock !== "0.0.0.0/0" && entry.cidrBlock !== "::/0",
+    )
+  );
 }
 
 /** Render-shaped Environment permissions, isolation, and inbound-IP settings. */
@@ -59,6 +76,8 @@ function EnvironmentSettingsForm({
 }) {
   const { t } = useTranslations();
   const { saveACL, saving } = useSetEnvironmentACL();
+  const { currentWorkspace } = useWorkspace();
+  const belowScale = !inboundIpRulesPlan(currentWorkspace?.plan);
   const [isProtected, setIsProtected] = useState(
     environment.protectedStatus === "protected",
   );
@@ -175,97 +194,132 @@ function EnvironmentSettingsForm({
           <IPAllowListProxiedNotice
             domains={environment.ipAllowListProxiedDomains}
           />
-          <div className="space-y-2">
-            {ipAllowListEntries.length === 0 ? (
-              <span className="text-sm text-muted-foreground">
-                {t("environments.ipAllowListOpen")}
-              </span>
-            ) : (
-              ipAllowListEntries.map((entry, index) => (
-                <div
-                  key={index}
-                  className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+          {belowScale ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                {t("environments.ipAllowListScalePlanOnly")}
+              </p>
+              <ul className="space-y-1 font-mono text-sm">
+                {ipAllowListEntries.map((entry) => (
+                  <li key={entry.cidrBlock}>{entry.cidrBlock}</li>
+                ))}
+              </ul>
+              {restrictsInbound(ipAllowListEntries) ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setIPAllowListEntries(
+                      ALLOW_ALL_ENTRIES.map((entry) => ({ ...entry })),
+                    )
+                  }
+                  disabled={saving}
                 >
-                  <Input
-                    value={entry.cidrBlock}
-                    onChange={(event) =>
-                      updateEntry(index, "cidrBlock", event.target.value)
+                  {t("environments.ipAllowListResetAllowAll")}
+                </Button>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <div className="space-y-2">
+                {ipAllowListEntries.length === 0 ? (
+                  <span className="text-sm text-muted-foreground">
+                    {t("environments.ipAllowListOpen")}
+                  </span>
+                ) : (
+                  ipAllowListEntries.map((entry, index) => (
+                    <div
+                      key={index}
+                      className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+                    >
+                      <Input
+                        value={entry.cidrBlock}
+                        onChange={(event) =>
+                          updateEntry(index, "cidrBlock", event.target.value)
+                        }
+                        aria-label={t("environments.ipAllowListRuleCIDR", {
+                          number: index + 1,
+                        })}
+                        placeholder="203.0.113.0/24"
+                        className="font-mono"
+                        disabled={saving}
+                      />
+                      <Input
+                        value={entry.description}
+                        onChange={(event) =>
+                          updateEntry(index, "description", event.target.value)
+                        }
+                        aria-label={t(
+                          "environments.ipAllowListRuleDescription",
+                          {
+                            number: index + 1,
+                          },
+                        )}
+                        placeholder={t(
+                          "environments.ipAllowListDescriptionPlaceholder",
+                        )}
+                        disabled={saving}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={t("environments.ipAllowListRemove", {
+                          cidr: entry.cidrBlock,
+                        })}
+                        onClick={() => removeEntry(index)}
+                        disabled={saving}
+                      >
+                        <Trash2 />
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Input
+                  value={cidrBlock}
+                  onChange={(event) => setCIDRBlock(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      addCIDR();
                     }
-                    aria-label={t("environments.ipAllowListRuleCIDR", {
-                      number: index + 1,
-                    })}
-                    placeholder="203.0.113.0/24"
-                    className="font-mono"
-                    disabled={saving}
-                  />
-                  <Input
-                    value={entry.description}
-                    onChange={(event) =>
-                      updateEntry(index, "description", event.target.value)
+                  }}
+                  aria-label={t("environments.ipAllowListNewCIDR")}
+                  placeholder="203.0.113.0/24"
+                  className="max-w-xs"
+                  disabled={saving}
+                />
+                <Input
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      addCIDR();
                     }
-                    aria-label={t("environments.ipAllowListRuleDescription", {
-                      number: index + 1,
-                    })}
-                    placeholder={t(
-                      "environments.ipAllowListDescriptionPlaceholder",
-                    )}
-                    disabled={saving}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label={t("environments.ipAllowListRemove", {
-                      cidr: entry.cidrBlock,
-                    })}
-                    onClick={() => removeEntry(index)}
-                    disabled={saving}
-                  >
-                    <Trash2 />
-                  </Button>
-                </div>
-              ))
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Input
-              value={cidrBlock}
-              onChange={(event) => setCIDRBlock(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  addCIDR();
-                }
-              }}
-              aria-label={t("environments.ipAllowListNewCIDR")}
-              placeholder="203.0.113.0/24"
-              className="max-w-xs"
-              disabled={saving}
-            />
-            <Input
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  addCIDR();
-                }
-              }}
-              aria-label={t("environments.ipAllowListNewDescription")}
-              placeholder={t("environments.ipAllowListDescriptionPlaceholder")}
-              className="max-w-xs"
-              disabled={saving}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={addCIDR}
-              disabled={saving || !cidrBlock.trim()}
-            >
-              <Plus />
-              {t("environments.ipAllowListAdd")}
-            </Button>
-          </div>
+                  }}
+                  aria-label={t("environments.ipAllowListNewDescription")}
+                  placeholder={t(
+                    "environments.ipAllowListDescriptionPlaceholder",
+                  )}
+                  className="max-w-xs"
+                  disabled={saving}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={addCIDR}
+                  disabled={saving || !cidrBlock.trim()}
+                >
+                  <Plus />
+                  {t("environments.ipAllowListAdd")}
+                </Button>
+              </div>
+            </>
+          )}
         </section>
       </div>
 

@@ -10,6 +10,8 @@ import { IPAllowListProxiedNotice } from "@/common/components/ip-allow-list-prox
 import { ipAllowListEntryKey } from "@/common/lib/ip-allow-list";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useServiceNetworking } from "@/features/services/hooks/use-service-networking";
+import { useWorkspace } from "@/features/workspaces/context";
+import { inboundIpRulesPlan } from "@/features/workspaces/types";
 
 /**
  * The service Settings Networking section: the inbound IP allowlist for
@@ -42,6 +44,8 @@ export function ServiceNetworkingPanel({
 }) {
   const { t } = useTranslations();
   const networking = useServiceNetworking();
+  const { currentWorkspace } = useWorkspace();
+  const belowScale = !inboundIpRulesPlan(currentWorkspace?.plan);
 
   const normalized = (currentAllowList ?? [])
     .filter((entry): entry is NonNullable<typeof entry> => entry != null)
@@ -63,6 +67,14 @@ export function ServiceNetworkingPanel({
           key={ipAllowListEntryKey(normalized)}
           entries={normalized}
           saving={networking.saving}
+          clearOnly={
+            belowScale
+              ? {
+                  hint: t("services.networkingScalePlanOnly"),
+                  clearAll: t("services.networkingClearAll"),
+                }
+              : undefined
+          }
           onSave={async (entries) => {
             const ok = await networking.saveAllowList(serviceId, entries);
             if (ok) onSaved?.();

@@ -656,6 +656,11 @@ func (s *Service) CreateWithACL(ctx context.Context, req CreateEnvironmentReques
 	if err != nil {
 		return EnvironmentView{}, err
 	}
+	if req.IPAllowList != nil {
+		if err := s.RequireInboundIPRules(ctx, p.TenantID, req.IPAllowList, core.DefaultEnvironmentAllowList(), true); err != nil {
+			return EnvironmentView{}, err
+		}
+	}
 	e, err := s.create(ctx, p, req.Name)
 	if err != nil {
 		return EnvironmentView{}, err
@@ -663,7 +668,14 @@ func (s *Service) CreateWithACL(ctx context.Context, req CreateEnvironmentReques
 	if !hasACL {
 		return newView(e), nil
 	}
-	return s.applyACL(ctx, e, req.ProtectedStatus, req.NetworkIsolationEnabled, req.IPAllowList)
+	// An ACL without a list keeps the seeded allow-all rules: applyACL turns a
+	// nil list into an explicit deny-all, which an isolation-only create never
+	// asked for (and which would also dodge the Scale-plan rule gate above).
+	allowList := req.IPAllowList
+	if allowList == nil {
+		allowList = core.DefaultEnvironmentAllowList()
+	}
+	return s.applyACL(ctx, e, req.ProtectedStatus, req.NetworkIsolationEnabled, allowList)
 }
 
 // create is the post-authorization create body shared by Create and
@@ -781,6 +793,11 @@ func (s *Service) Update(ctx context.Context, id string, patch EnvironmentPatch)
 	e, err := s.requireEnvironment(ctx, relation, id)
 	if err != nil {
 		return EnvironmentView{}, err
+	}
+	if patch.IPAllowList != nil {
+		if err := s.RequireInboundIPRules(ctx, e.TenantID, *patch.IPAllowList, e.IPAllowList, true); err != nil {
+			return EnvironmentView{}, err
+		}
 	}
 	if patch.Name != nil {
 		if err := s.Store.RenameEnvironment(ctx, e.ID, name); err != nil {
@@ -1304,6 +1321,9 @@ func (s *Service) SetACL(ctx context.Context, id, protectedStatus string, networ
 	}
 	e, err := s.requireEnvironment(ctx, core.RelCanManage, id)
 	if err != nil {
+		return EnvironmentView{}, err
+	}
+	if err := s.RequireInboundIPRules(ctx, e.TenantID, ipAllowList, e.IPAllowList, true); err != nil {
 		return EnvironmentView{}, err
 	}
 	return s.applyACL(ctx, e, protectedStatus, networkIsolationEnabled, ipAllowList)

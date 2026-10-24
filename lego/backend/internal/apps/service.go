@@ -2038,6 +2038,9 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	// when the store is off or the caller is unbound. Resolved BEFORE the
 	// existence probe, because it is what makes that probe workspace-correct.
 	tenantID, _ := s.Tenant(ctx)
+	if err := s.requireServiceInboundRules(ctx, tenantID, req.IPAllowList, nil); err != nil {
+		return AppView{}, err
+	}
 	environment, err := core.ResolveEnvironmentForCreate(ctx, s.Environments, req.EnvironmentID, tenantID)
 	if err != nil {
 		return AppView{}, err
@@ -4863,6 +4866,9 @@ func (s *Service) SetIPAllowList(ctx context.Context, name string, entries []cor
 		return AppView{}, err
 	}
 	if err := checkIPAllowList(a, entries); err != nil {
+		return AppView{}, err
+	}
+	if err := s.requireServiceInboundRules(ctx, a.Labels[core.LabelTenant], entries, a); err != nil {
 		return AppView{}, err
 	}
 	v, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {

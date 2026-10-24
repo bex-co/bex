@@ -381,6 +381,17 @@ const enEnvironments: Record<string, TranslationEntry> = {
     message: "Description (optional)",
     description: "Placeholder for an inbound-IP rule description",
   },
+  "environments.ipAllowListScalePlanOnly": {
+    message:
+      "Inbound IP rules for environments require the Scale plan or higher. Rules already set stay enforced and can be reset.",
+    description:
+      "Hint replacing the editable IP rules below the Scale plan (w8/m137)",
+  },
+  "environments.ipAllowListResetAllowAll": {
+    message: "Reset to allow all",
+    description:
+      "Button resetting an environment's inbound IP rules to allow-all below the Scale plan (w8/m137)",
+  },
   "environments.ipAllowListAdd": {
     message: "Add source",
     description: "Button adding an inbound-IP CIDR rule",

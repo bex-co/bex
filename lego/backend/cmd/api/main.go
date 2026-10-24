@@ -763,6 +763,10 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	base.Audit = st
 	base.ProductActivity = st.RecordProductActivity
 	base.Billing = st
+	base.Plans = core.WorkspacePlanFunc(func(ctx context.Context, workspaceID string) (string, error) {
+		tenant, err := st.GetTenant(ctx, workspaceID)
+		return tenant.Plan, err
+	})
 
 	// Workspace lifecycle (w6/m1): the workspaces feature writes through the
 	// same store and nudges the same projector to prune a deleted workspace's

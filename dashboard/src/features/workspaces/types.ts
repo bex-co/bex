@@ -98,3 +98,12 @@ export const WORKSPACE_PLAN_CATALOG: WorkspacePlanCatalogEntry[] = [
 export function workspacePlanNameKey(plan: string): string {
   return WORKSPACE_PLAN_CATALOG.find((p) => p.id === plan)?.nameKey ?? "";
 }
+
+/**
+ * Whether a workspace plan may set inbound IP rules on services, static sites
+ * and environments (Render: Scale and Enterprise). An unknown plan (still
+ * loading) is treated as allowed; the API enforces the rule either way.
+ */
+export function inboundIpRulesPlan(plan: string | null | undefined): boolean {
+  return !plan || plan === "scale" || plan === "enterprise";
+}

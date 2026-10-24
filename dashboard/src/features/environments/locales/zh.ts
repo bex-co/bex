@@ -366,6 +366,17 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     message: "描述（可选）",
     description: "Placeholder for an inbound-IP rule description",
   },
+  "environments.ipAllowListScalePlanOnly": {
+    message:
+      "环境的入站 IP 规则需要 Scale 或更高套餐。已设置的规则继续生效，可以重置。",
+    description:
+      "Hint replacing the editable IP rules below the Scale plan (w8/m137)",
+  },
+  "environments.ipAllowListResetAllowAll": {
+    message: "重置为允许全部",
+    description:
+      "Button resetting an environment's inbound IP rules to allow-all below the Scale plan (w8/m137)",
+  },
   "environments.ipAllowListAdd": {
     message: "添加来源",
     description: "Button adding an inbound-IP CIDR rule",
