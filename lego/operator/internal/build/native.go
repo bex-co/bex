@@ -86,9 +86,9 @@ const (
 // outside this table is ever pulled.
 var nativeToolchains = map[string]nativeToolchain{
 	nativeElixirRuntime: {label: "Elixir", defaultLine: "1.18", lines: []nativeLine{
-		{line: "1.17", version: "1.17.3", otp: "27", image: "elixir:1.17@sha256:c65f0bdd8827df171963e3558a1461b04efc086d0d52ee7c6900fcddb4467e08"},
-		{line: "1.18", version: "1.18.4", otp: "28", image: "elixir:1.18@sha256:a68defc35f664d1d02de0dc36b12e750bd558b594eed3d0909534317796df749"},
-		{line: "1.19", version: "1.19.6", otp: "28", image: "elixir:1.19@sha256:db1cbca0b49e26e65dd804c75f27ec5f01835f1d29f8b8e4cc8a51f01f986f9f"},
+		{line: "1.17", version: "1.17.3", otp: "27", image: "elixir:1.17@sha256:ceab9a0a37f0d8b5d405efe0eb4c8575477864c2fcff017e949dbaf9b46d741b"},
+		{line: "1.18", version: "1.18.4", otp: "28", image: "elixir:1.18@sha256:e407fb34813bad0f856ab49c2080188cf5c7497eee1215dff3982c87fc0315b9"},
+		{line: "1.19", version: "1.19.6", otp: "28", image: "elixir:1.19@sha256:8a7d2250477e8de45e178def1338d32e6b4c867d5278982dddd87f08bd2101b9"},
 		{line: "1.20", version: "1.20.4", otp: "29", image: "elixir:1.20@sha256:0cb767622975ce9c77527bb3fe3f659c8ddde9b2dfc980dbbff7416c8d910987"},
 	}},
 	// Render offers no Go version selection for native services; neither does
@@ -97,7 +97,7 @@ var nativeToolchains = map[string]nativeToolchain{
 	// newer `go` than the line refuses to build. The freshness check flags the
 	// next release.
 	"go": {label: "Go", defaultLine: "1.27", lines: []nativeLine{
-		{line: "1.27", image: "golang:1.27-bookworm@sha256:5c3e9b43cfd3bb95c7937462e29d87ada57b481a96fa23ad0eb61778d7a00110"},
+		{line: "1.27", image: "golang:1.27-bookworm@sha256:972b4110ba0f47539a975c31e52c64765e1ff19f2d74469ae4a595c6676e80a5"},
 	}},
 	nativeNodeRuntime: {label: "Node", defaultLine: "24", lines: []nativeLine{
 		{line: "14", version: "14.21.3", image: "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e"},
@@ -113,23 +113,23 @@ var nativeToolchains = map[string]nativeToolchain{
 		{line: "3.8", version: "3.8.20", image: "python:3.8-bookworm@sha256:d411270700143fa2683cc8264d9fa5d3279fd3b6afff62ae81ea2f9d070e390c"},
 		{line: "3.9", version: "3.9.25", image: "python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285"},
 		{line: "3.10", version: "3.10.22", image: "python:3.10-bookworm@sha256:f72a86806f92fe13a49f49aeca1db0b19ea5cf4a0470b842a01b0e14314945b8"},
-		{line: "3.11", version: "3.11.17", image: "python:3.11-bookworm@sha256:5887f265d8d44d8b4734d3658b21d668edf5aaf92e4945bc0c984afbfab105d3"},
-		{line: "3.12", version: "3.12.15", image: "python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b"},
-		{line: "3.13", version: "3.13.16", image: "python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4"},
-		{line: "3.14", version: "3.14.8", image: "python:3.14-bookworm@sha256:7ee7e4d4fb42c3ad45b8fdc473b64ec69c3cf6e80ae5d52f6fa55f77fac29027"},
+		{line: "3.11", version: "3.11.17", image: "python:3.11-bookworm@sha256:18d373e126e39c29c6d38e71e2f19ca66636568318fc95c7849c462b7f9d3d64"},
+		{line: "3.12", version: "3.12.15", image: "python:3.12-bookworm@sha256:14a4933e6cef421424f7a66d89a3f4eafcbd0d90e0a822251f298e05132dc735"},
+		{line: "3.13", version: "3.13.16", image: "python:3.13-bookworm@sha256:a3799099b64fd333f262768c7a64733f6e4edb7bc569813710a100214bdcf278"},
+		{line: "3.14", version: "3.14.8", image: "python:3.14-bookworm@sha256:7742c7daca5b166a5a81795531dee9701c032bc0ea00027740e5e9eabfed17c6"},
 	}},
 	nativeRubyRuntime: {label: "Ruby", defaultLine: "3.4", lines: []nativeLine{
 		{line: "3.0", version: "3.0.7", image: "ruby:3.0-bullseye@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72"},
 		{line: "3.1", version: "3.1.7", image: "ruby:3.1-bookworm@sha256:91627f55e8969006aab67d15c92fb930500ff73948803da1330b8a853fecebb5"},
 		{line: "3.2", version: "3.2.11", image: "ruby:3.2-bookworm@sha256:bf13a46a498fb4055d0e52495c351a2648c8bc8d41b473ee3f734041a74c7f56"},
-		{line: "3.3", version: "3.3.12", image: "ruby:3.3-bookworm@sha256:b899e7de6ffa6e974d947202d3ce2ac921c12e46c14cff3106214079388dcff4"},
-		{line: "3.4", version: "3.4.11", image: "ruby:3.4-bookworm@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172"},
-		{line: "4.0", version: "4.0.7", image: "ruby:4.0-bookworm@sha256:7671dc16cd740b9d8d653a568d8bd2df00e24a32c53a7b7a3fc39a0a194bb9ad"},
+		{line: "3.3", version: "3.3.12", image: "ruby:3.3-bookworm@sha256:059dd8c61de027b41a1a4f808698f7c59895d4e861cb78a84582c7f7f29a8663"},
+		{line: "3.4", version: "3.4.11", image: "ruby:3.4-bookworm@sha256:1aed73d35b66ce974febaefe42e8385abb8cbf6244ea4f45b266be9178acfd37"},
+		{line: "4.0", version: "4.0.7", image: "ruby:4.0-bookworm@sha256:77a29c1e95e0950e6977d4979c8a2918cda220360bee3248d75089146aaebf69"},
 	}},
 	// Rust stays one stable image: rustup inside it applies Render's own
 	// RUSTUP_TOOLCHAIN / rust-toolchain signals itself.
 	"rust": {label: "Rust", defaultLine: "1", lines: []nativeLine{
-		{line: "1", image: "rust:1-bookworm@sha256:e12566d5abc17a0da741628782cdb504b68b8961f5bfcf677936bf3e8b32de29"},
+		{line: "1", image: "rust:1-bookworm@sha256:48b7f435b8fc6378ce43b44f15e3a47fd8919b2825f835c39bd4bd3da50af5b8"},
 	}},
 }
 
@@ -140,7 +140,7 @@ var nativeToolchains = map[string]nativeToolchain{
 var nativeBun = nativeToolchain{label: "Bun", defaultLine: "1.4", lines: []nativeLine{
 	{line: "1.2", version: "1.2.23", image: "oven/bun:1.2@sha256:6ebf306367da43ad75c4d5119563e24de9b66372929ad4fa31546be053a16f74"},
 	{line: "1.3", version: "1.3.14", image: "oven/bun:1.3@sha256:e10577f0db68676a7024391c6e5cb4b879ebd17188ab750cf10024a6d700e5c4"},
-	{line: "1.4", version: "1.4.3", image: "oven/bun:1.4@sha256:ec06c3b6cea04192ae6770c434f668ca41d343ad19fa6472216c7b48be39c598"},
+	{line: "1.4", version: "1.4.3", image: "oven/bun:1.4@sha256:1d22548f177f4ff38e0c15baa3c2c46c6c2060ba2d1bc573bb4720b407548f1d"},
 }}
 
 // nativeToolchain is one runtime's reviewed lines, ascending.
