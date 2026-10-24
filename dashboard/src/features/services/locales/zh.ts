@@ -4610,6 +4610,17 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "将入站 HTTP 流量限制为这些源 CIDR。",
     description: "Settings Networking card description (w7/m32)",
   },
+  "services.networkingScalePlanOnly": {
+    message:
+      "Web 服务和静态站点的入站 IP 规则需要 Scale 或更高套餐。已设置的规则继续生效，可以清除。",
+    description:
+      "Hint replacing the editable IP rules below the Scale plan (w8/m137)",
+  },
+  "services.networkingClearAll": {
+    message: "清除所有规则",
+    description:
+      "Button clearing every inbound IP rule below the Scale plan (w8/m137)",
+  },
   "services.networkingHint": {
     message:
       "输入 CIDR（例如 203.0.113.0/24）并点击添加。列表为空时向所有源 IP 开放。",

@@ -440,6 +440,11 @@ func (s *Service) CreateWithEnvironments(ctx context.Context, workspaceID, name 
 			if err := core.ValidateAllowList(e.IPAllowList); err != nil {
 				return ProjectView{}, fmt.Errorf("%w: invalid request body at /environments/%d/ipAllowList", core.ErrBadRequest, i)
 			}
+			if e.IPAllowList != nil {
+				if err := s.RequireInboundIPRules(ctx, workspaceID, e.IPAllowList, core.DefaultEnvironmentAllowList(), true); err != nil {
+					return ProjectView{}, fmt.Errorf("invalid request body at /environments/%d/ipAllowList: %w", i, err)
+				}
+			}
 		}
 	}
 	if _, ok := s.Store.(groupingQuotaStore); !ok && len(environments) > 0 {
@@ -481,7 +486,13 @@ func (s *Service) CreateWithEnvironments(ctx context.Context, workspaceID, name 
 				if status == "" {
 					status = core.ProtectedStatusUnprotected
 				}
-				if err := g.SetEnvironmentACL(ctx, e.ID, status, input.NetworkIsolationEnabled, input.IPAllowList); err != nil {
+				// No list keeps the seeded allow-all rules; a nil list would be stored
+				// as deny-all.
+				allowList := input.IPAllowList
+				if allowList == nil {
+					allowList = core.DefaultEnvironmentAllowList()
+				}
+				if err := g.SetEnvironmentACL(ctx, e.ID, status, input.NetworkIsolationEnabled, allowList); err != nil {
 					return err
 				}
 			}

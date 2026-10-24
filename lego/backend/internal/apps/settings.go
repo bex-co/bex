@@ -567,8 +567,11 @@ var servicePatchTable = []servicePatchOp{
 		fields:   []string{"IPAllowList"},
 		present:  func(p ServicePatch) bool { return p.IPAllowList != nil },
 		relation: canOperate,
-		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
+		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
 			if err := checkIPAllowList(probe, *p.IPAllowList); err != nil {
+				return err
+			}
+			if err := s.requireServiceInboundRules(ctx, probe.Labels[core.LabelTenant], *p.IPAllowList, probe); err != nil {
 				return err
 			}
 			probe.Spec.SetIPAllowListEntries(core.AllowListToSpec(*p.IPAllowList))

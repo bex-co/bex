@@ -1,18 +1,18 @@
 # w8 · m137 — Inbound IP rules for web services, static sites and environments are a Scale/Enterprise workspace feature, as on Render
 
-**Worker:** worker8 **Goal:** Setting a non-empty inbound IP allowlist on a web service, static site or environment is refused unless the workspace is on Scale or Enterprise, as on Render. Postgres and Key Value allowlists stay available on every workspace plan. **Status:** todo
+**Worker:** worker8 **Goal:** Setting a non-empty inbound IP allowlist on a web service, static site or environment is refused unless the workspace is on Scale or Enterprise, as on Render. Postgres and Key Value allowlists stay available on every workspace plan. **Status:** blocked — t001, t002, t003, t004, t005, t006, t007 done 2026-10-23; release pipeline deploys bex-api and the dashboard; QA runs t008 in bex-canary (Hobby): services create --plan free --ip-allow-list exits 1 with the Scale-plan sentence and creates nothing, services update --ip-allow-list refused (empty list accepted), PATCH /v1/environments with a restricting list refused, kv update --ip-allow-list on a Free Key Value accepted, dashboard sections show the Scale hint; inventory production workspaces below Scale that hold a rule (count into ADR018); delete fixtures by ID with 404 proofs
 
 ## Tasks (in order)
 
 | id   | title                                                                            | est | depends_on                 |
 | ---- | -------------------------------------------------------------------------------- | --- | -------------------------- |
-| t001 | Admission: refuse non-empty service/static/environment allowlists below Scale     | 45m | —                          |
-| t002 | Blueprint, clone and create paths carry the same refusal                          | 30m | w8/m137/t001               |
-| t003 | Existing rules on Hobby/Pro workspaces and plan downgrades                        | 30m | w8/m137/t001               |
-| t004 | Dashboard: the IP rules sections on Hobby/Pro say "Scale plan"                    | 30m | w8/m137/t001               |
-| t005 | Render parity: REST/GraphQL/MCP/dashboard and ADR018 agree                        | 15m | w8/m137/t002, w8/m137/t003, w8/m137/t004 |
-| t006 | Simplify the changed code                                                        | 15m | w8/m137/t005               |
-| t007 | Test coverage: plan × resource type × empty/non-empty, downgrade, datastores     | 30m | w8/m137/t005               |
+| t001 — **DONE** | Admission: refuse non-empty service/static/environment allowlists below Scale     | 45m | —                          |
+| t002 — **DONE** | Blueprint, clone and create paths carry the same refusal                          | 30m | w8/m137/t001               |
+| t003 — **DONE** | Existing rules on Hobby/Pro workspaces and plan downgrades                        | 30m | w8/m137/t001               |
+| t004 — **DONE** | Dashboard: the IP rules sections on Hobby/Pro say "Scale plan"                    | 30m | w8/m137/t001               |
+| t005 — **DONE** | Render parity: REST/GraphQL/MCP/dashboard and ADR018 agree                        | 15m | w8/m137/t002, w8/m137/t003, w8/m137/t004 |
+| t006 — **DONE** | Simplify the changed code                                                        | 15m | w8/m137/t005               |
+| t007 — **DONE** | Test coverage: plan × resource type × empty/non-empty, downgrade, datastores     | 30m | w8/m137/t005               |
 | t008 | Close out the milestone                                                          | 30m | w8/m137/t006, w8/m137/t007 |
 
 ## Definition of done
