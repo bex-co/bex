@@ -338,6 +338,11 @@ const enEnvironments: Record<string, TranslationEntry> = {
     message: "Block cross-environment connections",
     description: "Private-network isolation setting label",
   },
+  "environments.isolationProOnly": {
+    message:
+      "Network isolation requires the Pro plan or higher. Turn it off here if it was enabled earlier.",
+    description: "Isolation setting explanation on a Hobby workspace (w8/m138)",
+  },
   "environments.isolationHint": {
     message:
       "Prevent private network traffic from crossing this environment boundary, including to its Postgres and Key Value instances. Their external URLs still follow their IP rules.",

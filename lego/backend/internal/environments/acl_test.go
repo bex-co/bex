@@ -632,8 +632,68 @@ func TestEnvironmentInboundIPRulesNeedScalePlan(t *testing.T) {
 			}
 			// Re-sending the default allow-all pair is not a restriction.
 			defaults := core.DefaultEnvironmentAllowList()
-			if _, err := svc.SetACL(ctx, e.ID, ProtectedStatusProtected, true, defaults); err != nil {
+			if _, err := svc.SetACL(ctx, e.ID, ProtectedStatusProtected, false, defaults); err != nil {
 				t.Fatalf("allow-all must stay settable: %v", err)
+			}
+		})
+	}
+}
+
+// w8/m138: Hobby is limited to two environments per project and cannot turn
+// network isolation on; Pro has neither limit. An isolated environment that
+// already exists keeps its flag when an ACL is re-sent.
+func TestHobbyEnvironmentLimitsAndIsolation(t *testing.T) {
+	for plan, hobby := range map[string]bool{"hobby": true, "pro": false} {
+		t.Run(plan, func(t *testing.T) {
+			st := newFakeStore()
+			st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+			svc, _ := newServiceWithClient(st)
+			svc.Plans = core.WorkspacePlanFunc(func(context.Context, string) (string, error) { return plan, nil })
+			ctx := ctxAs("user-a")
+
+			var third error
+			var first EnvironmentView
+			for i, name := range []string{"production", "staging", "dev"} {
+				v, err := svc.Create(ctx, "prj-1", name)
+				if i == 0 {
+					first = v
+				}
+				if i < 2 && err != nil {
+					t.Fatalf("environment #%d: %v", i+1, err)
+				}
+				third = err
+			}
+			if hobby != (third != nil) || (hobby && !strings.Contains(third.Error(), "limited to 2 environments per project")) {
+				t.Fatalf("third environment err = %v, hobby=%v", third, hobby)
+			}
+
+			_, onErr := svc.SetACL(ctx, first.ID, ProtectedStatusUnprotected, true, core.DefaultEnvironmentAllowList())
+			if hobby != (onErr != nil) || (hobby && !strings.Contains(onErr.Error(), "network-isolated environments require the Pro plan")) {
+				t.Fatalf("isolation on err = %v, hobby=%v", onErr, hobby)
+			}
+			on := true
+			_, patchErr := svc.Update(ctx, first.ID, EnvironmentPatch{NetworkIsolationEnabled: &on})
+			if hobby != (patchErr != nil) {
+				t.Fatalf("Update isolation err = %v, hobby=%v", patchErr, hobby)
+			}
+			if _, err := svc.CreateWithACL(ctx, CreateEnvironmentRequest{ProjectID: "prj-1", Name: "iso", NetworkIsolationEnabled: true}); hobby && err == nil {
+				t.Fatal("a Hobby create with isolation must be refused")
+			}
+			if !hobby {
+				return
+			}
+			// A legacy isolated environment round-trips and can be turned off.
+			for key, e := range st.envs {
+				if e.Name == "production" {
+					e.NetworkIsolationEnabled = true
+					st.envs[key] = e
+				}
+			}
+			if _, err := svc.SetACL(ctx, first.ID, ProtectedStatusUnprotected, true, core.DefaultEnvironmentAllowList()); err != nil {
+				t.Fatalf("re-sending the existing isolation must pass: %v", err)
+			}
+			if _, err := svc.SetACL(ctx, first.ID, ProtectedStatusUnprotected, false, core.DefaultEnvironmentAllowList()); err != nil {
+				t.Fatalf("turning isolation off must pass: %v", err)
 			}
 		})
 	}

@@ -80,3 +80,59 @@ func TestRequireInboundIPRulesDegradesOpen(t *testing.T) {
 		t.Fatal("a plan read failure must not silently open the gate")
 	}
 }
+
+// w8/m138: the plan × feature table, the Hobby environment cap and the webhook
+// destination limits, pinned to Render's features-by-plan page.
+func TestPlanFeatureTable(t *testing.T) {
+	for _, tc := range []struct {
+		feature PlanFeature
+		plan    string
+		want    bool
+	}{
+		{FeatureNetworkIsolation, "hobby", false}, {FeatureNetworkIsolation, "pro", true},
+		{FeatureWebhooks, "hobby", false}, {FeatureWebhooks, "pro", true}, {FeatureWebhooks, "scale", true},
+		{FeatureRequestLogs, "hobby", false}, {FeatureRequestLogs, "pro", true},
+		{FeatureInboundIPRules, "hobby", false}, {FeatureInboundIPRules, "pro", false},
+		{FeatureInboundIPRules, "scale", true}, {FeatureInboundIPRules, "enterprise", true},
+		{FeatureWebhooks, "future-plan", true},
+	} {
+		if got := PlanAllows(tc.plan, tc.feature); got != tc.want {
+			t.Errorf("PlanAllows(%q, %q) = %v, want %v", tc.plan, tc.feature, got, tc.want)
+		}
+	}
+	if got := PlanFeatureMessage("hobby", FeatureNetworkIsolation); got != "network-isolated environments require the Pro plan or higher; this workspace is on Hobby" {
+		t.Errorf("message = %q", got)
+	}
+	for plan, want := range map[string]int{"hobby": 2, "pro": 0, "scale": 0} {
+		if got := MaxEnvironmentsPerProject(plan); got != want {
+			t.Errorf("MaxEnvironmentsPerProject(%q) = %d, want %d", plan, got, want)
+		}
+	}
+	for plan, want := range map[string]int{"hobby": 0, "pro": 1, "scale": 100, "enterprise": 100} {
+		if got := WebhookDestinationLimit(plan); got != want {
+			t.Errorf("WebhookDestinationLimit(%q) = %d, want %d", plan, got, want)
+		}
+	}
+}
+
+func TestRequireNetworkIsolationAndEnvironmentCapacity(t *testing.T) {
+	ctx := context.Background()
+	hobby := &Base{Plans: planIs("hobby")}
+	if err := hobby.RequireNetworkIsolation(ctx, "tea-a", true, false); !errors.Is(err, ErrBadRequest) || !strings.Contains(err.Error(), "Pro plan") {
+		t.Fatalf("isolation on: want the Pro-plan refusal, got %v", err)
+	}
+	for _, c := range [][2]bool{{false, false}, {false, true}, {true, true}} {
+		if err := hobby.RequireNetworkIsolation(ctx, "tea-a", c[0], c[1]); err != nil {
+			t.Errorf("next=%v current=%v must pass: %v", c[0], c[1], err)
+		}
+	}
+	for existing, refused := range map[int]bool{0: false, 1: false, 2: true, 3: true} {
+		err := hobby.RequireEnvironmentCapacity(ctx, "tea-a", existing)
+		if refused != (err != nil) {
+			t.Errorf("hobby with %d environments: err = %v, want refused=%v", existing, err, refused)
+		}
+	}
+	if err := (&Base{Plans: planIs("pro")}).RequireEnvironmentCapacity(ctx, "tea-a", 50); err != nil {
+		t.Errorf("pro is unlimited: %v", err)
+	}
+}

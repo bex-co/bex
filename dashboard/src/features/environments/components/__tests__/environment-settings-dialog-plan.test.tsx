@@ -88,4 +88,31 @@ describe("EnvironmentSettingsDialog inbound IP rules by plan", () => {
       screen.getByRole("button", { name: "Add source" }),
     ).toBeInTheDocument();
   });
+
+  // w8/m138: isolation is a Pro feature; an environment that has it can still
+  // turn it off.
+  it("locks the isolation switch on Hobby unless it is already on", () => {
+    const { rerender } = render(
+      <EnvironmentSettingsDialog
+        environment={environment([])}
+        open
+        onOpenChange={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("switch", { name: /isolation|cross-environment/i }),
+    ).toBeDisabled();
+    expect(screen.getByText(/requires the Pro plan/)).toBeInTheDocument();
+
+    rerender(
+      <EnvironmentSettingsDialog
+        environment={{ ...environment([]), networkIsolationEnabled: true }}
+        open
+        onOpenChange={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("switch", { name: /isolation|cross-environment/i }),
+    ).toBeEnabled();
+  });
 });
