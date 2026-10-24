@@ -396,8 +396,12 @@ metadata:
     # serving nodes left standard-tier rollout pods unschedulable. Allow a
     # third node for rollout surge while keeping serving workloads off the
     # tainted burst/lg build pools.
+    # max 5 (2026-10-24): at 3 the pool had no room for a standard instance
+    # from 2026-10-23 22:00 UTC; the w5/174 node roll then evicted
+    # beancount-cms-v2's only pod and its replacement stayed Pending (site
+    # down). Headroom costs nothing until the autoscaler uses it.
     cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "1"
-    cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "3"
+    cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "5"
     # Capacity hints (kept for DR bring-up / if min ever returns to 0):
     # cx33 = 4 vCPU / 8 GB (Hetzner API, 2026-08-08).
     capacity.cluster-autoscaler.kubernetes.io/cpu: "4"
