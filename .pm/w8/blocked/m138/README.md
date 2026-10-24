@@ -1,20 +1,20 @@
 # w8 · m138 — Hobby workspaces get Render's Hobby limits; Pro features start at Pro
 
-**Worker:** worker8 **Goal:** A Hobby workspace has Render's Hobby limits (two environments per project, alongside the already-enforced 1 member and 25 services), and Render's Pro-and-higher features are refused on Hobby with a plan-named error, as on [Render's features-by-plan page](https://render.com/docs/platform-features-by-plan). **Status:** todo
+**Worker:** worker8 **Goal:** A Hobby workspace has Render's Hobby limits (two environments per project, alongside the already-enforced 1 member and 25 services), and Render's Pro-and-higher features are refused on Hobby with a plan-named error, as on [Render's features-by-plan page](https://render.com/docs/platform-features-by-plan). **Status:** blocked — t001, t002, t003, t004, t005, t007, t008, t009 done 2026-10-23; release pipeline deploys bex-api, the log reader and the dashboard; QA runs t006+t010 in bex-canary (Hobby): POST /v1/projects with three environments → 400 naming the Hobby limit (two → 201), PATCH environment networkIsolationEnabled true → 400 naming Pro (false → 200), POST /v1/webhooks → 400 WEBHOOK_PLAN_LIMIT naming Pro, bex logs --type request → plan error while --type app/build return lines, same calls succeed on a Pro workspace; read-only inventory of production Hobby workspaces with ≥3 environments, isolated environments or webhooks (counts into ADR018/ADR030); file follow-ups for audit logs, autoscaling, preview environments, latency metrics if not already unreachable on Hobby; delete fixtures by ID with 404 proofs
 
 ## Tasks (in order)
 
 | id   | title                                                                          | est | depends_on                                           |
 | ---- | ------------------------------------------------------------------------------ | --- | ---------------------------------------------------- |
-| t001 | One plan-feature table and gate helper (Hobby / Pro / Scale / Enterprise)       | 30m | —                                                    |
-| t002 | Hobby: at most two environments per project                                    | 30m | w8/m138/t001                                         |
-| t003 | Network-isolated environments require Pro                                      | 20m | w8/m138/t001                                         |
-| t004 | Webhooks require Pro (one destination on Pro, 100 on Scale)                    | 30m | w8/m138/t001                                         |
-| t005 | HTTP request logs require Pro                                                  | 45m | w8/m138/t001                                         |
+| t001 — **DONE** | One plan-feature table and gate helper (Hobby / Pro / Scale / Enterprise)       | 30m | —                                                    |
+| t002 — **DONE** | Hobby: at most two environments per project                                    | 30m | w8/m138/t001                                         |
+| t003 — **DONE** | Network-isolated environments require Pro                                      | 20m | w8/m138/t001                                         |
+| t004 — **DONE** | Webhooks require Pro (one destination on Pro, 100 on Scale)                    | 30m | w8/m138/t001                                         |
+| t005 — **DONE** | HTTP request logs require Pro                                                  | 45m | w8/m138/t001                                         |
 | t006 | Inventory and migrate existing Hobby workspaces using Pro features             | 30m | w8/m138/t002, w8/m138/t003, w8/m138/t004, w8/m138/t005 |
-| t007 | Render parity: REST/GraphQL/MCP/dashboard plan copy and ADR018/ADR030          | 20m | w8/m138/t006                                         |
-| t008 | Simplify the changed code                                                      | 15m | w8/m138/t007                                         |
-| t009 | Test coverage: plan × feature matrix, legacy state, upgrade/downgrade          | 40m | w8/m138/t007                                         |
+| t007 — **DONE** | Render parity: REST/GraphQL/MCP/dashboard plan copy and ADR018/ADR030          | 20m | w8/m138/t006                                         |
+| t008 — **DONE** | Simplify the changed code                                                      | 15m | w8/m138/t007                                         |
+| t009 — **DONE** | Test coverage: plan × feature matrix, legacy state, upgrade/downgrade          | 40m | w8/m138/t007                                         |
 | t010 | Close out the milestone                                                        | 30m | w8/m138/t008, w8/m138/t009                           |
 
 ## Definition of done

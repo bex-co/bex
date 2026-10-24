@@ -656,6 +656,9 @@ func (s *Service) CreateWithACL(ctx context.Context, req CreateEnvironmentReques
 	if err != nil {
 		return EnvironmentView{}, err
 	}
+	if err := s.RequireNetworkIsolation(ctx, p.TenantID, req.NetworkIsolationEnabled, false); err != nil {
+		return EnvironmentView{}, err
+	}
 	if req.IPAllowList != nil {
 		if err := s.RequireInboundIPRules(ctx, p.TenantID, req.IPAllowList, core.DefaultEnvironmentAllowList(), true); err != nil {
 			return EnvironmentView{}, err
@@ -703,6 +706,9 @@ func (s *Service) create(ctx context.Context, p store.Project, name string) (sto
 					fmt.Sprintf("workspace already has the maximum number of environments (%d); remove unused environments or raise the limit", s.MaxGroupings),
 					map[string]any{"ownerId": p.TenantID, "limit": s.MaxGroupings})
 			}
+			if err := s.requireProjectEnvironmentCapacity(ctx, p, g.ListEnvironments); err != nil {
+				return err
+			}
 			e, err = g.CreateEnvironment(ctx, p.ID, p.TenantID, name)
 			return err
 		})
@@ -711,11 +717,27 @@ func (s *Service) create(ctx context.Context, p store.Project, name string) (sto
 		}
 		return e, nil
 	}
+	if err := s.requireProjectEnvironmentCapacity(ctx, p, s.Store.ListEnvironments); err != nil {
+		return store.Environment{}, err
+	}
 	e, err := s.Store.CreateEnvironment(ctx, p.ID, p.TenantID, name)
 	if err != nil {
 		return store.Environment{}, conflictOrMapError(err, name)
 	}
 	return e, nil
+}
+
+// requireProjectEnvironmentCapacity applies the plan's environments-per-project
+// cap (Hobby: two) to p's next environment.
+func (s *Service) requireProjectEnvironmentCapacity(ctx context.Context, p store.Project, list func(context.Context, string) ([]store.Environment, error)) error {
+	if _, ok, err := s.WorkspacePlanOf(ctx, p.TenantID); err != nil || !ok {
+		return err
+	}
+	existing, err := list(ctx, p.ID)
+	if err != nil {
+		return err
+	}
+	return s.RequireEnvironmentCapacity(ctx, p.TenantID, len(existing))
 }
 
 // conflictOrMapError names the attempted environment name on a duplicate-name
@@ -796,6 +818,11 @@ func (s *Service) Update(ctx context.Context, id string, patch EnvironmentPatch)
 	}
 	if patch.IPAllowList != nil {
 		if err := s.RequireInboundIPRules(ctx, e.TenantID, *patch.IPAllowList, e.IPAllowList, true); err != nil {
+			return EnvironmentView{}, err
+		}
+	}
+	if patch.NetworkIsolationEnabled != nil {
+		if err := s.RequireNetworkIsolation(ctx, e.TenantID, *patch.NetworkIsolationEnabled, e.NetworkIsolationEnabled); err != nil {
 			return EnvironmentView{}, err
 		}
 	}
@@ -1324,6 +1351,9 @@ func (s *Service) SetACL(ctx context.Context, id, protectedStatus string, networ
 		return EnvironmentView{}, err
 	}
 	if err := s.RequireInboundIPRules(ctx, e.TenantID, ipAllowList, e.IPAllowList, true); err != nil {
+		return EnvironmentView{}, err
+	}
+	if err := s.RequireNetworkIsolation(ctx, e.TenantID, networkIsolationEnabled, e.NetworkIsolationEnabled); err != nil {
 		return EnvironmentView{}, err
 	}
 	return s.applyACL(ctx, e, protectedStatus, networkIsolationEnabled, ipAllowList)

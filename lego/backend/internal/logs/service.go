@@ -300,6 +300,10 @@ type LogQuery struct {
 	levelFilter *regexp.Regexp // datastore pod severity matcher, compiled once per query
 	// textMatchers are Search's compiled terms, built by normalized().
 	textMatchers []func(original, lower string) bool
+	// noRequest drops request lines from an all-types query: the workspace plan
+	// has no HTTP request logs (w8/m138), so only an explicit type=request is
+	// refused and everything else answers with app and build lines.
+	noRequest bool
 	// probe lets a page read one line past the caller's (clamped) Limit, so the
 	// page can tell whether any line lies beyond it (queryLogPage).
 	probe bool
@@ -394,6 +398,9 @@ func (q LogQuery) hasFilters() bool {
 // wants reports whether the query asks for a log type. An empty Types means "all
 // types", so it wants every one of them.
 func (q LogQuery) wants(t string) bool {
+	if q.noRequest && t == LogTypeRequest {
+		return false
+	}
 	if len(q.Types) == 0 {
 		return true
 	}
@@ -453,6 +460,22 @@ func (q LogQuery) liveSubscribable() error {
 // keepPod reports whether a pod satisfies the `instance` filter.
 // scopeToApp points q at app's own streams and pods: its CR name (the label
 // the shipper and the pods carry), its id, and nothing before it existed.
+// requireRequestLogsPlan applies the workspace plan's HTTP-request-log rule
+// (w8/m138, Render: Pro and higher) to q: an explicit request type is refused,
+// an all-types query silently loses its request lines. Render's exact Hobby
+// behavior is unverified, so this takes the documented plan error.
+func (s *Service) requireRequestLogsPlan(ctx context.Context, app *appv1alpha1.App, q *LogQuery) error {
+	plan, ok, err := s.WorkspacePlanOf(ctx, app.Labels[core.LabelTenant])
+	if err != nil || !ok || core.PlanAllows(plan, core.FeatureRequestLogs) {
+		return err
+	}
+	if slices.Contains(q.Types, LogTypeRequest) {
+		return fmt.Errorf("%w: type: %s", core.ErrBadRequest, core.PlanFeatureMessage(plan, core.FeatureRequestLogs))
+	}
+	q.noRequest = true
+	return nil
+}
+
 func (q *LogQuery) scopeToApp(app *appv1alpha1.App) {
 	q.App = app.Name
 	q.appID = core.AppIncarnationID(app)
@@ -600,6 +623,9 @@ func (s *Service) Logs(ctx context.Context, name string, tail int64) ([]LogEntry
 		// Durable history: the unfiltered tail-N read is a limit-only query.
 		q := LogQuery{Limit: tail}
 		q.scopeToApp(app)
+		if err := s.requireRequestLogsPlan(ctx, app, &q); err != nil {
+			return nil, err
+		}
 		entries, err := s.History(ctx, app.Namespace, q.normalized())
 		// A tail is best-effort: the newest lines a budget-limited scan found
 		// are the answer, not a failure.
@@ -635,6 +661,9 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	// which may be tenant-prefixed. The public name/srv-id is only an API
 	// address and must not leak into the Kubernetes label selector.
 	q.scopeToApp(app)
+	if err := s.requireRequestLogsPlan(ctx, app, &q); err != nil {
+		return nil, err
+	}
 	// The App CR is in hand — its namespace is the per-tenant `<ws>` namespace
 	// (ADR043), where its pods and Loki streams also live; use it directly
 	// rather than the shared s.Namespace, exactly as the metrics feature does.
@@ -875,6 +904,9 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 		return nil, err
 	}
 	q.scopeToApp(app)
+	if err := s.requireRequestLogsPlan(ctx, app, &q); err != nil {
+		return nil, err
+	}
 	if !slices.Contains(DiscoverableLabels, label) {
 		// Naming the offending label beats an empty list, which a client would read
 		// as "this service has no such values".
@@ -970,6 +1002,9 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	resource := appLogResource(app.Labels, requested)
 	q.scopeToApp(app)
 	if err := q.validate(); err != nil {
+		return err
+	}
+	if err := s.requireRequestLogsPlan(ctx, app, &q); err != nil {
 		return err
 	}
 	// Each producer needs its own source: pod lines (and the build tail) read

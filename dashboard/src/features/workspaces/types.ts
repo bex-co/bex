@@ -100,6 +100,15 @@ export function workspacePlanNameKey(plan: string): string {
 }
 
 /**
+ * Whether a workspace plan includes Render's Pro-and-higher features (network
+ * isolation, webhooks, HTTP request logs). An unknown plan (still loading) is
+ * treated as included; the API enforces the rule either way.
+ */
+export function proFeaturesPlan(plan: string | null | undefined): boolean {
+  return plan !== "hobby";
+}
+
+/**
  * Whether a workspace plan may set inbound IP rules on services, static sites
  * and environments (Render: Scale and Enterprise). An unknown plan (still
  * loading) is treated as allowed; the API enforces the rule either way.

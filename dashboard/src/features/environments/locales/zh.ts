@@ -323,6 +323,10 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     message: "阻止跨环境连接",
     description: "Private-network isolation setting label",
   },
+  "environments.isolationProOnly": {
+    message: "网络隔离需要 Pro 或更高套餐。如果之前已启用，可以在此关闭。",
+    description: "Isolation setting explanation on a Hobby workspace (w8/m138)",
+  },
   "environments.isolationHint": {
     message:
       "阻止私有网络流量跨越此环境边界，包括流向其中 Postgres 和 Key Value 实例的流量。它们的外部 URL 仍遵循各自的 IP 规则。",
