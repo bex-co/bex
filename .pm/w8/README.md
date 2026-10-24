@@ -15,6 +15,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m139** — [Free web services share 750 instance hours per workspace per month, as on Render](m139/README.md) (8 tasks;275m) ← `/qa-find-bugs-cli` loop sweep p8q1 2026-10-24: no free-hours budget exists, so Free web services run without a monthly cap; Render suspends them after 750 h
+
 - [ ] **m138** — [Hobby workspaces get Render's Hobby limits; Pro features start at Pro](m138/README.md) (10 tasks;290m) ← `/qa-find-bugs-cli` loop sweeps b1c3/j3k5 2026-10-24: a Hobby workspace creates 3 environments per project, webhooks and network isolation, and reads HTTP request logs — all Pro-and-higher or capped on Render
 
 - [ ] **m137** — [Inbound IP rules for web services, static sites and environments are a Scale/Enterprise workspace feature, as on Render](m137/README.md) (8 tasks;225m) ← `/qa-find-bugs-cli` loop sweep g7h2 2026-10-23: a Free web service in a Hobby workspace accepts and enforces `--ip-allow-list`
