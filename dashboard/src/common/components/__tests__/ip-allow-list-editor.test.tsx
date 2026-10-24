@@ -21,6 +21,31 @@ const labels = {
 };
 
 describe("IPAllowListEditor", () => {
+  // w8/m137: below the Scale plan existing rules stay visible and clearable, and
+  // nothing can be added or edited.
+  it("offers only clear-all in clearOnly mode", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn(async () => true);
+    render(
+      <IPAllowListEditor
+        entries={[{ cidrBlock: "10.0.0.0/8", description: "corp" }]}
+        labels={labels}
+        saving={false}
+        onSave={onSave}
+        clearOnly={{ hint: "Needs Scale.", clearAll: "Clear all rules" }}
+      />,
+    );
+
+    expect(screen.getByText("Needs Scale.")).toBeInTheDocument();
+    expect(screen.getByText("10.0.0.0/8")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Add" }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Clear all rules" }));
+    expect(onSave).toHaveBeenCalledWith([]);
+  });
+
   it("names add-row and existing-row inputs (not by placeholder example) (m101/t010)", () => {
     render(
       <IPAllowListEditor

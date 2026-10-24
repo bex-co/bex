@@ -4,6 +4,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   saveAllowList: vi.fn(async () => true),
+  plan: undefined as string | undefined,
+}));
+
+vi.mock("@/features/workspaces/context", () => ({
+  useWorkspace: () => ({
+    currentWorkspace: mocks.plan ? { plan: mocks.plan } : null,
+  }),
 }));
 
 vi.mock("@/features/services/hooks/use-service-networking", () => ({
@@ -15,9 +22,39 @@ vi.mock("@/features/services/hooks/use-service-networking", () => ({
 
 import { ServiceNetworkingPanel } from "@/features/services/components/service-networking-panel";
 
-beforeEach(() => mocks.saveAllowList.mockClear());
+beforeEach(() => {
+  mocks.saveAllowList.mockClear();
+  mocks.plan = undefined;
+});
 
 describe("ServiceNetworkingPanel", () => {
+  // w8/m137: inbound IP rules need the Scale plan; a legacy rule stays visible
+  // and can only be cleared.
+  it.each(["hobby", "pro"])("is clear-only on the %s plan", async (plan) => {
+    mocks.plan = plan;
+    const user = userEvent.setup();
+    render(
+      <ServiceNetworkingPanel
+        serviceId="srv-web"
+        currentAllowList={[
+          { cidrBlock: "203.0.113.0/24", description: "office" },
+        ]}
+      />,
+    );
+    expect(screen.getByText(/require the Scale plan/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Clear all rules" }));
+    expect(mocks.saveAllowList).toHaveBeenCalledWith("srv-web", []);
+  });
+
+  it("stays editable on the Scale plan", () => {
+    mocks.plan = "scale";
+    render(
+      <ServiceNetworkingPanel serviceId="srv-web" currentAllowList={[]} />,
+    );
+    expect(screen.getByRole("button", { name: "Add" })).toBeInTheDocument();
+  });
+
   it("renders and resubmits descriptions without dropping them", async () => {
     const user = userEvent.setup();
     render(

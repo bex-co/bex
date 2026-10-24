@@ -4712,6 +4712,17 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Restrict inbound HTTP traffic to these source CIDRs.",
     description: "Settings Networking card description (w7/m32)",
   },
+  "services.networkingScalePlanOnly": {
+    message:
+      "Inbound IP rules for web services and static sites require the Scale plan or higher. Rules already set stay enforced and can be cleared.",
+    description:
+      "Hint replacing the editable IP rules below the Scale plan (w8/m137)",
+  },
+  "services.networkingClearAll": {
+    message: "Clear all rules",
+    description:
+      "Button clearing every inbound IP rule below the Scale plan (w8/m137)",
+  },
   "services.networkingHint": {
     message:
       "Enter a CIDR block (e.g. 203.0.113.0/24) and press Add. Empty list opens the service to all source IPs.",

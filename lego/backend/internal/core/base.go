@@ -353,6 +353,9 @@ type Base struct {
 	// Billing gates only explicitly billable feature mutations. Reads and
 	// payment/Portal recovery remain available while enforcement is active.
 	Billing BillingMutationGate
+	// Plans reads a workspace's plan for plan-gated features (w8/m137). nil
+	// leaves them open, the store-off degrade.
+	Plans WorkspacePlanReader
 	// Payment gates only mutations whose target tier is non-free. nil preserves
 	// the pre-ADR046 behavior exactly (BEX_REQUIRE_PAYMENT_METHOD unset).
 	Payment PaymentGate

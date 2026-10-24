@@ -19,6 +19,7 @@ package environments
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -591,5 +592,49 @@ func TestClearMembersForProjectClearsEnvGroupMembership(t *testing.T) {
 	}
 	if idx.groups[1].EnvironmentID != "" {
 		t.Fatalf("clearMembersForProject left dangling membership %q", idx.groups[1].EnvironmentID)
+	}
+}
+
+// w8/m137: an environment's restricting inbound IP rules need the Scale plan on
+// every write path; the seeded allow-all pair, the stored list re-sent and a
+// plan upgrade never trip the gate.
+func TestEnvironmentInboundIPRulesNeedScalePlan(t *testing.T) {
+	office := []core.IPAllowListEntry{{CIDRBlock: "203.0.113.0/24", Description: "office"}}
+	for plan, ok := range map[string]bool{"hobby": false, "pro": false, "scale": true, "enterprise": true} {
+		t.Run(plan, func(t *testing.T) {
+			st := newFakeStore()
+			st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+			svc, _ := newServiceWithClient(st)
+			svc.Plans = core.WorkspacePlanFunc(func(context.Context, string) (string, error) { return plan, nil })
+			ctx := ctxAs("user-a")
+
+			_, err := svc.CreateWithACL(ctx, CreateEnvironmentRequest{ProjectID: "prj-1", Name: "locked", IPAllowList: office})
+			if ok != (err == nil) {
+				t.Fatalf("create with rules: err = %v, want ok=%v", err, ok)
+			}
+			if !ok {
+				if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), core.InboundIPRulesMessage) {
+					t.Fatalf("create: %v", err)
+				}
+				if n := len(st.envs); n != 0 {
+					t.Fatalf("a refused create left %d environments", n)
+				}
+			}
+
+			e, err := svc.CreateWithACL(ctx, CreateEnvironmentRequest{ProjectID: "prj-1", Name: "open", ProtectedStatus: ProtectedStatusUnprotected})
+			if err != nil {
+				t.Fatalf("a plain environment must be creatable on any plan: %v", err)
+			}
+			_, setErr := svc.SetACL(ctx, e.ID, ProtectedStatusUnprotected, false, office)
+			_, patchErr := svc.Update(ctx, e.ID, EnvironmentPatch{IPAllowList: &office})
+			if ok != (setErr == nil) || ok != (patchErr == nil) {
+				t.Fatalf("SetACL err = %v, Update err = %v, want ok=%v", setErr, patchErr, ok)
+			}
+			// Re-sending the default allow-all pair is not a restriction.
+			defaults := core.DefaultEnvironmentAllowList()
+			if _, err := svc.SetACL(ctx, e.ID, ProtectedStatusProtected, true, defaults); err != nil {
+				t.Fatalf("allow-all must stay settable: %v", err)
+			}
+		})
 	}
 }
