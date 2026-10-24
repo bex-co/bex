@@ -115,7 +115,7 @@ func TestFirstDeployWithNoBackingBuildReachesATerminalStateWithinTheGateTimeout(
 	}
 
 	// Now let it sit past the build gate, exactly as a frozen row would.
-	backdateDeploy(t, st, open.ID, 40*time.Minute)
+	backdateDeploy(t, st, open.ID, defaultBuildGateTimeout+5*time.Minute)
 	if err := rec.ReconcileOnce(ctx); err != nil {
 		t.Fatalf("reconcile: %v", err)
 	}
@@ -172,7 +172,7 @@ func TestBuildGateTimeoutFailsARowWhoseBuildPodVanished(t *testing.T) {
 	}
 
 	// The pod is gone; the CR still says Building and nothing ever contradicts it.
-	backdateDeploy(t, st, open.ID, 40*time.Minute)
+	backdateDeploy(t, st, open.ID, defaultBuildGateTimeout+5*time.Minute)
 	if err := rec.ReconcileOnce(ctx); err != nil {
 		t.Fatalf("reconcile: %v", err)
 	}
@@ -258,7 +258,7 @@ func TestHealthyBuildIsNotFailedAtTheGateBoundary(t *testing.T) {
 }
 
 // TestDeployIsSettledWhenTheAppCRCannotBeObserved closes the structural hole
-// behind "forever" as opposed to "35 minutes": every path to a terminal deploy
+// behind "forever" as opposed to "the build gate": every path to a terminal deploy
 // status runs inside recordDeploy, which a reconcile pass reaches only after the
 // App CR is found, owned and converged. A pass that skips those steps does not
 // merely fail to advance the row — it never evaluates the gate timeout at all,
@@ -324,7 +324,7 @@ func TestDeployIsSettledWhenTheAppCRCannotBeObserved(t *testing.T) {
 
 			notifier := newFakeDeployNotifier()
 			rec.DeployNotifier = notifier
-			backdateDeploy(t, st, open.ID, 40*time.Minute)
+			backdateDeploy(t, st, open.ID, defaultBuildGateTimeout+5*time.Minute)
 			_ = rec.ReconcileOnce(ctx)
 			closed := onlyDeploy(t, st, row.ID)
 			if closed.Status != DeployBuildFailed {

@@ -198,7 +198,7 @@ func assertBuildJobMeta(t *testing.T, o Options, j *batchv1.Job) {
 	if j.Spec.BackoffLimit == nil || *j.Spec.BackoffLimit != 2 {
 		t.Errorf("backoffLimit = %v, want 2 for unclassified failures", j.Spec.BackoffLimit)
 	}
-	if j.Spec.ActiveDeadlineSeconds == nil || *j.Spec.ActiveDeadlineSeconds != 30*60 || j.Spec.TTLSecondsAfterFinished == nil {
+	if j.Spec.ActiveDeadlineSeconds == nil || *j.Spec.ActiveDeadlineSeconds != int64(BuildTimeout/time.Second) || j.Spec.TTLSecondsAfterFinished == nil {
 		t.Error("deadline + TTL must be set")
 	}
 	pod := j.Spec.Template.Spec

@@ -60,7 +60,7 @@ const (
 	// registry_test package: build now imports registry for the shared
 	// cluster-local host predicate, so an in-package test importing build
 	// would close an import cycle.
-	ZotGCDelay = "1h"
+	ZotGCDelay = "3h"
 	// gcInterval is how often GC runs; equal to the delay by design, so a blob
 	// is examined at most one interval after it becomes eligible.
 	zotGCInterval = ZotGCDelay

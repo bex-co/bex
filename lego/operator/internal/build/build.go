@@ -184,12 +184,14 @@ func shellSingleQuote(s string) string {
 
 // BuildTimeout bounds a single build Job's wall-clock before Build gives up
 // waiting (the Job's own activeDeadlineSeconds matches, so a stuck build is
-// reaped rather than lingering).
+// reaped rather than lingering). 120 minutes is Render's build-command timeout
+// (render.com/docs/deploys); the earlier 30 minutes failed builds Render
+// completes (beancount-cms-v2, 2026-10-24).
 //
 // Exported because it is also the floor for the registry's GC delay: a blob
 // from an in-flight push must not be collectable while its build can still be
 // running (docs/ADR060 D4).
-const BuildTimeout = 30 * time.Minute
+const BuildTimeout = 120 * time.Minute
 
 // Build execution resources match Render's Starter pipeline tier (2 CPU, 8 GB
 // RAM) while remaining schedulable on the baseline 8 GB tenant nodes. The 7 GiB
@@ -281,7 +283,7 @@ fi
 
 	// cacheCommandTimeout bounds each cache transfer. Without it a hung registry
 	// connection cannot be distinguished from a slow one, and the phase would
-	// consume the Job's whole 30-minute deadline and then fail a build whose
+	// consume the Job's whole deadline and then fail a build whose
 	// image had already been pushed — the exact outcome "the cache affects speed,
 	// never results" forbids. Generous for an in-cluster transfer, far below the
 	// deadline, so the worst case costs minutes rather than the build.
