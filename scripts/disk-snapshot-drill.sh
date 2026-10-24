@@ -73,17 +73,36 @@ snapshot() {
   job="${cronjob:0:40}-drill-$(date -u +%m%d%H%M)"
   section "creating $job from cronjob/$cronjob"
   kubectl -n "$NS" create job "$job" --from="cronjob/$cronjob"
-  # Long enough to see a stuck attach, short of the Job's own 6h deadline.
-  if ! kubectl -n "$NS" wait --for=condition=complete "job/$job" --timeout=90m; then
-    section "job/$job did not complete"
-    kubectl -n "$NS" describe "job/$job" | tail -25
-    where_pods "job-name=$job"
-    kubectl -n "$NS" get events --field-selector "involvedObject.kind=Pod" --sort-by=.lastTimestamp | grep "$job" | tail -20 || true
-    for pod in $(kubectl -n "$NS" get pods -l "job-name=$job" -o jsonpath='{.items[*].metadata.name}'); do
-      kubectl -n "$NS" logs "$pod" --tail=40 2>&1 || true
+  # Poll rather than wait on one condition: a failing Job retries quickly and
+  # its pods do not outlive it, so each failed pod's exit and log are printed
+  # the moment it fails. 90m covers a stuck attach, short of the 6h deadline.
+  local seen="" deadline=$((SECONDS + 5400)) state=""
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    state="$(kubectl -n "$NS" get "job/$job" -o jsonpath='{range .status.conditions[?(@.status=="True")]}{.type} {end}')"
+    for pod in $(kubectl -n "$NS" get pods -l "job-name=$job" -o jsonpath='{range .items[?(@.status.phase=="Failed")]}{.metadata.name} {end}'); do
+      case " $seen " in *" $pod "*) continue ;; esac
+      seen="$seen $pod"
+      section "pod $pod failed"
+      kubectl -n "$NS" get pod "$pod" -o jsonpath='node={.spec.nodeName}{"\n"}{range .status.containerStatuses[*]}{.name}: exit={.state.terminated.exitCode} reason={.state.terminated.reason}{"\n"}message={.state.terminated.message}{"\n"}{end}'
+      kubectl -n "$NS" get events --field-selector "involvedObject.name=$pod" \
+        -o custom-columns='TIME:.lastTimestamp,REASON:.reason,MESSAGE:.message' 2>/dev/null | tail -15 || true
+      kubectl -n "$NS" logs "$pod" --tail=60 2>&1 || true
     done
-    exit 1
-  fi
+    case "$state" in
+      *Complete*) break ;;
+      *Failed*)
+        section "job/$job failed"
+        kubectl -n "$NS" describe "job/$job" | tail -15
+        exit 1 ;;
+    esac
+    sleep 5
+  done
+  case "$state" in *Complete*) ;; *)
+    section "job/$job still running after 90m"
+    where_pods "job-name=$job"
+    kubectl -n "$NS" get events --sort-by=.lastTimestamp | grep "$job" | tail -20 || true
+    exit 1 ;;
+  esac
   section "job/$job completed"
   where_pods "job-name=$job"
 }
