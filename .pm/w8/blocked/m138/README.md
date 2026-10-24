@@ -15,7 +15,8 @@
 | t007 — **DONE** | Render parity: REST/GraphQL/MCP/dashboard plan copy and ADR018/ADR030          | 20m | w8/m138/t006                                         |
 | t008 — **DONE** | Simplify the changed code                                                      | 15m | w8/m138/t007                                         |
 | t009 — **DONE** | Test coverage: plan × feature matrix, legacy state, upgrade/downgrade          | 40m | w8/m138/t007                                         |
-| t010 | Close out the milestone                                                        | 30m | w8/m138/t008, w8/m138/t009                           |
+| t011 | Dashboard Logs: Request logs on Hobby show a plan notice, not "Couldn't load logs" | 30m | w8/m138/t005, w8/m138/t007 |
+| t010 | Close out the milestone                                                        | 30m | w8/m138/t008, w8/m138/t009, w8/m138/t011                           |
 
 ## Definition of done
 
