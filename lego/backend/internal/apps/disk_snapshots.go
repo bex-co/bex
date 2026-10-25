@@ -30,6 +30,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
@@ -221,6 +222,9 @@ func (s *Service) RestoreDiskSnapshot(ctx context.Context, diskID, snapshotKey s
 		// The intent is a verb-as-value on the spec, like restartedAt: the
 		// operator sees a request it has not served yet and runs the restore.
 		a.Spec.Disk.RestoreSnapshot = claims.Object
+		// Stamp the request, so asking again (the same snapshot, or a retry
+		// after a failed restore) is a new request to the operator (w6/089).
+		metav1.SetMetaDataAnnotation(&a.ObjectMeta, appv1alpha1.DiskRestoreRequestedAtAnnotation, s.Now().UTC().Format(time.RFC3339Nano))
 	}); err != nil {
 		return DiskView{}, fmt.Errorf("request restore: %w", err)
 	}
