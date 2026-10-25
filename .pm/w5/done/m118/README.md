@@ -145,3 +145,7 @@ Owned Free `qa-20261006-l69-env` (`srv-db2a8rocm2ec73ab8uqg`; deleted afterwards
 - **Gap against the "remaining uncoded 400s carry codes" bullet:** that Blueprint deploy 400 body is `{"error":"key-value \"Cache_1\": bad request: …","id":"bad_request","message":…}` with **no `code`**, while the direct env/secret-file refusals carry one.
 
 **Closed 2026-10-24.** The user decided t004 step 3 for Render parity: ID-shaped names are accepted everywhere, and w8/049's refusal is withdrawn (see t004). The `Cache_1` line of the definition of done was superseded by w5/m153, which made datastore names free-form labels, so a Blueprint Key Value named `Cache_1` is now accepted. A padded name still gets a coded validation error, not a 500.
+
+## Partial live evidence (2026-10-25 11:40 UTC, platform pin `bd6423e5e46f`, bex v0.3.3, `bex-canary`, `/qa-find-bugs-cli` sweep b2c4)
+
+`bex services create --type web_service --name srv-qab2c4abcdefghijklm --image docker.io/traefik/whoami:v1.10.3 --plan free --env-var PORT=80 --confirm -o json` → exit 0, id `srv-dbeul74u5m1s73cj9uq0`, name/slug `srv-qab2c4abcdefghijklm`, URL `https://srv-qab2c4abcdefghijklm.onbex.co` → `live`, 200. `bex deploys list srv-qab2c4abcdefghijklm -o json` resolved the ID-shaped name to that service. Deleted, 404. Not covered: other resource types and surfaces.
