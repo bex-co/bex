@@ -1,6 +1,6 @@
 # w5 · m118 — One source of truth for naming and config-key rules across Go, TypeScript, Kubernetes and CNPG
 
-**Worker:** worker5 **Goal:** Each validation rule has one definition (derived from the platform's own check where one exists), one shared vector file asserted by both Go and TS, and a stable error code. **Status:** blocked (t004 step 3 needs the user's decision; t001–t003 and t005–t008 done)
+**Worker:** worker5 **Goal:** Each validation rule has one definition (derived from the platform's own check where one exists), one shared vector file asserted by both Go and TS, and a stable error code. **Status:** done
 
 ## Tasks (in order)
 
@@ -9,12 +9,12 @@
 | t001 | Give the cron vectors a verdict code asserted by Go and TS — **DONE** | 30m | — |
 | t002 | Derive env and secret-file key rules from Kubernetes' own check — **DONE** | 1h | — |
 | t003 | One Postgres identifier vector file for types, operator and dashboard — **DONE** | 45m | — |
-| t004 | One resource-name rule in types, applied to Blueprint Key Values | 1h | — |
+| t004 | One resource-name rule in types, applied to Blueprint Key Values — **DONE** | 1h | — |
 | t005 | Codes for the remaining uncoded validation errors — **DONE** | 1h | t002, t004 |
 | t006 | Render parity — **DONE** | 20m | t001, t003, t005 |
 | t007 | Simplify — **DONE** | 15m | t006 |
 | t008 | Test coverage — **DONE** | 30m | t006, t007 |
-| t009 | Closeout | 10m | t008 |
+| t009 | Closeout — **DONE** | 10m | t008 |
 
 ## Definition of done
 
@@ -143,3 +143,5 @@ Owned Free `qa-20261006-l69-env` (`srv-db2a8rocm2ec73ab8uqg`; deleted afterwards
 - `PUT …/env-vars/1BAD-KEY` → 400 `ENVIRONMENT_VARIABLE_INVALID`; a 300-char key → 400 `ENVIRONMENT_VARIABLE_INVALID` "longer than 253 characters" (`params.field: key`); `PORT` → 400 `ENVIRONMENT_VARIABLE_RESERVED`. The env list and secret files were unchanged afterwards.
 - Blueprint `services: [{type: keyvalue, name: Cache_1, plan: free}]`: `validateBlueprint` → `valid: false` "key-value \"Cache_1\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen". `POST /v1/blueprints/deploy` → **400** with the same message, not a 500, and no Key Value created.
 - **Gap against the "remaining uncoded 400s carry codes" bullet:** that Blueprint deploy 400 body is `{"error":"key-value \"Cache_1\": bad request: …","id":"bad_request","message":…}` with **no `code`**, while the direct env/secret-file refusals carry one.
+
+**Closed 2026-10-24.** The user decided t004 step 3 for Render parity: ID-shaped names are accepted everywhere, and w8/049's refusal is withdrawn (see t004). The `Cache_1` line of the definition of done was superseded by w5/m153, which made datastore names free-form labels, so a Blueprint Key Value named `Cache_1` is now accepted. A padded name still gets a coded validation error, not a 500.

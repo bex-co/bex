@@ -139,13 +139,12 @@ describe("useServiceNameDraft", () => {
     expect(result.current.resourceNamePreview).toBeNull();
   });
 
-  it("rejects a name shaped like a resource ID and checks nothing", () => {
-    takenNames.set("srv-abcdefghij0123456789", "x");
+  // As on Render (w5/m118 reversed w8/049).
+  it("accepts a name shaped like a resource ID", () => {
     const { result } = renderDraft();
 
     act(() => result.current.editName("srv-abcdefghij0123456789"));
-    expect(result.current.nameValid).toBe(false);
-    expect(result.current.resourceName).toBeNull();
-    expect(result.current.nameTaken).toBe(false);
+    expect(result.current.nameValid).toBe(true);
+    expect(result.current.resourceName).toBe("srv-abcdefghij0123456789");
   });
 });

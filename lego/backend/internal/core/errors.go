@@ -357,8 +357,9 @@ func CheckResourceName(field, name string) error {
 // CheckLabel is the one rule for a free-form, human-facing label — a service's
 // display name and a Postgres or Key Value name (Render leaves both free-form;
 // w5/m153): no control characters or line separators, at most 100 code
-// points once trimmed. It returns the trimmed label. The resource-ID-shape
-// refusal needs internal/id, so callers add it.
+// points once trimmed. It returns the trimmed label. A label shaped like a
+// resource ID is accepted, as on Render (w5/m118 reversed w8/049): a lookup
+// matches an id before a name, so the label cannot shadow one.
 func CheckLabel(value string) (string, error) {
 	for _, c := range value {
 		if unicode.IsControl(c) || c == '\u2028' || c == '\u2029' {
@@ -373,15 +374,19 @@ func CheckLabel(value string) (string, error) {
 	return value, nil
 }
 
-// NameResourceIDReservedError refuses a name shaped like a resource ID
-// (`srv-…`, `dpg-…`): a selector could then mean "this ID" or "the thing named
-// this" (w8/049). Datastore names and service display names (w8/034) refuse
-// the shape with this one code; params.field says which (w5/m118 merged
-// DISPLAY_NAME_RESOURCE_ID_RESERVED into it). Callers test the shape with
-// id.LooksLikeResourceID.
-func NameResourceIDReservedError(field, name string) *CodedError {
-	return NewBadRequestError("NAME_RESOURCE_ID_RESERVED",
-		fmt.Sprintf("%q must not look like a resource ID", name), map[string]any{"field": field})
+// CheckDatastoreName is the one check a Postgres or Key Value name passes on
+// every way in: create, rename, recovery and Blueprint parsing. The name is the
+// resource's mutable label (its dpg-/red- id is the identity): it follows
+// CheckLabel and must not be empty or padded.
+func CheckDatastoreName(name string) error {
+	label, err := CheckLabel(name)
+	if err != nil {
+		return err
+	}
+	if label == "" || label != name {
+		return NewBadRequestError("RESOURCE_NAME_INVALID", "name must be a non-empty label without leading or trailing spaces", map[string]any{"field": "name"})
+	}
+	return nil
 }
 
 // NewForbiddenError returns a machine-readable 403 for a caller class or

@@ -68,9 +68,9 @@ describe("DatabaseNameRow", () => {
     );
     const input = screen.getByLabelText("Name");
     await user.clear(input);
-    await user.type(input, "dpg-abcdefghij0123456789");
+    await user.type(input, "x".repeat(101));
 
-    expect(screen.getByText(/shaped like a resource ID/i)).toBeInTheDocument();
+    expect(screen.getByText(/up to 100 characters/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
     expect(rename).not.toHaveBeenCalled();
   });

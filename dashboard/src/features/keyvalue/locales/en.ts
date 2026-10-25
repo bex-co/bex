@@ -267,7 +267,7 @@ const enKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.fieldNameError": {
     message:
-      "Enter a name of up to 100 characters, without line breaks or control characters, that isn't shaped like a resource ID (such as srv-…).",
+      "Enter a name of up to 100 characters, without line breaks or control characters.",
     description: "Create-Key-Value name validation message",
   },
   "keyvalue.fieldPlan": {
@@ -734,7 +734,7 @@ const enKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.nameInvalid": {
     message:
-      "Enter a name of up to 100 characters, without line breaks or control characters, that isn't shaped like a resource ID (such as srv-…).",
+      "Enter a name of up to 100 characters, without line breaks or control characters.",
     description: "Key Value rename validation message",
   },
   // --- Tab navigation ---

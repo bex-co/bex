@@ -160,7 +160,7 @@ const zhDatabases: Record<string, TranslationEntry> = {
   },
   "databases.fieldNameError": {
     message:
-      "请输入最多 100 个字符的名称，不能包含换行或控制字符，也不能形如资源 ID（例如 srv-…）。",
+      "请输入最多 100 个字符的名称，不能包含换行或控制字符。",
     description: "Create-database name validation message",
   },
   "databases.physicalNamesTitle": {
@@ -1205,7 +1205,7 @@ const zhDatabases: Record<string, TranslationEntry> = {
   },
   "databases.nameInvalid": {
     message:
-      "请输入最多 100 个字符的名称，不能包含换行或控制字符，也不能形如资源 ID（例如 srv-…）。",
+      "请输入最多 100 个字符的名称，不能包含换行或控制字符。",
     description: "Database rename validation message",
   },
   // --- Insights panel (w2/m25) ---

@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -37,8 +36,6 @@ import (
 func TestDisplayNameValidationRefusesAcrossSurfacesWithoutMutation(t *testing.T) {
 	const control = "DISPLAY_NAME_CONTROL_CHARACTER"
 	const tooLong = "DISPLAY_NAME_TOO_LONG"
-	const reserved = "NAME_RESOURCE_ID_RESERVED" // shared with datastore names (w5/m118)
-	otherID := id.New(id.Service)
 	messages := map[string]string{
 		control: "display name must not contain control characters or line separators",
 		tooLong: "display name must be at most 100 Unicode code points",
@@ -47,7 +44,7 @@ func TestDisplayNameValidationRefusesAcrossSurfacesWithoutMutation(t *testing.T)
 		t.Run(surface, func(t *testing.T) {
 			rec := &recordingStore{}
 			sink := &captureAuditSink{}
-			svc, cl := newService(rec, manage(displayNameApp("web"), id.New(id.Service)), manage(displayNameApp("other"), otherID))
+			svc, cl := newService(rec, manage(displayNameApp("web"), id.New(id.Service)), manage(displayNameApp("other"), id.New(id.Service)))
 			svc.Audit = sink
 			before := getApp(t, cl, "web")
 			call := displayNameRejectionCall(t, svc, surface)
@@ -66,19 +63,10 @@ func TestDisplayNameValidationRefusesAcrossSurfacesWithoutMutation(t *testing.T)
 				{"101 ASCII code points", strings.Repeat("a", 101), tooLong},
 				{"101 multibyte code points", strings.Repeat("界", 101), tooLong},
 				{"101 combining code points", strings.Repeat("e\u0301", 50) + "e", tooLong},
-				{"another service ID", otherID, reserved},
-				{"trimmed ID", "  " + otherID + "  ", reserved},
-				{"wide suffix lookalike", "srv-" + strings.Repeat("z", 20), reserved},
-				{"public environment ID", id.New(id.Environment), reserved},
-				{"legacy environment ID", id.EnvironmentStorageID(id.New(id.Environment)), reserved},
-				{"legacy environment lookalike", "env-" + strings.Repeat("z", 20), reserved},
 			} {
 				t.Run(tc.name, func(t *testing.T) {
 					code, message := call(t, tc.value)
 					want := messages[tc.code]
-					if tc.code == reserved {
-						want = fmt.Sprintf("%q must not look like a resource ID", strings.TrimSpace(tc.value))
-					}
 					if code != tc.code || message != want {
 						t.Fatalf("error = %q/%q, want %q/%q", code, message, tc.code, want)
 					}
@@ -203,6 +191,10 @@ func TestSetDisplayNameValidationAllowsUnicodeTrimClearAndOrdinaryNames(t *testi
 		{"known prefix ordinary name", "srv-customer-api", "srv-customer-api"},
 		{"short suffix", "srv-" + strings.Repeat("a", 19), "srv-" + strings.Repeat("a", 19)},
 		{"long suffix", "srv-" + strings.Repeat("a", 21), "srv-" + strings.Repeat("a", 21)},
+		// Accepted as on Render (w5/m118 reversed w8/049): a lookup matches an id
+		// before a name, so an ID-shaped label cannot shadow a resource.
+		{"ID-shaped", "srv-" + strings.Repeat("z", 20), "srv-" + strings.Repeat("z", 20)},
+		{"trimmed environment ID", "  env-" + strings.Repeat("z", 20) + "  ", "env-" + strings.Repeat("z", 20)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			appID := id.New(id.Service)

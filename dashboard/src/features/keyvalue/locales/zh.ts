@@ -259,7 +259,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.fieldNameError": {
     message:
-      "请输入最多 100 个字符的名称，不能包含换行或控制字符，也不能形如资源 ID（例如 srv-…）。",
+      "请输入最多 100 个字符的名称，不能包含换行或控制字符。",
     description: "Create-Key-Value name validation message",
   },
   "keyvalue.fieldPlan": {
@@ -719,7 +719,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.nameInvalid": {
     message:
-      "请输入最多 100 个字符的名称，不能包含换行或控制字符，也不能形如资源 ID（例如 srv-…）。",
+      "请输入最多 100 个字符的名称，不能包含换行或控制字符。",
     description: "Key Value rename validation message",
   },
   // --- Tab navigation ---
