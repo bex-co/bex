@@ -268,7 +268,16 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
                     factStatus={details?.status ?? ""}
                     trigger={trigger}
                     deployId={deployId}
-                    actor={details?.actor || details?.triggeredByUser || ""}
+                    actor={
+                      details?.suspendedByUser?.id ||
+                      details?.resumedByUser?.id ||
+                      details?.trigger?.user?.id ||
+                      (details?.actor && details.actor !== "user"
+                        ? details.actor
+                        : "") ||
+                      details?.triggeredByUser ||
+                      ""
+                    }
                     preDeployStatus={details?.preDeployStatus ?? ""}
                     preDeploy={preDeploy}
                     timestamp={event.timestamp}

@@ -381,15 +381,15 @@ const (
 //     "who asked" record survives in the workspace audit log, exactly as it
 //     does for the deliberately-absent verbs above.
 var eventTypes = map[string]string{
-	"apps.Suspend":                TypeSuspenderAdded,
-	"apps.Resume":                 TypeSuspenderRemoved,
-	"apps.Restart":                TypeServerRestarted,
+	"apps.Suspend": TypeSuspenderAdded,
+	"apps.Resume":  TypeSuspenderRemoved,
+	"apps.Restart": TypeServerRestarted,
 	// w4/379: with a control-plane store wired, apps.Restart delegates to
 	// deploys.Restart, whose audit verb is its own entry point — map it too
 	// or Server Restarted stays a dead choice in production. Exactly one of
 	// the two verbs fires per restart (one entry point runs), and the
 	// deploy row still carries deploy_started/deploy_ended alongside.
-	"deploys.Restart": TypeServerRestarted,
+	"deploys.Restart":             TypeServerRestarted,
 	"apps.SetPlan":                TypePlanChanged,
 	"apps.Scale":                  TypeInstanceCountChanged,
 	"apps.SetAutoscaling":         TypeAutoscalingConfigChanged,
@@ -563,6 +563,14 @@ const DefaultWindow = time.Hour
 // Trigger is Render's deploy trigger object (deploy_started.details.trigger) —
 // which of the mutually-exclusive causes started this rollout. bex fills the
 // ones its deploys table records and leaves the rest false rather than guessing.
+// UserRef is Render's {id, email} user object on event details (w4/391).
+// ID is the identity subject; Email is resolved at read time and empty when
+// the identity carries none.
+type UserRef struct {
+	ID    string
+	Email string
+}
+
 type Trigger struct {
 	FirstBuild       bool
 	EnvUpdated       bool
@@ -570,6 +578,9 @@ type Trigger struct {
 	DeployedByRender bool
 	ClearCache       bool
 	Rollback         bool
+	// User is the human who triggered the deploy (w4/391), absent for
+	// git-push and deploy-hook triggers.
+	User *UserRef
 	// DeployHook is a bex extension: Render's trigger vocabulary has no hook
 	// flag, so a deploy-hook POST used to be reported as Manual — which reads
 	// "somebody clicked Deploy" for a rollout nobody touched, typically a CI
@@ -636,8 +647,12 @@ type Details struct {
 	CommitMessage string     // commit description; empty for non-deploy events
 	StartedAt     *time.Time // when deploy started executing; nil for non-deploy or not-yet-started
 	FinishedAt    *time.Time // when deploy reached terminal status; nil for non-deploy or ongoing
-	// suspender_added / suspender_removed
-	Actor string
+	// suspender_added / suspender_removed: Actor is the suspender kind
+	// ("user" for a human suspend, w4/391); the human rides in
+	// SuspendedByUser / ResumedByUser as Render's {id, email}.
+	Actor           string
+	SuspendedByUser *UserRef
+	ResumedByUser   *UserRef
 	// server_restarted
 	TriggeredByUser string
 	// plan_changed: Render's required from/to plan name strings
@@ -763,9 +778,17 @@ func pageLimit(limit int) int { return core.PageLimitOrAbsent(limit) }
 // Service is the events feature. Store nil (BEX_CP_DB_URI unset) ⇒ every read
 // reports core.ErrEventsUnavailable: the feed's sources are control-plane
 // tables, so there is nothing to degrade to.
+// EmailLookup resolves identity subjects to emails for the {id, email}
+// user objects on event details (w4/391); nil leaves emails empty.
+type EmailLookup interface {
+	LookupEmails(ctx context.Context, subjects []string) (map[string]string, error)
+}
+
 type Service struct {
 	*core.Base
 	Store EventStore
+	// Identities resolves suspender/trigger user emails; optional.
+	Identities EmailLookup
 	// MaxQueryHours, when positive, caps the startTime–endTime window a caller may
 	// ask for (BEX_MAX_QUERY_HOURS) — the same bound logs and metrics enforce.
 	// Enforced HERE, not in the REST fragment, so all three surfaces reject the
@@ -832,7 +855,53 @@ func (s *Service) List(ctx context.Context, service string, filter Filter) ([]Ev
 	for _, r := range rows {
 		out = append(out, view(r, service))
 	}
+	s.resolveUserEmails(ctx, out)
 	return out, nil
+}
+
+// resolveUserEmails fills the {id, email} user objects' emails from the
+// identity resolver (w4/391). Best-effort: a resolver failure leaves the
+// ids readable and the emails empty, never failing the feed.
+func (s *Service) resolveUserEmails(ctx context.Context, events []Event) {
+	if s.Identities == nil {
+		return
+	}
+	subjects := map[string]struct{}{}
+	collect := func(u *UserRef) {
+		if u != nil && u.ID != "" {
+			subjects[u.ID] = struct{}{}
+		}
+	}
+	for i := range events {
+		collect(events[i].Details.SuspendedByUser)
+		collect(events[i].Details.ResumedByUser)
+		if events[i].Details.Trigger != nil {
+			collect(events[i].Details.Trigger.User)
+		}
+	}
+	if len(subjects) == 0 {
+		return
+	}
+	list := make([]string, 0, len(subjects))
+	for subject := range subjects {
+		list = append(list, subject)
+	}
+	emails, err := s.Identities.LookupEmails(ctx, list)
+	if err != nil {
+		return
+	}
+	apply := func(u *UserRef) {
+		if u != nil {
+			u.Email = emails[u.ID]
+		}
+	}
+	for i := range events {
+		apply(events[i].Details.SuspendedByUser)
+		apply(events[i].Details.ResumedByUser)
+		if events[i].Details.Trigger != nil {
+			apply(events[i].Details.Trigger.User)
+		}
+	}
 }
 
 // Get returns one globally-addressed event by its stable evt-… id. An explicit
@@ -867,6 +936,7 @@ func (s *Service) Get(ctx context.Context, eventID string) (Event, error) {
 		return Event{}, err
 	}
 	event := view(lookup.Event, lookup.ServiceID)
+	s.resolveUserEmails(ctx, []Event{event})
 	// The trigger indexes every safe source row, while this package owns the
 	// closed public vocabulary. An indexed-but-unmapped audit effect stays hidden
 	// exactly as it does in List and webhook dispatch.
@@ -936,11 +1006,14 @@ func view(r store.ServiceEventRow, service string) Event {
 				// rollout" — the nearest flag in its vocabulary for the deploys
 				// a Settings field, env var, secret file, or env-group link now
 				// opens (w6/m51). Manual stays false: nobody clicked Deploy.
-				EnvUpdated: r.Trigger == store.TriggerConfigChange,
-				Manual:     r.Trigger == store.TriggerAPI,
-				DeployHook: r.Trigger == store.TriggerDeployHook,
-				Rollback:   r.Trigger == store.TriggerRollback,
+				EnvUpdated:       r.Trigger == store.TriggerConfigChange,
+				Manual:           r.Trigger == store.TriggerAPI,
+				DeployHook:       r.Trigger == store.TriggerDeployHook,
+				Rollback:         r.Trigger == store.TriggerRollback,
 				DeployedByRender: r.Trigger == store.TriggerDeployedByRender,
+			}
+			if r.Caller != "" {
+				ev.Details.Trigger.User = &UserRef{ID: r.Caller}
 			}
 			// w4/m112: while this deploy is still open, say why it is not
 			// progressing — the same column the deploy detail page reads, so
@@ -976,7 +1049,14 @@ func view(r store.ServiceEventRow, service string) Event {
 		}
 		switch ev.Type {
 		case TypeSuspenderAdded, TypeSuspenderRemoved:
-			ev.Details.Actor = r.Caller
+			if r.Caller != "" {
+				ev.Details.Actor = "user"
+				if ev.Type == TypeSuspenderAdded {
+					ev.Details.SuspendedByUser = &UserRef{ID: r.Caller}
+				} else {
+					ev.Details.ResumedByUser = &UserRef{ID: r.Caller}
+				}
+			}
 		case TypeServerRestarted:
 			ev.Details.TriggeredByUser = r.Caller
 		case TypePlanChanged:
