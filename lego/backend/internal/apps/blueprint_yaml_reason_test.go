@@ -26,8 +26,8 @@ func TestBlueprintYAMLSyntaxKeepsReason(t *testing.T) {
 	if len(problems) != 1 || problems[0].Code != "BLUEPRINT_YAML_SYNTAX" {
 		t.Fatalf("problems = %+v", problems)
 	}
-	if !strings.Contains(problems[0].Message, "tab character") {
-		t.Fatalf("message = %q, want the tab reason", problems[0].Message)
+	if !strings.Contains(problems[0].Message, "found character") {
+		t.Fatalf("message = %q, want the parser reason", problems[0].Message)
 	}
 	// The reason never echoes manifest content (a value could be a secret).
 	_, _, leaked := CompileBlueprintIR("services:\n  - type: web\n   name: \"s3cr3t-value\n")
