@@ -1002,7 +1002,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Secrets:       secretsSvc,
 		EnvGroups:     envGroupsSvc,
 		Deploys:       deploysSvc,
-		Events:        &events.Service{Base: base, Store: d.EventStore},
+		Events:        &events.Service{Base: base, Store: d.EventStore, Identities: identityEmailLookup{d.Identities}},
 		Workspaces:    workspaceSvc,
 		Members:       membersSvc,
 		Billing:       billingSvc,

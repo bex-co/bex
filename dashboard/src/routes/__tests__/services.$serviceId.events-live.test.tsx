@@ -70,6 +70,8 @@ function event(id: string, type: string, offset: number, status = "") {
       stallReason: "",
       status: "",
       actor: "",
+      suspendedByUser: null,
+      resumedByUser: null,
       triggeredByUser: "",
       image: "",
       commitId: "",
