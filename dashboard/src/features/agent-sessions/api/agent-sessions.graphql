@@ -35,10 +35,6 @@ fragment AgentSessionFields on AgentSession {
   createdAt
   updatedAt
   canceledAt
-  pinned
-  snapshotBytes
-  hibernatedAt
-  retainUntil
   archivedAt
 }
 
@@ -152,20 +148,6 @@ mutation CancelAgentSession($id: String!) {
   }
 }
 
-# ADR059 D5 pin/unpin: a pinned hibernated workspace never auto-expires (still
-# billed for snapshot storage + counted against the workspace pin quota).
-mutation PinAgentSession($id: String!) {
-  pinAgentSession(id: $id) {
-    ...AgentSessionFields
-  }
-}
-
-mutation UnpinAgentSession($id: String!) {
-  unpinAgentSession(id: $id) {
-    ...AgentSessionFields
-  }
-}
-
 # ADR065 D1 archive: list-state only — the session leaves the working set
 # (mutation verbs 409 AGENT_SESSION_ARCHIVED until unarchived) but stays
 # viewable, transcript included.
@@ -181,8 +163,8 @@ mutation UnarchiveAgentSession($id: String!) {
   }
 }
 
-# ADR065 D4 hard delete: row + transcript + snapshot destroyed; terminal or
-# hibernated sessions only (live phases must cancel first). Irreversible.
+# ADR065 D4 hard delete: row + transcript destroyed; terminal sessions only
+# (live phases must cancel first). Irreversible.
 mutation DeleteAgentSession($id: String!) {
   deleteAgentSession(id: $id)
 }

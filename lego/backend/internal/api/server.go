@@ -402,16 +402,6 @@ type Deps struct {
 	// AgentMaxLiveSandboxesPerWorkspace caps the concurrent live agent-session
 	// sandboxes one workspace may hold (ADR059 D6 / w2/m67). Zero ⇒ uncapped.
 	AgentMaxLiveSandboxesPerWorkspace int
-	// AgentSnapshotStore, when set (BEX_AGENT_SNAPSHOT_S3_* wired), turns the
-	// Completer's reclaim into ADR059 D3 hibernation and enables Resume/Steer of a
-	// hibernated session. nil ⇒ the whole Hibernated tier is off (reclaim =
-	// Terminate, byte-identical to w2/m67).
-	AgentSnapshotStore agentsessions.SnapshotStore
-	// AgentSnapshotRetentionTTL is the ADR059 D5 hibernation retention window
-	// (default 7d). AgentMaxPinnedSandboxesPerWorkspace caps a workspace's pinned
-	// never-expire sessions (0 ⇒ uncapped).
-	AgentSnapshotRetentionTTL           time.Duration
-	AgentMaxPinnedSandboxesPerWorkspace int
 	// SSHHost is the public gateway hostname advertised through Render's
 	// serviceDetails.sshAddress field. Empty disables SSH address advertising.
 	SSHHost string
@@ -992,11 +982,8 @@ func NewServer(base *core.Base, d Deps) *Server {
 			GitProxyURL:   d.AgentGitProxyURL,
 			ModelProxyURL: d.AgentModelProxyURL,
 			SSHHost:       sshHost, ModelKeys: d.Secrets, GitHub: gh,
-			MaxLiveSandboxes:   d.AgentMaxLiveSandboxesPerWorkspace,
-			Snapshots:          d.AgentSnapshotStore,
-			MaxPinnedSandboxes: d.AgentMaxPinnedSandboxesPerWorkspace,
-			RetentionTTL:       d.AgentSnapshotRetentionTTL,
-			TurnTimeout:        d.AgentTurnTimeout,
+			MaxLiveSandboxes: d.AgentMaxLiveSandboxesPerWorkspace,
+			TurnTimeout:      d.AgentTurnTimeout,
 		},
 		BlueprintRecovery:  &apps.BlueprintRecoverer{Store: d.BlueprintsStore},
 		PostgresExpiry:     &postgres.FreeExpirySweeper{Service: pg, Notifier: notifications.DatabaseExpiryNotifier{Service: notificationsSvc}},
@@ -1008,8 +995,6 @@ func NewServer(base *core.Base, d Deps) *Server {
 		AgentSessionCompleter: &agentsessions.Completer{
 			Store: d.AgentSessionStore, Sandbox: agentLifecycle,
 			IdleTTL:           d.AgentSandboxIdleTTL,
-			Snapshots:         d.AgentSnapshotStore,
-			RetentionTTL:      d.AgentSnapshotRetentionTTL,
 			InventoryInterval: time.Minute,
 		},
 		Postgres:      pg,

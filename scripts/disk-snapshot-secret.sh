@@ -9,7 +9,8 @@
 #   BEX_KUBE_CONTEXT=hetzner-prod scripts/disk-snapshot-secret.sh install
 #   DRY_RUN=1 scripts/disk-snapshot-secret.sh install
 #
-# Modeled on scripts/agent-snapshot-secret.sh, with two differences that matter:
+# Modeled on the retired agent-snapshot secret script (ADR059, removed
+# 2026-10-25), with two differences that matter:
 #
 #   1. TWO identities, not one. The operator writes and deletes (backup +
 #      retention + purge-on-detach); bex-api only LISTS, so it gets a separate

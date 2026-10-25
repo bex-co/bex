@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"strconv"
 	"strings"
 	"time"
 
@@ -62,7 +61,7 @@ type Store interface {
 	RecordAgentSessionDispatch(context.Context, string, string, string, string, string, int) (store.AgentSession, error)
 	FinalizeAgentSession(ctx context.Context, id, phase, headSHA, deliveryNote, failureReason string) (store.AgentSession, store.TerminalTurnFact, error)
 	DeleteAgentSession(context.Context, string) error
-	// Deferred-teardown reaping (ADR054 D6, generalized by ADR059 D2 / w2/m67):
+	// Deferred-teardown reaping (ADR054 D6, generalized by w2/m67 / w10/m15):
 	// the Completer defers a finished session's sandbox teardown while an editor
 	// SSH session is open AND for the Active-tier idle grace after the last
 	// interaction. AgentSessionSSHActivity returns both signals: whether a fresh
@@ -84,17 +83,6 @@ type Store interface {
 	// CountLiveAgentSessionSandboxes bounds the ADR059 D6 per-workspace live-
 	// sandbox cap: sessions in a live phase holding a sandbox id for the workspace.
 	CountLiveAgentSessionSandboxes(ctx context.Context, workspaceID string, phases []string) (int, error)
-	// Hibernation (ADR059 D3/D5, w2/m68): claim→snapshot→hibernate, rehydrate on
-	// resume, pin/unpin, and the retention sweep.
-	ClaimAgentSessionForHibernation(ctx context.Context, id string) (store.AgentSession, error)
-	HibernateAgentSession(ctx context.Context, id, snapshotRef string, snapshotBytes int64, snapshotSHA string, retainUntil time.Time) (store.AgentSession, error)
-	BeginRehydrate(ctx context.Context, id, prompt, deliveryMode string) (store.AgentSession, error)
-	AbortRehydrate(ctx context.Context, id string) (store.AgentSession, error)
-	RehydrateAgentSession(ctx context.Context, id, sandboxID, phase, status, deliveryMode string) (store.AgentSession, error)
-	SetAgentSessionPinned(ctx context.Context, id string, pinned bool, retainUntil *time.Time) (store.AgentSession, error)
-	ListHibernatedForRetention(ctx context.Context, now time.Time, limit int) ([]store.AgentSession, error)
-	ExpireHibernatedAgentSession(ctx context.Context, id, snapshotRef string) (store.AgentSession, error)
-	CountPinnedAgentSessions(ctx context.Context, workspaceID string) (int, error)
 	// Transcript persistence (ADR051): the Completer harvests the driver's log
 	// at completion and appends it here (idempotent by session+turn+part index).
 	AppendAgentSessionTranscript(ctx context.Context, sessionID string, parts []store.AgentSessionTranscriptPart) error
@@ -121,11 +109,6 @@ type SandboxLifecycle interface {
 	EnterAgentSessionPhase(ctx context.Context, workspaceID, sessionID, sandboxID, modelEndpoint string, egressAllowlist []string) error
 	ResumeAgentSessionSandbox(context.Context, string, string, string) error
 	CancelAgentSessionSandbox(context.Context, string, string, string) error
-	// HibernateAgentSessionSandbox snapshots the mutable workspace state to the
-	// presigned PUT URL (ADR059 D3), returning the snapshot's size, sha256, and
-	// git-dirty flag. It does NOT terminate the pod; an error leaves the pod
-	// running so the caller can fall back to Terminate.
-	HibernateAgentSessionSandbox(ctx context.Context, workspaceID, sessionID, sandboxID, putURL string) (sandbox.SnapshotResult, error)
 	ReadSessionStatus(ctx context.Context, workspaceID, sessionID, sandboxID string) (string, error)
 	// ReadSessionTranscript returns the driver's per-part session log (JSONL)
 	// over the same pods/exec boundary as ReadSessionStatus, so the
@@ -167,7 +150,7 @@ type Service struct {
 	// traffic through the gateway's credential-injecting proxy (ADR062): the
 	// sandbox receives only a placeholder + this per-session base URL, and the real
 	// BYO key is injected on the gateway→vendor hop. It is mandatory: an empty
-	// value disables agent-session create/steer/rehydrate rather than placing the
+	// value disables agent-session create/steer rather than placing the
 	// reusable key in an untrusted sandbox environment.
 	ModelProxyURL string
 	// ModelKeys supplies key-readiness for Capabilities. The gateway-only
@@ -186,18 +169,6 @@ type Service struct {
 	// AGENT_SESSION_LIVE_LIMIT rather than silently queued. 0 => uncapped
 	// (byte-identical to before this field existed).
 	MaxLiveSandboxes int
-	// Snapshots, when set (BEX_AGENT_SNAPSHOT_S3_* wired), is the ADR059 D3/D4
-	// hibernation object store: Resume/Steer of a hibernated session mints a
-	// presigned restore URL from it. nil ⇒ a hibernated session cannot be
-	// rehydrated (the Completer never hibernates either), so the whole tier is off.
-	Snapshots SnapshotStore
-	// MaxPinnedSandboxes caps a workspace's pinned (never-expire) sessions
-	// (ADR059 D5 pin quota, BEX_AGENT_MAX_PINNED_SANDBOXES_PER_WORKSPACE). A pin
-	// beyond it is refused with AGENT_SESSION_PIN_LIMIT. 0 ⇒ uncapped.
-	MaxPinnedSandboxes int
-	// RetentionTTL mirrors the Completer's window so an unpin puts a hibernated
-	// row back on the clock with a consistent deadline. 0 ⇒ the 7d default.
-	RetentionTTL time.Duration
 	// TurnTimeout bounds one agent turn inside the sandbox (w5/m80 t002,
 	// BEX_AGENT_TURN_TIMEOUT). It is injected as BEX_AGENT_TURN_TIMEOUT_MS so a
 	// turn that never converges — a hung model call or an infinite tool loop —
@@ -225,7 +196,7 @@ type Service struct {
 var liveSandboxPhases = activePhases
 
 // admitDispatch is the ONE admission gate every verb that provisions fresh
-// sandbox compute (Create, Steer, rehydrate) runs, in a fixed order: the
+// sandbox compute (Create, Steer) runs, in a fixed order: the
 // ADR075 D7 (w6/m42) bound-payment-method marker — checked synchronously at
 // admission because the dispatch-time check inside the sandbox lifecycle fires
 // in a background goroutine where no 402 can reach the caller — then the
@@ -650,7 +621,6 @@ var validPhases = map[string]bool{
 	PhaseCreating: true, PhaseRunning: true, PhaseResuming: true,
 	PhaseRedispatching: true, PhaseCompleted: true, PhaseFailed: true,
 	PhaseCanceling: true, PhaseCanceled: true,
-	PhaseHibernating: true, PhaseHibernated: true,
 }
 
 // normalizeLimit applies the shared page-bound policy of the ADR065 reads:
@@ -761,7 +731,7 @@ func (s *Service) Archive(ctx context.Context, sessionID string) (View, error) {
 }
 
 // Unarchive returns an archived session to the working set, re-enabling the
-// mutation verbs. It does not rehydrate — the next Resume/Steer does.
+// mutation verbs. It provisions nothing — the next Steer does.
 func (s *Service) Unarchive(ctx context.Context, sessionID string) (View, error) {
 	return s.setArchived(ctx, sessionID, false)
 }
@@ -784,21 +754,20 @@ func (s *Service) setArchived(ctx context.Context, sessionID string, archived bo
 }
 
 // finishedPhase reports a session past all live work: terminal (completed/
-// failed/canceled) or hibernated. Two ADR065 verbs key off it — Delete accepts
+// failed/canceled). Two ADR065 verbs key off it — Delete accepts
 // only finished sessions (a live one must Cancel first; deliberately no
 // archive/cancel escape hatch on a destructive verb), and a pod-less finished
 // session's history is replayable via a replay-only read ticket (D2).
 func finishedPhase(phase string) bool {
 	switch phase {
-	case PhaseCompleted, PhaseFailed, PhaseCanceled, PhaseHibernated:
+	case PhaseCompleted, PhaseFailed, PhaseCanceled:
 		return true
 	}
 	return false
 }
 
-// Delete hard-deletes a session (ADR065 D4): the row, its cascading transcript,
-// and — blob-before-row, mirroring the retention sweep — its hibernation
-// snapshot. It is the one destructive agent-session verb, so the irreversible
+// Delete hard-deletes a session (ADR065 D4): the row and its cascading
+// transcript. It is the one destructive agent-session verb, so the irreversible
 // sink is gated by a FRESH (uncached) re-authorization per the ADR061 #8 /
 // ADR063 #7 seam. A terminal session still holding its idle-grace sandbox is
 // torn down first so the reaper (which works off the row) can never be left
@@ -832,17 +801,6 @@ func (s *Service) Delete(ctx context.Context, sessionID string) error {
 	if record.SandboxID != "" {
 		if err := s.Sandbox.CancelAgentSessionSandbox(ctx, record.WorkspaceID, record.ID, record.SandboxID); err != nil {
 			return err // retryable: never delete the row while its pod may survive
-		}
-	}
-	if record.SnapshotRef != "" {
-		// Blob BEFORE row (the sweep's ordering): a failed object delete refuses
-		// the whole verb (retryable) rather than orphaning an unreachable blob.
-		if s.Snapshots == nil {
-			return core.NewAgentSessionSnapshotUnavailableError()
-		}
-		if err := s.Snapshots.Delete(ctx, record.SnapshotRef); err != nil {
-			log.Printf("agent-session delete: snapshot delete failed (session=%s): %v", record.ID, err)
-			return core.NewAgentSessionSnapshotUnavailableError()
 		}
 	}
 	if err := s.Store.DeleteAgentSession(ctx, sessionID); err != nil {
@@ -972,11 +930,6 @@ func (s *Service) Resume(ctx context.Context, sessionID string) (View, error) {
 	if record.ArchivedAt != nil {
 		return View{}, errArchived(record.Phase) // ADR065 D1: unarchive first
 	}
-	// ADR059 D4: a hibernated session has no live pod — rehydrate it from its
-	// object-storage snapshot into a fresh sandbox instead of waking a pod.
-	if record.Phase == PhaseHibernated {
-		return s.rehydrate(ctx, record, "", DeliveryRehydrate)
-	}
 	if record.Phase == PhaseCanceled || record.Phase == PhaseCanceling || record.SandboxID == "" {
 		return View{}, core.NewConflictError("AGENT_SESSION_NOT_RESUMABLE", "agent session cannot be resumed from its current phase", map[string]any{"phase": record.Phase})
 	}
@@ -1010,150 +963,6 @@ func (s *Service) runResume(ctx context.Context, record store.AgentSession) {
 	s.setLifecycleIfActive(ctx, record.ID, "", PhaseRunning, "running")
 }
 
-// restoreEnvVar is the non-secret env var carrying the presigned GET URL the
-// fresh sandbox's setup fetches its hibernation snapshot from (ADR059 D4). The
-// URL is single-object + time-boxed; the sandbox never receives a durable
-// credential. The agent image's entrypoint untars it before the driver starts.
-const restoreEnvVar = "BEX_AGENT_RESTORE_URL"
-
-// restoreEnvSHA / restoreEnvBytes are the recorded snapshot digest and size
-// the driver verifies after download, before tar extract (codex round-15 #7).
-// Empty SHA / zero bytes leave verification optional so a row that predates
-// digest recording still restores.
-const (
-	restoreEnvSHA   = "BEX_AGENT_RESTORE_SHA"
-	restoreEnvBytes = "BEX_AGENT_RESTORE_BYTES"
-)
-
-// rehydrate is the shared ADR059 D4 restore path used by Resume and by Steer of
-// a hibernated session: it mints a presigned snapshot download URL, claims the
-// row (hibernated → resuming, keeping the snapshot for retry), and dispatches a
-// fresh sandbox that hydrates its workspace from the snapshot before running.
-// steerPrompt, when non-empty, rides the turn (a hibernated Steer). It fails
-// closed when the snapshot store is unwired or the row carries no snapshot.
-func (s *Service) rehydrate(ctx context.Context, record store.AgentSession, steerPrompt, delivery string) (View, error) {
-	if !s.modelProxyEnabled() {
-		return View{}, core.ErrAgentSessionsUnavailable
-	}
-	if s.Snapshots == nil || record.SnapshotRef == "" {
-		return View{}, core.NewConflictError("AGENT_SESSION_NOT_RESUMABLE",
-			"hibernated session has no restorable snapshot", map[string]any{"phase": record.Phase})
-	}
-	if err := s.admitDispatch(ctx, record.WorkspaceID); err != nil {
-		return View{}, err
-	}
-	restoreURL, err := s.Snapshots.PrepareDownload(ctx, record.SnapshotRef)
-	if err != nil {
-		log.Printf("agent-session rehydrate: prepare snapshot restore failed (session=%s): %v", record.ID, err)
-		return View{}, core.NewAgentSessionSnapshotUnavailableError()
-	}
-	config, err := decodeAgentConfig(record)
-	if err != nil {
-		return View{}, err
-	}
-	modelEndpoint, egressAllowlist, err := createEgress(record.WorkspaceID, config, nil)
-	if err != nil {
-		return View{}, err
-	}
-	config.ModelEndpoint = modelEndpoint
-	modelAPIKey, err := s.modelCredential(ctx, record.WorkspaceID, record.ID)
-	if err != nil {
-		return View{}, err
-	}
-	// Claim the row (hibernated → resuming). The snapshot stays on the row so a
-	// background failure can AbortRehydrate back to hibernated and retry later.
-	record, err = s.Store.BeginRehydrate(ctx, record.ID, steerPrompt, delivery)
-	if err != nil {
-		return View{}, mapStoreError(record.ID, err)
-	}
-	env := s.driverEnv(config, record)
-	env[restoreEnvVar] = restoreURL
-	if record.SnapshotSHA != "" {
-		env[restoreEnvSHA] = record.SnapshotSHA
-	}
-	if record.SnapshotBytes > 0 {
-		env[restoreEnvBytes] = strconv.FormatInt(record.SnapshotBytes, 10)
-	}
-	// Resume is restore-only: never rerun config.Task. A hibernated Steer carries
-	// exactly the durable prompt inserted by BeginRehydrate above.
-	env["BEX_AGENT_PROMPT"] = steerPrompt
-	acceptedTurn := 0
-	if steerPrompt != "" {
-		env["BEX_AGENT_TURN"] = fmt.Sprintf("%d", record.Turns)
-		acceptedTurn = record.Turns
-	}
-	spec := dispatchSpec{
-		template:      strings.TrimSpace(config.Template),
-		modelEndpoint: modelEndpoint,
-		modelAPIKey:   modelAPIKey,
-		egress:        egressAllowlist,
-		env:           env,
-		delivery:      delivery,
-		turn:          acceptedTurn,
-		task:          config.Task,
-	}
-	s.detach(ctx, func(ctx context.Context) { s.runRehydrate(ctx, record, spec) })
-	return s.toView(record)
-}
-
-// runRehydrate provisions the fresh restore sandbox in the background and
-// converges the phase (ADR059 D4). On any provisioning failure it reverts the
-// row to hibernated (AbortRehydrate) so the snapshot survives for a later Resume
-// — a rehydrate failure must never lose the durable workspace. On success it
-// adopts the sandbox and clears the snapshot fields (RehydrateAgentSession).
-func (s *Service) runRehydrate(ctx context.Context, record store.AgentSession, spec dispatchSpec) {
-	ws := record.WorkspaceID
-	// Fresh pod with prior turns and a prompt to run: hand the driver its
-	// rung-2/3 priming material (ADR047 D3 ladder, w5/m84). Computed here, off
-	// the accept path — the transcript read is background work. Rung 1
-	// (session/load) stays the driver's call: it wins when the restored
-	// snapshot carries agent state. A restore-only resume (turn 0) runs no
-	// prompt and needs no priming.
-	if spec.turn > 0 {
-		s.continuityEnv(ctx, spec.env, record, spec.task)
-	}
-	// Resume-latency instrumentation (ADR059 D4 SLOs p50<~5s/p95<~15s): time the
-	// cold restore from claim to a live sandbox. The dominant factor is the pod
-	// schedule + the in-sandbox snapshot fetch/untar; the number is logged for the
-	// SLO watch (a live acceptance records the distribution).
-	start := s.Now()
-	sb, err := s.Sandbox.CreateAgentSessionSandbox(ctx, ws, spec.template, record.ID, record.Repo, record.Branch, spec.modelEndpoint, spec.modelAPIKey, spec.egress, spec.env)
-	if err != nil {
-		log.Printf("agent-session rehydrate: sandbox create failed (session=%s): %v", record.ID, err)
-		s.settleDispatchTurn(ctx, record.ID, spec.turn, "sandbox restore provisioning failed")
-		s.abortRehydrate(ctx, record.ID)
-		return
-	}
-	if err := s.Sandbox.EnterAgentSessionPhase(ctx, ws, record.ID, sb.ID, spec.modelEndpoint, spec.egress); err != nil {
-		log.Printf("agent-session rehydrate: egress phase transition failed (session=%s): %v", record.ID, err)
-		_ = s.Sandbox.CancelAgentSessionSandbox(ctx, ws, record.ID, sb.ID)
-		s.settleDispatchTurn(ctx, record.ID, spec.turn, "sandbox restore egress transition failed")
-		s.abortRehydrate(ctx, record.ID)
-		return
-	}
-	phase := PhaseCreating
-	if sb.Status == sandbox.StatusRunning {
-		phase = PhaseRunning
-	}
-	if _, err := s.Store.RehydrateAgentSession(ctx, record.ID, sb.ID, phase, string(sb.Status), spec.delivery); err != nil {
-		log.Printf("agent-session rehydrate: record dispatch failed (session=%s): %v", record.ID, err)
-		_ = s.Sandbox.CancelAgentSessionSandbox(ctx, ws, record.ID, sb.ID)
-		s.settleDispatchTurn(ctx, record.ID, spec.turn, "sandbox restore dispatch record failed")
-		s.abortRehydrate(ctx, record.ID)
-		return
-	}
-	log.Printf("agent-session rehydrate: session=%s resumed in %s (SLO p50<5s/p95<15s)", record.ID, s.Now().Sub(start).Round(time.Millisecond))
-}
-
-// abortRehydrate reverts a failed rehydrate to hibernated so the snapshot is
-// retriable; a failure to revert is logged (the row stays resuming until a
-// manual/retry converges it, but the durable snapshot is never deleted here).
-func (s *Service) abortRehydrate(ctx context.Context, id string) {
-	if _, err := s.Store.AbortRehydrate(ctx, id); err != nil {
-		log.Printf("agent-session rehydrate: revert to hibernated failed (session=%s): %v", id, err)
-	}
-}
-
 func (s *Service) Cancel(ctx context.Context, sessionID string) (View, error) {
 	if err := s.AuthorizeOn(ctx, core.RelCanOperate, sessionObject(sessionID)); err != nil {
 		return View{}, err
@@ -1180,15 +989,6 @@ func (s *Service) Cancel(ctx context.Context, sessionID string) (View, error) {
 			return View{}, err // leave canceling: a retry converges it
 		}
 	}
-	// ADR059: an explicit Cancel reclaims immediately, including a hibernated
-	// session's durable snapshot. Best-effort delete before finalizing — a failed
-	// object delete only orphans a blob (the retention sweep would have deleted it
-	// anyway); it must not block the cancel.
-	if record.SnapshotRef != "" && s.Snapshots != nil {
-		if err := s.Snapshots.Delete(ctx, record.SnapshotRef); err != nil {
-			log.Printf("agent-session cancel: delete snapshot failed (session=%s ref=%s): %v", record.ID, record.SnapshotRef, err)
-		}
-	}
 	record, fact, err := s.Store.SetAgentSessionCanceled(ctx, sessionID)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
@@ -1202,82 +1002,6 @@ func (s *Service) Cancel(ctx context.Context, sessionID string) (View, error) {
 	}
 	s.Metrics.observeTerminalTurn(turnOutcomeCanceled, fact)
 	return s.toView(record)
-}
-
-// Pin marks a session as never-expire (ADR059 D5): a pinned hibernated workspace
-// is kept indefinitely (its retention deadline removed) but is still metered for
-// storage and counted against the per-workspace pin quota. Pinning is authorized
-// like the other lifecycle verbs (can_operate). Idempotent.
-func (s *Service) Pin(ctx context.Context, sessionID string) (View, error) {
-	return s.setPin(ctx, sessionID, true)
-}
-
-// Unpin removes the never-expire pin (ADR059 D5), putting a hibernated session
-// back on the retention clock (now + the retention window) so it can expire
-// normally; a non-hibernated session just loses the flag.
-func (s *Service) Unpin(ctx context.Context, sessionID string) (View, error) {
-	return s.setPin(ctx, sessionID, false)
-}
-
-func (s *Service) setPin(ctx context.Context, sessionID string, pinned bool) (View, error) {
-	if err := s.AuthorizeOn(ctx, core.RelCanOperate, sessionObject(sessionID)); err != nil {
-		return View{}, err
-	}
-	if !s.enabled() {
-		return View{}, core.ErrAgentSessionsUnavailable
-	}
-	if err := validateSessionID(sessionID); err != nil {
-		return View{}, err
-	}
-	record, err := s.Store.GetAgentSession(ctx, sessionID)
-	if err != nil {
-		return View{}, mapStoreError(sessionID, err)
-	}
-	if record.ArchivedAt != nil {
-		return View{}, errArchived(record.Phase) // ADR065 D1: unarchive first
-	}
-	if pinned && !record.Pinned {
-		if err := s.enforcePinQuota(ctx, record.WorkspaceID); err != nil {
-			return View{}, err
-		}
-	}
-	var retainUntil *time.Time
-	if !pinned {
-		t := s.Now().Add(s.retentionTTL())
-		retainUntil = &t
-	}
-	record, err = s.Store.SetAgentSessionPinned(ctx, sessionID, pinned, retainUntil)
-	if err != nil {
-		return View{}, mapStoreError(sessionID, err)
-	}
-	return s.toView(record)
-}
-
-// retentionTTL mirrors the Completer's ADR059 D5 window for an unpin's new
-// deadline. 0 ⇒ the 7d default.
-func (s *Service) retentionTTL() time.Duration {
-	if s.RetentionTTL > 0 {
-		return s.RetentionTTL
-	}
-	return 7 * 24 * time.Hour
-}
-
-// enforcePinQuota bounds a workspace's pinned sessions (ADR059 D5). 0 ⇒ uncapped.
-// Best-effort like the live cap; a store error fails closed.
-func (s *Service) enforcePinQuota(ctx context.Context, workspaceID string) error {
-	if s.MaxPinnedSandboxes <= 0 {
-		return nil
-	}
-	n, err := s.Store.CountPinnedAgentSessions(ctx, workspaceID)
-	if err != nil {
-		return mapStoreError("", err)
-	}
-	if n >= s.MaxPinnedSandboxes {
-		return core.NewConflictError("AGENT_SESSION_PIN_LIMIT",
-			fmt.Sprintf("this workspace already has %d pinned agent sessions (limit %d); unpin one before pinning another", n, s.MaxPinnedSandboxes),
-			map[string]any{"pinned": n, "limit": s.MaxPinnedSandboxes})
-	}
-	return nil
 }
 
 func agentCommand(agent string) string {
@@ -1435,13 +1159,8 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	switch record.Phase {
 	case PhaseCanceled, PhaseCanceling:
 		return View{}, core.NewConflictError("AGENT_SESSION_NOT_STEERABLE", "a canceled agent session cannot be steered", map[string]any{"phase": record.Phase})
-	case PhaseCreating, PhaseRunning, PhaseResuming, PhaseRedispatching, PhaseHibernating:
+	case PhaseCreating, PhaseRunning, PhaseResuming, PhaseRedispatching:
 		return View{}, core.NewConflictError("AGENT_SESSION_TURN_IN_FLIGHT", "a turn is already running; wait for it to finish before steering", map[string]any{"phase": record.Phase})
-	case PhaseHibernated:
-		// ADR059 D4: steering a hibernated session rehydrates it from its snapshot
-		// and runs the steer prompt on the restored workspace (uncommitted edits +
-		// installed deps intact), instead of re-cloning over lost state.
-		return s.rehydrate(ctx, record, prompt, DeliveryRehydrate)
 	}
 	if err := s.admitDispatch(ctx, record.WorkspaceID); err != nil {
 		return View{}, err
@@ -1492,9 +1211,9 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 // runSteerDispatch tears the previous turn's sandbox down (idempotent) then
 // re-dispatches a fresh one for the steering prompt, in the background.
 func (s *Service) runSteerDispatch(ctx context.Context, record store.AgentSession, spec dispatchSpec) {
-	// A redispatch crosses a sandbox-generation boundary exactly like a
-	// hibernated resume: prime the blank agent (ADR047 D3 ladder, w5/m84).
-	// Off the accept path by design — see runRehydrate.
+	// A redispatch crosses a sandbox-generation boundary: prime the blank agent
+	// from the durable transcript (ADR047 D3 ladder, w5/m84). Off the accept path
+	// by design — the transcript read is background work.
 	s.continuityEnv(ctx, spec.env, record, spec.task)
 	if spec.previousSandboxID != "" {
 		d := store.AgentDispatch{SessionID: record.ID, WorkspaceID: record.WorkspaceID, Turn: spec.turn, PreviousSandboxID: spec.previousSandboxID}
@@ -1519,7 +1238,7 @@ func (s *Service) runSteerDispatch(ctx context.Context, record store.AgentSessio
 // transcript replay — needs a ticket too, and those verbs don't fire again. The
 // ticket carries the same 90s TTL + single-use nonce + subject/session/pod/
 // namespace claims, so the gateway authorizes reattach and terminal replay
-// identically to a first connect. A reaped terminal/hibernated session (empty
+// identically to a first connect. A reaped terminal session (empty
 // sandbox id) mints a replay-only read ticket instead (ADR065 D2); only a
 // session still provisioning its first sandbox has nothing to attach to.
 func (s *Service) AttachTicket(ctx context.Context, sessionID, action string) (View, error) {
@@ -1552,7 +1271,7 @@ func (s *Service) AttachTicket(ctx context.Context, sessionID, action string) (V
 		return View{}, mapStoreError(sessionID, err)
 	}
 	if record.SandboxID == "" {
-		// ADR065 D2: a reaped session (terminal or hibernated, its sandbox gone)
+		// ADR065 D2: a reaped terminal session (its sandbox gone)
 		// mints a REPLAY-ONLY read ticket with an empty pod claim — the gateway
 		// serves the durable-transcript replay and never dials. This is what makes
 		// "archived sessions can still be viewed" true after the idle grace. Only
@@ -1680,8 +1399,6 @@ func viewOf(record store.AgentSession) (View, error) {
 		Turns: record.Turns, DeliveryMode: record.DeliveryMode, DeliveryNote: record.DeliveryNote,
 		FailureReason: record.FailureReason, FailureReasonCode: record.FailureReasonCode,
 		CreatedAt: record.CreatedAt, UpdatedAt: record.UpdatedAt, CanceledAt: record.CanceledAt,
-		Pinned: record.Pinned, SnapshotBytes: record.SnapshotBytes,
-		HibernatedAt: record.HibernatedAt, RetainUntil: record.RetainUntil,
 		ArchivedAt: record.ArchivedAt}, nil
 }
 

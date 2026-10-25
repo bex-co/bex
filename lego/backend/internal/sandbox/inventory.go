@@ -82,14 +82,21 @@ type SessionClaim struct {
 type SessionClaimLookup func(ctx context.Context, sessionID string) (SessionClaim, error)
 
 // liveAgentPhases are phases that may still own a running sandbox — active
-// turns plus hibernation (snapshot still needs the pod until reclaim finishes).
+// turns.
 var liveAgentPhases = map[string]struct{}{
 	"running":       {},
 	"creating":      {},
 	"resuming":      {},
 	"redispatching": {},
-	"hibernating":   {},
-	"hibernated":    {},
+}
+
+// completerReapedPhases are the terminal phases whose still-named sandbox the
+// Completer tears down itself once the idle grace and any editor SSH session
+// allow it.
+var completerReapedPhases = map[string]struct{}{
+	"completed": {},
+	"failed":    {},
+	"canceled":  {},
 }
 
 // ReconcileWorkspaceInventory lists the workspace's live sandboxes and
@@ -190,7 +197,10 @@ func (l *AgentSessionLifecycle) ReconcileWorkspaceInventory(ctx context.Context,
 // classifySessionSandbox decides whether a live sandbox is still owned by its
 // stamped session. A blank or matching sandbox_id on a live phase stays claimed
 // (steer may have blanked the column while the durable previous-sandbox intent
-// finishes); anything else is an orphan.
+// finishes). A terminal session that still names THIS sandbox is in its idle
+// grace or held by an open editor SSH session (ADR054 D6, w10/m15): the
+// Completer's reap (the same phases ListTerminalAgentSessionsWithSandbox scans)
+// owns that teardown, so it stays claimed too. Anything else is an orphan.
 func classifySessionSandbox(claim SessionClaim, sandboxID string) (class string, shouldStop bool) {
 	if !claim.Found {
 		return InventoryClassNoRowOrphan, true
@@ -198,6 +208,9 @@ func classifySessionSandbox(claim SessionClaim, sandboxID string) (class string,
 	_, live := liveAgentPhases[claim.Phase]
 	ownsThis := claim.SandboxID == sandboxID || claim.SandboxID == ""
 	if ownsThis && live {
+		return InventoryClassClaimed, false
+	}
+	if _, reaped := completerReapedPhases[claim.Phase]; reaped && claim.SandboxID == sandboxID {
 		return InventoryClassClaimed, false
 	}
 	return InventoryClassTerminalOrphan, true

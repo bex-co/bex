@@ -91,16 +91,11 @@ describe("m92 t004 — bounded task title", () => {
   });
 });
 
-describe("m92 t007 — hibernated status phrase", () => {
-  it("hibernated maps to hibernated phrase, not Working", () => {
+describe("m92 t007 — settled status phrase", () => {
+  it("a closed completed session keeps its completed phrase, not Working", () => {
     expect(
-      agentSessionStatusPhraseKey({ phase: "hibernated", prNumber: null }),
-    ).toBe("agentSessions.phase.hibernated");
-  });
-  it("hibernating maps to hibernating phrase", () => {
-    expect(
-      agentSessionStatusPhraseKey({ phase: "hibernating", prNumber: null }),
-    ).toBe("agentSessions.phase.hibernating");
+      agentSessionStatusPhraseKey({ phase: "completed", prNumber: null }),
+    ).toBe("agentSessions.phase.completed");
   });
   it("running still maps to Working", () => {
     expect(

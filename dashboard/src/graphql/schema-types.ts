@@ -57,17 +57,13 @@ export type AgentSession = {
   failureReason: Maybe<Scalars['String']['output']>;
   failureReasonCode: Maybe<Scalars['String']['output']>;
   headSha: Maybe<Scalars['String']['output']>;
-  hibernatedAt: Maybe<Scalars['String']['output']>;
   id: Scalars['String']['output'];
   ownerId: Scalars['String']['output'];
   phase: Scalars['String']['output'];
-  pinned: Maybe<Scalars['Boolean']['output']>;
   prNumber: Maybe<Scalars['Int']['output']>;
   prUrl: Maybe<Scalars['String']['output']>;
   repo: Scalars['String']['output'];
-  retainUntil: Maybe<Scalars['String']['output']>;
   sandboxId: Maybe<Scalars['String']['output']>;
-  snapshotBytes: Maybe<Scalars['Float']['output']>;
   sshAddress: Maybe<Scalars['String']['output']>;
   status: Scalars['String']['output'];
   streamUrl: Maybe<Scalars['String']['output']>;
@@ -1158,7 +1154,6 @@ export type Mutation = {
   moveEnvGroup: Maybe<EnvGroup>;
   patchEnvGroupEnvironment: Maybe<EnvGroupEnvironmentPatchResult>;
   patchServiceEnvironment: EnvironmentPatchResult;
-  pinAgentSession: Maybe<AgentSession>;
   prepareWorkspaceCreation: Maybe<WorkspaceCreationAttempt>;
   purgeServiceCache: Maybe<Service>;
   recoverDatabase: Maybe<Database>;
@@ -1249,7 +1244,6 @@ export type Mutation = {
   triggerDeploy: Maybe<Deploy>;
   unarchiveAgentSession: Maybe<AgentSession>;
   unlinkEnvGroup: Maybe<Scalars['Boolean']['output']>;
-  unpinAgentSession: Maybe<AgentSession>;
   unregisterNotificationDeviceSubscription: Maybe<Scalars['Boolean']['output']>;
   unregisterNotificationWebPushSubscription: Maybe<Scalars['Boolean']['output']>;
   updateBlueprint: Maybe<Blueprint>;
@@ -1767,11 +1761,6 @@ export type MutationPatchServiceEnvironmentArgs = {
   saveMode: Scalars['String']['input'];
   secretFiles?: InputMaybe<Array<EnvironmentSecretFilePatchInput>>;
   serviceId: Scalars['String']['input'];
-};
-
-
-export type MutationPinAgentSessionArgs = {
-  id: Scalars['String']['input'];
 };
 
 
@@ -2382,11 +2371,6 @@ export type MutationUnarchiveAgentSessionArgs = {
 export type MutationUnlinkEnvGroupArgs = {
   id: Scalars['String']['input'];
   serviceId: Scalars['String']['input'];
-};
-
-
-export type MutationUnpinAgentSessionArgs = {
-  id: Scalars['String']['input'];
 };
 
 

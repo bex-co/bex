@@ -58,12 +58,6 @@ func TestArchiveUnarchiveLifecycle(t *testing.T) {
 	if _, err := svc.Steer(caller("alice"), SteerRequest{SessionID: id, Prompt: "go"}); !isCode(err, "AGENT_SESSION_ARCHIVED") {
 		t.Fatalf("steer archived = %v, want AGENT_SESSION_ARCHIVED", err)
 	}
-	if _, err := svc.Pin(caller("alice"), id); !isCode(err, "AGENT_SESSION_ARCHIVED") {
-		t.Fatalf("pin archived = %v, want AGENT_SESSION_ARCHIVED", err)
-	}
-	if _, err := svc.Unpin(caller("alice"), id); !isCode(err, "AGENT_SESSION_ARCHIVED") {
-		t.Fatalf("unpin archived = %v, want AGENT_SESSION_ARCHIVED", err)
-	}
 
 	// Reads always work: viewable is the point of the archive.
 	if got, err := svc.Get(caller("alice"), id); err != nil || got.ArchivedAt == nil {
@@ -198,8 +192,6 @@ func (f *freshDenyFGA) CheckFresh(context.Context, string, string, string) (bool
 
 func TestDeleteGuardsAndOrdering(t *testing.T) {
 	svc, st, lc, id := steerableFixture(t)
-	snaps := newFakeSnapshots()
-	svc.Snapshots = snaps
 
 	// A live-phase session must cancel first.
 	row := st.rows[id]
@@ -209,14 +201,12 @@ func TestDeleteGuardsAndOrdering(t *testing.T) {
 		t.Fatalf("delete running = %v, want AGENT_SESSION_NOT_DELETABLE", err)
 	}
 
-	// A hibernated session: the snapshot blob is deleted BEFORE the row.
-	seedHibernated(st, id)
-	ref := st.rows[id].SnapshotRef
+	// A reaped finished session deletes cleanly.
+	row = st.rows[id]
+	row.Phase, row.SandboxID = PhaseCompleted, ""
+	st.rows[id] = row
 	if err := svc.Delete(caller("alice"), id); err != nil {
-		t.Fatalf("delete hibernated = %v", err)
-	}
-	if len(snaps.deleted) != 1 || snaps.deleted[0] != ref {
-		t.Fatalf("snapshot not deleted: %v", snaps.deleted)
+		t.Fatalf("delete completed = %v", err)
 	}
 	if _, ok := st.rows[id]; ok {
 		t.Fatalf("row survived delete")
@@ -259,7 +249,7 @@ func TestDeleteRefusedByFreshRecheck(t *testing.T) {
 
 // --- ADR065 D2: replay-only attach tickets ----------------------------------
 
-// A reaped terminal/hibernated session (empty sandbox id) mints a replay-only
+// A reaped terminal session (empty sandbox id) mints a replay-only
 // read ticket whose pod triple is empty; a provisioning session still refuses,
 // and a turn ticket can never be pod-less.
 func TestAttachTicketReplayOnlyForReapedSessions(t *testing.T) {
@@ -294,12 +284,6 @@ func TestAttachTicketReplayOnlyForReapedSessions(t *testing.T) {
 	st.rows[id] = row
 	if _, err := svc.AttachTicket(caller("alice"), id, agentsessionticket.ActionRead); !isCode(err, "AGENT_SESSION_NOT_ATTACHABLE") {
 		t.Fatalf("read on provisioning = %v, want AGENT_SESSION_NOT_ATTACHABLE", err)
-	}
-
-	// Hibernated is replayable too.
-	seedHibernated(st, id)
-	if _, err := svc.AttachTicket(caller("alice"), id, agentsessionticket.ActionRead); err != nil {
-		t.Fatalf("read on hibernated = %v, want allowed", err)
 	}
 }
 

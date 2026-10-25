@@ -40,10 +40,6 @@ describe("useAgentSessionMutations list cache invalidation", () => {
       createdAt: "2026-08-18T00:00:00Z",
       updatedAt: "2026-08-18T01:00:00Z",
       canceledAt: null,
-      pinned: false,
-      snapshotBytes: 0,
-      hibernatedAt: null,
-      retainUntil: null,
       archivedAt: "2026-08-18T01:00:00Z",
       agentConfig: {
         __typename: "AgentSessionConfig",

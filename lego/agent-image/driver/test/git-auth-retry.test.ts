@@ -29,7 +29,7 @@ test("withGitAuthRetry returns on the first success", async () => {
 });
 
 test("withGitAuthRetry retries a transient git-proxy 403 then succeeds", async () => {
-  // w2/m77: restored workspaces skip cloneWithRetry and hit ls-remote while
+  // A pre-cloned workspace skips cloneWithRetry and hits ls-remote while
   // sandbox_id is still empty; one retry after the mint broker sees the id is
   // enough. delayMs=0 keeps the unit test off the production 3s backoff.
   let calls = 0;

@@ -87,7 +87,7 @@ export function SessionChatColumn({
     </>
   );
 
-  // Attachable = a live sandbox to splice, a finished (terminal/hibernated)
+  // Attachable = a live sandbox to splice, a finished (terminal)
   // session replaying through an ADR065 D2 replay-only ticket, or one with an
   // established transcript once provisioning has settled. While a non-terminal
   // session is creating, redispatching, or resuming without a sandbox, keep the

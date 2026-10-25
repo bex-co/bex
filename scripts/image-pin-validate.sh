@@ -18,7 +18,7 @@
 #
 # Reviewed boundaries (w7/041, 2026-09-05): local fixture-only shell harnesses
 # stay outside this scan. Credential-custody helpers are not covered by that
-# rationale: agent-snapshot-secret.sh and backup-s3-credentials.sh pin their
+# rationale: disk-snapshot-secret.sh and backup-s3-credentials.sh pin their
 # AWS_CLI_IMAGE defaults and reject non-digest overrides before invoking Docker.
 # The JSON toolchain inventory is covered by TestToolchainInventoryMatchesCommittedPins.
 # Static etcd/OpenBao backup jobs download age by a committed release checksum,

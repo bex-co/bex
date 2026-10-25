@@ -396,8 +396,7 @@ func TestConnectRunHonoursTheSharedExecGate(t *testing.T) {
 }
 
 // TestBufferExecReadsPinnedAndTransitionalShapes covers bex-api's own buffered
-// readers (MCP sandbox_exec, the agent-session status/hibernate reads, the
-// scrub-before-suspend exec) over both the pinned CLI keys the gateway now
+// readers (MCP sandbox_exec, the agent-session status/transcript reads) over both the pinned CLI keys the gateway now
 // emits and the pre-m147 keys a not-yet-rolled gateway still sends.
 func TestBufferExecReadsPinnedAndTransitionalShapes(t *testing.T) {
 	cases := []struct {

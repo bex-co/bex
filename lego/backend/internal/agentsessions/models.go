@@ -34,19 +34,10 @@ const (
 	PhaseFailed        = "failed"
 	PhaseCanceling     = "canceling"
 	PhaseCanceled      = "canceled"
-	// ADR059 D2/D3 hibernation (w2/m68): the transient snapshot-upload window and
-	// the durable pod-less state holding a snapshot ref.
-	PhaseHibernating = "hibernating"
-	PhaseHibernated  = "hibernated"
 )
-
-// DeliveryRehydrate records a turn obtained by rehydrating a hibernated session
-// from its object-storage snapshot into a fresh sandbox (ADR059 D4).
-const DeliveryRehydrate = "rehydrate"
 
 // Delivery mode records how a turn's sandbox was obtained (ADR047 D8 phase 1):
 // resume of the existing sandbox, or a re-dispatch onto a fresh sandbox+clone.
-// A hibernated session's turn is DeliveryRehydrate instead (ADR059 D4).
 const (
 	DeliveryResume     = "resume"
 	DeliveryRedispatch = "redispatch"
@@ -155,8 +146,8 @@ type View struct {
 	DeliveryMode string      `json:"deliveryMode,omitempty"`
 	// DeliveryNote is the driver's plain-language account of what a completed
 	// turn left undelivered (ADR090): uncommitted changes, unpushed commits, or
-	// a pushed branch with no pull request. The work stays in the retained
-	// sandbox for steering. Empty when the agent delivered.
+	// a pushed branch with no pull request. The work stays in the sandbox only
+	// until it is closed after the idle TTL. Empty when the agent delivered.
 	DeliveryNote  string `json:"deliveryNote,omitempty"`
 	FailureReason string `json:"failureReason,omitempty"`
 	// FailureReasonCode is a stable code for the failure's cause when a client
@@ -183,14 +174,6 @@ type View struct {
 	URL       string     `json:"url,omitempty"`
 	StreamURL string     `json:"streamUrl,omitempty"`
 	ExpiresAt *time.Time `json:"expiresAt,omitempty"`
-	// Hibernation (ADR059 D5/D6, w2/m68). Pinned marks the never-expire tier;
-	// SnapshotBytes is the durable storage cost the tenant sees (0 while live);
-	// HibernatedAt/RetainUntil expose when it hibernated and when an unpinned
-	// snapshot will be deleted (RetainUntil nil while live or pinned).
-	Pinned        bool       `json:"pinned,omitempty"`
-	SnapshotBytes int64      `json:"snapshotBytes,omitempty"`
-	HibernatedAt  *time.Time `json:"hibernatedAt,omitempty"`
-	RetainUntil   *time.Time `json:"retainUntil,omitempty"`
 	// ArchivedAt marks the session archived (ADR065 D1): out of the working set,
 	// mutation verbs refused, reads always allowed. Nil ⇒ in the working set.
 	ArchivedAt *time.Time `json:"archivedAt,omitempty"`

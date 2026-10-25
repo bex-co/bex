@@ -11,7 +11,6 @@ import {
   GitPullRequest,
   Loader2,
   MoreHorizontal,
-  Pin,
   Terminal,
   Trash2,
 } from "lucide-react";
@@ -41,7 +40,6 @@ import { agentSessionErrorMessage } from "@/features/agent-sessions/lib/errors";
 import {
   agentSessionDisplayName,
   agentSessionDurationMs,
-  formatSnapshotBytes,
 } from "@/features/agent-sessions/lib/mapper";
 import type {
   AgentSessionListSearch,
@@ -87,7 +85,7 @@ export function SessionDetailHeader({
 }: SessionDetailHeaderProps) {
   const { t } = useTranslations();
   const navigate = useNavigate();
-  const { cancel, pin, unpin, deleteSession } = useAgentSessionMutations();
+  const { cancel, deleteSession } = useAgentSessionMutations();
   const handleArchiveChanged = useCallback(async () => {
     if (session.isArchived) {
       await onChanged?.();
@@ -99,7 +97,6 @@ export function SessionDetailHeader({
     useArchiveToggle(handleArchiveChanged);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [canceling, setCanceling] = useState(false);
-  const [pinning, setPinning] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -118,24 +115,6 @@ export function SessionDetailHeader({
       toast.error(agentSessionErrorMessage(err, t));
       setDeleting(false);
       setDeleteOpen(false);
-    }
-  }
-
-  async function handleTogglePin() {
-    setPinning(true);
-    try {
-      if (session.pinned) {
-        await unpin(session.id);
-        toast.success(t("agentSessions.unpinSuccess"));
-      } else {
-        await pin(session.id);
-        toast.success(t("agentSessions.pinSuccess"));
-      }
-      await onChanged?.(); // re-read before re-enabling the lifecycle control
-    } catch (err) {
-      toast.error(agentSessionErrorMessage(err, t));
-    } finally {
-      setPinning(false);
     }
   }
 
@@ -217,19 +196,6 @@ export function SessionDetailHeader({
           ) : null}
           <span>{t("agentSessions.metaDuration", { duration })}</span>
           <span>{t("agentSessions.metaTurns", { count: session.turns })}</span>
-          {session.isHibernated ? (
-            <span>
-              {t("agentSessions.hibernatedStorage", {
-                size: formatSnapshotBytes(session.snapshotBytes),
-              })}
-            </span>
-          ) : null}
-          {session.pinned ? (
-            <Badge variant="outline" className="gap-1">
-              <Pin className="size-3" />
-              {t("agentSessions.pinned")}
-            </Badge>
-          ) : null}
           {session.isArchived ? (
             <Badge variant="secondary" className="gap-1">
               <Archive className="size-3" />
@@ -253,18 +219,6 @@ export function SessionDetailHeader({
       <HeaderPrBadge session={session} />
 
       <OpenInZedButton session={session} />
-
-      {session.isHibernated ? (
-        <Button
-          size="sm"
-          variant={session.pinned ? "secondary" : "outline"}
-          disabled={pinning}
-          onClick={handleTogglePin}
-        >
-          <Pin className="size-4" />
-          {session.pinned ? t("agentSessions.unpin") : t("agentSessions.pin")}
-        </Button>
-      ) : null}
 
       {showCancel ? (
         <CancelButton

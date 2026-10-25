@@ -50,10 +50,9 @@ type AgentProfile struct {
 	PermissionPolicy string            `json:"permissionPolicy"`
 	ModelProxy       ModelProxyRoute   `json:"modelProxy"`
 	// SessionState names the HOME-relative dirs/files carrying this agent's
-	// on-disk conversation state. The hibernation snapshot must include them —
-	// they are the substrate of ADR047 D3's `session/load` resume rung (ADR059
-	// D3 continuity amendment, w5/m84); a guard test binds this list to the
-	// sandbox hibernate script.
+	// on-disk conversation state — the substrate of ADR047 D3's `session/load`
+	// resume rung inside one sandbox (w5/m84). A fresh sandbox has none, so a
+	// follow-up there primes from the durable transcript instead.
 	SessionState []string `json:"sessionState"`
 }
 

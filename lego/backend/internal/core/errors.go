@@ -492,14 +492,12 @@ func NewGoneError(code, msg string, params map[string]any) *CodedError {
 }
 
 // Agent-session availability codes deliberately distinguish a platform that
-// was never configured from a configured dependency that is temporarily down,
-// and from the optional snapshot tier being unavailable. All remain 503: a
-// retry cannot repair missing operator configuration, but none is caller input
-// or a resource-state conflict.
+// was never configured from a configured dependency that is temporarily down.
+// Both remain 503: a retry cannot repair missing operator configuration, but
+// neither is caller input or a resource-state conflict.
 const (
 	AgentSessionNotConfiguredCode         = "AGENT_SESSION_NOT_CONFIGURED"
 	AgentSessionDependencyUnavailableCode = "AGENT_SESSION_DEPENDENCY_UNAVAILABLE"
-	AgentSessionSnapshotUnavailableCode   = "AGENT_SESSION_SNAPSHOT_STORE_UNAVAILABLE"
 )
 
 // NewAgentSessionDependencyUnavailableError returns the sanitized retryable
@@ -510,17 +508,6 @@ func NewAgentSessionDependencyUnavailableError() *CodedError {
 	return NewUnavailableError(
 		AgentSessionDependencyUnavailableCode,
 		"agent session dependencies are temporarily unavailable",
-		nil,
-	)
-}
-
-// NewAgentSessionSnapshotUnavailableError returns the snapshot-tier-specific
-// retryable refusal. It is separate from whole-feature configuration because
-// ordinary sessions can remain healthy while restore/delete storage is down.
-func NewAgentSessionSnapshotUnavailableError() *CodedError {
-	return NewUnavailableError(
-		AgentSessionSnapshotUnavailableCode,
-		"agent session snapshot storage is temporarily unavailable",
 		nil,
 	)
 }

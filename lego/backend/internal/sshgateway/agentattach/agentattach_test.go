@@ -1197,8 +1197,8 @@ func (p panicPods) PodIP(context.Context, string, string) (string, error) {
 	return "", nil
 }
 
-// A replay-only ticket (empty pod triple, minted for a reaped terminal or
-// hibernated session — ADR065 D2) serves the durable transcript + [DONE]
+// A replay-only ticket (empty pod triple, minted for a reaped terminal
+// session — ADR065 D2) serves the durable transcript + [DONE]
 // without any pod lookup or driver dial; a POST with it is refused outright
 // (its read action can never match the turn method).
 func TestAgentAttachReplayOnlyTicketNeverDials(t *testing.T) {

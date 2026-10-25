@@ -17,7 +17,7 @@
 
 import { agentEnvironment } from "./credentials.js";
 import { loadConfig } from "./config.js";
-import { ensureRepo, restoreWorkspace } from "./git-setup.js";
+import { ensureRepo } from "./git-setup.js";
 import { describeError } from "./errors.js";
 import { markTurnFailed, runHeadlessTurn } from "./session.js";
 import { startDriverServer } from "./server.js";
@@ -33,10 +33,9 @@ async function main(): Promise<void> {
   let initialTurnOwned = false;
   let activeTurn:
     Promise<Awaited<ReturnType<typeof runHeadlessTurn>>> | undefined;
-  // Restore, clone and configure the session checkout before a tenant process
-  // can run. Live POST /turn calls await the same setup promise.
+  // Clone and configure the session checkout before a tenant process can run.
+  // Live POST /turn calls await the same setup promise.
   const setup = (async () => {
-    await restoreWorkspace(config);
     if (config.deliver) await ensureRepo(config);
   })();
   // main awaits setup below; attaching immediately also prevents a fast setup
@@ -113,9 +112,8 @@ async function main(): Promise<void> {
   process.once("SIGTERM", signalShutdown);
   process.once("SIGINT", signalShutdown);
   try {
-    // Setup phase: rehydrate a hibernation snapshot when resuming (ADR059 D4),
-    // then check out the session branch (cloning only when the workspace is still
-    // empty — a restored workspace is left intact) before the agent runs.
+    // Setup phase: check out the session branch (cloning only when the
+    // workspace is still empty) before the agent runs.
     // Package-registry egress is open here; the agent phase then narrows it (D5).
     await setup;
     if (!config.prompt) return;

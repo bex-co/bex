@@ -104,20 +104,6 @@ var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 			}
 			return gqlTime(*v.ExpiresAt)
 		})},
-		"pinned":        gqlutil.BoolField(func(v View) any { return v.Pinned }),
-		"snapshotBytes": gqlutil.FloatField(func(v View) any { return v.SnapshotBytes }),
-		"hibernatedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v View) any {
-			if v.HibernatedAt == nil {
-				return nil
-			}
-			return gqlTime(*v.HibernatedAt)
-		})},
-		"retainUntil": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v View) any {
-			if v.RetainUntil == nil {
-				return nil
-			}
-			return gqlTime(*v.RetainUntil)
-		})},
 		"archivedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v View) any {
 			if v.ArchivedAt == nil {
 				return nil
@@ -301,7 +287,5 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return true, nil
 			},
 		},
-		"pinAgentSession":   gqlutil.IDVerb(agentSessionGQLType, s.Pin),
-		"unpinAgentSession": gqlutil.IDVerb(agentSessionGQLType, s.Unpin),
 	}
 }

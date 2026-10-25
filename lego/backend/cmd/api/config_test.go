@@ -84,11 +84,9 @@ func TestLoadConfigDefaults(t *testing.T) {
 		{"AuthFailureRPM", cfg.AuthFailureRPM, 60.0},
 		{"AuthMaxInflight", cfg.AuthMaxInflight, 64},
 		{"AuthMaxInflightPerCredential", cfg.AuthMaxInflightPerCredential, 64},
-		{"AgentSandboxIdleTTL", cfg.AgentSandboxIdleTTL, 30 * time.Minute},
+		{"AgentSandboxIdleTTL", cfg.AgentSandboxIdleTTL, 2 * time.Hour},
 		{"AgentTurnTimeout", cfg.AgentTurnTimeout, 30 * time.Minute},
-		{"AgentSnapshotRetentionTTL", cfg.AgentSnapshotRetentionTTL, 7 * 24 * time.Hour},
 		{"AgentMaxLiveSandboxesPerWorkspace", cfg.AgentMaxLiveSandboxesPerWorkspace, 5},
-		{"AgentMaxPinnedSandboxesPerWorkspace", cfg.AgentMaxPinnedSandboxesPerWorkspace, 10},
 		{"MaxBlueprintGroupings", cfg.MaxBlueprintGroupings, 1000},
 		{"ImageCompatibilityWorkspaces (every workspace)", cfg.ImageCompatibilityWorkspaces["*"], true},
 		{"PrivateImagePortsDisabled (default on)", cfg.PrivateImagePortsDisabled, false},
@@ -123,7 +121,6 @@ func TestLoadConfigFatalKnobs(t *testing.T) {
 		{"auth max inflight per credential", map[string]string{"BEX_AUTH_MAX_INFLIGHT_PER_CREDENTIAL": "many"}, "bad BEX_AUTH_MAX_INFLIGHT_PER_CREDENTIAL"},
 		{"webhook secret without store", map[string]string{"BEX_WEBHOOK_SECRET": "s"}, "Git webhooks require BEX_CP_DB_URI"},
 		{"github webhook secret without store", map[string]string{"BEX_GITHUB_WEBHOOK_SECRET": "s"}, "Git webhooks require BEX_CP_DB_URI"},
-		{"partial snapshot config", map[string]string{"BEX_AGENT_SNAPSHOT_S3_BUCKET": "b"}, "agent-session hibernation config"},
 		{"payment method mode", map[string]string{"BEX_REQUIRE_PAYMENT_METHOD": "maybe"}, "BEX_REQUIRE_PAYMENT_METHOD must be 1"},
 		{"cp resync", cpEnv(map[string]string{"BEX_CP_RESYNC": "soon"}), "bad BEX_CP_RESYNC"},
 		{"cp identity", cpEnv(map[string]string{"BEX_CP_IDENTITY": "not a label!"}), "not a valid Kubernetes label value"},
@@ -233,8 +230,8 @@ func TestLoadConfigWarnKnobs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("warn-policy knobs must not be fatal: %v", err)
 	}
-	if cfg.AgentSandboxIdleTTL != 30*time.Minute {
-		t.Errorf("AgentSandboxIdleTTL = %v, want the 30m default kept", cfg.AgentSandboxIdleTTL)
+	if cfg.AgentSandboxIdleTTL != 2*time.Hour {
+		t.Errorf("AgentSandboxIdleTTL = %v, want the 2h default kept", cfg.AgentSandboxIdleTTL)
 	}
 	if cfg.MaxEnvGroupsPerWorkspace != 100 {
 		t.Errorf("MaxEnvGroupsPerWorkspace = %d, want the 100 default kept", cfg.MaxEnvGroupsPerWorkspace)

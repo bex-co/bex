@@ -27,10 +27,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
-// Pinning a running session rewrites agent_sessions.updated_at but must not
-// shorten the turn-duration sample (w5/m88) — duration is anchored on
-// agent_session_turns.started_at from the bind, not session UpdatedAt.
-func TestCompleterTurnDurationIgnoresPinRewrite(t *testing.T) {
+// Any write that touches a running session's agent_sessions.updated_at (an
+// archive toggle, say) must not shorten the turn-duration sample (w5/m88) —
+// duration is anchored on agent_session_turns.started_at from the bind, not
+// session UpdatedAt.
+func TestCompleterTurnDurationIgnoresUpdatedAtRewrite(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	metrics := NewCompletionMetrics(reg)
 
@@ -42,10 +43,9 @@ func TestCompleterTurnDurationIgnoresPinRewrite(t *testing.T) {
 	turn.StartedAt = &started
 	st.turns[id][1] = turn
 
-	// Pin near the end of the turn: would collapse UpdatedAt-based duration to ~1s.
+	// Rewrite near the end of the turn: would collapse UpdatedAt-based duration to ~1s.
 	row := st.rows[id]
 	row.UpdatedAt = base.Add(-1 * time.Second)
-	row.Pinned = true
 	st.rows[id] = row
 
 	c.Now = func() time.Time { return base }
@@ -71,7 +71,7 @@ func TestCompleterTurnDurationIgnoresPinRewrite(t *testing.T) {
 		}
 	}
 	if sum < 80 || sum > 100 {
-		t.Fatalf("turn duration sum = %v, want ~90s (pin must not shorten)", sum)
+		t.Fatalf("turn duration sum = %v, want ~90s (an updated_at rewrite must not shorten)", sum)
 	}
 }
 

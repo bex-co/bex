@@ -79,11 +79,6 @@ const AVAILABILITY_COPY: Record<string, AgentSessionAvailabilityCopy> = {
     bodyKey: "agentSessions.dependencyUnavailableBody",
     destructive: true,
   },
-  AGENT_SESSION_SNAPSHOT_STORE_UNAVAILABLE: {
-    titleKey: "agentSessions.snapshotUnavailableTitle",
-    bodyKey: "agentSessions.snapshotUnavailableBody",
-    destructive: true,
-  },
 };
 
 /** The single code→title/body mapping used by create and generic error sinks. */

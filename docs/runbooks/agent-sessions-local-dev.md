@@ -131,4 +131,4 @@ These bit during the first real bring-up and are not obvious from the code:
 
 - No Cilium: the `:8787` gateway-only ingress and the per-session FQDN egress are **not enforced** locally (Calico); the `CiliumNetworkPolicy` objects are created but inert. Do not treat a local run as isolation validation.
 - No gVisor: sandbox pods run under `runc` on a CAPD node, not the runsc sandbox pool.
-- Hibernation (`BEX_AGENT_SNAPSHOT_S3_*`) is left off; the Active tier is sufficient for local dev.
+- There is no agent-session hibernation (retired 2026-10-25, ADR059 superseded): an idle session's sandbox is terminated after `BEX_AGENT_SANDBOX_IDLE_TTL` (2h), and the next message continues in a fresh sandbox.

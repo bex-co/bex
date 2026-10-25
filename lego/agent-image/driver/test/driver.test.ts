@@ -301,8 +301,7 @@ for (const loadSession of [false, true]) {
   });
 }
 
-// ADR059 resume after hibernation: a restarted driver on a restored
-// rootfs adopts the prior turn's persisted ACP session id and re-attaches via
+// A driver restarted inside the same sandbox (rootfs intact) adopts the prior turn's persisted ACP session id and re-attaches via
 // session/load only when the agent advertises loadSession.
 for (const loadSession of [false, true]) {
   test(`rootfs-persisted session id is adopted after resume (loadSession=${loadSession})`, async () => {
