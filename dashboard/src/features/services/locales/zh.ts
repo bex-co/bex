@@ -2754,7 +2754,7 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.routesHint": {
     message:
-      "按顺序匹配，首个匹配生效。重定向返回 301；重写提供另一路径的内容（SPA 回退将 /* 重写为 /index.html）。",
+      "按顺序匹配，首个匹配生效。重定向返回 301；重写提供另一路径的内容（SPA 回退将 /* 重写为 /index.html）。:name 段捕获一个路径段，例如 /blog/posts/:postid → /blog/:postid。",
     description: "Help text for the routes editor",
   },
   "services.routeAdd": { message: "添加规则", description: "Add a route rule" },

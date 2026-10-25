@@ -2812,7 +2812,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.routesHint": {
     message:
-      "Matched in order, first match wins. A redirect returns 301; a rewrite serves another path (an SPA fallback rewrites /* to /index.html).",
+      "Matched in order, first match wins. A redirect returns 301; a rewrite serves another path (an SPA fallback rewrites /* to /index.html). A :name segment captures one path segment, e.g. /blog/posts/:postid → /blog/:postid.",
     description: "Help text for the routes editor",
   },
   "services.routeAdd": { message: "Add rule", description: "Add a route rule" },

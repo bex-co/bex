@@ -709,11 +709,11 @@ const (
 
 // matchRoutes evaluates the ordered routes against reqPath, first match wins,
 // returning the action and the expanded destination. Source patterns support a
-// trailing "/*" wildcard; the captured remainder (the "splat") substitutes a
-// trailing "/*" or a ":splat" token in the destination.
+// trailing "/*" wildcard and whole-segment ":name" placeholders; captures
+// substitute ":splat"/trailing "/*" and ":name" tokens in the destination.
 func matchRoutes(routes []appv1alpha1.StaticRoute, reqPath string) (routeAction, *url.URL, error) {
 	for _, rt := range routes {
-		splat, ok := matchPattern(rt.Source, reqPath)
+		splat, captures, ok := matchRoutePattern(rt.Source, reqPath)
 		if !ok {
 			continue
 		}
@@ -726,7 +726,7 @@ func matchRoutes(routes []appv1alpha1.StaticRoute, reqPath string) (routeAction,
 		default:
 			continue
 		}
-		dest, err := expandDest(rt.Destination, splat, true)
+		dest, err := expandDestCaptures(rt.Destination, splat, captures, true)
 		return action, dest, err
 	}
 	return actNone, nil, nil
@@ -752,6 +752,60 @@ func matchPattern(pattern, reqPath string) (string, bool) {
 	return "", pattern == reqPath
 }
 
+func placeholderName(segment string) (string, bool) {
+	if len(segment) < 2 || segment[0] != ':' {
+		return "", false
+	}
+	name := segment[1:]
+	for i, c := range name {
+		if c == '_' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || i > 0 && c >= '0' && c <= '9' {
+			continue
+		}
+		return "", false
+	}
+	return name, true
+}
+
+// matchRoutePattern is matchPattern plus whole-segment ":name" captures. A
+// placeholder matches exactly one non-empty segment and may precede a
+// trailing "/*". Patterns without placeholders keep matchPattern semantics.
+func matchRoutePattern(pattern, reqPath string) (string, map[string]string, bool) {
+	base, hasSplat := strings.CutSuffix(pattern, "/*")
+	hasPlaceholder := false
+	for seg := range strings.SplitSeq(base, "/") {
+		if _, ok := placeholderName(seg); ok {
+			hasPlaceholder = true
+			break
+		}
+	}
+	if !hasPlaceholder {
+		splat, ok := matchPattern(pattern, reqPath)
+		return splat, nil, ok
+	}
+	patSegs := strings.Split(base, "/")
+	reqSegs := strings.Split(reqPath, "/")
+	if len(reqSegs) < len(patSegs) || !hasSplat && len(reqSegs) != len(patSegs) {
+		return "", nil, false
+	}
+	captures := map[string]string{}
+	for i, seg := range patSegs {
+		if name, ok := placeholderName(seg); ok {
+			if reqSegs[i] == "" {
+				return "", nil, false
+			}
+			captures[name] = reqSegs[i]
+			continue
+		}
+		if seg != reqSegs[i] {
+			return "", nil, false
+		}
+	}
+	if !hasSplat {
+		return "", captures, true
+	}
+	return strings.Join(reqSegs[len(patSegs):], "/"), captures, true
+}
+
 const (
 	maxRouteDestinationBytes  = 2048     // Matches the configured destination limit.
 	maxExpandedRoutePathBytes = 8 * 1024 // Bounds capture amplification before allocating.
@@ -760,7 +814,79 @@ const (
 // expandDest separates URL syntax before substituting decoded path data. Never
 // parse the expanded path again: a captured ?/#/% is a filename character, not
 // a new query, fragment, or escape. Configured query/fragment values stay literal.
+// substituteCaptures expands ":splat", declared ":name" tokens and a
+// trailing "/*" alias in a destination path, bounding the total first so a
+// repeated token cannot amplify a capture past maxExpandedRoutePathBytes.
+// Undeclared ":name" tokens stay literal (writers refuse them; a direct CR
+// write must not panic).
+func substituteCaptures(destPath, splat string, captures map[string]string) (string, error) {
+	type token struct {
+		start, end int
+		value      string
+	}
+	var tokens []token
+	expandedLen := len(destPath)
+	for i := 0; i < len(destPath); {
+		if destPath[i] != ':' {
+			i++
+			continue
+		}
+		j := i + 1
+		for j < len(destPath) && (destPath[j] == '_' || destPath[j] >= 'a' && destPath[j] <= 'z' || destPath[j] >= 'A' && destPath[j] <= 'Z' || destPath[j] >= '0' && destPath[j] <= '9') {
+			j++
+		}
+		name := destPath[i+1 : j]
+		if _, ok := placeholderName(":" + name); !ok {
+			i++
+			continue
+		}
+		if name == "splat" {
+			tokens = append(tokens, token{i, j, splat})
+			expandedLen += len(splat) - (j - i)
+			i = j
+			continue
+		}
+		if value, ok := captures[name]; ok {
+			tokens = append(tokens, token{i, j, value})
+			expandedLen += len(value) - (j - i)
+			i = j
+			continue
+		}
+		i = j
+	}
+	hasSplatToken := strings.Contains(destPath, ":splat")
+	trailing := !hasSplatToken && strings.HasSuffix(destPath, "/*")
+	if trailing {
+		expandedLen += len(splat) - 1
+	}
+	if expandedLen > maxExpandedRoutePathBytes {
+		return "", errors.New("expanded destination exceeds size limit")
+	}
+	if len(tokens) == 0 && !trailing {
+		return destPath, nil
+	}
+	var b strings.Builder
+	b.Grow(expandedLen)
+	pos := 0
+	for _, tok := range tokens {
+		b.WriteString(destPath[pos:tok.start])
+		b.WriteString(tok.value)
+		pos = tok.end
+	}
+	if trailing {
+		b.WriteString(destPath[pos : len(destPath)-1])
+		b.WriteString(splat)
+	} else {
+		b.WriteString(destPath[pos:])
+	}
+	return b.String(), nil
+}
+
 func expandDest(dest, splat string, allowAbsolute bool) (*url.URL, error) {
+	return expandDestCaptures(dest, splat, nil, allowAbsolute)
+}
+
+func expandDestCaptures(dest, splat string, captures map[string]string, allowAbsolute bool) (*url.URL, error) {
 	if len(dest) > maxRouteDestinationBytes {
 		return nil, errors.New("destination exceeds size limit")
 	}
@@ -785,18 +911,11 @@ func expandDest(dest, splat string, allowAbsolute bool) (*url.URL, error) {
 	} else if target.Host != "" || target.Scheme != "" || !safeRedirectTarget(target.Path) {
 		return nil, errors.New("destination must be local")
 	}
-	if count := strings.Count(target.Path, ":splat"); count > 0 {
-		literalBytes := len(target.Path) - count*len(":splat")
-		if len(splat) > (maxExpandedRoutePathBytes-literalBytes)/count {
-			return nil, errors.New("expanded destination exceeds size limit")
-		}
-		target.Path = strings.ReplaceAll(target.Path, ":splat", splat)
-	} else if strings.HasSuffix(target.Path, "/*") {
-		if len(splat) > maxExpandedRoutePathBytes-(len(target.Path)-1) {
-			return nil, errors.New("expanded destination exceeds size limit")
-		}
-		target.Path = strings.TrimSuffix(target.Path, "*") + splat
+	expanded, err := substituteCaptures(target.Path, splat, captures)
+	if err != nil {
+		return nil, err
 	}
+	target.Path = expanded
 	if (!absolute || target.Path != "") && !safeRedirectTarget(target.Path) {
 		return nil, errors.New("expanded destination must be local")
 	}
