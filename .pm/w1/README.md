@@ -15,6 +15,7 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **138** — **BLOCKED (decision: may a bex controller patch CAPI Machines in `bex-capi` for a pre-drain hook? — design in the note)** — [Keep single-instance services up through node rolls](blocked/138.md) ← parked 2026-10-25 by `/loopx w1`; mitigations m183 + tenant-0 max 5 shipped; status honesty split to `140`
 - [x] **m184** — [Platform-initiated rebuilds are not billed as tenant build minutes](done/m184/README.md) (5 tasks) ← `w1/137`, promoted 2026-10-25 by `/loopx w1`
 - [ ] **136** — **BLOCKED (upstream: Docker official `*-bookworm` images re-tagged with Debian's fixed `libbrotli1`, or an Ubuntu USN for jammy)** — [Re-pin Debian/Ubuntu base images once libbrotli1 fixes land upstream](blocked/136.md) ← CVE-2026-111497 follow-up, parked 2026-10-25 by `/loopx w1`
 - [x] **135** — [Run the platform-rebuild fleet rebuild for CVE-2026-111497](done/135.md) — done 2026-10-25: plan 3 eligible / 2 already rebuilt; apply rebuilt `tianpan-v4-web`; the other two have no live release
