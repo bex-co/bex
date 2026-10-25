@@ -277,7 +277,7 @@ func appContainer(app *appv1alpha1.App, p deploymentParams, probeHost string) co
 	var ports []corev1.ContainerPort
 	if !p.worker {
 		ports = []corev1.ContainerPort{{Name: servingPortName, ContainerPort: int32(p.port)}}
-		if app.Spec.UsesImagePorts() && app.Status.ImageNetwork != nil {
+		if app.Spec.HasImagePorts() && app.Status.ImageNetwork != nil {
 			ports = make([]corev1.ContainerPort, 0, len(app.Status.ImageNetwork.Ports))
 			for _, port := range app.Status.ImageNetwork.Ports {
 				ports = append(ports, corev1.ContainerPort{ContainerPort: port, Protocol: corev1.ProtocolTCP})

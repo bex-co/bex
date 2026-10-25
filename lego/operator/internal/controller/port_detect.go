@@ -65,7 +65,7 @@ const (
 // the App's own configuration. An explicit port or a PORT variable always wins
 // and clears a stale detection.
 func detectedServingPort(app *appv1alpha1.App, port int) int {
-	if app.Spec.Port > 0 || app.Status.EnvPort > 0 || app.Spec.UsesImagePorts() {
+	if app.Spec.Port > 0 || app.Status.EnvPort > 0 || app.Spec.HasImagePorts() {
 		app.Status.DetectedPort = 0
 		return port
 	}
@@ -79,7 +79,7 @@ func detectedServingPort(app *appv1alpha1.App, port int) int {
 // status.detectedPort when exactly one other port answers, and returns text to
 // append to the stall message (empty when there is nothing to add).
 func (r *AppReconciler) detectBoundPort(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, port int) string {
-	if r.PortScanner == nil || app.Spec.Port > 0 || app.Status.EnvPort > 0 || app.Spec.UsesImagePorts() ||
+	if r.PortScanner == nil || app.Spec.Port > 0 || app.Status.EnvPort > 0 || app.Spec.HasImagePorts() ||
 		(app.Spec.Type != "" && app.Spec.Type != appv1alpha1.TypeWebService) {
 		return ""
 	}

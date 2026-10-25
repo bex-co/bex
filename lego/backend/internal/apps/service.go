@@ -2516,6 +2516,19 @@ func (s *Service) configureNewImageCompatibility(ctx context.Context, spec *appv
 			}
 		}
 	}
+	// A new Docker/image web service serves on its image's exposed port, as
+	// on Render (w4/m243): the operator resolves it from image metadata.
+	// Git-built and prebuilt images both qualify; a PORT env still wins at
+	// reconcile, and an explicit port selects the configured variant.
+	if spec.Type == appv1alpha1.TypeWebService && (spec.Repo != "" || spec.Image != "") && !s.PrivateImagePortsDisabled {
+		spec.PortMode = appv1alpha1.PortModeWebImageV1
+		if explicitPort {
+			spec.PortMode = appv1alpha1.PortModeWebImageConfiguredV1
+			if appv1alpha1.IsReservedImagePort(spec.Port) {
+				return fmt.Errorf("%w: web image port %d is reserved", core.ErrBadRequest, spec.Port)
+			}
+		}
+	}
 	return nil
 }
 

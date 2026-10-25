@@ -27,6 +27,12 @@ const (
 	// PortModeImageConfiguredV1 keeps image TCP ports while honoring spec.port as
 	// the explicitly selected primary listener, including an explicit 3000.
 	PortModeImageConfiguredV1 = "image-configured-v1"
+	// PortModeWebImageV1 opts a new web service into serving on its image's
+	// exposed port (w4/m243), as Render does for Docker web services.
+	PortModeWebImageV1 = "web-image-v1"
+	// PortModeWebImageConfiguredV1 is the web variant with an explicitly
+	// selected primary port.
+	PortModeWebImageConfiguredV1 = "web-image-configured-v1"
 )
 
 // MaxImagePorts bounds a private service's TCP port set; it mirrors the
@@ -61,10 +67,23 @@ func (s AppSpec) UsesImagePorts() bool {
 	return s.Type == TypePrivateService && (s.PortMode == PortModeImageV1 || s.PortMode == PortModeImageConfiguredV1)
 }
 
+// UsesWebImagePorts reports a web service serving on its image's exposed
+// port (w4/m243). Only services stamped at create carry the mode, so
+// existing web services keep their configured-port behavior.
+func (s AppSpec) UsesWebImagePorts() bool {
+	return s.Type == TypeWebService && (s.PortMode == PortModeWebImageV1 || s.PortMode == PortModeWebImageConfiguredV1)
+}
+
+// HasImagePorts reports any service whose port set comes from image
+// metadata: a private service's TCP set, or a web service's primary port.
+func (s AppSpec) HasImagePorts() bool {
+	return s.UsesImagePorts() || s.UsesWebImagePorts()
+}
+
 // ActiveImageNetwork is the serving release's port set, else the first
 // candidate's before anything has served; nil for configured-port services.
 func (a *App) ActiveImageNetwork() *ImageNetworkStatus {
-	if !a.Spec.UsesImagePorts() {
+	if !a.Spec.HasImagePorts() {
 		return nil
 	}
 	if a.Status.ServingNetwork != nil {
@@ -78,10 +97,10 @@ func (a *App) ActiveImageNetwork() *ImageNetworkStatus {
 // recorded it, else spec.port (w5/m149), else — when neither names one — the
 // port the process was detected listening on (w8/177), else the default.
 func (a *App) ServingPort() int32 {
-	if a.Status.EnvPort > 0 && !a.Spec.UsesImagePorts() {
+	if a.Status.EnvPort > 0 && !a.Spec.HasImagePorts() {
 		return a.Status.EnvPort
 	}
-	if a.Status.DetectedPort > 0 && a.Spec.Port <= 0 && !a.Spec.UsesImagePorts() {
+	if a.Status.DetectedPort > 0 && a.Spec.Port <= 0 && !a.Spec.HasImagePorts() {
 		return a.Status.DetectedPort
 	}
 	return a.Spec.EffectivePort()
@@ -89,7 +108,13 @@ func (a *App) ServingPort() int32 {
 
 // ServicePort is the published primary port; zero means discovery is pending.
 func (a *App) ServicePort() int32 {
-	if !a.Spec.UsesImagePorts() {
+	// A service's own PORT env wins over the image's choice (w4/m243); the
+	// operator zeroes EnvPort for private image-port services, whose
+	// listener set is the image's, so this cannot hijack theirs.
+	if a.Status.EnvPort > 0 {
+		return a.Status.EnvPort
+	}
+	if !a.Spec.HasImagePorts() {
 		return a.ServingPort()
 	}
 	if network := a.ActiveImageNetwork(); network != nil {
@@ -107,8 +132,11 @@ func (a *App) OpenPorts() []int32 {
 	if !a.Spec.InternallyAddressable() {
 		return nil
 	}
-	if !a.Spec.UsesImagePorts() {
+	if !a.Spec.HasImagePorts() {
 		return []int32{a.ServingPort()}
+	}
+	if a.Status.EnvPort > 0 {
+		return []int32{a.Status.EnvPort}
 	}
 	if network := a.ActiveImageNetwork(); network != nil {
 		return slices.Clone(network.Ports)

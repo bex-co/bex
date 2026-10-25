@@ -98,6 +98,96 @@ type imageConfigDocument struct {
 	} `json:"config"`
 }
 
+func fetchOnce(ctx context.Context, client *http.Client, url, authorization, bearer string) ([]byte, int, string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, 0, "", err
+	}
+	req.Header.Set("Accept", manifestAccept)
+	if authorization != "" {
+		req.Header.Set("Authorization", authorization)
+	}
+	if bearer != "" {
+		req.Header.Set("Authorization", "Bearer "+bearer)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, 0, "", err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return nil, resp.StatusCode, resp.Header.Get("WWW-Authenticate"), nil
+	}
+	data, err := boundedhttp.ReadAll(resp.Body)
+	return data, resp.StatusCode, "", err
+}
+
+// anonymousBearerToken answers a registry's Bearer challenge without any
+// credential (public images, w4/m243): GET the realm with the challenge's
+// service/scope and return the issued token. The realm must be https, or
+// http on a loopback host (local registries in tests).
+func anonymousBearerToken(ctx context.Context, client *http.Client, challenge string) (string, error) {
+	if !strings.HasPrefix(challenge, "Bearer ") {
+		return "", fmt.Errorf("image metadata request returned status 401 without a Bearer challenge")
+	}
+	params := map[string]string{}
+	for part := range strings.SplitSeq(strings.TrimPrefix(challenge, "Bearer "), ",") {
+		k, v, ok := strings.Cut(part, "=")
+		if ok {
+			params[strings.TrimSpace(k)] = strings.Trim(strings.TrimSpace(v), `"`)
+		}
+	}
+	realm := params["realm"]
+	if realm == "" {
+		return "", fmt.Errorf("registry Bearer challenge has no realm")
+	}
+	if !strings.HasPrefix(realm, "https://") && !strings.HasPrefix(realm, "http://127.0.0.1") && !strings.HasPrefix(realm, "http://localhost") {
+		return "", fmt.Errorf("registry Bearer realm is not https: %q", realm)
+	}
+	sep := "?"
+	if strings.Contains(realm, "?") {
+		sep = "&"
+	}
+	url := realm
+	if params["service"] != "" {
+		url += sep + "service=" + params["service"]
+		sep = "&"
+	}
+	if params["scope"] != "" {
+		url += sep + "scope=" + params["scope"]
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("registry token request returned status %d", resp.StatusCode)
+	}
+	data, err := boundedhttp.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	var body struct {
+		Token       string `json:"token"`
+		AccessToken string `json:"access_token"`
+	}
+	if err := json.Unmarshal(data, &body); err != nil {
+		return "", fmt.Errorf("decode registry token: %w", err)
+	}
+	if body.Token != "" {
+		return body.Token, nil
+	}
+	if body.AccessToken != "" {
+		return body.AccessToken, nil
+	}
+	return "", fmt.Errorf("registry token response has no token")
+}
+
 func readImageConfigDocument(ctx context.Context, httpClient *http.Client, registryHost, repo, reference, authorization string) (string, imageConfigDocument, error) {
 	base, err := imageRepoBase(registryHost, repo, reference, authorization)
 	if err != nil {
@@ -111,31 +201,32 @@ func readImageConfigDocument(ctx context.Context, httpClient *http.Client, regis
 	bounded := *httpClient
 	bounded.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	fetch := func(path, expectedDigest string) ([]byte, string, error) {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+path, nil)
-		if err != nil {
-			return nil, "", err
+		bearer := ""
+		for attempt := 0; ; attempt++ {
+			data, status, challenge, err := fetchOnce(ctx, &bounded, base+path, authorization, bearer)
+			if err != nil {
+				return nil, "", err
+			}
+			if status == http.StatusOK {
+				digest := fmt.Sprintf("sha256:%x", sha256.Sum256(data))
+				if expectedDigest != "" && digest != expectedDigest {
+					return nil, "", fmt.Errorf("image metadata digest mismatch")
+				}
+				return data, digest, nil
+			}
+			// An anonymous read of a public registry (w4/m243) may be asked
+			// for a bearer token: fetch one without credentials and retry
+			// once. Credentialed reads never take this path.
+			if status == http.StatusUnauthorized && authorization == "" && bearer == "" && attempt == 0 {
+				token, terr := anonymousBearerToken(ctx, &bounded, challenge)
+				if terr != nil {
+					return nil, "", terr
+				}
+				bearer = token
+				continue
+			}
+			return nil, "", fmt.Errorf("image metadata request returned status %d", status)
 		}
-		req.Header.Set("Accept", manifestAccept)
-		if authorization != "" {
-			req.Header.Set("Authorization", authorization)
-		}
-		resp, err := bounded.Do(req)
-		if err != nil {
-			return nil, "", err
-		}
-		defer func() { _ = resp.Body.Close() }()
-		if resp.StatusCode != http.StatusOK {
-			return nil, "", fmt.Errorf("image metadata request returned status %d", resp.StatusCode)
-		}
-		data, err := boundedhttp.ReadAll(resp.Body)
-		if err != nil {
-			return nil, "", err
-		}
-		digest := fmt.Sprintf("sha256:%x", sha256.Sum256(data))
-		if expectedDigest != "" && digest != expectedDigest {
-			return nil, "", fmt.Errorf("image metadata digest mismatch")
-		}
-		return data, digest, nil
 	}
 	for range 3 {
 		expected := ""
