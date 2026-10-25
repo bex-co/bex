@@ -1633,6 +1633,15 @@ type AppStatus struct {
 	// +optional
 	ImageDigest *ImageDigestStatus `json:"imageDigest,omitempty"`
 
+	// ProtectedImageTag is the live-<generation> tag the operator last pushed
+	// for the serving release's image in the in-cluster registry, which
+	// retention keeps however many newer builds are pushed (w1/m183). Empty
+	// until the first successful tag; a failed tag retries next reconcile. A
+	// tag rather than a digest, so a release rolled back to an older image
+	// gets a fresh live tag of its own.
+	// +optional
+	ProtectedImageTag string `json:"protectedImageTag,omitempty"`
+
 	// ArtifactFingerprint is the operator-computed, versioned identity of the
 	// source/build inputs that produced ArtifactImage (or selected a prebuilt
 	// image). It lets operational spec updates reuse the resolved artifact without
