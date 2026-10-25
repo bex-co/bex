@@ -785,6 +785,15 @@ var dnsRecordGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// serverGQLType is Render's customDomain.server {id, name} (w4/389).
+var serverGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "CustomDomainServer",
+	Fields: graphql.Fields{
+		"id":   gqlutil.StrField(func(d DomainView) any { return d.ServiceID }),
+		"name": gqlutil.StrField(func(d DomainView) any { return d.ServiceName }),
+	},
+})
+
 var customDomainGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "CustomDomain",
 	Fields: graphql.Fields{
@@ -812,6 +821,7 @@ var customDomainGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// dnsRecord is the record the tenant must create (bex extension; the target is
 		// the app's platform host <app>.<base-domain>).
 		"dnsRecord": gqlutil.Typed(dnsRecordGQLType, func(d DomainView) any { return d.DNSRecord }),
+		"server":    gqlutil.Typed(serverGQLType, func(d DomainView) any { return d }),
 		// edgeAddresses is an apex domain's A-record fallback (ADR005): the
 		// platform host's current edge addresses, resolved at read time; empty
 		// for subdomains and whenever resolution fails (w4/378). Additive —
