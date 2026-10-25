@@ -1924,6 +1924,18 @@ func preRuntimeFailure(reason string) bool {
 	return false
 }
 
+// servingRevisionDown reports the operator's current-generation verdict that
+// the App's active revision has no ready pod (ConditionServing False) while a
+// new release builds. Only then is the active revision the Deployment's only
+// revision: during a rollout its pods are replaced by the new revision's before
+// ActiveRevision moves, so Serving=False there does not mean nothing serves.
+func servingRevisionDown(app *appv1alpha1.App, serving *metav1.Condition) bool {
+	return serving != nil && app.Status.Phase == appv1alpha1.PhaseBuilding &&
+		app.Status.ActiveRevision != "" && app.Spec.Disk == nil &&
+		serving.ObservedGeneration == app.Generation && serving.Status == metav1.ConditionFalse &&
+		serving.Reason == appv1alpha1.ReasonServingRevisionUnavailable
+}
+
 func readyReasonForGeneration(app *appv1alpha1.App) (string, bool) {
 	for i := range app.Status.Conditions {
 		ready := &app.Status.Conditions[i]
@@ -1975,6 +1987,19 @@ func observedServiceStateFor(appID string, app *appv1alpha1.App, hasOpenDeploy b
 			// serving instance's availability. In particular, do not collapse it
 			// into readiness_failed merely because the deploy row has since closed.
 			if preRuntimeFailure(condition.Reason) {
+				break
+			}
+			// The operator observed that no pod of the active revision is ready
+			// while a new release builds: the service is down to every caller
+			// (w1/m185: beancount-cms-v2's live pod was evicted and its
+			// replacement never pulled while builds retried for hours, and no
+			// server_failed fired). A disk-backed service is left to its deploy:
+			// Recreate's documented downtime is the deploy's to report.
+			if servingRevisionDown(app, serving) {
+				obs.Availability = "unhealthy"
+				obs.AvailabilityObserved = true
+				obs.ReasonCode = EventReasonReadinessFailed
+				obs.ReadyTransitionAt = serving.LastTransitionTime.Time
 				break
 			}
 			// Ordinary rollout progress is not a service failure. A concrete
