@@ -263,7 +263,7 @@ func TestPrivateImagePortsDefaultOnlyForGitBuiltDockerPrivateServices(t *testing
 	}{
 		{"docker pserv", CreateRequest{Name: "app", Type: appv1alpha1.TypePrivateService, Repo: repo, Runtime: "docker"}, appv1alpha1.PortModeImageV1},
 		{"docker pserv explicit port", CreateRequest{Name: "app", Type: appv1alpha1.TypePrivateService, Repo: repo, Runtime: "docker", Port: 8080}, appv1alpha1.PortModeImageConfiguredV1},
-		{"docker web", CreateRequest{Name: "app", Repo: repo, Runtime: "docker"}, ""},
+		{"docker web", CreateRequest{Name: "app", Repo: repo, Runtime: "docker"}, appv1alpha1.PortModeWebImageV1},
 		{"docker worker", CreateRequest{Name: "app", Type: appv1alpha1.TypeBackgroundWorker, Repo: repo, Runtime: "docker"}, ""},
 		{"native pserv", CreateRequest{Name: "app", Type: appv1alpha1.TypePrivateService, Repo: repo, Runtime: "go", BuildCommand: "go build .", StartCommand: "./app"}, ""},
 		{"prebuilt pserv", CreateRequest{Name: "app", Type: appv1alpha1.TypePrivateService, Image: "nginx:1"}, ""},

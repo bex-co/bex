@@ -676,7 +676,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	if halted {
 		return res, err
 	}
-	if app.Spec.UsesImagePorts() {
+	if app.Spec.HasImagePorts() {
 		image, port, err = r.resolveImageNetwork(ctx, &app, image)
 		if err != nil {
 			return r.fail(ctx, &app, "ImageMetadataUnavailable", err)
@@ -789,7 +789,7 @@ func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alp
 			return r.fail(ctx, app, "DeployFailed", err)
 		}
 		image := app.Status.Image
-		if app.Spec.UsesImagePorts() {
+		if app.Spec.HasImagePorts() {
 			// status.image can already describe the failed rollout. The serving
 			// network binds the last ready image and ports to its active revision.
 			// Restore the projection metadata too, including when its recorded
@@ -3213,7 +3213,7 @@ func (r *AppReconciler) applyClusterIPService(ctx context.Context, app *appv1alp
 	if err != nil {
 		return err
 	}
-	if !app.Spec.UsesImagePorts() {
+	if !app.Spec.HasImagePorts() {
 		target, err := r.servingTargetPort(ctx, app.Namespace, selector, r.edgeCaches(app))
 		if err != nil {
 			return err
@@ -5342,7 +5342,7 @@ func (r *AppReconciler) rolloutStallDiagnosis(ctx context.Context, app *appv1alp
 // HTTP health check, whose failure is about the path rather than the listener.
 func imagePortStallHint(app *appv1alpha1.App, port int) string {
 	network := app.Status.ImageNetwork
-	if !app.Spec.UsesImagePorts() || app.Spec.HealthCheckPath != "" || network == nil || len(network.Ports) == 0 {
+	if !app.Spec.HasImagePorts() || app.Spec.HealthCheckPath != "" || network == nil || len(network.Ports) == 0 {
 		return ""
 	}
 	declared := make([]string, len(network.Ports))

@@ -48,38 +48,93 @@ func (r *AppReconciler) ownImageReference(app *appv1alpha1.App, image string) (s
 // imagePortPreferred is the declared image port chosen as primary when present.
 const imagePortPreferred int32 = 3000
 
+func configuredPortMode(mode string) bool {
+	return mode == appv1alpha1.PortModeImageConfiguredV1 || mode == appv1alpha1.PortModeWebImageConfiguredV1
+}
+
+// parseExternalImageReference splits a prebuilt image reference into the
+// registry API host, repository and reference, for an anonymous metadata
+// read (w4/m243). No platform credential is ever attached to it.
+func parseExternalImageReference(image string) (host, repo, repoPath, reference string, ok bool) {
+	name := image
+	reference = "latest"
+	if before, digest, found := strings.Cut(name, "@"); found {
+		name, reference = before, digest
+	} else if i := strings.LastIndex(name, ":"); i > strings.LastIndex(name, "/") {
+		name, reference = name[:i], name[i+1:]
+	}
+	parts := strings.Split(name, "/")
+	host = "docker.io"
+	if len(parts) > 1 && (strings.ContainsAny(parts[0], ".:") || parts[0] == "localhost") {
+		host, parts = parts[0], parts[1:]
+	}
+	repo = strings.Join(parts, "/")
+	if host == "docker.io" {
+		host = "registry-1.docker.io"
+		if !strings.Contains(repo, "/") {
+			repo = "library/" + repo
+		}
+	}
+	if repo == "" || reference == "" {
+		return "", "", "", "", false
+	}
+	return host, repo, name, reference, true
+}
+
 // resolveImageNetwork is deliberately scoped to the App's own built repository.
-// An arbitrary image host can never receive platform registry credentials.
+// An arbitrary image host can never receive platform registry credentials; a
+// web service's prebuilt image is read anonymously instead (w4/m243).
 func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha1.App, image string) (string, int, error) {
-	if !app.Spec.UsesImagePorts() {
+	if !app.Spec.HasImagePorts() {
 		return image, int(app.Spec.EffectivePort()), nil
 	}
+	// The configured primary: an explicit port, or a web service's own PORT
+	// env (EnvPort), which wins over the image's choice (w4/m243).
+	configured := configuredPortMode(app.Spec.PortMode)
+	configuredPrimary := app.Spec.Port
+	if app.Spec.UsesWebImagePorts() && app.Status.EnvPort > 0 {
+		configured, configuredPrimary = true, app.Status.EnvPort
+	}
 	if cached := app.Status.ImageNetwork; cached != nil && cached.Image == image &&
-		(app.Spec.PortMode != appv1alpha1.PortModeImageConfiguredV1 || cached.PrimaryPort == app.Spec.Port) {
+		(!configured || cached.PrimaryPort == configuredPrimary) {
 		cached.Revision = releaseRevision(app)
 		return image, int(cached.PrimaryPort), nil
 	}
-	reference, ok := r.ownImageReference(app, image)
-	if !ok {
+	var metadata registry.ImageConfig
+	var prefix string
+	if reference, ok := r.ownImageReference(app, image); ok {
+		prefix = r.Registry + "/" + appIdentity(app).Repo()
+		authorization, ready, err := r.registryAuthHeader(ctx, app)
+		if err != nil {
+			return "", 0, err
+		}
+		if !ready {
+			return "", 0, fmt.Errorf("image registry credential is not active yet")
+		}
+		var err2 error
+		metadata, err2 = registry.ReadImageConfig(ctx, r.HTTPClient, r.Registry, appIdentity(app).Repo(), reference, authorization)
+		if err2 != nil {
+			return "", 0, err2
+		}
+	} else if app.Spec.UsesWebImagePorts() {
+		host, repo, repoPath, reference, ok := parseExternalImageReference(image)
+		if !ok {
+			return "", 0, fmt.Errorf("image port discovery cannot parse image %q", image)
+		}
+		var err error
+		metadata, err = registry.ReadImageConfig(ctx, r.HTTPClient, host, repo, reference, "")
+		if err != nil {
+			return "", 0, err
+		}
+		prefix = repoPath
+	} else {
 		return "", 0, fmt.Errorf("image port discovery requires this service's built image repository")
-	}
-	prefix := r.Registry + "/" + appIdentity(app).Repo()
-	authorization, ready, err := r.registryAuthHeader(ctx, app)
-	if err != nil {
-		return "", 0, err
-	}
-	if !ready {
-		return "", 0, fmt.Errorf("image registry credential is not active yet")
-	}
-	metadata, err := registry.ReadImageConfig(ctx, r.HTTPClient, r.Registry, appIdentity(app).Repo(), reference, authorization)
-	if err != nil {
-		return "", 0, err
 	}
 	ports := metadata.TCPPorts
 	if len(ports) == 0 {
 		ports = []int32{app.Spec.EffectivePort()}
-		if app.Spec.PortMode == appv1alpha1.PortModeImageConfiguredV1 {
-			ports = []int32{app.Spec.Port}
+		if configured {
+			ports = []int32{configuredPrimary}
 		}
 	}
 	primary := ports[0]
@@ -88,17 +143,17 @@ func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha
 	if slices.Contains(ports, imagePortPreferred) {
 		primary = imagePortPreferred
 	}
-	if app.Spec.PortMode == appv1alpha1.PortModeImageConfiguredV1 {
-		primary = app.Spec.Port
+	if configured {
+		primary = configuredPrimary
 		if primary < 1 || primary > 65535 || appv1alpha1.IsReservedImagePort(primary) {
-			return "", 0, fmt.Errorf("configured private primary port is unsupported")
+			return "", 0, fmt.Errorf("configured primary port is unsupported")
 		}
 		if !slices.Contains(ports, primary) {
 			ports = append(slices.Clone(ports), primary)
 			slices.Sort(ports)
 		}
 		if len(ports) > appv1alpha1.MaxImagePorts {
-			return "", 0, fmt.Errorf("private services support at most %d TCP ports including the configured primary", appv1alpha1.MaxImagePorts)
+			return "", 0, fmt.Errorf("services support at most %d TCP ports including the configured primary", appv1alpha1.MaxImagePorts)
 		}
 	}
 	image = prefix + "@" + metadata.Digest
@@ -117,7 +172,7 @@ func privateServiceProjection(app *appv1alpha1.App, port int) (map[string]string
 	pod := appPodLabels(app, false)
 	selector := map[string]string{labelApp: pod[labelApp], labelAppID: pod[labelAppID]}
 	ports := []corev1.ServicePort{{Port: int32(port), TargetPort: intstr.FromInt(port)}}
-	if app.Spec.UsesImagePorts() {
+	if app.Spec.HasImagePorts() {
 		network := app.ActiveImageNetwork()
 		if network == nil || len(network.Ports) == 0 || network.Revision == "" {
 			return nil, nil, fmt.Errorf("image ports have not been resolved")
@@ -136,7 +191,7 @@ func privateServiceProjection(app *appv1alpha1.App, port int) (map[string]string
 // promoteImageNetwork runs only after readiness of the candidate revision.
 // Both stable hostnames must converge before status publishes the new address.
 func (r *AppReconciler) promoteImageNetwork(ctx context.Context, app *appv1alpha1.App, image string, port int) error {
-	if !app.Spec.UsesImagePorts() {
+	if !app.Spec.HasImagePorts() {
 		return nil
 	}
 	candidate := app.Status.ImageNetwork

@@ -333,7 +333,10 @@ func TestCreateResponseReportsLiteralPortEnv(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if plain.Port != 10000 {
-		t.Fatalf("create without PORT reports %d, want the default 10000", plain.Port)
+	// Without PORT, a new Docker web service's port is discovery-pending
+	// (w4/m243): 0 until the operator resolves the image's exposed port,
+	// never an invented default.
+	if plain.Port != 0 || len(plain.OpenPorts) != 0 {
+		t.Fatalf("create without PORT reports %d %+v, want pending 0", plain.Port, plain.OpenPorts)
 	}
 }
