@@ -585,7 +585,10 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 	if err != nil {
 		return CreateRequest{}, err
 	}
-	env := toEnvVars(r.EnvVars)
+	env, err := toEnvVars(r.EnvVars)
+	if err != nil {
+		return CreateRequest{}, err
+	}
 	secretFiles := toSecretFiles(r.SecretFiles)
 	var ipAllowList []core.IPAllowListEntry
 	if r.ServiceDetails != nil {
