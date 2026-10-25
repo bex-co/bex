@@ -1203,7 +1203,7 @@ func TestBuildSecondsFromFakeJobs(t *testing.T) {
 		Base: &core.Base{Client: cl, Namespace: "default"},
 	}
 
-	secs, ok := svc.queryBuildSeconds(context.Background(), "myapp", "default", window, end)
+	secs, ok := svc.queryBuildSeconds(context.Background(), "myapp", "default", window, end, nil)
 	if !ok {
 		t.Fatal("build_seconds: expected successful Job listing")
 	}
@@ -1913,5 +1913,55 @@ func TestBuildSecondsSelectsCRNameInBuildNamespace(t *testing.T) {
 	}
 	if row.Quantity != 7*60 {
 		t.Errorf("build_seconds: want %d (the CR-named Job in bex-build), got %d", 7*60, row.Quantity)
+	}
+}
+
+// A platform-opened rebuild (deployed_by_render, w1/m184) meters no tenant
+// build minutes; the tenant's own build in the same window meters as before.
+func TestQueryBuildSecondsExemptsPlatformRebuilds(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = batchv1.AddToScheme(scheme)
+	window := time.Date(2026, 10, 25, 4, 0, 0, 0, time.UTC)
+	start := metav1.NewTime(window.Add(5 * time.Minute))
+	done := metav1.NewTime(window.Add(15 * time.Minute))
+	job := func(name, revision string) *batchv1.Job {
+		return &batchv1.Job{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default", Labels: map[string]string{
+				appv1alpha1.LabelBuild: "myapp", appv1alpha1.LabelBuildRevision: revision,
+			}},
+			Status: batchv1.JobStatus{StartTime: &start, CompletionTime: &done},
+		}
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).
+		WithRuntimeObjects(job("bld-platform", "gen-8"), job("bld-tenant", "gen-9")).Build()
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}}
+
+	secs, ok := svc.queryBuildSeconds(context.Background(), "myapp", "default", window, window.Add(time.Hour), map[string]bool{"gen-8": true})
+	if !ok || secs != 10*60 {
+		t.Errorf("build_seconds = %d (ok=%v), want only the tenant build's 600s", secs, ok)
+	}
+}
+
+// platformRevisionStore answers the optional platform-rebuild capability.
+type platformRevisionStore struct {
+	UsageStore
+	revisions map[string]bool
+	err       error
+}
+
+func (p platformRevisionStore) PlatformRebuildRevisions(context.Context, string) (map[string]bool, error) {
+	return p.revisions, p.err
+}
+
+// A failed lookup must not bill the platform's rebuild to the tenant: the
+// window's build source is unavailable and is retried instead.
+func TestPlatformRebuildRevisionsFailureIsAnUnavailableSource(t *testing.T) {
+	svc := &Service{Store: platformRevisionStore{err: errors.New("db down")}}
+	if _, ok := svc.platformRebuildRevisions(context.Background(), "srv-1"); ok {
+		t.Error("a failed platform-rebuild lookup reported a usable source")
+	}
+	svc = &Service{Store: platformRevisionStore{revisions: map[string]bool{"gen-3": true}}}
+	if got, ok := svc.platformRebuildRevisions(context.Background(), "srv-1"); !ok || !got["gen-3"] {
+		t.Errorf("revisions = %v (ok=%v), want gen-3", got, ok)
 	}
 }

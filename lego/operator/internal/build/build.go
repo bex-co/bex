@@ -1295,7 +1295,7 @@ fi
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      JobName(o.Name, o.Revision),
 			Namespace: o.Namespace,
-			Labels:    buildLabels(o),
+			Labels:    buildJobLabels(o),
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            &backoff,
@@ -1304,7 +1304,7 @@ fi
 			TTLSecondsAfterFinished: &ttl,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      buildLabels(o),
+					Labels:      buildJobLabels(o),
 					Annotations: annotations,
 				},
 				Spec: podSpec,
