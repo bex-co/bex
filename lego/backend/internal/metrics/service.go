@@ -159,8 +159,8 @@ type MetricQuery struct {
 	// only to http_requests/http_latency (bandwidth has no per-request host/path
 	// axis → ErrBadRequest); with the Loki source unwired they surface
 	// core.ErrLogStoreUnavailable, never a silently-unfiltered Prometheus result.
-	Host    string
-	Path    string
+	Hosts   []string
+	Paths   []string
 	GroupBy string // request group-by: "status" | "method" | "host" | "instance" | ""
 	// Instances selects public instance ids (m87) for cpu/memory and their
 	// limit series. Empty means all instances. Oversized/blank values error;
@@ -273,8 +273,8 @@ type RequestMetricsRequest struct {
 	// (NewLokiRequestMetricsSource, w5/m58). The Prometheus source ignores them
 	// (a host/path read is never routed to it); the Loki source turns them into
 	// LogQL line filters over the Traefik access log's RequestHost/RequestPath.
-	Host string
-	Path string
+	Hosts []string
+	Paths []string
 }
 
 // RequestMetricsSource returns request time-series for an App from the ingress
@@ -483,7 +483,7 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 		return nil, fmt.Errorf("%w: statusCode must be a three-digit HTTP status or a class such as 5xx", core.ErrBadRequest)
 	}
 	q.StatusCode = statusCode
-	if q.Host != "" || q.Path != "" {
+	if len(q.Hosts) > 0 || len(q.Paths) > 0 {
 		// host/path narrow request traffic only — they have no meaning for a
 		// resource metric, and bandwidth (egress L3/L7) carries no per-request
 		// host/path axis. Reject anything but the two request metrics up front,
@@ -1047,7 +1047,7 @@ func (s *Service) requestMetric(ctx context.Context, q MetricQuery, app *appv1al
 	// A per-host breakdown is served from there for the same reason, and never
 	// falls back to the counter below: it has no host, so it would answer one
 	// unlabelled series as if it were the breakdown.
-	if q.Host != "" || q.Path != "" || q.GroupBy == groupByHost {
+	if len(q.Hosts) > 0 || len(q.Paths) > 0 || q.GroupBy == groupByHost {
 		if s.RequestLogMetrics == nil {
 			return nil, core.ErrLogStoreUnavailable
 		}
@@ -1152,8 +1152,8 @@ func (s *Service) readRequestSeries(ctx context.Context, source RequestMetricsSo
 		Quantile:        q.Quantile,
 		StatusCode:      q.StatusCode,
 		GroupBy:         q.GroupBy,
-		Host:            q.Host,
-		Path:            q.Path,
+		Hosts:           q.Hosts,
+		Paths:           q.Paths,
 	})
 	if err != nil {
 		return nil, err
