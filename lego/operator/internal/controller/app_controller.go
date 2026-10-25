@@ -1205,11 +1205,11 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		// the control plane's build budget restarts on the queued→building edge
 		// (a build that waits for a node must not spend that wait from its own
 		// budget; the 2026-08-11 misattribution incident, ADR034 §3).
-		r.setPhase(ctx, app, appv1alpha1.PhaseBuilding, reasonBuildQueued,
+		r.setBuildingPhase(ctx, app, reasonBuildQueued,
 			"waiting for build capacity: "+obs.Message)
 		return halt(ctrl.Result{RequeueAfter: buildObserveRequeue}, nil)
 	default: // build.PhaseBuilding — a pod is placed and compiling
-		r.setPhase(ctx, app, appv1alpha1.PhaseBuilding, reasonBuilding, "Building image from "+app.Spec.Repo)
+		r.setBuildingPhase(ctx, app, reasonBuilding, "Building image from "+app.Spec.Repo)
 		return halt(ctrl.Result{RequeueAfter: buildObserveRequeue}, nil)
 	}
 }
@@ -5812,16 +5812,31 @@ func (r *AppReconciler) awaitRegistryCredActive(ctx context.Context, app *appv1a
 // reconcile, per App (a diff-before-write discipline that matters now that the
 // build phase requeues every few seconds instead of blocking).
 func (r *AppReconciler) setPhase(ctx context.Context, app *appv1alpha1.App, p appv1alpha1.AppPhase, reason, msg string) {
+	r.setPhaseWith(ctx, app, p, reason, msg, false)
+}
+
+// setPhaseWith is setPhase that also writes when the caller changed other
+// status (extraChanged), which an unchanged phase and Ready would skip.
+func (r *AppReconciler) setPhaseWith(ctx context.Context, app *appv1alpha1.App, p appv1alpha1.AppPhase, reason, msg string, extraChanged bool) {
 	samePhase := app.Status.Phase == p
 	app.Status.Phase = p
 	changed := meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason, Message: msg,
 		ObservedGeneration: app.Generation,
 	})
-	if samePhase && !changed {
+	if samePhase && !changed && !extraChanged {
 		return
 	}
 	r.updateStatusRetrying(ctx, app, "setPhase")
+}
+
+// setBuildingPhase is setPhase(PhaseBuilding) that first re-observes whether
+// the live revision still serves (w1/m185). A build can run — or be retried —
+// for hours on top of a live release; without this the Serving condition stayed
+// whatever the last rollout left, and an outage underneath the build (the live
+// pod evicted, its replacement never Ready) produced no server_failed.
+func (r *AppReconciler) setBuildingPhase(ctx context.Context, app *appv1alpha1.App, reason, msg string) {
+	r.setPhaseWith(ctx, app, appv1alpha1.PhaseBuilding, reason, msg, r.refreshServingWhileBuilding(ctx, app))
 }
 
 // writeAppStatus writes app's status unconditionally, keeping a viewed pass's

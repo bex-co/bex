@@ -58,3 +58,29 @@ func (r *AppReconciler) observeServingRevision(ctx context.Context, app *appv1al
 	condition.Reason = appv1alpha1.ReasonServingRevisionUnavailable
 	condition.Message = "no pod of the active revision is ready"
 }
+
+// refreshServingWhileBuilding re-runs observeServingRevision against the App's
+// Deployment while a build is in progress, reporting whether the Serving
+// condition changed. An App with no active revision, or no Deployment yet, has
+// nothing serving to observe.
+func (r *AppReconciler) refreshServingWhileBuilding(ctx context.Context, app *appv1alpha1.App) bool {
+	if app.Status.ActiveRevision == "" {
+		return false
+	}
+	var dep appsv1.Deployment
+	if err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: app.Name}, &dep); err != nil {
+		return false
+	}
+	replicas := int32(1)
+	if dep.Spec.Replicas != nil {
+		replicas = *dep.Spec.Replicas
+	}
+	before := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionServing)
+	var was metav1.Condition
+	if before != nil {
+		was = *before
+	}
+	r.observeServingRevision(ctx, app, &dep, replicas)
+	now := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionServing)
+	return before == nil || now.Status != was.Status || now.Reason != was.Reason || now.ObservedGeneration != was.ObservedGeneration
+}

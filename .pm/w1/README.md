@@ -15,6 +15,7 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [x] **m185** — [A serving App with zero running instances records server_failed](done/m185/README.md) (5 tasks) ← `w1/140`, promoted 2026-10-25 by `/loopx w1`
 - [ ] **138** — **BLOCKED (decision: may a bex controller patch CAPI Machines in `bex-capi` for a pre-drain hook? — design in the note)** — [Keep single-instance services up through node rolls](blocked/138.md) ← parked 2026-10-25 by `/loopx w1`; mitigations m183 + tenant-0 max 5 shipped; status honesty split to `140`
 - [x] **m184** — [Platform-initiated rebuilds are not billed as tenant build minutes](done/m184/README.md) (5 tasks) ← `w1/137`, promoted 2026-10-25 by `/loopx w1`
 - [ ] **136** — **BLOCKED (upstream: Docker official `*-bookworm` images re-tagged with Debian's fixed `libbrotli1`, or an Ubuntu USN for jammy)** — [Re-pin Debian/Ubuntu base images once libbrotli1 fixes land upstream](blocked/136.md) ← CVE-2026-111497 follow-up, parked 2026-10-25 by `/loopx w1`
