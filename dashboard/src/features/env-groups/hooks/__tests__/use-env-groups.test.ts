@@ -326,7 +326,7 @@ describe("useEnvGroupMutations", () => {
     expect(toastError).toHaveBeenCalledWith("Couldn't create shared");
   });
 
-  it("links a service without promising auto-deploy-off services keep their release", async () => {
+  it("links a service with the staged-deploy link-change copy", async () => {
     const mutate = vi.fn().mockResolvedValue({});
     mockUseMutation.mockImplementation(() => [mutate]);
 
@@ -344,7 +344,7 @@ describe("useEnvGroupMutations", () => {
       "Service linked",
       expect.objectContaining({
         description:
-          "The service's configuration changed and it may restart, even with auto-deploy off.",
+          "The service's configuration changed. With auto-deploy on it deploys the change now; with it off it picks it up with its next deploy.",
       }),
     );
   });
@@ -364,7 +364,7 @@ describe("useEnvGroupMutations", () => {
       "Service unlinked",
       expect.objectContaining({
         description:
-          "The service's configuration changed and it may restart, even with auto-deploy off.",
+          "The service's configuration changed. With auto-deploy on it deploys the change now; with it off it picks it up with its next deploy.",
       }),
     );
   });
