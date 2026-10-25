@@ -47,6 +47,14 @@ const (
 	// defaultRetentionCount is the image history kept per repository when
 	// BEX_ZOT_RETENTION_COUNT is unset.
 	defaultRetentionCount = 5
+	// LiveTagPrefix marks a manifest a release has run on (the operator pushes
+	// it as live-<generation> on promotion). Retention keeps the newest
+	// liveRetentionCount of them per repository on top of the pushed window,
+	// so a run of builds that never go live cannot evict the image a running
+	// service needs to reschedule (2026-10-24 beancount.io outage), and recent
+	// rollback targets survive with it.
+	LiveTagPrefix      = "live-"
+	liveRetentionCount = 10
 
 	// ZotGCDelay is how long an untagged/dangling blob survives before garbage
 	// collection may remove it. It MUST stay above the worst-case push duration
@@ -434,6 +442,9 @@ func (c *Creds) buildBaseZotConfig() {
 					KeepTags: []zotKeepTag{{
 						Patterns:                []string{".*"},
 						MostRecentlyPushedCount: retentionCount,
+					}, {
+						Patterns:                []string{"^" + LiveTagPrefix + ".*"},
+						MostRecentlyPushedCount: liveRetentionCount,
 					}},
 				}},
 			},

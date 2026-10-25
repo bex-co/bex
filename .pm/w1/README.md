@@ -15,6 +15,7 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [x] **m183** — [Registry retention never deletes a live release's image](done/m183/README.md) (5 tasks) ← `w1/139`, promoted 2026-10-25 by `/loopx w1` (2026-10-24 beancount.io outage root cause)
 - [x] **m182** — [Older Blueprint auto-sync work cannot overwrite newer configuration](done/m182/README.md) (8 tasks) — done 2026-10-20: current-branch immutable source, per-Blueprint leases, reclaimed-worker execution fencing and truthful accepted/consumed history; real-Postgres walkthrough, full backend suite and lint pass. Render ordering/recovery guarantees remain explicitly unverified.
 - [x] **134** — [Verify the already-landed headroom GitOps fix](done/134.md) — closed as already met 2026-10-20: fixing commit `2c60b7196`; production wave 10 exceeds every other wave (maximum 4), reservation contract intact, full GitOps validator passes. Operational, not Render parity.
 

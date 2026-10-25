@@ -1346,6 +1346,15 @@ spec:
                 - job
                 - status
                 type: object
+              protectedImageTag:
+                description: |-
+                  ProtectedImageTag is the live-<generation> tag the operator last pushed
+                  for the serving release's image in the in-cluster registry, which
+                  retention keeps however many newer builds are pushed (w1/m183). Empty
+                  until the first successful tag; a failed tag retries next reconcile. A
+                  tag rather than a digest, so a release rolled back to an older image
+                  gets a fresh live tag of its own.
+                type: string
               releaseArtifactFingerprint:
                 description: |-
                   ReleaseArtifactFingerprint is the artifact identity of the in-flight release

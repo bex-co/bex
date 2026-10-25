@@ -499,7 +499,7 @@ func TestBaseZotConfigBuilderAdminPolicy(t *testing.T) {
 // config, so this is the one place a field rename or an omitempty change would
 // otherwise slip through to a running registry unnoticed.
 func TestBaseZotConfigIsByteStable(t *testing.T) {
-	const want = `{"distSpecVersion":"1.1.0","storage":{"rootDirectory":"/var/lib/registry","dedupe":true,"gc":true,"gcDelay":"3h","gcInterval":"3h","retention":{"dryRun":false,"policies":[{"repositories":["**"],"deleteUntagged":true,"keepTags":[{"patterns":[".*"],"mostRecentlyPushedCount":5}]}]}},"http":{"address":"0.0.0.0","port":"5000","compat":["docker2s2"],"readTimeout":"60s","writeTimeout":"60s","auth":{"htpasswd":{"path":"/secret/htpasswd"}},"accessControl":{"repositories":{"**":{"policies":[{"users":["bex-builder"],"actions":["read","create","update","delete"]}]},"bex-cnb-builder":{"policies":null,"defaultPolicy":["read"]}},"adminPolicy":{"users":["bex-builder"],"actions":["read","create","update","delete"]}}},"log":{"level":"info"},"extensions":{"scrub":{"enable":true,"interval":"24h"}}}`
+	const want = `{"distSpecVersion":"1.1.0","storage":{"rootDirectory":"/var/lib/registry","dedupe":true,"gc":true,"gcDelay":"3h","gcInterval":"3h","retention":{"dryRun":false,"policies":[{"repositories":["**"],"deleteUntagged":true,"keepTags":[{"patterns":[".*"],"mostRecentlyPushedCount":5},{"patterns":["^live-.*"],"mostRecentlyPushedCount":10}]}]}},"http":{"address":"0.0.0.0","port":"5000","compat":["docker2s2"],"readTimeout":"60s","writeTimeout":"60s","auth":{"htpasswd":{"path":"/secret/htpasswd"}},"accessControl":{"repositories":{"**":{"policies":[{"users":["bex-builder"],"actions":["read","create","update","delete"]}]},"bex-cnb-builder":{"policies":null,"defaultPolicy":["read"]}},"adminPolicy":{"users":["bex-builder"],"actions":["read","create","update","delete"]}}},"log":{"level":"info"},"extensions":{"scrub":{"enable":true,"interval":"24h"}}}`
 	if got := string((&Creds{}).baseZotConfig()); got != want {
 		t.Errorf("canonical zot config drifted.\n got: %s\nwant: %s", got, want)
 	}
@@ -1106,5 +1106,33 @@ func TestRetentionPolicyGlobsNestedRepos(t *testing.T) {
 	repos, _ := policy["repositories"].([]any)
 	if len(repos) != 1 || repos[0] != "**" {
 		t.Fatalf("retention repositories = %v; want [**] (Zot doublestar matches nested tea-x/hello)", repos)
+	}
+}
+
+// A registry configured before live-tag retention (w1/m183) gains the live
+// rule on migration: otherwise production keeps evicting the image a running
+// release needs once more than retentionCount newer builds were pushed.
+func TestZotConfigStorageMigrationAddsLiveTagRetention(t *testing.T) {
+	c := &Creds{}
+	data := mustDecode(t, c.baseZotConfig())
+	storage, _ := data["storage"].(map[string]any)
+	retention, _ := storage["retention"].(map[string]any)
+	policy, _ := retention["policies"].([]any)[0].(map[string]any)
+	policy["keepTags"] = []any{map[string]any{"patterns": []any{".*"}, "mostRecentlyPushedCount": float64(5)}}
+
+	if !setZotStorage(data, c.canonicalStorage()) {
+		t.Fatal("a config without the live-tag rule was not migrated")
+	}
+	migrated, _ := data["storage"].(map[string]any)["retention"].(map[string]any)["policies"].([]any)[0].(map[string]any)
+	var live bool
+	for _, kt := range migrated["keepTags"].([]any) {
+		rule, _ := kt.(map[string]any)
+		patterns, _ := rule["patterns"].([]any)
+		if len(patterns) == 1 && patterns[0] == "^"+LiveTagPrefix+".*" && rule["mostRecentlyPushedCount"] == float64(liveRetentionCount) {
+			live = true
+		}
+	}
+	if !live {
+		t.Errorf("migrated keepTags = %v; want a ^%s.* rule keeping %d", migrated["keepTags"], LiveTagPrefix, liveRetentionCount)
 	}
 }

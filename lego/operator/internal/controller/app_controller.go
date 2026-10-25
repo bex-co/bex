@@ -3167,6 +3167,7 @@ func (r *AppReconciler) markRunning(ctx context.Context, app *appv1alpha1.App, d
 	app.Status.Phase = appv1alpha1.PhaseRunning
 	app.Status.ActiveRevision = releaseRevision(app)
 	r.recordImageDigest(ctx, app, dep)
+	r.protectServingImage(ctx, app)
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Deployed",
 		Message:            fmt.Sprintf("%d/%d replicas ready", dep.Status.ReadyReplicas, replicas),
@@ -4422,6 +4423,7 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	app.Status.URLs = nil
 	app.Status.ActiveRevision = releaseRevision(app)
 	r.recordImageDigest(ctx, app, nil)
+	r.protectServingImage(ctx, app)
 	app.Status.ObservedGeneration = app.Generation
 	if app.Spec.Suspended {
 		app.Status.Phase = appv1alpha1.PhaseHibernated
