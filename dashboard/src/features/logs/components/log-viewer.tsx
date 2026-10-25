@@ -176,6 +176,9 @@ export function LogViewer({
   const historyWindow = useLiveRange(
     range,
     JSON.stringify([resource, queryFilters]),
+    // Live off freezes the history window (w4/399): the paused view is a
+    // snapshot, so nothing refetches, arrives or expires underneath it.
+    { paused: !live },
   );
   const history = useLogHistory(
     resource,
