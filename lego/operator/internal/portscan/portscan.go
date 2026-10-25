@@ -56,6 +56,57 @@ type Dialer struct {
 	Low, High int
 }
 
+// ScanPorts connects to the listed ports of ip and returns the ones that
+// accepted, sorted — the bounded first phase of a detection scan, so a
+// dropped-packet path gets a verdict on the common HTTP ports well inside
+// the caller's timeout instead of only after a full sweep (w4/393).
+func (d Dialer) ScanPorts(ctx context.Context, ip string, list []int) ([]int, error) {
+	var open []int
+	var mu sync.Mutex
+	var sawRefusal bool
+	ports := make(chan int)
+	var wg sync.WaitGroup
+	for range 64 {
+		wg.Go(func() {
+			var dialer net.Dialer
+			for port := range ports {
+				dctx, cancel := context.WithTimeout(ctx, dialTimeout)
+				conn, err := dialer.DialContext(dctx, "tcp", net.JoinHostPort(ip, strconv.Itoa(port)))
+				cancel()
+				switch {
+				case err == nil:
+					_ = conn.Close()
+					mu.Lock()
+					open = append(open, port)
+					mu.Unlock()
+				case isRefused(err):
+					mu.Lock()
+					sawRefusal = true
+					mu.Unlock()
+				}
+			}
+		})
+	}
+feed:
+	for _, port := range list {
+		select {
+		case ports <- port:
+		case <-ctx.Done():
+			break feed
+		}
+	}
+	close(ports)
+	wg.Wait()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if len(open) == 0 && !sawRefusal {
+		return nil, ErrUnreachable
+	}
+	sort.Ints(open)
+	return open, nil
+}
+
 // Scan connects to each port of ip and returns the ones that accepted, sorted.
 // It first proves the pod is reachable: a port nobody listens on must answer
 // "connection refused"; a timeout there means a network policy or a dead pod is
