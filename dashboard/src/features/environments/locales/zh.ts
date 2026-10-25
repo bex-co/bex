@@ -316,7 +316,7 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     description: "Protected-status setting label",
   },
   "environments.protectedHint": {
-    message: "对破坏性服务操作要求明确输入 sudo 确认短语。",
+    message: "只有工作区管理员可以删除、暂停、恢复本环境的资源或为其开启维护模式。",
     description: "Protected-status setting explanation",
   },
   "environments.isolationLabel": {
