@@ -620,10 +620,10 @@ type AppSpec struct {
 	// +kubebuilder:default=10000
 	Port int32 `json:"port,omitempty"`
 
-	// PortMode preserves whether a new private Docker service selected image
+	// PortMode preserves whether a new Docker service selected image
 	// metadata discovery. Omission keeps the historical configured port contract.
 	// +optional
-	// +kubebuilder:validation:Enum=configured-v1;image-v1;image-configured-v1
+	// +kubebuilder:validation:Enum=configured-v1;image-v1;image-configured-v1;web-image-v1;web-image-configured-v1
 	PortMode string `json:"portMode,omitempty"`
 
 	// Env are environment variables set on the App's container, in the order
