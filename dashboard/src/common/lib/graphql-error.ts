@@ -92,6 +92,25 @@ export function workspaceCapMessage(err: unknown): string | null {
   );
 }
 
+/**
+ * The one-free-instance refusal's own message (FREE_INSTANCE_LIMIT, w4/m241),
+ * or null. No workspace-plan upgrade lifts this limit, so callers show the
+ * message without an Upgrade CTA.
+ */
+export function freeInstanceMessage(err: unknown): string | null {
+  if (!CombinedGraphQLErrors.is(err)) return null;
+  return (
+    err.errors.find(
+      (item) => item.extensions?.["code"] === "FREE_INSTANCE_LIMIT",
+    )?.message ?? null
+  );
+}
+
+/** True when the refusal is the one-free-instance limit (w4/m241). */
+export function isFreeInstanceLimit(err: unknown): boolean {
+  return freeInstanceMessage(err) !== null;
+}
+
 /** True when any GraphQL error in Apollo's combined response has code. */
 export function hasGraphQLErrorCode(err: unknown, code: string): boolean {
   return graphQLErrorExtensions(err, code) !== null;

@@ -207,6 +207,28 @@ describe("useCreateKeyValue at the workspace cap", () => {
     expect(toastError).not.toHaveBeenCalled();
   });
 
+  it("shows the free-instance refusal without an upgrade CTA", async () => {
+    mockUseMutation.mockReturnValue([
+      vi
+        .fn()
+        .mockRejectedValue(
+          codedGraphQLError(
+            "FREE_INSTANCE_LIMIT",
+            { limit: 1 },
+            "this workspace already has a free Key Value store (kv); delete it or choose a paid instance type",
+          ),
+        ),
+      { loading: false },
+    ]);
+    const { result } = renderHook(() => useCreateKeyValue());
+    await act(async () => {
+      await result.current.create(input);
+    });
+    expect(result.current.capLimit).toContain("already has a free");
+    expect(result.current.capLimitUpgrade).toBe(false);
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
   it("does not read the cap from the wording alone", async () => {
     mockUseMutation.mockReturnValue([
       vi.fn().mockRejectedValue(uncodedGraphQLError(cap)),

@@ -94,7 +94,7 @@ export function NewKeyValuePage() {
     retry: retryCatalog,
     retrying: catalogRetrying,
   } = useKeyValueInstanceTypes();
-  const { create, busy, capLimit } = useCreateKeyValue();
+  const { create, busy, capLimit, capLimitUpgrade } = useCreateKeyValue();
 
   const [name, setName] = useState("");
   const [planOverride, setPlanOverride] = useState<string | null>(null);
@@ -292,20 +292,22 @@ export function NewKeyValuePage() {
                     <AlertTitle>{t("keyvalue.capLimitTitle")}</AlertTitle>
                     <AlertDescription className="flex flex-col gap-2">
                       <span>{capLimit}</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="self-start"
-                        onClick={() =>
-                          void navigate({
-                            to: "/workspace/settings",
-                            search: { plan: "change" },
-                          })
-                        }
-                      >
-                        <ArrowUpRight className="size-3.5" />
-                        {t("keyvalue.capLimitUpgrade")}
-                      </Button>
+                      {capLimitUpgrade ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="self-start"
+                          onClick={() =>
+                            void navigate({
+                              to: "/workspace/settings",
+                              search: { plan: "change" },
+                            })
+                          }
+                        >
+                          <ArrowUpRight className="size-3.5" />
+                          {t("keyvalue.capLimitUpgrade")}
+                        </Button>
+                      ) : null}
                     </AlertDescription>
                   </Alert>
                 ) : null}

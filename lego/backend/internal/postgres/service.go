@@ -728,6 +728,90 @@ func (s *Service) ensureDatabaseNameAvailable(ctx context.Context, tenantID, nam
 // the workspace ResourceQuota enforces at admission.
 var CountCap = core.CountCap{Key: store.DatabasesQuotaCountKey, Noun: "Postgres database"}
 
+// freeDatabaseHolderFor returns the workspace's free Postgres holding the
+// one-free slot (w4/m241), mid-deletion included (w6/m129).
+func freeDatabaseHolderFor(ctx context.Context, b *core.Base, tenantID, excludeID string) (string, bool, error) {
+	var list appv1alpha1.DatabaseList
+	if err := b.Client.List(ctx, &list, b.DatastoreListOptions(tenantID)...); err != nil {
+		return "", false, fmt.Errorf("checking free Postgres limit: %w", err)
+	}
+	for i := range list.Items {
+		d := &list.Items[i]
+		if d.Name == excludeID || d.Labels[core.LabelTenant] != tenantID || d.Spec.Plan != "free" {
+			continue
+		}
+		name := d.Spec.Name
+		if name == "" {
+			name = d.Name
+		}
+		return name, !d.DeletionTimestamp.IsZero(), nil
+	}
+	return "", false, nil
+}
+
+// CheckFreeLimit refuses a free Postgres create/plan when the workspace's
+// free slot is taken (w4/m241) — the shared admission every writer runs.
+func CheckFreeLimit(ctx context.Context, b *core.Base, tenantID, excludeID, plan string) error {
+	if plan != "free" {
+		return nil
+	}
+	name, terminating, err := freeDatabaseHolderFor(ctx, b, tenantID, excludeID)
+	if err != nil {
+		return err
+	}
+	if name == "" {
+		return nil
+	}
+	return core.FreeInstanceLimitError("Postgres database", name, terminating)
+}
+
+func (s *Service) refuseSecondFreeDatabase(ctx context.Context, tenantID, excludeID string) error {
+	name, terminating, err := freeDatabaseHolderFor(ctx, s.Base, tenantID, excludeID)
+	if err != nil {
+		return err
+	}
+	if name == "" {
+		return nil
+	}
+	return core.FreeInstanceLimitError("Postgres database", name, terminating)
+}
+
+// rollbackSecondFreeDatabaseFor closes the create race the pre-check cannot
+// (two free creates passing it concurrently): after the CR lands, the
+// earliest free database (creation time, then name) keeps the slot and a
+// later one deletes itself and reports the limit.
+func rollbackSecondFreeDatabaseFor(ctx context.Context, b *core.Base, tenantID string, mine *appv1alpha1.Database) error {
+	var list appv1alpha1.DatabaseList
+	if err := b.Client.List(ctx, &list, b.DatastoreListOptions(tenantID)...); err != nil {
+		return nil // the create landed; a list failure must not delete it
+	}
+	var free []*appv1alpha1.Database
+	for i := range list.Items {
+		d := &list.Items[i]
+		if d.Labels[core.LabelTenant] == tenantID && d.Spec.Plan == "free" {
+			free = append(free, d)
+		}
+	}
+	if len(free) <= 1 {
+		return nil
+	}
+	slices.SortFunc(free, func(a, b *appv1alpha1.Database) int {
+		if c := a.CreationTimestamp.Time.Compare(b.CreationTimestamp.Time); c != 0 {
+			return c
+		}
+		return strings.Compare(a.Name, b.Name)
+	})
+	if free[0].Name == mine.Name {
+		return nil
+	}
+	_ = b.Client.Delete(ctx, mine)
+	name := free[0].Spec.Name
+	if name == "" {
+		name = free[0].Name
+	}
+	return core.FreeInstanceLimitError("Postgres database", name, !free[0].DeletionTimestamp.IsZero())
+}
+
 // CreatePostgres provisions a managed Postgres (a Database CR the operator
 // projects to a CNPG Cluster).
 func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest) (PostgresView, error) {
@@ -805,6 +889,11 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if err := s.RequirePlanBilling(ctx, tenantID, req.Plan); err != nil {
 		return PostgresView{}, err
 	}
+	if req.Plan == "free" {
+		if err := s.refuseSecondFreeDatabase(ctx, tenantID, ""); err != nil {
+			return PostgresView{}, err
+		}
+	}
 	resourcemeta.Touch(d, s.Now())
 	// Dry-run: the exact object the real create writes, through admission
 	// without persisting it (w5/m116), so the plan's count cap and the CRD's
@@ -815,7 +904,19 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 		}
 		return s.view(d), nil
 	}
-	if err := CreateResource(ctx, s.Base, tenantID, d); err != nil {
+	create := func() error {
+		if req.Plan == "free" {
+			if err := s.refuseSecondFreeDatabase(ctx, tenantID, ""); err != nil {
+				return err
+			}
+		}
+		return CreateResource(ctx, s.Base, tenantID, d)
+	}
+	if req.Plan == "free" {
+		if err := core.WithTenantAdvisoryLock(ctx, s.Workspace, tenantID, create); err != nil {
+			return PostgresView{}, err
+		}
+	} else if err := create(); err != nil {
 		return PostgresView{}, err
 	}
 	s.RecordDatabaseEffect(ctx, d, core.DatabaseCreated)
@@ -830,6 +931,15 @@ func CreateResource(ctx context.Context, b *core.Base, tenantID string, d *appv1
 	if err := b.EnsureWorkspaceNamespace(ctx, tenantID); err != nil {
 		return err
 	}
+	// The one-free rule lives here as well as in CreatePostgres' pre-check so
+	// a Blueprint apply cannot bypass it (w4/m241).
+	if d.Spec.Plan == "free" {
+		if name, terminating, err := freeDatabaseHolderFor(ctx, b, tenantID, d.Name); err != nil {
+			return err
+		} else if name != "" {
+			return core.FreeInstanceLimitError("Postgres database", name, terminating)
+		}
+	}
 	if err := b.Client.Create(ctx, d); err != nil {
 		if apierrors.IsAlreadyExists(err) {
 			return fmt.Errorf("%w: generated Postgres id collision; retry the request", core.ErrConflict)
@@ -840,6 +950,9 @@ func CreateResource(ctx context.Context, b *core.Base, tenantID string, d *appv1
 		// API's terms, or the caller sees a raw admission message about a
 		// Kubernetes object they have no concept of.
 		return CountCap.CreateError(err)
+	}
+	if d.Spec.Plan == "free" {
+		return rollbackSecondFreeDatabaseFor(ctx, b, tenantID, d)
 	}
 	return nil
 }
@@ -1067,6 +1180,11 @@ func (s *Service) setPlan(ctx context.Context, name, plan string, dryRun bool) (
 	}
 	if err := s.RequirePlanBilling(ctx, d.Labels[core.LabelTenant], plan); err != nil {
 		return PostgresView{}, err
+	}
+	if plan == "free" {
+		if err := s.refuseSecondFreeDatabase(ctx, d.Labels[core.LabelTenant], d.Name); err != nil {
+			return PostgresView{}, err
+		}
 	}
 	from := d.Spec.Plan
 	view, err := s.patchDatabaseObj(ctx, d, func(d *appv1alpha1.Database) {
@@ -1572,6 +1690,11 @@ func (s *Service) checkUpdate(ctx context.Context, d *appv1alpha1.Database, patc
 	case patch.Plan != nil:
 		if err := s.RequirePlanBilling(ctx, d.Labels[core.LabelTenant], tiers.Postgres.CanonicalID(*patch.Plan)); err != nil {
 			return err
+		}
+		if tiers.Postgres.CanonicalID(*patch.Plan) == "free" {
+			if err := s.refuseSecondFreeDatabase(ctx, d.Labels[core.LabelTenant], d.Name); err != nil {
+				return err
+			}
 		}
 	case patch.Version != nil || patch.DiskSizeGB != nil || patch.EnableDiskAutoscaling != nil || patch.EnableHighAvailability != nil || patch.ReadReplicas != nil:
 		if err := s.RequireBillingMutation(ctx, d.Labels[core.LabelTenant]); err != nil {

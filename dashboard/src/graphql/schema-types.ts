@@ -3545,6 +3545,8 @@ export type RepoRuntimeDetection = {
 
 export type ResourceCap = {
   __typename: 'ResourceCap';
+  freeLimit: Maybe<Scalars['Int']['output']>;
+  freeUsed: Maybe<Scalars['Int']['output']>;
   limit: Maybe<Scalars['Int']['output']>;
   terminating: Maybe<Scalars['Int']['output']>;
   used: Maybe<Scalars['Int']['output']>;

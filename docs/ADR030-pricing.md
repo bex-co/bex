@@ -118,6 +118,8 @@ Render's [features-by-plan page](https://render.com/docs/platform-features-by-pl
 | HTTP request logs | Pro | explicit `type=request` refused; all-types queries drop request lines |
 | Inbound IP rules on services, static sites and environments | Scale | Postgres and Key Value rules stay on every plan |
 
+**Free datastores (w4/m241):** every workspace, on any plan, may hold one free Postgres and one free Key Value (Render's free rule); paid instances never count toward it. Admission enforces it by instance plan (`FREE_INSTANCE_LIMIT`), and Hobby's total datastore quota is the paid ceiling (25/25) so a paid create is never refused for holding a free one. A terminating free instance still holds its free slot until deletion finishes.
+
 Existing state is never silently removed: a Hobby workspace keeps its third environment, isolated environments, webhook endpoints and IP rules working, and only new uses are refused. An unreadable plan fails the write; an unwired plan reader (store-off) leaves every feature open. Render's exact refusal wording and its request-log behavior on Hobby are unverified (no Render account); bex takes the documented 400 with the plan named.
 
 ### 10. Free web services share 750 instance hours per workspace per month (w8/m139)

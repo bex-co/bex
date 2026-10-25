@@ -26,6 +26,10 @@ const enUsage: Record<string, TranslationEntry> = {
     message: "Key Value",
     description: "Key Value count label in the resource-cap card",
   },
+  "usage.resourceCapsFree": {
+    message: "Free: {used} of {limit}",
+    description: "Free-instance count in the resource-cap card (w4/m241)",
+  },
   "usage.freeHoursTitle": {
     message: "Monthly included usage",
     description:
