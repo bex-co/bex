@@ -100,20 +100,20 @@ describe("CreateDatabaseDialog", () => {
     });
     expect(submit).toBeDisabled(); // empty name
 
-    // Invalid: shaped like a resource ID — the inline error shows, submit stays off.
-    await user.type(
-      within(dialog).getByLabelText("Name"),
-      "dpg-abcdefghij0123456789",
-    );
+    // Invalid: over 100 characters — the inline error shows, submit stays off.
+    await user.type(within(dialog).getByLabelText("Name"), "x".repeat(101));
     expect(
-      within(dialog).getByText(/shaped like a resource ID/i),
+      within(dialog).getByText(/up to 100 characters/i),
     ).toBeInTheDocument();
     expect(submit).toBeDisabled();
 
-    // A free-form label is accepted, as on Render (w5/m153).
-    await user.clear(within(dialog).getByLabelText("Name"));
-    await user.type(within(dialog).getByLabelText("Name"), "Shop DB_1");
-    expect(submit).toBeEnabled();
+    // A free-form label is accepted, as on Render (w5/m153), even one shaped
+    // like a resource ID (w5/m118 reversed w8/049).
+    for (const name of ["Shop DB_1", "dpg-abcdefghij0123456789"]) {
+      await user.clear(within(dialog).getByLabelText("Name"));
+      await user.type(within(dialog).getByLabelText("Name"), name);
+      expect(submit).toBeEnabled();
+    }
   });
 
   // w4/m170: names PostgreSQL owns block Create with their own message.

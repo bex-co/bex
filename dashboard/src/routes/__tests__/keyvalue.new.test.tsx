@@ -120,15 +120,18 @@ describe("NewKeyValuePage", () => {
     });
     expect(submit).toBeDisabled(); // empty name
 
-    // Invalid: shaped like a resource ID — the inline error shows, submit stays off.
-    await user.type(screen.getByLabelText("Name"), "red-abcdefghij0123456789");
-    expect(screen.getByText(/shaped like a resource ID/i)).toBeInTheDocument();
+    // Invalid: over 100 characters — the inline error shows, submit stays off.
+    await user.type(screen.getByLabelText("Name"), "x".repeat(101));
+    expect(screen.getByText(/up to 100 characters/i)).toBeInTheDocument();
     expect(submit).toBeDisabled();
 
-    // A free-form label is accepted, as on Render (w5/m153).
-    await user.clear(screen.getByLabelText("Name"));
-    await user.type(screen.getByLabelText("Name"), "My Cache_1");
-    expect(submit).toBeEnabled();
+    // A free-form label is accepted, as on Render (w5/m153), even one shaped
+    // like a resource ID (w5/m118 reversed w8/049).
+    for (const name of ["My Cache_1", "red-abcdefghij0123456789"]) {
+      await user.clear(screen.getByLabelText("Name"));
+      await user.type(screen.getByLabelText("Name"), name);
+      expect(submit).toBeEnabled();
+    }
   });
 
   it("renders a plan-tier card per catalog instance type, defaulting to the first", async () => {

@@ -4998,14 +4998,7 @@ func checkDisplayName(a *appv1alpha1.App, value string) (string, error) {
 	if err := core.NotFoundIfDeleting(a); err != nil {
 		return "", err
 	}
-	value, err := core.CheckLabel(value)
-	if err != nil {
-		return "", err
-	}
-	if ids.LooksLikeResourceID(value) {
-		return "", core.NameResourceIDReservedError("displayName", value)
-	}
-	return value, nil
+	return core.CheckLabel(value)
 }
 
 // setSuspended flips suspension with the row as the single writer of intent.

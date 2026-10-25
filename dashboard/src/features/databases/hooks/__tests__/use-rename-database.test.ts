@@ -88,7 +88,7 @@ describe("useRenameDatabase", () => {
       await result.current.rename("dpg-stable", "Bad_Name");
     });
     expect(toastError).toHaveBeenLastCalledWith(
-      "Enter a name of up to 100 characters, without line breaks or control characters, that isn't shaped like a resource ID (such as srv-…).",
+      "Enter a name of up to 100 characters, without line breaks or control characters.",
     );
 
     await act(async () => {

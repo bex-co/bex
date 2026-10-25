@@ -513,7 +513,7 @@ describe("NewServicePage", () => {
       expect(deploy).toBeDisabled();
     });
 
-    it("keeps Deploy disabled when name is shaped like a resource ID", async () => {
+    it("keeps Deploy disabled when name is over 100 characters", async () => {
       const user = userEvent.setup();
       renderPage();
       await user.click(
@@ -521,10 +521,8 @@ describe("NewServicePage", () => {
       );
       const nameInput = screen.getByLabelText("Name");
       await user.clear(nameInput);
-      await user.type(nameInput, "srv-abcdefghij0123456789");
-      expect(
-        screen.getByText(/shaped like a resource ID/i),
-      ).toBeInTheDocument();
+      await user.type(nameInput, "x".repeat(101));
+      expect(screen.getByText(/up to 100 characters/i)).toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: /Deploy Service/i }),
       ).toBeDisabled();

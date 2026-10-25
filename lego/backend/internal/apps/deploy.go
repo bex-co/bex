@@ -39,7 +39,6 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
-	"github.com/bex-co/bex/lego/backend/internal/resourcename"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/renderenv"
 	"github.com/bex-co/bex/lego/types/tiers"
@@ -3028,7 +3027,7 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 	if d.Name == "" {
 		return parsedDatabase{}, fmt.Errorf("%w: a database entry is missing its name", core.ErrBadRequest)
 	}
-	if err := resourcename.CheckDatastore(d.Name); err != nil {
+	if err := core.CheckDatastoreName(d.Name); err != nil {
 		return parsedDatabase{}, fmt.Errorf("database %q: %w", d.Name, err)
 	}
 	if d.EnvironmentID != "" {
@@ -3116,7 +3115,7 @@ func parseKeyValue(k bexService) (parsedKeyValue, error) {
 	}
 	// Checked here, as parseDatabase does, so a bad name is a validation
 	// error rather than the apiserver's refusal at apply: a 500 (w5/m118).
-	if err := resourcename.CheckDatastore(k.Name); err != nil {
+	if err := core.CheckDatastoreName(k.Name); err != nil {
 		return parsedKeyValue{}, fmt.Errorf("key-value %q: %w", k.Name, err)
 	}
 	if k.EnvironmentID != "" {
