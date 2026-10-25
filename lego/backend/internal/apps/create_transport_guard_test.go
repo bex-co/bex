@@ -105,6 +105,10 @@ var restCreateRules = map[string]wireRule{
 	"notifyOnFail":                           to("NotifyOnFail"),
 	"envVars[].key":                          to("Env"),
 	"envVars[].value":                        to("Env"),
+	// The guard pairs generateValue with a literal value, so toggling it
+	// answers the oneOf 400; acceptance on its own is covered by
+	// TestEnvVarInputGenerateValue (w4/m242).
+	"envVars[].generateValue":                refused(false, true),
 	"secretFiles[].name":                     to("SecretFiles"),
 	"secretFiles[].content":                  to("SecretFiles"),
 	"serviceDetails.plan":                    to("Plan"),
@@ -301,6 +305,9 @@ var mcpCreateRules = map[string]wireRule{
 	"plan":                             to("Plan"),
 	"envVars[].key":                    to("Env"),
 	"envVars[].value":                  to("Env"),
+	// See restCreateRules: paired with a literal value by the guard, the
+	// oneOf 400 is the answer (w4/m242).
+	"envVars[].generateValue":          refused(false, true),
 	"secretFiles[].name":               to("SecretFiles"),
 	"secretFiles[].content":            to("SecretFiles"),
 	"autoDeploy":                       to("AutoDeploy").given("yes", "no"),
@@ -542,6 +549,21 @@ func changedFields[T any](a, b T) []string {
 // decodeCreateService, strict decoding included.
 func restCreateTransport(svc *Service, shapes []createShape) createTransport {
 	leaves := jsonWireLeaves(reflect.TypeFor[createServiceRequest](), "", false)
+	// envVars entries are a oneOf (w4/m242): a key cannot be sent without its
+	// value sibling, so the guard fills key+value when probing any envVars
+	// leaf (generateValue itself is probed paired with a value, which the
+	// oneOf refuses — see restCreateRules).
+	var envPair []wireLeaf
+	for _, l := range leaves {
+		if l.path == "envVars[].key" || l.path == "envVars[].value" {
+			envPair = append(envPair, l)
+		}
+	}
+	for i := range leaves {
+		if strings.HasPrefix(leaves[i].path, "envVars[].") {
+			leaves[i].required = envPair
+		}
+	}
 	return createTransport{
 		name:   "REST POST /v1/services",
 		table:  "restCreateRules",

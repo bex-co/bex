@@ -6,18 +6,18 @@
 - the per-variable and per-file PUTs answer a bare `{key}` / file view;
 - `POST /v1/services` refuses `generateValue` as an unknown field.
 
-**Status:** todo
+**Status:** blocked — t001–t006 done 2026-10-25 (loopx w4); t007 waits for the release pin to include the fix, then QA replays the DoD in `bex-canary`
 
 ## Tasks (in order)
 
 | id              | title                                                                                   | est | depends_on                 |
 | --------------- | --------------------------------------------------------------------------------------- | --- | -------------------------- |
-| [t001](t001.md) | Env-group create response: find why the reveal fails, and stop masking values as `""`   | 60m | —                          |
-| [t002](t002.md) | Per-variable / per-file env-group PUT answers Render's `envGroup`                       | 40m | —                          |
-| [t003](t003.md) | `POST /v1/services` (and the MCP create tools) accept `envVars[].generateValue`         | 40m | —                          |
-| [t004](t004.md) | Render parity                                                                           | 20m | w4/m242/t001, w4/m242/t002, w4/m242/t003 |
-| [t005](t005.md) | Simplify                                                                                | 15m | w4/m242/t004               |
-| [t006](t006.md) | Test coverage                                                                           | 25m | w4/m242/t004               |
+| [t001](done/t001.md) | Env-group create response: find why the reveal fails, and stop masking values as `""`   | 60m | —                          | — **DONE**
+| [t002](done/t002.md) | Per-variable / per-file env-group PUT answers Render's `envGroup`                       | 40m | —                          | — **DONE**
+| [t003](done/t003.md) | `POST /v1/services` (and the MCP create tools) accept `envVars[].generateValue`         | 40m | —                          | — **DONE**
+| [t004](done/t004.md) | Render parity                                                                           | 20m | w4/m242/t001, w4/m242/t002, w4/m242/t003 | — **DONE**
+| [t005](done/t005.md) | Simplify                                                                                | 15m | w4/m242/t004               | — **DONE**
+| [t006](done/t006.md) | Test coverage                                                                           | 25m | w4/m242/t004               | — **DONE**
 | [t007](t007.md) | Closeout (live DoD replay)                                                              | 15m | w4/m242/t005, w4/m242/t006 |
 
 ## Definition of done

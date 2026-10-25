@@ -19,6 +19,7 @@ package envgroups
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"slices"
 
@@ -136,7 +137,12 @@ func (s *Service) revealGroups(ctx context.Context, groups []renderEnvGroup) ([]
 			return nil, err
 		}
 		var contents groupContents
-		if err := s.withGroupContent(ctx, group.ID, func(ctx context.Context, g store.EnvGroup) error {
+		if group.writtenContents != nil {
+			// The create itself just wrote these contents (w4/m242): reveal
+			// them directly instead of re-reading a store whose read may lag
+			// or fail in the window right after the write.
+			contents = *group.writtenContents
+		} else if err := s.withGroupContent(ctx, group.ID, func(ctx context.Context, g store.EnvGroup) error {
 			var err error
 			contents, err = s.readGroupContents(ctx, g)
 			// A group with nothing saved yet has no maps: it reveals as empty.
@@ -146,6 +152,19 @@ func (s *Service) revealGroups(ctx context.Context, groups []renderEnvGroup) ([]
 			return err
 		}); err != nil {
 			return nil, err
+		}
+		// A contents map missing a listed key is not an empty group: it is a
+		// read that has not caught up with the write. Fail rather than invent
+		// blank values for keys the group lists (w4/m242).
+		for _, v := range group.EnvVars {
+			if _, ok := contents.env[v.Key]; !ok {
+				return nil, fmt.Errorf("env group %s contents are not readable yet", group.ID)
+			}
+		}
+		for _, f := range group.SecretFiles {
+			if _, ok := contents.files[f.Name]; !ok {
+				return nil, fmt.Errorf("env group %s contents are not readable yet", group.ID)
+			}
 		}
 		revealed := revealedEnvGroup{renderEnvGroup: group, SecretFiles: make([]SecretFileContent, 0, len(group.SecretFiles))}
 		revealed.EnvVars = slices.Clone(group.EnvVars)

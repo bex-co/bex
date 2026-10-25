@@ -19,6 +19,7 @@ package apps
 import (
 	"cmp"
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -32,6 +33,30 @@ import (
 type envVarInput struct {
 	Key   string `json:"key" jsonschema:"the environment variable name"`
 	Value string `json:"value" jsonschema:"the literal value"`
+	// GenerateValue asks for a freshly generated value instead of a literal
+	// one (w4/m242), as on Render's create inputs and bex's own PATCH verbs.
+	GenerateValue bool `json:"generateValue,omitempty" jsonschema:"generate a fresh value instead of providing one"`
+	// ValueSet records whether "value" was present on the wire, so an
+	// explicit empty literal stays distinct from no value at all.
+	ValueSet bool `json:"-"`
+}
+
+// UnmarshalJSON records value presence: the oneOf value/generateValue
+// validation needs it, and encoding/json cannot otherwise tell an explicit
+// "" from an omitted field.
+func (e *envVarInput) UnmarshalJSON(data []byte) error {
+	type wire envVarInput
+	var decoded wire
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	*e = envVarInput(decoded)
+	_, e.ValueSet = fields["value"]
+	return nil
 }
 
 type secretFileInput struct {
@@ -39,12 +64,31 @@ type secretFileInput struct {
 	Content string `json:"content" jsonschema:"secret file contents"`
 }
 
-func toEnvVars(in []envVarInput) []appv1alpha1.EnvVar {
+// toEnvVars resolves the literal-or-generated oneOf every create input
+// shares (w4/m242): exactly one of value / generateValue, enforced with the
+// same coded refusal as the env-var PATCH verbs.
+func toEnvVars(in []envVarInput) ([]appv1alpha1.EnvVar, error) {
 	var env []appv1alpha1.EnvVar
 	for _, e := range in {
-		env = append(env, appv1alpha1.EnvVar{Name: e.Key, Value: e.Value})
+		value := e.Value
+		// A non-empty literal counts as set even without wire presence, so
+		// Go-constructed inputs (tests, internal callers) keep working.
+		hasValue := e.ValueSet || e.Value != ""
+		switch {
+		case e.GenerateValue && hasValue:
+			return nil, core.InvalidEnvVarValueInput(e.Key)
+		case e.GenerateValue:
+			generated, err := core.GenerateValue()
+			if err != nil {
+				return nil, err
+			}
+			value = generated
+		case !hasValue:
+			return nil, core.InvalidEnvVarValueInput(e.Key)
+		}
+		env = append(env, appv1alpha1.EnvVar{Name: e.Key, Value: value})
 	}
-	return env
+	return env, nil
 }
 
 func toSecretFiles(in []secretFileInput) []core.SecretFile {

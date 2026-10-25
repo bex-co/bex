@@ -227,6 +227,11 @@ type EnvGroupView struct {
 	// or get always omits it. Same meaning as
 	// EnvironmentPatchResult.PendingServiceIDs.
 	PendingServiceIDs []string `json:"pendingServiceIds,omitempty"`
+	// writtenContents carries the exact contents a create just wrote, so its
+	// REST response can reveal them without re-reading the store (w4/m242):
+	// a content read that lags or fails right after the create must not turn
+	// the response's values blank. Never serialized; reads leave it nil.
+	writtenContents *groupContents
 }
 
 // --- OpenBao paths + materialized Secret names ---------------------------------
@@ -461,6 +466,8 @@ func (s *Service) createEnvGroupAuthorized(ctx context.Context, req CreateEnvGro
 	}
 	view := viewOf(g)
 	view.PendingServiceIDs = pending
+	written := groupContents{env: env, files: files}
+	view.writtenContents = &written
 	return view, nil
 }
 
