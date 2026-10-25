@@ -15,6 +15,8 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **136** — **BLOCKED (upstream: Docker official `*-bookworm` images re-tagged with Debian's fixed `libbrotli1`, or an Ubuntu USN for jammy)** — [Re-pin Debian/Ubuntu base images once libbrotli1 fixes land upstream](blocked/136.md) ← CVE-2026-111497 follow-up, parked 2026-10-25 by `/loopx w1`
+- [x] **135** — [Run the platform-rebuild fleet rebuild for CVE-2026-111497](done/135.md) — done 2026-10-25: plan 3 eligible / 2 already rebuilt; apply rebuilt `tianpan-v4-web`; the other two have no live release
 - [x] **m183** — [Registry retention never deletes a live release's image](done/m183/README.md) (5 tasks) ← `w1/139`, promoted 2026-10-25 by `/loopx w1` (2026-10-24 beancount.io outage root cause)
 - [x] **m182** — [Older Blueprint auto-sync work cannot overwrite newer configuration](done/m182/README.md) (8 tasks) — done 2026-10-20: current-branch immutable source, per-Blueprint leases, reclaimed-worker execution fencing and truthful accepted/consumed history; real-Postgres walkthrough, full backend suite and lint pass. Render ordering/recovery guarantees remain explicitly unverified.
 - [x] **134** — [Verify the already-landed headroom GitOps fix](done/134.md) — closed as already met 2026-10-20: fixing commit `2c60b7196`; production wave 10 exceeds every other wave (maximum 4), reservation contract intact, full GitOps validator passes. Operational, not Render parity.
