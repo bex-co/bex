@@ -1,19 +1,19 @@
 # w10 · m15 — Retire agent-session hibernation: close idle sandboxes after 2h, keep the conversation
 
-**Worker:** worker10 **Goal:** An agent session's sandbox is terminated after 2 hours idle. There is no snapshot, no `hibernated`/`resuming` phase, no Pin tier and no restore. The durable transcript stays, and the next message continues the conversation in a fresh sandbox on the same branch, primed with the prior turns (ADR047 D3 continuity). Agent-session hibernation code, config, API fields and UI are deleted. App/database hibernation (Render free-tier sleep) is untouched. **Status:** todo
+**Worker:** worker10 **Goal:** An agent session's sandbox is terminated after 2 hours idle. There is no snapshot, no `hibernated`/`resuming` phase, no Pin tier and no restore. The durable transcript stays, and the next message continues the conversation in a fresh sandbox on the same branch, primed with the prior turns (ADR047 D3 continuity). Agent-session hibernation code, config, API fields and UI are deleted. App/database hibernation (Render free-tier sleep) is untouched. **Status:** done (2026-10-25: shipped `bd6423e5e` + `773aee4b0`, verified in production — see done/t004.md)
 
 ## Tasks (in order)
 
 | id   | title                                                                                         | est  | depends_on |
 | ---- | --------------------------------------------------------------------------------------------- | ---- | ---------- |
-| t001 | Backend + driver: idle 2h → terminate; delete snapshot/rehydrate/pin; migrate legacy rows     | 3h   | —          |
-| t002 | API surfaces: drop hibernation fields/verbs from REST/GraphQL/MCP; dashboard + mobile UI     | 2h   | t001       |
-| t003 | Config, manifests, scripts, docs (ADR059 superseded, ADR090/047 notes, env tables)            | 45m  | t001       |
-| t004 | Production rollout + verify (idle close at 2h, transcript kept, follow-up continues, legacy rows) | 1h | t002, t003 |
-| t005 | Render parity (agent-session surface consistency)                                             | 20m  | t004       |
-| t006 | Simplify                                                                                      | 20m  | t005       |
-| t007 | Test coverage                                                                                 | 30m  | t005       |
-| t008 | Closeout                                                                                      | 10m  | t006, t007 |
+| t001 | Backend + driver: idle 2h → terminate; delete snapshot/rehydrate/pin; migrate legacy rows — **DONE**     | 3h   | —          |
+| t002 | API surfaces: drop hibernation fields/verbs from REST/GraphQL/MCP; dashboard + mobile UI — **DONE**     | 2h   | t001       |
+| t003 | Config, manifests, scripts, docs (ADR059 superseded, ADR090/047 notes, env tables) — **DONE**            | 45m  | t001       |
+| t004 | Production rollout + verify (idle close at 2h, transcript kept, follow-up continues, legacy rows) — **DONE** | 1h | t002, t003 |
+| t005 | Render parity (agent-session surface consistency) — **DONE**                                             | 20m  | t004       |
+| t006 | Simplify — **DONE**                                                                                      | 20m  | t005       |
+| t007 | Test coverage — **DONE**                                                                                 | 30m  | t005       |
+| t008 | Closeout — **DONE**                                                                                      | 10m  | t006, t007 |
 
 ## Definition of done
 
