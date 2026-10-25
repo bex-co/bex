@@ -467,8 +467,7 @@ func blueprintCreateFetchError(err error, requestedPath, branch string) error {
 func approvedBlueprintPath(filePath string) (string, error) {
 	filePath = strings.TrimSpace(filePath)
 	clean := path.Clean(filePath)
-	if filePath == "" || clean == "." || clean != filePath || path.IsAbs(clean) ||
-		clean == ".." || strings.HasPrefix(clean, "../") || strings.Contains(clean, `\`) {
+	if !isContainedRepositoryPath(filePath, clean) {
 		return "", fmt.Errorf("%w: Blueprint path must be a clean repository-relative path", core.ErrBadRequest)
 	}
 	switch path.Ext(clean) {
@@ -477,6 +476,15 @@ func approvedBlueprintPath(filePath string) (string, error) {
 	default:
 		return "", fmt.Errorf("%w: Blueprint path must be a .yaml or .yml file", core.ErrBadRequest)
 	}
+}
+
+// isContainedRepositoryPath reports whether filePath is already its own clean
+// form and stays inside the repository: non-empty, relative, and free of ".."
+// and backslash segments. clean is path.Clean(filePath).
+func isContainedRepositoryPath(filePath, clean string) bool {
+	return filePath != "" && clean != "." && clean == filePath &&
+		!path.IsAbs(clean) && clean != ".." && !strings.HasPrefix(clean, "../") &&
+		!strings.Contains(clean, `\`)
 }
 
 // BlueprintView is the API shape for a blueprint — all three surfaces return this.
