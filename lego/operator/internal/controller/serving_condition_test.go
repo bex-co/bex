@@ -61,3 +61,39 @@ func TestServingRevisionIgnoresFailingReplacement(t *testing.T) {
 		})
 	}
 }
+
+// While a new release builds on top of a live one (w1/m185), the build poll
+// re-observes Serving: the live pod gone and its replacement never Ready reads
+// False and reports a change exactly once, so the build path persists it.
+func TestRefreshServingWhileBuildingSeesTheLivePodGone(t *testing.T) {
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default", Generation: 7},
+		Status: appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseBuilding, ActiveRevision: "rev-old"}}
+	dep := progressDeadlineDep("web")
+	stuck := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "web-rescheduled", Namespace: "default", Labels: map[string]string{"app": "web", labelRevision: "rev-old"}},
+		Status: corev1.PodStatus{ContainerStatuses: []corev1.ContainerStatus{{State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "ImagePullBackOff"}}}}}}
+	r := &AppReconciler{Client: fake.NewClientBuilder().WithScheme(rolloutFailScheme(t)).WithObjects(dep, stuck).Build()}
+
+	if !r.refreshServingWhileBuilding(context.Background(), app) {
+		t.Fatal("first observation reported no change")
+	}
+	c := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionServing)
+	if c == nil || c.Status != metav1.ConditionFalse || c.Reason != appv1alpha1.ReasonServingRevisionUnavailable || c.ObservedGeneration != 7 {
+		t.Fatalf("serving = %+v, want False/ServingRevisionUnavailable at generation 7", c)
+	}
+	if r.refreshServingWhileBuilding(context.Background(), app) {
+		t.Error("an unchanged observation reported a change (would rewrite status every build poll)")
+	}
+}
+
+// A first deploy has no live revision to observe, and an App whose
+// Deployment is gone has nothing serving to read: neither touches Serving.
+func TestRefreshServingWhileBuildingWithoutALiveRevision(t *testing.T) {
+	r := &AppReconciler{Client: fake.NewClientBuilder().WithScheme(rolloutFailScheme(t)).Build()}
+	first := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default"}}
+	noDep := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default"}, Status: appv1alpha1.AppStatus{ActiveRevision: "rev-old"}}
+	for name, app := range map[string]*appv1alpha1.App{"first deploy": first, "no deployment": noDep} {
+		if r.refreshServingWhileBuilding(context.Background(), app) || meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionServing) != nil {
+			t.Errorf("%s: Serving touched", name)
+		}
+	}
+}
