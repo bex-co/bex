@@ -462,7 +462,7 @@ export function SessionConversationImpl({
 }
 
 // The Devin-style transcript terminus: a settled dot + a phase-derived label
-// ("Session went to sleep" / "…ended with an error" / "…was canceled") that ends
+// ("Agent finished" / "…ended with an error" / "…was canceled") that ends
 // a settled transcript, rendered inline at the foot of the scroll region.
 function TerminalStatusLine({ label }: { label: string }) {
   return (

@@ -50,18 +50,28 @@ export function SessionChatColumn({
   const [transportState, setTransportState] =
     useState<ConversationState>("not-started");
 
+  const provisioningWithoutSandbox =
+    !session.sandboxId &&
+    !session.isFinished &&
+    (session.phase === "creating" ||
+      session.phase === "redispatching" ||
+      session.phase === "resuming");
+
   // Visibility is DERIVED, not cleared via an effect: the echo hides once the new
-  // turn is recorded (turns advanced past the submit-time count), by which point
-  // reconnect replay carries the durable prompt even while output is still live.
+  // turn is recorded (turns advanced past the submit-time count) and the
+  // conversation is attachable again, by which point replay carries the durable
+  // prompt. It must not key on a live sandbox: an idle session's sandbox closes
+  // after 2h and clears sandboxId, which would bring the echo back as a
+  // duplicate of the replayed prompt.
   const [pendingSteer, setPendingSteer] = useState<{
     prompt: string;
     atTurns: number;
   } | null>(null);
   const showPendingSteer =
     pendingSteer !== null &&
-    !(session.turns > pendingSteer.atTurns && session.sandboxId);
+    !(session.turns > pendingSteer.atTurns && !provisioningWithoutSandbox);
 
-  // Phase-derived terminus label ("went to sleep" / error / canceled) — only a
+  // Phase-derived terminus label (finished / error / canceled) — only a
   // terminal session shows it (the impl gates on isTerminal + settled).
   const terminalLabel =
     session.phase === "completed"
@@ -93,12 +103,6 @@ export function SessionChatColumn({
   // session is creating, redispatching, or resuming without a sandbox, keep the
   // provisioning fallback so attach-ticket failures never surface as a false
   // "stream unavailable" error (w5/m78 t003).
-  const provisioningWithoutSandbox =
-    !session.sandboxId &&
-    !session.isFinished &&
-    (session.phase === "creating" ||
-      session.phase === "redispatching" ||
-      session.phase === "resuming");
   const attachable =
     Boolean(session.sandboxId) ||
     session.isFinished ||

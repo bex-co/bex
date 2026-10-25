@@ -202,17 +202,6 @@ export function SessionDetailHeader({
               {t("agentSessions.archivedBadge")}
             </Badge>
           ) : null}
-          {session.deliveryMode ? (
-            <span className="hidden sm:inline">
-              {t("agentSessions.metaDelivery", {
-                // An unknown/future mode must render as itself, never as a raw
-                // i18n key (a stub value once leaked "agentSessions.delivery.…").
-                mode: t(`agentSessions.delivery.${session.deliveryMode}`, {
-                  defaultValue: session.deliveryMode,
-                }),
-              })}
-            </span>
-          ) : null}
         </div>
       </div>
 

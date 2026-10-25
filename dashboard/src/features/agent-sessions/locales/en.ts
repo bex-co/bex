@@ -386,18 +386,6 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "{count} turns",
     description: "Detail header — number of prompt turns taken (plural)",
   },
-  "agentSessions.metaDelivery": {
-    message: "Delivery {mode}",
-    description: "Detail header — how the last turn's sandbox was obtained",
-  },
-  "agentSessions.delivery.resume": {
-    message: "resume",
-    description: "Delivery mode — the sandbox was resumed",
-  },
-  "agentSessions.delivery.redispatch": {
-    message: "redispatch",
-    description: "Delivery mode — a new sandbox was dispatched",
-  },
   "agentSessions.cancel": {
     message: "Cancel",
     description: "Detail header — cancel-session button label",
@@ -791,7 +779,7 @@ const enAgentSessions: Record<string, TranslationEntry> = {
       "Reasoning-group summary with elapsed duration from persisted part timestamps (or ~arrival timing)",
   },
   "agentSessions.terminalStatus.completed": {
-    message: "Session went to sleep",
+    message: "Agent finished",
     description: "Terminal transcript status line — completed session",
   },
   "agentSessions.terminalStatus.failed": {
