@@ -29,11 +29,15 @@ import {
 export function useLiveRange(
   range: RangeWindow | CustomRange,
   resetKey?: string,
+  options?: { paused?: boolean },
 ) {
+  const paused = options?.paused ?? false;
   const custom = "startTime" in range;
+  // Pausing joins the selection so the clock samples the pause moment once,
+  // then holds; resuming samples again (w4/399).
   const selection = custom
     ? "custom"
-    : `${range.spanSeconds}:${range.resolutionSeconds}:${resetKey ?? ""}`;
+    : `${range.spanSeconds}:${range.resolutionSeconds}:${resetKey ?? ""}:${paused}`;
   const [clock, setClock] = useState(() => ({ selection, now: new Date() }));
   let now = clock.now;
   if (clock.selection !== selection) {
@@ -42,7 +46,7 @@ export function useLiveRange(
   }
 
   useEffect(() => {
-    if (custom) return; // absolute window — nothing to slide
+    if (custom || paused) return; // absolute window — nothing to slide; paused — frozen snapshot
     const id = setInterval(
       () => setClock((previous) => ({ ...previous, now: new Date() })),
       range.resolutionSeconds * 1000,
@@ -50,7 +54,7 @@ export function useLiveRange(
     return () => clearInterval(id);
     // `selection` restarts the cadence on a span-only change too: a tick left
     // pending would refetch again right after the fresh sample.
-  }, [custom, selection, range.resolutionSeconds]);
+  }, [custom, paused, selection, range.resolutionSeconds]);
 
   if (custom) {
     return {
