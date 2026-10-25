@@ -334,6 +334,33 @@ func TestToRenderServiceStaticDetails(t *testing.T) {
 // A redirect may name a fixed external http(s) host, as on Render, and so may a
 // rewrite when the host is public (w8/184); no capture or placeholder can reach
 // the host (w8/162).
+func TestValidateRoutesNamedPlaceholders(t *testing.T) {
+	for _, r := range []StaticRouteView{
+		{Type: "redirect", Source: "/blog/posts/:postid", Destination: "/blog/:postid"},
+		{Type: "redirect", Source: "/updates/:month/:year", Destination: "/changelog/:year/:month"},
+		{Type: "rewrite", Source: "/item/:id", Destination: "/other.html"},
+		{Type: "redirect", Source: "/combo/:id/*", Destination: "https://example.com/c/:id/*"},
+		{Type: "redirect", Source: "/a:b", Destination: "/literal"},
+	} {
+		if err := validateRoutes([]StaticRouteView{r}); err != nil {
+			t.Errorf("valid placeholder route %+v refused: %v", r, err)
+		}
+	}
+	for _, tc := range []struct {
+		route StaticRouteView
+		want  string
+	}{
+		{StaticRouteView{Type: "redirect", Source: "/a/:x", Destination: "/b/:y"}, ":y"},
+		{StaticRouteView{Type: "redirect", Source: "/a/:x/:x", Destination: "/b/:x"}, ":x"},
+		{StaticRouteView{Type: "redirect", Source: "/a/:x", Destination: "https://example.com/b/:y"}, ":y"},
+	} {
+		err := validateRoutes([]StaticRouteView{tc.route})
+		if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "routes[0]") || !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("route %+v => %v, want 400 naming routes[0] and %s", tc.route, err, tc.want)
+		}
+	}
+}
+
 func TestValidateRoutesExternalRedirect(t *testing.T) {
 	for _, dest := range []string{"https://cdn.example.com/maps/*", "http://example.org", "https://example.org:8443/new?x=1", "HTTPS://Example.org/x"} {
 		if err := validateRoutes([]StaticRouteView{{Type: "redirect", Source: "/a/*", Destination: dest}}); err != nil {
