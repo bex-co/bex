@@ -48,13 +48,6 @@ export function ServiceEnvPage({ serviceId }: { serviceId: string }) {
           <Plus /> {t("services.envGroupCreate")}
         </Button>
       </div>
-      {service?.undeployedChanges ? (
-        // These are saved values. The operator reports when they differ from
-        // the running configuration, including Save only, cancellation or rollback.
-        <p className="text-muted-foreground text-sm" role="status">
-          {t(undeployedChangesHintKey(service))}
-        </p>
-      ) : null}
       <ServiceEnvironmentEditor
         serviceId={serviceId}
         suspended={service?.suspended ?? false}
