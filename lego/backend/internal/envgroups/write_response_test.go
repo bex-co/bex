@@ -150,3 +150,31 @@ func TestRESTPerKeyWritesReturnEnvGroup(t *testing.T) {
 		t.Fatalf("PUT file response missing the written content: %s", w.Body.String())
 	}
 }
+
+// w4/396: the REST list is Render's envGroupMeta — no values anywhere —
+// while retrieve keeps them.
+func TestRESTListIsMetadataOnly(t *testing.T) {
+	svc := newService(newFakeStore(), sampleApp("web"))
+	if w := serveREST(svc, "POST", "/v1/env-groups", `{"name":"shared","envVars":[{"key":"TOKEN","value":"secret-v1"}]}`); w.Code != 201 {
+		t.Fatalf("create => %d: %s", w.Code, w.Body.String())
+	}
+	w := serveREST(svc, "GET", "/v1/env-groups", "")
+	if w.Code != 200 {
+		t.Fatalf("list => %d", w.Code)
+	}
+	if strings.Contains(w.Body.String(), "secret-v1") || strings.Contains(w.Body.String(), `"envVars"`) {
+		t.Fatalf("list leaked values: %s", w.Body.String())
+	}
+	var page []struct {
+		EnvGroup struct {
+			ID string `json:"id"`
+		} `json:"envGroup"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &page); err != nil || len(page) != 1 {
+		t.Fatalf("list page = %s (%v)", w.Body.String(), err)
+	}
+	w = serveREST(svc, "GET", "/v1/env-groups/"+page[0].EnvGroup.ID, "")
+	if !strings.Contains(w.Body.String(), "secret-v1") {
+		t.Fatalf("retrieve lost values: %s", w.Body.String())
+	}
+}

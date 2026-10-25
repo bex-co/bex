@@ -61,6 +61,42 @@ type revealedGroupWithCursor struct {
 	Cursor   string           `json:"cursor"`
 }
 
+// renderEnvGroupMeta is Render's envGroupMeta: the list item without
+// envVars or secretFiles (w4/396).
+type renderEnvGroupMeta struct {
+	ID            string        `json:"id"`
+	Name          string        `json:"name"`
+	OwnerID       string        `json:"ownerId,omitempty"`
+	EnvironmentID string        `json:"environmentId,omitempty"`
+	CreatedAt     string        `json:"createdAt,omitempty"`
+	UpdatedAt     string        `json:"updatedAt,omitempty"`
+	ServiceLinks  []serviceLink `json:"serviceLinks"`
+}
+
+type metaGroupWithCursor struct {
+	EnvGroup renderEnvGroupMeta `json:"envGroup"`
+	Cursor   string             `json:"cursor"`
+}
+
+func envGroupMetaList(groups []renderEnvGroup) []metaGroupWithCursor {
+	out := make([]metaGroupWithCursor, 0, len(groups))
+	for _, group := range groups {
+		links := group.ServiceLinks
+		if links == nil {
+			links = []serviceLink{}
+		}
+		out = append(out, metaGroupWithCursor{
+			EnvGroup: renderEnvGroupMeta{
+				ID: group.ID, Name: group.Name, OwnerID: group.OwnerID,
+				EnvironmentID: group.EnvironmentID, CreatedAt: group.CreatedAt,
+				UpdatedAt: group.UpdatedAt, ServiceLinks: links,
+			},
+			Cursor: group.ID,
+		})
+	}
+	return out
+}
+
 func envGroupList(groups []revealedEnvGroup) []revealedGroupWithCursor {
 	out := make([]revealedGroupWithCursor, 0, len(groups))
 	for _, group := range groups {
@@ -92,11 +128,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		revealed, err := s.revealGroups(r.Context(), page)
-		if err != nil {
-			return nil, err
-		}
-		return envGroupList(revealed), nil
+		// Render's list answers envGroupMeta (w4/396): names and links only,
+		// no values or file contents, and no sensitive gate — the same
+		// can_view read as other resource lists. Retrieve and the write
+		// responses keep values behind can_view_sensitive.
+		return envGroupMetaList(page), nil
 	}))
 	mux.HandleFunc("POST /v1/env-groups", core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
 		req, err := core.DecodeBody[CreateEnvGroupRequest](r)
