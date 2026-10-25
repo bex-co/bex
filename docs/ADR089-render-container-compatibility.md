@@ -176,6 +176,8 @@ Passing local checks cover the unchanged upstream Blueprint through create and a
 
 Real Postgres tests cover policy/disk round trips and atomic rollback when disk creation fails. On 2026-10-01 the full backend suite passed against a pristine Postgres 17 (the pinned CI image), after fixing the new fixtures' invalid tenant plan; `0135` down/up, its refusal while compatible services exist, and its CHECK constraints were exercised directly. The full operator `make test` (codegen plus envtest controller suite) passed with no generated drift. Hosted deployment, persistence and isolation gates remain open.
 
+**Web services (w4/m243, 2026-10-25):** the same image-port rule now applies to new Docker/image web services in every workspace (`web-image-v1`, or `web-image-configured-v1` with an explicit port): the operator resolves the image's TCP `EXPOSE` set — digest-verified from the service's own built repository, or anonymously (no platform credential) for a prebuilt public image — and the web `Service`/`Ingress` serve the primary port (explicit/`PORT` env, else declared 3000, else lowest declared). Existing web services carry no mode and are untouched.
+
 ## Port slice decisions — 2026-10-19 (w6/m148)
 
 These decisions split D3/D4 (ports and references) from D2 (capabilities). They ship in w6/m148. D2's capability policy for customer workspaces is w6/m149.
