@@ -379,18 +379,6 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "{count} 轮",
     description: "Detail header — number of prompt turns taken",
   },
-  "agentSessions.metaDelivery": {
-    message: "交付 {mode}",
-    description: "Detail header — how the last turn's sandbox was obtained",
-  },
-  "agentSessions.delivery.resume": {
-    message: "恢复",
-    description: "Delivery mode — the sandbox was resumed",
-  },
-  "agentSessions.delivery.redispatch": {
-    message: "重新调度",
-    description: "Delivery mode — a new sandbox was dispatched",
-  },
   "agentSessions.cancel": {
     message: "取消",
     description: "Detail header — cancel-session button label",
@@ -755,7 +743,7 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
       "Reasoning-group summary with elapsed duration from persisted part timestamps (or ~arrival timing)",
   },
   "agentSessions.terminalStatus.completed": {
-    message: "会话已休眠",
+    message: "Agent 已完成",
     description: "Terminal transcript status line — completed session",
   },
   "agentSessions.terminalStatus.failed": {

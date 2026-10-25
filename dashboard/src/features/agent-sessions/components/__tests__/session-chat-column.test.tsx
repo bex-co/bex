@@ -145,4 +145,21 @@ describe("SessionChatColumn optimistic redispatch echo (w2/m64)", () => {
     );
     expect(screen.getByText("echoed prompt")).toBeInTheDocument();
   });
+
+  it("does not bring the echo back when the idle sandbox later closes", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      column(view("completed", { sandboxId: "", turns: 3 })),
+    );
+
+    await user.click(screen.getByRole("button", { name: "echo" }));
+    rerender(column(view("running", { sandboxId: "sandbox-2", turns: 4 })));
+    rerender(column(view("completed", { sandboxId: "sandbox-2", turns: 4 })));
+    expect(screen.queryByText("echoed prompt")).not.toBeInTheDocument();
+
+    // After the 2h idle close the sandbox id is cleared; the replayed durable
+    // prompt is the only copy, so the optimistic echo must stay hidden.
+    rerender(column(view("completed", { sandboxId: "", turns: 4 })));
+    expect(screen.queryByText("echoed prompt")).not.toBeInTheDocument();
+  });
 });
