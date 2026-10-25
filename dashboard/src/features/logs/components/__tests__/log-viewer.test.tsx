@@ -766,12 +766,12 @@ describe("LogViewer search committed while paused (w4/306)", () => {
       expect(q.endTime).toBe(at(15_000));
       expect(Date.parse(q.endTime) - Date.parse(q.startTime)).toBe(3600_000);
     }
-    // The commit owns one cadence: the next tick is 30s after it.
-    act(() => vi.advanceTimersByTime(29_999));
+    // While paused the window stays frozen at the commit (w4/399): no
+    // tick follows the new search, and no history query slides.
+    const count = queries().length;
+    act(() => vi.advanceTimersByTime(30_000));
+    expect(queries().length).toBe(count);
     expect(queries().at(-1)?.endTime).toBe(at(15_000));
-    act(() => vi.advanceTimersByTime(1));
-    expect(queries().at(-1)?.endTime).toBe(at(45_000));
-    expect(vi.getTimerCount()).toBe(1);
 
     // Clearing the search is a new predicate too, over the same span.
     act(() => vi.advanceTimersByTime(5_000));
