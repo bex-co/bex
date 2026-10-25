@@ -33,3 +33,7 @@ Live, on an owned fixture in `bex-canary`, after the release pin includes the fi
 - **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)); static sites ([ADR029](../../../docs/ADR029-static-sites.md)); parity ledger ([ADR018](../../../docs/ADR018-render-parity.md)).
 - **Expected outcome:** a `render.yaml` or dashboard rule copied straight from Render's docs behaves the same on bex; a placeholder typo is refused with a named error instead of emitting a literal `:name` path.
 - **Why now:** severity major — every write surface reports success while the served behavior silently ignores the rule, so migrating Render users lose redirects with no signal. w4/m150 explicitly left "route placeholder expansion" out of scope (its README Dedupe line) and nothing filed it since. The Render parity closing task is included because the REST/GraphQL/MCP/Blueprint/dashboard rule surfaces and the served response all change.
+
+## Live evidence (2026-10-25, platform pin `bd6423e5e46f`, bex v0.3.3, `bex-canary`, `/qa-find-bugs-cli` loop)
+
+Fresh free static site `srv` (deleted, 404): `POST /v1/services/{id}/routes {"type":"redirect","source":"/blog/:slug","destination":"/posts/:slug.html"}` → 201; `GET /blog/hello` → 301 `Location: …/posts/hello.html`. `{"type":"rewrite","source":"/p/:slug",…}` → 201; `GET /p/hello` → 200 with `/posts/hello.html`'s body.
