@@ -45,9 +45,9 @@ export interface InstanceTypePickerProps {
  * Render's "Pick an Instance Type" page (captured live): a card per tier —
  * Free visually separated from the paid ladder (and absent entirely for a
  * paid-only service type) — the current plan pre-selected, Save disabled
- * until the selection changes. bex cards omit price (billing is separate from
- * this resource catalog) and the custom-instance contact link (no bex
- * equivalent).
+ * until the selection changes. Cards show the catalog monthly price, and the
+ * confirmation repeats it. The custom-instance contact link is omitted (no
+ * bex equivalent).
  */
 export function InstanceTypePicker({
   serviceId,
@@ -186,7 +186,11 @@ export function InstanceTypePicker({
             ? t("services.planPickerConfirmTitle", { name: selectedType.name })
             : ""
         }
-        description={t("services.planPickerConfirmBody")}
+        description={
+          selectedType?.monthlyUsd
+            ? `${t("services.planPickerConfirmBody")} ${t("services.planPickerConfirmPrice", { price: selectedType.monthlyUsd })}`
+            : t("services.planPickerConfirmBody")
+        }
         cancelLabel={t("services.planPickerCancel")}
         confirmLabel={t("services.planPickerSave")}
         // Changing plan is the primary action here, not a destructive one.
@@ -208,6 +212,7 @@ function InstanceTypeCard({
   onSelect: () => void;
   radio: CardRadioProps;
 }) {
+  const { t } = useTranslations();
   return (
     <button
       {...radio}
@@ -225,6 +230,11 @@ function InstanceTypeCard({
         name={instanceType.name}
         memory={`${formatInstanceMemory(instanceType.memory)} (RAM)`}
         cpu={formatInstanceCPU(instanceType.cpu)}
+        price={
+          instanceType.monthlyUsd
+            ? t("common.pricePerMonth", { price: instanceType.monthlyUsd })
+            : undefined
+        }
       />
     </button>
   );
