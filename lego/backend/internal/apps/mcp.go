@@ -245,6 +245,11 @@ func (a createWebServiceArgs) createRequest(ctx context.Context) (CreateRequest,
 		return CreateRequest{}, err
 	}
 	req := a.toCreateRequest()
+	env, err := toEnvVars(a.EnvVars)
+	if err != nil {
+		return CreateRequest{}, err
+	}
+	req.Env = env
 	req.OwnerID = core.NamedWorkspace(ctx)
 	req.IPAllowList = allowList
 	return req, nil
@@ -276,7 +281,6 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 		DockerContext:           dockerContext,
 		Builder:                 a.Builder,
 		Plan:                    a.Plan,
-		Env:                     toEnvVars(a.EnvVars),
 		SecretFiles:             toSecretFiles(a.SecretFiles),
 		AutoDeploy:              parseYesNo(a.AutoDeploy),
 		NotifyOnFail:            a.NotifyOnFail,
@@ -330,6 +334,11 @@ func (a createCronJobArgs) createRequest(ctx context.Context) (CreateRequest, er
 		return CreateRequest{}, err
 	}
 	req := a.toCreateRequest()
+	env, err := toEnvVars(a.EnvVars)
+	if err != nil {
+		return CreateRequest{}, err
+	}
+	req.Env = env
 	req.OwnerID = core.NamedWorkspace(ctx)
 	return req, nil
 }
@@ -366,7 +375,6 @@ func (a createCronJobArgs) toCreateRequest() CreateRequest {
 		DockerContext:        dockerContext,
 		Builder:              a.Builder,
 		Plan:                 a.Plan,
-		Env:                  toEnvVars(a.EnvVars),
 		SecretFiles:          toSecretFiles(a.SecretFiles),
 		AutoDeploy:           parseYesNo(a.AutoDeploy),
 		NotifyOnFail:         a.NotifyOnFail,
@@ -554,6 +562,11 @@ func (a createStaticSiteArgs) createRequest(ctx context.Context) (CreateRequest,
 		return CreateRequest{}, err
 	}
 	req := a.toCreateRequest()
+	env, err := toEnvVars(a.EnvVars)
+	if err != nil {
+		return CreateRequest{}, err
+	}
+	req.Env = env
 	req.OwnerID = core.NamedWorkspace(ctx)
 	req.IPAllowList = allowList
 	return req, nil
@@ -570,7 +583,6 @@ func (a createStaticSiteArgs) toCreateRequest() CreateRequest {
 		RootDir:       a.RootDir,
 		BuildCommand:  a.BuildCommand,
 		PublishPath:   a.PublishPath,
-		Env:           toEnvVars(a.EnvVars),
 		SecretFiles:   toSecretFiles(a.SecretFiles),
 		AutoDeploy:    parseYesNo(a.AutoDeploy),
 		Hosts:         a.Domains,

@@ -366,8 +366,20 @@ func TestREST_SetEnvGroupVarAcceptsGenerateValue(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("generated PUT: got %d: %s", w.Code, w.Body.String())
 	}
-	if strings.Contains(w.Body.String(), `"value":`) {
-		t.Fatalf("generated PUT leaked a value: %s", w.Body.String())
+	// Render answers a per-key write with the envGroup itself, generated
+	// value included (w4/m242).
+	var putGroup EnvGroupView
+	if err := json.Unmarshal(w.Body.Bytes(), &putGroup); err != nil || putGroup.ID != g.ID {
+		t.Fatalf("generated PUT body is not the envGroup: %s", w.Body.String())
+	}
+	generated := ""
+	for _, v := range putGroup.EnvVars {
+		if v.Key == "TOKEN" {
+			generated = v.Value
+		}
+	}
+	if len(generated) != 44 {
+		t.Fatalf("generated PUT envGroup value len = %d, want 44: %s", len(generated), w.Body.String())
 	}
 	got, err := svc.GetEnvGroupVar(testCtx(), g.ID, "TOKEN")
 	if err != nil || len(got.Value) != 44 {
@@ -465,8 +477,10 @@ func TestRevealedEmptyGroupFileCarriesItsContent(t *testing.T) {
 	}
 	for name, content := range map[string]string{"qa-a725-empty.txt": "", "qa-a725.txt": "雪\n"} {
 		ack := serveREST(svc, "PUT", "/v1/env-groups/"+g.ID+"/secret-files/"+name, `{"content":`+strconv.Quote(content)+`}`)
-		if ack.Code != 200 || strings.Contains(ack.Body.String(), `"content"`) {
-			t.Fatalf("PUT %s => %d %s, want a names-only acknowledgement", name, ack.Code, ack.Body.String())
+		// Render answers a per-file write with the envGroup itself (w4/m242).
+		var putGroup EnvGroupView
+		if ack.Code != 200 || json.Unmarshal(ack.Body.Bytes(), &putGroup) != nil || putGroup.ID != g.ID {
+			t.Fatalf("PUT %s => %d %s, want the envGroup", name, ack.Code, ack.Body.String())
 		}
 	}
 	for name, want := range map[string]string{"qa-a725-empty.txt": `{"name":"qa-a725-empty.txt","content":""}`, "qa-a725.txt": `{"name":"qa-a725.txt","content":"雪\n"}`} {

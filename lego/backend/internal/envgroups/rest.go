@@ -171,9 +171,13 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if req.Value != nil {
 			value = *req.Value
 		}
-		return s.SetEnvGroupVarInput(r.Context(), r.PathValue("id"), EnvVarView{
+		if _, err := s.SetEnvGroupVarInput(r.Context(), r.PathValue("id"), EnvVarView{
 			Key: r.PathValue("key"), Value: value, ValueSet: req.Value != nil, GenerateValue: req.GenerateValue,
-		})
+		}); err != nil {
+			return nil, err
+		}
+		// Render answers a per-key write with the envGroup itself (w4/m242).
+		return s.committedRevealed(r.Context())(s.GetEnvGroup(r.Context(), r.PathValue("id")))
 	}))
 	mux.HandleFunc("DELETE /v1/env-groups/{id}/env-vars/{key}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		return s.DeleteEnvGroupVar(r.Context(), r.PathValue("id"), r.PathValue("key"))
@@ -187,7 +191,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		return s.SetEnvGroupFile(r.Context(), r.PathValue("id"), r.PathValue("name"), req.Content)
+		if _, err := s.SetEnvGroupFile(r.Context(), r.PathValue("id"), r.PathValue("name"), req.Content); err != nil {
+			return nil, err
+		}
+		// Render answers a per-file write with the envGroup itself (w4/m242).
+		return s.committedRevealed(r.Context())(s.GetEnvGroup(r.Context(), r.PathValue("id")))
 	}))
 	mux.HandleFunc("GET /v1/env-groups/{id}/secret-files/{name}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		return s.revealEnvGroupFile(r.Context(), r.PathValue("id"), r.PathValue("name"))
