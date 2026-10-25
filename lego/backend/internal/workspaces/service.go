@@ -1328,6 +1328,11 @@ type ResourceCapView struct {
 	Used        int `json:"used"`
 	Terminating int `json:"terminating"`
 	Limit       int `json:"limit"` // 0 = unlimited
+	// FreeUsed/FreeLimit report the one-free-instance rule for datastores
+	// (w4/m241): every workspace may hold one free Postgres and one free
+	// Key Value on any plan. Zero on kinds the rule does not govern.
+	FreeUsed  int `json:"freeUsed"`
+	FreeLimit int `json:"freeLimit"`
 }
 
 // ResourceLimitsView is the per-workspace resource usage vs. cap (w7/m9):
@@ -1372,8 +1377,8 @@ func (s *Service) ResourceLimits(ctx context.Context, ownerID string) (ResourceL
 	caps := store.QuotaCapsForPlan(ws.Plan)
 	out := ResourceLimitsView{
 		Services:  ResourceCapView{Limit: int(caps.Services)},
-		Postgres:  ResourceCapView{Limit: int(caps.Postgres)},
-		KeyValues: ResourceCapView{Limit: int(caps.KeyValues)},
+		Postgres:  ResourceCapView{Limit: int(caps.Postgres), FreeLimit: 1},
+		KeyValues: ResourceCapView{Limit: int(caps.KeyValues), FreeLimit: 1},
 	}
 	if s.Client == nil {
 		return out, nil
@@ -1393,6 +1398,18 @@ func (s *Service) ResourceLimits(ctx context.Context, ownerID string) (ResourceL
 	out.Services.Used, out.Services.Terminating = usageCount(apps.Items)
 	out.Postgres.Used, out.Postgres.Terminating = usageCount(dbs.Items)
 	out.KeyValues.Used, out.KeyValues.Terminating = usageCount(kvs.Items)
+	out.Postgres.FreeLimit = 1
+	out.KeyValues.FreeLimit = 1
+	for i := range dbs.Items {
+		if dbs.Items[i].Spec.Plan == "free" {
+			out.Postgres.FreeUsed++
+		}
+	}
+	for i := range kvs.Items {
+		if kvs.Items[i].Spec.Plan == "free" {
+			out.KeyValues.FreeUsed++
+		}
+	}
 	return out, nil
 }
 

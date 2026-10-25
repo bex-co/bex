@@ -104,7 +104,11 @@ type QuotaCaps struct {
 func QuotaCapsForPlan(plan string) QuotaCaps {
 	switch plan {
 	case PlanHobby, "", "free":
-		return QuotaCaps{Services: int64(LimitsFor(PlanHobby).MaxServices), Postgres: 1, KeyValues: 1}
+		// Datastore totals match the paid ceiling: the one-free-instance
+		// rule (w4/m241) is enforced at admission by plan, not by counting
+		// every instance, so paid datastores must not consume a Hobby cap
+		// of 1. Services keeps the Hobby ceiling.
+		return QuotaCaps{Services: int64(LimitsFor(PlanHobby).MaxServices), Postgres: 25, KeyValues: 25}
 	default: // pro, scale, enterprise, and any future higher tier
 		return QuotaCaps{Services: 100, Postgres: 25, KeyValues: 25}
 	}

@@ -87,6 +87,14 @@ function CapTile({ label, cap }: { label: string; cap: ResourceCap }) {
             </span>
           )}
         </p>
+        {cap.freeLimit ? (
+          <p className="text-xs text-muted-foreground">
+            {t("usage.resourceCapsFree", {
+              used: cap.freeUsed ?? 0,
+              limit: cap.freeLimit,
+            })}
+          </p>
+        ) : null}
         {terminating > 0 && (
           <p
             className="flex items-center gap-1 text-xs text-muted-foreground"

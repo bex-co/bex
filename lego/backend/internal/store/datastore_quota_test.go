@@ -61,17 +61,18 @@ func TestQuotaChargesEveryKindThatLandsInTheNamespace(t *testing.T) {
 	}
 }
 
-// TestFreePlanDatastoreCapsAreTighterThanPaid keeps the dimensions from being
-// present but meaningless. A cap equal across every plan would satisfy the test
-// above while capping nothing in practice, which is close to the state this
-// milestone is fixing.
-func TestFreePlanDatastoreCapsAreTighterThanPaid(t *testing.T) {
+// TestHobbyDatastoreCapsMatchPaidCeiling records w4/m241: Hobby's datastore
+// totals are the paid ceiling, because the one-free-instance rule is
+// enforced at admission by instance plan, not by a total count of 1 (which
+// also blocked paid creates). Services keeps its tighter Hobby ceiling, so
+// the dimensions stay present and plan-shaped.
+func TestHobbyDatastoreCapsMatchPaidCeiling(t *testing.T) {
 	free, paid := QuotaCapsForPlan(PlanHobby), QuotaCapsForPlan("starter")
-	if free.Postgres >= paid.Postgres {
-		t.Errorf("free Postgres cap %d is not below the paid cap %d", free.Postgres, paid.Postgres)
+	if free.Postgres != paid.Postgres || free.KeyValues != paid.KeyValues {
+		t.Errorf("Hobby datastore caps %+v, want the paid ceiling %+v", free, paid)
 	}
-	if free.KeyValues >= paid.KeyValues {
-		t.Errorf("free Key Value cap %d is not below the paid cap %d", free.KeyValues, paid.KeyValues)
+	if free.Services >= paid.Services {
+		t.Errorf("Hobby services cap %d is not below the paid cap %d", free.Services, paid.Services)
 	}
 }
 

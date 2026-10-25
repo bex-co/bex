@@ -18,6 +18,8 @@ import { WorkspaceLimitsDocument } from "@/graphql/definitions";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 export interface ResourceCap {
+  freeUsed?: number;
+  freeLimit?: number;
   used: number;
   // How many of `used` are finishing deletion. Those rows are dropped from the
   // resource list but still hold quota (w6/m129), so surfacing this is what lets
@@ -42,6 +44,8 @@ function toCap(
         used?: number | null;
         terminating?: number | null;
         limit?: number | null;
+        freeUsed?: number | null;
+        freeLimit?: number | null;
       }
     | null
     | undefined,
@@ -50,6 +54,8 @@ function toCap(
     used: cap?.used ?? 0,
     terminating: cap?.terminating ?? 0,
     limit: cap?.limit ?? 0,
+    freeUsed: cap?.freeUsed ?? 0,
+    freeLimit: cap?.freeLimit ?? 0,
   };
 }
 

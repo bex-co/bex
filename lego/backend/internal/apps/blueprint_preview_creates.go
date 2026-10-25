@@ -78,11 +78,27 @@ func (s *Service) previewStackCreates(ctx context.Context, st parsedStack, plan 
 	// The apply's grouping assignment needs environments it creates, so a
 	// preview plans each datastore ungrouped; grouping adds only environment
 	// membership (labels and an allow-list), which admission does not judge.
+	tenantID, _ := s.Tenant(ctx)
+	plannedFreeDB := 0
+	plannedFreeDBName := ""
 	for _, db := range st.databases {
 		if !creates[BlueprintResourcePostgres][db.name] {
 			continue
 		}
 		d, err := s.planStackDatabase(ctx, db, core.EnvironmentAssignment{})
+		if err == nil && db.spec.Plan == "free" {
+			// A second free database in the same stack also takes the slot:
+			// the first planned free one counts as the holder (w4/m241).
+			if plannedFreeDB > 0 {
+				err = core.FreeInstanceLimitError("Postgres database", plannedFreeDBName, false)
+			} else if ferr := postgres.CheckFreeLimit(ctx, s.Base, tenantID, "", db.spec.Plan); ferr != nil {
+				err = ferr
+			}
+			if plannedFreeDB == 0 {
+				plannedFreeDBName = db.name
+			}
+			plannedFreeDB++
+		}
 		if err == nil {
 			err = postgres.CountCap.CreateError(s.DryRunCreate(ctx, d))
 		}
@@ -90,11 +106,27 @@ func (s *Service) previewStackCreates(ctx context.Context, st parsedStack, plan 
 			return nil, fatal
 		}
 	}
+	plannedFreeKV := 0
+	plannedFreeKVName := ""
 	for _, kv := range st.keyValues {
 		if !creates[BlueprintResourceKeyValue][kv.name] {
 			continue
 		}
-		err := keyvalue.CountCap.CreateError(s.DryRunCreate(ctx, s.planStackKeyValue(ctx, kv, core.EnvironmentAssignment{})))
+		var err error
+		if kv.spec.Plan == "free" {
+			if plannedFreeKV > 0 {
+				err = core.FreeInstanceLimitError("Key Value store", plannedFreeKVName, false)
+			} else {
+				err = keyvalue.CheckFreeLimit(ctx, s.Base, tenantID, "", kv.spec.Plan)
+			}
+			if plannedFreeKV == 0 {
+				plannedFreeKVName = kv.name
+			}
+			plannedFreeKV++
+		}
+		if err == nil {
+			err = keyvalue.CountCap.CreateError(s.DryRunCreate(ctx, s.planStackKeyValue(ctx, kv, core.EnvironmentAssignment{})))
+		}
 		if fatal := record(BlueprintResourceKeyValue, kv.name, err); fatal != nil {
 			return nil, fatal
 		}
