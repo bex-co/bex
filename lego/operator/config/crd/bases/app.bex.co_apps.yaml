@@ -700,12 +700,14 @@ spec:
                 type: integer
               portMode:
                 description: |-
-                  PortMode preserves whether a new private Docker service selected image
+                  PortMode preserves whether a new Docker service selected image
                   metadata discovery. Omission keeps the historical configured port contract.
                 enum:
                 - configured-v1
                 - image-v1
                 - image-configured-v1
+                - web-image-v1
+                - web-image-configured-v1
                 type: string
               preDeployCommand:
                 description: |-
