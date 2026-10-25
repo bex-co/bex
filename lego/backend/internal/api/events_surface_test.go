@@ -176,8 +176,13 @@ func TestEventSurfaceParity(t *testing.T) {
 	if !ok || trigger["manual"] != true || trigger["firstBuild"] != false {
 		t.Errorf("deploy_started trigger = %v, want manual (an API-triggered deploy)", rest[3].Event.Details["trigger"])
 	}
-	if got := rest[1].Event.Details["actor"]; got != "user-x" {
-		t.Errorf("suspender_added actor = %v, want the caller", got)
+	// w4/391: actor is the suspender kind and the human rides in
+	// suspendedByUser {id, email}.
+	if got := rest[1].Event.Details["actor"]; got != "user" {
+		t.Errorf("suspender_added actor = %v, want the kind \"user\"", got)
+	}
+	if user, ok := rest[1].Event.Details["suspendedByUser"].(map[string]any); !ok || user["id"] != "user-x" {
+		t.Errorf("suspender_added suspendedByUser = %v, want id user-x", rest[1].Event.Details["suspendedByUser"])
 	}
 	// An env-var change says WHAT changed and WHO, and carries no payload at all.
 	if len(rest[0].Event.Details) != 0 {
