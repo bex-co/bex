@@ -21,11 +21,9 @@ import zh from "../zh";
  * exactly the case the gate exists for. Nothing pinned the copy, so it drifted
  * from the behavior for as long as the gate had existed.
  *
- * w4/176: linking and unlinking are not content writes. They add or remove the
- * group's Secret refs, and the operator folds refs into release identity, so a
- * gated service still rolls to a new revision (without a history row). "No
- * restartedAt, no deploy row" therefore does not mean "unchanged release" for
- * links; their copy lives in LINK_KEYS and must warn of a restart instead.
+ * w4/176's link restart copy was superseded by w4/m239: gated links are
+ * staged until the owner's next deploy, so LINK_KEYS state that rule
+ * (w4/390).
  */
 const REDEPLOY_KEYS = [
   "envGroups.varDeleteConfirmBody",
@@ -110,35 +108,20 @@ describe("env-group redeploy copy names the auto-deploy gate", () => {
   });
 });
 
-describe("env-group link copy warns that auto-deploy off can still restart", () => {
+// Since w4/m239 a gated link is staged until the owner's next deploy, so
+// link copy states that rule instead of the old restart warning (w4/390).
+describe("env-group link copy states the staged-deploy rule", () => {
   describe.each(CATALOGS)("$name", ({ name, catalog }) => {
-    it.each(LINK_KEYS)("%s permits a restart with auto-deploy off", (key) => {
+    it.each(LINK_KEYS)("%s states the next-deploy rule", (key) => {
       const message = catalog[key]?.message;
       expect(message, `${name} is missing ${key}`).toBeTruthy();
-      const warns =
+      const states =
         name === "en"
-          ? /restart/i.test(message!) &&
-            /even (when|with) auto-deploy (is )?off/i.test(message!)
-          : /重启/.test(message!) && /即使已关闭自动部署/.test(message!);
-      expect(warns, `${name} ${key} does not warn of a gated restart`).toBe(
-        true,
-      );
+          ? /auto-deploy on/i.test(message!) && /next deploy/i.test(message!)
+          : /自动部署/.test(message!) && /下一次部署/.test(message!);
+      expect(states, `${name} ${key} does not state the rule`).toBe(true);
+      const stale = /restart/i.test(message!) || /重启/.test(message!);
+      expect(stale, `${name} ${key} still warns of a restart`).toBe(false);
     });
-
-    it.each(LINK_KEYS)(
-      "%s does not promise the current release is kept",
-      (key) => {
-        const message = catalog[key]!.message;
-        const retains =
-          name === "en"
-            ? /keeps? (serving|running)|current release|next deploy|only .*auto-deploy on/i.test(
-                message,
-              )
-            : /继续运行|当前版本|下次部署/.test(message);
-        expect(retains, `${name} ${key} promises release retention`).toBe(
-          false,
-        );
-      },
-    );
   });
 });

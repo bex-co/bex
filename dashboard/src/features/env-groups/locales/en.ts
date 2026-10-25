@@ -408,7 +408,7 @@ const enEnvGroups: Record<string, TranslationEntry> = {
   },
   "envGroups.servicesDescription": {
     message:
-      "Linking or unlinking changes service configuration and can restart services even when auto-deploy is off.",
+      "Linking or unlinking changes service configuration. Services with auto-deploy on deploy the change now; services with it off pick it up with their next deploy.",
     description: "Env-group linked-services card description",
   },
   "envGroups.selectService": {
@@ -489,7 +489,7 @@ const enEnvGroups: Record<string, TranslationEntry> = {
   },
   "envGroups.linkChangeNote": {
     message:
-      "The service's configuration changed and it may restart, even with auto-deploy off.",
+      "The service's configuration changed. With auto-deploy on it deploys the change now; with it off it picks it up with its next deploy.",
     description: "Env-group link/unlink success toast detail",
   },
   "envGroups.createSuccess": {
