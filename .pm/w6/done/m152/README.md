@@ -22,7 +22,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** [w6/094](../done/094.md), from [w6/089](../blocked/089.md). On 2026-10-22 production's bex-canary ClickHouse disk got no nightly snapshot, and nothing told its owner. The operator's `DiskReady` snapshot reasons have no reader in bex-api.
+- **Source:** [w6/094](../done/094.md), from [w6/089](../done/089.md). On 2026-10-22 production's bex-canary ClickHouse disk got no nightly snapshot, and nothing told its owner. The operator's `DiskReady` snapshot reasons have no reader in bex-api.
 - **Goal linkage:** ADR082 managed disks, and backups an owner can trust. ADR008 says customer-facing behavior must be honest in every workspace.
 - **Expected outcome:** an owner whose disk is unprotected sees it on the disk page within about 30 minutes of a missed window.
 - **Why now:** a production disk is unprotected right now, invisibly. The cause investigation is gated (w6/088/089), but visibility is not.
