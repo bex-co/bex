@@ -52,7 +52,7 @@ func (s *PGStore) EndSSHSession(ctx context.Context, sessionID, result string, e
 }
 
 // AgentSessionSSHActivity summarizes a resource's editor-SSH activity for the
-// agent-session idle reaper (ADR059 D2 / w2/m67): whether a still-open session
+// agent-session idle reaper (w2/m67, w10/m15): whether a still-open session
 // (ended_at IS NULL) started at or after `freshSince` exists — a live editor
 // that pins the sandbox and must never be reaped — and the most recent close
 // time (ended_at), which feeds the idle clock `now − max(last turn end, last SSH

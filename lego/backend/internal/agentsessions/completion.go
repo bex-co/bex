@@ -105,6 +105,21 @@ type Completer struct {
 	lastInventory     time.Time
 	statusFailuresMu  sync.Mutex
 	statusFailures    map[string]time.Time
+	idleMu            sync.Mutex
+	idle              map[string]idleSandbox
+}
+
+// idleSandbox is what the Completer remembers about one finished turn whose
+// sandbox is waiting out its idle grace, so the reaper does not repeat work
+// every tick: the turn's transcript is harvested once when the turn finishes
+// (and once more right before teardown, to catch a late flush), and each
+// deferral reason is logged once rather than per tick. Process-local: after a
+// restart the first tick harvests again, which the idempotent merge absorbs.
+type idleSandbox struct {
+	sandboxID   string
+	turn        int
+	harvested   bool   // the turn's transcript was read and stored
+	deferReason string // last deferral reason logged for this turn
 }
 
 const defaultStatusReadFailureTTL = 2 * time.Minute
@@ -148,6 +163,52 @@ func (c *Completer) pruneStatusFailures(rows []store.AgentSession) {
 		}
 	}
 	c.statusFailuresMu.Unlock()
+}
+
+// withIdle applies fn to the remembered state of record's finished turn under
+// the lock, starting fresh when the session moved to another sandbox or turn.
+func (c *Completer) withIdle(record store.AgentSession, fn func(*idleSandbox)) {
+	c.idleMu.Lock()
+	defer c.idleMu.Unlock()
+	if c.idle == nil {
+		c.idle = map[string]idleSandbox{}
+	}
+	entry, ok := c.idle[record.ID]
+	if !ok || entry.sandboxID != record.SandboxID || entry.turn != record.Turns {
+		entry = idleSandbox{sandboxID: record.SandboxID, turn: record.Turns}
+	}
+	fn(&entry)
+	c.idle[record.ID] = entry
+}
+
+// logDeferral logs a deferred teardown only when its reason changes, so a
+// sandbox waiting out a 2h grace logs once, not every tick.
+func (c *Completer) logDeferral(record store.AgentSession, reason string) {
+	changed := false
+	c.withIdle(record, func(e *idleSandbox) {
+		changed = e.deferReason != reason
+		e.deferReason = reason
+	})
+	if changed {
+		log.Printf("agent-session completer: deferring teardown, %s (session=%s)", reason, record.ID)
+	}
+}
+
+// pruneIdle drops remembered sandboxes no longer awaiting a reap (terminated,
+// steered, or deleted). One that is only backing off simply harvests
+// once more on its next attempt.
+func (c *Completer) pruneIdle(rows []store.AgentSession) {
+	waiting := make(map[string]struct{}, len(rows))
+	for _, row := range rows {
+		waiting[row.ID] = struct{}{}
+	}
+	c.idleMu.Lock()
+	for id := range c.idle {
+		if _, ok := waiting[id]; !ok {
+			delete(c.idle, id)
+		}
+	}
+	c.idleMu.Unlock()
 }
 
 func (c *Completer) idleTTL() time.Duration {
@@ -246,6 +307,7 @@ func (c *Completer) reapIdleSandboxes(ctx context.Context) {
 	if err != nil {
 		return
 	}
+	c.pruneIdle(rows)
 	for _, row := range rows {
 		c.teardown(ctx, row)
 	}
@@ -444,7 +506,7 @@ func (c *Completer) fail(ctx context.Context, record store.AgentSession, reason 
 // failLostSandbox is the dead-target backstop. Unlike an ordinary driver-
 // reported failure, a terminal Pod cannot support editor reuse or transcript
 // harvest, so it records the incomplete turn and reclaims the exact sandbox
-// immediately instead of entering the Active-tier idle grace.
+// immediately instead of entering the idle grace.
 func (c *Completer) failLostSandbox(ctx context.Context, record store.AgentSession, reason string, metricReason terminalConvergenceReason) {
 	c.clearStatusFailure(record.ID)
 	final, fact, ok := c.finalizeFailure(ctx, record, reason)
@@ -474,20 +536,27 @@ func (c *Completer) finalizeFailure(ctx context.Context, record store.AgentSessi
 const maxTranscriptParts = 5000
 
 // teardown captures the turn's conversation transcript (ADR051), then terminates
-// the finished session's sandbox and removes its egress policy (idempotent).
-// Steering re-dispatches a fresh sandbox, so a completed session never needs its
-// sandbox kept warm in phase 1.
+// the finished session's sandbox and removes its egress policy (idempotent)
+// once the idle grace below has passed.
 //
 // Capture MUST happen before the sandbox is destroyed: a fire-and-forget turn
 // runs headless with no browser attached, so nothing has teed its conversation
 // yet, and the sandbox (with the driver's log) dies on teardown. Without it every
 // completed session replays empty ("No conversation yet."). It is best-effort —
 // a failure is logged but never blocks teardown, so a session is never stranded.
+// The log is read once when the turn finishes, so the conversation is durable
+// for the whole grace, and once more just before terminate for a late flush —
+// never on the per-tick re-checks in between.
 func (c *Completer) teardown(ctx context.Context, record store.AgentSession) {
 	if record.SandboxID == "" {
 		return
 	}
-	c.captureTranscript(ctx, record)
+	harvested := false
+	c.withIdle(record, func(e *idleSandbox) { harvested = e.harvested })
+	if !harvested {
+		ok := c.captureTranscript(ctx, record)
+		c.withIdle(record, func(e *idleSandbox) { e.harvested = ok })
+	}
 	// Idle grace (w2/m67, w10/m15), generalizing ADR054 D6. The sandbox is
 	// kept alive while an editor SSH session is connected (never kill a live edit)
 	// AND for IdleTTL past the last interaction, where idle is measured from the
@@ -503,7 +572,7 @@ func (c *Completer) teardown(ctx context.Context, record store.AgentSession) {
 		return // transient store error: retry next tick rather than tear down blind
 	}
 	if hasOpen {
-		log.Printf("agent-session completer: deferring teardown, editor SSH open (session=%s)", record.ID)
+		c.logDeferral(record, "editor SSH open")
 		return
 	}
 	// idleSince is the most recent interaction: the turn end (this finalized row's
@@ -512,7 +581,7 @@ func (c *Completer) teardown(ctx context.Context, record store.AgentSession) {
 	// skip the grace entirely and reclaim at this very tick (the still-open-editor
 	// pin above still applies to both — never kill a live edit):
 	//   - an ARCHIVED session (ADR065 D1): archive is an explicit disinterest signal.
-	//   - a FAILED session (w5/m80 t004): the Active-tier grace exists to let a user
+	//   - a FAILED session (w5/m80 t004): the idle grace exists to let a user
 	//     reopen a SUCCESSFUL result in an editor; a failed turn has no such result,
 	//     so holding its sandbox for the full IdleTTL only pins plan quota (a bad-key
 	//     workspace could wedge itself under the ~2-sandbox hobby cap). A user who
@@ -523,8 +592,11 @@ func (c *Completer) teardown(ctx context.Context, record store.AgentSession) {
 		idleSince = *lastEnded
 	}
 	if grace := c.idleTTL(); !skipGrace && grace > 0 && c.now().Sub(idleSince) < grace {
-		log.Printf("agent-session completer: deferring teardown, idle grace not elapsed (session=%s)", record.ID)
+		c.logDeferral(record, "idle grace not elapsed")
 		return
+	}
+	if harvested {
+		c.captureTranscript(ctx, record) // a late flush since the first harvest
 	}
 	c.terminate(ctx, record)
 }
@@ -563,15 +635,16 @@ const (
 // status-read path — rather than a separate gateway→driver stream dial — is what
 // makes persistence reliable. Every harvest parses the full bounded log and
 // idempotently merges by turn-local part index, so a live tee that stored only a
-// prefix cannot suppress the missing suffix.
-func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSession) {
+// prefix cannot suppress the missing suffix. It reports whether the log was read
+// and stored, so a failed harvest is retried on the next tick.
+func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSession) bool {
 	raw, err := c.Sandbox.ReadSessionTranscript(ctx, record.WorkspaceID, record.ID, record.SandboxID)
 	if err != nil {
 		if !errors.Is(err, core.ErrNotFound) {
 			log.Printf("agent-session completer: transcript read failed (session=%s): %v", record.ID, err)
 		}
 		c.markTurnTranscript(ctx, record, false, true, reasonTranscriptReadFailed)
-		return
+		return false
 	}
 	parts, parseTruncated := parseTranscriptLog(raw, record.Turns)
 	driverTruncated := driverLogTruncated(raw, parts)
@@ -584,7 +657,7 @@ func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSes
 		}
 		truncated := parseTruncated || driverTruncated
 		c.markTurnTranscript(ctx, record, !truncated, truncated, reason)
-		return
+		return true
 	}
 	// Charge only missing identities. Historical concurrent batch writers could
 	// leave holes below the largest stored ordinal, so prefix suppression alone
@@ -597,7 +670,7 @@ func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSes
 	storedBytes, existing, err := c.Store.AgentSessionTranscriptProgress(ctx, record.ID, record.Turns, indexes)
 	if err != nil {
 		log.Printf("agent-session completer: transcript progress failed (session=%s): %v", record.ID, err)
-		return
+		return false
 	}
 	seen := make(map[int64]bool, len(existing))
 	for _, index := range existing {
@@ -618,7 +691,7 @@ func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSes
 	if err := c.Store.AppendAgentSessionTranscript(ctx, record.ID, kept); err != nil {
 		log.Printf("agent-session completer: transcript append failed (session=%s parts=%d): %v", record.ID, len(kept), err)
 		c.markTurnTranscript(ctx, record, false, true, reasonTranscriptStoreFailed)
-		return
+		return false
 	}
 	truncated := parseTruncated || quotaTruncated || driverTruncated
 	reason := ""
@@ -630,7 +703,10 @@ func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSes
 		reason = reasonDriverTruncated
 	}
 	c.markTurnTranscript(ctx, record, !truncated, truncated, reason)
-	log.Printf("agent-session completer: captured transcript (session=%s turn=%d parts=%d)", record.ID, record.Turns, len(kept))
+	if len(kept) > 0 {
+		log.Printf("agent-session completer: captured transcript (session=%s turn=%d parts=%d)", record.ID, record.Turns, len(kept))
+	}
+	return true
 }
 
 // filterPartsByQuota returns the prefix of parts that fits within the remaining

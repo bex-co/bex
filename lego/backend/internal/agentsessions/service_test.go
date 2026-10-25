@@ -1477,7 +1477,7 @@ func TestResumeReturnsFastAndSurfacesFailure(t *testing.T) {
 	row := st.rows[created.ID]
 	row.Phase = PhaseCompleted
 	st.rows[created.ID] = row
-	lc.resumeErr = errors.New("snapshot restore failed")
+	lc.resumeErr = errors.New("sandbox resume failed")
 
 	resumed, err := svc.Resume(caller("alice"), created.ID)
 	if err != nil {
