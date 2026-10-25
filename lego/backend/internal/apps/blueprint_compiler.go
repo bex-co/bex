@@ -809,7 +809,7 @@ func parseBlueprintSource(manifest string) (*BlueprintSource, []BlueprintSourceP
 		}
 		line, column := yamlSyntaxLocation(err, manifest)
 		return &BlueprintSource{Locations: map[string]BlueprintSourceLocation{}}, []BlueprintSourceProblem{{
-			Code: "BLUEPRINT_YAML_SYNTAX", Path: "#", Message: "Blueprint is not valid YAML", Line: line, Column: column,
+			Code: "BLUEPRINT_YAML_SYNTAX", Path: "#", Message: "Blueprint is not valid YAML: " + yamlSyntaxReason(err), Line: line, Column: column,
 		}}
 	}
 	var extra yaml.Node
@@ -918,6 +918,28 @@ func (b *blueprintWalkBudget) countResources(path []string, pointer string, node
 		}
 	}
 	return nil
+}
+
+// yamlSyntaxReason renders the YAML parser's own reason without its
+// "yaml: line N:" prefix — the position already travels as Line/Column, and
+// the reason is what tells the author what to fix (w4/397). yaml.v3 reasons
+// name grammar, never manifest content; cap the length regardless so a
+// parser pathology cannot smuggle a document fragment into the error.
+func yamlSyntaxReason(err error) string {
+	reason := err.Error()
+	if i := strings.Index(reason, ": "); strings.HasPrefix(reason, "yaml") && i >= 0 {
+		reason = reason[i+2:]
+	}
+	if idx := yamlSyntaxLine.FindStringIndex(reason); idx != nil && idx[0] < 10 {
+		// A retained "line N: " lead after the yaml: prefix came off.
+		if rest := strings.TrimPrefix(reason[idx[1]:], ": "); rest != "" {
+			reason = rest
+		}
+	}
+	if len(reason) > 200 {
+		reason = reason[:200]
+	}
+	return reason
 }
 
 var yamlSyntaxLine = regexp.MustCompile(`(?i)line\s+(\d+)`)
