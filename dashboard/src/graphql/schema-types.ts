@@ -421,8 +421,15 @@ export type CustomDomain = {
   id: Maybe<Scalars['String']['output']>;
   name: Maybe<Scalars['String']['output']>;
   redirectForName: Maybe<Scalars['String']['output']>;
+  server: Maybe<CustomDomainServer>;
   serverStatus: Maybe<Scalars['String']['output']>;
   verificationStatus: Maybe<Scalars['String']['output']>;
+};
+
+export type CustomDomainServer = {
+  __typename: 'CustomDomainServer';
+  id: Maybe<Scalars['String']['output']>;
+  name: Maybe<Scalars['String']['output']>;
 };
 
 export type DnsRecord = {
@@ -660,6 +667,7 @@ export type DeployTrigger = {
   firstBuild: Maybe<Scalars['Boolean']['output']>;
   manual: Maybe<Scalars['Boolean']['output']>;
   rollback: Maybe<Scalars['Boolean']['output']>;
+  user: Maybe<EventUser>;
 };
 
 export type Disk = {
@@ -829,6 +837,12 @@ export type EstimatedCost = {
   meters: Maybe<Array<Maybe<MeterEstimate>>>;
   resources: Maybe<Array<Maybe<ResourceEstimate>>>;
   totalUsd: Maybe<Scalars['String']['output']>;
+};
+
+export type EventUser = {
+  __typename: 'EventUser';
+  email: Maybe<Scalars['String']['output']>;
+  id: Maybe<Scalars['String']['output']>;
 };
 
 export type FreeInstanceHours = {
@@ -3785,9 +3799,11 @@ export type ServiceEventDetails = {
   projectFrom: Maybe<Scalars['String']['output']>;
   projectTo: Maybe<Scalars['String']['output']>;
   reasonCode: Maybe<Scalars['String']['output']>;
+  resumedByUser: Maybe<EventUser>;
   stallReason: Maybe<Scalars['String']['output']>;
   startedAt: Maybe<Scalars['String']['output']>;
   status: Maybe<Scalars['String']['output']>;
+  suspendedByUser: Maybe<EventUser>;
   toCount: Maybe<Scalars['Int']['output']>;
   trigger: Maybe<DeployTrigger>;
   triggeredByUser: Maybe<Scalars['String']['output']>;

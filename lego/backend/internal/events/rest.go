@@ -92,18 +92,22 @@ type renderDetails struct {
 	Status  string         `json:"status,omitempty"`
 	Trigger *renderTrigger `json:"trigger,omitempty"`
 	// Deploy enrichment for dashboard (w1/m47)
-	Image           string `json:"image,omitempty"`
-	CommitID        string `json:"commitId,omitempty"`
-	CommitMessage   string `json:"commitMessage,omitempty"`
-	StartedAt       string `json:"startedAt,omitempty"`  // RFC3339; nil → omitted
-	FinishedAt      string `json:"finishedAt,omitempty"` // RFC3339; nil → omitted
-	Actor           string `json:"actor,omitempty"`
-	TriggeredByUser string `json:"triggeredByUser,omitempty"`
-	ReasonCode      string `json:"reasonCode,omitempty"`
-	InstanceID      string `json:"instanceId,omitempty"`
-	CommitURL       string `json:"commitUrl,omitempty"`
-	FromInstances   *int32 `json:"fromInstances,omitempty"`
-	ToInstances     *int32 `json:"toInstances,omitempty"`
+	Image         string `json:"image,omitempty"`
+	CommitID      string `json:"commitId,omitempty"`
+	CommitMessage string `json:"commitMessage,omitempty"`
+	StartedAt     string `json:"startedAt,omitempty"`  // RFC3339; nil → omitted
+	FinishedAt    string `json:"finishedAt,omitempty"` // RFC3339; nil → omitted
+	Actor         string `json:"actor,omitempty"`
+	// SuspendedByUser / ResumedByUser are Render's {id, email} objects on
+	// the suspender pair (w4/391).
+	SuspendedByUser *renderUser `json:"suspendedByUser,omitempty"`
+	ResumedByUser   *renderUser `json:"resumedByUser,omitempty"`
+	TriggeredByUser string      `json:"triggeredByUser,omitempty"`
+	ReasonCode      string      `json:"reasonCode,omitempty"`
+	InstanceID      string      `json:"instanceId,omitempty"`
+	CommitURL       string      `json:"commitUrl,omitempty"`
+	FromInstances   *int32      `json:"fromInstances,omitempty"`
+	ToInstances     *int32      `json:"toInstances,omitempty"`
 	// plan_changed and instance_count_changed both use "from"/"to" — the value
 	// type (string vs int pointer) differs, so `any` is required for a flat struct.
 	From any `json:"from,omitempty"`
@@ -166,6 +170,19 @@ type autoscalingState struct {
 
 // renderTrigger is deploy_started's trigger object — Render's six booleans
 // always present, as Render marks them required, plus bex's deployHook.
+// renderUser is Render's {id, email} user object (w4/391).
+type renderUser struct {
+	ID    string `json:"id"`
+	Email string `json:"email,omitempty"`
+}
+
+func toRenderUser(u *UserRef) *renderUser {
+	if u == nil {
+		return nil
+	}
+	return &renderUser{ID: u.ID, Email: u.Email}
+}
+
 type renderTrigger struct {
 	FirstBuild       bool `json:"firstBuild"`
 	EnvUpdated       bool `json:"envUpdated"`
@@ -176,6 +193,8 @@ type renderTrigger struct {
 	// DeployHook is additive — a Render client ignores the unknown key, and
 	// every Render-named flag keeps its Render meaning. See Trigger.DeployHook.
 	DeployHook bool `json:"deployHook"`
+	// User is the human who triggered the deploy (w4/391).
+	User *renderUser `json:"user,omitempty"`
 }
 
 func toRenderEvent(e Event) renderEvent {
@@ -194,6 +213,8 @@ func toRenderEvent(e Event) renderEvent {
 		StartedAt:        formatTime(e.Details.StartedAt),
 		FinishedAt:       formatTime(e.Details.FinishedAt),
 		Actor:            e.Details.Actor,
+		SuspendedByUser:  toRenderUser(e.Details.SuspendedByUser),
+		ResumedByUser:    toRenderUser(e.Details.ResumedByUser),
 		TriggeredByUser:  e.Details.TriggeredByUser,
 		ReasonCode:       e.Details.ReasonCode,
 		InstanceID:       e.Details.InstanceID,
@@ -208,6 +229,7 @@ func toRenderEvent(e Event) renderEvent {
 			ClearCache:       t.ClearCache,
 			Rollback:         t.Rollback,
 			DeployHook:       t.DeployHook,
+			User:             toRenderUser(t.User),
 		}
 	}
 	switch e.Type {

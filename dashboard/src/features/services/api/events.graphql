@@ -40,6 +40,15 @@ query ServiceEvents(
       # build_ended | pre_deploy_ended | job_run_ended → succeeded|failed|canceled.
       status
       actor
+      # w4/391: Render's {id, email} objects on the suspender pair.
+      suspendedByUser {
+        id
+        email
+      }
+      resumedByUser {
+        id
+        email
+      }
       triggeredByUser
       # Deploy enrichment (w1/m47): image, commit info, timing for dashboard display
       image
@@ -71,6 +80,11 @@ query ServiceEvents(
         clearCache
         rollback
         deployHook
+        # w4/391: the human who triggered the deploy.
+        user {
+          id
+          email
+        }
       }
     }
   }

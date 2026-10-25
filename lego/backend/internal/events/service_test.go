@@ -108,7 +108,7 @@ func TestViewMapsEverySource(t *testing.T) {
 		name:        "deploy triggered through the API",
 		row:         store.ServiceEventRow{Key: "dep-2:started", Source: store.EventSourceDeploy, Phase: store.EventPhaseStarted, DeployID: "dep-2", Trigger: store.TriggerAPI, Caller: "user-x"},
 		wantType:    TypeDeployStarted,
-		wantDetails: Details{DeployID: "dep-2", Trigger: &Trigger{Manual: true}, TriggeredByUser: "user-x"},
+		wantDetails: Details{DeployID: "dep-2", Trigger: &Trigger{Manual: true, User: &UserRef{ID: "user-x"}}, TriggeredByUser: "user-x"},
 	}, {
 		name:        "deploy went live",
 		row:         store.ServiceEventRow{Key: "dep-1:ended", Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded, DeployID: "dep-1", Status: store.DeployLive, Caller: "user-x"},
@@ -161,15 +161,15 @@ func TestViewMapsEverySource(t *testing.T) {
 		wantType:    TypeDeployEnded,
 		wantDetails: Details{DeployID: "dep-4", DeployStatus: "failed", FullDeployStatus: store.DeployUpdateFailed, PreDeployStatus: store.PreDeployFailed},
 	}, {
-		name:        "suspend names its actor",
+		name:        "suspend names its actor kind and user (w4/391)",
 		row:         store.ServiceEventRow{Key: "aud-1:", Source: store.EventSourceAudit, Verb: "apps.Suspend", Caller: "user-x"},
 		wantType:    TypeSuspenderAdded,
-		wantDetails: Details{Actor: "user-x"},
+		wantDetails: Details{Actor: "user", SuspendedByUser: &UserRef{ID: "user-x"}},
 	}, {
-		name:        "resume names its actor",
+		name:        "resume names its actor kind and user (w4/391)",
 		row:         store.ServiceEventRow{Key: "aud-2:", Source: store.EventSourceAudit, Verb: "apps.Resume", Caller: "user-x"},
 		wantType:    TypeSuspenderRemoved,
-		wantDetails: Details{Actor: "user-x"},
+		wantDetails: Details{Actor: "user", ResumedByUser: &UserRef{ID: "user-x"}},
 	}, {
 		name:        "restart names its actor in Render's field",
 		row:         store.ServiceEventRow{Key: "aud-3:", Source: store.EventSourceAudit, Verb: "apps.Restart", Caller: "user-x"},
@@ -285,11 +285,22 @@ func TestViewMapsEverySource(t *testing.T) {
 				t.Errorf("trigger = %+v, want none (only deploy_started has one)", got.Details.Trigger)
 			case tc.wantDetails.Trigger != nil && got.Details.Trigger == nil:
 				t.Error("deploy_started must carry Render's trigger object")
-			case tc.wantDetails.Trigger != nil && *got.Details.Trigger != *tc.wantDetails.Trigger:
+			case tc.wantDetails.Trigger != nil && !equalTrigger(*got.Details.Trigger, *tc.wantDetails.Trigger):
 				t.Errorf("trigger = %+v, want %+v", *got.Details.Trigger, *tc.wantDetails.Trigger)
 			}
 		})
 	}
+}
+
+func equalTrigger(a, b Trigger) bool {
+	if (a.User == nil) != (b.User == nil) {
+		return false
+	}
+	if a.User != nil && *a.User != *b.User {
+		return false
+	}
+	a.User, b.User = nil, nil
+	return a == b
 }
 
 func equalInt32(a, b *int32) bool {

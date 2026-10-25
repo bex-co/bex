@@ -36,6 +36,15 @@ import (
 // yesterday passes startTime, exactly as a REST client must — and including
 // `type`'s comma-separated multi-type form ("deploy_ended,server_failed").
 
+// userRefGQLType is Render's {id, email} user object (w4/391).
+var userRefGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "EventUser",
+	Fields: graphql.Fields{
+		"id":    gqlutil.StrField(func(u UserRef) any { return u.ID }),
+		"email": gqlutil.StrField(func(u UserRef) any { return u.Email }),
+	},
+})
+
 var triggerGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DeployTrigger",
 	Fields: graphql.Fields{
@@ -47,6 +56,12 @@ var triggerGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"rollback":         gqlutil.BoolField(func(t Trigger) any { return t.Rollback }),
 		// bex extension — see Trigger.DeployHook (w4/104).
 		"deployHook": gqlutil.BoolField(func(t Trigger) any { return t.DeployHook }),
+		"user": &graphql.Field{Type: userRefGQLType, Resolve: gqlutil.Field(func(t Trigger) any {
+			if t.User == nil {
+				return nil
+			}
+			return *t.User
+		})},
 	},
 })
 
@@ -84,6 +99,18 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"startedAt":     gqlutil.StrField(func(d Details) any { return formatTime(d.StartedAt) }),
 		"finishedAt":    gqlutil.StrField(func(d Details) any { return formatTime(d.FinishedAt) }),
 		"actor":         gqlutil.StrField(func(d Details) any { return d.Actor }),
+		"suspendedByUser": &graphql.Field{Type: userRefGQLType, Resolve: gqlutil.Field(func(d Details) any {
+			if d.SuspendedByUser == nil {
+				return nil
+			}
+			return *d.SuspendedByUser
+		})},
+		"resumedByUser": &graphql.Field{Type: userRefGQLType, Resolve: gqlutil.Field(func(d Details) any {
+			if d.ResumedByUser == nil {
+				return nil
+			}
+			return *d.ResumedByUser
+		})},
 		"triggeredByUser": &graphql.Field{
 			Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.TriggeredByUser }),
 		},
