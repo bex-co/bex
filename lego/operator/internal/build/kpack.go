@@ -468,6 +468,15 @@ func buildLabels(o Options) map[string]string {
 	return labels
 }
 
+// buildJobLabels are a BuildKit build Job's labels: the shared build labels
+// plus the release revision, as kpack artifacts carry, so bex-api can attribute
+// a Job to its release (w1/m184: platform rebuilds meter no build minutes).
+func buildJobLabels(o Options) map[string]string {
+	labels := buildLabels(o)
+	labels[appv1alpha1.LabelBuildRevision] = o.Revision
+	return labels
+}
+
 // activeKpackImages counts the non-terminal kpack Images matching sel — the
 // kpack half of every active-build counter (one workspace's or the whole build
 // namespace's; the caller supplies the selector).

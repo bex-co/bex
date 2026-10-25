@@ -1693,3 +1693,16 @@ func TestNativeBuildFailureTailNamesTheCommand(t *testing.T) {
 		t.Errorf("Tail = %q, want %q", obs.Tail, want)
 	}
 }
+
+// A BuildKit Job carries its release revision, as kpack artifacts do, so
+// bex-api can attribute its build seconds to the release that ran it
+// (w1/m184: a platform rebuild meters no tenant build minutes).
+func TestBuildJobCarriesItsReleaseRevision(t *testing.T) {
+	o := opts()
+	j := BuildJob(o, o.ImageRef())
+	for name, labels := range map[string]map[string]string{"job": j.Labels, "pod": j.Spec.Template.Labels} {
+		if got := labels[appv1alpha1.LabelBuildRevision]; got != o.Revision || got == "" {
+			t.Errorf("%s label %s = %q, want the release revision %q", name, appv1alpha1.LabelBuildRevision, got, o.Revision)
+		}
+	}
+}

@@ -55,7 +55,7 @@ func BuildRevision(generation int64) string {
 }
 
 // Labels the operator stamps on build artifacts; LabelBuildRevision is on kpack
-// artifacts only. bex-api selects a release's kpack Image by them
+// artifacts and BuildKit build Jobs (w1/m184). bex-api selects a release's kpack Image by them
 // (ReleaseBuildLabels) rather than re-deriving its hashed name, which already
 // changed under it once (w5/136).
 const (
