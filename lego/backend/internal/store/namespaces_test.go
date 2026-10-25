@@ -172,7 +172,7 @@ func TestSandboxReconcilePrunesLegacyBroadPolicies(t *testing.T) {
 func TestResourceQuotaCarriesPlanScopedObjectCounts(t *testing.T) {
 	ctx := context.Background()
 	r, store, cl := newTestNamespaceReconciler(t)
-	// Legacy "free" alias → Render Hobby anchors (25 services, 1 Postgres, 1 Key Value).
+	// Legacy "free" alias → Render Hobby anchors (25 services; datastore totals at the paid ceiling since w4/m241, with the one-free rule at admission).
 	free, _ := store.CreateTenant(ctx, "hobby-legacy", "free")
 	// The real stored plan name every workspace actually gets (NormalizePlan
 	// never persists "free" — this is the exact case that regressed silently
@@ -200,14 +200,14 @@ func TestResourceQuotaCarriesPlanScopedObjectCounts(t *testing.T) {
 	if got := countCap(free.ID, "count/apps.app.bex.co"); got != 25 {
 		t.Errorf("free apps cap = %d, want 25", got)
 	}
-	if got := countCap(free.ID, "count/databases.app.bex.co"); got != 1 {
-		t.Errorf("free databases cap = %d, want 1", got)
+	if got := countCap(free.ID, "count/databases.app.bex.co"); got != 25 {
+		t.Errorf("free databases cap = %d, want 25", got)
 	}
 	if got := countCap(hobby.ID, "count/apps.app.bex.co"); got != 25 {
 		t.Errorf("hobby apps cap = %d, want 25", got)
 	}
-	if got := countCap(hobby.ID, "count/databases.app.bex.co"); got != 1 {
-		t.Errorf("hobby databases cap = %d, want 1", got)
+	if got := countCap(hobby.ID, "count/databases.app.bex.co"); got != 25 {
+		t.Errorf("hobby databases cap = %d, want 25", got)
 	}
 	if got := countCap(paid.ID, "count/apps.app.bex.co"); got != 100 {
 		t.Errorf("paid apps cap = %d, want 100", got)

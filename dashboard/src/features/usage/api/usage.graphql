@@ -112,11 +112,15 @@ query WorkspaceLimits($ownerId: String!) {
       used
       terminating
       limit
+      freeUsed
+      freeLimit
     }
     keyValues {
       used
       terminating
       limit
+      freeUsed
+      freeLimit
     }
   }
 }

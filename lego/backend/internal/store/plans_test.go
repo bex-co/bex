@@ -32,9 +32,9 @@ func TestQuotaCapsForPlan(t *testing.T) {
 		plan string
 		want QuotaCaps
 	}{
-		{PlanHobby, QuotaCaps{Services: 25, Postgres: 1, KeyValues: 1}},
-		{"", QuotaCaps{Services: 25, Postgres: 1, KeyValues: 1}},
-		{"free", QuotaCaps{Services: 25, Postgres: 1, KeyValues: 1}},
+		{PlanHobby, QuotaCaps{Services: 25, Postgres: 25, KeyValues: 25}},
+		{"", QuotaCaps{Services: 25, Postgres: 25, KeyValues: 25}},
+		{"free", QuotaCaps{Services: 25, Postgres: 25, KeyValues: 25}},
 		{PlanPro, QuotaCaps{Services: 100, Postgres: 25, KeyValues: 25}},
 		{PlanScale, QuotaCaps{Services: 100, Postgres: 25, KeyValues: 25}},
 		{PlanEnterprise, QuotaCaps{Services: 100, Postgres: 25, KeyValues: 25}},

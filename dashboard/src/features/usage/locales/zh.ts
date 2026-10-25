@@ -26,6 +26,10 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "Key Value",
     description: "Key Value count label in the resource-cap card",
   },
+  "usage.resourceCapsFree": {
+    message: "免费：{used} / {limit}",
+    description: "Free-instance count in the resource-cap card (w4/m241)",
+  },
   "usage.freeHoursTitle": {
     message: "每月包含用量",
     description:

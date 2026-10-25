@@ -17,6 +17,7 @@ limitations under the License.
 package core
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -111,6 +112,42 @@ func (c CountCap) Exceeded(limit int64) error {
 // WorkspaceResourceLimitCode is a create refused past its workspace's count
 // cap, so a client recognizes the cap by code, not by its wording (w5/m130).
 const WorkspaceResourceLimitCode = "WORKSPACE_RESOURCE_LIMIT"
+
+// FreeInstanceLimitCode is a free Postgres/Key Value create (or plan change
+// to free) refused because the workspace already holds its one free instance
+// of that kind — Render's free rule on every workspace plan (w4/m241). It is
+// deliberately not WorkspaceResourceLimitCode: no workspace-plan upgrade
+// lifts it.
+const FreeInstanceLimitCode = "FREE_INSTANCE_LIMIT"
+
+// FreeInstanceLimitError names the existing free instance holding the slot.
+// A terminating holder still holds it until deletion finishes (w6/m129).
+func FreeInstanceLimitError(noun, existingName string, terminating bool) error {
+	if terminating {
+		return NewBadRequestError(FreeInstanceLimitCode,
+			fmt.Sprintf("this workspace's free %s (%s) is still being deleted; wait for its deletion to finish or choose a paid instance type", noun, existingName),
+			map[string]any{"limit": 1})
+	}
+	return NewBadRequestError(FreeInstanceLimitCode,
+		fmt.Sprintf("this workspace already has a free %s (%s); delete it or choose a paid instance type", noun, existingName),
+		map[string]any{"limit": 1})
+}
+
+// TenantAdvisoryLocker is the optional cross-replica lock a workspace
+// resolver may offer (production: a Postgres advisory lock, store/advisory.go).
+type TenantAdvisoryLocker interface {
+	WithTenantAdvisoryLock(ctx context.Context, tenantID string, fn func() error) error
+}
+
+// WithTenantAdvisoryLock runs fn under the resolver's tenant lock when it
+// offers one; otherwise fn runs directly (store-off/test wiring, where the
+// caller's post-write recheck remains the race guard).
+func WithTenantAdvisoryLock(ctx context.Context, resolver WorkspaceResolver, tenantID string, fn func() error) error {
+	if locker, ok := resolver.(TenantAdvisoryLocker); ok {
+		return locker.WithTenantAdvisoryLock(ctx, tenantID, fn)
+	}
+	return fn()
+}
 
 // quotaCapExceeded reads the limit in the singular at 1 ("limited to 1
 // Postgres database", w4/339); every cap's noun pluralizes with a trailing s.

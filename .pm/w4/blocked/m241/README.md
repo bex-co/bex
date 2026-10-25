@@ -1,17 +1,17 @@
 # w4 · m241 — A Hobby workspace's one-instance limit applies to free datastores only, as on Render
 
-**Worker:** worker4 **Goal:** every workspace may hold one **free** Postgres and one **free** Key Value, as [Render documents](https://render.com/docs/free) ("Only one Free Render Postgres database can be active for any given workspace"; the same for Key Value). Paid instances do not count toward that limit. Today a Hobby workspace is capped at one Postgres and one Key Value **of any plan**: once it holds a free database, a paid `basic-256mb` create is refused with `WORKSPACE_RESOURCE_LIMIT` and an "Upgrade plan" button. A Pro workspace can hold 25 free ones. **Status:** todo
+**Worker:** worker4 **Goal:** every workspace may hold one **free** Postgres and one **free** Key Value, as [Render documents](https://render.com/docs/free) ("Only one Free Render Postgres database can be active for any given workspace"; the same for Key Value). Paid instances do not count toward that limit. Today a Hobby workspace is capped at one Postgres and one Key Value **of any plan**: once it holds a free database, a paid `basic-256mb` create is refused with `WORKSPACE_RESOURCE_LIMIT` and an "Upgrade plan" button. A Pro workspace can hold 25 free ones. **Status:** blocked — t001–t006 done 2026-10-25 (loopx w4); t007 waits for the release pin, then QA replays the dry-run DoD in `bex-canary`
 
 ## Tasks (in order)
 
 | id              | title                                                                         | est | depends_on                 |
 | --------------- | ----------------------------------------------------------------------------- | --- | -------------------------- |
-| [t001](t001.md) | Admission: one free Postgres and one free Key Value per workspace, every plan | 60m | —                          |
-| [t002](t002.md) | Hobby total datastore caps stop limiting paid instances                       | 30m | w4/m241/t001               |
-| [t003](t003.md) | Blast radius: limits view, Blueprint preview, plan changes, refusal copy      | 45m | w4/m241/t001, w4/m241/t002 |
-| [t004](t004.md) | Render parity                                                                 | 20m | w4/m241/t003               |
-| [t005](t005.md) | Simplify                                                                      | 15m | w4/m241/t004               |
-| [t006](t006.md) | Test coverage                                                                 | 25m | w4/m241/t004               |
+| [t001](done/t001.md) | Admission: one free Postgres and one free Key Value per workspace, every plan | 60m | —                          | — **DONE**
+| [t002](done/t002.md) | Hobby total datastore caps stop limiting paid instances                       | 30m | w4/m241/t001               | — **DONE**
+| [t003](done/t003.md) | Blast radius: limits view, Blueprint preview, plan changes, refusal copy      | 45m | w4/m241/t001, w4/m241/t002 | — **DONE**
+| [t004](done/t004.md) | Render parity                                                                 | 20m | w4/m241/t003               | — **DONE**
+| [t005](done/t005.md) | Simplify                                                                      | 15m | w4/m241/t004               | — **DONE**
+| [t006](done/t006.md) | Test coverage                                                                 | 25m | w4/m241/t004               | — **DONE**
 | [t007](t007.md) | Closeout (live DoD replay)                                                    | 15m | w4/m241/t005, w4/m241/t006 |
 
 ## Definition of done

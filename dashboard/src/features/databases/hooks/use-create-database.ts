@@ -5,6 +5,7 @@ import { CreateDatabaseDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import {
+  freeInstanceMessage,
   graphQLErrorExtensions,
   mutationErrorMessage,
   workspaceCapMessage,
@@ -34,6 +35,8 @@ export interface UseCreateDatabaseResult {
   busy: boolean;
   /** Workspace Postgres cap hit — show inline with upgrade CTA (w7/m9). */
   capLimit: string | null;
+  /** False for the one-free-instance limit, which no upgrade lifts (w4/m241). */
+  capLimitUpgrade: boolean;
 }
 
 /**
@@ -55,6 +58,7 @@ export function useCreateDatabase(): UseCreateDatabaseResult {
   const [mutate] = useMutation(CreateDatabaseDocument);
   const [busy, setBusy] = useState(false);
   const [capLimit, setCapLimit] = useState<string | null>(null);
+  const [capLimitUpgrade, setCapLimitUpgrade] = useState(true);
   const paymentGate = usePaymentRequiredGate();
 
   const create = useCallback(
@@ -93,8 +97,10 @@ export function useCreateDatabase(): UseCreateDatabaseResult {
           err,
           "POSTGRES_IDENTIFIER_RESERVED",
         );
-        const capMessage = workspaceCapMessage(err);
+        const freeMessage = freeInstanceMessage(err);
+        const capMessage = freeMessage ?? workspaceCapMessage(err);
         if (capMessage !== null) {
+          setCapLimitUpgrade(freeMessage === null);
           setCapLimit(capMessage);
         } else if (reserved) {
           const name =
@@ -118,5 +124,5 @@ export function useCreateDatabase(): UseCreateDatabaseResult {
     [mutate, paymentGate, t, currentWorkspaceId],
   );
 
-  return { create, busy, capLimit };
+  return { create, busy, capLimit, capLimitUpgrade };
 }

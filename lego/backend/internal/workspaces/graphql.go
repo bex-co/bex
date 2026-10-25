@@ -76,6 +76,8 @@ var resourceCapGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"used":        gqlutil.IntField(func(c ResourceCapView) any { return c.Used }),
 		"terminating": gqlutil.IntField(func(c ResourceCapView) any { return c.Terminating }),
 		"limit":       gqlutil.IntField(func(c ResourceCapView) any { return c.Limit }),
+		"freeUsed":    gqlutil.IntField(func(c ResourceCapView) any { return c.FreeUsed }),
+		"freeLimit":   gqlutil.IntField(func(c ResourceCapView) any { return c.FreeLimit }),
 	},
 })
 

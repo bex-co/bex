@@ -512,8 +512,10 @@ databases:
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	if apps, databases, keyValues := lists.apps.Load(), lists.databases.Load(), lists.keyValues.Load(); apps != 3 || databases != 3 || keyValues != 3 {
-		t.Errorf("the create listed Apps %d, Databases %d and Key Values %d times, want 3 each: the plan, the apply and its stamp", apps, databases, keyValues)
+	// Databases/Key Values list 5 times: the plan, the apply and its stamp,
+	// plus the one-free-slot checks in preview and at create (w4/m241).
+	if apps, databases, keyValues := lists.apps.Load(), lists.databases.Load(), lists.keyValues.Load(); apps != 3 || databases != 5 || keyValues != 5 {
+		t.Errorf("the create listed Apps %d, Databases %d and Key Values %d times, want 3/5/5: the plan, the apply, its stamp and the free-slot checks", apps, databases, keyValues)
 	}
 	if len(view.Resources) != 4 {
 		t.Fatalf("the create reported %d resources, want the two services, the Postgres and the Key Value", len(view.Resources))

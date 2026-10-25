@@ -112,7 +112,15 @@ databases:
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	listed(t, "the create", 2)
+	// The free Postgres create adds one Database list for the one-free-slot
+	// check (w4/m241) on top of the snapshot's two.
+	if apps, databases, keyValues := lists.apps.Load(), lists.databases.Load(), lists.keyValues.Load(); apps != 2 || databases != 3 || keyValues != 2 {
+		t.Errorf("the create listed Apps %d, Databases %d and Key Values %d times before its first write, want 2/3/2", apps, databases, keyValues)
+	}
+	lists.wrote.Store(false)
+	lists.apps.Store(0)
+	lists.databases.Store(0)
+	lists.keyValues.Store(0)
 	preview, err := svc.PreviewBlueprint(ctx, "tea-a", "https://github.com/acme/a", "main", "", bp.ID)
 	if err != nil || preview.Validation == nil || !preview.Validation.Valid {
 		t.Fatalf("preview = %+v, %v; want a valid preview", preview, err)
@@ -123,7 +131,7 @@ databases:
 	// stamp. It drops the Postgres, so it resolves a detachment.
 	const added = `  - type: keyvalue
     name: queue
-    plan: free
+    plan: starter
     ipAllowList: []
 `
 	synced := strings.Replace(manifest, "  - type: keyvalue", added+"  - type: keyvalue", 1)

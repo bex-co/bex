@@ -1037,11 +1037,11 @@ func TestResourceLimits_ReturnsPlanLimitsAndZeroCounts(t *testing.T) {
 	if limits.Services.Limit != 25 || limits.Services.Used != 0 {
 		t.Errorf("services = %+v, want {Used:0, Limit:25}", limits.Services)
 	}
-	if limits.Postgres.Limit != 1 || limits.Postgres.Used != 0 {
-		t.Errorf("postgres = %+v, want {Used:0, Limit:1}", limits.Postgres)
+	if limits.Postgres.Limit != 25 || limits.Postgres.Used != 0 || limits.Postgres.FreeLimit != 1 {
+		t.Errorf("postgres = %+v, want {Used:0, Limit:25, FreeLimit:1}", limits.Postgres)
 	}
-	if limits.KeyValues.Limit != 1 || limits.KeyValues.Used != 0 {
-		t.Errorf("keyValues = %+v, want {Used:0, Limit:1}", limits.KeyValues)
+	if limits.KeyValues.Limit != 25 || limits.KeyValues.Used != 0 || limits.KeyValues.FreeLimit != 1 {
+		t.Errorf("keyValues = %+v, want {Used:0, Limit:25, FreeLimit:1}", limits.KeyValues)
 	}
 }
 

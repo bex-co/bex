@@ -178,9 +178,10 @@ func TestResourceLimits_TerminatingHeldInUsedButReportedSeparately(t *testing.T)
 }
 
 // TestResourceLimits_HobbyDatastoreFullyConsumedByOneTerminating pins the
-// highest-stakes case from the milestone: on Hobby the Postgres/Key Value cap is
-// 1, so a single lingering datastore CR consumes the entire quota — and the
-// tenant must be able to see that it is the terminating one holding it.
+// highest-stakes case from the milestone: on Hobby a single lingering free
+// datastore CR consumes the entire free slot (w4/m241) — and the tenant must
+// be able to see that it is the terminating one holding it. The total cap is
+// the paid ceiling (25); the free slot is 1.
 func TestResourceLimits_HobbyDatastoreFullyConsumedByOneTerminating(t *testing.T) {
 	st := newFakeStore()
 	svc, cl := limitsSvc(t, st)
@@ -189,19 +190,26 @@ func TestResourceLimits_HobbyDatastoreFullyConsumedByOneTerminating(t *testing.T
 		t.Fatalf("create workspace: %v", err)
 	}
 
-	seedTerminating(t, cl, dbObj("pg-gone", w.ID))
-	seedTerminating(t, cl, kvObj("kv-gone", w.ID))
+	pgGone := dbObj("pg-gone", w.ID)
+	pgGone.Spec.Plan = "free"
+	seedTerminating(t, cl, pgGone)
+	kvGone := kvObj("kv-gone", w.ID)
+	kvGone.Spec.Plan = "free"
+	seedTerminating(t, cl, kvGone)
 
 	limits, err := svc.ResourceLimits(ctxAs("user-a"), w.ID)
 	if err != nil {
 		t.Fatalf("ResourceLimits: %v", err)
 	}
 
-	// 1 of 1 used, that 1 is terminating, 0 visible in the list — the empty
+	// 1 used, that 1 is terminating, 0 visible in the list — the empty
 	// database list beside a refusal-to-create the milestone calls out.
 	assertReconciles(t, "postgres", limits.Postgres, 1, 1, 0)
 	assertReconciles(t, "keyValues", limits.KeyValues, 1, 1, 0)
-	if limits.Postgres.Limit != 1 || limits.KeyValues.Limit != 1 {
-		t.Errorf("hobby datastore cap = %d/%d, want 1/1", limits.Postgres.Limit, limits.KeyValues.Limit)
+	if limits.Postgres.Limit != 25 || limits.KeyValues.Limit != 25 {
+		t.Errorf("hobby datastore cap = %d/%d, want 25/25", limits.Postgres.Limit, limits.KeyValues.Limit)
+	}
+	if limits.Postgres.FreeUsed != 1 || limits.Postgres.FreeLimit != 1 || limits.KeyValues.FreeUsed != 1 || limits.KeyValues.FreeLimit != 1 {
+		t.Errorf("hobby free slots = %+v / %+v, want 1 of 1 each", limits.Postgres, limits.KeyValues)
 	}
 }

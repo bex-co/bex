@@ -85,7 +85,7 @@ export function CreateDatabaseDialog({
     retry: retryCatalog,
     retrying: catalogRetrying,
   } = useDatabaseInstanceTypes();
-  const { create, busy, capLimit } = useCreateDatabase();
+  const { create, busy, capLimit, capLimitUpgrade } = useCreateDatabase();
 
   const controlled = openProp !== undefined;
   const [openState, setOpenState] = useState(false);
@@ -393,15 +393,17 @@ export function CreateDatabaseDialog({
             <AlertTitle>{t("databases.capLimitTitle")}</AlertTitle>
             <AlertDescription className="flex flex-col gap-2">
               <span>{capLimit}</span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="self-start"
-                onClick={() => void handleUpgrade()}
-              >
-                <ArrowUpRight className="size-3.5" />
-                {t("databases.capLimitUpgrade")}
-              </Button>
+              {capLimitUpgrade ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="self-start"
+                  onClick={() => void handleUpgrade()}
+                >
+                  <ArrowUpRight className="size-3.5" />
+                  {t("databases.capLimitUpgrade")}
+                </Button>
+              ) : null}
             </AlertDescription>
           </Alert>
         ) : null}

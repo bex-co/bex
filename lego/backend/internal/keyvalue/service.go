@@ -469,6 +469,88 @@ func (s *Service) GetKeyValue(ctx context.Context, name string) (KeyValueView, e
 // the workspace ResourceQuota enforces at admission.
 var CountCap = core.CountCap{Key: store.KeyValuesQuotaCountKey, Noun: "key-value store"}
 
+// freeKeyValueHolderFor returns the workspace's free Key Value holding the
+// one-free slot (w4/m241), mid-deletion included (w6/m129).
+func freeKeyValueHolderFor(ctx context.Context, b *core.Base, tenantID, excludeID string) (string, bool, error) {
+	var list appv1alpha1.KeyValueList
+	if err := b.Client.List(ctx, &list, b.DatastoreListOptions(tenantID)...); err != nil {
+		return "", false, fmt.Errorf("checking free Key Value limit: %w", err)
+	}
+	for i := range list.Items {
+		kv := &list.Items[i]
+		if kv.Name == excludeID || kv.Labels[core.LabelTenant] != tenantID || kv.Spec.Plan != "free" {
+			continue
+		}
+		name := kv.Spec.Name
+		if name == "" {
+			name = kv.Name
+		}
+		return name, !kv.DeletionTimestamp.IsZero(), nil
+	}
+	return "", false, nil
+}
+
+// CheckFreeLimit refuses a free Key Value create/plan when the workspace's
+// free slot is taken (w4/m241) — the shared admission every writer runs.
+func CheckFreeLimit(ctx context.Context, b *core.Base, tenantID, excludeID, plan string) error {
+	if plan != "free" {
+		return nil
+	}
+	name, terminating, err := freeKeyValueHolderFor(ctx, b, tenantID, excludeID)
+	if err != nil {
+		return err
+	}
+	if name == "" {
+		return nil
+	}
+	return core.FreeInstanceLimitError("Key Value store", name, terminating)
+}
+
+func (s *Service) refuseSecondFreeKeyValue(ctx context.Context, tenantID, excludeID string) error {
+	name, terminating, err := freeKeyValueHolderFor(ctx, s.Base, tenantID, excludeID)
+	if err != nil {
+		return err
+	}
+	if name == "" {
+		return nil
+	}
+	return core.FreeInstanceLimitError("Key Value store", name, terminating)
+}
+
+// rollbackSecondFreeKeyValueFor closes the create race: after the CR lands,
+// the earliest free store keeps the slot and a later one deletes itself.
+func rollbackSecondFreeKeyValueFor(ctx context.Context, b *core.Base, tenantID string, mine *appv1alpha1.KeyValue) error {
+	var list appv1alpha1.KeyValueList
+	if err := b.Client.List(ctx, &list, b.DatastoreListOptions(tenantID)...); err != nil {
+		return nil
+	}
+	var free []*appv1alpha1.KeyValue
+	for i := range list.Items {
+		kv := &list.Items[i]
+		if kv.Labels[core.LabelTenant] == tenantID && kv.Spec.Plan == "free" {
+			free = append(free, kv)
+		}
+	}
+	if len(free) <= 1 {
+		return nil
+	}
+	slices.SortFunc(free, func(a, b *appv1alpha1.KeyValue) int {
+		if c := a.CreationTimestamp.Time.Compare(b.CreationTimestamp.Time); c != 0 {
+			return c
+		}
+		return strings.Compare(a.Name, b.Name)
+	})
+	if free[0].Name == mine.Name {
+		return nil
+	}
+	_ = b.Client.Delete(ctx, mine)
+	name := free[0].Spec.Name
+	if name == "" {
+		name = free[0].Name
+	}
+	return core.FreeInstanceLimitError("Key Value store", name, !free[0].DeletionTimestamp.IsZero())
+}
+
 // CreateKeyValue provisions a managed key-value store (a KeyValue CR the operator
 // projects to a single-instance Valkey StatefulSet + Service + Secret).
 func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest) (KeyValueView, error) {
@@ -539,6 +621,11 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	if err := s.RequirePlanBilling(ctx, tenantID, req.Plan); err != nil {
 		return KeyValueView{}, err
 	}
+	if req.Plan == "free" {
+		if err := s.refuseSecondFreeKeyValue(ctx, tenantID, ""); err != nil {
+			return KeyValueView{}, err
+		}
+	}
 	resourcemeta.Touch(kv, s.Now())
 	// Dry-run: the exact object the real create writes, through admission
 	// without persisting it (w5/m116), so the plan's count cap and the CRD's
@@ -549,7 +636,19 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 		}
 		return s.view(kv), nil
 	}
-	if err := CreateResource(ctx, s.Base, tenantID, kv); err != nil {
+	create := func() error {
+		if req.Plan == "free" {
+			if err := s.refuseSecondFreeKeyValue(ctx, tenantID, ""); err != nil {
+				return err
+			}
+		}
+		return CreateResource(ctx, s.Base, tenantID, kv)
+	}
+	if req.Plan == "free" {
+		if err := core.WithTenantAdvisoryLock(ctx, s.Workspace, tenantID, create); err != nil {
+			return KeyValueView{}, err
+		}
+	} else if err := create(); err != nil {
 		return KeyValueView{}, err
 	}
 	s.RecordKeyValueEffect(ctx, kv, core.KeyValueCreated)
@@ -563,6 +662,13 @@ func CreateResource(ctx context.Context, b *core.Base, tenantID string, kv *appv
 	if err := b.EnsureWorkspaceNamespace(ctx, tenantID); err != nil {
 		return err
 	}
+	if kv.Spec.Plan == "free" {
+		if name, terminating, err := freeKeyValueHolderFor(ctx, b, tenantID, kv.Name); err != nil {
+			return err
+		} else if name != "" {
+			return core.FreeInstanceLimitError("Key Value store", name, terminating)
+		}
+	}
 	if err := b.Client.Create(ctx, kv); err != nil {
 		if apierrors.IsAlreadyExists(err) {
 			return fmt.Errorf("%w: generated key-value id collision; retry the request", core.ErrConflict)
@@ -570,6 +676,9 @@ func CreateResource(ctx context.Context, b *core.Base, tenantID string, kv *appv
 		// Plan cap and CRD rules, at admission — see the identical mapping in
 		// postgres.CreateResource.
 		return CountCap.CreateError(err)
+	}
+	if kv.Spec.Plan == "free" {
+		return rollbackSecondFreeKeyValueFor(ctx, b, tenantID, kv)
 	}
 	return nil
 }
@@ -829,6 +938,11 @@ func (s *Service) setPlan(ctx context.Context, name, plan string, dryRun bool) (
 	if err := s.RequirePlanBilling(ctx, kv.Labels[core.LabelTenant], plan); err != nil {
 		return KeyValueView{}, err
 	}
+	if plan == "free" {
+		if err := s.refuseSecondFreeKeyValue(ctx, kv.Labels[core.LabelTenant], kv.Name); err != nil {
+			return KeyValueView{}, err
+		}
+	}
 	from := kv.Spec.Plan
 	view, err := s.patchKeyValueObj(ctx, kv, func(kv *appv1alpha1.KeyValue) {
 		kv.Spec.Plan = plan
@@ -1023,6 +1137,11 @@ func (s *Service) updateKeyValue(ctx context.Context, name string, patch KeyValu
 	}
 	if patch.Plan != nil {
 		if err := s.RequirePlanBilling(ctx, kv.Labels[core.LabelTenant], tiers.Valkey.CanonicalID(*patch.Plan)); err != nil {
+			return KeyValueView{}, err
+		}
+	}
+	if patch.Plan != nil && tiers.Valkey.CanonicalID(*patch.Plan) == "free" {
+		if err := s.refuseSecondFreeKeyValue(ctx, kv.Labels[core.LabelTenant], kv.Name); err != nil {
 			return KeyValueView{}, err
 		}
 	}
