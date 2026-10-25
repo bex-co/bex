@@ -476,3 +476,73 @@ func TestBackupSkipsEntriesThatVanishMidWalk(t *testing.T) {
 		}
 	}
 }
+
+// A restore gives every entry its archived owner and exact mode. The restore
+// Job runs as root, and before this every file came back root-owned with
+// umask-trimmed modes, so ClickHouse (uid 101) could not write its own data
+// directory after a production restore (w6/089).
+func TestRestoreReappliesArchivedOwnerAndMode(t *testing.T) {
+	type chown struct {
+		name     string
+		uid, gid int
+	}
+	var calls []chown
+	lchownEntry = func(_ *os.Root, name string, uid, gid int) error {
+		calls = append(calls, chown{name, uid, gid})
+		return nil
+	}
+	t.Cleanup(func() {
+		lchownEntry = func(root *os.Root, name string, uid, gid int) error { return root.Lchown(name, uid, gid) }
+	})
+
+	var raw bytes.Buffer
+	tw := tar.NewWriter(&raw)
+	for _, h := range []*tar.Header{
+		{Name: "data", Typeflag: tar.TypeDir, Mode: 0o2750, Uid: 101, Gid: 101},
+		{Name: "data/part.bin", Typeflag: tar.TypeReg, Mode: 0o640, Uid: 101, Gid: 102, Size: 4},
+		{Name: "tool", Typeflag: tar.TypeReg, Mode: 0o4755, Uid: 0, Gid: 0, Size: 4},
+		{Name: "link", Typeflag: tar.TypeSymlink, Linkname: "data", Uid: 101, Gid: 101},
+	} {
+		if err := tw.WriteHeader(h); err != nil {
+			t.Fatal(err)
+		}
+		if h.Size > 0 {
+			if _, err := tw.Write([]byte("abcd")); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	if err := extractTree(tar.NewReader(&raw), root); err != nil {
+		t.Fatalf("extractTree: %v", err)
+	}
+
+	want := []chown{{"data", 101, 101}, {filepath.Join("data", "part.bin"), 101, 102}, {"tool", 0, 0}, {"link", 101, 101}}
+	if len(calls) != len(want) {
+		t.Fatalf("chown calls = %+v, want %+v", calls, want)
+	}
+	for i := range want {
+		if calls[i] != want[i] {
+			t.Errorf("chown %d = %+v, want %+v", i, calls[i], want[i])
+		}
+	}
+	for name, mode := range map[string]os.FileMode{
+		"data":          0o750 | os.ModeDir | os.ModeSetgid,
+		"data/part.bin": 0o640,
+		"tool":          0o755 | os.ModeSetuid,
+	} {
+		info, err := os.Lstat(filepath.Join(root, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode() != mode {
+			t.Errorf("%s mode = %v, want %v (exact, not umask-trimmed)", name, info.Mode(), mode)
+		}
+	}
+	if info, err := os.Lstat(filepath.Join(root, "link")); err != nil || info.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("link = %v, %v; want a symlink", info, err)
+	}
+}

@@ -325,6 +325,9 @@ func extractTree(archive *tar.Reader, root string) error {
 			if err := rooted.MkdirAll(name, header.FileInfo().Mode().Perm()); err != nil {
 				return err
 			}
+			if err := restoreMetadata(rooted, name, header); err != nil {
+				return err
+			}
 		case tar.TypeSymlink:
 			if err := rooted.MkdirAll(filepath.Dir(name), 0o755); err != nil {
 				return err
@@ -335,8 +338,14 @@ func extractTree(archive *tar.Reader, root string) error {
 			if err := rooted.Symlink(header.Linkname, name); err != nil {
 				return err
 			}
+			if err := restoreMetadata(rooted, name, header); err != nil {
+				return err
+			}
 		case tar.TypeReg:
 			if err := writeFile(rooted, name, archive, header.FileInfo().Mode().Perm()); err != nil {
+				return err
+			}
+			if err := restoreMetadata(rooted, name, header); err != nil {
 				return err
 			}
 		default:
@@ -349,6 +358,32 @@ func extractTree(archive *tar.Reader, root string) error {
 			}
 		}
 	}
+}
+
+// restoreMetadata gives an extracted entry its archived owner and exact mode.
+// The restore Job runs as root, so without it every file came back root-owned
+// with umask-trimmed modes, and a service running as its own user — ClickHouse
+// as uid 101, say — could no longer write its data directory (w6/089: Access
+// to file denied after a production restore). Lchown never follows a link; a
+// link has no mode of its own to restore. Owner before mode, because chown
+// clears setuid/setgid.
+func restoreMetadata(root *os.Root, name string, header *tar.Header) error {
+	if err := lchownEntry(root, name, header.Uid, header.Gid); err != nil {
+		return fmt.Errorf("restore owner of %s: %w", name, err)
+	}
+	if header.Typeflag == tar.TypeSymlink {
+		return nil
+	}
+	mode := header.FileInfo().Mode() & (fs.ModePerm | fs.ModeSetuid | fs.ModeSetgid | fs.ModeSticky)
+	if err := root.Chmod(name, mode); err != nil {
+		return fmt.Errorf("restore mode of %s: %w", name, err)
+	}
+	return nil
+}
+
+// lchownEntry is swapped in tests, which cannot chown to another uid unprivileged.
+var lchownEntry = func(root *os.Root, name string, uid, gid int) error {
+	return root.Lchown(name, uid, gid)
 }
 
 func writeFile(root *os.Root, name string, src io.Reader, mode fs.FileMode) error {
