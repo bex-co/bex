@@ -7,7 +7,6 @@ import { ServiceEnvironmentEditor } from "@/features/services/components/service
 import { EnvGroupsPanel } from "@/features/services/components/env-groups-panel";
 import { ServiceEnvironmentSkeleton } from "@/common/components/route-skeletons";
 import { useServer } from "@/features/services/hooks/use-server";
-import { undeployedChangesHintKey } from "@/features/services/lib/status";
 
 export const Route = createFileRoute("/services/$serviceId/env")({
   component: RouteComponent,
