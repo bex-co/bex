@@ -110,7 +110,7 @@ func Verify(secret []byte, token string, now time.Time) (Claims, error) {
 	}
 	// The pod triple is all-or-nothing. All present ⇒ a normal attach ticket
 	// bound to one exact sandbox pod. All empty ⇒ a REPLAY-ONLY read ticket
-	// (ADR065 D2): a reaped terminal/hibernated session has no pod, the gateway
+	// (ADR065 D2): a reaped terminal session has no pod, the gateway
 	// serves the durable transcript and never dials. A turn ticket must always
 	// bind a pod, and a partially-filled triple is malformed.
 	podClaims := 0

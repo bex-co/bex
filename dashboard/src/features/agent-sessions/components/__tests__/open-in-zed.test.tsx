@@ -42,8 +42,6 @@ beforeEach(() => {
 vi.mock("@/features/agent-sessions/hooks/use-agent-session-mutations", () => ({
   useAgentSessionMutations: () => ({
     cancel: vi.fn(),
-    pin: vi.fn(),
-    unpin: vi.fn(),
     archive: vi.fn(),
     unarchive: vi.fn(),
     deleteSession: vi.fn(),

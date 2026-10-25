@@ -22,6 +22,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -185,4 +186,91 @@ func TestCompleterPGFinalizesFromTheAgentPRAndNotesUndeliveredWork(t *testing.T)
 			t.Fatalf("dirty row = %+v err=%v", row, err)
 		}
 	})
+}
+
+// TestIdleClosedSessionFollowUpPG (w10/m15) runs the idle-close path against the
+// real store: a finished session keeps its sandbox through the 2h
+// idle TTL, is then terminated with its transcript kept and its phase left
+// completed, and a follow-up message redispatches a fresh sandbox on the same
+// branch primed with the prior conversation (ADR047 D3) and the PR earlier
+// turns opened (ADR090).
+func TestIdleClosedSessionFollowUpPG(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := store.Migrate(uri); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	pg := store.NewPGStore(pool)
+	tenant, err := pg.CreateTenant(ctx, "agent-idle-close-test", store.PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = pg.DeleteTenant(ctx, tenant.ID) }()
+
+	session, err := pg.CreateAgentSession(ctx, store.AgentSession{
+		WorkspaceID: tenant.ID, Repo: "bex-co/example", Branch: "bex-agent/idle-close",
+		AgentConfig: []byte(`{"agent":"codex","task":"fix the flaky test"}`), InitialPrompt: "fix the flaky test",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pg.RecordAgentSessionDispatch(ctx, session.ID, "sandbox-idle-1", PhaseRunning, "running", "", session.Turns); err != nil {
+		t.Fatal(err)
+	}
+	if err := pg.RecordAgentSessionPullRequest(ctx, session.ID, "https://github.com/bex-co/example/pull/11", 11, remoteHead); err != nil {
+		t.Fatal(err)
+	}
+
+	c, _, lc, _ := completerFixture(succeededStatus(true), nil)
+	c.Store, c.IdleTTL = pg, 2*time.Hour
+	lc.transcriptLog = `{"turn":1,"partIndex":0,"part":{"type":"text-delta","id":"t","delta":"Fixed the flaky test."}}`
+	start := time.Now()
+	c.Now = func() time.Time { return start }
+	c.Reconcile(ctx)
+	row, err := pg.GetAgentSession(ctx, session.ID)
+	if err != nil || row.Phase != PhaseCompleted || row.SandboxID != "sandbox-idle-1" || lc.canceled != 0 {
+		t.Fatalf("finished turn inside the idle TTL = %+v canceled=%d err=%v", row, lc.canceled, err)
+	}
+	c.Now = func() time.Time { return start.Add(2*time.Hour + time.Minute) }
+	c.Reconcile(ctx)
+	row, err = pg.GetAgentSession(ctx, session.ID)
+	if err != nil || row.Phase != PhaseCompleted || row.SandboxID != "" || lc.canceled != 1 {
+		t.Fatalf("idle close = %+v canceled=%d err=%v, want completed with no sandbox", row, lc.canceled, err)
+	}
+	if parts, err := pg.AgentSessionTranscript(ctx, session.ID, -1, 1<<20, 0); err != nil || len(parts) != 1 {
+		t.Fatalf("transcript after idle close = %+v err=%v", parts, err)
+	}
+
+	svc, _, _, slc := fixture()
+	svc.Store = pg
+	svc.Base.Authz = checkerFunc(func(context.Context, string, string, string) (bool, error) { return true, nil })
+	view, err := svc.Steer(caller("alice"), SteerRequest{SessionID: session.ID, Prompt: "now add a regression test"})
+	if err != nil {
+		t.Fatalf("follow-up on the closed session: %v", err)
+	}
+	if view.Phase != PhaseRedispatching {
+		t.Fatalf("follow-up accepted as %s, want redispatching", view.Phase)
+	}
+	row, err = pg.GetAgentSession(ctx, session.ID)
+	if err != nil || row.Phase != PhaseRunning || row.SandboxID == "" || row.Turns != 2 || row.DeliveryMode != DeliveryRedispatch {
+		t.Fatalf("follow-up row = %+v err=%v, want turn 2 running in a fresh sandbox", row, err)
+	}
+	if slc.branch != "bex-agent/idle-close" || slc.driverEnv["BEX_AGENT_PROMPT"] != "now add a regression test" {
+		t.Fatalf("follow-up dispatch branch=%q prompt=%q", slc.branch, slc.driverEnv["BEX_AGENT_PROMPT"])
+	}
+	if !strings.Contains(slc.driverEnv[continuityContextEnv], "Fixed the flaky test.") ||
+		!strings.Contains(slc.driverEnv[continuityContextEnv], "fix the flaky test") {
+		t.Fatalf("continuity context = %q, want the prior prompt and reply", slc.driverEnv[continuityContextEnv])
+	}
+	if slc.driverEnv["BEX_AGENT_PR_URL"] != "https://github.com/bex-co/example/pull/11" || slc.driverEnv["BEX_AGENT_PR_NUMBER"] != "11" {
+		t.Fatalf("follow-up PR env = %q/%q", slc.driverEnv["BEX_AGENT_PR_URL"], slc.driverEnv["BEX_AGENT_PR_NUMBER"])
+	}
 }

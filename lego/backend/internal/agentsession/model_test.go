@@ -187,8 +187,6 @@ func TestModelMinterRefusesTerminalOrForeignSession(t *testing.T) {
 		"canceled":          base(func(s *store.AgentSession) { s.Phase = "canceled" }),
 		"canceling":         base(func(s *store.AgentSession) { s.Phase = "canceling" }),
 		"sandbox cleared":   base(func(s *store.AgentSession) { s.SandboxID = "" }),
-		"hibernating":       base(func(s *store.AgentSession) { s.Phase = "hibernating" }),
-		"hibernated":        base(func(s *store.AgentSession) { s.Phase = "hibernated" }),
 		"unknown phase":     base(func(s *store.AgentSession) { s.Phase = "future-phase" }),
 		"stale generation":  base(func(s *store.AgentSession) { s.SandboxID = "sbx-2" }),
 		"foreign workspace": base(func(s *store.AgentSession) { s.WorkspaceID = "tea-b" }),

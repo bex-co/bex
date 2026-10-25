@@ -2,6 +2,8 @@
 
 **Status:** Proposed (2026-08-16); implemented in **w2/m71** the same day. (Renamed from ADR065 to resolve the number collision with ADR065-security-review-round10.) Refines [ADR047](ADR047-cloud-coding-agent-sessions.md) (D9a explicitly recorded per-row **archive** and the **Filter** control as Devin affordances "not ported, because bex has no backend capability behind them — gaps, not drift"); composes with [ADR051](ADR051-agent-session-transcript.md) (the durable transcript this ADR finally makes readable after reap) and [ADR059](ADR059-agent-sandbox-hibernation.md) (archive is orthogonal to the Active/Hibernated pod-lifecycle tiers — it organizes the _list_, hibernation organizes the _pod_). No security-lineage findings; the one new destructive sink (D4 delete) lands inside the ADR061/ADR063 fresh-authorization seam from day one.
 
+_Amended 2026-10-25 ([ADR059](ADR059-agent-sandbox-hibernation.md) superseded, w10/m15): agent-session hibernation, the `hibernating`/`hibernated` phases, snapshots, retention expiry and pin are retired. The passages below that mention them are history. Archive, unarchive, delete and replay-only read tickets are unchanged; an idle session's sandbox is now simply terminated after 2h and its transcript stays viewable._
+
 ---
 
 ## Context

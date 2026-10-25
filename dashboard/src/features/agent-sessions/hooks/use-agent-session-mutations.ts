@@ -9,8 +9,6 @@ import {
   ResumeAgentSessionDocument,
   AttachAgentSessionDocument,
   CancelAgentSessionDocument,
-  PinAgentSessionDocument,
-  UnpinAgentSessionDocument,
   ArchiveAgentSessionDocument,
   UnarchiveAgentSessionDocument,
   DeleteAgentSessionDocument,
@@ -59,15 +57,11 @@ export interface UseAgentSessionMutationsResult {
   attach: (id: string) => Promise<AgentSessionTicket>;
   /** Cancels a session; resolves the updated (canceling/canceled) view. */
   cancel: (id: string) => Promise<AgentSessionView>;
-  /** Pins a session so its hibernated workspace never expires (ADR059 D5). */
-  pin: (id: string) => Promise<AgentSessionView>;
-  /** Removes the never-expire pin, back onto the retention clock. */
-  unpin: (id: string) => Promise<AgentSessionView>;
   /** Archives a session out of the working set (ADR065 D1); still viewable. */
   archive: (id: string) => Promise<AgentSessionView>;
   /** Returns an archived session to the working set. */
   unarchive: (id: string) => Promise<AgentSessionView>;
-  /** Permanently deletes a finished session — row, transcript, snapshot (D4). */
+  /** Permanently deletes a finished session — row and transcript (D4). */
   deleteSession: (id: string) => Promise<void>;
 }
 
@@ -81,7 +75,7 @@ export interface UseAgentSessionMutationsResult {
  */
 
 /**
- * Collapses the five `id → AgentSessionView` verbs (cancel/pin/unpin/archive/
+ * Collapses the three `id → AgentSessionView` verbs (cancel/archive/
  * unarchive) onto one body: fire the mutation `no-cache`, unwrap the single
  * result field, project it, and re-throw through `toAgentSessionError` — the
  * exact shape previously retyped per verb (the field-mutation-factory move,
@@ -162,18 +156,6 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
     CancelAgentSessionDocument,
     (d) => d.cancelAgentSession,
     "cancelAgentSession",
-    reconcileSession,
-  );
-  const pin = useByIdViewMutation(
-    PinAgentSessionDocument,
-    (d) => d.pinAgentSession,
-    "pinAgentSession",
-    reconcileSession,
-  );
-  const unpin = useByIdViewMutation(
-    UnpinAgentSessionDocument,
-    (d) => d.unpinAgentSession,
-    "unpinAgentSession",
     reconcileSession,
   );
   const archive = useByIdViewMutation(
@@ -315,8 +297,6 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
     resume,
     attach,
     cancel,
-    pin,
-    unpin,
     archive,
     unarchive,
     deleteSession,

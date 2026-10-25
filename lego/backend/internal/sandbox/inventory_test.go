@@ -180,3 +180,29 @@ func TestSetInventoryMetrics(t *testing.T) {
 		t.Fatalf("teardown failures = %v", got)
 	}
 }
+
+// A finished session that still names its sandbox is in its idle grace (or held
+// by an open editor SSH session): the Completer's reap owns that teardown, so
+// inventory must not cut the 2h idle window short (w10/m15). A finished session
+// that names a different sandbox, or none, is an orphan.
+func TestClassifySessionSandboxLeavesIdleGraceToTheCompleter(t *testing.T) {
+	cases := []struct {
+		name  string
+		claim SessionClaim
+		stop  bool
+	}{
+		{"completed names this sandbox", SessionClaim{Found: true, Phase: "completed", SandboxID: "sb"}, false},
+		{"failed names this sandbox", SessionClaim{Found: true, Phase: "failed", SandboxID: "sb"}, false},
+		{"completed after reap", SessionClaim{Found: true, Phase: "completed"}, true},
+		{"completed names another sandbox", SessionClaim{Found: true, Phase: "completed", SandboxID: "other"}, true},
+		{"canceling names this sandbox", SessionClaim{Found: true, Phase: "canceling", SandboxID: "sb"}, true},
+		{"redispatching blanked", SessionClaim{Found: true, Phase: "redispatching"}, false},
+		{"running names another sandbox", SessionClaim{Found: true, Phase: "running", SandboxID: "other"}, true},
+		{"no row", SessionClaim{}, true},
+	}
+	for _, tc := range cases {
+		if _, stop := classifySessionSandbox(tc.claim, "sb"); stop != tc.stop {
+			t.Errorf("%s: shouldStop = %v, want %v", tc.name, stop, tc.stop)
+		}
+	}
+}

@@ -44,10 +44,6 @@ function wireSession(id: string) {
     createdAt: "2026-08-18T00:00:00Z",
     updatedAt: "2026-08-18T01:00:00Z",
     canceledAt: null,
-    pinned: false,
-    snapshotBytes: 0,
-    hibernatedAt: null,
-    retainUntil: null,
     archivedAt: null,
     agentConfig: {
       __typename: "AgentSessionConfig" as const,

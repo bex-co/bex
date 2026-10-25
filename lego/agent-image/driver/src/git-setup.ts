@@ -15,8 +15,8 @@
  */
 
 // Setup-phase Git for a repo session (ADR090). Before the agent runs, the
-// driver restores a hibernation snapshot when resuming, clones the session
-// repository through the Pod-bound gateway proxy when the workspace is empty,
+// driver clones the session repository through the Pod-bound gateway proxy
+// when the workspace is empty,
 // checks out the bound bex-agent/* branch and writes repo-local identity and
 // push defaults. After that the agent owns Git: it commits, pushes and opens
 // its draft PR itself. The driver only reads Git state afterwards
@@ -24,10 +24,7 @@
 
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { createHash } from "node:crypto";
-import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
+import { readdir, rm } from "node:fs/promises";
 import { withGitAuthRetry } from "./git-auth-retry.js";
 
 const run = promisify(execFile);
@@ -48,8 +45,8 @@ export interface DeliveryBaseline {
   remoteBranchOid: string;
 }
 
-// git runs the driver's own setup-phase and read-only Git calls. A restored
-// workspace and its repository-local configuration are tenant-controlled, so
+// git runs the driver's own setup-phase and read-only Git calls. The workspace
+// and its repository-local configuration are tenant-controlled, so
 // these calls never run hooks, fsmonitor helpers, credential prompts or
 // external diff commands. The agent's own Git is deliberately not hardened:
 // repo hooks run for it as they would for a developer.
@@ -154,9 +151,9 @@ async function fetchOid(
   }
 }
 
-// gitRemote retries ls-remote/fetch against the session git proxy. A restored
+// gitRemote retries ls-remote/fetch against the session git proxy. A pre-cloned
 // workspace skips cloneWithRetry (the tree is already a repo) and would otherwise
-// fail closed on the first 403, which is what aborted the w2/m77 rehydrate walk.
+// fail closed on the first 403 of the sandbox-id mint race.
 async function gitRemote(cwd: string, args: string[]): Promise<string> {
   return withGitAuthRetry(() => git(cwd, args));
 }
@@ -182,65 +179,6 @@ async function captureDeliveryBaseline(
   if (remoteBranchOid)
     await fetchOid(config.cwd, config.repoUrl, remoteBranchOid);
   return { baseBranch, baseOid, remoteBranchOid };
-}
-
-// restoreWorkspace hydrates the workspace from a hibernation snapshot (ADR059
-// D4) before the setup clone: it streams the presigned GET URL through tar,
-// restoring `/workspace` (+ `~/.zed_server`) with the working tree — uncommitted
-// edits and installed dependencies — intact, so ensureRepo then leaves the
-// pre-populated repo alone. The URL is passed via env (never argv/ps) so it is
-// not visible in process listings; it carries no durable credential. A restore
-// failure is fatal to setup on purpose: silently falling back to a clean clone
-// would lose the user's uncommitted work without a signal.
-export async function restoreWorkspace(
-  config: { restoreUrl: string; restoreSha?: string; restoreBytes?: number },
-  destRoot = "/",
-): Promise<void> {
-  if (!config.restoreUrl) return;
-  const dir = await mkdtemp(path.join(tmpdir(), "bex-restore-"));
-  const archive = path.join(dir, "snap.tgz");
-  try {
-    await run(
-      "/bin/sh",
-      ["-c", 'curl -sf "$BEX_RESTORE_URL" -o "$BEX_RESTORE_FILE"'],
-      {
-        env: {
-          ...process.env,
-          BEX_RESTORE_URL: config.restoreUrl,
-          BEX_RESTORE_FILE: archive,
-        },
-      },
-    );
-    const body = await readFile(archive);
-    if (
-      config.restoreBytes != null &&
-      config.restoreBytes > 0 &&
-      body.length !== config.restoreBytes
-    ) {
-      throw new Error(
-        `snapshot size mismatch: got ${body.length}, want ${config.restoreBytes}`,
-      );
-    }
-    if (config.restoreSha) {
-      const sha = createHash("sha256").update(body).digest("hex");
-      if (sha !== config.restoreSha) {
-        throw new Error("snapshot digest mismatch");
-      }
-    }
-    await run(
-      "/bin/sh",
-      ["-c", 'tar xzf "$BEX_RESTORE_FILE" -C "$BEX_RESTORE_DEST"'],
-      {
-        env: {
-          ...process.env,
-          BEX_RESTORE_FILE: archive,
-          BEX_RESTORE_DEST: destRoot,
-        },
-      },
-    );
-  } finally {
-    await rm(dir, { recursive: true, force: true });
-  }
 }
 
 // cloneWithRetry clones the session repo, retrying a transient authorization
@@ -286,12 +224,12 @@ export async function ensureRepo(
   if (!existing) {
     await cloneWithRetry(config.cwd, config.repoUrl);
   }
-  // A restored workspace is tenant-controlled persisted state. Reset origin to
+  // A pre-cloned workspace is tenant-controlled state. Reset origin to
   // the control-plane supplied proxy before reading any remote identity.
   await git(config.cwd, ["remote", "set-url", "origin", config.repoUrl]);
   const baseline = await captureDeliveryBaseline(config);
   if (existing) {
-    // Preserve restored commits and working-tree edits, but put them on the
+    // Preserve existing commits and working-tree edits, but put them on the
     // session ref; the agent delivers them on its next turn.
     await git(config.cwd, ["checkout", "-B", config.branch]);
   } else {

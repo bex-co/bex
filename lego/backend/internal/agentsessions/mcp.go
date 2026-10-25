@@ -101,17 +101,17 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 			out, err := s.Transcript(ctx, in.ID, afterSeq, in.Limit)
 			return nil, out, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "archive_agent_session", Description: "Archive a cloud coding-agent session: it leaves the working-set list (still viewable; resume/steer/pin refused until unarchived) and any still-live sandbox is reclaimed at the next reaper tick without canceling an in-flight turn."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "archive_agent_session", Description: "Archive a cloud coding-agent session: it leaves the working-set list (still viewable; resume/steer refused until unarchived) and any still-live sandbox is reclaimed at the next reaper tick without canceling an in-flight turn."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
 			out, err := s.Archive(ctx, in.ID)
 			return nil, out, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "unarchive_agent_session", Description: "Return an archived cloud coding-agent session to the working set, re-enabling resume/steer/pin."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "unarchive_agent_session", Description: "Return an archived cloud coding-agent session to the working set, re-enabling resume/steer."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
 			out, err := s.Unarchive(ctx, in.ID)
 			return nil, out, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "delete_agent_session", Description: "Permanently delete a finished (terminal or hibernated) cloud coding-agent session: its record, transcript, and hibernation snapshot are destroyed. Live sessions must be canceled first. Irreversible."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "delete_agent_session", Description: "Permanently delete a finished cloud coding-agent session: its record and transcript are destroyed. Live sessions must be canceled first. Irreversible."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, deleteResult, error) {
 			if err := s.Delete(ctx, in.ID); err != nil {
 				return nil, deleteResult{}, err
@@ -135,16 +135,6 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 	mcputil.AddTool(server, &mcp.Tool{Name: "cancel_agent_session", Description: "Cancel a cloud coding-agent session and terminate its sandbox."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
 			out, err := s.Cancel(ctx, in.ID)
-			return nil, out, err
-		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "pin_agent_session", Description: "Pin a cloud coding-agent session so its hibernated workspace never expires (still billed for snapshot storage and counted against the workspace pin quota)."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
-			out, err := s.Pin(ctx, in.ID)
-			return nil, out, err
-		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "unpin_agent_session", Description: "Remove a cloud coding-agent session's never-expire pin, putting its hibernated workspace back on the retention clock."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
-			out, err := s.Unpin(ctx, in.ID)
 			return nil, out, err
 		})
 	mcputil.AddTool(server, &mcp.Tool{Name: "steer_agent_session", Description: "Run a follow-up prompt turn on a cloud coding-agent session; it re-dispatches the sandbox on the same branch and updates the same draft PR."},

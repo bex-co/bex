@@ -24,16 +24,12 @@ vi.mock("@tanstack/react-router", () => ({
   ),
   useNavigate: () => navigateMock,
 }));
-const pinMock = vi.fn().mockResolvedValue(undefined);
-const unpinMock = vi.fn().mockResolvedValue(undefined);
 const archiveMock = vi.fn().mockResolvedValue(undefined);
 const unarchiveMock = vi.fn().mockResolvedValue(undefined);
 const deleteMock = vi.fn().mockResolvedValue(undefined);
 vi.mock("@/features/agent-sessions/hooks/use-agent-session-mutations", () => ({
   useAgentSessionMutations: () => ({
     cancel: vi.fn(),
-    pin: pinMock,
-    unpin: unpinMock,
     archive: archiveMock,
     unarchive: unarchiveMock,
     deleteSession: deleteMock,
@@ -58,8 +54,6 @@ function heading(): HTMLElement {
 describe("SessionDetailHeader", () => {
   beforeEach(() => {
     navigateMock.mockClear();
-    pinMock.mockClear();
-    unpinMock.mockClear();
     archiveMock.mockClear();
     unarchiveMock.mockClear();
     deleteMock.mockClear();
@@ -114,33 +108,14 @@ describe("SessionDetailHeader", () => {
     expect(screen.queryByText(/#\d/)).not.toBeInTheDocument();
   });
 
-  // ADR059 D5/D6: a hibernated session shows its snapshot storage cost and a Pin
-  // toggle; a live/terminal session shows neither.
-  it("shows the storage size + Pin control only for a hibernated session", async () => {
-    const { rerender } = render(<SessionDetailHeader session={view()} />);
+  // w10/m15: a session closed after its idle TTL carries no storage size and
+  // no Pin control, just the ordinary completed header.
+  it("shows no Pin control or snapshot size for a closed session", () => {
+    render(<SessionDetailHeader session={view({ sandboxId: null })} />);
     expect(
       screen.queryByRole("button", { name: /pin/i }),
     ).not.toBeInTheDocument();
-
-    rerender(
-      <SessionDetailHeader
-        session={view({ phase: "hibernated", snapshotBytes: 5 * 1024 * 1024 })}
-      />,
-    );
-    expect(screen.getByText(/Hibernated · 5\.0 MiB/)).toBeInTheDocument();
-    const pinBtn = screen.getByRole("button", { name: /^pin$/i });
-    pinBtn.click();
-    expect(pinMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("offers Unpin (not Pin) for an already-pinned hibernated session", () => {
-    render(
-      <SessionDetailHeader
-        session={view({ phase: "hibernated", pinned: true })}
-      />,
-    );
-    expect(screen.getByRole("button", { name: /unpin/i })).toBeInTheDocument();
-    expect(screen.getByText(/Pinned/)).toBeInTheDocument();
+    expect(screen.queryByText(/KiB|MiB/)).not.toBeInTheDocument();
   });
 
   // ADR065 D1/D6: the overflow menu carries Archive (any phase) and, on a

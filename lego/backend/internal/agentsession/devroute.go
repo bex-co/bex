@@ -29,7 +29,7 @@ import (
 // Anthropic-compatible endpoint. agent-profiles.json is untouched; a route is
 // resolved per workspace at create, dispatch and mint time, never from the
 // endpoint a session stored, so a session created on api.anthropic.com moves
-// onto (or off) a route on its next steer, rehydrate or provider exchange.
+// onto (or off) a route on its next steer or provider exchange.
 //
 // Two routes exist:
 //

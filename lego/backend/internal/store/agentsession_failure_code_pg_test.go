@@ -61,7 +61,7 @@ func TestPGAgentSessionFailureCode(t *testing.T) {
 	}
 	setPhase := func(t *testing.T, id, phase string) {
 		t.Helper()
-		if _, err := pool.Exec(ctx, `UPDATE agent_sessions SET phase=$2, snapshot_ref='snap-1' WHERE id=$1`, id, phase); err != nil {
+		if _, err := pool.Exec(ctx, `UPDATE agent_sessions SET phase=$2 WHERE id=$1`, id, phase); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -105,25 +105,15 @@ func TestPGAgentSessionFailureCode(t *testing.T) {
 		want(t, row, "egress phase transition failed", "")
 	})
 	t.Run("a finalize clears it, even with the same sentence", func(t *testing.T) {
-		// Finalize's only path to a failed row is the reaper's unclaim, which
-		// re-finalizes with the claimed sentence. A coded row never holds the
-		// sandbox a claim needs, so the phase is set by hand.
+		// A coded row is already terminal, so the live phase a finalize needs is
+		// set by hand.
 		row := refused(t)
-		setPhase(t, row.ID, "hibernating")
+		setPhase(t, row.ID, "running")
 		row, _, err := s.FinalizeAgentSession(ctx, row.ID, "failed", "", "", capacity.Reason)
 		if err != nil {
 			t.Fatal(err)
 		}
 		want(t, row, capacity.Reason, "")
-	})
-	t.Run("a hibernation expiry clears it", func(t *testing.T) {
-		row := refused(t)
-		setPhase(t, row.ID, "hibernated")
-		row, err := s.ExpireHibernatedAgentSession(ctx, row.ID, "snap-1")
-		if err != nil {
-			t.Fatal(err)
-		}
-		want(t, row, "hibernation retention window elapsed", "")
 	})
 }
 

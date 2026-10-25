@@ -52,9 +52,9 @@ type SessionStore interface {
 }
 
 // credentialMintPhases is deliberately a fail-closed allowlist shared by the
-// Git and model minters. Hibernation temporarily moves a terminal row through
-// new lifecycle values while its old pod can still exist; a denylist would make
-// every future phase credential-eligible by default.
+// Git and model minters. A terminal row's old pod can still exist (idle grace,
+// failed teardown); a denylist would make every future phase
+// credential-eligible by default.
 var credentialMintPhases = map[string]bool{
 	"creating": true, "running": true, "resuming": true, "redispatching": true,
 }
@@ -62,7 +62,7 @@ var credentialMintPhases = map[string]bool{
 // currentSandboxCaller binds a gateway-resolved Pod to the exact durable
 // sandbox generation. OpenSandbox names the session pod <sandbox_id>-0; a stale
 // pod from a failed teardown carries the same session labels but a different
-// immutable sandbox id after rehydration. PodUID remains mandatory as the
+// immutable sandbox id after a redispatch. PodUID remains mandatory as the
 // gateway's Kubernetes-derived identity, while the durable generation match is
 // made through the current sandbox id.
 func currentSandboxCaller(session store.AgentSession, workspace, podName, podUID string) bool {

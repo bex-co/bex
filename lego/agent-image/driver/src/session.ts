@@ -82,9 +82,10 @@ export async function markTurnFailed(
   });
 }
 
-// A resumed sandbox restarts the driver on the restored rootfs, where the
-// previous turn's status file still carries the agent's ACP session id (the
-// agent's own on-disk session state survives rootfs snapshots — ADR047 D3).
+// A driver restarted inside the same sandbox (its rootfs intact) finds the
+// previous turn's status file still carrying the agent's ACP session id, next
+// to the agent's own on-disk session state (ADR047 D3). A fresh sandbox has
+// neither, so it adopts nothing and the turn primes from the transcript.
 // Adopt that id as existingSessionId when the environment supplies none, so
 // the provider can attempt session/load; acp.ts still gates the attempt on
 // the agent advertising loadSession, and a missing, corrupt, or
@@ -194,7 +195,7 @@ export async function runHeadlessTurn(
   // Setup I/O may still be pending when an external abort or deadline arrives.
   void deadline.catch(() => undefined);
   const abortFromOutside = () => {
-    const error = new Error("agent turn terminated for snapshot");
+    const error = new Error("agent turn terminated");
     turnAbort.abort(error);
     rejectDeadline(error);
   };

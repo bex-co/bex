@@ -15,8 +15,6 @@ export const AGENT_SESSION_PHASES = [
   "running",
   "resuming",
   "redispatching",
-  "hibernating",
-  "hibernated",
   "completed",
   "failed",
   "canceling",
@@ -121,22 +119,12 @@ export interface AgentSessionView {
   /**
    * Set on a completed session whose work the agent left undelivered — an
    * uncommitted tree, unpushed commits, or a pushed branch with no PR (ADR090
-   * D5). The work stays in the retained sandbox for a follow-up turn.
+   * D5). The work stays in the sandbox only until it closes after 2h idle.
    */
   deliveryNote: string | null;
   createdAt: string;
   updatedAt: string;
   canceledAt: string | null;
-  /**
-   * Hibernation (ADR059 D5/D6). `pinned` marks the never-expire tier;
-   * `snapshotBytes` is the durable storage cost shown to the tenant (0 while
-   * live); `hibernatedAt`/`retainUntil` show when it hibernated and when an
-   * unpinned snapshot will be deleted (null while live or pinned).
-   */
-  pinned: boolean;
-  snapshotBytes: number;
-  hibernatedAt: string | null;
-  retainUntil: string | null;
   /**
    * Archive (ADR065 D1): set ⇒ out of the working set, mutation verbs refused
    * (`AGENT_SESSION_ARCHIVED`) until unarchived; reads (transcript included)
@@ -145,12 +133,10 @@ export interface AgentSessionView {
    * `lib/acp-parts.ts` `sourceTimestampsMs`.
    */
   archivedAt: string | null;
-  /** hibernated — pod-less but resumable from a durable snapshot (ADR059 D2). */
-  isHibernated: boolean;
   /** archivedAt non-null — the session is out of the working set (ADR065). */
   isArchived: boolean;
   /**
-   * Terminal or hibernated — past all live work. Gates the delete verb and the
+   * Terminal — past all live work. Gates the delete verb and the
    * replay-only conversation attach (ADR065 D2/D4); the backend twin is
    * `finishedPhase`.
    */

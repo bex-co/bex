@@ -1154,8 +1154,7 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 			// the gateway proxy port instead of the vendor host. The port is derived
 			// from the same deps.AgentModelProxyURL the agentsessions Service uses, so
 			// the two can never disagree on which port to open.
-			ModelProxyPort:       cfg.ModelProxyPort,
-			SnapshotStoreDomains: cfg.SnapshotEgressDomains,
+			ModelProxyPort: cfg.ModelProxyPort,
 		})
 		if err != nil {
 			log.Fatalf("bex-api: %v", err)
@@ -1249,8 +1248,8 @@ func wireAgentSessions(deps *api.Deps, cfg *Config) {
 	// Optional override of the in-cluster Git smart-HTTP proxy origin. The
 	// sandbox receives this non-secret URL, never a GitHub credential.
 	deps.AgentGitProxyURL = cfg.AgentGitProxyURL
-	// Active-tier sandbox lifecycle (ADR059 D2/D6, w2/m67): idle grace before a
-	// finished session's sandbox is reaped (default 30m; 0 ⇒ ADR054 D6 immediate
+	// Sandbox lifecycle (w2/m67, w10/m15): idle grace before a finished
+	// session's sandbox is terminated (default 2h; 0 ⇒ ADR054 D6 immediate
 	// reap), and the per-workspace concurrent live-sandbox cap (default 5; 0 ⇒
 	// uncapped).
 	deps.AgentSandboxIdleTTL = cfg.AgentSandboxIdleTTL
@@ -1277,24 +1276,6 @@ func wireAgentSessions(deps *api.Deps, cfg *Config) {
 	// CUSTOM_DOMAIN_LIMIT.
 	deps.MaxCustomDomainsPerService = cfg.MaxCustomDomainsPerService
 	deps.MaxCustomDomainsPerWorkspace = cfg.MaxCustomDomainsPerWorkspace
-	// ADR059 D3/D5 hibernation (w2/m68, armed w2/m77): the object store enables
-	// the Hibernated tier (reclaim → snapshot, resume → rehydrate). All four
-	// required coordinates unset ⇒ the whole tier is off and reclaim stays
-	// Terminate (byte-identical to w2/m67). A partial set is fatal — a typo'd
-	// Secret key must not silently disable hibernation. Unset/delete the
-	// bex-agent-snapshot Secret to roll back.
-	store, err := agentsessions.NewS3SnapshotStore(cfg.AgentSnapshot)
-	if err != nil {
-		// loadConfig validated this config before any side effect; a failure
-		// here means the two disagree, which is a bug.
-		log.Fatalf("bex-api: agent-session hibernation config: %v", err)
-	}
-	if store != nil {
-		deps.AgentSnapshotStore = store
-		log.Printf("bex-api: agent-session hibernation enabled (object store %s)", cfg.AgentSnapshot.Bucket)
-	}
-	deps.AgentSnapshotRetentionTTL = cfg.AgentSnapshotRetentionTTL
-	deps.AgentMaxPinnedSandboxesPerWorkspace = cfg.AgentMaxPinnedSandboxesPerWorkspace
 }
 
 func wireReconcilers(ctx context.Context, srv *api.Server, rec *store.Reconciler, st *store.PGStore, cl client.Client, base *core.Base, cfg *Config) {
