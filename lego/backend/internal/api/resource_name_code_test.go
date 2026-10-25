@@ -43,13 +43,13 @@ func TestAFreeFormNameIsAcceptedOnEverySurface(t *testing.T) {
 		mutation: `mutation { createService(name: "My Gql API", image: "nginx") { id displayName } }`,
 		tool:     "create_web_service", args: map[string]any{"name": "My Mcp API", "image": "nginx", "runtime": "image"},
 	}, {
-		kind: "Postgres", path: "/v1/postgres", body: `{"name":"Prod DB","plan":"free"}`,
-		mutation: `mutation { createDatabase(name: "Gql DB", plan: "free") { id } }`,
-		tool:     "create_postgres", args: map[string]any{"name": "Mcp DB", "plan": "free"},
+		kind: "Postgres", path: "/v1/postgres", body: `{"name":"Prod DB","plan":"basic-256mb"}`,
+		mutation: `mutation { createDatabase(name: "Gql DB", plan: "basic-256mb") { id } }`,
+		tool:     "create_postgres", args: map[string]any{"name": "Mcp DB", "plan": "basic-256mb"},
 	}, {
-		kind: "Key Value", path: "/v1/key-value", body: `{"name":"Prod Cache","plan":"free"}`,
-		mutation: `mutation { createKeyValue(name: "Gql Cache", plan: "free") { id } }`,
-		tool:     "create_key_value", args: map[string]any{"name": "Mcp Cache", "plan": "free"},
+		kind: "Key Value", path: "/v1/key-value", body: `{"name":"Prod Cache","plan":"starter"}`,
+		mutation: `mutation { createKeyValue(name: "Gql Cache", plan: "starter") { id } }`,
+		tool:     "create_key_value", args: map[string]any{"name": "Mcp Cache", "plan": "starter"},
 	}} {
 		t.Run(tc.kind, func(t *testing.T) {
 			if rec := do(t, h, http.MethodPost, tc.path, testToken, tc.body); rec.Code != http.StatusCreated {

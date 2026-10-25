@@ -197,6 +197,30 @@ func newParityFixture(authz core.Checker, protected bool) *parityFixture {
 	return f
 }
 
+// flipSeededDatastorePlans moves the fixture's seeded free database and
+// store to paid plans, opening the workspace's free slots (w4/m241).
+func flipSeededDatastorePlans(t *testing.T, f *parityFixture) {
+	t.Helper()
+	ctx := context.Background()
+	var db appv1alpha1.Database
+	if err := f.pg.Client.Get(ctx, client.ObjectKey{Namespace: "tea-a", Name: "dpg-parity"}, &db); err != nil {
+		t.Fatal(err)
+	}
+	db.Spec.Plan = "basic-256mb"
+	if err := f.pg.Client.Update(ctx, &db); err != nil {
+		t.Fatal(err)
+	}
+	var kv appv1alpha1.KeyValue
+	if err := f.kv.Client.Get(ctx, client.ObjectKey{Namespace: "tea-a", Name: "red-parity"}, &kv); err != nil {
+		t.Fatal(err)
+	}
+	kv.Spec.Plan = "starter"
+	if err := f.kv.Client.Update(ctx, &kv); err != nil {
+		t.Fatal(err)
+	}
+	f.adm.persisted = 0
+}
+
 // developerChecker allows everything except the admin can_manage on a workspace.
 type developerChecker struct{}
 
@@ -330,6 +354,7 @@ func TestDryRunAnswersExactlyTheRealCall(t *testing.T) {
 func TestDryRunThatPassesWritesNothing(t *testing.T) {
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
 	f := newParityFixture(&fakeChecker{allow: true}, false)
+	flipSeededDatastorePlans(t, f)
 	for name, dryRun := range map[string]func() error{
 		"service create": func() error {
 			_, err := f.apps.Create(ctx, apps.CreateRequest{Name: "fresh", Image: "nginx:1", Plan: "free", DryRun: true})

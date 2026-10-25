@@ -107,11 +107,11 @@ func TestKeyValueEnumsAcceptBothSeparatorsOverREST(t *testing.T) {
 		}
 		return got
 	}
-	created := read(do(t, h, http.MethodPost, "/v1/key-value", testToken, `{"name":"kvh","plan":"free","maxmemoryPolicy":"allkeys-lru"}`), http.StatusCreated)
+	created := read(do(t, h, http.MethodPost, "/v1/key-value", testToken, `{"name":"kvh","plan":"starter","maxmemoryPolicy":"allkeys-lru"}`), http.StatusCreated)
 	if created.Options.MaxmemoryPolicy != "allkeys_lru" {
 		t.Fatalf("created maxmemoryPolicy = %q, want Render's allkeys_lru", created.Options.MaxmemoryPolicy)
 	}
-	read(do(t, h, http.MethodPost, "/v1/key-value", testToken, `{"name":"kvu","plan":"free","maxmemoryPolicy":"allkeys_lru"}`), http.StatusCreated)
+	read(do(t, h, http.MethodPost, "/v1/key-value", testToken, `{"name":"kvu","plan":"starter","maxmemoryPolicy":"allkeys_lru"}`), http.StatusCreated)
 	patched := read(do(t, h, http.MethodPatch, "/v1/key-value/"+created.ID, testToken, `{"persistenceMode":"journal-snapshot","maxmemoryPolicy":"volatile-ttl"}`), http.StatusOK)
 	if patched.Options.PersistenceMode != "journal_snapshot" || patched.Options.MaxmemoryPolicy != "volatile_ttl" {
 		t.Fatalf("patched = %+v, want journal_snapshot and volatile_ttl", patched)
