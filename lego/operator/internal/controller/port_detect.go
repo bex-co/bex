@@ -19,6 +19,8 @@ package controller
 import (
 	"context"
 	"fmt"
+
+	"github.com/bex-co/bex/lego/operator/internal/portscan"
 	"strconv"
 	"strings"
 	"time"
@@ -99,10 +101,14 @@ func (r *AppReconciler) detectBoundPort(ctx context.Context, app *appv1alpha1.Ap
 
 	scanCtx, cancel := context.WithTimeout(ctx, portDetectTimeout)
 	defer cancel()
-	open, err := r.PortScanner.Scan(scanCtx, ip)
+	open, err := scanBoundPort(scanCtx, r.PortScanner, ip)
 	if err != nil {
-		logf.FromContext(ctx).V(1).Info("port detection scan failed", "app", app.Name, "error", err.Error())
-		return ""
+		// A failed scan must not be silent (w4/393): the stall reason is the
+		// only place this failure class is visible from the product. A
+		// dropped-packet path reads exactly like "no listener found"
+		// without it.
+		logf.FromContext(ctx).Info("port detection scan failed", "app", app.Name, "error", err.Error())
+		return " Port detection could not reach the instance, so a process listening on another port cannot be detected yet."
 	}
 	var others []int
 	for _, p := range open {
@@ -135,6 +141,31 @@ func (r *AppReconciler) detectBoundPort(ctx context.Context, app *appv1alpha1.Ap
 		return fmt.Sprintf(" The process is listening on ports %s, not on port %d; set the service's port (or its PORT variable) to the one that serves HTTP.",
 			strings.Join(list, ", "), port)
 	}
+}
+
+// commonHTTPPorts are probed first (w4/393): with dropped packets a full
+// 65k sweep cannot finish inside portDetectTimeout, but a verdict on the
+// ports HTTP servers actually bind lands in well under a second.
+var commonHTTPPorts = []int{80, 443, 3000, 4000, 5000, 5173, 8000, 8080, 8443, 9000, 10000}
+
+// portsScanner is the optional bounded scan a Scanner may offer.
+type portsScanner interface {
+	ScanPorts(ctx context.Context, ip string, ports []int) ([]int, error)
+}
+
+// scanBoundPort runs the bounded common-port phase first, then the full
+// sweep when nothing answered there.
+func scanBoundPort(ctx context.Context, scanner portscan.Scanner, ip string) ([]int, error) {
+	if bounded, ok := scanner.(portsScanner); ok {
+		open, err := bounded.ScanPorts(ctx, ip, commonHTTPPorts)
+		if err != nil {
+			return nil, err
+		}
+		if len(open) > 0 {
+			return open, nil
+		}
+	}
+	return scanner.Scan(ctx, ip)
 }
 
 // unreadyPodIP is the address of the rollout's current-revision pod whose app

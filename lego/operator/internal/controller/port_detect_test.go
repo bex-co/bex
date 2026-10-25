@@ -27,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/bex-co/bex/lego/operator/internal/portscan"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -130,5 +131,14 @@ func TestExplicitPortClearsADetectedOne(t *testing.T) {
 	app := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Port: 3000}, Status: appv1alpha1.AppStatus{DetectedPort: 8000}}
 	if got := detectedServingPort(app, 3000); got != 3000 || app.Status.DetectedPort != 0 {
 		t.Fatalf("serving port %d, DetectedPort %d; want 3000 and cleared", got, app.Status.DetectedPort)
+	}
+}
+
+// w4/393: a failed scan names itself in the stall text instead of reading
+// like "no listener found".
+func TestDetectBoundPortSurfacesScanFailure(t *testing.T) {
+	r, app, dep := detectFixture(t, time.Minute, &cannedScanner{err: portscan.ErrUnreachable}, nil)
+	if got := r.detectBoundPort(t.Context(), app, dep, 10000); !strings.Contains(got, "could not reach the instance") {
+		t.Fatalf("stall text = %q, want the scan failure named", got)
 	}
 }
