@@ -591,11 +591,11 @@ func TestCompleterStaleSSHRowDoesNotPinSandbox(t *testing.T) {
 	}
 }
 
-// --- ADR059 D2: last-interaction idle grace ---------------------------------
+// --- w2/m67: last-interaction idle grace ------------------------------------
 
 // With a positive idle grace and no editor connected, a finished turn keeps its
 // sandbox until the idle window elapses since the turn end, then the reaper
-// reclaims it. This is the Active-tier generalization of the D6 immediate reap.
+// reclaims it. This generalizes the D6 immediate reap.
 func TestCompleterIdleGraceDefersUntilElapsed(t *testing.T) {
 	c, st, lc, id := completerFixture(succeededStatus(true), nil)
 	c.IdleTTL = 30 * time.Minute
@@ -623,6 +623,61 @@ func TestCompleterIdleGraceDefersUntilElapsed(t *testing.T) {
 	}
 	if st.rows[id].SandboxID != "" {
 		t.Fatalf("sandbox id not cleared after reap: %q", st.rows[id].SandboxID)
+	}
+}
+
+// A finished turn waiting out its idle grace is harvested once when it
+// finishes, not on every reaper tick; a part the driver flushed late is still
+// captured by one more read right before the sandbox is terminated.
+func TestCompleterHarvestsOnceAtFinishAndOnceBeforeTeardown(t *testing.T) {
+	c, st, lc, id := completerFixture(succeededStatus(true), nil)
+	c.IdleTTL = 2 * time.Hour
+	base := st.now
+	c.Now = func() time.Time { return base }
+	lc.transcriptLog = `{"turn":1,"partIndex":0,"part":{"type":"text","text":"first"}}`
+
+	c.Reconcile(context.Background()) // finalize + harvest + defer
+	for i := 1; i <= 5; i++ {
+		c.Now = func() time.Time { return base.Add(time.Duration(i) * time.Minute) }
+		c.Reconcile(context.Background())
+	}
+	if lc.readTranscript != 1 || lc.canceled != 0 {
+		t.Fatalf("grace ticks re-read the sandbox log: readTranscript=%d canceled=%d", lc.readTranscript, lc.canceled)
+	}
+
+	lc.transcriptLog += "\n" + `{"turn":1,"partIndex":1,"part":{"type":"text","text":"late"}}`
+	c.Now = func() time.Time { return base.Add(2*time.Hour + time.Minute) }
+	c.Reconcile(context.Background())
+	if lc.readTranscript != 2 || !lc.readTranscriptBeforeCancel || lc.canceled != 1 {
+		t.Fatalf("teardown did not re-harvest first: readTranscript=%d beforeCancel=%v canceled=%d", lc.readTranscript, lc.readTranscriptBeforeCancel, lc.canceled)
+	}
+	if got := len(st.transcript[id]); got != 2 {
+		t.Fatalf("stored %d parts, want the late flush too (2)", got)
+	}
+}
+
+// A harvest that fails while the sandbox waits out its grace is retried on the
+// next tick rather than left for the final pre-teardown read.
+func TestCompleterRetriesFailedHarvestDuringGrace(t *testing.T) {
+	c, st, lc, id := completerFixture(succeededStatus(true), nil)
+	c.IdleTTL = 2 * time.Hour
+	base := st.now
+	c.Now = func() time.Time { return base }
+	lc.transcriptErr = errors.New("gateway hiccup")
+	c.Reconcile(context.Background())
+	reads := lc.readTranscript
+
+	lc.transcriptErr = nil
+	lc.transcriptLog = `{"turn":1,"partIndex":0,"part":{"type":"text","text":"hello"}}`
+	c.Now = func() time.Time { return base.Add(time.Minute) }
+	c.Reconcile(context.Background())
+	if lc.readTranscript != reads+1 || len(st.transcript[id]) != 1 {
+		t.Fatalf("failed harvest not retried: reads %d→%d, parts=%d", reads, lc.readTranscript, len(st.transcript[id]))
+	}
+	c.Now = func() time.Time { return base.Add(2 * time.Minute) }
+	c.Reconcile(context.Background())
+	if lc.readTranscript != reads+1 {
+		t.Fatalf("harvest repeated after it succeeded: reads=%d", lc.readTranscript)
 	}
 }
 

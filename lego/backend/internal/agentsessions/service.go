@@ -63,7 +63,7 @@ type Store interface {
 	DeleteAgentSession(context.Context, string) error
 	// Deferred-teardown reaping (ADR054 D6, generalized by w2/m67 / w10/m15):
 	// the Completer defers a finished session's sandbox teardown while an editor
-	// SSH session is open AND for the Active-tier idle grace after the last
+	// SSH session is open AND for the idle grace after the last
 	// interaction. AgentSessionSSHActivity returns both signals: whether a fresh
 	// still-open editor session pins the sandbox, and the last SSH disconnect time
 	// (feeding the idle clock alongside the session's turn-end).
@@ -723,7 +723,7 @@ func errArchived(phase string) error {
 
 // Archive puts a session out of the working set (ADR065 D1). It is idempotent,
 // allowed in any phase, and never touches the lifecycle — but it zeroes the
-// Active-tier idle grace: an archived session's still-live sandbox is reclaimed
+// idle grace: an archived session's still-live sandbox is reclaimed
 // at the Completer's next tick (an in-flight turn is NOT canceled; the turn
 // finishes and delivers, then the sandbox is reclaimed immediately).
 func (s *Service) Archive(ctx context.Context, sessionID string) (View, error) {

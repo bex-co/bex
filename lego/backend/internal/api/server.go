@@ -371,8 +371,8 @@ type Deps struct {
 	// model credential + this per-session base URL, and the session egress policy
 	// admits the proxy in place of the vendor host. Empty disables session mutation.
 	AgentModelProxyURL string
-	// AgentSandboxIdleTTL is the Active-tier idle grace (ADR059 D2 / w2/m67): a
-	// finished session's sandbox lives until it has been idle this long. Zero ⇒
+	// AgentSandboxIdleTTL is the idle grace (w2/m67, w10/m15): a finished
+	// session's sandbox is terminated once it has been idle this long. Zero ⇒
 	// no grace (reap as soon as no editor is connected, ADR054 D6 behavior).
 	AgentSandboxIdleTTL time.Duration
 	// AgentTurnTimeout bounds one agent turn (w5/m80 t002, BEX_AGENT_TURN_TIMEOUT).

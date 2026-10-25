@@ -1017,7 +1017,7 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 			// w5/m80 t003: the gateway reports a vendor auth rejection (401/403 on the
 			// gateway→vendor hop) here so bex-api terminalizes the session fast instead
 			// of the agent CLI burning its full retry/backoff. Same gateway-only HMAC +
-			// internal-only listener as the mint; wired even when hibernation/keys vary,
+			// internal-only listener as the mint; wired whatever the model keys,
 			// since it only needs the store to CAS a live session to failed.
 			internalRoot.Handle(agentsession.InternalModelAuthFailurePath, &agentsession.ModelAuthFailureHandler{
 				Secret: []byte(cfg.SandboxExecSecret),
@@ -1214,7 +1214,7 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 // projector + namespace reconciler loops.
 // wireAgentSessions reads the agent-session and Browser Web Shell environment
 // contract onto deps: the shared gateway trust key, the browser-reachable
-// origins, the Active-tier lifecycle bounds, and the ADR059 hibernation store.
+// origins, and the idle-close and live-sandbox lifecycle bounds.
 // wireDiskSnapshots points bex-api at the same bucket the operator writes disk
 // snapshots to (docs/ADR082-persistent-disks.md D5) and gives it the key that
 // signs the 24-hour handles a listing hands out. Unset ⇒ the two snapshot verbs
