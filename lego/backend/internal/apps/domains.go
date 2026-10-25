@@ -188,9 +188,13 @@ func (s *Service) requireDomainTraffic(ctx context.Context, app *appv1alpha1.App
 
 // DomainView is the neutral bex projection of a custom domain on an App.
 type DomainView struct {
-	CreatedAt  string // RFC3339 claim creation time; empty for legacy storeless domains.
-	Name       string
-	DomainType string // "apex" or "subdomain" (Render's enum)
+	CreatedAt string // RFC3339 claim creation time; empty for legacy storeless domains.
+	Name      string
+	// ServiceID/ServiceName identify the owning service, Render's
+	// customDomain.server {id, name} (w4/389).
+	ServiceID   string
+	ServiceName string
+	DomainType  string // "apex" or "subdomain" (Render's enum)
 	// VerificationStatus is Render's field with Render's meaning: traffic-DNS
 	// verification ("unverified" until the record points at this service).
 	VerificationStatus string // "unverified" or "verified"
@@ -576,6 +580,8 @@ func (s *Service) domainView(ctx context.Context, app *appv1alpha1.App, host, pl
 	// createdAt can carry.
 	view := DomainView{
 		Name:               host,
+		ServiceID:          publicID(app),
+		ServiceName:        core.AppPublicName(app),
 		DomainType:         dtype,
 		VerificationStatus: "verified",
 		CertificateStatus:  cStatus,
@@ -596,6 +602,8 @@ func (s *Service) domainView(ctx context.Context, app *appv1alpha1.App, host, pl
 func (s *Service) domainClaimView(ctx context.Context, app *appv1alpha1.App, claim store.Domain, platformHost string) DomainView {
 	view := DomainView{
 		Name:              claim.Host,
+		ServiceID:         publicID(app),
+		ServiceName:       core.AppPublicName(app),
 		DomainType:        domainType(claim.Host),
 		CertificateStatus: "pending",
 		ServerStatus:      "pending",
@@ -1664,6 +1672,14 @@ type renderCustomDomain struct {
 	// record in the dashboard, not the API): the record the tenant must create to
 	// point this domain at the service. A safe superset, w5/m10.
 	DNSRecord renderDNSRecord `json:"dnsRecord"`
+	// Server is Render's owning-service object {id, name} (w4/389).
+	Server renderServer `json:"server"`
+}
+
+// renderServer is Render's customDomain.server: the owning service.
+type renderServer struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 // renderDNSRecord is the wire shape of a DNSRecordView (the DNS record to create).
@@ -1697,6 +1713,7 @@ func toRenderCustomDomain(d DomainView) renderCustomDomain {
 			Name:  d.DNSRecord.Name,
 			Value: d.DNSRecord.Value,
 		},
+		Server: renderServer{ID: d.ServiceID, Name: d.ServiceName},
 	}
 }
 
