@@ -379,7 +379,46 @@ func TestLokiHostBreakdownOnLoki(t *testing.T) {
 // pinned OpenAPI declares on /metrics/cpu and /metrics/http-requests, must
 // either change the parsed query or be refused. A new argument without a probe
 // fails here until someone decides what it does.
+// TestRepeatedHostPathValuesAreKept is w4/401: Render ORs repeated host/path
+// values; both adapters must keep every value, in either order, and GraphQL
+// must refuse several STATUS_CODE values instead of silently using the first.
+func TestRepeatedHostPathValuesAreKept(t *testing.T) {
+	for _, url := range []string{
+		"/v1/metrics/http-requests?resource=web&path=/nf&path=/err&host=a.example.com",
+		"/v1/metrics/http-requests?resource=web&path=/err&path=/nf&host=a.example.com",
+	} {
+		_, q, err := parseMetricParams(httptest.NewRequest(http.MethodGet, url, nil))
+		if err != nil {
+			t.Fatalf("%s: %v", url, err)
+		}
+		if len(q.Paths) != 2 || len(q.Hosts) != 1 {
+			t.Errorf("%s: paths=%v hosts=%v, want both paths and the host", url, q.Paths, q.Hosts)
+		}
+	}
+	gql := func(filters ...any) map[string]any {
+		return map[string]any{"name": "HTTP_REQUESTS", "filters": filters}
+	}
+	_, q, err := metricsQueryInputFromArgs(gql(
+		map[string]any{"field": "RESOURCE", "values": []any{"web"}},
+		map[string]any{"field": "PATH", "values": []any{"/nf", "/err"}},
+		map[string]any{"field": "HOST", "values": []any{"a.example.com", "b.example.com"}},
+	))
+	if err != nil {
+		t.Fatalf("GraphQL multi host/path: %v", err)
+	}
+	if len(q.Paths) != 2 || len(q.Hosts) != 2 {
+		t.Errorf("GraphQL paths=%v hosts=%v, want both of each", q.Paths, q.Hosts)
+	}
+	if _, _, err := metricsQueryInputFromArgs(gql(
+		map[string]any{"field": "RESOURCE", "values": []any{"web"}},
+		map[string]any{"field": "STATUS_CODE", "values": []any{"200", "500"}},
+	)); err == nil {
+		t.Error("GraphQL STATUS_CODE with two values: want a refusal, got none")
+	}
+}
+
 func TestNoMetricsArgumentIsAcceptedWithoutEffect(t *testing.T) {
+
 	t.Run("GraphQL MetricsQueryInput", func(t *testing.T) {
 		probes := map[string]any{
 			"start":              "2026-10-01T00:00:00Z",

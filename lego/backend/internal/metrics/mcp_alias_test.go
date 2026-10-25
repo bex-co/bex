@@ -110,7 +110,13 @@ func TestMCPGetMetricsRenderSpellings(t *testing.T) {
 	requestSrc := func(_ context.Context, req RequestMetricsRequest) ([]MetricSeries, error) {
 		gotQuantile = req.Quantile
 		gotRes = int64(req.Resolution.Seconds())
-		gotHost, gotPath, gotGroupBy = req.Host, req.Path, req.GroupBy
+		gotHost, gotPath, gotGroupBy = "", "", req.GroupBy
+		if len(req.Hosts) > 0 {
+			gotHost = req.Hosts[0]
+		}
+		if len(req.Paths) > 0 {
+			gotPath = req.Paths[0]
+		}
 		return []MetricSeries{{Unit: "requests", Points: []MetricPoint{{Value: 1}}}}, nil
 	}
 	svc := newService(resourceSrc, requestSrc, sampleApp("web"))

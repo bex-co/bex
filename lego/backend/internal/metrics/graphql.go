@@ -397,10 +397,13 @@ func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
 	}
 
 	filters := metricsFilterValues(input)
+	if codes := filters[filterFieldStatusCode]; len(codes) > 1 {
+		return nil, MetricQuery{}, fmt.Errorf("%w: STATUS_CODE accepts one value, got %d", core.ErrBadRequest, len(codes))
+	}
 	q.StatusCode = firstValue(filters[filterFieldStatusCode])
-	// HOST/PATH are parsed only so Metrics can refuse them (see MetricQuery.Host).
-	q.Host = firstValue(filters[filterFieldHost])
-	q.Path = firstValue(filters[filterFieldPath])
+	// HOST/PATH are parsed only so Metrics can refuse them (see MetricQuery.Hosts).
+	q.Hosts = nonEmptyValues(filters[filterFieldHost])
+	q.Paths = nonEmptyValues(filters[filterFieldPath])
 	q.Instances = filters[filterFieldInstance]
 
 	resources := filters[filterFieldResource]

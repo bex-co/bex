@@ -101,7 +101,7 @@ func TestLokiRequestMetricsClipToWindowOnLoki(t *testing.T) {
 
 	source := NewLokiRequestMetricsSource(base, hc)
 	query := func(req RequestMetricsRequest) ([]MetricSeries, error) {
-		req.Namespace, req.App, req.Path = ns, "web", "/a"
+		req.Namespace, req.App, req.Paths = ns, "web", []string{"/a"}
 		if req.Resolution == 0 {
 			req.Resolution = time.Minute
 		}
@@ -217,7 +217,7 @@ func TestLokiRequestMetricsClipToWindowOnLoki(t *testing.T) {
 	})
 
 	t.Run("latency quantile ignores out-of-window outliers", func(t *testing.T) {
-		series := read(t, RequestMetricsRequest{Metric: MetricHTTPLatency, Quantile: 0.9, Host: "web.example.com", Start: start, End: end})
+		series := read(t, RequestMetricsRequest{Metric: MetricHTTPLatency, Quantile: 0.9, Hosts: []string{"web.example.com"}, Start: start, End: end})
 		if len(series) == 0 {
 			t.Fatal("no latency series for the populated window")
 		}

@@ -100,6 +100,15 @@ func (a getMetricsArgs) quantile() float64 {
 	return mcputil.PreferPtrOrZero(a.HTTPLatencyQuantile, a.Quantile)
 }
 
+// singleValue wraps an MCP scalar filter as a one-element list (Render's MCP
+// host/path args are scalar, so MCP stays single-valued).
+func singleValue(v string) []string {
+	if v == "" {
+		return nil
+	}
+	return []string{v}
+}
+
 func (a getMetricsArgs) host() string {
 	return mcputil.PreferString(a.HTTPHost, a.Host)
 }
@@ -178,8 +187,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			Quantile:   in.quantile(),
 			Quantiles:  in.Quantiles,
 			Percentage: in.Percentage,
-			Host:       in.host(),
-			Path:       in.path(),
+			Hosts:      singleValue(in.host()),
+			Paths:      singleValue(in.path()),
 			GroupBy:    groupBy,
 			Resolution: time.Duration(in.resolutionSeconds()) * time.Second,
 			Instances:  in.Instance,
