@@ -331,7 +331,7 @@ const enEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.protectedHint": {
     message:
-      "Require an explicit sudo confirmation for destructive service actions.",
+      "Only workspace Admins can delete, suspend, resume or turn on maintenance mode for this environment's resources.",
     description: "Protected-status setting explanation",
   },
   "environments.isolationLabel": {

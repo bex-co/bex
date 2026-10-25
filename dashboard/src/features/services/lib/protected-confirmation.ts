@@ -9,6 +9,13 @@ export type ProtectedActionResult =
 const PROTECTED_REFUSAL = "PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED";
 
 /**
+ * Back-compat only (w4/395): since w8/187 the server restricts protected-
+ * environment verbs to workspace Admins (403, no phrase issued), so this
+ * retry path fires only if a server again answers
+ * PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED. Kept deliberately rather
+ * than deleted so an older or re-issued refusal still completes the
+ * action; a plain Admin-role 403 surfaces its own reason instead.
+ *
  * bex-api's protected-environment refusal: the authoritative retry phrase, and
  * the resource it names (the refusal's `name` param, w5/m130), or null for any
  * other error. The server computes the phrase from the actual verb and
