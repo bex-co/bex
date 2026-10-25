@@ -412,6 +412,9 @@ const (
 	// spec.disk.restoreSnapshot differs from this, so a finished restore does
 	// not loop, and re-requesting the SAME snapshot deliberately runs again.
 	annotDiskRestored = "app.bex.co/disk-restored"
+	// annotDiskRestoreRequest records, on the restore Job, which request it
+	// serves (diskRestoreRequest).
+	annotDiskRestoreRequest = "app.bex.co/disk-restore-request"
 	// diskRestorePoll is how often a mid-restore App is re-checked. A restore
 	// streams a whole volume back, so this is a progress poll, not a timeout.
 	diskRestorePoll = 15 * time.Second
@@ -437,7 +440,8 @@ func (r *AppReconciler) reconcileDiskRestore(ctx context.Context, app *appv1alph
 		return false, nil
 	}
 	requested := app.Spec.Disk.RestoreSnapshot
-	if app.Annotations[annotDiskRestored] == requested {
+	request := diskRestoreRequest(app)
+	if app.Annotations[annotDiskRestored] == request {
 		return false, nil // already served this request
 	}
 	if !r.DiskSnapshots.restorable() || r.BackupHelperImage == "" {
@@ -464,9 +468,31 @@ func (r *AppReconciler) reconcileDiskRestore(ctx context.Context, app *appv1alph
 			setDiskCondition(app, false, "DiskRestorePending", "stopping the service before restoring its disk")
 			return true, err
 		}
-		return true, r.createDiskRestoreJob(ctx, app, requested)
+		return true, r.createDiskRestoreJob(ctx, app, requested, request)
 	case err != nil:
 		return true, err
+	}
+
+	if job.DeletionTimestamp != nil {
+		setDiskCondition(app, false, "DiskRestorePending", "clearing the previous restore before this one")
+		return true, nil
+	}
+	if restoreJobRequest(job) != request {
+		if job.Status.Succeeded == 0 && job.Status.Failed == 0 {
+			// A restore for an earlier request is still writing the volume.
+			// Never interrupt it: the new one starts after it ends.
+			setDiskCondition(app, false, "DiskRestoreRunning", "finishing an earlier restore before this one")
+			return true, nil
+		}
+		// A finished Job for an earlier request (a retry after a failure, or
+		// the same snapshot asked for again). Clear it; the next pass stops
+		// the service and starts this request's Job.
+		if err := r.Delete(ctx, job, client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil &&
+			!apierrors.IsNotFound(err) {
+			return true, err
+		}
+		setDiskCondition(app, false, "DiskRestorePending", "clearing the previous restore before this one")
+		return true, nil
 	}
 
 	switch {
@@ -474,7 +500,7 @@ func (r *AppReconciler) reconcileDiskRestore(ctx context.Context, app *appv1alph
 		// Record what was restored, delete the Job, and let the normal reconcile
 		// bring the service back on the restored volume.
 		if err := r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) {
-			metav1.SetMetaDataAnnotation(meta, annotDiskRestored, requested)
+			metav1.SetMetaDataAnnotation(meta, annotDiskRestored, request)
 		}); err != nil {
 			return true, err
 		}
@@ -538,10 +564,38 @@ func (r *AppReconciler) diskDetachedFromService(ctx context.Context, app *appv1a
 	return dep.Status.Replicas == 0, nil
 }
 
-func (r *AppReconciler) createDiskRestoreJob(ctx context.Context, app *appv1alpha1.App, object string) error {
+// diskRestoreRequest identifies the owner's current restore request: the
+// snapshot plus when it was asked for, or the snapshot alone on a CR from
+// before requests were stamped, so no earlier restore is ever re-run.
+func diskRestoreRequest(app *appv1alpha1.App) string {
+	requested := app.Spec.Disk.RestoreSnapshot
+	if at := app.Annotations[appv1alpha1.DiskRestoreRequestedAtAnnotation]; at != "" {
+		return requested + "@" + at
+	}
+	return requested
+}
+
+// restoreJobRequest is the request a restore Job serves. A Job created before
+// requests were recorded serves its snapshot alone.
+func restoreJobRequest(job *batchv1.Job) string {
+	if request, ok := job.Annotations[annotDiskRestoreRequest]; ok {
+		return request
+	}
+	for _, c := range job.Spec.Template.Spec.Containers {
+		for _, e := range c.Env {
+			if e.Name == "BEX_DISK_SNAPSHOT_KEY" {
+				return e.Value
+			}
+		}
+	}
+	return ""
+}
+
+func (r *AppReconciler) createDiskRestoreJob(ctx context.Context, app *appv1alpha1.App, object, request string) error {
 	labels := diskBackupLabels(app)
 	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{
 		Name: diskRestoreName(app.Name), Namespace: app.Namespace, Labels: labels,
+		Annotations: map[string]string{annotDiskRestoreRequest: request},
 	}}
 	job.Spec = r.diskSnapshotJobSpec(app, labels, "restore", []corev1.EnvVar{
 		{Name: "BEX_DISK_SNAPSHOT_KEY", Value: object},

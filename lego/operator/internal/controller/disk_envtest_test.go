@@ -632,6 +632,93 @@ var _ = Describe("Persistent disk restore", func() {
 		Expect(restoring).To(BeFalse())
 	})
 
+	// w6/089: a failed restore, and a second restore of the same snapshot,
+	// are new requests to the operator once bex-api stamps the request time.
+	requestAgain := func(app *appv1alpha1.App, at string) {
+		metav1.SetMetaDataAnnotation(&app.ObjectMeta, appv1alpha1.DiskRestoreRequestedAtAnnotation, at)
+	}
+	finishRestoreJob := func(app *appv1alpha1.App, succeeded bool) {
+		job, err := getRestoreJob(app)
+		Expect(err).NotTo(HaveOccurred())
+		if succeeded {
+			job.Status.Succeeded = 1
+		} else {
+			job.Status.Failed = 1
+		}
+		Expect(k8sClient.Status().Update(ctx, job)).To(Succeed())
+	}
+
+	It("retries a failed restore when the owner asks again", func() {
+		reconciler, app := newRestoreApp("restore-retry")
+		defer func() { Expect(k8sClient.Delete(ctx, app)).To(Succeed()) }()
+		requestAgain(app, "2026-10-24T22:45:40Z")
+		_, err := reconciler.reconcileDiskRestore(ctx, app)
+		Expect(err).NotTo(HaveOccurred())
+		finishRestoreJob(app, false)
+
+		// The same request stays failed: one attempt per ask.
+		restoring, err := reconciler.reconcileDiskRestore(ctx, app)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(restoring).To(BeTrue())
+		job, err := getRestoreJob(app)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(job.Status.Failed).To(BeEquivalentTo(1))
+
+		// Asking again clears the failed Job, then runs a fresh one for it.
+		requestAgain(app, "2026-10-25T00:40:00Z")
+		restoring, err = reconciler.reconcileDiskRestore(ctx, app)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(restoring).To(BeTrue(), "the service stays down between the two restores")
+		Eventually(func() bool {
+			_, err := getRestoreJob(app)
+			return apierrors.IsNotFound(err)
+		}).Should(BeTrue())
+		_, err = reconciler.reconcileDiskRestore(ctx, app)
+		Expect(err).NotTo(HaveOccurred())
+		job, err = getRestoreJob(app)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(job.Status.Failed).To(BeZero())
+		Expect(job.Annotations).To(HaveKeyWithValue(annotDiskRestoreRequest, snapshot+"@2026-10-25T00:40:00Z"))
+	})
+
+	It("restores the same snapshot again on a new request", func() {
+		reconciler, app := newRestoreApp("restore-twice")
+		defer func() { Expect(k8sClient.Delete(ctx, app)).To(Succeed()) }()
+		requestAgain(app, "2026-10-24T01:00:00Z")
+		_, err := reconciler.reconcileDiskRestore(ctx, app)
+		Expect(err).NotTo(HaveOccurred())
+		finishRestoreJob(app, true)
+		restoring, err := reconciler.reconcileDiskRestore(ctx, app)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(restoring).To(BeFalse())
+		Expect(app.Annotations).To(HaveKeyWithValue(annotDiskRestored, snapshot+"@2026-10-24T01:00:00Z"))
+
+		requestAgain(app, "2026-10-25T01:00:00Z")
+		restoring, err = reconciler.reconcileDiskRestore(ctx, app)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(restoring).To(BeTrue(), "a second request for the same snapshot runs again")
+	})
+
+	It("never re-runs a restore served before requests were stamped", func() {
+		reconciler, app := newRestoreApp("restore-legacy")
+		defer func() { Expect(k8sClient.Delete(ctx, app)).To(Succeed()) }()
+		_, err := reconciler.reconcileDiskRestore(ctx, app)
+		Expect(err).NotTo(HaveOccurred())
+		job, err := getRestoreJob(app)
+		Expect(err).NotTo(HaveOccurred())
+		// A Job from before this change carries no request annotation.
+		delete(job.Annotations, annotDiskRestoreRequest)
+		Expect(k8sClient.Update(ctx, job)).To(Succeed())
+		finishRestoreJob(app, false)
+
+		restoring, err := reconciler.reconcileDiskRestore(ctx, app)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(restoring).To(BeTrue())
+		job, err = getRestoreJob(app)
+		Expect(err).NotTo(HaveOccurred(), "a legacy failed Job for the same snapshot is not replaced")
+		Expect(job.Status.Failed).To(BeEquivalentTo(1))
+	})
+
 	// Found by the w1/m85 cluster drill: the snapshot Jobs' pods carry the same
 	// app label as the service's own, and a completed backup pod lingers for
 	// history — so a "are the pods gone?" check by label reported the service as

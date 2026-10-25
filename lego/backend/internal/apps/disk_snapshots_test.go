@@ -124,6 +124,22 @@ func TestRestoreRequestsTheSnapshotOnTheSpec(t *testing.T) {
 	if stored.Spec.Disk.RestoreSnapshot != snapshotObject(1).Key {
 		t.Fatalf("spec.disk.restoreSnapshot = %q, want the requested object", stored.Spec.Disk.RestoreSnapshot)
 	}
+	// Each request is stamped, so asking again for the same snapshot (or after
+	// a failed restore) is a new request to the operator (w6/089).
+	first := stored.Annotations[appv1alpha1.DiskRestoreRequestedAtAnnotation]
+	if first == "" {
+		t.Fatal("restore request carries no requested-at stamp")
+	}
+	svc.Base.Clock = func() time.Time { return time.Now().Add(time.Minute) }
+	if _, err := svc.RestoreDiskSnapshot(context.Background(), diskID, views[0].SnapshotKey); err != nil {
+		t.Fatalf("second RestoreDiskSnapshot: %v", err)
+	}
+	if err := svc.Client.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web"}, stored); err != nil {
+		t.Fatalf("get app: %v", err)
+	}
+	if again := stored.Annotations[appv1alpha1.DiskRestoreRequestedAtAnnotation]; again == first {
+		t.Fatalf("a second request kept the first stamp %q", first)
+	}
 }
 
 // Every rejection has to happen BEFORE the spec is touched: a bad key must not
