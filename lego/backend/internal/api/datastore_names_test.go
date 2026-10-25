@@ -34,6 +34,9 @@ import (
 func TestDatastoreNamesPassOneRule(t *testing.T) {
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
 	f := newParityFixture(&fakeChecker{allow: true}, false)
+	// The fixture seeds one free database and store; move them to paid so
+	// the one-free slot (w4/m241) is open for the creates under test.
+	flipSeededDatastorePlans(t, f)
 	kinds := map[string]map[string]func(name string) error{
 		"Postgres": {
 			"create": func(name string) error {
