@@ -31,3 +31,7 @@ Live in `bex-canary` (Hobby; it holds one free Postgres, `qa-20261017-64552e-pg1
 - **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)); Postgres ([ADR009](../../../docs/ADR009-postgresql-management.md)); Key Value ([ADR021](../../../docs/ADR021-keyvalue-management.md)); pricing ([ADR030](../../../docs/ADR030-pricing.md)); per-tenant quota ([ADR043](../../../docs/ADR043-tenant-namespace-isolation.md)); ledger ([ADR018](../../../docs/ADR018-render-parity.md)).
 - **Expected outcome:** a Hobby user who has tried the free database can buy a paid one in the same workspace. The free tier is bounded the way Render bounds it, on every plan.
 - **Why now:** severity major — revenue-blocking and misleading. The refusal tells the user to upgrade the workspace plan, which Render never requires for a paid database. w4/339 fixed only the message's grammar and assumed the limit itself was right. The Render parity closing task applies: REST, GraphQL, MCP, Blueprint, the limits surface and the dashboard all change.
+
+## Live evidence (2026-10-25, platform pin `bd6423e5e46f`, bex v0.3.3, `bex-canary`, `/qa-find-bugs-cli` loop)
+
+`bex blueprints validate` with a `starter` Key Value and a `basic-256mb` Postgres (one free Postgres already in the workspace) → `valid: true`. The same with `plan: free` for both → invalid, `this workspace already has a free Postgres database (qa-20261017-64552e-pg14); delete it or choose a paid instance type` (free Key Value admitted, none present).
