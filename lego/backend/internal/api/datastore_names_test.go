@@ -27,10 +27,10 @@ import (
 )
 
 // TestDatastoreNamesPassOneRule (w5/m118): Postgres and Key Value names pass
-// one check on create and on rename (resourcename.CheckDatastore): a
-// free-form label, as on Render (w5/m153), and no resource-ID shape a
-// selector could read as that ID (w8/049). One table over both kinds replaces
-// a copy of this test per kind.
+// one check on create and on rename (core.CheckDatastoreName): a
+// free-form label, as on Render (w5/m153), including one shaped like a
+// resource ID (w5/m118 reversed w8/049). One table over both kinds replaces a
+// copy of this test per kind.
 func TestDatastoreNamesPassOneRule(t *testing.T) {
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
 	f := newParityFixture(&fakeChecker{allow: true}, false)
@@ -59,10 +59,10 @@ func TestDatastoreNamesPassOneRule(t *testing.T) {
 	for kind, verbs := range kinds {
 		for verb, call := range verbs {
 			for name, code := range map[string]string{
-				"billing": "", "srv-web": "", "dpg-db1e4vnhb1uc73ebifi": "", // short of an ID's 20-character suffix
-				"srv-db1e4vnhb1uc73ebifi0": "NAME_RESOURCE_ID_RESERVED",
-				"dpg-zzzzzzzzzzzzzzzzzzzz": "NAME_RESOURCE_ID_RESERVED",
-				"red-aaaaaaaaaaaaaaaaaaaa": "NAME_RESOURCE_ID_RESERVED",
+				"billing": "", "srv-web": "", "dpg-db1e4vnhb1uc73ebifi": "",
+				"srv-db1e4vnhb1uc73ebifi0": "",
+				"dpg-zzzzzzzzzzzzzzzzzzzz": "",
+				"red-aaaaaaaaaaaaaaaaaaaa": "",
 				"Billing":                  "",
 				"cache_1":                  "",
 				"Prod DB":                  "",

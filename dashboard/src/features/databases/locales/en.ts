@@ -161,7 +161,7 @@ const enDatabases: Record<string, TranslationEntry> = {
   },
   "databases.fieldNameError": {
     message:
-      "Enter a name of up to 100 characters, without line breaks or control characters, that isn't shaped like a resource ID (such as srv-…).",
+      "Enter a name of up to 100 characters, without line breaks or control characters.",
     description: "Create-database name validation message",
   },
   "databases.physicalNamesTitle": {
@@ -1246,7 +1246,7 @@ const enDatabases: Record<string, TranslationEntry> = {
   },
   "databases.nameInvalid": {
     message:
-      "Enter a name of up to 100 characters, without line breaks or control characters, that isn't shaped like a resource ID (such as srv-…).",
+      "Enter a name of up to 100 characters, without line breaks or control characters.",
     description: "Database rename validation message",
   },
   // --- Insights panel (w2/m25) ---

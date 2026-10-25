@@ -23,22 +23,23 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// TestBlueprintDatastoreNameRefusesResourceIDShape is w8/049's Blueprint half:
-// databases[].name and a keyvalue service name shaped like a resource ID are
-// refused at parse, with the same code the direct APIs return.
-func TestBlueprintDatastoreNameRefusesResourceIDShape(t *testing.T) {
+// TestBlueprintDatastoreNameAcceptsResourceIDShape: databases[].name and a
+// keyvalue service name are free-form labels, as on Render, even when shaped
+// like a resource ID (w5/m118 reversed w8/049). A padded name is still refused
+// at parse, with the code the direct APIs return.
+func TestBlueprintDatastoreNameAcceptsResourceIDShape(t *testing.T) {
+	for _, name := range []string{"orders", "dpg-zzzzzzzzzzzzzzzzzzzz"} {
+		if _, err := parseDatabase(bexDatabase{Name: name}); err != nil {
+			t.Errorf("parseDatabase(%q) = %v, want accepted", name, err)
+		}
+	}
+	for _, name := range []string{"cache", "srv-zzzzzzzzzzzzzzzzzzzz"} {
+		if _, err := parseKeyValue(bexService{Name: name, Type: "keyvalue"}); err != nil {
+			t.Errorf("parseKeyValue(%q) = %v, want accepted", name, err)
+		}
+	}
 	var coded *core.CodedError
-	if _, err := parseDatabase(bexDatabase{Name: "dpg-zzzzzzzzzzzzzzzzzzzz"}); !errors.As(err, &coded) || coded.Code != "NAME_RESOURCE_ID_RESERVED" {
-		t.Errorf("parseDatabase = %v, want NAME_RESOURCE_ID_RESERVED", err)
-	}
-	coded = nil
-	if _, err := parseKeyValue(bexService{Name: "srv-zzzzzzzzzzzzzzzzzzzz", Type: "keyvalue"}); !errors.As(err, &coded) || coded.Code != "NAME_RESOURCE_ID_RESERVED" {
-		t.Errorf("parseKeyValue = %v, want NAME_RESOURCE_ID_RESERVED", err)
-	}
-	if _, err := parseDatabase(bexDatabase{Name: "orders"}); err != nil {
-		t.Errorf("control parseDatabase(orders) = %v", err)
-	}
-	if _, err := parseKeyValue(bexService{Name: "cache", Type: "keyvalue"}); err != nil {
-		t.Errorf("control parseKeyValue(cache) = %v", err)
+	if _, err := parseDatabase(bexDatabase{Name: " orders"}); !errors.As(err, &coded) || coded.Code != "RESOURCE_NAME_INVALID" {
+		t.Errorf("parseDatabase(padded) = %v, want RESOURCE_NAME_INVALID", err)
 	}
 }

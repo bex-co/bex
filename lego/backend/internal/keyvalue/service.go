@@ -47,7 +47,6 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
-	"github.com/bex-co/bex/lego/backend/internal/resourcename"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -484,7 +483,7 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return KeyValueView{}, err
 	}
-	if err := resourcename.CheckDatastore(req.Name); err != nil {
+	if err := core.CheckDatastoreName(req.Name); err != nil {
 		return KeyValueView{}, err
 	}
 	req.Plan = tiers.Valkey.CanonicalID(req.Plan)
@@ -914,7 +913,7 @@ type KeyValuePatch struct {
 // update and its dry-run alike (mirrors PostgresPatch.validate).
 func (patch KeyValuePatch) validate() error {
 	if patch.Name != nil {
-		if err := resourcename.CheckDatastore(*patch.Name); err != nil {
+		if err := core.CheckDatastoreName(*patch.Name); err != nil {
 			return err
 		}
 	}

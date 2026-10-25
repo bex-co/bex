@@ -3362,7 +3362,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.createFieldNameError": {
     message:
-      "Enter a name of up to 100 characters, without line breaks or control characters, that isn't shaped like a resource ID (such as srv-…).",
+      "Enter a name of up to 100 characters, without line breaks or control characters.",
     description: "Create-wizard name validation message",
   },
   "services.createFieldNameResourceName": {
