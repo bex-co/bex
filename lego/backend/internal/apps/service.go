@@ -5309,6 +5309,64 @@ func validatePublicRewriteHost(i int, dest string) error {
 	return nil
 }
 
+// routePlaceholderName mirrors the operator static-server grammar
+// (lego/operator/internal/staticserver placeholderName): a whole segment
+// ":name", [A-Za-z_][A-Za-z0-9_]*. The module DAG forbids importing the
+// operator, so both sides pin the same vectors in their tests.
+func routePlaceholderName(segment string) (string, bool) {
+	if len(segment) < 2 || segment[0] != ':' {
+		return "", false
+	}
+	name := segment[1:]
+	for i, c := range name {
+		if c == '_' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || i > 0 && c >= '0' && c <= '9' {
+			continue
+		}
+		return "", false
+	}
+	return name, true
+}
+
+func validateRoutePlaceholders(i int, source, dest string) error {
+	declared := map[string]bool{}
+	for _, seg := range strings.Split(source, "/") {
+		name, ok := routePlaceholderName(seg)
+		if !ok {
+			continue
+		}
+		if declared[name] {
+			return fmt.Errorf("%w: routes[%d].source repeats :%s", core.ErrBadRequest, i, name)
+		}
+		declared[name] = true
+	}
+	path := dest
+	if parsed, err := url.Parse(dest); err == nil && parsed.Path != "" {
+		path = parsed.Path
+	} else if idx := strings.IndexAny(path, "?#"); idx >= 0 {
+		path = path[:idx]
+	}
+	for j := 0; j < len(path); {
+		if path[j] != ':' {
+			j++
+			continue
+		}
+		k := j + 1
+		for k < len(path) && (path[k] == '_' || path[k] >= 'a' && path[k] <= 'z' || path[k] >= 'A' && path[k] <= 'Z' || path[k] >= '0' && path[k] <= '9') {
+			k++
+		}
+		name := path[j+1 : k]
+		if _, ok := routePlaceholderName(":" + name); ok && name != "splat" && !declared[name] {
+			return fmt.Errorf("%w: routes[%d].destination references :%s, which routes[%d].source does not declare", core.ErrBadRequest, i, name, i)
+		}
+		if k == j {
+			j++
+		} else {
+			j = k
+		}
+	}
+	return nil
+}
+
 // validateRoutes rejects a malformed redirect/rewrite list: each rule needs a
 // known type and a rooted source + destination path (Render's contract), and
 // the whole list stays inside the edge-rule budgets above.
@@ -5327,6 +5385,9 @@ func validateRoutes(routes []StaticRouteView) error {
 			return fmt.Errorf("%w: routes[%d].source must not exceed %d characters", core.ErrBadRequest, i, maxStaticPathLen)
 		}
 		dest := strings.TrimSpace(r.Destination)
+		if err := validateRoutePlaceholders(i, strings.TrimSpace(r.Source), dest); err != nil {
+			return err
+		}
 		// Render lets a redirect leave the site (a CDN, a moved domain, w8/162),
 		// and a rewrite serve a full, publicly accessible URL's content at the
 		// original path (w8/184). A rewrite's host must also be public: the

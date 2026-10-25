@@ -1,17 +1,17 @@
 # w4 · m240 — Static-site route placeholders (`:name`) match and expand, as Render documents
 
-**Worker:** worker4 **Goal:** a static-site redirect or rewrite whose source names a path segment (`/blog/posts/:postid`) matches that segment and substitutes it into the destination (`/blog/:postid`), exactly as [Render documents](https://render.com/docs/redirects-rewrites). Today REST and the dashboard accept and store such a rule, and the static server then matches its source as a literal string, so the rule silently never fires. **Status:** todo
+**Worker:** worker4 **Goal:** a static-site redirect or rewrite whose source names a path segment (`/blog/posts/:postid`) matches that segment and substitutes it into the destination (`/blog/:postid`), exactly as [Render documents](https://render.com/docs/redirects-rewrites). Today REST and the dashboard accept and store such a rule, and the static server then matches its source as a literal string, so the rule silently never fires. **Status:** blocked — t001–t006 done 2026-10-25 (loopx w4); t007 waits for the release pin to include the fix, then QA replays the DoD below on a fresh owned fixture in `bex-canary`
 
 ## Tasks (in order)
 
 | id              | title                                                                      | est | depends_on                 |
 | --------------- | -------------------------------------------------------------------------- | --- | -------------------------- |
-| [t001](t001.md) | Operator: named-segment capture and expansion in the static-server matcher | 45m | —                          |
-| [t002](t002.md) | Refuse undeclared or duplicate placeholders on every rule writer           | 30m | w4/m240/t001               |
-| [t003](t003.md) | Editor hint, ADR029 grammar and ADR018 note                                | 20m | w4/m240/t001               |
-| [t004](t004.md) | Render parity                                                              | 20m | w4/m240/t002, w4/m240/t003 |
-| [t005](t005.md) | Simplify                                                                   | 15m | w4/m240/t004               |
-| [t006](t006.md) | Test coverage                                                              | 20m | w4/m240/t004               |
+| [t001](done/t001.md) | Operator: named-segment capture and expansion in the static-server matcher | 45m | —                          | — **DONE**
+| [t002](done/t002.md) | Refuse undeclared or duplicate placeholders on every rule writer           | 30m | w4/m240/t001               | — **DONE**
+| [t003](done/t003.md) | Editor hint, ADR029 grammar and ADR018 note                                | 20m | w4/m240/t001               | — **DONE**
+| [t004](done/t004.md) | Render parity                                                              | 20m | w4/m240/t002, w4/m240/t003 | — **DONE**
+| [t005](done/t005.md) | Simplify                                                                   | 15m | w4/m240/t004               | — **DONE**
+| [t006](done/t006.md) | Test coverage                                                              | 20m | w4/m240/t004               | — **DONE**
 | [t007](t007.md) | Closeout (live DoD replay)                                                 | 15m | w4/m240/t005, w4/m240/t006 |
 
 ## Definition of done
