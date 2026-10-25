@@ -214,6 +214,32 @@ describe("InstanceTypePicker", () => {
     },
   );
 
+  it("shows each card's catalog price and repeats it in the confirmation (w4/400)", async () => {
+    const user = userEvent.setup();
+    renderPicker("standard");
+
+    expect(await screen.findByText("$0.00/month")).toBeInTheDocument();
+    expect(screen.getByText("$17.50/month")).toBeInTheDocument();
+    expect(screen.getByText("$59.50/month")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("radio", { name: /Pro\b/ }));
+    await user.click(screen.getByRole("button", { name: "Save Changes" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText(/This instance type costs \$59\.50\/month\./),
+    ).toBeInTheDocument();
+  });
+
+  it("renders no price when the catalog omits one (w4/400)", async () => {
+    instanceTypesState.instanceTypes = [
+      { ...PRO, monthlyUsd: "" },
+    ];
+    renderPicker("standard");
+    const card = await screen.findByRole("radio", { name: /Pro\b/ });
+    expect(card).not.toHaveTextContent("$");
+    expect(card).not.toHaveTextContent("undefined");
+  });
+
   it("confirms and fires updateServicePlan with the picked Render-spelled id, then navigates to Settings on success", async () => {
     const user = userEvent.setup();
     renderPicker("standard");

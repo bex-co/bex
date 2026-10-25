@@ -1496,6 +1496,11 @@ const zhServices: Record<string, TranslationEntry> = {
       "服务将调整规格并无停机滚动更新——进行中的请求会先完成再替换旧实例。",
     description: "Plan-change confirm dialog body",
   },
+  "services.planPickerConfirmPrice": {
+    message: "此实例类型每月费用为 ${price}。",
+    description:
+      "Plan-change confirm: the new instance type's monthly price, from the API's price sheet (w4/400)",
+  },
   "services.planPickerSuccess": {
     message: "实例类型已更新为 {name}",
     description: "Toast on a successful plan change",
