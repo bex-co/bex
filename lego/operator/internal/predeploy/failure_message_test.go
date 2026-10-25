@@ -178,8 +178,13 @@ func TestPermanentPullFailureClassification(t *testing.T) {
 		// Docker Hub's answer for a repository that does not exist, as captured
 		// on production (w8/131).
 		{"Back-off pulling image \"docker.io/library/qa532-no-such-image-zzz:latest\": ErrImagePull: failed to pull and unpack image \"docker.io/library/qa532-no-such-image-zzz:latest\": failed to resolve reference \"docker.io/library/qa532-no-such-image-zzz:latest\": pull access denied, repository does not exist or may require authorization: server message: insufficient_scope: authorization failed", true},
+		// GHCR's answer for a missing/private repository, captured live
+		// (w4/392): the same 403 with or without a credential.
+		{`Back-off pulling image "ghcr.io/bex-co/qa-v6n2-missing:1": ErrImagePull: failed to authorize: failed to fetch oauth token: unexpected status from GET request to https://ghcr.io/token?scope=repository%3Abex-co%2Fqa-v6n2-missing%3Apull&service=ghcr.io: 403 Forbidden`, true},
+		{"denied: requested access to the resource is denied", true},
 		{"Back-off pulling image example.org/web:missing", false},
 		{"429 Too Many Requests", false},
+		{"toomanyrequests: Too Many Requests", false},
 		{"503 Service Unavailable", false},
 		{"dial tcp: i/o timeout", false},
 	} {

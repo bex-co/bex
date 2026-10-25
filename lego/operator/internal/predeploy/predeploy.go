@@ -316,7 +316,10 @@ func PullFailure(ctx context.Context, cl client.Reader, j *batchv1.Job, now time
 // shorten the deadline. Docker Hub answers a missing repository with "pull
 // access denied, repository does not exist … insufficient_scope" rather than a
 // 404, so that vocabulary counts too (w8/131): a fixed tag or credential
-// arrives with a new deploy.
+// arrives with a new deploy. GHCR answers every missing, private or
+// wrong-credential pull with "403 Forbidden" at its token endpoint, so a
+// 403 (and the "denied:" code) counts the same way (w4/392); rate limits
+// and 5xx stay transient.
 func PermanentPullFailure(w *corev1.ContainerStateWaiting, created, now time.Time) bool {
 	if w == nil {
 		return false
@@ -330,7 +333,7 @@ func PermanentPullFailure(w *corev1.ContainerStateWaiting, created, now time.Tim
 	}
 	message := strings.ToLower(w.Message)
 	for _, answer := range []string{"code = notfound", "manifest unknown", "manifest_unknown", ": not found", "404 not found", "unauthorized",
-		"authentication required", "pull access denied", "repository does not exist", "insufficient_scope"} {
+		"authentication required", "pull access denied", "repository does not exist", "insufficient_scope", "403 forbidden", "denied:"} {
 		if strings.Contains(message, answer) {
 			return true
 		}
