@@ -698,3 +698,39 @@ func TestHobbyEnvironmentLimitsAndIsolation(t *testing.T) {
 		})
 	}
 }
+
+// w4/394: a create that arms only protected status or isolation (no list)
+// keeps the seeded allow-all rules; only an explicit empty list is deny-all.
+func TestCreateWithACLWithoutListKeepsSeed(t *testing.T) {
+	st := newFakeStore()
+	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+	svc, _ := newServiceWithClient(st, sampleApp("web"))
+	ctx := ctxAs("user-a")
+	for _, req := range []CreateEnvironmentRequest{
+		{ProjectID: "prj-1", Name: "prot", ProtectedStatus: ProtectedStatusProtected},
+		{ProjectID: "prj-1", Name: "iso", NetworkIsolationEnabled: true},
+	} {
+		view, err := svc.CreateWithACL(ctx, req)
+		if err != nil {
+			t.Fatalf("create %+v: %v", req, err)
+		}
+		e, err := st.GetEnvironment(ctx, view.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(e.IPAllowList) != 2 {
+			t.Errorf("%s ipAllowList = %+v, want the seeded allow-all pair", req.Name, e.IPAllowList)
+		}
+	}
+	view, err := svc.CreateWithACL(ctx, CreateEnvironmentRequest{ProjectID: "prj-1", Name: "locked", IPAllowList: []core.IPAllowListEntry{}})
+	if err != nil {
+		t.Fatalf("explicit empty create: %v", err)
+	}
+	e, err := st.GetEnvironment(ctx, view.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(e.IPAllowList) != 0 {
+		t.Errorf("explicit empty list stored %+v, want deny-all []", e.IPAllowList)
+	}
+}
