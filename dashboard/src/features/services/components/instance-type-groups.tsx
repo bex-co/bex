@@ -44,10 +44,12 @@ export function InstanceTypeCardBody({
   name,
   memory,
   cpu,
+  price,
 }: {
   name: ReactNode;
   memory: ReactNode;
   cpu: ReactNode;
+  price?: ReactNode;
 }) {
   return (
     <>
@@ -55,6 +57,7 @@ export function InstanceTypeCardBody({
       <div className="space-y-0.5 text-sm text-muted-foreground">
         <div>{memory}</div>
         <div>{cpu}</div>
+        {price ? <div>{price}</div> : null}
       </div>
     </>
   );
@@ -74,6 +77,7 @@ function InstanceTypeCardSkeleton() {
         name={<Bar className="h-4 w-20" />}
         memory={<Bar className="h-3.5 w-28" />}
         cpu={<Bar className="h-3.5 w-14" />}
+        price={<Bar className="h-3.5 w-20" />}
       />
     </div>
   );

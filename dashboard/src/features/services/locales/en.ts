@@ -1528,6 +1528,11 @@ const enServices: Record<string, TranslationEntry> = {
       "The service resizes and rolls with no downtime — in-flight requests finish before old instances are replaced.",
     description: "Plan-change confirm dialog body",
   },
+  "services.planPickerConfirmPrice": {
+    message: "This instance type costs ${price}/month.",
+    description:
+      "Plan-change confirm: the new instance type's monthly price, from the API's price sheet (w4/400)",
+  },
   "services.planPickerSuccess": {
     message: "Instance type updated to {name}",
     description: "Toast on a successful plan change",
