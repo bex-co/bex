@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -35,3 +35,10 @@ const (
 	DiskReasonSnapshotImageUnresolved       = "SnapshotImageUnresolved"
 	DiskReasonSnapshotCredentialUnavailable = "SnapshotCredentialUnavailable"
 )
+
+// DiskRestoreRequestedAtAnnotation stamps each owner restore request (bex-api's
+// RestoreDiskSnapshot). With spec.disk.restoreSnapshot it identifies one
+// request, so the same snapshot can be restored again and a failed restore can
+// be retried by asking again. A CR without it keeps the snapshot alone as the
+// request (w6/089).
+const DiskRestoreRequestedAtAnnotation = "app.bex.co/disk-restore-requested-at"

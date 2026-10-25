@@ -408,7 +408,7 @@ func admissionPlatformWorkloads(namespace string) []client.Object {
 	r := &AppReconciler{Client: cl, Scheme: cl.Scheme(), BackupHelperImage: "ghcr.io/bex-co/bex:test",
 		DiskSnapshots: DiskSnapshotStore{Endpoint: "https://s3.example.invalid", Bucket: "disks", S3Secret: "disk-upload", AgePublicKey: "test-key", AgeSecret: "disk-age"}}
 	backup := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: "dskbak-disk", Namespace: namespace}, Spec: r.diskBackupCronJobSpec(app)}
-	Expect(r.createDiskRestoreJob(ctx, app, "disk/snapshot.tar.gz.age")).To(Succeed())
+	Expect(r.createDiskRestoreJob(ctx, app, "disk/snapshot.tar.gz.age", "disk/snapshot.tar.gz.age")).To(Succeed())
 	restore := &batchv1.Job{}
 	Expect(cl.Get(ctx, client.ObjectKey{Namespace: namespace, Name: diskRestoreName(app.Name)}, restore)).To(Succeed())
 	return []client.Object{sts, export, static, backup, restore}
