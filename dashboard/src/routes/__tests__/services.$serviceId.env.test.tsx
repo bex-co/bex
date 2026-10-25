@@ -182,10 +182,12 @@ const NOTICE =
 describe("ServiceEnvPage undeployed-changes notice", () => {
   beforeEach(() => useServer.mockReset());
 
-  it("explains how to apply saved values that are not running", () => {
+  // w4/398: the notice lives in the shared service header only; the env
+  // route does not print its own copy above the editor.
+  it("does not repeat the header's undeployed-changes notice", () => {
     useServer.mockReturnValue({ service: { undeployedChanges: true } });
     render(<ServiceEnvPage serviceId="srv-1" />);
-    expect(screen.getByText(NOTICE)).toBeInTheDocument();
+    expect(screen.queryByText(NOTICE)).not.toBeInTheDocument();
     expect(screen.getByText("environment editor")).toBeInTheDocument();
   });
 
@@ -208,16 +210,12 @@ describe("ServiceEnvPage undeployed-changes notice", () => {
     expect(useServer).toHaveBeenCalledWith("srv-1", { poll: false });
   });
 
-  it("follows the authoritative flag as Save only settles and a revert clears it", () => {
+  it("never prints the notice itself, whatever the flag does", () => {
     useServer.mockReturnValue({ service: { undeployedChanges: false } });
     const { rerender } = render(<ServiceEnvPage serviceId="srv-1" />);
     expect(screen.queryByText(NOTICE)).not.toBeInTheDocument();
 
     useServer.mockReturnValue({ service: { undeployedChanges: true } });
-    rerender(<ServiceEnvPage serviceId="srv-1" />);
-    expect(screen.getByText(NOTICE)).toBeInTheDocument();
-
-    useServer.mockReturnValue({ service: { undeployedChanges: false } });
     rerender(<ServiceEnvPage serviceId="srv-1" />);
     expect(screen.queryByText(NOTICE)).not.toBeInTheDocument();
   });
@@ -243,6 +241,8 @@ describe("ServiceEnvPage on a suspended service", () => {
     expect(
       screen.getByText("environment editor (suspended)"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent(/Resume/);
+    // The resume-first notice is the shared header's (w4/398); the route
+    // prints no status of its own.
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 });
