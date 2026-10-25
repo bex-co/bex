@@ -156,6 +156,7 @@ func TestBlueprintPreviewAnswersExactlyTheApply(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newParityFixture(&fakeChecker{allow: true}, false)
+			flipSeededDatastorePlans(t, f)
 			f.adm.atCap = tc.atCap
 			if tc.store.names != nil || tc.store.hosts != nil {
 				f.apps.Store = tc.store
@@ -288,6 +289,7 @@ func TestBlueprintPreviewLeavesBillingToTheApply(t *testing.T) {
 func TestBlueprintPreviewThatPassesWritesNothing(t *testing.T) {
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
 	f := newParityFixture(&fakeChecker{allow: true}, false)
+	flipSeededDatastorePlans(t, f)
 	manifest := `databases:
   - name: fresh-db
     plan: free
@@ -329,6 +331,7 @@ services:
 func TestBlueprintDatastoreCreateEnsuresTheWorkspaceNamespace(t *testing.T) {
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
 	f := newParityFixture(&fakeChecker{allow: true}, false)
+	flipSeededDatastorePlans(t, f)
 	var ensured []string
 	f.apps.EnsureNamespaces = func(_ context.Context, workspace string) error {
 		ensured = append(ensured, workspace)
