@@ -17,8 +17,8 @@
 // bex-api records a session's sandbox_id AFTER CreateAgentSessionSandbox
 // returns (pod already running). The driver's first git-proxy call can therefore
 // 403 ("remote: forbidden") until the mint broker sees the live sandbox id.
-// Retrying with backoff is the established clone-path answer; restore/ensureRepo
-// ls-remote/fetch hits the same race and must share it (w2/m77 live rehydrate).
+// Retrying with backoff is the established clone-path answer; ensureRepo's
+// ls-remote/fetch hits the same race and must share it.
 
 export const GIT_AUTH_RETRY_ATTEMPTS = 10;
 export const GIT_AUTH_RETRY_MS = 3000;

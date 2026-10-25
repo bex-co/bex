@@ -104,39 +104,6 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "已取消",
     description: "Agent session phase chip — session was canceled",
   },
-  "agentSessions.phase.hibernating": {
-    message: "休眠中",
-    description: "Agent session phase chip — snapshot upload in progress",
-  },
-  "agentSessions.phase.hibernated": {
-    message: "已休眠",
-    description: "Agent session phase chip — reclaimed to a durable snapshot",
-  },
-  // --- Hibernation (ADR059 D5/D6) ---
-  "agentSessions.pin": {
-    message: "固定",
-    description: "Button — pin a hibernated session so it never expires",
-  },
-  "agentSessions.unpin": {
-    message: "取消固定",
-    description: "Button — remove a session's never-expire pin",
-  },
-  "agentSessions.pinned": {
-    message: "已固定",
-    description: "Badge — this session is pinned (never expires)",
-  },
-  "agentSessions.pinSuccess": {
-    message: "已固定 —— 此工作区不会过期。",
-    description: "Toast — pin succeeded",
-  },
-  "agentSessions.unpinSuccess": {
-    message: "已取消固定 —— 此工作区重新进入保留倒计时。",
-    description: "Toast — unpin succeeded",
-  },
-  "agentSessions.hibernatedStorage": {
-    message: "已休眠 · {size}",
-    description: "Meta — hibernated state with snapshot storage size",
-  },
   // --- Composer (prompt box) ---
   "agentSessions.taskLabel": {
     message: "任务",
@@ -317,14 +284,6 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Composer — retryable dependency-outage body that does not send the user to an operator",
   },
-  "agentSessions.snapshotUnavailableTitle": {
-    message: "会话存储暂时不可用",
-    description: "Agent-session snapshot restore/delete outage title",
-  },
-  "agentSessions.snapshotUnavailableBody": {
-    message: "无法访问会话快照存储。请稍后重试。",
-    description: "Agent-session snapshot restore/delete outage body",
-  },
   "agentSessions.modelKeyMissingTitle": {
     message: "请先添加模型提供方密钥",
     description:
@@ -482,7 +441,7 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description: "Steering composer — textarea placeholder for a live session",
   },
   "agentSessions.steerHintIdle": {
-    message: "该会话处于空闲状态——发送消息将在同一分支上重新调度新一轮。",
+    message: "该会话处于空闲状态——发送消息将在同一分支上的全新沙箱中继续这段对话。",
     description: "Steering composer — helper text for the redispatch route",
   },
   "agentSessions.steerHintLive": {
@@ -849,7 +808,7 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.deleteConfirmBody": {
     message:
-      "会话记录、对话转录以及任何休眠快照都将被永久删除。GitHub 上已推送的分支和拉取请求不受影响。此操作无法撤销。",
+      "会话记录和对话转录都将被永久删除。GitHub 上已推送的分支和拉取请求不受影响。此操作无法撤销。",
     description: "Delete confirmation dialog body",
   },
   "agentSessions.deleteConfirmDismiss": {

@@ -71,8 +71,7 @@ while read -r name envs; do
   push_production_secret "$name" "$envs"
 done < <(sed -e 's/#.*//' "$TABLE" | awk 'NF >= 2 { print $1, $2 }')
 
-# Not pushed: BEX_AGENT_SNAPSHOT_S3_* and BEX_DISK_SNAPSHOT_* are installed into
-# the cluster from .env by scripts/agent-snapshot-secret.sh and
+# Not pushed: BEX_DISK_SNAPSHOT_* are installed into the cluster from .env by
 # scripts/disk-snapshot-secret.sh; no workflow reads them, so a GitHub copy was
 # only exposure (w3/m173 t001).
 

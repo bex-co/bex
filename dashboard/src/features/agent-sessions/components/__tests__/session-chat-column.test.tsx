@@ -82,8 +82,8 @@ describe("SessionChatColumn provisioning gate (w2/m64)", () => {
     expect(screen.getByTestId("conversation")).toBeInTheDocument();
   });
 
-  it("replays the conversation for a hibernated session (ADR065 D2)", () => {
-    render(column(view("hibernated", { sandboxId: null })));
+  it("replays the conversation for a session closed after its idle TTL (ADR065 D2)", () => {
+    render(column(view("completed", { sandboxId: null, turns: 2 })));
     expect(screen.getByTestId("conversation")).toBeInTheDocument();
   });
 

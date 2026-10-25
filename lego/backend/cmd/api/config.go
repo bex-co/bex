@@ -27,7 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
-	"github.com/bex-co/bex/lego/backend/internal/agentsessions"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/audit"
 	"github.com/bex-co/bex/lego/backend/internal/billing"
@@ -220,11 +219,6 @@ type Config struct {
 	AgentSessionImage    string
 	AgentSetupRegistries string
 	SandboxExecURL       string
-	// The Hibernated-tier object-store host the sandbox curl PUT/GET must
-	// reach; empty when the tier is off. A set-but-unparseable endpoint is
-	// fatal so a typo cannot arm hibernation with a policy that still
-	// NXDOMAINs the presigned URL (w2/m77 live walk, curl 6).
-	SnapshotEgressDomains []string
 
 	ShellTicketSecret      string
 	ShellWSURL             string
@@ -246,13 +240,6 @@ type Config struct {
 	MaxRegistryCredentialsPerWorkspace int
 	MaxCustomDomainsPerService         int
 	MaxCustomDomainsPerWorkspace       int
-
-	// ADR059 D3/D5 hibernation (w2/m68, armed w2/m77): all four required
-	// coordinates unset ⇒ the whole tier is off. A partial set is fatal — a
-	// typo'd Secret key must not silently disable hibernation.
-	AgentSnapshot                       agentsessions.S3SnapshotConfig
-	AgentSnapshotRetentionTTL           time.Duration
-	AgentMaxPinnedSandboxesPerWorkspace int
 
 	// Disk snapshots (docs/ADR082-persistent-disks.md D5).
 	DiskSnapshot apps.S3DiskSnapshotConfig
@@ -484,20 +471,6 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	cfg.GitHubWebhookSecret = getenv("BEX_GITHUB_WEBHOOK_SECRET")
 	p.err(validateWebhookReplayConfig(cfg.WebhookSecret, cfg.GitHubWebhookSecret, cpOn))
 
-	// Agent-session snapshot store (ADR059 D3/D5): a partial coordinate set is
-	// fatal — a typo'd Secret key must not silently disable hibernation.
-	cfg.AgentSnapshot = agentsessions.S3SnapshotConfig{
-		Endpoint:  getenv("BEX_AGENT_SNAPSHOT_S3_ENDPOINT"),
-		Bucket:    getenv("BEX_AGENT_SNAPSHOT_S3_BUCKET"),
-		Region:    getenv("BEX_AGENT_SNAPSHOT_S3_REGION"),
-		Prefix:    getenv("BEX_AGENT_SNAPSHOT_S3_PREFIX"),
-		AccessKey: getenv("BEX_AGENT_SNAPSHOT_S3_ACCESS_KEY"),
-		SecretKey: getenv("BEX_AGENT_SNAPSHOT_S3_SECRET_KEY"),
-	}
-	if err := cfg.AgentSnapshot.Validate(); err != nil {
-		p.errorf("agent-session hibernation config: %v", err)
-	}
-
 	// Hosted sandboxes (ADR042/ADR047/ADR062).
 	cfg.AgentModelProxyURL = getenv("BEX_AGENT_MODEL_PROXY_URL")
 	cfg.AgentDevModelRoute = strings.TrimSpace(getenv("BEX_AGENT_DEV_MODEL_ROUTE"))
@@ -517,35 +490,25 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 		port, err := modelProxyPort(cfg.AgentModelProxyURL)
 		p.err(err)
 		cfg.ModelProxyPort = port
-		if strings.TrimSpace(cfg.AgentSnapshot.Bucket) != "" {
-			host, err := sessionegress.SnapshotEndpointHost(cfg.AgentSnapshot.Endpoint)
-			switch {
-			case err != nil:
-				p.errorf("agent-session snapshot egress: %v", err)
-			case host == "":
-				p.errorf("agent-session snapshot egress: snapshot endpoint host is empty")
-			default:
-				cfg.SnapshotEgressDomains = []string{host}
-			}
-		}
 		// These are exactly the inputs sessionegress.NewManager will normalize
 		// at wiring time — reject a malformed registry catalog here, before
 		// any side effect.
 		if err := (sessionegress.Config{
 			SetupRegistryDomains: sessionegress.RegistryConfig(cfg.AgentSetupRegistries),
 			ModelProxyPort:       cfg.ModelProxyPort,
-			SnapshotStoreDomains: cfg.SnapshotEgressDomains,
 		}).Validate(); err != nil {
 			p.err(err)
 		}
 	}
 
-	// Agent sessions / Browser Web Shell (docs/ADR035-ssh.md, ADR047, ADR059).
+	// Agent sessions / Browser Web Shell (docs/ADR035-ssh.md, ADR047).
 	cfg.ShellTicketSecret = getenv("BEX_SHELL_TICKET_SECRET")
 	cfg.ShellWSURL = getenv("BEX_SHELL_WS_URL")
 	cfg.AgentSessionGatewayURL = getenv("BEX_AGENT_SESSION_GATEWAY_URL")
 	cfg.AgentGitProxyURL = getenv("BEX_AGENT_GIT_PROXY_URL")
-	cfg.AgentSandboxIdleTTL = p.zeroableDuration("BEX_AGENT_SANDBOX_IDLE_TTL", 30*time.Minute)
+	// w10/m15: a finished session's sandbox is terminated after 2h idle; the
+	// transcript stays and the next message continues in a fresh sandbox.
+	cfg.AgentSandboxIdleTTL = p.zeroableDuration("BEX_AGENT_SANDBOX_IDLE_TTL", 2*time.Hour)
 	// w5/m80 t002: one turn's wall-clock bound. A 0/invalid value falls back to
 	// the Service's 30m default (the bound is never disabled — that is the
 	// 4h-hang bug this fixes).
@@ -566,8 +529,6 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	cfg.MaxRegistryCredentialsPerWorkspace = p.zeroableInt("BEX_MAX_REGISTRY_CREDS_PER_WORKSPACE", 50)
 	cfg.MaxCustomDomainsPerService = p.zeroableInt("BEX_MAX_CUSTOM_DOMAINS_PER_SERVICE", 100)
 	cfg.MaxCustomDomainsPerWorkspace = p.zeroableInt("BEX_MAX_CUSTOM_DOMAINS_PER_WORKSPACE", 500)
-	cfg.AgentSnapshotRetentionTTL = p.zeroableDuration("BEX_AGENT_SNAPSHOT_RETENTION", 7*24*time.Hour)
-	cfg.AgentMaxPinnedSandboxesPerWorkspace = p.zeroableInt("BEX_AGENT_MAX_PINNED_SANDBOXES_PER_WORKSPACE", 10)
 
 	// Disk snapshots (ADR082 D5).
 	cfg.DiskSnapshot = apps.S3DiskSnapshotConfig{

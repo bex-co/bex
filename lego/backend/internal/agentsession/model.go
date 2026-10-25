@@ -65,7 +65,7 @@ const (
 
 // RegisteredModelEndpoint resolves a supported agent profile server-side for
 // workspaceID and rejects caller-supplied endpoint overrides. It is shared by
-// create/rehydrate and the credential minter, so legacy rows cannot bypass the
+// create/steer and the credential minter, so legacy rows cannot bypass the
 // registration boundary after a new-create check is deployed. The result is
 // decided by the workspace's model route NOW, not by the requested (stored)
 // endpoint.

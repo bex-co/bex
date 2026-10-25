@@ -104,39 +104,6 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Canceled",
     description: "Agent session phase chip — session was canceled",
   },
-  "agentSessions.phase.hibernating": {
-    message: "Hibernating",
-    description: "Agent session phase chip — snapshot upload in progress",
-  },
-  "agentSessions.phase.hibernated": {
-    message: "Hibernated",
-    description: "Agent session phase chip — reclaimed to a durable snapshot",
-  },
-  // --- Hibernation (ADR059 D5/D6) ---
-  "agentSessions.pin": {
-    message: "Pin",
-    description: "Button — pin a hibernated session so it never expires",
-  },
-  "agentSessions.unpin": {
-    message: "Unpin",
-    description: "Button — remove a session's never-expire pin",
-  },
-  "agentSessions.pinned": {
-    message: "Pinned",
-    description: "Badge — this session is pinned (never expires)",
-  },
-  "agentSessions.pinSuccess": {
-    message: "Pinned — this workspace will not expire.",
-    description: "Toast — pin succeeded",
-  },
-  "agentSessions.unpinSuccess": {
-    message: "Unpinned — this workspace is back on the retention clock.",
-    description: "Toast — unpin succeeded",
-  },
-  "agentSessions.hibernatedStorage": {
-    message: "Hibernated · {size}",
-    description: "Meta — hibernated state with snapshot storage size",
-  },
   // --- Composer (prompt box) ---
   "agentSessions.taskLabel": {
     message: "Task",
@@ -320,15 +287,6 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Composer — retryable dependency-outage body that does not send the user to an operator",
   },
-  "agentSessions.snapshotUnavailableTitle": {
-    message: "Session storage is temporarily unavailable",
-    description: "Agent-session snapshot restore/delete outage title",
-  },
-  "agentSessions.snapshotUnavailableBody": {
-    message:
-      "The session snapshot store could not be reached. Wait a moment and try again.",
-    description: "Agent-session snapshot restore/delete outage body",
-  },
   "agentSessions.modelKeyMissingTitle": {
     message: "Add a model provider key first",
     description:
@@ -493,7 +451,7 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.steerHintIdle": {
     message:
-      "This session is idle — sending a message redispatches a new turn on the same branch.",
+      "This session is idle — sending a message continues the conversation in a fresh sandbox on the same branch.",
     description: "Steering composer — helper text for the redispatch route",
   },
   "agentSessions.steerHintLive": {
@@ -886,7 +844,7 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.deleteConfirmBody": {
     message:
-      "The session record, its conversation transcript, and any hibernation snapshot will be permanently deleted. Pushed branches and pull requests on GitHub are not affected. This cannot be undone.",
+      "The session record and its conversation transcript will be permanently deleted. Pushed branches and pull requests on GitHub are not affected. This cannot be undone.",
     description: "Delete confirmation dialog body",
   },
   "agentSessions.deleteConfirmDismiss": {

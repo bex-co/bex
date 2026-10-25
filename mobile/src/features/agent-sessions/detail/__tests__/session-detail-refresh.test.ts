@@ -27,7 +27,6 @@ describe("sessionDetailPollIntervalMs", () => {
     expect(sessionDetailPollIntervalMs("completed", onlineActive)).toBe(0);
     expect(sessionDetailPollIntervalMs("failed", onlineActive)).toBe(0);
     expect(sessionDetailPollIntervalMs("canceled", onlineActive)).toBe(0);
-    expect(sessionDetailPollIntervalMs("hibernated", onlineActive)).toBe(0);
   });
 
   it("stops background and offline work", () => {

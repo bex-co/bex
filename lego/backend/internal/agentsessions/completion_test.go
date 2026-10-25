@@ -656,138 +656,74 @@ func TestCompleterIdleGraceMeasuredFromLastSSHDisconnect(t *testing.T) {
 	}
 }
 
-// --- ADR059 D3/D5: hibernation reclaim + retention ---------------------------
+// --- w10/m15: idle close after 2h, conversation kept ------------------------
 
-// With hibernation enabled, an idle finished session is reclaimed to an
-// object-storage snapshot (phase → hibernated, snapshot ref + size recorded, pod
-// terminated) instead of being torn down.
-func TestCompleterHibernatesIdleSessionWhenEnabled(t *testing.T) {
-	c, st, lc, id := completerFixture(succeededStatus(true), nil)
-	recordAgentPR(st, id) // delivered: nothing extends the base window
-	snaps := newFakeSnapshots()
-	c.Snapshots = snaps
-	c.RetentionTTL = 7 * 24 * time.Hour
-	base := st.now
-	c.Now = func() time.Time { return base }
-
-	c.Reconcile(context.Background())
-
-	row := st.rows[id]
-	if row.Phase != PhaseHibernated {
-		t.Fatalf("session not hibernated, phase=%s", row.Phase)
+// The whole idle-close journey on the fresh-dispatch path (w10/m15): a finished
+// session keeps its sandbox for the 2h idle TTL, is then terminated with its
+// transcript harvested and its phase left completed, and a follow-up message
+// redispatches a fresh sandbox on the same branch primed with the prior turns
+// (ADR047 D3 rung 2) and naming the PR earlier turns opened (ADR090).
+func TestIdleSessionClosesAfterTwoHoursAndFollowUpContinuesInFreshSandbox(t *testing.T) {
+	svc, st, _, lc := fixture()
+	created, err := svc.Create(caller("alice"), createInput())
+	if err != nil {
+		t.Fatal(err)
 	}
-	if row.SnapshotRef == "" || row.SnapshotBytes == 0 {
-		t.Fatalf("snapshot not recorded: ref=%q bytes=%d", row.SnapshotRef, row.SnapshotBytes)
+	id := created.ID
+	firstSandbox := st.rows[id].SandboxID
+	if firstSandbox == "" || st.rows[id].Phase != PhaseRunning {
+		t.Fatalf("create did not dispatch: %+v", st.rows[id])
 	}
-	if row.SandboxID != "" {
-		t.Fatalf("sandbox id not cleared after hibernate: %q", row.SandboxID)
-	}
-	if lc.hibernated != 1 || lc.canceled != 1 {
-		t.Fatalf("expected 1 snapshot + 1 terminate, got hibernated=%d canceled=%d", lc.hibernated, lc.canceled)
-	}
-	if lc.lastPutURL == "" {
-		t.Fatal("presigned PUT URL was not threaded to the sandbox")
-	}
-	if row.RetainUntil == nil || !row.RetainUntil.Equal(base.Add(7*24*time.Hour)) {
-		t.Fatalf("retain_until = %v, want base+7d", row.RetainUntil)
-	}
-}
-
-// A dirty git tree at hibernation doubles the retention window so unpushed work
-// survives longer (ADR059 D5 dirty-git extension).
-func TestCompleterDirtyGitExtendsRetention(t *testing.T) {
-	c, st, lc, id := completerFixture(succeededStatus(true), nil)
 	recordAgentPR(st, id)
-	c.Snapshots = newFakeSnapshots()
-	c.RetentionTTL = 24 * time.Hour
-	lc.snapshot = sandbox.SnapshotResult{Bytes: 2048, SHA256: shaStub(), DirtyGit: true}
+	lc.status = succeededStatus(true)
+	lc.transcriptLog = `{"turn":1,"partIndex":0,"part":{"type":"text-delta","id":"t","delta":"I fixed the flaky test."}}`
+
+	c := &Completer{Store: st, Sandbox: lc, IdleTTL: 2 * time.Hour}
 	base := st.now
 	c.Now = func() time.Time { return base }
-
 	c.Reconcile(context.Background())
-
-	row := st.rows[id]
-	if row.RetainUntil == nil || !row.RetainUntil.Equal(base.Add(48*time.Hour)) {
-		t.Fatalf("dirty retain_until = %v, want base+48h (2x)", row.RetainUntil)
+	if st.rows[id].Phase != PhaseCompleted || st.rows[id].SandboxID != firstSandbox {
+		t.Fatalf("finished turn must keep its sandbox inside the idle TTL: %+v", st.rows[id])
 	}
-}
 
-// ADR090: a turn the driver reported undelivered feeds the same extension, even
-// when the snapshot script saw a clean tree (the note survives on the row).
-func TestCompleterUndeliveredTurnExtendsRetention(t *testing.T) {
-	c, st, _, id := completerFixture(gitStatus(statusGit{Undelivered: []string{dirtyReason}}), nil)
-	c.Snapshots = newFakeSnapshots()
-	c.RetentionTTL = 24 * time.Hour
-	base := st.now
-	c.Now = func() time.Time { return base }
-
+	c.Now = func() time.Time { return base.Add(2*time.Hour - time.Minute) }
 	c.Reconcile(context.Background())
-
-	row := st.rows[id]
-	if row.Phase != PhaseHibernated || row.DeliveryNote == "" {
-		t.Fatalf("dirty turn row = %+v", row)
+	if lc.canceled != 0 {
+		t.Fatalf("sandbox closed before 2h idle (canceled=%d)", lc.canceled)
 	}
-	if row.RetainUntil == nil || !row.RetainUntil.Equal(base.Add(48*time.Hour)) {
-		t.Fatalf("undelivered retain_until = %v, want base+48h (2x)", row.RetainUntil)
-	}
-}
 
-// A snapshot failure must not strand the sandbox: hibernation falls back to the
-// plain Terminate reap and the row stays terminal (not hibernated).
-func TestCompleterHibernationFailureFallsBackToTerminate(t *testing.T) {
-	c, st, lc, id := completerFixture(succeededStatus(true), nil)
-	snaps := newFakeSnapshots()
-	c.Snapshots = snaps
-	lc.hibernateErr = errors.New("curl upload failed")
-
+	c.Now = func() time.Time { return base.Add(2*time.Hour + time.Minute) }
 	c.Reconcile(context.Background())
-
 	row := st.rows[id]
+	if lc.canceled != 1 || row.SandboxID != "" {
+		t.Fatalf("idle sandbox not terminated after 2h: canceled=%d sandbox=%q", lc.canceled, row.SandboxID)
+	}
 	if row.Phase != PhaseCompleted {
-		t.Fatalf("failed hibernation should leave the row terminal, phase=%s", row.Phase)
+		t.Fatalf("closed session phase = %s, want completed (steerable)", row.Phase)
 	}
-	if row.SandboxID != "" {
-		t.Fatalf("sandbox not reaped on hibernation fallback: %q", row.SandboxID)
+	if len(st.transcript[id]) == 0 {
+		t.Fatal("transcript not kept after the idle close")
 	}
-	if lc.canceled != 1 {
-		t.Fatalf("fallback terminate did not run (canceled=%d)", lc.canceled)
+
+	if _, err := svc.Steer(caller("alice"), SteerRequest{SessionID: id, Prompt: "now add a regression test"}); err != nil {
+		t.Fatalf("follow-up on a closed session: %v", err)
 	}
-	if len(snaps.deleted) != 1 {
-		t.Fatalf("partial upload not cleaned up (deleted=%v)", snaps.deleted)
+	row = st.rows[id]
+	if row.Phase != PhaseRunning || row.SandboxID == "" || row.SandboxID == firstSandbox || row.Turns != 2 {
+		t.Fatalf("follow-up did not run in a fresh sandbox: %+v", row)
+	}
+	if row.DeliveryMode != DeliveryRedispatch || lc.branch != created.Branch {
+		t.Fatalf("follow-up delivery=%q branch=%q, want redispatch on %q", row.DeliveryMode, lc.branch, created.Branch)
+	}
+	var extract []continuityTurn
+	if err := json.Unmarshal([]byte(lc.driverEnv[continuityContextEnv]), &extract); err != nil || len(extract) != 1 ||
+		extract[0].Reply != "I fixed the flaky test." {
+		t.Fatalf("continuity context = %q (%v), want the prior turn's reply", lc.driverEnv[continuityContextEnv], err)
+	}
+	if lc.driverEnv["BEX_AGENT_PR_URL"] != "https://github.com/bex-co/example/pull/7" || lc.driverEnv["BEX_AGENT_PR_NUMBER"] != "7" {
+		t.Fatalf("follow-up PR env = %q/%q", lc.driverEnv["BEX_AGENT_PR_URL"], lc.driverEnv["BEX_AGENT_PR_NUMBER"])
 	}
 }
-
-// The retention sweep deletes the snapshot + expires the row of an unpinned
-// hibernated session past its deadline, and never touches a pinned one.
-func TestCompleterRetentionSweepExpiresUnpinnedOnly(t *testing.T) {
-	c, st, _, id := completerFixture(succeededStatus(true), nil)
-	snaps := newFakeSnapshots()
-	c.Snapshots = snaps
-	base := st.now
-	c.Now = func() time.Time { return base }
-
-	// Seed an expired unpinned hibernated row and a pinned one past the deadline.
-	past := base.Add(-time.Hour)
-	st.rows[id] = store.AgentSession{ID: id, WorkspaceID: "tea-a", Phase: PhaseHibernated,
-		SnapshotRef: "agent-snapshots/tea-a/one.tgz", SnapshotBytes: 10, RetainUntil: &past}
-	pinnedID := "ags-pinned0000000000000"
-	st.rows[pinnedID] = store.AgentSession{ID: pinnedID, WorkspaceID: "tea-a", Phase: PhaseHibernated,
-		SnapshotRef: "agent-snapshots/tea-a/pinned.tgz", SnapshotBytes: 20, Pinned: true}
-
-	c.Reconcile(context.Background())
-
-	if st.rows[id].Phase != PhaseCanceled || st.rows[id].SnapshotRef != "" {
-		t.Fatalf("expired row not reclaimed: phase=%s ref=%q", st.rows[id].Phase, st.rows[id].SnapshotRef)
-	}
-	if len(snaps.deleted) != 1 || snaps.deleted[0] != "agent-snapshots/tea-a/one.tgz" {
-		t.Fatalf("wrong snapshot deleted: %v", snaps.deleted)
-	}
-	if st.rows[pinnedID].Phase != PhaseHibernated {
-		t.Fatalf("pinned row was reclaimed (phase=%s) — pin must remove the delete edge", st.rows[pinnedID].Phase)
-	}
-}
-
-func shaStub() string { return strings.Repeat("a", 64) }
 
 // An OPEN editor session pins idle at zero regardless of how far past the grace
 // the clock has moved: a live edit is never killed by the idle reaper.

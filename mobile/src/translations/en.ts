@@ -352,8 +352,6 @@ export const en = {
       failed: "Failed",
       canceling: "Canceling",
       canceled: "Canceled",
-      hibernating: "Hibernating",
-      hibernated: "Hibernated",
       unknown: "Unknown",
     },
     composer: {

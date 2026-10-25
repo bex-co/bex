@@ -459,7 +459,7 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// A replay-only ticket (empty pod claim, ADR065 D2 — minted for a reaped
-	// terminal/hibernated session) never dials: the durable-transcript replay +
+	// terminal session) never dials: the durable-transcript replay +
 	// `[DONE]` below is the whole response. Verify already guarantees a turn
 	// ticket always binds a pod, so POST can never reach the driver this way.
 	var podIP string

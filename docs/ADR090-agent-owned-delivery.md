@@ -4,7 +4,7 @@
 
 **Source:** user request 2026-10-22: the agent, not a program, should commit the code. The follow-up asked why the platform interferes at all. The answer is that the driver-owned path's main justification, scanning for a real model key before push, has been void since ADR062.
 
-**Related decisions:** [ADR047](ADR047-cloud-coding-agent-sessions.md) (session product, Git proxy, Completer), [ADR051](ADR051-agent-session-transcript.md) (durable transcript), [ADR059](ADR059-agent-sandbox-hibernation.md) (hibernation and dirty-tree retention), [ADR062](ADR062-sandbox-credential-vault.md) (placeholder-only sandbox, model proxy), [ADR084](ADR084-security-review-round22.md) #17 (pre-push scan bypass rejected).
+**Related decisions:** [ADR047](ADR047-cloud-coding-agent-sessions.md) (session product, Git proxy, Completer), [ADR051](ADR051-agent-session-transcript.md) (durable transcript), [ADR059](ADR059-agent-sandbox-hibernation.md) (hibernation and dirty-tree retention; superseded 2026-10-25), [ADR062](ADR062-sandbox-credential-vault.md) (placeholder-only sandbox, model proxy), [ADR084](ADR084-security-review-round22.md) #17 (pre-push scan bypass rejected).
 
 ## Context
 
@@ -93,7 +93,7 @@ The agent image ships a stdio MCP server named `bex` with one tool, `open_or_upd
 
 When the agent ends its turn, the driver computes read-only Git facts: `{dirty, unpushedCommits, remoteHead, baseBranch, prRecorded}`. If the work is undelivered (a dirty tree, unpushed commits, or a pushed branch ahead of base with no PR recorded), the driver sends the agent **one** follow-up prompt asking it to finish delivery, then recomputes the facts. The driver never commits or pushes.
 
-The status file's `git{}` object replaces `delivery{}` and `evidence{}`. The Completer never calls GitHub. It finalizes from the PR record the D3 verb already wrote. Work still undelivered after the nudge finalizes as **succeeded with a delivery note**, not failed: the agent's turn did succeed, and the tree is kept. ADR059's dirty-git retention window holds the tree, so a steering turn can pick it up.
+The status file's `git{}` object replaces `delivery{}` and `evidence{}`. The Completer never calls GitHub. It finalizes from the PR record the D3 verb already wrote. Work still undelivered after the nudge finalizes as **succeeded with a delivery note**, not failed: the agent's turn did succeed. _Amended 2026-10-25 (w10/m15): ADR059 hibernation and its dirty-git retention are retired. The tree stays only while the finished session's sandbox is alive, which is at most `BEX_AGENT_SANDBOX_IDLE_TTL` (2h) of idle time. After that the sandbox is terminated and undelivered work is lost. The post-turn nudge is the only guard, and the delivery note tells the user what was left behind._
 
 ### D6 — Deletions
 
@@ -126,7 +126,7 @@ Live verification (`w10/m13` t016) uses a dev-only route. It is env-gated and re
 
 **User decision 2026-10-23** (tracked in `w10/m14`): ship agent sessions on a bex-owned OpenRouter key now, but only for workspace `tea-d98210cbbpdc73dcrkvg`, and keep every other tenant off it until the economics are in place.
 
-- **Scope.** bex-api's `BEX_AGENT_PLATFORM_MODEL_ROUTE=openrouter` applies only to the `tea-` ids in `BEX_AGENT_PLATFORM_MODEL_WORKSPACES`, and only to the claude profile. Unlike the dev route it runs on the production control plane. The route is resolved per workspace at create, steer, rehydrate and mint time, not from the endpoint a session stored, so an existing session moves onto it on its next dispatch. Every other workspace is unchanged: `api.anthropic.com` with its own BYO key, and an explicit OpenRouter endpoint is refused. Allowlisted workspaces report `modelKeyReady` through the platform key.
+- **Scope.** bex-api's `BEX_AGENT_PLATFORM_MODEL_ROUTE=openrouter` applies only to the `tea-` ids in `BEX_AGENT_PLATFORM_MODEL_WORKSPACES`, and only to the claude profile. Unlike the dev route it runs on the production control plane. The route is resolved per workspace at create, steer and mint time, not from the endpoint a session stored, so an existing session moves onto it on its next dispatch. Every other workspace is unchanged: `api.anthropic.com` with its own BYO key, and an explicit OpenRouter endpoint is refused. Allowlisted workspaces report `modelKeyReady` through the platform key.
 - **Key custody.** The key lives in the `bex-system` Secret `bex-agent-platform-model` and flows to bex-api's env, then to the internal mint, then to the gateway's upstream hop. It never enters the sandbox, which still holds only `ModelKeyPlaceholder`, nor any API response, log, audit event or error. A missing Secret disables the route with a loud startup log rather than crash-looping bex-api.
 - **Model pin.** The mint returns `pinnedModel`. The gateway refuses with 403 any request whose JSON top-level `model` is not exactly that id, appears twice, or carries OpenRouter's `models` fallback list or paid `plugins`. A tenant sandbox therefore cannot spend the platform key on a different model. Workspace BYO routes are not pinned.
 - **Follow-ups (not in this step).** Per-workspace token metering and pricing, plan quotas plus an OpenRouter-side spend cap, and a data policy for platform-key traffic. Widening the route to every workspace is dated in `w10/m14` t007.
@@ -150,5 +150,5 @@ Paraphrased from public documentation and source; no leaked or GPL prompt text i
 - Agent PRs read like a teammate's: a reviewable commit history, a templated description, and a bex footer.
 - About 1,000 lines of driver and backend delivery, evidence and scrub code, plus a CI script, are deleted.
 - The PR appears on the session as soon as it exists, not only at finalize.
-- Delivery now depends on the agent following the overlay. The one-nudge check and the delivery note make a miss visible without the platform authoring code, and the retained tree keeps the work.
+- Delivery now depends on the agent following the overlay. The one-nudge check and the delivery note make a miss visible without the platform authoring code. Since 2026-10-25 nothing keeps undelivered work past the 2h idle close: the nudge is the only guard.
 - `evidence` disappears from REST, GraphQL and MCP. This is a bex-only surface with no Render equivalent; `w10/m13` t012 checks the three surfaces, the dashboard and mobile agree.

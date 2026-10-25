@@ -145,8 +145,6 @@ func TestMinterRefusesTerminalOrForeignSession(t *testing.T) {
 		// round-5 finding 10: Cancel persists "canceling" before external teardown
 		// and leaves it on a teardown failure, so a still-live sandbox must not mint.
 		"canceling":         {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "canceling"}},
-		"hibernating":       {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "hibernating"}},
-		"hibernated":        {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "hibernated"}},
 		"unknown phase":     {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "future-phase"}},
 		"sandbox cleared":   {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "", Phase: "running"}},
 		"foreign workspace": {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-b", SandboxID: "sbx-1", Phase: "running"}},

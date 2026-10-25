@@ -69,22 +69,3 @@ func TestSteerRequiresPaymentMethodAtAdmission(t *testing.T) {
 		t.Fatalf("refused steer advanced phase to %q", st.rows[id].Phase)
 	}
 }
-
-func TestRehydrateRequiresPaymentMethodAtAdmission(t *testing.T) {
-	svc, st, lc, id := steerableFixture(t)
-	seedHibernated(st, id)
-	svc.Snapshots = newFakeSnapshots()
-	gate := &rejectingPaymentGate{}
-	svc.Payment = gate
-	beforeCreated := lc.created
-	_, err := svc.Resume(caller("alice"), id)
-	if !errors.Is(err, core.ErrPaymentRequired) || len(gate.calls) != 1 {
-		t.Fatalf("cardless rehydrate err=%v calls=%v, want synchronous 402", err, gate.calls)
-	}
-	if lc.created != beforeCreated {
-		t.Fatalf("rehydrate dispatched a sandbox despite payment refusal")
-	}
-	if st.rows[id].Phase != PhaseHibernated {
-		t.Fatalf("refused rehydrate advanced phase to %q", st.rows[id].Phase)
-	}
-}

@@ -430,26 +430,6 @@ func assertAgentSessionArchive(ctx context.Context, t *testing.T, s *PGStore, te
 		t.Fatalf("unarchive = %+v err=%v", unarchived, err)
 	}
 
-	// Retention expiry auto-archives (ADR065 D5): hibernate the third session,
-	// expire it, and the row is canceled + archived with the snapshot cleared —
-	// but its history (the row) survives.
-	if _, err := s.SetAgentSessionLifecycle(ctx, third.ID, "sandbox-arch", "completed", "completed", false); err != nil {
-		t.Fatalf("complete third: %v", err)
-	}
-	if _, err := s.ClaimAgentSessionForHibernation(ctx, third.ID); err != nil {
-		t.Fatalf("claim hibernation: %v", err)
-	}
-	if _, err := s.HibernateAgentSession(ctx, third.ID, "snapshots/x", 42, "sha", time.Now().Add(time.Hour)); err != nil {
-		t.Fatalf("hibernate: %v", err)
-	}
-	expired, err := s.ExpireHibernatedAgentSession(ctx, third.ID, "snapshots/x")
-	if err != nil || expired.Phase != "canceled" || expired.ArchivedAt == nil || expired.SnapshotRef != "" {
-		t.Fatalf("expire must cancel+archive+clear snapshot, got %+v err=%v", expired, err)
-	}
-	if expired.FailureReason != "hibernation retention window elapsed" {
-		t.Fatalf("expire reason = %q", expired.FailureReason)
-	}
-
 	// Clean up the extra rows so the surrounding flow's counts stay stable.
 	for _, id := range []string{second.ID, third.ID} {
 		if err := s.DeleteAgentSession(ctx, id); err != nil {

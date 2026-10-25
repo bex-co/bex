@@ -44,16 +44,6 @@ export interface AgentDriverConfig {
     baseOid: string;
     remoteBranchOid: string;
   };
-  // restoreUrl (ADR059 D4, w2/m68): a short-lived presigned GET URL the fresh
-  // sandbox fetches its hibernation snapshot from and untars over the workspace
-  // BEFORE the setup clone. Empty ⇒ a normal clone (byte-identical). The URL is
-  // single-object + time-boxed; no durable credential enters the sandbox.
-  restoreUrl: string;
-  // restoreSha / restoreBytes (codex round-15 #7): recorded digest and size of
-  // the snapshot object. When set, restore verifies them after download and
-  // refuses to extract a mismatched or truncated archive.
-  restoreSha: string;
-  restoreBytes: number;
   deliver: boolean;
   gitName: string;
   gitEmail: string;
@@ -264,12 +254,6 @@ export function loadConfig(
     repoUrl: env.BEX_AGENT_REPO_URL || "",
     baseBranch: env.BEX_AGENT_BASE_BRANCH || "",
     repository: env.BEX_AGENT_REPOSITORY || "",
-    restoreUrl: env.BEX_AGENT_RESTORE_URL || "",
-    restoreSha: env.BEX_AGENT_RESTORE_SHA || "",
-    restoreBytes: optionalNonNegativeInt(
-      env.BEX_AGENT_RESTORE_BYTES,
-      "BEX_AGENT_RESTORE_BYTES",
-    ),
     deliver: env.BEX_AGENT_DELIVER === "1",
     gitName: env.BEX_AGENT_GIT_NAME || "bex agent",
     gitEmail: env.BEX_AGENT_GIT_EMAIL || "agent@bex.co",

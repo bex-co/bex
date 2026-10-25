@@ -20,9 +20,7 @@ export function agentSessionView({
   return {
     archivedAt,
     isArchived: archivedAt != null,
-    isFinished:
-      ["completed", "failed", "canceled"].includes(phase) ||
-      phase === "hibernated",
+    isFinished: ["completed", "failed", "canceled"].includes(phase),
     id: "as-1",
     ownerId: "tea-1",
     repo: "acme/widgets",
@@ -49,13 +47,8 @@ export function agentSessionView({
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     canceledAt: null,
-    pinned: false,
-    snapshotBytes: 0,
-    hibernatedAt: null,
-    retainUntil: null,
-    isHibernated: phase === "hibernated",
     isTerminal: ["completed", "failed", "canceled"].includes(phase),
-    isSteerable: ["completed", "failed", "hibernated"].includes(phase),
+    isSteerable: ["completed", "failed"].includes(phase),
     ...over,
   };
 }

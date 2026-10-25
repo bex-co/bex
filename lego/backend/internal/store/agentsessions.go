@@ -108,16 +108,6 @@ type AgentSession struct {
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 	CanceledAt        *time.Time
-	// Hibernation (ADR059 D2/D3, w2/m68). Pinned removes the retention delete
-	// edge; SnapshotRef is the object-storage key (empty ⇒ no durable snapshot);
-	// SnapshotBytes is the storage-metering + quota dimension; HibernatedAt/
-	// RetainUntil drive the retention sweep (NULL while Active).
-	Pinned        bool
-	SnapshotRef   string
-	SnapshotBytes int64
-	SnapshotSHA   string
-	HibernatedAt  *time.Time
-	RetainUntil   *time.Time
 	// ArchivedAt is the ADR065 D1 archive flag: LIST-state, orthogonal to phase.
 	// NULL ⇒ the session is in the working set; set ⇒ it is archived (hidden from
 	// the default list, mutation verbs refused) but still viewable.
@@ -130,7 +120,6 @@ type AgentSession struct {
 const agentSessionColumns = `id, workspace_id, repo, branch, agent_config, sandbox_id,
 	phase, status, head_sha, pr_url, pr_number, turns, delivery_mode, delivery_note,
 	failure_reason, failure_reason_code, created_at, updated_at, canceled_at,
-	pinned, snapshot_ref, snapshot_bytes, snapshot_sha, hibernated_at, retain_until,
 	archived_at`
 
 func scanAgentSession(row pgx.Row) (AgentSession, error) {
@@ -138,9 +127,7 @@ func scanAgentSession(row pgx.Row) (AgentSession, error) {
 	err := row.Scan(&s.ID, &s.WorkspaceID, &s.Repo, &s.Branch, &s.AgentConfig,
 		&s.SandboxID, &s.Phase, &s.Status, &s.HeadSHA, &s.PRURL, &s.PRNumber,
 		&s.Turns, &s.DeliveryMode, &s.DeliveryNote, &s.FailureReason, &s.FailureReasonCode,
-		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt,
-		&s.Pinned, &s.SnapshotRef, &s.SnapshotBytes, &s.SnapshotSHA,
-		&s.HibernatedAt, &s.RetainUntil, &s.ArchivedAt)
+		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt, &s.ArchivedAt)
 	return s, err
 }
 
@@ -606,211 +593,6 @@ func (s *PGStore) ClearAgentSessionSandbox(ctx context.Context, id string) error
 	return err
 }
 
-// ClaimAgentSessionForHibernation atomically claims a finished session for the
-// hibernation reclaim (ADR059 D3), moving it from a terminal phase holding a
-// sandbox into the transient `hibernating` phase so exactly one Completer
-// replica runs the snapshot. It is CAS-guarded like the reap path: only a
-// completed/failed row with a live sandbox_id matches, so a concurrent Cancel or
-// a second replica finds no row (ErrNotFound) and backs off. Returns the claimed
-// row (its sandbox_id still set — the snapshot exec needs it).
-func (s *PGStore) ClaimAgentSessionForHibernation(ctx context.Context, id string) (AgentSession, error) {
-	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
-		UPDATE agent_sessions
-		SET phase='hibernating', status='hibernating', updated_at=now()
-		WHERE id=$1 AND sandbox_id <> '' AND phase IN ('completed','failed')
-		RETURNING `+agentSessionColumns, id))
-	if err != nil {
-		return AgentSession{}, classify("agent session", err)
-	}
-	return out, nil
-}
-
-// HibernateAgentSession records a durable snapshot and moves the session to the
-// `hibernated` state (ADR059 D3): it stores the object-storage ref + size +
-// digest, stamps hibernated_at, and sets the retention deadline (NULL for a
-// pinned row). It deliberately KEEPS sandbox_id so the Completer can terminate
-// the (still-live) pod after this durable write; the Completer clears it once the
-// pod is gone (ClearAgentSessionSandbox). Guarded to the `hibernating` claim so a
-// stale writer can't hibernate a resurrected session.
-func (s *PGStore) HibernateAgentSession(ctx context.Context, id, snapshotRef string, snapshotBytes int64, snapshotSHA string, retainUntil time.Time) (AgentSession, error) {
-	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
-		UPDATE agent_sessions
-		SET phase='hibernated', status='hibernated',
-		    snapshot_ref=$2, snapshot_bytes=$3, snapshot_sha=$4,
-		    hibernated_at=now(),
-		    retain_until = CASE WHEN pinned THEN NULL ELSE $5::timestamptz END,
-		    updated_at=now()
-		WHERE id=$1 AND phase='hibernating'
-		RETURNING `+agentSessionColumns, id, snapshotRef, snapshotBytes, snapshotSHA, retainUntil))
-	if err != nil {
-		return AgentSession{}, classify("agent session", err)
-	}
-	return out, nil
-}
-
-// BeginRehydrate claims a hibernated session for rehydration on Resume/Steer
-// (ADR059 D4), CAS-moving it hibernated → resuming while KEEPING the snapshot
-// fields (the fresh sandbox is provisioned in the background; the snapshot is
-// only consumed once it is up). A concurrent retention delete or double resume
-// finds no `hibernated` row (ErrNotFound). The row's sandbox_id stays empty
-// until RehydrateAgentSession adopts the new one.
-func (s *PGStore) BeginRehydrate(ctx context.Context, id, prompt, deliveryMode string) (AgentSession, error) {
-	var out AgentSession
-	err := s.withTx(ctx, func(tx pgx.Tx) error {
-		var turns int
-		if err := tx.QueryRow(ctx, `
-			SELECT turns FROM agent_sessions
-			WHERE id=$1 AND phase='hibernated' AND snapshot_ref <> ''
-			FOR UPDATE`, id).Scan(&turns); err != nil {
-			return err
-		}
-		if prompt != "" {
-			if err := enforceAgentSessionPromptQuota(ctx, tx, id, prompt); err != nil {
-				return err
-			}
-			if _, err := tx.Exec(ctx, `
-				INSERT INTO agent_session_turns (session_id, turn, prompt, delivery_mode)
-				VALUES ($1, $2, $3, $4)`, id, turns+1, prompt, deliveryMode); err != nil {
-				return err
-			}
-		}
-		var err error
-		out, err = scanAgentSession(tx.QueryRow(ctx, `
-			UPDATE agent_sessions
-			SET phase='resuming', status='rehydrating',
-			    turns=turns + CASE WHEN $2 <> '' THEN 1 ELSE 0 END,
-			    updated_at=now()
-			WHERE id=$1
-			RETURNING `+agentSessionColumns, id, prompt))
-		return err
-	})
-	if err != nil {
-		if errors.Is(err, ErrAgentSessionPromptQuota) {
-			return AgentSession{}, err
-		}
-		return AgentSession{}, classify("agent session", err)
-	}
-	return out, nil
-}
-
-// AbortRehydrate reverts a rehydrate whose background sandbox provisioning failed
-// (ADR059 D4), CAS-moving resuming → hibernated so the snapshot (still present)
-// can be retried by a later Resume. Guarded to a still-snapshot-bearing resuming
-// row so it can't clobber a session that already rehydrated or was canceled.
-func (s *PGStore) AbortRehydrate(ctx context.Context, id string) (AgentSession, error) {
-	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
-		UPDATE agent_sessions
-		SET phase='hibernated', status='hibernated', updated_at=now()
-		WHERE id=$1 AND phase='resuming' AND snapshot_ref <> '' AND sandbox_id=''
-		RETURNING `+agentSessionColumns, id))
-	if err != nil {
-		return AgentSession{}, classify("agent session", err)
-	}
-	return out, nil
-}
-
-// RehydrateAgentSession completes a rehydration (ADR059 D4): it adopts the fresh
-// sandbox id and advances to the live phase. A Steer's turn counter already
-// advanced atomically in BeginRehydrate; a prompt-less Resume does not advance.
-// clears the snapshot fields (the blob has been consumed into the new pod — a
-// re-hibernation writes a fresh one). Guarded to the `resuming` claim
-// BeginRehydrate set, so it can't race a retention delete or a double resume.
-func (s *PGStore) RehydrateAgentSession(ctx context.Context, id, sandboxID, phase, status, deliveryMode string) (AgentSession, error) {
-	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
-		UPDATE agent_sessions
-		SET sandbox_id=$2, phase=$3, status=$4, delivery_mode=$5,
-		    snapshot_ref='', snapshot_bytes=0, snapshot_sha='',
-		    hibernated_at=NULL, retain_until=NULL, updated_at=now()
-		WHERE id=$1 AND phase='resuming' AND sandbox_id=''
-		RETURNING `+agentSessionColumns, id, sandboxID, phase, status, deliveryMode))
-	if err != nil {
-		return AgentSession{}, classify("agent session", err)
-	}
-	return out, nil
-}
-
-// SetAgentSessionPinned toggles the never-expire pin (ADR059 D5). Pinning clears
-// retain_until (removes the delete edge); unpinning puts a hibernated row back
-// on the clock with the supplied deadline (retainUntil is ignored — left NULL —
-// while the row is not hibernated). It authorizes nothing; the caller gates it.
-func (s *PGStore) SetAgentSessionPinned(ctx context.Context, id string, pinned bool, retainUntil *time.Time) (AgentSession, error) {
-	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
-		UPDATE agent_sessions
-		SET pinned=$2,
-		    retain_until = CASE
-		        WHEN $2 THEN NULL
-		        WHEN phase='hibernated' THEN $3::timestamptz
-		        ELSE retain_until END,
-		    updated_at=now()
-		WHERE id=$1
-		RETURNING `+agentSessionColumns, id, pinned, retainUntil))
-	if err != nil {
-		return AgentSession{}, classify("agent session", err)
-	}
-	return out, nil
-}
-
-// ListHibernatedForRetention returns unpinned hibernated sessions whose
-// retention deadline has passed (ADR059 D5), oldest deadline first — the working
-// set the retention sweep reclaims. The sweep deletes ONLY the snapshot object;
-// the row and its transcript are kept (ExpireHibernatedAgentSession moves the
-// row to canceled + archived). Pinned rows (retain_until NULL) never match.
-// Trusted background read; the partial index backs it.
-func (s *PGStore) ListHibernatedForRetention(ctx context.Context, now time.Time, limit int) ([]AgentSession, error) {
-	if limit <= 0 {
-		limit = 200
-	}
-	rows, err := s.Pool.Query(ctx, `
-		SELECT `+agentSessionColumns+` FROM agent_sessions
-		WHERE phase='hibernated' AND NOT pinned AND snapshot_ref <> ''
-		      AND retain_until IS NOT NULL AND retain_until <= $1
-		ORDER BY retain_until ASC, id ASC LIMIT $2`, now, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	out := make([]AgentSession, 0)
-	for rows.Next() {
-		v, err := scanAgentSession(rows)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, v)
-	}
-	return out, rows.Err()
-}
-
-// ExpireHibernatedAgentSession finalizes a retention-expired session after its
-// snapshot has been deleted from object storage (ADR059 D5): it clears the
-// snapshot fields and moves the row to the terminal `canceled` state with a
-// reason, keeping the conversation history. It also stamps archived_at (ADR065
-// D5): a session whose snapshot aged out is one nobody came back for, so it
-// leaves the working set by itself. Guarded to the exact snapshot_ref so it
-// can't clobber a row a concurrent Resume already rehydrated.
-func (s *PGStore) ExpireHibernatedAgentSession(ctx context.Context, id, snapshotRef string) (AgentSession, error) {
-	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
-		UPDATE agent_sessions
-		SET phase='canceled', status='canceled', canceled_at=now(),
-		    failure_reason='hibernation retention window elapsed', failure_reason_code='',
-		    snapshot_ref='', snapshot_bytes=0, snapshot_sha='',
-		    retain_until=NULL, archived_at=COALESCE(archived_at, now()), updated_at=now()
-		WHERE id=$1 AND phase='hibernated' AND snapshot_ref=$2
-		RETURNING `+agentSessionColumns, id, snapshotRef))
-	if err != nil {
-		return AgentSession{}, classify("agent session", err)
-	}
-	return out, nil
-}
-
-// CountPinnedAgentSessions counts a workspace's pinned sessions — the ADR059 D5
-// pin-quota dimension. Best-effort like the live cap; no lock.
-func (s *PGStore) CountPinnedAgentSessions(ctx context.Context, workspaceID string) (int, error) {
-	var n int
-	err := s.Pool.QueryRow(ctx,
-		`SELECT count(*) FROM agent_sessions WHERE workspace_id=$1 AND pinned`, workspaceID).Scan(&n)
-	return n, err
-}
-
 // RecordAgentSessionDispatch binds a newly dispatched accepted turn: it advances the
 // phase/status, adopts a fresh sandbox id when re-dispatched, records the
 // delivery mode ("resume" or "redispatch"). Prompt acceptance already advanced
@@ -877,8 +659,7 @@ func (s *PGStore) RecordAgentSessionDispatch(ctx context.Context, id, sandboxID,
 // delivered PR. An empty head leaves the stored one untouched; the delivery
 // note always reflects THIS turn. The phase guard is the cross-replica CAS: two
 // Completers may observe the same running row, but only one can own its
-// terminal transition. `hibernating` is admitted solely so the snapshot reaper
-// can unclaim its own transient phase.
+// terminal transition.
 //
 // The returned TerminalTurnFact carries the current turn's durable timing for
 // metrics (w5/m88). Callers must observe only when err == nil.
@@ -893,7 +674,7 @@ func (s *PGStore) FinalizeAgentSession(ctx context.Context, id, phase, headSHA, 
 			    head_sha = CASE WHEN $4 <> '' THEN $4 ELSE head_sha END,
 			    delivery_note=$5,
 			    failure_reason=$6, failure_reason_code='', updated_at=now()
-			WHERE id=$1 AND phase IN ('creating','running','resuming','redispatching','hibernating')
+			WHERE id=$1 AND phase IN ('creating','running','resuming','redispatching')
 			RETURNING `+agentSessionColumns,
 			id, phase, phase, headSHA, deliveryNote, failureReason))
 		if err != nil {
@@ -1144,7 +925,7 @@ func (s *PGStore) AgentSessionTranscriptTurnMaxIndex(ctx context.Context, sessio
 // it. Two callers: the create-path compensation (a row whose OpenFGA parent
 // tuple could not be established) and the ADR065 D4 public delete verb — the
 // service layer owns the D4 guardrails (fresh authorization, no-live-sandbox
-// phase gate, snapshot-blob-before-row ordering). Cancel still preserves the
+// phase gate). Cancel still preserves the
 // audit/history row.
 func (s *PGStore) DeleteAgentSession(ctx context.Context, id string) error {
 	tag, err := s.Pool.Exec(ctx, `DELETE FROM agent_sessions WHERE id=$1`, id)

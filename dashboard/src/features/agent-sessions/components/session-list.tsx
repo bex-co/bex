@@ -46,8 +46,6 @@ const PHASE_CHIP: Record<
   failed: { variant: "destructive" },
   canceled: { variant: "secondary" },
   canceling: { variant: "secondary" },
-  hibernated: { variant: "secondary" },
-  hibernating: { variant: "outline", className: ACTIVE_CHIP_CLASS },
   creating: { variant: "outline", className: ACTIVE_CHIP_CLASS },
   running: { variant: "outline", className: ACTIVE_CHIP_CLASS },
   resuming: { variant: "outline", className: ACTIVE_CHIP_CLASS },

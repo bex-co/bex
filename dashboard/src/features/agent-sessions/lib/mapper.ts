@@ -21,11 +21,11 @@ const TERMINAL_PHASES: ReadonlySet<AgentSessionPhase> = new Set([
   "canceled",
 ]);
 
-/** Idle phases the GraphQL steer/resume path accepts (hibernated rehydrates). */
+/** Idle phases the GraphQL steer path accepts: a closed session continues in a
+ *  fresh sandbox on the same branch (w10/m15). */
 const STEERABLE_PHASES: ReadonlySet<AgentSessionPhase> = new Set([
   "completed",
   "failed",
-  "hibernated",
 ]);
 
 /** True for completed/failed/canceled — a settled session. */
@@ -79,14 +79,9 @@ export function toAgentSessionView(
     createdAt: wire.createdAt,
     updatedAt: wire.updatedAt,
     canceledAt: wire.canceledAt ?? null,
-    pinned: wire.pinned ?? false,
-    snapshotBytes: wire.snapshotBytes ?? 0,
-    hibernatedAt: wire.hibernatedAt ?? null,
-    retainUntil: wire.retainUntil ?? null,
     archivedAt: wire.archivedAt ?? null,
-    isHibernated: phase === "hibernated",
     isArchived: wire.archivedAt != null,
-    isFinished: isTerminalPhase(phase) || phase === "hibernated",
+    isFinished: isTerminalPhase(phase),
     isTerminal: isTerminalPhase(phase),
     isSteerable: isSteerablePhase(phase),
   };
@@ -110,20 +105,6 @@ export function toAgentSessionTicket(
     streamUrl: wire.streamUrl ?? null,
     expiresAt: wire.expiresAt ?? null,
   };
-}
-
-/** Human-readable snapshot storage size for the hibernation cost display
- *  (ADR059 D6). Binary units; one decimal above KiB. 0 ⇒ "0 B". */
-export function formatSnapshotBytes(bytes: number): string {
-  if (!bytes || bytes < 0) return "0 B";
-  const units = ["B", "KiB", "MiB", "GiB", "TiB"];
-  let value = bytes;
-  let unit = 0;
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024;
-    unit += 1;
-  }
-  return `${unit === 0 ? value : value.toFixed(1)} ${units[unit]}`;
 }
 
 /** Bounded title for list rows — caps raw task text to avoid DOM/ARIA bloat. */
@@ -296,9 +277,7 @@ export type AgentSessionStatusPhraseKey =
   | "agentSessions.statusPhrase.working"
   | "agentSessions.phase.completed"
   | "agentSessions.phase.failed"
-  | "agentSessions.phase.canceled"
-  | "agentSessions.phase.hibernated"
-  | "agentSessions.phase.hibernating";
+  | "agentSessions.phase.canceled";
 
 /**
  * Phase + PR presence → the sidebar's human status phrase (Devin's "PR is
@@ -319,10 +298,6 @@ export function agentSessionStatusPhraseKey(
     case "canceled":
     case "canceling":
       return "agentSessions.phase.canceled";
-    case "hibernated":
-      return "agentSessions.phase.hibernated";
-    case "hibernating":
-      return "agentSessions.phase.hibernating";
     default:
       return "agentSessions.statusPhrase.working";
   }
