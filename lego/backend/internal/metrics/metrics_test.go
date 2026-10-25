@@ -533,7 +533,7 @@ func TestHostPathFiltersRouteToLogStore(t *testing.T) {
 	}
 	loki := func(_ context.Context, r RequestMetricsRequest) ([]MetricSeries, error) {
 		lokiCalled = true
-		if r.Host == "" && r.Path == "" && r.Metric != MetricHTTPRequests {
+		if len(r.Hosts) == 0 && len(r.Paths) == 0 && r.Metric != MetricHTTPRequests {
 			t.Errorf("loki source reached without a host/path filter on %s: %+v", r.Metric, r)
 		}
 		return []MetricSeries{{Points: []MetricPoint{{Value: 3}}}}, nil
@@ -545,12 +545,12 @@ func TestHostPathFiltersRouteToLogStore(t *testing.T) {
 
 	// http_requests/http_latency + host/path => served from Loki, Prometheus untouched.
 	for _, q := range []MetricQuery{
-		{App: "web", Metric: MetricHTTPRequests, Host: "web.example.com"},
-		{App: "web", Metric: MetricHTTPLatency, Path: "/api"},
+		{App: "web", Metric: MetricHTTPRequests, Hosts: []string{"web.example.com"}},
+		{App: "web", Metric: MetricHTTPLatency, Paths: []string{"/api"}},
 	} {
 		series, err := svc.Metrics(context.Background(), q)
 		if err != nil {
-			t.Errorf("%s host=%q path=%q: want Loki series, got %v", q.Metric, q.Host, q.Path, err)
+			t.Errorf("%s host=%q path=%q: want Loki series, got %v", q.Metric, q.Hosts, q.Paths, err)
 		} else if len(series) != 1 || series[0].Points[0].Value != 3 {
 			t.Errorf("%s: want the Loki source's series, got %+v", q.Metric, series)
 		}
@@ -564,8 +564,8 @@ func TestHostPathFiltersRouteToLogStore(t *testing.T) {
 
 	// A metric with no per-request host/path axis is rejected before any store.
 	for _, q := range []MetricQuery{
-		{App: "web", Metric: MetricBandwidth, Host: "web.example.com", Path: "/api"},
-		{App: "web", Metric: MetricCPU, Path: "/api"},
+		{App: "web", Metric: MetricBandwidth, Hosts: []string{"web.example.com"}, Paths: []string{"/api"}},
+		{App: "web", Metric: MetricCPU, Paths: []string{"/api"}},
 	} {
 		if _, err := svc.Metrics(context.Background(), q); !errors.Is(err, core.ErrBadRequest) {
 			t.Errorf("%s with host/path: want ErrBadRequest, got %v", q.Metric, err)
@@ -575,7 +575,7 @@ func TestHostPathFiltersRouteToLogStore(t *testing.T) {
 	// Loki unwired => host/path filter is an explicit store-unavailable, never a
 	// silent Prometheus fall-through.
 	noLoki := newService(nil, prom, sampleApp("web"), podFor("web", webInst))
-	if _, err := noLoki.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricHTTPRequests, Host: "web.example.com"}); !errors.Is(err, core.ErrLogStoreUnavailable) {
+	if _, err := noLoki.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricHTTPRequests, Hosts: []string{"web.example.com"}}); !errors.Is(err, core.ErrLogStoreUnavailable) {
 		t.Errorf("host filter with no Loki source: want ErrLogStoreUnavailable, got %v", err)
 	}
 
@@ -1220,62 +1220,87 @@ func TestLokiRequestQueryFor(t *testing.T) {
 	}{
 		{
 			name: "requests host filter",
-			req:  with(func(r *RequestMetricsRequest) { r.Metric = MetricHTTPRequests; r.Host = "web.example.com" }),
+			req:  with(func(r *RequestMetricsRequest) { r.Metric = MetricHTTPRequests; r.Hosts = []string{"web.example.com"} }),
 			want: `sum(count_over_time({namespace="default", app="web", type="request"} | json request_host="RequestHost", request_path="RequestPath" | request_host="web.example.com" [60s]))`,
 		},
 		{
 			name: "requests path filter, group by status, 5xx",
 			req: with(func(r *RequestMetricsRequest) {
-				r.Metric, r.Path, r.GroupBy, r.StatusCode = MetricHTTPRequests, "/api", "status", "5xx"
+				r.Metric, r.GroupBy, r.StatusCode = MetricHTTPRequests, "status", "5xx"
+				r.Paths = []string{"/api"}
 			}),
 			want: `sum by (status) (count_over_time({namespace="default", app="web", type="request", status=~"5.."} | json request_host="RequestHost", request_path="RequestPath" | request_path="/api" [60s]))`,
 		},
 		{
 			name: "latency host+path, p90",
 			req: with(func(r *RequestMetricsRequest) {
-				r.Metric, r.Host, r.Path, r.Quantile = MetricHTTPLatency, "web.example.com", "/api", 0.9
+				r.Metric, r.Quantile = MetricHTTPLatency, 0.9
+				r.Hosts = []string{"web.example.com"}
+				r.Paths = []string{"/api"}
 			}),
 			want: `quantile_over_time(0.9, {namespace="default", app="web", type="request"} | json latency_ns="Duration", request_host="RequestHost", request_path="RequestPath" | request_host="web.example.com" | request_path="/api" | unwrap latency_ns [60s]) by () / 1000000000`,
 		},
 		{
 			name: "latency host-only",
 			req: with(func(r *RequestMetricsRequest) {
-				r.Metric, r.Host, r.GroupBy = MetricHTTPLatency, "web.example.com", ""
+				r.Metric, r.GroupBy = MetricHTTPLatency, ""
+				r.Hosts = []string{"web.example.com"}
 			}),
 			want: `quantile_over_time(0.95, {namespace="default", app="web", type="request"} | json latency_ns="Duration", request_host="RequestHost", request_path="RequestPath" | request_host="web.example.com" | unwrap latency_ns [60s]) by () / 1000000000`,
 		},
 		{
 			name: "latency group by status",
 			req: with(func(r *RequestMetricsRequest) {
-				r.Metric, r.Host, r.GroupBy = MetricHTTPLatency, "web.example.com", "status"
+				r.Metric, r.GroupBy = MetricHTTPLatency, "status"
+				r.Hosts = []string{"web.example.com"}
 			}),
 			want: `quantile_over_time(0.95, {namespace="default", app="web", type="request"} | json latency_ns="Duration", request_host="RequestHost", request_path="RequestPath" | request_host="web.example.com" | unwrap latency_ns [60s]) by (status) / 1000000000`,
 		},
 		{
 			name: "latency group by code",
 			req: with(func(r *RequestMetricsRequest) {
-				r.Metric, r.Host, r.GroupBy = MetricHTTPLatency, "web.example.com", "code"
+				r.Metric, r.GroupBy = MetricHTTPLatency, "code"
+				r.Hosts = []string{"web.example.com"}
 			}),
 			want: `quantile_over_time(0.95, {namespace="default", app="web", type="request"} | json latency_ns="Duration", request_host="RequestHost", request_path="RequestPath" | request_host="web.example.com" | unwrap latency_ns [60s]) by (status) / 1000000000`,
 		},
 		{
 			name: "latency group by method",
 			req: with(func(r *RequestMetricsRequest) {
-				r.Metric, r.Host, r.GroupBy = MetricHTTPLatency, "web.example.com", "method"
+				r.Metric, r.GroupBy = MetricHTTPLatency, "method"
+				r.Hosts = []string{"web.example.com"}
 			}),
 			want: `quantile_over_time(0.95, {namespace="default", app="web", type="request"} | json latency_ns="Duration", request_host="RequestHost", request_path="RequestPath" | request_host="web.example.com" | unwrap latency_ns [60s]) by (method) / 1000000000`,
 		},
 		{
 			name: "requests clipped to the entry-time window (w4/m175)",
 			req: with(func(r *RequestMetricsRequest) {
-				r.Metric, r.Path = MetricHTTPRequests, "/api"
+				r.Metric = MetricHTTPRequests
+				r.Paths = []string{"/api"}
 				r.Start, r.End = time.Unix(1791852980, 123456789), time.Unix(1791853000, 0)
 			}),
 			want: `sum(count_over_time({namespace="default", app="web", type="request"} | json request_host="RequestHost", request_path="RequestPath" | request_path="/api" | label_format bex_ts_s="{{ unixEpoch (__timestamp__) }}", bex_ts_ns="{{ (__timestamp__).Nanosecond }}" | (bex_ts_s > 1791852980 or (bex_ts_s == 1791852980 and bex_ts_ns >= 123456789)) and (bex_ts_s < 1791853000 or (bex_ts_s == 1791853000 and bex_ts_ns <= 0)) | drop bex_ts_s, bex_ts_ns [60s]))`,
 		},
 		{
+			name: "requests two paths ORed, host ANDed (w4/401)",
+			req: with(func(r *RequestMetricsRequest) {
+				r.Metric = MetricHTTPRequests
+				r.Hosts = []string{"web.example.com"}
+				r.Paths = []string{"/nf", "/err"}
+			}),
+			want: `sum(count_over_time({namespace="default", app="web", type="request"} | json request_host="RequestHost", request_path="RequestPath" | request_host="web.example.com" | request_path="/nf" or request_path="/err" [60s]))`,
+		},
+		{
+			name: "requests two hosts ORed (w4/401)",
+			req: with(func(r *RequestMetricsRequest) {
+				r.Metric = MetricHTTPRequests
+				r.Hosts = []string{"a.example.com", "b.example.com"}
+			}),
+			want: `sum(count_over_time({namespace="default", app="web", type="request"} | json request_host="RequestHost", request_path="RequestPath" | request_host="a.example.com" or request_host="b.example.com" [60s]))`,
+		},
+		{
 			name: "bandwidth has no host/path axis",
-			req:  with(func(r *RequestMetricsRequest) { r.Metric = MetricBandwidth; r.Host = "web.example.com" }),
+			req:  with(func(r *RequestMetricsRequest) { r.Metric = MetricBandwidth; r.Hosts = []string{"web.example.com"} }),
 			want: "",
 		},
 	}
@@ -1299,7 +1324,7 @@ func TestLokiRequestMetricsSourceRoundTrip(t *testing.T) {
 	defer ts.Close()
 	series, err := NewLokiRequestMetricsSource(ts.URL, ts.Client())(context.Background(), RequestMetricsRequest{
 		Namespace: "default", App: "web", Metric: MetricHTTPRequests, GroupBy: "status",
-		Host: "web.example.com", Resolution: time.Minute, Start: time.Unix(1000, 0), End: time.Unix(2000, 0),
+		Hosts: []string{"web.example.com"}, Resolution: time.Minute, Start: time.Unix(1000, 0), End: time.Unix(2000, 0),
 	})
 	if err != nil {
 		t.Fatalf("loki source: %v", err)
@@ -1432,7 +1457,7 @@ func TestHostPathFilterCrossSurfaceParity(t *testing.T) {
 	}
 
 	for name, got := range map[string]*[]RequestMetricsRequest{"REST": restGot, "GraphQL": gqlGot, "MCP": mcpGot} {
-		if len(*got) != 1 || (*got)[0].Host != host || (*got)[0].Path != path {
+		if len(*got) != 1 || len((*got)[0].Hosts) != 1 || (*got)[0].Hosts[0] != host || len((*got)[0].Paths) != 1 || (*got)[0].Paths[0] != path {
 			t.Errorf("%s routed %+v, want one call with host=%q path=%q", name, *got, host, path)
 		}
 	}

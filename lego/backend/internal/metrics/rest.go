@@ -386,6 +386,17 @@ func parseDatastoreMetricParams(r *http.Request) (DatastoreMetricQuery, error) {
 	}, nil
 }
 
+// nonEmptyValues drops empty repeated-parameter values, preserving order.
+func nonEmptyValues(values []string) []string {
+	out := values[:0]
+	for _, v := range values {
+		if v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
 // parseMetricParams maps Render's metrics query string onto resources + a
 // MetricQuery.
 func parseMetricParams(r *http.Request) ([]string, MetricQuery, error) {
@@ -407,9 +418,9 @@ func parseMetricParams(r *http.Request) ([]string, MetricQuery, error) {
 	q := MetricQuery{
 		CPUAggregation: cpuAgg,
 		StatusCode:     v.Get("statusCode"),
-		// host/path are parsed only so Metrics can refuse them (see MetricQuery.Host).
-		Host:       v.Get("host"),
-		Path:       v.Get("path"),
+		// host/path are parsed only so Metrics can refuse them (see MetricQuery.Hosts).
+		Hosts:      nonEmptyValues(v["host"]),
+		Paths:      nonEmptyValues(v["path"]),
 		GroupBy:    groupBy,
 		Percentage: v.Get("percentage") == "true",
 		Instances:  v["instance"],

@@ -162,14 +162,31 @@ func lokiRequestPipeline(req RequestMetricsRequest, latency bool) string {
 		fields = append([]string{`latency_ns="Duration"`}, fields...)
 	}
 	p := " | json " + strings.Join(fields, ", ")
-	if req.Host != "" {
-		p += fmt.Sprintf(" | %s=%q", lokiLabelRequestHost, req.Host)
+	if len(req.Hosts) > 0 {
+		p += " | " + lokiOrFilter(lokiLabelRequestHost, req.Hosts)
 	}
-	if req.Path != "" {
-		p += fmt.Sprintf(" | request_path=%q", req.Path)
+	if len(req.Paths) > 0 {
+		p += " | " + lokiOrFilter("request_path", req.Paths)
 	}
 	// Last, so the timestamp templates run only on lines the filters kept.
 	return p + lokiEntryWindow(req.Start, req.End)
+}
+
+// lokiOrFilter renders one label filter: a single value keeps the plain
+// equality form byte-for-byte; several values are ORed (Render ORs repeated
+// host/path values), and distinct fields stay separate pipeline stages, so
+// they AND.
+func lokiOrFilter(field string, values []string) string {
+	parts := make([]string, 0, len(values))
+	seen := make(map[string]bool, len(values))
+	for _, v := range values {
+		if v == "" || seen[v] {
+			continue
+		}
+		seen[v] = true
+		parts = append(parts, fmt.Sprintf("%s=%q", field, v))
+	}
+	return strings.Join(parts, " or ")
 }
 
 // lokiTSSec and lokiTSNano are lokiEntryWindow's temporary entry-timestamp
