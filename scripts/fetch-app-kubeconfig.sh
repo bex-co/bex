@@ -8,7 +8,8 @@
 #
 # Usage:  HCLOUD_TOKEN=... scripts/fetch-app-kubeconfig.sh <output-path>
 # Env:    HCLOUD_TOKEN        (required) Hetzner Cloud API token
-#         BEX_SSH_KEY_PATH    SSH private key (default ~/.ssh/id_bex)
+#         BEX_SSH_KEY_PATH    SSH private key override (otherwise
+#                             BEX_SSH_PRIVATE_KEY_FILE or ~/.ssh/bex)
 #         BEX_SSH_KNOWN_HOSTS_FILE  authoritative known-hosts file. Set => the
 #                                  host key is AUTHENTICATED and an unknown or
 #                                  changed key fails closed before admin.conf is
@@ -21,7 +22,7 @@ set -euo pipefail
 
 OUT="${1:?usage: fetch-app-kubeconfig.sh <output-path>}"
 : "${HCLOUD_TOKEN:?HCLOUD_TOKEN is required}"
-KEY="${BEX_SSH_KEY_PATH:-$HOME/.ssh/id_bex}"
+KEY="${BEX_SSH_KEY_PATH:-${BEX_SSH_PRIVATE_KEY_FILE:-$HOME/.ssh/bex}}"
 CLUSTER="${CLUSTER_NAME:-bex}"
 # shellcheck source=scripts/lib/ssh-hostkey.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib/ssh-hostkey.sh"
