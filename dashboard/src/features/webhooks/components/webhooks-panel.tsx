@@ -82,7 +82,7 @@ export function WebhooksPanel() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("webhooks.title")}</CardTitle>
+        <CardTitle as="h1">{t("webhooks.title")}</CardTitle>
         <CardDescription>
           {proPlan ? t("webhooks.description") : t("webhooks.proOnly")}
         </CardDescription>

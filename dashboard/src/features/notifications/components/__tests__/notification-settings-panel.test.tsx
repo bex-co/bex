@@ -92,3 +92,13 @@ describe("NotificationSettingsPanel", () => {
     expect(screen.queryAllByRole("switch")).toHaveLength(0);
   });
 });
+
+// w4/410: the page's visible title is its one h1.
+describe("NotificationSettingsPanel heading", () => {
+  it("renders the title as an h1", async () => {
+    render(<NotificationSettingsPanel />);
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Notifications" }),
+    ).toBeInTheDocument();
+  });
+});
