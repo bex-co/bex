@@ -634,10 +634,6 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "失败",
     description: "Badge label for a failed tool call",
   },
-  "agentSessions.activityWorking": {
-    message: "处理中…",
-    description: "Activity-group summary while any tool step is still pending",
-  },
   "agentSessions.activityEdited_other": {
     message: "已编辑 {count} 个文件",
     description: "Activity-group summary when the turn edited files (diffs)",
@@ -649,6 +645,40 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.activitySteps_other": {
     message: "{count} 个步骤",
     description: "Activity-group summary fallback — the step count",
+  },
+  "agentSessions.activityRead_other": {
+    message: "已读取 {count} 个文件",
+    description: "Activity-group summary segment — file reads",
+  },
+  "agentSessions.activitySearched_other": {
+    message: "已搜索 {count} 次",
+    description: "Activity-group summary segment — searches",
+  },
+  "agentSessions.activitySubagents_other": {
+    message: "已运行 {count} 个子智能体",
+    description: "Activity-group summary segment — delegated subagent tasks",
+  },
+  "agentSessions.activityTools_other": {
+    message: "已使用 {count} 个工具",
+    description: "Activity-group summary segment — tools of no known kind",
+  },
+  "agentSessions.activityFailed_other": {
+    message: "{count} 个失败",
+    description: "Activity-group summary segment — failed tool calls",
+  },
+  "agentSessions.outputClipped_other": {
+    message: "已截断 {formatted} 个字符",
+    description: "Badge on a tool output the server stored head+tail-capped",
+  },
+  "agentSessions.conversationPartial": {
+    message: "对话仅部分加载。",
+    description:
+      "Inline row when the transcript stream failed after some of it rendered",
+  },
+  "agentSessions.liveStatus": {
+    message: "智能体状态",
+    description:
+      "Accessible label for the single live status line under a streaming transcript",
   },
   "agentSessions.scrollToBottom": {
     message: "滚动到最新",
@@ -726,16 +756,6 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.sshCopyError": {
     message: "复制失败",
     description: "Connect menu — toast when copying the ssh command fails",
-  },
-  "agentSessions.groupWorkedFor": {
-    message: "工作了 {duration}",
-    description:
-      "Activity-group summary with elapsed duration from persisted part timestamps (or ~arrival timing)",
-  },
-  "agentSessions.groupWorked": {
-    message: "已工作",
-    description:
-      "Activity-group summary when no duration could be derived (history replay)",
   },
   "agentSessions.groupThoughtFor": {
     message: "思考了 {duration}",

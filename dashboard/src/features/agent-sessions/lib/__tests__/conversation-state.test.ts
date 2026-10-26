@@ -27,6 +27,46 @@ describe("deriveConversationState", () => {
       "broken",
     ],
     [{ phase: "completed" as const }, "ended"],
+    // A terminal replay still loading shows the skeleton, not "ended" (w10/m16).
+    [
+      { phase: "completed" as const, isTerminal: true, resuming: true },
+      "connecting",
+    ],
+    [
+      {
+        phase: "failed" as const,
+        isTerminal: true,
+        transportStatus: "streaming",
+      },
+      "connecting",
+    ],
+    [
+      {
+        phase: "completed" as const,
+        isTerminal: true,
+        resuming: false,
+        transportStatus: "ready",
+      },
+      "ended",
+    ],
+    [
+      {
+        phase: "completed" as const,
+        isTerminal: true,
+        resuming: true,
+        hasMessages: true,
+      },
+      "ended",
+    ],
+    [
+      {
+        phase: "completed" as const,
+        isTerminal: true,
+        resuming: true,
+        transportError: true,
+      },
+      "ended",
+    ],
   ])("maps %o to %s", (input, expected) => {
     expect(deriveConversationState(input)).toBe(expected);
   });

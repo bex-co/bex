@@ -1,5 +1,6 @@
 import {
   memo,
+  startTransition,
   useEffect,
   useMemo,
   useRef,
@@ -17,10 +18,11 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { ConversationSkeleton } from "@/features/agent-sessions/components/conversation-skeleton";
 import { MarkdownRenderer } from "@/common/components/markdown-renderer";
 import { cn } from "@/common/lib/utils/utils";
+import { ActivityGroup } from "@/features/agent-sessions/components/activity-group";
 import {
-  ActivityGroup,
+  stepLabel,
   type ActivityStep,
-} from "@/features/agent-sessions/components/activity-group";
+} from "@/features/agent-sessions/lib/activity-steps";
 import {
   formatStreamDuration,
   useStreamDuration,
@@ -139,6 +141,7 @@ export interface SessionConversationImplProps {
 //     reaches the Markdown parser + DOM.
 const INITIAL_WINDOW = 200;
 const WINDOW_STEP = 200;
+const STREAM_THROTTLE_MS = 50;
 
 export function SessionConversationImpl({
   sessionId,
@@ -172,12 +175,33 @@ export function SessionConversationImpl({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [injectedTransport, sessionId]);
 
+  const [acpStatus, setAcpStatus] = useState<AcpStatus | null>(null);
+  const acpStatusRef = useRef<AcpStatus | null>(null);
+  const toolStepsRef = useRef(0);
   const { messages, status, error, sendMessage, resumeStream } =
     useChat<AgentUIMessage>({
       id: sessionId,
       transport,
       // Replay is triggered explicitly below (not via `resume: true`'s own
       // mount effect) so this component can track when that attempt settles.
+      //
+      // A replay is a burst of thousands of chunks, each a synchronous store
+      // update; batching them to one render per 50ms keeps a long transcript
+      // (5,602 chunks for ags-dbf8nggkbcjs73a5r3u0) from rendering per chunk
+      // (w10/m16 t001). `experimental_throttle` is the option name in the
+      // pinned @ai-sdk/react 3.0.x.
+      experimental_throttle: STREAM_THROTTLE_MS,
+      onData: (part) => {
+        // Transient ACP status (e.g. "Retrying Claude, attempt 1 of 10.")
+        // never lands in the message parts; it feeds the live status line.
+        const text = acpStatusText(part);
+        if (text === undefined || text === acpStatusRef.current?.text) return;
+        acpStatusRef.current = { text, afterSteps: toolStepsRef.current };
+        // A transition: a state update queued mid-burst at default priority
+        // would stay pending behind the stream's synchronous store updates
+        // (the #185 shape, w10/m16 t001).
+        startTransition(() => setAcpStatus(acpStatusRef.current));
+      },
       dataPartSchemas: {
         "acp-plan": acpDataSchema,
         "acp-diff": acpDataSchema,
@@ -324,6 +348,12 @@ export function SessionConversationImpl({
   useEffect(() => {
     onConversationStateChange?.(conversationState);
   }, [conversationState, onConversationStateChange]);
+  const renderedToolSteps = toolStepCount(
+    rendered[rendered.length - 1]?.blocks,
+  );
+  useEffect(() => {
+    toolStepsRef.current = renderedToolSteps;
+  }, [renderedToolSteps]);
 
   // Surrender to the error state only when there's nothing to show. Once the
   // transcript has loaded, a later error is transient (a re-attach during a
@@ -354,10 +384,24 @@ export function SessionConversationImpl({
   const connecting = empty && conversationState === "connecting";
 
   const last = rendered[rendered.length - 1];
+  // One live status line (t005): the latest tool call's label, or a newer ACP
+  // status, replaced in place. Terminal replays never show it.
+  const lastSteps = last ? lastActivitySteps(last.blocks) : [];
+  const liveStatus =
+    !isTerminal && isLoading
+      ? acpStatus && acpStatus.afterSteps === toolStepCount(last?.blocks)
+        ? acpStatus.text
+        : lastSteps.length > 0
+          ? stepLabel(lastSteps[lastSteps.length - 1])
+          : undefined
+      : undefined;
   const showTyping =
     isLoading &&
+    !liveStatus &&
     last !== undefined &&
     (last.message.role !== "assistant" || last.blocks.length === 0);
+
+  const partial = Boolean(error) && !empty;
 
   const hiddenCount = Math.max(0, rendered.length - windowSize);
   const visible = hiddenCount > 0 ? rendered.slice(hiddenCount) : rendered;
@@ -423,6 +467,41 @@ export function SessionConversationImpl({
             );
           })}
 
+          {liveStatus && (
+            <div
+              role="status"
+              aria-label={t("agentSessions.liveStatus")}
+              className="text-muted-foreground flex min-w-0 items-center gap-2 text-xs"
+            >
+              <Loader2 aria-hidden className="size-3.5 shrink-0 animate-spin" />
+              <span className="min-w-0 truncate">{liveStatus}</span>
+            </div>
+          )}
+
+          {partial && (
+            // The stream failed after part of the transcript rendered: say so
+            // instead of silently truncating (w10/m16 t001).
+            <div
+              role="alert"
+              className="text-muted-foreground flex items-center gap-2 text-xs"
+            >
+              <AlertCircle
+                aria-hidden
+                className="text-destructive size-3.5 shrink-0"
+              />
+              <span>{t("agentSessions.conversationPartial")}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  resumeStream().catch((err) => console.error(err));
+                }}
+                className="text-foreground underline underline-offset-2"
+              >
+                {t("agentSessions.retry")}
+              </button>
+            </div>
+          )}
+
           {showTyping && (
             // Agent turns carry no avatar (Devin drops it) — the typing
             // indicator sits at the prose column's left edge.
@@ -459,6 +538,45 @@ export function SessionConversationImpl({
       )}
     </div>
   );
+}
+
+interface AcpStatus {
+  text: string;
+  /** Tool steps already rendered when it arrived; a newer step supersedes it. */
+  afterSteps: number;
+}
+
+// The ACP session-info status title, if this transient data part carries one.
+function acpStatusText(part: {
+  type: string;
+  data?: unknown;
+}): string | undefined {
+  if (part.type !== "data-acp-session-info-update") return undefined;
+  const data = asObject(part.data);
+  const failure = asObject(
+    asObject(asObject(asObject(data._meta).jetbrains).air).sessionFailure,
+  );
+  const title = str(data.title) || str(failure.title);
+  return title.trim() || undefined;
+}
+
+function asObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function lastActivitySteps(blocks: DisplayBlock[]): ActivityStep[] {
+  const block = blocks[blocks.length - 1];
+  return block?.type === "activity" ? block.steps : [];
+}
+
+function toolStepCount(blocks: DisplayBlock[] | undefined): number {
+  let count = 0;
+  for (const block of blocks ?? []) {
+    if (block.type === "activity") count += block.steps.length;
+  }
+  return count;
 }
 
 // The Devin-style transcript terminus: a settled dot + a phase-derived label
@@ -631,10 +749,14 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
         }
         return;
       }
+      const toolCallId = str(
+        (part.data as Record<string, unknown> | undefined)?.toolCallId,
+      );
       if (group.kind === "diff") {
         pushStep(
           {
             kind: "diff",
+            toolCallId: toolCallId || undefined,
             path: group.path,
             oldText: group.oldText,
             newText: group.newText,
@@ -644,12 +766,28 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
         );
         return;
       }
-      pushStep({ kind: "terminal", output: group.output }, index, part);
+      pushStep(
+        {
+          kind: "terminal",
+          toolCallId: toolCallId || undefined,
+          output: group.output,
+        },
+        index,
+        part,
+      );
       return;
     }
 
     if (isToolPart(part)) {
-      pushStep({ kind: "tool", ...toolPartInfo(part) }, index, part);
+      pushStep(
+        {
+          kind: "tool",
+          toolCallId: str(part.toolCallId) || undefined,
+          ...toolPartInfo(part),
+        },
+        index,
+        part,
+      );
       return;
     }
 
@@ -718,7 +856,7 @@ const MessageRow = memo(function MessageRow({
           }
           if (block.type === "text") {
             return (
-              <div key={block.key} className="min-w-0">
+              <div key={block.key} data-block="text" className="min-w-0">
                 <MarkdownRenderer content={block.text} />
               </div>
             );
@@ -855,7 +993,7 @@ function ReasoningBlock({
         })
       : t("agentSessions.groupThought");
   return (
-    <Reasoning className="my-1.5">
+    <Reasoning data-block="reasoning" className="my-1.5">
       <ReasoningTrigger>{summary}</ReasoningTrigger>
       <ReasoningContent>
         <MarkdownRenderer content={text} />

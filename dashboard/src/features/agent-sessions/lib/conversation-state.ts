@@ -37,12 +37,18 @@ export function deriveConversationState({
   resuming = false,
   transportError = false,
 }: ConversationStateInput): ConversationState {
-  if (isTerminal || (phase && TERMINAL_PHASES.has(phase))) return "ended";
-
   const transportBusy =
     resuming ||
     transportStatus === "submitted" ||
     transportStatus === "streaming";
+  if (isTerminal || (phase && TERMINAL_PHASES.has(phase))) {
+    // A terminal session still replaying its transcript is loading, not empty:
+    // "ended" (and its "ended before a conversation was recorded" copy) waits
+    // until the replay settled with nothing to show (w10/m16 t001).
+    return !hasMessages && transportBusy && !transportError
+      ? "connecting"
+      : "ended";
+  }
   if (!hasMessages && phase && STARTING_PHASES.has(phase)) {
     return transportBusy || transportError ? "connecting" : "not-started";
   }

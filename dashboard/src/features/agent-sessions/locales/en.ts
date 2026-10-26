@@ -655,10 +655,6 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Failed",
     description: "Badge label for a failed tool call",
   },
-  "agentSessions.activityWorking": {
-    message: "Working…",
-    description: "Activity-group summary while any tool step is still pending",
-  },
   "agentSessions.activityEdited_one": {
     message: "Edited {count} file",
     description:
@@ -684,6 +680,68 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.activitySteps_other": {
     message: "{count} steps",
     description: "Activity-group summary fallback — the step count (plural)",
+  },
+  "agentSessions.activityRead_one": {
+    message: "Read {count} file",
+    description: "Activity-group summary segment — file reads (singular)",
+  },
+  "agentSessions.activityRead_other": {
+    message: "Read {count} files",
+    description: "Activity-group summary segment — file reads",
+  },
+  "agentSessions.activitySearched_one": {
+    message: "Searched {count} time",
+    description: "Activity-group summary segment — searches (singular)",
+  },
+  "agentSessions.activitySearched_other": {
+    message: "Searched {count} times",
+    description: "Activity-group summary segment — searches",
+  },
+  "agentSessions.activitySubagents_one": {
+    message: "Ran {count} subagent",
+    description:
+      "Activity-group summary segment — delegated subagent tasks (singular)",
+  },
+  "agentSessions.activitySubagents_other": {
+    message: "Ran {count} subagents",
+    description: "Activity-group summary segment — delegated subagent tasks",
+  },
+  "agentSessions.activityTools_one": {
+    message: "Used {count} tool",
+    description:
+      "Activity-group summary segment — tools of no known kind (singular)",
+  },
+  "agentSessions.activityTools_other": {
+    message: "Used {count} tools",
+    description: "Activity-group summary segment — tools of no known kind",
+  },
+  "agentSessions.activityFailed_one": {
+    message: "{count} failed",
+    description:
+      "Activity-group summary segment — failed tool calls (singular)",
+  },
+  "agentSessions.activityFailed_other": {
+    message: "{count} failed",
+    description: "Activity-group summary segment — failed tool calls",
+  },
+  "agentSessions.outputClipped_one": {
+    message: "{formatted} character clipped",
+    description:
+      "Badge on a tool output the server stored head+tail-capped (singular)",
+  },
+  "agentSessions.outputClipped_other": {
+    message: "{formatted} characters clipped",
+    description: "Badge on a tool output the server stored head+tail-capped",
+  },
+  "agentSessions.conversationPartial": {
+    message: "Conversation only partially loaded.",
+    description:
+      "Inline row when the transcript stream failed after some of it rendered",
+  },
+  "agentSessions.liveStatus": {
+    message: "Agent status",
+    description:
+      "Accessible label for the single live status line under a streaming transcript",
   },
   "agentSessions.scrollToBottom": {
     message: "Scroll to latest",
@@ -762,16 +820,6 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.sshCopyError": {
     message: "Couldn't copy",
     description: "Connect menu — toast when copying the ssh command fails",
-  },
-  "agentSessions.groupWorkedFor": {
-    message: "Worked for {duration}",
-    description:
-      "Activity-group summary with elapsed duration from persisted part timestamps (or ~arrival timing)",
-  },
-  "agentSessions.groupWorked": {
-    message: "Worked",
-    description:
-      "Activity-group summary when no duration could be derived (history replay)",
   },
   "agentSessions.groupThoughtFor": {
     message: "Thought for {duration}",
