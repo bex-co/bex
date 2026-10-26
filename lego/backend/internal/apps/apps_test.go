@@ -681,9 +681,9 @@ func TestCreateConflictsOnExistingUnmanagedApp(t *testing.T) {
 // --- Single writer of intent (store-managed vs hand-applied) ---
 
 type recordingStore struct {
-	disks     map[string]store.Disk
+	disks       map[string]store.Disk
 	policyCalls []string
-	portCalls []struct {
+	portCalls   []struct {
 		id   string
 		port int32
 		mode string

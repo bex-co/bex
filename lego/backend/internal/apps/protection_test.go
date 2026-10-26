@@ -399,7 +399,6 @@ func TestGuardedMutationsKeepTheirConfirmArgument(t *testing.T) {
 	}
 }
 
-
 // Shell access to a protected environment's service is an Admin's (w8/193), on
 // both transports: the browser terminal ticket and native SSH.
 func TestProtectedMemberShellNeedsAdmin(t *testing.T) {

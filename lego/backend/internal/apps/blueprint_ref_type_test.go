@@ -67,7 +67,9 @@ func TestBlueprintFromServiceTypeMustMatchItsTarget(t *testing.T) {
 			}
 			for _, wrap := range []func(string) string{
 				func(s string) string { return `{"services":[` + s + `]}` },
-				func(s string) string { return `{"projects":[{"name":"p","environments":[{"name":"e","services":[` + s + `]}]}]}` },
+				func(s string) string {
+					return `{"projects":[{"name":"p","environments":[{"name":"e","services":[` + s + `]}]}]}`
+				},
 			} {
 				result, err := svc.ValidateBlueprint(context.Background(), "", wrap(services), "")
 				if err != nil {
