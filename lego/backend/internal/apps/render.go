@@ -174,10 +174,15 @@ type renderService struct {
 	UndeployedChanges bool `json:"undeployedChanges,omitempty"`
 	// UndeployedChangesApplying (bex extension, w4/m184): a rolling deploy
 	// already carries those changes. Omitted when false.
-	UndeployedChangesApplying bool     `json:"undeployedChangesApplying,omitempty"`
-	Replicas                  int32    `json:"replicas"`
-	Revision                  string   `json:"revision,omitempty"`
-	URLs                      []string `json:"urls,omitempty"`
+	UndeployedChangesApplying bool `json:"undeployedChangesApplying,omitempty"`
+	// UndeployedChangesReason (bex extension, w4/414): why the flag is set.
+	UndeployedChangesReason string `json:"undeployedChangesReason,omitempty"`
+	// ServingImage (bex extension, w4/414): the override image the serving
+	// release runs, when it differs from the saved image.
+	ServingImage string   `json:"servingImage,omitempty"`
+	Replicas     int32    `json:"replicas"`
+	Revision     string   `json:"revision,omitempty"`
+	URLs         []string `json:"urls,omitempty"`
 	// Schedule/Command/Runs describe a cron_job (Render nests schedule/command
 	// under cronJobDetails and exposes runs at /cron-jobs/{id}/runs); empty
 	// otherwise.
@@ -421,6 +426,8 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		Phase:                     a.Phase,
 		UndeployedChanges:         a.UndeployedChanges,
 		UndeployedChangesApplying: a.UndeployedChangesApplying,
+		UndeployedChangesReason:   a.UndeployedChangesReason,
+		ServingImage:              a.ServingImage,
 		PublicRoutingNotice:       a.PublicRoutingNotice,
 		Replicas:                  a.Replicas,
 		Revision:                  a.Revision,

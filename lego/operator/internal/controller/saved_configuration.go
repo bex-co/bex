@@ -83,17 +83,20 @@ func (r *AppReconciler) reconcileSavedConfigurationStatus(ctx context.Context, r
 		r.Mode != ModeKubernetes || app.Spec.Type == appv1alpha1.TypeStaticSite {
 		return ctrl.Result{}, nil
 	}
-	different, compareErr := r.servingConfigurationDiffers(ctx, app)
+	different, imageOnly, compareErr := r.servingConfigurationDiffers(ctx, app)
 	applying := false
 	if different && compareErr == nil {
 		applying, compareErr = r.inFlightCarriesSavedConfiguration(ctx, app)
 	}
-	if app.Status.UndeployedChanges != different || app.Status.UndeployedChangesApplying != applying {
+	reason := undeployedChangesReason(app, different, imageOnly)
+	if app.Status.UndeployedChanges != different || app.Status.UndeployedChangesApplying != applying ||
+		app.Status.UndeployedChangesReason != reason {
 		// A concurrent save or serving-revision change invalidates the comparison.
 		// Patch only these fields and retry the complete read on a conflict.
 		if err := r.patchAppStatus(ctx, app, func(status *appv1alpha1.AppStatus) {
 			status.UndeployedChanges = different
 			status.UndeployedChangesApplying = applying
+			status.UndeployedChangesReason = reason
 		}); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -136,33 +139,40 @@ func (r *AppReconciler) inFlightCarriesSavedConfiguration(ctx context.Context, a
 	return !differs && err == nil, err
 }
 
-func (r *AppReconciler) servingConfigurationDiffers(ctx context.Context, app *appv1alpha1.App) (bool, error) {
+// servingConfigurationDiffers reports whether the serving release's
+// configuration differs from the saved one, and whether the container image
+// is the ONLY difference (w4/414's image_override reason).
+func (r *AppReconciler) servingConfigurationDiffers(ctx context.Context, app *appv1alpha1.App) (different, imageOnly bool, err error) {
 	gen := successfulReleaseGeneration(app)
 	if gen <= 0 || !releaseHasServed(app) {
-		return app.Status.UndeployedChanges || app.Annotations[appv1alpha1.AnnotationSavedConfigRevision] != "", nil
+		return app.Status.UndeployedChanges || app.Annotations[appv1alpha1.AnnotationSavedConfigRevision] != "", false, nil
 	}
 	rec, err := r.readRuntimeConfigRecord(ctx, app, gen)
 	if apierrors.IsNotFound(err) {
 		// A legacy/missing record cannot prove equality. Do not snapshot today's
 		// mutable values and mislabel them as the values the old release consumed.
 		return app.Status.UndeployedChanges || canceledOverServed(app) || app.ActiveReleaseConfig() != nil ||
-			app.Annotations[appv1alpha1.AnnotationSavedConfigRevision] != "", nil
+			app.Annotations[appv1alpha1.AnnotationSavedConfigRevision] != "", false, nil
 	}
 	if err != nil {
-		return true, err
+		return true, false, err
 	}
 	if app.Status.ConfigSnapshotGeneration == 0 && len(releaseConfigSources(app)) > 0 {
-		return app.Status.UndeployedChanges || app.Annotations[appv1alpha1.AnnotationSavedConfigRevision] != "", nil
+		return app.Status.UndeployedChanges || app.Annotations[appv1alpha1.AnnotationSavedConfigRevision] != "", false, nil
 	}
 	runtime := rec.projectRuntimeApp(app, gen)
 	runtime.Status.ConfigSnapshotGeneration = gen
-	different, err := r.savedConfigurationDiffers(ctx, app, runtime)
-	if err != nil {
-		return true, err // unavailable evidence is never evidence of equality
+	var compareErr error
+	different, compareErr = r.savedConfigurationDiffers(ctx, app, runtime)
+	if compareErr != nil {
+		return true, false, compareErr // unavailable evidence is never evidence of equality
 	}
+	savedDiffers := different
+	imageDiffers := false
 	if app.Spec.Repo == "" {
 		for _, container := range rec.template.Spec.Containers {
 			if container.Name == appContainerName && container.Image != app.Spec.Image {
+				imageDiffers = true
 				different = true
 			}
 		}
@@ -171,10 +181,34 @@ func (r *AppReconciler) servingConfigurationDiffers(ctx context.Context, app *ap
 	// record's selected fields. The served record's settings fingerprint says
 	// whether any of them differ; a cancel of an identical redeploy leaves
 	// nothing pending (w4/m165). A record without one cannot prove equality.
+	settingsDiffer := false
 	if !different && canceledOverServed(app) {
-		different = !recordedSettingsMatch(rec.spec, app.Spec)
+		settingsDiffer = !recordedSettingsMatch(rec.spec, app.Spec)
+		different = settingsDiffer
 	}
-	return different, nil
+	return different, different && imageDiffers && !savedDiffers && !settingsDiffer, nil
+}
+
+// undeployedChangesReason names why the serving release differs from the
+// saved configuration (w4/414). A historical selection (rollback or restart,
+// SourceGeneration set) keeps today's meaning; a trigger image override
+// (SourceGeneration 0 with an Image) whose image is the only difference is
+// its own reason, because the saved image never changed — a standard deploy
+// returning to it is a fact to state, not a correction to urge. Anything
+// else is a saved change.
+func undeployedChangesReason(app *appv1alpha1.App, different, imageOnly bool) string {
+	if !different {
+		return ""
+	}
+	if ref := app.ActiveReleaseConfig(); ref != nil && ref.Image != "" {
+		if ref.SourceGeneration > 0 {
+			return appv1alpha1.UndeployedReasonHistoricalRelease
+		}
+		if imageOnly {
+			return appv1alpha1.UndeployedReasonImageOverride
+		}
+	}
+	return appv1alpha1.UndeployedReasonSaved
 }
 
 // retainReleaseSources prevents a newly staged first source from entering the

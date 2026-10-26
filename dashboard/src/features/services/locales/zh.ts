@@ -301,6 +301,12 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Notice while an in-flight deploy already carries the saved settings, so no further deploy is needed (w4/m184)",
   },
+  "services.undeployedChangesOverrideHint": {
+    message:
+      "本次部署运行的是为本次部署选择的 {running}。保存的镜像是 {saved}；标准部署会回到该镜像。",
+    description:
+      "Notice when a per-deploy image override (imageUrl/imgURL) runs a different image than the saved one: nothing was saved, and a standard deploy reverts to the saved image (w4/414)",
+  },
   "services.statusSleepingHint": {
     message: "为节省资源已休眠 —— 下次访问其公开 URL 时自动唤醒。",
     description:

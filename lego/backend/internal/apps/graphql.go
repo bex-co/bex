@@ -351,6 +351,9 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"undeployedChanges": gqlutil.BoolField(func(a AppView) any { return a.UndeployedChanges }),
 		// Those saved changes are already rolling out (w4/m184).
 		"undeployedChangesApplying": gqlutil.BoolField(func(a AppView) any { return a.UndeployedChangesApplying }),
+		// Why the flag is set, and the override image when there is one (w4/414).
+		"undeployedChangesReason": gqlutil.StrField(func(a AppView) any { return a.UndeployedChangesReason }),
+		"servingImage":            gqlutil.StrField(func(a AppView) any { return a.ServingImage }),
 		// Why an exposed service has no public address (w7/m79). Empty when it
 		// is routed or is not the kind that carries a public URL.
 		"publicRoutingNotice": gqlutil.StrField(func(a AppView) any { return a.PublicRoutingNotice }),

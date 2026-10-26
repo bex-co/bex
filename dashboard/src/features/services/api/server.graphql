@@ -37,6 +37,10 @@ query Server($id: String!) {
     undeployedChanges
     # A rolling deploy already carries those saved changes (w4/m184).
     undeployedChangesApplying
+    # Why the flag is set (saved | image_override | historical_release), and
+    # the per-deploy override image when one is running (w4/414).
+    undeployedChangesReason
+    servingImage
     # internalAddress is the private-network "<slug>:<port>" sibling services
     # connect to (web/private only, empty otherwise) — Render's Connect →
     # Internal string; a private service's header shows it as its Service

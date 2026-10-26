@@ -29,6 +29,8 @@ function service(undeployedChanges: boolean): ServerQuery["server"] {
     publicRoutingNotice: null,
     undeployedChanges,
     undeployedChangesApplying: false,
+    undeployedChangesReason: null,
+    servingImage: null,
     internalAddress: null,
     createdAt: null,
     sshAddress: null,

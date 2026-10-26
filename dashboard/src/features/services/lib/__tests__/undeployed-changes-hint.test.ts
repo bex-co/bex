@@ -18,6 +18,32 @@ describe("undeployedChangesHintKey", () => {
       { undeployedChangesApplying: true, suspended: false },
       "services.undeployedChangesApplyingHint",
     ],
+    // w4/414: an image override saved nothing, so it gets its own notice;
+    // a genuine saved change alongside it still reads as saved.
+    [
+      {
+        undeployedChangesApplying: false,
+        suspended: false,
+        undeployedChangesReason: "image_override",
+      },
+      "services.undeployedChangesOverrideHint",
+    ],
+    [
+      {
+        undeployedChangesApplying: false,
+        suspended: false,
+        undeployedChangesReason: "saved",
+      },
+      "services.undeployedChangesHint",
+    ],
+    [
+      {
+        undeployedChangesApplying: false,
+        suspended: false,
+        undeployedChangesReason: "historical_release",
+      },
+      "services.undeployedChangesHint",
+    ],
   ])("%o reads %s", (service, key) => {
     expect(undeployedChangesHintKey(service)).toBe(key);
   });

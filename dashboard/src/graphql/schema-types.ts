@@ -3727,6 +3727,7 @@ export type Service = {
   schedule: Maybe<Scalars['String']['output']>;
   secretFile: Maybe<SecretFile>;
   secretFileNames: Maybe<Array<Maybe<SecretFile>>>;
+  servingImage: Maybe<Scalars['String']['output']>;
   slug: Maybe<Scalars['String']['output']>;
   sshAddress: Maybe<Scalars['String']['output']>;
   startCommand: Maybe<Scalars['String']['output']>;
@@ -3735,6 +3736,7 @@ export type Service = {
   type: Maybe<Scalars['String']['output']>;
   undeployedChanges: Maybe<Scalars['Boolean']['output']>;
   undeployedChangesApplying: Maybe<Scalars['Boolean']['output']>;
+  undeployedChangesReason: Maybe<Scalars['String']['output']>;
   updatedAt: Maybe<Scalars['String']['output']>;
   url: Maybe<Scalars['String']['output']>;
 };

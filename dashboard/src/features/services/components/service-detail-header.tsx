@@ -309,7 +309,10 @@ export function ServiceDetailHeader({
         // from the runtime. Restart preserves it. Read the operator's distinction
         // instead of inferring it from the most recent deploy's status.
         <p className="text-muted-foreground text-sm" role="status">
-          {t(undeployedChangesHintKey(service))}
+          {t(undeployedChangesHintKey(service), {
+            running: service.servingImage ?? "",
+            saved: service.imagePath ?? "",
+          })}
         </p>
       ) : null}
 

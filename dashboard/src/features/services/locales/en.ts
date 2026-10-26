@@ -309,6 +309,12 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Notice while an in-flight deploy already carries the saved settings, so no further deploy is needed (w4/m184)",
   },
+  "services.undeployedChangesOverrideHint": {
+    message:
+      "This deploy runs {running}, chosen for this deploy. The saved image is {saved}; a standard deploy returns to it.",
+    description:
+      "Notice when a per-deploy image override (imageUrl/imgURL) runs a different image than the saved one: nothing was saved, and a standard deploy reverts to the saved image (w4/414)",
+  },
   "services.statusSleepingHint": {
     message:
       "Sleeping to save resources — wakes on the next request to its public URL.",

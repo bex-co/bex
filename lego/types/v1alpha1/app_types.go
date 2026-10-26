@@ -1531,6 +1531,14 @@ type ImageRevisionStatus struct {
 }
 
 // AppStatus is the observed state of a App.
+// Why saved configuration differs from the serving release
+// (status.undeployedChangesReason, w4/414).
+const (
+	UndeployedReasonSaved             = "saved"
+	UndeployedReasonImageOverride     = "image_override"
+	UndeployedReasonHistoricalRelease = "historical_release"
+)
+
 type AppStatus struct {
 	// ImageNetwork is the verified private port set for the candidate image.
 	// +optional
@@ -1744,6 +1752,15 @@ type AppStatus struct {
 	// (w4/m184). A Restart, rollback, cancel or failed release never sets it.
 	// +optional
 	UndeployedChangesApplying bool `json:"undeployedChangesApplying,omitempty"`
+
+	// UndeployedChangesReason says WHY UndeployedChanges is set, so a reader
+	// does not have to guess (w4/414): UndeployedReasonSaved for a saved
+	// change a standard deploy applies, UndeployedReasonImageOverride when
+	// the only difference is a per-deploy image override, and
+	// UndeployedReasonHistoricalRelease when a rollback or restart serves a
+	// retained release. Empty while UndeployedChanges is false.
+	// +optional
+	UndeployedChangesReason string `json:"undeployedChangesReason,omitempty"`
 
 	// PendingReleaseGeneration is the newest requested release generation coalesced
 	// while a release is in flight (0 = none). It is observability + SLI

@@ -1495,6 +1495,15 @@ spec:
                   those changes go live when it finishes and no further deploy is needed
                   (w4/m184). A Restart, rollback, cancel or failed release never sets it.
                 type: boolean
+              undeployedChangesReason:
+                description: |-
+                  UndeployedChangesReason says WHY UndeployedChanges is set, so a reader
+                  does not have to guess (w4/414): UndeployedReasonSaved for a saved
+                  change a standard deploy applies, UndeployedReasonImageOverride when
+                  the only difference is a per-deploy image override, and
+                  UndeployedReasonHistoricalRelease when a rollback or restart serves a
+                  retained release. Empty while UndeployedChanges is false.
+                type: string
               unscopedSnapshotGeneration:
                 description: |-
                   UnscopedSnapshotGeneration marks the one generation whose linked-group
