@@ -123,6 +123,7 @@ lego/operator/config/staticserver/deployment.yaml	controller:latest	same manager
 lego/operator/config/pg-sni-proxy/daemonset.yaml	controller:latest	same manager image, /pg-sni-proxy entrypoint; rewritten by the same kustomize edit
 lego/operator/config/kv-sni-proxy/daemonset.yaml	controller:latest	same manager image, /kv-sni-proxy entrypoint; rewritten by the same kustomize edit
 lego/operator/config/egress-meter/daemonset.yaml	controller:latest	same manager image, /egress-meter entrypoint; rewritten by the same kustomize edit
+lego/operator/config/drain-guard/deployment.yaml	controller:latest	same manager image, /drain-guard entrypoint; rewritten by the same kustomize edit (config/prod)
 dashboard/deploy/deployment.yaml	dashboard:latest	kustomize `images:` placeholder — deploy/gitops/base/dashboard.yaml rewrites it to the dashboard digest deploy.yml pushed
 deploy/opensandbox/server-in-cluster.yaml	opensandbox-server:0.2.2	kustomize `images:` placeholder — deploy/opensandbox/kustomization.yaml carries the digest
 lego/operator/config/samples/app_v1alpha1_app.yaml	traefik/whoami	sample App CR: a TENANT's image choice in documentation, not an image bex resolves

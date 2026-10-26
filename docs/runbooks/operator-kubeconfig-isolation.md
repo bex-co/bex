@@ -58,12 +58,16 @@ If relocating the CAPI resources is impractical, remove the operator's ability t
 The operator SA must not be able to read the admin kubeconfig or CAPI PKI:
 
 ```bash
-for s in bex-kubeconfig bex-ca bex-etcd bex-proxy bex-sa; do
-  kubectl auth can-i get secret/$s -n bex-capi \
-    --as=system:serviceaccount:bex-system:bex-controller-manager
+for sa in bex-controller-manager bex-drain-guard; do
+  for s in bex-kubeconfig bex-ca bex-etcd bex-proxy bex-sa; do
+    kubectl auth can-i get secret/$s -n bex-capi \
+      --as=system:serviceaccount:bex-system:$sa
+  done
 done
 # every line must print: no
 ```
+
+`bex-drain-guard` (w1/m186) is the one bex identity with any grant in `bex-capi`: Machines only, for its pre-drain hook ([drain-guard runbook](drain-guard.md)). It must never gain Secrets there.
 
 Reconciliation must still pass with only the intended per-workspace Secret access — run the operator's envtest suite / a smoke deploy.
 
