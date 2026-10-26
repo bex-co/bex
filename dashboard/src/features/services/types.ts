@@ -52,6 +52,10 @@ export interface ServiceView {
   undeployedChanges?: boolean;
   /** A rolling deploy already carries those saved changes (w4/m184). */
   undeployedChangesApplying?: boolean;
+  /** Why undeployedChanges is set: saved | image_override | historical_release (w4/414). */
+  undeployedChangesReason?: string;
+  /** The per-deploy override image the serving release runs, when it differs from the saved image (w4/414). */
+  servingImage?: string | null;
   /**
    * The service's authoritative Environment scope (w4/220). Three readings,
    * never collapsed: `undefined` = not selected / not yet resolved (list rows,

@@ -390,7 +390,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 - [x] **411** — [Generate Blueprint drops a service's non-default port](done/411.md) (45m, major) — DONE 2026-10-25 (loopx w4).
 - [x] **412** — [Docker Commands `sh -c "… $PORT …"` and `sh -c '<NAME=…>'` never start](done/412.md) (45m, major) — DONE 2026-10-25 (loopx w4).
 - [x] **413** — [The deploy audit record mislabels its trigger and loses clearCache](done/413.md) (1.5h, major) — DONE 2026-10-25 (loopx w4).
-- [ ] **414** — [A per-deploy image override (`imageUrl` / hook `imgURL`) makes the service claim "Saved changes aren't live yet", and its advice reverts the deploy](414.md) (~45m) ← live `/qa-find-bugs w4` loop run r2b9, 2026-10-24 (`muse.env`, `bex-canary`; major). `saved_configuration.go:163-168` flags any running image ≠ `Spec.Image`; the status has no cause, so an override reads as a Save-only edit.
+- [x] **414** — [A per-deploy image override makes the service claim "Saved changes aren't live yet"](done/414.md) (45m, major) — DONE 2026-10-25 (loopx w4).
 - [x] **399** — [Pausing the service log tail doesn't freeze the view: the history window keeps sliding every 30 s, so new lines keep appearing under "Live tail paused"](done/399.md) (45m, minor) — DONE 2026-10-25 (loopx w4).
 - [x] **398** — [The Environment tab shows "Saved changes aren't live yet" twice: once in the service header, once above the editor](done/398.md) (15m, minor) — DONE 2026-10-25 (loopx w4).
 - [x] **397** — [Blueprint validation drops the YAML parser's reason: every syntax error reads only "Blueprint is not valid YAML"](done/397.md) (20m, minor) — DONE 2026-10-25 (loopx w4).
