@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -147,13 +146,27 @@ func (s *Service) authorizeDiskSnapshots(ctx context.Context, diskID string) (st
 // diskSnapshotObjects lists a disk's snapshot objects, skipping anything else
 // in its prefix, which must never be offered as restorable.
 func (s *Service) diskSnapshotObjects(ctx context.Context, a *appv1alpha1.App) ([]DiskSnapshotObject, error) {
-	objects, err := s.DiskSnapshots.ListSnapshots(ctx, diskSnapshotPrefix(a))
+	snapshots, _, err := s.diskSnapshotPrefixObjects(ctx, a)
+	return snapshots, err
+}
+
+// diskSnapshotPrefixObjects lists a disk's prefix once and splits it into its
+// snapshots and its failure records.
+func (s *Service) diskSnapshotPrefixObjects(ctx context.Context, a *appv1alpha1.App) (snapshots, failures []DiskSnapshotObject, err error) {
+	prefix := diskSnapshotPrefix(a)
+	objects, err := s.DiskSnapshots.ListSnapshots(ctx, prefix)
 	if err != nil {
-		return nil, fmt.Errorf("list snapshots: %w", err)
+		return nil, nil, fmt.Errorf("list snapshots: %w", err)
 	}
-	return slices.DeleteFunc(objects, func(obj DiskSnapshotObject) bool {
-		return !strings.HasSuffix(obj.Key, diskSnapshotSuffix)
-	}), nil
+	for _, obj := range objects {
+		switch {
+		case strings.HasSuffix(obj.Key, diskSnapshotSuffix):
+			snapshots = append(snapshots, obj)
+		case strings.HasPrefix(strings.TrimPrefix(obj.Key, prefix), appv1alpha1.DiskSnapshotFailureRecordPrefix):
+			failures = append(failures, obj)
+		}
+	}
+	return snapshots, failures, nil
 }
 
 // snapshotCreatedAt prefers the timestamp encoded in the object name over the

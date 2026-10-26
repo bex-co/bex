@@ -17,6 +17,7 @@ package apps
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/graphql-go/graphql"
@@ -34,6 +35,10 @@ const (
 	DiskSnapshotHealthOK          = "ok"
 	DiskSnapshotHealthOverdue     = "overdue"
 	DiskSnapshotHealthUnavailable = "unavailable"
+	// DiskSnapshotHealthFailing: the last backup attempt failed after the
+	// last good snapshot; Reason is the stage it stopped at (read, upload,
+	// config), from the failure record the snapshot Job leaves (w6/m154).
+	DiskSnapshotHealthFailing = "failing"
 )
 
 // diskSnapshotDueAfterWindowStart is the latest a nightly snapshot can land
@@ -66,7 +71,7 @@ func (s *Service) DiskSnapshotHealth(ctx context.Context, diskID string) (DiskSn
 	if reason, ok := diskSnapshotUnavailableReason(a); ok {
 		health.State, health.Reason = DiskSnapshotHealthUnavailable, reason
 	}
-	objects, err := s.diskSnapshotObjects(ctx, a)
+	objects, failures, err := s.diskSnapshotPrefixObjects(ctx, a)
 	if err != nil {
 		// The operator's verdict stands on its own; only overdue needs the list.
 		if health.State == DiskSnapshotHealthUnavailable {
@@ -84,10 +89,36 @@ func (s *Service) DiskSnapshotHealth(ctx context.Context, diskID string) (DiskSn
 		reference = *health.LastSnapshotAt
 	}
 	health.DueBy = diskSnapshotDueBy(reference)
-	if health.State == DiskSnapshotHealthOK && s.Now().After(health.DueBy) {
+	if health.State != DiskSnapshotHealthOK {
+		return health, nil
+	}
+	if stage, ok := latestFailureAfter(failures, objects, diskSnapshotPrefix(a)); ok {
+		health.State, health.Reason = DiskSnapshotHealthFailing, stage
+	} else if s.Now().After(health.DueBy) {
 		health.State = DiskSnapshotHealthOverdue
 	}
 	return health, nil
+}
+
+// latestFailureAfter returns the stage of the newest failure record stored
+// after the newest snapshot (any record, when there is none); an older record
+// that a later success failed to clear is history. Both sides compare the
+// store's own LastModified, never the Job's clock in a snapshot's name.
+func latestFailureAfter(failures, snapshots []DiskSnapshotObject, prefix string) (string, bool) {
+	newest := func(objects []DiskSnapshotObject) *DiskSnapshotObject {
+		var n *DiskSnapshotObject
+		for i := range objects {
+			if n == nil || objects[i].CreatedAt.After(n.CreatedAt) {
+				n = &objects[i]
+			}
+		}
+		return n
+	}
+	failure, snapshot := newest(failures), newest(snapshots)
+	if failure == nil || (snapshot != nil && !failure.CreatedAt.After(snapshot.CreatedAt)) {
+		return "", false
+	}
+	return strings.TrimPrefix(strings.TrimPrefix(failure.Key, prefix), appv1alpha1.DiskSnapshotFailureRecordPrefix), true
 }
 
 // diskSnapshotDueBy is when the snapshot of the first nightly window opening
@@ -120,8 +151,12 @@ var diskSnapshotHealthGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name:        "DiskSnapshotHealth",
 	Description: "Whether a disk's nightly snapshots are being taken (bex extension).",
 	Fields: graphql.Fields{
-		"state":          gqlutil.StrField(func(v DiskSnapshotHealth) any { return v.State }),
-		"reason":         gqlutil.StrField(func(v DiskSnapshotHealth) any { return v.Reason }),
+		"state": gqlutil.StrField(func(v DiskSnapshotHealth) any { return v.State }),
+		"reason": func() *graphql.Field {
+			f := gqlutil.StrField(func(v DiskSnapshotHealth) any { return v.Reason })
+			f.Description = "unavailable: the operator's DiskReady reason code; failing: the stage the last backup stopped at (read, upload, config); otherwise empty."
+			return f
+		}(),
 		"lastSnapshotAt": gqlutil.TimeField(func(v DiskSnapshotHealth) any { return v.LastSnapshotAt }),
 		"dueBy":          gqlutil.TimeField(func(v DiskSnapshotHealth) any { return v.DueBy }),
 	},

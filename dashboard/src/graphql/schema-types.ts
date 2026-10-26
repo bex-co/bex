@@ -693,6 +693,7 @@ export type DiskSnapshotHealth = {
   __typename: 'DiskSnapshotHealth';
   dueBy: Maybe<Scalars['String']['output']>;
   lastSnapshotAt: Maybe<Scalars['String']['output']>;
+  /** unavailable: the operator's DiskReady reason code; failing: the stage the last backup stopped at (read, upload, config); otherwise empty. */
   reason: Maybe<Scalars['String']['output']>;
   state: Maybe<Scalars['String']['output']>;
 };

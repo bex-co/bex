@@ -386,6 +386,24 @@ describe("DiskSection", () => {
       expect(screen.queryByText(/next nightly run/i)).not.toBeInTheDocument();
     });
 
+    it("says why the last snapshot failed, by stage (w6/m154)", () => {
+      mockUseDisk.mockReturnValue(attached);
+      for (const [stage, copy] of [
+        ["read", /couldn't be read/i],
+        ["upload", /couldn't be saved to storage/i],
+        ["config", /couldn't start correctly/i],
+        ["other", /last snapshot attempt failed/i],
+      ] as const) {
+        mockUseDiskSnapshotWarning.mockReturnValue({ state: "failing", stage });
+        const { unmount } = render(<DiskSection serviceId="srv-1" plan="starter" serviceType="web_service" />);
+        const alert = screen.getByRole("alert");
+        expect(alert).toHaveTextContent(/last snapshot failed/i);
+        expect(alert).toHaveTextContent(copy);
+        expect(screen.queryByText(/no snapshots yet/i)).not.toBeInTheDocument();
+        unmount();
+      }
+    });
+
     it("warns that snapshots aren't running, and keeps existing ones restorable", () => {
       mockUseDisk.mockReturnValue(attached);
       mockUseDiskSnapshots.mockReturnValue({ ...noSnapshots, snapshots: [snapshot] });
