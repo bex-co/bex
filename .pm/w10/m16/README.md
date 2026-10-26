@@ -1,17 +1,17 @@
 # w10 · m16 — Agent-session transcripts: store completed items, show signal, never crash on replay
 
-**Worker:** worker10 **Goal:** A long agent turn is stored as a few hundred **completed items** (messages, reasoning blocks, tool calls with input/output/status, usage/finish) instead of one row per AI-SDK stream chunk. Today one 10-minute turn is 5,602 rows / 2.9 MB, and replaying it crashes the UI. After this milestone the dashboard replays any session without crashing. It leads with the signal: final answer, PR/diff, plan, grouped tool activity and one live status line. Reasoning and raw tool output are collapsed or on demand. **Status:** todo
+**Worker:** worker10 **Goal:** A long agent turn is stored as a few hundred **completed items** (messages, reasoning blocks, tool calls with input/output/status, usage/finish) instead of one row per AI-SDK stream chunk. Today one 10-minute turn is 5,602 rows / 2.9 MB, and replaying it crashes the UI. After this milestone the dashboard replays any session without crashing. It leads with the signal: final answer, PR/diff, plan, grouped tool activity and one live status line. Reasoning and raw tool output are collapsed or on demand. **Status:** in progress (t001–t006 done 2026-10-26, verified in production — see done/t006.md; replay-bytes target 41% vs ≤25% on the long session, the rest is real tool output)
 
 ## Tasks (in order)
 
 | id   | title                                                                                             | est  | depends_on       |
 | ---- | ------------------------------------------------------------------------------------------------- | ---- | ---------------- |
-| t001 | Dashboard replay never crashes: `useChat` throttle, surface partial-load errors, no "ended" flash | 45m  | —                |
-| t002 | Persist completed items, not chunks: coalesce deltas / tool-input / ACP tool updates at the tee   | 2h   | —                |
-| t003 | Cap tool output inline (head+tail, `truncated` flag) and drop internal/duplicate ACP payloads     | 1h   | t002             |
-| t004 | Compact existing transcripts to the item model (migration/backfill), incl. the 5,000-part cap     | 1h   | t002, t003       |
-| t005 | Signal-first conversation view: grouped tool line, collapsed reasoning, single status line        | 1.5h | t002             |
-| t006 | Verify on production with `ags-dbf8nggkbcjs73a5r3u0` and a fresh long turn                        | 30m  | t001, t004, t005 |
+| t001 | Dashboard replay never crashes: `useChat` throttle, surface partial-load errors, no "ended" flash — **DONE** | 45m  | —                |
+| t002 | Persist completed items, not chunks: coalesce deltas / tool-input / ACP tool updates at the tee — **DONE**   | 2h   | —                |
+| t003 | Cap tool output inline (head+tail, `truncated` flag) and drop internal/duplicate ACP payloads — **DONE**     | 1h   | t002             |
+| t004 | Compact existing transcripts to the item model (migration/backfill), incl. the 5,000-part cap — **DONE**     | 1h   | t002, t003       |
+| t005 | Signal-first conversation view: grouped tool line, collapsed reasoning, single status line — **DONE**        | 1.5h | t002             |
+| t006 | Verify on production with `ags-dbf8nggkbcjs73a5r3u0` and a fresh long turn — **DONE**                        | 30m  | t001, t004, t005 |
 | t007 | Render parity (transcript stream/REST/MCP shapes, dashboard + mobile consistency)                 | 20m  | t006             |
 | t008 | Simplify                                                                                          | 20m  | t007             |
 | t009 | Test coverage                                                                                     | 30m  | t007             |
