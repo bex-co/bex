@@ -113,7 +113,7 @@ func materializeSelectedTestRelease(t *testing.T, r *AppReconciler, app *appv1al
 	// not proof the replacement is live.
 	app.Status.ActiveRevision = releaseRevision(app)
 	app.Status.Image = image
-	app.Status.UndeployedChanges, err = r.servingConfigurationDiffers(ctx, app)
+	app.Status.UndeployedChanges, _, err = r.servingConfigurationDiffers(ctx, app)
 	if err != nil {
 		t.Fatal(err)
 	}

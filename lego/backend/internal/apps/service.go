@@ -459,9 +459,15 @@ type AppView struct {
 	UndeployedChanges bool `json:"undeployedChanges"`
 	// UndeployedChangesApplying: a rolling release already carries those saved
 	// changes, so they go live when it finishes (w4/m184). Operator-owned.
-	UndeployedChangesApplying bool     `json:"undeployedChangesApplying"`
-	URL                       string   `json:"url"`
-	URLs                      []string `json:"urls"`
+	UndeployedChangesApplying bool `json:"undeployedChangesApplying"`
+	// UndeployedChangesReason is why UndeployedChanges is set (w4/414):
+	// "saved" | "image_override" | "historical_release"; empty when false.
+	UndeployedChangesReason string `json:"undeployedChangesReason"`
+	// ServingImage is the image the serving release runs when it differs
+	// from the saved one (a per-deploy override, w4/414); empty otherwise.
+	ServingImage string   `json:"servingImage,omitempty"`
+	URL          string   `json:"url"`
+	URLs         []string `json:"urls"`
 	// PublicRoutingNotice explains why a service that asked to be publicly
 	// reachable has no public address (bex extra, w7/m79). Empty when the
 	// service is routed, or is not the kind that carries a public URL.
@@ -1045,6 +1051,16 @@ func effectiveRuntime(spec appv1alpha1.AppSpec, svcType string) string {
 	return ""
 }
 
+// servingImage is the image the serving release runs when a per-deploy
+// override chose it (w4/414): the active release config's image, when it
+// differs from the saved one. Empty in every other state.
+func servingImage(a *appv1alpha1.App) string {
+	if ref := a.ActiveReleaseConfig(); ref != nil && ref.Image != "" && ref.Image != a.Spec.Image {
+		return ref.Image
+	}
+	return ""
+}
+
 func view(a *appv1alpha1.App) AppView {
 	name := core.AppPublicName(a)
 	appID := publicID(a)
@@ -1124,6 +1140,8 @@ func view(a *appv1alpha1.App) AppView {
 		Phase:                     phase,
 		UndeployedChanges:         a.Status.UndeployedChanges,
 		UndeployedChangesApplying: a.Status.UndeployedChanges && a.Status.UndeployedChangesApplying,
+		UndeployedChangesReason:   a.Status.UndeployedChangesReason,
+		ServingImage:              servingImage(a),
 		URL:                       url,
 		PublicRoutingNotice:       publicRoutingNotice(a),
 		// The contract-level derivation (types/v1alpha1) the operator's slug

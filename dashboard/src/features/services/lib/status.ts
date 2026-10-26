@@ -52,6 +52,11 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
       "undeployedChangesApplying" in s
         ? s.undeployedChangesApplying === true
         : undefined,
+    undeployedChangesReason:
+      "undeployedChangesReason" in s
+        ? (s.undeployedChangesReason ?? undefined)
+        : undefined,
+    servingImage: "servingImage" in s ? (s.servingImage ?? null) : null,
     // Absent selection stays undefined (unresolved), never null (workspace).
     environmentId: "environmentId" in s ? (s.environmentId ?? null) : undefined,
     createdAt: s.createdAt ?? null,
@@ -348,13 +353,21 @@ export function computeStats(services: ServiceView[]): ServiceStats {
  *  redundant second deploy (w4/m184); a suspended service must resume before
  *  any deploy can run (w4/m234). */
 export function undeployedChangesHintKey(
-  s: Pick<ServiceView, "undeployedChangesApplying" | "suspended">,
+  s: Pick<
+    ServiceView,
+    "undeployedChangesApplying" | "suspended" | "undeployedChangesReason"
+  >,
 ):
   | "services.undeployedChangesApplyingHint"
   | "services.undeployedChangesSuspendedHint"
+  | "services.undeployedChangesOverrideHint"
   | "services.undeployedChangesHint" {
   if (s.undeployedChangesApplying)
     return "services.undeployedChangesApplyingHint";
   if (s.suspended) return "services.undeployedChangesSuspendedHint";
+  // A per-deploy image override saved nothing: the notice names the running
+  // and saved images instead of urging a deploy that would undo it (w4/414).
+  if (s.undeployedChangesReason === "image_override")
+    return "services.undeployedChangesOverrideHint";
   return "services.undeployedChangesHint";
 }
