@@ -2,9 +2,9 @@
 
 ## Outcome and limits
 
-Local verification passed for the Zot GC correction and the CNPG collector correction with in-place instance-manager updates. The expired build-cache trial has a rollback prepared. At the first checkpoint these were uncommitted working-tree changes; the shipping checkpoint below records subsequent delivery. They are not production rollout claims.
+Zot GC prevention and the expired cache-trial rollback have passed production acceptance. CNPG 1.30.1 is live on all 13 instances across nine clusters with in-place updates; its 30-minute observation and a fresh platform backup are in progress. Local regression, uninterrupted-upgrade and recovery checks passed. At the first checkpoint these were uncommitted working-tree changes; the shipping checkpoint below records subsequent delivery. They are not production rollout claims.
 
-Production verification is blocked on authenticated cluster access. The local pinned SSH host keys do not match one discovered control-plane node, and the other two discovered nodes have no entry in the pinned file. No pin was replaced and no host-key check was disabled. The repository also requires an explicit `$ship` invocation before committing or pushing.
+The initial production verification was blocked on authenticated cluster access. The local pinned SSH host keys do not match one discovered control-plane node, and the other two discovered nodes have no entry in the pinned file. No pin was replaced and no host-key check was disabled. The repository also requires an explicit `$ship` invocation before committing or pushing.
 
 The existing CAPD cluster was read only: its API is reachable through the control-plane container's current published port, but all three workers are NotReady. Rather than upgrade its shared CNPG operator or disturb other dev-N databases, this drill created a disposable single-node kind cluster, `bex-w7-unblock`, with its own kubeconfig outside the repository. Its Kubernetes version was 1.36.1. No production resource or other workstream's data was changed.
 
@@ -101,3 +101,17 @@ The user explicitly requested “ship and continue, do not stop until you absolu
 Production delivery is queued behind an older active deployment. The new manual, main-only `Verify production SSH trust` workflow uses the existing protected `production-deploy` environment and reports only `ssh-keygen` fingerprints of its provisioned known-hosts entries. No client private key or kubeconfig is exported. A network-scanned key is usable locally only after it matches this independent trusted fingerprint.
 
 Two entries added through the initial fetch attempt's `accept-new` fallback were identified as unverified session-created records and removed from the local global known-hosts file. They were not used as authenticated pins; no newly scanned key was trusted by itself.
+
+## Production acceptance checkpoint — 2026-10-26 UTC
+
+Protected [SSH trust run 40256047498](https://github.com/bex-co/bex/actions/runs/40256047498) reported the provisioned host-key fingerprints. All three exact IP/fingerprint pairs matched fresh network captures; the canonical local known-hosts file was updated from that authenticated comparison, and production access succeeded with strict pin verification. No client key or kubeconfig was exported by CI.
+
+Zot 2.1.22 started at 01:40:27 UTC. Its scheduler completed 57 per-repository GC tasks across 57 repositories between 01:40:31 and 01:55:18, with zero GC errors. Production's current GC delay and interval are both 3h and were preserved. These are 57 native repository tasks, not a claim of two entire three-hour fleet sweeps. The local old/new fixture supplies repeated-cycle orphan reclamation under the injected metadata-rebuild condition.
+
+Two existing Apps in separate namespaces returned their exact recorded image manifest digests and config bytes; all 32 referenced blobs returned HEAD 200 with expected sizes. Cross-namespace credentials were refused with 403 in both directions, and anonymous enumeration returned 401. No tenant App or registry content was changed by these checks.
+
+The cache rollback is live: both variables are absent, bex-operator is Synced/Healthy and `bex_build_cache_enabled` is zero. The original-window queries returned zero retained series for the cache gauge, push histogram count, push errors and Zot PVC usage; Prometheus currently retains three days. The later storage snapshot is 49,495,916,544 / 105,559,699,456 bytes (~46.9%). It is not original trial evidence. The completed 047 note preserves the historical activation evidence and explicitly records rollback.
+
+[Reviewed-chart mirror run 40257260403](https://github.com/bex-co/bex/actions/runs/40257260403) passed and published the exact locked CNPG digest. Argo then deployed 1.30.1 with in-place updates. Current inventory is nine healthy clusters / 13 instances, including five single-instance tenant databases; every PostgreSQL operand image is explicitly pinned in its Cluster and remained unchanged. The original replica still returned NULL from `pg_stat_wal.stats_reset`, while the corrected exporter produced WAL series labelled `-infinity` with collection error zero. This is the natural production failure mode, without changing a view or resetting statistics. Continuous SQL/process/container and WAL observations continue for the required 30 minutes; a post-upgrade bex-db plugin backup has been requested.
+
+The manual chart mirror reuses the existing reviewed-artifact helper. It and the regular deployment job share a queued publisher mutex (`queue: max`, `cancel-in-progress: false`), preserving the outer deployment transaction and avoiding cancellation of pending work. See [GitHub's concurrency documentation](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency).
