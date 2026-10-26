@@ -471,7 +471,9 @@ Some cases release the hook at once:
 
 drain-guard runs as its own ServiceAccount, never the operator's. It is the only bex identity with a grant in `bex-capi`: Machines, no Secrets. A fail-closed admission policy (`deploy/gitops/base/drain-guard-admission.yaml`) limits its writes to the hook, a cordon, and the evacuation annotation. Operations are in [runbooks/drain-guard.md](runbooks/drain-guard.md).
 
-Not covered: Cluster Autoscaler scale-down evicts pods itself before it deletes the Machine (w1/142).
+**Cluster Autoscaler scale-downs (w1/m187).** CA removes a node another way. It taints the node `ToBeDeletedByClusterAutoscaler` (`NoSchedule`), evicts its pods itself, and deletes the Machine only once the node is empty. The pre-drain hook therefore finds nothing at risk and releases at once. Between the taint and its drain, CA sleeps `--node-delete-delay-after-taint` (CA 1.34 `actuator.go` `deleteNodesAsync`), and bex raises that delay from upstream's 5s to **5 minutes** (`infra/clusterapi/autoscaler-values.yaml`, floor held by `scripts/clusterapi-validate.sh`).
+
+drain-guard watches the workload cluster's Nodes. When the taint lands on a guarded Machine's node, it applies the same evacuation annotation and rechecks until no App there is at risk. It does not cordon, because CA's taint already keeps the replacement off the node. A replacement that is not Ready by the end of the delay is evicted as before, so the delay can slow a consolidation but never stop one. This is the path that evicted `beancount-cms-v2` in the section above, now with a Ready replacement waiting.
 
 ## Gotchas
 
