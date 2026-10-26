@@ -448,6 +448,12 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: [self-hosted, Linux, ARM64, bex-production]
     environment: production-deploy
+    # The maintenance mirror publishes the same version tags. Queue both
+    # callers so timestamp normalization cannot race or cancel a pending deploy.
+    concurrency:
+      group: reviewed-helm-mirror
+      queue: max
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
