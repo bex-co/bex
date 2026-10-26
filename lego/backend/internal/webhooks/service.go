@@ -152,16 +152,19 @@ const (
 	// Persistent-disk lifecycle (ADR082; w8/m34). Render's webhook enum spells
 	// these disk_created/disk_updated/disk_deleted — the earlier bex-only
 	// disk_attached/disk_detached filters are rewritten by migration 0106.
-	TypeDiskCreated        = "disk_created"
-	TypeDiskUpdated        = "disk_updated"
-	TypeDiskDeleted        = "disk_deleted"
-	TypeImagePullFailed    = "image_pull_failed"
-	TypeServerFailed       = "server_failed"
-	TypeServerAvailable    = "server_available"
-	TypeBranchChanged      = "branch_changed"
-	TypeCommitIgnored      = "commit_ignored"
-	TypeAutoscalingStarted = "autoscaling_started"
-	TypeAutoscalingEnded   = "autoscaling_ended"
+	TypeDiskCreated     = "disk_created"
+	TypeDiskUpdated     = "disk_updated"
+	TypeDiskDeleted     = "disk_deleted"
+	TypeImagePullFailed = "image_pull_failed"
+	TypeServerFailed    = "server_failed"
+	// TypeServerHardwareFailure is server_failed for an instance lost with its
+	// node (w5/m142).
+	TypeServerHardwareFailure = "server_hardware_failure"
+	TypeServerAvailable       = "server_available"
+	TypeBranchChanged         = "branch_changed"
+	TypeCommitIgnored         = "commit_ignored"
+	TypeAutoscalingStarted    = "autoscaling_started"
+	TypeAutoscalingEnded      = "autoscaling_ended"
 )
 
 // verbEvents maps an audited verb ("<package>.<Method>", the same key
@@ -200,25 +203,26 @@ var legacyEventTypeAliases = map[string]string{
 const autoDeployVerb = core.AuditVerbSetAutoDeploy
 
 var factEvents = map[string]string{
-	string(store.EventFactImagePullFailed):    TypeImagePullFailed,
-	string(store.EventFactServiceSuspended):   TypeServiceSuspended,
-	string(store.EventFactServiceResumed):     TypeServiceResumed,
-	string(store.EventFactServiceHibernated):  TypeServiceHibernated,
-	string(store.EventFactServiceWoken):       TypeServiceWoken,
-	string(store.EventFactServerFailed):       TypeServerFailed,
-	string(store.EventFactServerAvailable):    TypeServerAvailable,
-	string(store.EventFactBranchChanged):      TypeBranchChanged,
-	string(store.EventFactCommitIgnored):      TypeCommitIgnored,
-	string(store.EventFactAutoscalingStarted): TypeAutoscalingStarted,
-	string(store.EventFactAutoscalingEnded):   TypeAutoscalingEnded,
-	string(store.EventFactBranchDeleted):      TypeBranchDeleted,
-	string(store.EventFactBuildStarted):       TypeBuildStarted,
-	string(store.EventFactBuildEnded):         TypeBuildEnded,
-	string(store.EventFactPreDeployStarted):   TypePreDeployStarted,
-	string(store.EventFactPreDeployEnded):     TypePreDeployEnded,
-	string(store.EventFactJobRunEnded):        TypeJobRunEnded,
-	string(store.EventFactCronRunStarted):     TypeCronJobRunStarted,
-	string(store.EventFactCronRunEnded):       TypeCronJobRunEnded,
+	string(store.EventFactImagePullFailed):       TypeImagePullFailed,
+	string(store.EventFactServiceSuspended):      TypeServiceSuspended,
+	string(store.EventFactServiceResumed):        TypeServiceResumed,
+	string(store.EventFactServiceHibernated):     TypeServiceHibernated,
+	string(store.EventFactServiceWoken):          TypeServiceWoken,
+	string(store.EventFactServerFailed):          TypeServerFailed,
+	string(store.EventFactServerHardwareFailure): TypeServerHardwareFailure,
+	string(store.EventFactServerAvailable):       TypeServerAvailable,
+	string(store.EventFactBranchChanged):         TypeBranchChanged,
+	string(store.EventFactCommitIgnored):         TypeCommitIgnored,
+	string(store.EventFactAutoscalingStarted):    TypeAutoscalingStarted,
+	string(store.EventFactAutoscalingEnded):      TypeAutoscalingEnded,
+	string(store.EventFactBranchDeleted):         TypeBranchDeleted,
+	string(store.EventFactBuildStarted):          TypeBuildStarted,
+	string(store.EventFactBuildEnded):            TypeBuildEnded,
+	string(store.EventFactPreDeployStarted):      TypePreDeployStarted,
+	string(store.EventFactPreDeployEnded):        TypePreDeployEnded,
+	string(store.EventFactJobRunEnded):           TypeJobRunEnded,
+	string(store.EventFactCronRunStarted):        TypeCronJobRunStarted,
+	string(store.EventFactCronRunEnded):          TypeCronJobRunEnded,
 
 	// Managed-datastore facts (w3/m82). They live in datastore_event_facts
 	// rather than service_event_facts, but the composed feed the dispatcher

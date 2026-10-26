@@ -318,6 +318,12 @@ const (
 	// deploy's stall reason (w6/080).
 	ReasonUnschedulable     = "Unschedulable"
 	ReasonContainerCreating = "ContainerCreating"
+
+	// ReasonNodeLost is Ready=False because an instance was lost with its
+	// node — the node went NotReady or away, or Kubernetes evicted the pod for
+	// it — not because the service's own container failed. The control plane
+	// records it as Render's server_hardware_failure rather than server_failed.
+	ReasonNodeLost = "NodeLost"
 )
 
 // DefaultBranch is the git branch a repo-backed App tracks when none is

@@ -417,6 +417,44 @@ func TestObservedServiceStateExcludesRolloutSettling(t *testing.T) {
 	}
 }
 
+// An instance lost with its node (the operator's Ready reason NodeLost) is
+// Render's server_hardware_failure with no reason code, while a crash on a
+// healthy node stays server_failed/readiness_failed (w5/m142).
+func TestObservedNodeLossIsAHardwareFailureNotAnAppCrash(t *testing.T) {
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Generation: 5},
+		Status: appv1alpha1.AppStatus{
+			Phase:          appv1alpha1.PhaseRunning,
+			ActiveRevision: "rev-3",
+			Conditions: []metav1.Condition{{
+				Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse,
+				Reason: appv1alpha1.ReasonNodeLost, ObservedGeneration: 5,
+			}},
+		},
+	}
+	for _, tc := range []struct {
+		reason, code string
+		want         ServiceEventFactType
+	}{
+		{appv1alpha1.ReasonNodeLost, "", EventFactServerHardwareFailure},
+		{"CrashLoopBackOff", EventReasonReadinessFailed, EventFactServerFailed},
+	} {
+		app.Status.Conditions[0].Reason = tc.reason
+		obs := observedServiceStateFor("srv-node", app, false)
+		if !obs.AvailabilityObserved || obs.Availability != "unhealthy" || obs.ReasonCode != tc.code {
+			t.Fatalf("%s observation = %+v, want unhealthy with reason code %q", tc.reason, obs, tc.code)
+		}
+		obs.At = time.Now()
+		var got []ServiceEventFactType
+		for _, f := range observedStateFacts(obs, obs.ServicePhase, "healthy", false, time.Time{}) {
+			got = append(got, f.Type)
+		}
+		if len(got) != 1 || got[0] != tc.want {
+			t.Fatalf("%s facts = %v, want exactly [%s]", tc.reason, got, tc.want)
+		}
+	}
+}
+
 // getApp fetches the one public-name "web" CR every test projects. The object
 // name intentionally uses the immutable tenant id, not the mutable tenant name.
 // Cluster-wide (not InNamespace("default")): App CRs project into their
