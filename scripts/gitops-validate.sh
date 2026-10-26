@@ -980,6 +980,19 @@ for rbac_file in lego/operator/config/rbac/role.yaml lego/operator/config/api/rb
   fi
 done
 
+# Render the operator chart: its upgrade policy protects single-instance tenant
+# databases, and the collector fix must reach the actual Deployment image.
+echo "==> CNPG collector image and in-place instance-manager upgrades"
+cnpg_archive=$(bash scripts/helm-artifact.sh pull cloudnative-pg "$tmp/cnpg")
+yq -r '.spec.source.helm.values' deploy/gitops/base/cnpg-operator.yaml >"$tmp/cnpg-values.yaml"
+helm template cnpg-operator "$cnpg_archive" -n cnpg-system -f "$tmp/cnpg-values.yaml" >"$tmp/cnpg-render.yaml"
+cnpg_image=$(yq -N 'select(.kind == "Deployment") | .spec.template.spec.containers[0].image' "$tmp/cnpg-render.yaml")
+scalar cnpg_image "$cnpg_image"
+[ "$cnpg_image" = 'ghcr.io/cloudnative-pg/cloudnative-pg:1.30.1@sha256:923c267ec29636db3bee20f993d0ec4973fa22998e1adad37da79e4d32b5bc07' ] \
+  || { echo "FAIL: CNPG collector fix is not pinned in the rendered Deployment: $cnpg_image" >&2; fail=1; }
+yq -e 'select(.kind == "ConfigMap" and .metadata.name == "cnpg-controller-manager-config") | .data.ENABLE_INSTANCE_MANAGER_INPLACE_UPDATES == "true"' "$tmp/cnpg-render.yaml" >/dev/null \
+  || { echo "FAIL: CNPG operator upgrades must enable in-place instance-manager updates" >&2; fail=1; }
+
 # Zot registry auth guard (w7/m8, docs/ADR022-tenant-isolation.md § Registry access
 # control): the in-cluster registry must deny anonymous access — unauthenticated
 # catalog/pull/push from a tenant build pod is a cross-tenant hole. Asserts the

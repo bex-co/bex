@@ -14,9 +14,15 @@ spec:
   source:
     repoURL: oci://ghcr.io/bex-co/bex-charts/cloudnative-pg
     path: .
-    targetRevision: "sha256:67a2cb6e865168d0c211c76c1a10d4369c6465dac7ebda9172cb72bc46217a78"
+    targetRevision: "sha256:4ab30b6a4d8aa029ff551102ec2fd9835c9f16c91f73963618a970b0b10f5a67"
     helm:
       values: |
+        image:
+          tag: 1.30.1@sha256:923c267ec29636db3bee20f993d0ec4973fa22998e1adad37da79e4d32b5bc07
+        # Operator upgrades must preserve running single-instance tenant databases.
+        config:
+          data:
+            ENABLE_INSTANCE_MANAGER_INPLACE_UPDATES: "true"
         # w1/m19 t003: platform pool
         nodeSelector:
           bex.co/pool: platform

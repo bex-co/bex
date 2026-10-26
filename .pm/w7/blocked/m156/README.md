@@ -1,6 +1,6 @@
 # w7 · m156 — Repair CNPG replica WAL metric collection
 
-**Worker:** worker7 **Goal:** Restore reliable WAL observability for control-plane database replicas through startup and recovery. **Status:** blocked
+**Worker:** worker7 **Goal:** Restore reliable WAL observability for control-plane database replicas through startup and recovery. **Status:** blocked (t001, t004, t005 done; local in-place upgrade verified; production rollout/acceptance pending)
 
 **Estimate:** 120m implementation; 190m including standing closing tasks.
 
@@ -11,8 +11,8 @@
 | t001 | Reproduce NULL WAL statistics on the deployed CNPG version — **DONE** | 45m | — |
 | t002 | Validate and apply the supported collector correction | 45m | t001 |
 | t003 | Verify replica metrics and error disappearance | 30m | t002 |
-| t004 | Simplify | 20m | t003 |
-| t005 | Test coverage | 40m | t003 |
+| t004 | Simplify — **DONE** | 20m | t003 |
+| t005 | Test coverage — **DONE** | 40m | t003 |
 | t006 | Closeout | 10m | t004, t005 |
 
 ## Definition of done
@@ -47,3 +47,13 @@ This is planned work, not an implemented fix. The read-only audit did not author
 **Prepared change (not applied):** bump `deploy/helm-artifacts.lock` `cloudnative-pg` to `0.29.1` (new archive sha + deterministic mirror digest via `scripts/helm-artifact.sh mirror`) and point `deploy/gitops/base/cnpg-operator.yaml` `targetRevision` at it.
 
 **Why parked:** Argo auto-syncs `cnpg-operator` from `main`, so merging the bump *is* the production rollout. `cnpg-controller-manager-config` does not set `ENABLE_INSTANCE_MANAGER_INPLACE_UPDATES`, so an operator upgrade restarts every instance pod — all **7** Postgres clusters, including **3 single-instance tenant databases** (brief customer downtime) and switchovers of the 4 two-instance platform clusters — to fix one collector on one pod. The DoD also requires the startup/recovery path to be exercised in isolation first, and the local substrate cannot do that today (dev cluster `kube-controller-manager` crash-looping on apiserver lease timeouts, the shared-VM capacity gate on m149–m151).
+
+## Unblock execution — 2026-10-25 America/Los_Angeles
+
+The user instructed “go clear them”, delegating execution of the proposed unblock work. The original product/upgrade decision gate is resolved. No commit or push was made because the repository requires an explicit `$ship` invocation. Production access also failed closed: one discovered control-plane node disagrees with the local pinned SSH key, and two others have no trusted entry. No pin was replaced and no host-key check was disabled.
+
+Full local evidence, tested digests, reproduction commands and remaining production acceptance are in [the upgrade drill](../../../../docs/drills/2026-10-25-w7-infrastructure-upgrades.md). This milestone remains blocked on rollout and production evidence, not on the former optional choice.
+
+The prepared change selects reviewed chart 0.29.1 and the digest-pinned 1.30.1 operator, with string-valued `ENABLE_INSTANCE_MANAGER_INPLACE_UPDATES: "true"`. A separate disposable kind cluster avoided touching the degraded shared CAPD cluster or other dev-N stacks. The 1.30.0 baseline had in-place updates disabled; the upgrade enabled them at the same time as replacing the operator. All three database Pod UIDs/container IDs/restart counts and the single-instance postmaster start time were preserved. All 120 SQL reads succeeded. A NULL timestamp injected only into the disposable test view reproduced the original collector failure on 1.30.0 and produced valid WAL counters on 1.30.1 while NULL remained present. The standby was then recreated and rejoined with the fixture data intact.
+
+Remaining: ship; check the current production estate, backups and effective configuration; verify actual instance-manager versions, uninterrupted database health/replication/backups, and at least 30 minutes of successful WAL metrics. The local fixture did not configure Barman/S3; backup health is not claimed from a local unit test or a historical cluster count.
