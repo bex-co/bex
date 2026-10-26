@@ -1,17 +1,17 @@
 # w6 · m153 — Production cluster access survives a control-plane roll
 
-**Worker:** worker6 **Goal:** every workflow that fetches the production kubeconfig keeps working across a control-plane roll, with SSH host keys still authenticated, never trusted on first use **Status:** todo (t001: user deferred the choice on 2026-10-24; default to (a) unless re-opened)
+**Worker:** worker6 **Goal:** every workflow that fetches the production kubeconfig keeps working across a control-plane roll, with SSH host keys still authenticated, never trusted on first use **Status:** blocked (t004 needs the next control-plane roll; t001–t003, t005–t006 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Choose how pinned control-plane host keys follow a roll (user decision) | 15m | — |
-| t002 | Implement the chosen re-pin path | 60m | w6/m153/t001 |
-| t003 | Fail fast and name the cause when every pinned key mismatches | 30m | w6/m153/t001 |
+| t001 | Choose how pinned control-plane host keys follow a roll (user decision) — **DONE** | 15m | — |
+| t002 | Implement the chosen re-pin path — **DONE** | 60m | w6/m153/t001 |
+| t003 | Fail fast and name the cause when every pinned key mismatches — **DONE** | 30m | w6/m153/t001 |
 | t004 | Prove it across a real control-plane roll | 30m | w6/m153/t002, w6/m153/t003 |
-| t005 | Simplify | 15m | w6/m153/t004 |
-| t006 | Test coverage | 20m | w6/m153/t004 |
+| t005 | Simplify — **DONE** | 15m | w6/m153/t004 |
+| t006 | Test coverage — **DONE** | 20m | w6/m153/t004 |
 | t007 | Closeout | 10m | w6/m153/t005, w6/m153/t006 |
 
 ## Definition of done
@@ -32,3 +32,10 @@
   - (b) the roll workflow captures new keys over its still-authenticated kube API channel (kubeconfig from before the roll; the API LB is unchanged) and updates the secret;
   - (c) stop fetching admin.conf over SSH and use a long-lived scoped kubeconfig in CI custody.
 - **Render parity:** omitted. Platform infrastructure, no tenant-facing surface.
+
+## Decision and implementation — 2026-10-26
+
+- **t001:** the user deferred the design choice ("continue"). The 21:02 UTC correction showed the outage was transient (mid-roll), so the shipped fix is a bounded retry in `fetch-app-kubeconfig.sh`, not options (a)–(c). It rediscovers the control planes and retries only on host-key failures (default 6 × 60 s), then names a stale pin. Option (a), stable host keys, would roll the production control plane and stays a separate owner-approved change, recorded in ADR019 § Mid-roll retry.
+- **t002/t003/t006:** `scripts/fetch-app-kubeconfig.test.sh` runs in `scripts.yml` with stubbed curl/ssh/kubectl. It covers a roll that settles after two attempts, a stale pin that fails after the bounded attempts with the named error, and a refused connection that gets no retry and no stale-pin claim. `github-actions-validate` passes.
+- **t005:** a small, self-reviewed diff. The shellcheck CI list names only the test, because naming the fetcher there trips the admin.conf-fetcher pin guard.
+- **Remaining (t004):** observe a deploy or drill across the next real control-plane roll.
