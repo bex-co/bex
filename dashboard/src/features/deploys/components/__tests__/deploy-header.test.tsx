@@ -84,11 +84,12 @@ describe("DeployHeader", () => {
     expect(screen.queryByText(/Pre-deploy command/)).not.toBeInTheDocument();
   });
 
-  it("labels a manual (api-triggered) deploy", () => {
-    render(
-      <DeployHeader deploy={deploy({ trigger: "api", rollbackOf: "" })} />,
-    );
-    expect(screen.getByText("Manual Deploy")).toBeInTheDocument();
+  it.each([
+    ["api", "API Deploy"],
+    ["manual", "Manual Deploy"],
+  ])("labels a %s-triggered deploy as %s", (trigger, label) => {
+    render(<DeployHeader deploy={deploy({ trigger, rollbackOf: "" })} />);
+    expect(screen.getByText(label)).toBeInTheDocument();
   });
 
   it("labels a rollback deploy with the restored deploy's id intact (no CSS capitalize)", () => {
