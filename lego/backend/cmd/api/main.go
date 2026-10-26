@@ -441,6 +441,10 @@ func main() {
 			log.Fatalf("bex-api: register git webhook replay epochs: %v", err)
 		}
 		go st.RunGitWebhookReplayMaintenance(ctx, epochs)
+		// One-shot ADR051 item-model backfill (w10/m16): rewrite legacy raw-chunk
+		// transcript turns into completed items, in the background so startup
+		// never waits on it. Idempotent; once drained it is one index probe.
+		go compactAgentTranscripts(ctx, st)
 	}
 	// Membership rows and exact OpenFGA roles are joined by a transactional
 	// Postgres outbox. Drain it independently of request retries so an invite or
@@ -1545,4 +1549,29 @@ func backfillMachineMemberships(ctx context.Context, st any, keys apikeys.APIKey
 	if n > 0 {
 		log.Printf("bex-api: machine-membership backfill: reclassified %d API-key binding(s) as machine", n)
 	}
+}
+
+// compactAgentTranscripts runs the transcript item-model backfill: a dry run
+// first (its counts are the logged plan), then the rewrite. A failure is logged
+// and retried on the next start; the legacy rows it leaves still replay
+// unchanged.
+func compactAgentTranscripts(ctx context.Context, st *store.PGStore) {
+	report := func(phase string, stats store.TranscriptCompactionStats) {
+		log.Printf("bex-api: agent transcript compaction %s: sessions=%d turns=%d skipped_open_turns=%d rows %d→%d bytes %d→%d truncation_flags_cleared=%d",
+			phase, stats.Sessions, stats.Turns, stats.SkippedOpenTurns, stats.RowsBefore, stats.RowsAfter, stats.BytesBefore, stats.BytesAfter, stats.FlagsCleared)
+	}
+	plan, err := st.CompactAgentSessionTranscripts(ctx, store.TranscriptCompactionOptions{DryRun: true})
+	if err != nil {
+		log.Printf("bex-api: agent transcript compaction dry run failed (retrying next start): %v", err)
+		return
+	}
+	if plan.Turns == 0 {
+		return
+	}
+	report("dry run", plan)
+	done, err := st.CompactAgentSessionTranscripts(ctx, store.TranscriptCompactionOptions{Logf: log.Printf})
+	if err != nil {
+		log.Printf("bex-api: agent transcript compaction stopped (retrying next start): %v", err)
+	}
+	report("applied", done)
 }

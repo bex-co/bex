@@ -61,7 +61,7 @@ Docs live here — one file per topic. Root [AGENTS.md](../AGENTS.md) points her
 - [ADR035-ssh.md](ADR035-ssh.md) — instance SSH, gateway + Kubernetes exec bridge
 - [ADR054-open-in-zed.md](ADR054-open-in-zed.md) — `zed://ssh/ags-…@ssh.bex.co/workspace`
 - [ADR047-cloud-coding-agent-sessions.md](ADR047-cloud-coding-agent-sessions.md) — sandbox-per-session, ACP driver, gateway grants
-- [ADR051-agent-session-transcript.md](ADR051-agent-session-transcript.md) — durable conversation history (headless recorder)
+- [ADR051-agent-session-transcript.md](ADR051-agent-session-transcript.md) — durable conversation history (headless recorder; completed-item model, w10/m16)
 - [ADR059-agent-sandbox-hibernation.md](ADR059-agent-sandbox-hibernation.md) — **Superseded 2026-10-25**: agent-session hibernation retired; an idle sandbox is terminated after 2h, the transcript is kept, and a follow-up runs in a fresh sandbox (history: Active/Hibernated/Deleted + object-storage snapshots)
 - [ADR062-sandbox-credential-vault.md](ADR062-sandbox-credential-vault.md) — BYO key via gateway proxy (mandatory)
 - [ADR065-agent-session-archive.md](ADR065-agent-session-archive.md) — archive/unarchive/delete, replay-only tickets

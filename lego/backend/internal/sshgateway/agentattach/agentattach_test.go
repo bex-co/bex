@@ -307,7 +307,7 @@ func TestAgentAttachReplaysThenSplicesLiveAndTees(t *testing.T) {
 	_ = st.AppendAgentSessionTranscript(context.Background(), session, []store.AgentSessionTranscriptPart{
 		{Seq: 0, Part: []byte(`{"type":"start"}`)},
 	})
-	driver, host, port := fakeDriver([]string{`{"type":"start"}`, `{"type":"text-delta","delta":"hi"}`})
+	driver, host, port := fakeDriver([]string{`{"type":"start"}`, `{"type":"text-start","id":"t"}`, `{"type":"text-delta","id":"t","delta":"hi"}`, `{"type":"data-acp-info","data":{},"transient":true}`, `{"type":"text-end","id":"t"}`})
 	defer driver.Close()
 
 	gw := newAttachGateway(st, fixedPodIP{ip: host}, secret, port)
@@ -327,10 +327,10 @@ func TestAgentAttachReplaysThenSplicesLiveAndTees(t *testing.T) {
 	body, _ := io.ReadAll(resp.Body)
 	got := string(body)
 
-	// The client sees each part exactly once (replay of stored seq 0, then live
-	// seq 1 spliced after it) and terminates with [DONE].
+	// The client sees each chunk exactly once (replay of stored seq 0, then the
+	// live chunks spliced after it, verbatim) and terminates with [DONE].
 	payloads := dataPayloads(got)
-	want := []string{`{"type":"start"}`, `{"type":"text-delta","delta":"hi"}`}
+	want := []string{`{"type":"start"}`, `{"type":"text-start","id":"t"}`, `{"type":"text-delta","id":"t","delta":"hi"}`, `{"type":"data-acp-info","data":{},"transient":true}`, `{"type":"text-end","id":"t"}`}
 	if fmt.Sprint(payloads) != fmt.Sprint(want) {
 		t.Fatalf("client parts = %v, want %v (no dup of the replayed part)", payloads, want)
 	}
@@ -338,13 +338,15 @@ func TestAgentAttachReplaysThenSplicesLiveAndTees(t *testing.T) {
 		t.Fatalf("stream did not terminate with [DONE]:\n%s", got)
 	}
 	// Verbatim: the exact framing the client received matches what the driver emits.
-	if !strings.Contains(got, "data: {\"type\":\"text-delta\",\"delta\":\"hi\"}\n\n") {
+	if !strings.Contains(got, "data: {\"type\":\"text-delta\",\"id\":\"t\",\"delta\":\"hi\"}\n\n") {
 		t.Fatalf("live part not forwarded verbatim:\n%q", got)
 	}
-	// The tee persisted the live part (seq 1) idempotently alongside the seed.
+	// The tee persisted the live text as ONE completed item (seq 1, index of its
+	// first chunk) alongside the seed; the transient chunk is never stored.
 	stored, _ := st.AgentSessionTranscript(context.Background(), session, -1, 1<<30, 0)
-	if len(stored) != 2 || stored[1].Seq != 1 || string(stored[1].Part) != `{"type":"text-delta","delta":"hi"}` {
-		t.Fatalf("tee = %+v, want seed + live seq 1", stored)
+	if len(stored) != 2 || stored[1].Seq != 1 || stored[1].PartIndex != 1 || !stored[1].Item ||
+		string(stored[1].Part) != `{"type":"text","id":"t","text":"hi","state":"done"}` {
+		t.Fatalf("tee = %+v, want seed + one text item", stored)
 	}
 }
 

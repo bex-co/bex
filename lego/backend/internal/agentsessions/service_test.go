@@ -305,22 +305,52 @@ func (f *fakeStore) AgentSessionTranscriptTurnMaxIndex(_ context.Context, id str
 	return max, ok, nil
 }
 
-func (f *fakeStore) AgentSessionTranscriptProgress(ctx context.Context, id string, turn int, indexes []int64) (int64, []int64, error) {
+// MergeAgentSessionTranscriptItems mirrors the PG merge: insert missing item
+// indexes, upgrade partial rows, charge the cumulative quota.
+func (f *fakeStore) MergeAgentSessionTranscriptItems(ctx context.Context, id string, m store.TranscriptItemMerge) (store.TranscriptMergeResult, error) {
+	var res store.TranscriptMergeResult
 	total, err := f.AgentSessionTranscriptBytes(ctx, id)
 	if err != nil {
-		return 0, nil, err
+		return res, err
 	}
-	wanted := make(map[int64]bool, len(indexes))
-	for _, index := range indexes {
-		wanted[index] = true
+	if f.transcript[id] == nil {
+		f.transcript[id] = map[int64]store.AgentSessionTranscriptPart{}
 	}
-	var existing []int64
-	for _, p := range f.transcript[id] {
-		if p.Turn == turn && wanted[p.PartIndex] {
-			existing = append(existing, p.PartIndex)
+	for _, it := range m.Items {
+		var existing *store.AgentSessionTranscriptPart
+		for seq, p := range f.transcript[id] {
+			if p.Turn == m.Turn && p.PartIndex == it.PartIndex {
+				p := p
+				existing = &p
+				existing.Seq = seq
+				break
+			}
 		}
+		size := int64(len(it.Part))
+		if existing != nil {
+			if !existing.Partial || it.Partial {
+				continue
+			}
+			if total-int64(len(existing.Part))+size > m.Quota {
+				res.QuotaReached = true
+				return res, nil
+			}
+			total += size - int64(len(existing.Part))
+			existing.Part, existing.Partial = it.Part, false
+			f.transcript[id][existing.Seq] = *existing
+			res.Upgraded++
+			continue
+		}
+		if total+size > m.Quota {
+			res.QuotaReached = true
+			return res, nil
+		}
+		it.Seq, it.Turn, it.Item = int64(len(f.transcript[id])), m.Turn, true
+		f.transcript[id][it.Seq] = it
+		total += size
+		res.Inserted++
 	}
-	return total, existing, nil
+	return res, nil
 }
 
 func (f *fakeStore) AgentSessionTurns(_ context.Context, id string) ([]store.AgentSessionTurn, error) {

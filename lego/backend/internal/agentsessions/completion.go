@@ -26,6 +26,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/bex-co/bex/lego/backend/internal/agenttranscript"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -531,9 +532,12 @@ func (c *Completer) finalizeFailure(ctx context.Context, record store.AgentSessi
 	return final, fact, true
 }
 
-// maxTranscriptParts bounds how many parts one turn's harvest persists — a
-// defense against a pathological driver log, far above any real turn.
-const maxTranscriptParts = 5000
+// maxTranscriptItems bounds how many completed items one turn's harvest
+// persists — a defense against a pathological driver log. Items, not chunks
+// (w10/m16): the recorded 10-minute production turn that hit the old
+// 5,000-chunk cap folds into 410 items, so a normal long turn never reaches it.
+// The session's 64 MiB byte quota stays the backstop.
+const maxTranscriptItems = 5000
 
 // teardown captures the turn's conversation transcript (ADR051), then terminates
 // the finished session's sandbox and removes its egress policy (idempotent)
@@ -623,7 +627,8 @@ func (c *Completer) terminate(ctx context.Context, record store.AgentSession) {
 // Transcript truncation reasons (shared with markTurnTranscript).
 const (
 	reasonTranscriptReadFailed  = "transcript read failed"
-	reasonParseTruncated        = "driver log parse/part limit reached"
+	reasonParseTruncated        = "driver log parse failed"
+	reasonItemLimit             = "transcript item limit reached"
 	reasonQuotaExceeded         = "session transcript byte quota reached"
 	reasonTranscriptStoreFailed = "transcript store failed"
 	reasonDriverTruncated       = "driver session log truncated"
@@ -631,12 +636,14 @@ const (
 
 // captureTranscript harvests the driver's per-part session log over the SAME
 // pods/exec boundary the Completer already uses for the status read (ADR051), and
-// appends it to the durable transcript before teardown. Riding the proven
+// merges it into the durable transcript before teardown. Riding the proven
 // status-read path — rather than a separate gateway→driver stream dial — is what
-// makes persistence reliable. Every harvest parses the full bounded log and
-// idempotently merges by turn-local part index, so a live tee that stored only a
-// prefix cannot suppress the missing suffix. It reports whether the log was read
-// and stored, so a failed harvest is retried on the next tick.
+// makes persistence reliable. Every harvest parses the full bounded log, folds
+// its chunks into completed items with the same coalescer as the live tee
+// (agenttranscript), and idempotently merges by turn-local item index, so a live
+// tee that stored only a prefix — or a partial item at a disconnect — cannot
+// suppress the rest. It reports whether the log was read and stored, so a
+// failed harvest is retried on the next tick.
 func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSession) bool {
 	raw, err := c.Sandbox.ReadSessionTranscript(ctx, record.WorkspaceID, record.ID, record.SandboxID)
 	if err != nil {
@@ -646,82 +653,52 @@ func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSes
 		c.markTurnTranscript(ctx, record, false, true, reasonTranscriptReadFailed)
 		return false
 	}
-	parts, parseTruncated := parseTranscriptLog(raw, record.Turns)
-	driverTruncated := driverLogTruncated(raw, parts)
-	if len(parts) == 0 {
-		reason := ""
-		if parseTruncated {
-			reason = reasonParseTruncated
-		} else if driverTruncated {
-			reason = reasonDriverTruncated
+	chunks, parseTruncated := parseTranscriptLog(raw, record.Turns)
+	driverTruncated := driverLogTruncated(raw, chunks)
+	items := agenttranscript.Coalesce(chunks)
+	itemCapped := len(items) > maxTranscriptItems
+	if itemCapped {
+		items = items[:maxTranscriptItems]
+	}
+	var res store.TranscriptMergeResult
+	if len(items) > 0 {
+		merge := store.TranscriptItemMerge{Turn: record.Turns, Quota: c.transcriptQuota(),
+			FirstChunk: chunks[0].Index, LastChunk: chunks[0].Index}
+		for _, ch := range chunks {
+			merge.FirstChunk = min(merge.FirstChunk, ch.Index)
+			merge.LastChunk = max(merge.LastChunk, ch.Index)
 		}
-		truncated := parseTruncated || driverTruncated
-		c.markTurnTranscript(ctx, record, !truncated, truncated, reason)
-		return true
-	}
-	// Charge only missing identities. Historical concurrent batch writers could
-	// leave holes below the largest stored ordinal, so prefix suppression alone
-	// would permanently lose those parts. The parsed log caps this lookup at
-	// maxTranscriptParts, regardless of the durable transcript's size.
-	indexes := make([]int64, len(parts))
-	for i, p := range parts {
-		indexes[i] = p.PartIndex
-	}
-	storedBytes, existing, err := c.Store.AgentSessionTranscriptProgress(ctx, record.ID, record.Turns, indexes)
-	if err != nil {
-		log.Printf("agent-session completer: transcript progress failed (session=%s): %v", record.ID, err)
-		return false
-	}
-	seen := make(map[int64]bool, len(existing))
-	for _, index := range existing {
-		seen[index] = true
-	}
-	missing := parts[:0]
-	for _, p := range parts {
-		if !seen[p.PartIndex] {
-			missing = append(missing, p)
-			seen[p.PartIndex] = true
+		merge.Items = make([]store.AgentSessionTranscriptPart, len(items))
+		for i, it := range items {
+			merge.Items[i] = store.AgentSessionTranscriptPart{Turn: record.Turns, PartIndex: it.Index, Part: it.Part, Item: true, Partial: it.Partial}
+		}
+		res, err = c.Store.MergeAgentSessionTranscriptItems(ctx, record.ID, merge)
+		if err != nil {
+			log.Printf("agent-session completer: transcript merge failed (session=%s items=%d): %v", record.ID, len(items), err)
+			c.markTurnTranscript(ctx, record, false, true, reasonTranscriptStoreFailed)
+			return false
+		}
+		if res.QuotaReached {
+			log.Printf("agent-session completer: transcript quota reached, truncating harvest (session=%s)", record.ID)
 		}
 	}
-	parts = missing
-	kept, quotaTruncated := filterPartsByQuota(parts, storedBytes, c.transcriptQuota())
-	if quotaTruncated {
-		log.Printf("agent-session completer: transcript quota reached, truncating harvest (session=%s)", record.ID)
-	}
-	if err := c.Store.AppendAgentSessionTranscript(ctx, record.ID, kept); err != nil {
-		log.Printf("agent-session completer: transcript append failed (session=%s parts=%d): %v", record.ID, len(kept), err)
-		c.markTurnTranscript(ctx, record, false, true, reasonTranscriptStoreFailed)
-		return false
-	}
-	truncated := parseTruncated || quotaTruncated || driverTruncated
 	reason := ""
-	if parseTruncated {
+	switch {
+	case parseTruncated:
 		reason = reasonParseTruncated
-	} else if quotaTruncated {
+	case itemCapped:
+		reason = reasonItemLimit
+	case res.QuotaReached:
 		reason = reasonQuotaExceeded
-	} else if driverTruncated {
+	case driverTruncated:
 		reason = reasonDriverTruncated
 	}
-	c.markTurnTranscript(ctx, record, !truncated, truncated, reason)
-	if len(kept) > 0 {
-		log.Printf("agent-session completer: captured transcript (session=%s turn=%d parts=%d)", record.ID, record.Turns, len(kept))
+	c.markTurnTranscript(ctx, record, reason == "", reason != "", reason)
+	if res.Inserted+res.Upgraded > 0 {
+		log.Printf("agent-session completer: captured transcript (session=%s turn=%d chunks=%d items=%d inserted=%d upgraded=%d replaced_legacy=%d)",
+			record.ID, record.Turns, len(chunks), len(items), res.Inserted, res.Upgraded, res.Replaced)
 	}
 	return true
-}
-
-// filterPartsByQuota returns the prefix of parts that fits within the remaining
-// quota (quota - alreadyStored), plus a flag indicating whether truncation occurred.
-func filterPartsByQuota(parts []store.AgentSessionTranscriptPart, alreadyStored, quota int64) ([]store.AgentSessionTranscriptPart, bool) {
-	kept := make([]store.AgentSessionTranscriptPart, 0, len(parts))
-	total := alreadyStored
-	for _, p := range parts {
-		if total+int64(len(p.Part)) > quota {
-			return kept, true
-		}
-		total += int64(len(p.Part))
-		kept = append(kept, p)
-	}
-	return kept, false
 }
 
 func (c *Completer) markTurnTranscript(ctx context.Context, record store.AgentSession, complete, truncated bool, reason string) {
@@ -744,27 +721,27 @@ const (
 // turn's part indexes have a gap — the driver numbers every part,
 // written or refused — or the log has reached the driver's byte cap, which
 // silently drops the tail of a turn.
-func driverLogTruncated(raw string, parts []store.AgentSessionTranscriptPart) bool {
+func driverLogTruncated(raw string, chunks []agenttranscript.Chunk) bool {
 	if len(raw) >= driverSessionLogMaxBytes-driverSessionLogFullSlack {
 		return true
 	}
-	seen := make(map[int64]struct{}, len(parts))
+	seen := make(map[int64]struct{}, len(chunks))
 	maxIndex := int64(-1)
-	for _, p := range parts {
-		seen[p.PartIndex] = struct{}{}
-		maxIndex = max(maxIndex, p.PartIndex)
+	for _, ch := range chunks {
+		seen[ch.Index] = struct{}{}
+		maxIndex = max(maxIndex, ch.Index)
 	}
 	return int64(len(seen)) < maxIndex+1
 }
 
-// parseTranscriptLog extracts the UI-message parts from the driver's JSONL log
-// (one `{"at":…,"type":"ui-message","part":{…}}` record per line, plus the raw
-// data-acp lines). It keeps only the `.part` payload — the exact shape
-// the GET /stream replay re-frames for a Vercel AI SDK client — stamping the turn;
-// Seq is assigned by the caller. Unparseable lines (e.g. a partial leading line
-// from the byte-capped tail) are skipped.
-func parseTranscriptLog(raw string, turn int) ([]store.AgentSessionTranscriptPart, bool) {
-	out := make([]store.AgentSessionTranscriptPart, 0)
+// parseTranscriptLog extracts this turn's UI-message chunks from the driver's
+// JSONL log (one `{"at":…,"type":"ui-message","turn":…,"partIndex":…,"part":{…}}`
+// record per line), keeping the `.part` payload under its driver ordinal.
+// Unparseable lines (e.g. a partial leading line from the byte-capped tail) are
+// skipped and reported. The log itself is bounded (16 MiB), so the chunk count
+// is too; the item cap applies after folding.
+func parseTranscriptLog(raw string, turn int) ([]agenttranscript.Chunk, bool) {
+	out := make([]agenttranscript.Chunk, 0)
 	truncated := false
 	for _, line := range strings.Split(raw, "\n") {
 		line = strings.TrimSpace(line)
@@ -787,11 +764,7 @@ func parseTranscriptLog(raw string, turn int) ([]store.AgentSessionTranscriptPar
 		if rec.PartIndex != nil {
 			index = *rec.PartIndex
 		}
-		out = append(out, store.AgentSessionTranscriptPart{PartIndex: index, Turn: turn, Part: rec.Part})
-		if len(out) >= maxTranscriptParts {
-			truncated = true
-			break
-		}
+		out = append(out, agenttranscript.Chunk{Index: index, Part: rec.Part})
 	}
 	return out, truncated
 }

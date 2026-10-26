@@ -39,16 +39,47 @@ var (
 	ErrAgentSessionTurnState   = fmt.Errorf("agent session cannot accept another turn in its current state: %w", ErrConflict)
 )
 
-// AgentSessionTranscriptPart is one durable UI-message-stream part (ADR047 D9,
-// w3/m43, amended by w5/m71). Seq is the store-allocated monotonic replay
-// cursor; PartIndex is the driver's turn-local emission ordinal. Part is the
-// verbatim `data:` payload forwarded to a Vercel AI SDK client.
+// AgentSessionTranscriptPart is one durable transcript row (ADR047 D9, w3/m43,
+// amended by w5/m71 and the ADR051 item model, w10/m16). Seq is the
+// store-allocated monotonic replay cursor; PartIndex is the turn-local ordinal
+// (for an item, the ordinal of its first chunk). Part is a completed item (a
+// UIMessage text/reasoning/tool part, a data snapshot, or a standalone chunk);
+// rows written before w10/m16 are raw UI-message chunks (Item false).
+// agenttranscript.Expand turns either into the chunks a Vercel AI SDK client
+// replays.
 type AgentSessionTranscriptPart struct {
 	Seq       int64
 	PartIndex int64
 	Turn      int
 	Part      json.RawMessage
+	// Item marks a coalesced item row; Partial an item its stream ended inside
+	// of, which a later complete copy may replace.
+	Item      bool
+	Partial   bool
 	CreatedAt time.Time
+}
+
+// Transcript row shapes (agent_session_transcripts.item_state).
+const (
+	transcriptRowLegacyChunk = 0
+	transcriptRowItem        = 1
+	transcriptRowPartialItem = 2
+)
+
+func transcriptRowState(p AgentSessionTranscriptPart) int16 {
+	switch {
+	case !p.Item:
+		return transcriptRowLegacyChunk
+	case p.Partial:
+		return transcriptRowPartialItem
+	default:
+		return transcriptRowItem
+	}
+}
+
+func (p *AgentSessionTranscriptPart) setRowState(state int16) {
+	p.Item = state != transcriptRowLegacyChunk
+	p.Partial = state == transcriptRowPartialItem
 }
 
 // AgentSessionTurn is the durable user intent for one accepted agent turn.
@@ -797,10 +828,10 @@ func (s *PGStore) AppendAgentSessionTranscript(ctx context.Context, sessionID st
 				part = "null"
 			}
 			tag, err := tx.Exec(ctx, `
-				INSERT INTO agent_session_transcripts (session_id, seq, turn, part_index, part)
-				VALUES ($1, $2, $3, $4, $5)
+				INSERT INTO agent_session_transcripts (session_id, seq, turn, part_index, part, item_state)
+				VALUES ($1, $2, $3, $4, $5, $6)
 				ON CONFLICT (session_id, turn, part_index) DO NOTHING`,
-				sessionID, seq+1, p.Turn, partIndex, part)
+				sessionID, seq+1, p.Turn, partIndex, part, transcriptRowState(p))
 			if err != nil {
 				return err
 			}
@@ -825,7 +856,7 @@ func (s *PGStore) AppendAgentSessionTranscript(ctx context.Context, sessionID st
 // is gone.
 func (s *PGStore) AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64, maxBytes int64, limit int) ([]AgentSessionTranscriptPart, error) {
 	sql := `
-		SELECT seq, part_index, turn, part, created_at
+		SELECT seq, part_index, turn, part, item_state, created_at
 		FROM agent_session_transcripts
 		WHERE session_id=$1 AND seq > $2
 		ORDER BY seq ASC`
@@ -843,9 +874,11 @@ func (s *PGStore) AgentSessionTranscript(ctx context.Context, sessionID string, 
 	var total int64
 	for rows.Next() {
 		var p AgentSessionTranscriptPart
-		if err := rows.Scan(&p.Seq, &p.PartIndex, &p.Turn, &p.Part, &p.CreatedAt); err != nil {
+		var state int16
+		if err := rows.Scan(&p.Seq, &p.PartIndex, &p.Turn, &p.Part, &state, &p.CreatedAt); err != nil {
 			return nil, err
 		}
+		p.setRowState(state)
 		if total+int64(len(p.Part)) > maxBytes {
 			break
 		}
@@ -867,22 +900,6 @@ func (s *PGStore) AgentSessionTranscriptBytes(ctx context.Context, sessionID str
 		return 0, err
 	}
 	return total, nil
-}
-
-// AgentSessionTranscriptProgress reads cumulative bytes and existing requested
-// ordinals from one snapshot. The result is bounded by indexes, not transcript
-// size. Historical concurrent tees may leave holes, so max(part_index) alone
-// cannot tell a harvest which parts are duplicates.
-func (s *PGStore) AgentSessionTranscriptProgress(ctx context.Context, sessionID string, turn int, indexes []int64) (int64, []int64, error) {
-	var total int64
-	var existing []int64
-	if err := s.Pool.QueryRow(ctx, `
-		SELECT COALESCE(sum(octet_length(part)), 0),
-		       COALESCE(array_agg(part_index) FILTER (WHERE turn=$2 AND part_index=ANY($3)), ARRAY[]::bigint[])
-		FROM agent_session_transcripts WHERE session_id=$1`, sessionID, turn, indexes).Scan(&total, &existing); err != nil {
-		return 0, nil, err
-	}
-	return total, existing, nil
 }
 
 // AgentSessionTranscriptMaxSeq returns the highest stored seq for a session and

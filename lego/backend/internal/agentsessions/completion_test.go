@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -232,6 +233,54 @@ func TestCompleterHarvestsTranscriptBeforeTeardown(t *testing.T) {
 	}
 	if !strings.Contains(string(parts[0].Part), `"text":"hello"`) {
 		t.Fatalf("first part = %s, want the driver's `.part` payload", parts[0].Part)
+	}
+}
+
+// The harvest folds the driver log's chunks into completed items (ADR051 §
+// Item model): one row per text block / tool call, transient chunks dropped,
+// and the cap counts items, not chunks.
+func TestCompleterHarvestStoresCompletedItems(t *testing.T) {
+	c, st, lc, id := completerFixture(succeededStatus(true), nil)
+	var log strings.Builder
+	chunks := []string{`{"type":"start"}`, `{"type":"reasoning-start","id":"r"}`}
+	for range 6000 { // more chunks than the item cap: one reasoning item
+		chunks = append(chunks, `{"type":"reasoning-delta","id":"r","delta":"x"}`)
+	}
+	chunks = append(chunks, `{"type":"reasoning-end","id":"r"}`,
+		`{"type":"tool-input-available","toolCallId":"c","toolName":"Terminal","input":{"command":"ls"},"dynamic":true}`,
+		`{"type":"data-acp-info","data":{"toolCallId":"c"},"transient":true}`,
+		`{"type":"tool-output-available","toolCallId":"c","output":"ok","dynamic":true}`,
+		`{"type":"finish"}`)
+	for i, chunk := range chunks {
+		fmt.Fprintf(&log, "{\"turn\":1,\"partIndex\":%d,\"part\":%s}\n", i, chunk)
+	}
+	lc.transcriptLog = log.String()
+	c.Reconcile(context.Background())
+	parts, _ := st.AgentSessionTranscript(context.Background(), id, -1, 1<<30, 0)
+	if len(parts) != 4 {
+		t.Fatalf("stored %d rows, want 4 items: %+v", len(parts), parts)
+	}
+	if !strings.Contains(string(parts[1].Part), `"type":"reasoning"`) || !strings.Contains(string(parts[2].Part), `"output":"ok"`) || parts[2].PartIndex != 6003 {
+		t.Fatalf("items = %s / %s", parts[1].Part, parts[2].Part)
+	}
+	if turn := st.turns[id][1]; !turn.TranscriptComplete || turn.TranscriptTruncated {
+		t.Fatalf("6,000-chunk turn marked truncated: %+v", turn)
+	}
+}
+
+func TestCompleterHarvestItemCap(t *testing.T) {
+	c, st, lc, id := completerFixture(succeededStatus(true), nil)
+	var log strings.Builder
+	for i := range maxTranscriptItems + 1 {
+		fmt.Fprintf(&log, "{\"turn\":1,\"partIndex\":%d,\"part\":{\"type\":\"data-x\",\"data\":%d}}\n", i, i)
+	}
+	lc.transcriptLog = log.String()
+	c.Reconcile(context.Background())
+	if n := len(st.transcript[id]); n != maxTranscriptItems {
+		t.Fatalf("stored %d items, want the %d cap", n, maxTranscriptItems)
+	}
+	if turn := st.turns[id][1]; !turn.TranscriptTruncated || turn.TruncationReason != reasonItemLimit {
+		t.Fatalf("capped turn = %+v", turn)
 	}
 }
 
@@ -731,7 +780,9 @@ func TestIdleSessionClosesAfterTwoHoursAndFollowUpContinuesInFreshSandbox(t *tes
 	}
 	recordAgentPR(st, id)
 	lc.status = succeededStatus(true)
-	lc.transcriptLog = `{"turn":1,"partIndex":0,"part":{"type":"text-delta","id":"t","delta":"I fixed the flaky test."}}`
+	lc.transcriptLog = `{"turn":1,"partIndex":0,"part":{"type":"text-start","id":"t"}}
+{"turn":1,"partIndex":1,"part":{"type":"text-delta","id":"t","delta":"I fixed the flaky test."}}
+{"turn":1,"partIndex":2,"part":{"type":"text-end","id":"t"}}`
 
 	c := &Completer{Store: st, Sandbox: lc, IdleTTL: 2 * time.Hour}
 	base := st.now

@@ -45,7 +45,7 @@ func (s *batchTestStore) AppendAgentSessionTranscript(ctx context.Context, id st
 	return s.fakeAttachStore.AppendAgentSessionTranscript(ctx, id, parts)
 }
 func transcriptPart(i int) store.AgentSessionTranscriptPart {
-	return store.AgentSessionTranscriptPart{Turn: 1, PartIndex: int64(i), Part: []byte(fmt.Sprintf(`{"type":"text-delta","delta":"%d"}`, i))}
+	return store.AgentSessionTranscriptPart{Turn: 1, PartIndex: int64(i), Part: []byte(fmt.Sprintf(`{"type":"data-test","data":%d}`, i))}
 }
 func assertTranscriptOrder(t *testing.T, st *fakeAttachStore, n int) {
 	t.Helper()
@@ -65,7 +65,7 @@ func TestTranscriptBatcherDenseOperationCounts(t *testing.T) {
 		st := newFakeAttachStore()
 		b := newTranscriptBatcher(context.Background(), st, "ags-test")
 		for i := range 100 {
-			b.enqueue(transcriptPart(i))
+			b.enqueue(context.Background(), transcriptPart(i))
 		}
 		b.close()
 		if got := st.appendBatches.Load(); got != 4 {
@@ -81,7 +81,7 @@ func TestTranscriptBatcherSparseFlushAndCanceledClose(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		st := &batchTestStore{fakeAttachStore: newFakeAttachStore(), append: func(ctx context.Context, _ []store.AgentSessionTranscriptPart) error { return ctx.Err() }}
 		b := newTranscriptBatcher(ctx, st, "ags-test")
-		b.enqueue(transcriptPart(0))
+		b.enqueue(ctx, transcriptPart(0))
 		synctest.Wait()
 		if st.appendBatches.Load() != 0 {
 			t.Fatal("sparse part flushed before interval")
@@ -91,7 +91,7 @@ func TestTranscriptBatcherSparseFlushAndCanceledClose(t *testing.T) {
 		if st.appendBatches.Load() != 1 {
 			t.Fatal("sparse part not durable at interval")
 		}
-		b.enqueue(transcriptPart(1))
+		b.enqueue(ctx, transcriptPart(1))
 		cancel()
 		b.close()
 		b.close()
@@ -117,17 +117,17 @@ func TestTranscriptBatcherBoundsOutstandingBytes(t *testing.T) {
 		}}
 		b := newTranscriptBatcher(context.Background(), st, "ags-test")
 		part := transcriptPart(0)
-		part.Part = []byte(strings.Repeat("x", maxSSEPartBytes))
-		b.enqueue(part)
+		part.Part = []byte(strings.Repeat("x", transcriptPendingBytes/2))
+		b.enqueue(context.Background(), part)
 		<-started
 		part.PartIndex = 1
-		b.enqueue(part)
+		b.enqueue(context.Background(), part)
 		queued := make(chan struct{})
-		go func() { part.PartIndex = 2; b.enqueue(part); close(queued) }()
+		go func() { part.PartIndex = 2; b.enqueue(context.Background(), part); close(queued) }()
 		synctest.Wait()
 		select {
 		case <-queued:
-			t.Fatal("accepted more than 2MiB while append blocked")
+			t.Fatal("accepted more than the byte budget while append blocked")
 		default:
 		}
 		close(release)
@@ -153,7 +153,7 @@ func TestTranscriptBatcherFailureLeavesOrderedSuffixForHarvest(t *testing.T) {
 		all := make([]store.AgentSessionTranscriptPart, 100)
 		for i := range all {
 			all[i] = transcriptPart(i)
-			b.enqueue(all[i])
+			b.enqueue(context.Background(), all[i])
 		}
 		b.close()
 		if attempts != 2 {
@@ -172,7 +172,7 @@ func TestTranscriptBatcherAppendTimeoutBoundsClose(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		st := &batchTestStore{fakeAttachStore: newFakeAttachStore(), append: func(ctx context.Context, _ []store.AgentSessionTranscriptPart) error { <-ctx.Done(); return ctx.Err() }}
 		b := newTranscriptBatcher(context.Background(), st, "ags-test")
-		b.enqueue(transcriptPart(0))
+		b.enqueue(context.Background(), transcriptPart(0))
 		start := time.Now()
 		b.close()
 		if elapsed := time.Since(start); elapsed != transcriptAppendTimeout {

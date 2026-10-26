@@ -146,30 +146,6 @@ func assertBatchTranscript(t *testing.T, s *PGStore, sessionID string, want []Ag
 	if total, err := s.AgentSessionTranscriptBytes(context.Background(), sessionID); err != nil || total != wantBytes {
 		t.Fatalf("durable bytes=%d err=%v, want %d (duplicates must not consume quota)", total, err, wantBytes)
 	}
-	for _, turn := range []int{1, 2, 3} {
-		requested := []int64{0, 1, 95, 9999}
-		wantExisting := make(map[int64]bool)
-		for _, p := range want {
-			if p.Turn == turn {
-				for _, index := range requested {
-					if index == p.PartIndex {
-						wantExisting[index] = true
-					}
-				}
-			}
-		}
-		total, existing, err := s.AgentSessionTranscriptProgress(context.Background(), sessionID, turn, requested)
-		if err != nil || total != wantBytes || len(existing) != len(wantExisting) {
-			t.Fatalf("turn %d progress=(%d,%v) err=%v, want (%d,%v)", turn, total, existing, err, wantBytes, wantExisting)
-		}
-		for _, index := range existing {
-			if !wantExisting[index] {
-				t.Fatalf("unexpected or duplicate ordinal %d", index)
-			}
-			delete(wantExisting, index)
-		}
-	}
-
 }
 
 // Trace actual database operations, rather than counting calls on a fake store.

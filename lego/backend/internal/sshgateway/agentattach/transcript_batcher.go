@@ -31,7 +31,7 @@ const (
 	defaultTranscriptBatchSize     = 32
 	defaultTranscriptFlushInterval = 100 * time.Millisecond
 	transcriptBatchBytes           = 1 << 20
-	transcriptPendingBytes         = 2 << 20
+	transcriptPendingBytes         = 4 << 20
 	transcriptAppendTimeout        = 5 * time.Second
 )
 
@@ -59,17 +59,22 @@ func newTranscriptBatcher(ctx context.Context, st Store, sessionID string) *tran
 	return b
 }
 
-func (b *transcriptBatcher) enqueue(part store.AgentSessionTranscriptPart) {
+// enqueue queues one row, waiting on ctx for queue/byte budget. The stream
+// passes its request context; the end-of-stream flush passes a bounded
+// detached one so a disconnect still persists its in-flight items. A row
+// larger than the whole byte budget is left to the Completer harvest.
+func (b *transcriptBatcher) enqueue(ctx context.Context, part store.AgentSessionTranscriptPart) {
 	size := int64(len(part.Part))
-	if size > maxSSEPartBytes {
+	if size > transcriptPendingBytes {
+		log.Printf("agent attach: transcript item of %d bytes exceeds the tee budget; deferring it to harvest", size)
 		return
-	} // the stream reader already enforces this
-	if err := b.budget.Acquire(b.ctx, size); err != nil {
+	}
+	if err := b.budget.Acquire(ctx, size); err != nil {
 		return
 	}
 	select {
 	case b.queue <- part:
-	case <-b.ctx.Done():
+	case <-ctx.Done():
 		b.budget.Release(size)
 	}
 }

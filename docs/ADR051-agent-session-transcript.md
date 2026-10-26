@@ -6,6 +6,8 @@
 >
 > **Recovery amendment (2026-08-17, w5/m72).** A terminal Pod is now a first-class incomplete-history outcome. The gateway replays all durable turns/parts and ends `[DONE]` without dialing a Failed/Succeeded/terminated Pod. The Completer marks the current turn incomplete/truncated with a bounded reason and reclaims the dead sandbox immediately. It never fabricates the assistant output that died with the Pod. The installed gateway role is reconciled after migrations and startup-preflighted for `agent_session_turns`, closing the production SQLSTATE `42501` replay outage.
 
+> **Item-model amendment (2026-10-26, w10/m16).** The durable transcript stores **completed items**, not stream chunks. See [§ Item model](#item-model-amendment-2026-10-26-w10m16) below.
+
 ---
 
 ## Context
@@ -99,6 +101,32 @@ The stored UI-message response chunks encode assistant output, not the submitted
 ### Transcript as the agent re-priming source (w5/m84, 2026-08-30)
 
 The transcript's purpose widens from "human replay + audit" to **the authoritative fallback context for the agent itself**: ADR047 D3's continuity ladder (rung 2) derives a bounded re-priming preamble from it whenever a fresh agent generation lacks its own `session/load` state — post-hibernation resume with a missing/empty snapshot, and steer-driven redispatch alike. `ags-da9mh5vj596c73en5eq0` is the motivating incident: the dashboard replayed durable history while the fresh agent received only "try again" and asked what to retry. Consequences for this store: the redacted, re-wrapped harvest (accepted above for terminal replay) is also sufficient for re-priming — the agent needs prompts + assistant text, not verbatim wire bytes; truncation/summary policy lives in the **driver** (newest-first under an explicit byte budget), not in the store; and the preamble is annotated on the new turn so replay never double-renders it as fresh conversation.
+
+### Item model (amendment 2026-10-26, w10/m16)
+
+A 10-minute production turn (`ags-dbf8nggkbcjs73a5r3u0`, turn 1) stored **5,602 rows / 2.9 MB**, one per AI-SDK chunk. 3,835 `reasoning-delta` rows carried 51 KB of text, and transient `data-acp-info` rows were 35% of the bytes. Replaying that burst crashed the dashboard, and the 5,000-part harvest cap marked the turn truncated. Industry practice persists finished parts, not tokens: the Vercel AI SDK stores final `UIMessage` parts, and the Codex App Server stores `item/completed` items.
+
+**Decision.** One shared coalescer, `lego/backend/internal/agenttranscript`, folds a turn's chunk stream into items. Both writers use it: the gateway tee (`agentattach` `spliceDriverStream` / `forwardAgentTurn`, via `turnTee`) and the Completer harvest (`parseTranscriptLog` → `agenttranscript.Coalesce`). The same chunks therefore give byte-identical items on both paths.
+
+| Chunks | Stored item |
+| --- | --- |
+| `text-start/delta/end`, `reasoning-*` | one UIMessage `text` / `reasoning` part (`id`, `text`, `state`, final `providerMetadata`) |
+| `tool-input-*` + `tool-output-available/error/denied` per id | one `dynamic-tool` (or `tool-<name>`) part: input, output/error, title, state, call/result meta |
+| `data-acp-diff`, `data-acp-terminal` | latest snapshot per tool and path/terminal, final when its tool finishes |
+| non-transient `data-*` with an `id` (`data-acp-plan`) | latest snapshot, final at the turn's `finish` |
+| `data-acp-usage-update` | the turn's last value only |
+| other transient chunks (`data-acp-info`, available-commands, session-info-update) | not stored |
+| everything else (`start`, `finish`, `error`, `data-bex-*`, …) | stored as-is |
+
+- **Identity.** An item's `part_index` is the turn-local ordinal of its **first** chunk. It does not depend on where a reader started counting, so the `(session_id, turn, part_index)` idempotent merge still works across tee, harvest and reattach.
+- **Order.** The coalescer releases a finished item only when every lower-index item is final. Writers therefore append in index order, and `seq` order stays the UI's part order. The poll API and replay need no reordering.
+- **Partial items.** At stream end, quota stop or disconnect, the tee flushes in-flight items as partial rows (`item_state = 2`). The harvest replaces a partial row in place with its complete copy. This UPDATE is bex-api only: the gateway role keeps `SELECT, INSERT`.
+- **Replay** (`agenttranscript.Expand`) re-emits each item as standard Vercel AI SDK v6 chunks. Text becomes `text-start` + one `text-delta` + `text-end`, and reasoning works the same way. A tool becomes `tool-input-available` (original `toolName`/`title`/`input`/`dynamic`) plus `tool-output-available`, `tool-output-error` or `tool-output-denied`. There is no new wire type. Live delivery is unchanged: raw chunks are forwarded verbatim. A reattach suppresses the driver's chunks for items it already replayed.
+- **Tool output cap.** Output text longer than 30,000 characters is stored as the first 15,000 characters, then `\n\n[bex: N chars clipped]\n\n`, then the last 15,000 (N = removed characters). The item gets `truncated: true`. This applies to string outputs, to every string inside structured outputs, to `errorText`, and to terminal output. Diffs are not clipped.
+- **Caps.** The harvest cap counts **items** (`maxTranscriptItems = 5000`; the sample turn is 410). The 64 MiB session byte quota stays the backstop. A tee holding more than 16 MiB of in-flight items stops and leaves the turn to the harvest. Truncation reasons: `driver log parse failed`, `transcript item limit reached`.
+- **Measured** on the recorded turn: 5,602 rows / 2.84 MB became **410 rows / 1.21 MB** (7.3% of the rows, 43% of the bytes). The remaining bytes are almost all genuine tool output (0.89 MB, none over the cap). Replay rebuilds identical UIMessage parts: 13 text, 96 reasoning and 299 tool parts. The test fixture is `agenttranscript/testdata`.
+- **Driver log stays chunk-level.** The driver's `session.jsonl` keeps one record per chunk. It also feeds the driver's own `/stream` history for live attach. Keeping it raw means one coalescer, in Go, serves both the live and harvest paths, the driver needs no change, and the log stays bounded at 16 MiB.
+- **Backfill.** `store.CompactAgentSessionTranscripts` runs once in the background at bex-api startup (`compactAgentTranscripts`): a dry run that logs its counts, then the rewrite. Each settled turn still holding legacy rows (`item_state = 0`, every pre-migration row) is rewritten in its own transaction under the transcript append lock. Each item keeps the `seq` and `created_at` of its first chunk, so cursors and order survive. A possibly-running turn is skipped; the harvest replaces its legacy rows. The legacy rows are the marker: once the partial index `agent_session_transcripts_legacy_idx` is empty, a start costs one index probe. A turn flagged `driver log parse/part limit reached` has the flag cleared only when its rows prove it complete: contiguous ordinals ending in `finish`.
 
 ---
 
