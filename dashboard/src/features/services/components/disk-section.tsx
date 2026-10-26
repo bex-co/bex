@@ -21,6 +21,7 @@ import {
   useDisk,
   useDiskMutations,
   useDiskSnapshotWarning,
+  type DiskSnapshotFailureStage,
   useDiskSnapshots,
 } from "@/features/services/hooks/use-disks";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
@@ -31,6 +32,14 @@ import {
   hasGraphQLErrorCode,
   mutationErrorMessage,
 } from "@/common/lib/graphql-error";
+
+/** Copy for each stage a failed nightly backup stops at (w6/m154). */
+const DISK_SNAPSHOT_FAILURE_BODY = {
+  read: "services.diskSnapshotsFailedReadBody",
+  upload: "services.diskSnapshotsFailedUploadBody",
+  config: "services.diskSnapshotsFailedConfigBody",
+  other: "services.diskSnapshotsFailedOtherBody",
+} as const satisfies Record<DiskSnapshotFailureStage, string>;
 
 /** Mirrors apps.DiskSnapshotsNotConfiguredCode (lego/backend/internal/apps/disk_snapshots.go). */
 const DISK_SNAPSHOTS_NOT_CONFIGURED = "DISK_SNAPSHOTS_NOT_CONFIGURED";
@@ -580,7 +589,14 @@ function SnapshotsCard({
         {warning ? (
           <Alert variant="destructive">
             <TriangleAlert />
-            {warning.state === "unavailable" ? (
+            {warning.state === "failing" ? (
+              <>
+                <AlertTitle>{t("services.diskSnapshotsFailedTitle")}</AlertTitle>
+                <AlertDescription>
+                  {t(DISK_SNAPSHOT_FAILURE_BODY[warning.stage])}
+                </AlertDescription>
+              </>
+            ) : warning.state === "unavailable" ? (
               <>
                 <AlertTitle>{t("services.diskSnapshotsNotRunningTitle")}</AlertTitle>
                 <AlertDescription>{t("services.diskSnapshotsNotRunningBody")}</AlertDescription>

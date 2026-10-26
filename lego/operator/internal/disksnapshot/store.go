@@ -28,6 +28,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // Store is the S3-compatible object store snapshots live in. It is the same
@@ -201,7 +203,8 @@ func (s Store) PurgeAll(ctx context.Context, prefix string) (int, error) {
 			return i, err
 		}
 	}
-	return len(objects), nil
+	// A deleted disk keeps nothing behind, its failure record included.
+	return len(objects), s.ClearFailures(ctx, prefix)
 }
 
 func (s Store) join(key string) string {
@@ -227,4 +230,41 @@ func DiskPrefix(workspaceID, diskID string) string {
 // time order, which is what lets List/Prune work on names alone.
 func SnapshotKey(prefix string, t time.Time) string {
 	return prefix + t.UTC().Format("2006-01-02T15:04:05Z") + SnapshotSuffix
+}
+
+// Failure stages and record naming are the shared contract in lego/types
+// (DiskSnapshotFailure*), so bex-api reads exactly what the Job writes.
+const (
+	FailureRead         = appv1alpha1.DiskSnapshotFailureRead
+	FailureUpload       = appv1alpha1.DiskSnapshotFailureUpload
+	FailureConfig       = appv1alpha1.DiskSnapshotFailureConfig
+	FailureRecordPrefix = appv1alpha1.DiskSnapshotFailureRecordPrefix
+)
+
+var failureStages = []string{FailureRead, FailureUpload, FailureConfig}
+
+// RecordFailure records that the disk's latest backup stopped at stage. The
+// new record is written first and stale stages removed after, best-effort, so
+// a failed delete can never hide the current failure; readers take the newest.
+func (s Store) RecordFailure(ctx context.Context, prefix, stage string) error {
+	if err := s.Put(ctx, prefix+FailureRecordPrefix+stage, strings.NewReader("")); err != nil {
+		return err
+	}
+	for _, other := range failureStages {
+		if other != stage {
+			_ = s.Delete(ctx, prefix+FailureRecordPrefix+other)
+		}
+	}
+	return nil
+}
+
+// ClearFailures removes the disk's failure record, if any: a snapshot has
+// since succeeded, or the disk is being purged.
+func (s Store) ClearFailures(ctx context.Context, prefix string) error {
+	for _, stage := range failureStages {
+		if err := s.Delete(ctx, prefix+FailureRecordPrefix+stage); err != nil {
+			return err
+		}
+	}
+	return nil
 }

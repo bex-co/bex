@@ -28,6 +28,7 @@ query DiskSnapshots($id: String!) {
 query DiskSnapshotHealth($id: String!) {
   diskSnapshotHealth(id: $id) {
     state
+    reason
     dueBy
   }
 }

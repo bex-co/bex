@@ -3851,6 +3851,26 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "第一个快照将在下一次夜间任务中生成。",
     description: "Snapshots empty state body",
   },
+  "services.diskSnapshotsFailedTitle": {
+    message: "上一次快照失败",
+    description: "A disk's most recent nightly snapshot attempt failed",
+  },
+  "services.diskSnapshotsFailedReadBody": {
+    message: "此磁盘的部分内容无法读取，因此未生成快照，最近的更改未被备份。已有快照不受影响。如果再次发生，请联系支持。",
+    description: "Failed snapshot: the volume could not be read",
+  },
+  "services.diskSnapshotsFailedUploadBody": {
+    message: "快照无法保存到存储，最近的更改未被备份。已有快照不受影响；下一次夜间任务会重试。",
+    description: "Failed snapshot: the object store did not accept it",
+  },
+  "services.diskSnapshotsFailedConfigBody": {
+    message: "快照任务无法正确启动，最近的更改未被备份。已有快照不受影响。请联系支持。",
+    description: "Failed snapshot: the job was misconfigured",
+  },
+  "services.diskSnapshotsFailedOtherBody": {
+    message: "上一次快照尝试失败，最近的更改未被备份。已有快照不受影响。如果再次发生，请联系支持。",
+    description: "Failed snapshot: an unrecognized stage",
+  },
   "services.diskSnapshotsOverdueTitle": {
     message: "没有最近的快照",
     description: "A disk's nightly snapshot did not arrive when expected",

@@ -150,3 +150,47 @@ func TestDiskSnapshotHealthWithoutAStoreIsNotConfigured(t *testing.T) {
 		t.Fatalf("err = %v, want code %s", err, DiskSnapshotsNotConfiguredCode)
 	}
 }
+
+func failureAt(stage string, ts time.Time) DiskSnapshotObject {
+	return DiskSnapshotObject{Key: "tea-snap/web/" + appv1alpha1.DiskSnapshotFailureRecordPrefix + stage, CreatedAt: ts}
+}
+
+// A failed backup attempt is reported with the stage it stopped at, from the
+// record the snapshot Job leaves beside the snapshots (w6/m154).
+func TestDiskSnapshotHealthReportsAFailedAttempt(t *testing.T) {
+	ctx := context.Background()
+	t.Run("a failure after the last snapshot is failing, with its stage", func(t *testing.T) {
+		svc, id := newHealthService(t, utcAt(1, 9, 0), utcAt(22, 3, 0), nil,
+			snapshotAt(utcAt(21, 2, 45)), failureAt("read", utcAt(22, 2, 47)))
+		h, err := svc.DiskSnapshotHealth(ctx, id)
+		if err != nil || h.State != DiskSnapshotHealthFailing || h.Reason != "read" {
+			t.Fatalf("health = %+v, %v; want failing/read before the due time", h, err)
+		}
+	})
+	t.Run("a failure older than the last snapshot is history", func(t *testing.T) {
+		svc, id := newHealthService(t, utcAt(1, 9, 0), utcAt(22, 3, 0), nil,
+			failureAt("upload", utcAt(21, 2, 47)), snapshotAt(utcAt(22, 2, 45)))
+		if h, _ := svc.DiskSnapshotHealth(ctx, id); h.State != DiskSnapshotHealthOK {
+			t.Fatalf("state = %q, want ok", h.State)
+		}
+	})
+	t.Run("a failure with no snapshot yet is failing", func(t *testing.T) {
+		svc, id := newHealthService(t, utcAt(21, 14, 49), utcAt(22, 3, 0), nil, failureAt("config", utcAt(22, 2, 45)))
+		if h, _ := svc.DiskSnapshotHealth(ctx, id); h.State != DiskSnapshotHealthFailing || h.Reason != "config" {
+			t.Fatalf("health = %+v, want failing/config", h)
+		}
+	})
+	t.Run("the operator's scheduling verdict outranks a failed attempt", func(t *testing.T) {
+		cond := &metav1.Condition{Type: appv1alpha1.ConditionDiskReady, Status: metav1.ConditionFalse, Reason: appv1alpha1.DiskReasonSnapshotImageUnresolved}
+		svc, id := newHealthService(t, utcAt(1, 9, 0), utcAt(22, 3, 0), cond, failureAt("read", utcAt(22, 2, 47)))
+		if h, _ := svc.DiskSnapshotHealth(ctx, id); h.State != DiskSnapshotHealthUnavailable {
+			t.Fatalf("state = %q, want unavailable", h.State)
+		}
+	})
+	t.Run("a failure record is never offered as a restorable snapshot", func(t *testing.T) {
+		svc, id := newHealthService(t, utcAt(1, 9, 0), utcAt(22, 3, 0), nil, failureAt("read", utcAt(22, 2, 47)))
+		if views, err := svc.ListDiskSnapshots(ctx, id); err != nil || len(views) != 0 {
+			t.Fatalf("ListDiskSnapshots = %v, %v; want none", views, err)
+		}
+	})
+}

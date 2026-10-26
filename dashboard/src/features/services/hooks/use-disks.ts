@@ -247,7 +247,17 @@ export function useDiskMutations(
 /** A disk whose nightly snapshots should exist but don't (w6/m152). */
 export type DiskSnapshotWarning =
   | { state: "overdue"; dueBy: string }
-  | { state: "unavailable" };
+  | { state: "unavailable" }
+  | { state: "failing"; stage: DiskSnapshotFailureStage };
+
+/** Where a failed nightly backup stopped (lego/types DiskSnapshotFailure*, w6/m154). */
+const KNOWN_FAILURE_STAGES = ["read", "upload", "config"] as const;
+
+/** A known stage, or "other" for one this client does not know yet, which
+ *  still warrants the generic warning. */
+export type DiskSnapshotFailureStage =
+  | (typeof KNOWN_FAILURE_STAGES)[number]
+  | "other";
 
 /**
  * The disk's snapshot warning, if any. Null when snapshots are on schedule,
@@ -266,6 +276,10 @@ export function useDiskSnapshotWarning(
   });
   const health = data?.diskSnapshotHealth;
   if (health?.state === "unavailable") return { state: "unavailable" };
+  if (health?.state === "failing") {
+    const stage = KNOWN_FAILURE_STAGES.find((known) => known === health.reason);
+    return { state: "failing", stage: stage ?? "other" };
+  }
   if (health?.state === "overdue" && health.dueBy) {
     return { state: "overdue", dueBy: health.dueBy };
   }

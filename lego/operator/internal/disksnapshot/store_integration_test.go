@@ -256,3 +256,51 @@ func TestS3PutStreamsABodyLargerThanOnePart(t *testing.T) {
 		t.Fatalf("restored %d bytes, want the original %d", len(restored), len(chunk))
 	}
 }
+
+// A failure record names where last night's backup stopped, a newer failure
+// replaces it, a later success clears it, and purging the disk removes it
+// (w6/m154).
+func TestS3FailureRecordsReplaceClearAndPurge(t *testing.T) {
+	store := testStore(t)
+	ctx := t.Context()
+	prefix := DiskPrefix("tea-fail", "app")
+	exists := func(stage string) bool {
+		body, err := store.Get(ctx, prefix+FailureRecordPrefix+stage)
+		if err != nil {
+			return false
+		}
+		_ = body.Close()
+		return true
+	}
+
+	if err := store.RecordFailure(ctx, prefix, FailureRead); err != nil {
+		t.Fatalf("RecordFailure(read): %v", err)
+	}
+	if err := store.RecordFailure(ctx, prefix, FailureUpload); err != nil {
+		t.Fatalf("RecordFailure(upload): %v", err)
+	}
+	if exists(FailureRead) || !exists(FailureUpload) {
+		t.Fatalf("read=%v upload=%v, want only the newest stage recorded", exists(FailureRead), exists(FailureUpload))
+	}
+	// A failure record is never mistaken for a restorable snapshot.
+	if objects, err := store.List(ctx, prefix); err != nil || len(objects) != 0 {
+		t.Fatalf("List = %v, %v; want no snapshots", objects, err)
+	}
+
+	if err := store.ClearFailures(ctx, prefix); err != nil {
+		t.Fatalf("ClearFailures: %v", err)
+	}
+	if exists(FailureUpload) {
+		t.Fatal("a cleared failure record survived")
+	}
+
+	if err := store.RecordFailure(ctx, prefix, FailureConfig); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.PurgeAll(ctx, prefix); err != nil {
+		t.Fatalf("PurgeAll: %v", err)
+	}
+	if exists(FailureConfig) {
+		t.Fatal("a purged disk kept its failure record")
+	}
+}

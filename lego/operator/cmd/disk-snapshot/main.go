@@ -40,12 +40,15 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"strconv"
 	"time"
+
+	"filippo.io/age"
 
 	"github.com/bex-co/bex/lego/operator/internal/disksnapshot"
 )
@@ -88,29 +91,17 @@ func backup(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	recipient := os.Getenv("AGE_PUBLIC_KEY")
-	if recipient == "" {
-		// Fail closed. An unencrypted snapshot in a third-party bucket is worse
-		// than no snapshot, and it would be indistinguishable from a good one.
-		return fmt.Errorf("AGE_PUBLIC_KEY is required; refusing to write an unencrypted snapshot")
-	}
-	mount := envOr("BEX_DISK_MOUNT_PATH", defaultMountPath)
-	if err := requireDirectory(mount); err != nil {
+	stage, err := snapshot(ctx, store, prefix)
+	if err != nil {
+		// Best-effort: the Job's own failure stands either way.
+		if rerr := store.RecordFailure(ctx, prefix, stage); rerr != nil {
+			log.Printf("disk-snapshot: could not record the failure: %v", rerr)
+		}
 		return err
 	}
-
-	key := disksnapshot.SnapshotKey(prefix, time.Now())
-	// The pipe is what makes this one pass: Backup writes the encrypted stream
-	// as it walks the tree, and the uploader reads it as parts. Neither side
-	// ever holds the whole volume.
-	reader, writer := io.Pipe()
-	go func() {
-		writer.CloseWithError(disksnapshot.Backup(mount, writer, recipient))
-	}()
-	if err := store.Put(ctx, key, reader); err != nil {
-		return err
+	if err := store.ClearFailures(ctx, prefix); err != nil {
+		log.Printf("disk-snapshot: could not clear an earlier failure record: %v", err)
 	}
-	log.Printf("disk-snapshot: wrote %s", key)
 
 	retain := envInt("BEX_DISK_SNAPSHOT_RETAIN", defaultRetain)
 	deleted, err := store.Prune(ctx, prefix, retain)
@@ -122,6 +113,48 @@ func backup(ctx context.Context) error {
 		log.Printf("disk-snapshot: pruned %d snapshot(s) beyond the newest %d", len(deleted), retain)
 	}
 	return nil
+}
+
+// snapshot writes one snapshot and, on failure, says which stage stopped it.
+func snapshot(ctx context.Context, store disksnapshot.Store, prefix string) (string, error) {
+	recipient := os.Getenv("AGE_PUBLIC_KEY")
+	if recipient == "" {
+		// Fail closed. An unencrypted snapshot in a third-party bucket is worse
+		// than no snapshot, and it would be indistinguishable from a good one.
+		return disksnapshot.FailureConfig, fmt.Errorf("AGE_PUBLIC_KEY is required; refusing to write an unencrypted snapshot")
+	}
+	if _, err := age.ParseX25519Recipient(recipient); err != nil {
+		// Checked here, not inside the walk, so a bad key is the Job's
+		// configuration rather than read as an unreadable volume.
+		return disksnapshot.FailureConfig, fmt.Errorf("AGE_PUBLIC_KEY: %w", err)
+	}
+	mount := envOr("BEX_DISK_MOUNT_PATH", defaultMountPath)
+	if err := requireDirectory(mount); err != nil {
+		return disksnapshot.FailureConfig, err
+	}
+
+	key := disksnapshot.SnapshotKey(prefix, time.Now())
+	// The pipe is what makes this one pass: Backup writes the encrypted stream
+	// as it walks the tree, and the uploader reads it as parts. Neither side
+	// ever holds the whole volume.
+	reader, writer := io.Pipe()
+	walked := make(chan error, 1)
+	go func() {
+		err := disksnapshot.Backup(mount, writer, recipient)
+		walked <- err
+		writer.CloseWithError(err)
+	}()
+	if err := store.Put(ctx, key, reader); err != nil {
+		// Unblock the walk, then tell its failure from the upload's: a walk
+		// that stopped only because the upload closed the pipe is the upload's.
+		reader.CloseWithError(err)
+		if werr := <-walked; werr != nil && !errors.Is(werr, err) {
+			return disksnapshot.FailureRead, werr
+		}
+		return disksnapshot.FailureUpload, err
+	}
+	log.Printf("disk-snapshot: wrote %s", key)
+	return "", nil
 }
 
 func restore(ctx context.Context) error {
