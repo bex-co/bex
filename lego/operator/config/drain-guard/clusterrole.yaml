@@ -7,9 +7,10 @@ metadata:
   name: bex-drain-guard
 rules:
   # Read the deleting Machine's node; cordon it so replacements land elsewhere.
+  # Watch nodes for Cluster Autoscaler's removal taint (w1/m187).
   - apiGroups: [""]
     resources: ["nodes"]
-    verbs: ["get", "patch"]
+    verbs: ["get", "list", "watch", "patch"]
   # Find the App pods on that node and whether each App is Ready elsewhere.
   - apiGroups: [""]
     resources: ["pods"]

@@ -55,3 +55,13 @@ extraArgs:
   # thrash. A drained node stops billing ~5m after its last pod leaves.
   scale-down-unneeded-time: 5m
   scale-down-delay-after-add: 5m
+  # The window bex-drain-guard has to hand a single-instance App off a node CA
+  # is removing (w1/m187). CA taints the node ToBeDeletedByClusterAutoscaler,
+  # sleeps this long, then evicts what is left (CA 1.34 actuator.go
+  # deleteNodesAsync); drain-guard rolls the App off on the taint, so the
+  # replacement is Ready elsewhere before the eviction. 5s upstream is no window
+  # at all. 5m covers a cold image pull (72s measured for a 633 MB image, ADR004
+  # § Rollout headroom) with room to spare; a replacement still not Ready is
+  # evicted anyway, so this only delays a scale-down, never stops it.
+  # scripts/clusterapi-validate.sh holds the floor.
+  node-delete-delay-after-taint: 5m

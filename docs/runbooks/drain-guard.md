@@ -1,6 +1,6 @@
 # Runbook: drain-guard (node rolls hand single-instance services over)
 
-**What it is:** `bex-system/bex-drain-guard` holds a CAPI pre-drain hook on every `bex-tenant-0` Machine. When a Machine is deleted, it cordons the node, rolls each App whose only Ready pods are there onto another node, and then releases the hook so CAPI drains. Design: [ADR004 § Node rolls](../ADR004-app-deployment.md#node-rolls-hand-single-instance-services-over-before-the-drain-w1m186). Board: `w1/m186`.
+**What it is:** `bex-system/bex-drain-guard` holds a CAPI pre-drain hook on every `bex-tenant-0` Machine. When a Machine is deleted, it cordons the node, rolls each App whose only Ready pods are there onto another node, and then releases the hook so CAPI drains. It does the same hand-over, without a hook, when Cluster Autoscaler marks a guarded node for removal (see below). Design: [ADR004 § Node rolls](../ADR004-app-deployment.md#node-rolls-hand-single-instance-services-over-before-the-drain-w1m186). Board: `w1/m186`, `w1/m187`.
 
 ## What you will see during a roll
 
@@ -12,6 +12,16 @@
 ```bash
 kubectl -n bex-system logs deploy/bex-drain-guard --since=1h
 ```
+
+## Cluster Autoscaler scale-downs
+
+CA taints a node it is removing `ToBeDeletedByClusterAutoscaler`, waits `node-delete-delay-after-taint` (5m, `infra/clusterapi/autoscaler-values.yaml`), then evicts what is left itself. On the taint, drain-guard logs `starting a replacement off the node` for each at-risk App on a guarded node. It does not cordon and does not touch the Machine. CA's own log shows `Scale-down: waiting 5m0s before trying to delete nodes`.
+
+```bash
+kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints[*].key | grep ToBeDeleted
+```
+
+If the delay is ever lowered toward upstream's 5s, the window disappears and consolidations evict single-instance services again; `scripts/clusterapi-validate.sh` fails below 2m.
 
 ## The hold is bounded
 
@@ -43,7 +53,7 @@ kubectl -n bex-capi annotate machines --all pre-drain.delete.hook.machine.cluste
 `system:serviceaccount:bex-system:bex-drain-guard` holds the following grants, defined in `lego/operator/config/drain-guard/`:
 
 - a Role in `bex-capi`: Machines get/list/watch/patch, and no Secrets;
-- a ClusterRole: nodes get/patch, pods list, deployments get/patch.
+- a ClusterRole: nodes get/list/watch/patch, pods list, deployments get/patch.
 
 The fail-closed policy `bex-drain-guard-writes` (`deploy/gitops/base/drain-guard-admission.yaml`) narrows every write to three changes:
 

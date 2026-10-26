@@ -28,6 +28,12 @@ limitations under the License.
 // is left at risk. The hold is bounded so a replacement that never becomes
 // Ready cannot pin the node.
 //
+// Cluster Autoscaler removes a node differently: it taints the node, evicts its
+// pods itself, and deletes the Machine only once it is empty, so the hook never
+// sees them (w1/m187). drain-guard therefore also watches Nodes, and evacuates a
+// guarded node as soon as CA marks it, inside the delay CA sleeps between that
+// taint and its drain (--node-delete-delay-after-taint).
+//
 // It runs as its own ServiceAccount, never the operator's; an admission policy
 // confines its writes to the hook, the cordon and the evacuation annotation
 // (deploy/gitops/base/drain-guard-admission.yaml).
@@ -39,6 +45,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -48,8 +55,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const (
@@ -67,11 +79,16 @@ const (
 	// a release that can never become Ready only delays the roll.
 	DefaultMaxHold = 10 * time.Minute
 
+	// ScaleDownTaint is Cluster Autoscaler's NoSchedule taint on a node it has
+	// decided to remove (cluster-autoscaler utils/taints ToBeDeletedTaint).
+	ScaleDownTaint = "ToBeDeletedByClusterAutoscaler"
+
 	// appLabel selects an App's pods; its Deployment carries the App's name.
 	appLabel = "app.bex.co/app"
 	// nodeNameField is the pod field selector for the node a pod runs on.
 	nodeNameField = "spec.nodeName"
-	// recheck paces a held Machine while its services hand over.
+	// recheck paces a held Machine, or a node CA has marked, while its
+	// services hand over.
 	recheck = 5 * time.Second
 )
 
@@ -86,8 +103,15 @@ func NewMachine() *unstructured.Unstructured {
 	return m
 }
 
-// Reconciler guards Machines. Machines and Workload are the same cluster in
-// production (CAPI manages its own cluster) and two in the local mock.
+// nodeOf is the node a Machine runs, or "" before it has one.
+func nodeOf(m *unstructured.Unstructured) string {
+	name, _, _ := unstructured.NestedString(m.Object, "status", "nodeRef", "name")
+	return name
+}
+
+// Reconciler guards Machines and the nodes CA marks for removal. Machines and
+// Workload are the same cluster in production (CAPI manages its own cluster)
+// and two in the local mock.
 type Reconciler struct {
 	Machines client.Client
 	Workload client.Client
@@ -100,9 +124,16 @@ type Reconciler struct {
 }
 
 // SetupWithManager watches Machines through mgr, whose cache must be scoped to
-// the Machines' namespace (drain-guard's Role covers only that namespace).
-func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).Named("drain-guard").For(NewMachine()).Complete(r)
+// the Machines' namespace (drain-guard's Role covers only that namespace), and
+// the Nodes CA marks for removal through nodes, a cache of the workload cluster.
+func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, nodes cache.Cache) error {
+	if err := ctrl.NewControllerManagedBy(mgr).Named("drain-guard").For(NewMachine()).Complete(r); err != nil {
+		return err
+	}
+	return ctrl.NewControllerManagedBy(mgr).Named("drain-guard-scale-down").
+		WatchesRawSource(source.Kind(nodes, &corev1.Node{}, &handler.TypedEnqueueRequestForObject[*corev1.Node]{},
+			predicate.NewTypedPredicateFuncs(markedForScaleDown))).
+		Complete(reconcile.Func(r.ReconcileNode))
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -116,13 +147,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			return ctrl.Result{}, nil
 		}
 		res, err := r.hold(ctx, m)
-		if err != nil {
-			// Retry at the hold's own pace, not controller-runtime's growing
-			// backoff, so a failing API can never carry the hold past MaxHold.
-			logf.FromContext(ctx).Error(err, "holding the drain", "machine", m.GetName())
-			return ctrl.Result{RequeueAfter: recheck}, nil
-		}
-		return res, nil
+		return paced(logf.FromContext(ctx).WithValues("machine", m.GetName()), "holding the drain", res, err)
 	}
 	if guarded := r.Selector.Matches(labels.Set(m.GetLabels())); guarded != hooked {
 		return ctrl.Result{}, r.setHook(ctx, m, guarded)
@@ -139,7 +164,7 @@ func (r *Reconciler) hold(ctx context.Context, m *unstructured.Unstructured) (ct
 		return ctrl.Result{}, r.setHook(ctx, m, false)
 	}
 
-	nodeName, _, _ := unstructured.NestedString(m.Object, "status", "nodeRef", "name")
+	nodeName := nodeOf(m)
 	if nodeName == "" {
 		return release("the Machine has no node")
 	}
@@ -175,25 +200,87 @@ func (r *Reconciler) hold(ctx context.Context, m *unstructured.Unstructured) (ct
 	if len(atRisk) == 0 {
 		return release("every App on the node has a Ready instance elsewhere")
 	}
+	if err := r.evacuate(logf.IntoContext(ctx, log), nodeName, atRisk); err != nil {
+		return ctrl.Result{}, err
+	}
+	return ctrl.Result{RequeueAfter: recheck}, nil
+}
+
+// ReconcileNode hands the at-risk Apps off a guarded node CA has marked for
+// removal. There is no hook to hold: CA drains on its own clock, so drain-guard
+// only starts the replacements and rechecks until none is left at risk. CA's
+// taint is NoSchedule, so no cordon is needed and no replacement lands here.
+func (r *Reconciler) ReconcileNode(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	log := logf.FromContext(ctx).WithValues("node", req.Name)
+	res, err := r.handOver(logf.IntoContext(ctx, log), req.Name)
+	return paced(log, "handing over before the scale-down", res, err)
+}
+
+// paced turns a hand-over error into a retry at recheck's steady pace instead
+// of controller-runtime's growing backoff: a failing API must never carry a
+// hold past MaxHold, nor a hand-over past CA's delay.
+func paced(log logr.Logger, msg string, res ctrl.Result, err error) (ctrl.Result, error) {
+	if err != nil {
+		log.Error(err, msg)
+		return ctrl.Result{RequeueAfter: recheck}, nil
+	}
+	return res, nil
+}
+
+func (r *Reconciler) handOver(ctx context.Context, nodeName string) (ctrl.Result, error) {
+	var node corev1.Node
+	if err := r.Workload.Get(ctx, client.ObjectKey{Name: nodeName}, &node); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+	if !markedForScaleDown(&node) || !nodeReady(&node) {
+		return ctrl.Result{}, nil
+	}
+	if guarded, err := r.guardsNode(ctx, nodeName); err != nil || !guarded {
+		return ctrl.Result{}, err
+	}
+	atRisk, err := r.atRisk(ctx, nodeName)
+	if err != nil || len(atRisk) == 0 {
+		return ctrl.Result{}, err
+	}
+	if err := r.evacuate(ctx, nodeName, atRisk); err != nil {
+		return ctrl.Result{}, err
+	}
+	return ctrl.Result{RequeueAfter: recheck}, nil
+}
+
+// guardsNode reports whether node belongs to a guarded Machine, so the
+// Machine selector stays the pool's only definition.
+func (r *Reconciler) guardsNode(ctx context.Context, node string) (bool, error) {
+	machines := &unstructured.UnstructuredList{}
+	machines.SetGroupVersionKind(MachineGVK.GroupVersion().WithKind("MachineList"))
+	if err := r.Machines.List(ctx, machines, client.MatchingLabelsSelector{Selector: r.Selector}); err != nil {
+		return false, fmt.Errorf("list guarded Machines: %w", err)
+	}
+	return slices.ContainsFunc(machines.Items, func(m unstructured.Unstructured) bool { return nodeOf(&m) == node }), nil
+}
+
+// evacuate rolls each at-risk App whose rollout has finished off node. One
+// already handing over, or mid-rollout, is left alone: a rollout's new pods
+// avoid the unschedulable node by themselves. A pod placed there before the node
+// became unschedulable is not moved; the bound (or CA's delay) ends that wait.
+func (r *Reconciler) evacuate(ctx context.Context, node string, atRisk []appsv1.Deployment) error {
+	log := logf.FromContext(ctx)
 	waiting := make([]string, 0, len(atRisk))
 	for i := range atRisk {
 		dep := &atRisk[i]
 		waiting = append(waiting, dep.Namespace+"/"+dep.Name)
-		// Already handing over, or mid-rollout: a rollout's new pods avoid the
-		// cordoned node by themselves. One already placed there before the
-		// cordon is not moved; the bound then ends that hold.
-		if dep.Spec.Template.Annotations[EvacuatedFromAnnotation] == nodeName || !rolledOut(dep) {
+		if dep.Spec.Template.Annotations[EvacuatedFromAnnotation] == node || !rolledOut(dep) {
 			continue
 		}
 		before := dep.DeepCopy()
-		metav1.SetMetaDataAnnotation(&dep.Spec.Template.ObjectMeta, EvacuatedFromAnnotation, nodeName)
+		metav1.SetMetaDataAnnotation(&dep.Spec.Template.ObjectMeta, EvacuatedFromAnnotation, node)
 		if err := r.Workload.Patch(ctx, dep, client.MergeFrom(before)); err != nil {
-			return ctrl.Result{}, fmt.Errorf("evacuate %s/%s: %w", dep.Namespace, dep.Name, err)
+			return fmt.Errorf("evacuate %s/%s: %w", dep.Namespace, dep.Name, err)
 		}
 		log.Info("starting a replacement off the node", "deployment", dep.Namespace+"/"+dep.Name)
 	}
-	log.V(1).Info("holding the drain", "waiting", waiting)
-	return ctrl.Result{RequeueAfter: recheck}, nil
+	log.V(1).Info("waiting for replacements", "apps", waiting)
+	return nil
 }
 
 // atRisk returns the App Deployments with a Ready pod on node and no Ready pod
@@ -285,6 +372,10 @@ func serving(pod *corev1.Pod) bool {
 func ownedByReplicaSet(pod *corev1.Pod) bool {
 	owner := metav1.GetControllerOf(pod)
 	return owner != nil && owner.Kind == "ReplicaSet"
+}
+
+func markedForScaleDown(node *corev1.Node) bool {
+	return slices.ContainsFunc(node.Spec.Taints, func(t corev1.Taint) bool { return t.Key == ScaleDownTaint })
 }
 
 func nodeReady(node *corev1.Node) bool {

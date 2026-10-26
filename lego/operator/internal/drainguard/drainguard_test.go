@@ -77,6 +77,11 @@ func withHook(m *unstructured.Unstructured) {
 	m.SetAnnotations(map[string]string{HookAnnotation: hookOwner})
 }
 
+// unguarded moves the Machine out of the guarded pool.
+func unguarded(m *unstructured.Unstructured) {
+	m.SetLabels(map[string]string{"nodepool": "bex-platform"})
+}
+
 // deleting marks the Machine as CAPI does: a deletionTimestamp, its finalizer
 // still held.
 func deleting(m *unstructured.Unstructured) {
@@ -93,6 +98,12 @@ func node(name string, ready bool) *corev1.Node {
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Status:     corev1.NodeStatus{Conditions: []corev1.NodeCondition{{Type: corev1.NodeReady, Status: status}}},
 	}
+}
+
+// tainted marks node as Cluster Autoscaler does when it decides to remove it.
+func tainted(n *corev1.Node) *corev1.Node {
+	n.Spec.Taints = append(n.Spec.Taints, corev1.Taint{Key: ScaleDownTaint, Effect: corev1.TaintEffectNoSchedule})
+	return n
 }
 
 // deployment is an App's rolled-out Deployment with replicas pods.
@@ -132,6 +143,20 @@ func jobPod(app, name, onNode string) *corev1.Pod {
 	return p
 }
 
+// webOnDoomed is the incident shape: a single-instance App whose only pod is
+// Ready on the doomed node. Fresh objects each call, since seeding a fake
+// client mutates them.
+func webOnDoomed() []client.Object {
+	return []client.Object{deployment("web", 1, appsv1.RollingUpdateDeploymentStrategyType), pod("web", "web-old", doomed, true)}
+}
+
+// failingList fails every workload List, as an unreachable API server would.
+var failingList = interceptor.Funcs{
+	List: func(context.Context, client.WithWatch, client.ObjectList, ...client.ListOption) error {
+		return errors.New("apiserver unavailable")
+	},
+}
+
 type fixture struct {
 	r   *Reconciler
 	now time.Time
@@ -168,6 +193,16 @@ func (f *fixture) reconcile(t *testing.T) ctrl.Result {
 	return res
 }
 
+// reconcileNode reconciles the doomed node.
+func (f *fixture) reconcileNode(t *testing.T) ctrl.Result {
+	t.Helper()
+	res, err := f.r.ReconcileNode(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Name: doomed}})
+	if err != nil {
+		t.Fatalf("reconcile node: %v", err)
+	}
+	return res
+}
+
 func (f *fixture) machine(t *testing.T) *unstructured.Unstructured {
 	t.Helper()
 	m := NewMachine()
@@ -192,15 +227,17 @@ func (f *fixture) deployment(t *testing.T, app string) *appsv1.Deployment {
 	return &dep
 }
 
-func (f *fixture) evacuatedFrom(t *testing.T, app string) string {
+// evacuatedFrom is the evacuation annotation on the "web" App's template.
+func (f *fixture) evacuatedFrom(t *testing.T) string {
 	t.Helper()
-	return f.deployment(t, app).Spec.Template.Annotations[EvacuatedFromAnnotation]
+	return f.deployment(t, "web").Spec.Template.Annotations[EvacuatedFromAnnotation]
 }
 
-func (f *fixture) cordoned(t *testing.T, name string) bool {
+// cordoned reports whether the doomed node is unschedulable.
+func (f *fixture) cordoned(t *testing.T) bool {
 	t.Helper()
 	var n corev1.Node
-	if err := f.r.Workload.Get(context.Background(), types.NamespacedName{Name: name}, &n); err != nil {
+	if err := f.r.Workload.Get(context.Background(), types.NamespacedName{Name: doomed}, &n); err != nil {
 		t.Fatal(err)
 	}
 	return n.Spec.Unschedulable
@@ -215,9 +252,7 @@ func TestGuardedMachineGetsTheHook(t *testing.T) {
 }
 
 func TestUnguardedMachineLosesTheHook(t *testing.T) {
-	m := machine(doomed, withHook)
-	m.SetLabels(map[string]string{"nodepool": "bex-platform"})
-	f := newFixture(t, m)
+	f := newFixture(t, machine(doomed, withHook, unguarded))
 	f.reconcile(t)
 	if f.hooked(t) {
 		t.Fatal("a Machine outside the selector kept the hook")
@@ -236,10 +271,10 @@ func TestSingleInstanceHandsOverBeforeTheDrain(t *testing.T) {
 	if res := f.reconcile(t); res.RequeueAfter == 0 {
 		t.Fatal("the drain was not held for the only instance")
 	}
-	if !f.hooked(t) || !f.cordoned(t, doomed) {
-		t.Fatalf("hooked=%v cordoned=%v, want the hook held and the node cordoned", f.hooked(t), f.cordoned(t, doomed))
+	if !f.hooked(t) || !f.cordoned(t) {
+		t.Fatalf("hooked=%v cordoned=%v, want the hook held and the node cordoned", f.hooked(t), f.cordoned(t))
 	}
-	if got := f.evacuatedFrom(t, "web"); got != doomed {
+	if got := f.evacuatedFrom(t); got != doomed {
 		t.Fatalf("evacuated-from = %q, want %q", got, doomed)
 	}
 
@@ -289,7 +324,7 @@ func TestRollingDeploymentIsWaitedForNotRestarted(t *testing.T) {
 	if res := f.reconcile(t); res.RequeueAfter == 0 || !f.hooked(t) {
 		t.Fatal("the drain was not held for a rolling single instance")
 	}
-	if got := f.evacuatedFrom(t, "web"); got != "" {
+	if got := f.evacuatedFrom(t); got != "" {
 		t.Fatalf("evacuated-from = %q on a Deployment already rolling, want untouched", got)
 	}
 }
@@ -355,7 +390,7 @@ func TestDeletingMachineWithoutTheHookIsLeftAlone(t *testing.T) {
 	m.SetAnnotations(map[string]string{"pre-drain.delete.hook.machine.cluster.x-k8s.io/other": "x"})
 	f := newFixture(t, m, node(doomed, true))
 	f.reconcile(t)
-	if f.cordoned(t, doomed) {
+	if f.cordoned(t) {
 		t.Fatal("cordoned a node drain-guard is not holding")
 	}
 	if f.machine(t).GetAnnotations()["pre-drain.delete.hook.machine.cluster.x-k8s.io/other"] != "x" {
@@ -373,7 +408,7 @@ func TestJobPodElsewhereIsNotAnInstance(t *testing.T) {
 	if res := f.reconcile(t); res.RequeueAfter == 0 || !f.hooked(t) {
 		t.Fatal("released while the App's only instance was on the node")
 	}
-	if got := f.evacuatedFrom(t, "web"); got != doomed {
+	if got := f.evacuatedFrom(t); got != doomed {
 		t.Fatalf("evacuated-from = %q, want %q", got, doomed)
 	}
 }
@@ -382,11 +417,7 @@ func TestJobPodElsewhereIsNotAnInstance(t *testing.T) {
 // controller-runtime's growing backoff; the bound still releases on time, since
 // it is checked before any workload call.
 func TestFailingWorkloadAPIStillHonoursTheBound(t *testing.T) {
-	down := errors.New("apiserver unavailable")
-	f := newFixtureWith(t, interceptor.Funcs{
-		List: func(context.Context, client.WithWatch, client.ObjectList, ...client.ListOption) error { return down },
-	}, machine(doomed, withHook, deleting),
-		node(doomed, true), deployment("web", 1, appsv1.RollingUpdateDeploymentStrategyType), pod("web", "web-old", doomed, true))
+	f := newFixtureWith(t, failingList, machine(doomed, withHook, deleting), append(webOnDoomed(), node(doomed, true))...)
 
 	if res := f.reconcile(t); res.RequeueAfter != recheck {
 		t.Fatalf("requeue = %v, want the hold pace %v", res.RequeueAfter, recheck)
@@ -398,5 +429,64 @@ func TestFailingWorkloadAPIStillHonoursTheBound(t *testing.T) {
 	f.reconcile(t)
 	if f.hooked(t) {
 		t.Fatal("the bound did not release while the API kept failing")
+	}
+}
+
+// The consolidation shape (ADR004 § Rollout headroom): CA marks the node that
+// holds an App's only instance. drain-guard rolls the App off it inside CA's
+// delay and rechecks until the replacement is Ready, without a cordon: CA's
+// taint already keeps the replacement off the node.
+func TestScaleDownHandsOverBeforeCAEvicts(t *testing.T) {
+	f := newFixture(t, machine(doomed), append(webOnDoomed(), tainted(node(doomed, true)), node(spare, true))...)
+
+	if res := f.reconcileNode(t); res.RequeueAfter != recheck {
+		t.Fatalf("requeue = %v, want %v while the only instance is on the node", res.RequeueAfter, recheck)
+	}
+	if got := f.evacuatedFrom(t); got != doomed {
+		t.Fatalf("evacuated-from = %q, want %q", got, doomed)
+	}
+	if f.cordoned(t) {
+		t.Fatal("cordoned a node CA's taint already keeps replacements off")
+	}
+
+	if err := f.r.Workload.Create(context.Background(), pod("web", "web-new", spare, true)); err != nil {
+		t.Fatal(err)
+	}
+	if res := f.reconcileNode(t); res.RequeueAfter != 0 {
+		t.Fatalf("still requeuing (%v) once the replacement was Ready elsewhere", res.RequeueAfter)
+	}
+}
+
+func TestScaleDownLeavesOtherNodesAlone(t *testing.T) {
+	cases := []struct {
+		name string
+		m    *unstructured.Unstructured
+		node client.Object
+	}{
+		{"not marked by CA", machine(doomed), node(doomed, true)},
+		{"another pool's node", machine(doomed, unguarded), tainted(node(doomed, true))},
+		{"no Machine for the node", machine(spare), tainted(node(doomed, true))},
+		{"node not Ready", machine(doomed), tainted(node(doomed, false))},
+		{"node gone", machine(doomed), node(spare, true)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newFixture(t, tc.m, append(webOnDoomed(), tc.node)...)
+			if res := f.reconcileNode(t); res.RequeueAfter != 0 {
+				t.Fatalf("requeued %v, want the node left alone", res.RequeueAfter)
+			}
+			if got := f.evacuatedFrom(t); got != "" {
+				t.Fatalf("evacuated-from = %q, want the App untouched", got)
+			}
+		})
+	}
+}
+
+// CA's delay is the whole window, so an API failure retries at a steady pace
+// rather than controller-runtime's growing backoff.
+func TestScaleDownRetriesAtPaceWhenTheAPIFails(t *testing.T) {
+	f := newFixtureWith(t, failingList, machine(doomed), append(webOnDoomed(), tainted(node(doomed, true)))...)
+	if res := f.reconcileNode(t); res.RequeueAfter != recheck {
+		t.Fatalf("requeue = %v, want %v", res.RequeueAfter, recheck)
 	}
 }
