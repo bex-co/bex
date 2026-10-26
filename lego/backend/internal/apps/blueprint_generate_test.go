@@ -35,6 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -524,5 +525,87 @@ func TestGenerateBlueprintRefusesAMalformedBodyAs400(t *testing.T) {
 	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/blueprints/generate", strings.NewReader(`null`)))
 	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "select at least one") {
 		t.Errorf("generate null = %d %s, want the empty-selection 400", rec.Code, rec.Body.String())
+	}
+}
+
+// TestGenerateBlueprintExportsNonDefaultPort is w4/411: a service listening
+// on a non-default port exports a literal PORT, so the copy a fresh apply
+// creates listens on the same port instead of falling back to 10000.
+func TestGenerateBlueprintExportsNonDefaultPort(t *testing.T) {
+	ctx := context.Background()
+	for _, tc := range []struct {
+		name string
+		spec appv1alpha1.AppSpec
+		want bool
+	}{
+		{"git service on 3000", appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Repo: "https://github.com/acme/web", Runtime: "docker", Port: 3000}, true},
+		{"image service on 3000", appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Image: "docker.io/traefik/whoami:v1.10.1", Port: 3000}, true},
+		{"default port", appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Repo: "https://github.com/acme/web", Runtime: "docker"}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default"}, Spec: tc.spec}
+			svc := &Service{Base: &core.Base{Client: fakeClient(app), Namespace: "default"}}
+			out, err := svc.GenerateBlueprint(ctx, GenerateBlueprintRequest{ServiceIDs: []string{"web"}})
+			if err != nil {
+				t.Fatalf("GenerateBlueprint: %v", err)
+			}
+			if got := strings.Contains(out.Manifest, "key: PORT"); got != tc.want {
+				t.Fatalf("PORT exported = %v, want %v:\n%s", got, tc.want, out.Manifest)
+			}
+			if !tc.want {
+				return
+			}
+			if !strings.Contains(out.Manifest, `value: "3000"`) {
+				t.Fatalf("manifest must carry the literal port:\n%s", out.Manifest)
+			}
+			// Compiling the manifest for a fresh workspace yields the PORT
+			// the create path derives the listening port from.
+			stack := parseBlueprintStackForTest(t, out.Manifest)
+			parsed, err := specFromCreate(stack.services[0].req)
+			if err != nil {
+				t.Fatalf("specFromCreate: %v", err)
+			}
+			found := false
+			for _, env := range parsed.Env {
+				if env.Name == "PORT" && env.Value == "3000" {
+					found = true
+				}
+			}
+			if !found {
+				t.Fatalf("compiled spec env = %+v, want PORT=3000", parsed.Env)
+			}
+		})
+	}
+}
+
+// TestGenerateBlueprintExportsPendingDomain is w4/411's second gap: a
+// claimed-but-unverified domain is configured, so it exports — and the
+// generated manifest still validates as noop against its own source.
+func TestGenerateBlueprintExportsPendingDomain(t *testing.T) {
+	ctx := context.Background()
+	claims := newMemoryDomainClaimStore()
+	claims.claims["pending.example.com"] = store.Domain{ID: "cdm-1", AppID: "srv-1", Host: "pending.example.com", ClaimState: "pending"}
+	app := managedApp("web", "srv-1")
+	app.Spec.Type = appv1alpha1.TypeWebService
+	app.Spec.Repo = "https://github.com/acme/web"
+	app.Spec.Runtime = "docker"
+	app.Spec.Image = ""
+	svc, _ := newService(claims, app)
+
+	out, err := svc.GenerateBlueprint(ctx, GenerateBlueprintRequest{ServiceIDs: []string{"srv-1"}})
+	if err != nil {
+		t.Fatalf("GenerateBlueprint: %v", err)
+	}
+	if !strings.Contains(out.Manifest, "pending.example.com") {
+		t.Fatalf("manifest must list the pending domain:\n%s", out.Manifest)
+	}
+	v, err := svc.ValidateBlueprint(ctx, "", out.Manifest, "")
+	if err != nil || !v.Valid {
+		t.Fatalf("generated manifest must self-validate: %+v err=%v\n%s", v, err, out.Manifest)
+	}
+	for _, action := range v.Plan.Actions {
+		if action.Operation != BlueprintPlanNoop {
+			t.Errorf("action for %s = %s, want noop (pending domains must not re-plan as update)", action.Name, action.Operation)
+		}
 	}
 }

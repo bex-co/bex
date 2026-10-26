@@ -331,10 +331,10 @@ services:
 	}
 	fetcher := fakeBlueprintFetcher{contents: manifest, sha: commit}
 	svc := &Service{
-		Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: fakeWorkspace{"u": "tea-a"}},
-		Blueprints:      fs,
+		Base:          &core.Base{Client: fakeClient(), Namespace: "default", Workspace: fakeWorkspace{"u": "tea-a"}},
+		Blueprints:    fs,
 		DomainTraffic: allowDomainTraffic{},
-		GitFetcher:      fetcher,
+		GitFetcher:    fetcher,
 	}
 	w := &BlueprintAutoSyncWorker{Svc: svc}
 	if err := w.tick(context.Background()); err != nil {

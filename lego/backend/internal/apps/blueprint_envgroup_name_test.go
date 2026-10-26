@@ -28,9 +28,11 @@ import (
 func TestBlueprintPaddedEnvGroupNamePlansTheExistingGroup(t *testing.T) {
 	svc, _ := newBlueprintEnvService(newFakeEnvGroups("shared"), nil)
 	place := map[string]func(name string) string{
-		"root":        func(n string) string { return `{"envVarGroups":[{"name":"` + n + `","envVars":[]}]}` },
-		"ungrouped":   func(n string) string { return `{"ungrouped":{"envVarGroups":[{"name":"` + n + `","envVars":[]}]}}` },
-		"environment": func(n string) string { return `{"projects":[{"name":"p","environments":[{"name":"e","envVarGroups":[{"name":"` + n + `","envVars":[]}]}]}]}` },
+		"root":      func(n string) string { return `{"envVarGroups":[{"name":"` + n + `","envVars":[]}]}` },
+		"ungrouped": func(n string) string { return `{"ungrouped":{"envVarGroups":[{"name":"` + n + `","envVars":[]}]}}` },
+		"environment": func(n string) string {
+			return `{"projects":[{"name":"p","environments":[{"name":"e","envVarGroups":[{"name":"` + n + `","envVars":[]}]}]}]}`
+		},
 	}
 	for where, manifest := range place {
 		for _, tc := range []struct{ declared, wantOp, wantName, wantID string }{

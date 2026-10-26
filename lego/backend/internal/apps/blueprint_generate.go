@@ -31,6 +31,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -474,8 +475,13 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 	}
 	// The primary custom domain lives in Spec.Host; Spec.Hosts carries only
 	// the additional ones — emit the union or a single-domain service loses
-	// its domain entirely.
-	if domains := appDomains(a); len(domains) > 0 {
+	// its domain entirely. Pending claims join the union (w4/411): Render's
+	// domains: lists every configured domain, verified or not.
+	domains, err := s.exportedDomains(ctx, a)
+	if err != nil {
+		return nil, err
+	}
+	if len(domains) > 0 {
 		entry["domains"] = domains
 	}
 	if !a.Spec.AutoDeploy && a.Spec.Repo != "" {
@@ -490,6 +496,9 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 	envVars, err := s.generateEnvVars(ctx, a, dbDisplayByID, kvDisplayByID, selectedGroups, groupCache)
 	if err != nil {
 		return nil, err
+	}
+	if portEnv := generatedPortEnv(a, envVars); portEnv != nil {
+		envVars = append(envVars, portEnv)
 	}
 	if len(envVars) > 0 {
 		entry["envVars"] = envVars
@@ -631,6 +640,75 @@ func exportedBuilder(spec appv1alpha1.AppSpec) string {
 
 // appDomains is the primary custom domain plus the additional ones.
 func appDomains(a *appv1alpha1.App) []string { return blueprintDomainList(a.Spec) }
+
+// exportedDomains is appDomains plus the service's pending domain claims
+// (w4/411): a claimed-but-unverified domain is configured, so Render's
+// domains: lists it, and the planner compares against this same union so a
+// generated manifest re-plans as noop against its own source.
+func (s *Service) exportedDomains(ctx context.Context, a *appv1alpha1.App) ([]string, error) {
+	out := appDomains(a)
+	claims, appID, ok := s.managedDomainClaims(a)
+	if !ok {
+		return out, nil
+	}
+	rows, err := claims.ListDomainClaims(ctx, appID)
+	if err != nil {
+		return nil, err
+	}
+	seen := make(map[string]bool, len(out))
+	for _, host := range out {
+		seen[host] = true
+	}
+	for _, row := range rows {
+		if row.Host != "" && !seen[row.Host] {
+			seen[row.Host] = true
+			out = append(out, row.Host)
+		}
+	}
+	return out, nil
+}
+
+// generatedPortEnv is the PORT literal a generated manifest needs to
+// reproduce a service listening on a non-default port (w4/411): a create
+// derives its port from a literal PORT (provisionalEnvPort), so without one
+// the copy falls back to 10000 while its process listens elsewhere. A PORT
+// the service already carries exports as today; image-port services take
+// their ports from the image and emit nothing.
+func generatedPortEnv(a *appv1alpha1.App, envVars []map[string]any) map[string]any {
+	switch effectiveType(a.Spec.Type) {
+	case appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService, appv1alpha1.TypeBackgroundWorker:
+	default:
+		return nil
+	}
+	if a.Spec.UsesImagePorts() {
+		return nil
+	}
+	port := a.ServingPort()
+	if port <= 0 || port == appv1alpha1.DefaultPort {
+		return nil
+	}
+	for _, entry := range envVars {
+		if entry["key"] == "PORT" {
+			return nil
+		}
+	}
+	return map[string]any{"key": "PORT", "value": strconv.Itoa(int(port))}
+}
+
+// dropServedPortEnv removes a literal PORT from a manifest's compiled spec
+// when it only restates the port the service already serves (w4/411): the
+// exporter spells a configured port that way, so without this a generated
+// manifest would re-plan and re-apply as an env change against its own
+// source. A PORT naming any other port is a real change and stays.
+func dropServedPortEnv(want *appv1alpha1.AppSpec, app *appv1alpha1.App) {
+	if app == nil || app.Spec.UsesImagePorts() {
+		return
+	}
+	served := strconv.Itoa(int(app.ServingPort()))
+	want.Env = slices.DeleteFunc(want.Env, func(env appv1alpha1.EnvVar) bool {
+		return env.Name == "PORT" && env.ValueFrom == nil && env.Value == served
+	})
+}
 
 // blueprintDomainList flattens a spec's two host fields into the one list a
 // manifest's `domains:` carries. The exporter writes it and the planner

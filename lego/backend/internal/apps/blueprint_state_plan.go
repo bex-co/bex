@@ -187,6 +187,20 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 			return BlueprintPlanAction{}, err
 		}
 		probe := r.services[resource.Name].Spec
+		// Pending domain claims are configured domains the serving spec does
+		// not carry yet (w4/411): compare against the same union the exporter
+		// writes, or a generated manifest re-plans as an update against its
+		// own source and would promote a pending domain into serving.
+		if r.service != nil {
+			domains, err := r.service.exportedDomains(ctx, r.services[resource.Name])
+			if err != nil {
+				return BlueprintPlanAction{}, err
+			}
+			if len(domains) > 0 {
+				probe.Host, probe.Hosts = domains[0], domains[1:]
+			}
+		}
+		dropServedPortEnv(&want, r.services[resource.Name])
 		changed, err := ApplyBlueprintServiceSpec(&probe, want, svc.fields)
 		if err != nil {
 			return BlueprintPlanAction{}, err
@@ -194,6 +208,11 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 		if changed {
 			action.Operation = BlueprintPlanUpdate
 			live := r.services[resource.Name].Spec
+			if len(probe.Hosts) > 0 || probe.Host != "" {
+				// Same union as the probe's, so a domains-only spelling
+				// difference never reports as a changed field.
+				live.Host, live.Hosts = probe.Host, probe.Hosts
+			}
 			action.ChangedFields = blueprintPlanFieldChanges(blueprintServiceProbePaths(resource.Fields), func(name string) (bool, error) {
 				probe := *live.DeepCopy()
 				return probeBlueprintServiceSpec(&probe, want, svc.fields, name)

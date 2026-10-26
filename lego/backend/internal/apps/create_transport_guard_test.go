@@ -96,15 +96,15 @@ var restCreateRules = map[string]wireRule{
 	"image.imagePath": to("Image"),
 	// Validation only: a value other than the effective owner is refused,
 	// and it never selects a workspace of its own.
-	"image.ownerId":                          refused("tea-a", "tea-b"),
-	"image.registryCredentialId":             to("RegistryCredentialID").given("rc-a", "rc-b"),
-	"branch":                                 to("Branch"),
-	"environmentId":                          to("EnvironmentID"),
-	"autoDeploy":                             to("AutoDeploy").given("yes", "no"),
-	"autoDeployTrigger":                      to("AutoDeploy").given("commit", "off"),
-	"notifyOnFail":                           to("NotifyOnFail"),
-	"envVars[].key":                          to("Env"),
-	"envVars[].value":                        to("Env"),
+	"image.ownerId":              refused("tea-a", "tea-b"),
+	"image.registryCredentialId": to("RegistryCredentialID").given("rc-a", "rc-b"),
+	"branch":                     to("Branch"),
+	"environmentId":              to("EnvironmentID"),
+	"autoDeploy":                 to("AutoDeploy").given("yes", "no"),
+	"autoDeployTrigger":          to("AutoDeploy").given("commit", "off"),
+	"notifyOnFail":               to("NotifyOnFail"),
+	"envVars[].key":              to("Env"),
+	"envVars[].value":            to("Env"),
 	// The guard pairs generateValue with a literal value, so toggling it
 	// answers the oneOf 400; acceptance on its own is covered by
 	// TestEnvVarInputGenerateValue (w4/m242).
@@ -301,10 +301,10 @@ var mcpCreateRules = map[string]wireRule{
 		}
 		return wireOutcome{fields: []string{"StartCommand"}}
 	}},
-	"builder":                          to("Builder"),
-	"plan":                             to("Plan"),
-	"envVars[].key":                    to("Env"),
-	"envVars[].value":                  to("Env"),
+	"builder":         to("Builder"),
+	"plan":            to("Plan"),
+	"envVars[].key":   to("Env"),
+	"envVars[].value": to("Env"),
 	// See restCreateRules: paired with a literal value by the guard, the
 	// oneOf 400 is the answer (w4/m242).
 	"envVars[].generateValue":          refused(false, true),
