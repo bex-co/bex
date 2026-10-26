@@ -130,6 +130,13 @@ describe("useDiskSnapshotWarning", () => {
     expect(warningFor()).toEqual({ state: "unavailable" });
   });
 
+  it("passes a failed attempt's stage through, and an unknown one as other", () => {
+    reply({ state: "failing", reason: "upload", dueBy: "2026-10-22T10:00:00Z" });
+    expect(warningFor()).toEqual({ state: "failing", stage: "upload" });
+    reply({ state: "failing", reason: "quota", dueBy: "2026-10-22T10:00:00Z" });
+    expect(warningFor()).toEqual({ state: "failing", stage: "other" });
+  });
+
   it("is null when on schedule, unknown, overdue without a due time, or unanswered", () => {
     for (const health of [
       { state: "ok", dueBy: "2026-10-22T10:00:00Z" },

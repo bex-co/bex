@@ -42,3 +42,16 @@ const (
 // be retried by asking again. A CR without it keeps the snapshot alone as the
 // request (w6/089).
 const DiskRestoreRequestedAtAnnotation = "app.bex.co/disk-restore-requested-at"
+
+// A failed nightly backup leaves <disk prefix>DiskSnapshotFailureRecordPrefix
+// <stage> beside the snapshots, so bex-api can tell the owner why last night's
+// snapshot is missing after the Job's pods are gone (w6/m154). The record's
+// LastModified is the failure time; it holds no tenant data.
+const DiskSnapshotFailureRecordPrefix = "last-failure-"
+
+// Stages a nightly backup can stop at.
+const (
+	DiskSnapshotFailureRead   = "read"   // the volume could not be walked or read
+	DiskSnapshotFailureUpload = "upload" // the object store did not take the snapshot
+	DiskSnapshotFailureConfig = "config" // the Job itself is misconfigured
+)

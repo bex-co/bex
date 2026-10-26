@@ -3935,6 +3935,26 @@ const enServices: Record<string, TranslationEntry> = {
     message: "The first snapshot is taken on the next nightly run.",
     description: "Snapshots empty state body",
   },
+  "services.diskSnapshotsFailedTitle": {
+    message: "Last snapshot failed",
+    description: "A disk's most recent nightly snapshot attempt failed",
+  },
+  "services.diskSnapshotsFailedReadBody": {
+    message: "Part of this disk couldn't be read, so no snapshot was taken and recent changes aren't backed up. Existing snapshots are unaffected. If it happens again, contact support.",
+    description: "Failed snapshot: the volume could not be read",
+  },
+  "services.diskSnapshotsFailedUploadBody": {
+    message: "The snapshot couldn't be saved to storage, so recent changes aren't backed up. Existing snapshots are unaffected; the next nightly run tries again.",
+    description: "Failed snapshot: the object store did not accept it",
+  },
+  "services.diskSnapshotsFailedConfigBody": {
+    message: "The snapshot job couldn't start correctly, so recent changes aren't backed up. Existing snapshots are unaffected. Contact support.",
+    description: "Failed snapshot: the job was misconfigured",
+  },
+  "services.diskSnapshotsFailedOtherBody": {
+    message: "The last snapshot attempt failed, so recent changes aren't backed up. Existing snapshots are unaffected. If it happens again, contact support.",
+    description: "Failed snapshot: an unrecognized stage",
+  },
   "services.diskSnapshotsOverdueTitle": {
     message: "No recent snapshot",
     description: "A disk's nightly snapshot did not arrive when expected",
