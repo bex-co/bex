@@ -46,6 +46,26 @@ vi.mock("@/common/hooks/use-root-context", () => ({
   }),
 }));
 
+// w4/407: the avatar trigger is named for the account it opens, not "A".
+describe("UserNav accessible name", () => {
+  it("names the trigger for the signed-in account and opens by keyboard", async () => {
+    const user = userEvent.setup();
+    render(
+      <I18nextProvider i18n={i18n}>
+        <UserNav />
+      </I18nextProvider>,
+    );
+    const trigger = screen.getByRole("button", {
+      name: "Account menu for ada@example.com",
+    });
+    trigger.focus();
+    await user.keyboard("{Enter}");
+    expect(
+      await screen.findByRole("menuitem", { name: "Log out" }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("UserNav logout", () => {
   beforeEach(() => {
     navigate.mockReset();

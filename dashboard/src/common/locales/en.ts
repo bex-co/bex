@@ -308,6 +308,16 @@ const enCommon: Record<string, TranslationEntry> = {
     message: "Log out",
     description: "User menu item that signs the user out",
   },
+  "common.userMenuOpen": {
+    message: "Account menu",
+    description:
+      "Accessible name of the avatar button that opens the account menu (w4/407)",
+  },
+  "common.userMenuOpenFor": {
+    message: "Account menu for {name}",
+    description:
+      "Accessible name of the avatar button that opens the account menu, naming the signed-in identity (w4/407)",
+  },
   "common.goHome": {
     message: "Go home",
     description: "Button label that navigates back to the home page",

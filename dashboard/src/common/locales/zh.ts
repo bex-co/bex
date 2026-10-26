@@ -307,6 +307,16 @@ const zhCommon: Record<string, TranslationEntry> = {
     message: "退出登录",
     description: "User menu item that signs the user out",
   },
+  "common.userMenuOpen": {
+    message: "账户菜单",
+    description:
+      "Accessible name of the avatar button that opens the account menu (w4/407)",
+  },
+  "common.userMenuOpenFor": {
+    message: "{name} 的账户菜单",
+    description:
+      "Accessible name of the avatar button that opens the account menu, naming the signed-in identity (w4/407)",
+  },
   "common.goHome": {
     message: "返回首页",
     description: "Button label that navigates back to the home page",

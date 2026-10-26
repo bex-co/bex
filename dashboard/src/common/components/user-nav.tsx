@@ -42,6 +42,8 @@ import { switchLanguage } from "@/i18n/init";
 
 interface UserAvatarButtonProps {
   userInitial: string;
+  /** Accessible name: the initial alone is not a name (w4/407). */
+  label: string;
   onClick?: () => void;
 }
 
@@ -51,6 +53,7 @@ interface UserAvatarButtonProps {
  */
 export function UserAvatarButton({
   userInitial,
+  label,
   onClick,
   ...props
 }: UserAvatarButtonProps) {
@@ -59,10 +62,11 @@ export function UserAvatarButton({
       variant="ghost"
       size="icon-sm"
       onClick={onClick}
+      aria-label={label}
       {...props}
       className="relative rounded-full hover:bg-accent p-0"
     >
-      <Avatar className="h-8 w-8">
+      <Avatar className="h-8 w-8" aria-hidden="true">
         <AvatarFallback>{userInitial}</AvatarFallback>
       </Avatar>
     </Button>
@@ -168,7 +172,14 @@ export function UserNav() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <UserAvatarButton userInitial={userInitial} />
+        <UserAvatarButton
+          userInitial={userInitial}
+          label={
+            traits?.email
+              ? t("common.userMenuOpenFor", { name: traits.email })
+              : t("common.userMenuOpen")
+          }
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
