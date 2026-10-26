@@ -73,7 +73,7 @@ type configKeyKind struct {
 
 var (
 	envVarKey     = configKeyKind{noun: "environment variable", code: "ENVIRONMENT_VARIABLE_INVALID", field: "key", rule: EnvKeyRule}
-	secretFileKey = configKeyKind{noun: "secret file", code: "SECRET_FILE_INVALID", field: "name"}
+	secretFileKey = configKeyKind{noun: "secret file", code: "SECRET_FILE_INVALID", field: "name", rule: SecretFileNameRule}
 )
 
 // EnvKeyRule is the one wording of what an environment variable may be named:
@@ -81,6 +81,11 @@ var (
 // Elasticsearch's discovery.type, so bex no longer requires a C identifier
 // (w5/m150); a native build's shell skips a name it cannot export.
 var EnvKeyRule = fmt.Sprintf("letters, digits, '-', '_' and '.', at most %d characters", validation.DNS1123SubdomainMaxLength)
+
+// SecretFileNameRule is EnvKeyRule's twin for secret files: the same
+// Kubernetes Secret-key rule, worded in bex's own terms so a refusal never
+// leaks the config-key regex (w4/403).
+var SecretFileNameRule = EnvKeyRule
 
 // problem names the rule key breaks, or "" when it is a valid name.
 func (k configKeyKind) problem(key string) string {
