@@ -214,3 +214,13 @@ it("keeps the search uneditable until hydration, then filters (w4/m219)", async 
   expect(container).toHaveTextContent("pager");
   expect(container).not.toHaveTextContent("payments");
 });
+
+// w4/410: the page's visible title is its one h1.
+describe("WebhooksPanel heading", () => {
+  it("renders the title as the page's h1", async () => {
+    renderPanel();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Webhooks" }),
+    ).toBeInTheDocument();
+  });
+});

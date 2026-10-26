@@ -331,3 +331,13 @@ describe("PushNotificationSettingsPanel", () => {
     });
   });
 });
+
+// w4/410: the push card sits under the page h1 as a section heading.
+describe("PushNotificationSettingsPanel heading", () => {
+  it("renders its title as an h2", async () => {
+    render(<PushNotificationSettingsPanel />);
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "Mobile push" }),
+    ).toBeInTheDocument();
+  });
+});

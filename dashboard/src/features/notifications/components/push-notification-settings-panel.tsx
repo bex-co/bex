@@ -205,7 +205,7 @@ function PushSettingsForm({
     <Card>
       <CardHeader>
         <div className="flex items-center gap-2">
-          <CardTitle>{t("notifications.pushTitle")}</CardTitle>
+          <CardTitle as="h2">{t("notifications.pushTitle")}</CardTitle>
           <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
             {t("notifications.bexExtension")}
           </span>
