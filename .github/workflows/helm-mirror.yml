@@ -9,6 +9,7 @@ permissions:
 
 concurrency:
   group: reviewed-helm-mirror
+  queue: max
   cancel-in-progress: false
 
 jobs:

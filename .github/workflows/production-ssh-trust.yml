@@ -21,9 +21,5 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          umask 077
-          trust_file=$(mktemp)
-          trap 'rm -f "$trust_file"' EXIT
           test -n "$BEX_SSH_KNOWN_HOSTS"
-          printf '%s\n' "$BEX_SSH_KNOWN_HOSTS" >"$trust_file"
-          ssh-keygen -lf "$trust_file"
+          printf '%s\n' "$BEX_SSH_KNOWN_HOSTS" | ssh-keygen -lf -
