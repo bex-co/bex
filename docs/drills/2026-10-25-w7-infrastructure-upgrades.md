@@ -2,7 +2,7 @@
 
 ## Outcome and limits
 
-Local verification passed for the Zot GC correction and the CNPG collector correction with in-place instance-manager updates. The expired build-cache trial has a rollback prepared. These are uncommitted working-tree changes, not production rollout claims.
+Local verification passed for the Zot GC correction and the CNPG collector correction with in-place instance-manager updates. The expired build-cache trial has a rollback prepared. At the first checkpoint these were uncommitted working-tree changes; the shipping checkpoint below records subsequent delivery. They are not production rollout claims.
 
 Production verification is blocked on authenticated cluster access. The local pinned SSH host keys do not match one discovered control-plane node, and the other two discovered nodes have no entry in the pinned file. No pin was replaced and no host-key check was disabled. The repository also requires an explicit `$ship` invocation before committing or pushing.
 
@@ -93,3 +93,11 @@ After authenticated cluster access is restored and the changes are shipped:
 - `git diff --check`: passed. Repository-wide Prettier 3.4.2 formatting was run for Markdown.
 
 The disposable kind cluster and Docker registry fixtures are removed after evidence capture. No production rollout, Barman/S3 recovery or production observation is claimed.
+
+## Shipping and access recovery checkpoint
+
+The user explicitly requested “ship and continue, do not stop until you absolutely need me”. The batch was pushed to `origin/main` at `418e5ccfd`: registry `a754faaec`, CNPG `aa393fe29`, expired cache rollback `39f06eaf8`, and the shared record `418e5ccfd`. Rebased GitOps validation and pre-push gates passed.
+
+Production delivery is queued behind an older active deployment. The new manual, main-only `Verify production SSH trust` workflow uses the existing protected `production-deploy` environment and reports only `ssh-keygen` fingerprints of its provisioned known-hosts entries. No client private key or kubeconfig is exported. A network-scanned key is usable locally only after it matches this independent trusted fingerprint.
+
+Two entries added through the initial fetch attempt's `accept-new` fallback were identified as unverified session-created records and removed from the local global known-hosts file. They were not used as authenticated pins; no newly scanned key was trusted by itself.
