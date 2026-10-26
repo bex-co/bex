@@ -23,6 +23,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -95,5 +96,51 @@ func TestRefreshServingWhileBuildingWithoutALiveRevision(t *testing.T) {
 		if r.refreshServingWhileBuilding(context.Background(), app) || meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionServing) != nil {
 			t.Errorf("%s: Serving touched", name)
 		}
+	}
+}
+
+// TestRolloutProgressStampsActiveRevisionOncePodsServe is w4/405: when every
+// pod of the rolling revision is Ready, the Service already routes to it, so
+// the progress stamp records it as the active revision. A newer release that
+// supersedes before the Deployment status converges then closes the older
+// deploy's row live (it served), not canceled. A revision whose pods are not
+// all ready stamps nothing.
+func TestRolloutProgressStampsActiveRevisionOncePodsServe(t *testing.T) {
+	ctx := context.Background()
+	for _, tc := range []struct {
+		name  string
+		ready bool
+		want  string
+	}{
+		{"pods ready, deployment still converging", true, "rev-3"},
+		{"pods not ready", false, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := &appv1alpha1.App{
+				ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default", Generation: 3},
+				Spec:       appv1alpha1.AppSpec{Image: "busybox:1.37"},
+				Status:     appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseDeploying, ReleaseGeneration: 3},
+			}
+			dep := progressDeadlineDep("web")
+			dep.Spec.Template.Labels[labelRevision] = "rev-3"
+			dep.Status.Conditions = nil // no progress-deadline verdict
+			pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "web-0", Namespace: "default", Labels: map[string]string{"app": "web", labelRevision: "rev-3"}}}
+			if tc.ready {
+				pod.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}
+			}
+			cl := fake.NewClientBuilder().WithScheme(rolloutFailScheme(t)).
+				WithObjects(app, dep, pod).WithStatusSubresource(&appv1alpha1.App{}).Build()
+			r := &AppReconciler{Client: cl, Scheme: cl.Scheme(), Mode: ModeKubernetes}
+			if _, err := r.reportRolloutProgress(ctx, app, dep, 1, 3000, "waiting"); err != nil {
+				t.Fatalf("reportRolloutProgress: %v", err)
+			}
+			var stored appv1alpha1.App
+			if err := cl.Get(ctx, client.ObjectKeyFromObject(app), &stored); err != nil {
+				t.Fatal(err)
+			}
+			if stored.Status.ActiveRevision != tc.want {
+				t.Fatalf("ActiveRevision = %q, want %q", stored.Status.ActiveRevision, tc.want)
+			}
+		})
 	}
 }

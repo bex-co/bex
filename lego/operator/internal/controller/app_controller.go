@@ -3417,8 +3417,16 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 	}
 	app.Status.Phase = appv1alpha1.PhaseDeploying
 	notReadyReason := reasonRolloutProgressing
-	if r.currentRevisionFullyReady(ctx, dep, replicas) {
+	if fullyReady := r.currentRevisionFullyReady(ctx, dep, replicas); fullyReady {
 		notReadyReason, notReadyMessage = reasonRolloutSettling, "current revision fully ready; Deployment status still converging"
+		// w4/405: every pod of this revision is Ready, so the Service already
+		// routes traffic to it — record it as the active revision now, not
+		// only when the Deployment status converges. A newer release that
+		// supersedes in that window otherwise closes this deploy's row
+		// canceled even though it served.
+		if rev := dep.Spec.Template.Labels[labelRevision]; rev != "" && rev == releaseRevision(app) {
+			app.Status.ActiveRevision = rev
+		}
 	}
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: notReadyReason,
