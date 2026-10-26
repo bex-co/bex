@@ -28,33 +28,71 @@ CLUSTER="${CLUSTER_NAME:-bex}"
 source "$(dirname "${BASH_SOURCE[0]}")/lib/ssh-hostkey.sh"
 bex_ssh_hostkey_args
 
-CP_IPS=$(curl -sf -H "Authorization: Bearer $HCLOUD_TOKEN" \
-  "https://api.hetzner.cloud/v1/servers?label_selector=caph-cluster-${CLUSTER}" \
-  | jq -r --arg p "${CLUSTER}-control-plane" '
-      [.servers[]
-        | select(.status == "running")
-        | select(.name | startswith($p))]
-      | sort_by(.created) | reverse[]
-      | .public_net.ipv4.ip // empty')
-[ -n "$CP_IPS" ] || { echo "no running control-plane servers found for $CLUSTER" >&2; exit 1; }
+# A control-plane roll replaces nodes (new IPs, new host keys) one at a time,
+# so for a few minutes every candidate can fail strict host-key checking even
+# though the pinned keys are still current for the nodes that will remain
+# (w6/m153: a deploy and a drill failed mid-roll on 2026-10-24, then fetched
+# fine once it settled). Rediscover the nodes and retry for a bounded time
+# when — and only when — host-key verification is what failed. Strict checking
+# is never relaxed.
+ATTEMPTS="${BEX_KUBECONFIG_FETCH_ATTEMPTS:-6}"
+RETRY_SECONDS="${BEX_KUBECONFIG_FETCH_RETRY_SECONDS:-60}"
+
+discover() {
+  curl -sf -H "Authorization: Bearer $HCLOUD_TOKEN" \
+    "https://api.hetzner.cloud/v1/servers?label_selector=caph-cluster-${CLUSTER}" \
+    | jq -r --arg p "${CLUSTER}-control-plane" '
+        [.servers[]
+          | select(.status == "running")
+          | select(.name | startswith($p))]
+        | sort_by(.created) | reverse[]
+        | .public_net.ipv4.ip // empty'
+}
 
 TMP=$(mktemp "${OUT}.tmp.XXXXXX")
-cleanup() { [ -z "${TMP:-}" ] || rm -f -- "$TMP"; }
+SSH_ERR=$(mktemp "${OUT}.ssherr.XXXXXX")
+cleanup() {
+  [ -z "${TMP:-}" ] || rm -f -- "$TMP"
+  rm -f -- "$SSH_ERR"
+}
 trap cleanup EXIT
 
-while IFS= read -r CP_IP; do
-  if ssh -o BatchMode=yes -o ConnectTimeout=8 \
-      "${BEX_SSH_HOSTKEY_ARGS[@]}" -i "$KEY" "root@${CP_IP}" \
-      'cat /etc/kubernetes/admin.conf' > "$TMP" \
-    && kubectl --kubeconfig "$TMP" --request-timeout=10s cluster-info >/dev/null; then
-    chmod 600 "$TMP"
-    mv "$TMP" "$OUT"
-    TMP=""
-    echo "app kubeconfig -> $OUT (via CP $CP_IP)"
-    exit 0
-  fi
-  echo "control-plane $CP_IP unavailable; trying the next candidate" >&2
-done <<< "$CP_IPS"
+attempt=1
+while :; do
+  CP_IPS=$(discover)
+  [ -n "$CP_IPS" ] || { echo "no running control-plane servers found for $CLUSTER" >&2; exit 1; }
+  hostkey_failures=0
+  while IFS= read -r CP_IP; do
+    if ssh -o BatchMode=yes -o ConnectTimeout=8 \
+        "${BEX_SSH_HOSTKEY_ARGS[@]}" -i "$KEY" "root@${CP_IP}" \
+        'cat /etc/kubernetes/admin.conf' > "$TMP" 2> "$SSH_ERR" \
+      && kubectl --kubeconfig "$TMP" --request-timeout=10s cluster-info >/dev/null; then
+      chmod 600 "$TMP"
+      mv "$TMP" "$OUT"
+      TMP=""
+      echo "app kubeconfig -> $OUT (via CP $CP_IP)"
+      exit 0
+    fi
+    cat "$SSH_ERR" >&2
+    if grep -q "Host key verification failed" "$SSH_ERR"; then
+      hostkey_failures=$((hostkey_failures + 1))
+    fi
+    echo "control-plane $CP_IP unavailable; trying the next candidate" >&2
+  done <<< "$CP_IPS"
 
+  if [ "$hostkey_failures" -eq 0 ] || [ "$attempt" -ge "$ATTEMPTS" ]; then
+    break
+  fi
+  echo "every reachable control plane failed host-key verification (attempt $attempt/$ATTEMPTS) — a roll may be in progress; retrying in ${RETRY_SECONDS}s" >&2
+  attempt=$((attempt + 1))
+  sleep "$RETRY_SECONDS"
+done
+
+if [ "$hostkey_failures" -gt 0 ]; then
+  echo "error: control-plane host keys still do not match the pinned BEX_SSH_KNOWN_HOSTS after $attempt attempt(s)." >&2
+  echo "       Either a control-plane roll is still running, or the pin is stale: re-pin the" >&2
+  echo "       current control-plane host keys (BEX_SSH_KNOWN_HOSTS secret + .env) from an" >&2
+  echo "       authenticated source (docs/ADR019-infra-credentials.md). Never trust on first use." >&2
+fi
 echo "no reachable, healthy control-plane server found for $CLUSTER" >&2
 exit 1

@@ -59,6 +59,9 @@ jobs:
         run: bash scripts/github-actions-validate.sh
       - name: GitHub Actions guard self-test
         run: bash scripts/github-actions-validate.test.sh
+      # w6/m153: the admin.conf fetch retries only mid-roll host-key failures.
+      - name: Kubeconfig fetch mid-roll retry self-test
+        run: bash scripts/fetch-app-kubeconfig.test.sh
       # w3/m173: the live-settings reader behind production-secret confinement.
       - name: GitHub environment drift self-test
         run: bash scripts/github-environments-drift.test.sh
@@ -168,6 +171,7 @@ jobs:
           scripts/render-mcp-drift.sh scripts/render-mcp-drift.test.sh
           scripts/render-schema-drift.sh scripts/render-schema-drift.test.sh
           scripts/dev-env.sh scripts/dev-env.test.sh
+          scripts/fetch-app-kubeconfig.test.sh
           scripts/mock-cluster.sh scripts/mock-cluster.test.sh
           scripts/build-toolchain-freshness.sh scripts/build-toolchain-freshness.test.sh
           scripts/ci-schedule-drift.sh scripts/ci-schedule-drift.test.sh
