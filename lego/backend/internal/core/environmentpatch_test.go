@@ -83,6 +83,20 @@ func TestConfigKeysAreCappedAtTheSecretKeyLimit(t *testing.T) {
 	if err := CheckSecretFileName("../etc"); !errors.Is(err, ErrBadRequest) || !strings.Contains(err.Error(), "invalid secret file name") {
 		t.Errorf("charset refusal = %v, want the existing invalid-name message", err)
 	}
+	// w4/403: the refusal words the rule in bex's own terms, never Kubernetes'.
+	for _, name := range []string{"dir/x.txt", "..data", "a b"} {
+		err := CheckSecretFileName(name)
+		if err == nil {
+			t.Errorf("%q: want a refusal", name)
+			continue
+		}
+		if !strings.Contains(err.Error(), "use letters, digits, '-', '_' and '.', at most 253 characters") {
+			t.Errorf("%q refusal = %v, want the plain rule", name, err)
+		}
+		if strings.Contains(err.Error(), "config key") || strings.Contains(err.Error(), "regex") {
+			t.Errorf("%q refusal leaks Kubernetes wording: %v", name, err)
+		}
+	}
 }
 
 // configKeyVectorsPath is the one table of environment variable and secret-file
