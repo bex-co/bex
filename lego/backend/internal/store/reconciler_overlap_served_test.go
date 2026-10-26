@@ -238,3 +238,23 @@ func TestReconcileOverlapReadsTheServedImageFromItsReleaseRecord(t *testing.T) {
 		t.Fatalf("served row = %q image %q, want live with generation 2's recorded image", executing.Status, executing.ResolvedImage)
 	}
 }
+
+// TestSupersededRowThatServedClosesLive is w4/405 at the row closer: with the
+// operator stamping status.activeRevision as soon as the release's pods are
+// Ready, a row superseded inside the stamp window closes live when the stamp
+// names its generation, and canceled only when it never served.
+func TestSupersededRowThatServedClosesLive(t *testing.T) {
+	app := func(active string) *appv1alpha1.App {
+		return &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a", Generation: 3},
+			Status:     appv1alpha1.AppStatus{ReleaseGeneration: 3, ActiveRevision: active, Phase: appv1alpha1.PhaseDeploying},
+		}
+	}
+	open := Deploy{Generation: 2, Status: DeployUpdateInProgress}
+	if got, settled := supersededDeployStatus(open, app("rev-2"), false); !settled || got != DeployLive {
+		t.Errorf("served then superseded = (%q, %v), want (%q, true)", got, settled, DeployLive)
+	}
+	if got, settled := supersededDeployStatus(open, app("rev-1"), false); !settled || got != DeployCanceled {
+		t.Errorf("never served then superseded = (%q, %v), want (%q, true)", got, settled, DeployCanceled)
+	}
+}

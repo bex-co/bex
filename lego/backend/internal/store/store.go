@@ -295,11 +295,11 @@ type CommitInfo struct {
 // stored value rather than the App's current generation, which a later,
 // unrelated spec write could have already moved past.
 type Deploy struct {
-	ID             string     `json:"id"`
-	AppID          string     `json:"appId"`
-	Trigger        string     `json:"trigger"`
-	Image          string     `json:"image,omitempty"`
-	ResolvedImage  string     `json:"-"`
+	ID            string `json:"id"`
+	AppID         string `json:"appId"`
+	Trigger       string `json:"trigger"`
+	Image         string `json:"image,omitempty"`
+	ResolvedImage string `json:"-"`
 	// ImageSHA is the digest ResolvedImage resolved to when this deploy went
 	// live (Render's image.sha, w8/m122), stamped with ResolvedImage from the
 	// App's status.imageDigest for this deploy's own release — "" until then,
