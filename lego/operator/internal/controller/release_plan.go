@@ -333,7 +333,7 @@ func (obs releaseObservation) facts(app *appv1alpha1.App) releaseFacts {
 		}
 		f.scaled = dep.Spec.Replicas != nil && *dep.Spec.Replicas > 0
 		f.ready = dep.Status.ReadyReplicas > 0
-		if c := progressDeadlineExceeded(dep); c != nil {
+		if c := rolloutDeadline(app, dep); c != nil {
 			f.deadlineExceeded, f.deadlineAt = true, c.LastTransitionTime.Time
 		}
 		if c := deploymentCondition(dep, appsv1.DeploymentAvailable); c != nil && c.Status == corev1.ConditionFalse {

@@ -222,16 +222,16 @@ func TestRolloutDeadlineOverParkedPriorReleaseStaysHibernated(t *testing.T) {
 	}
 }
 
-func TestDeploymentProgressDeadlineExceededHelper(t *testing.T) {
-	if deploymentProgressDeadlineExceeded(nil) {
+func TestProgressDeadlineExceededHelper(t *testing.T) {
+	if progressDeadlineExceeded(nil) != nil {
 		t.Fatal("nil dep must be false")
 	}
 	dep := progressDeadlineDep("x")
-	if !deploymentProgressDeadlineExceeded(dep) {
+	if progressDeadlineExceeded(dep) == nil {
 		t.Fatal("want true for ProgressDeadlineExceeded")
 	}
 	dep.Status.Conditions[0].Status = corev1.ConditionTrue
-	if deploymentProgressDeadlineExceeded(dep) {
+	if progressDeadlineExceeded(dep) != nil {
 		t.Fatal("Progressing=True must not settle")
 	}
 
@@ -239,11 +239,11 @@ func TestDeploymentProgressDeadlineExceededHelper(t *testing.T) {
 	// the previous rollout's verdict, which says nothing about the new release.
 	stale := progressDeadlineDep("x")
 	stale.Generation, stale.Status.ObservedGeneration = 3, 2
-	if deploymentProgressDeadlineExceeded(stale) {
+	if progressDeadlineExceeded(stale) != nil {
 		t.Fatal("a verdict observed for an older template must not settle the new one")
 	}
 	stale.Status.ObservedGeneration = 3
-	if !deploymentProgressDeadlineExceeded(stale) {
+	if progressDeadlineExceeded(stale) == nil {
 		t.Fatal("the verdict counts once the controller observed the current template")
 	}
 }
