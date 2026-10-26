@@ -45,6 +45,7 @@ RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go
 # and path-free so each release adds one small, reproducible layer.
 RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -trimpath -ldflags='-s -w' -o /workspace/native-init ./cmd/native-init
 RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/disk-snapshot ./cmd/disk-snapshot
+RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/drain-guard ./cmd/drain-guard
 # Output name must not be "api" — that collides with the cmd/api source dir, so
 # go build would write the binary INTO that directory.
 RUN cd backend  && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/bexapi ./cmd/api
@@ -67,6 +68,7 @@ COPY --from=builder /workspace/health-probe /health-probe
 COPY --from=builder /workspace/native-resolve /native-resolve
 COPY --from=builder /workspace/native-init /native-init
 COPY --from=builder /workspace/disk-snapshot /disk-snapshot
+COPY --from=builder /workspace/drain-guard /drain-guard
 COPY --from=builder /workspace/ssh-gateway /ssh-gateway
 USER 65532:65532
 

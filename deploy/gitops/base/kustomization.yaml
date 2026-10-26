@@ -58,6 +58,7 @@ resources:
   - operator-workload-admission.yaml # API-server CEL guard: confine operator-created workloads to hardened tenant/build Pod grammar
   - operator-pod-label-admission.yaml # API-server CEL guard: the operator may relabel a pod's network-isolation label and nothing else (w8/m136)
   - operator-alias-admission.yaml # API-server CEL guard: only exact App-owned static/maintenance ExternalName aliases may exist in tenant namespaces (w7/m54)
+  - drain-guard-admission.yaml # API-server CEL guard: drain-guard may only set its CAPI pre-drain hook, cordon, and mark an App template for evacuation (w1/m186)
   - sandbox-pod-admission.yaml # API-server guard: every sandbox Pod must retain gVisor/placement/token invariants (w3/m35)
 
 # The render-v1 seccomp profile (w6/m150), installed by seccomp-profiles.yaml.

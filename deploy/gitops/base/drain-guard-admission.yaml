@@ -1,0 +1,127 @@
+# Fail-closed write boundary for drain-guard (w1/m186), the CAPI pre-drain hook
+# that hands single-instance Apps over before a node roll drains them.
+#
+# drain-guard is the one bex identity with any right in the locked-down CAPI
+# namespace, so its writes are confined here, not only by RBAC: RBAC cannot say
+# "this annotation only" or "cordon only". Whatever its Role and ClusterRole
+# (lego/operator/config/drain-guard/) grow into, the identity may:
+#
+#   - Machines: add or remove its own pre-drain hook annotation, nothing else;
+#   - Nodes: cordon (spec.unschedulable true), nothing else; never uncordon;
+#   - Deployments: set the pod-template annotation that rolls an App off a
+#     node, nothing else.
+#
+# Every other write by it, CREATE and DELETE included, is denied.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: bex-drain-guard-writes
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["cluster.x-k8s.io"]
+        apiVersions: ["*"]
+        operations: ["CREATE", "UPDATE", "DELETE"]
+        resources: ["machines"]
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE", "DELETE"]
+        resources: ["nodes"]
+      - apiGroups: ["apps"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE", "DELETE"]
+        resources: ["deployments"]
+  matchConditions:
+    - name: drain-guard-service-account
+      expression: request.userInfo.username == 'system:serviceaccount:bex-system:bex-drain-guard'
+  variables:
+    - name: hook
+      expression: "'pre-drain.delete.hook.machine.cluster.x-k8s.io/bex-drain-guard'"
+    - name: evacuation
+      expression: "'drain-guard.bex.co/evacuated-from'"
+    # Variables are evaluated lazily, and every use below sits behind
+    # sameMetadata (UPDATE only) and a resource check, so the ones that read
+    # object or oldObject need no guards of their own.
+    #
+    # Object metadata other than annotations must not move at all.
+    - name: sameMetadata
+      expression: >-
+        request.operation == 'UPDATE' &&
+        object.metadata.?labels.orValue({}) == oldObject.metadata.?labels.orValue({}) &&
+        object.metadata.?finalizers.orValue([]) == oldObject.metadata.?finalizers.orValue([]) &&
+        object.metadata.?ownerReferences.orValue([]) == oldObject.metadata.?ownerReferences.orValue([])
+    - name: annotations
+      expression: object.metadata.?annotations.orValue({})
+    - name: oldAnnotations
+      expression: "request.operation == 'UPDATE' ? oldObject.metadata.?annotations.orValue({}) : {}"
+    - name: sameAnnotations
+      expression: variables.annotations == variables.oldAnnotations
+    # A Machine may differ only in drain-guard's own hook, owned by it.
+    - name: machineWrite
+      expression: >-
+        request.resource.resource == 'machines' &&
+        variables.sameMetadata &&
+        object.spec == oldObject.spec &&
+        variables.annotations.all(k, k == variables.hook ||
+          (k in variables.oldAnnotations && variables.oldAnnotations[k] == variables.annotations[k])) &&
+        variables.oldAnnotations.all(k, k == variables.hook || k in variables.annotations) &&
+        (!(variables.hook in variables.annotations) || variables.annotations[variables.hook] == 'bex-drain-guard')
+    # A cordon: unschedulable ends true, and every other spec field, label and
+    # annotation is untouched.
+    - name: nodeWrite
+      expression: >-
+        request.resource.resource == 'nodes' &&
+        variables.sameMetadata && variables.sameAnnotations &&
+        object.spec.?unschedulable.orValue(false) &&
+        object.spec.?taints.orValue([]) == oldObject.spec.?taints.orValue([]) &&
+        object.spec.?providerID.orValue('') == oldObject.spec.?providerID.orValue('') &&
+        object.spec.?podCIDR.orValue('') == oldObject.spec.?podCIDR.orValue('') &&
+        object.spec.?podCIDRs.orValue([]) == oldObject.spec.?podCIDRs.orValue([]) &&
+        has(object.spec.configSource) == has(oldObject.spec.configSource) &&
+        (!has(object.spec.configSource) || object.spec.configSource == oldObject.spec.configSource)
+    - name: templateAnnotations
+      expression: "request.resource.resource == 'deployments' ? object.spec.template.metadata.?annotations.orValue({}) : {}"
+    - name: oldTemplateAnnotations
+      expression: >-
+        request.resource.resource == 'deployments' && request.operation == 'UPDATE'
+          ? oldObject.spec.template.metadata.?annotations.orValue({}) : {}
+    # A Deployment may differ only in the evacuation annotation on its pod
+    # template, set to a node name; the pod spec, labels, replicas, selector
+    # and strategy stay as they were.
+    - name: deploymentWrite
+      expression: >-
+        request.resource.resource == 'deployments' &&
+        variables.sameMetadata && variables.sameAnnotations &&
+        object.spec.replicas == oldObject.spec.replicas &&
+        object.spec.selector == oldObject.spec.selector &&
+        object.spec.strategy == oldObject.spec.strategy &&
+        object.spec.?minReadySeconds.orValue(0) == oldObject.spec.?minReadySeconds.orValue(0) &&
+        object.spec.?paused.orValue(false) == oldObject.spec.?paused.orValue(false) &&
+        object.spec.?progressDeadlineSeconds.orValue(0) == oldObject.spec.?progressDeadlineSeconds.orValue(0) &&
+        object.spec.?revisionHistoryLimit.orValue(0) == oldObject.spec.?revisionHistoryLimit.orValue(0) &&
+        object.spec.template.spec == oldObject.spec.template.spec &&
+        object.spec.template.metadata.?labels.orValue({}) == oldObject.spec.template.metadata.?labels.orValue({}) &&
+        variables.templateAnnotations.all(k, k == variables.evacuation ||
+          (k in variables.oldTemplateAnnotations && variables.oldTemplateAnnotations[k] == variables.templateAnnotations[k])) &&
+        variables.oldTemplateAnnotations.all(k, k in variables.templateAnnotations) &&
+        (!(variables.evacuation in variables.templateAnnotations) ||
+          variables.templateAnnotations[variables.evacuation].matches('^[a-z0-9]([-a-z0-9.]{0,251}[a-z0-9])?$'))
+  validations:
+    - expression: variables.machineWrite || variables.nodeWrite || variables.deploymentWrite
+      reason: Forbidden
+      message: >-
+        drain-guard may only set or clear its pre-drain hook on a Machine, cordon a
+        Node, or set drain-guard.bex.co/evacuated-from on a Deployment's pod template
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: bex-drain-guard-writes
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  policyName: bex-drain-guard-writes
+  validationActions: [Deny, Audit]

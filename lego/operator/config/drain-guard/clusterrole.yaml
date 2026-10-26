@@ -1,0 +1,33 @@
+# Workload-side rights. The admission policy
+# deploy/gitops/base/drain-guard-admission.yaml narrows the two patches to a
+# cordon and the evacuation annotation, whatever these rules grow into.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: bex-drain-guard
+rules:
+  # Read the deleting Machine's node; cordon it so replacements land elsewhere.
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "patch"]
+  # Find the App pods on that node and whether each App is Ready elsewhere.
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["list"]
+  # Roll an App off the node through its pod template annotation.
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: bex-drain-guard
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: bex-drain-guard
+subjects:
+  - kind: ServiceAccount
+    name: bex-drain-guard
+    namespace: bex-system

@@ -11,6 +11,9 @@ resources:
   # degraded-503 without it, so local (config/default) does not CrashLoop on a
   # missing Wasabi read credential.
   - static-config.yaml
+  # The CAPI pre-drain hook for node rolls (w1/m186). Prod-only: production
+  # CAPI manages its own cluster; the local mock keeps it in kind-bex-mgmt.
+  - ../drain-guard
 patches:
   # Tenant Postgres physical backups resolve through the namespaced Barman
   # Cloud ObjectStore, while logical exports and finalizer purge Jobs consume

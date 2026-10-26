@@ -1,0 +1,27 @@
+# The one grant into the locked-down CAPI namespace (w1/m186 decision): Machines
+# only, never Secrets, so the admin kubeconfig and CAPI PKI stay out of reach
+# (docs/runbooks/operator-kubeconfig-isolation.md). The admission policy limits
+# the patch to drain-guard's own pre-drain hook annotation.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: bex-drain-guard
+  namespace: bex-capi
+rules:
+  - apiGroups: ["cluster.x-k8s.io"]
+    resources: ["machines"]
+    verbs: ["get", "list", "watch", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: bex-drain-guard
+  namespace: bex-capi
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: bex-drain-guard
+subjects:
+  - kind: ServiceAccount
+    name: bex-drain-guard
+    namespace: bex-system
