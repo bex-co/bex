@@ -170,6 +170,10 @@ jobs:
   # exfiltrate beyond its own image push. The environment-gated deploy job
   # below consumes the exact digests this job emits (never a re-resolved tag).
   build:
+    env:
+      # GCR downloads exhausted the scan timeout after stale remote-cache
+      # restores. Prefer the publisher directly and keep GCR as a fallback.
+      TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2,mirror.gcr.io/aquasec/trivy-db:2
     permissions:
       contents: read
       packages: write
@@ -338,6 +342,7 @@ jobs:
       - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         name: CVE scan — operator image HIGH+CRITICAL (report)
         with:
+          cache: false
           image-ref: '${{ env.IMAGE }}@${{ steps.build_operator.outputs.digest }}'
           format: table
           exit-code: '0'
@@ -347,6 +352,7 @@ jobs:
       - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         name: CVE scan — operator image CRITICAL (gate)
         with:
+          cache: false
           image-ref: '${{ env.IMAGE }}@${{ steps.build_operator.outputs.digest }}'
           format: table
           exit-code: '1'
@@ -356,6 +362,7 @@ jobs:
       - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         name: CVE scan — dashboard image HIGH+CRITICAL (report)
         with:
+          cache: false
           image-ref: '${{ env.DASHBOARD_IMAGE }}@${{ steps.build_dashboard.outputs.digest }}'
           format: table
           exit-code: '0'
@@ -365,6 +372,7 @@ jobs:
       - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         name: CVE scan — dashboard image CRITICAL (gate)
         with:
+          cache: false
           image-ref: '${{ env.DASHBOARD_IMAGE }}@${{ steps.build_dashboard.outputs.digest }}'
           format: table
           exit-code: '1'
@@ -374,6 +382,7 @@ jobs:
       - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         name: CVE scan — OpenSandbox server HIGH+CRITICAL (report)
         with:
+          cache: false
           image-ref: '${{ env.OPENSANDBOX_IMAGE }}@${{ steps.build_opensandbox.outputs.digest }}'
           format: table
           exit-code: '0'
@@ -383,6 +392,7 @@ jobs:
       - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         name: CVE scan — OpenSandbox server CRITICAL (gate)
         with:
+          cache: false
           image-ref: '${{ env.OPENSANDBOX_IMAGE }}@${{ steps.build_opensandbox.outputs.digest }}'
           format: table
           exit-code: '1'
@@ -392,6 +402,7 @@ jobs:
       - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         name: CVE scan — OpenSandbox controller HIGH+CRITICAL (report)
         with:
+          cache: false
           image-ref: '${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}@${{ steps.build_opensandbox_controller.outputs.digest }}'
           format: table
           exit-code: '0'
@@ -401,6 +412,7 @@ jobs:
       - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         name: CVE scan — OpenSandbox controller CRITICAL (gate)
         with:
+          cache: false
           image-ref: '${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}@${{ steps.build_opensandbox_controller.outputs.digest }}'
           format: table
           exit-code: '1'
@@ -410,6 +422,7 @@ jobs:
       - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         name: CVE scan — agent sandbox image HIGH+CRITICAL (report)
         with:
+          cache: false
           image-ref: '${{ env.AGENT_SANDBOX_IMAGE }}@${{ steps.build_agent_sandbox.outputs.digest }}'
           format: table
           exit-code: '0'
@@ -419,6 +432,7 @@ jobs:
       - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         name: CVE scan — agent sandbox image CRITICAL (gate)
         with:
+          cache: false
           image-ref: '${{ env.AGENT_SANDBOX_IMAGE }}@${{ steps.build_agent_sandbox.outputs.digest }}'
           format: table
           exit-code: '1'
