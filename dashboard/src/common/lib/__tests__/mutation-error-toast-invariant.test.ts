@@ -64,6 +64,8 @@ const ALLOWED: Record<string, string> = {
   'features/services/hooks/use-cron-runs.ts: toast.error(t("services.cronRunsLoadError"))':
     READ,
   "features/services/hooks/use-disks.ts: toast.error(message)": SHARED_MESSAGE,
+  "features/services/hooks/use-field-mutation.ts: toast.error(message)":
+    SHARED_MESSAGE,
   "features/webhooks/hooks/use-create-webhook.ts: toast.error(message)":
     SHARED_MESSAGE,
   "features/webhooks/hooks/use-update-webhook.ts: toast.error(message)":

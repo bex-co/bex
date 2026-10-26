@@ -29,6 +29,7 @@ import {
 import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
 import type { RepoView } from "@/features/services/hooks/use-repos";
 import type { RegistryCredentialView } from "@/features/registry-credentials/types";
+import type { UseCreateServiceResult } from "@/features/services/hooks/use-create-service";
 
 beforeAll(() => {
   if (!Element.prototype.hasPointerCapture) {
@@ -72,12 +73,14 @@ const createServiceState: { capLimit: string | null; nameConflict: boolean } = {
   nameConflict: false,
 };
 vi.mock("@/features/services/hooks/use-create-service", () => ({
-  useCreateService: () => ({
+  useCreateService: (): UseCreateServiceResult => ({
     create,
     busy: false,
     capLimit: createServiceState.capLimit,
     nameConflict: createServiceState.nameConflict,
     clearNameConflict,
+    imageRefusal: null,
+    clearImageRefusal: vi.fn(),
   }),
 }));
 
