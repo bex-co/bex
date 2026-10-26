@@ -3242,6 +3242,20 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Create-wizard Existing Image tab hint: set the port below to the one the image listens on (w9/011, w6/m149)",
   },
+  "services.createImageMalformed": {
+    message:
+      "请使用 Docker 镜像引用，例如 docker.io/library/nginx:latest——小写路径，可带标签或摘要。",
+    description: "Inline error under a malformed Docker Image field (w4/406)",
+  },
+  "services.createImageTooLong": {
+    message: "最多 512 字节",
+    description: "Inline error under an over-long Docker Image field (w4/406)",
+  },
+  "services.createImagePrivateHost": {
+    message: "仓库主机必须是公网地址——不能使用 localhost 或私有/链路本地地址。",
+    description:
+      "Inline error under a Docker Image field naming a private registry host (w4/406)",
+  },
   "services.createFieldPort": {
     message: "端口",
     description: "Create wizard: service port field label",
