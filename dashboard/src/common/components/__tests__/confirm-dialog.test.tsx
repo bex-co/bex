@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import { useState } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -107,5 +108,51 @@ describe("ConfirmDialog", () => {
     );
 
     expect(screen.getByText("Currently running 3 instances.")).toBeInTheDocument();
+  });
+});
+
+// w4/408: a controlled dialog opened from the caller's own button (no Radix
+// trigger) returns focus to that button on close, instead of dropping it to
+// the page top.
+describe("ConfirmDialog focus return", () => {
+  function Harness() {
+    const [open, setOpen] = useState(false);
+    return (
+      <>
+        <button onClick={() => setOpen(true)}>Suspend service</button>
+        <ConfirmDialog
+          open={open}
+          onOpenChange={setOpen}
+          title="Suspend service?"
+          description="It stops serving."
+          confirmLabel="Suspend"
+          onConfirm={() => setOpen(false)}
+        />
+      </>
+    );
+  }
+
+  it("returns focus to the opener on Escape", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    const opener = screen.getByRole("button", { name: "Suspend service" });
+    opener.focus();
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it("returns focus to the opener on Cancel", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    const opener = screen.getByRole("button", { name: "Suspend service" });
+    opener.focus();
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /cancel/i }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(document.activeElement).toBe(opener);
   });
 });
