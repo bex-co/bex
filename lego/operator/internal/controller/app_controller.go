@@ -2573,7 +2573,7 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// A parking pass never stamps it: the service is going to sleep, and the
 	// Deploying write would flash Deploying before parkKubernetes's Hibernated
 	// (w6/m147).
-	if plan.deploying() && rolloutPending(app, image) && !deploymentProgressDeadlineExceeded(dep) {
+	if plan.deploying() && rolloutPending(app, image) && rolloutDeadline(app, dep) == nil {
 		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling Deployment for "+image)
 	}
 	// Reclaim snapshots outside the retained window only after the Deployment is in
@@ -3410,7 +3410,7 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 // ever served (ActiveRevision empty), or the prior-release Running/Hibernated
 // shape when an earlier release is still the truth.
 func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, replicas int32, port int, notReadyMessage string) (ctrl.Result, error) {
-	if deploymentProgressDeadlineExceeded(dep) {
+	if rolloutDeadline(app, dep) != nil {
 		return r.settleFailedRollout(ctx, app, dep, port)
 	}
 	if reason, msg := r.permanentRolloutPullFailure(ctx, dep, time.Now()); msg != "" {
@@ -3462,6 +3462,10 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 // rollout past Deployment.spec.progressDeadlineSeconds.
 const reasonProgressDeadlineExceeded = "ProgressDeadlineExceeded"
 
+// reasonNewReplicaSetAvailable is Kubernetes' Progressing=True reason once a
+// rollout completed. Scaling the Deployment afterwards leaves it in place.
+const reasonNewReplicaSetAvailable = "NewReplicaSetAvailable"
+
 // progressDeadlineExceeded returns Kubernetes' Progressing=False
 // ProgressDeadlineExceeded verdict, or nil — the operator's own
 // rolloutBudgetSeconds projected onto Deployment.spec.progressDeadlineSeconds.
@@ -3492,9 +3496,48 @@ func deploymentCondition(dep *appsv1.Deployment, t appsv1.DeploymentConditionTyp
 	return nil
 }
 
-// deploymentProgressDeadlineExceeded reports whether dep carries that verdict.
-func deploymentProgressDeadlineExceeded(dep *appsv1.Deployment) bool {
-	return progressDeadlineExceeded(dep) != nil
+// rolloutDeadline returns the progress-deadline verdict for app's release on
+// dep: Kubernetes' own, or scaledUpPastDeadline's for the start Kubernetes
+// never times. nil while the release is still within its budget.
+func rolloutDeadline(app *appv1alpha1.App, dep *appsv1.Deployment) *appsv1.DeploymentCondition {
+	if c := progressDeadlineExceeded(dep); c != nil {
+		return c
+	}
+	return scaledUpPastDeadline(app, dep)
+}
+
+// scaledUpPastDeadline is the verdict a release that has not served gets when
+// its Deployment was scaled up rather than rolled, and it stayed unavailable
+// past rolloutBudgetSeconds (w1/124). The deployment controller times only
+// rollouts: a Deployment that completed at zero replicas keeps Progressing at
+// NewReplicaSetAvailable when it scales up, however long its pods stay unready.
+// A wake, or a resume, of a parked Deployment carrying such a release therefore
+// never settled: the awaited verdict deferred the park, and the service read
+// Deploying behind the activator until someone suspended it. Counting the
+// budget from when the Deployment lost availability gives the start the verdict
+// its rollout would have had. A served release is excluded, because its pods
+// going unready is not a deploy.
+func scaledUpPastDeadline(app *appv1alpha1.App, dep *appsv1.Deployment) *appsv1.DeploymentCondition {
+	if dep == nil || dep.Status.ObservedGeneration < dep.Generation || dep.Spec.Replicas == nil || *dep.Spec.Replicas == 0 {
+		return nil
+	}
+	if rev := dep.Spec.Template.Labels[labelRevision]; rev != releaseRevision(app) || rev == app.Status.ActiveRevision {
+		return nil
+	}
+	progressing := deploymentCondition(dep, appsv1.DeploymentProgressing)
+	available := deploymentCondition(dep, appsv1.DeploymentAvailable)
+	if progressing == nil || progressing.Reason != reasonNewReplicaSetAvailable ||
+		available == nil || available.Status != corev1.ConditionFalse {
+		return nil
+	}
+	deadline := available.LastTransitionTime.Add(time.Duration(rolloutBudgetSeconds) * time.Second)
+	if time.Now().Before(deadline) {
+		return nil
+	}
+	return &appsv1.DeploymentCondition{
+		Type: appsv1.DeploymentProgressing, Status: corev1.ConditionFalse, Reason: reasonProgressDeadlineExceeded,
+		LastTransitionTime: metav1.NewTime(deadline),
+	}
 }
 
 // holdFailedFirstRelease keeps a stopped first release (releasePlan.stopped)
