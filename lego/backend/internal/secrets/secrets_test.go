@@ -92,11 +92,12 @@ func getApp(t *testing.T, cl client.Client, name string) *appv1alpha1.App {
 // "services/web/env"). failGet/failPut inject store outages so the error paths are
 // exercised too.
 type fakeSecretStore struct {
-	m       map[string]map[string]string
-	puts    int
-	deletes int
-	failGet error
-	failPut error
+	m          map[string]map[string]string
+	puts       int
+	deletes    int
+	failGet    error
+	failPut    error
+	failDelete error
 }
 
 func newFakeSecretStore() *fakeSecretStore {
@@ -129,6 +130,9 @@ func (f *fakeSecretStore) Put(_ context.Context, path string, data map[string]st
 
 func (f *fakeSecretStore) Delete(_ context.Context, path string) error {
 	f.deletes++
+	if f.failDelete != nil {
+		return f.failDelete
+	}
 	delete(f.m, path)
 	return nil
 }
@@ -254,6 +258,25 @@ func TestEnvVar_SingleKey(t *testing.T) {
 
 func TestEnvVars_Errors(t *testing.T) {
 	ctx := context.Background()
+
+	// w4/404: a configured store failing a read answers "could not be read",
+	// never "not configured", under the same code.
+	t.Run("failing store => could not be read", func(t *testing.T) {
+		store := newFakeSecretStore()
+		store.failGet = errors.New("bao sealed")
+		svc := newService(store, sampleApp("web"))
+		_, err := svc.ListEnvVars(ctx, "web")
+		if !errors.Is(err, core.ErrSecretsUnavailable) {
+			t.Fatalf("read error = %v, want ErrSecretsUnavailable", err)
+		}
+		if !strings.Contains(err.Error(), "the secret store could not be read; try again") || strings.Contains(err.Error(), "not configured") {
+			t.Errorf("read error = %v, want the could-not-be-read message", err)
+		}
+		var coded *core.CodedError
+		if !errors.As(err, &coded) || coded.Code != "SECRETS_UNAVAILABLE" {
+			t.Errorf("read error = %v, want code SECRETS_UNAVAILABLE", err)
+		}
+	})
 
 	t.Run("nil store => unavailable", func(t *testing.T) {
 		svc := newService(nil, sampleApp("web"))

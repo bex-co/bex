@@ -231,7 +231,7 @@ func (s *Service) scope(ctx context.Context, relation, service string) (*appv1al
 func (s *Service) readMap(ctx context.Context, path string) (map[string]string, error) {
 	cur, err := s.Store.Get(ctx, path)
 	if err != nil {
-		return nil, err
+		return nil, envSourceUnavailable(err)
 	}
 	return cur, nil
 }
@@ -369,13 +369,16 @@ func (s *Service) readAuthorizedEnv(ctx context.Context, service string) (map[st
 func (s *Service) readVersionedEnvMap(ctx context.Context, path string, versioned core.VersionedSecretKV) (map[string]string, string, error) {
 	snapshot, err := versioned.GetVersioned(ctx, path)
 	if err != nil {
-		return nil, "", envSourceUnavailable()
+		return nil, "", envSourceUnavailable(err)
 	}
 	return snapshot.Data, encodeEnvRevision(snapshot.Version), nil
 }
 
-func envSourceUnavailable() error {
-	return fmt.Errorf("%w: environment source is unavailable", core.ErrSecretsUnavailable)
+// envSourceUnavailable answers a failed read or write against a configured
+// store (w4/404): the public message says the store could not be read, never
+// that it is "not configured", and the cause (never secret values) is logged.
+func envSourceUnavailable(cause error) error {
+	return core.HideCause(core.ErrSecretsStoreFailed, cause)
 }
 
 // secretChanged is the answer to a write that kept losing to concurrent ones.
@@ -962,7 +965,7 @@ func (s *Service) updateMapCAS(ctx context.Context, path string, mutate func(cur
 	for attempt := 0; attempt <= casMaxRetries; attempt++ {
 		snapshot, err := versioned.GetVersioned(ctx, path)
 		if err != nil {
-			return nil, mapWrite{}, envSourceUnavailable()
+			return nil, mapWrite{}, envSourceUnavailable(err)
 		}
 		current := core.CloneStringMap(snapshot.Data)
 		if !mutate(current) {
@@ -1052,7 +1055,7 @@ func (s *Service) deleteMapKeyAfterProjection(ctx context.Context, path, key str
 	for attempt := 0; attempt <= casMaxRetries; attempt++ {
 		snapshot, err := versioned.GetVersioned(ctx, path)
 		if err != nil {
-			return false, envSourceUnavailable()
+			return false, envSourceUnavailable(err)
 		}
 		current := core.CloneStringMap(snapshot.Data)
 		if current == nil {

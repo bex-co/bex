@@ -238,7 +238,7 @@ func (s *Service) patchEnvironmentCAS(ctx context.Context, service string, a *ap
 	}
 	snapshot, err := versionedStore.GetVersioned(ctx, envPath(service))
 	if err != nil {
-		return EnvironmentPatchResult{}, envSourceUnavailable()
+		return EnvironmentPatchResult{}, envSourceUnavailable(err)
 	}
 	oldEnv := snapshot.Data
 	if snapshot.Version != expectedVersion {
@@ -266,7 +266,7 @@ func (s *Service) patchEnvironmentCAS(ctx context.Context, service string, a *ap
 		if errors.Is(putErr, core.ErrConflict) {
 			return EnvironmentPatchResult{}, envRevisionConflict()
 		}
-		return EnvironmentPatchResult{}, envSourceUnavailable()
+		return EnvironmentPatchResult{}, envSourceUnavailable(putErr)
 	}
 	revision := encodeEnvRevision(newVersion)
 	result.Revision = &revision
