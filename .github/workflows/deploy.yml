@@ -997,6 +997,11 @@ jobs:
           GRANTS_ONLY=1 bash scripts/ssh-gateway-db-role.sh
           kubectl -n bex-system rollout restart deploy/bex-ssh-gateway
           kubectl -n bex-system rollout status deploy/bex-ssh-gateway --timeout=300s
+          # drain-guard holds a pre-drain hook on every tenant Machine; while it
+          # is down, a node roll waits on that hook (docs/runbooks/drain-guard.md).
+          # Argo moves it to the new digest itself, hence no restart and a
+          # longer wait.
+          kubectl -n bex-system rollout status deploy/bex-drain-guard --timeout=600s
 
       # The infra workflow may be waiting to enable PROXY protocol on the two
       # raw datastore listeners. Do not report this deploy successful until
