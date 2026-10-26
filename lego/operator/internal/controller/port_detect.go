@@ -19,8 +19,6 @@ package controller
 import (
 	"context"
 	"fmt"
-
-	"github.com/bex-co/bex/lego/operator/internal/portscan"
 	"strconv"
 	"strings"
 	"time"
@@ -30,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/bex-co/bex/lego/operator/internal/portscan"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
