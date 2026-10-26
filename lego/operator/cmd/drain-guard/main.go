@@ -15,8 +15,9 @@ limitations under the License.
 */
 
 // bex-drain-guard holds a CAPI pre-drain hook on the tenant pool's Machines
-// and, when one is deleted, hands its single-instance Apps over to another node
-// before the drain (w1/m186, internal/drainguard). It is deliberately not part
+// and, when one is deleted or Cluster Autoscaler marks its node for removal,
+// hands its single-instance Apps over to another node before the drain
+// (w1/m186, w1/m187, internal/drainguard). It is deliberately not part
 // of the operator: it runs as its own narrowly scoped ServiceAccount so the
 // operator never gains rights in the locked-down CAPI namespace.
 package main
@@ -35,6 +36,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
@@ -109,15 +111,23 @@ func run(o options) error {
 	if err := mgr.AddHealthzCheck("ping", healthz.Ping); err != nil {
 		return err
 	}
-	// Uncached: drain-guard reads nodes, pods and Deployments only while a
-	// Machine is being deleted, so a cluster-wide watch would cost more than
-	// it saves.
+	// Uncached: drain-guard reads pods and Deployments only while a node is
+	// leaving, so a cluster-wide watch would cost more than it saves.
 	workload, err := client.New(workloadCfg, client.Options{Scheme: scheme})
 	if err != nil {
 		return fmt.Errorf("workload client: %w", err)
 	}
+	// The workload cluster's cache serves the one watch drain-guard needs there:
+	// Nodes, for Cluster Autoscaler's removal taint.
+	workloadCluster, err := cluster.New(workloadCfg, func(co *cluster.Options) { co.Scheme = scheme })
+	if err != nil {
+		return fmt.Errorf("workload cluster: %w", err)
+	}
+	if err := mgr.Add(workloadCluster); err != nil {
+		return err
+	}
 	r := &drainguard.Reconciler{Machines: mgr.GetClient(), Workload: workload, Selector: sel, MaxHold: o.maxHold}
-	if err := r.SetupWithManager(mgr); err != nil {
+	if err := r.SetupWithManager(mgr, workloadCluster.GetCache()); err != nil {
 		return err
 	}
 	ctrl.Log.WithName("drain-guard").Info("guarding Machines",

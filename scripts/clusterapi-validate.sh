@@ -506,6 +506,19 @@ if [ -z "$autoscaler_tag" ] || [ "$autoscaler_minor" != "$overlay_minor" ]; then
   fail=1
 fi
 
+# bex-drain-guard hands single-instance Apps off a node during the delay CA
+# sleeps between its ToBeDeletedByClusterAutoscaler taint and its drain
+# (w1/m187). Upstream's 5s default would quietly bring the eviction back.
+echo "==> autoscaler leaves drain-guard a window before it drains"
+delete_delay="$(yq -N '.extraArgs.node-delete-delay-after-taint // ""' "$AUTOSCALER_VALUES")"
+case "$delete_delay" in
+  [2-9]m | [1-9][0-9]m) ;;
+  *)
+    echo "FAIL: autoscaler node-delete-delay-after-taint is '$delete_delay' (want whole minutes, at least 2m: drain-guard's window to start a replacement before CA evicts)" >&2
+    fail=1
+    ;;
+esac
+
 # 3. The bake must not reintroduce a trimmed package.
 echo "==> $PACKER installs no trimmed apt package"
 if [ -f "$PACKER" ]; then
