@@ -6,6 +6,7 @@ import {
   Loader2,
   Terminal as TerminalIcon,
   Wrench,
+  XCircle,
 } from "lucide-react";
 import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -14,32 +15,43 @@ import {
   useStreamDuration,
 } from "@/features/agent-sessions/lib/stream-duration";
 import {
+  clippedChars,
   toolCommand,
-  type ToolPartInfo,
+  type ToolKind,
 } from "@/features/agent-sessions/lib/acp-parts";
+import {
+  activityCounts,
+  isToolStepFailed,
+  isToolStepPending,
+  stepLabel,
+  type ActivityStep,
+} from "@/features/agent-sessions/lib/activity-steps";
 
 // One folded activity block: the consecutive tool parts and ACP
-// command/terminal/diff parts of a single assistant turn, merged into a single
-// collapsible group (Devin's "Worked for <Ns>" shape). The collapsed summary
-// states "Working…" while any tool step is pending, else "Worked for 12s" when
-// persisted source timestamps are present (or "Worked for ~Ns" from arrival
-// timing). A one-frame replay of an untimestamped history still falls back to
-// a bare "Worked". Expanding reveals the steps as a VERTICAL TIMELINE.
+// command/terminal/diff parts of a single assistant turn, merged into ONE
+// signal-first summary line (w10/m16 t005): "Ran 12 commands · Read 8 files ·
+// Edited 3 files", with the elapsed time beside it ("40s" from persisted source
+// timestamps, "~40s" from arrival timing, nothing on an untimestamped one-frame
+// replay). Collapsed by default; failed calls stay visible under the line
+// without expanding. Expanding reveals the steps as a VERTICAL TIMELINE.
 
-/** One renderable step inside an activity group. */
-export type ActivityStep =
-  | ({ kind: "tool" } & ToolPartInfo)
-  | { kind: "terminal"; output?: string }
-  | { kind: "diff"; path?: string; oldText?: string; newText?: string };
+const KIND_ORDER: ToolKind[] = [
+  "command",
+  "read",
+  "edit",
+  "search",
+  "subagent",
+  "tool",
+];
 
-/** A tool step is pending until it reaches a terminal (output/error) state. */
-function isToolStepPending(step: ActivityStep): boolean {
-  return (
-    step.kind === "tool" &&
-    step.state !== "output-available" &&
-    step.state !== "output-error"
-  );
-}
+const KIND_LABEL_KEYS: Record<ToolKind, string> = {
+  command: "agentSessions.activityRan",
+  read: "agentSessions.activityRead",
+  edit: "agentSessions.activityEdited",
+  search: "agentSessions.activitySearched",
+  subagent: "agentSessions.activitySubagents",
+  tool: "agentSessions.activityTools",
+};
 
 export function ActivityGroup({
   steps,
@@ -53,17 +65,20 @@ export function ActivityGroup({
 
   const hasPending = steps.some(isToolStepPending);
   const duration = useStreamDuration(steps.length, !hasPending, sourceTimesMs);
-
-  const summaryLabel = hasPending
-    ? t("agentSessions.activityWorking")
-    : duration.ms >= 1000
-      ? t("agentSessions.groupWorkedFor", {
-          duration: formatStreamDuration(duration),
-        })
-      : t("agentSessions.groupWorked");
+  const failed = steps.filter(isToolStepFailed);
+  const counts = activityCounts(steps);
+  const segments = KIND_ORDER.flatMap((kind) => {
+    const count = counts.get(kind);
+    return count ? [t(KIND_LABEL_KEYS[kind] as never, { count })] : [];
+  });
+  const summaryLabel = segments.join(" · ");
 
   return (
-    <div className="bg-muted/20 border-border/70 my-1.5 overflow-hidden rounded-lg border">
+    <div
+      data-block="activity"
+      data-steps={steps.length}
+      className="bg-muted/20 border-border/70 my-1.5 overflow-hidden rounded-lg border"
+    >
       <button
         type="button"
         onClick={() => setIsOpen((open) => !open)}
@@ -77,7 +92,18 @@ export function ActivityGroup({
         )}
         <span className="text-foreground/90 min-w-0 flex-1 truncate text-xs font-medium">
           {summaryLabel}
+          {failed.length > 0 && (
+            <span className="text-destructive">
+              {" · "}
+              {t("agentSessions.activityFailed", { count: failed.length })}
+            </span>
+          )}
         </span>
+        {!hasPending && duration.ms >= 1000 && (
+          <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
+            {formatStreamDuration(duration)}
+          </span>
+        )}
         <ChevronDown
           className={cn(
             "text-muted-foreground size-3.5 shrink-0 transition-transform",
@@ -85,6 +111,24 @@ export function ActivityGroup({
           )}
         />
       </button>
+
+      {/* A failure is signal: visible without expanding the group. */}
+      {!isOpen && failed.length > 0 && (
+        <ul className="border-border/50 space-y-0.5 border-t px-2.5 py-1">
+          {failed.map((step, i) => (
+            <li
+              key={step.toolCallId ?? i}
+              className="text-destructive flex min-w-0 items-center gap-1.5 text-xs"
+            >
+              <XCircle aria-hidden className="size-3 shrink-0" />
+              <span className="min-w-0 truncate">
+                <span className="font-medium">{stepLabel(step)}</span>
+                {step.errorText ? `: ${firstLine(step.errorText)}` : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {isOpen && (
         <div className="border-border/50 border-t px-2.5 py-1.5">
@@ -107,6 +151,17 @@ export function ActivityGroup({
   );
 }
 
+// The first non-empty, non-fence line of an error (outputs often open with a
+// ``` fence).
+function firstLine(text: string): string {
+  return (
+    text
+      .split("\n")
+      .map((line) => line.trim())
+      .find((line) => line && !line.startsWith("```")) ?? ""
+  );
+}
+
 function ActivityStepView({ step }: { step: ActivityStep }) {
   const { t } = useTranslations();
 
@@ -119,6 +174,7 @@ function ActivityStepView({ step }: { step: ActivityStep }) {
         <pre className="max-h-40 overflow-auto rounded-md bg-[#0a0a0a] px-2.5 py-1.5 font-mono text-xs leading-relaxed whitespace-pre-wrap text-[#e5e5e5]">
           {step.output ?? t("agentSessions.terminalNoOutput")}
         </pre>
+        <ClippedBadge chars={clippedChars(step.output)} />
       </div>
     );
   }
@@ -160,7 +216,9 @@ function ActivityStepView({ step }: { step: ActivityStep }) {
             )
           }
         >
-          <span className="font-semibold">{step.name}</span>
+          {step.name !== command && (
+            <span className="min-w-0 truncate font-semibold">{step.name}</span>
+          )}
           {command && <code className="min-w-0 truncate">{command}</code>}
           <span className="text-muted-foreground/60 ml-auto shrink-0">
             {toolStateLabel(step.state, t)}
@@ -169,13 +227,40 @@ function ActivityStepView({ step }: { step: ActivityStep }) {
         {command === undefined && step.input !== undefined && (
           <StepCode code={safeJson(step.input)} />
         )}
-        {!ack && <StepCode code={safeJson(output)} />}
-        {step.errorText && (
-          <p className="text-destructive text-xs">{step.errorText}</p>
+        {!ack && (
+          <StepCode
+            code={typeof output === "string" ? output : safeJson(output)}
+          />
         )}
+        {step.errorText && (
+          <p className="text-destructive text-xs whitespace-pre-wrap">
+            {step.errorText}
+          </p>
+        )}
+        <ClippedBadge
+          chars={
+            clippedChars(typeof output === "string" ? output : undefined) +
+            clippedChars(step.errorText)
+          }
+        />
       </div>
     );
   }
+}
+
+// The server stores a long tool output head+tail-capped with a
+// `[bex: N chars clipped]` marker (w10/m16 t003); say so beside the output.
+function ClippedBadge({ chars }: { chars: number }) {
+  const { t, i18n } = useTranslations();
+  if (chars <= 0) return null;
+  return (
+    <span className="border-border/60 text-muted-foreground inline-flex rounded border px-1.5 py-px text-[11px]">
+      {t("agentSessions.outputClipped", {
+        count: chars,
+        formatted: chars.toLocaleString(i18n.language),
+      })}
+    </span>
+  );
 }
 
 // A compact single-line step row (command / tool header).

@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   classifyAcpPart,
+  clippedChars,
   isUtcTimestamp,
   sourceTimestampsMs,
   toolCommand,
+  toolKind,
   toolPartInfo,
 } from "@/features/agent-sessions/lib/acp-parts";
 
@@ -155,5 +157,36 @@ describe("native tool parts", () => {
     expect(toolCommand({ command: "" })).toBeUndefined();
     expect(toolCommand({ q: "x" })).toBeUndefined();
     expect(toolCommand(null)).toBeUndefined();
+  });
+});
+
+describe("toolKind / clippedChars (w10/m16 t005)", () => {
+  it.each([
+    [{ name: "Terminal", input: {} }, "command"],
+    [
+      { name: "git status && ls", input: { command: "git status && ls" } },
+      "command",
+    ],
+    [{ name: "Read File", input: { file_path: "a.go" } }, "read"],
+    [{ name: "Read lego/a.go", input: {} }, "read"],
+    [{ name: "Write", input: { file_path: "a.go", content: "x" } }, "edit"],
+    [{ name: "Edit a.go", input: {} }, "edit"],
+    [{ name: "Grep", input: { pattern: "x" } }, "search"],
+    [{ name: "Task", input: {} }, "subagent"],
+    [
+      { name: "Scan lego", input: { subagent_type: "x", prompt: "p" } },
+      "subagent",
+    ],
+    [{ name: "mcp__bex__deploy", input: { id: "x" } }, "tool"],
+  ])("classifies %o as %s", (info, kind) => {
+    expect(toolKind(info)).toBe(kind);
+  });
+
+  it("sums the backend's clip markers", () => {
+    expect(
+      clippedChars("a[bex: 10 chars clipped]b[bex: 5 chars clipped]"),
+    ).toBe(15);
+    expect(clippedChars("no marker")).toBe(0);
+    expect(clippedChars({ text: "[bex: 3 chars clipped]" })).toBe(0);
   });
 });

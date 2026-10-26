@@ -34,41 +34,58 @@ export function useStreamDuration(
   const sourcedClosed = elapsedMsFromSource(sourceTimesMs, true, 0);
   const needsLiveClock =
     !settled && sourcedClosed !== undefined && sourcedClosed === 0;
+  // A primitive (not the array) keys the effect: callers rebuild
+  // `sourceTimesMs` on every streamed chunk.
+  const liveStartMs = needsLiveClock
+    ? Math.min(...sourceTimesMs.filter((n) => Number.isFinite(n)))
+    : undefined;
   const [duration, setDuration] = useState<StreamDuration>({
     ms: 0,
     approximate: true,
   });
+  const publishedRef = useRef(duration);
 
   useEffect(() => {
     if (sourcedClosed !== undefined && !needsLiveClock) return;
     const now = Date.now();
-    if (sourcedClosed !== undefined) {
-      const sourced = elapsedMsFromSource(sourceTimesMs, false, now) ?? 0;
-      // Clock sample on growth — not an external store.
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- live elapsed
-      setDuration((prev) =>
-        prev.ms === sourced && !prev.approximate
-          ? prev
-          : { ms: sourced, approximate: false },
-      );
+    let next: StreamDuration;
+    if (liveStartMs !== undefined) {
+      next = {
+        ms: wholeSeconds(clampElapsed(now - liveStartMs)),
+        approximate: false,
+      };
+    } else {
+      if (startRef.current === null) startRef.current = now;
+      if (frozenRef.current) return;
+      next = {
+        ms: wholeSeconds(clampElapsed(now - startRef.current)),
+        approximate: true,
+      };
       if (settled) frozenRef.current = true;
-      return;
     }
-    if (startRef.current === null) startRef.current = now;
-    if (frozenRef.current) return;
-    const next = now - startRef.current;
-    setDuration((prev) =>
-      prev.ms === next && prev.approximate
-        ? prev
-        : { ms: next, approximate: true },
-    );
-    if (settled) frozenRef.current = true;
-  }, [itemCount, settled, sourcedClosed, needsLiveClock, sourceTimesMs]);
+    // Only a changed whole-second label re-renders. Each streamed chunk is a
+    // synchronous `useChat` store update; a state update queued from this
+    // passive effect on every chunk stays pending behind the burst and trips
+    // React's nested-update limit (#185, w10/m16 t001) on a long replay.
+    const prev = publishedRef.current;
+    if (prev.ms === next.ms && prev.approximate === next.approximate) return;
+    publishedRef.current = next;
+    setDuration(next);
+  }, [itemCount, settled, sourcedClosed, needsLiveClock, liveStartMs]);
 
   if (sourcedClosed !== undefined && !needsLiveClock) {
     return { ms: sourcedClosed, approximate: false };
   }
   return duration;
+}
+
+function clampElapsed(ms: number): number {
+  return Number.isFinite(ms) ? Math.min(Math.max(0, ms), MAX_ELAPSED_MS) : 0;
+}
+
+/** Labels show whole seconds, so the live clock only changes once a second. */
+function wholeSeconds(ms: number): number {
+  return Math.floor(ms / 1000) * 1000;
 }
 
 /**
