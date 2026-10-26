@@ -129,7 +129,7 @@ export function preDeployStatusKey(status: string): string | null {
 }
 
 // Deploy.trigger's plain-string values (store.Trigger* — "create"|"api"|
-// "deploy_hook"|"blueprint"|"rollback"). "rollback" is deliberately absent
+// "manual"|"deploy_hook"|"blueprint"|"rollback"). "rollback" is deliberately absent
 // here: deployTriggerLabel interpolates rollbackOf so the restored deploy id
 // stays literal (w4/m108/t005 — no CSS capitalize over the id). An
 // unrecognized value returns null so the caller can fall back to rendering it
@@ -140,6 +140,8 @@ export function deployTriggerKey(trigger: string): string | null {
       return "deploys.triggerCreate";
     case "api":
       return "deploys.triggerApi";
+    case "manual":
+      return "deploys.triggerManual";
     case "deploy_hook":
       return "deploys.triggerDeployHook";
     case "blueprint":

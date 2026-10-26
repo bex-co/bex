@@ -98,6 +98,9 @@ type ServiceEventRow struct {
 	// phase only, and only while the deploy is open: the row's own column is
 	// cleared as it goes terminal. An observation, not a verdict.
 	StallReason string
+	// ClearCache records a deploy opened with clearCache=clear (w4/413);
+	// the started phase only.
+	ClearCache bool
 	// Deployed image URI; empty for non-deploy rows. (w1/m47)
 	Image string
 	// Commit ID (git revision); empty for non-deploy rows. (w1/m47)
@@ -287,7 +290,8 @@ WITH feed AS (
            ''::text                            AS commit_url,
            ''::text                            AS fact_status,
            NULL::integer                       AS fact_exit_code,
-           ''::text                            AS fact_run_id
+           ''::text                            AS fact_run_id,
+           d.clear_cache                       AS clear_cache
     FROM deploys d
     WHERE d.app_id = $1 AND '` + EventPhaseStarted + `' = ANY($4)
   UNION ALL
@@ -337,7 +341,8 @@ WITH feed AS (
            ''::text,
            ''::text,
            NULL::integer,
-           ''::text
+           ''::text,
+           false
     FROM deploys d
     WHERE d.app_id = $1 AND d.finished_at IS NOT NULL AND '` + EventPhaseEnded + `' = ANY($4)
   UNION ALL
@@ -387,7 +392,8 @@ WITH feed AS (
            ''::text,
            ''::text,
            NULL::integer,
-           ''::text
+           ''::text,
+           false
     FROM audit_events a
     JOIN service_event_index i ON i.source = 'audit' AND i.source_row_id = a.id
     WHERE i.app_id = $1 AND i.workspace_id = $2
@@ -445,7 +451,8 @@ WITH feed AS (
            f.commit_url,
            f.status,
            f.exit_code,
-           f.run_id
+           f.run_id,
+           false
     FROM service_event_facts f
     LEFT JOIN deploys dc ON dc.id = f.deploy_id AND f.deploy_id <> ''
     WHERE f.app_id = $1 AND f.fact_type = ANY($11)
@@ -457,7 +464,7 @@ SELECT key, at, source, phase, deploy_id, trigger, status, pre_deploy_status, fa
        high_availability_enabled, connection_pool_enabled, disk_size_gb, maxmemory_policy, persistence_mode,
        image, commit_id, commit_message, started_at, finished_at,
        fact_type, reason_code, instance_id, fact_from_count, fact_to_count,
-       branch_from, branch_to, commit_url, fact_status, fact_exit_code, fact_run_id
+       branch_from, branch_to, commit_url, fact_status, fact_exit_code, fact_run_id, clear_cache
 FROM feed
 WHERE ($5::timestamptz IS NULL OR at >= $5)
   AND ($6::timestamptz IS NULL OR at <= $6)
@@ -605,6 +612,7 @@ SELECT h.event_key AS key,
        CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.status, '') ELSE '' END AS fact_status,
        CASE WHEN h.source = '` + EventSourceFact + `' THEN f.exit_code END AS fact_exit_code,
        CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.run_id, '') ELSE '' END AS fact_run_id,
+       CASE WHEN h.source = '` + EventSourceDeploy + `' AND h.phase = '` + EventPhaseStarted + `' THEN d.clear_cache ELSE false END AS clear_cache,
        COALESCE(h.app_id, h.service_id)
 FROM hit h
 LEFT JOIN deploys d
@@ -694,7 +702,7 @@ func serviceEventScanDestinations(r *ServiceEventRow, trailing ...any) []any {
 		&r.HighAvailabilityEnabled, &r.ConnectionPoolEnabled, &r.DiskSizeGB, &r.MaxmemoryPolicy, &r.PersistenceMode,
 		&r.Image, &r.CommitID, &r.CommitMessage, &r.StartedAt, &r.FinishedAt,
 		&r.FactType, &r.ReasonCode, &r.InstanceID, &r.FromCount, &r.ToCount,
-		&r.BranchFrom, &r.BranchTo, &r.CommitURL, &r.FactStatus, &r.FactExitCode, &r.FactRunID,
+		&r.BranchFrom, &r.BranchTo, &r.CommitURL, &r.FactStatus, &r.FactExitCode, &r.FactRunID, &r.ClearCache,
 	}
 	return append(destinations, trailing...)
 }

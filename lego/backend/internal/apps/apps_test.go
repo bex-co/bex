@@ -806,7 +806,7 @@ func (r *recordingStore) DomainHostsClaimed(_ context.Context, hosts []string) (
 	return claimed, nil
 }
 
-func (r *recordingStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string) (store.Deploy, error) {
+func (r *recordingStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string, clearCache ...bool) (store.Deploy, error) {
 	if r.err != nil {
 		return store.Deploy{}, r.err
 	}

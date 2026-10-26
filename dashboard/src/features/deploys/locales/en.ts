@@ -130,8 +130,12 @@ const enDeploys: Record<string, TranslationEntry> = {
     description: "Deploy header: trigger=create label",
   },
   "deploys.triggerApi": {
+    message: "API Deploy",
+    description: "Deploy header: trigger=api label (an API-key deploy, w4/413)",
+  },
+  "deploys.triggerManual": {
     message: "Manual Deploy",
-    description: "Deploy header: trigger=api label",
+    description: "Deploy header: trigger=manual label (a dashboard click, w4/413)",
   },
   "deploys.triggerRollback": {
     message: "Rollback to {deployId}",

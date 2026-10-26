@@ -173,8 +173,10 @@ func TestEventSurfaceParity(t *testing.T) {
 		t.Errorf("deploy_ended deployStatus = %v, want succeeded", got)
 	}
 	trigger, ok := rest[3].Event.Details["trigger"].(map[string]any)
-	if !ok || trigger["manual"] != true || trigger["firstBuild"] != false {
-		t.Errorf("deploy_started trigger = %v, want manual (an API-triggered deploy)", rest[3].Event.Details["trigger"])
+	// w4/413: an API-triggered deploy reads manual:false on Render too; only
+	// a dashboard Manual Deploy sets manual.
+	if !ok || trigger["manual"] != false || trigger["firstBuild"] != false {
+		t.Errorf("deploy_started trigger = %v, want manual:false firstBuild:false (an API-triggered deploy)", rest[3].Event.Details["trigger"])
 	}
 	// w4/391: actor is the suspender kind and the human rides in
 	// suspendedByUser {id, email}.
