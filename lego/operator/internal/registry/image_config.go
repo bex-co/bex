@@ -194,6 +194,19 @@ func anonymousBearerToken(ctx context.Context, client *http.Client, challenge st
 	return "", fmt.Errorf("registry token response has no token")
 }
 
+// blobRedirectPolicy bounds blob-storage redirects (w8/201): a short https
+// chain, and the registry credential never travels to the storage host.
+func blobRedirectPolicy(req *http.Request, via []*http.Request) error {
+	if len(via) > maxBlobRedirects {
+		return fmt.Errorf("image metadata blob redirected more than %d times", maxBlobRedirects)
+	}
+	if req.URL.Scheme != "https" {
+		return errors.New("image metadata blob redirected to a non-https URL")
+	}
+	req.Header.Del("Authorization")
+	return nil
+}
+
 func readImageConfigDocument(ctx context.Context, httpClient *http.Client, registryHost, repo, reference, authorization string) (string, imageConfigDocument, error) {
 	base, err := imageRepoBase(registryHost, repo, reference, authorization)
 	if err != nil {
@@ -212,16 +225,7 @@ func readImageConfigDocument(ctx context.Context, httpClient *http.Client, regis
 	// https redirect cannot substitute content; the registry credential never
 	// travels with it (presigned URLs carry their own authorization).
 	blobs := bounded
-	blobs.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		if len(via) > maxBlobRedirects {
-			return fmt.Errorf("image metadata blob redirected more than %d times", maxBlobRedirects)
-		}
-		if req.URL.Scheme != "https" {
-			return errors.New("image metadata blob redirected to a non-https URL")
-		}
-		req.Header.Del("Authorization")
-		return nil
-	}
+	blobs.CheckRedirect = blobRedirectPolicy
 	fetch := func(client *http.Client, path, expectedDigest string) ([]byte, string, error) {
 		bearer := ""
 		for attempt := 0; ; attempt++ {
