@@ -1,4 +1,10 @@
-import { type ReactNode, useState } from "react";
+import {
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import {
   AlertDialog,
@@ -94,6 +100,12 @@ export interface ConfirmDialogProps {
    * passing false owns closing (usually by navigating away on success).
    */
   closeOnConfirm?: boolean;
+  /**
+   * Where focus returns on close when the caller opened the dialog from an
+   * element Radix never saw (controlled, no `trigger`). Defaults to the
+   * element focused when the dialog opened (w4/408).
+   */
+  returnFocusRef?: RefObject<HTMLElement | null>;
 }
 
 export function ConfirmDialog({
@@ -113,9 +125,41 @@ export function ConfirmDialog({
   confirmDisabled = false,
   contentClassName,
   closeOnConfirm = true,
+  returnFocusRef,
 }: ConfirmDialogProps) {
   const { t } = useTranslations();
   const [typed, setTyped] = useState("");
+
+  // Focus return for the controlled-without-trigger shape (w4/408): Radix
+  // restores focus only to its own Trigger, so a dialog opened from the
+  // caller's own button would drop focus to <body> on close. Remember the
+  // opener as the dialog opens and hand focus back to it (or to
+  // returnFocusRef) unless it has left the page — a successful Delete that
+  // navigates away keeps normal navigation focus.
+  const openerRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (open || trigger !== undefined) return;
+    // While closed, remember the last element the user focused: activating
+    // it (click or Enter) is what opens the dialog, and its focusin lands
+    // before Radix moves focus inside. Capturing at open time would read
+    // the dialog's own first control instead.
+    const remember = () => {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && active !== document.body) {
+        openerRef.current = active;
+      }
+    };
+    document.addEventListener("focusin", remember);
+    return () => document.removeEventListener("focusin", remember);
+  }, [open, trigger]);
+
+  const handleCloseAutoFocus = (event: Event) => {
+    if (trigger !== undefined) return; // Radix restores to its Trigger.
+    event.preventDefault();
+    const target = returnFocusRef?.current ?? openerRef.current;
+    openerRef.current = null;
+    if (target?.isConnected) target.focus();
+  };
   const gateOpen = phrase === undefined || typed === phrase;
 
   // Clearing on close means reopening never starts pre-armed with a phrase
@@ -126,7 +170,10 @@ export function ConfirmDialog({
   };
 
   const body = (
-    <AlertDialogContent className={contentClassName}>
+    <AlertDialogContent
+      className={contentClassName}
+      onCloseAutoFocus={handleCloseAutoFocus}
+    >
       <AlertDialogHeader>
         <AlertDialogTitle>{title}</AlertDialogTitle>
         <AlertDialogDescription>{description}</AlertDialogDescription>
