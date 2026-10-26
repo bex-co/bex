@@ -47,7 +47,7 @@ func (f *fakeDeployStore) LatestDeployCommit(_ context.Context, _ string) (store
 	return f.prior, nil
 }
 
-func (f *fakeDeployStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string) (store.Deploy, error) {
+func (f *fakeDeployStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string, clearCache ...bool) (store.Deploy, error) {
 	d := store.Deploy{
 		ID: "dep-recorded", AppID: appID, Trigger: trigger, Image: image, Generation: generation,
 		Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, TriggeredBy: triggeredBy,

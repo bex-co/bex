@@ -3782,7 +3782,7 @@ func (s *Service) recordBlueprintRedeploy(ctx context.Context, existing *appv1al
 		return nil
 	}
 	if id := managedAppID(existing); id != "" {
-		if _, err := s.Store.CreateDeploy(ctx, id, "blueprint", existing.Spec.Image, existing.Generation+1, commit, core.SubjectFrom(ctx)); err != nil {
+		if _, err := s.Store.CreateDeploy(ctx, id, "blueprint", existing.Spec.Image, existing.Generation+1, commit, core.SubjectFrom(ctx), false); err != nil {
 			return fmt.Errorf("recording redeploy: %w", err)
 		}
 	}

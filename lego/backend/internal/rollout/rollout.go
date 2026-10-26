@@ -51,7 +51,7 @@ import (
 // and opening the row. *store.PGStore satisfies it, as does apps.IntentStore's
 // own superset.
 type DeployStore interface {
-	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string) (store.Deploy, error)
+	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string, clearCache ...bool) (store.Deploy, error)
 	// LatestDeployCommit returns the newest non-empty commit for the app, or
 	// zero CommitInfo.
 	LatestDeployCommit(ctx context.Context, appID string) (store.CommitInfo, error)
@@ -288,7 +288,7 @@ func (t *Tracker) open(ctx context.Context, snapshot Snapshot, a *appv1alpha1.Ap
 			commit = store.CommitInfo{Hash: live.Commit, Message: live.CommitMessage, AuthorAt: live.CommitAuthorAt}
 		}
 	}
-	if _, err := t.Store.CreateDeploy(ctx, snapshot.appID, trigger, image, generation, commit, core.SubjectFrom(ctx)); err != nil {
+	if _, err := t.Store.CreateDeploy(ctx, snapshot.appID, trigger, image, generation, commit, core.SubjectFrom(ctx), false); err != nil {
 		log.Printf("rollout: record %s deploy for %s: %v", trigger, a.Name, err)
 	}
 }

@@ -49,7 +49,7 @@ type DeployStore interface {
 	// (w2/m10) — Cancel derives its build-Job identity from the stored value,
 	// never a fresh re-fetch (store.CancelRelease). commit is the resolved commit
 	// this deploy runs (w9/001), zero when unresolvable.
-	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string) (store.Deploy, error)
+	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string, clearCache ...bool) (store.Deploy, error)
 	// LatestDeployCommit returns the newest non-empty commit for the app, or
 	// zero CommitInfo — rollout.Tracker carries it onto config_change rows.
 	LatestDeployCommit(ctx context.Context, appID string) (store.CommitInfo, error)
@@ -499,7 +499,18 @@ type TriggerParams struct {
 //   - image-backed service: accepted (nothing to build regardless of mode).
 //
 // Suspended services refuse the trigger: there is nothing to roll.
+// TriggerManual is Trigger as the dashboard's Manual Deploy action fires
+// it (w4/413): the row records Render's "manual" cause, not "api", so the
+// deploy list and the events feed can tell a click from an API call.
+func (s *Service) TriggerManual(ctx context.Context, service string, p TriggerParams) (DeployView, error) {
+	return s.trigger(ctx, service, p, store.TriggerManual)
+}
+
 func (s *Service) Trigger(ctx context.Context, service string, p TriggerParams) (DeployView, error) {
+	return s.trigger(ctx, service, p, store.TriggerAPI)
+}
+
+func (s *Service) trigger(ctx context.Context, service string, p TriggerParams, trigger string) (DeployView, error) {
 	// SECURITY (codex round-5 F2): imageUrl and commitId SELECT the executable
 	// content this deploy runs — a different image, or a different commit to
 	// build — so supplying either is create-like (developer and up). A
@@ -515,7 +526,7 @@ func (s *Service) Trigger(ctx context.Context, service string, p TriggerParams) 
 	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
 		return DeployView{}, err
 	}
-	return s.triggerFetched(ctx, service, a, p, store.TriggerAPI)
+	return s.triggerFetched(ctx, service, a, p, trigger)
 }
 
 // Rebuild is a full rebuild from the latest commit, recorded as the
@@ -803,7 +814,7 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 		if p.ImageURL != "" {
 			image = p.ImageURL
 		}
-		return s.Store.CreateDeploy(ctx, appID, trigger, image, release, commit, triggeredBy)
+		return s.Store.CreateDeploy(ctx, appID, trigger, image, release, commit, triggeredBy, p.ClearCache == "clear")
 	})
 	if err != nil {
 		return DeployView{}, err

@@ -365,7 +365,7 @@ const (
 //     trigger.firstBuild, which is how Render itself shows a service's birth.
 //   - apps.Delete — the service (and its feed) is gone; the row survives in the
 //     workspace audit log, which is where "who deleted it" belongs.
-//   - deploys.Trigger — the deploys row it opens IS the deploy_started event;
+//   - deploys.Trigger / deploys.TriggerManual — the deploys row each opens IS the deploy_started event;
 //     mapping the verb too would show every API deploy twice.
 //   - apps.TriggerCronRun / apps.CancelCronRun / apps.CancelCurrentCronRun —
 //     the same argument, one surface later (w4/m118). These three are INTENT:
@@ -1010,8 +1010,12 @@ func view(r store.ServiceEventRow, service string) Event {
 				// rollout" — the nearest flag in its vocabulary for the deploys
 				// a Settings field, env var, secret file, or env-group link now
 				// opens (w6/m51). Manual stays false: nobody clicked Deploy.
-				EnvUpdated:       r.Trigger == store.TriggerConfigChange,
-				Manual:           r.Trigger == store.TriggerAPI,
+				EnvUpdated: r.Trigger == store.TriggerConfigChange,
+				// Only a dashboard Manual Deploy is manual (w4/413): an
+				// API-key POST .../deploys is "api" with manual false, as
+				// Render's own record reads.
+				Manual:           r.Trigger == store.TriggerManual,
+				ClearCache:       r.ClearCache,
 				DeployHook:       r.Trigger == store.TriggerDeployHook,
 				Rollback:         r.Trigger == store.TriggerRollback,
 				DeployedByRender: r.Trigger == store.TriggerDeployedByRender,

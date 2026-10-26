@@ -234,6 +234,7 @@ func RenderDeployStatus(status string) string {
 const (
 	TriggerCreate     = "create"      // the app's first deploy, opened by CreateApp
 	TriggerAPI        = "api"         // an authenticated POST .../deploys
+	TriggerManual     = "manual"      // a dashboard Manual Deploy click (Render's spelling, w4/413)
 	TriggerDeployHook = "deploy_hook" // the App's unauthenticated secret-URL trigger
 	TriggerRollback   = "rollback"    // a deploy created by Rollback (w2/m10), restoring an earlier image
 	TriggerNewCommit  = "new_commit"  // a git-push redeploy via the HMAC webhook (Render's spelling)
@@ -259,7 +260,7 @@ const (
 
 // AllTriggers is every Trigger* value — the set REST conformance proves maps
 // onto Render's enum (w8/058). A guard test keeps it in step with the consts.
-var AllTriggers = []string{TriggerCreate, TriggerAPI, TriggerDeployHook, TriggerRollback, TriggerNewCommit, TriggerConfigChange, TriggerRestart, TriggerDeployedByRender}
+var AllTriggers = []string{TriggerCreate, TriggerAPI, TriggerManual, TriggerDeployHook, TriggerRollback, TriggerNewCommit, TriggerConfigChange, TriggerRestart, TriggerDeployedByRender}
 
 // CommitInfo is the git commit a build-from-git deploy runs — the resolved
 // SHA, message, and author timestamp (w9/001 + w2/m42). Zero value = unknown:
@@ -352,6 +353,10 @@ type Deploy struct {
 	// triggers (git push, deploy hook). Not a Render deploy field — kept off
 	// the REST wire; the events feed projects it as Details.TriggeredByUser.
 	TriggeredBy string `json:"-"`
+	// ClearCache records that this deploy was opened with Render's
+	// clearCache=clear (w4/413), so the events feed can report it long after
+	// the release-scoped App annotation has moved on.
+	ClearCache bool `json:"-"`
 }
 
 // Domain is a row of `domains` — a BYOD custom domain attached to an app.
@@ -601,7 +606,7 @@ type Store interface {
 	// core.Identity.Subject for the caller that opened the row (w4/072), or
 	// "" for git auto-deploy / deploy-hook / system paths. The reconciler's
 	// write-back closes it.
-	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit CommitInfo, triggeredBy string) (Deploy, error)
+	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit CommitInfo, triggeredBy string, clearCache ...bool) (Deploy, error)
 	// LatestDeployCommit returns the newest non-empty commit for the app, or
 	// zero CommitInfo when none exists (image-backed history, or only empty
 	// rows). Used by rollout.Tracker to carry a prior release's provenance
@@ -2141,8 +2146,8 @@ func (s *PGStore) ClearCheckedDeployImage(ctx context.Context, appID, repo, bran
 	return tag.RowsAffected() != 0, classify("app", err)
 }
 
-func (s *PGStore) CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit CommitInfo, triggeredBy string) (Deploy, error) {
-	return s.createDeploy(ctx, appID, trigger, image, generation, commit, triggeredBy, supersededByReason)
+func (s *PGStore) CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit CommitInfo, triggeredBy string, clearCache ...bool) (Deploy, error) {
+	return s.createDeploy(ctx, appID, trigger, image, generation, commit, triggeredBy, supersededByReason, len(clearCache) > 0 && clearCache[0])
 }
 
 // EnsureCheckedDeploy records a checked commit's already-applied CR release.
@@ -2183,13 +2188,13 @@ func (s *PGStore) EnsureCheckedDeploy(ctx context.Context, appID string, generat
 // (restartCanceledReason): a Restart re-releases what is running and never
 // carries that row's saved change (w8/m119).
 func (s *PGStore) CreateRestartDeploy(ctx context.Context, appID, image string, generation int64, commit CommitInfo, triggeredBy string) (Deploy, error) {
-	return s.createDeploy(ctx, appID, TriggerRestart, image, generation, commit, triggeredBy, restartCanceledReason)
+	return s.createDeploy(ctx, appID, TriggerRestart, image, generation, commit, triggeredBy, restartCanceledReason, false)
 }
 
 // createDeploy inserts a deploy row; replaced names the cause stamped on a
 // latest-pending row the new one replaces, given the new row's id.
-func (s *PGStore) createDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit CommitInfo, triggeredBy string, replaced func(id string) string) (Deploy, error) {
-	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, TriggeredBy: triggeredBy, Status: DeployCreated}
+func (s *PGStore) createDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit CommitInfo, triggeredBy string, replaced func(id string) string, clearCache bool) (Deploy, error) {
+	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, TriggeredBy: triggeredBy, ClearCache: clearCache, Status: DeployCreated}
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		return insertDeploy(ctx, tx, &d, replaced(d.ID))
 	})
@@ -2207,10 +2212,10 @@ func insertDeploy(ctx context.Context, tx pgx.Tx, d *Deploy, replacedReason stri
 	d.Status, d.CancelReason = status, cancelReason
 	d.OverlapPending = status == DeployQueued
 	return tx.QueryRow(ctx,
-		`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, commit_author_at, triggered_by, status, overlap_pending, finished_at, cancel_reason)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CASE WHEN $10 = $12 THEN clock_timestamp() END, $13)
+		`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, commit_author_at, triggered_by, status, overlap_pending, finished_at, cancel_reason, clear_cache)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CASE WHEN $10 = $12 THEN clock_timestamp() END, $13, $14)
 		 RETURNING created_at, updated_at, finished_at`,
-		d.ID, d.AppID, d.Trigger, d.Image, d.Generation, d.Commit, d.CommitMessage, d.CommitAuthorAt, d.TriggeredBy, d.Status, d.OverlapPending, DeployCanceled, d.CancelReason,
+		d.ID, d.AppID, d.Trigger, d.Image, d.Generation, d.Commit, d.CommitMessage, d.CommitAuthorAt, d.TriggeredBy, d.Status, d.OverlapPending, DeployCanceled, d.CancelReason, d.ClearCache,
 	).Scan(&d.CreatedAt, &d.UpdatedAt, &d.FinishedAt)
 }
 
@@ -2430,11 +2435,11 @@ func pageKeyset(query string, args []any, table, sortCol, cursor string, limit i
 	return query, args
 }
 
-const deployColumns = `id, app_id, trigger, image, resolved_image, image_sha, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason`
+const deployColumns = `id, app_id, trigger, image, resolved_image, image_sha, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, clear_cache, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason`
 
 func scanDeploy(row pgx.Row) (Deploy, error) {
 	var d Deploy
-	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.ImageSHA, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason, &d.CancelReason, &d.StallReason)
+	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.ImageSHA, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.ClearCache, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason, &d.CancelReason, &d.StallReason)
 	return d, err
 }
 
