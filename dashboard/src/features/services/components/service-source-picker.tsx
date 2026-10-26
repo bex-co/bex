@@ -14,6 +14,7 @@ import {
   TabsTrigger,
 } from "@/common/components/ui/tabs";
 import { isValidGitUrl } from "@/common/lib/utils/git-url";
+import { dockerImageProblem } from "@/common/lib/utils/docker-image";
 import { cn } from "@/common/lib/utils/utils";
 import { useRepos, type RepoView } from "@/features/services/hooks/use-repos";
 import { useGitConnection } from "@/features/git/hooks/use-git-connection";
@@ -35,7 +36,15 @@ export type ImageSourceOption = {
   onRegistryCredentialChange: (id: string) => void;
   /** Show the `$PORT` hint — only the port-binding types ever get one. */
   showPortHint: boolean;
+  /** A server refusal of this image, shown under the field (w4/406). */
+  serverError?: string | null;
 };
+
+const IMAGE_PROBLEM_KEYS = {
+  malformed: "services.createImageMalformed",
+  tooLong: "services.createImageTooLong",
+  privateHost: "services.createImagePrivateHost",
+} as const;
 
 /**
  * Source selection shared by create-service, create-Blueprint, and Update
@@ -84,6 +93,7 @@ export function ServiceSourcePicker({
 
   const gitHubDisconnected =
     !connectionLoading && connection?.connected !== true;
+  const imageProblem = image ? dockerImageProblem(image.value) : null;
 
   // When connected, GitCredentialsMenu owns the focus refetch. When disconnected
   // the menu isn't mounted, so the picker refreshes here to catch a connection
@@ -279,7 +289,19 @@ export function ServiceSourcePicker({
                   onChange={(e) => image.onChange(e.target.value)}
                   placeholder={t("services.createImagePlaceholder")}
                   autoComplete="off"
+                  aria-invalid={
+                    imageProblem !== null || Boolean(image.serverError)
+                  }
                 />
+                {imageProblem !== null ? (
+                  <p className="text-sm text-destructive">
+                    {t(IMAGE_PROBLEM_KEYS[imageProblem])}
+                  </p>
+                ) : image.serverError ? (
+                  <p className="text-sm text-destructive">
+                    {image.serverError}
+                  </p>
+                ) : null}
                 {image.showPortHint ? (
                   <p className="text-xs text-muted-foreground">
                     {t("services.createImagePortHint")}

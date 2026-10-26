@@ -38,16 +38,23 @@ export function useFieldMutation<
   document: TypedDocumentNode<TData, TVariables>,
   toVariables: (...args: TArgs) => TVariables,
   keys: { success: string; error: string },
-): { run: (...args: TArgs) => Promise<boolean>; busy: boolean } {
+): {
+  run: (...args: TArgs) => Promise<boolean>;
+  busy: boolean;
+  /** The server's own refusal from the last failed run (w4/406), else null. */
+  lastError: string | null;
+} {
   const { t } = useTranslations();
   const [mutate] = useMutation(document);
   const [busy, setBusy] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
   const askForConfirmation = useAskForProtectedConfirmation();
 
   const run = useCallback(
     async (...args: TArgs) => {
       const variables = toVariables(...args);
       setBusy(true);
+      setLastError(null);
       try {
         // w4/m126: a protected environment now guards the settings that
         // repoint a service or redefine how it is built and started, and it
@@ -62,7 +69,9 @@ export function useFieldMutation<
         return true;
       } catch (err) {
         if (err instanceof ProtectedConfirmationDismissed) return false;
-        toast.error(mutationErrorMessage(err, t(keys.error)));
+        const message = mutationErrorMessage(err, t(keys.error));
+        setLastError(message);
+        toast.error(message);
         return false;
       } finally {
         setBusy(false);
@@ -75,5 +84,5 @@ export function useFieldMutation<
     [mutate, t, askForConfirmation],
   );
 
-  return { run, busy };
+  return { run, busy, lastError };
 }

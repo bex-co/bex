@@ -85,6 +85,14 @@ export interface UseCreateServiceResult {
   nameConflict: boolean;
   /** Clears nameConflict — call when the user edits the name away from it. */
   clearNameConflict: () => void;
+  /**
+   * The server's refusal of the submitted image, in its own words, so the
+   * create form can show it under the Docker Image field (w4/406). Null when
+   * the last attempt did not fail over the image.
+   */
+  imageRefusal: string | null;
+  /** Clears imageRefusal — call when the user edits the image. */
+  clearImageRefusal: () => void;
 }
 
 /**
@@ -101,6 +109,7 @@ export function useCreateService(): UseCreateServiceResult {
   const [mutate, { loading: busy }] = useMutation(CreateServiceDocument);
   const [capLimit, setCapLimit] = useState<string | null>(null);
   const [nameConflict, setNameConflict] = useState(false);
+  const [imageRefusal, setImageRefusal] = useState<string | null>(null);
   const paymentGate = usePaymentRequiredGate();
 
   const create = useCallback(
@@ -111,6 +120,7 @@ export function useCreateService(): UseCreateServiceResult {
       }
       setCapLimit(null);
       setNameConflict(false);
+      setImageRefusal(null);
       try {
         const res = await paymentGate.run(() =>
           mutate({
@@ -145,6 +155,16 @@ export function useCreateService(): UseCreateServiceResult {
           setCapLimit(capMessage);
         } else if (isNameConflictError(err)) {
           setNameConflict(true);
+        } else if (input.image && /image/i.test(err instanceof Error ? err.message : "")) {
+          // An image refusal is shown under the field it names, with the
+          // server's own wording (w4/406); the toast would leave the user
+          // hunting for the field to fix.
+          setImageRefusal(
+            mutationErrorMessage(
+              err,
+              t("services.createError", { name: input.name }),
+            ),
+          );
         } else {
           toast.error(
             mutationErrorMessage(
@@ -160,6 +180,15 @@ export function useCreateService(): UseCreateServiceResult {
   );
 
   const clearNameConflict = useCallback(() => setNameConflict(false), []);
+  const clearImageRefusal = useCallback(() => setImageRefusal(null), []);
 
-  return { create, busy, capLimit, nameConflict, clearNameConflict };
+  return {
+    create,
+    busy,
+    capLimit,
+    nameConflict,
+    clearNameConflict,
+    imageRefusal,
+    clearImageRefusal,
+  };
 }

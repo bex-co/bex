@@ -20,6 +20,7 @@ import {
 import { Label } from "@/common/components/ui/label";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { isValidGitUrl } from "@/common/lib/utils/git-url";
+import { isValidDockerImageRef } from "@/common/lib/utils/docker-image";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import {
   ServiceSourcePicker,
@@ -112,7 +113,10 @@ function SourceEditDialog({
 }: ServiceSourceCardProps & { disabled: boolean }) {
   const { t } = useTranslations();
   const { setRepo, busy: repoBusy } = useSetRepo();
-  const { setImage, busy: imageBusy } = useSetImage();
+  const { setImage, busy: imageBusy, lastError: imageError } = useSetImage();
+  // The value the server last refused; editing away from it clears the
+  // under-field message (w4/406).
+  const [refusedImage, setRefusedImage] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<SourceTab>(repo ? "git" : "image");
   const [selectedRepo, setSelectedRepo] = useState<RepoView | null>(null);
@@ -131,7 +135,7 @@ function SourceEditDialog({
   );
   const valid =
     tab === "image"
-      ? image.trim() !== ""
+      ? isValidDockerImageRef(image)
       : tab === "github"
         ? selectedRepo !== null
         : isValidGitUrl(gitUrl);
@@ -182,7 +186,11 @@ function SourceEditDialog({
             repo: sourceRepo.trim(),
             branch: branch.trim() || "main",
           });
-    if (!ok) return;
+    if (!ok) {
+      if (tab === "image") setRefusedImage(image.trim());
+      return;
+    }
+    setRefusedImage(null);
     setOpen(false);
   }
 
@@ -217,6 +225,10 @@ function SourceEditDialog({
               registryCredentialId: credentialId,
               onRegistryCredentialChange: setCredentialId,
               showPortHint: false,
+              serverError:
+                refusedImage !== null && refusedImage === image.trim()
+                  ? imageError
+                  : null,
             }}
             titleKey="services.sourcePickerLabel"
             idPrefix="update-source"

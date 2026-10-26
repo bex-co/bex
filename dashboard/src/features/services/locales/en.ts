@@ -3307,6 +3307,21 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Create-wizard Existing Image tab hint: set the port below to the one the image listens on (w9/011, w6/m149)",
   },
+  "services.createImageMalformed": {
+    message:
+      "Use a Docker image reference, e.g. docker.io/library/nginx:latest — a lowercase path with an optional tag or digest.",
+    description: "Inline error under a malformed Docker Image field (w4/406)",
+  },
+  "services.createImageTooLong": {
+    message: "At most 512 bytes",
+    description: "Inline error under an over-long Docker Image field (w4/406)",
+  },
+  "services.createImagePrivateHost": {
+    message:
+      "The registry host must be public — localhost and private or link-local addresses can't be used.",
+    description:
+      "Inline error under a Docker Image field naming a private registry host (w4/406)",
+  },
   "services.createFieldPort": {
     message: "Port",
     description: "Create wizard: service port field label",

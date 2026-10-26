@@ -12,6 +12,8 @@ export interface UseSetImageResult {
     registryCredentialId?: string,
   ) => Promise<boolean>;
   busy: boolean;
+  /** The server's refusal from the last failed setImage, else null. */
+  lastError: string | null;
 }
 
 /**
@@ -21,7 +23,7 @@ export interface UseSetImageResult {
  * deploy uses the new image (no automatic deploy on change).
  */
 export function useSetImage(): UseSetImageResult {
-  const { run, busy } = useFieldMutation(
+  const { run, busy, lastError } = useFieldMutation(
     SetImageDocument,
     (id: string, image: string, registryCredentialId?: string) => ({
       id,
@@ -34,5 +36,5 @@ export function useSetImage(): UseSetImageResult {
     },
   );
 
-  return { setImage: run, busy };
+  return { setImage: run, busy, lastError };
 }

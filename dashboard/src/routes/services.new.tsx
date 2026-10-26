@@ -84,8 +84,15 @@ export function NewServicePage() {
   const { t } = useTranslations();
   const navigate = useNavigate();
   const search = Route.useSearch();
-  const { create, busy, capLimit, nameConflict, clearNameConflict } =
-    useCreateService();
+  const {
+    create,
+    busy,
+    capLimit,
+    nameConflict,
+    clearNameConflict,
+    imageRefusal,
+    clearImageRefusal,
+  } = useCreateService();
   const {
     form,
     set,
@@ -181,7 +188,11 @@ export function NewServicePage() {
                       ? undefined
                       : {
                           value: form.image,
-                          onChange: (image) => set({ image }),
+                          onChange: (image) => {
+                            clearImageRefusal();
+                            set({ image });
+                          },
+                          serverError: imageRefusal,
                           registryCredentialId: form.registryCredentialId,
                           onRegistryCredentialChange: (registryCredentialId) =>
                             set({ registryCredentialId }),
