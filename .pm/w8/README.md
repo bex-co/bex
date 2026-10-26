@@ -395,17 +395,27 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **206** — [`$$` in a build or start command reaches bash as `$`: Kubernetes rewrites `$$`/`$(NAME)` in the generated Dockerfile env value and container commands, which bex never escapes](206.md) (~45m, minor) ← `/qa-find-bugs-cli` loop sweep 6646 2026-10-26: `a$$b` ran as `a$b`; env var values are unaffected
+
+- [ ] **205** — [A multi-port Docker web service publishes its lowest declared port, not its HTTP port: Render's RabbitMQ template goes `live` on epmd (4369) and its URL answers 502](205.md) (>1h, major) ← `/qa-find-bugs-cli` loop sweep 5dba 2026-10-26: Render exposes the HTTP management port (15672); `PORT=15672` proves the target
+
+- [ ] **204** — [Internal Key Value connections require a password, so Render's webdis guide (`REDIS_HOST`/`REDIS_PORT`) gets `NOAUTH`; Render leaves internal connections unauthenticated by default](204.md) (>1h, major; needs a design choice, then promote to a milestone) ← `/qa-find-bugs-cli` loop sweep 9098 2026-10-26: ADR018 calls the always-on password a "safe superset" without sign-off
+
+- [ ] **203** — [A Blueprint or service that turns previews **off** is refused as if it asked for them: `previews.generation: off` fails 25 of 87 official Render templates, and `--previews off` returns 400](203.md) (~45m, major) ← `/qa-find-bugs-cli` loop sweep fcaa 2026-10-26: Render documents `off` as the default (= omitted); building previews stays a non-goal
+
+- [ ] **202** — [Runtime port detection never runs: every App carries `spec.port: 10000`, and `detectBoundPort` treats any `spec.port` as explicit (root cause of w4/393)](202.md) (~50m, major) ← `/qa-find-bugs-cli` loop sweep d580 2026-10-26: Render's own `hapi-quick-start` (port 3000) serves on Render but fails at 15 min on bex with no detection text
+
 - [x] **193** — [Restrict environment-variable, secret-file and shell access to Admins in a protected environment](done/193.md) ← w8/187 2026-10-22: the rest of Render's protected-environment list; minor, ~2h. — **DONE (2026-10-22)**.
 
-- [x] **198** — [A new Ruby service with no version signal builds on 3.4.11; Render's default is exactly 3.4.4 (Bun 1.4.3 vs 1.4.4 too)](done/198.md) (~45m) ← `/qa-find-bugs-cli` loop sweep c7e2 2026-10-23 (minor) — DONE 2026-10-23 (code shipped; live check pending the operator deploy)
+- [x] **198** — [A new Ruby service with no version signal builds on 3.4.11; Render's default is exactly 3.4.4 (Bun 1.4.3 vs 1.4.4 too)](done/198.md) (~45m) ← `/qa-find-bugs-cli` loop sweep c7e2 2026-10-23 (minor) — DONE 2026-10-23 (Ruby 3.4.4 live-verified 2026-10-26 sweep c7b6; Bun addendum not re-checked)
 
 - [ ] **197** — [`ERLANG_VERSION=28.3` builds on the Elixir image's OTP (28.5.0.6) while the log says it was honored](blocked/197.md) (~50m) ← `/qa-find-bugs-cli` loop sweep a5c0 2026-10-23 (minor) — **BLOCKED (2026-10-23: needs a live native build proving the Elixir Dockerfile runs unchanged on a pinned `hexpm/elixir:<elixir>-erlang-<otp>-debian-bookworm-<date>` base, plus a tag-listing resolver for the namespaced repo; findings appended to the note)**
 
-- [x] **196** — [Requests reach the app without Render's `X-Request-Start`, so APM queue time and queue-time autoscalers read nothing](done/196.md) (~30m) ← `/qa-find-bugs-cli` loop sweep 7d1f 2026-10-23 (minor) — DONE 2026-10-23 (code shipped; live header check pending the GitOps sync)
+- [x] **196** — [Requests reach the app without Render's `X-Request-Start`, so APM queue time and queue-time autoscalers read nothing](done/196.md) (~30m) ← `/qa-find-bugs-cli` loop sweep 7d1f 2026-10-23 (minor) — DONE 2026-10-23 (live-verified 2026-10-23 sweep d4e8; rechecked 2026-10-26 sweep cbcd)
 
-- [x] **195** — [Pino/bunyan numeric JSON levels are labelled `unknown`, so no `--level` filter returns them](done/195.md) (~40m) ← `/qa-find-bugs-cli` loop sweep 5e2a 2026-10-23 (minor) — DONE 2026-10-23 (code shipped; live level check pending the GitOps sync)
+- [x] **195** — [Pino/bunyan numeric JSON levels are labelled `unknown`, so no `--level` filter returns them](done/195.md) (~40m) ← `/qa-find-bugs-cli` loop sweep 5e2a 2026-10-23 (minor) — DONE 2026-10-23 (live-verified 2026-10-23 sweep d4e8; rechecked 2026-10-26 sweep cbcd)
 
-- [x] **194** — [Static-site responses carry no `Strict-Transport-Security` or `nosniff`, unlike Render's](done/194.md) (~45m) ← `/qa-find-bugs-cli` loop sweep 64af 2026-10-23 (minor) — DONE 2026-10-23 (code shipped; live header check pending the operator deploy)
+- [x] **194** — [Static-site responses carry no `Strict-Transport-Security` or `nosniff`, unlike Render's](done/194.md) (~45m) ← `/qa-find-bugs-cli` loop sweep 64af 2026-10-23 (minor) — DONE 2026-10-23 (live-verified 2026-10-23 sweep d4e8; rechecked 2026-10-26 sweep cbcd)
 
 - [ ] **192** — [Retire the implicit static-site SPA fallback for sites created before 2026-10-23](blocked/192.md) ← w8/183 2026-10-22 (due 2026-11-22) — **BLOCKED (needs a production operator to list pre-cutoff static sites and add the `/* → /index.html` rewrite to the SPAs before the code step removes `SPAFallbackCutoff`; removing it first would break running single-page apps)**; no code is done yet.
 
@@ -718,7 +728,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **105** — [CLI compatibility checklist advertises cross-repository image overrides](done/105.md) — **DONE 2026-10-14** (checklist `--image` row corrected to the same-repository rule)
 
-- [x] **201** — [**Blocker:** every new prebuilt-image web service fails its first deploy: the operator refuses Docker Hub's 307 blob redirect when reading the image config (w4/m243)](done/201.md) (~30m) ← `/qa-find-bugs-cli` loop sweep v9p3 2026-10-25 — DONE 2026-10-25 (code shipped; live check pending the operator deploy)
+- [x] **201** — [**Blocker:** every new prebuilt-image web service fails its first deploy: the operator refuses Docker Hub's 307 blob redirect when reading the image config (w4/m243)](done/201.md) (~30m) ← `/qa-find-bugs-cli` loop sweep v9p3 2026-10-25 — DONE 2026-10-25 (live-verified 2026-10-26 sweep cbcd on pin `b4726243e74f`)
 
 - [x] **200** — [**Blocker:** every prebuilt-image web service create fails: `spec.portMode "web-image-v1"` is missing from the App CRD enum (w4/m243 regression)](done/200.md) (~30m) ← `/qa-find-bugs-cli` loop sweep k2m4 2026-10-25 — DONE 2026-10-25 (CRD fix live: image creates return 201; first deploys then hit w8/201)
 
