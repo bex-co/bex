@@ -729,10 +729,10 @@ func TestSyncBlueprintGraphQLReportsKeyValuesAndEnvGroups(t *testing.T) {
 	})
 	groups := newFakeEnvGroups()
 	svc := &Service{
-		Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
-		Blueprints:      fs,
-		EnvGroups:       groups,
-		EnvSeeder:       &fakeSeeder{},
+		Base:          &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
+		Blueprints:    fs,
+		EnvGroups:     groups,
+		EnvSeeder:     &fakeSeeder{},
 		DomainTraffic: allowDomainTraffic{},
 		// w8/m36 t003: Git-backed sync fetches instead of reapplying stored.
 		GitFetcher: fakeBlueprintFetcher{contents: allKindsManifest},

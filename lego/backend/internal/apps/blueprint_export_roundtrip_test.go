@@ -103,10 +103,6 @@ func TestGenerateBlueprintRoundTripsRealCreates(t *testing.T) {
 // blueprintNotExported names the stored fields an export cannot reproduce,
 // where, and why.
 var blueprintNotExported = map[string]exportGap{
-	"Port": {
-		reason:  "render.yaml has no port and reserves PORT: a Blueprint create listens on the default port, and the port verb sets it",
-		applies: func(appv1alpha1.AppSpec) bool { return true },
-	},
 	"PortMode": {
 		reason:  "a creation default, not a Blueprint field (w6/m148): render.yaml has no port mode, and creating the exported Git-built Docker private service applies the same image-port default (an explicit port, the image-configured mode, is the Port gap above)",
 		applies: func(spec appv1alpha1.AppSpec) bool { return spec.PortMode != "" },
@@ -187,6 +183,18 @@ func exportSpelling(spec appv1alpha1.AppSpec) appv1alpha1.AppSpec {
 	}
 	if spec.Type == appv1alpha1.TypeCronJob && spec.Command != "" {
 		spec.StartCommand, spec.Command = spec.Command, ""
+	}
+	// w4/411: a configured port exports as a literal PORT env, and the create
+	// derives the listening port from it — fold it back to spec.Port so the
+	// comparison reads the port, not its spelling.
+	for i, env := range spec.Env {
+		if env.Name == "PORT" && env.ValueFrom == nil {
+			if port, err := strconv.Atoi(env.Value); err == nil {
+				spec.Port = int32(port)
+				spec.Env = append(spec.Env[:i:i], spec.Env[i+1:]...)
+			}
+			break
+		}
 	}
 	return spec
 }

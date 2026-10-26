@@ -3423,6 +3423,7 @@ func (s *Service) updateStackService(ctx context.Context, req CreateRequest, fie
 	if err := s.resolveBlueprintSwitchBranch(ctx, req, fields, existing, &desired); err != nil {
 		return AppView{}, err
 	}
+	dropServedPortEnv(&desired, existing)
 	markHookRan, initialHookChanged := initialDeployHookState(req, existing, &desired)
 	final := existing.DeepCopy()
 	specChanged, err := applyBlueprintServiceSpec(&final.Spec, desired, fields)
