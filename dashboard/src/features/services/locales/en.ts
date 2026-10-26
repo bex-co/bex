@@ -2881,6 +2881,38 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Prefix naming the 1-based rule row in a server refusal, replacing its zero-based wire index (w4/145)",
   },
+  "services.staticRulePathTooLong": {
+    message: "At most 2048 characters",
+    description: "Inline error under an over-long static-site rule path (w4/402)",
+  },
+  "services.staticRuleHeaderNameTooLong": {
+    message: "At most 256 characters",
+    description: "Inline error under an over-long header name (w4/402)",
+  },
+  "services.staticRuleHeaderNameInvalid": {
+    message: "Not a valid HTTP header name",
+    description:
+      "Inline error under a header name with characters a header name can't hold (w4/402)",
+  },
+  "services.staticRuleHeaderNameReserved": {
+    message: "This header is set by the server and can't be overridden",
+    description:
+      "Inline error under a reserved header name such as Content-Length (w4/402)",
+  },
+  "services.staticRuleHeaderValueTooLong": {
+    message: "At most 4096 characters",
+    description: "Inline error under an over-long header value (w4/402)",
+  },
+  "services.staticRuleHeaderValueInvalid": {
+    message: "Contains a character a header value can't hold",
+    description:
+      "Inline error under a header value with a control character (w4/402)",
+  },
+  "services.staticRuleCookieDomain": {
+    message: "Set-Cookie can't set a Domain on shared hosting",
+    description:
+      "Inline error under a Set-Cookie value carrying a Domain attribute (w4/402)",
+  },
   "services.staticRoutesSaved": {
     message: "Routes updated",
     description: "Toast after saving routes",

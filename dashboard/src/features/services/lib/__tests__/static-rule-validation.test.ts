@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  RESERVED_STATIC_HEADERS,
   headerErrors,
   humanizeRuleError,
   routeErrors,
@@ -67,6 +68,71 @@ describe("static-site rule validation", () => {
       path: "services.staticRulePathSlash",
       name: "services.staticRuleRequired",
     });
+  });
+
+  // w4/402: the row-local header rules bex-api also enforces, checked in the
+  // row. The reserved list mirrors lego/types/v1alpha1/static_headers.go.
+  it("pins the reserved header list against the Go list", () => {
+    expect([...RESERVED_STATIC_HEADERS]).toEqual([
+      "Content-Length",
+      "Transfer-Encoding",
+      "Connection",
+      "Keep-Alive",
+      "Upgrade",
+      "Te",
+      "Trailer",
+      "Proxy-Connection",
+    ]);
+  });
+
+  it.each(["Content-Length", "content-length", "TRANSFER-ENCODING"])(
+    "marks the reserved header name %s in its row",
+    (name) => {
+      expect(headerErrors({ path: "/*", name, value: "5" })).toEqual({
+        name: "services.staticRuleHeaderNameReserved",
+      });
+    },
+  );
+
+  it("marks a malformed header name and a control character in the value", () => {
+    expect(headerErrors({ path: "/*", name: "Bad Name", value: "x" })).toEqual({
+      name: "services.staticRuleHeaderNameInvalid",
+    });
+    expect(
+      headerErrors({ path: "/*", name: "X-Test", value: "a\nb" }),
+    ).toEqual({ value: "services.staticRuleHeaderValueInvalid" });
+    expect(
+      headerErrors({ path: "/*", name: "X-Test", value: "a\tb" }),
+    ).toEqual({});
+  });
+
+  it("marks Set-Cookie with a Domain, and accepts one without", () => {
+    expect(
+      headerErrors({
+        path: "/*",
+        name: "Set-Cookie",
+        value: "a=b; Domain=onbex.co",
+      }),
+    ).toEqual({ value: "services.staticRuleCookieDomain" });
+    expect(
+      headerErrors({ path: "/*", name: "Set-Cookie", value: "a=b; Path=/" }),
+    ).toEqual({});
+  });
+
+  it("marks over-long path, name and value", () => {
+    expect(
+      headerErrors({
+        path: `/${"a".repeat(2048)}`,
+        name: "X-Test",
+        value: "x",
+      }),
+    ).toEqual({ path: "services.staticRulePathTooLong" });
+    expect(
+      headerErrors({ path: "/*", name: "X".repeat(257), value: "x" }),
+    ).toEqual({ name: "services.staticRuleHeaderNameTooLong" });
+    expect(
+      headerErrors({ path: "/*", name: "X-Test", value: "x".repeat(4097) }),
+    ).toEqual({ value: "services.staticRuleHeaderValueTooLong" });
   });
 
   it("names the server's zero-based wire index as the one-based row", () => {
