@@ -202,6 +202,7 @@
     "pre_deploy_started",
     "server_available",
     "server_failed",
+    "server_hardware_failure",
     "server_restarted",
     "service_hibernated",
     "service_moved",
@@ -228,7 +229,6 @@
     "edge_cache_purged",
     "maintenance_ended",
     "maintenance_started",
-    "server_hardware_failure",
     "zero_downtime_redeploy_ended",
     "zero_downtime_redeploy_started"
   ],

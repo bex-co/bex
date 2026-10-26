@@ -16,6 +16,7 @@ rules:
   - ""
   resources:
   - namespaces
+  - nodes
   - resourcequotas
   verbs:
   - get

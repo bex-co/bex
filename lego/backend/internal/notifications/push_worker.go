@@ -679,6 +679,11 @@ func projectPushEvent(row store.WebhookEventRow, serviceID, factStatus string) (
 		switch row.FactType {
 		case string(store.EventFactServerFailed):
 			return newProjectedPush(DeliveryEventServerFailed, "Service unavailable", serviceName+" is unavailable."), true
+		// A node failure is the same outage to the owner, so it shares the
+		// server_failed push category (and its saved preference); the copy
+		// says the machine, not the app, went away (w5/m142).
+		case string(store.EventFactServerHardwareFailure):
+			return newProjectedPush(DeliveryEventServerFailed, "Service unavailable", serviceName+" lost an instance to a hardware failure."), true
 		case string(store.EventFactServerAvailable):
 			return newProjectedPush(DeliveryEventServerAvailable, "Service recovered", serviceName+" recovered."), true
 		case string(store.EventFactServiceSuspended):

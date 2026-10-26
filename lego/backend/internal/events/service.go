@@ -184,15 +184,18 @@ const (
 	// Free-tier idle auto-sleep (w6/m47), distinct from the user-driven pair
 	// above so the timeline never claims a human suspended a service that
 	// simply went to sleep on its idle timeout.
-	TypeServiceHibernated  = "service_hibernated"
-	TypeServiceWoken       = "service_woken"
-	TypeServerFailed       = "server_failed"
-	TypeServerAvailable    = "server_available"
-	TypeBranchChanged      = "branch_changed"
-	TypeBranchDeleted      = "branch_deleted"
-	TypeCommitIgnored      = "commit_ignored"
-	TypeAutoscalingStarted = "autoscaling_started"
-	TypeAutoscalingEnded   = "autoscaling_ended"
+	TypeServiceHibernated = "service_hibernated"
+	TypeServiceWoken      = "service_woken"
+	TypeServerFailed      = "server_failed"
+	// TypeServerHardwareFailure is server_failed for an instance lost with its
+	// node (w5/m142), Render's spelling.
+	TypeServerHardwareFailure = "server_hardware_failure"
+	TypeServerAvailable       = "server_available"
+	TypeBranchChanged         = "branch_changed"
+	TypeBranchDeleted         = "branch_deleted"
+	TypeCommitIgnored         = "commit_ignored"
+	TypeAutoscalingStarted    = "autoscaling_started"
+	TypeAutoscalingEnded      = "autoscaling_ended"
 	// Deploy-lifecycle facts (w7/m66): the build, pre-deploy, and one-off-job
 	// beats Render shows as distinct timeline entries. The *_ended types carry a
 	// details.status (succeeded|failed|canceled); observed via the control-plane
@@ -466,6 +469,7 @@ var (
 		TypeServiceHibernated,
 		TypeServiceWoken,
 		TypeServerFailed,
+		TypeServerHardwareFailure,
 		TypeServerAvailable,
 		TypeBranchChanged,
 		TypeBranchDeleted,
@@ -530,7 +534,7 @@ func pushDownOne(eventType string) (verbs, phases, factTypes []string, autoDeplo
 		return []string{core.AuditVerbSetAutoDeploy}, nil, nil, store.AutoDeployFilterChanged
 	case TypeImagePullFailed, TypeServiceSuspended, TypeServiceResumed,
 		TypeServiceHibernated, TypeServiceWoken,
-		TypeServerFailed, TypeServerAvailable, TypeBranchChanged, TypeBranchDeleted,
+		TypeServerFailed, TypeServerHardwareFailure, TypeServerAvailable, TypeBranchChanged, TypeBranchDeleted,
 		TypeCommitIgnored, TypeAutoscalingStarted, TypeAutoscalingEnded,
 		TypeBuildStarted, TypeBuildEnded, TypePreDeployStarted, TypePreDeployEnded,
 		TypeJobRunEnded, TypeCronJobRunStarted, TypeCronJobRunEnded:

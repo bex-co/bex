@@ -1,18 +1,18 @@
 # w5 · m142 — A node failure is reported as `server_hardware_failure`, not as an app crash
 
-**Worker:** worker5 **Goal:** when a service instance is lost because its machine failed or was removed, the service's events record Render's `server_hardware_failure` instead of `server_failed`, on REST, GraphQL and MCP events, webhooks and the dashboard. An app crash still records `server_failed`. **Status:** blocked (your decision: reopen w2/m70's anti-goal disposition of `server_hardware_failure`; implementation ready as `implementation.patch`)
+**Worker:** worker5 **Goal:** when a service instance is lost because its machine failed or was removed, the service's events record Render's `server_hardware_failure` instead of `server_failed`, on REST, GraphQL and MCP events, webhooks and the dashboard. An app crash still records `server_failed`. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                         | est | depends_on |
 | ---- | ----------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Operator records when an instance was lost to its node, not its container     | 60m | —          |
-| t002 | The store records `server_hardware_failure` for node losses                   | 60m | t001       |
-| t003 | Vocabulary, webhooks, dashboard catalog and docs; dev-5 node-removal walk     | 45m | t002       |
-| t004 | Render parity                                                                 | 20m | t003       |
-| t005 | Simplify                                                                      | 20m | t004       |
-| t006 | Test coverage                                                                 | 45m | t004, t005 |
-| t007 | Closeout                                                                      | 10m | t006       |
+| t001 | Operator records when an instance was lost to its node, not its container — **DONE**     | 60m | —          |
+| t002 | The store records `server_hardware_failure` for node losses — **DONE**                   | 60m | t001       |
+| t003 | Vocabulary, webhooks, dashboard catalog and docs; dev-5 node-removal walk — **DONE**     | 45m | t002       |
+| t004 | Render parity — **DONE**                                                                 | 20m | t003       |
+| t005 | Simplify — **DONE**                                                                      | 20m | t004       |
+| t006 | Test coverage — **DONE**                                                                 | 45m | t004, t005 |
+| t007 | Closeout — **DONE**                                                                      | 10m | t006       |
 
 Total: **7 tasks, about 4h 20m**.
 
@@ -43,3 +43,23 @@ Triage found what the round-4 brainstorm missed: `server_hardware_failure` is de
 - Events, webhooks and push (shares the `server_failed` category, "lost an instance to a hardware failure"), and the fixture move.
 - `TestNodeLossMessage` (9 cases) passes; the operator, store, events, webhooks, notifications and API suites passed with it applied.
 - Still to do on resume: the dashboard catalog/labels, docs (webhooks-api.md, service-events.md, ADR018), the dev-N walk (add a worker, run a service on it, remove that worker; never a node hosting other sessions' stacks), and the closing tasks.
+
+## Closed 2026-10-25
+
+The user decided for Render parity: w2/m70's anti-goal disposition of `server_hardware_failure` is reopened for this outage classification only (recorded in `webhooks-api.md`, `service-events.md`, ADR018 and w2/m70).
+
+- **Implementation:** the patch was applied on top of `58d2d160c` with two conflicts, both resolved by keeping both sides (`ReasonNodeLost` next to `ReasonUnschedulable`, and the regenerated RBAC). The migration was renumbered 0158 → 0164 (0162 and 0163 were taken upstream meanwhile) and its CHECK list compared against 0097, the last migration that rewrote it.
+- **Dashboard:** the events catalog, icon and failure styling, the webhook event catalog, and en/zh labels ("Hardware failure" / "硬件故障"; "Server Hardware Failure" / "服务器硬件故障").
+- **Review fixes (Simplify):**
+  - A terminal pod, and a pod with a planned DisruptionTarget (drain, preemption, `TerminationByKubelet`), never reads as a node loss, so a drained machine that is then deleted is not reported.
+  - A hardware failure carries no `readiness_failed` reason code.
+  - One `clearAvailability` serves both availability guards and `heldAvailability`.
+- **Tests:** `TestNodeLossMessage` (14 cases, including five false-positive guards) and `TestObservedNodeLossIsAHardwareFailureNotAnAppCrash` (a node loss yields exactly `server_hardware_failure` with no reason code; a crash yields `server_failed`/`readiness_failed`). Also operator `make test`, the backend packages, dashboard events/webhooks (120 files), and `make lint` across the four modules.
+- **Live walk (dev-5, 2026-10-26 UTC):**
+  - A whoami web service ran on a fresh tenant node.
+  - At 01:40:41 the node container was killed with `docker kill`, a hard machine loss.
+  - The operator set Ready=False `NodeLost` ("…was lost with node … (node unreachable)").
+  - bex-api recorded exactly one `server_hardware_failure` at 01:41:27 (REST and GraphQL).
+  - After the taint-manager eviction the pod rescheduled, and `server_available` was recorded at 01:46:38.
+  - The walk's bex-api predated the reason-code fix, so that event still showed `readiness_failed`; the fix is unit-tested.
+  - A live container-crash control and a live webhook delivery were not run. Both are covered by unit tests: the store crash path, and the webhooks type mapping and vocabulary.

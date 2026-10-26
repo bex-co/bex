@@ -40,15 +40,19 @@ const (
 	// pair: those stay exclusively user-driven, so a webhook or push subscriber
 	// watching for an unexpected suspension is not woken by every routine sleep
 	// cycle of a free service.
-	EventFactServiceHibernated  ServiceEventFactType = "service_hibernated"
-	EventFactServiceWoken       ServiceEventFactType = "service_woken"
-	EventFactServerFailed       ServiceEventFactType = "server_failed"
-	EventFactServerAvailable    ServiceEventFactType = "server_available"
-	EventFactBranchChanged      ServiceEventFactType = "branch_changed"
-	EventFactBranchDeleted      ServiceEventFactType = "branch_deleted"
-	EventFactCommitIgnored      ServiceEventFactType = "commit_ignored"
-	EventFactAutoscalingStarted ServiceEventFactType = "autoscaling_started"
-	EventFactAutoscalingEnded   ServiceEventFactType = "autoscaling_ended"
+	EventFactServiceHibernated ServiceEventFactType = "service_hibernated"
+	EventFactServiceWoken      ServiceEventFactType = "service_woken"
+	EventFactServerFailed      ServiceEventFactType = "server_failed"
+	// EventFactServerHardwareFailure replaces server_failed when the instance
+	// was lost with its node (Ready reason NodeLost, w5/m142) — Render's
+	// server_hardware_failure. server_available closes it the same way.
+	EventFactServerHardwareFailure ServiceEventFactType = "server_hardware_failure"
+	EventFactServerAvailable       ServiceEventFactType = "server_available"
+	EventFactBranchChanged         ServiceEventFactType = "branch_changed"
+	EventFactBranchDeleted         ServiceEventFactType = "branch_deleted"
+	EventFactCommitIgnored         ServiceEventFactType = "commit_ignored"
+	EventFactAutoscalingStarted    ServiceEventFactType = "autoscaling_started"
+	EventFactAutoscalingEnded      ServiceEventFactType = "autoscaling_ended"
 	// Deploy-lifecycle facts (w7/m66): the build, pre-deploy, and one-off-job
 	// beats Render shows as distinct timeline entries. The *_ended kinds carry a
 	// closed Status (succeeded|failed|canceled); the operator observes them
@@ -63,25 +67,26 @@ const (
 )
 
 var serviceEventFactTypes = map[ServiceEventFactType]bool{
-	EventFactImagePullFailed:    true,
-	EventFactServiceSuspended:   true,
-	EventFactServiceResumed:     true,
-	EventFactServiceHibernated:  true,
-	EventFactServiceWoken:       true,
-	EventFactServerFailed:       true,
-	EventFactServerAvailable:    true,
-	EventFactBranchChanged:      true,
-	EventFactBranchDeleted:      true,
-	EventFactCommitIgnored:      true,
-	EventFactAutoscalingStarted: true,
-	EventFactAutoscalingEnded:   true,
-	EventFactBuildStarted:       true,
-	EventFactBuildEnded:         true,
-	EventFactPreDeployStarted:   true,
-	EventFactPreDeployEnded:     true,
-	EventFactJobRunEnded:        true,
-	EventFactCronRunStarted:     true,
-	EventFactCronRunEnded:       true,
+	EventFactImagePullFailed:       true,
+	EventFactServiceSuspended:      true,
+	EventFactServiceResumed:        true,
+	EventFactServiceHibernated:     true,
+	EventFactServiceWoken:          true,
+	EventFactServerFailed:          true,
+	EventFactServerHardwareFailure: true,
+	EventFactServerAvailable:       true,
+	EventFactBranchChanged:         true,
+	EventFactBranchDeleted:         true,
+	EventFactCommitIgnored:         true,
+	EventFactAutoscalingStarted:    true,
+	EventFactAutoscalingEnded:      true,
+	EventFactBuildStarted:          true,
+	EventFactBuildEnded:            true,
+	EventFactPreDeployStarted:      true,
+	EventFactPreDeployEnded:        true,
+	EventFactJobRunEnded:           true,
+	EventFactCronRunStarted:        true,
+	EventFactCronRunEnded:          true,
 }
 
 // Closed lifecycle-step outcomes for a *_ended fact's Status column — the same
@@ -310,7 +315,11 @@ type ObservedServiceState struct {
 	// that is still starting. Only a concrete failure is an availability
 	// conclusion while a service comes up from Hibernated (heldAvailability).
 	ConcreteFailure bool
-	InstanceID      string
+	// NodeLost marks an unhealthy conclusion whose Ready reason is NodeLost:
+	// the instance went down with its node, so the edge is
+	// server_hardware_failure rather than server_failed.
+	NodeLost   bool
+	InstanceID string
 	// ReadyTransitionAt is the Ready condition's LastTransitionTime backing
 	// this availability conclusion (w6/m41) — the operator-side timestamp the
 	// reconciler's stale-conclusion guard orders an unhealthy edge against the
@@ -513,11 +522,7 @@ func heldAvailability(previousPhase, previousAvailability string, obs ObservedSe
 	sleepingFailed := obs.ServicePhase == hibernated && previousAvailability == "unhealthy"
 	neverHealthy := previousAvailability == "" && previousPhase != hibernated && unhealthy
 	if waking || sleepingFailed || neverHealthy {
-		obs.AvailabilityObserved = false
-		obs.Availability = ""
-		obs.ReasonCode = ""
-		obs.ConcreteFailure = false
-		obs.ReadyTransitionAt = time.Time{}
+		obs = clearAvailability(obs)
 	}
 	return obs
 }
@@ -549,6 +554,15 @@ func availabilityEdgeAt(transition, previousChangedAt, observed time.Time) time.
 		return observed
 	}
 	return transition
+}
+
+// failureFactType names an availability failure edge: an instance lost with
+// its node is Render's server_hardware_failure, anything else server_failed.
+func failureFactType(obs ObservedServiceState) ServiceEventFactType {
+	if obs.NodeLost {
+		return EventFactServerHardwareFailure
+	}
+	return EventFactServerFailed
 }
 
 func observedStateFacts(obs ObservedServiceState, previousPhase, previousAvailability string, previousSuspended bool, previousChangedAt time.Time) []ServiceEventFact {
@@ -599,7 +613,7 @@ func observedStateFacts(obs ObservedServiceState, previousPhase, previousAvailab
 		}
 		switch {
 		case previousAvailability == "healthy" && obs.Availability == "unhealthy":
-			facts = append(facts, edge("failed", EventFactServerFailed))
+			facts = append(facts, edge("failed", failureFactType(obs)))
 		case previousAvailability == "" && obs.Availability == "unhealthy" && previousPhase == string(appv1alpha1.PhaseHibernated):
 			// A wake or resume whose instance fails concretely
 			// (heldAvailability keeps only those): the service is down to
@@ -607,7 +621,7 @@ func observedStateFacts(obs ObservedServiceState, previousPhase, previousAvailab
 			// pair with (w4/m230). Ready has been False since the service
 			// slept, so its transition dates the sleep, not this failure: the
 			// observation is the edge's time.
-			fact := makeFact("failed", EventFactServerFailed)
+			fact := makeFact("failed", failureFactType(obs))
 			facts = append(facts, fact)
 		case previousAvailability == "unhealthy" && obs.Availability == "healthy":
 			facts = append(facts, edge("available", EventFactServerAvailable))

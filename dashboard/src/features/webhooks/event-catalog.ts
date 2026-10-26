@@ -22,6 +22,7 @@ const GROUPS: Record<string, string[]> = {
   autoDeploy: ["auto_deploy_enabled", "auto_deploy_disabled"],
   serviceAvailability: [
     "server_failed",
+    "server_hardware_failure",
     "server_available",
     "server_restarted",
   ],

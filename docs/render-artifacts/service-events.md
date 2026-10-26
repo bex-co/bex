@@ -90,9 +90,13 @@ The 2026-07-18 capture above covered the 31 labels of one supplied dashboard fil
 
 Image-backed services (no build phase) emit no `build_*`; services with no pre-deploy command emit no `pre_deploy_*`; a canceled job keeps `job_canceled` and records no `job_run_ended`. Each fact is idempotent by `source_key` (`deploy:<id>:build_started`, `job:<id>:run_ended`, `git:<delivery>:<app>:branch_deleted`), so re-observing across resyncs never double-records. To catch branch deletions made through the GitHub UI (not `git push --delete`), the self-hosted GitHub App must also subscribe to the `delete` event ([docs/ADR026-github-integration.md](../ADR026-github-integration.md)).
 
+### Node loss: `server_hardware_failure` (w5/m142, 2026-10-25)
+
+An instance lost together with its node records Render's `server_hardware_failure` instead of `server_failed`. That covers a node that went NotReady or disappeared, or a pod the taint manager or pod GC disrupted for its node. The operator sets `Ready=False` with reason `NodeLost`, and the store maps that edge to the new fact; `server_available` still closes it. Drains (`EvictionByEvictionAPI`), preemption and kubelet terminations (node-pressure eviction, graceful shutdown) are not reported this way, and neither is a terminal pod left over from an earlier loss. A container crash or OOM on a healthy node stays `server_failed`. Push notifications file it under the `server_failed` category. By user decision this reverses w2/m70, which had listed the type as a provider-hardware anti-goal: it classifies an outage bex already records and is not a maintenance product.
+
 ### Still non-goals (honest, not faked)
 
-No durable bex source exists for these, so they are omitted rather than invented: `artifact_*`, `server_hardware_failure`, provider `maintenance_started`/`maintenance_ended`, `pipeline_minutes_exhausted` (no pipeline-minute billing), `zero_downtime_redeploy_*`, `initial_deploy_hook_started`/`_ended` (preview-only), and every preview-environment/workflow event (rejected product anti-goals). The tenant-facing `maintenance_mode_*` toggle remains the one maintenance concept bex does record.
+No durable bex source exists for these, so they are omitted rather than invented: `artifact_*`, provider `maintenance_started`/`maintenance_ended`, `pipeline_minutes_exhausted` (no pipeline-minute billing), `zero_downtime_redeploy_*`, `initial_deploy_hook_started`/`_ended` (preview-only), and every preview-environment/workflow event (rejected product anti-goals). The tenant-facing `maintenance_mode_*` toggle remains the one maintenance concept bex does record.
 
 ## Verification
 

@@ -565,6 +565,10 @@ const enWebhooks: Record<string, TranslationEntry> = {
     message: "Server Failed",
     description: "Event label — server_failed",
   },
+  "webhooks.event.server_hardware_failure": {
+    message: "Server Hardware Failure",
+    description: "Event label — server_hardware_failure",
+  },
   "webhooks.event.server_available": {
     message: "Server Available",
     description: "Event label — server_available",

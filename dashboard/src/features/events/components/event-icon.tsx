@@ -33,6 +33,7 @@ const EVENT_ICONS: Record<string, LucideIcon> = {
   branch_deleted: GitBranch,
   image_pull_failed: XCircle,
   server_failed: XCircle,
+  server_hardware_failure: XCircle,
   suspender_added: PauseCircle,
   service_suspended: PauseCircle,
   // Idle sleep/wake stays distinct from an explicit suspend/resume (w6/m47).

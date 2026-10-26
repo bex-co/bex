@@ -3346,8 +3346,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Create-wizard name input placeholder",
   },
   "services.createFieldNameError": {
-    message:
-      "请输入最多 100 个字符的名称，不能包含换行或控制字符。",
+    message: "请输入最多 100 个字符的名称，不能包含换行或控制字符。",
     description: "Create-wizard name validation message",
   },
   "services.createFieldNameResourceName": {
@@ -4118,6 +4117,11 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.eventsTypeInstanceFailed": {
     message: "实例失败",
     description: "Service activity type: running instance became unhealthy",
+  },
+  "services.eventsTypeHardwareFailure": {
+    message: "硬件故障",
+    description:
+      "Service activity type: an instance was lost with the machine it ran on",
   },
   "services.eventsTypeServiceSuspended": {
     message: "服务已暂停",
