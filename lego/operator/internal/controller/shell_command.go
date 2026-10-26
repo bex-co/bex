@@ -35,15 +35,21 @@ const shellMeta = "&|;<>()$`*?[]{}~#!\n"
 // splitShellWords splits command into argv by POSIX word rules (whitespace,
 // single and double quotes, backslash) and reports ok=false when it needs a
 // shell to mean what it says: an unquoted metacharacter, an expansion inside
-// double quotes, a leading VAR=value assignment, or an unterminated quote.
+// double quotes, an unquoted leading VAR=value assignment, or an unterminated quote.
 func splitShellWords(command string) (words []string, ok bool) {
 	var cur strings.Builder
 	inWord := false
+	// quoted[i] records whether word i contained any quoting: only an
+	// entirely unquoted leading NAME=value is a shell assignment (w4/412).
+	var quoted []bool
+	curQuoted := false
 	flush := func() {
 		if inWord {
 			words = append(words, cur.String())
+			quoted = append(quoted, curQuoted)
 			cur.Reset()
 			inWord = false
+			curQuoted = false
 		}
 	}
 	for i := 0; i < len(command); i++ {
@@ -58,9 +64,11 @@ func splitShellWords(command string) (words []string, ok bool) {
 			}
 			cur.WriteString(command[i+1 : i+1+end])
 			inWord = true
+			curQuoted = true
 			i += end + 1
 		case c == '"':
 			inWord = true
+			curQuoted = true
 			for i++; ; i++ {
 				if i >= len(command) {
 					return nil, false
@@ -93,10 +101,51 @@ func splitShellWords(command string) (words []string, ok bool) {
 		}
 	}
 	flush()
-	if len(words) == 0 || isAssignment(words[0]) {
+	if len(words) == 0 || (isAssignment(words[0]) && !quoted[0]) {
 		return nil, false
 	}
 	return words, true
+}
+
+// unwrapQuotedScript strips the outer quoting when a `sh -c` script is
+// exactly one single- or double-quoted token, with shell semantics: single
+// quotes are literal; inside double quotes a backslash escapes only ", \, $
+// and `, and $ / backtick pass through untouched — the shell receiving the
+// script expands them itself (w4/412). splitShellWords cannot do this: it
+// rightly refuses an expansion for direct exec, but here a shell runs the
+// result either way.
+func unwrapQuotedScript(script string) (string, bool) {
+	if len(script) < 2 {
+		return "", false
+	}
+	switch script[0] {
+	case '\'':
+		inner := script[1:]
+		end := strings.IndexByte(inner, '\'')
+		if end < 0 || end != len(inner)-1 {
+			return "", false
+		}
+		return inner[:end], true
+	case '"':
+		if script[len(script)-1] != '"' {
+			return "", false
+		}
+		inner := script[1 : len(script)-1]
+		var out strings.Builder
+		for i := 0; i < len(inner); i++ {
+			c := inner[i]
+			if c == '"' {
+				return "", false
+			}
+			if c == '\\' && i+1 < len(inner) && strings.IndexByte("\\\"$`", inner[i+1]) >= 0 {
+				i++
+				c = inner[i]
+			}
+			out.WriteByte(c)
+		}
+		return out.String(), true
+	}
+	return "", false
 }
 
 // isAssignment reports a leading `NAME=value` word, which the shell treats as
@@ -125,7 +174,9 @@ func shellCommand(command string) []string {
 	if m := shellPrefixed.FindStringSubmatch(command); m != nil {
 		script := m[2]
 		// A script that is one quoted word (`sh -c 'a && b'`) is that word.
-		if words, ok := splitShellWords(script); ok && len(words) == 1 {
+		if inner, ok := unwrapQuotedScript(script); ok {
+			script = inner
+		} else if words, ok := splitShellWords(script); ok && len(words) == 1 {
 			script = words[0]
 		}
 		return []string{m[1], "-c", script}
