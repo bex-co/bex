@@ -102,19 +102,30 @@ jobs:
   cli-analytics:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, Linux, ARM64, bex-ci]
-    services:
-      postgres:
-        image: postgres:17@sha256:e2fddda1fea39c634dccdae58dba5448eb3efb85aaa4054cf45cbed28f35d296
-        env:
-          POSTGRES_PASSWORD: pw
-        options: >-
-          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Postgres runs as a step, not a `services:` container, for the same
+      # reason as backend-test.yml: a services: pull gets only the runner's
+      # short retry, and a registry-1.docker.io TLS handshake timeout turned
+      # run 39406673216 red before any step ran (w1/141).
+      - name: start Postgres (pull with retries)
+        run: |
+          image=postgres:17@sha256:e2fddda1fea39c634dccdae58dba5448eb3efb85aaa4054cf45cbed28f35d296
+          for i in 1 2 3 4 5; do
+            docker pull "$image" && break
+            [ "$i" -lt 5 ] || exit 1
+            echo "pull $image attempt $i failed, retrying in $((i * 20))s..."; sleep $((i * 20))
+          done
+          docker rm -f gitops-cli-analytics-postgres >/dev/null 2>&1 || true
+          docker run -d --name gitops-cli-analytics-postgres -e POSTGRES_PASSWORD=pw "$image"
+          timeout 90 bash -c 'until docker exec gitops-cli-analytics-postgres pg_isready -U postgres -h 127.0.0.1; do sleep 2; done'
       - name: verify CLI and product analytics SQL and restricted readers
         env:
-          BEX_CLI_ANALYTICS_TEST_CONTAINER: ${{ job.services.postgres.id }}
+          BEX_CLI_ANALYTICS_TEST_CONTAINER: gitops-cli-analytics-postgres
         run: python3 -m unittest scripts/test_cli_analytics.py scripts/test_product_analytics.py -v
+      - name: stop Postgres
+        if: always()
+        run: docker rm -f gitops-cli-analytics-postgres
 
   render:
     # Public-repo safety: fork PR code must never reach persistent self-hosted runners.
@@ -125,9 +136,19 @@ jobs:
       - uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
         with:
           version: v1.36.1
-      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
-        with:
-          version: v3.19.0
+      - name: install helm
+        # Downloaded with retries and checksum-verified, like promtool below:
+        # azure/setup-helm made one attempt at get.helm.sh, and a failed fetch
+        # turned run 39530428078 red (w1/141). The sha256 is get.helm.sh's
+        # published helm-v3.19.0-linux-arm64.tar.gz.sha256sum.
+        run: |
+          curl -fsSL --retry 5 --retry-all-errors --connect-timeout 30 --max-time 300 \
+            -o "$RUNNER_TEMP/helm.tar.gz" https://get.helm.sh/helm-v3.19.0-linux-arm64.tar.gz
+          echo "440cf7add0aee27ebc93fada965523c1dc2e0ab340d4348da2215737fc0d76ad  $RUNNER_TEMP/helm.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/helm.tar.gz" -C "$RUNNER_TEMP" linux-arm64/helm
+          install -m755 -D "$RUNNER_TEMP/linux-arm64/helm" "$RUNNER_TEMP/bin/helm"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/bin/helm" version --short
       - name: install yq
         # Always download + checksum-verify into the ephemeral $RUNNER_TEMP and
         # prepend it to PATH — never short-circuit on a yq already in PATH. On a
@@ -138,7 +159,7 @@ jobs:
           YQ_VERSION=4.44.6
           YQ_LINUX_ARM64_SHA256=9477ac3cc447b6c083986129e35af8122eb2b938fe55c9c3e40436fb966e5813
           archive="$RUNNER_TEMP/yq"
-          curl -fsSL -o "$archive" \
+          curl -fsSL --retry 5 --retry-all-errors --connect-timeout 30 --max-time 300 -o "$archive" \
             "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_arm64"
           echo "$YQ_LINUX_ARM64_SHA256  $archive" | sha256sum -c -
           chmod +x "$archive"
@@ -148,8 +169,11 @@ jobs:
       - name: install fga CLI # model.fga <-> model.json drift gate
         run: |
           mkdir -p "$RUNNER_TEMP/bin"
-          curl -fsSL https://github.com/openfga/cli/releases/download/v0.7.17/fga_0.7.17_linux_arm64.tar.gz \
-            | tar -xz -C "$RUNNER_TEMP/bin" fga
+          # To a file, not a pipe: a retried transfer would re-send bytes into tar.
+          curl -fsSL --retry 5 --retry-all-errors --connect-timeout 30 --max-time 300 \
+            -o "$RUNNER_TEMP/fga.tar.gz" \
+            https://github.com/openfga/cli/releases/download/v0.7.17/fga_0.7.17_linux_arm64.tar.gz
+          tar -xzf "$RUNNER_TEMP/fga.tar.gz" -C "$RUNNER_TEMP/bin" fga
           chmod +x "$RUNNER_TEMP/bin/fga"
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
       - name: install promtool # alerting-rule check + unit tests (w3/m6); matches the explicitly pinned server image
