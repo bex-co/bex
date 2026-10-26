@@ -83,13 +83,77 @@ export function routeErrors(
   return errors;
 }
 
+// The header budgets and reserved names mirror bex-api's validateHeaders
+// (lego/backend/internal/apps/service.go) and the Go reserved list
+// (lego/types/v1alpha1/static_headers.go); the dashboard test pins the list so
+// the two cannot drift apart (w4/402).
+const MAX_STATIC_PATH_LEN = 2048;
+const MAX_STATIC_HEADER_NAME_LEN = 256;
+const MAX_STATIC_HEADER_VALUE_LEN = 4096;
+
+export const RESERVED_STATIC_HEADERS = [
+  "Content-Length",
+  "Transfer-Encoding",
+  "Connection",
+  "Keep-Alive",
+  "Upgrade",
+  "Te",
+  "Trailer",
+  "Proxy-Connection",
+] as const;
+
+const HEADER_NAME_TOKEN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
+
+function validHeaderValue(value: string): boolean {
+  for (const ch of value) {
+    const code = ch.codePointAt(0)!;
+    if (code === 0x09) continue; // HTAB is allowed in a field value.
+    if (code < 0x20 || code === 0x7f || code > 0xff) return false;
+  }
+  return true;
+}
+
+function setCookieHasDomain(value: string): boolean {
+  return value
+    .split(";")
+    .slice(1)
+    .some((attr) => attr.trim().toLowerCase().startsWith("domain="));
+}
+
 export function headerErrors(
   header: StaticHeaderView,
 ): RuleFieldErrors<StaticHeaderView> {
   const errors: RuleFieldErrors<StaticHeaderView> = {};
   const path = pathError(header.path);
   if (path) errors.path = path;
-  if (header.name.trim() === "") errors.name = "services.staticRuleRequired";
+  else if (header.path.trim().length > MAX_STATIC_PATH_LEN)
+    errors.path = "services.staticRulePathTooLong";
+
+  const name = header.name.trim();
+  if (name === "") {
+    errors.name = "services.staticRuleRequired";
+  } else if (name.length > MAX_STATIC_HEADER_NAME_LEN) {
+    errors.name = "services.staticRuleHeaderNameTooLong";
+  } else if (!HEADER_NAME_TOKEN.test(header.name)) {
+    errors.name = "services.staticRuleHeaderNameInvalid";
+  } else if (
+    RESERVED_STATIC_HEADERS.some(
+      (reserved) => reserved.toLowerCase() === name.toLowerCase(),
+    )
+  ) {
+    errors.name = "services.staticRuleHeaderNameReserved";
+  }
+
+  if (header.value.length > MAX_STATIC_HEADER_VALUE_LEN) {
+    errors.value = "services.staticRuleHeaderValueTooLong";
+  } else if (!validHeaderValue(header.value)) {
+    errors.value = "services.staticRuleHeaderValueInvalid";
+  } else if (
+    name.toLowerCase() === "set-cookie" &&
+    setCookieHasDomain(header.value)
+  ) {
+    errors.value = "services.staticRuleCookieDomain";
+  }
   return errors;
 }
 

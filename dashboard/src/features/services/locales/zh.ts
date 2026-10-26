@@ -2822,6 +2822,38 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Prefix naming the 1-based rule row in a server refusal, replacing its zero-based wire index (w4/145)",
   },
+  "services.staticRulePathTooLong": {
+    message: "最多 2048 个字符",
+    description: "Inline error under an over-long static-site rule path (w4/402)",
+  },
+  "services.staticRuleHeaderNameTooLong": {
+    message: "最多 256 个字符",
+    description: "Inline error under an over-long header name (w4/402)",
+  },
+  "services.staticRuleHeaderNameInvalid": {
+    message: "不是有效的 HTTP 标头名称",
+    description:
+      "Inline error under a header name with characters a header name can't hold (w4/402)",
+  },
+  "services.staticRuleHeaderNameReserved": {
+    message: "此标头由服务器设置，无法覆盖",
+    description:
+      "Inline error under a reserved header name such as Content-Length (w4/402)",
+  },
+  "services.staticRuleHeaderValueTooLong": {
+    message: "最多 4096 个字符",
+    description: "Inline error under an over-long header value (w4/402)",
+  },
+  "services.staticRuleHeaderValueInvalid": {
+    message: "包含标头值不允许的字符",
+    description:
+      "Inline error under a header value with a control character (w4/402)",
+  },
+  "services.staticRuleCookieDomain": {
+    message: "Set-Cookie 在共享托管上不能设置 Domain",
+    description:
+      "Inline error under a Set-Cookie value carrying a Domain attribute (w4/402)",
+  },
   "services.staticRoutesSaved": {
     message: "路由已更新",
     description: "Toast after saving routes",
