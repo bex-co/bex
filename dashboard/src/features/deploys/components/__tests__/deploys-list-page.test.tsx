@@ -245,6 +245,7 @@ describe("DeploysListPage", () => {
       row({ id: "dep-e", trigger: "rollback", rollbackOf: "dep-a" }),
       row({ id: "dep-f", trigger: "new_commit" }),
       row({ id: "dep-g", trigger: "config_change" }),
+      row({ id: "dep-h", trigger: "manual" }),
     ];
 
     renderPage();
@@ -253,6 +254,7 @@ describe("DeploysListPage", () => {
       0,
     );
     expect(screen.getAllByText("Manual Deploy").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("API Deploy").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Deploy Hook").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Blueprint Sync").length).toBeGreaterThan(0);
     const rollbackLabels = screen.getAllByText("Rollback to dep-a");
