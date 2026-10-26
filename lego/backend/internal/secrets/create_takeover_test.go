@@ -439,32 +439,36 @@ func (f *failNextDelete) Retire(ctx context.Context, path string) error {
 	return f.versionedFakeSecretStore.Retire(ctx, path)
 }
 
-// TestAReleaseThatCannotRemoveTheMapKeepsTheName (w5/148): a release whose
-// store delete failed removed the Secret anyway, so the next create found no
-// Secret at the name, skipped the leg, and its service inherited the map. The
-// Secret now stays, holding the name, and the create that takes the abandoned
-// claim over releases both.
-func TestAReleaseThatCannotRemoveTheMapKeepsTheName(t *testing.T) {
+// TestAReleaseThatCannotRemoveTheMapStillReleasesTheName (w4/404, superseding
+// w5/148's keep-the-Secret rule): the production incident showed the kept
+// Secret holding the failed create's name for the whole 12-minute preparation
+// window, so every retry answered 409. The claim Secret is now deleted even
+// when the map retire fails — the next create replaces the leftover map
+// wholesale on its first write — and an immediate re-create of the name
+// proceeds instead of waiting out the window.
+func TestAReleaseThatCannotRemoveTheMapStillReleasesTheName(t *testing.T) {
 	ctx := context.Background()
 	store, cl := crashedCreate(t)
 	flaky := &Service{Base: &core.Base{Client: cl, Namespace: "default", Clock: fixedNow}, Store: &failNextDelete{versionedFakeSecretStore: store, fail: true}}
 	if err := NewCreateSecretsSeeder(flaky).PrepareCreateSecrets(ctx, "web", sampleApp("web"), nil, nil); err == nil {
 		t.Fatal("a release whose store delete failed succeeded")
 	}
-	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web-files"}, &corev1.Secret{}); err != nil {
-		t.Fatalf("the files Secret whose map survived: %v, want it still holding the name", err)
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web-files"}, &corev1.Secret{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("the files Secret whose map survived: %v, want it deleted so the name is free", err)
 	}
 
-	later := &Service{Base: &core.Base{Client: cl, Namespace: "default", Clock: func() time.Time { return fixedNow().Add(time.Hour) }}, Store: store}
-	if err := NewCreateSecretsSeeder(later).PrepareCreateSecrets(ctx, "web", sampleApp("web"), nil, nil); err != nil {
-		t.Fatalf("a create after the stranded claim was abandoned = %v, want it released", err)
+	// An immediate re-create carrying its own values proceeds at once and
+	// replaces the leftover maps wholesale, so none of the crashed create's
+	// data reaches the new service.
+	later := &Service{Base: &core.Base{Client: cl, Namespace: "default", Clock: fixedNow}, Store: store}
+	files := []core.SecretFile{{Name: "new.txt", Content: "1"}}
+	if err := NewCreateSecretsSeeder(later).PrepareCreateSecrets(ctx, "web", sampleApp("web"), files, map[string]string{"KEY": "v"}); err != nil {
+		t.Fatalf("an immediate re-create of the released name = %v, want it to proceed", err)
 	}
-	for _, leg := range []struct{ secret, path string }{{"web-files", filesPath("web")}, {"web-env", envPath("web")}} {
-		if len(store.m[leg.path]) != 0 {
-			t.Errorf("the map at %s survived: %v", leg.path, store.m[leg.path])
-		}
-		if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: leg.secret}, &corev1.Secret{}); !apierrors.IsNotFound(err) {
-			t.Errorf("%s: %v, want it gone", leg.secret, err)
-		}
+	if got := store.m[filesPath("web")]; got["crashed.txt"] != "" || got["new.txt"] != "1" {
+		t.Errorf("files map after re-create = %v, want only the new create's file", got)
+	}
+	if got := store.m[envPath("web")]; got["CRASHED"] != "" || got["KEY"] != "v" {
+		t.Errorf("env map after re-create = %v, want only the new create's vars", got)
 	}
 }
