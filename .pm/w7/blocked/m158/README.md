@@ -1,6 +1,6 @@
 # w7 · m158 — Repair recurring registry garbage-collection failures
 
-**Worker:** worker7 **Goal:** Dependable push-to-deploy needs reclaimable registry storage. Diagnose the repeated failure before it becomes a capacity incident. **Status:** blocked
+**Worker:** worker7 **Goal:** Dependable push-to-deploy needs reclaimable registry storage. Diagnose the repeated failure before it becomes a capacity incident. **Status:** blocked (local fix verified; production rollout/acceptance pending)
 
 **Estimate:** 150m implementation; 220m including closing tasks. Runtime observation windows may exceed active effort.
 
@@ -47,3 +47,13 @@ Approved second-round priority 1; keep existing m154–m157 work intact. The fir
 **Verified (t003):** GC runs for that repository after the repair: 07:22:12Z **success**, 9 blobs collected; 07:56:06Z **success**; 08:24:21Z **success**, "removed all blobs, removing repo", 2 blobs collected — the repository is gone. Zot logged **0** errors 07:44–08:24Z; live registry traffic in the last hour: 173 `GET 200`, 1 `GET 404`. Runbook recorded in ADR060 D4 (`7578df72c`).
 
 **Why parked (t002 part 2, t006):** the DoD requires preventing recurrence under the same trigger, and that is a Zot defect (retention must treat missing repo meta as "no tags to retain", or `parseStorage` must create meta for empty repos). bex cannot prevent Zot restarts between teardown and GC. The options are all outside this session's authority: file the defect/PR upstream with project-zot (an outward-facing publication), or carry a patched Zot build. Meanwhile the ADR060 repair recovers any recurrence in minutes.
+
+## Unblock execution — 2026-10-25 America/Los_Angeles
+
+The user instructed “go clear them”, delegating execution of the proposed unblock work. The original product/upgrade decision gate is resolved. No commit or push was made because the repository requires an explicit `$ship` invocation. Production access also failed closed: one discovered control-plane node disagrees with the local pinned SSH key, and two others have no trusted entry. No pin was replaced and no host-key check was disabled.
+
+Full local evidence, tested digests, reproduction commands and remaining production acceptance are in [the upgrade drill](../../../../docs/drills/2026-10-25-w7-infrastructure-upgrades.md). This milestone remains blocked on rollout and production evidence, not on the former optional choice.
+
+The prepared patch keeps the reviewed Zot chart and overrides its image with digest-pinned v2.1.22, which contains project-zot#4500 (released October 6). `scripts/verify-zot-gc.py` reproduced the missing-meta failure on v2.1.18, then verified two successful GC cycles, orphan-repository removal, and retained manifest/blob integrity on v2.1.22. The GitOps validator checks the rendered StatefulSet image and existing auth/config contracts. Production's GC delay and ACLs are unchanged.
+
+Remaining: ship, verify the deployed version/current registry state, observe two production GC cycles and retained-image/isolation checks, then finish t002 and t006. The earlier September 28 production repair evidence does not substitute for this rollout's prevention verification.

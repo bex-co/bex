@@ -985,8 +985,8 @@ done
 # catalog/pull/push from a tenant build pod is a cross-tenant hole. Asserts the
 # committed Application values carry the auth machinery (a pinned chart, a mounted
 # custom config with htpasswd auth + accessControl whose defaultPolicy is empty —
-# anonymous denied). Checks zot.yaml's values string directly (the chart is never
-# rendered here, so the source values are the contract). A regression that drops
+# anonymous denied). Auth checks use zot.yaml's source values; the rendered
+# StatefulSet also pins the GC fix. A regression that drops
 # auth, widens the anonymous policy, or unpins the chart fails CI.
 ZOT="deploy/gitops/base/zot.yaml"
 if [ -f "$ZOT" ]; then
@@ -996,6 +996,13 @@ if [ -f "$ZOT" ]; then
   [ "$rev" = "$(awk -F '|' '$1 == "zot" { print $5 }' deploy/helm-artifacts.lock)" ] \
     || { echo "FAIL: zot targetRevision is '$rev' — require the reviewed OCI digest" >&2; fail=1; }
   vals="$(yq '.spec.source.helm.values' "$ZOT")"
+  zot_archive=$(bash scripts/helm-artifact.sh pull zot "$tmp/zot")
+  printf '%s\n' "$vals" >"$tmp/zot-values.yaml"
+  helm template zot "$zot_archive" -n bex-registry -f "$tmp/zot-values.yaml" >"$tmp/zot-render.yaml"
+  zot_image=$(yq -N 'select(.kind == "StatefulSet") | .spec.template.spec.containers[0].image' "$tmp/zot-render.yaml")
+  scalar zot_image "$zot_image"
+  [ "$zot_image" = 'ghcr.io/project-zot/zot:v2.1.22@sha256:96cda11459ce6f8c60da3b03f03e9f67fd11b3ae2d82c4c04c92b3c608996080' ] \
+    || { echo "FAIL: Zot missing-metadata GC fix is not pinned in the rendered StatefulSet: $zot_image" >&2; fail=1; }
   # Per-App pull credentials (w7/m36): the operator manages the full Zot config via
   # the zot-config Secret, so mountConfig must be false (chart must not override it).
   echo "$vals" | yq -e '.mountConfig == false' >/dev/null \

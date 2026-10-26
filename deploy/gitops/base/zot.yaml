@@ -22,6 +22,9 @@ spec:
     targetRevision: "sha256:4476fc31b06e14b9386a00b3c9309925b3cc02f7f8ce5105b0bc82b2603a5422"
     helm:
       values: |
+        # Missing repository metadata must not abort blob GC (project-zot#4500).
+        image:
+          tag: v2.1.22@sha256:96cda11459ce6f8c60da3b03f03e9f67fd11b3ae2d82c4c04c92b3c608996080
         # NodePort 30500 lets kubelet on tenant nodes pull images via
         # 127.0.0.1:30500 (configured in the CAPH machine template's
         # containerd hosts.toml) without needing cluster-internal DNS.
