@@ -1,6 +1,6 @@
 # w7 · m158 — Repair recurring registry garbage-collection failures
 
-**Worker:** worker7 **Goal:** Dependable push-to-deploy needs reclaimable registry storage. Diagnose the repeated failure before it becomes a capacity incident. **Status:** blocked (local fix verified; production rollout/acceptance pending)
+**Worker:** worker7 **Goal:** Dependable push-to-deploy needs reclaimable registry storage. Diagnose the repeated failure before it becomes a capacity incident. **Status:** done (2026-10-26 UTC; production 2.1.22 and registry acceptance verified)
 
 **Estimate:** 150m implementation; 220m including closing tasks. Runtime observation windows may exceed active effort.
 
@@ -9,19 +9,19 @@
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | Reconcile repository metadata, blobs and deletion history — **DONE** | 45m | — |
-| t002 | Implement the supported GC repair and prevention path | 60m | t001 |
+| t002 | Implement the supported GC repair and prevention path — **DONE** | 60m | t001 |
 | t003 | Verify repeated GC and normal registry operations — **DONE** | 45m | t002 |
 | t004 | Simplify — **DONE** | 20m | t003 |
 | t005 | Test coverage — **DONE** | 40m | t003 |
-| t006 | Closeout | 10m | t004, t005 |
+| t006 | Closeout — **DONE** | 10m | t004, t005 |
 
 ## Definition of done
 
-- [ ] The failing state and its ownership are documented with a bounded reproduction; storage leakage is measured or explicitly unproven.
-- [ ] The reproduced GC failure clears without deleting live manifests or weakening repository isolation; the correction prevents recurrence under the same trigger.
-- [ ] Two GC cycles succeed, live images remain usable, the disposable repository is cleaned up and before/after evidence identifies the tested revision.
+- [x] The failing state and its ownership are documented with a bounded reproduction; storage leakage is measured or explicitly unproven.
+- [x] The reproduced GC failure clears without deleting live manifests or weakening repository isolation; the correction prevents recurrence under the same trigger.
+- [x] Two GC cycles succeed, live images remain usable, the disposable repository is cleaned up and before/after evidence identifies the tested revision.
 
-- [ ] Required checks and closing tasks are complete, with dated runtime evidence for production-dependent outcomes.
+- [x] Required checks and closing tasks are complete, with dated runtime evidence for production-dependent outcomes.
 
 ## Source + Goal linkage
 
@@ -61,3 +61,7 @@ Remaining: ship, verify the deployed version/current registry state, observe two
 ## Shipping checkpoint — 2026-10-25
 
 The user explicitly authorized “ship and continue”. The implementation and verification record were pushed to `origin/main` at `418e5ccfd` (separate registry, CNPG and cache commits). Pre-push gates and rebased GitOps validation passed. Production delivery is queued behind an older active deployment; no production completion is claimed. A protected, main-only CI job is being added to report only fingerprints from the already-provisioned host-key trust, so local stale pins can be checked against an independent authenticated source without exporting credentials.
+
+## Production closeout — 2026-10-26 UTC
+
+The source choices, authenticated access and rollout gates are resolved. The pinned 2.1.22 image is Synced/Healthy in production, with 57 successful per-repository GC tasks and no errors since its 01:40:27 start. Two existing workspaces retain correct manifests/configs and all 32 referenced blobs; own reads succeed, cross-namespace reads are 403 in both directions, anonymous catalog enumeration is 401. The bounded old/new real-registry fixture verifies orphan reclamation under a forced metadata rebuild and two subsequent GC cycles; production's 3h settings are preserved. No production artifact deletion or synthetic tenant fixture was needed. All tasks are complete.
