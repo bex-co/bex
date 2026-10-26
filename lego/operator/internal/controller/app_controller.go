@@ -452,6 +452,7 @@ type AppReconciler struct {
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=replicasets,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
 // Persistent service disks (docs/ADR082-persistent-disks.md): the App controller
 // creates and grows the per-App PVC itself, and deletes it when the disk is
 // detached. The pre-existing cluster-wide PVC grant carries no create/delete —
@@ -3442,6 +3443,11 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason,
 			Message: msg, ObservedGeneration: app.Generation,
 		})
+	} else if msg := r.nodeLossMessage(ctx, dep); msg != "" {
+		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: appv1alpha1.ReasonNodeLost,
+			Message: msg, ObservedGeneration: app.Generation,
+		})
 	}
 	r.observeServingRevision(ctx, app, dep, replicas)
 	// Best-effort progress stamp: the 5s requeue below re-writes it if lost.
@@ -5360,6 +5366,81 @@ func imagePortStallHint(app *appv1alpha1.App, port int) string {
 	return fmt.Sprintf(" Nothing accepted a TCP connection on port %d, the primary port selected from the image's declared TCP ports (%s)."+
 		" Bind the server to 0.0.0.0 on one of those ports, or set the service's port to the one it listens on.",
 		port, strings.Join(declared, ", "))
+}
+
+// nodeLossDisruptions are the DisruptionTarget reasons Kubernetes gives a pod
+// it removed because of its node rather than its workload: the taint manager
+// evicting from a NotReady/unreachable node, and pod GC after the node object
+// is gone. Every other reason is left out: a drain (EvictionByEvictionAPI) or
+// scheduler preemption is planned, and the kubelet's TerminationByKubelet is
+// node-pressure eviction the workload's own usage caused or a graceful node
+// shutdown, which is a planned stop too.
+var nodeLossDisruptions = map[string]bool{
+	"DeletionByTaintManager": true,
+	"DeletionByPodGC":        true,
+}
+
+// nodeLossMessage reports an unready instance of dep that was lost with its
+// node: a pod Kubernetes disrupted for a node reason, or one still bound to a
+// node that is NotReady or no longer exists. Empty when every unready pod is
+// unready for a reason of its own. Node reads go through the cached client;
+// one that fails for any other reason is treated as no evidence.
+func (r *AppReconciler) nodeLossMessage(ctx context.Context, dep *appsv1.Deployment) string {
+	if dep.Spec.Selector == nil || len(dep.Spec.Selector.MatchLabels) == 0 {
+		return ""
+	}
+	var pods corev1.PodList
+	if err := r.List(ctx, &pods, client.InNamespace(dep.Namespace),
+		client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
+		return ""
+	}
+pods:
+	for i := range pods.Items {
+		p := &pods.Items[i]
+		// A terminal pod (an old evicted or completed one awaiting GC) says
+		// nothing about why the instances that serve now are unready.
+		if podReady(p) || p.Status.Phase == corev1.PodSucceeded || p.Status.Phase == corev1.PodFailed {
+			continue
+		}
+		for _, c := range p.Status.Conditions {
+			if c.Type != corev1.DisruptionTarget || c.Status != corev1.ConditionTrue {
+				continue
+			}
+			if !nodeLossDisruptions[c.Reason] {
+				// Planned: its node may go away next (a drained machine is
+				// deleted), which must not read as a node loss.
+				continue pods
+			}
+			if p.Spec.NodeName == "" {
+				return fmt.Sprintf("instance %s was lost with its node (%s)", p.Name, c.Reason)
+			}
+			return fmt.Sprintf("instance %s was lost with node %s (%s)", p.Name, p.Spec.NodeName, c.Reason)
+		}
+		if p.Spec.NodeName == "" {
+			continue
+		}
+		var node corev1.Node
+		err := r.Get(ctx, client.ObjectKey{Name: p.Spec.NodeName}, &node)
+		switch {
+		case apierrors.IsNotFound(err):
+			return fmt.Sprintf("instance %s was lost with node %s (node removed)", p.Name, p.Spec.NodeName)
+		case err != nil:
+			continue
+		}
+		for _, c := range node.Status.Conditions {
+			if c.Type == corev1.NodeReady && c.Status != corev1.ConditionTrue {
+				return fmt.Sprintf("instance %s was lost with node %s (node %s)", p.Name, p.Spec.NodeName, nodeReadyWord(c.Status))
+			}
+		}
+	}
+	return ""
+}
+
+func nodeReadyWord(status corev1.ConditionStatus) string {
+	if status == corev1.ConditionUnknown {
+		return "unreachable"
+	}
+	return "not ready"
 }
 
 // stuckPodMessage inspects the pods behind a not-yet-ready tenant Deployment

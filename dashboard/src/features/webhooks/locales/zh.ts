@@ -553,6 +553,10 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     message: "服务不可用",
     description: "Event label — server_failed",
   },
+  "webhooks.event.server_hardware_failure": {
+    message: "服务器硬件故障",
+    description: "Event label — server_hardware_failure",
+  },
   "webhooks.event.server_available": {
     message: "服务恢复可用",
     description: "Event label — server_available",

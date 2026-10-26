@@ -315,11 +315,19 @@ func (r *Reconciler) confirmUnhealthySoon() {
 // ReadyTransitionAt, was added by w6/m41; a single clearing site keeps the
 // guards from drifting).
 func suppressAvailability(obs ObservedServiceState) ObservedServiceState {
-	obs.AvailabilityObserved = false
+	obs = clearAvailability(obs)
 	obs.AvailabilitySuppressed = true
+	return obs
+}
+
+// clearAvailability blanks every availability-conclusion field, so the guards
+// and heldAvailability cannot drift apart as conclusion fields are added.
+func clearAvailability(obs ObservedServiceState) ObservedServiceState {
+	obs.AvailabilityObserved = false
 	obs.Availability = ""
 	obs.ReasonCode = ""
 	obs.ConcreteFailure = false
+	obs.NodeLost = false
 	obs.ReadyTransitionAt = time.Time{}
 	return obs
 }
@@ -2017,8 +2025,13 @@ func observedServiceStateFor(appID string, app *appv1alpha1.App, hasOpenDeploy b
 				condition.Reason != appv1alpha1.ReasonRolloutSettling {
 				obs.Availability = "unhealthy"
 				obs.AvailabilityObserved = true
-				obs.ReasonCode = EventReasonReadinessFailed
 				obs.ConcreteFailure = concreteContainerFailure(condition.Reason)
+				obs.NodeLost = condition.Reason == appv1alpha1.ReasonNodeLost
+				// A node loss is not a readiness failure of the service's own
+				// container; server_hardware_failure carries no reason code.
+				if !obs.NodeLost {
+					obs.ReasonCode = EventReasonReadinessFailed
+				}
 				obs.ReadyTransitionAt = condition.LastTransitionTime.Time
 				if hasOpenDeploy {
 					// Ready went False when the rollout began, which dates a crash

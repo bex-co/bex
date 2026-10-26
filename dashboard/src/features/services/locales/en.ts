@@ -4217,6 +4217,11 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Instance failed",
     description: "Service activity type: running instance became unhealthy",
   },
+  "services.eventsTypeHardwareFailure": {
+    message: "Hardware failure",
+    description:
+      "Service activity type: an instance was lost with the machine it ran on",
+  },
   "services.eventsTypeServiceSuspended": {
     message: "Service suspended",
     description: "Service activity type: suspension converged",
