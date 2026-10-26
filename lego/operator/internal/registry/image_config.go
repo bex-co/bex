@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -59,9 +60,14 @@ func imageRepoBase(registryHost, repo, reference, authorization string) (string,
 	return base + "/v2/" + repo + "/", nil
 }
 
+// maxBlobRedirects bounds the storage hops a config blob read may take.
+const maxBlobRedirects = 3
+
 // ReadImageConfig reads only the authorized repository, verifies both manifest
-// and config digests, and never downloads layers. Redirects are refused so the
-// registry cannot redirect the operator's credentials or fetches elsewhere.
+// and config digests, and never downloads layers. Manifest redirects are
+// refused so the registry cannot redirect the operator's credentials or
+// fetches elsewhere; a config blob may follow https storage redirects without
+// the credential.
 func ReadImageConfig(ctx context.Context, httpClient *http.Client, registryHost, repo, reference, authorization string) (ImageConfig, error) {
 	digest, document, err := readImageConfigDocument(ctx, httpClient, registryHost, repo, reference, authorization)
 	if err != nil {
@@ -200,10 +206,26 @@ func readImageConfigDocument(ctx context.Context, httpClient *http.Client, regis
 	}
 	bounded := *httpClient
 	bounded.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
-	fetch := func(path, expectedDigest string) ([]byte, string, error) {
+	// Registries serve blobs from storage: Docker Hub, GHCR, ECR and GCR all
+	// answer a blob GET with a redirect to a CDN or presigned URL (w8/201).
+	// A blob is content-addressed and digest-verified below, so following an
+	// https redirect cannot substitute content; the registry credential never
+	// travels with it (presigned URLs carry their own authorization).
+	blobs := bounded
+	blobs.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if len(via) > maxBlobRedirects {
+			return fmt.Errorf("image metadata blob redirected more than %d times", maxBlobRedirects)
+		}
+		if req.URL.Scheme != "https" {
+			return errors.New("image metadata blob redirected to a non-https URL")
+		}
+		req.Header.Del("Authorization")
+		return nil
+	}
+	fetch := func(client *http.Client, path, expectedDigest string) ([]byte, string, error) {
 		bearer := ""
 		for attempt := 0; ; attempt++ {
-			data, status, challenge, err := fetchOnce(ctx, &bounded, base+path, authorization, bearer)
+			data, status, challenge, err := fetchOnce(ctx, client, base+path, authorization, bearer)
 			if err != nil {
 				return nil, "", err
 			}
@@ -233,7 +255,7 @@ func readImageConfigDocument(ctx context.Context, httpClient *http.Client, regis
 		if imageDigestPattern.MatchString(reference) {
 			expected = reference
 		}
-		body, digest, err := fetch("manifests/"+reference, expected)
+		body, digest, err := fetch(&bounded, "manifests/"+reference, expected)
 		if err != nil {
 			return "", imageConfigDocument{}, err
 		}
@@ -280,7 +302,7 @@ func readImageConfigDocument(ctx context.Context, httpClient *http.Client, regis
 		if !imageDigestPattern.MatchString(manifest.Config.Digest) {
 			return "", imageConfigDocument{}, fmt.Errorf("invalid image config digest")
 		}
-		config, _, err := fetch("blobs/"+manifest.Config.Digest, manifest.Config.Digest)
+		config, _, err := fetch(&blobs, "blobs/"+manifest.Config.Digest, manifest.Config.Digest)
 		if err != nil {
 			return "", imageConfigDocument{}, err
 		}
