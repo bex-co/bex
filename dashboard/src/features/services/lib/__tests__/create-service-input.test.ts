@@ -247,6 +247,24 @@ describe("buildCreateServiceInput", () => {
 });
 
 describe("isSubmittable", () => {
+  // w4/406: the Existing Image path holds submit for a reference the server
+  // would refuse, instead of a toast-only round trip.
+  it.each([
+    "not a valid ref!!",
+    "Nginx:latest",
+    "localhost:5000/x:1",
+    "169.254.169.254/x:1",
+  ])("holds an image create for %s", (image) => {
+    expect(isSubmittable(form({ tab: "image", image }))).toBe(false);
+  });
+
+  it.each(["ghcr.io/traefik/whoami:v1.10", `nginx@sha256:${"a".repeat(64)}`])(
+    "allows an image create for %s",
+    (image) => {
+      expect(isSubmittable(form({ tab: "image", image }))).toBe(true);
+    },
+  );
+
   it("requires a valid source", () => {
     expect(isSubmittable(form())).toBe(true);
     expect(isSubmittable(form({ gitUrl: "not a url" }))).toBe(false);
