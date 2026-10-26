@@ -57,3 +57,7 @@ Full local evidence, tested digests, reproduction commands and remaining product
 The prepared patch keeps the reviewed Zot chart and overrides its image with digest-pinned v2.1.22, which contains project-zot#4500 (released October 6). `scripts/verify-zot-gc.py` reproduced the missing-meta failure on v2.1.18, then verified two successful GC cycles, orphan-repository removal, and retained manifest/blob integrity on v2.1.22. The GitOps validator checks the rendered StatefulSet image and existing auth/config contracts. Production's GC delay and ACLs are unchanged.
 
 Remaining: ship, verify the deployed version/current registry state, observe two production GC cycles and retained-image/isolation checks, then finish t002 and t006. The earlier September 28 production repair evidence does not substitute for this rollout's prevention verification.
+
+## Shipping checkpoint — 2026-10-25
+
+The user explicitly authorized “ship and continue”. The implementation and verification record were pushed to `origin/main` at `418e5ccfd` (separate registry, CNPG and cache commits). Pre-push gates and rebased GitOps validation passed. Production delivery is queued behind an older active deployment; no production completion is claimed. A protected, main-only CI job is being added to report only fingerprints from the already-provisioned host-key trust, so local stale pins can be checked against an independent authenticated source without exporting credentials.

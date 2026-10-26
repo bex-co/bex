@@ -1,0 +1,29 @@
+name: Verify production SSH trust
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  fingerprints:
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    environment: production-deploy
+    timeout-minutes: 5
+    steps:
+      # A local stale pin can be compared with CI's independently provisioned
+      # trust without exporting the secret or accepting a key from the network.
+      - name: Verify authoritative host fingerprints
+        env:
+          BEX_SSH_KNOWN_HOSTS: ${{ secrets.BEX_SSH_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          trust_file=$(mktemp)
+          trap 'rm -f "$trust_file"' EXIT
+          test -n "$BEX_SSH_KNOWN_HOSTS"
+          printf '%s\n' "$BEX_SSH_KNOWN_HOSTS" >"$trust_file"
+          ssh-keygen -lf "$trust_file"
