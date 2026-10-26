@@ -148,6 +148,8 @@ const link = new ApolloLink(
               publicRoutingNotice: "",
               undeployedChanges: false,
               undeployedChangesApplying: false,
+              undeployedChangesReason: null,
+              servingImage: null,
               internalAddress: "",
               createdAt: "2026-10-12T00:00:00Z",
               sshAddress: "",
