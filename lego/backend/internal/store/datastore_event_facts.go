@@ -343,7 +343,7 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 				Scan(&previousPhase, &previousAvailability, &previousSuspended,
 					&previousExtras.LastBackupName, &previousExtras.LastBackupPhase,
 					&previousExtras.RestoreOutcome, &previousExtras.UpgradeKey,
-				&previousExtras.StartedBackup, &previousExtras.WALArchiving, &exportsSince, &previousChangedAt)
+					&previousExtras.StartedBackup, &previousExtras.WALArchiving, &exportsSince, &previousChangedAt)
 		}
 		if err != nil {
 			return err
