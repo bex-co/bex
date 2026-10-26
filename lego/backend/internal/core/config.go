@@ -93,6 +93,11 @@ func (k configKeyKind) problem(key string) string {
 	if len(errs) == 0 {
 		return ""
 	}
+	// The kubelet's atomic-writer layout owns ".."-prefixed names; that
+	// specific refusal keeps its own wording under either kind's rule.
+	if strings.HasPrefix(key, "..") {
+		return "must not start with '..'"
+	}
 	if k.rule != "" {
 		return "use " + k.rule
 	}

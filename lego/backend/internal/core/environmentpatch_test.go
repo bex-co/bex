@@ -84,7 +84,8 @@ func TestConfigKeysAreCappedAtTheSecretKeyLimit(t *testing.T) {
 		t.Errorf("charset refusal = %v, want the existing invalid-name message", err)
 	}
 	// w4/403: the refusal words the rule in bex's own terms, never Kubernetes'.
-	for _, name := range []string{"dir/x.txt", "..data", "a b"} {
+	// ("..data" keeps its specific '..' wording, pinned by longname_test.go.)
+	for _, name := range []string{"dir/x.txt", "a b"} {
 		err := CheckSecretFileName(name)
 		if err == nil {
 			t.Errorf("%q: want a refusal", name)
