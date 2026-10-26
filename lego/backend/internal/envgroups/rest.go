@@ -54,13 +54,6 @@ type envGroupWithCursor struct {
 	Cursor   string         `json:"cursor"`
 }
 
-// revealedGroupWithCursor is the same envelope around the revealed group REST
-// answers with (render.go revealedEnvGroup).
-type revealedGroupWithCursor struct {
-	EnvGroup revealedEnvGroup `json:"envGroup"`
-	Cursor   string           `json:"cursor"`
-}
-
 // renderEnvGroupMeta is Render's envGroupMeta: the list item without
 // envVars or secretFiles (w4/396).
 type renderEnvGroupMeta struct {
@@ -93,14 +86,6 @@ func envGroupMetaList(groups []renderEnvGroup) []metaGroupWithCursor {
 			},
 			Cursor: group.ID,
 		})
-	}
-	return out
-}
-
-func envGroupList(groups []revealedEnvGroup) []revealedGroupWithCursor {
-	out := make([]revealedGroupWithCursor, 0, len(groups))
-	for _, group := range groups {
-		out = append(out, revealedGroupWithCursor{EnvGroup: group, Cursor: group.ID})
 	}
 	return out
 }
