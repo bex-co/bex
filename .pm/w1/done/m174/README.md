@@ -1,6 +1,6 @@
 # w1 · m174 — Get main's red checks passing again: x/net CVEs, lint OOM, flaky tests, Dependabot, schema re-pin
 
-**Worker:** worker1 **Goal:** every check on `main` that is red today passes reliably, so a red check means something again and no known reachable Go vulnerability ships. **Status:** blocked — shipped `e8beef717` (t001–t008 done; t005 finished by `w1/m176` and `w1/m177`). Follow-up t010 is done 2026-10-18: it repairs the new GitOps validation regressions and passes local validation. Closeout still waits on CI history: the latest go lint and govulncheck streaks are 18 and 20 green runs respectively, but gitops (render) has three new failures (details below). Render schema drift's next two scheduled runs are Mondays 2026-10-19 and 10-26 at 06:17Z. The dispatched drift run already passes (`38805794187`, 2026-10-15).
+**Worker:** worker1 **Goal:** every check on `main` that is red today passes reliably, so a red check means something again and no known reachable Go vulnerability ships. **Status:** done 2026-10-23. All tasks are complete. The Definition of done is met for gitops, go lint and govulncheck. Render schema drift passed one dispatched run and one scheduled run, and closing did not wait for the 2026-10-26 run; evidence is in `done/t009.md` § Outcome.
 
 ## Tasks (in order)
 
@@ -15,7 +15,7 @@
 | t010 | Repair GitOps validation on the CI runner — **DONE** | 30m | t004 |
 | t007 | Simplify — **DONE**                                                                                      | 15m | t002, t003, t004, t005, t006, t010  |
 | t008 | Test coverage — **DONE**                                                                                 | 30m | t002, t003, t004, t005, t006, t010  |
-| t009 | Closeout | 10m | t008, t010 |
+| t009 | Closeout — **DONE** | 10m | t008, t010 |
 
 ## Definition of done
 

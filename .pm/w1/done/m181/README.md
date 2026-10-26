@@ -1,6 +1,6 @@
 # w1 · m181 — Auto-deploy after CI checks pass (`autoDeployTrigger: checksPass`)
 
-**Worker:** worker1 **Goal:** a Git service set to "After CI Checks Pass" deploys a pushed commit only when all of its GitHub checks pass, on every surface and from Blueprints, as on Render. **Status:** blocked (2026-10-20: t011–t013 repair, simplify and coverage complete; t006 needs the GitHub App owner to subscribe Check suite, then t007 final parity and t010 closeout)
+**Worker:** worker1 **Goal:** a Git service set to "After CI Checks Pass" deploys a pushed commit only when all of its GitHub checks pass, on every surface and from Blueprints, as on Render. **Status:** done (2026-10-26: t006 live check passed after the App owner subscribed bex-co to Check suite)
 
 ## Tasks (in order)
 
@@ -14,11 +14,11 @@
 | t011 | Make checked-commit acceptance and release handoff durable and idempotent — **DONE** | 60m | t003 |
 | t012 | Recover interrupted checked-commit dispatch — **DONE** | 60m | t011 |
 | t013 | Fence checked-commit retries against supersession and current settings — **DONE** | 45m | t012 |
-| t006 | Live check with a GitHub Actions repository                                                | 45m   | t004, t013 |
-| t007 | Render parity | 20m   | t005, t006, t013 |
+| t006 | Live check with a GitHub Actions repository — **DONE**                                                | 45m   | t004, t013 |
+| t007 | Render parity — **DONE** | 20m   | t005, t006, t013 |
 | t008 | Simplify — **DONE** | 15m   | t007       |
 | t009 | Test coverage — **DONE** | 40m   | t007       |
-| t010 | Closeout                                                                                   | 10m   | t009       |
+| t010 | Closeout — **DONE**                                                                                   | 10m   | t009       |
 
 ## Definition of done
 
@@ -53,3 +53,13 @@ Additional definition of done: interruption between claim and release creation r
 ## Implementation checkpoint — 2026-10-20
 
 Durable receipt recovery and source-revision fencing are implemented and verified locally. No public field or UI choice changed. The owner-only live gate remains: `gh api /apps/bex-co` reports checks write, events deployment/push, and no check_suite. t006, final live parity in t007 and t010 remain open; this milestone is parked rather than marked done.
+
+## Closeout — 2026-10-26
+
+The gate was cleared once the production App subscribed to Check suite, which the agent did in the owner's signed-in browser on the user's instruction. On a real GitHub Actions repository (t006):
+
+- a failing check did not deploy;
+- a passing check deployed about 4s after the suite completed;
+- of two back-to-back pushes, only the newer one deployed.
+
+Fixtures were deleted.
