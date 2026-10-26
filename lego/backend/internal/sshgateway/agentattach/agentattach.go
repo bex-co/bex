@@ -28,13 +28,15 @@ limitations under the License.
 //   - POST /v1/agent-sessions/{id}/stream — forwards a live prompt turn to the
 //     driver and streams the turn's parts back (w3/m43 t004).
 //
-// Byte-transparent forwarding is a contract, not a convenience (ADR047 D3): the
-// gateway preserves the `x-vercel-ai-ui-message-stream: v1` marker and the exact
-// `data:` payload bytes end to end — it never re-encodes, filters, reorders, or
-// injects stream parts. Its only additions are authentication, the transcript
-// tee, and replay-then-live splicing. Cookies on this path are ignored: the
-// ticket is the sole credential (the endpoint publishes under the api.bex.co
-// origin via edge path-routing, so a Kratos cookie will arrive).
+// Byte-transparent LIVE forwarding is a contract, not a convenience (ADR047
+// D3): the gateway preserves the `x-vercel-ai-ui-message-stream: v1` marker and
+// the exact `data:` payload bytes of every live driver chunk — it never
+// re-encodes, filters, reorders, or injects live parts. The durable transcript
+// stores completed items (ADR051 § Item model), so the replay re-emits each as
+// its minimal standard chunk sequence. Its only additions are authentication,
+// the transcript tee, and replay-then-live splicing. Cookies on this path are
+// ignored: the ticket is the sole credential (the endpoint publishes under the
+// api.bex.co origin via edge path-routing, so a Kratos cookie will arrive).
 package agentattach
 
 import (
@@ -57,6 +59,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
+	"github.com/bex-co/bex/lego/backend/internal/agenttranscript"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/drivergrant"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
@@ -559,7 +562,7 @@ func (s *Server) streamAgentAttach(ctx context.Context, sse *agentSSE, podIP str
 	quota := s.transcriptQuota()
 	pageBudget := s.replayPageQuota()
 	var replayedBytes int64
-	replayedTurnIndex := int64(-1)
+	replayed := newReplayedTurn()
 	after := int64(-1)
 replay:
 	for {
@@ -586,24 +589,31 @@ replay:
 				log.Printf("agent attach: transcript replay truncated at cap (session=%s)", sessionID)
 				break replay
 			}
-			if part.Turn == turn && part.PartIndex > replayedTurnIndex {
-				replayedTurnIndex = part.PartIndex
-			}
-			// Each driver turn carries its own start/finish chunks. The replay
-			// adapter has already opened one response message so durable prompts and
-			// all turns remain one ordered part stream; forwarding the nested
-			// structural chunks makes AI SDK duplicate cumulative messages.
-			payload, skip := replayUIChunk(part, turn, len(turns) > 0)
-			if skip {
-				replayedBytes += int64(len(part.Part))
-				continue
-			}
-			if err := sse.frame(string(payload)); err != nil {
-				// Client gone or stalled past the write deadline: stop now so the
-				// deferred limiter release + this return free the reader's memory.
-				return
+			if part.Turn == turn {
+				replayed.add(part)
 			}
 			replayedBytes += int64(len(part.Part))
+			// A stored item replays as its minimal standard chunk sequence; a
+			// legacy row is already one chunk (ADR051 § Item model).
+			chunks := []json.RawMessage{part.Part}
+			if part.Item {
+				chunks = agenttranscript.Expand(part.Part)
+			}
+			for _, chunk := range chunks {
+				// Each driver turn carries its own start/finish chunks. The replay
+				// adapter has already opened one response message so durable prompts and
+				// all turns remain one ordered part stream; forwarding the nested
+				// structural chunks makes AI SDK duplicate cumulative messages.
+				payload, skip := replayUIChunk(chunk, part.Turn, turn, len(turns) > 0)
+				if skip {
+					continue
+				}
+				if err := sse.frame(string(payload)); err != nil {
+					// Client gone or stalled past the write deadline: stop now so the
+					// deferred limiter release + this return free the reader's memory.
+					return
+				}
+			}
 		}
 		after = page[len(page)-1].Seq
 	}
@@ -620,7 +630,7 @@ replay:
 		return
 	}
 	stopHeartbeat := sse.startHeartbeat(ctx, s.heartbeatInterval())
-	err = s.spliceDriverStream(ctx, sse, podIP, sessionID, turn, replayedBytes, replayedTurnIndex, len(turns) > 0)
+	err = s.spliceDriverStream(ctx, sse, podIP, sessionID, turn, replayedBytes, replayed, len(turns) > 0)
 	stopHeartbeat()
 	if err != nil {
 		log.Printf("agent attach: live splice ended (session=%s): %v", sessionID, err)
@@ -631,26 +641,26 @@ replay:
 
 // Decode once for both replay adaptations: structural chunks belong to the
 // enclosing message, and old errors are content rather than fatal SDK errors.
-func replayUIChunk(part store.AgentSessionTranscriptPart, currentTurn int, adaptedReplay bool) ([]byte, bool) {
-	if !adaptedReplay && part.Turn >= currentTurn {
-		return part.Part, false
+func replayUIChunk(part []byte, partTurn, currentTurn int, adaptedReplay bool) ([]byte, bool) {
+	if !adaptedReplay && partTurn >= currentTurn {
+		return part, false
 	}
 	var chunk struct {
 		Type      string `json:"type"`
 		ErrorText string `json:"errorText"`
 	}
-	if json.Unmarshal(part.Part, &chunk) != nil {
-		return part.Part, false
+	if json.Unmarshal(part, &chunk) != nil {
+		return part, false
 	}
 	if adaptedReplay && (chunk.Type == "start" || chunk.Type == "finish") {
 		return nil, true
 	}
-	if part.Turn >= currentTurn || chunk.Type != "error" {
-		return part.Part, false
+	if partTurn >= currentTurn || chunk.Type != "error" {
+		return part, false
 	}
 	payload, _ := json.Marshal(map[string]any{
 		"type": "data-bex-turn-error",
-		"data": map[string]any{"turn": part.Turn, "errorText": chunk.ErrorText},
+		"data": map[string]any{"turn": partTurn, "errorText": chunk.ErrorText},
 	})
 	return payload, false
 }
@@ -671,20 +681,21 @@ func finishConversation(sse *agentSSE, turns []store.AgentSessionTurn) {
 }
 
 // spliceDriverStream reads the driver's /stream (which replays its full history
-// then goes live), tees every part into the durable store under its turn-local
-// driver ordinal, and forwards only the parts beyond the persisted prefix.
-func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, sessionID string, turn int, storedBytes, replayedTurnIndex int64, adaptedReplay bool) error {
+// then goes live), folds every chunk into the turn's items and tees each
+// completed item into the durable store under its turn-local index (ADR051 §
+// Item model), and forwards verbatim only the chunks of items this client did
+// not already replay.
+func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, sessionID string, turn int, storedBytes int64, replayed *replayedTurn, adaptedReplay bool) error {
 	resp, err := s.dialDriverStream(ctx, podIP)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	batcher := newTranscriptBatcher(ctx, s.Store, sessionID)
-	defer batcher.close()
+	tee := newTurnTee(ctx, s.Store, sessionID, turn, storedBytes, s.transcriptQuota(), replayed)
+	defer tee.close()
 
 	var ordinal int64 = -1
-	total := storedBytes // transcript bytes already persisted for this session
 	reader := bufio.NewReader(resp.Body)
 	for {
 		payload, done, err := readSSEData(reader, maxSSEPartBytes)
@@ -701,34 +712,28 @@ func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, s
 			continue
 		}
 		ordinal++
-		// Only suppress the prefix this client actually replayed. A DB max-index
-		// query here could include a concurrent writer's not-yet-replayed parts.
-		// Replayed bytes were already charged to the cumulative quota.
-		if ordinal <= replayedTurnIndex {
-			continue
-		}
 		// Per-session byte quota (F10): stop teeing+streaming once the session's
 		// stored transcript would exceed the cumulative cap, so tenant output
 		// can't grow Postgres or the gateway without bound. The client is
 		// settled with `[DONE]` by the caller.
-		if total+int64(len(payload)) > s.transcriptQuota() {
+		forward, ok := tee.push(ordinal, payload)
+		if !ok {
 			log.Printf("agent attach: session transcript byte quota reached, stopping splice (session=%s)", sessionID)
 			return nil
 		}
-		total += int64(len(payload))
-		// Forward first, then tee into a bounded batch so browser delivery is not
-		// blocked on PostgreSQL transaction latency (w5/m77).
-		if !(adaptedReplay && structuralUIChunk([]byte(payload))) {
-			if err := sse.frame(payload); err != nil {
-				// Client gone or stalled past the write deadline. The batcher still
-				// persists accepted parts; stop forwarding (the Completer's headless
-				// recorder captures the remainder at session end).
-				return err
-			}
+		// Only suppress what this client actually replayed. A DB max-index
+		// query here could include a concurrent writer's not-yet-replayed items.
+		if !forward || (adaptedReplay && structuralUIChunk([]byte(payload))) {
+			continue
 		}
-		batcher.enqueue(store.AgentSessionTranscriptPart{
-			PartIndex: ordinal, Turn: turn, Part: []byte(payload),
-		})
+		// Forward first; the tee persists completed items through a bounded
+		// batch so browser delivery is not blocked on PostgreSQL latency (w5/m77).
+		if err := sse.frame(payload); err != nil {
+			// Client gone or stalled past the write deadline. The tee still
+			// persists completed items and flushes in-flight ones as partial;
+			// the Completer's harvest replaces those at session end.
+			return err
+		}
 	}
 }
 
@@ -799,10 +804,9 @@ func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, podIP, ses
 	}
 	stopHeartbeat := sse.startHeartbeat(ctx, s.heartbeatInterval())
 	defer stopHeartbeat()
-	batcher := newTranscriptBatcher(ctx, s.Store, sessionID)
-	defer batcher.close()
+	tee := newTurnTee(ctx, s.Store, sessionID, turn, storedBytes, s.transcriptQuota(), newReplayedTurn())
+	defer tee.close()
 	var partIndex int64 = -1
-	total := storedBytes
 	reader := bufio.NewReader(resp.Body)
 	for {
 		payload, done, err := readSSEData(reader, maxSSEPartBytes)
@@ -812,25 +816,21 @@ func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, podIP, ses
 		if payload == "" {
 			continue
 		}
+		partIndex++
 		// Cumulative per-session byte quota (F10): a runaway turn — or many
 		// individually small turns — can't grow the stored transcript or
 		// gateway memory past the cap.
-		if total+int64(len(payload)) > s.transcriptQuota() {
+		if _, ok := tee.push(partIndex, payload); !ok {
 			log.Printf("agent turn: session transcript byte quota reached, stopping turn (session=%s)", sessionID)
 			break
 		}
-		total += int64(len(payload))
-		partIndex++
 		if err := sse.frame(payload); err != nil {
 			// Client gone or stalled past the write deadline: stop forwarding.
 			return
 		}
-		batcher.enqueue(store.AgentSessionTranscriptPart{
-			PartIndex: partIndex, Turn: turn, Part: []byte(payload),
-		})
 	}
 	stopHeartbeat()
-	batcher.close()
+	tee.close()
 	sse.done()
 }
 
