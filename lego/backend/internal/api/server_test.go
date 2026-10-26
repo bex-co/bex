@@ -117,7 +117,7 @@ func staticLogs(lines map[string][]string) logs.PodLogSource {
 // other methods satisfy deploys.DeployStore but are not part of this test.
 type deployHookStore struct{}
 
-func (deployHookStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, _ store.CommitInfo, _ string) (store.Deploy, error) {
+func (deployHookStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, _ store.CommitInfo, _ string, _ ...bool) (store.Deploy, error) {
 	return store.Deploy{
 		ID:         "dep-public-hook",
 		AppID:      appID,
@@ -1255,7 +1255,7 @@ func sweepEveryVerb(t *testing.T, ctx context.Context, services []any, fn func(s
 // checks its walk against — shared so the sweeps' thresholds can't drift
 // apart (w4/087). Bump deliberately in the same commit that adds or removes a
 // verb; a loose floor would absorb silent filter regressions.
-const wantSweptVerbs = 363 // agentsessions Pin + Unpin removed with agent-session hibernation (w10/m15); before that 365: postgres + keyvalue SetEnvironmentIsolation (w8/m136); before them secrets.ListSecretFilesWithContentPage (w8/182); before it environments.ChangeResources + DeleteIfEmpty and projects.DeleteIfEmpty (w8/188); before them apps.DiskSnapshotHealth: are nightly disk snapshots happening (w6/m152)
+const wantSweptVerbs = 364 // deploys.TriggerManual (w4/413); before that: agentsessions Pin + Unpin removed with agent-session hibernation (w10/m15); before that 365: postgres + keyvalue SetEnvironmentIsolation (w8/m136); before them secrets.ListSecretFilesWithContentPage (w8/182); before it environments.ChangeResources + DeleteIfEmpty and projects.DeleteIfEmpty (w8/188); before them apps.DiskSnapshotHealth: are nightly disk snapshots happening (w6/m152)
 
 func assertSweptVerbCount(t *testing.T, swept int) {
 	t.Helper()

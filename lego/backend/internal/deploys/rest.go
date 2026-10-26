@@ -317,7 +317,7 @@ func renderTrigger(trigger string) string {
 	switch trigger {
 	case store.TriggerConfigChange:
 		return "service_updated"
-	case store.TriggerAPI, store.TriggerDeployHook, store.TriggerRollback, store.TriggerNewCommit, store.TriggerDeployedByRender:
+	case store.TriggerAPI, store.TriggerManual, store.TriggerDeployHook, store.TriggerRollback, store.TriggerNewCommit, store.TriggerDeployedByRender:
 		return trigger
 	case "":
 		return ""

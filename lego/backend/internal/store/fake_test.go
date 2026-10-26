@@ -655,8 +655,10 @@ func (m *memStore) CompactUsage(_ context.Context, before time.Time) (UsageCompa
 	return res, nil
 }
 
-func (m *memStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, commit CommitInfo, triggeredBy string) (Deploy, error) {
-	return m.createDeploy(appID, trigger, image, generation, commit, triggeredBy, supersededByReason)
+func (m *memStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, commit CommitInfo, triggeredBy string, clearCache ...bool) (Deploy, error) {
+	d, err := m.createDeploy(appID, trigger, image, generation, commit, triggeredBy, supersededByReason)
+	d.ClearCache = len(clearCache) > 0 && clearCache[0]
+	return d, err
 }
 
 func (m *memStore) CreateRestartDeploy(_ context.Context, appID, image string, generation int64, commit CommitInfo, triggeredBy string) (Deploy, error) {

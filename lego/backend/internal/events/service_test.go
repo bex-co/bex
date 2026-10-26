@@ -105,10 +105,18 @@ func TestViewMapsEverySource(t *testing.T) {
 		wantType:    TypeDeployStarted,
 		wantDetails: Details{DeployID: "dep-1", Trigger: &Trigger{FirstBuild: true}},
 	}, {
-		name:        "deploy triggered through the API",
+		// w4/413: an API-key POST .../deploys is "api", manual false — the
+		// same caller on Render reads manual:false, so only a dashboard
+		// Manual Deploy click (TriggerManual) reports Manual.
+		name:        "deploy triggered through the API is not manual",
 		row:         store.ServiceEventRow{Key: "dep-2:started", Source: store.EventSourceDeploy, Phase: store.EventPhaseStarted, DeployID: "dep-2", Trigger: store.TriggerAPI, Caller: "user-x"},
 		wantType:    TypeDeployStarted,
-		wantDetails: Details{DeployID: "dep-2", Trigger: &Trigger{Manual: true, User: &UserRef{ID: "user-x"}}, TriggeredByUser: "user-x"},
+		wantDetails: Details{DeployID: "dep-2", Trigger: &Trigger{User: &UserRef{ID: "user-x"}}, TriggeredByUser: "user-x"},
+	}, {
+		name:        "manual deploy with cache cleared",
+		row:         store.ServiceEventRow{Key: "dep-4:started", Source: store.EventSourceDeploy, Phase: store.EventPhaseStarted, DeployID: "dep-4", Trigger: store.TriggerManual, ClearCache: true, Caller: "user-x"},
+		wantType:    TypeDeployStarted,
+		wantDetails: Details{DeployID: "dep-4", Trigger: &Trigger{Manual: true, ClearCache: true, User: &UserRef{ID: "user-x"}}, TriggeredByUser: "user-x"},
 	}, {
 		name:        "deploy went live",
 		row:         store.ServiceEventRow{Key: "dep-1:ended", Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded, DeployID: "dep-1", Status: store.DeployLive, Caller: "user-x"},
@@ -118,7 +126,7 @@ func TestViewMapsEverySource(t *testing.T) {
 		// A deploy-hook POST is nobody's click: typically a CI system hitting a
 		// secret URL. It used to report Manual, which said a person pressed
 		// something (w4/104); it now carries bex's own deployHook flag, and
-		// Manual stays exclusively the API/dashboard trigger.
+		// Manual stays exclusively the dashboard trigger (w4/413).
 		name:        "deploy-hook deploy is a hook, not a manual deploy, and leaves triggeredByUser empty",
 		row:         store.ServiceEventRow{Key: "dep-hook:started", Source: store.EventSourceDeploy, Phase: store.EventPhaseStarted, DeployID: "dep-hook", Trigger: store.TriggerDeployHook},
 		wantType:    TypeDeployStarted,
@@ -913,8 +921,12 @@ func TestDeployTriggerNamesTheCauseItActuallyHad(t *testing.T) {
 		// EnvUpdated is the nearest flag Render's vocabulary has; the dashboard
 		// renders it as "Config Change" so the two surfaces agree (w4/100).
 		{store.TriggerConfigChange, Trigger{EnvUpdated: true}},
-		// Manual is now exclusively the API/dashboard trigger.
-		{store.TriggerAPI, Trigger{Manual: true}},
+		// Manual is now exclusively the dashboard trigger (w4/413): on
+		// Render an API-key deploy reads trigger "api", manual false, so the
+		// api cause sets no flag. The exactly-one-flag guard below therefore
+		// exempts it; every other cause still sets exactly one.
+		{store.TriggerAPI, Trigger{}},
+		{store.TriggerManual, Trigger{Manual: true}},
 		{store.TriggerDeployHook, Trigger{DeployHook: true}},
 		{store.TriggerCreate, Trigger{FirstBuild: true}},
 		{store.TriggerRollback, Trigger{Rollback: true}},
@@ -939,8 +951,12 @@ func TestDeployTriggerNamesTheCauseItActuallyHad(t *testing.T) {
 					set++
 				}
 			}
-			if set != 1 {
-				t.Errorf("%s set %d flags, want exactly one: %+v", tc.trigger, set, *got)
+			wantSet := 1
+			if tc.trigger == store.TriggerAPI {
+				wantSet = 0 // Render's api record sets no manual flag (w4/413)
+			}
+			if set != wantSet {
+				t.Errorf("%s set %d flags, want %d: %+v", tc.trigger, set, wantSet, *got)
 			}
 		})
 	}

@@ -130,8 +130,12 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description: "Deploy header: trigger=create label",
   },
   "deploys.triggerApi": {
+    message: "API 部署",
+    description: "Deploy header: trigger=api label (an API-key deploy, w4/413)",
+  },
+  "deploys.triggerManual": {
     message: "手动部署",
-    description: "Deploy header: trigger=api label",
+    description: "Deploy header: trigger=manual label (a dashboard click, w4/413)",
   },
   "deploys.triggerRollback": {
     message: "回滚至 {deployId}",

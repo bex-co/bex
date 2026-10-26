@@ -323,15 +323,15 @@ func TestRESTListHonorsRenderFilters(t *testing.T) {
 		return rec.Code, names
 	}
 	for query, want := range map[string]string{
-		"name=nomatch":                        "",
-		"name=hub":                            "hub",
-		"name=ghcr,quay":                      "ghcr,quay",
-		"username=alice":                      "ghcr,quay",
-		"username=bob&name=ghcr":              "",
-		"createdAfter=2999-01-01T00:00:00Z":   "",
-		"createdBefore=2999-01-01T00:00:00Z":  "ghcr,hub,quay",
-		"updatedAfter=2000-01-01T00:00:00Z":   "ghcr,hub,quay",
-		"updatedBefore=2000-01-01T00:00:00Z":  "",
+		"name=nomatch":                       "",
+		"name=hub":                           "hub",
+		"name=ghcr,quay":                     "ghcr,quay",
+		"username=alice":                     "ghcr,quay",
+		"username=bob&name=ghcr":             "",
+		"createdAfter=2999-01-01T00:00:00Z":  "",
+		"createdBefore=2999-01-01T00:00:00Z": "ghcr,hub,quay",
+		"updatedAfter=2000-01-01T00:00:00Z":  "ghcr,hub,quay",
+		"updatedBefore=2000-01-01T00:00:00Z": "",
 	} {
 		code, got := list(query)
 		if code != http.StatusOK || strings.Join(sortedCopy(got), ",") != want {

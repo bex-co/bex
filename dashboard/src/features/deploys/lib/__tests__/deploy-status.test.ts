@@ -82,6 +82,7 @@ describe("deployTriggerKey", () => {
   it.each([
     ["create", "deploys.triggerCreate"],
     ["api", "deploys.triggerApi"],
+    ["manual", "deploys.triggerManual"],
     ["deploy_hook", "deploys.triggerDeployHook"],
     ["blueprint", "deploys.triggerBlueprint"],
     ["new_commit", "deploys.triggerNewCommit"],

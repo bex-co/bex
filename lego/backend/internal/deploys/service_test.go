@@ -100,7 +100,7 @@ type fakeStore struct {
 
 func newFakeStore() *fakeStore { return &fakeStore{byApp: map[string][]store.Deploy{}} }
 
-func (f *fakeStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string) (store.Deploy, error) {
+func (f *fakeStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string, clearCache ...bool) (store.Deploy, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	now := time.Now()
@@ -130,7 +130,7 @@ func (f *fakeStore) CreateDeploy(_ context.Context, appID, trigger, image string
 		}
 	}
 	f.nextID++
-	d := store.Deploy{ID: fmt.Sprintf("dep-%d", f.nextID), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, TriggeredBy: triggeredBy, Status: status, OverlapPending: status == store.DeployQueued, CreatedAt: now, UpdatedAt: now}
+	d := store.Deploy{ID: fmt.Sprintf("dep-%d", f.nextID), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, TriggeredBy: triggeredBy, ClearCache: len(clearCache) > 0 && clearCache[0], Status: status, OverlapPending: status == store.DeployQueued, CreatedAt: now, UpdatedAt: now}
 	if status == store.DeployCanceled {
 		d.FinishedAt = &now
 	}
@@ -1108,5 +1108,36 @@ func TestMCPTriggerClearCacheAcceptsRendersBoolean(t *testing.T) {
 	}
 	if res := call(3); !res.IsError {
 		t.Fatal("a number clearCache should be refused")
+	}
+}
+
+// TestTriggerCausesAreRecordedAsFired is w4/413: the REST/API path records
+// "api", the dashboard path records "manual", and a clearCache=clear deploy
+// keeps the flag on its row for the events feed.
+func TestTriggerCausesAreRecordedAsFired(t *testing.T) {
+	ds := newFakeStore()
+	svc, _ := newService(ds, sampleApp("svc", "srv-cause"))
+
+	apiView, err := svc.Trigger(context.Background(), "svc", TriggerParams{})
+	if err != nil {
+		t.Fatalf("API trigger: %v", err)
+	}
+	if apiView.Trigger != store.TriggerAPI {
+		t.Errorf("API deploy trigger = %q, want %q", apiView.Trigger, store.TriggerAPI)
+	}
+
+	manualView, err := svc.TriggerManual(context.Background(), "svc", TriggerParams{ClearCache: "clear"})
+	if err != nil {
+		t.Fatalf("manual trigger: %v", err)
+	}
+	if manualView.Trigger != store.TriggerManual {
+		t.Errorf("manual deploy trigger = %q, want %q", manualView.Trigger, store.TriggerManual)
+	}
+	row, err := ds.GetDeploy(context.Background(), "srv-cause", manualView.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if row.Trigger != store.TriggerManual || !row.ClearCache {
+		t.Errorf("stored row = trigger %q clearCache %v, want manual/true", row.Trigger, row.ClearCache)
 	}
 }

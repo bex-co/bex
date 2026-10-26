@@ -223,7 +223,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				deployMode := gqlutil.Str(p.Args, "deployMode")
 				imageURL := gqlutil.Str(p.Args, "imageUrl")
 				clearCache := gqlutil.Str(p.Args, "clearCache")
-				return s.Trigger(core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm")), p.Args["serviceId"].(string), TriggerParams{
+				return s.TriggerManual(core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm")), p.Args["serviceId"].(string), TriggerParams{
 					CommitID:   commitID,
 					DeployMode: deployMode,
 					ImageURL:   imageURL,
