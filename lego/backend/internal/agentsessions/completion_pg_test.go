@@ -18,6 +18,7 @@ package agentsessions
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -26,6 +27,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/bex-co/bex/lego/backend/internal/agenttranscript"
+	"github.com/bex-co/bex/lego/backend/internal/agenttranscript/uimessagetest"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
@@ -54,17 +57,45 @@ func TestCompleterPGRecoversTranscriptWithinExactQuota(t *testing.T) {
 			t.Error(err)
 		}
 	}()
+	payloads := []string{`{"type":"start"}`, `{"type":"text-start","id":"text"}`, `{"type":"text-delta","id":"text","delta":"recovered"}`,
+		`{"type":"data-acp-info","data":{},"transient":true}`, `{"type":"text-end","id":"text"}`, `{"type":"finish"}`}
+	chunks := make([]agenttranscript.Chunk, len(payloads))
+	var driverLog strings.Builder
+	for i, payload := range payloads {
+		chunks[i] = agenttranscript.Chunk{Index: int64(i), Part: []byte(payload)}
+		fmt.Fprintf(&driverLog, "{\"turn\":1,\"partIndex\":%d,\"part\":%s}\n", i, payload)
+	}
+	items := map[int64]string{}
+	var quota int64
+	for _, it := range agenttranscript.Coalesce(chunks) {
+		items[it.Index] = string(it.Part)
+		quota += int64(len(it.Part))
+	}
+	item := func(index int64) store.AgentSessionTranscriptPart {
+		return store.AgentSessionTranscriptPart{Turn: 1, PartIndex: index, Part: []byte(items[index]), Item: true}
+	}
+	partialText := store.AgentSessionTranscriptPart{Turn: 1, PartIndex: 1, Item: true, Partial: true,
+		Part: []byte(`{"type":"text","id":"text","text":"recov","state":"streaming"}`)}
+	legacy := func(index int64) store.AgentSessionTranscriptPart {
+		return store.AgentSessionTranscriptPart{Turn: 1, PartIndex: index, Part: []byte(payloads[index])}
+	}
 	for _, tc := range []struct {
 		name      string
-		stored    []int
-		wantOrder []int
+		stored    []store.AgentSessionTranscriptPart
+		wantOrder []int64
 	}{
-		{name: "empty", wantOrder: []int{0, 1, 2}},
-		{name: "prefix", stored: []int{0}, wantOrder: []int{0, 1, 2}},
-		{name: "complete", stored: []int{0, 1, 2}, wantOrder: []int{0, 1, 2}},
+		{name: "empty", wantOrder: []int64{0, 1, 5}},
+		{name: "prefix", stored: []store.AgentSessionTranscriptPart{item(0)}, wantOrder: []int64{0, 1, 5}},
+		{name: "complete", stored: []store.AgentSessionTranscriptPart{item(0), item(1), item(5)}, wantOrder: []int64{0, 1, 5}},
+		// The live tee flushed the in-flight text as partial at a disconnect: the
+		// harvest replaces it in place with the complete item.
+		{name: "partial_upgrade", stored: []store.AgentSessionTranscriptPart{item(0), partialText}, wantOrder: []int64{0, 1, 5}},
 		// Earlier concurrent batch writers could commit a later batch after an
 		// earlier one failed. Recover the hole without renumbering issued cursors.
-		{name: "historical_gap", stored: []int{0, 2}, wantOrder: []int{0, 2, 1}},
+		{name: "historical_gap", stored: []store.AgentSessionTranscriptPart{item(0), item(5)}, wantOrder: []int64{0, 5, 1}},
+		// A tee from before the item model stored raw chunks for this turn: the
+		// harvest, which covers the whole turn, supersedes them.
+		{name: "legacy_chunks", stored: []store.AgentSessionTranscriptPart{legacy(0), legacy(1), legacy(2)}, wantOrder: []int64{0, 1, 5}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			session, err := pg.CreateAgentSession(ctx, store.AgentSession{
@@ -79,35 +110,24 @@ func TestCompleterPGRecoversTranscriptWithinExactQuota(t *testing.T) {
 			}
 			c, _, lifecycle, _ := completerFixture(succeededStatus(true), nil)
 			c.Store = pg
-			payloads := []string{`{"type":"start"}`, `{"type":"text-delta","id":"text","delta":"recovered"}`, `{"type":"finish"}`}
-			parts := make([]store.AgentSessionTranscriptPart, len(payloads))
-			var log strings.Builder
-			for i, payload := range payloads {
-				parts[i] = store.AgentSessionTranscriptPart{Turn: 1, PartIndex: int64(i), Part: []byte(payload)}
-				fmt.Fprintf(&log, "{\"turn\":1,\"partIndex\":%d,\"part\":%s}\n", i, payload)
-				c.MaxTranscriptBytes += int64(len(payload))
-			}
-			lifecycle.transcriptLog = log.String()
-			var persisted []store.AgentSessionTranscriptPart
-			for _, index := range tc.stored {
-				persisted = append(persisted, parts[index])
-			}
-			if err := pg.AppendAgentSessionTranscript(ctx, session.ID, persisted); err != nil {
+			c.MaxTranscriptBytes = quota
+			lifecycle.transcriptLog = driverLog.String()
+			if err := pg.AppendAgentSessionTranscript(ctx, session.ID, tc.stored); err != nil {
 				t.Fatal(err)
 			}
 			c.Reconcile(ctx)
 			got, err := pg.AgentSessionTranscript(ctx, session.ID, -1, c.MaxTranscriptBytes, 0)
-			if err != nil || len(got) != len(parts) {
-				t.Fatalf("harvest replay=%+v err=%v, want all %d parts", got, err, len(parts))
+			if err != nil || len(got) != len(tc.wantOrder) {
+				t.Fatalf("harvest replay=%+v err=%v, want %d items", got, err, len(tc.wantOrder))
 			}
 			for i, p := range got {
-				if p.Seq != int64(i) || p.PartIndex != int64(tc.wantOrder[i]) || p.Turn != 1 || string(p.Part) != payloads[tc.wantOrder[i]] {
-					t.Fatalf("part %d: %+v", i, p)
+				if (i > 0 && p.Seq <= got[i-1].Seq) || p.PartIndex != tc.wantOrder[i] || p.Turn != 1 || !p.Item || p.Partial || string(p.Part) != items[tc.wantOrder[i]] {
+					t.Fatalf("item %d: %+v", i, p)
 				}
 			}
 			total, err := pg.AgentSessionTranscriptBytes(ctx, session.ID)
-			if err != nil || total != c.MaxTranscriptBytes {
-				t.Fatalf("quota usage=%d err=%v want=%d", total, err, c.MaxTranscriptBytes)
+			if err != nil || total != quota {
+				t.Fatalf("quota usage=%d err=%v want=%d", total, err, quota)
 			}
 			turns, err := pg.AgentSessionTurns(ctx, session.ID)
 			if err != nil || len(turns) != 1 || !turns[0].TranscriptComplete || turns[0].TranscriptTruncated {
@@ -118,6 +138,99 @@ func TestCompleterPGRecoversTranscriptWithinExactQuota(t *testing.T) {
 				t.Fatalf("completion=%+v err=%v canceled=%d harvestedBeforeTeardown=%v", row, err, lifecycle.canceled, lifecycle.readTranscriptBeforeCancel)
 			}
 		})
+	}
+}
+
+// The recorded 10-minute production turn (5,602 chunks, w10/m16) harvested
+// from a driver log stores a few hundred item rows that replay to the same
+// UIMessage parts as the raw chunks, and never trips the item cap.
+func TestCompleterPGHarvestsTheRecordedTurnAsItems(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := store.Migrate(uri); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	pg := store.NewPGStore(pool)
+	tenant, err := pg.CreateTenant(ctx, "completer-recorded-turn", store.PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := pg.DeleteTenant(ctx, tenant.ID); err != nil {
+			t.Error(err)
+		}
+	}()
+	fixture, err := uimessagetest.LoadFixture()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var driverLog strings.Builder
+	var rawBytes int
+	for i, chunk := range fixture {
+		fmt.Fprintf(&driverLog, "{\"turn\":1,\"partIndex\":%d,\"part\":%s}\n", i, chunk)
+		rawBytes += len(chunk)
+	}
+	session, err := pg.CreateAgentSession(ctx, store.AgentSession{
+		WorkspaceID: tenant.ID, Repo: "bex-co/bex", Branch: "bex-agent/s1",
+		AgentConfig: []byte(`{"agent":"claude","task":"/rt-simplify-logic"}`), InitialPrompt: "/rt-simplify-logic",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pg.RecordAgentSessionDispatch(ctx, session.ID, "sandbox-1", PhaseRunning, "running", "", session.Turns); err != nil {
+		t.Fatal(err)
+	}
+	c, _, lifecycle, _ := completerFixture(succeededStatus(true), nil)
+	c.Store = pg
+	lifecycle.transcriptLog = driverLog.String()
+	c.Reconcile(ctx)
+	rows, err := pg.AgentSessionTranscript(ctx, session.ID, -1, store.MaxAgentSessionTranscriptBytes, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stored int
+	var replayed []json.RawMessage
+	for _, row := range rows {
+		stored += len(row.Part)
+		replayed = append(replayed, agenttranscript.Expand(row.Part)...)
+		if strings.Contains(string(row.Part), `"type":"reasoning-delta"`) || strings.Contains(string(row.Part), `"type":"data-acp-info"`) {
+			t.Fatalf("raw chunk stored: %.120s", row.Part)
+		}
+	}
+	t.Logf("harvest: %d chunks / %d bytes → %d rows / %d bytes", len(fixture), rawBytes, len(rows), stored)
+	if len(rows) > 600 {
+		t.Fatalf("stored %d rows, want ≤ 600", len(rows))
+	}
+	want, err := uimessagetest.Merge(fixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := uimessagetest.Merge(replayed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != len(want) {
+		t.Fatalf("replay rebuilt %d parts, raw %d", len(got), len(want))
+	}
+	for i := range want {
+		if want[i]["state"] == "streaming" {
+			got[i]["state"] = "streaming" // the recorded turn ends inside a reasoning block
+		}
+		if fmt.Sprint(want[i]) != fmt.Sprint(got[i]) {
+			t.Fatalf("part %d differs", i)
+		}
+	}
+	turns, err := pg.AgentSessionTurns(ctx, session.ID)
+	if err != nil || len(turns) != 1 || turns[0].TruncationReason == reasonItemLimit {
+		t.Fatalf("turn=%+v err=%v", turns, err)
 	}
 }
 
@@ -231,7 +344,9 @@ func TestIdleClosedSessionFollowUpPG(t *testing.T) {
 
 	c, _, lc, _ := completerFixture(succeededStatus(true), nil)
 	c.Store, c.IdleTTL = pg, 2*time.Hour
-	lc.transcriptLog = `{"turn":1,"partIndex":0,"part":{"type":"text-delta","id":"t","delta":"Fixed the flaky test."}}`
+	lc.transcriptLog = `{"turn":1,"partIndex":0,"part":{"type":"text-start","id":"t"}}
+{"turn":1,"partIndex":1,"part":{"type":"text-delta","id":"t","delta":"Fixed the flaky test."}}
+{"turn":1,"partIndex":2,"part":{"type":"text-end","id":"t"}}`
 	start := time.Now()
 	c.Now = func() time.Time { return start }
 	c.Reconcile(ctx)

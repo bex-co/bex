@@ -84,12 +84,12 @@ type Store interface {
 	// sandbox cap: sessions in a live phase holding a sandbox id for the workspace.
 	CountLiveAgentSessionSandboxes(ctx context.Context, workspaceID string, phases []string) (int, error)
 	// Transcript persistence (ADR051): the Completer harvests the driver's log
-	// at completion and appends it here (idempotent by session+turn+part index).
-	AppendAgentSessionTranscript(ctx context.Context, sessionID string, parts []store.AgentSessionTranscriptPart) error
+	// at completion, folds it into items and merges them here (idempotent by
+	// session+turn+item index; a partial tee item is replaced by its complete copy).
+	MergeAgentSessionTranscriptItems(ctx context.Context, sessionID string, m store.TranscriptItemMerge) (store.TranscriptMergeResult, error)
 	AgentSessionTurns(ctx context.Context, sessionID string) ([]store.AgentSessionTurn, error)
 	CompleteAgentSessionTurn(ctx context.Context, sessionID string, turn int, complete, truncated bool, reason string) error
 	AgentSessionTranscriptBytes(ctx context.Context, sessionID string) (int64, error)
-	AgentSessionTranscriptProgress(ctx context.Context, sessionID string, turn int, indexes []int64) (int64, []int64, error)
 	// Transcript read (ADR065 D2): the poll-shaped seq-keyset page backing the
 	// REST/GraphQL/MCP transcript verb (byte budget + row limit bound one page).
 	AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64, maxBytes int64, limit int) ([]store.AgentSessionTranscriptPart, error)

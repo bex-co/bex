@@ -129,7 +129,7 @@ func (s *Service) continuityEnv(ctx context.Context, env map[string]string, reco
 }
 
 // assistantReplies assembles per-turn assistant text from the durable
-// transcript's UI-message chunks (`text-delta` deltas concatenated per turn,
+// transcript (`text` items or legacy `text-delta` deltas concatenated per turn,
 // tail-trimmed to continuityMaxReplyBytes). sawParts reports whether ANY
 // durable part exists for the session — the rung-2 vs rung-3 discriminator —
 // independent of whether those parts contained plain text.
@@ -145,11 +145,24 @@ func (s *Service) assistantReplies(ctx context.Context, sessionID string) (repli
 	builders := make(map[int]*strings.Builder)
 	for _, part := range parts {
 		sawParts = true
+		// A legacy row is one `text-delta` chunk; an item row (ADR051 item
+		// model) is a whole `text` part.
 		var chunk struct {
 			Type  string `json:"type"`
 			Delta string `json:"delta"`
+			Text  string `json:"text"`
 		}
-		if json.Unmarshal(part.Part, &chunk) != nil || chunk.Type != "text-delta" || chunk.Delta == "" {
+		if json.Unmarshal(part.Part, &chunk) != nil {
+			continue
+		}
+		switch chunk.Type {
+		case "text":
+			chunk.Delta = chunk.Text
+		case "text-delta":
+		default:
+			continue
+		}
+		if chunk.Delta == "" {
 			continue
 		}
 		b := builders[part.Turn]
