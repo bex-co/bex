@@ -29,6 +29,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -613,5 +614,24 @@ func TestREST_EmptySecretFileKeepsContent(t *testing.T) {
 	}
 	if code := serveREST(svc, "GET", "/v1/services/web/secret-files/missing.txt", "").Code; code != http.StatusNotFound {
 		t.Errorf("missing file = %d, want 404", code)
+	}
+}
+
+// TestAbortProjectionDeletesClaimWhenRetireFails is w4/404: a store outage
+// during a failed create's compensation must not strand the claim Secret,
+// which would hold the service's name for the whole preparation window.
+func TestAbortProjectionDeletesClaimWhenRetireFails(t *testing.T) {
+	store := newFakeSecretStore()
+	store.failDelete = errors.New("bao sealed")
+	claim := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "web-env", Namespace: "default"}}
+	svc := newService(store, sampleApp("web"), claim)
+	err := svc.abortProjection(context.Background(), sampleApp("web"), "web-env", "services/web/env")
+	if err == nil {
+		t.Fatal("abortProjection: want the retire failure reported")
+	}
+	var gone corev1.Secret
+	getErr := svc.Client.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web-env"}, &gone)
+	if !apierrors.IsNotFound(getErr) {
+		t.Fatalf("claim Secret after failed retire: get err = %v, want NotFound", getErr)
 	}
 }

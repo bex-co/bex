@@ -80,6 +80,11 @@ var (
 	// ErrSecretsUnavailable is returned by the env-vars verbs when no secret store
 	// is wired (BEX_OPENBAO_URL unset); adapters surface it as 503.
 	ErrSecretsUnavailable error = NewUnavailableError("SECRETS_UNAVAILABLE", "secret store not configured", nil)
+	// ErrSecretsStoreFailed is a configured store failing a read or write
+	// (w4/404): the same SECRETS_UNAVAILABLE code, but it must not claim the
+	// store is "not configured". It unwraps to ErrSecretsUnavailable so
+	// errors.Is callers keep matching, and HideCause logs the real cause.
+	ErrSecretsStoreFailed error = &CodedError{Code: "SECRETS_UNAVAILABLE", sentinel: ErrSecretsUnavailable, msg: "the secret store could not be read; try again"}
 	// ErrWorkspacesUnavailable is returned by the workspace verbs when the
 	// control-plane store isn't wired (bex-api running without BEX_CP_DB_URI);
 	// adapters surface it as 503 (the owners read API exists, the backing store

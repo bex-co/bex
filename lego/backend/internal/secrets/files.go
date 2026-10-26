@@ -432,18 +432,14 @@ func (s *Service) adoptPreparedSecret(ctx context.Context, a *appv1alpha1.App, n
 	return s.Client.Update(ctx, sec)
 }
 
-// abortProjection removes both halves of one prepared leg: the store map
-// first, while the Secret still holds the name, so a create that claims the
-// name next cannot have its map deleted under it (w5/134). A map it could not
-// remove keeps its Secret, still holding the name, so the create that later
-// takes the abandoned claim over removes or replaces the map, rather than
-// finding no Secret and leaving the map to the next service (w5/148). Each
-// operation is idempotent, so callers can use it after any failed phase.
+// abortProjection removes both halves of one prepared leg. Each operation is
+// idempotent, so callers can use it after any failed phase.
 func (s *Service) abortProjection(ctx context.Context, a *appv1alpha1.App, name, path string) error {
-	if err := s.retireMap(ctx, path); err != nil {
-		return err
-	}
-	return s.deleteSecret(ctx, a.Namespace, name)
+	// Both halves are always attempted (w4/404): a failing retireMap must not
+	// strand the claim Secret, which would hold the service's name for the
+	// whole preparation window after a create that already failed. A map
+	// left behind is replaced wholesale by the next create's updateMapCAS.
+	return errors.Join(s.retireMap(ctx, path), s.deleteSecret(ctx, a.Namespace, name))
 }
 
 func (s *Service) commitSecretFiles(ctx context.Context, _ string, a *appv1alpha1.App) error {
