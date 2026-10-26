@@ -450,7 +450,28 @@ Lengthening `scale-down-unneeded-time` does not fix this. The node is still unde
 
 The fix is to make the surge fit on a node that already exists: `deploy/gitops/base/tenant-headroom.yaml` runs a `pause` Deployment holding one **standard-tier** reservation (1 CPU / 2Gi / 4Gi ephemeral, requests == limits) on `bex.co/pool=tenant` at priority **-1**. Tenant Pods carry no priority class (0), so the scheduler preempts the placeholder and takes its slot immediately — no scale-up, no new node, no consolidation eviction. The placeholder's `terminationGracePeriodSeconds: 0` means the slot is yielded instantly, `preemptionPolicy: Never` means it can never displace real work, and -1 sits deliberately **above** the autoscaler's `--expendable-pods-priority-cutoff` default of -10 (below it, CA would ignore the placeholder for scale-up and assume it deletable during scale-down, so the reservation would stop reserving). The displaced placeholder goes Pending and reclaims a slot as soon as the rollout retires the old replica; at `max-size: 3` it simply waits, which costs nothing and churns no nodes. `scripts/gitops-validate.sh` pins every one of those invariants, including a drift guard against the `standard` row of `lego/types/tiers/tiers.yaml`.
 
-Scope, stated plainly: this removes the **deploy-correlated** eviction. It does not make a single-replica service highly available — a node upgrade, a CAPI machine roll, or a hardware failure still takes `replicas: 1` down, because one replica has no disruption budget to spend. That requires `replicas >= 2` plus a PodDisruptionBudget, per service, and is the tenant's cost decision rather than a platform default.
+Scope, stated plainly: this removes the **deploy-correlated** eviction. It does not make a single-replica service highly available. A hardware failure still takes `replicas: 1` down, because one replica has no disruption budget to spend; that needs `replicas >= 2` and is the tenant's cost decision. A planned CAPI machine roll no longer does (next section).
+
+## Node rolls hand single-instance services over before the drain (w1/m186)
+
+A CAPI drain evicts each pod at once. For a one-instance service, that pod is the only one, so every `bex-tenant-0` roll cost those services their restart time. If the replacement could not schedule, the outage lasted hours: on 2026-10-24 beancount.io answered `no available server` for that reason (w1/138). A zero-disruption PodDisruptionBudget is not the answer, because it kept nodes undrainable for six days (ADR060 D8).
+
+`drain-guard` (`lego/operator/cmd/drain-guard`, `internal/drainguard`) puts a CAPI **pre-drain hook** on every `bex-tenant-0` Machine. CAPI neither cordons nor drains a deleting Machine while the hook remains. When such a Machine is deleted, drain-guard:
+
+1. cordons its node;
+2. finds each App Deployment whose only Ready pods are on that node and sets `drain-guard.bex.co/evacuated-from=<node>` on its pod template;
+3. lets the rolling update do the rest: the replacement starts on another node, becomes Ready, and only then is the old pod retired, so its preStop drain above still applies;
+4. releases the hook once no App is left at risk, and CAPI's drain finds nothing serving.
+
+Some cases release the hook at once:
+
+- **Nothing to protect.** The Machine has no node, or its node is gone or not Ready.
+- **Disk-attached services.** They roll with `Recreate` and cannot overlap two pods, so they get today's behavior.
+- **The hold is bounded.** It never lasts more than 10 minutes from the Machine's deletion, so a replacement that never becomes Ready only delays the roll and never pins it.
+
+drain-guard runs as its own ServiceAccount, never the operator's. It is the only bex identity with a grant in `bex-capi`: Machines, no Secrets. A fail-closed admission policy (`deploy/gitops/base/drain-guard-admission.yaml`) limits its writes to the hook, a cordon, and the evacuation annotation. Operations are in [runbooks/drain-guard.md](runbooks/drain-guard.md).
+
+Not covered: Cluster Autoscaler scale-down evicts pods itself before it deletes the Machine (w1/142).
 
 ## Gotchas
 

@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# drain-guard (w1/m186): the CAPI pre-drain hook that hands single-instance
+# Apps over before a node roll drains them. Production only (config/prod): the
+# local mock keeps CAPI in a separate management cluster, so drain-guard runs
+# from the host there (--capi-kubeconfig). No namePrefix or namespace
+# transformer reaches this tree from config/prod, so names are written in full.
+resources:
+  - serviceaccount.yaml
+  - clusterrole.yaml
+  - capi-role.yaml
+  - deployment.yaml

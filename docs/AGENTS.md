@@ -41,7 +41,7 @@ Docs live here — one file per topic. Root [AGENTS.md](../AGENTS.md) points her
 
 ### App lifecycle & hosting types
 
-- [ADR004-app-deployment.md](ADR004-app-deployment.md) — deploy flow, health gating, revisions
+- [ADR004-app-deployment.md](ADR004-app-deployment.md) — deploy flow, health gating, revisions; node rolls hand single-instance services over via drain-guard ([runbooks/drain-guard.md](runbooks/drain-guard.md))
 - [ADR005-custom-domain.md](ADR005-custom-domain.md) — `spec.hosts[]`, Traefik + cert-manager
 - [ADR007-restart-suspend-and-resume.md](ADR007-restart-suspend-and-resume.md) — lifecycle verbs
 - [ADR029-static-sites.md](ADR029-static-sites.md) — `static_site` → object-store origin + static-server
