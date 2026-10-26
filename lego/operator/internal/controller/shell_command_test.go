@@ -46,6 +46,17 @@ func TestShellCommand(t *testing.T) {
 		{"quoted script is that word", `sh -c 'a && b'`, []string{"sh", "-c", "a && b"}},
 		{"bash with a double-quoted script", `/bin/bash -c "echo hi; echo bye"`, []string{"/bin/bash", "-c", "echo hi; echo bye"}},
 		{"unquoted simple script stays verbatim", "sh -c echo hi", []string{"sh", "-c", "echo hi"}},
+		// w4/412: a quoted script whose first word is an assignment, or whose
+		// double quotes hold an expansion, is still that one script — the
+		// shell runs it, so $PORT must reach it unquoted, not as the script's
+		// literal name.
+		{"single-quoted script starting with an assignment", `sh -c 'i=0; echo $i'`, []string{"sh", "-c", "i=0; echo $i"}},
+		{"single-quoted assignment prefix", `sh -c 'FOO=bar exec app'`, []string{"sh", "-c", "FOO=bar exec app"}},
+		{"two assignments through /bin/sh", `/bin/sh -c 'X=1 Y=2 cmd'`, []string{"/bin/sh", "-c", "X=1 Y=2 cmd"}},
+		{"double-quoted script expanding PORT", `sh -c "node server.js --port $PORT"`, []string{"sh", "-c", "node server.js --port $PORT"}},
+		{"bash double-quoted exec with PORT", `bash -c "exec gunicorn -b 0.0.0.0:$PORT app:app"`, []string{"bash", "-c", "exec gunicorn -b 0.0.0.0:$PORT app:app"}},
+		{"double-quoted script from the live crash", `sh -c "echo q2d6-port-$PORT; httpd -f -p $PORT -h /"`, []string{"sh", "-c", "echo q2d6-port-$PORT; httpd -f -p $PORT -h /"}},
+		{"escaped quote inside a double-quoted script", `sh -c "echo \"hi\"; sleep 1"`, []string{"sh", "-c", `echo "hi"; sleep 1`}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := shellCommand(tc.command); !slices.Equal(got, tc.want) {
