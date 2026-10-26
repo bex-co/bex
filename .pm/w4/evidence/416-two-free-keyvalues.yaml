@@ -1,0 +1,9 @@
+services:
+  - type: keyvalue
+    name: qa-bp-kv1
+    plan: free
+    ipAllowList: []
+  - type: keyvalue
+    name: qa-bp-kv2
+    plan: free
+    ipAllowList: []

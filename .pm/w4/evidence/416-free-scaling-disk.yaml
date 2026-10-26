@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: qa-bp-auto
+    runtime: image
+    image:
+      url: docker.io/traefik/whoami:v1.10.3
+    plan: free
+    scaling:
+      minInstances: 1
+      maxInstances: 3
+      targetCPUPercent: 60
+  - type: web
+    name: qa-bp-disk
+    runtime: image
+    image:
+      url: docker.io/traefik/whoami:v1.10.3
+    plan: free
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1

@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: qa-bp-api
+    runtime: node
+    repo: https://github.com/bex-co/bex
+    rootDir: examples/hello-node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DB_URL
+        fromDatabase:
+          name: qa-bp-db
+          property: connectionString
+      - key: REDIS
+        fromService:
+          type: keyvalue
+          name: qa-bp-kv
+          property: connectionString
+      - fromGroup: qa-bp-grp
+      - key: SECRET
+        generateValue: true
+  - type: keyvalue
+    name: qa-bp-kv
+    plan: free
+    ipAllowList: []
+databases:
+  - name: qa-bp-db
+    plan: free
+envVarGroups:
+  - name: qa-bp-grp
+    envVars:
+      - key: G
+        value: "1"
