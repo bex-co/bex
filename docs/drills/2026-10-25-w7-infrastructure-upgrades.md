@@ -2,11 +2,11 @@
 
 ## Outcome and limits
 
-Zot GC prevention and the expired cache-trial rollback have passed production acceptance. CNPG 1.30.1 is live on all 13 instances across nine clusters with in-place updates; its 30-minute observation and a fresh platform backup are in progress. Local regression, uninterrupted-upgrade and recovery checks passed. At the first checkpoint these were uncommitted working-tree changes; the shipping checkpoint below records subsequent delivery. They are not production rollout claims.
+All three changes are shipped and have passed production acceptance: Zot GC prevention, CNPG 1.30.1 with in-place instance-manager updates, and rollback of the expired cache trial. All 13 PostgreSQL instances across nine clusters retained their Pod/container identities and postmaster start times. More than 30 continuous minutes of database and WAL observations passed, and a new platform backup completed. The dated checkpoints below distinguish the initial local evidence from subsequent production verification.
 
-The initial production verification was blocked on authenticated cluster access. The local pinned SSH host keys do not match one discovered control-plane node, and the other two discovered nodes have no entry in the pinned file. No pin was replaced and no host-key check was disabled. The repository also requires an explicit `$ship` invocation before committing or pushing.
+The initial production verification was blocked on authenticated cluster access: one discovered control-plane node disagreed with the local SSH pin and two others had no entry. Access was subsequently recovered by matching fresh captures against the protected CI environment's provisioned fingerprints, with strict checking throughout. The user explicitly authorized shipping and continued verification.
 
-The existing CAPD cluster was read only: its API is reachable through the control-plane container's current published port, but all three workers are NotReady. Rather than upgrade its shared CNPG operator or disturb other dev-N databases, this drill created a disposable single-node kind cluster, `bex-w7-unblock`, with its own kubeconfig outside the repository. Its Kubernetes version was 1.36.1. No production resource or other workstream's data was changed.
+The existing CAPD cluster was read only: its API was reachable through the control-plane container's current published port, but all three workers were NotReady. The local drill used a disposable single-node kind cluster, `bex-w7-unblock`, with its own kubeconfig outside the repository, on Kubernetes 1.36.1. It did not change other workstreams' stacks. The later production rollout and backup are recorded separately below.
 
 ## Zot: missing metadata no longer prevents GC
 
@@ -62,25 +62,25 @@ Results:
 - Deleting the disposable standby Pod after the upgrade exercised restart/recovery. Its replacement had a new UID, ran instance manager 1.30.1, rejoined as a standby, and returned `pg_is_in_recovery() = true` with fixture value 47.
 - Restoring the original test view also produced normal timestamp-labelled WAL counters with no collection error.
 
-The fixture did not configure production Barman/S3 backups. Current production backup health, the current cluster/instance inventory, and the required 30-minute production metrics observation remain rollout acceptance work. Historical counts of seven clusters and three single-instance tenant databases have not been asserted as current.
+The fixture did not configure production Barman/S3 backups. The production acceptance below separately verifies current inventory, continuous archiving, a fresh plugin backup and the required 30-minute observation. Historical counts of seven clusters and three single-instance tenant databases are not asserted as current.
 
 The GitOps validator renders the reviewed CNPG chart and checks both the actual Deployment image and the ConfigMap's string-valued in-place update setting. It also keeps the reviewed archive and Argo digest checks.
 
-## Cache trial 047: rollback prepared
+## Cache trial 047: expired trial rolled back
 
 The original September 17–20 activation evidence remains in the board note. It proved cache persistence and successful builds, not estate-wide performance benefit. The committed deadline was still `2026-09-20T02:34:30Z` at the beginning of this drill. Current live breaker state and original-window push latency/errors, repeat-build results and Zot storage could not be inventoried without production access; historical source numbers are not substitutes.
 
-The implementation decision is to roll back the expired trial: remove both `BEX_BUILD_CACHE` and `BEX_BUILD_CACHE_TRIAL_DEADLINE` from the production overlay. The cache implementation remains available and opt-in. This does not claim the feature is ineffective; it avoids permanent enablement without the trial's required evidence. The decision is delegated by the user's instruction to clear the three blocked items and must still be verified after rollout.
+The implementation decision was to roll back the expired trial: remove both `BEX_BUILD_CACHE` and `BEX_BUILD_CACHE_TRIAL_DEADLINE` from the production overlay. The cache implementation remains available and opt-in. This does not claim the feature is ineffective; it avoids permanent enablement without the trial's required evidence. The user delegated the decision, and the live Deployment and gauge checks below confirm the rollback.
 
 A future repeat trial should start only after fresh registry admission measurements and Zot GC verification. Choose its absolute deadline at rollout time, bound it to 72 hours, retain the existing latency/error breakers, and collect paired cold/warm builds plus push and storage measurements. This drill neither extends the old deadline nor starts a new trial.
 
-## Required production closeout
+## Production closeout criteria
 
-After authenticated cluster access is restored and the changes are shipped:
+The acceptance sequence was:
 
 1. Reinventory CNPG clusters, current backups, operator configuration and current registry capacity. Verify deployed images match the committed digests.
 2. Verify CNPG's instance-manager versions directly, PostgreSQL availability, replication and backups. Observe at least 30 minutes of WAL metrics without NULL scan errors. Pod image text alone is insufficient for an in-place update.
-3. Verify at least two Zot GC cycles, retained-image pulls and repository isolation. Keep the existing repair runbook available for any stranded repository until this is observed.
+3. Verify at least two Zot GC cycles in the forced-rebuild fixture, then native production GC tasks, retained-image pulls and repository isolation. Preserve production's three-hour safety interval; the observed task counts below do not imply two fleet sweeps.
 4. Verify the production operator Deployment no longer requests the cache trial and `bex_build_cache_enabled` is zero. Record a dated rollback result in 047.
 5. Only then finish the remaining task checkboxes and move the milestones/note to `done/` through the PM workflow.
 
@@ -92,13 +92,13 @@ After authenticated cluster access is restored and the changes are shipped:
 - Simplify's reuse, quality and efficiency reviews completed. Applied the existing scalar guard to rendered-image captures, corrected a stale chart-rendering comment, and moved constant manifest parsing outside the GC polling loop.
 - `git diff --check`: passed. Repository-wide Prettier 3.4.2 formatting was run for Markdown.
 
-The disposable kind cluster and Docker registry fixtures are removed after evidence capture. No production rollout, Barman/S3 recovery or production observation is claimed.
+The disposable kind cluster and Docker registry fixtures were removed after evidence capture. Backup creation was verified in production; database recovery was exercised only in the isolated fixture.
 
 ## Shipping and access recovery checkpoint
 
 The user explicitly requested “ship and continue, do not stop until you absolutely need me”. The batch was pushed to `origin/main` at `418e5ccfd`: registry `a754faaec`, CNPG `aa393fe29`, expired cache rollback `39f06eaf8`, and the shared record `418e5ccfd`. Rebased GitOps validation and pre-push gates passed.
 
-Production delivery is queued behind an older active deployment. The new manual, main-only `Verify production SSH trust` workflow uses the existing protected `production-deploy` environment and reports only `ssh-keygen` fingerprints of its provisioned known-hosts entries. No client private key or kubeconfig is exported. A network-scanned key is usable locally only after it matches this independent trusted fingerprint.
+At this checkpoint, production delivery was queued behind an older active deployment. The new manual, main-only `Verify production SSH trust` workflow uses the existing protected `production-deploy` environment and reports only `ssh-keygen` fingerprints of its provisioned known-hosts entries. No client private key or kubeconfig is exported. A network-scanned key is usable locally only after it matches this independent trusted fingerprint.
 
 Two entries added through the initial fetch attempt's `accept-new` fallback were identified as unverified session-created records and removed from the local global known-hosts file. They were not used as authenticated pins; no newly scanned key was trusted by itself.
 
@@ -112,6 +112,16 @@ Two existing Apps in separate namespaces returned their exact recorded image man
 
 The cache rollback is live: both variables are absent, bex-operator is Synced/Healthy and `bex_build_cache_enabled` is zero. The original-window queries returned zero retained series for the cache gauge, push histogram count, push errors and Zot PVC usage; Prometheus currently retains three days. The later storage snapshot is 49,495,916,544 / 105,559,699,456 bytes (~46.9%). It is not original trial evidence. The completed 047 note preserves the historical activation evidence and explicitly records rollback.
 
-[Reviewed-chart mirror run 40257260403](https://github.com/bex-co/bex/actions/runs/40257260403) passed and published the exact locked CNPG digest. Argo then deployed 1.30.1 with in-place updates. Current inventory is nine healthy clusters / 13 instances, including five single-instance tenant databases; every PostgreSQL operand image is explicitly pinned in its Cluster and remained unchanged. The original replica still returned NULL from `pg_stat_wal.stats_reset`, while the corrected exporter produced WAL series labelled `-infinity` with collection error zero. This is the natural production failure mode, without changing a view or resetting statistics. Continuous SQL/process/container and WAL observations continue for the required 30 minutes; a post-upgrade bex-db plugin backup has been requested.
+[Reviewed-chart mirror run 40257260403](https://github.com/bex-co/bex/actions/runs/40257260403) passed and published the exact locked CNPG digest. Argo then deployed 1.30.1 with in-place updates. Current inventory is nine healthy clusters / 13 instances, including five single-instance tenant databases; every PostgreSQL operand image is explicitly pinned in its Cluster and remained unchanged. The original affected instance still returned NULL from `pg_stat_wal.stats_reset`, while the corrected exporter produced WAL series labelled `-infinity` with collection error zero. This is the natural production failure mode, without changing a view or resetting statistics.
+
+From 02:18:55 through 02:49:32 UTC, 33 consecutive estate observations covered every instance's SQL availability, actual instance-manager version, postmaster start time, Pod UID, PostgreSQL container ID/restart count, cluster readiness and continuous archiving. All 13 ran 1.30.1, all nine clusters remained healthy, no process/container was replaced, and the bounded monitor passed after 1,828 continuous seconds. The direct WAL monitor independently passed 108 healthy scrapes over 1,804 seconds, from 02:18:07 through 02:48:11. Production Prometheus intentionally does not retain these collector/WAL series, so this check scraped the affected instance's exporter directly through a localhost port-forward. A final untruncated log check through 02:51:43 found zero NULL WAL scan errors on all 13 instances. SQL still returned NULL and the final collector error gauge remained zero.
+
+Post-upgrade Barman plugin backup `bex-system/w7-cnpg-upgrade-zjz4h` completed from standby `bex-db-2`, starting 02:21:03 and finishing 02:22:47 UTC (`backupId: 20261026T022103`). This backup remains subject to the existing backup retention policy. All nine clusters had healthy continuous archiving; seven had earlier completed base backups and the two newer tenant clusters had none before this drill. No tenant database or registry fixture was created in production.
+
+Argo's `cnpg-operator`, `zot` and `bex-operator` Applications were all Synced/Healthy at final acceptance. PM closeout moves m156, m158 and 047 to `w7/done/`, with all task, milestone and workstream statuses synchronized.
+
+Both bounded observers exited successfully. Their localhost port-forwards were stopped and the temporary production kubeconfig was removed. The independently verified canonical SSH pins remain available for future strict access; no credentials are stored in this record.
 
 The manual chart mirror reuses the existing reviewed-artifact helper. It and the regular deployment job share a queued publisher mutex (`queue: max`, `cancel-in-progress: false`), preserving the outer deployment transaction and avoiding cancellation of pending work. See [GitHub's concurrency documentation](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency).
+
+The older deployment run 40247966232 failed during Trivy's vulnerability-database download from `mirror.gcr.io`, before the dashboard scan completed. Commit `edf98c22f` separately fixes that CI failure: use the official GHCR database first with the existing mirror as fallback, and disable the stalled remote action-cache restores. All ten scans and five CRITICAL failure gates remain. Downloading the complete official GHCR database succeeded locally; the old failed jobs were rerun in the background. New CI is not represented as green before completion and does not delay this production-verified closeout.
