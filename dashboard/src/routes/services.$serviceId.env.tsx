@@ -31,9 +31,9 @@ export function ServiceEnvPage({ serviceId }: { serviceId: string }) {
     <div className="space-y-6">
       <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">
+          <h2 className="text-xl font-semibold tracking-tight">
             {t("services.environmentPageTitle")}
-          </h1>
+          </h2>
           <p className="text-muted-foreground mt-1 text-sm">
             {t("services.environmentPageDescription")}
           </p>

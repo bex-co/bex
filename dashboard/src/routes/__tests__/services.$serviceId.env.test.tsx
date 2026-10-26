@@ -49,6 +49,23 @@ vi.mock("@/features/services/hooks/use-server", () => ({
 
 import { ServiceEnvPage } from "@/routes/services.$serviceId.env";
 
+// w4/409: the detail header already gives the page its one h1 (the service
+// name); the Environment tab's own title is a section heading.
+describe("ServiceEnvPage heading structure", () => {
+  it("titles the page with an h2 and adds no h1", () => {
+    useServer.mockReturnValue({
+      service: { id: "srv-1", name: "qa-service", environmentId: "env-qa" },
+      loading: false,
+      refetch,
+    });
+    const { container } = render(<ServiceEnvPage serviceId="srv-1" />);
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Environment" }),
+    ).toBeInTheDocument();
+    expect(container.querySelectorAll("h1")).toHaveLength(0);
+  });
+});
+
 describe("ServiceEnvPage group creation", () => {
   beforeEach(() => {
     createGroup.mockReset().mockResolvedValue("eg-new");
