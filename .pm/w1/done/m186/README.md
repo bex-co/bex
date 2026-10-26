@@ -1,6 +1,6 @@
 # w1 · m186 — Keep single-instance services up through node rolls: drain-guard pre-drain hook
 
-**Worker:** worker1 **Goal:** a CAPI node roll never takes a single-instance service down. Before CAPI drains a guarded Machine's node, each bex App whose only Ready pods are on that node already has a Ready replacement on another node. **Status:** in progress (t001–t006 done; the Definition of done is met on the local mock; t007 Closeout once the change is shipped and deployed)
+**Worker:** worker1 **Goal:** a CAPI node roll never takes a single-instance service down. Before CAPI drains a guarded Machine's node, each bex App whose only Ready pods are on that node already has a Ready replacement on another node. **Status:** done (2026-10-26; the Definition of done was met on the local mock, and drain-guard rolled out in production in deploy run 40300660987)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Live check on the local CAPD mock — **DONE**                         | 1h    | t003       |
 | t005 | Simplify — **DONE**                                                  | 15m   | t004       |
 | t006 | Test coverage — **DONE**                                             | 30m   | t004       |
-| t007 | Closeout                                                  | 10m   | t006       |
+| t007 | Closeout — **DONE**                                       | 10m   | t006       |
 
 ## Definition of done
 
@@ -37,7 +37,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** [`.pm/w1/done/138.md`](../done/138.md), promoted 2026-10-25. It came from the 2026-10-24 w5/174 tenant-pool roll, which evicted `beancount-cms-v2`'s only pod. Its replacement sat `Pending`, and beancount.io answered `no available server`.
+- **Source:** [`.pm/w1/done/138.md`](../138.md), promoted 2026-10-25. It came from the 2026-10-24 w5/174 tenant-pool roll, which evicted `beancount-cms-v2`'s only pod. Its replacement sat `Pending`, and beancount.io answered `no available server`.
 - **Goal linkage:** this is the hosting core of the Render alternative (ADR008). Render does not drop a service during host maintenance.
 - **Expected outcome:** a routine `bex-tenant-0` roll or MachineHealthCheck replacement costs a single-instance service zero failed requests. The only exception is a service whose replacement cannot start within 10 minutes; that service gets today's eviction behavior.
 - **Why now:** m183 (images survive retention) and tenant-0 max 5 (room to reschedule) stopped the long outage. Every roll still costs each single-instance service seconds of downtime, and rolls are routine: Kubernetes minors, image refreshes, machine-type moves (ADR053).
