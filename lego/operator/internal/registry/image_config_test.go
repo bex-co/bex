@@ -124,6 +124,76 @@ func TestReadImageConfigRefusesRedirect(t *testing.T) {
 	}
 }
 
+// Docker Hub, GHCR, ECR and GCR serve config blobs through a redirect to
+// storage (w8/201): follow it over https, without the registry credential.
+func TestReadImageConfigFollowsBlobStorageRedirect(t *testing.T) {
+	for _, scenario := range []string{"storage", "anonymous", "bearer", "plaintext", "loop", "tampered"} {
+		t.Run(scenario, func(t *testing.T) {
+			_, digest, routes := imageMetadataFixture(t)
+			auth := "Basic fixture"
+			want := auth
+			switch scenario {
+			case "anonymous":
+				auth, want = "", ""
+			case "bearer":
+				auth, want = "", "Bearer anonymous-token"
+			}
+			leaked := false
+			client := imageMetadataClient(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Host == "storage.test" {
+					leaked = leaked || r.Header.Get("Authorization") != ""
+					body := routes["/v2/owned/clickhouse/blobs/"+strings.TrimPrefix(r.URL.Path, "/")]
+					if scenario == "tampered" {
+						body = []byte(`{"architecture":"amd64","os":"linux"}`)
+					}
+					_, _ = w.Write(body)
+					return
+				}
+				if r.URL.Path == "/token" {
+					_, _ = w.Write([]byte(`{"token":"anonymous-token"}`))
+					return
+				}
+				if r.Header.Get("Authorization") != want {
+					w.Header().Set("WWW-Authenticate", `Bearer realm="https://registry.test/token",service="registry.test"`)
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+				if blob, ok := strings.CutPrefix(r.URL.Path, "/v2/owned/clickhouse/blobs/"); ok {
+					target := "https://storage.test/" + blob + "?X-Amz-Signature=fixture"
+					switch scenario {
+					case "plaintext":
+						target = "http://storage.test/" + blob
+					case "loop":
+						target = r.URL.String()
+					}
+					http.Redirect(w, r, target, http.StatusTemporaryRedirect)
+					return
+				}
+				body, ok := routes[r.URL.Path]
+				if !ok {
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+				_, _ = w.Write(body)
+			}))
+			result, err := ReadImageConfig(context.Background(), client, "https://registry.test", "owned/clickhouse", "gen-1", auth)
+			if leaked {
+				t.Fatal("registry credential followed the storage redirect")
+			}
+			switch scenario {
+			case "storage", "anonymous", "bearer":
+				if err != nil || result.Digest != digest || !reflect.DeepEqual(result.TCPPorts, []int32{8123, 9000, 9009}) {
+					t.Fatalf("metadata = %+v, %v", result, err)
+				}
+			default:
+				if err == nil || result.Digest != "" {
+					t.Fatalf("failed-open metadata = %+v, %v", result, err)
+				}
+			}
+		})
+	}
+}
+
 // Exercise real HTTP request/response and redirect handling without opening a
 // listener. A transport seam also keeps metadata tests independent of DNS.
 type imageMetadataTransport func(*http.Request) (*http.Response, error)
