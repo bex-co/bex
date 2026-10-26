@@ -49,11 +49,11 @@ describe("SessionConversationImpl", () => {
       screen.queryByText(/The task asks me to edit the file/),
     ).not.toBeInTheDocument();
 
-    // The tool + diff + terminal parts fold into ONE activity group whose
-    // collapsed summary is the Devin "Worked" label (no derived duration on a
-    // one-frame replay). The tool name and terminal output stay hidden until the
-    // group is expanded.
-    expect(screen.getByText("Worked")).toBeInTheDocument();
+    // The tool + diff + terminal parts (one ACP call, shared toolCallId) fold
+    // into ONE activity group whose collapsed summary counts the call once, as
+    // an edit (no derived duration on a one-frame replay). The tool name and
+    // terminal output stay hidden until the group is expanded.
+    expect(screen.getByText("Edited 1 file")).toBeInTheDocument();
     expect(screen.queryByText("acp_agent")).not.toBeInTheDocument();
 
     // The final assistant text (markdown) renders.
@@ -73,7 +73,7 @@ describe("SessionConversationImpl", () => {
 
     // Expanding the activity group reveals each step (a vertical timeline): the
     // tool call and the folded diff.
-    await userEvent.click(screen.getByText("Worked"));
+    await userEvent.click(screen.getByText("Edited 1 file"));
     expect(screen.getByText("acp_agent")).toBeInTheDocument();
     expect(screen.getByText(/committed by the agent/)).toBeInTheDocument();
   });
@@ -326,7 +326,7 @@ describe("SessionConversationImpl", () => {
   it("folds consecutive tool and diff parts into one activity group", async () => {
     // The driver now emits real dynamic tool parts (true names) and typed
     // `data-acp-diff` parts — no synthetic command collapse. Consecutive tool +
-    // diff parts still fold into ONE Devin "Worked" group.
+    // diff parts still fold into ONE signal-first summary line (w10/m16 t005).
     const GROUPED: UIMessageChunk[] = [
       { type: "start", messageId: "asm-g" },
       {
@@ -393,11 +393,12 @@ describe("SessionConversationImpl", () => {
       />,
     );
 
-    // A single activity group folds the two tools + the diff under one Devin
-    // "Worked" summary. Its steps are collapsed until expanded.
-    const summary = await screen.findByText("Worked");
+    // A single activity group folds the two tools + the diff under one
+    // summary line: the search that produced a diff is an edit. Its steps are
+    // collapsed until expanded.
+    const summary = await screen.findByText("Read 1 file · Edited 1 file");
     expect(summary).toBeInTheDocument();
-    expect(screen.getAllByText("Worked")).toHaveLength(1);
+    expect(screen.getAllByText(/Read 1 file/)).toHaveLength(1);
     expect(screen.queryByText("search")).not.toBeInTheDocument();
 
     // Expanding reveals every folded step in the one group.
@@ -500,7 +501,7 @@ describe("SessionConversationImpl", () => {
       />,
     );
 
-    const summary = await screen.findByText("Worked");
+    const summary = await screen.findByText("Ran 1 command");
     await userEvent.click(summary);
 
     expect(screen.getByText("List files")).toBeInTheDocument();
@@ -742,7 +743,7 @@ describe("keepLastReplay (realistic ACP transcript)", () => {
 });
 
 describe("durable source timestamps", () => {
-  it("renders the same Worked-for duration on one-frame replay and live tail", async () => {
+  it("renders the same activity duration on one-frame replay and live tail", async () => {
     const replay = createAgentSessionTransport({
       sessionId: "as-timed-replay",
       mintTicket,
@@ -755,7 +756,7 @@ describe("durable source timestamps", () => {
         transport={replay}
       />,
     );
-    expect(await screen.findByText("Worked for 40s")).toBeInTheDocument();
+    expect(await screen.findByText("40s")).toBeInTheDocument();
     unmount();
 
     const manual = makeManualStream();
@@ -777,7 +778,7 @@ describe("durable source timestamps", () => {
       }
       manual.done();
     });
-    expect(await screen.findByText("Worked for 40s")).toBeInTheDocument();
+    expect(await screen.findByText("40s")).toBeInTheDocument();
   });
 
   it("renders Thought for Ns from persisted reasoning timestamps on replay", async () => {
@@ -796,7 +797,7 @@ describe("durable source timestamps", () => {
     expect(await screen.findByText("Thought for 12s")).toBeInTheDocument();
   });
 
-  it("keeps a bare Worked label for mixed and invalid optional timing", async () => {
+  it("shows no duration for mixed and invalid optional timing", async () => {
     const mixed: UIMessageChunk[] = [
       { type: "start", messageId: "asm-mixed" },
       {
@@ -833,7 +834,7 @@ describe("durable source timestamps", () => {
         transport={transport}
       />,
     );
-    expect(await screen.findByText("Worked")).toBeInTheDocument();
-    expect(screen.queryByText(/Worked for/)).not.toBeInTheDocument();
+    expect(await screen.findByText("Searched 1 time")).toBeInTheDocument();
+    expect(screen.queryByText(/^~?\d+(m|s)/)).not.toBeInTheDocument();
   });
 });

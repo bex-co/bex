@@ -1,0 +1,91 @@
+import {
+  toolCommand,
+  toolKind,
+  type ToolKind,
+  type ToolPartInfo,
+} from "@/features/agent-sessions/lib/acp-parts";
+
+// The activity-group step model and its signal-first summary (w10/m16 t005):
+// pure helpers shared by the ActivityGroup component and the conversation's
+// live status line.
+
+/** One renderable step inside an activity group. */
+export type ActivityStep =
+  | ({ kind: "tool"; toolCallId?: string } & ToolPartInfo)
+  | { kind: "terminal"; toolCallId?: string; output?: string }
+  | {
+      kind: "diff";
+      toolCallId?: string;
+      path?: string;
+      oldText?: string;
+      newText?: string;
+    };
+
+/** A tool step is pending until it reaches a terminal (output/error) state. */
+export function isToolStepPending(step: ActivityStep): boolean {
+  return (
+    step.kind === "tool" &&
+    step.state !== "output-available" &&
+    step.state !== "output-error"
+  );
+}
+
+export function isToolStepFailed(
+  step: ActivityStep,
+): step is Extract<ActivityStep, { kind: "tool" }> {
+  return (
+    step.kind === "tool" &&
+    (step.state === "output-error" || Boolean(step.errorText))
+  );
+}
+
+/**
+ * Counts a group's calls by kind. ACP reports one call as a tool part PLUS its
+ * diff/terminal content parts (sharing `toolCallId`), so those fold into the
+ * call they belong to instead of counting twice: a call with a diff is an edit,
+ * one with a terminal is a command.
+ */
+export function activityCounts(
+  steps: readonly ActivityStep[],
+): Map<ToolKind, number> {
+  const toolKinds = new Map<string, ToolKind>();
+  const loose: ToolKind[] = [];
+  for (const step of steps) {
+    if (step.kind !== "tool") continue;
+    const kind = toolKind(step);
+    if (step.toolCallId) toolKinds.set(step.toolCallId, kind);
+    else loose.push(kind);
+  }
+  for (const step of steps) {
+    if (step.kind === "tool") continue;
+    const kind: ToolKind = step.kind === "diff" ? "edit" : "command";
+    const owner = step.toolCallId;
+    if (owner && toolKinds.has(owner)) {
+      if (kind === "edit" || toolKinds.get(owner) === "tool") {
+        toolKinds.set(owner, kind);
+      }
+    } else {
+      loose.push(kind);
+    }
+  }
+  const counts = new Map<ToolKind, number>();
+  for (const kind of [...toolKinds.values(), ...loose]) {
+    counts.set(kind, (counts.get(kind) ?? 0) + 1);
+  }
+  return counts;
+}
+
+/** The one-line label for a step: its description, title, or command. */
+export function stepLabel(step: ActivityStep): string | undefined {
+  if (step.kind === "diff") return step.path;
+  if (step.kind === "terminal") return undefined;
+  const input =
+    step.input && typeof step.input === "object"
+      ? (step.input as Record<string, unknown>)
+      : {};
+  const description =
+    typeof input.description === "string" && input.description.trim()
+      ? input.description
+      : undefined;
+  return description ?? step.title ?? toolCommand(step.input) ?? step.name;
+}

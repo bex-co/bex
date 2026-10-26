@@ -151,6 +151,8 @@ export function isToolPart(part: { type: string }): boolean {
 
 export interface ToolPartInfo {
   name: string;
+  /** The ACP tool title (the AI SDK's `title`), when the driver sent one. */
+  title?: string;
   state: string;
   input?: unknown;
   output?: unknown;
@@ -168,6 +170,7 @@ export function toolPartInfo(part: Record<string, unknown>): ToolPartInfo {
     (type.startsWith("tool-") ? type.slice("tool-".length) : type);
   return {
     name,
+    title: nonEmpty(str(part.title)),
     state: str(part.state) ?? "input-available",
     input: part.input,
     output: part.output,
@@ -183,6 +186,67 @@ export function toolCommand(input: unknown): string | undefined {
   return argRecord
     ? (nonEmpty(str(argRecord.command)) ?? nonEmpty(str(argRecord.commandLine)))
     : undefined;
+}
+
+/**
+ * What a tool call did, for the grouped "Ran 12 commands · Read 8 files" line.
+ * ACP's own `kind` (execute/read/edit/search/…) does not reach the browser, so
+ * the call's input shape decides first and its name/title second; anything
+ * unrecognized is a plain "tool".
+ */
+export type ToolKind =
+  "command" | "read" | "edit" | "search" | "subagent" | "tool";
+
+const EDIT_INPUT_KEYS = [
+  "old_string",
+  "new_string",
+  "edits",
+  "patch",
+  "content",
+];
+const PATH_INPUT_KEYS = ["file_path", "path", "notebook_path"];
+const SEARCH_INPUT_KEYS = ["pattern", "query", "glob"];
+
+const NAME_KINDS: [RegExp, ToolKind][] = [
+  [/^(terminal|bash|shell|execute|exec|run)\b/, "command"],
+  [/^(read|view|cat|open)\b/, "read"],
+  [
+    /^(edit|write|multiedit|str_replace|apply_patch|create|delete|move|rename)/,
+    "edit",
+  ],
+  [/^(grep|glob|search|find|list|ls)\b/, "search"],
+  [/^(task|agent|subagent)\b/, "subagent"],
+];
+
+export function toolKind(
+  info: Pick<ToolPartInfo, "name" | "title" | "input">,
+): ToolKind {
+  if (toolCommand(info.input)) return "command";
+  const input = asRecord(info.input) ?? {};
+  const has = (keys: string[]) => keys.some((key) => input[key] !== undefined);
+  if (input.subagent_type !== undefined) return "subagent";
+  if (has(PATH_INPUT_KEYS) && has(EDIT_INPUT_KEYS)) return "edit";
+  for (const label of [info.name, info.title]) {
+    const normalized = label?.trim().toLowerCase();
+    if (!normalized) continue;
+    const match = NAME_KINDS.find(([pattern]) => pattern.test(normalized));
+    if (match) return match[1];
+  }
+  if (has(PATH_INPUT_KEYS)) return "read";
+  if (has(SEARCH_INPUT_KEYS)) return "search";
+  return "tool";
+}
+
+// The marker the backend writes into a head+tail-capped tool output (w10/m16
+// t003): `[bex: 41234 chars clipped]`.
+const CLIPPED_MARKER = /\[bex: (\d+) chars clipped\]/g;
+
+/** Characters the server clipped out of a stored output (0 when none). */
+export function clippedChars(text: unknown): number {
+  if (typeof text !== "string") return 0;
+  let total = 0;
+  for (const match of text.matchAll(CLIPPED_MARKER)) total += Number(match[1]);
+  return total;
 }
 
 /** The concrete UI message type the column renders (default parts + the typed
