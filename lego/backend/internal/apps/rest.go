@@ -115,8 +115,8 @@ type patchServiceRequest struct {
 	AutoDeploy string `json:"autoDeploy"`
 	// AutoDeployTrigger is Render's newer autoDeployTrigger enum for the same
 	// toggle (off|commit|checksPass, w5/m53). It takes precedence over autoDeploy
-	// when both are sent (Render's precedence); "checksPass" is rejected — bex has
-	// no CI-gated deploy (documented divergence); "" => absent.
+	// when both are sent (Render's precedence); "checksPass" gates the deploy on
+	// the commit's GitHub checks (w1/m181, checks_pass.go); "" => absent.
 	AutoDeployTrigger string `json:"autoDeployTrigger"`
 	// NotifyOnFail is Render's exact per-service notifyOnFail enum (default |
 	// notify | ignore, docs/render-artifacts/notify-on-fail.md). A pointer so

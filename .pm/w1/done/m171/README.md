@@ -1,6 +1,6 @@
 # w1 · m171 — Warn when an inbound IP allowlist sits behind a Cloudflare-proxied custom domain
 
-**Worker:** worker1 **Goal:** a tenant who saves an inbound IP allowlist on a service, or on an environment, whose custom domain is proxied by Cloudflare is told on every surface that the allowlist sees Cloudflare's address there, not the client's. The save still succeeds. **Status:** blocked on a user-owned DNS fixture. t001–t007 are done. The change has been deployed since 2026-10-02 (`1263d12ae`), and the negative path (no custom domain, restricting or `/0` list) is verified live on REST and GraphQL. t008 still needs a verified Cloudflare-proxied custom domain; see t008 § 2026-10-02 attempt.
+**Worker:** worker1 **Goal:** a tenant who saves an inbound IP allowlist on a service, or on an environment, whose custom domain is proxied by Cloudflare is told on every surface that the allowlist sees Cloudflare's address there, not the client's. The save still succeeds. **Status:** done 2026-10-25. Every Definition of done item was observed live in production on 2026-10-25 without a user-owned DNS zone (§ Live verification). The change has been deployed since 2026-10-02 (`1263d12ae`).
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t005 | Render parity — **DONE** | 15m | t004 |
 | t006 | Simplify — **DONE** | 15m | t005 |
 | t007 | Test coverage — **DONE** | 40m | t005 |
-| t008 | Closeout (deploy + live verify) | 30m | t006, t007 |
+| t008 | Closeout (deploy + live verify) — **DONE** | 30m | t006, t007 |
 
 ## Definition of done
 
@@ -31,6 +31,45 @@ Each item is a state you can observe in production:
    - GraphQL `environments(projectId){ipAllowListProxiedDomains}`;
    - MCP `get_environment`/`update_environment`.
 5. **Dashboard.** At desktop and narrow-mobile widths, the service Settings → Networking card and the environment settings dialog both show the notice with the host. The notice is pluralized and present in en and zh, and the list still saves.
+
+## Live verification (2026-10-25)
+
+Run in production as the QA user, through the dashboard session (REST, GraphQL and MCP called from the page). All times are UTC.
+
+**How the fixture avoids a user-owned zone.** The 2026-10-02 blocker no longer holds, for two reasons:
+
+- Custom domains now verify by their traffic DNS, not a `_bex-challenge` TXT (w5/m137, `a8c215fdf`).
+- Every `*.bex.co` host is reserved as a platform apex (w4/190), so a `bex.co` sub-label could never have been claimed.
+
+The fixture therefore used two sslip.io names:
+
+- **P = `2606-4700-3033--ac43-8a88.49-12-20-236.sslip.io`** resolves to A `49.12.20.236`, the bex edge, and AAAA `2606:4700:3033::ac43:8a88`, which is inside Cloudflare's `2606:4700::/32`. It verifies, because one of its addresses is the platform host's address. The detector names it because one of its records is in a Cloudflare range.
+- **G = `49-12-20-236.sslip.io`** resolves only to the edge: a verified DNS-only host.
+
+P exercises the deployed detector on real public DNS. It is not a real orange-cloud record, which would answer only Cloudflare addresses. The detector treats both alike because any one record in range suffices, and a real orange-cloud host is verified while it is DNS-only, before the proxy is switched on.
+
+**Plan gate.** The first fixture, in `bex-canary`, was refused with `ipAllowList: inbound IP rules for web services, static sites and environments require the Scale plan or higher`. That is the w8/m138 plan gate, shipped 2026-10-23, and correct, because `bex-canary` is on Hobby. The fixture was deleted (`204` → `404`) and recreated in the `bex` workspace (Scale) as project `prj-dbf9818kbcjs73a5r720` (environment `evm-dbf9818kbcjs73a5r72g`) with free image `web_service` `srv-dbf981910mgc73d98ptg`. Both domains were added (`201`) and verified (`202`, then `verified`).
+
+Results:
+
+1. **Proxied host is named** (23:43:15Z). The allowlist was `203.0.113.0/24`.
+   - REST `PATCH /v1/services/{id}` answered `200` with `serviceDetails.ipAllowListProxiedDomains = [P]`, and `GET` returned the same.
+   - GraphQL `service(id){ipAllowListProxiedDomains}` and `setServiceIpAllowList{…}` both returned `[P]`.
+   - MCP `update_service` and `get_service` (23:43:30Z) each returned a second text block: "Warning: these custom domains are proxied by Cloudflare, so on them the inbound IP allowlist matches Cloudflare's edge address instead of the client's: P. Set their DNS records to DNS-only for the allowlist to see real client addresses."
+2. **Grey-cloud and platform hosts are not named.** No surface ever listed G or `qa-20261025-m171-allow.onbex.co`.
+3. **No restriction, no warning.**
+   - With `0.0.0.0/0`, and again with the list cleared, REST `PATCH` and `GET` (`200`) omitted the field and GraphQL returned `[]`.
+   - MCP `update_service` with a cleared list, and the following `get_service`, returned only the JSON block (23:43:40Z).
+4. **Environment layer** (23:43:40Z). The environment allowlist was `203.0.113.0/24`.
+   - REST `PATCH` and `GET /v1/environments/{id}` (`200`) returned `ipAllowListProxiedDomains = [P]`.
+   - GraphQL `environments(projectId){ipAllowListProxiedDomains}` returned `[P]`.
+   - MCP `get_environment` and `update_environment` each returned the same warning block.
+5. **Dashboard.** Both the service Settings → Networking card and the environment "All settings" dialog show "The allowlist can't see clients on 1 custom domain", naming P and not G.
+   - Screenshots at 1440×900 and 390×844: [`evidence/`](evidence/). The ready state is `m171-{service,env}-{desktop,mobile}-ready.png`.
+   - The pending state (`*-pending.png`) was captured with GraphQL delayed 4s. The page is server-rendered, and the notice is conditional on data rather than a reserved region, so no skeleton geometry is involved.
+   - The zh copy is covered by t004's locale tests; it was not switched live.
+
+**Cleanup** (23:45:42Z): service `204` → `404`; project `204` → `404`; environment `404`. The `bex-canary` fixture `srv-dbf972gkbcjs73a5r6rg` / `prj-dbf9710kbcjs73a5r6pg` was deleted earlier, `204` → `404`. No DNS records were created, and the QA session was logged out.
 
 ## Triage (2026-10-02, `/loopx w1`)
 
