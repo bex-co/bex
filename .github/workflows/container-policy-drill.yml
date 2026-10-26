@@ -1,0 +1,84 @@
+name: Container policy drill (manual)
+
+# Production checks for the render-v1 container policy (w6/088): list a
+# workspace's services by policy, migrate one existing service with bex-api's
+# operator-run migration (dry run unless confirmed), and prove the operator
+# workload admission refuses out-of-policy capabilities and seccomp profiles
+# using server-side dry runs. Same production-restore custody as the disk drill.
+on:
+  workflow_dispatch:
+    inputs:
+      namespace:
+        description: Tenant namespace (tea-...)
+        required: true
+        type: string
+      mode:
+        description: list | migrate | admission
+        required: true
+        default: list
+        type: choice
+        options: [list, migrate, admission]
+      service_id:
+        description: For migrate, the service id (srv-...)
+        required: false
+        type: string
+      confirm:
+        description: For migrate, retype the service id to APPLY (blank = dry run)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: container-policy-drill
+  cancel-in-progress: false
+
+jobs:
+  drill:
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    timeout-minutes: 30
+    environment: production-restore
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
+        with:
+          version: v1.36.1
+
+      - name: Fetch production kubeconfig
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          BEX_SSH_PRIVATE_KEY: ${{ secrets.BEX_SSH_PRIVATE_KEY }}
+          BEX_SSH_KNOWN_HOSTS: ${{ secrets.BEX_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m700 -d "$RUNNER_TEMP/bex-ssh"
+          printf '%s\n' "$BEX_SSH_PRIVATE_KEY" >"$RUNNER_TEMP/bex-ssh/id_bex"
+          chmod 600 "$RUNNER_TEMP/bex-ssh/id_bex"
+          export BEX_SSH_KEY_PATH="$RUNNER_TEMP/bex-ssh/id_bex"
+          export BEX_SSH_REQUIRE_KNOWN_HOSTS=1
+          if [ -n "${BEX_SSH_KNOWN_HOSTS:-}" ]; then
+            printf '%s\n' "$BEX_SSH_KNOWN_HOSTS" >"$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+            chmod 600 "$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+            export BEX_SSH_KNOWN_HOSTS_FILE="$RUNNER_TEMP/bex-ssh/bex_known_hosts"
+          fi
+          bash scripts/fetch-app-kubeconfig.sh "$RUNNER_TEMP/app.kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/app.kubeconfig" >>"$GITHUB_ENV"
+
+      - name: scrub SSH credentials
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/bex-ssh"
+
+      - name: Run the drill
+        env:
+          NS: ${{ inputs.namespace }}
+          MODE: ${{ inputs.mode }}
+          SERVICE_ID: ${{ inputs.service_id }}
+          CONFIRM: ${{ inputs.confirm }}
+        run: bash scripts/container-policy-drill.sh "$MODE"
+
+      - name: final credential scrub
+        if: always()
+        run: |
+          rm -rf -- "$RUNNER_TEMP/bex-ssh"
+          rm -f -- "$RUNNER_TEMP/app.kubeconfig"
