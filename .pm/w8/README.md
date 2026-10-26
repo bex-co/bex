@@ -718,5 +718,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **105** — [CLI compatibility checklist advertises cross-repository image overrides](done/105.md) — **DONE 2026-10-14** (checklist `--image` row corrected to the same-repository rule)
 
-- [ ] **200** — [**Blocker:** every prebuilt-image web service create fails: `spec.portMode "web-image-v1"` is missing from the App CRD enum (w4/m243 regression)](200.md) (~30m) ← `/qa-find-bugs-cli` loop sweep k2m4 2026-10-25
+- [x] **201** — [**Blocker:** every new prebuilt-image web service fails its first deploy: the operator refuses Docker Hub's 307 blob redirect when reading the image config (w4/m243)](done/201.md) (~30m) ← `/qa-find-bugs-cli` loop sweep v9p3 2026-10-25 — DONE 2026-10-25 (code shipped; live check pending the operator deploy)
+
+- [x] **200** — [**Blocker:** every prebuilt-image web service create fails: `spec.portMode "web-image-v1"` is missing from the App CRD enum (w4/m243 regression)](done/200.md) (~30m) ← `/qa-find-bugs-cli` loop sweep k2m4 2026-10-25 — DONE 2026-10-25 (CRD fix live: image creates return 201; first deploys then hit w8/201)
 
