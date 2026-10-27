@@ -96,7 +96,7 @@ func TestInitialBlueprintGroupsKeepWorkspaceAndEnvironmentBoundaries(t *testing.
 		want                                                                 error
 	}{
 		{"foreign group name", "tea-b", "tea-a", "", "", core.ErrBadRequest},
-		{"foreign app", "tea-a", "tea-b", "", "", core.ErrForbidden},
+		{"foreign app", "tea-a", "tea-b", "", "", core.ErrNotFound}, // not in the named workspace (w5/086)
 		{"environment mismatch", "tea-a", "tea-a", "env-a", "env-b", core.ErrConflict},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

@@ -187,3 +187,22 @@ func TestEnvironmentVerbsStayInTheActingWorkspace(t *testing.T) {
 		t.Fatalf("audit objects = %v; the project's workspace was consulted", audit.resources())
 	}
 }
+
+// w5/086: listing a project's environments with a named workspace that does
+// not hold the project answers not found, where it used to list the project's
+// own workspace's environments.
+func TestListEnvironmentsAnswersNotFoundInANamedWorkspaceThatDoesNotHoldTheProject(t *testing.T) {
+	st := newFakeStore()
+	st.projs["prj-b"] = store.Project{ID: "prj-b", TenantID: "tea-b", Name: "bravo"}
+	if _, err := st.CreateEnvironment(context.Background(), "prj-b", "tea-b", "staging"); err != nil {
+		t.Fatal(err)
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
+	svc := &Service{Base: &core.Base{Authz: allowChecker{}, Workspace: coretest.Workspaces{"tea-a", "tea-b"}}, Store: st}
+	if _, err := svc.List(core.WithWorkspace(ctx, "tea-a"), "prj-b"); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("List naming tea-a = %v, want not found", err)
+	}
+	if got, err := svc.List(core.WithWorkspace(ctx, "tea-b"), "prj-b"); err != nil || len(got) != 1 {
+		t.Fatalf("List naming tea-b = %+v, %v", got, err)
+	}
+}
