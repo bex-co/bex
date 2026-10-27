@@ -24,6 +24,7 @@ import (
 
 	"golang.org/x/text/unicode/norm"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -100,17 +101,23 @@ func capResourceSlug(name, slug string, hashEmpty bool) string {
 	return slug
 }
 
-// blueprintDisplayName is the label a service keeps when its Blueprint name is
-// not itself a resource name, "" otherwise or when it is no valid label
-// (checkDisplayName's rules).
-func blueprintDisplayName(name string) string {
-	if blueprintResourceSlug(name) == name {
-		return ""
+// serviceNameLabel is the label a service keeps when its free-form name is
+// not itself a resource name, "" when it is. A name that is no valid label is
+// refused with the label rule's own error, and an empty or blank one as a
+// missing name, never with the resource-name rule it was never held to
+// (w4/417).
+func serviceNameLabel(name string) (string, error) {
+	if appv1alpha1.ValidResourceName(name) {
+		return "", nil
 	}
-	if _, err := checkDisplayName(&appv1alpha1.App{}, name); err != nil {
-		return ""
+	label, err := core.CheckLabel(name)
+	if err != nil {
+		return "", err
 	}
-	return name
+	if label == "" {
+		return "", core.NameRequiredError()
+	}
+	return name, nil
 }
 
 // slugRefNames maps a reference to a service onto the resource name its

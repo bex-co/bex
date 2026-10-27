@@ -2195,7 +2195,12 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 			st.keyValues = append(st.keyValues, kv)
 			continue
 		}
-		req, se, err := parseService(overrides, decl)
+		displayName, err := serviceNameLabel(a.value.Name)
+		var req CreateRequest
+		var se serviceEnv
+		if err == nil {
+			req, se, err = parseService(overrides, decl)
+		}
 		var credName string
 		if err == nil {
 			credName, err = blueprintRegistryCredentialName(a.value)
@@ -2205,7 +2210,7 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 			continue
 		}
 		pendings = append(pendings, pending{
-			svc:     parsedService{req: req, displayName: blueprintDisplayName(a.value.Name), fields: blueprintServiceFields(fieldsByResource[BlueprintResourceService][req.Name]), groupLinks: se.groupLinks, seedLiterals: se.seedLiterals, seedGenerates: se.seedGenerates, promptKeys: se.promptKeys, env: se, registryCredentialName: credName, grouping: a.grouping, ungrouped: a.ungrouped},
+			svc:     parsedService{req: req, displayName: displayName, fields: blueprintServiceFields(fieldsByResource[BlueprintResourceService][req.Name]), groupLinks: se.groupLinks, seedLiterals: se.seedLiterals, seedGenerates: se.seedGenerates, promptKeys: se.promptKeys, env: se, registryCredentialName: credName, grouping: a.grouping, ungrouped: a.ungrouped},
 			refVars: se.refVars,
 		})
 		idx.serviceKnownEnv[req.Name], idx.serviceGenerated[req.Name] = knownServiceEnv(se, st.envGroups)
