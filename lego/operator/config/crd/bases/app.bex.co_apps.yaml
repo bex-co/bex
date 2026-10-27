@@ -1249,6 +1249,11 @@ spec:
                     type: integer
                   revision:
                     type: string
+                  source:
+                    description: |-
+                      Source is the reference Image was resolved from, such as a prebuilt
+                      image's tag, so one release reads the registry once (w4/m243 t008).
+                    type: string
                 required:
                 - image
                 - ports
@@ -1464,6 +1469,11 @@ spec:
                     minimum: 1
                     type: integer
                   revision:
+                    type: string
+                  source:
+                    description: |-
+                      Source is the reference Image was resolved from, such as a prebuilt
+                      image's tag, so one release reads the registry once (w4/m243 t008).
                     type: string
                 required:
                 - image

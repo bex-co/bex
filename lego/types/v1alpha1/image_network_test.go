@@ -101,3 +101,18 @@ func TestReceivesPrivateTraffic(t *testing.T) {
 		}
 	}
 }
+
+// A web image-port service publishes its serving network's primary while a
+// candidate's PORT rolls out: the candidate is not serving yet (w4/m243 t007).
+func TestWebImagePortsPublishTheServingNetwork(t *testing.T) {
+	app := &App{Spec: AppSpec{Type: TypeWebService, PortMode: PortModeWebImageConfiguredV1}}
+	app.Status.EnvPort = 9999
+	if app.ServicePort() != 9999 || app.OpenPorts()[0] != 9999 {
+		t.Fatalf("before discovery the PORT is the only answer: service=%d open=%v", app.ServicePort(), app.OpenPorts())
+	}
+	app.Status.ImageNetwork = &ImageNetworkStatus{Image: "new", Revision: "rev-2", PrimaryPort: 9999, Ports: []int32{80, 9999}}
+	app.Status.ServingNetwork = &ImageNetworkStatus{Image: "old", Revision: "rev-1", PrimaryPort: 80, Ports: []int32{80, 443}}
+	if app.ServicePort() != 80 || len(app.OpenPorts()) != 1 || app.OpenPorts()[0] != 80 {
+		t.Fatalf("service=%d open=%v, want the serving 80", app.ServicePort(), app.OpenPorts())
+	}
+}

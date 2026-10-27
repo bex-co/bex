@@ -116,6 +116,11 @@ const (
 	reasonBuilding             = appv1alpha1.ReasonBuilding
 	reasonRegistryCredsPending = appv1alpha1.ReasonRegistryCredsPending
 
+	// A deploy waiting out a throttled or failing image metadata read
+	// (w4/m243 t008).
+	reasonImageRegistryRateLimited = "ImageRegistryRateLimited"
+	reasonImageRegistryUnavailable = "ImageRegistryUnavailable"
+
 	// Ready-condition reasons for a parked or settling workload and for the
 	// failed-build-over-serving-release terminal (w6/m124) — the same shared
 	// vocabulary, defined once on the CRD contract for the same reason: bex-api's
@@ -679,6 +684,9 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	}
 	if app.Spec.HasImagePorts() {
 		image, port, err = r.resolveImageNetwork(ctx, &app, image)
+		if res, waiting := r.imageRegistryWait(ctx, &app, err); waiting {
+			return res, nil
+		}
 		if err != nil {
 			return r.fail(ctx, &app, "ImageMetadataUnavailable", err)
 		}
@@ -2635,7 +2643,7 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		return r.holdFailedFirstRelease(ctx, app)
 	}
 
-	if res, halt, err := r.reportKubernetesRunning(ctx, app, dep, image, hosts, replicas, port); halt || err != nil {
+	if res, halt, err := r.reportKubernetesRunning(ctx, app, dep, image, hosts, ingressSvc == app.Name, replicas, port); halt || err != nil {
 		return res, err
 	}
 
@@ -2988,6 +2996,12 @@ func (r *AppReconciler) ingressBackend(ctx context.Context, app *appv1alpha1.App
 		}
 		return activatorSvc, int32(r.ActivatorPort), nil
 	}
+	// The Services keep the serving network's ports until the candidate is
+	// promoted, so the route names the serving primary: a port-changing or
+	// failed deploy never points the host at a port no Service has (w4/m243 t007).
+	if network := app.ActiveImageNetwork(); network != nil {
+		port = int(network.PrimaryPort)
+	}
 	return app.Name, int32(port), nil
 }
 
@@ -3084,7 +3098,7 @@ func (r *AppReconciler) reconcileIngressWithMiddlewares(ctx context.Context, app
 // once ready, stamps the Running status. halt=true means the caller must stop
 // this reconcile and return (res, err) — the rollout is still progressing (or a
 // status write failed); halt=false falls through to the running requeue policy.
-func (r *AppReconciler) reportKubernetesRunning(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, image string, hosts []string, replicas int32, port int) (ctrl.Result, bool, error) {
+func (r *AppReconciler) reportKubernetesRunning(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, image string, hosts []string, directRoute bool, replicas int32, port int) (ctrl.Result, bool, error) {
 	// Readiness: requeue until this Deployment revision, rather than retained
 	// ready replicas from the previous ReplicaSet, has completed its rollout.
 	_ = r.Get(ctx, client.ObjectKeyFromObject(dep), dep)
@@ -3095,9 +3109,18 @@ func (r *AppReconciler) reportKubernetesRunning(ctx context.Context, app *appv1a
 			"waiting for the current Deployment revision and pods to become ready")
 		return res, true, err
 	}
-	if err := r.promoteImageNetwork(ctx, app, image, port); err != nil {
+	moved, err := r.promoteImageNetwork(ctx, app, image, port)
+	if err != nil {
 		res, err := r.fail(ctx, app, "ServiceFailed", err)
 		return res, true, err
+	}
+	// The route this pass applied named the old primary; the promoted
+	// Services no longer carry it.
+	if moved && directRoute && len(hosts) > 0 {
+		if reason, err := r.reconcileIngressWithMiddlewares(ctx, app, hosts, app.Name, app.ActiveImageNetwork().PrimaryPort); err != nil {
+			res, err := r.fail(ctx, app, reason, err)
+			return res, true, err
+		}
 	}
 
 	app.Status.Image = image
