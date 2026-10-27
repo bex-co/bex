@@ -1,6 +1,6 @@
 # w4 · m243 — A Docker web service listens on its image's exposed port, as on Render
 
-**Worker:** worker4 **Goal:** a new Docker-built or prebuilt-image web service with no `PORT` env and no explicit port serves on its image's `EXPOSE`d port (hello-go 3000, whoami 80) instead of silently defaulting to 10000. **Status:** blocked — t001–t005 done 2026-10-25, t007–t008 done 2026-10-26 (loopx w4); t006 waits for the release pipeline to deploy the operator, then QA replays the DoD live in `bex-canary`
+**Worker:** worker4 **Goal:** a new Docker-built or prebuilt-image web service with no `PORT` env and no explicit port serves on its image's `EXPOSE`d port (hello-go 3000, whoami 80) instead of silently defaulting to 10000. **Status:** todo — t001–t005 done 2026-10-25, t007–t008 done 2026-10-26 (loopx w4); t009 reopened 2026-10-27 by live QA run 5a85 (a held wake request to a sleeping image-port service is proxied to port 10000 and answers 502 after 90 s); t006 then waits for the release pipeline
 
 ## Tasks (in order)
 
@@ -13,7 +13,8 @@
 | t005 | Test coverage — **DONE** | 20m | w4/m243/t004    |
 | t007 | Ingress follows the serving release's port until promotion (port change / failed deploy never takes the host down) — **DONE** | 1h15m | w4/m243/t005 |
 | t008 | Read Docker Hub once per release; a registry 429 retries instead of failing the deploy — **DONE** | 1h | w4/m243/t005 |
-| t006 | Closeout                                  | 10m | w4/m243/t005, t007, t008 |
+| t009 | Held wake request to a sleeping image-port service is proxied to port 10000 and fails 502 after 90 s | 45m | w4/m243/t005 |
+| t006 | Closeout                                  | 10m | w4/m243/t005, t007, t008, t009 |
 
 ## Definition of done
 
