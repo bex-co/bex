@@ -120,17 +120,18 @@ const WorkspaceResourceLimitCode = "WORKSPACE_RESOURCE_LIMIT"
 // lifts it.
 const FreeInstanceLimitCode = "FREE_INSTANCE_LIMIT"
 
-// FreeInstanceLimitError names the existing free instance holding the slot.
+// FreeInstanceLimitError names the existing free instance holding the slot,
+// and plan as the field to change, so a Blueprint locates it there (w4/416).
 // A terminating holder still holds it until deletion finishes (w6/m129).
 func FreeInstanceLimitError(noun, existingName string, terminating bool) error {
 	if terminating {
 		return NewBadRequestError(FreeInstanceLimitCode,
 			fmt.Sprintf("this workspace's free %s (%s) is still being deleted; wait for its deletion to finish or choose a paid instance type", noun, existingName),
-			map[string]any{"limit": 1})
+			map[string]any{"limit": 1, "field": "plan"})
 	}
 	return NewBadRequestError(FreeInstanceLimitCode,
 		fmt.Sprintf("this workspace already has a free %s (%s); delete it or choose a paid instance type", noun, existingName),
-		map[string]any{"limit": 1})
+		map[string]any{"limit": 1, "field": "plan"})
 }
 
 // TenantAdvisoryLocker is the optional cross-replica lock a workspace
