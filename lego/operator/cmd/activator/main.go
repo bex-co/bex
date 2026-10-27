@@ -156,9 +156,13 @@ func newHoldingHandler(c client.Client, cache *hostCache, log logr.Logger, hold 
 		host := requestHost(r.Host)
 		ctx := r.Context()
 		app, ok := cache.lookup(host)
-		if !ok {
+		// The platform-host fallback route sends every unclaimed platform host
+		// here (w4/m235 t008). A host no public App owns, including a private
+		// service's or worker's would-be platform host, answers a bex 404 and
+		// never reaches the wake path below.
+		if !ok || !app.Spec.PubliclyRoutable() {
 			log.Info("no routed app found for host", "host", host)
-			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
+			writeUnknownHostResponse(w, r)
 			return
 		}
 
@@ -204,10 +208,12 @@ func newHoldingHandler(c client.Client, cache *hostCache, log logr.Logger, hold 
 			return
 		}
 		// An unsuspended static site has no workload to wake. It reaches here
-		// only while its route moves to the static-server (after its first
-		// publish, or on resume), so it gets the neutral not-ready answer.
+		// only while its route moves to the static-server, after its first
+		// publish (or, for a second, on resume), so it keeps answering the
+		// first-deploy response until the static-server takes over (w4/m235
+		// t008).
 		if app.Spec.Type == appv1alpha1.TypeStaticSite {
-			writeWakeResponse(w, r)
+			writeFirstDeployResponse(w, r)
 			return
 		}
 
@@ -320,14 +326,20 @@ func writeSuspendedResponse(w http.ResponseWriter, r *http.Request) {
 // application/json, and plain text for everything else.
 func writeNotServing(w http.ResponseWriter, r *http.Request, retryAfter, page, json, text string) {
 	w.Header().Set("Retry-After", retryAfter)
+	writeNegotiated(w, r, http.StatusServiceUnavailable, page, json, text)
+}
+
+// writeNegotiated answers status with a page for an explicit text/html, JSON
+// for an explicit application/json, and plain text for everything else.
+func writeNegotiated(w http.ResponseWriter, r *http.Request, status int, page, json, text string) {
 	w.Header().Set("Cache-Control", "no-store")
 	switch {
 	case acceptsMedia(r.Header.Values("Accept"), "text/html"):
-		writeHTMLPage(w, r, http.StatusServiceUnavailable, page)
+		writeHTMLPage(w, r, status, page)
 	case acceptsMedia(r.Header.Values("Accept"), "application/json"):
-		writeBody(w, r, http.StatusServiceUnavailable, "application/json", json)
+		writeBody(w, r, status, "application/json", json)
 	default:
-		writeBody(w, r, http.StatusServiceUnavailable, "text/plain; charset=utf-8", text)
+		writeBody(w, r, status, "text/plain; charset=utf-8", text)
 	}
 }
 
@@ -335,6 +347,18 @@ const (
 	suspendedRetryAfter = "3600"
 	suspendedJSON       = `{"error":"service suspended"}`
 	suspendedText       = "This service is suspended.\n"
+)
+
+// writeUnknownHostResponse answers a host no public service owns: a 404,
+// negotiated like the not-serving responses, instead of Traefik's raw "404
+// page not found".
+func writeUnknownHostResponse(w http.ResponseWriter, r *http.Request) {
+	writeNegotiated(w, r, http.StatusNotFound, unknownHostPage, unknownHostJSON, unknownHostText)
+}
+
+const (
+	unknownHostJSON = `{"error":"not found"}`
+	unknownHostText = "There is no service at this address.\n"
 )
 
 // writeFirstDeployResponse answers a public host whose first release has not
@@ -811,6 +835,23 @@ const suspendedPage = `<!DOCTYPE html>
 <body><main><h1>This service is suspended.</h1>
 <p>Its owner suspended this service, so it is not currently serving traffic.
 It will be available again once the owner resumes it.</p></main></body>
+</html>`
+
+const unknownHostPage = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Not found</title>
+  <style>
+    body{font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;
+      background:#111827;color:#f9fafb}
+    main{max-width:36rem;padding:2rem;text-align:center}h1{font-size:1.75rem;margin-bottom:.75rem}
+    p{color:#d1d5db;line-height:1.6}
+  </style>
+</head>
+<body><main><h1>There is no service at this address.</h1>
+<p>Check the URL for a typo.</p></main></body>
 </html>`
 
 const firstDeployPage = `<!DOCTYPE html>

@@ -1,6 +1,6 @@
 # w4 · m235 — A new service's URL says its first deploy is in progress, not `404 page not found`
 
-**Worker:** worker4 **Goal:** from creation until its first release serves, a public web service or static site answers bex's own "first deploy in progress" response, never Traefik's or the static-server's raw not-found text. **Status:** todo — t001–t006 done 2026-10-19 (loopx w4); live on pin `b4726243e74f` the first-deploy 503 answers from ~3 s after create, but a ~2.5 s raw-404 window remains right after the 201 (QA run 8a59, 2026-10-27) — t008 open, then t007 closeout
+**Worker:** worker4 **Goal:** from creation until its first release serves, a public web service or static site answers bex's own "first deploy in progress" response, never Traefik's or the static-server's raw not-found text. **Status:** blocked — t001–t006 done 2026-10-19, t008 done 2026-10-26 (loopx w4: lowest-priority platform-host fallback route to the activator); t007 waits for the release pipeline to deploy the operator and activator, then QA replays the DoD live (3 s and 0.5 s polls)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | [t004](done/t004.md) | Render parity — **DONE** | 15m | w4/m235/t002, w4/m235/t003 |
 | [t005](done/t005.md) | Simplify — **DONE** | 10m | w4/m235/t004 |
 | [t006](done/t006.md) | Test coverage — **DONE** | 40m | w4/m235/t004 |
-| [t008](t008.md) | Close the first seconds after create, when the host still answers Traefik's raw 404 | 45m | w4/m235/t006 |
+| [t008](done/t008.md) | Close the first seconds after create, when the host still answers Traefik's raw 404 — **DONE** | 45m | w4/m235/t006 |
 | [t007](t007.md) | Closeout | 20m | w4/m235/t005, w4/m235/t006, w4/m235/t008 |
 
 Seven tasks, 205m (3h25m). One **minor** finding. This milestone schedules the work only.
