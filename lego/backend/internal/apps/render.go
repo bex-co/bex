@@ -124,11 +124,14 @@ type renderService struct {
 	// through a by-name read after a rename; this always does. A bex superset
 	// (Render has no mutable/immutable split); distinct from `slug`, which a
 	// cross-tenant collision can push to `<name>-<suffix>` (w6/m115).
-	ImmutableName      string                           `json:"immutableName"`
-	Slug               string                           `json:"slug"` // globally-unique platform-host segment (w4/m19/w4/m20)
-	DisplayName        string                           `json:"displayName"`
-	Type               string                           `json:"type"` // serviceType enum: web_service | private_service | background_worker | cron_job
-	Suspended          string                           `json:"suspended"`
+	ImmutableName string `json:"immutableName"`
+	Slug          string `json:"slug"` // globally-unique platform-host segment (w4/m19/w4/m20)
+	DisplayName   string `json:"displayName"`
+	Type          string `json:"type"` // serviceType enum: web_service | private_service | background_worker | cron_job
+	Suspended     string `json:"suspended"`
+	// Render also requires dashboardUrl, createdAt, updatedAt, serviceDetails
+	// and ownerId; each is omitted only when bex truthfully has no value
+	// (ADR018 §Resource metadata contract, re-audited w4/421).
 	DashboardURL       string                           `json:"dashboardUrl,omitempty"`
 	CreatedAt          string                           `json:"createdAt,omitempty"`
 	UpdatedAt          string                           `json:"updatedAt,omitempty"`
@@ -193,8 +196,10 @@ type renderService struct {
 	NextRunAt           string        `json:"nextRunAt,omitempty"` // bex extension: next scheduled cron run (computed)
 	IdleTTLSeconds      int32         `json:"idleTTLSeconds"`      // free-tier auto-sleep window (bex extension; 0 or unset = platform default, 15 min)
 	// RootDir is the subdirectory of the repo this service builds from (Render's
-	// Root Directory setting, monorepo support). Empty is the repo root.
-	RootDir string `json:"rootDir,omitempty"`
+	// Root Directory setting, monorepo support). Empty is the repo root, and
+	// every image service; Render requires the key, so it is never omitted
+	// (w4/421).
+	RootDir string `json:"rootDir"`
 	// BuildFilter is Render's Build Filters object ({paths, ignoredPaths}, verified
 	// against Render's service schema as a top-level field); omitted when unset.
 	BuildFilter *BuildFilterView `json:"buildFilter,omitempty"`
