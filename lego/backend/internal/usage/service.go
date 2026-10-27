@@ -1241,13 +1241,16 @@ const instanceSampleStepSeconds = 15
 // step would carry its last sample forward for Prometheus's 5-minute lookback
 // and bill every terminated pod ~285 s more than it ran. The samples are also
 // stamped at kubelet housekeeping (10 s, jittered up to 2x), so stored samples
-// can sit ~34 s apart even with every scrape landing; three scrape intervals
-// cover that plus a missed scrape, and one second short keeps the bound off the
-// 15 s grid, so Prometheus 2.x's closed range and 3.x's left-open range agree.
+// sit up to ~45 s apart even with every scrape landing: production measured a
+// 44.3 s maximum over 53,039 live gaps (w5/m111, 2026-10-27), which broke the
+// earlier 44 s bound. Four scrape intervals cover it with margin, and one
+// second short keeps the bound off the 15 s grid, so Prometheus 2.x's closed
+// range and 3.x's left-open range agree. Any bound from 45 to 59 s credits a
+// terminated pod the same three steps, so this one costs nothing over 50 s.
 // It is deliberately tighter than the Metrics page's 90 s instanceLivenessWindow
 // (metrics/source.go): a chart wants continuity across scrape gaps, a meter
-// wants a terminated pod billed at most 44 s past its last sample.
-const instanceLivenessSeconds = 3*instanceSampleStepSeconds - 1
+// wants a terminated pod billed at most 45 s past its last sample.
+const instanceLivenessSeconds = 4*instanceSampleStepSeconds - 1
 
 // instanceSecondsQuery is the running-time measure (w4/m173): per POD — the
 // max by (pod) collapses a pod's containers (an App's one, Valkey's server +
