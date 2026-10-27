@@ -547,8 +547,13 @@ type AppView struct {
 	// nil for types without a network address; empty, never an invented 3000,
 	// while an image-port private service's discovery is pending (w6/m148).
 	OpenPorts []ServerPortView `json:"openPorts,omitempty"`
-	CreatedAt string           `json:"createdAt"`
-	UpdatedAt string           `json:"updatedAt,omitempty"`
+	// ImagePorts reports a service whose port set comes from its image
+	// (spec.HasImagePorts: an image-port private service, or a web service
+	// created without a port since w4/m243). A bex extension: the dashboard
+	// reads it to describe the Port setting (w4/m243 t010).
+	ImagePorts bool   `json:"imagePorts,omitempty"`
+	CreatedAt  string `json:"createdAt"`
+	UpdatedAt  string `json:"updatedAt,omitempty"`
 	// DashboardURL is the control-plane detail route, in Render's
 	// `/{web|worker|pserv|static|cron}/{id}` shape (docs/render-artifacts/
 	// dashboard-routes.md). URL above remains the hosted data-plane endpoint;
@@ -1154,6 +1159,7 @@ func view(a *appv1alpha1.App) AppView {
 		InternalAddress:      a.InternalAddress(),
 		Port:                 addressablePort(a),
 		OpenPorts:            serverPorts(a.OpenPorts()),
+		ImagePorts:           a.Spec.HasImagePorts(),
 		URLs:                 urls,
 		Image:                store.PublicImageRef(a.Status.Image),
 		SourceImage:          a.Spec.Image,

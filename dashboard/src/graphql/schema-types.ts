@@ -3690,6 +3690,7 @@ export type Service = {
   id: Maybe<Scalars['String']['output']>;
   idleTTLSeconds: Maybe<Scalars['Int']['output']>;
   imagePath: Maybe<Scalars['String']['output']>;
+  imagePorts: Maybe<Scalars['Boolean']['output']>;
   immutableName: Maybe<Scalars['String']['output']>;
   internalAddress: Maybe<Scalars['String']['output']>;
   ipAllowList: Maybe<Array<Maybe<Scalars['String']['output']>>>;
