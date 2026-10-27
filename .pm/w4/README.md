@@ -348,6 +348,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **425** — [A Hobby workspace's webhook create says "Fix the highlighted fields", highlights nothing, and drops the Pro-plan reason](425.md) (~45m) ← live `/qa-find-bugs w4` loop run 42ca, 2026-10-27 UTC (`muse.env`, dashboard pin `7d6ac874c51d`; major). The server answers `WEBHOOK_PLAN_LIMIT` "webhooks require the Pro plan or higher"; `webhooks/lib/errors.ts` has no mapping for it, so the form shows a generic error under a field summary with nothing highlighted, and `/webhooks` never mentions the plan. Sibling of w8/m138 t011.
+
 - [ ] **424** — [Service create silently drops cron-only `command`/`schedule` on non-cron types](424.md) (~30m) ← live `/qa-find-bugs w4` loop run e9ba, 2026-10-27 UTC (`muse.env`, production pin `b4726243e74f`; minor). GraphQL `createService` with `command` on a busybox `web_service` answered success and stored `command:""`; the deploy crash-looped. `applyOptionalCreateSpec` (`service.go:3351`) copies them only for `cron_job`, and `validateTypeSpecificCreate` has no not-applicable rule for them.
 
 - [x] **423** — [A service plus its linked env groups can exceed the kernel's whole-environment limit, and an `argument list too long` start reads only as `readiness_failed`](done/423.md) (~1h) ← split from w4/422 in the loopx w4 drain, 2026-10-26. — **DONE 2026-10-26** (loopx w4: operator refuses a release whose merged environment passes ARG_MAX; E2BIG start named)
