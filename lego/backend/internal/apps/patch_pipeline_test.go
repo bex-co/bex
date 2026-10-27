@@ -121,8 +121,11 @@ func TestRESTPatchNestedEnvSpecificErrorsNameTheField(t *testing.T) {
 			t.Errorf("PATCH %s error = %s, want it to name %s", tc.body, rec.Body, tc.field)
 		}
 	}
-	// A well-formed nested block still applies.
-	svc, cl := newService(nil, sampleApp("web"))
+	// A well-formed nested block still applies (on a Git-built service: an
+	// image service builds nothing, w4/418).
+	app := sampleApp("web")
+	app.Spec.Repo = "https://github.com/bex-co/hello.git"
+	svc, cl := newService(nil, app)
 	rec := serveRESTStrict(t, svc, http.MethodPatch, "/v1/services/web", `{"serviceDetails":{"envSpecificDetails":{"buildCommand":"go build .","startCommand":"./app"}}}`)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("valid nested envSpecificDetails => 200, got %d: %s", rec.Code, rec.Body)

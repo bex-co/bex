@@ -119,6 +119,7 @@ func TestRESTUsesAndAcceptsTypedServiceIDAfterRename(t *testing.T) {
 func TestRESTPatchAcceptsOfficialCLIServiceBody(t *testing.T) {
 	app := sampleApp("web")
 	app.Spec.Runtime = "node"
+	app.Spec.Repo = "https://github.com/bex-co/hello.git"
 	svc, cl := newService(nil, app)
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)

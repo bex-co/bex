@@ -818,6 +818,10 @@ func validatedMaintenanceModeSpec(enabled bool, rawURI string) (*appv1alpha1.Mai
 // could be cloned (w9/068). Enabling it still requires a paid web service.
 // imageBackedBranch reports the branch a service actually builds from: none
 // when it runs a prebuilt image, since a branch without a repo names nothing.
+func imageBackedAutoDeploy(a *appv1alpha1.App) bool {
+	return a.Spec.AutoDeploy && !prebuiltImageSource(a.Spec)
+}
+
 func imageBackedBranch(a *appv1alpha1.App) string {
 	if prebuiltImageSource(a.Spec) {
 		return ""
@@ -1188,13 +1192,15 @@ func view(a *appv1alpha1.App) AppView {
 		// branch" — the shared prebuiltImageSourceFields policy, which is
 		// correct), making `services create --from <image service>` impossible.
 		// Same class as w9/068: never publish a value the write side rejects.
-		Branch:                imageBackedBranch(a),
-		BuildFilter:           buildFilterView(a.Spec.BuildFilter),
-		Autoscaling:           asView,
-		Disk:                  serviceDiskView(a.Spec.Disk),
-		LinkedEnvGroupIDs:     linkedEnvGroupIDs(a),
-		AutoDeploy:            a.Spec.AutoDeploy,
-		AutoDeployTrigger:     triggerEnum(a.Spec.AutoDeploy, a.Spec.AutoDeployTrigger),
+		Branch:            imageBackedBranch(a),
+		BuildFilter:       buildFilterView(a.Spec.BuildFilter),
+		Autoscaling:       asView,
+		Disk:              serviceDiskView(a.Spec.Disk),
+		LinkedEnvGroupIDs: linkedEnvGroupIDs(a),
+		// Like Branch: an image service stored with auto-deploy on (writable
+		// before w4/418) has no repository to watch, and create refuses it.
+		AutoDeploy:            imageBackedAutoDeploy(a),
+		AutoDeployTrigger:     triggerEnum(imageBackedAutoDeploy(a), a.Spec.AutoDeployTrigger),
 		NotifyOnFail:          notifyOnFail,
 		NotificationsToSend:   policy,
 		RenderSubdomainPolicy: subdomainPolicy,
@@ -3115,7 +3121,7 @@ func validateCreateSource(req CreateRequest) error {
 	if req.Image != "" {
 		for _, sourceField := range prebuiltImageSourceFields {
 			if sourceField.declaredInCreate != nil && sourceField.declaredInCreate(req) {
-				return fmt.Errorf("%w: %s", core.ErrBadRequest, prebuiltImageSourceFieldMessage(sourceField.createName))
+				return errPrebuiltImageField(sourceField.createName)
 			}
 		}
 	}
@@ -4312,7 +4318,7 @@ func (s *Service) SetCommands(ctx context.Context, name string, buildCommand, st
 	if err != nil {
 		return AppView{}, err
 	}
-	if err := s.checkCommands(ctx, a, startCommand); err != nil {
+	if err := s.checkCommands(ctx, a, buildCommand, startCommand); err != nil {
 		return AppView{}, err
 	}
 	return s.recordedPatch(ctx, core.AuditVerbSetCommands, a, func(a *appv1alpha1.App) {
@@ -4798,6 +4804,9 @@ func (s *Service) SetAutoDeployTrigger(ctx context.Context, name, trigger string
 // the checks gate, on an App its caller authorized. Turning checksPass on first
 // proves the gate can work.
 func (s *Service) setAutoDeployFetched(ctx context.Context, a *appv1alpha1.App, enabled bool, checksPass *bool) (AppView, error) {
+	if enabled && prebuiltImageSource(a.Spec) {
+		return AppView{}, errPrebuiltImageField("autoDeploy")
+	}
 	trigger := a.Spec.AutoDeployTrigger
 	if checksPass != nil {
 		trigger = createAutoDeployTrigger(true, checksPass)

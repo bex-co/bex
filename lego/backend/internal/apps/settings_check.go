@@ -229,7 +229,7 @@ func (s *Service) checkPreDeployCommand(ctx context.Context, a *appv1alpha1.App,
 	return checkPreDeployPlan(a.Spec.Tier, command)
 }
 
-func (s *Service) checkCommands(ctx context.Context, a *appv1alpha1.App, startCommand *string) error {
+func (s *Service) checkCommands(ctx context.Context, a *appv1alpha1.App, buildCommand, startCommand *string) error {
 	// What gets built is what runs, so this is the same identity change that
 	// repointing the source is (w4/m126).
 	if err := s.requireUnprotected(ctx, a, "redefine"); err != nil {
@@ -237,6 +237,9 @@ func (s *Service) checkCommands(ctx context.Context, a *appv1alpha1.App, startCo
 	}
 	if startCommand != nil && !startCommandApplies(a.Spec.Type) {
 		return errStartCommandNotApplicable(a.Spec.Type)
+	}
+	if buildCommand != nil && strings.TrimSpace(*buildCommand) != "" && prebuiltImageSource(a.Spec) {
+		return errPrebuiltImageField("buildCommand")
 	}
 	return nil
 }

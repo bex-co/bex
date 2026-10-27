@@ -377,6 +377,12 @@ var prebuiltImageSourceFields = []prebuiltImageSourceField{
 	}},
 }
 
+// errPrebuiltImageField refuses a build-from-git setting on a prebuilt-image
+// service, on create and on every later write alike (w4/m99, w4/417).
+func errPrebuiltImageField(field string) error {
+	return fmt.Errorf("%w: %s", core.ErrBadRequest, prebuiltImageSourceFieldMessage(field))
+}
+
 func prebuiltImageSourceFieldMessage(field string) string {
 	if field == "repo" {
 		return "a service cannot declare both image and repo; remove repo or deploy from repo instead"
