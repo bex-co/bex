@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -93,11 +94,13 @@ func newHolder(c client.Client) *holder {
 	return h
 }
 
-// serviceURL is the App's cluster Service, which the operator names after the App.
+// serviceURL is the App's cluster Service, which the operator names after the
+// App, on the port that Service publishes: an image-port App's Service carries
+// its image network's ports, not the container default (w4/m243 t009).
 func serviceURL(app *appv1alpha1.App) *url.URL {
 	return &url.URL{
 		Scheme: "http",
-		Host:   net.JoinHostPort(app.Name+"."+app.Namespace+".svc", strconv.Itoa(int(app.ServingPort()))),
+		Host:   net.JoinHostPort(app.Name+"."+app.Namespace+".svc", strconv.Itoa(int(app.ServicePort()))),
 	}
 }
 
@@ -157,7 +160,15 @@ func (h *holder) newProxy() *httputil.ReverseProxy {
 			TLSHandshakeTimeout: 5 * time.Second,
 		},
 		FlushInterval: -1,
-		ErrorHandler: func(w http.ResponseWriter, _ *http.Request, _ error) {
+		ErrorHandler: func(w http.ResponseWriter, _ *http.Request, err error) {
+			// Dialing is retried until the hold bound, so a dial failure here
+			// means the woken App never became reachable in time: the same
+			// answer as a wait that ran out (w4/m243 t009).
+			var opErr *net.OpError
+			if errors.As(err, &opErr) && opErr.Op == "dial" {
+				writeWakeTimeout(w, &http.Request{Method: http.MethodGet})
+				return
+			}
 			writeBody(w, &http.Request{Method: http.MethodGet}, http.StatusBadGateway,
 				"application/json", `{"error":"bad gateway"}`)
 		},
@@ -277,8 +288,7 @@ func (h *holder) serve(w http.ResponseWriter, r *http.Request, app *appv1alpha1.
 	defer cancel()
 	if !h.wait(waitCtx, app, key) {
 		if r.Context().Err() == nil {
-			writeBody(w, r, http.StatusGatewayTimeout, "application/json",
-				`{"error":"service did not wake in time","retryAfter":5}`)
+			writeWakeTimeout(w, r)
 		}
 		return true
 	}
@@ -286,4 +296,11 @@ func (h *holder) serve(w http.ResponseWriter, r *http.Request, app *appv1alpha1.
 	ctx = context.WithValue(ctx, deadlineKey{}, start.Add(h.bound))
 	h.proxy.ServeHTTP(w, r.WithContext(ctx))
 	return true
+}
+
+// writeWakeTimeout answers a held request whose App did not wake within the
+// hold bound.
+func writeWakeTimeout(w http.ResponseWriter, r *http.Request) {
+	writeBody(w, r, http.StatusGatewayTimeout, "application/json",
+		`{"error":"service did not wake in time","retryAfter":5}`)
 }

@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -191,4 +192,52 @@ func TestHeldRequestLimitShedsToTheImmediateAnswer(t *testing.T) {
 		t.Fatal("admit accepted past the per-App limit")
 	}
 	_ = h
+}
+
+// A held request reaches the port the App's Service publishes: an image-port
+// App's image network, not the container default (w4/m243 t009).
+func TestHeldRequestTargetsThePublishedServicePort(t *testing.T) {
+	image := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "nginx", Namespace: "tea-a"},
+		Spec:       appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, PortMode: appv1alpha1.PortModeWebImageV1},
+		Status: appv1alpha1.AppStatus{ServingNetwork: &appv1alpha1.ImageNetworkStatus{
+			Image: "nginx@sha256:x", Revision: "rev-1", PrimaryPort: 8080, Ports: []int32{8080},
+		}},
+	}
+	if got := serviceURL(image).Host; got != "nginx.tea-a.svc:8080" {
+		t.Fatalf("image-port target = %q, want the published 8080", got)
+	}
+	configured := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a"},
+		Spec:       appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Port: 3000},
+	}
+	if got := serviceURL(configured).Host; got != "web.tea-a.svc:3000" {
+		t.Fatalf("configured target = %q, want its port", got)
+	}
+}
+
+// A woken App that is ready but never reachable on its port (a dial that
+// fails until the bound) is a wake timeout, not a bare bad gateway.
+func TestUnreachableWokenAppAnswersAWakeTimeout(t *testing.T) {
+	closed := httptest.NewServer(http.NotFoundHandler())
+	dead, _ := url.Parse(closed.URL)
+	closed.Close()
+	rr := httptest.NewRecorder()
+	unreachableFixture(t, dead).ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "https://sleeping.onbex.co/", nil))
+	if rr.Code != http.StatusGatewayTimeout || !strings.Contains(rr.Body.String(), "did not wake in time") {
+		t.Fatalf("response = %d %q, want the wake timeout", rr.Code, rr.Body.String())
+	}
+}
+
+func unreachableFixture(t *testing.T, target *url.URL) http.Handler {
+	t.Helper()
+	app, dep := sleepingApp()
+	app.Status.Phase = appv1alpha1.PhaseHibernated
+	cache, base := primedHostCache(t, app, dep)
+	cl := &countingClient{Client: base}
+	h := newHolder(cl)
+	h.bound, h.pollInterval = 300*time.Millisecond, 10*time.Millisecond
+	h.target = func(*appv1alpha1.App) *url.URL { return target }
+	h.ready = func(context.Context, *appv1alpha1.App) bool { return true }
+	return newHoldingHandler(cl, cache, logr.Discard(), h)
 }

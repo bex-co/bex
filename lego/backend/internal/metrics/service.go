@@ -245,7 +245,8 @@ type RequestMetricsRequest struct {
 	Namespace string
 	App       string
 	AppID     string
-	// Port is the App's serving port (app.ServingPort(), w5/m149) — with
+	// Port is the App's published Service port (app.ServicePort(): its serving
+	// port, or an image-port App's image network, w5/m149, w4/m243 t009) — with
 	// Namespace and App it reconstructs the exact Traefik `service` metric label
 	// (codex-security round-19 #6; see traefikServiceLabel in source.go).
 	Port   int32
@@ -1140,7 +1141,7 @@ func (s *Service) readRequestSeries(ctx context.Context, source RequestMetricsSo
 		Namespace:       app.Namespace,
 		App:             app.Name,
 		AppID:           appResourceID(app, q.App),
-		Port:            app.ServingPort(),
+		Port:            app.ServicePort(),
 		Direct:          app.Spec.Type != appv1alpha1.TypeStaticSite,
 		Routers:         routers,
 		RouterScoped:    routerScopedRequests(app),
@@ -1374,7 +1375,7 @@ func (s *Service) filterValuesOrEmpty(ctx context.Context, app *appv1alpha1.App,
 	// its series live — never the shared s.Namespace.
 	req := MetricsFilterValuesRequest{
 		Namespace: app.Namespace, App: app.Name,
-		Port: app.ServingPort(), Label: label,
+		Port: app.ServicePort(), Label: label,
 		RouterScoped: routerScopedRequests(app),
 	}
 	if req.RouterScoped {
