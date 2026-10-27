@@ -22,6 +22,7 @@
   "phase": "Running",
   "replicas": 1,
   "idleTTLSeconds": 0,
+  "rootDir": "",
   "autoDeploy": "no",
   "autoDeployTrigger": "off",
   "pushDeliveryMethod": "none",

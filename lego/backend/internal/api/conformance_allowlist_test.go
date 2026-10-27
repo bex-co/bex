@@ -58,7 +58,6 @@ var conformanceAllowlist = map[string][]conformanceDivergence{
 		`ownerId: property "ownerId" is missing`,
 		`dashboardUrl: property "dashboardUrl" is missing`,
 		`updatedAt: property "updatedAt" is missing`,
-		`rootDir: property "rootDir" is missing`,
 	),
 	"retrieve-service": knownConformanceDivergences(
 		"ADR018 §Services & lifecycle / §Resource metadata contract: optional truthful metadata and partial serviceDetails projection",
@@ -66,7 +65,6 @@ var conformanceAllowlist = map[string][]conformanceDivergence{
 		`/ownerId: property "ownerId" is missing`,
 		`/dashboardUrl: property "dashboardUrl" is missing`,
 		`/updatedAt: property "updatedAt" is missing`,
-		`/rootDir: property "rootDir" is missing`,
 	),
 
 	// The datastore rows document bex's intentionally truthful omission of

@@ -13,6 +13,7 @@
   "phase": "Running",
   "pushDeliveryMethod": "none",
   "replicas": 1,
+  "rootDir": "",
   "schedule": "*/2 * * * *",
   "serviceDetails": {
     "command": "echo QA_CLONE_MARKER",
