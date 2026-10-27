@@ -145,7 +145,7 @@ func TestImageNetworkPromotesBothHostnames(t *testing.T) {
 	if app.InternalAddress() != "clickhouse-qa:3000" {
 		t.Fatal("candidate changed active address")
 	}
-	if err := r.promoteImageNetwork(ctx, app, "new@digest", 8123); err != nil {
+	if _, err := r.promoteImageNetwork(ctx, app, "new@digest", 8123); err != nil {
 		t.Fatal(err)
 	}
 	for _, name := range []string{app.Name, app.Spec.Subdomain} {
@@ -167,7 +167,7 @@ func TestImageNetworkPromotesBothHostnames(t *testing.T) {
 	if app.InternalAddress() != "clickhouse-qa:8123" {
 		t.Fatal("serving address did not move")
 	}
-	if err := r.promoteImageNetwork(ctx, app, "mismatched@digest", 8123); err == nil {
+	if _, err := r.promoteImageNetwork(ctx, app, "mismatched@digest", 8123); err == nil {
 		t.Fatal("mismatched image promoted")
 	}
 }
@@ -196,7 +196,7 @@ func TestImageNetworkFailedPublicationPreservesServingStatus(t *testing.T) {
 				},
 			}).Build()
 			r := &AppReconciler{Client: cl, Scheme: scheme}
-			if err := r.promoteImageNetwork(t.Context(), app, "new", 8123); err == nil {
+			if _, err := r.promoteImageNetwork(t.Context(), app, "new", 8123); err == nil {
 				t.Fatal("service write unexpectedly succeeded")
 			}
 			if !reflect.DeepEqual(app.Status.ServingNetwork, old) || app.InternalAddress() != "clickhouse-qa:3000" {

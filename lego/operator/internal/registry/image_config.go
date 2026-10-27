@@ -27,6 +27,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	boundedhttp "github.com/bex-co/bex/lego/operator/internal/httpclient"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -37,6 +38,36 @@ import (
 type ImageConfig struct {
 	Digest   string
 	TCPPorts []int32
+}
+
+// TransientError is a registry answer a later read may not repeat: a rate
+// limit (429), a server error (5xx) or a failed request (Status 0). A deploy
+// waits on it rather than failing (w4/m243 t008). RetryAfter is the
+// registry's Retry-After, zero when it named none.
+type TransientError struct {
+	Status     int
+	RetryAfter time.Duration
+	err        error
+}
+
+func (e *TransientError) Error() string { return e.err.Error() }
+func (e *TransientError) Unwrap() error { return e.err }
+
+// statusFailure classifies a non-200 registry answer: 429 and 5xx are
+// transient, anything else is the registry's definitive refusal.
+func statusFailure(what string, status int, header http.Header) error {
+	err := fmt.Errorf("%s returned status %d", what, status)
+	if status != http.StatusTooManyRequests && status < 500 {
+		return err
+	}
+	retryAfter := time.Duration(0)
+	value := strings.TrimSpace(header.Get("Retry-After"))
+	if seconds, perr := strconv.Atoi(value); perr == nil && seconds > 0 {
+		retryAfter = time.Duration(seconds) * time.Second
+	} else if at, perr := http.ParseTime(value); perr == nil {
+		retryAfter = max(time.Until(at), 0)
+	}
+	return &TransientError{Status: status, RetryAfter: retryAfter, err: err}
 }
 
 var imageDigestPattern = regexp.MustCompile(`^sha256:[a-f0-9]{64}$`)
@@ -104,10 +135,10 @@ type imageConfigDocument struct {
 	} `json:"config"`
 }
 
-func fetchOnce(ctx context.Context, client *http.Client, url, authorization, bearer string) ([]byte, int, string, error) {
+func fetchOnce(ctx context.Context, client *http.Client, url, authorization, bearer string) ([]byte, int, http.Header, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return nil, 0, "", err
+		return nil, 0, nil, err
 	}
 	req.Header.Set("Accept", manifestAccept)
 	if authorization != "" {
@@ -118,14 +149,14 @@ func fetchOnce(ctx context.Context, client *http.Client, url, authorization, bea
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, 0, "", err
+		return nil, 0, nil, &TransientError{err: err}
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
-		return nil, resp.StatusCode, resp.Header.Get("WWW-Authenticate"), nil
+		return nil, resp.StatusCode, resp.Header, nil
 	}
 	data, err := boundedhttp.ReadAll(resp.Body)
-	return data, resp.StatusCode, "", err
+	return data, resp.StatusCode, nil, err
 }
 
 // anonymousBearerToken answers a registry's Bearer challenge without any
@@ -168,11 +199,11 @@ func anonymousBearerToken(ctx context.Context, client *http.Client, challenge st
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return "", &TransientError{err: err}
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("registry token request returned status %d", resp.StatusCode)
+		return "", statusFailure("registry token request", resp.StatusCode, resp.Header)
 	}
 	data, err := boundedhttp.ReadAll(resp.Body)
 	if err != nil {
@@ -229,7 +260,7 @@ func readImageConfigDocument(ctx context.Context, httpClient *http.Client, regis
 	fetch := func(client *http.Client, path, expectedDigest string) ([]byte, string, error) {
 		bearer := ""
 		for attempt := 0; ; attempt++ {
-			data, status, challenge, err := fetchOnce(ctx, client, base+path, authorization, bearer)
+			data, status, header, err := fetchOnce(ctx, client, base+path, authorization, bearer)
 			if err != nil {
 				return nil, "", err
 			}
@@ -244,14 +275,14 @@ func readImageConfigDocument(ctx context.Context, httpClient *http.Client, regis
 			// for a bearer token: fetch one without credentials and retry
 			// once. Credentialed reads never take this path.
 			if status == http.StatusUnauthorized && authorization == "" && bearer == "" && attempt == 0 {
-				token, terr := anonymousBearerToken(ctx, &bounded, challenge)
+				token, terr := anonymousBearerToken(ctx, &bounded, header.Get("WWW-Authenticate"))
 				if terr != nil {
 					return nil, "", terr
 				}
 				bearer = token
 				continue
 			}
-			return nil, "", fmt.Errorf("image metadata request returned status %d", status)
+			return nil, "", statusFailure("image metadata request", status, header)
 		}
 	}
 	for range 3 {
