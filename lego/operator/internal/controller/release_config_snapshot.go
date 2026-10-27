@@ -235,6 +235,9 @@ func (r *AppReconciler) ensureSavedReleaseConfigSnapshot(ctx context.Context, ap
 	if gen <= 0 || app.Status.ConfigSnapshotGeneration == gen || servingWithoutSnapshots(app) {
 		return nil
 	}
+	if err := r.checkMergedEnvSize(ctx, app); err != nil {
+		return err
+	}
 	if err := r.snapshotReleaseConfig(ctx, app, gen); err != nil {
 		return err
 	}
