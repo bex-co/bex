@@ -1,6 +1,6 @@
 # w5 · m105 — Settings command edits take effect in the deployed artifact
 
-**Worker:** worker5 **Goal:** A Settings command edit deploys the requested behavior instead of silently retaining an old baked command. **Status:** blocked (t001, t002, t005, t007 done; original production reproduction gate remains)
+**Worker:** worker5 **Goal:** A Settings command edit deploys the requested behavior instead of silently retaining an old baked command. **Status:** done (already met in production, 2026-10-27)
 
 ## Tasks (in order)
 
@@ -8,13 +8,13 @@
 | --- | --- | --- | --- |
 | t001 | Research Render command-edit deploy behavior for parity — **DONE** | 30m | — |
 | t002 | Reproduce native Settings command edits on dev-5 — **DONE** | 50m | t001 |
-| t003 | Repair the demonstrated artifact dispatch or selection failure | 55m | t002 |
-| t004 | Verify command effects and deployment controls | 45m | t003 |
+| t003 | Repair the demonstrated artifact dispatch or selection failure — **DONE** | 55m | t002 |
+| t004 | Verify command effects and deployment controls — **DONE** | 45m | t003 |
 | t005 | Record cross-surface runtime evidence — **DONE** | 30m | t004 |
-| t006 | Render parity | 30m | t001, t002, t003, t004, t005 |
+| t006 | Render parity — **DONE** | 30m | t001, t002, t003, t004, t005 |
 | t007 | Simplify — **DONE** | 20m | t006 |
-| t008 | Test coverage | 45m | t006, t007 |
-| t009 | Closeout | 15m | t007, t008 |
+| t008 | Test coverage — **DONE** | 45m | t006, t007 |
+| t009 | Closeout — **DONE** | 15m | t007, t008 |
 
 ## Definition of done
 
@@ -101,3 +101,19 @@ Durable sanitized snapshots: [native controls](evidence/native-controls.json). R
 ### Cleanup
 
 Deleted service through REST (204), then removed only its known finalizer after deleting the disposable registry (host-side registry GC cannot resolve cluster DNS in this harness). Deleted dedicated build namespace, Zot, OpenBao, its two service accounts and named TokenReview binding, forwards and private credentials. Identity deletion returned 204. Workspace API cleanup raced the API configuration restart and failed while it still pointed at the removed isolated Bao; removed exactly the fixture tenant row from dev-5's database and its now-empty namespace. Standard dev-5 API configuration restored; no other workstream resources changed.
+
+## Production reproduction — already met (2026-10-27)
+
+- **Setup:** the user authorized the narrow production reproduction. It ran on a disposable native Free service in `bex-canary`: `qa-m105`, repo `render-examples/express-hello-world`, node, auto-deploy off (`srv-dbg493kd3d3c73caqjtg`). The service was deleted afterwards.
+- **Method:** each run was checked against marker lines in the build and app logs (`GET /v1/logs`):
+
+  | Step | Deploy | Observed |
+  | --- | --- | --- |
+  | Create (build A, start A) | `dep-dbg493kd3d3c73caqju0` live | build `M105_BUILD_A`, app `M105_START_A` |
+  | Settings: start command → B | `dep-dbg4bicd3d3c73caqk90` (service_updated) live | app `M105_START_B` |
+  | Settings: build command → B | `dep-dbg4d0kd3d3c73caqkd0` live | build `M105_BUILD_B`, app still `M105_START_B` |
+  | Control: manual deploy, unchanged spec | `dep-dbg4e7ln83uc738uufdg` live | app `M105_START_B`; the build step was a cache hit, so no build marker was reprinted |
+  | Control: failing build command (`exit 1`) | `dep-dbg4f7kd3d3c73caqkl0` `build_failed` | the previous deploy stays live; no failed build passed as a new artifact |
+
+- **Verdict:** the stale-command failure does not reproduce in production. Saved start and build commands take effect in the next deployed revision, and the controls keep their reuse and failure behavior. There is no demonstrated failure, so t003/t004 have nothing to correct. No speculative change was made, which the definition of done requires.
+- **Rollback note:** the independent rollback-settings finding above was resolved by w5/m107 (2026-10-01).
