@@ -5678,6 +5678,10 @@ func startErrorMessage(runtimeMsg string) string {
 		what = fmt.Sprintf("the startup program %q does not exist in this image.", program)
 	case strings.Contains(cause, "permission denied"):
 		what = fmt.Sprintf("the startup program %q is not executable in this image.", program)
+	case strings.Contains(cause, "argument list too long"):
+		// E2BIG: the environment, not the program, is the problem (w4/423).
+		return prefix + fmt.Sprintf("the environment is too large to start %q: one variable can be at most 128 KiB and the whole environment about 2 MiB.", program) +
+			neverRan + " Move large values into secret files, or unlink an environment group."
 	default:
 		what = fmt.Sprintf("the container runtime could not execute the startup program %q.", program)
 	}
