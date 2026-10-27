@@ -476,7 +476,9 @@ func (s *Service) RevokeAPIKey(ctx context.Context, ownerID, id string) error {
 			return core.ErrNotFound
 		}
 		if owner != tenantID {
-			return core.ErrForbidden
+			// The key lives in another workspace than the one this request
+			// acts in: not found in it (w5/086).
+			return core.ErrNotInNamedWorkspace
 		}
 	}
 	if s.Binding != nil {

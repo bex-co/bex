@@ -69,7 +69,7 @@ func TestActionCapabilitiesGraphQLWorkspaceSelection(t *testing.T) {
 				{name: "selected shared viewer", target: projection.shared, owner: "tea-b", outcome: core.DecisionDenied},
 				{name: "selected shared operator", target: projection.shared, owner: "tea-b", outcome: core.DecisionAllowed, sharedAllowed: true},
 				{name: "omitted owner cannot imply shared workspace", target: projection.shared, wantError: core.ErrNotFound.Error()},
-				{name: "wrong selected workspace cannot read accessible target", target: projection.shared, owner: "tea-a", wantError: core.ErrForbidden.Error()},
+				{name: "wrong selected workspace cannot read accessible target", target: projection.shared, owner: "tea-a", wantError: core.ErrNotFound.Error()}, // not in the named workspace (w5/086)
 				{name: "missing target has same absence", target: ids.New(projection.kind), owner: "tea-a", wantError: core.ErrNotFound.Error()},
 				{name: "nonmember selection never falls back", target: projection.home, owner: "tea-foreign", wantError: core.ErrForbidden.Error()},
 			} {

@@ -773,6 +773,24 @@ func (b *Base) AuthorizeOn(ctx context.Context, relation, object string) error {
 	return b.authorizeAndAudit(ctx, relation, object, "", callerVerb(verbFrameSkip), nil)
 }
 
+// AuthorizeOnOwner is AuthorizeOn for a resource fetched by its id whose
+// owning workspace is owner (a project). A workspace the request names
+// explicitly decides, as resourceWorkspaceFor does for Apps and datastores
+// (ADR072's by-id matrix, w5/086): when it is not owner, a non-member of it is
+// refused and a member is told kind is not found in it (see verbFrameSkip for
+// why this calls callerVerb itself).
+func (b *Base) AuthorizeOnOwner(ctx context.Context, relation, owner, kind string) error {
+	verb := callerVerb(verbFrameSkip)
+	if named, explicit := WorkspaceFrom(ctx); explicit && named != owner {
+		_, err := b.resolveWorkspace(ctx)
+		if err == nil {
+			err = &CodedError{Code: NotFoundCode, sentinel: ErrNotInNamedWorkspace, msg: kind + " not found"}
+		}
+		return b.authorizeAndAudit(ctx, relation, WorkspaceObject(named), "", verb, err)
+	}
+	return b.authorizeAndAudit(ctx, relation, WorkspaceObject(owner), "", verb, nil)
+}
+
 // AuthorizeOnTarget is AuthorizeOn for a verb that acts on ONE named
 // sub-resource of the named workspace — AuthorizeTarget's explicit-object
 // sibling (the members verbs act on a member/invite OF a workspace the caller
@@ -1660,6 +1678,11 @@ func notFoundFor(resource, name string) error {
 //   - The caller named a workspace it is not a member of => the refusal from
 //     resolveWorkspace, against the workspace it ASKED for (matches
 //     callerWorkspace's own error branch).
+//   - The caller named a workspace it belongs to, and the resource lives in
+//     another => ErrNotInNamedWorkspace (a 404), recorded as a denial against
+//     the named workspace without a relation check there: naming W scopes the
+//     request, so "not in W" is the answer every by-id family gives (ADR072's
+//     by-id matrix, w5/086).
 //   - No workspace resolves (store off, or an unbound/identity-less caller)
 //     => the DEFAULT workspace fallback — the same single check a standalone
 //     Authorize call would have made; there is nothing resource-specific to
@@ -1700,7 +1723,7 @@ func (b *Base) resourceWorkspaceFor(ctx context.Context, acting string, actingEr
 	}
 	owner := labels[LabelTenant]
 	if named, explicit := WorkspaceFrom(ctx); explicit && owner != "" && owner != named {
-		return WorkspaceObject(named), ErrForbidden
+		return WorkspaceObject(named), ErrNotInNamedWorkspace
 	}
 	switch {
 	case owner == "":
@@ -1919,7 +1942,7 @@ func (b *Base) AuthorizeLabeled(ctx context.Context, relation string, labels map
 	}
 	owner := labels[LabelTenant]
 	if named, explicit := WorkspaceFrom(ctx); explicit && owner != "" && owner != named {
-		return ErrForbidden
+		return ErrNotInNamedWorkspace
 	}
 	if owner == acting {
 		return nil

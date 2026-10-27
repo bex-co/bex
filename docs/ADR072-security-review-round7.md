@@ -54,7 +54,7 @@ The severity profile keeps falling (round 5: 8 high / 7 medium; round 6: 2 high 
 | Request | Answer |
 | --- | --- |
 | `ownerId` / `workspaceId` names W | acts in W; not a member of W → 403, audited in W |
-| W is named and the id lives in another workspace | 403 from Apps, Postgres, Key Value and API keys, whose seams fetch by id and refuse the cross-workspace reach (w6/m14); 404 from the store-backed families, whose lookups search only W (an environment's row is checked against W) |
+| W is named and the id lives in another workspace | 404 from every family for a member of W (`core.ErrNotInNamedWorkspace`, recorded as a denial against W); a non-member of W gets 403 as in the first row. Naming W scopes the request, so "not in W" is the answer. Apps, Postgres and Key Value (`resourceWorkspaceFor` and `AuthorizeLabeled`, which w6/m14 made a 403), env groups, API keys, the other store-backed families, and a project or its environments read by id (`core.Base.AuthorizeOnOwner`, which used to ignore W and answer from the project's own workspace) all agree (w5/086, 2026-10-26). Ids referenced in a create body (an `environmentId`) keep their own 403 contract (ADR018 "Create service") |
 | No owner named; the id lives in W; the caller holds the verb's relation in W | acts in W |
 | No owner named; the caller is a member of W without the relation | 403, audited in W |
 | No owner named; the caller is not a member of W | 403, audited in W |

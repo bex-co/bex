@@ -1422,7 +1422,7 @@ func (s *Service) requireProject(ctx context.Context, relation, projectID string
 	if err != nil {
 		return store.Project{}, store.MapError(err)
 	}
-	if err := s.AuthorizeOn(ctx, relation, core.WorkspaceObject(p.TenantID)); err != nil {
+	if err := s.AuthorizeOnOwner(ctx, relation, p.TenantID, "project"); err != nil {
 		return store.Project{}, err
 	}
 	return p, nil
@@ -1656,7 +1656,8 @@ func (s *Service) patchApps(ctx context.Context, names []string, mutate func(a *
 			// store.SetEnvironmentServices' own "names not found are silently
 			// skipped" convention rather than failing the whole ACL/membership
 			// change over one dangling name.
-			if errors.Is(err, core.ErrNotFound) {
+			// An App of another workspace is a refusal, not a dangling name.
+			if errors.Is(err, core.ErrNotFound) && !errors.Is(err, core.ErrNotInNamedWorkspace) {
 				continue
 			}
 			return err

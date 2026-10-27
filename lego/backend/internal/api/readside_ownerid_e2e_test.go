@@ -218,12 +218,14 @@ func TestReadSideOwnerIDTargetingE2E(t *testing.T) {
 		t.Errorf("GET /v1/api-keys?ownerId=bravo = %+v, want exactly [%s]", idsOf(bravoKeys), keyB.ID)
 	}
 
-	// Revoking agent-alpha (bound to alpha) while TARGETING bravo is refused —
+	// Revoking agent-alpha (bound to alpha) while TARGETING bravo is refused,
 	// a caller who can manage bravo's keys may not reach into alpha's, even
 	// though dana herself administers both (the same cross-workspace gate
 	// w6/m14 gave Apps/Databases/KeyValues).
-	if resp := call(dana, "DELETE", "/v1/api-keys/"+keyA.ID+"?ownerId="+wsB.ID, ""); resp.StatusCode != http.StatusForbidden {
-		t.Errorf("DELETE agent-alpha targeting bravo: %d, want 403", resp.StatusCode)
+	// dana belongs to bravo too, so naming it scopes the request: the key is
+	// not in bravo (w5/086). A non-member's ownerId still answers 403 below.
+	if resp := call(dana, "DELETE", "/v1/api-keys/"+keyA.ID+"?ownerId="+wsB.ID, ""); resp.StatusCode != http.StatusNotFound {
+		t.Errorf("DELETE agent-alpha targeting bravo: %d, want 404", resp.StatusCode)
 	}
 
 	// Revoking it against its OWN workspace (the default, no ownerId) succeeds.
