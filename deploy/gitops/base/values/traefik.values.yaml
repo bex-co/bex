@@ -119,10 +119,11 @@ accessLog:
   fields:
     # An allowlist (w5/076): the message a tenant reads is the raw JSON line
     # (ADR010), so a field reaches it only when named here, and a field a
-    # Traefik upgrade adds stays dropped until it is reviewed and listed. The
-    # list is every field tenants already saw (Traefik v3.7's core fields, its
-    # Kubernetes Ingress ones and entryPointName), and it includes every field
-    # the shipper and bex-api read (access_log_fields_test.go checks both).
+    # Traefik upgrade adds stays dropped until it is reviewed and listed.
+    # Trimmed to Render's request log (w5/099): Render shows the method, status
+    # code, host, path, response time and request id, and nothing here is kept
+    # that neither Render shows nor the shipper or bex-api reads
+    # (access_log_fields_test.go checks both).
     defaultMode: drop
     names:
       # Platform internals stay dropped (w8/047): RequestCount is the
@@ -133,39 +134,16 @@ accessLog:
       ServiceAddr: drop
       ServiceURL: drop
       RouterName: drop
-      # Attribution: the shipper names the App by these two.
+      # Attribution: the shipper names the App by these.
       ServiceName: keep
       KubernetesIngressName: keep
       KubernetesIngressNamespace: keep
-      KubernetesServiceName: keep
-      KubernetesServicePort: keep
-      StartUTC: keep
-      StartLocal: keep
-      Duration: keep
-      ClientAddr: keep
-      ClientHost: keep
-      ClientPort: keep
-      ClientUsername: keep
-      RequestAddr: keep
-      RequestHost: keep
-      RequestPort: keep
+      # Render's request-log fields (the response time is Duration).
       RequestMethod: keep
-      RequestPath: keep
-      RequestProtocol: keep
-      RequestScheme: keep
-      RequestContentSize: keep
-      OriginDuration: keep
-      OriginContentSize: keep
-      OriginStatus: keep
       DownstreamStatus: keep
-      DownstreamContentSize: keep
-      GzipRatio: keep
-      Overhead: keep
-      RetryAttempts: keep
-      TLSVersion: keep
-      TLSCipher: keep
-      TLSClientSubject: keep
-      entryPointName: keep
+      RequestHost: keep
+      RequestPath: keep
+      Duration: keep
     headers:
       defaultMode: drop
       # The edge-minted request id (w8/m125): bex-api reads it as the request
