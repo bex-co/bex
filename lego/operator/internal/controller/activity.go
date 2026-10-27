@@ -134,7 +134,9 @@ func activityQuery(app *appv1alpha1.App, lookback time.Duration) string {
 	active := func(series string) string {
 		return fmt.Sprintf("increase(%[1]s[1m]) > 0 or (%[1]s > 0 unless %[1]s offset %[2]ds)", series, step)
 	}
-	service := traefikServiceLabel(app.Namespace, app.Name, app.ServingPort())
+	// Traefik names the service after the Ingress backend: the published
+	// Service port, which is an image-port App's image network (w4/m243 t009).
+	service := traefikServiceLabel(app.Namespace, app.Name, app.ServicePort())
 	// Both WebSocket directions count as traffic: a connection the client alone
 	// feeds (telemetry, a log shipper) kept no service awake while only the
 	// egress counter was read, so a free service slept under real use (w1/m161,

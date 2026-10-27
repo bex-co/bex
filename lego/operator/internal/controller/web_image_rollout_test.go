@@ -176,3 +176,14 @@ func TestConfiguredWebRouteIsUnchanged(t *testing.T) {
 		t.Fatalf("ingress backend = %s:%d (%v), want plain:8080", svc, port, err)
 	}
 }
+
+// Activity detection reads the Traefik series of the port the App's Ingress
+// routes to: an image-port App's image network (w4/m243 t009).
+func TestImagePortActivityReadsThePublishedPortSeries(t *testing.T) {
+	app := webImageApp(1)
+	app.Namespace = "tea-a"
+	app.Status.ServingNetwork = &appv1alpha1.ImageNetworkStatus{Image: "whoami@sha256:x", Revision: "rev-1", PrimaryPort: 80, Ports: []int32{80}}
+	if q := activityQuery(app, 15*time.Minute); !strings.Contains(q, `tea-a-whoami-80@kubernetes`) || strings.Contains(q, "-10000@") {
+		t.Fatalf("activity query = %q, want the published port 80", q)
+	}
+}
