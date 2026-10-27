@@ -1,6 +1,6 @@
 # w4 · m235 — A new service's URL says its first deploy is in progress, not `404 page not found`
 
-**Worker:** worker4 **Goal:** from creation until its first release serves, a public web service or static site answers bex's own "first deploy in progress" response, never Traefik's or the static-server's raw not-found text. **Status:** blocked — t001–t006 done 2026-10-19, t008 done 2026-10-26 (loopx w4: lowest-priority platform-host fallback route to the activator); t007 waits for the release pipeline to deploy the operator and activator, then QA replays the DoD live (3 s and 0.5 s polls)
+**Worker:** worker4 **Goal:** from creation until its first release serves, a public web service or static site answers bex's own "first deploy in progress" response, never Traefik's or the static-server's raw not-found text. **Status:** todo — t009 opened 2026-10-27 by live QA run 0dbc on pin `f4f12981e455` (pre-200 answers now pass: bex's 503 text, no raw 404, first 200 at 15 s; but after `live` requests are held 2–16 s in ~20 s bursts for 35 s–2 min); t001–t006 done 2026-10-19, t008 done 2026-10-26 (loopx w4: lowest-priority platform-host fallback route to the activator); t007 waits for the release pipeline to deploy the operator and activator, then QA replays the DoD live (3 s and 0.5 s polls)
 
 ## Tasks (in order)
 
@@ -13,9 +13,10 @@
 | [t005](done/t005.md) | Simplify — **DONE** | 10m | w4/m235/t004 |
 | [t006](done/t006.md) | Test coverage — **DONE** | 40m | w4/m235/t004 |
 | [t008](done/t008.md) | Close the first seconds after create, when the host still answers Traefik's raw 404 — **DONE** | 45m | w4/m235/t006 |
-| [t007](t007.md) | Closeout | 20m | w4/m235/t005, w4/m235/t006, w4/m235/t008 |
+| [t009](t009.md) | After a new web service goes Live, its host keeps holding requests 2–16 s each, released in bursts, for 35 s–2 min (cause unverified) | 1h | w4/m235/t008 |
+| [t007](t007.md) | Closeout | 20m | w4/m235/t005, w4/m235/t006, w4/m235/t008, w4/m235/t009 |
 
-Seven tasks, 205m (3h25m). One **minor** finding. This milestone schedules the work only.
+Eight tasks, 265m (4h25m). One **minor** finding. This milestone schedules the work only.
 
 ## Definition of done
 
@@ -30,6 +31,7 @@ Replay [finding.md](finding.md) after the operator deploys. Create each fixture 
   - A first deploy that fails (bad Dockerfile path) still ends on w1/m179's `503 service unavailable` without `Retry-After`.
   - Suspend still answers "This service is suspended."
   - A private service gets no public route.
+- **After the first `200`** (t009): keep the 3 s cadence (parallel `curl -m 120`) for 2 min — every request started after the deploy is `live` answers in under 3 s.
 - **Checks pass.** Operator `make test`, including the activator and static-server packages.
 - **Cleanup.** No fixture remains, and only that run's session is revoked.
 
