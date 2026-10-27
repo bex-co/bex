@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -61,5 +62,19 @@ func TestBlueprintErrorFieldNeverAttributesInstanceTypeToType(t *testing.T) {
 		if got := blueprintErrorField(message); got != want {
 			t.Errorf("blueprintErrorField(%q) = %q, want %q", message, got, want)
 		}
+	}
+}
+
+// An envVarGroups name follows the label rule, located at its name (w4/419).
+func TestBlueprintEnvGroupNameFollowsTheLabelRule(t *testing.T) {
+	manifest := "envVarGroups:\n  - name: \"line1\\nline2\"\n    envVars:\n      - key: A\n        value: \"1\"\n"
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	validation, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
+	if err != nil || validation.Valid || len(validation.Errors) != 1 {
+		t.Fatalf("validation = %+v, %v", validation, err)
+	}
+	problem := validation.Errors[0]
+	if problem.Path == nil || *problem.Path != "envVarGroups[0].name" || !strings.Contains(problem.Error, "control characters") {
+		t.Fatalf("want envVarGroups[0].name control-character refusal, got %v: %s", ptrValue(problem.Path), problem.Error)
 	}
 }

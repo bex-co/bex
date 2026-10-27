@@ -2531,7 +2531,10 @@ func blueprintServiceFields(fields map[string]BlueprintField) map[string]Bluepri
 // fromDatabase/fromGroup) and cannot carry sync:false; each is rejected with a
 // clear per-entry error rather than silently dropped.
 func parseEnvGroup(g bexEnvGroup) (parsedEnvGroup, error) {
-	name := strings.TrimSpace(g.Name)
+	name, err := core.TrimmedLabel(g.Name)
+	if err != nil {
+		return parsedEnvGroup{}, err
+	}
 	if name == "" {
 		return parsedEnvGroup{}, fmt.Errorf("%w: an envVarGroups entry is missing its name", core.ErrBadRequest)
 	}
