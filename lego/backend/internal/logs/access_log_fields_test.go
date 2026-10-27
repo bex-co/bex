@@ -36,20 +36,15 @@ import (
 
 const traefikValuesPath = "../../../../deploy/gitops/base/values/traefik.values.yaml"
 
-// tenantAccessLogFields is the reviewed allowlist: every field tenants saw
-// before the allowlist (Traefik v3.7's core fields, its Kubernetes Ingress ones
-// and entryPointName, less the platform internals below). Adding a field to the
-// values file means adding it here, which is the review.
+// tenantAccessLogFields is the reviewed allowlist, trimmed to Render's request
+// log (w5/099): the method, status code, host, path and response time Render
+// shows, plus the shipper's attribution fields. The request id travels as the
+// kept Rndr-Id header, and the line's own timestamp is the log timestamp.
+// Adding a field to the values file means adding it here, which is the review.
 var tenantAccessLogFields = []string{
-	"ClientAddr", "ClientHost", "ClientPort", "ClientUsername",
-	"DownstreamContentSize", "DownstreamStatus", "Duration", "GzipRatio",
+	"DownstreamStatus", "Duration",
 	"KubernetesIngressName", "KubernetesIngressNamespace",
-	"KubernetesServiceName", "KubernetesServicePort",
-	"OriginContentSize", "OriginDuration", "OriginStatus", "Overhead",
-	"RequestAddr", "RequestContentSize", "RequestHost", "RequestMethod",
-	"RequestPath", "RequestPort", "RequestProtocol", "RequestScheme",
-	"RetryAttempts", "ServiceName", "StartLocal", "StartUTC",
-	"TLSCipher", "TLSClientSubject", "TLSVersion", "entryPointName",
+	"RequestHost", "RequestMethod", "RequestPath", "ServiceName",
 }
 
 // platformAccessLogFields must never reach a tenant (w8/047): the process-wide
