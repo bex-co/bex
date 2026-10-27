@@ -1565,7 +1565,10 @@ func (s *Service) catchUpDisksThrough(ctx context.Context, through time.Time) {
 	}
 	through = through.UTC().Truncate(time.Hour)
 	floor := through.Add(-catchupLimit)
-	window := through
+	// With no disk row yet, start at the catch-up floor, not the latest hour:
+	// a meter that has never written (0167's missing 'disk' source failed every
+	// window) then backfills what the horizon still allows.
+	window := floor
 	if cursor, ok, err := s.Store.LatestUsageWindowForKind(ctx, store.UsageKindDiskGBSeconds); err != nil {
 		log.Printf("usage: disk meter cursor: %v", err)
 		return

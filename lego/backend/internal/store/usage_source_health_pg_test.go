@@ -95,3 +95,43 @@ func TestUsageSourceHealthTransactionsAndHealthyZero(t *testing.T) {
 		t.Fatalf("explicit healthy zero was not complete: %+v", coverage)
 	}
 }
+
+// Every source a meter stores must pass the source CHECKs, or that meter's
+// upserts fail on every window. The disk meter's 'disk' failed that way from
+// ADR082 until migration 0167 (w5/m111's live replay found it in bex-api's
+// logs). UsageSourceSandbox is response-only and never stored.
+func TestUsageSourceChecksAcceptEveryStoredSource(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := Migrate(uri); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	st := NewPGStore(pool)
+	tenant, err := st.CreateTenant(ctx, "usage-source-vocabulary", PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, tenant.ID) })
+	window := time.Date(2026, 10, 27, 8, 0, 0, 0, time.UTC)
+	for _, source := range []string{
+		UsageSourceInstance, UsageSourceBuild, UsageSourceStorage, UsageSourceHTTP, UsageSourceWebSocket,
+		UsageSourceDirect, UsageSourcePostgres, UsageSourceKeyValue, UsageSourceDisk,
+	} {
+		row := HourlyRow{
+			WorkspaceID: tenant.ID, ResourceKind: ResourceKindService, ServiceID: "srv-vocab-" + source,
+			Kind: UsageKindDiskGBSeconds, WindowStart: window, Quantity: 1,
+			SourceHealth: []UsageSourceObservation{{Source: source, State: UsageSourceHealthy}},
+		}
+		if err := st.UpsertUsageHourly(ctx, row); err != nil {
+			t.Errorf("source %q: %v", source, err)
+		}
+	}
+}

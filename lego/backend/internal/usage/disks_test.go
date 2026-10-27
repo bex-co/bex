@@ -100,6 +100,31 @@ func TestDiskMeterBackfillsMissedWindows(t *testing.T) {
 	}
 }
 
+// A meter that has never written a row (0167's missing 'disk' source failed
+// every window in production) backfills from the catch-up floor on its first
+// successful pass instead of metering only the newest hour.
+func TestDiskMeterWithNoRowYetBackfillsFromTheFloor(t *testing.T) {
+	first, second, third := hourWindow(-3), hourWindow(-2), hourWindow(-1)
+	st := &memUsageStore{
+		rows:     map[usageKey]store.HourlyRow{},
+		latestBy: map[string]time.Time{},
+		diskRows: map[time.Time][]store.DiskUsageRow{
+			first:  {{TenantID: "tea-1", AppID: "srv-1", GBSeconds: 100}},
+			second: {{TenantID: "tea-1", AppID: "srv-1", GBSeconds: 200}},
+			third:  {{TenantID: "tea-1", AppID: "srv-1", GBSeconds: 300}},
+		},
+	}
+	diskMeterService(st, "").catchUpDisksThrough(context.Background(), third)
+	for _, w := range []time.Time{first, second, third} {
+		if _, ok := st.rows[usageKey{
+			resourceKind: store.ResourceKindService, serviceID: "srv-1",
+			kind: store.UsageKindDiskGBSeconds, windowStart: w,
+		}]; !ok {
+			t.Fatalf("window %s not backfilled; rows=%+v", w, st.rows)
+		}
+	}
+}
+
 // Re-running a window must not double-bill: the arithmetic is over committed
 // rows, so the same window always yields the same quantity.
 func TestDiskMeterIsIdempotentPerWindow(t *testing.T) {
