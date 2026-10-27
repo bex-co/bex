@@ -1,6 +1,6 @@
 # w4 · m243 — A Docker web service listens on its image's exposed port, as on Render
 
-**Worker:** worker4 **Goal:** a new Docker-built or prebuilt-image web service with no `PORT` env and no explicit port serves on its image's `EXPOSE`d port (hello-go 3000, whoami 80) instead of silently defaulting to 10000. **Status:** todo — t001–t005 done 2026-10-25, t007–t008 done 2026-10-26, t009–t011 done 2026-10-27 (loopx w4); t012 opened 2026-10-27 by live QA run e9ba, t013 by run 65c6 (docker.io image first deploys sit silent at port 0 for 10+ min while a ghcr.io image goes live in 4 s) (every rollout of an image-port service leaves its Service with no ready endpoints at promotion: raw `503 no available server` for 1–5 s); t006 then waits for the release pipeline to deploy the operator, activator, bex-api and dashboard, then QA replays the DoD live in `bex-canary`
+**Worker:** worker4 **Goal:** a new Docker-built or prebuilt-image web service with no `PORT` env and no explicit port serves on its image's `EXPOSE`d port (hello-go 3000, whoami 80) instead of silently defaulting to 10000. **Status:** todo — t001–t005 done 2026-10-25, t007–t008 done 2026-10-26, t009–t011 done 2026-10-27 (loopx w4); t012 opened 2026-10-27 by live QA run e9ba, t013 by run 65c6, t014 by run 6406 (every prebuilt-image web service reports `undeployedChanges: saved` forever because the served digest is compared with the saved tag) (docker.io image first deploys sit silent at port 0 for 10+ min while a ghcr.io image goes live in 4 s) (every rollout of an image-port service leaves its Service with no ready endpoints at promotion: raw `503 no available server` for 1–5 s); t006 then waits for the release pipeline to deploy the operator, activator, bex-api and dashboard, then QA replays the DoD live in `bex-canary`
 
 ## Tasks (in order)
 
@@ -18,7 +18,8 @@
 | t011 | Rollout stall hint names an explicit/PORT primary as configured, not as an image-declared port — **DONE** | 20m | w4/m243/t005 |
 | t012 | An image-port service's rollout leaves its Service with no endpoints at promotion (raw 503 "no available server" for 1–5 s) | 1h15m | w4/m243/t005 |
 | t013 | A docker.io image web service's first deploy sits "In Progress" with port 0 and no reason for 10+ minutes (cause unverified) | 45m | w4/m243/t005 |
-| t006 | Closeout                                  | 10m | w4/m243/t005, t007, t008, t009, t010, t011, t012, t013 |
+| t014 | Every prebuilt-image web service permanently shows "Saved changes aren't live yet" — the served digest is compared with the saved tag | 45m | w4/m243/t005 |
+| t006 | Closeout                                  | 10m | w4/m243/t005, t007, t008, t009, t010, t011, t012, t013, t014 |
 
 ## Definition of done
 
@@ -34,6 +35,8 @@
 - **t012 live check (run e9ba):** on an owned image web service (and an owned Git-built Docker private service, polled internally), a 0.25 s poll across a Manual Deploy and an env-group "Save and deploy" answers `200` every time — never `503 no available server`.
 
 - **t013 live check (run 65c6):** five `docker.io/traefik/whoami:latest` web services created back to back each go `live` on port 80 or show a waiting reason within 60 s — none sits `update_in_progress` with no reason.
+
+- **t014 live check (run 6406):** a new `docker.io/mendhak/http-https-echo:latest` web service reads `undeployedChanges: false` after its first deploy, after a standard deploy, and after suspend → resume — no "Saved changes aren't live yet" banner; a Docker Command edit sets it and its deploy clears it.
 
 ## Source + Goal linkage
 
