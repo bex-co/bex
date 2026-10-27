@@ -367,6 +367,11 @@ var servicePatchTable = []servicePatchOp{
 		present:  func(p ServicePatch) bool { return p.AutoDeploy != nil },
 		relation: canOperate,
 		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
+			// The source row runs first, so probe already carries a repo this
+			// same PATCH switches to.
+			if *p.AutoDeploy && prebuiltImageSource(probe.Spec) {
+				return errPrebuiltImageField("autoDeploy")
+			}
 			probe.Spec.AutoDeploy = *p.AutoDeploy
 			return nil
 		},
@@ -447,7 +452,7 @@ var servicePatchTable = []servicePatchOp{
 		present:  func(p ServicePatch) bool { return p.BuildCommand != nil || p.StartCommand != nil },
 		relation: canCreate,
 		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
-			if err := s.checkCommands(ctx, probe, p.StartCommand); err != nil {
+			if err := s.checkCommands(ctx, probe, p.BuildCommand, p.StartCommand); err != nil {
 				return err
 			}
 			if p.BuildCommand != nil {
