@@ -34,7 +34,7 @@ import (
 // hour a full hour.
 func TestInstanceSecondsQueryMeasuresRunningTime(t *testing.T) {
 	q := instanceSecondsQuery(`namespace="tea-a",pod=~"web-.+",container!=""`, 3600)
-	for _, want := range []string{"max by (pod)", "count_over_time(", "[3599s:15s]", "}[44s]", `container!=""`} {
+	for _, want := range []string{"max by (pod)", "count_over_time(", "[3599s:15s]", "}[59s]", `container!=""`} {
 		if !strings.Contains(q, want) {
 			t.Errorf("query %q missing %q", q, want)
 		}
@@ -75,20 +75,21 @@ func TestInstanceSecondsQueryOnPrometheus(t *testing.T) {
 		want      int
 	}{
 		// 5 minutes of life: its t=0 sample belongs to the prior hour, then 19
-		// steps plus the two its last sample stays live for (44 s).
-		{"short", map[string]string{"a-1/app": presence(0, 20)}, 315},
+		// steps plus the three its last sample stays live for (59 s).
+		{"short", map[string]string{"a-1/app": presence(0, 20)}, 330},
 		// One pod, two containers (Valkey + exporter): one instance, not two.
 		{"sidecar", map[string]string{"kv-0/valkey": presence(0, 241), "kv-0/exporter": presence(0, 241)}, 3600},
 		// Two replicas all hour.
 		{"replicas", map[string]string{"web-1/app": presence(0, 241), "web-2/app": presence(0, 241)}, 7200},
 		// Rollout: old pod 0–40 min, new pod 38–60 min — the 2-minute overlap
-		// and the old pod's two live steps are extra, not the 5-minute lookback.
-		{"rollout", map[string]string{"web-old/app": presence(0, 160), "web-new/app": presence(152, 241)}, 3750},
-		// Gaps of up to 44 s (cAdvisor's housekeeping spacing, missed scrapes)
-		// lose no running time; a 60 s gap loses the one step nothing covers.
+		// and the old pod's three live steps are extra, not the 5-minute lookback.
+		{"rollout", map[string]string{"web-old/app": presence(0, 160), "web-new/app": presence(152, 241)}, 3765},
+		// Gaps of up to 59 s (cAdvisor's housekeeping spacing, missed scrapes)
+		// lose no running time; a 75 s gap loses the one step nothing covers.
 		{"missed", map[string]string{"web-1/app": presence(0, 241, 100)}, 3600},
 		{"missed2", map[string]string{"web-1/app": presence(0, 241, 100, 101)}, 3600},
-		{"missed3", map[string]string{"web-1/app": presence(0, 241, 100, 101, 102)}, 3585},
+		{"missed3", map[string]string{"web-1/app": presence(0, 241, 100, 101, 102)}, 3600},
+		{"missed4", map[string]string{"web-1/app": presence(0, 241, 100, 101, 102, 103)}, 3585},
 		// A restarted container is a new series in the same pod, briefly
 		// overlapping the old one: the pod keeps running, once.
 		{"restart", map[string]string{"web-1/app#first": presence(0, 125), "web-1/app#second": presence(121, 241)}, 3600},

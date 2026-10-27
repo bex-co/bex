@@ -46,3 +46,11 @@ After the deploy that includes this milestone, on owned Free `qa-` fixtures in `
 1. Keep one web service alive across a full hour and trigger one deploy mid-hour; after that hour rolls up (`GET /v1/usage?ownerId=…`), `instance_seconds` reads its lifetime + the rollout overlap within 45 s, not +~285 s (w4/m173's "Rollout" DoD bullet).
 2. Read the stored-sample spacing query above against the live Prometheus; if it exceeds 44 s, widen `instanceLivenessSeconds` and its fixtures.
 3. Coordinate with w4/m173 t007 (deleted-resource enumeration, rollup tick alignment): a fixture deleted before its hour rolls up won't have a row until t007 lands. Record evidence here, then run t009.
+
+## t005 step 2 — live stored-sample spacing (2026-10-27)
+
+- **Data:** raw `container_memory_working_set_bytes{container!=""}[1h]` from production Prometheus, covering 248 series alive the whole hour and 53,039 sample gaps.
+- **Spacing:** median 16.1 s, p99 31.0 s, p99.9 37.6 s, and **maximum 44.3 s**. One gap broke the 44 s bound.
+- **Why the README's query was wrong:** `max_over_time(time() - timestamp(…))` reads about 300 s, because it measures terminated series aging through the 5-minute lookback, not live spacing.
+- **Change:** `instanceLivenessSeconds` is now `4×15−1 = 59 s`. Any bound from 45 to 59 s credits a terminated pod the same three steps, so the widest costs nothing more. The promtool fixtures moved to 330 (5 minutes) and 3765 (rollout), and a 75 s gap now loses the one uncovered step. ADR023 is updated.
+- **Still to do (step 1):** replay one rollout inside an hour after this deploys, and expect lifetime + overlap + 45 s ± one step.
