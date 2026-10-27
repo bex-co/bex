@@ -138,6 +138,7 @@ function server(overrides: Partial<ServerNode> = {}): ServerNode {
     healthCheckPath: null,
     port: 3000,
     openPorts: null,
+    imagePorts: false,
     maxShutdownDelaySeconds: null,
     preDeployCommand: null,
     schedule: null,

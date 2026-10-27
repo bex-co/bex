@@ -127,3 +127,44 @@ func TestImagePortStallHint(t *testing.T) {
 		}
 	}
 }
+
+// A primary the owner chose is named as configured, never as a port the image
+// declared, and the advice points at the service's port (w4/m243 t011).
+func TestImagePortStallHintNamesAConfiguredPrimary(t *testing.T) {
+	web := func(mode string, envPort int32, ports ...int32) *appv1alpha1.App {
+		return projectionApp(func(a *appv1alpha1.App) {
+			a.Spec.Type, a.Spec.PortMode = appv1alpha1.TypeWebService, mode
+			a.Status.EnvPort = envPort
+			a.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{Image: "i", Revision: "r", PrimaryPort: 10000, Ports: ports}
+		})
+	}
+	for _, tc := range []struct {
+		name      string
+		app       *appv1alpha1.App
+		port      int
+		want, not []string
+	}{
+		{"discovery is unchanged", web(appv1alpha1.PortModeWebImageV1, 0, 80), 80,
+			[]string{"selected from the image's declared TCP ports (80)"}, []string{"configured"}},
+		{"explicit port the image does not declare", web(appv1alpha1.PortModeWebImageConfiguredV1, 0, 80, 10000), 10000,
+			[]string{"port 10000, set by the service's configured port", "declares TCP ports (80)", "Settings"}, []string{"80, 10000", "Bind the server"}},
+		{"PORT env the image does not declare", web(appv1alpha1.PortModeWebImageV1, 9999, 80, 9999), 9999,
+			[]string{"set by the service's PORT environment variable", "(80)"}, []string{"80, 9999"}},
+		{"explicit port the image declares", web(appv1alpha1.PortModeWebImageConfiguredV1, 0, 80, 8080), 8080,
+			[]string{"set by the service's configured port", "(80)"}, []string{"8080)", "80, 8080"}},
+		{"explicit port and no other declared", web(appv1alpha1.PortModeWebImageConfiguredV1, 0, 10000), 10000,
+			[]string{"declares no other TCP port"}, nil},
+	} {
+		hint := imagePortStallHint(tc.app, tc.port)
+		for _, want := range tc.want {
+			if !strings.Contains(hint, want) {
+				t.Errorf("%s: hint %q lacks %q", tc.name, hint, want)
+			}
+		}
+		for _, not := range tc.not {
+			if strings.Contains(hint, not) {
+				t.Errorf("%s: hint %q contains %q", tc.name, hint, not)
+			}
+		}
+	}
+}

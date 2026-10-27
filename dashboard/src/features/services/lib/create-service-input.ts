@@ -90,6 +90,21 @@ export interface BuildShape {
   imagePorts: boolean;
 }
 
+/**
+ * Whether a create with no port takes its ports from the image: bex-api stamps
+ * an image-port mode for a Git Docker private service (w6/m148) and for a web
+ * service built by Docker or deployed from a prebuilt image (w4/m243). A
+ * private service on a prebuilt image keeps the configured port.
+ */
+function imagePortShape(
+  serviceType: NewServiceForm["serviceType"],
+  isDockerBuild: boolean,
+  isImageSource: boolean,
+): boolean {
+  if (serviceType === "private_service") return isDockerBuild;
+  return serviceType === "web_service" && (isDockerBuild || isImageSource);
+}
+
 export function buildShape(form: NewServiceForm): BuildShape {
   const isCronType = form.serviceType === "cron_job";
   const isStaticType = form.serviceType === "static_site";
@@ -116,14 +131,14 @@ export function buildShape(form: NewServiceForm): BuildShape {
       form.serviceType === "private_service" ||
       form.serviceType === "background_worker",
     showPort: servesHttp(form.serviceType),
-    imagePorts: form.serviceType === "private_service" && isDockerBuild,
+    imagePorts: imagePortShape(form.serviceType, isDockerBuild, isImageSource),
   };
 }
 
 /**
  * The port field's value: what the user typed, else the shape's default — the
  * platform's 3000, pre-filled so it is visible before submit (w4/m121/t003),
- * or blank for an image-port private service, whose ports come from its image.
+ * or blank for an image-port service, whose ports come from its image.
  */
 export function portDraft(form: NewServiceForm, shape: BuildShape): string {
   return form.port ?? (shape.imagePorts ? "" : String(DEFAULT_SERVICE_PORT));

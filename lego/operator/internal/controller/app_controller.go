@@ -5420,18 +5420,40 @@ func (r *AppReconciler) rolloutStallDiagnosis(ctx context.Context, app *appv1alp
 // TCP ports the image declares, so a server bound elsewhere (or only to
 // localhost) is told what to listen on. Empty for configured ports and for an
 // HTTP health check, whose failure is about the path rather than the listener.
+//
+// A primary the owner chose (a service port or its PORT env) is not one the
+// image declared: the network carries it alongside the image's ports. The hint
+// then calls it configured and lists only the others (w4/m243 t011).
 func imagePortStallHint(app *appv1alpha1.App, port int) string {
 	network := app.Status.ImageNetwork
 	if !app.Spec.HasImagePorts() || app.Spec.HealthCheckPath != "" || network == nil || len(network.Ports) == 0 {
 		return ""
 	}
-	declared := make([]string, len(network.Ports))
-	for i, p := range network.Ports {
-		declared[i] = strconv.Itoa(int(p))
+	source := ""
+	switch {
+	case app.Spec.UsesWebImagePorts() && app.Status.EnvPort > 0:
+		source = "the service's PORT environment variable"
+	case configuredPortMode(app.Spec.PortMode):
+		source = "the service's configured port"
 	}
-	return fmt.Sprintf(" Nothing accepted a TCP connection on port %d, the primary port selected from the image's declared TCP ports (%s)."+
-		" Bind the server to 0.0.0.0 on one of those ports, or set the service's port to the one it listens on.",
-		port, strings.Join(declared, ", "))
+	declared := make([]string, 0, len(network.Ports))
+	for _, p := range network.Ports {
+		if source == "" || int(p) != port {
+			declared = append(declared, strconv.Itoa(int(p)))
+		}
+	}
+	if source == "" {
+		return fmt.Sprintf(" Nothing accepted a TCP connection on port %d, the primary port selected from the image's declared TCP ports (%s)."+
+			" Bind the server to 0.0.0.0 on one of those ports, or set the service's port to the one it listens on.",
+			port, strings.Join(declared, ", "))
+	}
+	if len(declared) == 0 {
+		return fmt.Sprintf(" Nothing accepted a TCP connection on port %d, set by %s; the image declares no other TCP port."+
+			" Bind the server to 0.0.0.0 on port %d, or change the service's port to the one it listens on.", port, source, port)
+	}
+	return fmt.Sprintf(" Nothing accepted a TCP connection on port %d, set by %s; the image declares TCP ports (%s)."+
+		" Change the service's port in Settings to the one it listens on, or remove it to use the image's port.",
+		port, source, strings.Join(declared, ", "))
 }
 
 // nodeLossDisruptions are the DisruptionTarget reasons Kubernetes gives a pod

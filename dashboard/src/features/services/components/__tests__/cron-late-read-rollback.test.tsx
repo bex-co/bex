@@ -181,6 +181,7 @@ const link = new ApolloLink(
               renderSubdomainPolicy: null,
               port: 0,
               openPorts: null,
+              imagePorts: false,
               healthCheckPath: "",
               maxShutdownDelaySeconds: null,
               preDeployCommand: "",

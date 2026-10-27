@@ -60,6 +60,7 @@ function service(undeployedChanges: boolean): ServerQuery["server"] {
     healthCheckPath: null,
     port: 3000,
     openPorts: null,
+    imagePorts: false,
     maxShutdownDelaySeconds: null,
     preDeployCommand: null,
     schedule: null,

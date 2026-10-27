@@ -320,7 +320,12 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
               <ServicePortRow
                 serviceId={serviceId}
                 port={service?.port}
-                imagePorts={service ? publishesImagePorts(service) : false}
+                imagePorts={
+                  service
+                    ? service.imagePorts === true ||
+                      publishesImagePorts(service)
+                    : false
+                }
               />
             </CardContent>
           </Card>

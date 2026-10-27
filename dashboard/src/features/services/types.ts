@@ -226,6 +226,12 @@ export interface ServiceView {
    */
   openPorts?: ServerPortView[] | null;
   /**
+   * The service's ports come from its image (an image-port private service, or
+   * a web service created without a port, w4/m243 t010). Optional: the list
+   * query does not select it.
+   */
+  imagePorts?: boolean;
+  /**
    * Seconds Kubernetes waits after SIGTERM before SIGKILL (1-300; default 30).
    * Only web/private/background-worker services expose this setting.
    */

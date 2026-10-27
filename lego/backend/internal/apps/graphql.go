@@ -340,6 +340,8 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 			}
 			return a.OpenPorts
 		}),
+		// imagePorts: the service's ports come from its image (w4/m243 t010).
+		"imagePorts": gqlutil.BoolField(func(a AppView) any { return a.ImagePorts }),
 		"createdAt":  gqlutil.StrField(func(a AppView) any { return a.CreatedAt }),
 		"updatedAt":  gqlutil.StrField(func(a AppView) any { return a.UpdatedAt }),
 		"region":     gqlutil.StrField(func(a AppView) any { return a.Region }),
