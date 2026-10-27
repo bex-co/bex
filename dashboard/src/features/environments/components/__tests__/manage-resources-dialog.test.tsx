@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ManageResourcesDialog } from "@/features/environments/components/manage-resources-dialog";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
@@ -248,6 +248,8 @@ describe("ManageResourcesDialog", () => {
     // Unchecking "api" removes it from every environment, stranding the
     // Production-scoped group linked to it.
     await user.click(screen.getByRole("checkbox", { name: /api/ }));
+    await user.click(screen.getByRole("tab", { name: "Key Value" }));
+    await user.click(screen.getByRole("checkbox", { name: /cache/ }));
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     expect(
@@ -256,9 +258,11 @@ describe("ManageResourcesDialog", () => {
     expect(screen.getByText("prod-group")).toBeInTheDocument();
     expect(setServices).not.toHaveBeenCalled();
 
-    // Cancel writes nothing; the dialog stays open for another attempt.
+    // Cancel writes nothing, in any kind; the dialog stays open for another
+    // attempt.
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(setServices).not.toHaveBeenCalled();
+    expect(setKeyValues).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: "Save" }));
     await user.click(
@@ -266,6 +270,9 @@ describe("ManageResourcesDialog", () => {
     );
     expect(setServices).toHaveBeenCalledTimes(1);
     expect(setServices).toHaveBeenCalledWith("env-1", "staging", []);
+    await waitFor(() =>
+      expect(setKeyValues).toHaveBeenCalledWith("env-1", "staging", []),
+    );
   });
 
   it("switches to the Databases tab and full-replaces database membership", async () => {
@@ -427,7 +434,7 @@ describe("ManageResourcesDialog draft retention across tabs", () => {
     expect(setEnvGroups).not.toHaveBeenCalled();
   });
 
-  it("keeps the four drafts independent, and saves only the active tab's", async () => {
+  it("keeps the four drafts independent, and saves every changed one", async () => {
     const user = userEvent.setup();
     renderDialog();
 
@@ -456,17 +463,95 @@ describe("ManageResourcesDialog draft retention across tabs", () => {
       screen.getByRole("checkbox", { name: /production-secrets/ }),
     ).toBeChecked();
 
-    // Saving writes ONE tab's replacement set — the active one — and the three
-    // other drafts are discarded with the dialog rather than silently written.
+    // One Save applies every changed draft, services first (w4/415).
     await user.click(screen.getByRole("button", { name: "Save" }));
-    expect(setEnvGroups).toHaveBeenCalledTimes(1);
+    expect(setServices).toHaveBeenCalledWith("env-1", "staging", [
+      "api",
+      "web",
+    ]);
+    expect([...setDatabases.mock.calls[0][2]].sort()).toEqual([
+      "primary-db",
+      "replica-db",
+    ]);
     expect([...setEnvGroups.mock.calls[0][2]].sort()).toEqual([
       "evg-production",
       "evg-shared",
     ]);
+    expect(setKeyValues).toHaveBeenCalledWith("env-1", "staging", []);
+    expect(setServices.mock.invocationCallOrder[0]).toBeLessThan(
+      setDatabases.mock.invocationCallOrder[0],
+    );
+  });
+
+  // w4/415: a selection made on another tab used to be dropped under the
+  // active tab's success toast.
+  it("saves a selection made on another tab, not only the active one", async () => {
+    const onOpenChange = vi.fn();
+    const user = userEvent.setup();
+    renderDialog(onOpenChange);
+
+    await user.click(screen.getByRole("checkbox", { name: /web/ }));
+    await user.click(screen.getByRole("tab", { name: "Key Value" }));
+    await user.click(screen.getByRole("checkbox", { name: /cache/ }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(setServices).toHaveBeenCalledWith("env-1", "staging", [
+      "api",
+      "web",
+    ]);
+    expect(setKeyValues).toHaveBeenCalledWith("env-1", "staging", []);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("marks each tab with unsaved changes", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+    const servicesTab = screen.getByRole("tab", { name: "Services" });
+    expect(servicesTab).not.toHaveAccessibleDescription();
+
+    await user.click(screen.getByRole("checkbox", { name: /web/ }));
+    expect(servicesTab).toHaveAccessibleDescription("Unsaved changes");
+    expect(
+      screen.getByRole("tab", { name: "Databases" }),
+    ).not.toHaveAccessibleDescription();
+
+    // Unchecking again restores the saved membership: nothing is pending.
+    await user.click(screen.getByRole("checkbox", { name: /web/ }));
+    expect(servicesTab).not.toHaveAccessibleDescription();
+  });
+
+  it("stops at the first refused kind and keeps the dialog on its drafts", async () => {
+    const onOpenChange = vi.fn();
+    setDatabases.mockResolvedValue(false);
+    const user = userEvent.setup();
+    renderDialog(onOpenChange);
+
+    await user.click(screen.getByRole("checkbox", { name: /web/ }));
+    await user.click(screen.getByRole("tab", { name: "Databases" }));
+    await user.click(screen.getByRole("checkbox", { name: /replica-db/ }));
+    await user.click(screen.getByRole("tab", { name: "Key Value" }));
+    await user.click(screen.getByRole("checkbox", { name: /cache/ }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(setServices).toHaveBeenCalledTimes(1);
+    expect(setDatabases).toHaveBeenCalledTimes(1);
+    expect(setKeyValues).not.toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("checkbox", { name: /cache/ })).not.toBeChecked();
+  });
+
+  it("writes nothing and closes when no draft differs", async () => {
+    const onOpenChange = vi.fn();
+    const user = userEvent.setup();
+    renderDialog(onOpenChange);
+
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
     expect(setServices).not.toHaveBeenCalled();
     expect(setDatabases).not.toHaveBeenCalled();
     expect(setKeyValues).not.toHaveBeenCalled();
+    expect(setEnvGroups).not.toHaveBeenCalled();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
   it("keeps only the active tab's controls in the accessibility tree", async () => {
