@@ -454,8 +454,9 @@ func TestRevokeAPIKeyRefusesCrossWorkspaceTarget(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 
-	if err := svc.RevokeAPIKey(ctx, "tea-b", keyA.ID); !errors.Is(err, core.ErrForbidden) {
-		t.Errorf("revoke tea-a's key targeting tea-b: want ErrForbidden, got %v", err)
+	// Naming tea-b scopes the request: the key is not in it (w5/086).
+	if err := svc.RevokeAPIKey(ctx, "tea-b", keyA.ID); !errors.Is(err, core.ErrNotFound) {
+		t.Errorf("revoke tea-a's key targeting tea-b: want ErrNotFound, got %v", err)
 	}
 	if _, ok := store.keys[keyA.ID]; !ok {
 		t.Error("refused revoke must not delete the key")
@@ -546,8 +547,8 @@ func TestRevokeAPIKeyWithoutOwnerResolvesKeyWorkspace(t *testing.T) {
 	}
 
 	// A workspace the request itself names still decides (MCP/GraphQL).
-	if err := svc.RevokeAPIKey(core.WithWorkspace(dana, "tea-a"), "", keyB.ID); !errors.Is(err, core.ErrForbidden) {
-		t.Errorf("named mismatched workspace: want ErrForbidden, got %v", err)
+	if err := svc.RevokeAPIKey(core.WithWorkspace(dana, "tea-a"), "", keyB.ID); !errors.Is(err, core.ErrNotFound) {
+		t.Errorf("named mismatched workspace: want ErrNotFound, got %v", err)
 	}
 
 	audit.rows = 0

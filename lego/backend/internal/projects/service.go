@@ -291,7 +291,7 @@ func (s *Service) authorizedProject(ctx context.Context, relation, id string) (s
 	if err != nil {
 		return store.Project{}, store.MapError(err)
 	}
-	if err := s.AuthorizeOn(ctx, relation, core.WorkspaceObject(p.TenantID)); err != nil {
+	if err := s.AuthorizeOnOwner(ctx, relation, p.TenantID, "project"); err != nil {
 		return store.Project{}, err
 	}
 	return p, nil

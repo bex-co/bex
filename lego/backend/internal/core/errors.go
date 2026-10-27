@@ -47,6 +47,11 @@ var (
 	// surface, so a client decides on the code, not on "not found" in the
 	// wording (w5/m130).
 	ErrNotFound error = &CodedError{Code: NotFoundCode, msg: "not found"}
+	// ErrNotInNamedWorkspace is the 404 for a resource that exists, but in
+	// another workspace than the one the request names (ADR072's by-id matrix,
+	// w5/086). It answers exactly like ErrNotFound; a caller that skips
+	// genuinely missing rows tells the two apart with errors.Is.
+	ErrNotInNamedWorkspace error = &CodedError{Code: NotFoundCode, sentinel: ErrNotFound, msg: "not found"}
 	// ErrUnavailable is the class every "…Unavailable" sentinel below belongs to:
 	// the verb exists but its backing dependency isn't wired. WriteErr maps the
 	// class once (503) instead of naming each sentinel, so a feature declaring a
