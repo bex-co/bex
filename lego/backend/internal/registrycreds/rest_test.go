@@ -19,6 +19,7 @@ package registrycreds
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -353,10 +354,67 @@ func TestRESTListHonorsRenderFilters(t *testing.T) {
 	if code, _ := list("createdAfter=not-a-time"); code != http.StatusBadRequest {
 		t.Errorf("a malformed window = %d, want 400", code)
 	}
-	// type is Render's registry enum, which bex does not store: a named
-	// refusal, never the whole list.
-	if code, _ := list("type=GITHUB"); code != http.StatusBadRequest {
-		t.Errorf("type filter = %d, want 400", code)
+	// type is Render's registry enum, derived from each host (w4/420); a
+	// self-hosted quay.io has none. An unknown value is a named refusal.
+	for query, want := range map[string]string{"type=GITHUB": "ghcr", "type=DOCKER,GITHUB": "ghcr,hub", "type=GITLAB": ""} {
+		if code, got := list(query); code != http.StatusOK || strings.Join(sortedCopy(got), ",") != want {
+			t.Errorf("?%s = %d %v, want %q", query, code, got, want)
+		}
+	}
+	if code, _ := list("type=QUAY"); code != http.StatusBadRequest {
+		t.Errorf("type=QUAY = %d, want 400", code)
+	}
+}
+
+// Render's registry enum maps onto a host on create, back from it on every
+// read, and must agree with a host sent alongside it (w4/420).
+func TestRESTAcceptsRendersRegistryEnum(t *testing.T) {
+	_, mux := testMux()
+	do := func(method, path, body string) (int, map[string]any) {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(method, path, strings.NewReader(body)))
+		var out map[string]any
+		_ = json.Unmarshal(rec.Body.Bytes(), &out)
+		return rec.Code, out
+	}
+	for _, tc := range []struct{ body, registry, host string }{
+		{`{"name":"a","registry":"DOCKER","username":"u","authToken":"t"}`, "DOCKER", "docker.io"},
+		{`{"name":"b","registry":"GITHUB","username":"u","authToken":"t"}`, "GITHUB", "ghcr.io"},
+		{`{"name":"c","registry":"GITLAB","username":"u","authToken":"t"}`, "GITLAB", "registry.gitlab.com"},
+		{`{"name":"d","registry":"GOOGLE_ARTIFACT","host":"us-docker.pkg.dev","username":"u","authToken":"t"}`, "GOOGLE_ARTIFACT", "us-docker.pkg.dev"},
+		{`{"name":"e","registry":"AWS_ECR","host":"123456789012.dkr.ecr.us-east-1.amazonaws.com","username":"u","authToken":"t"}`, "AWS_ECR", "123456789012.dkr.ecr.us-east-1.amazonaws.com"},
+		{`{"name":"f","host":"ghcr.io","username":"u","authToken":"t"}`, "GITHUB", "ghcr.io"},
+		{`{"name":"g","host":"registry.example.com:5000","username":"u","authToken":"t"}`, "", "registry.example.com:5000"},
+	} {
+		code, created := do("POST", "/v1/registrycredentials", tc.body)
+		if code != http.StatusCreated {
+			t.Fatalf("create %s = %d %v", tc.body, code, created)
+		}
+		code, got := do("GET", "/v1/registrycredentials/"+created["id"].(string), "")
+		registry, _ := got["registry"].(string)
+		if code != http.StatusOK || registry != tc.registry || got["host"] != tc.host {
+			t.Errorf("read of %s = %d registry=%q host=%v, want %q %q", tc.body, code, registry, got["host"], tc.registry, tc.host)
+		}
+		if tc.registry != "" {
+			patch := `{"registry":"` + tc.registry + `","name":"renamed-` + created["name"].(string) + `","username":"u","authToken":"t2"}`
+			if code, out := do("PATCH", "/v1/registrycredentials/"+created["id"].(string), patch); code != http.StatusOK {
+				t.Errorf("Render PATCH %s = %d %v", patch, code, out)
+			}
+		}
+	}
+	for body, field := range map[string]string{
+		`{"name":"x","registry":"GOOGLE_ARTIFACT","username":"u","authToken":"t"}`:           "needs host",
+		`{"name":"x","registry":"GITHUB","host":"docker.io","username":"u","authToken":"t"}`: "does not match host",
+		`{"name":"x","registry":"QUAY","username":"u","authToken":"t"}`:                      "registry must be one of",
+	} {
+		if code, out := do("POST", "/v1/registrycredentials", body); code != http.StatusBadRequest || !strings.Contains(fmt.Sprint(out), field) {
+			t.Errorf("create %s = %d %v, want a 400 saying %q", body, code, out, field)
+		}
+	}
+	_, created := do("POST", "/v1/registrycredentials", `{"name":"h","registry":"GITHUB","username":"u","authToken":"t"}`)
+	if code, out := do("PATCH", "/v1/registrycredentials/"+created["id"].(string), `{"registry":"DOCKER"}`); code != http.StatusBadRequest || !strings.Contains(fmt.Sprint(out), "does not match") {
+		t.Errorf("PATCH to another registry = %d %v, want a named 400", code, out)
 	}
 }
 
