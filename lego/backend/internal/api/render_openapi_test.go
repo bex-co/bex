@@ -968,11 +968,18 @@ func TestRegistryCredentialRESTWritesPassTheRenderValidator(t *testing.T) {
 	if renamed.Code != http.StatusOK || !strings.Contains(renamed.Body.String(), `"name":"renamed"`) {
 		t.Fatalf("rename = %d %s, want 200 with the new name", renamed.Code, renamed.Body.String())
 	}
-	// Render's `registry` enum is not bex's wire; it is refused by name, not
-	// with a bare bad request.
-	refused := requestOpenAPITest(t, handler, http.MethodPost, "/v1/registrycredentials", "application/json",
+	// Render's exact create body works, and every read carries Render's
+	// required registry (w4/420).
+	render := requestOpenAPITest(t, handler, http.MethodPost, "/v1/registrycredentials", "application/json",
 		`{"name":"x","registry":"DOCKER","username":"u","authToken":"t","ownerId":"tea-a"}`)
-	if refused.Code != http.StatusBadRequest || !strings.Contains(refused.Body.String(), "registry") {
-		t.Fatalf("registry body = %d %s, want a 400 naming the field", refused.Code, refused.Body.String())
+	var rendered map[string]any
+	if err := json.Unmarshal(render.Body.Bytes(), &rendered); render.Code != http.StatusCreated || err != nil ||
+		rendered["registry"] != "DOCKER" || rendered["host"] != "docker.io" {
+		t.Fatalf("Render body = %d %s, want 201 with registry DOCKER on docker.io", render.Code, render.Body.String())
+	}
+	for _, field := range []string{"id", "name", "username", "registry", "updatedAt"} {
+		if _, ok := rendered[field]; !ok {
+			t.Errorf("create response lacks Render's required %s: %s", field, render.Body.String())
+		}
 	}
 }
