@@ -107,6 +107,7 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     // project it to null so the Settings control never shows a bogus 0.
     port: "port" in s ? s.port || null : null,
     openPorts: "openPorts" in s ? toOpenPorts(s.openPorts) : null,
+    imagePorts: "imagePorts" in s ? s.imagePorts === true : undefined,
     maxShutdownDelaySeconds:
       "maxShutdownDelaySeconds" in s
         ? (s.maxShutdownDelaySeconds ?? null)

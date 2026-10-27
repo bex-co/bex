@@ -127,6 +127,9 @@ query Server($id: String!) {
       port
       protocol
     }
+    # imagePorts: the ports come from the service's image (an image-port
+    # private service, or a web service created without a port, w4/m243 t010).
+    imagePorts
     # healthCheckPath is the HTTP path the ReadinessProbe pings (w1/m23/t001);
     # empty means the default "/". Only applies to web_service/private_service.
     healthCheckPath

@@ -408,8 +408,42 @@ describe("isSubmittable", () => {
     expect(isSubmittable(form({ ...dockerPrivate, port: "abc" }))).toBe(false);
   });
 
+  // w4/m243 t010: a Docker-built or prebuilt-image web service takes its port
+  // from the image too, as bex-api's create stamps it; a typed port is still
+  // sent (the configured variant).
   it.each([
-    ["a web service", { serviceType: "web_service", runtime: "docker" }],
+    [
+      "a Git Docker web service",
+      { serviceType: "web_service", runtime: "docker" },
+    ],
+    [
+      "an existing-image web service",
+      {
+        serviceType: "web_service",
+        tab: "image",
+        image: "docker.io/traefik/whoami:latest",
+      },
+    ],
+  ] as const)(
+    "leaves %s's port to its image unless one is typed",
+    (_name, overrides) => {
+      for (const port of [null, "", "  "]) {
+        const draft = form({ ...overrides, port });
+        expect(isSubmittable(draft)).toBe(true);
+        expect(buildCreateServiceInput(draft)).not.toHaveProperty(
+          "port",
+          expect.anything(),
+        );
+        expect(buildCreateServiceInput(draft).port).toBeUndefined();
+      }
+      expect(
+        buildCreateServiceInput(form({ ...overrides, port: "8080" })).port,
+      ).toBe(8080);
+    },
+  );
+
+  it.each([
+    ["a native web service", { serviceType: "web_service" }],
     ["a native private service", { serviceType: "private_service" }],
     [
       "an existing-image private service",
