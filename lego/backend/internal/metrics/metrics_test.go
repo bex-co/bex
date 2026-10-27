@@ -1777,3 +1777,26 @@ func TestRateLookbackIsFlooredAboveTheScrapeInterval(t *testing.T) {
 		t.Errorf("request counts must keep the 15s bucket window: %q", count)
 	}
 }
+
+// An image-port service's Traefik series are labelled with the port its
+// Service publishes (its image network), not the container default, so
+// latency and filter values find them (w4/m243 t009).
+func TestImagePortRequestMetricsUseThePublishedPort(t *testing.T) {
+	var got RequestMetricsRequest
+	app := sampleApp("nginx")
+	app.Labels = map[string]string{core.LabelAppID: "srv-nginx"}
+	app.Spec.Host = "nginx.onbex.co"
+	app.Spec.Type, app.Spec.PortMode = appv1alpha1.TypeWebService, appv1alpha1.PortModeWebImageV1
+	app.Status.ServingNetwork = &appv1alpha1.ImageNetworkStatus{Image: "nginx@sha256:x", Revision: "rev-1", PrimaryPort: 8080, Ports: []int32{8080}}
+	svc := newService(nil, func(_ context.Context, r RequestMetricsRequest) ([]MetricSeries, error) {
+		got = r
+		return []MetricSeries{}, nil
+	}, app, ingressFor("nginx", "nginx", "nginx.onbex.co"))
+
+	if _, err := svc.Metrics(context.Background(), MetricQuery{App: "nginx", Metric: MetricHTTPLatency}); err != nil {
+		t.Fatalf("http_latency: %v", err)
+	}
+	if query := promQueryFor(got); !strings.Contains(query, `service="default-nginx-8080@kubernetes"`) {
+		t.Errorf("image-port latency query = %q, want the published 8080", query)
+	}
+}
