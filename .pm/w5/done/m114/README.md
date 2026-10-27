@@ -1,6 +1,6 @@
 # w5 · m114 — Suspend ends the release it interrupts, not just its deploy row
 
-**Worker:** worker5 **Goal:** Suspending mid-rollout cancels the in-flight release the way Cancel does, so Resume returns to the prior live release and the deploy history stays truthful. **Status:** blocked — t001–t005 and t007–t009 done 2026-10-05; t006's resume half needs the operator change deployed; t010 closeout follows
+**Worker:** worker5 **Goal:** Suspending mid-rollout cancels the in-flight release the way Cancel does, so Resume returns to the prior live release and the deploy history stays truthful. **Status:** done
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | t003 | One release-ending verb for Cancel and suspend — **DONE** | 45m | t002 |
 | t004 | Make the close paths agree on pre-deploy status and cancel reason — **DONE** | 30m | t003 |
 | t005 | Enforce the closed-row invariant in the database — **DONE** | 45m | t004 |
-| t006 | Verify suspend and resume live on dev-5 | 30m | t005 |
+| t006 | Verify suspend and resume live on dev-5 — **DONE** | 30m | t005 |
 | t007 | Render parity — **DONE** | 20m | t006 |
 | t008 | Simplify — **DONE** | 15m | t007 |
 | t009 | Test coverage — **DONE** | 30m | t007, t008 |
-| t010 | Closeout | 10m | t009 |
+| t010 | Closeout — **DONE** | 10m | t009 |
 
 ## Definition of done
 
@@ -116,3 +116,19 @@ Every dev-N stack shares the one in-cluster bex operator, which this workstream 
 6. A later deploy goes live.
 7. Delete the fixture, record the evidence here, then run t010.
 
+
+## t006 resume replay — live (2026-10-27, production `bex-canary`)
+
+The fixture was the `qa-m114b` web service on `starter`, image `ghcr.io/stefanprodan/podinfo:6.7.1` (`srv-dbg3m4tn83uc738uudgg`). It was deleted afterwards.
+
+| Step | Observed |
+| --- | --- |
+| Deploy A | `dep-dbg3ql5n83uc738uudug` live; CR `activeRevision=rev-4`, `releaseGeneration=4` |
+| `preDeployCommand: sleep 300` opens deploy B | `dep-dbg3r1kd3d3c73caqi70`; its pre-deploy Job Running at 05:58:37 |
+| Suspend during B's pre-deploy | B `canceled` at 05:58:41 with cancelReason "Canceled: the service was suspended"; CR annotation `canceled-release-generation=5` (B's) |
+| Resume (05:59:33) | A serves: `activeRevision=rev-4`, `releaseGeneration=4`, Running |
+| B's pre-deploy Job completes (~06:03:39) | B never activates; unchanged through 06:09 |
+| Clearing the pre-deploy opens deploy C | `dep-dbg4064d3d3c73caqing` live at 06:10; `rev-8` |
+
+- **Found and fixed:** B's `deploy_ended` carried `reasonCode: superseded`. The events feed derived superseded from any non-empty `cancel_reason`, so a suspend cancel read as superseded. Both feed queries now exclude the suspend reason, and the new test is `TestPGSuspendCanceledDeployIsNotReportedSuperseded`.
+- **Found, not fixed here:** the first attempt used `docker.io/traefik/whoami`, and its deploy failed with "image metadata request returned status 429". That is Docker Hub's anonymous pull limit, which any tenant can now hit, since w5/174 opened every public registry.

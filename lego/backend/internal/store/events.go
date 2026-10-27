@@ -332,7 +332,7 @@ WITH feed AS (
            d.started_at,
            d.finished_at,
            ''::text,
-           CASE WHEN d.cancel_reason <> '' THEN '` + EventReasonSuperseded + `' ELSE '' END,
+           CASE WHEN d.cancel_reason NOT IN ('', '` + suspendCancelReason + `') THEN '` + EventReasonSuperseded + `' ELSE '' END,
            ''::text,
            NULL::integer,
            NULL::integer,
@@ -599,7 +599,7 @@ SELECT h.event_key AS key,
        CASE WHEN h.source = '` + EventSourceDeploy + `' THEN d.finished_at END AS finished_at,
        CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.fact_type, df.fact_type, '') ELSE '' END AS fact_type,
        CASE
-           WHEN h.source = '` + EventSourceDeploy + `' AND h.phase = '` + EventPhaseEnded + `' AND d.cancel_reason <> '' THEN '` + EventReasonSuperseded + `'
+           WHEN h.source = '` + EventSourceDeploy + `' AND h.phase = '` + EventPhaseEnded + `' AND d.cancel_reason NOT IN ('', '` + suspendCancelReason + `') THEN '` + EventReasonSuperseded + `'
            WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.reason_code, df.reason_code, '')
            ELSE ''
        END AS reason_code,

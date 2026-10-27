@@ -1473,6 +1473,7 @@ func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) stri
 }
 
 // suspendCancelReason is the cancel_reason of a rollout a user suspend ended.
+// The events feed gives it no reason code: it was not superseded (w5/m114).
 const suspendCancelReason = "Canceled: the service was suspended"
 
 // suspendEndsRollout reports that a user suspend ended this open row's
