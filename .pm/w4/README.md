@@ -348,6 +348,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **421** — [REST services omit Render's required `rootDir` whenever it is empty](421.md) (~20m) ← live `/qa-find-bugs w4` loop run 1046, 2026-10-27 UTC (`muse.env`, `bex-canary`, pin `b4726243e74f`; minor). A read-only conformance sweep against the pinned Render spec found 11 of 14 services (every image service) without `rootDir`, which Render's `service` requires; `render.go:197` tags it `omitempty`. Every other resource swept was clean.
+
 - [ ] **420** — [Registry credentials refuse Render's required `registry` field and never return it](420.md) (~1h) ← live `/qa-find-bugs w4` loop run dfe7, 2026-10-26/27 UTC (`muse.env`, `bex-canary`, pin `b4726243e74f`; major, Render parity). Render's exact `POST /registrycredentials` body is refused ("unknown field \"registry\"") and reads return `host` with no `registry`, though Render's schema requires it on both. bex's 2026-07 host-only generalization (`registrycreds/rest.go:29-40`, kept by w8/135 and w5/163) has no recorded sign-off; accept the enum as a mapped alias and emit it on reads.
 
 - [ ] **419** — [Environment group, project and environment names accept control characters and unbounded length](419.md) (~45m) ← live `/qa-find-bugs w4` loop run 758c, 2026-10-26 UTC (`muse.env`, `bex-canary`, pin `b4726243e74f`; minor). `POST /v1/env-groups` stored `"line1\nline2"`, `"tab\tsep"`, `"bell\aend"` and a 5,000-character name; create, rename and Blueprint apply (`envgroups/service.go:423,752,1404`) trim and require a name but never run `core.CheckLabel`, unlike services and datastores. Run d11a found the same on projects and environments (`projects/service.go:423,434,551`, `environments/service.go:1396`).
