@@ -54,6 +54,14 @@ import {
 /** The dialog's four tabs, which are also its four independent draft keys. */
 type ResourceKind = ProjectResourceFamily;
 
+/** Tab order, which is also Save's write order. */
+const resourceKinds: ResourceKind[] = [
+  "services",
+  "databases",
+  "keyvalues",
+  "envgroups",
+];
+
 export interface ManageResourcesDialogProps {
   environment: EnvironmentView;
   /** Candidate resources — the whole workspace's, since assigning auto-joins the project. */
@@ -70,9 +78,9 @@ export interface ManageResourcesDialogProps {
  * The environment's "Manage resources" dialog (w6/m20 extension — closes the
  * Environments/Projects asymmetry: an environment now groups services,
  * databases, AND key-value instances, not just services). One tab per
- * resource kind, each a `ResourceChecklist` full-replacing that kind's
- * membership via its own `setEnvironment*` mutation — assigning any of them
- * also auto-joins the environment's parent project (docs/ADR032-environments.md).
+ * resource kind; Save full-replaces each changed kind's membership via its
+ * own `setEnvironment*` mutation — assigning any of them also auto-joins the
+ * environment's parent project (docs/ADR032-environments.md).
  */
 export function ManageResourcesDialog({
   environment,
@@ -120,13 +128,10 @@ function ManageResourcesForm({
   unread?: UnreadResources;
 }) {
   const { t } = useTranslations();
-  const { setServices, busyId: servicesBusyId } = useSetEnvironmentServices();
-  const { setDatabases, busyId: databasesBusyId } =
-    useSetEnvironmentDatabases();
-  const { setKeyValues, busyId: keyValuesBusyId } =
-    useSetEnvironmentKeyValues();
-  const { setEnvGroups, busyId: envGroupsBusyId } =
-    useSetEnvironmentEnvGroups();
+  const { setServices } = useSetEnvironmentServices();
+  const { setDatabases } = useSetEnvironmentDatabases();
+  const { setKeyValues } = useSetEnvironmentKeyValues();
+  const { setEnvGroups } = useSetEnvironmentEnvGroups();
   // The query is scoped to the workspace switcher's current selection, so a
   // cross-workspace group is never offered as an assignment candidate.
   const { groups: envGroups } = useEnvGroups();
@@ -148,6 +153,20 @@ function ManageResourcesForm({
       envgroups: new Set(environment.envGroupIds),
     }),
   );
+
+  const persisted: Record<ResourceKind, string[]> = {
+    services: environment.serviceIds,
+    databases: environment.databaseIds,
+    keyvalues: environment.keyValueIds,
+    envgroups: environment.envGroupIds,
+  };
+  const changed = (kind: ResourceKind) => {
+    const draft = drafts[kind];
+    const current = persisted[kind];
+    return (
+      draft.size !== current.length || current.some((id) => !draft.has(id))
+    );
+  };
 
   const toggle = useCallback(
     (kind: ResourceKind, id: string, next: boolean) => {
@@ -182,7 +201,11 @@ function ManageResourcesForm({
     destinationEnvironmentId: string | null,
   ): StrandedGroupPromptItem[] {
     return strandedPromptItems(
-      strandedGroupsForDestination(envGroups, serviceIds, destinationEnvironmentId),
+      strandedGroupsForDestination(
+        envGroups,
+        serviceIds,
+        destinationEnvironmentId,
+      ),
       (group) =>
         group.environmentId == null
           ? undefined
@@ -213,16 +236,21 @@ function ManageResourcesForm({
       return setServices(environment.id, environment.name, ids);
     }
     return new Promise<boolean>((resolve) => {
+      // Confirming also closes the prompt, whose close handler cancels: the
+      // first answer wins, or that cancel would report the confirmed write
+      // as refused.
+      let answered = false;
+      const answer = (result: () => Promise<boolean> | boolean) => {
+        if (answered) return;
+        answered = true;
+        setStrandedPrompt(null);
+        void Promise.resolve(result()).then(resolve);
+      };
       setStrandedPrompt({
         items: [...byId.values()],
-        proceed: () => {
-          setStrandedPrompt(null);
-          void setServices(environment.id, environment.name, ids).then(resolve);
-        },
-        cancel: () => {
-          setStrandedPrompt(null);
-          resolve(false);
-        },
+        proceed: () =>
+          answer(() => setServices(environment.id, environment.name, ids)),
+        cancel: () => answer(() => false),
       });
     });
   }
@@ -284,6 +312,36 @@ function ManageResourcesForm({
   const unreadKind = (kind: ResourceKind) =>
     unread != null && unreadFamilies(unread).includes(kind);
 
+  // One Save applies every tab's draft (w4/415): a selection the dialog keeps
+  // visible across tabs must never be dropped under a success toast. Services
+  // go first so their stranded-group confirmation runs before any write; the
+  // first refusal stops the rest and keeps the dialog open on its drafts.
+  const savers: Record<ResourceKind, (ids: string[]) => Promise<boolean>> = {
+    services: saveServices,
+    databases: (ids) => setDatabases(environment.id, environment.name, ids),
+    keyvalues: (ids) => setKeyValues(environment.id, environment.name, ids),
+    envgroups: (ids) => setEnvGroups(environment.id, environment.name, ids),
+  };
+  const [saving, setSaving] = useState(false);
+  async function saveAll(): Promise<boolean> {
+    setSaving(true);
+    try {
+      for (const kind of resourceKinds) {
+        if (unreadKind(kind) || !changed(kind)) continue;
+        if (!(await savers[kind]([...drafts[kind]]))) return false;
+      }
+      return true;
+    } finally {
+      setSaving(false);
+    }
+  }
+  const tabLabels: Record<ResourceKind, string> = {
+    services: t("environments.tabServices"),
+    databases: t("environments.tabDatabases"),
+    keyvalues: t("environments.tabKeyValues"),
+    envgroups: t("environments.tabEnvGroups"),
+  };
+
   return (
     <>
       <DialogHeader>
@@ -297,18 +355,27 @@ function ManageResourcesForm({
 
       <Tabs defaultValue="services">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="services">
-            {t("environments.tabServices")}
-          </TabsTrigger>
-          <TabsTrigger value="databases">
-            {t("environments.tabDatabases")}
-          </TabsTrigger>
-          <TabsTrigger value="keyvalues">
-            {t("environments.tabKeyValues")}
-          </TabsTrigger>
-          <TabsTrigger value="envgroups">
-            {t("environments.tabEnvGroups")}
-          </TabsTrigger>
+          {resourceKinds.map((kind) => {
+            const unsavedId = changed(kind)
+              ? `manage-unsaved-${kind}`
+              : undefined;
+            return (
+              <TabsTrigger key={kind} value={kind} aria-describedby={unsavedId}>
+                {tabLabels[kind]}
+                {unsavedId && (
+                  <>
+                    <span
+                      aria-hidden
+                      className="ml-1.5 inline-block size-1.5 rounded-full bg-amber-500"
+                    />
+                    <span id={unsavedId} hidden>
+                      {t("environments.manageUnsaved")}
+                    </span>
+                  </>
+                )}
+              </TabsTrigger>
+            );
+          })}
         </TabsList>
         <TabsContent value="services">
           {unreadKind("services") ? (
@@ -325,9 +392,9 @@ function ManageResourcesForm({
               )}
               checked={drafts.services}
               onToggle={(id, next) => toggle("services", id, next)}
-              busy={servicesBusyId === environment.id}
+              busy={saving}
               emptyLabel={t("environments.manageNoServices")}
-              onSave={(ids) => saveServices(ids)}
+              onSave={saveAll}
               onClose={onClose}
             />
           )}
@@ -347,11 +414,9 @@ function ManageResourcesForm({
               )}
               checked={drafts.databases}
               onToggle={(id, next) => toggle("databases", id, next)}
-              busy={databasesBusyId === environment.id}
+              busy={saving}
               emptyLabel={t("environments.manageNoDatabases")}
-              onSave={(ids) =>
-                setDatabases(environment.id, environment.name, ids)
-              }
+              onSave={saveAll}
               onClose={onClose}
             />
           )}
@@ -371,11 +436,9 @@ function ManageResourcesForm({
               )}
               checked={drafts.keyvalues}
               onToggle={(id, next) => toggle("keyvalues", id, next)}
-              busy={keyValuesBusyId === environment.id}
+              busy={saving}
               emptyLabel={t("environments.manageNoKeyValues")}
-              onSave={(ids) =>
-                setKeyValues(environment.id, environment.name, ids)
-              }
+              onSave={saveAll}
               onClose={onClose}
             />
           )}
@@ -395,11 +458,9 @@ function ManageResourcesForm({
               )}
               checked={drafts.envgroups}
               onToggle={(id, next) => toggle("envgroups", id, next)}
-              busy={envGroupsBusyId === environment.id}
+              busy={saving}
               emptyLabel={t("environments.manageNoEnvGroups")}
-              onSave={(ids) =>
-                setEnvGroups(environment.id, environment.name, ids)
-              }
+              onSave={saveAll}
               onClose={onClose}
             />
           )}

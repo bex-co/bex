@@ -26,7 +26,8 @@ export interface ResourceChecklistProps {
   onToggle: (id: string, next: boolean) => void;
   busy: boolean;
   emptyLabel: string;
-  onSave: (ids: string[]) => Promise<boolean>;
+  /** Applies the dialog's drafts; resolves true when the dialog may close. */
+  onSave: () => Promise<boolean>;
   onClose: () => void;
   /** Before Save: one line per environment the selection moves resources out of. */
   moveSummary?: string[];
@@ -60,7 +61,7 @@ export function ResourceChecklist({
   const { t } = useTranslations();
 
   async function handleSave() {
-    const ok = await onSave([...checked]);
+    const ok = await onSave();
     if (ok) onClose();
   }
 
