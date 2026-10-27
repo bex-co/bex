@@ -1,6 +1,6 @@
 # w5 · m141 — Postgres backup and archiving events mean what Render's mean
 
-**Worker:** worker5 **Goal:** a scheduled base backup emits Render's `postgres_pitr_checkpoint_*` events, a tenant export emits `postgres_backup_completed`/`_failed`, and a broken WAL archive emits one `postgres_wal_archive_failed` — on REST, GraphQL and MCP events, webhooks and the dashboard. **Status:** blocked (t001–t004, t006–t008 done 2026-10-20; t005's live walk needs a backup-enabled Postgres)
+**Worker:** worker5 **Goal:** a scheduled base backup emits Render's `postgres_pitr_checkpoint_*` events, a tenant export emits `postgres_backup_completed`/`_failed`, and a broken WAL archive emits one `postgres_wal_archive_failed` — on REST, GraphQL and MCP events, webhooks and the dashboard. **Status:** done
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | t002 | Scheduled backups record `pitr_checkpoint_*`; exports record `postgres_backup_*` ends — **DONE** | 60m | t001       |
 | t003 | `postgres_wal_archive_failed`, latched per failure; one migration for the four new facts — **DONE** | 45m | t002       |
 | t004 | Vocabulary, webhooks and push carry the new names; existing subscriptions are migrated — **DONE** | 45m | t003       |
-| t005 | Dashboard catalog, docs, and the dev-5 walk                                              | 60m | t004       |
+| t005 | Dashboard catalog, docs, and the dev-5 walk — **DONE**                                              | 60m | t004       |
 | t006 | Render parity — **DONE** | 30m | t005       |
 | t007 | Simplify — **DONE** | 20m | t006       |
 | t008 | Test coverage — **DONE** | 45m | t006, t007 |
-| t009 | Closeout                                                                                 | 10m | t008       |
+| t009 | Closeout — **DONE**                                                                                 | 10m | t008       |
 
 Total: **9 tasks, about 6h 15m**.
 
@@ -45,3 +45,25 @@ Total: **9 tasks, about 6h 15m**.
 - **Push decision.** The existing "backup failed" push category covers export, checkpoint and archiving failures (titles "Export failed", "Backup failed", "Backups failing"), so saved preferences keep covering the nightly failure they covered before and the push schema is unchanged. Rows already queued at deploy from a nightly failure will read "Export failed" once.
 - **Evidence.** Operator unit tests (`database_backup_status_test.go`) and the full `make test`; memStore tests for start-once, outcome routing, export floor (incl. a late-recorded export), WAL latch/suppression/re-arm and baseline silence; real-Postgres `TestPGPointInTimeRecoveryEdges` and `TestPITREventSubscriptionMigration`; push projection, webhook vocabulary and dashboard picker tests; `make lint` clean.
 - **Remaining (t005 live walk).** dev-N stacks have no backup object store, so they have no base backups, WAL archiving or exports, and QA's `bex-canary` fixtures are Free (no backups). The walk needs a backup-enabled Postgres: a paid QA fixture in `bex-canary` (user approval for the spend), or an object store wired into a dev-N stack. Then: watch one nightly (or manual) base backup emit start + completed, run one export, break and restore archiving (revoke the backup credential), and record each event on REST and a webhook receiver.
+
+## Live walk and closeout (2026-10-27)
+
+dev-N stacks could not take backups without enabling them on the shared operator, which would have touched other sessions' paid databases. So the walk ran in production `bex-canary` on a paid `basic_256mb` QA Postgres (`dpg-dbg29rtn83uc738uua60`). It was deleted afterwards, and the QA session was logged out. Facts were read from `datastore_event_facts` in a read-only transaction.
+
+| Step | Recorded |
+| --- | --- |
+| Create (bootstrap base backup, 04:13:35–04:16:03) | `postgres_pitr_checkpoint_completed` only. The first observation fell mid-backup, and the baseline marked its start as seen. **Fixed** (below). |
+| `POST /v1/postgres/{id}/export` (04:31:10) | `postgres_backup_started` (the `postgres.CreateExport` audit write) and `postgres_backup_completed` at 04:31:27 |
+| Break the archive (Cilium `egressDeny` world + DNS on this database's pods) | One `postgres_wal_archive_failed` at 05:03:54, with barman's error |
+| Restore (policy deleted) | `postgres_available`; archiving `True` again |
+| Break again | A second `postgres_wal_archive_failed` at 05:09:24, so recovery re-arms the edge |
+| Manual base backup (finished in about 10 s) | `postgres_pitr_checkpoint_completed` only, because it started and ended between two passes. **Fixed** (below). |
+
+- **Fixes from the walk:**
+  - `backupFacts` now reports a checkpoint's start, dated by CNPG's `startedAt` and under the same per-backup source key, when no pass saw the backup run.
+  - The baseline no longer marks an in-flight backup as started.
+  - Tests: `TestDatastoreFastCheckpointReportsItsStartWithItsOutcome`, a re-pinned `TestDatastoreCheckpointOutcomeEmitsOncePerName`, and `TestDatastoreBaselineRecordsPITRStateAsSeen`.
+- **Not walked:**
+  - Webhook delivery: `bex-canary` is on Hobby, and webhooks need Pro. Delivery is covered by the webhooks mapping tests and the subscription migration from t004.
+  - A scheduled (nightly) checkpoint. The bootstrap and manual backups take the same path, except for the `scheduled` flag.
+- **Found:** an archive that hangs (packets dropped) instead of failing stays `ContinuousArchiving=True` for more than 20 minutes and is never reported. Filed as w5/175.

@@ -47,9 +47,10 @@ func TestDatastoreCheckpointOutcomeEmitsOncePerName(t *testing.T) {
 		t.Fatal(err)
 	}
 	// A CNPG base backup is a point-in-time-recovery checkpoint (w5/m141);
-	// postgres_backup_* belongs to exports.
-	if len(facts) != 1 || facts[0].Type != DatastoreFactPostgresPITRCheckpointCompleted {
-		t.Fatalf("want one pitr_checkpoint_completed, got %+v", facts)
+	// postgres_backup_* belongs to exports. One no pass saw running still
+	// reports its start, as Render reports every checkpoint's start.
+	if got := pitrFactTypes(facts); len(got) != 2 || got[0] != DatastoreFactPostgresPITRCheckpointStarted || got[1] != DatastoreFactPostgresPITRCheckpointCompleted {
+		t.Fatalf("want pitr_checkpoint_started then _completed, got %+v", facts)
 	}
 	// Resync with the same lastBackup must not re-emit.
 	resync, err := st.RecordObservedDatastoreState(ctx, completed)
@@ -68,8 +69,8 @@ func TestDatastoreCheckpointOutcomeEmitsOncePerName(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(failedFacts) != 1 || failedFacts[0].Type != DatastoreFactPostgresPITRCheckpointFailed {
-		t.Fatalf("want one pitr_checkpoint_failed, got %+v", failedFacts)
+	if got := pitrFactTypes(failedFacts); len(got) != 2 || got[0] != DatastoreFactPostgresPITRCheckpointStarted || got[1] != DatastoreFactPostgresPITRCheckpointFailed {
+		t.Fatalf("want pitr_checkpoint_started then _failed, got %+v", failedFacts)
 	}
 }
 
@@ -197,6 +198,29 @@ func TestDatastoreCheckpointStartEmitsOnceThenItsOutcome(t *testing.T) {
 	}
 }
 
+// A backup that starts and ends between two passes (seconds on a small
+// database, live in w5/m141) still reports its start, dated by CNPG's own
+// startedAt, ahead of its outcome; a resync adds neither again.
+func TestDatastoreFastCheckpointReportsItsStartWithItsOutcome(t *testing.T) {
+	st := newMemStore()
+	obs := pitrBase(t, st, "dpg-pitrfast00000000001")
+	started := obs.At.Add(500 * time.Millisecond)
+	obs.At = obs.At.Add(time.Second)
+	obs.LastBackupName, obs.LastBackupPhase = "manual-1", "completed"
+	obs.LastBackupStartedAt, obs.LastBackupAt = started, started.Add(200*time.Millisecond)
+	facts := recordPITR(t, st, obs)
+	if got := pitrFactTypes(facts); len(got) != 2 || got[0] != DatastoreFactPostgresPITRCheckpointStarted || got[1] != DatastoreFactPostgresPITRCheckpointCompleted {
+		t.Fatalf("facts = %v, want started then completed", got)
+	}
+	if !facts[0].At.Equal(started) || facts[0].BackupName != "manual-1" {
+		t.Fatalf("start = %+v, want manual-1 at %v", facts[0], started)
+	}
+	obs.At = obs.At.Add(time.Second)
+	if got := recordPITR(t, st, obs); len(got) != 0 {
+		t.Fatalf("resync re-emitted: %+v", got)
+	}
+}
+
 func TestDatastoreExportOutcomesEmitOnceAfterTheFloor(t *testing.T) {
 	st := newMemStore()
 	obs := pitrBase(t, st, "dpg-pitrexport000000001")
@@ -271,6 +295,9 @@ func TestDatastoreWALArchiveFailureLatchesAndRearms(t *testing.T) {
 	}
 }
 
+// The baseline emits nothing and records a failing archive as seen, but an
+// in-flight backup is reported on the next pass, so its completion never
+// arrives without its start (w5/m141 live walk).
 func TestDatastoreBaselineRecordsPITRStateAsSeen(t *testing.T) {
 	st := newMemStore()
 	obs := ObservedDatastoreState{
@@ -283,7 +310,11 @@ func TestDatastoreBaselineRecordsPITRStateAsSeen(t *testing.T) {
 		t.Fatalf("baseline emitted %+v", got)
 	}
 	obs.At = obs.At.Add(time.Second)
+	if got := pitrFactTypes(recordPITR(t, st, obs)); len(got) != 1 || got[0] != DatastoreFactPostgresPITRCheckpointStarted {
+		t.Fatalf("next pass = %+v, want only the in-flight backup's start", got)
+	}
+	obs.At = obs.At.Add(time.Second)
 	if got := recordPITR(t, st, obs); len(got) != 0 {
-		t.Fatalf("the state the baseline saw re-emitted: %+v", got)
+		t.Fatalf("the same state re-emitted: %+v", got)
 	}
 }

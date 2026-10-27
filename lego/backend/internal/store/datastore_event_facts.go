@@ -120,6 +120,7 @@ type ObservedDatastoreState struct {
 	LastBackupError     string
 	LastBackupScheduled bool
 	LastBackupAt        time.Time
+	LastBackupStartedAt time.Time
 
 	// ActiveBackupName is Database.status.activeBackup: the base backup running
 	// now, the start edge of a PITR checkpoint.
@@ -411,9 +412,13 @@ func datastoreBaselineExtras(obs ObservedDatastoreState) datastoreCheckpointExtr
 	extras := datastoreCheckpointExtras{
 		LastBackupName:  obs.LastBackupName,
 		LastBackupPhase: obs.LastBackupPhase,
-		StartedBackup:   obs.ActiveBackupName,
-		WALArchiving:    obs.WALArchiving,
-		ExportsSince:    exportFloor(obs),
+		// An in-flight base backup is not marked started: its completion is
+		// not in the baseline either, so the next pass reports both ends of it.
+		// Marking it seen left a lone checkpoint_completed for the backup a new
+		// Database takes at bootstrap, which the first pass usually catches
+		// mid-flight (w5/m141 live walk).
+		WALArchiving: obs.WALArchiving,
+		ExportsSince: exportFloor(obs),
 	}
 	if obs.Recovering && obs.AvailabilityObserved && obs.Availability == "healthy" {
 		extras.RestoreOutcome = "succeeded"

@@ -89,7 +89,7 @@ The status-transition types below are no longer omitted. `datastore_event_facts`
 | `postgres_unavailable` / `postgres_available` | Ready-condition availability edge on a `Database`, latched through the checkpoint |
 | `key_value_unhealthy` / `key_value_available` | The same edge on a `KeyValue`, under Render's own asymmetric spelling |
 | `postgres_backup_completed` / `postgres_backup_failed` | A logical export reaching `available` / `failed` in `Database.status.exports[]` (w5/m141). Render defines these as "a manually triggered export"; before w5/m141 bex emitted them for CNPG base backups |
-| `postgres_pitr_checkpoint_started` / `_completed` / `_failed` | A CNPG base backup — nightly or the post-upgrade one — starting (`Database.status.activeBackup`) and finishing (`status.lastBackup`), w5/m141 |
+| `postgres_pitr_checkpoint_started` / `_completed` / `_failed` | A CNPG base backup — nightly or the post-upgrade one — starting (`Database.status.activeBackup`) and finishing (`status.lastBackup`), w5/m141. Every checkpoint reports its start: a backup that starts and ends between two control-plane passes (seconds on a small database) gets its start from `status.lastBackup.startedAt` ahead of its outcome |
 | `postgres_wal_archive_failed` | The `WALArchiving` condition (mirroring CNPG's `ContinuousArchiving`) turning False on a backup-enabled database; once per failure, re-armed on recovery, silent while suspended, upgrading or restoring (w5/m141) |
 | `postgres_restore_succeeded` / `postgres_restore_failed` | Terminal outcome of a `Database` created as a recovery target |
 | `postgres_upgrade_started` / `postgres_upgrade_succeeded` / `postgres_upgrade_failed` | Major-version transition between `spec.version` and the observed current version |
