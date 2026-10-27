@@ -18,6 +18,7 @@ package core
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -38,5 +39,20 @@ func TestCheckEnvValueRefusesUnusablePort(t *testing.T) {
 	}
 	if err := CheckEnvValue("LOG_LEVEL", "abc"); err != nil {
 		t.Errorf("a non-PORT key was judged as a port: %v", err)
+	}
+}
+
+// A KEY=value entry the kernel would refuse to exec is refused at write,
+// one byte past the limit and not before (w4/422).
+func TestCheckEnvValueRefusesAnEntryNoProcessCanStartWith(t *testing.T) {
+	const key = "BIG"
+	fits := strings.Repeat("v", MaxEnvEntryBytes-len(key)-len("=")-1)
+	if err := CheckEnvValue(key, fits); err != nil {
+		t.Fatalf("an entry at the limit = %v, want accepted", err)
+	}
+	var coded *CodedError
+	err := CheckEnvValue(key, fits+"v")
+	if !errors.As(err, &coded) || coded.Code != "ENVIRONMENT_VARIABLE_TOO_LARGE" || coded.Params["key"] != key || !strings.Contains(err.Error(), "secret file") {
+		t.Fatalf("one byte over = %v, want ENVIRONMENT_VARIABLE_TOO_LARGE naming %s", err, key)
 	}
 }

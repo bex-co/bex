@@ -57,3 +57,22 @@ func TestEnvGroupNamesFollowTheLabelRule(t *testing.T) {
 		t.Fatalf("a 100-code-point name = %v, want accepted", err)
 	}
 }
+
+// An env group var no process could start with is refused on create and on
+// a per-key write (w4/422).
+func TestEnvGroupRefusesAnEntryNoProcessCanStartWith(t *testing.T) {
+	ctx := testCtx()
+	svc := newService(newFakeStore())
+	over := strings.Repeat("v", core.MaxEnvEntryBytes)
+	var coded *core.CodedError
+	if _, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "big", EnvVars: []CreateEnvVarInput{{Key: "BIG", Value: over}}}); !errors.As(err, &coded) || coded.Code != "ENVIRONMENT_VARIABLE_TOO_LARGE" {
+		t.Fatalf("create = %v, want ENVIRONMENT_VARIABLE_TOO_LARGE", err)
+	}
+	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "small"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.SetEnvGroupVar(ctx, group.ID, "BIG", over); !errors.As(err, &coded) || coded.Code != "ENVIRONMENT_VARIABLE_TOO_LARGE" {
+		t.Fatalf("set = %v, want ENVIRONMENT_VARIABLE_TOO_LARGE", err)
+	}
+}

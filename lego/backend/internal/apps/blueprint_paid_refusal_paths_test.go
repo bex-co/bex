@@ -78,3 +78,14 @@ func TestBlueprintEnvGroupNameFollowsTheLabelRule(t *testing.T) {
 		t.Fatalf("want envVarGroups[0].name control-character refusal, got %v: %s", ptrValue(problem.Path), problem.Error)
 	}
 }
+
+// A Blueprint env var no process could start with is refused at validate
+// (w4/422).
+func TestBlueprintRefusesAnEnvEntryNoProcessCanStartWith(t *testing.T) {
+	manifest := "services:\n  - name: web\n    type: web\n    runtime: image\n    image: {url: nginx:alpine}\n    envVars:\n      - key: BIG\n        value: " + strings.Repeat("v", core.MaxEnvEntryBytes) + "\n"
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	validation, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
+	if err != nil || validation.Valid || len(validation.Errors) != 1 || !strings.Contains(validation.Errors[0].Error, "too large") {
+		t.Fatalf("validation = %+v, %v; want the size refusal", validation, err)
+	}
+}

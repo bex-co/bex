@@ -74,7 +74,8 @@ func TestPatchEnvironmentRefusesAPatchPastTheQuota(t *testing.T) {
 		},
 		{
 			name:    "env vars past 512 KiB",
-			patch:   EnvironmentPatch{EnvVars: []EnvVarPatch{{Key: "BIG", Value: big}}},
+			// Five values each under the per-entry exec limit (w4/422).
+			patch:   EnvironmentPatch{EnvVars: fiveLargeEnvVars()},
 			message: "total environment variable size limit of 524288 bytes exceeded",
 		},
 		{
@@ -197,17 +198,28 @@ func TestPatchEnvironmentRestoresTheEnvMapWhenTheFilesHalfIsOverQuota(t *testing
 // past the byte cap.
 func TestPatchEnvironmentCASRefusesAValuePastTheQuota(t *testing.T) {
 	store := newVersionedFakeSecretStore()
+	// The rest of the map already sits near the cap, so a TOKEN under the
+	// per-entry exec limit (w4/422) still pushes it past.
 	store.m[envPath("web")] = map[string]string{"TOKEN": "small"}
+	for _, e := range fiveLargeEnvVars()[:4] {
+		store.m[envPath("web")][e.Key] = e.Value
+	}
 	svc, counting := quotaService(store)
 	keys, err := svc.EnvVarKeys(context.Background(), "web")
-	if err != nil || len(keys) != 1 {
+	if err != nil || len(keys) != 5 {
 		t.Fatalf("EnvVarKeys = %v, %v", keys, err)
+	}
+	var token core.EnvVar
+	for _, k := range keys {
+		if k.Key == "TOKEN" {
+			token = k
+		}
 	}
 
 	_, err = svc.PatchEnvironment(context.Background(), "web", EnvironmentPatch{
 		SaveMode:            SaveModeDeploy,
-		ExpectedEnvRevision: &keys[0].Revision,
-		EnvVars:             []EnvVarPatch{{Key: "TOKEN", Value: strings.Repeat("x", maxSecretMapBytes)}},
+		ExpectedEnvRevision: &token.Revision,
+		EnvVars:             []EnvVarPatch{{Key: "TOKEN", Value: strings.Repeat("x", 120_000)}},
 	})
 	if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "total environment variable size limit") {
 		t.Fatalf("over-quota CAS patch = %v, want the size refusal", err)
@@ -282,4 +294,14 @@ func TestPatchEnvironmentOnAnAlreadyOverQuotaMap(t *testing.T) {
 			t.Fatal("a refused grow wrote to the store")
 		}
 	})
+}
+
+// fiveLargeEnvVars totals past the 512 KiB map cap with every entry under the
+// per-entry exec limit.
+func fiveLargeEnvVars() []EnvVarPatch {
+	out := make([]EnvVarPatch, 0, 5)
+	for _, key := range []string{"BIG_A", "BIG_B", "BIG_C", "BIG_D", "BIG_E"} {
+		out = append(out, EnvVarPatch{Key: key, Value: strings.Repeat("x", 120_000)})
+	}
+	return out
 }

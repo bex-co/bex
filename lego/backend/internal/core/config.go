@@ -166,11 +166,21 @@ func EnvValueSentence(k string) string {
 	return fmt.Sprintf("environment variable %q contains a NUL byte, which a process environment cannot carry; use a secret file for binary content", k)
 }
 
+// MaxEnvEntryBytes is Linux's MAX_ARG_STRLEN: execve refuses a process whose
+// environment holds one KEY=value string, NUL terminator included, longer than
+// this, so a service carrying one could never start an instance (w4/422).
+const MaxEnvEntryBytes = 131072
+
 // CheckEnvValue is the gate for a value a caller newly supplies. Only new
 // values are checked, so a legacy stored value stays replaceable/deletable.
 func CheckEnvValue(k, value string) error {
 	if !ValidEnvValue(value) {
 		return NewBadRequestError("ENVIRONMENT_VARIABLE_VALUE_INVALID", EnvValueSentence(k), map[string]any{"key": k})
+	}
+	if len(k)+len("=")+len(value)+len("\x00") > MaxEnvEntryBytes {
+		return NewBadRequestError("ENVIRONMENT_VARIABLE_TOO_LARGE",
+			fmt.Sprintf("environment variable %q is too large: a process cannot start with a KEY=value entry over %d bytes; use a secret file for large payloads", k, MaxEnvEntryBytes-1),
+			map[string]any{"key": k, "maxBytes": MaxEnvEntryBytes - 1})
 	}
 	if k == portEnvKey && !ValidPortValue(value) {
 		return NewBadRequestError("ENVIRONMENT_VARIABLE_PORT_INVALID", PortValueSentence, map[string]any{"key": k})
