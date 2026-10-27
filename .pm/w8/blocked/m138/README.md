@@ -17,7 +17,8 @@
 | t009 — **DONE** | Test coverage: plan × feature matrix, legacy state, upgrade/downgrade          | 40m | w8/m138/t007                                         |
 | t011 | Dashboard Logs: Request logs on Hobby show a plan notice, not "Couldn't load logs" | 30m | w8/m138/t005, w8/m138/t007 |
 | t012 | Hobby "All logs" still serves HTTP request logs: the Loki type matcher ignores noRequest | 30m | w8/m138/t005 |
-| t010 | Close out the milestone                                                        | 30m | w8/m138/t008, w8/m138/t009, w8/m138/t011, w8/m138/t012                           |
+| t013 | Hobby plan refusals (environments, network isolation, request logs) carry a machine-readable code, as webhooks do | 30m | w8/m138/t007 |
+| t010 | Close out the milestone                                                        | 30m | w8/m138/t008, w8/m138/t009, w8/m138/t011, w8/m138/t012, w8/m138/t013                           |
 
 ## Definition of done
 
