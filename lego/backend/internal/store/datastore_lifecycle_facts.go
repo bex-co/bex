@@ -45,8 +45,9 @@ func observedDatastoreLifecycleFacts(obs ObservedDatastoreState, previous datast
 }
 
 // checkpointStartedFacts reports a CNPG base backup starting — Render's
-// postgres_pitr_checkpoint_started — once per backup name. A backup that both
-// started and finished between two passes is reported by its end alone.
+// postgres_pitr_checkpoint_started — once per backup name, while it runs. A
+// backup that both started and finished between two passes gets its start
+// from backupFacts instead.
 func checkpointStartedFacts(obs ObservedDatastoreState, previous datastoreCheckpointExtras, next *datastoreCheckpointExtras) []DatastoreEventFact {
 	if obs.ActiveBackupName == "" || obs.ActiveBackupName == previous.StartedBackup {
 		return nil
@@ -56,15 +57,21 @@ func checkpointStartedFacts(obs ObservedDatastoreState, previous datastoreCheckp
 	if at.IsZero() {
 		at = obs.At
 	}
-	return []DatastoreEventFact{{
-		SourceKey:   fmt.Sprintf("%s:checkpoint:%s:started", obs.DatastoreID, obs.ActiveBackupName),
+	return []DatastoreEventFact{checkpointStartedFact(obs, obs.ActiveBackupName, at)}
+}
+
+// checkpointStartedFact is one backup's start. Its source key is per backup,
+// so the running and the finished observation of it record one row.
+func checkpointStartedFact(obs ObservedDatastoreState, backup string, at time.Time) DatastoreEventFact {
+	return DatastoreEventFact{
+		SourceKey:   fmt.Sprintf("%s:checkpoint:%s:started", obs.DatastoreID, backup),
 		WorkspaceID: obs.WorkspaceID,
 		DatastoreID: obs.DatastoreID,
 		Kind:        obs.Kind,
 		Type:        DatastoreFactPostgresPITRCheckpointStarted,
 		At:          at,
-		BackupName:  obs.ActiveBackupName,
-	}}
+		BackupName:  backup,
+	}
 }
 
 // backupFacts reports a CNPG base backup's outcome. Every base backup —
@@ -95,7 +102,24 @@ func backupFacts(obs ObservedDatastoreState, previous datastoreCheckpointExtras,
 		at = obs.At
 	}
 	scheduled := obs.LastBackupScheduled
-	return []DatastoreEventFact{{
+	var facts []DatastoreEventFact
+	// Render reports every checkpoint's start. A small database's backup often
+	// starts and ends between two passes (seconds, live in w5/m141), so report
+	// its start here, dated by CNPG's own startedAt, unless it is the backup
+	// last reported running; an earlier recorded start dedupes on its key.
+	// Compared with next, not previous: checkpointStartedFacts ran first and
+	// may have just reported this very backup still listed as active.
+	if next.StartedBackup != obs.LastBackupName {
+		startedAt := obs.LastBackupStartedAt
+		if startedAt.IsZero() {
+			startedAt = at
+		}
+		facts = append(facts, checkpointStartedFact(obs, obs.LastBackupName, startedAt))
+		if obs.ActiveBackupName == "" {
+			next.StartedBackup = obs.LastBackupName
+		}
+	}
+	return append(facts, DatastoreEventFact{
 		SourceKey:   fmt.Sprintf("%s:backup:%s", obs.DatastoreID, obs.LastBackupName),
 		WorkspaceID: obs.WorkspaceID,
 		DatastoreID: obs.DatastoreID,
@@ -105,7 +129,7 @@ func backupFacts(obs ObservedDatastoreState, previous datastoreCheckpointExtras,
 		BackupName:  obs.LastBackupName,
 		BackupError: obs.LastBackupError,
 		Scheduled:   &scheduled,
-	}}
+	})
 }
 
 // WAL-archiving states an observation and the checkpoint latch carry; ""
@@ -312,11 +336,12 @@ func stampBackupObservation(obs *ObservedDatastoreState, backup *appv1alpha1.Dat
 	obs.LastBackupPhase = backup.Phase
 	obs.LastBackupError = backup.Error
 	obs.LastBackupScheduled = backup.Scheduled
+	if parsed, err := time.Parse(time.RFC3339, backup.StartedAt); err == nil {
+		obs.LastBackupStartedAt = parsed
+	}
 	if parsed, err := time.Parse(time.RFC3339, backup.CompletedAt); err == nil {
 		obs.LastBackupAt = parsed
-		return
-	}
-	if parsed, err := time.Parse(time.RFC3339, backup.StartedAt); err == nil {
-		obs.LastBackupAt = parsed
+	} else {
+		obs.LastBackupAt = obs.LastBackupStartedAt
 	}
 }
