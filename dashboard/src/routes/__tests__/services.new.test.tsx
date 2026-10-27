@@ -524,7 +524,8 @@ describe("NewServicePage", () => {
       );
       const nameInput = screen.getByLabelText("Name");
       await user.clear(nameInput);
-      await user.type(nameInput, "x".repeat(101));
+      await user.click(nameInput);
+      await user.paste("x".repeat(101));
       expect(screen.getByText(/up to 100 characters/i)).toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: /Deploy Service/i }),

@@ -101,7 +101,8 @@ describe("CreateDatabaseDialog", () => {
     expect(submit).toBeDisabled(); // empty name
 
     // Invalid: over 100 characters — the inline error shows, submit stays off.
-    await user.type(within(dialog).getByLabelText("Name"), "x".repeat(101));
+    await user.click(within(dialog).getByLabelText("Name"));
+    await user.paste("x".repeat(101));
     expect(
       within(dialog).getByText(/up to 100 characters/i),
     ).toBeInTheDocument();
