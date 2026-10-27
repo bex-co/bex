@@ -18,13 +18,18 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	ctrl "sigs.k8s.io/controller-runtime"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/bex-co/bex/lego/operator/internal/registry"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -95,11 +100,16 @@ func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha
 	if app.Spec.UsesWebImagePorts() && app.Status.EnvPort > 0 {
 		configured, configuredPrimary = true, app.Status.EnvPort
 	}
-	if cached := app.Status.ImageNetwork; cached != nil && cached.Image == image &&
+	// A prebuilt image arrives as its tag, which the cache records as Source:
+	// the tag is re-resolved once per release, as Render re-pulls it on each
+	// deploy, never once per reconcile (w4/m243 t008).
+	if cached := app.Status.ImageNetwork; cached != nil &&
+		(cached.Image == image || cached.Source == image && cached.Revision == releaseRevision(app)) &&
 		(!configured || cached.PrimaryPort == configuredPrimary) {
 		cached.Revision = releaseRevision(app)
-		return image, int(cached.PrimaryPort), nil
+		return cached.Image, int(cached.PrimaryPort), nil
 	}
+	source := image
 	var metadata registry.ImageConfig
 	var prefix string
 	if reference, ok := r.ownImageReference(app, image); ok {
@@ -157,7 +167,7 @@ func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha
 		}
 	}
 	image = prefix + "@" + metadata.Digest
-	app.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{Image: image, Revision: releaseRevision(app), PrimaryPort: primary, Ports: ports}
+	app.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{Image: image, Source: source, Revision: releaseRevision(app), PrimaryPort: primary, Ports: ports}
 	// Future reconciles reuse exactly the manifest whose metadata was verified.
 	app.Status.ArtifactImage = image
 	return image, int(primary), nil
@@ -190,18 +200,20 @@ func privateServiceProjection(app *appv1alpha1.App, port int) (map[string]string
 
 // promoteImageNetwork runs only after readiness of the candidate revision.
 // Both stable hostnames must converge before status publishes the new address.
-func (r *AppReconciler) promoteImageNetwork(ctx context.Context, app *appv1alpha1.App, image string, port int) error {
+// moved reports that the serving network changed, so a public route that named
+// the old primary must follow it.
+func (r *AppReconciler) promoteImageNetwork(ctx context.Context, app *appv1alpha1.App, image string, port int) (moved bool, err error) {
 	if !app.Spec.HasImagePorts() {
-		return nil
+		return false, nil
 	}
 	candidate := app.Status.ImageNetwork
 	if candidate == nil || candidate.Image != image || candidate.Revision != releaseRevision(app) {
-		return fmt.Errorf("ready release has no matching image network metadata")
+		return false, fmt.Errorf("ready release has no matching image network metadata")
 	}
 	// Already serving: this reconcile's earlier passes projected both Services
 	// from ServingNetwork, so re-applying them would be a no-op round trip.
 	if equality.Semantic.DeepEqual(app.Status.ServingNetwork, candidate) {
-		return nil
+		return false, nil
 	}
 	// Project against a copy: a failed Service write must not let fail() persist
 	// candidate metadata as the active network. Service writes are sequential,
@@ -209,11 +221,36 @@ func (r *AppReconciler) promoteImageNetwork(ctx context.Context, app *appv1alpha
 	projected := app.DeepCopy()
 	projected.Status.ServingNetwork = candidate.DeepCopy()
 	if err := r.applyClusterIPService(ctx, projected, app.Name, port); err != nil {
-		return err
+		return false, err
 	}
 	if err := r.reconcileSlugService(ctx, projected, port); err != nil {
-		return err
+		return false, err
 	}
+	moved = app.Status.ServingNetwork == nil || app.Status.ServingNetwork.PrimaryPort != candidate.PrimaryPort
 	app.Status.ServingNetwork = candidate.DeepCopy()
-	return nil
+	return moved, nil
 }
+
+// imageRegistryWait keeps a deploy open while the image registry throttles or
+// fails a metadata read: a 429, 5xx or network error is transient, and Render
+// retries the pull rather than failing the deploy (w4/m243 t008).
+func (r *AppReconciler) imageRegistryWait(ctx context.Context, app *appv1alpha1.App, err error) (ctrl.Result, bool) {
+	var transient *registry.TransientError
+	if !errors.As(err, &transient) {
+		return ctrl.Result{}, false
+	}
+	logf.FromContext(ctx).Info("image registry read failed; retrying", "app", app.Name, "error", err.Error())
+	reason, msg := reasonImageRegistryUnavailable, "Waiting for the image registry to answer"
+	if transient.Status == http.StatusTooManyRequests {
+		reason, msg = reasonImageRegistryRateLimited, "Waiting for the image registry (rate limited)"
+	}
+	r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, reason, msg)
+	return ctrl.Result{RequeueAfter: min(max(transient.RetryAfter, imageRegistryRetry), imageRegistryRetryMax)}, true
+}
+
+// imageRegistryRetry and imageRegistryRetryMax bound a throttled read's
+// requeue, whatever Retry-After the registry names.
+const (
+	imageRegistryRetry    = 30 * time.Second
+	imageRegistryRetryMax = 5 * time.Minute
+)

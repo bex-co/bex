@@ -52,7 +52,11 @@ func IsReservedImagePort(port int32) bool {
 
 // ImageNetworkStatus binds a private port set to an immutable image and release.
 type ImageNetworkStatus struct {
-	Image    string `json:"image"`
+	Image string `json:"image"`
+	// Source is the reference Image was resolved from, such as a prebuilt
+	// image's tag, so one release reads the registry once (w4/m243 t008).
+	// +optional
+	Source   string `json:"source,omitempty"`
 	Revision string `json:"revision"`
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=65535
@@ -108,19 +112,17 @@ func (a *App) ServingPort() int32 {
 
 // ServicePort is the published primary port; zero means discovery is pending.
 func (a *App) ServicePort() int32 {
-	// A service's own PORT env wins over the image's choice (w4/m243); the
-	// operator zeroes EnvPort for private image-port services, whose
-	// listener set is the image's, so this cannot hijack theirs.
-	if a.Status.EnvPort > 0 {
-		return a.Status.EnvPort
-	}
 	if !a.Spec.HasImagePorts() {
 		return a.ServingPort()
 	}
+	// The serving network already carries a PORT env's choice; a candidate's
+	// PORT is published only once it is promoted (w4/m243 t007).
 	if network := a.ActiveImageNetwork(); network != nil {
 		return network.PrimaryPort
 	}
-	return 0
+	// Before discovery a web service's PORT env is the only answer; the
+	// operator zeroes EnvPort for private image-port services.
+	return a.Status.EnvPort
 }
 
 // OpenPorts is the TCP port set the stable hostnames serve: Render's
@@ -135,13 +137,19 @@ func (a *App) OpenPorts() []int32 {
 	if !a.Spec.HasImagePorts() {
 		return []int32{a.ServingPort()}
 	}
-	if a.Status.EnvPort > 0 {
-		return []int32{a.Status.EnvPort}
+	network := a.ActiveImageNetwork()
+	if network == nil {
+		if a.Status.EnvPort > 0 {
+			return []int32{a.Status.EnvPort}
+		}
+		return []int32{}
 	}
-	if network := a.ActiveImageNetwork(); network != nil {
-		return slices.Clone(network.Ports)
+	// A web service's PORT names the one port it serves; the serving network
+	// already carries it as primary.
+	if a.Spec.UsesWebImagePorts() && a.Status.EnvPort > 0 {
+		return []int32{network.PrimaryPort}
 	}
-	return []int32{}
+	return slices.Clone(network.Ports)
 }
 
 // InternalAddress returns the Render-shaped private-network address sibling

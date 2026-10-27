@@ -1,18 +1,18 @@
 # w4 · m243 — A Docker web service listens on its image's exposed port, as on Render
 
-**Worker:** worker4 **Goal:** a new Docker-built or prebuilt-image web service with no `PORT` env and no explicit port serves on its image's `EXPOSE`d port (hello-go 3000, whoami 80) instead of silently defaulting to 10000. **Status:** todo — t001–t005 done 2026-10-25 (loopx w4); live on pin `b4726243e74f` the core check holds (whoami no-`PORT` → port 80, `200` in 19 s), but QA run 661f (2026-10-26) reopened it with t007 (a port-changing or failed image deploy takes the host down, `404`) and t008 (registry 429 fails deploys; metadata re-read every reconcile)
+**Worker:** worker4 **Goal:** a new Docker-built or prebuilt-image web service with no `PORT` env and no explicit port serves on its image's `EXPOSE`d port (hello-go 3000, whoami 80) instead of silently defaulting to 10000. **Status:** blocked — t001–t005 done 2026-10-25, t007–t008 done 2026-10-26 (loopx w4); t006 waits for the release pipeline to deploy the operator, then QA replays the DoD live in `bex-canary`
 
 ## Tasks (in order)
 
 | id   | title                                     | est | depends_on      |
 | ---- | ----------------------------------------- | --- | --------------- |
-| t001 | Operator: web image-port discovery serves | 45m | —               |
-| t002 | Backend: stamp the web port mode at create | 20m | w4/m243/t001    |
-| t003 | Render parity                             | 15m | w4/m243/t002    |
-| t004 | Simplify                                  | 10m | w4/m243/t003    |
-| t005 | Test coverage                             | 20m | w4/m243/t004    |
-| t007 | Ingress follows the serving release's port until promotion (port change / failed deploy never takes the host down) | 1h15m | w4/m243/t005 |
-| t008 | Read Docker Hub once per release; a registry 429 retries instead of failing the deploy | 1h | w4/m243/t005 |
+| t001 | Operator: web image-port discovery serves — **DONE** | 45m | —               |
+| t002 | Backend: stamp the web port mode at create — **DONE** | 20m | w4/m243/t001    |
+| t003 | Render parity — **DONE** | 15m | w4/m243/t002    |
+| t004 | Simplify — **DONE** | 10m | w4/m243/t003    |
+| t005 | Test coverage — **DONE** | 20m | w4/m243/t004    |
+| t007 | Ingress follows the serving release's port until promotion (port change / failed deploy never takes the host down) — **DONE** | 1h15m | w4/m243/t005 |
+| t008 | Read Docker Hub once per release; a registry 429 retries instead of failing the deploy — **DONE** | 1h | w4/m243/t005 |
 | t006 | Closeout                                  | 10m | w4/m243/t005, t007, t008 |
 
 ## Definition of done
