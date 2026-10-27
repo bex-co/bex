@@ -2127,6 +2127,18 @@ func blueprintErrorField(message string) string {
 	if strings.Contains(message, "pre-deploy command") {
 		return ".preDeployCommand"
 	}
+	// A paid-only refusal on a free plan names "instance type", which is not
+	// the type field: the declared feature, else the plan, is what changes
+	// (w4/416).
+	if strings.Contains(message, "paid instance type") {
+		switch {
+		case strings.Contains(message, "autoscaling"):
+			return ".scaling"
+		case strings.Contains(message, "disk"):
+			return ".disk"
+		}
+		return ".plan"
+	}
 	// Hostname refusals contain "name"; they belong to domains (w8/055).
 	for _, marker := range []string{"hostname", "wildcard", "this domain", "custom domains"} {
 		if strings.Contains(strings.ToLower(message), marker) {
