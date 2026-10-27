@@ -217,6 +217,11 @@ const enEnvironments: Record<string, TranslationEntry> = {
     description:
       "Why a Manage resources row is disabled: its current environment is admin-managed",
   },
+  "environments.manageUnsaved": {
+    message: "Unsaved changes",
+    description:
+      "Accessible description of a Manage resources tab whose selection differs from the saved membership",
+  },
   "environments.manageSubmit": {
     message: "Save",
     description: "Manage-resources dialog submit button",

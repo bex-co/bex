@@ -207,6 +207,11 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     description:
       "Why a Manage resources row is disabled: its current environment is admin-managed",
   },
+  "environments.manageUnsaved": {
+    message: "未保存的更改",
+    description:
+      "Accessible description of a Manage resources tab whose selection differs from the saved membership",
+  },
   "environments.manageSubmit": {
     message: "保存",
     description: "Manage-resources dialog submit button",
@@ -316,7 +321,8 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     description: "Protected-status setting label",
   },
   "environments.protectedHint": {
-    message: "只有工作区管理员可以删除、暂停、恢复本环境的资源或为其开启维护模式。",
+    message:
+      "只有工作区管理员可以删除、暂停、恢复本环境的资源或为其开启维护模式。",
     description: "Protected-status setting explanation",
   },
   "environments.isolationLabel": {
