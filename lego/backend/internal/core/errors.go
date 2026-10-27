@@ -394,9 +394,14 @@ func CheckDatastoreName(name string) error {
 		return err
 	}
 	if label == "" || label != name {
-		return NewBadRequestError("RESOURCE_NAME_INVALID", "name must be a non-empty label without leading or trailing spaces", map[string]any{"field": "name"})
+		return NameRequiredError()
 	}
 	return nil
+}
+
+// NameRequiredError refuses an empty, blank or padded free-form name.
+func NameRequiredError() error {
+	return NewBadRequestError("RESOURCE_NAME_INVALID", "name must be a non-empty label without leading or trailing spaces", map[string]any{"field": "name"})
 }
 
 // NewForbiddenError returns a machine-readable 403 for a caller class or

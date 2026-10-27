@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -46,7 +47,10 @@ func TestBlueprintResourceSlugIsStableValidAndKeepsResourceNames(t *testing.T) {
 	if blueprintResourceSlug(long1) != a {
 		t.Error("the mapping must be stable across syncs")
 	}
-	if blueprintDisplayName("api") != "" || blueprintDisplayName("pgAdmin") != "pgAdmin" {
+	if label, _ := serviceNameLabel("api"); label != "" {
+		t.Error("a resource name keeps no display name")
+	}
+	if label, _ := serviceNameLabel("pgAdmin"); label != "pgAdmin" {
 		t.Error("only a name that is not already a resource name keeps a display name")
 	}
 }
@@ -184,5 +188,50 @@ func TestCreateKeepsSeveralNonLatinNamesAndNamesTheTypedNameOnAConflict(t *testi
 	_, err := svc.Create(ctx, CreateRequest{Name: "中文名", Image: "nginx:1"})
 	if err == nil || !strings.Contains(err.Error(), `"中文名"`) || !strings.Contains(err.Error(), "maps to resource name") {
 		t.Fatalf("duplicate create error = %v, want one naming the typed name and its resource name", err)
+	}
+}
+
+// A free-form service name is held to the label rule, never the resource-name
+// rule it is mapped onto: an over-long or control-character name gets the
+// label's own refusal, and an empty or blank one a missing-name refusal
+// (w4/417).
+func TestCreateRefusesAServiceNameWithTheLabelRule(t *testing.T) {
+	ctx := context.Background()
+	for _, tc := range []struct {
+		name, code string
+	}{
+		{strings.Repeat("é", 100), ""},
+		{strings.Repeat("x ", 50), ""},
+		{"café ☕ api", ""},
+		{strings.Repeat("é", 101), "DISPLAY_NAME_TOO_LONG"},
+		{strings.Repeat("x ", 51), "DISPLAY_NAME_TOO_LONG"},
+		{"line1\nline2", "DISPLAY_NAME_CONTROL_CHARACTER"},
+		{"", "RESOURCE_NAME_INVALID"},
+		{" ", "RESOURCE_NAME_INVALID"},
+	} {
+		svc, _ := newService(nil)
+		v, err := svc.Create(ctx, CreateRequest{Name: tc.name, Image: "nginx:1", DryRun: true})
+		var coded *core.CodedError
+		switch {
+		case tc.code == "" && err != nil:
+			t.Errorf("Create(%q) = %v, want accepted", tc.name, err)
+		case tc.code != "" && (!errors.As(err, &coded) || coded.Code != tc.code):
+			t.Errorf("Create(%q) = %v, want %s", tc.name, err, tc.code)
+		case tc.code != "" && strings.Contains(err.Error(), "at most 30"):
+			t.Errorf("Create(%q) refused with the resource-name rule: %v", tc.name, err)
+		}
+		if tc.name == "café ☕ api" && v.Name != "cafe-api" {
+			t.Errorf("Create(café ☕ api) name = %q, want the slug cafe-api", v.Name)
+		}
+	}
+}
+
+// A Blueprint service name passes the same label rule.
+func TestBlueprintRefusesAnOverlongServiceNameWithTheLabelRule(t *testing.T) {
+	svc, _ := newService(nil)
+	manifest := "services:\n  - name: " + strings.Repeat("a", 101) + "\n    type: web\n    runtime: image\n    image: {url: nginx:alpine}\n"
+	validation, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
+	if err != nil || validation.Valid || len(validation.Errors) != 1 || !strings.Contains(validation.Errors[0].Error, "at most 100") {
+		t.Fatalf("validation = %+v, %v; want the label rule's refusal", validation, err)
 	}
 }

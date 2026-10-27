@@ -2018,7 +2018,10 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (AppView, error
 	// Render's create takes a free-form name and derives the resource's slug;
 	// a name that is not a resource name becomes the service's label, mapped
 	// onto one as a Blueprint name is (w5/m153).
-	label := blueprintDisplayName(req.Name)
+	label, err := serviceNameLabel(req.Name)
+	if err != nil {
+		return AppView{}, err
+	}
 	if label != "" {
 		req.Name = blueprintResourceSlug(label)
 	}
