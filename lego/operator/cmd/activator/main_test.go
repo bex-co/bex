@@ -944,8 +944,8 @@ func TestHealthPathsWakeASleepingApp(t *testing.T) {
 }
 
 // TestHealthPathsOnMaintenanceAndUnknownHosts: maintenance still wins without
-// a wake on platform and custom hosts, and an unknown host keeps the generic
-// unavailable answer — no health path short-circuits either.
+// a wake on platform and custom hosts, and an unknown host answers the bex
+// 404 (w4/m235 t008) — no health path short-circuits either.
 func TestHealthPathsOnMaintenanceAndUnknownHosts(t *testing.T) {
 	app := maintenanceApp("")
 	cache, base := primedHostCache(t, app)
@@ -965,7 +965,7 @@ func TestHealthPathsOnMaintenanceAndUnknownHosts(t *testing.T) {
 		t.Run("unknown host"+path, func(t *testing.T) {
 			rr := httptest.NewRecorder()
 			handler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "https://nobody.onbex.co"+path, nil))
-			if rr.Code != http.StatusServiceUnavailable || rr.Body.String() != "service unavailable\n" {
+			if rr.Code != http.StatusNotFound || rr.Body.String() != unknownHostText {
 				t.Fatalf("response = %d %q", rr.Code, rr.Body.String())
 			}
 		})
@@ -1113,7 +1113,8 @@ func TestFirstDeployAnswersRetryableAndNeverWakes(t *testing.T) {
 
 // TestFirstDeployYieldsToEveryOwnerChoice: maintenance, suspension and a
 // failed or canceled first release keep their own answers; only an App still
-// on its way to its first release gets the first-deploy one.
+// on its way to its first release (or a static site's first-publish handover)
+// gets the first-deploy one.
 func TestFirstDeployYieldsToEveryOwnerChoice(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
@@ -1125,9 +1126,11 @@ func TestFirstDeployYieldsToEveryOwnerChoice(t *testing.T) {
 		{"first pod starting", func(a *appv1alpha1.App) {
 			a.Status.Phase = appv1alpha1.PhaseDeploying
 		}, "10", firstDeployText},
+		// The first publish's handover keeps the first-deploy answer, three-way
+		// negotiated, rather than the wake path's JSON (w4/m235 t008).
 		{"static handover", func(a *appv1alpha1.App) {
 			a.Spec.Type, a.Status.ActiveRevision = appv1alpha1.TypeStaticSite, "rev-1"
-		}, "5", "service not ready"},
+		}, "10", firstDeployText},
 		{"suspended", func(a *appv1alpha1.App) { a.Spec.Suspended = true }, suspendedRetryAfter, suspendedText},
 		{"failed first release", func(a *appv1alpha1.App) {
 			a.Status.Phase = appv1alpha1.PhaseFailed
@@ -1264,5 +1267,44 @@ func TestRobotsTxtExceptionIsOnlyForTheHibernatedGetPath(t *testing.T) {
 				t.Fatalf("response = %d with %d patches; want the ordinary wake", rr.Code, cl.patches.Load())
 			}
 		})
+	}
+}
+
+// The platform-host fallback route reaches here for any platform host
+// (w4/m235 t008): a private service's would-be host answers the bex 404 and is
+// never woken, and a never-served public App answers its first-deploy response.
+func TestFallbackHostsNeverWakeANonPublicApp(t *testing.T) {
+	private := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "db-proxy", Namespace: "bex-system"},
+		Spec:       appv1alpha1.AppSpec{Type: appv1alpha1.TypePrivateService, Host: "db-proxy.onbex.co"},
+		Status:     appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseHibernated, ActiveRevision: "rev-1"},
+	}
+	fresh := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "fresh", Namespace: "bex-system"},
+		Spec:       appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Host: "fresh.onbex.co"},
+	}
+	cache, base := primedHostCache(t, private, fresh)
+	cl := &countingClient{Client: base}
+	handler := newHandler(cl, cache, logr.Discard())
+
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "https://db-proxy.onbex.co/", nil))
+	if rr.Code != http.StatusNotFound || rr.Body.String() != unknownHostText {
+		t.Fatalf("private host = %d %q, want the bex 404", rr.Code, rr.Body.String())
+	}
+	rr = httptest.NewRecorder()
+	handler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "https://fresh.onbex.co/", nil))
+	if rr.Code != http.StatusServiceUnavailable || rr.Body.String() != firstDeployText {
+		t.Fatalf("new public host = %d %q, want the first-deploy response", rr.Code, rr.Body.String())
+	}
+	html := httptest.NewRequest(http.MethodGet, "https://nobody.onbex.co/", nil)
+	html.Header.Set("Accept", "text/html")
+	rr = httptest.NewRecorder()
+	handler.ServeHTTP(rr, html)
+	if rr.Code != http.StatusNotFound || !strings.Contains(rr.Body.String(), "There is no service at this address") {
+		t.Fatalf("unknown host page = %d %q", rr.Code, rr.Body.String())
+	}
+	if n := cl.patches.Load(); n != 0 {
+		t.Fatalf("fallback requests issued %d patches, want 0", n)
 	}
 }
