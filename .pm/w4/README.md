@@ -348,6 +348,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **426** — [A digest-pinned private image cached on a shared node may start for another workspace without its registry credential (code-traced; verify first)](426.md) (~1h) ← live `/qa-find-bugs w4` loop run b929, 2026-10-27 UTC (`muse.env`, pin `610021d1def6`; major if confirmed). `pullPolicyFor` gives every `@sha256` reference `IfNotPresent` (`app_controller.go:1546`), and production kubelets (v1.34.9) run without `KubeletEnsureSecretPulledImages` or `AlwaysPullImages`, so a cached image may skip the credential check. Reproduce on a dev cluster before fixing.
+
 - [ ] **425** — [A Hobby workspace's webhook create says "Fix the highlighted fields", highlights nothing, and drops the Pro-plan reason](425.md) (~45m) ← live `/qa-find-bugs w4` loop run 42ca, 2026-10-27 UTC (`muse.env`, dashboard pin `7d6ac874c51d`; major). The server answers `WEBHOOK_PLAN_LIMIT` "webhooks require the Pro plan or higher"; `webhooks/lib/errors.ts` has no mapping for it, so the form shows a generic error under a field summary with nothing highlighted, and `/webhooks` never mentions the plan. Sibling of w8/m138 t011.
 
 - [ ] **424** — [Service create silently drops cron-only `command`/`schedule` on non-cron types](424.md) (~30m) ← live `/qa-find-bugs w4` loop run e9ba, 2026-10-27 UTC (`muse.env`, production pin `b4726243e74f`; minor). GraphQL `createService` with `command` on a busybox `web_service` answered success and stored `command:""`; the deploy crash-looped. `applyOptionalCreateSpec` (`service.go:3351`) copies them only for `cron_job`, and `validateTypeSpecificCreate` has no not-applicable rule for them.
