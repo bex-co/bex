@@ -395,6 +395,10 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **209** — [A service deployed from a public non-GitHub repository (GitLab, …) gets deploys with no commit: commit resolution is GitHub-only](209.md) (~45m, minor) ← `/qa-find-bugs-cli` loop sweep 6a81 2026-10-27: `gitlab.com/pages/plain-html` deployed and served with no `commit` on its deploy
+
+- [ ] **208** — [A prebuilt-image deploy reports the linux/amd64 platform-manifest digest as `image.sha`, not the tag's index digest; a by-digest service's `ref` and `sha` disagree (w4/m243 regressed w8/m122)](208.md) (~40m, minor) ← `/qa-find-bugs-cli` loop sweep 1c70 2026-10-27, found running w8/m122/t007
+
 - [ ] **207** — [A request whose upload takes longer than 60 s is cut off with 502: the tenant edge runs Traefik v3's default 60 s `readTimeout`](207.md) (~45m + slow-client sign-off, major) ← `/qa-find-bugs-cli` loop sweep 7980 2026-10-26: a 10 KB/s upload stopped at exactly 60.0 s; long responses (420 s) are fine
 
 - [ ] **206** — [`$$` in a build or start command reaches bash as `$`: Kubernetes rewrites `$$`/`$(NAME)` in the generated Dockerfile env value and container commands, which bex never escapes](206.md) (~45m, minor) ← `/qa-find-bugs-cli` loop sweep 6646 2026-10-26: `a$$b` ran as `a$b`; env var values are unaffected
