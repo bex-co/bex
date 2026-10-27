@@ -122,3 +122,33 @@ func TestNameValidation(t *testing.T) {
 		}
 	}
 }
+
+// A project or inline environment name follows the label rule every other
+// resource name does: no control characters, at most 100 code points
+// (w4/419).
+func TestProjectNamesFollowTheLabelRule(t *testing.T) {
+	for name, code := range map[string]string{
+		"line1\nline2":           "DISPLAY_NAME_CONTROL_CHARACTER",
+		"bell\aend":              "DISPLAY_NAME_CONTROL_CHARACTER",
+		strings.Repeat("p", 101): "DISPLAY_NAME_TOO_LONG",
+	} {
+		st := newFakeProjectStore()
+		st.projects["prj-1"] = store.Project{ID: "prj-1", TenantID: "tea-a", Name: "original"}
+		svc := &Service{Base: &core.Base{Authz: allowChecker{}}, Store: st}
+		ctx := ctxAs("user-a")
+		_, createErr := svc.Create(ctx, "tea-a", name)
+		_, renameErr := svc.Rename(ctx, "prj-1", name)
+		_, envErr := svc.CreateWithEnvironments(ctx, "tea-a", "with-env", []EnvironmentInput{{Name: name}})
+		for verb, err := range map[string]error{"create": createErr, "rename": renameErr, "inline environment": envErr} {
+			var coded *core.CodedError
+			if !errors.As(err, &coded) || coded.Code != code {
+				t.Errorf("%s %q = %v, want %s", verb, name, err, code)
+			}
+		}
+	}
+	st := newFakeProjectStore()
+	svc := &Service{Base: &core.Base{Authz: allowChecker{}}, Store: st}
+	if _, err := svc.Create(ctxAs("user-a"), "tea-a", strings.Repeat("é", 100)); err != nil {
+		t.Fatalf("a 100-code-point name = %v, want accepted", err)
+	}
+}

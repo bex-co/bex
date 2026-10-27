@@ -24,7 +24,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -420,7 +419,10 @@ func (s *Service) CreateWithEnvironments(ctx context.Context, workspaceID, name 
 	if s.Store == nil {
 		return ProjectView{}, ErrProjectsUnavailable
 	}
-	name = strings.TrimSpace(name)
+	name, err = core.TrimmedLabel(name)
+	if err != nil {
+		return ProjectView{}, err
+	}
 	if name == "" {
 		return ProjectView{}, fmt.Errorf("%w: name: must not be blank", core.ErrBadRequest)
 	}
@@ -431,7 +433,11 @@ func (s *Service) CreateWithEnvironments(ctx context.Context, workspaceID, name 
 	}
 	for i := range environments {
 		e := &environments[i]
-		e.Name = strings.TrimSpace(e.Name)
+		label, err := core.TrimmedLabel(e.Name)
+		if err != nil {
+			return ProjectView{}, fmt.Errorf("invalid request body at /environments/%d/name: %w", i, err)
+		}
+		e.Name = label
 		if e.Name == "" {
 			return ProjectView{}, fmt.Errorf("%w: invalid request body at /environments/%d/name", core.ErrBadRequest, i)
 		}
@@ -548,7 +554,9 @@ func (s *Service) Rename(ctx context.Context, id, name string) (ProjectView, err
 	if err != nil {
 		return ProjectView{}, err
 	}
-	name = strings.TrimSpace(name)
+	if name, err = core.TrimmedLabel(name); err != nil {
+		return ProjectView{}, err
+	}
 	if name == "" {
 		return ProjectView{}, fmt.Errorf("%w: name: must not be blank", core.ErrBadRequest)
 	}

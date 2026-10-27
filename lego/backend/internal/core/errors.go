@@ -384,6 +384,17 @@ func CheckLabel(value string) (string, error) {
 	return value, nil
 }
 
+// TrimmedLabel trims value and holds what remains to CheckLabel, so a
+// whitespace-only name stays the caller's own "required" refusal rather than
+// a control-character one (w4/419). Blank returns "".
+func TrimmedLabel(value string) (string, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "", nil
+	}
+	return CheckLabel(value)
+}
+
 // CheckDatastoreName is the one check a Postgres or Key Value name passes on
 // every way in: create, rename, recovery and Blueprint parsing. The name is the
 // resource's mutable label (its dpg-/red- id is the identity): it follows

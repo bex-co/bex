@@ -29,7 +29,6 @@ import (
 	"fmt"
 	"log"
 	"slices"
-	"strings"
 	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -1393,7 +1392,10 @@ func (s *Service) applyACL(ctx context.Context, e store.Environment, protectedSt
 // one check CreateWithACL and Update (w4/m30) both need before writing,
 // factored out so the two verbs cannot drift on it.
 func validateEnvironmentName(name string) (string, error) {
-	name = strings.TrimSpace(name)
+	name, err := core.TrimmedLabel(name)
+	if err != nil {
+		return "", err
+	}
 	if name == "" {
 		return "", fmt.Errorf("%w: name: must not be blank", core.ErrBadRequest)
 	}
