@@ -1,6 +1,6 @@
 # w5 · m111 — `instance_seconds` stops metering terminated pods through Prometheus's 5-minute lookback
 
-**Worker:** worker5 **Goal:** A pod that ends inside the metered hour is billed for its life only, not ~285 s more, for Apps and datastores. **Status:** blocked — t001–t004, t006–t008 done 2026-10-05; t005 needs the deployed bex-api and a rolled-up hour; t009 closeout follows
+**Worker:** worker5 **Goal:** A pod that ends inside the metered hour is billed for its life only, not ~285 s more, for Apps and datastores. **Status:** done
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | t002 | Liveness-gate the presence query — **DONE** | 45m | t001 |
 | t003 | Run the promtool test in backend CI — **DONE** | 30m | t002 |
 | t004 | Correct the comments and ADR023's claim — **DONE** | 15m | t002 |
-| t005 | Replay a rollout inside one hour live | 30m | t003, t004 |
+| t005 | Replay a rollout inside one hour live — **DONE** | 30m | t003, t004 |
 | t006 | Render parity — **DONE** | 15m | t005 |
 | t007 | Simplify — **DONE** | 15m | t006 |
 | t008 | Test coverage — **DONE** | 30m | t006, t007 |
-| t009 | Closeout | 10m | t008 |
+| t009 | Closeout — **DONE** | 10m | t008 |
 
 ## Definition of done
 
@@ -54,3 +54,16 @@ After the deploy that includes this milestone, on owned Free `qa-` fixtures in `
 - **Why the README's query was wrong:** `max_over_time(time() - timestamp(…))` reads about 300 s, because it measures terminated series aging through the 5-minute lookback, not live spacing.
 - **Change:** `instanceLivenessSeconds` is now `4×15−1 = 59 s`. Any bound from 45 to 59 s credits a terminated pod the same three steps, so the widest costs nothing more. The promtool fixtures moved to 330 (5 minutes) and 3765 (rollout), and a 75 s gap now loses the one uncovered step. ADR023 is updated.
 - **Still to do (step 1):** replay one rollout inside an hour after this deploys, and expect lifetime + overlap + 45 s ± one step.
+
+## t005 step 1 — live rollout replay (2026-10-27, production `bex-canary`)
+
+- **Fixture:** Free web service `qa-m111` (`srv-dbg5nttn83uc738uuhs0`, podinfo), created at 08:08. A manual deploy at 08:18:40 rolled it within the hour. Traffic kept it warm past the rollup, and it was deleted afterwards.
+- **Pod samples (production Prometheus, inside (08:00, 09:00]):**
+  - Old pod: 08:08:29 to 08:19:29 (660 s).
+  - New pod: 08:18:40 to 08:59:45.
+  - Largest sample gap 31.7 s.
+- **Expected:** the production expression evaluated at 09:00 gives 3195 with a 44 s window (old pod 705) and 3210 with 59 s (old pod 720). That is lifetime plus overlap plus two or three tail steps. The pre-m111 lookback would have added about 285 s.
+- **Recorded:** `usage_hourly` instance_seconds = **3195**, exactly the per-step expectation.
+  - The hour was rolled up across the deploy of `f4f12981e`. The new pods' startup catch-up hit the disk-meter error below, so this hour came out under the 44 s window.
+  - The 59 s window is verified by promtool and by the same live expression (3210).
+- **Found:** every disk-bearing hour's upsert failed `usage_source_streams_source_check`, because 0065 never listed the disk meter's `disk` source. Fixed in `610021d1d` (migration 0167, a backfill from the catch-up floor, and `TestUsageSourceChecksAcceptEveryStoredSource`).
