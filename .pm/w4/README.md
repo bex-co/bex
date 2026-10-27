@@ -348,6 +348,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **427** — [A Free Postgres or Key Value is charged for storage: the storage meter reaches Stripe with no Free-tier exemption](427.md) (~45m) ← live `/qa-find-bugs w4` loop run c5dd, 2026-10-27 UTC (`muse.env`, pin `610021d1def6`; major, billing parity). Billing shows the Free Postgres `qa-20261017-64552e-pg14` accruing $0.01; `stripeMeterEvent` skips Free `instance_seconds` but sends `storage_gb_seconds` as `storage_gb_hours` for every tier (`billing/stripe.go:441`), and the estimate prices it too (`pricing.go:369`).
+
 - [ ] **426** — [A digest-pinned private image cached on a shared node may start for another workspace without its registry credential (code-traced; verify first)](426.md) (~1h) ← live `/qa-find-bugs w4` loop run b929, 2026-10-27 UTC (`muse.env`, pin `610021d1def6`; major if confirmed). `pullPolicyFor` gives every `@sha256` reference `IfNotPresent` (`app_controller.go:1546`), and production kubelets (v1.34.9) run without `KubeletEnsureSecretPulledImages` or `AlwaysPullImages`, so a cached image may skip the credential check. Reproduce on a dev cluster before fixing.
 
 - [ ] **425** — [A Hobby workspace's webhook create says "Fix the highlighted fields", highlights nothing, and drops the Pro-plan reason](425.md) (~45m) ← live `/qa-find-bugs w4` loop run 42ca, 2026-10-27 UTC (`muse.env`, dashboard pin `7d6ac874c51d`; major). The server answers `WEBHOOK_PLAN_LIMIT` "webhooks require the Pro plan or higher"; `webhooks/lib/errors.ts` has no mapping for it, so the form shows a generic error under a field summary with nothing highlighted, and `/webhooks` never mentions the plan. Sibling of w8/m138 t011.
