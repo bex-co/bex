@@ -317,7 +317,7 @@ type updatePostgresArgs struct {
 	// update_postgres_disk_autoscaling (w1/m74): all four are PostgresPatch
 	// fields REST already carries in this same PATCH body, and dryRun (which
 	// three of them had) is already this tool's own preview path.
-	Name                  *string                  `json:"name,omitempty" jsonschema:"the new display name (lowercase letters, digits, and hyphens; at most 30 characters). A rename changes only the label — the id, connection details, and data plane stay put"`
+	Name                  *string                  `json:"name,omitempty" jsonschema:"the new name: a free-form label of at most 100 characters, no control characters, not blank or padded. A rename changes only the label — the id, connection details, and data plane stay put"`
 	Plan                  *string                  `json:"plan,omitempty" jsonschema:"the target instance plan (free, basic-256mb, basic-1gb). A rolling update, not a data-loss operation — and it CHANGES WHAT THE WORKSPACE IS BILLED"`
 	Version               *string                  `json:"version,omitempty" jsonschema:"the target PostgreSQL major version; must be a supported major newer than the running version and at least 16 (upgrades to 14 or 15 are refused). The database is OFFLINE during CNPG's pg_upgrade, and durable plans require a completed physical backup first"`
 	DiskSizeGB            *int32                   `json:"diskSizeGB,omitempty" jsonschema:"requested logical storage in GB; grow-only, and fixed at 1 GB on free"`

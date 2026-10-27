@@ -80,7 +80,7 @@ type updateKeyValueArgs struct {
 	// Name and Plan folded in from rename_key_value / update_key_value_plan
 	// (w1/m74): both are KeyValuePatch fields REST carries in this same PATCH
 	// body, and dryRun — which both had — is already this tool's preview path.
-	Name             *string                  `json:"name,omitempty" jsonschema:"the new display name (lowercase letters, digits, and hyphens; at most 30 characters). A rename changes only the label — the id, connection details, and data plane stay put"`
+	Name             *string                  `json:"name,omitempty" jsonschema:"the new name: a free-form label of at most 100 characters, no control characters, not blank or padded. A rename changes only the label — the id, connection details, and data plane stay put"`
 	Plan             *string                  `json:"plan,omitempty" jsonschema:"the target instance plan (free, starter, standard). The operator reconciles the new resource requests on the next sync, and it CHANGES WHAT THE WORKSPACE IS BILLED"`
 	MaxmemoryPolicy  *string                  `json:"maxmemoryPolicy,omitempty" jsonschema:"the eviction policy at the memory budget, e.g. noeviction (job queue) or allkeys-lru (cache); underscore or hyphen forms both accepted"`
 	PersistenceMode  *string                  `json:"persistenceMode,omitempty" jsonschema:"the durability setting: journal-snapshot (AOF + RDB, durable), snapshot (RDB only), or off (in-memory cache, lost on restart); underscore or hyphen forms both accepted"`
