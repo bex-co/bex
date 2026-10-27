@@ -27,25 +27,26 @@ import (
 )
 
 // rest.go is the REST fragment, verified against Render's registryCredential
-// endpoints (POST/GET https://api.render.com/v1/registrycredentials — live
-// docs check, 2026-07-13). Render's object nests a "registry" enum
-// (GITHUB|GITLAB|DOCKER|GOOGLE_ARTIFACT|AWS_ECR) rather than a raw hostname;
-// bex deliberately generalizes this to `host` (an arbitrary registry
-// hostname, e.g. "ghcr.io") because the operator's pull-secret mechanism is
-// genuinely provider-agnostic dockerconfigjson — a closed enum would either
-// under-serve self-hosted registries or need per-provider host-mapping data
-// (account/region for AWS_ECR, project for GOOGLE_ARTIFACT) this milestone
-// has no evidence Render even fully documents. `authToken` (the secret) and
-// `name` match Render's field names exactly; `ownerId` matches Render's
-// workspace-scoping convention (apps/keyvalue's create pattern).
+// endpoints (POST/GET https://api.render.com/v1/registrycredentials). Render
+// names the registry with an enum (GITHUB|GITLAB|DOCKER|GOOGLE_ARTIFACT|
+// AWS_ECR); bex stores a registry host, which the operator's provider-agnostic
+// dockerconfigjson pull secret needs. Both are accepted and both are returned
+// (w4/420, reversing w8/135's host-only dialect on parity grounds): Render's
+// exact body works unchanged, and `host` stays the extension that also
+// reaches self-hosted registries, whose reads omit `registry`. `authToken`
+// (the secret) and `name` match Render's field names exactly; `ownerId`
+// matches Render's workspace-scoping convention.
 
 // credentialWire is the wire shape every surface renders — Render-shaped
 // (id/name/username/ownerId/expiresAt/createdAt/updatedAt) plus bex's own
 // `host` (see the divergence note above) and `status` (w2/m14/t007 expiry
 // surfacing; Render has no equivalent field). Never carries the secret.
 type credentialWire struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// Registry is Render's enum for Host; empty (omitted) for a self-hosted
+	// registry Render has no value for.
+	Registry  string `json:"registry,omitempty"`
 	Host      string `json:"host"`
 	Username  string `json:"username"`
 	OwnerID   string `json:"ownerId,omitempty"`
@@ -57,7 +58,7 @@ type credentialWire struct {
 
 func toWire(v CredentialView) credentialWire {
 	return credentialWire{
-		ID: v.ID, Name: v.Name, Host: v.Host, Username: v.Username, OwnerID: v.OwnerID,
+		ID: v.ID, Name: v.Name, Registry: renderRegistry(v.Host), Host: v.Host, Username: v.Username, OwnerID: v.OwnerID,
 		ExpiresAt: v.ExpiresAt, Status: v.Status, CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt,
 	}
 }
@@ -74,6 +75,7 @@ func toWireList(views []CredentialView) []credentialWire {
 type createCredentialRequest struct {
 	OwnerID   string `json:"ownerId"`
 	Name      string `json:"name"`
+	Registry  string `json:"registry"`
 	Host      string `json:"host"`
 	Username  string `json:"username"`
 	AuthToken string `json:"authToken"`
@@ -87,6 +89,9 @@ type createCredentialRequest struct {
 // "absent" (nil, leave unchanged) is distinct from an explicit "" (clear the
 // expiry) or an RFC3339 value (set it).
 type patchCredentialRequest struct {
+	// Registry is accepted as Render sends it, and must name the stored
+	// host's registry: a credential's host never changes.
+	Registry  *string `json:"registry"`
 	Name      *string `json:"name"`
 	Username  *string `json:"username"`
 	AuthToken *string `json:"authToken"`
@@ -124,11 +129,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		// validator, so one this handler ignored would return an unfiltered
 		// list the caller believes is filtered (w5/163). Same helpers and order
 		// as the disks and Key Value lists.
-		if q.Has("type") {
-			// Render's type is its registry enum, which bex replaces with an
-			// arbitrary host (see the note at the top of this file): refuse it
-			// by name rather than answer every credential.
-			return nil, fmt.Errorf("%w: type filters by Render's registry enum, which bex does not store (credentials carry a registry host); filter by name or username instead", core.ErrBadRequest)
+		types := core.QueryNameList(r.URL, "type")
+		for _, registry := range types {
+			if err := checkRenderRegistry("type", registry); err != nil {
+				return nil, err
+			}
 		}
 		names := core.QueryNameList(r.URL, "name")
 		usernames := core.QueryNameList(r.URL, "username")
@@ -145,7 +150,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return nil, err
 		}
 		views = core.Filter(views, func(v CredentialView) bool {
-			return (len(names) == 0 || slices.Contains(names, v.Name)) &&
+			return (len(types) == 0 || slices.Contains(types, renderRegistry(v.Host))) &&
+				(len(names) == 0 || slices.Contains(names, v.Name)) &&
 				(len(usernames) == 0 || slices.Contains(usernames, v.Username)) &&
 				created.Contains(v.CreatedAt) && updated.Contains(v.UpdatedAt)
 		})
@@ -158,9 +164,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/registrycredentials", func(w http.ResponseWriter, r *http.Request) {
 		var req createCredentialRequest
 		if err := core.DecodeJSON(r, &req); err != nil {
-			// The strict decoder's message is safe and names the field, e.g.
-			// Render's `registry`, which bex's wire has no place for (w8/135).
 			core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
+			return
+		}
+		host, err := createHost(req.Registry, req.Host)
+		if err != nil {
+			core.WriteErr(w, err)
 			return
 		}
 		expiresAt, err := parseExpiresAt(req.ExpiresAt)
@@ -169,7 +178,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 		v, err := s.Create(r.Context(), CreateRequest{
-			OwnerID: req.OwnerID, Name: req.Name, Host: req.Host, Username: req.Username,
+			OwnerID: req.OwnerID, Name: req.Name, Host: host, Username: req.Username,
 			Secret: req.AuthToken, ExpiresAt: expiresAt,
 		})
 		if err != nil {
@@ -191,10 +200,23 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("PATCH /v1/registrycredentials/{id}", func(w http.ResponseWriter, r *http.Request) {
 		var req patchCredentialRequest
 		if err := core.DecodeJSON(r, &req); err != nil {
-			// The strict decoder's message is safe and names the field, e.g.
-			// Render's `registry`, which bex's wire has no place for (w8/135).
 			core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
 			return
+		}
+		if req.Registry != nil {
+			if err := checkRenderRegistry("registry", *req.Registry); err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+			current, err := s.Get(restOwnerScoped(r), r.PathValue("id"))
+			if err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+			if renderRegistry(current.Host) != *req.Registry {
+				core.WriteErr(w, fmt.Errorf("%w: registry %s does not match this credential's host %q; create a new credential for another registry", core.ErrBadRequest, *req.Registry, current.Host))
+				return
+			}
 		}
 		upd := UpdateRequest{Name: req.Name, Username: req.Username, Secret: req.AuthToken}
 		if req.ExpiresAt != nil {

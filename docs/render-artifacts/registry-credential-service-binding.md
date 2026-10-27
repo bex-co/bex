@@ -26,7 +26,7 @@ For a Dockerfile build, the operator copies the explicitly bound external-regist
 
 The w2/m59 closure was verified live on 2026-07-19 with private Git, a private base image, and an adversarial Dockerfile. The resulting signed image reached `Running`; the 38/38 matrix also proved that the per-App output credential could access its own repository but not the private-base repository, and that unsigned and post-signature-tampered images were denied. See [`verify-build-isolation.sh`](../../scripts/verify-build-isolation.sh) and [ADR039](../ADR039-operator-audit-and-platform-reuse.md).
 
-This closes the repository-Docker divergence recorded by w6/m31. bex still accepts arbitrary registry hosts instead of Render's closed provider enum.
+This closes the repository-Docker divergence recorded by w6/m31. Since w4/420 bex accepts Render's provider enum (`registry`) as well as an arbitrary registry `host`, and returns both.
 
 ## Docker-build live proof
 
