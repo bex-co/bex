@@ -734,3 +734,23 @@ func TestCreateWithACLWithoutListKeepsSeed(t *testing.T) {
 		t.Errorf("explicit empty list stored %+v, want deny-all []", e.IPAllowList)
 	}
 }
+
+// An environment name follows the label rule (w4/419).
+func TestEnvironmentNamesFollowTheLabelRule(t *testing.T) {
+	for name, code := range map[string]string{
+		"env\ntwo":                "DISPLAY_NAME_CONTROL_CHARACTER",
+		"bell\aenv":               "DISPLAY_NAME_CONTROL_CHARACTER",
+		strings.Repeat("e", 5000): "DISPLAY_NAME_TOO_LONG",
+	} {
+		var coded *core.CodedError
+		if _, err := validateEnvironmentName(name); !errors.As(err, &coded) || coded.Code != code {
+			t.Errorf("validateEnvironmentName(%q) = %v, want %s", name, err, code)
+		}
+	}
+	if got, err := validateEnvironmentName(" staging "); err != nil || got != "staging" {
+		t.Fatalf("padded name = %q, %v; want trimmed", got, err)
+	}
+	if _, err := validateEnvironmentName(" \t "); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "must not be blank") {
+		t.Fatalf("blank name = %v, want the blank refusal", err)
+	}
+}

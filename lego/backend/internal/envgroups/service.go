@@ -420,7 +420,10 @@ func (s *Service) createEnvGroupAuthorized(ctx context.Context, req CreateEnvGro
 	if err := s.requireGroups(); err != nil {
 		return EnvGroupView{}, err
 	}
-	name := strings.TrimSpace(req.Name)
+	name, lerr := core.TrimmedLabel(req.Name)
+	if lerr != nil {
+		return EnvGroupView{}, lerr
+	}
 	if name == "" {
 		return EnvGroupView{}, fmt.Errorf("%w: env group name is required", core.ErrBadRequest)
 	}
@@ -750,7 +753,9 @@ func (s *Service) RenameEnvGroup(ctx context.Context, gid, name string) (EnvGrou
 	if err != nil {
 		return EnvGroupView{}, err
 	}
-	name = strings.TrimSpace(name)
+	if name, err = core.TrimmedLabel(name); err != nil {
+		return EnvGroupView{}, err
+	}
 	if name == "" {
 		return EnvGroupView{}, fmt.Errorf("%w: env group name is required", core.ErrBadRequest)
 	}
@@ -1402,7 +1407,10 @@ func (s *Service) ApplyEnvGroup(ctx context.Context, name string, literals map[s
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return err
 	}
-	name = strings.TrimSpace(name)
+	name, err := core.TrimmedLabel(name)
+	if err != nil {
+		return err
+	}
 	if name == "" {
 		return fmt.Errorf("%w: env group name is required", core.ErrBadRequest)
 	}
