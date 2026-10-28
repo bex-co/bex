@@ -24,6 +24,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -191,5 +192,122 @@ func TestKeyValueReconcileProjectsIsolationOntoNewbornStore(t *testing.T) {
 	np := &networkingv1.NetworkPolicy{}
 	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "cache-environment-ingress"}, np); err != nil {
 		t.Fatalf("isolated store has no peer policy: %v", err)
+	}
+}
+
+func TestKeyValueInternalProxyLabelsKeepTheBackendSeparate(t *testing.T) {
+	kv := isolatedKV("env-a")
+	got := keyValueInternalProxyPodLabels(kv)
+	for key, want := range map[string]string{
+		labelKeyValueInternalProxy: kv.Name,
+		labelWorkspace:             "tea-a",
+		labelEnvironment:           "env-a",
+		labelNetworkIsolation:      "env-a",
+	} {
+		if got[key] != want {
+			t.Fatalf("proxy label %s = %q, want %q", key, got[key], want)
+		}
+	}
+	if _, present := got[labelKeyValue]; present {
+		t.Fatal("the internal proxy would be selected by its own backend Service")
+	}
+	delete(kv.Labels, labelNetworkIsolation)
+	if _, present := keyValueInternalProxyPodLabels(kv)[labelNetworkIsolation]; present {
+		t.Fatal("an ordinary proxy still carries the isolation label")
+	}
+}
+
+func TestKeyValueInternalProxyPolicyProtectsBothConnectionHops(t *testing.T) {
+	scheme := keyValueBackupTestScheme(t)
+	kv := isolatedKV("env-a")
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv).Build()
+	r := &KeyValueReconciler{Client: cl, Scheme: scheme}
+	get := func(suffix string) *networkingv1.NetworkPolicy {
+		t.Helper()
+		np := &networkingv1.NetworkPolicy{}
+		if err := cl.Get(t.Context(), client.ObjectKey{Namespace: kv.Namespace, Name: kv.Name + suffix}, np); err != nil {
+			t.Fatal(err)
+		}
+		return np
+	}
+	for _, env := range []string{"env-a", "env-b", ""} {
+		if env == "" {
+			delete(kv.Labels, labelNetworkIsolation)
+		} else {
+			kv.Labels[labelNetworkIsolation] = env
+		}
+		if err := r.reconcileKeyValueInternalProxyPolicy(t.Context(), kv); err != nil {
+			t.Fatal(err)
+		}
+		front := get("-internal-proxy-environment-ingress")
+		back := get("-internal-proxy-backend-ingress")
+		if front.Spec.PodSelector.MatchLabels[labelKeyValueInternalProxy] != kv.Name || back.Spec.PodSelector.MatchLabels[labelKeyValue] != kv.Name {
+			t.Fatal("the two policies do not select the front and backend separately")
+		}
+		if len(front.Spec.PolicyTypes) != 2 || len(front.Spec.Egress) != 2 || len(front.Spec.Egress[0].To) != 1 {
+			t.Fatalf("proxy needs ingress and exact-backend egress: %+v", front.Spec)
+		}
+		for _, tc := range []struct {
+			name, ns  string
+			podLabels map[string]string
+			want      bool
+		}{
+			{"env-a client", kv.Namespace, map[string]string{labelNetworkIsolation: "env-a"}, env == "env-a"},
+			{"env-b client", kv.Namespace, map[string]string{labelNetworkIsolation: "env-b"}, env == "env-b"},
+			{"ordinary client", kv.Namespace, map[string]string{}, env == ""},
+			{"own backup", kv.Namespace, map[string]string{labelKeyValue: kv.Name, "app.bex.co/component": keyValueBackupComponent}, true},
+			{"other backup", kv.Namespace, map[string]string{labelKeyValue: "other", "app.bex.co/component": keyValueBackupComponent}, env == ""},
+			{"other workspace", "tea-other", map[string]string{labelNetworkIsolation: env}, false},
+		} {
+			t.Run(env+"/"+tc.name, func(t *testing.T) {
+				allowed := false
+				for _, peer := range front.Spec.Ingress[0].From {
+					allowed = allowed || keyValueInternalPolicyPeerMatches(t, front.Namespace, peer, tc.ns, tc.podLabels)
+				}
+				if allowed != tc.want {
+					t.Fatalf("front ingress = %v, want %v", allowed, tc.want)
+				}
+			})
+		}
+		assertKeyValueInternalBridgeBoundaries(t, kv, front, back)
+	}
+}
+
+// A PodSelector without NamespaceSelector admits only pods from this namespace.
+func keyValueInternalPolicyPeerMatches(t *testing.T, policyNS string, peer networkingv1.NetworkPolicyPeer, ns string, podLabels map[string]string) bool {
+	t.Helper()
+	if peer.NamespaceSelector != nil || peer.IPBlock != nil || peer.PodSelector == nil {
+		t.Fatalf("unexpected broad peer: %+v", peer)
+	}
+	selector, err := metav1.LabelSelectorAsSelector(peer.PodSelector)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return policyNS == ns && selector.Matches(k8slabels.Set(podLabels))
+}
+
+func assertKeyValueInternalBridgeBoundaries(t *testing.T, kv *appv1alpha1.KeyValue, front, back *networkingv1.NetworkPolicy) {
+	t.Helper()
+	dns := front.Spec.Egress[1]
+	if len(dns.To) != 1 || dns.To[0].PodSelector != nil || dns.To[0].NamespaceSelector.MatchLabels["kubernetes.io/metadata.name"] != "kube-system" || len(dns.Ports) != 2 {
+		t.Fatalf("DNS is not restricted to kube-system: %+v", dns)
+	}
+	for _, port := range dns.Ports {
+		if port.Port.IntValue() != 53 {
+			t.Fatalf("DNS rule opens another port: %+v", port)
+		}
+	}
+	backendPeer := front.Spec.Egress[0].To[0]
+	if !keyValueInternalPolicyPeerMatches(t, front.Namespace, backendPeer, kv.Namespace, map[string]string{labelKeyValue: kv.Name}) || keyValueInternalPolicyPeerMatches(t, front.Namespace, backendPeer, kv.Namespace, map[string]string{labelKeyValue: "other"}) || keyValueInternalPolicyPeerMatches(t, front.Namespace, backendPeer, "tea-other", map[string]string{labelKeyValue: kv.Name}) {
+		t.Fatal("the proxy can reach a backend outside its own store")
+	}
+	proxyPeer := back.Spec.Ingress[0].From[0]
+	if !keyValueInternalPolicyPeerMatches(t, back.Namespace, proxyPeer, kv.Namespace, map[string]string{labelKeyValueInternalProxy: kv.Name}) || keyValueInternalPolicyPeerMatches(t, back.Namespace, proxyPeer, kv.Namespace, map[string]string{labelKeyValueInternalProxy: "other"}) {
+		t.Fatal("backend admission does not restrict the front to this store")
+	}
+	for _, ports := range [][]networkingv1.NetworkPolicyPort{front.Spec.Ingress[0].Ports, front.Spec.Egress[0].Ports, back.Spec.Ingress[0].Ports} {
+		if len(ports) != 2 || ports[0].Port.IntValue() != kvPort || ports[1].Port.IntValue() != kvTLSPort {
+			t.Fatalf("bridge opens ports beyond plaintext and TLS Valkey: %+v", ports)
+		}
 	}
 }
