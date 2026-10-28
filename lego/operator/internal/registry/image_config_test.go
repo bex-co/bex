@@ -63,18 +63,64 @@ func TestReadImageConfigPinsManifestAndPrivatePorts(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if result.Digest != digest || !reflect.DeepEqual(result.TCPPorts, []int32{8123, 9000, 9009}) {
+		if result.Digest != digest || result.PlatformDigest != digest || !reflect.DeepEqual(result.TCPPorts, []int32{8123, 9000, 9009}) {
 			t.Fatalf("metadata = %+v", result)
 		}
 	}
 }
 
 func TestReadImageConfigResolvesPlatformIndex(t *testing.T) {
-	server, digest, routes := imageMetadataFixture(t)
-	routes["/v2/owned/clickhouse/manifests/gen-1"] = []byte(fmt.Sprintf(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json","manifests":[{"digest":"sha256:unused","platform":{"os":"linux","architecture":"arm64"}},{"digest":%q,"platform":{"os":"linux","architecture":"amd64"}}]}`, digest))
-	result, err := ReadImageConfig(context.Background(), server, "https://registry.test", "owned/clickhouse", "gen-1", "Basic fixture")
-	if err != nil || result.Digest != digest {
-		t.Fatalf("platform metadata = %+v, %v", result, err)
+	for _, nested := range []bool{false, true} {
+		t.Run(fmt.Sprintf("nested=%v", nested), func(t *testing.T) {
+			server, platform, routes := imageMetadataFixture(t)
+			index := []byte(fmt.Sprintf(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json","manifests":[{"digest":"sha256:unused","platform":{"os":"linux","architecture":"arm64"}},{"digest":%q,"platform":{"os":"linux","architecture":"amd64"}}]}`, platform))
+			top := fmt.Sprintf("sha256:%x", sha256.Sum256(index))
+			routes["/v2/owned/clickhouse/manifests/"+top] = index
+			if nested {
+				index = []byte(fmt.Sprintf(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json","manifests":[{"digest":%q,"platform":{"os":"linux","architecture":"amd64"}}]}`, top))
+				top = fmt.Sprintf("sha256:%x", sha256.Sum256(index))
+				routes["/v2/owned/clickhouse/manifests/"+top] = index
+			}
+			routes["/v2/owned/clickhouse/manifests/gen-1"] = index
+			for _, reference := range []string{"gen-1", top} {
+				result, err := ReadImageConfig(t.Context(), server, "https://registry.test", "owned/clickhouse", reference, "Basic fixture")
+				if err != nil || result.Digest != top || result.PlatformDigest != platform || !reflect.DeepEqual(result.TCPPorts, []int32{8123, 9000, 9009}) {
+					t.Fatalf("reference=%s metadata=%+v err=%v want top=%s platform=%s", reference, result, err, top, platform)
+				}
+			}
+		})
+	}
+}
+
+func TestReadImageConfigIndexStillVerifiesEveryFetchedDigest(t *testing.T) {
+	for _, scenario := range []string{"outer index", "child index", "platform manifest", "config"} {
+		t.Run(scenario, func(t *testing.T) {
+			server, platform, routes := imageMetadataFixture(t)
+			child := []byte(fmt.Sprintf(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json","manifests":[{"digest":%q,"platform":{"os":"linux","architecture":"amd64"}}]}`, platform))
+			childDigest := fmt.Sprintf("sha256:%x", sha256.Sum256(child))
+			routes["/v2/owned/clickhouse/manifests/"+childDigest] = child
+			outer := []byte(fmt.Sprintf(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json","manifests":[{"digest":%q,"platform":{"os":"linux","architecture":"amd64"}}]}`, childDigest))
+			top := fmt.Sprintf("sha256:%x", sha256.Sum256(outer))
+			routes["/v2/owned/clickhouse/manifests/"+top] = outer
+			switch scenario {
+			case "outer index":
+				routes["/v2/owned/clickhouse/manifests/"+top] = []byte(`{}`)
+			case "child index":
+				routes["/v2/owned/clickhouse/manifests/"+childDigest] = []byte(`{}`)
+			case "platform manifest":
+				routes["/v2/owned/clickhouse/manifests/"+platform] = []byte(`{}`)
+			case "config":
+				for path := range routes {
+					if strings.Contains(path, "/blobs/") {
+						routes[path] = []byte(`{}`)
+					}
+				}
+			}
+			result, err := ReadImageConfig(t.Context(), server, "https://registry.test", "owned/clickhouse", top, "Basic fixture")
+			if err == nil || !strings.Contains(err.Error(), "digest mismatch") || !reflect.DeepEqual(result, ImageConfig{}) {
+				t.Fatalf("tampering returned partial metadata=%+v err=%v", result, err)
+			}
+		})
 	}
 }
 
@@ -102,7 +148,7 @@ func TestReadImageConfigFailsClosed(t *testing.T) {
 				routes["/v2/owned/clickhouse/manifests/"+digest] = make([]byte, boundedhttp.MaxBodyBytes+1)
 			}
 			result, err := ReadImageConfig(context.Background(), server, "https://registry.test", repo, reference, auth)
-			if err == nil || result.Digest != "" || len(result.TCPPorts) != 0 {
+			if err == nil || !reflect.DeepEqual(result, ImageConfig{}) {
 				t.Fatalf("failed-open metadata = %+v, %v", result, err)
 			}
 		})
