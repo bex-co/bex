@@ -212,14 +212,21 @@ type ListRequest struct {
 }
 
 // TranscriptPart is one durable conversation part in the poll-shaped transcript
-// read (ADR065 D2). Part is the verbatim stored payload — valid JSON from both
-// writers (the gateway tee and the Completer harvest) — surfaced raw so clients
-// consume the exact bytes the stream replay would deliver.
+// read (ADR065 D2). Part is the stored payload, surfaced raw — valid JSON from
+// both writers (the gateway tee and the Completer harvest). Under the ADR051
+// item model it is a completed item: a UIMessage `text` / `reasoning` /
+// `dynamic-tool` part (a clipped tool output carries `truncated: true` and the
+// `[bex: N chars clipped]` marker), a data snapshot, or a standalone chunk
+// (`start`, `finish`, …). The stream replay expands each item back into the
+// standard chunks; rows from before the item model are still single chunks.
+// Partial marks an item the live stream ended inside of: the harvest may
+// later complete it in place, under the same seq.
 type TranscriptPart struct {
 	Seq       int64           `json:"seq"`
 	PartIndex int64           `json:"partIndex"`
 	Turn      int             `json:"turn"`
 	Part      json.RawMessage `json:"part"`
+	Partial   bool            `json:"partial,omitempty"`
 	CreatedAt time.Time       `json:"createdAt"`
 }
 

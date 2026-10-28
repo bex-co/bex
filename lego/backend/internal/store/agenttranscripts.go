@@ -361,12 +361,7 @@ func compactTurnTranscript(ctx context.Context, tx pgx.Tx, sessionID string, tur
 	for _, it := range items {
 		stats.RowsAfter++
 		stats.BytesAfter += int64(len(it.Part))
-		var head struct {
-			Type string `json:"type"`
-		}
-		if json.Unmarshal(it.Part, &head) == nil && head.Type == "finish" {
-			finished = true
-		}
+		finished = finished || agenttranscript.ChunkType(it.Part) == "finish"
 	}
 	clearFlag := reason == LegacyPartLimitReason && finished && contiguous && allLegacy
 	if clearFlag {
