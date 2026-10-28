@@ -267,6 +267,12 @@ spec:
                 description: Host is the in-cluster hostname (the "<name>" ClusterIP
                   Service).
                 type: string
+              internalAuthOptional:
+                description: |-
+                  InternalAuthOptional records that the stable Service has switched to the
+                  ready auth-injecting internal proxy. Legacy stores retain credentialed
+                  URLs until this cutover; Valkey and external TLS always require AUTH.
+                type: boolean
               observedGeneration:
                 description: ObservedGeneration is the .metadata.generation the controller
                   last reconciled.

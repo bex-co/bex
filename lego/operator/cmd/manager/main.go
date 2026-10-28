@@ -577,13 +577,20 @@ func setupDatastoreReconcilers(mgr ctrl.Manager, uncachedClient client.Client, a
 			"endpointConfigured", kvBackupEndpoint != "",
 			"secretNameConfigured", kvBackupSecret != "")
 	}
+	internalProxyImage := backupHelperImage(uncachedClient)
+	if internalProxyImage == "" {
+		setupLog.Error(errors.New("operator image is unavailable"),
+			"Key Value internal proxy requires POD_NAME/POD_NAMESPACE or BEX_BACKUP_HELPER_IMAGE")
+		os.Exit(1)
+	}
 	if err := (&controller.KeyValueReconciler{
 		APIReader:             mgr.GetAPIReader(),
 		Client:                mgr.GetClient(),
 		Scheme:                mgr.GetScheme(),
 		SecretClient:          uncachedClient, // see DatabaseReconciler above
 		BackupSourceNamespace: appsNamespace,
-		BackupHelperImage:     backupHelperImage(uncachedClient),
+		InternalProxyImage:    internalProxyImage,
+		BackupHelperImage:     internalProxyImage,
 		KvDomain:              envOr("BEX_KV_DOMAIN", ""),
 		ClusterIssuer:         envOr("BEX_CLUSTER_ISSUER", ""),
 		Backup: controller.BackupStore{

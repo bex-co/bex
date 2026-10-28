@@ -207,6 +207,12 @@ const KeyValuePersistenceOff = "off"
 
 // KeyValueStatus is the observed state of a KeyValue.
 type KeyValueStatus struct {
+	// InternalAuthOptional records that the stable Service has switched to the
+	// ready auth-injecting internal proxy. Legacy stores retain credentialed
+	// URLs until this cutover; Valkey and external TLS always require AUTH.
+	// +optional
+	InternalAuthOptional bool `json:"internalAuthOptional,omitempty"`
+
 	// Phase is the high-level lifecycle state.
 	// +optional
 	Phase KeyValuePhase `json:"phase,omitempty"`

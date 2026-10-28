@@ -370,6 +370,9 @@ type KeyValueReconciler struct {
 	// rather than fetching age at run time (w7/m85, ADR068 #9). Required only
 	// when Backup.AgePublicKey is set; that combination fails closed.
 	BackupHelperImage string
+	// InternalProxyImage is the operator's own image. Manager requires it for
+	// the internal-auth proxy; an empty value preserves legacy embedded controllers.
+	InternalProxyImage string
 	// FinalizerOverrunAfter overrides finalizerOverrunAfter — the window past
 	// which a still-running KeyValue finalization is surfaced as DeletionStalled
 	// (w8/012). Zero uses the package default; tests set a tiny duration.
@@ -555,6 +558,9 @@ func (r *KeyValueReconciler) reconcileKeyValueCredentials(
 	}
 	desiredData := keyValueConnectionSecretData(string(auth.Data[kvPasswordKey]), internalHost,
 		kv.Spec.Public && r.KvDomain != "", kv.Name, r.KvDomain)
+	if kv.Status.InternalAuthOptional {
+		desiredData["uri"] = fmt.Appendf(nil, "redis://%s:%d", kv.Name, kvPort)
+	}
 	if connection.Immutable != nil && *connection.Immutable && !secretDataEqual(connection.Data, desiredData) {
 		if err := r.Delete(ctx, connection); err != nil && !apierrors.IsNotFound(err) {
 			result, failErr := r.kvFail(ctx, kv, appv1alpha1.ReasonSecretRecreateFailed, err)
@@ -719,6 +725,7 @@ type keyValueIntent struct {
 	persistenceSource    string
 	persistenceLegacyPod *corev1.Pod
 	skipPersistenceInit  bool
+	internalProxy        bool
 }
 
 func keyValueIntentFor(kv *appv1alpha1.KeyValue, plan tiers.ValkeyTier, storageGB int32, kvDomain string, listening bool) keyValueIntent {
@@ -763,9 +770,13 @@ func keyValueIntentFor(kv *appv1alpha1.KeyValue, plan tiers.ValkeyTier, storageG
 func (r *KeyValueReconciler) reconcileKeyValueService(ctx context.Context, kv *appv1alpha1.KeyValue, intent keyValueIntent) error {
 	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: kv.Name, Namespace: kv.Namespace}}
 	mutate := func() error {
+		usingProxy := svc.Spec.Selector[labelKeyValueInternalProxy] == kv.Name
 		svc.Spec.Type = corev1.ServiceTypeClusterIP
 		svc.Spec.Selector = intent.labels
-		svc.Spec.Ports = []corev1.ServicePort{{Port: kvPort, TargetPort: intstr.FromInt(kvPort), Name: "valkey"}}
+		if intent.internalProxy || usingProxy {
+			svc.Spec.Selector = map[string]string{labelKeyValueInternalProxy: kv.Name}
+		}
+		svc.Spec.Ports = []corev1.ServicePort{{Port: kvPort, TargetPort: intstr.FromInt(kvPort), Name: keyValueContainerName}}
 		if intent.public {
 			svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{Port: kvTLSPort, TargetPort: intstr.FromInt(kvTLSPort), Name: "valkey-tls"})
 		}
@@ -898,7 +909,7 @@ func applyValkeyPodSpec(spec *corev1.PodSpec, kv *appv1alpha1.KeyValue, intent k
 	if kv.Spec.PersistenceMode == "off" && !intent.skipPersistenceInit {
 		serverArgs = append(serverArgs, "--dir", "/tmp")
 	}
-	serverPorts := []corev1.ContainerPort{{ContainerPort: kvPort, Name: "valkey"}}
+	serverPorts := []corev1.ContainerPort{{ContainerPort: kvPort, Name: keyValueContainerName}}
 	var serverMounts []corev1.VolumeMount
 	var volumes []corev1.Volume
 	if intent.tlsListener {
@@ -925,7 +936,7 @@ func applyValkeyPodSpec(spec *corev1.PodSpec, kv *appv1alpha1.KeyValue, intent k
 		FSGroupChangePolicy: ptr.To(corev1.FSGroupChangeOnRootMismatch),
 	}
 	spec.Containers = []corev1.Container{{
-		Name:  "valkey",
+		Name:  keyValueContainerName,
 		Image: valkeyImage(kv.Spec.Version),
 		// VALKEY_PASSWORD (env, below) expands in args — k8s substitutes
 		// $(VAR) from the container env list. appendonly persists to the PVC.
@@ -1031,8 +1042,16 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	intent.platformSecretName = platform.Name
 
+	proxyReady, err := r.reconcileKeyValueInternalProxy(ctx, &kv, intent)
+	if err != nil {
+		return r.kvFail(ctx, &kv, appv1alpha1.ReasonServiceFailed, err)
+	}
+	intent.internalProxy = proxyReady || kv.Status.InternalAuthOptional
 	if err := r.reconcileKeyValueService(ctx, &kv, intent); err != nil {
 		return r.kvFail(ctx, &kv, appv1alpha1.ReasonServiceFailed, err)
+	}
+	if proxyReady {
+		kv.Status.InternalAuthOptional = true
 	}
 	if result, done, err := r.prepareKeyValuePersistence(ctx, &kv, sts, platform, &intent); done || err != nil {
 		return result, err
@@ -1134,7 +1153,8 @@ func (r *KeyValueReconciler) updateKeyValueReadiness(
 	// Never acknowledge a cached Ready revision older than the template just written.
 	rolloutReady := sts.Generation == writtenGeneration && statefulSetRolloutReady(sts, replicas)
 	podsReady := r.keyValuePodsReady(ctx, kv, sts, replicas)
-	if kv.Spec.Suspended || (rolloutReady && podsReady) {
+	proxyReady := r.keyValueInternalProxyReady(ctx, kv)
+	if kv.Spec.Suspended || (rolloutReady && podsReady && proxyReady) {
 		kv.Status.CredentialRevision = credentialRevision
 		reason, message := appv1alpha1.ReasonProvisioned, "valkey ready"
 		if kv.Spec.Suspended {
@@ -1154,6 +1174,9 @@ func (r *KeyValueReconciler) updateKeyValueReadiness(
 
 	kv.Status.Phase = appv1alpha1.KVPhaseProvisioning
 	reason, message := appv1alpha1.ReasonProvisioning, "waiting for the current Valkey StatefulSet revision"
+	if !proxyReady {
+		message = "waiting for authenticated internal Key Value access"
+	}
 	if rolloutReady && !podsReady {
 		reason, message = appv1alpha1.ReasonPodUnready, "a current Valkey pod is not Ready"
 	}
@@ -1381,6 +1404,7 @@ func (r *KeyValueReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appv1alpha1.KeyValue{}, builder.WithPredicates(generationDeletionOrFinalizerPredicate{})).
 		Owns(&appsv1.StatefulSet{}, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
+		Owns(&appsv1.Deployment{}, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
 		Owns(&batchv1.CronJob{}, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
 		Watches(&corev1.PersistentVolumeClaim{}, handler.EnqueueRequestsFromMapFunc(keyValuePVCRequests),
 			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
