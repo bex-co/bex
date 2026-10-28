@@ -1,6 +1,6 @@
 # w4 · m241 — A Hobby workspace's one-instance limit applies to free datastores only, as on Render
 
-**Worker:** worker4 **Goal:** every workspace may hold one **free** Postgres and one **free** Key Value, as [Render documents](https://render.com/docs/free) ("Only one Free Render Postgres database can be active for any given workspace"; the same for Key Value). Paid instances do not count toward that limit. Today a Hobby workspace is capped at one Postgres and one Key Value **of any plan**: once it holds a free database, a paid `basic-256mb` create is refused with `WORKSPACE_RESOURCE_LIMIT` and an "Upgrade plan" button. A Pro workspace can hold 25 free ones. **Status:** blocked — t001–t006 done 2026-10-25 (loopx w4); t007 waits for the release pin, then QA replays the dry-run DoD in `bex-canary`
+**Worker:** worker4 **Goal:** every workspace may hold one **free** Postgres and one **free** Key Value, as [Render documents](https://render.com/docs/free) ("Only one Free Render Postgres database can be active for any given workspace"; the same for Key Value). Paid instances do not count toward that limit. Today a Hobby workspace is capped at one Postgres and one Key Value **of any plan**: once it holds a free database, a paid `basic-256mb` create is refused with `WORKSPACE_RESOURCE_LIMIT` and an "Upgrade plan" button. A Pro workspace can hold 25 free ones. **Status:** done 2026-10-29 — live DoD replayed in `bex-canary` on pin `d66f96c06991` (loopx w4).
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | [t004](done/t004.md) | Render parity                                                                 | 20m | w4/m241/t003               | — **DONE**
 | [t005](done/t005.md) | Simplify                                                                      | 15m | w4/m241/t004               | — **DONE**
 | [t006](done/t006.md) | Test coverage                                                                 | 25m | w4/m241/t004               | — **DONE**
-| [t007](t007.md) | Closeout (live DoD replay)                                                    | 15m | w4/m241/t005, w4/m241/t006 |
+| [t007](done/t007.md) | Closeout (live DoD replay)                                                    | 15m | w4/m241/t005, w4/m241/t006 | — **DONE**
 
 ## Definition of done
 
