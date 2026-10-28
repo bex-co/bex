@@ -6,7 +6,7 @@
 - the per-variable and per-file PUTs answer a bare `{key}` / file view;
 - `POST /v1/services` refuses `generateValue` as an unknown field.
 
-**Status:** blocked — t001–t006 done 2026-10-25 (loopx w4); t007 waits for the release pin to include the fix, then QA replays the DoD in `bex-canary`
+**Status:** done 2026-10-28 — live DoD replayed in `bex-canary` on pin `d66f96c06991` (loopx w4).
 
 ## Tasks (in order)
 
@@ -18,7 +18,7 @@
 | [t004](done/t004.md) | Render parity                                                                           | 20m | w4/m242/t001, w4/m242/t002, w4/m242/t003 | — **DONE**
 | [t005](done/t005.md) | Simplify                                                                                | 15m | w4/m242/t004               | — **DONE**
 | [t006](done/t006.md) | Test coverage                                                                           | 25m | w4/m242/t004               | — **DONE**
-| [t007](t007.md) | Closeout (live DoD replay)                                                              | 15m | w4/m242/t005, w4/m242/t006 |
+| [t007](done/t007.md) | Closeout (live DoD replay) — **DONE**                                                              | 15m | w4/m242/t005, w4/m242/t006 |
 
 ## Definition of done
 
