@@ -1308,3 +1308,43 @@ func TestFallbackHostsNeverWakeANonPublicApp(t *testing.T) {
 		t.Fatalf("fallback requests issued %d patches, want 0", n)
 	}
 }
+
+// TestPlatformResponsesCarryRenderRouting pins w8/213: every answer the
+// activator gives in place of the service names why, as Render's edge does
+// with X-Render-Routing, in every negotiated format.
+func TestPlatformResponsesCarryRenderRouting(t *testing.T) {
+	hibernated, hibernatedDep := sleepingApp()
+	hibernated.Status.Phase = appv1alpha1.PhaseHibernated
+	suspended, suspendedDep := suspendedApp()
+	for _, tc := range []struct {
+		name string
+		objs []client.Object
+		host string
+		path string
+		want string
+	}{
+		{"unknown host", nil, "nobody.onbex.co", "/", routingNoServer},
+		{"suspended", []client.Object{suspended, suspendedDep}, "suspended.onbex.co", "/", routingSuspend},
+		{"hibernated wake", []client.Object{hibernated, hibernatedDep}, "sleeping.onbex.co", "/", routingWake},
+		{"maintenance", []client.Object{maintenanceApp("")}, "web.onbex.co", "/", routingNoServer},
+		{"first deploy", []client.Object{firstDeployApp()}, "first.onbex.co", "/", routingNoServer},
+		{"robots.txt is untagged", []client.Object{hibernated, hibernatedDep}, "sleeping.onbex.co", "/robots.txt", ""},
+	} {
+		for _, accept := range []string{"text/html", "application/json", ""} {
+			t.Run(tc.name+" "+accept, func(t *testing.T) {
+				cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(tc.objs...).Build()
+				cache := newHostCache(cl, logr.Discard(), "onbex.co")
+				cache.refreshOnce(context.Background())
+				req := httptest.NewRequest(http.MethodGet, "https://"+tc.host+tc.path, nil)
+				if accept != "" {
+					req.Header.Set("Accept", accept)
+				}
+				rr := httptest.NewRecorder()
+				newHandler(cl, cache, logr.Discard()).ServeHTTP(rr, req)
+				if got := rr.Header().Get(routingHeader); got != tc.want {
+					t.Fatalf("%d response %s = %q, want %q", rr.Code, routingHeader, got, tc.want)
+				}
+			})
+		}
+	}
+}

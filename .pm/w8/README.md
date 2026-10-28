@@ -405,7 +405,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **214** — [`bex skills install` has no interactive picker (Render's TUI picks scope/tools/skills)](214.md) (~2h, minor) ← w8/m143 t002 design choice, 2026-10-28
 
-- [ ] **213** — [Platform-generated responses carry no `x-render-routing` header (`no-server`/`suspend`/`hibernate-pending-wake`), so an edge 404/503 looks like the app's own](213.md) (~30m, minor) ← `/qa-find-bugs-cli` loop sweep 3093 2026-10-28: Render tags its unknown-host 404, suspended 503 and wake page; bex's activator sets only `rndr-id`
+- [ ] **213** — [Platform-generated responses carry no `x-render-routing` header (`no-server`/`suspend`/`hibernate-pending-wake`), so an edge 404/503 looks like the app's own](blocked/213.md) (~30m, minor) ← `/qa-find-bugs-cli` loop sweep 3093 2026-10-28: Render tags its unknown-host 404, suspended 503 and wake page; bex's activator sets only `rndr-id` — **BLOCKED (2026-10-28: fix done — the activator tags every platform answer with X-Render-Routing (no-server / suspend / hibernate-pending-wake; proxied app responses never); release pipeline deploys the operator, then QA curls an unknown host, a suspended and a hibernated Free fixture, and an app 200/404 (untagged), fixtures deleted with 404 proofs)**
 
 - [x] **212** — [`bex skills install` installs Render's agent skills: 22 `render-*` skills that send the user's agent to `render` CLI, `mcp.render.com` and `dashboard.render.com`](done/212.md) (~3h, major) ← `/qa-find-bugs-cli` loop sweep 3093 2026-10-28: sandboxed install wrote 188 Render-directing files and 0 mentioning bex; the m29 "branding residual" acceptance missed the functional effect — **PROMOTED 2026-10-28 to m143; evidence retained**
 
