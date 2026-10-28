@@ -39,7 +39,7 @@ function toolOutputMock(
   return {
     request: {
       query: AgentSessionToolOutputDocument,
-      variables: { sessionId: "ags-full", turn, toolCallId },
+      variables: { id: "ags-full", turn, toolCallId },
     },
     result: {
       data: {
@@ -152,7 +152,7 @@ describe("full tool output on demand", () => {
       {
         request: {
           query: AgentSessionToolOutputDocument,
-          variables: { sessionId: "ags-full", turn: 1, toolCallId: "t-gone" },
+          variables: { id: "ags-full", turn: 1, toolCallId: "t-gone" },
         },
         result: {
           errors: [

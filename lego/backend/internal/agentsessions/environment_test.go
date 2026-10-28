@@ -345,6 +345,39 @@ func TestEnvironmentSurfacesShareOneShape(t *testing.T) {
 	}
 }
 
+// TestEnvironmentOwnerIDIsOptionalOnEverySurface: omitting ownerId resolves
+// the caller's default workspace on GraphQL exactly as on REST and MCP (and
+// as agentSessionCapabilities does), for the read and the update.
+func TestEnvironmentOwnerIDIsOptionalOnEverySurface(t *testing.T) {
+	svc := environmentService(core.DefaultTenant, newFakeEnvironments())
+	schema := environmentSchema(t, svc)
+	result := graphql.Do(graphql.Params{Schema: schema, Context: caller("admin"),
+		RequestString: `mutation { updateAgentEnvironment(input: {networkTier: FULL}) { ownerId networkTier } }`})
+	if len(result.Errors) != 0 {
+		t.Fatalf("GraphQL update without ownerId: %v", result.Errors)
+	}
+	if env := result.Data.(map[string]any)["updateAgentEnvironment"].(map[string]any); env["ownerId"] != core.DefaultTenant || env["networkTier"] != "FULL" {
+		t.Fatalf("GraphQL update = %#v", env)
+	}
+	result = graphql.Do(graphql.Params{Schema: schema, Context: caller("viewer"), RequestString: `{ agentEnvironment { ownerId networkTier } }`})
+	if len(result.Errors) != 0 || result.Data.(map[string]any)["agentEnvironment"].(map[string]any)["networkTier"] != "FULL" {
+		t.Fatalf("GraphQL read without ownerId = %#v %v", result.Data, result.Errors)
+	}
+
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/agent-environment", nil).WithContext(caller("viewer")))
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"networkTier":"full"`) {
+		t.Fatalf("REST read without ownerId = %d %s", rec.Code, rec.Body.String())
+	}
+	client := newMCPClient(t, caller("viewer"), svc)
+	res, err := client.CallTool(caller("viewer"), &mcp.CallToolParams{Name: "get_agent_environment", Arguments: map[string]any{}})
+	if err != nil || res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, `"networkTier":"full"`) {
+		t.Fatalf("MCP read without ownerId = %+v err=%v", res, err)
+	}
+}
+
 // --- sessions follow the workspace environment ----------------------------
 
 func sessionWithEnvironment(t *testing.T, row *store.AgentEnvironment) (*Service, *fakeStore, *fakeLifecycle) {

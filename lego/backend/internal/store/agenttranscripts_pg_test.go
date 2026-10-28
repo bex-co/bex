@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/agenttranscript"
@@ -322,6 +323,42 @@ func TestPGCompactionKeepsTheFlagWithoutProofOfCompleteness(t *testing.T) {
 		turns, _ := s.AgentSessionTurns(ctx, id)
 		if !turns[0].TranscriptTruncated || turns[0].TruncationReason != LegacyPartLimitReason {
 			t.Fatalf("%s: flag changed: %+v", name, turns[0])
+		}
+	}
+}
+
+// The per-session cap counts the copies one transaction already stored: a
+// batch whose outputs together exceed the cap keeps the ones that fit, in
+// order, and a repeated (conflicting) copy adds nothing to the count.
+func TestPGToolFullOutputCapCountsTheSameTransaction(t *testing.T) {
+	s, _, _ := transcriptBatchPGFixture(t)
+	ctx := context.Background()
+	tenant, err := s.CreateTenant(ctx, "tool-full-output-batch-test", PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.DeleteTenant(context.Background(), tenant.ID) })
+	session := seedSession(t, s, tenant.ID, nil, false, "")
+	half := strings.Repeat("h", MaxAgentSessionToolOutputBytes/2-8)
+	tool := func(index int64, id string, outputs ...agenttranscript.FullOutput) AgentSessionTranscriptPart {
+		return AgentSessionTranscriptPart{Turn: 1, PartIndex: index, Item: true,
+			Part:        json.RawMessage(`{"type":"dynamic-tool","toolCallId":"` + id + `","state":"output-available","fullOutput":true}`),
+			FullOutputs: outputs}
+	}
+	out := func(id, text string) agenttranscript.FullOutput {
+		return agenttranscript.FullOutput{ToolCallID: id, Field: agenttranscript.FieldOutput, Text: text}
+	}
+	if err := s.AppendAgentSessionTranscript(ctx, session, []AgentSessionTranscriptPart{
+		tool(0, "a", out("a", half)),
+		tool(1, "a-again", out("a", half)), // same key as a: a conflict, not counted
+		tool(2, "b", out("b", half)),
+		tool(3, "c", out("c", half)), // a + b leave no room
+	}); err != nil {
+		t.Fatal(err)
+	}
+	for id, want := range map[string]bool{"a": true, "b": true, "c": false} {
+		if got, _ := s.AgentSessionToolOutputs(ctx, session, 1, id); (len(got) == 1) != want {
+			t.Errorf("tool %s stored = %v, want %v", id, len(got) == 1, want)
 		}
 	}
 }

@@ -22,11 +22,13 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/graphql-go/graphql"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
 	"github.com/bex-co/bex/lego/backend/internal/agenttranscript"
@@ -565,7 +567,7 @@ func TestToolOutputReadsTheStoredFullCopy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := graphql.Do(graphql.Params{Schema: schema, Context: caller("alice"), RequestString: `{ agentSessionToolOutput(sessionId:"` + id +
+	r := graphql.Do(graphql.Params{Schema: schema, Context: caller("alice"), RequestString: `{ agentSessionToolOutput(id:"` + id +
 		`", turn:1, toolCallId:"call-1") { sessionId turn toolCallId outputs { field text } } }`})
 	if len(r.Errors) != 0 {
 		t.Fatalf("GraphQL errors = %#v", r.Errors)
@@ -573,6 +575,44 @@ func TestToolOutputReadsTheStoredFullCopy(t *testing.T) {
 	got := asJSONString(r.Data)
 	if !strings.Contains(got, `"outputs":[{"field":"output","text":"the whole output"},{"field":"terminal:term-1","text":"the whole terminal"}]`) {
 		t.Fatalf("GraphQL tool output = %s", got)
+	}
+	// The session argument is `id` on every surface, as on the transcript read.
+	if r := graphql.Do(graphql.Params{Schema: schema, Context: caller("alice"), RequestString: `{ agentSessionToolOutput(sessionId:"` + id +
+		`", turn:1, toolCallId:"call-1") { turn } }`}); len(r.Errors) == 0 {
+		t.Fatal("GraphQL accepted sessionId; the argument is id (REST {id}, MCP id)")
+	}
+	r = graphql.Do(graphql.Params{Schema: schema, Context: caller("alice"), RequestString: `{ agentSessionToolOutput(id:"` + id +
+		`", turn:1, toolCallId:"call-old") { turn } }`})
+	if len(r.Errors) != 1 || r.Errors[0].Extensions["code"] != "AGENT_SESSION_TOOL_OUTPUT_NOT_FOUND" {
+		t.Fatalf("GraphQL no copy = %#v, want AGENT_SESSION_TOOL_OUTPUT_NOT_FOUND", r.Errors)
+	}
+
+	// MCP returns the REST shape and the same codes.
+	client := newMCPClient(t, caller("alice"), svc)
+	res, err := client.CallTool(caller("alice"), &mcp.CallToolParams{Name: "get_agent_session_tool_output",
+		Arguments: map[string]any{"id": id, "turn": 1, "toolCallId": "call-1"}})
+	if err != nil || res.IsError {
+		t.Fatalf("MCP tool output = %+v err=%v", res, err)
+	}
+	var mcpBody ToolOutput
+	if text := res.Content[0].(*mcp.TextContent).Text; json.Unmarshal([]byte(text), &mcpBody) != nil || !reflect.DeepEqual(mcpBody, body) {
+		t.Fatalf("MCP tool output = %s, want the REST body %+v", text, body)
+	}
+	for code, args := range map[string]map[string]any{
+		"AGENT_SESSION_TOOL_OUTPUT_NOT_FOUND": {"id": id, "turn": 1, "toolCallId": "call-old"},
+		"AGENT_SESSION_TURN_INVALID":          {"id": id, "turn": -1, "toolCallId": "call-1"},
+		"AGENT_SESSION_TOOL_CALL_ID_INVALID":  {"id": id, "turn": 1, "toolCallId": ""},
+	} {
+		res, err := client.CallTool(caller("alice"), &mcp.CallToolParams{Name: "get_agent_session_tool_output", Arguments: args})
+		if err != nil || !res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, code) {
+			t.Fatalf("MCP %v = %+v err=%v, want %s", args, res, err, code)
+		}
+	}
+	bob := newMCPClient(t, caller("bob"), svc)
+	if res, err := bob.CallTool(caller("bob"), &mcp.CallToolParams{Name: "get_agent_session_tool_output",
+		Arguments: map[string]any{"id": id, "turn": 1, "toolCallId": "call-1"}}); err != nil || !res.IsError ||
+		strings.Contains(res.Content[0].(*mcp.TextContent).Text, "the whole output") {
+		t.Fatalf("cross-workspace MCP tool output = %+v err=%v, want a denial", res, err)
 	}
 }
 

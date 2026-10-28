@@ -174,16 +174,8 @@ mutation DeleteAgentSession($id: String!) {
 # (a terminal snapshot: `data.fullOutput`) stores only a head and tail inline;
 # "Show full output" loads the rest on demand. Not found
 # (AGENT_SESSION_TOOL_OUTPUT_NOT_FOUND) when no full copy was kept.
-query AgentSessionToolOutput(
-  $sessionId: String!
-  $turn: Int!
-  $toolCallId: String!
-) {
-  agentSessionToolOutput(
-    sessionId: $sessionId
-    turn: $turn
-    toolCallId: $toolCallId
-  ) {
+query AgentSessionToolOutput($id: String!, $turn: Int!, $toolCallId: String!) {
+  agentSessionToolOutput(id: $id, turn: $turn, toolCallId: $toolCallId) {
     sessionId
     turn
     toolCallId

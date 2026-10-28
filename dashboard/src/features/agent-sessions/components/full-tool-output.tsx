@@ -93,7 +93,7 @@ function FullOutputBody({
 }) {
   const { t } = useTranslations();
   const { data, loading, error } = useQuery(AgentSessionToolOutputDocument, {
-    variables: { sessionId, turn, toolCallId },
+    variables: { id: sessionId, turn, toolCallId },
   });
   if (loading) {
     return (

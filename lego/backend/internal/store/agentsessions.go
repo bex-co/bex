@@ -822,10 +822,11 @@ func (s *PGStore) AppendAgentSessionTranscript(ctx context.Context, sessionID st
 			SELECT COALESCE(max(seq), -1) FROM agent_session_transcripts WHERE session_id=$1`, sessionID).Scan(&seq); err != nil {
 			return err
 		}
+		fullOutputs := toolOutputWriter{tx: tx, sessionID: sessionID}
 		for _, p := range parts {
 			// The full copies go first: an item flagged fullOutput never
 			// commits without them (the cap aside).
-			if err := insertToolFullOutputs(ctx, tx, sessionID, p.Turn, p.FullOutputs); err != nil {
+			if err := fullOutputs.insert(ctx, p.Turn, p.FullOutputs); err != nil {
 				return err
 			}
 			partIndex := p.PartIndex

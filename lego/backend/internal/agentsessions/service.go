@@ -1245,8 +1245,10 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
-	// Every dispatch re-resolves the workspace environment, so a tier, host or
-	// default-model change applies from the session's next turn.
+	// Every dispatch re-resolves the workspace environment, so a tier or host
+	// change applies from the session's next turn. The default model does not:
+	// create stored the resolved model in the session's config, so only new
+	// sessions pick up a changed default (the platform pin still wins here).
 	workspaceEnv, err := s.workspaceEnvironment(ctx, record.WorkspaceID)
 	if err != nil {
 		return View{}, err

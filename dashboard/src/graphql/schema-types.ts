@@ -2448,7 +2448,7 @@ export type MutationUnregisterNotificationWebPushSubscriptionArgs = {
 
 export type MutationUpdateAgentEnvironmentArgs = {
   input: AgentEnvironmentInput;
-  ownerId: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -2879,7 +2879,7 @@ export type Query = {
 
 
 export type QueryAgentEnvironmentArgs = {
-  ownerId: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -2894,7 +2894,7 @@ export type QueryAgentSessionCapabilitiesArgs = {
 
 
 export type QueryAgentSessionToolOutputArgs = {
-  sessionId: Scalars['String']['input'];
+  id: Scalars['String']['input'];
   toolCallId: Scalars['String']['input'];
   turn: Scalars['Int']['input'];
 };

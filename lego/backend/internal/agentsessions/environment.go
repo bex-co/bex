@@ -195,7 +195,7 @@ func workspaceHosts(entries []string) ([]string, error) {
 // customized it (or with the store off), the defaults. A read failure fails
 // the caller closed: a session must not dispatch on a guessed network posture.
 func (s *Service) workspaceEnvironment(ctx context.Context, workspaceID string) (store.AgentEnvironment, error) {
-	defaults := store.AgentEnvironment{WorkspaceID: workspaceID, NetworkTier: NetworkTierRegistries, CustomHosts: []string{}}
+	defaults := store.AgentEnvironment{WorkspaceID: workspaceID, NetworkTier: NetworkTierRegistries}
 	if s.Environments == nil {
 		return defaults, nil
 	}
@@ -206,9 +206,6 @@ func (s *Service) workspaceEnvironment(ctx context.Context, workspaceID string) 
 	if err != nil {
 		log.Printf("agent environment: read failed (workspace=%s): %v", workspaceID, err)
 		return store.AgentEnvironment{}, core.NewAgentSessionDependencyUnavailableError()
-	}
-	if row.CustomHosts == nil {
-		row.CustomHosts = []string{}
 	}
 	return row, nil
 }
