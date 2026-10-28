@@ -88,6 +88,17 @@ func startCommandApplies(svcType string) bool {
 	return svcType != appv1alpha1.TypeStaticSite
 }
 
+// errCronFieldNotApplicable refuses a cron job's command or schedule on
+// another type, pointing a command at the start command (the Docker Command
+// for an image or Docker service).
+func errCronFieldNotApplicable(field, svcType string) error {
+	msg := fmt.Sprintf("%s applies only to a cron_job; a %s has no %s", field, svcType, field)
+	if field == "command" {
+		msg += "; set startCommand (the Docker Command for an image or Docker service) instead"
+	}
+	return core.NewBadRequestError("FIELD_NOT_APPLICABLE", msg, map[string]any{"field": field})
+}
+
 func errStartCommandNotApplicable(svcType string) error {
 	return fmt.Errorf("%w: start command is not applicable to a %s", core.ErrBadRequest, svcType)
 }

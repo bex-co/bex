@@ -19,6 +19,7 @@ package apps
 import (
 	"context"
 	"errors"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -114,5 +115,37 @@ func TestImageServiceReadsAutoDeployOff(t *testing.T) {
 	v, err := svc.Get(context.Background(), "web")
 	if err != nil || v.AutoDeploy || v.AutoDeployTrigger != "off" {
 		t.Fatalf("view autoDeploy=%v trigger=%q (%v), want off", v.AutoDeploy, v.AutoDeployTrigger, err)
+	}
+}
+
+// A cron job's command and schedule are refused by name on every other type,
+// instead of being dropped (w4/424). A cron job is unchanged.
+func TestCreateRefusesCronFieldsOnOtherTypes(t *testing.T) {
+	ctx := context.Background()
+	for _, svcType := range []string{appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService, appv1alpha1.TypeBackgroundWorker} {
+		for field, req := range map[string]CreateRequest{
+			"command":  {Name: "x", Type: svcType, Image: "busybox:1", Command: "httpd -f -p 10000"},
+			"schedule": {Name: "x", Type: svcType, Image: "busybox:1", Schedule: "*/5 * * * *"},
+		} {
+			svc, _ := newService(nil)
+			req.DryRun = true
+			_, err := svc.Create(ctx, req)
+			var coded *core.CodedError
+			if !errors.As(err, &coded) || coded.Params["field"] != field || !strings.Contains(err.Error(), "cron_job") {
+				t.Errorf("%s with %s = %v, want a named refusal", svcType, field, err)
+			}
+			if field == "command" && !strings.Contains(err.Error(), "startCommand") {
+				t.Errorf("%s command refusal does not point at startCommand: %v", svcType, err)
+			}
+		}
+	}
+	svc, _ := newService(nil)
+	if _, err := svc.Create(ctx, CreateRequest{Name: "cron", Type: appv1alpha1.TypeCronJob, Image: "busybox:1", Command: "echo hi", Schedule: "*/5 * * * *", DryRun: true}); err != nil {
+		t.Fatalf("cron create = %v, want accepted", err)
+	}
+	rec := serveRESTStrict(t, svc, http.MethodPost, "/v1/services",
+		`{"type":"web_service","name":"web","image":{"imagePath":"busybox:1"},"command":"httpd -f"}`)
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "startCommand") {
+		t.Fatalf("REST web create with command = %d %s, want a named 400", rec.Code, rec.Body)
 	}
 }
